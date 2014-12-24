@@ -37,7 +37,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
                 dirs_to_search.push(homedir.unwrap().join(".terminfo"))
             }
             match getenv("TERMINFO_DIRS") {
-                Some(dirs) => for i in dirs.as_slice().split(':') {
+                Some(dirs) => for i in dirs.split(':') {
                     if i == "" {
                         dirs_to_search.push(Path::new("/usr/share/terminfo"));
                     } else {
@@ -61,13 +61,13 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
     for p in dirs_to_search.iter() {
         if p.exists() {
             let f = first_char.to_string();
-            let newp = p.join_many(&[f.as_slice(), term]);
+            let newp = p.join_many(&[f[], term]);
             if newp.exists() {
                 return Some(box newp);
             }
             // on some installations the dir is named after the hex of the char (e.g. OS X)
             let f = format!("{:x}", first_char as uint);
-            let newp = p.join_many(&[f.as_slice(), term]);
+            let newp = p.join_many(&[f[], term]);
             if newp.exists() {
                 return Some(box newp);
             }
@@ -102,10 +102,10 @@ fn test_get_dbpath_for_term() {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
         p.as_str().unwrap().to_string()
     };
-    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_string());
+    assert!(x("screen") == "/usr/share/terminfo/s/screen");
     assert!(get_dbpath_for_term("") == None);
     setenv("TERMINFO_DIRS", ":");
-    assert!(x("screen") == "/usr/share/terminfo/s/screen".to_string());
+    assert!(x("screen") == "/usr/share/terminfo/s/screen");
     unsetenv("TERMINFO_DIRS");
 }
 

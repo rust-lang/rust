@@ -15,23 +15,25 @@ use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use hash;
 use io::Writer;
-use iter::{DoubleEndedIterator, AdditiveIterator, Extend, Iterator, Map};
+use iter::{DoubleEndedIteratorExt, AdditiveIterator, Extend};
+use iter::{Iterator, IteratorExt, Map};
+use option::Option;
+use option::Option::{None, Some};
 use kinds::Sized;
-use option::{Option, None, Some};
 use str::{FromStr, Str};
 use str;
-use slice::{CloneSliceAllocPrelude, Splits, AsSlice, VectorVector,
-            PartialEqSlicePrelude, SlicePrelude};
+use slice::{CloneSliceExt, Splits, AsSlice, VectorVector,
+            PartialEqSliceExt, SliceExt};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]
-pub type Components<'a> = Splits<'a, u8>;
+pub type Components<'a> = Splits<'a, u8, fn(&u8) -> bool>;
 
 /// Iterator that yields successive components of a Path as Option<&str>
-pub type StrComponents<'a> = Map<'a, &'a [u8], Option<&'a str>,
-                                       Components<'a>>;
+pub type StrComponents<'a> =
+    Map<&'a [u8], Option<&'a str>, Components<'a>, fn(&[u8]) -> Option<&str>>;
 
 /// Represents a POSIX file path
 #[deriving(Clone)]
@@ -130,7 +132,7 @@ impl GenericPathUnsafe for Path {
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
         let filename = filename.container_as_bytes();
         match self.sepidx {
-            None if b".." == self.repr.as_slice() => {
+            None if b".." == self.repr => {
                 let mut v = Vec::with_capacity(3 + filename.len());
                 v.push_all(dot_dot_static);
                 v.push(SEP_BYTE);
@@ -157,7 +159,7 @@ impl GenericPathUnsafe for Path {
                 self.repr = Path::normalize(v.as_slice());
             }
         }
-        self.sepidx = self.repr.as_slice().rposition_elem(&SEP_BYTE);
+        self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
     }
 
     unsafe fn push_unchecked<T: BytesContainer>(&mut self, path: T) {
@@ -173,7 +175,7 @@ impl GenericPathUnsafe for Path {
                 // FIXME: this is slow
                 self.repr = Path::normalize(v.as_slice());
             }
-            self.sepidx = self.repr.as_slice().rposition_elem(&SEP_BYTE);
+            self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
         }
     }
 }
@@ -190,7 +192,7 @@ impl GenericPath for Path {
 
     fn dirname<'a>(&'a self) -> &'a [u8] {
         match self.sepidx {
-            None if b".." == self.repr.as_slice() => self.repr.as_slice(),
+            None if b".." == self.repr => self.repr.as_slice(),
             None => dot_static,
             Some(0) => self.repr[..1],
             Some(idx) if self.repr[idx+1..] == b".." => self.repr.as_slice(),
@@ -200,8 +202,8 @@ impl GenericPath for Path {
 
     fn filename<'a>(&'a self) -> Option<&'a [u8]> {
         match self.sepidx {
-            None if b"." == self.repr.as_slice() ||
-                b".." == self.repr.as_slice() => None,
+            None if b"." == self.repr ||
+                b".." == self.repr => None,
             None => Some(self.repr.as_slice()),
             Some(idx) if self.repr[idx+1..] == b".." => None,
             Some(0) if self.repr[1..].is_empty() => None,
@@ -211,20 +213,20 @@ impl GenericPath for Path {
 
     fn pop(&mut self) -> bool {
         match self.sepidx {
-            None if b"." == self.repr.as_slice() => false,
+            None if b"." == self.repr => false,
             None => {
                 self.repr = vec![b'.'];
                 self.sepidx = None;
                 true
             }
-            Some(0) if b"/" == self.repr.as_slice() => false,
+            Some(0) if b"/" == self.repr => false,
             Some(idx) => {
                 if idx == 0 {
                     self.repr.truncate(idx+1);
                 } else {
                     self.repr.truncate(idx);
                 }
-                self.sepidx = self.repr.as_slice().rposition_elem(&SEP_BYTE);
+                self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
                 true
             }
         }
@@ -249,7 +251,7 @@ impl GenericPath for Path {
         } else {
             let mut ita = self.components();
             let mut itb = other.components();
-            if b"." == self.repr.as_slice() {
+            if b"." == self.repr {
                 return match itb.next() {
                     None => true,
                     Some(b) => b != b".."
@@ -304,7 +306,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.as_slice().connect_vec(&SEP_BYTE)))
+            Some(Path::new(comps.connect_vec(&SEP_BYTE)))
         }
     }
 
@@ -388,6 +390,7 @@ impl Path {
         let v = if self.repr[0] == SEP_BYTE {
             self.repr[1..]
         } else { self.repr.as_slice() };
+        let is_sep_byte: fn(&u8) -> bool = is_sep_byte; // coerce to fn ptr
         let mut ret = v.split(is_sep_byte);
         if v.is_empty() {
             // consume the empty "" component
@@ -399,13 +402,17 @@ impl Path {
     /// Returns an iterator that yields each component of the path as Option<&str>.
     /// See components() for details.
     pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
-        self.components().map(str::from_utf8)
+        fn from_utf8(s: &[u8]) -> Option<&str> {
+            str::from_utf8(s).ok()
+        }
+        let f: fn(&[u8]) -> Option<&str> = from_utf8; // coerce to fn ptr
+        self.components().map(f)
     }
 }
 
 // None result means the byte vector didn't need normalizing
 fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<Vec<&'a [u8]>> {
-    if is_abs && v.as_slice().is_empty() {
+    if is_abs && v.is_empty() {
         return None;
     }
     let mut comps: Vec<&'a [u8]> = vec![];
@@ -442,11 +449,9 @@ static dot_dot_static: &'static [u8] = b"..";
 mod tests {
     use prelude::*;
     use super::*;
-    use mem;
     use str;
-    use str::StrPrelude;
 
-    macro_rules! t(
+    macro_rules! t {
         (s: $path:expr, $exp:expr) => (
             {
                 let path = $path;
@@ -459,7 +464,7 @@ mod tests {
                 assert!(path.as_vec() == $exp);
             }
         )
-    )
+    }
 
     #[test]
     fn test_paths() {
@@ -495,8 +500,8 @@ mod tests {
         t!(s: Path::new("foo/../../.."), "../..");
         t!(s: Path::new("foo/../../bar"), "../bar");
 
-        assert_eq!(Path::new(b"foo/bar").into_vec().as_slice(), b"foo/bar");
-        assert_eq!(Path::new(b"/foo/../../bar").into_vec().as_slice(),
+        assert_eq!(Path::new(b"foo/bar").into_vec(), b"foo/bar");
+        assert_eq!(Path::new(b"/foo/../../bar").into_vec(),
                    b"/bar");
 
         let p = Path::new(b"foo/bar\x80");
@@ -513,62 +518,62 @@ mod tests {
 
     #[test]
     fn test_null_byte() {
-        use task;
-        let result = task::try(proc() {
+        use thread::Thread;
+        let result = Thread::spawn(move|| {
             Path::new(b"foo/bar\0")
-        });
+        }).join();
         assert!(result.is_err());
 
-        let result = task::try(proc() {
+        let result = Thread::spawn(move|| {
             Path::new("test").set_filename(b"f\0o")
-        });
+        }).join();
         assert!(result.is_err());
 
-        let result = task::try(proc() {
+        let result = Thread::spawn(move|| {
             Path::new("test").push(b"f\0o");
-        });
+        }).join();
         assert!(result.is_err());
     }
 
     #[test]
     fn test_display_str() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $disp:ident, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    assert!(path.$disp().to_string().as_slice() == $exp);
+                    assert!(path.$disp().to_string() == $exp);
                 }
             )
-        )
+        }
         t!("foo", display, "foo");
-        t!(b"foo\x80", display, "foo\uFFFD");
-        t!(b"foo\xFFbar", display, "foo\uFFFDbar");
+        t!(b"foo\x80", display, "foo\u{FFFD}");
+        t!(b"foo\xFFbar", display, "foo\u{FFFD}bar");
         t!(b"foo\xFF/bar", filename_display, "bar");
-        t!(b"foo/\xFFbar", filename_display, "\uFFFDbar");
+        t!(b"foo/\xFFbar", filename_display, "\u{FFFD}bar");
         t!(b"/", filename_display, "");
 
         macro_rules! t(
             ($path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
-                    let mo = path.display().as_maybe_owned();
+                    let mo = path.display().as_cow();
                     assert!(mo.as_slice() == $exp);
                 }
             );
             ($path:expr, $exp:expr, filename) => (
                 {
                     let path = Path::new($path);
-                    let mo = path.filename_display().as_maybe_owned();
+                    let mo = path.filename_display().as_cow();
                     assert!(mo.as_slice() == $exp);
                 }
             )
-        )
+        );
 
         t!("foo", "foo");
-        t!(b"foo\x80", "foo\uFFFD");
-        t!(b"foo\xFFbar", "foo\uFFFDbar");
+        t!(b"foo\x80", "foo\u{FFFD}");
+        t!(b"foo\xFFbar", "foo\u{FFFD}bar");
         t!(b"foo\xFF/bar", "bar", filename);
-        t!(b"foo/\xFFbar", "\uFFFDbar", filename);
+        t!(b"foo/\xFFbar", "\u{FFFD}bar", filename);
         t!(b"/", "", filename);
     }
 
@@ -579,20 +584,20 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let f = format!("{}", path.display());
-                    assert!(f.as_slice() == $exp);
+                    assert!(f == $exp);
                     let f = format!("{}", path.filename_display());
-                    assert!(f.as_slice() == $expf);
+                    assert!(f == $expf);
                 }
             )
-        )
+        );
 
         t!(b"foo", "foo", "foo");
         t!(b"foo/bar", "foo/bar", "bar");
         t!(b"/", "/", "");
-        t!(b"foo\xFF", "foo\uFFFD", "foo\uFFFD");
-        t!(b"foo\xFF/bar", "foo\uFFFD/bar", "bar");
-        t!(b"foo/\xFFbar", "foo/\uFFFDbar", "\uFFFDbar");
-        t!(b"\xFFfoo/bar\xFF", "\uFFFDfoo/bar\uFFFD", "bar\uFFFD");
+        t!(b"foo\xFF", "foo\u{FFFD}", "foo\u{FFFD}");
+        t!(b"foo\xFF/bar", "foo\u{FFFD}/bar", "bar");
+        t!(b"foo/\xFFbar", "foo/\u{FFFD}bar", "\u{FFFD}bar");
+        t!(b"\xFFfoo/bar\xFF", "\u{FFFD}foo/bar\u{FFFD}", "bar\u{FFFD}");
     }
 
     #[test]
@@ -600,10 +605,8 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    unsafe {
-                        let path = Path::new($path);
-                        assert!(path.$op() == mem::transmute(($exp).as_bytes()));
-                    }
+                    let path = Path::new($path);
+                    assert!(path.$op() == ($exp).as_bytes());
                 }
             );
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
@@ -615,14 +618,12 @@ mod tests {
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    unsafe {
-                        let arg = $path;
-                        let path = Path::new(arg);
-                        assert!(path.$op() == mem::transmute($exp));
-                    }
+                    let arg = $path;
+                    let path = Path::new(arg);
+                    assert!(path.$op() == $exp);
                 }
             );
-        )
+        );
 
         t!(v: b"a/b/c", filename, Some(b"c"));
         t!(v: b"a/b/c\xFF", filename, Some(b"c\xFF"));
@@ -667,9 +668,8 @@ mod tests {
         t!(v: b"hi/there.txt", extension, Some(b"txt"));
         t!(v: b"hi/there\x80.txt", extension, Some(b"txt"));
         t!(v: b"hi/there.t\x80xt", extension, Some(b"t\x80xt"));
-        let no: Option<&'static [u8]> = None;
-        t!(v: b"hi/there", extension, no);
-        t!(v: b"hi/there\x80", extension, no);
+        t!(v: b"hi/there", extension, None);
+        t!(v: b"hi/there\x80", extension, None);
         t!(s: "hi/there.txt", extension, Some("txt"), opt);
         t!(s: "hi/there", extension, None, opt);
         t!(s: "there.txt", extension, Some("txt"), opt);
@@ -697,7 +697,7 @@ mod tests {
                     assert!(p1 == p2.join(join));
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "..");
         t!(s: "/a/b/c", "d");
@@ -716,7 +716,7 @@ mod tests {
                     assert!(p.as_str() == Some($exp));
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "d", "a/b/c/d");
         t!(s: "/a/b/c", "d", "/a/b/c/d");
@@ -743,7 +743,7 @@ mod tests {
                     assert!(p.as_vec() == $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
         t!(s: "a/b/c", ["d", "/e"], "/e");
@@ -773,7 +773,7 @@ mod tests {
                     assert!(result == $right);
                 }
             )
-        )
+        );
 
         t!(b: b"a/b/c", b"a/b", true);
         t!(b: b"a", b".", true);
@@ -821,7 +821,7 @@ mod tests {
                     assert!(res.as_str() == Some($exp));
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "..", "a/b");
         t!(s: "/a/b/c", "d", "/a/b/c/d");
@@ -848,7 +848,7 @@ mod tests {
                     assert!(res.as_vec() == $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
         t!(s: "a/b/c", ["..", "d"], "a/b/d");
@@ -932,7 +932,7 @@ mod tests {
                     assert!(p1 == p2.$with(arg));
                 }
             )
-        )
+        );
 
         t!(v: b"a/b/c", set_filename, with_filename, b"d");
         t!(v: b"/", set_filename, with_filename, b"foo");
@@ -958,62 +958,57 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
-                    unsafe {
-                        let path = $path;
-                        let filename = $filename;
-                        assert!(path.filename_str() == filename,
-                                "{}.filename_str(): Expected `{}`, found {}",
-                                path.as_str().unwrap(), filename, path.filename_str());
-                        let dirname = $dirname;
-                        assert!(path.dirname_str() == dirname,
-                                "`{}`.dirname_str(): Expected `{}`, found `{}`",
-                                path.as_str().unwrap(), dirname, path.dirname_str());
-                        let filestem = $filestem;
-                        assert!(path.filestem_str() == filestem,
-                                "`{}`.filestem_str(): Expected `{}`, found `{}`",
-                                path.as_str().unwrap(), filestem, path.filestem_str());
-                        let ext = $ext;
-                        assert!(path.extension_str() == mem::transmute(ext),
-                                "`{}`.extension_str(): Expected `{}`, found `{}`",
-                                path.as_str().unwrap(), ext, path.extension_str());
-                    }
+                    let path = $path;
+                    let filename = $filename;
+                    assert!(path.filename_str() == filename,
+                            "{}.filename_str(): Expected `{}`, found {}",
+                            path.as_str().unwrap(), filename, path.filename_str());
+                    let dirname = $dirname;
+                    assert!(path.dirname_str() == dirname,
+                            "`{}`.dirname_str(): Expected `{}`, found `{}`",
+                            path.as_str().unwrap(), dirname, path.dirname_str());
+                    let filestem = $filestem;
+                    assert!(path.filestem_str() == filestem,
+                            "`{}`.filestem_str(): Expected `{}`, found `{}`",
+                            path.as_str().unwrap(), filestem, path.filestem_str());
+                    let ext = $ext;
+                    assert!(path.extension_str() == ext,
+                            "`{}`.extension_str(): Expected `{}`, found `{}`",
+                            path.as_str().unwrap(), ext, path.extension_str());
                 }
             );
             (v: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
-                    unsafe {
-                        let path = $path;
-                        assert!(path.filename() == mem::transmute($filename));
-                        assert!(path.dirname() == mem::transmute($dirname));
-                        assert!(path.filestem() == mem::transmute($filestem));
-                        assert!(path.extension() == mem::transmute($ext));
-                    }
+                    let path = $path;
+                    assert!(path.filename() == $filename);
+                    assert!(path.dirname() == $dirname);
+                    assert!(path.filestem() == $filestem);
+                    assert!(path.extension() == $ext);
                 }
             )
-        )
+        );
 
-        let no: Option<&'static str> = None;
-        t!(v: Path::new(b"a/b/c"), Some(b"c"), b"a/b", Some(b"c"), no);
-        t!(v: Path::new(b"a/b/\xFF"), Some(b"\xFF"), b"a/b", Some(b"\xFF"), no);
+        t!(v: Path::new(b"a/b/c"), Some(b"c"), b"a/b", Some(b"c"), None);
+        t!(v: Path::new(b"a/b/\xFF"), Some(b"\xFF"), b"a/b", Some(b"\xFF"), None);
         t!(v: Path::new(b"hi/there.\xFF"), Some(b"there.\xFF"), b"hi",
               Some(b"there"), Some(b"\xFF"));
-        t!(s: Path::new("a/b/c"), Some("c"), Some("a/b"), Some("c"), no);
-        t!(s: Path::new("."), None, Some("."), None, no);
-        t!(s: Path::new("/"), None, Some("/"), None, no);
-        t!(s: Path::new(".."), None, Some(".."), None, no);
-        t!(s: Path::new("../.."), None, Some("../.."), None, no);
+        t!(s: Path::new("a/b/c"), Some("c"), Some("a/b"), Some("c"), None);
+        t!(s: Path::new("."), None, Some("."), None, None);
+        t!(s: Path::new("/"), None, Some("/"), None, None);
+        t!(s: Path::new(".."), None, Some(".."), None, None);
+        t!(s: Path::new("../.."), None, Some("../.."), None, None);
         t!(s: Path::new("hi/there.txt"), Some("there.txt"), Some("hi"),
               Some("there"), Some("txt"));
-        t!(s: Path::new("hi/there"), Some("there"), Some("hi"), Some("there"), no);
+        t!(s: Path::new("hi/there"), Some("there"), Some("hi"), Some("there"), None);
         t!(s: Path::new("hi/there."), Some("there."), Some("hi"),
               Some("there"), Some(""));
-        t!(s: Path::new("hi/.there"), Some(".there"), Some("hi"), Some(".there"), no);
+        t!(s: Path::new("hi/.there"), Some(".there"), Some("hi"), Some(".there"), None);
         t!(s: Path::new("hi/..there"), Some("..there"), Some("hi"),
               Some("."), Some("there"));
-        t!(s: Path::new(b"a/b/\xFF"), None, Some("a/b"), None, no);
+        t!(s: Path::new(b"a/b/\xFF"), None, Some("a/b"), None, None);
         t!(s: Path::new(b"a/b/\xFF.txt"), None, Some("a/b"), None, Some("txt"));
-        t!(s: Path::new(b"a/b/c.\x80"), None, Some("a/b"), Some("c"), no);
-        t!(s: Path::new(b"\xFF/b"), Some("b"), None, Some("b"), no);
+        t!(s: Path::new(b"a/b/c.\x80"), None, Some("a/b"), Some("c"), None);
+        t!(s: Path::new(b"\xFF/b"), Some("b"), None, Some("b"), None);
     }
 
     #[test]
@@ -1038,7 +1033,7 @@ mod tests {
                     assert_eq!(path.is_relative(), $rel);
                 }
             )
-        )
+        );
         t!(s: "a/b/c", false, true);
         t!(s: "/a/b/c", true, false);
         t!(s: "a", false, true);
@@ -1059,7 +1054,7 @@ mod tests {
                     assert_eq!(path.is_ancestor_of(&dest), $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "a/b/c/d", true);
         t!(s: "a/b/c", "a/b/c", true);
@@ -1100,7 +1095,7 @@ mod tests {
                     assert_eq!(path.ends_with_path(&child), $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "c", true);
         t!(s: "a/b/c", "d", false);
@@ -1133,7 +1128,7 @@ mod tests {
                     assert_eq!(res.as_ref().and_then(|x| x.as_str()), $exp);
                 }
             )
-        )
+        );
 
         t!(s: "a/b/c", "a/b", Some("c"));
         t!(s: "a/b/c", "a/b/d", Some("../c"));
@@ -1189,13 +1184,13 @@ mod tests {
                     let path = Path::new($arg);
                     let comps = path.components().collect::<Vec<&[u8]>>();
                     let exp: &[&[u8]] = &[$($exp),*];
-                    assert_eq!(comps.as_slice(), exp);
+                    assert_eq!(comps, exp);
                     let comps = path.components().rev().collect::<Vec<&[u8]>>();
                     let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&[u8]>>();
                     assert_eq!(comps, exp)
                 }
             )
-        )
+        );
 
         t!(b: b"a/b/c", [b"a", b"b", b"c"]);
         t!(b: b"/\xFF/a/\x80", [b"\xFF", b"a", b"\x80"]);
@@ -1221,13 +1216,13 @@ mod tests {
                     let path = Path::new($arg);
                     let comps = path.str_components().collect::<Vec<Option<&str>>>();
                     let exp: &[Option<&str>] = &$exp;
-                    assert_eq!(comps.as_slice(), exp);
+                    assert_eq!(comps, exp);
                     let comps = path.str_components().rev().collect::<Vec<Option<&str>>>();
                     let exp = exp.iter().rev().map(|&x|x).collect::<Vec<Option<&str>>>();
                     assert_eq!(comps, exp);
                 }
             )
-        )
+        );
 
         t!(b: b"a/b/c", [Some("a"), Some("b"), Some("c")]);
         t!(b: b"/\xFF/a/\x80", [None, Some("a"), None]);

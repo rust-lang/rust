@@ -194,7 +194,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.fatal_span_(from_pos, to_pos, m.as_slice());
+        self.fatal_span_(from_pos, to_pos, m[]);
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -203,7 +203,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.err_span_(from_pos, to_pos, m.as_slice());
+        self.err_span_(from_pos, to_pos, m[]);
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -212,8 +212,8 @@ impl<'a> StringReader<'a> {
         m.push_str(": ");
         let from = self.byte_offset(from_pos).to_uint();
         let to = self.byte_offset(to_pos).to_uint();
-        m.push_str(self.filemap.src.as_slice().slice(from, to));
-        self.fatal_span_(from_pos, to_pos, m.as_slice());
+        m.push_str(self.filemap.src[from..to]);
+        self.fatal_span_(from_pos, to_pos, m[]);
     }
 
     /// Advance peek_tok and peek_span to refer to the next token, and
@@ -244,7 +244,9 @@ impl<'a> StringReader<'a> {
     /// Calls `f` with a string slice of the source text spanning from `start`
     /// up to but excluding `self.last_pos`, meaning the slice does not include
     /// the character `self.curr`.
-    pub fn with_str_from<T>(&self, start: BytePos, f: |s: &str| -> T) -> T {
+    pub fn with_str_from<T, F>(&self, start: BytePos, f: F) -> T where
+        F: FnOnce(&str) -> T,
+    {
         self.with_str_from_to(start, self.last_pos, f)
     }
 
@@ -264,21 +266,23 @@ impl<'a> StringReader<'a> {
 
     /// Calls `f` with a string slice of the source text spanning from `start`
     /// up to but excluding `end`.
-    fn with_str_from_to<T>(&self, start: BytePos, end: BytePos, f: |s: &str| -> T) -> T {
-        f(self.filemap.src.as_slice().slice(
+    fn with_str_from_to<T, F>(&self, start: BytePos, end: BytePos, f: F) -> T where
+        F: FnOnce(&str) -> T,
+    {
+        f(self.filemap.src.slice(
                 self.byte_offset(start).to_uint(),
                 self.byte_offset(end).to_uint()))
     }
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
-    fn translate_crlf<'a>(&self, start: BytePos,
-                          s: &'a str, errmsg: &'a str) -> str::MaybeOwned<'a> {
+    fn translate_crlf<'b>(&self, start: BytePos,
+                          s: &'b str, errmsg: &'b str) -> str::CowString<'b> {
         let mut i = 0u;
         while i < s.len() {
             let str::CharRange { ch, next } = s.char_range_at(i);
             if ch == '\r' {
                 if next < s.len() && s.char_at(next) == '\n' {
-                    return translate_crlf_(self, start, s, errmsg, i).into_maybe_owned();
+                    return translate_crlf_(self, start, s, errmsg, i).into_cow();
                 }
                 let pos = start + BytePos(i as u32);
                 let end_pos = start + BytePos(next as u32);
@@ -286,7 +290,7 @@ impl<'a> StringReader<'a> {
             }
             i = next;
         }
-        return s.into_maybe_owned();
+        return s.into_cow();
 
         fn translate_crlf_(rdr: &StringReader, start: BytePos,
                         s: &str, errmsg: &str, mut i: uint) -> String {
@@ -295,7 +299,7 @@ impl<'a> StringReader<'a> {
             while i < s.len() {
                 let str::CharRange { ch, next } = s.char_range_at(i);
                 if ch == '\r' {
-                    if j < i { buf.push_str(s.slice(j, i)); }
+                    if j < i { buf.push_str(s[j..i]); }
                     j = next;
                     if next >= s.len() || s.char_at(next) != '\n' {
                         let pos = start + BytePos(i as u32);
@@ -305,7 +309,7 @@ impl<'a> StringReader<'a> {
                 }
                 i = next;
             }
-            if j < s.len() { buf.push_str(s.slice_from(j)); }
+            if j < s.len() { buf.push_str(s[j..]); }
             buf
         }
     }
@@ -321,7 +325,6 @@ impl<'a> StringReader<'a> {
             let last_char = self.curr.unwrap();
             let next = self.filemap
                           .src
-                          .as_slice()
                           .char_range_at(current_byte_offset);
             let byte_offset_diff = next.next - current_byte_offset;
             self.pos = self.pos + Pos::from_uint(byte_offset_diff);
@@ -343,7 +346,7 @@ impl<'a> StringReader<'a> {
     pub fn nextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_uint();
         if offset < self.filemap.src.len() {
-            Some(self.filemap.src.as_slice().char_at(offset))
+            Some(self.filemap.src.char_at(offset))
         } else {
             None
         }
@@ -355,7 +358,7 @@ impl<'a> StringReader<'a> {
 
     pub fn nextnextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_uint();
-        let s = self.filemap.deref().src.as_slice();
+        let s = self.filemap.deref().src[];
         if offset >= s.len() { return None }
         let str::CharRange { next, .. } = s.char_range_at(offset);
         if next < s.len() {
@@ -550,8 +553,8 @@ impl<'a> StringReader<'a> {
                 let string = if has_cr {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
-                } else { string.into_maybe_owned() };
-                token::DocComment(token::intern(string.as_slice()))
+                } else { string.into_cow() };
+                token::DocComment(token::intern(string[]))
             } else {
                 token::Comment
             };
@@ -764,6 +767,13 @@ impl<'a> StringReader<'a> {
         }
     }
 
+    fn old_escape_warning(&mut self, sp: Span) {
+        self.span_diagnostic
+            .span_warn(sp, "\\U00ABCD12 and \\uABCD escapes are deprecated");
+        self.span_diagnostic
+            .span_help(sp, "use \\u{ABCD12} escapes instead");
+    }
+
     /// Scan for a single (possibly escaped) byte or char
     /// in a byte, (non-raw) byte string, char, or (non-raw) string literal.
     /// `start` is the position of `first_source_char`, which is already consumed.
@@ -782,12 +792,22 @@ impl<'a> StringReader<'a> {
                     Some(e) => {
                         return match e {
                             'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
-                            'x' => self.scan_hex_digits(2u, delim, !ascii_only),
+                            'x' => self.scan_byte_escape(delim, !ascii_only),
                             'u' if !ascii_only => {
-                                self.scan_hex_digits(4u, delim, false)
+                                if self.curr == Some('{') {
+                                    self.scan_unicode_escape(delim)
+                                } else {
+                                    let res = self.scan_hex_digits(4u, delim, false);
+                                    let sp = codemap::mk_sp(escaped_pos, self.last_pos);
+                                    self.old_escape_warning(sp);
+                                    res
+                                }
                             }
                             'U' if !ascii_only => {
-                                self.scan_hex_digits(8u, delim, false)
+                                let res = self.scan_hex_digits(8u, delim, false);
+                                let sp = codemap::mk_sp(escaped_pos, self.last_pos);
+                                self.old_escape_warning(sp);
+                                res
                             }
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
@@ -809,7 +829,7 @@ impl<'a> StringReader<'a> {
                                     self.span_diagnostic.span_help(
                                         sp,
                                         "this is an isolated carriage return; consider checking \
-                                         your editor and version control settings.")
+                                         your editor and version control settings")
                                 }
                                 false
                             }
@@ -846,6 +866,56 @@ impl<'a> StringReader<'a> {
             }
         }
         true
+    }
+
+    /// Scan over a \u{...} escape
+    ///
+    /// At this point, we have already seen the \ and the u, the { is the current character. We
+    /// will read at least one digit, and up to 6, and pass over the }.
+    fn scan_unicode_escape(&mut self, delim: char) -> bool {
+        self.bump(); // past the {
+        let start_bpos = self.last_pos;
+        let mut count: uint = 0;
+        let mut accum_int = 0;
+
+        while !self.curr_is('}') && count <= 6 {
+            let c = match self.curr {
+                Some(c) => c,
+                None => {
+                    self.fatal_span_(start_bpos, self.last_pos,
+                                     "unterminated unicode escape (found EOF)");
+                }
+            };
+            accum_int *= 16;
+            accum_int += c.to_digit(16).unwrap_or_else(|| {
+                if c == delim {
+                    self.fatal_span_(self.last_pos, self.pos,
+                                     "unterminated unicode escape (needed a `}`)");
+                } else {
+                    self.fatal_span_char(self.last_pos, self.pos,
+                                   "illegal character in unicode escape", c);
+                }
+            }) as u32;
+            self.bump();
+            count += 1;
+        }
+
+        if count > 6 {
+            self.fatal_span_(start_bpos, self.last_pos,
+                          "overlong unicode escape (can have at most 6 hex digits)");
+        }
+
+        self.bump(); // past the ending }
+
+        let mut valid = count >= 1 && count <= 6;
+        if char::from_u32(accum_int).is_none() {
+            valid = false;
+        }
+
+        if !valid {
+            self.fatal_span_(start_bpos, self.last_pos, "illegal unicode character escape");
+        }
+        valid
     }
 
     /// Scan over a float exponent.
@@ -1038,7 +1108,7 @@ impl<'a> StringReader<'a> {
                 // expansion purposes. See #12512 for the gory details of why
                 // this is necessary.
                 let ident = self.with_str_from(start, |lifetime_name| {
-                    str_to_ident(format!("'{}", lifetime_name).as_slice())
+                    str_to_ident(format!("'{}", lifetime_name)[])
                 });
 
                 // Conjure up a "keyword checking ident" to make sure that
@@ -1271,6 +1341,10 @@ impl<'a> StringReader<'a> {
         let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump(); // advance curr past token
         return token::Byte(id);
+    }
+
+    fn scan_byte_escape(&mut self, delim: char, below_0x7f_only: bool) -> bool {
+        self.scan_hex_digits(2, delim, below_0x7f_only)
     }
 
     fn scan_byte_string(&mut self) -> token::Lit {

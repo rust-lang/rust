@@ -11,7 +11,7 @@
 use std::io::Reader;
 
 enum Wrapper<'a> {
-    WrapReader(&'a Reader + 'a)
+    WrapReader(&'a (Reader + 'a))
 }
 
 trait Wrap<'a> {

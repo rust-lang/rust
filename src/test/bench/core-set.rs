@@ -10,12 +10,14 @@
 
 // ignore-pretty very bad with line comments
 
+#![feature(unboxed_closures)]
+
 extern crate collections;
 extern crate rand;
 
 use std::collections::BitvSet;
 use std::collections::HashSet;
-use std::collections::TreeSet;
+use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::os;
 use std::time::Duration;
@@ -31,7 +33,7 @@ struct Results {
     delete_strings: Duration,
 }
 
-fn timed(result: &mut Duration, op: ||) {
+fn timed<F>(result: &mut Duration, op: F) where F: FnOnce() {
     *result = Duration::span(op);
 }
 
@@ -46,7 +48,7 @@ impl<T: Hash + Eq> MutableSet<T> for HashSet<T> {
     fn remove(&mut self, k: &T) -> bool { self.remove(k) }
     fn contains(&self, k: &T) -> bool { self.contains(k) }
 }
-impl<T: Ord> MutableSet<T> for TreeSet<T> {
+impl<T: Ord> MutableSet<T> for BTreeSet<T> {
     fn insert(&mut self, k: T) { self.insert(k); }
     fn remove(&mut self, k: &T) -> bool { self.remove(k) }
     fn contains(&self, k: &T) -> bool { self.contains(k) }
@@ -205,14 +207,14 @@ fn main() {
         let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || {
-            let s: TreeSet<uint> = TreeSet::new();
+            let s: BTreeSet<uint> = BTreeSet::new();
             s
         });
         results.bench_str(&mut rng, num_keys, || {
-            let s: TreeSet<String> = TreeSet::new();
+            let s: BTreeSet<String> = BTreeSet::new();
             s
         });
-        write_results("collections::TreeSet", &results);
+        write_results("collections::BTreeSet", &results);
     }
 
     {

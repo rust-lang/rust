@@ -10,12 +10,12 @@
 
 //! A priority queue implemented with a binary heap.
 //!
-//! Insertions have `O(log n)` time complexity and checking or popping the largest element is
-//! `O(1)`. Converting a vector to a priority queue can be done in-place, and has `O(n)`
+//! Insertion and popping the largest element have `O(log n)` time complexity. Checking the largest
+//! element is `O(1)`. Converting a vector to a priority queue can be done in-place, and has `O(n)`
 //! complexity. A priority queue can also be converted to a sorted vector in-place, allowing it to
 //! be used for an `O(n log n)` in-place heapsort.
 //!
-//! # Example
+//! # Examples
 //!
 //! This is a larger example which implements [Dijkstra's algorithm][dijkstra]
 //! to solve the [shortest path problem][sssp] on a [directed graph][dir_graph].
@@ -29,7 +29,7 @@
 //! use std::collections::BinaryHeap;
 //! use std::uint;
 //!
-//! #[deriving(Eq, PartialEq)]
+//! #[deriving(Copy, Eq, PartialEq)]
 //! struct State {
 //!     cost: uint,
 //!     position: uint
@@ -68,15 +68,15 @@
 //!     // dist[node] = current shortest distance from `start` to `node`
 //!     let mut dist = Vec::from_elem(adj_list.len(), uint::MAX);
 //!
-//!     let mut pq = BinaryHeap::new();
+//!     let mut heap = BinaryHeap::new();
 //!
 //!     // We're at `start`, with a zero cost
 //!     dist[start] = 0u;
-//!     pq.push(State { cost: 0u, position: start });
+//!     heap.push(State { cost: 0u, position: start });
 //!
 //!     // Examine the frontier with lower cost nodes first (min-heap)
 //!     loop {
-//!         let State { cost, position } = match pq.pop() {
+//!         let State { cost, position } = match heap.pop() {
 //!             None => break, // empty
 //!             Some(s) => s
 //!         };
@@ -94,7 +94,7 @@
 //!
 //!             // If so, add it to the frontier and continue
 //!             if next.cost < dist[next.position] {
-//!                 pq.push(next);
+//!                 heap.push(next);
 //!                 // Relaxation, we have now found a better way
 //!                 dist[next.position] = next.cost;
 //!             }
@@ -160,9 +160,7 @@ use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
 use slice;
-use vec::Vec;
-
-// FIXME(conventions): implement into_iter
+use vec::{mod, Vec};
 
 /// A priority queue implemented with a binary heap.
 ///
@@ -172,19 +170,21 @@ pub struct BinaryHeap<T> {
     data: Vec<T>,
 }
 
+#[stable]
 impl<T: Ord> Default for BinaryHeap<T> {
     #[inline]
+    #[stable]
     fn default() -> BinaryHeap<T> { BinaryHeap::new() }
 }
 
 impl<T: Ord> BinaryHeap<T> {
     /// Creates an empty `BinaryHeap` as a max-heap.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let pq: BinaryHeap<uint> = BinaryHeap::new();
+    /// let heap: BinaryHeap<uint> = BinaryHeap::new();
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> BinaryHeap<T> { BinaryHeap{data: vec!(),} }
@@ -194,11 +194,11 @@ impl<T: Ord> BinaryHeap<T> {
     /// so that the `BinaryHeap` does not have to be reallocated
     /// until it contains at least that many values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let pq: BinaryHeap<uint> = BinaryHeap::with_capacity(10u);
+    /// let heap: BinaryHeap<uint> = BinaryHeap::with_capacity(10u);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn with_capacity(capacity: uint) -> BinaryHeap<T> {
@@ -208,11 +208,11 @@ impl<T: Ord> BinaryHeap<T> {
     /// Creates a `BinaryHeap` from a vector. This is sometimes called
     /// `heapifying` the vector.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let pq = BinaryHeap::from_vec(vec![9i, 1, 2, 7, 3, 2]);
+    /// let heap = BinaryHeap::from_vec(vec![9i, 1, 2, 7, 3, 2]);
     /// ```
     pub fn from_vec(xs: Vec<T>) -> BinaryHeap<T> {
         let mut q = BinaryHeap{data: xs,};
@@ -227,51 +227,73 @@ impl<T: Ord> BinaryHeap<T> {
     /// An iterator visiting all values in underlying vector, in
     /// arbitrary order.
     ///
-    /// # Example
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let heap = BinaryHeap::from_vec(vec![1i, 2, 3, 4]);
+    ///
+    /// // Print 1, 2, 3, 4 in arbitrary order
+    /// for x in heap.iter() {
+    ///     println!("{}", x);
+    /// }
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn iter(&self) -> Iter<T> {
+        Iter { iter: self.data.iter() }
+    }
+
+    /// Creates a consuming iterator, that is, one that moves each value out of
+    /// the binary heap in arbitrary order.  The binary heap cannot be used
+    /// after calling this.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     /// let pq = BinaryHeap::from_vec(vec![1i, 2, 3, 4]);
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order
-    /// for x in pq.iter() {
+    /// for x in pq.into_iter() {
+    ///     // x has type int, not &int
     ///     println!("{}", x);
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter<'a>(&'a self) -> Items<'a, T> {
-        Items { iter: self.data.iter() }
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter { iter: self.data.into_iter() }
     }
 
     /// Returns the greatest item in a queue, or `None` if it is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::new();
-    /// assert_eq!(pq.top(), None);
+    /// let mut heap = BinaryHeap::new();
+    /// assert_eq!(heap.peek(), None);
     ///
-    /// pq.push(1i);
-    /// pq.push(5i);
-    /// pq.push(2i);
-    /// assert_eq!(pq.top(), Some(&5i));
+    /// heap.push(1i);
+    /// heap.push(5i);
+    /// heap.push(2i);
+    /// assert_eq!(heap.peek(), Some(&5i));
     ///
     /// ```
-    pub fn top<'a>(&'a self) -> Option<&'a T> {
-        if self.is_empty() { None } else { Some(&self.data[0]) }
+    #[stable]
+    pub fn peek(&self) -> Option<&T> {
+        self.data.get(0)
     }
 
     /// Returns the number of elements the queue can hold without reallocating.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let pq: BinaryHeap<uint> = BinaryHeap::with_capacity(100u);
-    /// assert!(pq.capacity() >= 100u);
+    /// let heap: BinaryHeap<uint> = BinaryHeap::with_capacity(100u);
+    /// assert!(heap.capacity() >= 100u);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn capacity(&self) -> uint { self.data.capacity() }
@@ -287,14 +309,14 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq: BinaryHeap<uint> = BinaryHeap::new();
-    /// pq.reserve_exact(100u);
-    /// assert!(pq.capacity() >= 100u);
+    /// let mut heap: BinaryHeap<uint> = BinaryHeap::new();
+    /// heap.reserve_exact(100u);
+    /// assert!(heap.capacity() >= 100u);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve_exact(&mut self, additional: uint) { self.data.reserve_exact(additional) }
@@ -306,14 +328,14 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq: BinaryHeap<uint> = BinaryHeap::new();
-    /// pq.reserve(100u);
-    /// assert!(pq.capacity() >= 100u);
+    /// let mut heap: BinaryHeap<uint> = BinaryHeap::new();
+    /// heap.reserve(100u);
+    /// assert!(heap.capacity() >= 100u);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn reserve(&mut self, additional: uint) {
@@ -329,16 +351,16 @@ impl<T: Ord> BinaryHeap<T> {
     /// Removes the greatest item from a queue and returns it, or `None` if it
     /// is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::from_vec(vec![1i, 3]);
+    /// let mut heap = BinaryHeap::from_vec(vec![1i, 3]);
     ///
-    /// assert_eq!(pq.pop(), Some(3i));
-    /// assert_eq!(pq.pop(), Some(1i));
-    /// assert_eq!(pq.pop(), None);
+    /// assert_eq!(heap.pop(), Some(3i));
+    /// assert_eq!(heap.pop(), Some(1i));
+    /// assert_eq!(heap.pop(), None);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn pop(&mut self) -> Option<T> {
@@ -356,48 +378,54 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Pushes an item onto the queue.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::new();
-    /// pq.push(3i);
-    /// pq.push(5i);
-    /// pq.push(1i);
+    /// let mut heap = BinaryHeap::new();
+    /// heap.push(3i);
+    /// heap.push(5i);
+    /// heap.push(1i);
     ///
-    /// assert_eq!(pq.len(), 3);
-    /// assert_eq!(pq.top(), Some(&5i));
+    /// assert_eq!(heap.len(), 3);
+    /// assert_eq!(heap.peek(), Some(&5i));
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn push(&mut self, item: T) {
+        let old_len = self.len();
         self.data.push(item);
-        let new_len = self.len() - 1;
-        self.siftup(0, new_len);
+        self.siftup(0, old_len);
     }
 
     /// Pushes an item onto a queue then pops the greatest item off the queue in
     /// an optimized fashion.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::new();
-    /// pq.push(1i);
-    /// pq.push(5i);
+    /// let mut heap = BinaryHeap::new();
+    /// heap.push(1i);
+    /// heap.push(5i);
     ///
-    /// assert_eq!(pq.push_pop(3i), 5);
-    /// assert_eq!(pq.push_pop(9i), 9);
-    /// assert_eq!(pq.len(), 2);
-    /// assert_eq!(pq.top(), Some(&3i));
+    /// assert_eq!(heap.push_pop(3i), 5);
+    /// assert_eq!(heap.push_pop(9i), 9);
+    /// assert_eq!(heap.len(), 2);
+    /// assert_eq!(heap.peek(), Some(&3i));
     /// ```
     pub fn push_pop(&mut self, mut item: T) -> T {
-        if !self.is_empty() && *self.top().unwrap() > item {
-            swap(&mut item, &mut self.data[0]);
-            self.siftdown(0);
+        match self.data.get_mut(0) {
+            None => return item,
+            Some(top) => if *top > item {
+                swap(&mut item, top);
+            } else {
+                return item;
+            },
         }
+
+        self.siftdown(0);
         item
     }
 
@@ -405,17 +433,17 @@ impl<T: Ord> BinaryHeap<T> {
     /// an optimized fashion. The push is done regardless of whether the queue
     /// was empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::new();
+    /// let mut heap = BinaryHeap::new();
     ///
-    /// assert_eq!(pq.replace(1i), None);
-    /// assert_eq!(pq.replace(3i), Some(1i));
-    /// assert_eq!(pq.len(), 1);
-    /// assert_eq!(pq.top(), Some(&3i));
+    /// assert_eq!(heap.replace(1i), None);
+    /// assert_eq!(heap.replace(3i), Some(1i));
+    /// assert_eq!(heap.len(), 1);
+    /// assert_eq!(heap.peek(), Some(&3i));
     /// ```
     pub fn replace(&mut self, mut item: T) -> Option<T> {
         if !self.is_empty() {
@@ -431,45 +459,44 @@ impl<T: Ord> BinaryHeap<T> {
     /// Consumes the `BinaryHeap` and returns the underlying vector
     /// in arbitrary order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let pq = BinaryHeap::from_vec(vec![1i, 2, 3, 4, 5, 6, 7]);
-    /// let vec = pq.into_vec();
+    /// let heap = BinaryHeap::from_vec(vec![1i, 2, 3, 4, 5, 6, 7]);
+    /// let vec = heap.into_vec();
     ///
     /// // Will print in some order
     /// for x in vec.iter() {
     ///     println!("{}", x);
     /// }
     /// ```
-    pub fn into_vec(self) -> Vec<T> { let BinaryHeap{data: v} = self; v }
+    pub fn into_vec(self) -> Vec<T> { self.data }
 
     /// Consumes the `BinaryHeap` and returns a vector in sorted
     /// (ascending) order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut pq = BinaryHeap::from_vec(vec![1i, 2, 4, 5, 7]);
-    /// pq.push(6);
-    /// pq.push(3);
+    /// let mut heap = BinaryHeap::from_vec(vec![1i, 2, 4, 5, 7]);
+    /// heap.push(6);
+    /// heap.push(3);
     ///
-    /// let vec = pq.into_sorted_vec();
+    /// let vec = heap.into_sorted_vec();
     /// assert_eq!(vec, vec![1i, 2, 3, 4, 5, 6, 7]);
     /// ```
-    pub fn into_sorted_vec(self) -> Vec<T> {
-        let mut q = self;
-        let mut end = q.len();
+    pub fn into_sorted_vec(mut self) -> Vec<T> {
+        let mut end = self.len();
         while end > 1 {
             end -= 1;
-            q.data.as_mut_slice().swap(0, end);
-            q.siftdown_range(0, end)
+            self.data.swap(0, end);
+            self.siftdown_range(0, end)
         }
-        q.into_vec()
+        self.into_vec()
     }
 
     // The implementations of siftup and siftdown use unsafe blocks in
@@ -530,28 +557,83 @@ impl<T: Ord> BinaryHeap<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
+    /// Clears the queue, returning an iterator over the removed elements.
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
+        Drain {
+            iter: self.data.drain(),
+        }
+    }
+
     /// Drops all items from the queue.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn clear(&mut self) { self.data.truncate(0) }
+    pub fn clear(&mut self) { self.drain(); }
 }
 
 /// `BinaryHeap` iterator.
-pub struct Items <'a, T:'a> {
-    iter: slice::Items<'a, T>,
+pub struct Iter <'a, T: 'a> {
+    iter: slice::Iter<'a, T>,
 }
 
-impl<'a, T> Iterator<&'a T> for Items<'a, T> {
+impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<(&'a T)> { self.iter.next() }
+    fn next(&mut self) -> Option<&'a T> { self.iter.next() }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
+impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
+}
+
+impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
+
+/// An iterator that moves out of a `BinaryHeap`.
+pub struct IntoIter<T> {
+    iter: vec::IntoIter<T>,
+}
+
+impl<T> Iterator<T> for IntoIter<T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> { self.iter.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<T> DoubleEndedIterator<T> for IntoIter<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
+}
+
+impl<T> ExactSizeIterator<T> for IntoIter<T> {}
+
+/// An iterator that drains a `BinaryHeap`.
+pub struct Drain<'a, T: 'a> {
+    iter: vec::Drain<'a, T>,
+}
+
+impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> { self.iter.next() }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
+}
+
+impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
+
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
-    fn from_iter<Iter: Iterator<T>>(mut iter: Iter) -> BinaryHeap<T> {
-        let vec: Vec<T> = iter.collect();
-        BinaryHeap::from_vec(vec)
+    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> BinaryHeap<T> {
+        BinaryHeap::from_vec(iter.collect())
     }
 }
 
@@ -569,31 +651,77 @@ impl<T: Ord> Extend<T> for BinaryHeap<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use prelude::*;
 
     use super::BinaryHeap;
-    use vec::Vec;
 
     #[test]
     fn test_iterator() {
         let data = vec!(5i, 9, 3);
         let iterout = [9i, 5, 3];
-        let pq = BinaryHeap::from_vec(data);
+        let heap = BinaryHeap::from_vec(data);
         let mut i = 0;
-        for el in pq.iter() {
+        for el in heap.iter() {
             assert_eq!(*el, iterout[i]);
             i += 1;
         }
     }
 
     #[test]
-    fn test_top_and_pop() {
+    fn test_iterator_reverse() {
+        let data = vec!(5i, 9, 3);
+        let iterout = vec!(3i, 5, 9);
+        let pq = BinaryHeap::from_vec(data);
+
+        let v: Vec<int> = pq.iter().rev().map(|&x| x).collect();
+        assert_eq!(v, iterout);
+    }
+
+    #[test]
+    fn test_move_iter() {
+        let data = vec!(5i, 9, 3);
+        let iterout = vec!(9i, 5, 3);
+        let pq = BinaryHeap::from_vec(data);
+
+        let v: Vec<int> = pq.into_iter().collect();
+        assert_eq!(v, iterout);
+    }
+
+    #[test]
+    fn test_move_iter_size_hint() {
+        let data = vec!(5i, 9);
+        let pq = BinaryHeap::from_vec(data);
+
+        let mut it = pq.into_iter();
+
+        assert_eq!(it.size_hint(), (2, Some(2)));
+        assert_eq!(it.next(), Some(9i));
+
+        assert_eq!(it.size_hint(), (1, Some(1)));
+        assert_eq!(it.next(), Some(5i));
+
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_move_iter_reverse() {
+        let data = vec!(5i, 9, 3);
+        let iterout = vec!(3i, 5, 9);
+        let pq = BinaryHeap::from_vec(data);
+
+        let v: Vec<int> = pq.into_iter().rev().collect();
+        assert_eq!(v, iterout);
+    }
+
+    #[test]
+    fn test_peek_and_pop() {
         let data = vec!(2u, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1);
         let mut sorted = data.clone();
         sorted.sort();
         let mut heap = BinaryHeap::from_vec(data);
         while !heap.is_empty() {
-            assert_eq!(heap.top().unwrap(), sorted.last().unwrap());
+            assert_eq!(heap.peek().unwrap(), sorted.last().unwrap());
             assert_eq!(heap.pop().unwrap(), sorted.pop().unwrap());
         }
     }
@@ -602,44 +730,44 @@ mod tests {
     fn test_push() {
         let mut heap = BinaryHeap::from_vec(vec!(2i, 4, 9));
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top().unwrap() == 9);
+        assert!(*heap.peek().unwrap() == 9);
         heap.push(11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top().unwrap() == 11);
+        assert!(*heap.peek().unwrap() == 11);
         heap.push(5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top().unwrap() == 11);
+        assert!(*heap.peek().unwrap() == 11);
         heap.push(27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top().unwrap() == 27);
+        assert!(*heap.peek().unwrap() == 27);
         heap.push(3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top().unwrap() == 27);
+        assert!(*heap.peek().unwrap() == 27);
         heap.push(103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top().unwrap() == 103);
+        assert!(*heap.peek().unwrap() == 103);
     }
 
     #[test]
     fn test_push_unique() {
         let mut heap = BinaryHeap::from_vec(vec!(box 2i, box 4, box 9));
         assert_eq!(heap.len(), 3);
-        assert!(*heap.top().unwrap() == box 9);
+        assert!(*heap.peek().unwrap() == box 9);
         heap.push(box 11);
         assert_eq!(heap.len(), 4);
-        assert!(*heap.top().unwrap() == box 11);
+        assert!(*heap.peek().unwrap() == box 11);
         heap.push(box 5);
         assert_eq!(heap.len(), 5);
-        assert!(*heap.top().unwrap() == box 11);
+        assert!(*heap.peek().unwrap() == box 11);
         heap.push(box 27);
         assert_eq!(heap.len(), 6);
-        assert!(*heap.top().unwrap() == box 27);
+        assert!(*heap.peek().unwrap() == box 27);
         heap.push(box 3);
         assert_eq!(heap.len(), 7);
-        assert!(*heap.top().unwrap() == box 27);
+        assert!(*heap.peek().unwrap() == box 27);
         heap.push(box 103);
         assert_eq!(heap.len(), 8);
-        assert!(*heap.top().unwrap() == box 103);
+        assert!(*heap.peek().unwrap() == box 103);
     }
 
     #[test]
@@ -676,8 +804,8 @@ mod tests {
         v.sort();
         data.sort();
 
-        assert_eq!(v.as_slice(), data.as_slice());
-        assert_eq!(heap.into_sorted_vec().as_slice(), data.as_slice());
+        assert_eq!(v, data);
+        assert_eq!(heap.into_sorted_vec(), data);
     }
 
     #[test]
@@ -699,30 +827,40 @@ mod tests {
 
     #[test]
     fn test_empty_pop() {
-        let mut heap: BinaryHeap<int> = BinaryHeap::new();
+        let mut heap = BinaryHeap::<int>::new();
         assert!(heap.pop().is_none());
     }
 
     #[test]
-    fn test_empty_top() {
-        let empty: BinaryHeap<int> = BinaryHeap::new();
-        assert!(empty.top().is_none());
+    fn test_empty_peek() {
+        let empty = BinaryHeap::<int>::new();
+        assert!(empty.peek().is_none());
     }
 
     #[test]
     fn test_empty_replace() {
-        let mut heap: BinaryHeap<int> = BinaryHeap::new();
-        heap.replace(5).is_none();
+        let mut heap = BinaryHeap::<int>::new();
+        assert!(heap.replace(5).is_none());
     }
 
     #[test]
     fn test_from_iter() {
         let xs = vec!(9u, 8, 7, 6, 5, 4, 3, 2, 1);
 
-        let mut q: BinaryHeap<uint> = xs.as_slice().iter().rev().map(|&x| x).collect();
+        let mut q: BinaryHeap<uint> = xs.iter().rev().map(|&x| x).collect();
 
         for &x in xs.iter() {
             assert_eq!(q.pop().unwrap(), x);
         }
+    }
+
+    #[test]
+    fn test_drain() {
+        let mut q: BinaryHeap<_> =
+            [9u, 8, 7, 6, 5, 4, 3, 2, 1].iter().cloned().collect();
+
+        assert_eq!(q.drain().take(5).count(), 5);
+
+        assert!(q.is_empty());
     }
 }

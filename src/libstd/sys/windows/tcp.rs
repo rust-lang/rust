@@ -18,8 +18,7 @@ use super::{last_error, last_net_error, retry, sock_t};
 use sync::{Arc, atomic};
 use sys::fs::FileDesc;
 use sys::{mod, c, set_nonblocking, wouldblock, timer};
-use sys_common::{mod, timeout, eof};
-use sys_common::net::*;
+use sys_common::{mod, timeout, eof, net};
 
 pub use sys_common::net::TcpStream;
 
@@ -48,37 +47,35 @@ impl Drop for Event {
 // TCP listeners
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct TcpListener {
-    inner: FileDesc,
-}
+pub struct TcpListener { sock: sock_t }
 
 impl TcpListener {
     pub fn bind(addr: ip::SocketAddr) -> IoResult<TcpListener> {
         sys::init_net();
 
-        let fd = try!(socket(addr, libc::SOCK_STREAM));
-        let ret = TcpListener { inner: FileDesc::new(fd as libc::c_int, true) };
+        let sock = try!(net::socket(addr, libc::SOCK_STREAM));
+        let ret = TcpListener { sock: sock };
 
         let mut storage = unsafe { mem::zeroed() };
-        let len = addr_to_sockaddr(addr, &mut storage);
+        let len = net::addr_to_sockaddr(addr, &mut storage);
         let addrp = &storage as *const _ as *const libc::sockaddr;
 
-        match unsafe { libc::bind(fd, addrp, len) } {
+        match unsafe { libc::bind(sock, addrp, len) } {
             -1 => Err(last_net_error()),
             _ => Ok(ret),
         }
     }
 
-    pub fn fd(&self) -> sock_t { self.inner.fd as sock_t }
+    pub fn socket(&self) -> sock_t { self.sock }
 
     pub fn listen(self, backlog: int) -> IoResult<TcpAcceptor> {
-        match unsafe { libc::listen(self.fd(), backlog as libc::c_int) } {
+        match unsafe { libc::listen(self.socket(), backlog as libc::c_int) } {
             -1 => Err(last_net_error()),
 
             _ => {
                 let accept = try!(Event::new());
                 let ret = unsafe {
-                    c::WSAEventSelect(self.fd(), accept.handle(), c::FD_ACCEPT)
+                    c::WSAEventSelect(self.socket(), accept.handle(), c::FD_ACCEPT)
                 };
                 if ret != 0 {
                     return Err(last_net_error())
@@ -97,7 +94,13 @@ impl TcpListener {
     }
 
     pub fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        sockname(self.fd(), libc::getsockname)
+        net::sockname(self.socket(), libc::getsockname)
+    }
+}
+
+impl Drop for TcpListener {
+    fn drop(&mut self) {
+        unsafe { super::close_sock(self.sock); }
     }
 }
 
@@ -114,7 +117,7 @@ struct AcceptorInner {
 }
 
 impl TcpAcceptor {
-    pub fn fd(&self) -> sock_t { self.inner.listener.fd() }
+    pub fn socket(&self) -> sock_t { self.inner.listener.socket() }
 
     pub fn accept(&mut self) -> IoResult<TcpStream> {
         // Unlink unix, windows cannot invoke `select` on arbitrary file
@@ -161,13 +164,13 @@ impl TcpAcceptor {
 
             let mut wsaevents: c::WSANETWORKEVENTS = unsafe { mem::zeroed() };
             let ret = unsafe {
-                c::WSAEnumNetworkEvents(self.fd(), events[1], &mut wsaevents)
+                c::WSAEnumNetworkEvents(self.socket(), events[1], &mut wsaevents)
             };
             if ret != 0 { return Err(last_net_error()) }
 
             if wsaevents.lNetworkEvents & c::FD_ACCEPT == 0 { continue }
             match unsafe {
-                libc::accept(self.fd(), ptr::null_mut(), ptr::null_mut())
+                libc::accept(self.socket(), ptr::null_mut(), ptr::null_mut())
             } {
                 -1 if wouldblock() => {}
                 -1 => return Err(last_net_error()),
@@ -175,13 +178,13 @@ impl TcpAcceptor {
                 // Accepted sockets inherit the same properties as the caller,
                 // so we need to deregister our event and switch the socket back
                 // to blocking mode
-                fd => {
-                    let stream = TcpStream::new(fd);
+                socket => {
+                    let stream = TcpStream::new(socket);
                     let ret = unsafe {
-                        c::WSAEventSelect(fd, events[1], 0)
+                        c::WSAEventSelect(socket, events[1], 0)
                     };
                     if ret != 0 { return Err(last_net_error()) }
-                    try!(set_nonblocking(fd, false));
+                    try!(set_nonblocking(socket, false));
                     return Ok(stream)
                 }
             }
@@ -191,7 +194,7 @@ impl TcpAcceptor {
     }
 
     pub fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        sockname(self.fd(), libc::getsockname)
+        net::sockname(self.socket(), libc::getsockname)
     }
 
     pub fn set_timeout(&mut self, timeout: Option<u64>) {

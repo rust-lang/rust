@@ -31,7 +31,9 @@ pub fn string_to_parser<'a>(ps: &'a ParseSess, source_str: String) -> Parser<'a>
                                source_str)
 }
 
-fn with_error_checking_parse<T>(s: String, f: |&mut Parser| -> T) -> T {
+fn with_error_checking_parse<T, F>(s: String, f: F) -> T where
+    F: FnOnce(&mut Parser) -> T,
+{
     let ps = new_parse_sess();
     let mut p = string_to_parser(&ps, s);
     let x = f(&mut p);

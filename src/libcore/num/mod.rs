@@ -15,8 +15,6 @@
 #![stable]
 #![allow(missing_docs)]
 
-pub use self::FPCategory::*;
-
 use {int, i8, i16, i32, i64};
 use {uint, u8, u16, u32, u64};
 use {f32, f64};
@@ -25,19 +23,20 @@ use clone::Clone;
 use cmp::{PartialEq, Eq};
 use cmp::{PartialOrd, Ord};
 use intrinsics;
-use iter::Iterator;
+use iter::IteratorExt;
 use kinds::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
-use option::{Option, Some, None};
-use str::{FromStr, from_str, StrPrelude};
+use option::Option;
+use option::Option::{Some, None};
+use str::{FromStr, from_str, StrExt};
 
 /// Simultaneous division and remainder
 #[inline]
 #[deprecated = "use division and remainder directly"]
-pub fn div_rem<T: Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
-    (x / y, x % y)
+pub fn div_rem<T: Clone + Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
+    (x.clone() / y.clone(), x % y)
 }
 
 /// Raises a `base` to the power of `exp`, using exponentiation by squaring.
@@ -284,7 +283,7 @@ pub trait Int
     /// ```
     fn checked_add(self, other: Self) -> Option<Self>;
 
-    /// Checked integer subtraction. Computes `self + other`, returning `None`
+    /// Checked integer subtraction. Computes `self - other`, returning `None`
     /// if underflow occurred.
     ///
     /// # Example
@@ -297,7 +296,7 @@ pub trait Int
     /// ```
     fn checked_sub(self, other: Self) -> Option<Self>;
 
-    /// Checked integer multiplication. Computes `self + other`, returning
+    /// Checked integer multiplication. Computes `self * other`, returning
     /// `None` if underflow or overflow occurred.
     ///
     /// # Example
@@ -310,8 +309,8 @@ pub trait Int
     /// ```
     fn checked_mul(self, other: Self) -> Option<Self>;
 
-    /// Checked integer division. Computes `self + other` returning `None` if
-    /// `self == 0` or the operation results in underflow or overflow.
+    /// Checked integer division. Computes `self / other`, returning `None` if
+    /// `other == 0` or the operation results in underflow or overflow.
     ///
     /// # Example
     ///
@@ -457,61 +456,61 @@ macro_rules! uint_impl {
 /// consistency with the other `bswap` intrinsics.
 unsafe fn bswap8(x: u8) -> u8 { x }
 
-uint_impl!(u8 = u8, 8,
+uint_impl! { u8 = u8, 8,
     intrinsics::ctpop8,
     intrinsics::ctlz8,
     intrinsics::cttz8,
     bswap8,
     intrinsics::u8_add_with_overflow,
     intrinsics::u8_sub_with_overflow,
-    intrinsics::u8_mul_with_overflow)
+    intrinsics::u8_mul_with_overflow }
 
-uint_impl!(u16 = u16, 16,
+uint_impl! { u16 = u16, 16,
     intrinsics::ctpop16,
     intrinsics::ctlz16,
     intrinsics::cttz16,
     intrinsics::bswap16,
     intrinsics::u16_add_with_overflow,
     intrinsics::u16_sub_with_overflow,
-    intrinsics::u16_mul_with_overflow)
+    intrinsics::u16_mul_with_overflow }
 
-uint_impl!(u32 = u32, 32,
+uint_impl! { u32 = u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
     intrinsics::cttz32,
     intrinsics::bswap32,
     intrinsics::u32_add_with_overflow,
     intrinsics::u32_sub_with_overflow,
-    intrinsics::u32_mul_with_overflow)
+    intrinsics::u32_mul_with_overflow }
 
-uint_impl!(u64 = u64, 64,
+uint_impl! { u64 = u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
     intrinsics::cttz64,
     intrinsics::bswap64,
     intrinsics::u64_add_with_overflow,
     intrinsics::u64_sub_with_overflow,
-    intrinsics::u64_mul_with_overflow)
+    intrinsics::u64_mul_with_overflow }
 
 #[cfg(target_word_size = "32")]
-uint_impl!(uint = u32, 32,
+uint_impl! { uint = u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
     intrinsics::cttz32,
     intrinsics::bswap32,
     intrinsics::u32_add_with_overflow,
     intrinsics::u32_sub_with_overflow,
-    intrinsics::u32_mul_with_overflow)
+    intrinsics::u32_mul_with_overflow }
 
 #[cfg(target_word_size = "64")]
-uint_impl!(uint = u64, 64,
+uint_impl! { uint = u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
     intrinsics::cttz64,
     intrinsics::bswap64,
     intrinsics::u64_add_with_overflow,
     intrinsics::u64_sub_with_overflow,
-    intrinsics::u64_mul_with_overflow)
+    intrinsics::u64_mul_with_overflow }
 
 macro_rules! int_impl {
     ($T:ty = $ActualT:ty, $UnsignedT:ty, $BITS:expr,
@@ -578,37 +577,37 @@ macro_rules! int_impl {
     }
 }
 
-int_impl!(i8 = i8, u8, 8,
+int_impl! { i8 = i8, u8, 8,
     intrinsics::i8_add_with_overflow,
     intrinsics::i8_sub_with_overflow,
-    intrinsics::i8_mul_with_overflow)
+    intrinsics::i8_mul_with_overflow }
 
-int_impl!(i16 = i16, u16, 16,
+int_impl! { i16 = i16, u16, 16,
     intrinsics::i16_add_with_overflow,
     intrinsics::i16_sub_with_overflow,
-    intrinsics::i16_mul_with_overflow)
+    intrinsics::i16_mul_with_overflow }
 
-int_impl!(i32 = i32, u32, 32,
+int_impl! { i32 = i32, u32, 32,
     intrinsics::i32_add_with_overflow,
     intrinsics::i32_sub_with_overflow,
-    intrinsics::i32_mul_with_overflow)
+    intrinsics::i32_mul_with_overflow }
 
-int_impl!(i64 = i64, u64, 64,
+int_impl! { i64 = i64, u64, 64,
     intrinsics::i64_add_with_overflow,
     intrinsics::i64_sub_with_overflow,
-    intrinsics::i64_mul_with_overflow)
+    intrinsics::i64_mul_with_overflow }
 
 #[cfg(target_word_size = "32")]
-int_impl!(int = i32, u32, 32,
+int_impl! { int = i32, u32, 32,
     intrinsics::i32_add_with_overflow,
     intrinsics::i32_sub_with_overflow,
-    intrinsics::i32_mul_with_overflow)
+    intrinsics::i32_mul_with_overflow }
 
 #[cfg(target_word_size = "64")]
-int_impl!(int = i64, u64, 64,
+int_impl! { int = i64, u64, 64,
     intrinsics::i64_add_with_overflow,
     intrinsics::i64_sub_with_overflow,
-    intrinsics::i64_mul_with_overflow)
+    intrinsics::i64_mul_with_overflow }
 
 /// A built-in two's complement integer.
 #[unstable = "recently settled as part of numerics reform"]
@@ -662,45 +661,40 @@ macro_rules! signed_int_impl {
     }
 }
 
-signed_int_impl!(i8)
-signed_int_impl!(i16)
-signed_int_impl!(i32)
-signed_int_impl!(i64)
-signed_int_impl!(int)
+signed_int_impl! { i8 }
+signed_int_impl! { i16 }
+signed_int_impl! { i32 }
+signed_int_impl! { i64 }
+signed_int_impl! { int }
 
 /// A built-in unsigned integer.
 #[unstable = "recently settled as part of numerics reform"]
 pub trait UnsignedInt: Int {
     /// Returns `true` iff `self == 2^k` for some `k`.
+    #[inline]
     fn is_power_of_two(self) -> bool {
-        (self - Int::one()) & self == Int::zero()
+        (self - Int::one()) & self == Int::zero() && !(self == Int::zero())
     }
 
     /// Returns the smallest power of two greater than or equal to `self`.
+    /// Unspecified behavior on overflow.
     #[inline]
     fn next_power_of_two(self) -> Self {
-        let halfbits = size_of::<Self>() * 4;
-        let mut tmp = self - Int::one();
-        let mut shift = 1u;
-        while shift <= halfbits {
-            tmp = tmp | (tmp >> shift);
-            shift = shift << 1u;
-        }
-        tmp + Int::one()
+        let bits = size_of::<Self>() * 8;
+        let one: Self = Int::one();
+        one << ((bits - (self - one).leading_zeros()) % bits)
     }
 
     /// Returns the smallest power of two greater than or equal to `n`. If the
     /// next power of two is greater than the type's maximum value, `None` is
     /// returned, otherwise the power of two is wrapped in `Some`.
     fn checked_next_power_of_two(self) -> Option<Self> {
-        let halfbits = size_of::<Self>() * 4;
-        let mut tmp = self - Int::one();
-        let mut shift = 1u;
-        while shift <= halfbits {
-            tmp = tmp | (tmp >> shift);
-            shift = shift << 1u;
+        let npot = self.next_power_of_two();
+        if npot >= self {
+            Some(npot)
+        } else {
+            None
         }
-        tmp.checked_add(Int::one())
     }
 }
 
@@ -790,7 +784,7 @@ pub trait ToPrimitive {
     }
 }
 
-macro_rules! impl_to_primitive_int_to_int(
+macro_rules! impl_to_primitive_int_to_int {
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         {
             if size_of::<$SrcT>() <= size_of::<$DstT>() {
@@ -807,9 +801,9 @@ macro_rules! impl_to_primitive_int_to_int(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_int_to_uint(
+macro_rules! impl_to_primitive_int_to_uint {
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         {
             let zero: $SrcT = Int::zero();
@@ -821,9 +815,9 @@ macro_rules! impl_to_primitive_int_to_uint(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_int(
+macro_rules! impl_to_primitive_int {
     ($T:ty) => (
         impl ToPrimitive for $T {
             #[inline]
@@ -854,15 +848,15 @@ macro_rules! impl_to_primitive_int(
             fn to_f64(&self) -> Option<f64> { Some(*self as f64) }
         }
     )
-)
+}
 
-impl_to_primitive_int!(int)
-impl_to_primitive_int!(i8)
-impl_to_primitive_int!(i16)
-impl_to_primitive_int!(i32)
-impl_to_primitive_int!(i64)
+impl_to_primitive_int! { int }
+impl_to_primitive_int! { i8 }
+impl_to_primitive_int! { i16 }
+impl_to_primitive_int! { i32 }
+impl_to_primitive_int! { i64 }
 
-macro_rules! impl_to_primitive_uint_to_int(
+macro_rules! impl_to_primitive_uint_to_int {
     ($DstT:ty, $slf:expr) => (
         {
             let max_value: $DstT = Int::max_value();
@@ -873,9 +867,9 @@ macro_rules! impl_to_primitive_uint_to_int(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_uint_to_uint(
+macro_rules! impl_to_primitive_uint_to_uint {
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         {
             if size_of::<$SrcT>() <= size_of::<$DstT>() {
@@ -891,9 +885,9 @@ macro_rules! impl_to_primitive_uint_to_uint(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_uint(
+macro_rules! impl_to_primitive_uint {
     ($T:ty) => (
         impl ToPrimitive for $T {
             #[inline]
@@ -924,15 +918,15 @@ macro_rules! impl_to_primitive_uint(
             fn to_f64(&self) -> Option<f64> { Some(*self as f64) }
         }
     )
-)
+}
 
-impl_to_primitive_uint!(uint)
-impl_to_primitive_uint!(u8)
-impl_to_primitive_uint!(u16)
-impl_to_primitive_uint!(u32)
-impl_to_primitive_uint!(u64)
+impl_to_primitive_uint! { uint }
+impl_to_primitive_uint! { u8 }
+impl_to_primitive_uint! { u16 }
+impl_to_primitive_uint! { u32 }
+impl_to_primitive_uint! { u64 }
 
-macro_rules! impl_to_primitive_float_to_float(
+macro_rules! impl_to_primitive_float_to_float {
     ($SrcT:ty, $DstT:ty, $slf:expr) => (
         if size_of::<$SrcT>() <= size_of::<$DstT>() {
             Some($slf as $DstT)
@@ -946,9 +940,9 @@ macro_rules! impl_to_primitive_float_to_float(
             }
         }
     )
-)
+}
 
-macro_rules! impl_to_primitive_float(
+macro_rules! impl_to_primitive_float {
     ($T:ty) => (
         impl ToPrimitive for $T {
             #[inline]
@@ -979,10 +973,10 @@ macro_rules! impl_to_primitive_float(
             fn to_f64(&self) -> Option<f64> { impl_to_primitive_float_to_float!($T, f64, *self) }
         }
     )
-)
+}
 
-impl_to_primitive_float!(f32)
-impl_to_primitive_float!(f64)
+impl_to_primitive_float! { f32 }
+impl_to_primitive_float! { f64 }
 
 /// A generic trait for converting a number to a value.
 #[experimental = "trait is likely to be removed"]
@@ -1138,7 +1132,7 @@ pub fn from_f64<A: FromPrimitive>(n: f64) -> Option<A> {
     FromPrimitive::from_f64(n)
 }
 
-macro_rules! impl_from_primitive(
+macro_rules! impl_from_primitive {
     ($T:ty, $to_ty:ident) => (
         impl FromPrimitive for $T {
             #[inline] fn from_int(n: int) -> Option<$T> { n.$to_ty() }
@@ -1157,20 +1151,20 @@ macro_rules! impl_from_primitive(
             #[inline] fn from_f64(n: f64) -> Option<$T> { n.$to_ty() }
         }
     )
-)
+}
 
-impl_from_primitive!(int, to_int)
-impl_from_primitive!(i8, to_i8)
-impl_from_primitive!(i16, to_i16)
-impl_from_primitive!(i32, to_i32)
-impl_from_primitive!(i64, to_i64)
-impl_from_primitive!(uint, to_uint)
-impl_from_primitive!(u8, to_u8)
-impl_from_primitive!(u16, to_u16)
-impl_from_primitive!(u32, to_u32)
-impl_from_primitive!(u64, to_u64)
-impl_from_primitive!(f32, to_f32)
-impl_from_primitive!(f64, to_f64)
+impl_from_primitive! { int, to_int }
+impl_from_primitive! { i8, to_i8 }
+impl_from_primitive! { i16, to_i16 }
+impl_from_primitive! { i32, to_i32 }
+impl_from_primitive! { i64, to_i64 }
+impl_from_primitive! { uint, to_uint }
+impl_from_primitive! { u8, to_u8 }
+impl_from_primitive! { u16, to_u16 }
+impl_from_primitive! { u32, to_u32 }
+impl_from_primitive! { u64, to_u64 }
+impl_from_primitive! { f32, to_f32 }
+impl_from_primitive! { f64, to_f64 }
 
 /// Cast from one machine scalar to another.
 ///
@@ -1197,7 +1191,7 @@ pub trait NumCast: ToPrimitive {
     fn from<T: ToPrimitive>(n: T) -> Option<Self>;
 }
 
-macro_rules! impl_num_cast(
+macro_rules! impl_num_cast {
     ($T:ty, $conv:ident) => (
         impl NumCast for $T {
             #[inline]
@@ -1208,35 +1202,35 @@ macro_rules! impl_num_cast(
             }
         }
     )
-)
+}
 
-impl_num_cast!(u8,    to_u8)
-impl_num_cast!(u16,   to_u16)
-impl_num_cast!(u32,   to_u32)
-impl_num_cast!(u64,   to_u64)
-impl_num_cast!(uint,  to_uint)
-impl_num_cast!(i8,    to_i8)
-impl_num_cast!(i16,   to_i16)
-impl_num_cast!(i32,   to_i32)
-impl_num_cast!(i64,   to_i64)
-impl_num_cast!(int,   to_int)
-impl_num_cast!(f32,   to_f32)
-impl_num_cast!(f64,   to_f64)
+impl_num_cast! { u8,    to_u8 }
+impl_num_cast! { u16,   to_u16 }
+impl_num_cast! { u32,   to_u32 }
+impl_num_cast! { u64,   to_u64 }
+impl_num_cast! { uint,  to_uint }
+impl_num_cast! { i8,    to_i8 }
+impl_num_cast! { i16,   to_i16 }
+impl_num_cast! { i32,   to_i32 }
+impl_num_cast! { i64,   to_i64 }
+impl_num_cast! { int,   to_int }
+impl_num_cast! { f32,   to_f32 }
+impl_num_cast! { f64,   to_f64 }
 
 /// Used for representing the classification of floating point numbers
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 #[unstable = "may be renamed"]
-pub enum FPCategory {
+pub enum FpCategory {
     /// "Not a Number", often obtained by dividing by zero
-    FPNaN,
+    Nan,
     /// Positive or negative infinity
-    FPInfinite ,
+    Infinite ,
     /// Positive or negative zero
-    FPZero,
-    /// De-normalized floating point representation (less precise than `FPNormal`)
-    FPSubnormal,
+    Zero,
+    /// De-normalized floating point representation (less precise than `Normal`)
+    Subnormal,
     /// A regular floating point number
-    FPNormal,
+    Normal,
 }
 
 /// A built-in floating point number.
@@ -1281,7 +1275,7 @@ pub trait Float
     /// Returns true if this number is neither zero, infinite, denormal, or NaN.
     fn is_normal(self) -> bool;
     /// Returns the category that this number falls into.
-    fn classify(self) -> FPCategory;
+    fn classify(self) -> FpCategory;
 
     // FIXME (#5527): These should be associated constants
 
@@ -1635,8 +1629,8 @@ macro_rules! from_str_radix_float_impl {
         }
     }
 }
-from_str_radix_float_impl!(f32)
-from_str_radix_float_impl!(f64)
+from_str_radix_float_impl! { f32 }
+from_str_radix_float_impl! { f64 }
 
 macro_rules! from_str_radix_int_impl {
     ($T:ty) => {
@@ -1702,16 +1696,16 @@ macro_rules! from_str_radix_int_impl {
         }
     }
 }
-from_str_radix_int_impl!(int)
-from_str_radix_int_impl!(i8)
-from_str_radix_int_impl!(i16)
-from_str_radix_int_impl!(i32)
-from_str_radix_int_impl!(i64)
-from_str_radix_int_impl!(uint)
-from_str_radix_int_impl!(u8)
-from_str_radix_int_impl!(u16)
-from_str_radix_int_impl!(u32)
-from_str_radix_int_impl!(u64)
+from_str_radix_int_impl! { int }
+from_str_radix_int_impl! { i8 }
+from_str_radix_int_impl! { i16 }
+from_str_radix_int_impl! { i32 }
+from_str_radix_int_impl! { i64 }
+from_str_radix_int_impl! { uint }
+from_str_radix_int_impl! { u8 }
+from_str_radix_int_impl! { u16 }
+from_str_radix_int_impl! { u32 }
+from_str_radix_int_impl! { u64 }
 
 // DEPRECATED
 
@@ -1730,17 +1724,17 @@ pub trait Num: PartialEq + Zero + One
              + Mul<Self,Self>
              + Div<Self,Self>
              + Rem<Self,Self> {}
-trait_impl!(Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+trait_impl! { Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 #[deprecated = "Generalised unsigned numbers are no longer supported"]
 #[allow(deprecated)]
 pub trait Unsigned: Num {}
-trait_impl!(Unsigned for uint u8 u16 u32 u64)
+trait_impl! { Unsigned for uint u8 u16 u32 u64 }
 
 #[deprecated = "Use `Float` or `Int`"]
 #[allow(deprecated)]
 pub trait Primitive: Copy + Clone + Num + NumCast + PartialOrd {}
-trait_impl!(Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64)
+trait_impl! { Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 #[deprecated = "The generic `Zero` trait will be removed soon."]
 pub trait Zero: Add<Self, Self> {
@@ -1760,18 +1754,18 @@ macro_rules! zero_impl {
         }
     }
 }
-zero_impl!(uint, 0u)
-zero_impl!(u8,   0u8)
-zero_impl!(u16,  0u16)
-zero_impl!(u32,  0u32)
-zero_impl!(u64,  0u64)
-zero_impl!(int, 0i)
-zero_impl!(i8,  0i8)
-zero_impl!(i16, 0i16)
-zero_impl!(i32, 0i32)
-zero_impl!(i64, 0i64)
-zero_impl!(f32, 0.0f32)
-zero_impl!(f64, 0.0f64)
+zero_impl! { uint, 0u }
+zero_impl! { u8,   0u8 }
+zero_impl! { u16,  0u16 }
+zero_impl! { u32,  0u32 }
+zero_impl! { u64,  0u64 }
+zero_impl! { int, 0i }
+zero_impl! { i8,  0i8 }
+zero_impl! { i16, 0i16 }
+zero_impl! { i32, 0i32 }
+zero_impl! { i64, 0i64 }
+zero_impl! { f32, 0.0f32 }
+zero_impl! { f64, 0.0f64 }
 
 #[deprecated = "The generic `One` trait will be removed soon."]
 pub trait One: Mul<Self, Self> {
@@ -1788,18 +1782,18 @@ macro_rules! one_impl {
         }
     }
 }
-one_impl!(uint, 1u)
-one_impl!(u8,  1u8)
-one_impl!(u16, 1u16)
-one_impl!(u32, 1u32)
-one_impl!(u64, 1u64)
-one_impl!(int, 1i)
-one_impl!(i8,  1i8)
-one_impl!(i16, 1i16)
-one_impl!(i32, 1i32)
-one_impl!(i64, 1i64)
-one_impl!(f32, 1.0f32)
-one_impl!(f64, 1.0f64)
+one_impl! { uint, 1u }
+one_impl! { u8,  1u8 }
+one_impl! { u16, 1u16 }
+one_impl! { u32, 1u32 }
+one_impl! { u64, 1u64 }
+one_impl! { int, 1i }
+one_impl! { i8,  1i8 }
+one_impl! { i16, 1i16 }
+one_impl! { i32, 1i32 }
+one_impl! { i64, 1i64 }
+one_impl! { f32, 1.0f32 }
+one_impl! { f64, 1.0f64 }
 
 #[deprecated = "Use `UnsignedInt::next_power_of_two`"]
 pub fn next_power_of_two<T: UnsignedInt>(n: T) -> T {
@@ -1832,15 +1826,15 @@ macro_rules! bounded_impl {
         }
     };
 }
-bounded_impl!(uint, uint::MIN, uint::MAX)
-bounded_impl!(u8, u8::MIN, u8::MAX)
-bounded_impl!(u16, u16::MIN, u16::MAX)
-bounded_impl!(u32, u32::MIN, u32::MAX)
-bounded_impl!(u64, u64::MIN, u64::MAX)
-bounded_impl!(int, int::MIN, int::MAX)
-bounded_impl!(i8, i8::MIN, i8::MAX)
-bounded_impl!(i16, i16::MIN, i16::MAX)
-bounded_impl!(i32, i32::MIN, i32::MAX)
-bounded_impl!(i64, i64::MIN, i64::MAX)
-bounded_impl!(f32, f32::MIN_VALUE, f32::MAX_VALUE)
-bounded_impl!(f64, f64::MIN_VALUE, f64::MAX_VALUE)
+bounded_impl! { uint, uint::MIN, uint::MAX }
+bounded_impl! { u8, u8::MIN, u8::MAX }
+bounded_impl! { u16, u16::MIN, u16::MAX }
+bounded_impl! { u32, u32::MIN, u32::MAX }
+bounded_impl! { u64, u64::MIN, u64::MAX }
+bounded_impl! { int, int::MIN, int::MAX }
+bounded_impl! { i8, i8::MIN, i8::MAX }
+bounded_impl! { i16, i16::MIN, i16::MAX }
+bounded_impl! { i32, i32::MIN, i32::MAX }
+bounded_impl! { i64, i64::MIN, i64::MAX }
+bounded_impl! { f32, f32::MIN_VALUE, f32::MAX_VALUE }
+bounded_impl! { f64, f64::MIN_VALUE, f64::MAX_VALUE }

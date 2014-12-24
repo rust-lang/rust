@@ -41,7 +41,7 @@ impl Recorder {
         assert!(self.dump_spans);
         let result = format!("span,kind,{},{},text,\"{}\"\n",
                              kind, su.extent_str(span), escape(su.snippet(span)));
-        self.record(result.as_slice());
+        self.record(result[]);
     }
 }
 
@@ -61,6 +61,7 @@ macro_rules! svec {
     })
 }
 
+#[deriving(Copy)]
 pub enum Row {
     Variable,
     Enum,
@@ -106,15 +107,19 @@ impl<'a> FmtStrs<'a> {
             Variable => ("variable",
                          vec!("id","name","qualname","value","type","scopeid"),
                          true, true),
-            Enum => ("enum", vec!("id","qualname","scopeid"), true, true),
-            Variant => ("variant", vec!("id","name","qualname","value","scopeid"), true, true),
+            Enum => ("enum", vec!("id","qualname","scopeid","value"), true, true),
+            Variant => ("variant",
+                        vec!("id","name","qualname","type","value","scopeid"),
+                        true, true),
             VariantStruct => ("variant_struct",
-                              vec!("id","ctor_id","qualname","value","scopeid"), true, true),
-            Function => ("function", vec!("id","qualname","declid","declidcrate","scopeid"),
+                              vec!("id","ctor_id","qualname","type","value","scopeid"),
+                              true, true),
+            Function => ("function",
+                         vec!("id","qualname","declid","declidcrate","scopeid"),
                          true, true),
             MethodDecl => ("method_decl", vec!("id","qualname","scopeid"), true, true),
-            Struct => ("struct", vec!("id","ctor_id","qualname","scopeid"), true, true),
-            Trait => ("trait", vec!("id","qualname","scopeid"), true, true),
+            Struct => ("struct", vec!("id","ctor_id","qualname","scopeid","value"), true, true),
+            Trait => ("trait", vec!("id","qualname","scopeid","value"), true, true),
             Impl => ("impl", vec!("id","refid","refidcrate","scopeid"), true, true),
             Module => ("module", vec!("id","qualname","scopeid","def_file"), true, false),
             UseAlias => ("use_alias",
@@ -128,7 +133,7 @@ impl<'a> FmtStrs<'a> {
                             true, false),
             MethodCall => ("method_call",
                            vec!("refid","refidcrate","declid","declidcrate","scopeid"),
-                            true, true),
+                           true, true),
             Typedef => ("typedef", vec!("id","qualname","value"), true, true),
             ExternalCrate => ("external_crate", vec!("name","crate","file_name"), false, false),
             Crate => ("crate", vec!("name"), true, false),
@@ -140,7 +145,7 @@ impl<'a> FmtStrs<'a> {
                         true, true),
             StructRef => ("struct_ref",
                           vec!("refid","refidcrate","qualname","scopeid"),
-                           true, true),
+                          true, true),
             FnRef => ("fn_ref", vec!("refid","refidcrate","qualname","scopeid"), true, true)
         }
     }
@@ -153,20 +158,21 @@ impl<'a> FmtStrs<'a> {
         if values.len() != fields.len() {
             self.span.sess.span_bug(span, format!(
                 "Mismatch between length of fields for '{}', expected '{}', found '{}'",
-                kind, fields.len(), values.len()).as_slice());
+                kind, fields.len(), values.len())[]);
         }
 
         let values = values.iter().map(|s| {
+            // Never take more than 1020 chars
             if s.len() > 1020 {
-                s.as_slice().slice_to(1020)
+                s[..1020]
             } else {
-                s.as_slice()
+                s[]
             }
         });
 
         let pairs = fields.iter().zip(values);
-        let mut strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(
-            if *f == "qualname" {
+        let strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(
+            if *f == "qualname" && v.len() > 0 {
                 let mut n = self.krate.clone();
                 n.push_str("::");
                 n.push_str(v);
@@ -176,7 +182,7 @@ impl<'a> FmtStrs<'a> {
             }
         )));
         Some(strs.fold(String::new(), |mut s, ss| {
-            s.push_str(ss.as_slice());
+            s.push_str(ss[]);
             s
         }))
     }
@@ -190,7 +196,7 @@ impl<'a> FmtStrs<'a> {
         if needs_span {
             self.span.sess.span_bug(span, format!(
                 "Called record_without_span for '{}' which does requires a span",
-                label).as_slice());
+                label)[]);
         }
         assert!(!dump_spans);
 
@@ -204,9 +210,9 @@ impl<'a> FmtStrs<'a> {
         };
 
         let mut result = String::from_str(label);
-        result.push_str(values_str.as_slice());
+        result.push_str(values_str[]);
         result.push_str("\n");
-        self.recorder.record(result.as_slice());
+        self.recorder.record(result[]);
     }
 
     pub fn record_with_span(&mut self,
@@ -218,7 +224,10 @@ impl<'a> FmtStrs<'a> {
 
         if self.recorder.dump_spans {
             if dump_spans {
-                self.recorder.dump_span(self.span, label, span, Some(sub_span));
+                self.recorder.dump_span(self.span.clone(),
+                                        label,
+                                        span,
+                                        Some(sub_span));
             }
             return;
         }
@@ -226,7 +235,7 @@ impl<'a> FmtStrs<'a> {
         if !needs_span {
             self.span.sess.span_bug(span,
                                     format!("Called record_with_span for '{}' \
-                                             which does not require a span", label).as_slice());
+                                             which does not require a span", label)[]);
         }
 
         let values_str = match self.make_values_str(label, fields, values, span) {
@@ -234,7 +243,7 @@ impl<'a> FmtStrs<'a> {
             None => return,
         };
         let result = format!("{},{}{}\n", label, self.span.extent_str(sub_span), values_str);
-        self.recorder.record(result.as_slice());
+        self.recorder.record(result[]);
     }
 
     pub fn check_and_record(&mut self,
@@ -264,7 +273,7 @@ impl<'a> FmtStrs<'a> {
         // variable def's node id
         let mut qualname = String::from_str(name);
         qualname.push_str("$");
-        qualname.push_str(id.to_string().as_slice());
+        qualname.push_str(id.to_string()[]);
         self.check_and_record(Variable,
                               span,
                               sub_span,
@@ -323,11 +332,12 @@ impl<'a> FmtStrs<'a> {
                     sub_span: Option<Span>,
                     id: NodeId,
                     name: &str,
-                    scope_id: NodeId) {
+                    scope_id: NodeId,
+                    value: &str) {
         self.check_and_record(Enum,
                               span,
                               sub_span,
-                              svec!(id, name, scope_id));
+                              svec!(id, name, scope_id, value));
     }
 
     pub fn tuple_variant_str(&mut self,
@@ -336,12 +346,13 @@ impl<'a> FmtStrs<'a> {
                              id: NodeId,
                              name: &str,
                              qualname: &str,
+                             typ: &str,
                              val: &str,
                              scope_id: NodeId) {
         self.check_and_record(Variant,
                               span,
                               sub_span,
-                              svec!(id, name, qualname, val, scope_id));
+                              svec!(id, name, qualname, typ, val, scope_id));
     }
 
     pub fn struct_variant_str(&mut self,
@@ -350,12 +361,13 @@ impl<'a> FmtStrs<'a> {
                               id: NodeId,
                               ctor_id: NodeId,
                               name: &str,
+                              typ: &str,
                               val: &str,
                               scope_id: NodeId) {
         self.check_and_record(VariantStruct,
                               span,
                               sub_span,
-                              svec!(id, ctor_id, name, val, scope_id));
+                              svec!(id, ctor_id, name, typ, val, scope_id));
     }
 
     pub fn fn_str(&mut self,
@@ -405,11 +417,12 @@ impl<'a> FmtStrs<'a> {
                       id: NodeId,
                       ctor_id: NodeId,
                       name: &str,
-                      scope_id: NodeId) {
+                      scope_id: NodeId,
+                      value: &str) {
         self.check_and_record(Struct,
                               span,
                               sub_span,
-                              svec!(id, ctor_id, name, scope_id));
+                              svec!(id, ctor_id, name, scope_id, value));
     }
 
     pub fn trait_str(&mut self,
@@ -417,11 +430,12 @@ impl<'a> FmtStrs<'a> {
                      sub_span: Option<Span>,
                      id: NodeId,
                      name: &str,
-                     scope_id: NodeId) {
+                     scope_id: NodeId,
+                     value: &str) {
         self.check_and_record(Trait,
                               span,
                               sub_span,
-                              svec!(id, name, scope_id));
+                              svec!(id, name, scope_id, value));
     }
 
     pub fn impl_str(&mut self,

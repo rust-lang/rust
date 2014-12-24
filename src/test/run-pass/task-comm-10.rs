@@ -27,7 +27,7 @@ fn start(tx: &Sender<Sender<String>>) {
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _child = task::spawn(proc() { start(&tx) });
+    let _child = task::spawn(move|| { start(&tx) });
 
     let mut c = rx.recv();
     c.send("A".to_string());

@@ -8,23 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Handles translation of callees as well as other call-related
- * things.  Callees are a superset of normal rust values and sometimes
- * have different representations.  In particular, top-level fn items
- * and methods are represented as just a fn ptr and not a full
- * closure.
- */
+//! Handles translation of callees as well as other call-related
+//! things.  Callees are a superset of normal rust values and sometimes
+//! have different representations.  In particular, top-level fn items
+//! and methods are represented as just a fn ptr and not a full
+//! closure.
 
 pub use self::AutorefArg::*;
 pub use self::CalleeData::*;
 pub use self::CallArgs::*;
 
 use arena::TypedArena;
-use back::abi;
-use back::link;
+use back::{abi,link};
 use session;
-use llvm::{ValueRef, get_param};
+use llvm::{ValueRef};
+use llvm::get_param;
 use llvm;
 use metadata::csearch;
 use middle::def;
@@ -51,8 +49,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{mod, Ty};
-use middle::typeck::coherence::make_substs_for_receiver_types;
-use middle::typeck::MethodCall;
+use middle::ty::MethodCall;
 use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
 
@@ -61,6 +58,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ptr::P;
 
+#[deriving(Copy)]
 pub struct MethodData {
     pub llfn: ValueRef,
     pub llself: ValueRef,
@@ -94,11 +92,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
     debug!("callee::trans(expr={})", expr.repr(bcx.tcx()));
 
     // pick out special kinds of expressions that can be called:
-    match expr.node {
-        ast::ExprPath(_) => {
-            return trans_def(bcx, bcx.def(expr.id), expr);
-        }
-        _ => {}
+    if let ast::ExprPath(_) = expr.node {
+        return trans_def(bcx, bcx.def(expr.id), expr);
     }
 
     // any other expressions are closures:
@@ -128,7 +123,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     expr.span,
                     format!("type of callee is neither bare-fn nor closure: \
                              {}",
-                            bcx.ty_to_string(datum.ty)).as_slice());
+                            bcx.ty_to_string(datum.ty))[]);
             }
         }
     }
@@ -164,7 +159,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 }
             }
             def::DefFn(did, _) if match expr_ty.sty {
-                ty::ty_bare_fn(ref f) => f.abi == synabi::RustIntrinsic,
+                ty::ty_bare_fn(_, ref f) => f.abi == synabi::RustIntrinsic,
                 _ => false
             } => {
                 let substs = node_id_substs(bcx, ExprId(ref_expr.id));
@@ -210,23 +205,19 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
             def::DefUse(..) | def::DefTyParamBinder(..) |
             def::DefRegion(..) | def::DefLabel(..) | def::DefTyParam(..) |
-            def::DefSelfTy(..) => {
+            def::DefSelfTy(..) | def::DefAssociatedPath(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {} \
-                             to a callable thing!", def).as_slice());
+                             to a callable thing!", def)[]);
             }
         }
     }
 }
 
+/// Translates a reference (with id `ref_id`) to the fn/method with id `def_id` into a function
+/// pointer. This may require monomorphization or inlining.
 pub fn trans_fn_ref(bcx: Block, def_id: ast::DefId, node: ExprOrMethodCall) -> ValueRef {
-    /*!
-     * Translates a reference (with id `ref_id`) to the fn/method
-     * with id `def_id` into a function pointer.  This may require
-     * monomorphization or inlining.
-     */
-
     let _icx = push_ctxt("trans_fn_ref");
 
     let substs = node_id_substs(bcx, node);
@@ -251,153 +242,133 @@ fn trans_fn_ref_with_substs_to_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-/// Translates the adapter that deconstructs a `Box<Trait>` object into
-/// `Trait` so that a by-value self method can be called.
-pub fn trans_unboxing_shim<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                       llshimmedfn: ValueRef,
-                                       fty: &ty::BareFnTy<'tcx>,
-                                       method_id: ast::DefId,
-                                       substs: &subst::Substs<'tcx>)
-                                       -> ValueRef {
-    let _icx = push_ctxt("trans_unboxing_shim");
-    let ccx = bcx.ccx();
-    let tcx = bcx.tcx();
+/// Translates an adapter that implements the `Fn` trait for a fn
+/// pointer. This is basically the equivalent of something like:
+///
+/// ```rust
+/// impl<'a> Fn(&'a int) -> &'a int for fn(&int) -> &int {
+///     extern "rust-abi" fn call(&self, args: (&'a int,)) -> &'a int {
+///         (*self)(args.0)
+///     }
+/// }
+/// ```
+///
+/// but for the bare function type given.
+pub fn trans_fn_pointer_shim<'a, 'tcx>(
+    ccx: &'a CrateContext<'a, 'tcx>,
+    bare_fn_ty: Ty<'tcx>)
+    -> ValueRef
+{
+    let _icx = push_ctxt("trans_fn_pointer_shim");
+    let tcx = ccx.tcx();
 
-    let fty = fty.subst(tcx, substs);
+    let bare_fn_ty = ty::normalize_ty(tcx, bare_fn_ty);
+    match ccx.fn_pointer_shims().borrow().get(&bare_fn_ty) {
+        Some(&llval) => { return llval; }
+        None => { }
+    }
 
-    // Transform the self type to `Box<self_type>`.
-    let self_type = fty.sig.inputs[0];
-    let boxed_self_type = ty::mk_uniq(tcx, self_type);
-    let boxed_function_type = ty::FnSig {
-        inputs: fty.sig.inputs.iter().enumerate().map(|(i, typ)| {
-            if i == 0 {
-                boxed_self_type
-            } else {
-                *typ
+    debug!("trans_fn_pointer_shim(bare_fn_ty={})",
+           bare_fn_ty.repr(tcx));
+
+    // This is an impl of `Fn` trait, so receiver is `&self`.
+    let bare_fn_ty_ref = ty::mk_imm_rptr(tcx, ty::ReStatic, bare_fn_ty);
+
+    // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
+    // which is the fn pointer, and `args`, which is the arguments tuple.
+    let (opt_def_id, input_tys, output_ty) =
+        match bare_fn_ty.sty {
+            ty::ty_bare_fn(opt_def_id,
+                           ty::BareFnTy { unsafety: ast::Unsafety::Normal,
+                                          abi: synabi::Rust,
+                                          sig: ty::Binder(ty::FnSig { inputs: ref input_tys,
+                                                                      output: output_ty,
+                                                                      variadic: false })}) =>
+            {
+                (opt_def_id, input_tys, output_ty)
             }
-        }).collect(),
-        output: fty.sig.output,
-        variadic: false,
-    };
-    let boxed_function_type = ty::BareFnTy {
-        fn_style: fty.fn_style,
-        abi: fty.abi,
-        sig: boxed_function_type,
-    };
-    let boxed_function_type = ty::mk_bare_fn(tcx, boxed_function_type);
-    let function_type = match fty.abi {
-        synabi::RustCall => {
-            // We're passing through to a RustCall ABI function, but
-            // because the shim will already perform untupling, we
-            // need to pretend the shimmed function does not use
-            // RustCall so the untupled arguments can be passed
-            // through verbatim.  This is kind of ugly.
-            let fake_ty = ty::FnSig {
-                inputs: type_of::untuple_arguments_if_necessary(ccx,
-                                                                fty.sig.inputs.as_slice(),
-                                                                fty.abi),
-                output: fty.sig.output,
-                variadic: false,
-            };
-            let fake_ty = ty::BareFnTy {
-                fn_style: fty.fn_style,
-                abi: synabi::Rust,
-                sig: fake_ty,
-            };
-            ty::mk_bare_fn(tcx, fake_ty)
-        }
-        _ => {
-            ty::mk_bare_fn(tcx, fty)
-        }
-    };
 
-    let function_name = ty::with_path(tcx, method_id, |path| {
-        link::mangle_internal_name_by_path_and_seq(path, "unboxing_shim")
-    });
-    let llfn = decl_internal_rust_fn(ccx,
-                                     boxed_function_type,
-                                     function_name.as_slice());
+            _ => {
+                tcx.sess.bug(format!("trans_fn_pointer_shim invoked on invalid type: {}",
+                                           bare_fn_ty.repr(tcx))[]);
+            }
+        };
+    let tuple_input_ty = ty::mk_tup(tcx, input_tys.to_vec());
+    let tuple_fn_ty = ty::mk_bare_fn(tcx,
+                                     opt_def_id,
+                                     ty::BareFnTy { unsafety: ast::Unsafety::Normal,
+                                                    abi: synabi::RustCall,
+                                                    sig: ty::Binder(ty::FnSig {
+                                                        inputs: vec![bare_fn_ty_ref,
+                                                                     tuple_input_ty],
+                                                        output: output_ty,
+                                                        variadic: false
+                                                    })});
+    debug!("tuple_fn_ty: {}", tuple_fn_ty.repr(tcx));
 
+    //
+    let function_name =
+        link::mangle_internal_name_by_type_and_seq(ccx, bare_fn_ty,
+                                                   "fn_pointer_shim");
+    let llfn =
+        decl_internal_rust_fn(ccx,
+                              tuple_fn_ty,
+                              function_name[]);
+
+    //
     let block_arena = TypedArena::new();
-    let empty_param_substs = Substs::trans_empty();
-    let return_type = ty::ty_fn_ret(boxed_function_type);
+    let empty_substs = Substs::trans_empty();
     let fcx = new_fn_ctxt(ccx,
                           llfn,
                           ast::DUMMY_NODE_ID,
                           false,
-                          return_type,
-                          &empty_param_substs,
+                          output_ty,
+                          &empty_substs,
                           None,
                           &block_arena);
-    let mut bcx = init_function(&fcx, false, return_type);
+    let mut bcx = init_function(&fcx, false, output_ty);
 
-    // Create the substituted versions of the self type.
-    let arg_scope = fcx.push_custom_cleanup_scope();
-    let arg_scope_id = cleanup::CustomScope(arg_scope);
-    let boxed_self_type = ty::ty_fn_args(boxed_function_type)[0];
-    let arg_types = ty::ty_fn_args(function_type);
-    let self_type = arg_types[0];
-    let boxed_self_kind = arg_kind(&fcx, boxed_self_type);
+    // the first argument (`self`) will be ptr to the the fn pointer
+    let llfnpointer =
+        Load(bcx, get_param(fcx.llfn, fcx.arg_pos(0) as u32));
 
-    // Create a datum for self.
-    let llboxedself = get_param(fcx.llfn, fcx.arg_pos(0) as u32);
-    let llboxedself = Datum::new(llboxedself,
-                                 boxed_self_type,
-                                 boxed_self_kind);
-    let boxed_self =
-        unpack_datum!(bcx,
-                      llboxedself.to_lvalue_datum_in_scope(bcx,
-                                                           "boxedself",
-                                                           arg_scope_id));
-
-    // This `Load` is needed because lvalue data are always by-ref.
-    let llboxedself = Load(bcx, boxed_self.val);
-
-    let llself = if type_is_immediate(ccx, self_type) {
-        let llboxedself = Load(bcx, llboxedself);
-        immediate_rvalue(llboxedself, self_type)
-    } else {
-        let llself = rvalue_scratch_datum(bcx, self_type, "self");
-        memcpy_ty(bcx, llself.val, llboxedself, self_type);
-        llself
-    };
-
-    // Make sure we don't free the box twice!
-    boxed_self.kind.post_store(bcx, boxed_self.val, boxed_self_type);
-
-    // Schedule a cleanup to free the box.
-    fcx.schedule_free_value(arg_scope_id,
-                            llboxedself,
-                            cleanup::HeapExchange,
-                            self_type);
-
-    // Now call the function.
-    let mut llshimmedargs = vec!(llself.val);
-    for i in range(1, arg_types.len()) {
-        llshimmedargs.push(get_param(fcx.llfn, fcx.arg_pos(i) as u32));
-    }
+    // the remaining arguments will be the untupled values
+    let llargs: Vec<_> =
+        input_tys.iter()
+        .enumerate()
+        .map(|(i, _)| get_param(fcx.llfn, fcx.arg_pos(i+1) as u32))
+        .collect();
     assert!(!fcx.needs_ret_allocas);
+
     let dest = fcx.llretslotptr.get().map(|_|
-        expr::SaveIn(fcx.get_ret_slot(bcx, return_type, "ret_slot"))
+        expr::SaveIn(fcx.get_ret_slot(bcx, output_ty, "ret_slot"))
     );
+
     bcx = trans_call_inner(bcx,
                            None,
-                           function_type,
-                           |bcx, _| {
-                               Callee {
-                                   bcx: bcx,
-                                   data: Fn(llshimmedfn),
-                               }
-                           },
-                           ArgVals(llshimmedargs.as_slice()),
+                           bare_fn_ty,
+                           |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
+                           ArgVals(llargs[]),
                            dest).bcx;
 
-    bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_scope);
-    finish_fn(&fcx, bcx, return_type);
+    finish_fn(&fcx, bcx, output_ty);
+
+    ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty, llfn);
 
     llfn
 }
 
+/// Translates a reference to a fn/method item, monomorphizing and
+/// inlining as it goes.
+///
+/// # Parameters
+///
+/// - `bcx`: the current block where the reference to the fn occurs
+/// - `def_id`: def id of the fn or method item being referenced
+/// - `node`: node id of the reference to the fn/method, if applicable.
+///   This parameter may be zero; but, if so, the resulting value may not
+///   have the right type, so it must be cast before being used.
+/// - `substs`: values for each of the fn/method's parameters
 pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
     bcx: Block<'blk, 'tcx>,      //
     def_id: ast::DefId,          // def id of fn
@@ -405,20 +376,6 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
     substs: subst::Substs<'tcx>) // vtables for the call
     -> ValueRef
 {
-    /*!
-     * Translates a reference to a fn/method item, monomorphizing and
-     * inlining as it goes.
-     *
-     * # Parameters
-     *
-     * - `bcx`: the current block where the reference to the fn occurs
-     * - `def_id`: def id of the fn or method item being referenced
-     * - `node`: node id of the reference to the fn/method, if applicable.
-     *   This parameter may be zero; but, if so, the resulting value may not
-     *   have the right type, so it must be cast before being used.
-     * - `substs`: values for each of the fn/method's parameters
-     */
-
     let _icx = push_ctxt("trans_fn_ref_with_substs");
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
@@ -467,11 +424,10 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
             match impl_or_trait_item {
                 ty::MethodTraitItem(method) => {
                     let trait_ref = ty::impl_trait_ref(tcx, impl_id).unwrap();
-                    let trait_ref = ty::erase_late_bound_regions(tcx, &trait_ref);
 
                     // Compute the first substitution
                     let first_subst =
-                        make_substs_for_receiver_types(tcx, &*trait_ref, &*method)
+                        ty::make_substs_for_receiver_types(tcx, &*trait_ref, &*method)
                         .erase_regions();
 
                     // And compose them
@@ -534,7 +490,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
 
         let opt_ref_id = match node {
             ExprId(id) => if id != 0 { Some(id) } else { None },
-            MethodCall(_) => None,
+            MethodCallKey(_) => None,
         };
 
         let (val, must_cast) =
@@ -545,7 +501,7 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
             // are subst'd)
             let ref_ty = match node {
                 ExprId(id) => node_id_type(bcx, id),
-                MethodCall(method_call) => {
+                MethodCallKey(method_call) => {
                     let t = (*bcx.tcx().method_map.borrow())[method_call].ty;
                     monomorphize_type(bcx, t)
                 }
@@ -668,31 +624,25 @@ pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              dest)
 }
 
-pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                        call_info: Option<NodeInfo>,
-                                        callee_ty: Ty<'tcx>,
-                                        get_callee: |bcx: Block<'blk, 'tcx>,
-                                                     arg_cleanup_scope: cleanup::ScopeId|
-                                                     -> Callee<'blk, 'tcx>,
-                                        args: CallArgs<'a, 'tcx>,
-                                        dest: Option<expr::Dest>)
-                                        -> Result<'blk, 'tcx> {
-    /*!
-     * This behemoth of a function translates function calls.
-     * Unfortunately, in order to generate more efficient LLVM
-     * output at -O0, it has quite a complex signature (refactoring
-     * this into two functions seems like a good idea).
-     *
-     * In particular, for lang items, it is invoked with a dest of
-     * None, and in that case the return value contains the result of
-     * the fn. The lang item must not return a structural type or else
-     * all heck breaks loose.
-     *
-     * For non-lang items, `dest` is always Some, and hence the result
-     * is written into memory somewhere. Nonetheless we return the
-     * actual return value of the function.
-     */
-
+/// This behemoth of a function translates function calls. Unfortunately, in order to generate more
+/// efficient LLVM output at -O0, it has quite a complex signature (refactoring this into two
+/// functions seems like a good idea).
+///
+/// In particular, for lang items, it is invoked with a dest of None, and in that case the return
+/// value contains the result of the fn. The lang item must not return a structural type or else
+/// all heck breaks loose.
+///
+/// For non-lang items, `dest` is always Some, and hence the result is written into memory
+/// somewhere. Nonetheless we return the actual return value of the function.
+pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+                                           call_info: Option<NodeInfo>,
+                                           callee_ty: Ty<'tcx>,
+                                           get_callee: F,
+                                           args: CallArgs<'a, 'tcx>,
+                                           dest: Option<expr::Dest>)
+                                           -> Result<'blk, 'tcx> where
+    F: FnOnce(Block<'blk, 'tcx>, cleanup::ScopeId) -> Callee<'blk, 'tcx>,
+{
     // Introduce a temporary cleanup scope that will contain cleanups
     // for the arguments while they are being evaluated. The purpose
     // this cleanup is to ensure that, should a panic occur while
@@ -708,8 +658,8 @@ pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = callee.bcx;
 
     let (abi, ret_ty) = match callee_ty.sty {
-        ty::ty_bare_fn(ref f) => (f.abi, f.sig.output),
-        ty::ty_closure(ref f) => (f.abi, f.sig.output),
+        ty::ty_bare_fn(_, ref f) => (f.abi, f.sig.0.output),
+        ty::ty_closure(ref f) => (f.abi, f.sig.0.output),
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
     };
 
@@ -724,9 +674,9 @@ pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Closures are represented as (llfn, llclosure) pair:
             // load the requisite values out.
             let pair = d.to_llref();
-            let llfn = GEPi(bcx, pair, &[0u, abi::fn_field_code]);
+            let llfn = GEPi(bcx, pair, &[0u, abi::FAT_PTR_ADDR]);
             let llfn = Load(bcx, llfn);
-            let llenv = GEPi(bcx, pair, &[0u, abi::fn_field_box]);
+            let llenv = GEPi(bcx, pair, &[0u, abi::FAT_PTR_EXTRA]);
             let llenv = Load(bcx, llenv);
             (llfn, Some(llenv), None)
         }
@@ -826,7 +776,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // Invoke the actual rust fn and update bcx/llresult.
         let (llret, b) = base::invoke(bcx,
                                       llfn,
-                                      llargs,
+                                      llargs[],
                                       callee_ty,
                                       call_info,
                                       dest.is_none());
@@ -866,7 +816,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         bcx = foreign::trans_native_call(bcx, callee_ty,
                                          llfn, opt_llretslot.unwrap(),
-                                         llargs.as_slice(), arg_tys);
+                                         llargs[], arg_tys);
     }
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_cleanup_scope);
@@ -899,10 +849,11 @@ pub enum CallArgs<'a, 'tcx> {
     // value.
     ArgVals(&'a [ValueRef]),
 
-    // For overloaded operators: `(lhs, Vec(rhs, rhs_id))`. `lhs`
+    // For overloaded operators: `(lhs, Vec(rhs, rhs_id), autoref)`. `lhs`
     // is the left-hand-side and `rhs/rhs_id` is the datum/expr-id of
-    // the right-hand-side arguments (if any).
-    ArgOverloadedOp(Datum<'tcx, Expr>, Vec<(Datum<'tcx, Expr>, ast::NodeId)>),
+    // the right-hand-side arguments (if any). `autoref` indicates whether the `rhs`
+    // arguments should be auto-referenced
+    ArgOverloadedOp(Datum<'tcx, Expr>, Vec<(Datum<'tcx, Expr>, ast::NodeId)>, bool),
 
     // Supply value of arguments as a list of expressions that must be
     // translated, for overloaded call operators.
@@ -1074,7 +1025,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                               arg_cleanup_scope,
                                               ignore_self)
         }
-        ArgOverloadedOp(lhs, rhs) => {
+        ArgOverloadedOp(lhs, rhs, autoref) => {
             assert!(!variadic);
 
             llargs.push(unpack_result!(bcx, {
@@ -1088,7 +1039,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 llargs.push(unpack_result!(bcx, {
                     trans_arg_datum(bcx, arg_tys[1], rhs,
                                     arg_cleanup_scope,
-                                    DoAutorefArg(rhs_id))
+                                    if autoref { DoAutorefArg(rhs_id) } else { DontAutorefArg })
                 }));
             }
         }
@@ -1100,6 +1051,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     bcx
 }
 
+#[deriving(Copy)]
 pub enum AutorefArg {
     DontAutorefArg,
     DoAutorefArg(ast::NodeId)

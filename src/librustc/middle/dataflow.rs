@@ -9,12 +9,10 @@
 // except according to those terms.
 
 
-/*!
- * A module for propagating forward dataflow information. The analysis
- * assumes that the items to be propagated can be represented as bits
- * and thus uses bitvectors. Your job is simply to specify the so-called
- * GEN and KILL bits for each expression.
- */
+//! A module for propagating forward dataflow information. The analysis
+//! assumes that the items to be propagated can be represented as bits
+//! and thus uses bitvectors. Your job is simply to specify the so-called
+//! GEN and KILL bits for each expression.
 
 pub use self::EntryOrExit::*;
 
@@ -29,8 +27,11 @@ use syntax::visit;
 use syntax::print::{pp, pprust};
 use util::nodemap::NodeMap;
 
-#[deriving(Show)]
-pub enum EntryOrExit { Entry, Exit }
+#[deriving(Copy, Show)]
+pub enum EntryOrExit {
+    Entry,
+    Exit,
+}
 
 #[deriving(Clone)]
 pub struct DataFlowContext<'a, 'tcx: 'a, O> {
@@ -277,10 +278,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     }
 
 
-    pub fn each_bit_on_entry(&self,
-                             id: ast::NodeId,
-                             f: |uint| -> bool)
-                             -> bool {
+    pub fn each_bit_on_entry<F>(&self, id: ast::NodeId, f: F) -> bool where
+        F: FnMut(uint) -> bool,
+    {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
         if !self.has_bitset_for_nodeid(id) {
@@ -290,11 +290,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         self.each_bit_for_node(Entry, cfgidx, f)
     }
 
-    pub fn each_bit_for_node(&self,
-                             e: EntryOrExit,
-                             cfgidx: CFGIndex,
-                             f: |uint| -> bool)
-                             -> bool {
+    pub fn each_bit_for_node<F>(&self, e: EntryOrExit, cfgidx: CFGIndex, f: F) -> bool where
+        F: FnMut(uint) -> bool,
+    {
         //! Iterates through each bit that is set on entry/exit to `cfgidx`.
         //! Only useful after `propagate()` has been called.
 
@@ -313,7 +311,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                 let mut t = on_entry.to_vec();
                 self.apply_gen_kill(cfgidx, t.as_mut_slice());
                 temp_bits = t;
-                temp_bits.as_slice()
+                temp_bits[]
             }
         };
         debug!("{} each_bit_for_node({}, cfgidx={}) bits={}",
@@ -321,8 +319,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         self.each_bit(slice, f)
     }
 
-    pub fn each_gen_bit(&self, id: ast::NodeId, f: |uint| -> bool)
-                        -> bool {
+    pub fn each_gen_bit<F>(&self, id: ast::NodeId, f: F) -> bool where
+        F: FnMut(uint) -> bool,
+    {
         //! Iterates through each bit in the gen set for `id`.
         if !self.has_bitset_for_nodeid(id) {
             return true;
@@ -342,7 +341,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         self.each_bit(gens, f)
     }
 
-    fn each_bit(&self, words: &[uint], f: |uint| -> bool) -> bool {
+    fn each_bit<F>(&self, words: &[uint], mut f: F) -> bool where
+        F: FnMut(uint) -> bool,
+    {
         //! Helper for iterating over the bits in a bit set.
         //! Returns false on the first call to `f` that returns false;
         //! if all calls to `f` return true, then returns true.
@@ -419,7 +420,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                 let bits = self.kills.slice_mut(start, end);
                 debug!("{} add_kills_from_flow_exits flow_exit={} bits={} [before]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
-                bits.clone_from_slice(orig_kills.as_slice());
+                bits.clone_from_slice(orig_kills[]);
                 debug!("{} add_kills_from_flow_exits flow_exit={} bits={} [after]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
             }
@@ -552,7 +553,7 @@ fn bits_to_string(words: &[uint]) -> String {
         let mut v = word;
         for _ in range(0u, uint::BYTES) {
             result.push(sep);
-            result.push_str(format!("{:02x}", v & 0xFF).as_slice());
+            result.push_str(format!("{:02x}", v & 0xFF)[]);
             v >>= 8;
             sep = '-';
         }

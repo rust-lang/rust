@@ -26,5 +26,5 @@ fn main() {
                 break
         }
     }
-    assert!(result.as_slice() == &[2, 4]);
+    assert!(result == [2, 4]);
 }

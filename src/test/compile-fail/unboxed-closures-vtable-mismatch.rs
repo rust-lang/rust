@@ -18,7 +18,7 @@ fn call_it<F:FnMut<(int,int),int>>(y: int, mut f: F) -> int {
 
 pub fn main() {
     let f = |&mut: x: uint, y: int| -> int { (x as int) + y };
-    let z = call_it(3, f);  //~ ERROR not implemented
+    let z = call_it(3, f);  //~ ERROR type mismatch
     println!("{}", z);
 }
 

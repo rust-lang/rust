@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static FOO: [int, ..4] = [32, ..4];
-static BAR: [int, ..4] = [32, 32, 32, 32];
+static FOO: [int; 4] = [32; 4];
+static BAR: [int; 4] = [32, 32, 32, 32];
 
 pub fn main() {
     assert!(FOO == BAR);

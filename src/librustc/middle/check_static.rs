@@ -27,7 +27,7 @@ use self::Mode::*;
 
 use middle::ty;
 use middle::def;
-use middle::typeck;
+use middle::infer;
 use middle::traits;
 use middle::mem_categorization as mc;
 use middle::expr_use_visitor as euv;
@@ -36,10 +36,10 @@ use util::nodemap::NodeSet;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::visit::Visitor;
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax::codemap::Span;
 use syntax::visit;
 
-#[deriving(Eq, PartialEq)]
+#[deriving(Copy, Eq, PartialEq)]
 enum Mode {
     InConstant,
     InStatic,
@@ -53,7 +53,8 @@ struct CheckStaticVisitor<'a, 'tcx: 'a> {
     checker: &'a mut GlobalChecker,
 }
 
-struct GlobalVisitor<'a, 'b, 'tcx: 'b>(euv::ExprUseVisitor<'a, 'b, 'tcx, ty::ctxt<'tcx>>);
+struct GlobalVisitor<'a,'b,'tcx:'a+'b>(
+    euv::ExprUseVisitor<'a,'b,'tcx,ty::ctxt<'tcx>>);
 struct GlobalChecker {
     static_consumptions: NodeSet,
     const_borrows: NodeSet,
@@ -69,7 +70,8 @@ pub fn check_crate(tcx: &ty::ctxt) {
         static_local_borrows: NodeSet::new(),
     };
     {
-        let visitor = euv::ExprUseVisitor::new(&mut checker, tcx);
+        let param_env = ty::empty_parameter_environment();
+        let visitor = euv::ExprUseVisitor::new(&mut checker, tcx, param_env);
         visit::walk_crate(&mut GlobalVisitor(visitor), tcx.map.krate());
     }
     visit::walk_crate(&mut CheckStaticVisitor {
@@ -80,7 +82,9 @@ pub fn check_crate(tcx: &ty::ctxt) {
 }
 
 impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
-    fn with_mode(&mut self, mode: Mode, f: |&mut CheckStaticVisitor<'a, 'tcx>|) {
+    fn with_mode<F>(&mut self, mode: Mode, f: F) where
+        F: FnOnce(&mut CheckStaticVisitor<'a, 'tcx>),
+    {
         let old = self.mode;
         self.mode = mode;
         f(self);
@@ -108,20 +112,17 @@ impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
         };
 
         self.tcx.sess.span_err(e.span, format!("mutable statics are not allowed \
-                                                to have {}", suffix).as_slice());
+                                                to have {}", suffix)[]);
     }
 
     fn check_static_type(&self, e: &ast::Expr) {
         let ty = ty::node_id_to_type(self.tcx, e.id);
-        let infcx = typeck::infer::new_infer_ctxt(self.tcx);
+        let infcx = infer::new_infer_ctxt(self.tcx);
         let mut fulfill_cx = traits::FulfillmentContext::new();
-        let cause = traits::ObligationCause::misc(DUMMY_SP);
-        let obligation = traits::obligation_for_builtin_bound(self.tcx, cause, ty,
-                                                              ty::BoundSync);
-        fulfill_cx.register_obligation(self.tcx, obligation.unwrap());
+        fulfill_cx.register_builtin_bound(self.tcx, ty, ty::BoundSync,
+                                          traits::ObligationCause::dummy());
         let env = ty::empty_parameter_environment();
-        let result = fulfill_cx.select_all_or_error(&infcx, &env, self.tcx).is_ok();
-        if !result {
+        if !fulfill_cx.select_all_or_error(&infcx, &env, self.tcx).is_ok() {
             self.tcx.sess.span_err(e.span, "shared static items must have a \
                                             type which implements Sync");
         }
@@ -167,7 +168,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
             ty::ty_enum(did, _) if ty::has_dtor(self.tcx, did) => {
                 self.tcx.sess.span_err(e.span,
                                        format!("{} are not allowed to have \
-                                                destructors", self.msg()).as_slice())
+                                                destructors", self.msg())[])
             }
             _ => {}
         }
@@ -231,7 +232,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
                         let msg = "constants cannot refer to other statics, \
                                    insert an intermediate constant \
                                    instead";
-                        self.tcx.sess.span_err(e.span, msg.as_slice());
+                        self.tcx.sess.span_err(e.span, msg[]);
                     }
                     _ => {}
                 }
@@ -242,7 +243,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 't, 'v> Visitor<'v> for GlobalVisitor<'a, 'b, 't> {
+impl<'a,'b,'t,'v> Visitor<'v> for GlobalVisitor<'a,'b,'t> {
     fn visit_item(&mut self, item: &ast::Item) {
         match item.node {
             ast::ItemConst(_, ref e) |
@@ -270,7 +271,7 @@ impl<'tcx> euv::Delegate<'tcx> for GlobalChecker {
                     break
                 }
                 mc::cat_deref(ref cmt, _, _) |
-                mc::cat_downcast(ref cmt) |
+                mc::cat_downcast(ref cmt, _) |
                 mc::cat_interior(ref cmt, _) => cur = cmt,
 
                 mc::cat_rvalue(..) |
@@ -325,6 +326,12 @@ impl<'tcx> euv::Delegate<'tcx> for GlobalChecker {
               _assignment_span: Span,
               _assignee_cmt: mc::cmt,
               _mode: euv::MutateMode) {}
+
+    fn matched_pat(&mut self,
+                   _: &ast::Pat,
+                   _: mc::cmt,
+                   _: euv::MatchMode) {}
+
     fn consume_pat(&mut self,
                    _consume_pat: &ast::Pat,
                    _cmt: mc::cmt,

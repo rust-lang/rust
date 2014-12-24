@@ -8,25 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Simple [DEFLATE][def]-based compression. This is a wrapper around the
-[`miniz`][mz] library, which is a one-file pure-C implementation of zlib.
-
-[def]: https://en.wikipedia.org/wiki/DEFLATE
-[mz]: https://code.google.com/p/miniz/
-
-*/
+//! Simple [DEFLATE][def]-based compression. This is a wrapper around the
+//! [`miniz`][mz] library, which is a one-file pure-C implementation of zlib.
+//!
+//! [def]: https://en.wikipedia.org/wiki/DEFLATE
+//! [mz]: https://code.google.com/p/miniz/
 
 #![crate_name = "flate"]
 #![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-#![feature(phase)]
+#![feature(phase, unboxed_closures)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
@@ -64,7 +59,7 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
                                              &mut outsz,
                                              flags);
         if !res.is_null() {
-            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res)))
+            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, move|:| libc::free(res)))
         } else {
             None
         }
@@ -89,7 +84,7 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
                                                &mut outsz,
                                                flags);
         if !res.is_null() {
-            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, proc() libc::free(res)))
+            Some(CVec::new_with_dtor(res as *mut u8, outsz as uint, move|:| libc::free(res)))
         } else {
             None
         }
@@ -133,7 +128,7 @@ mod tests {
             debug!("{} bytes deflated to {} ({:.1}% size)",
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
-            assert_eq!(input.as_slice(), out.as_slice());
+            assert_eq!(input, out.as_slice());
         }
     }
 
@@ -142,6 +137,6 @@ mod tests {
         let bytes = vec!(1, 2, 3, 4, 5);
         let deflated = deflate_bytes(bytes.as_slice()).expect("deflation failed");
         let inflated = inflate_bytes(deflated.as_slice()).expect("inflation failed");
-        assert_eq!(inflated.as_slice(), bytes.as_slice());
+        assert_eq!(inflated.as_slice(), bytes);
     }
 }

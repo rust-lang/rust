@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tuple_indexing)]
-
 struct Foo<'a>(&'a [int]);
 
 fn main() {

@@ -11,7 +11,12 @@
 // ignore-lexer-test FIXME #15883
 
 pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
+
+impl Copy for Quad {}
+
 pub struct Floats { a: f64, b: u8, c: f64 }
+
+impl Copy for Floats {}
 
 mod rustrt {
     use super::{Floats, Quad};

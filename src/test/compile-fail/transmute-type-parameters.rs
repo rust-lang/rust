@@ -20,7 +20,7 @@ unsafe fn g<T>(x: (T, int)) {
     let _: int = transmute(x);  //~ ERROR cannot transmute
 }
 
-unsafe fn h<T>(x: [T, ..10]) {
+unsafe fn h<T>(x: [T; 10]) {
     let _: int = transmute(x);  //~ ERROR cannot transmute
 }
 

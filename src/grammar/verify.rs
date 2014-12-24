@@ -173,10 +173,10 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>) -> TokenAn
     );
 
     let m = re.captures(s).expect(format!("The regex didn't match {}", s).as_slice());
-    let start = m.name("start");
-    let end = m.name("end");
-    let toknum = m.name("toknum");
-    let content = m.name("content");
+    let start = m.name("start").unwrap_or("");
+    let end = m.name("end").unwrap_or("");
+    let toknum = m.name("toknum").unwrap_or("");
+    let content = m.name("content").unwrap_or("");
 
     let proto_tok = tokens.get(toknum).expect(format!("didn't find token {} in the map",
                                                               toknum).as_slice());

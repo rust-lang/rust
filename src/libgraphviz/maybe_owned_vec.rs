@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deprecated = "use std::vec::CowVec"]
+
 pub use self::MaybeOwnedVector::*;
 
 use std::default::Default;
 use std::fmt;
 use std::iter::FromIterator;
 use std::path::BytesContainer;
-use std::slice::{mod, Permutations};
+use std::slice;
 
 // Note 1: It is not clear whether the flexibility of providing both
 // the `Growable` and `FixedLen` variants is sufficiently useful.
@@ -46,18 +48,22 @@ pub trait IntoMaybeOwnedVector<'a,T> {
     fn into_maybe_owned(self) -> MaybeOwnedVector<'a,T>;
 }
 
+#[allow(deprecated)]
 impl<'a,T:'a> IntoMaybeOwnedVector<'a,T> for Vec<T> {
+    #[allow(deprecated)]
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwnedVector<'a,T> { Growable(self) }
 }
 
+#[allow(deprecated)]
 impl<'a,T> IntoMaybeOwnedVector<'a,T> for &'a [T] {
+    #[allow(deprecated)]
     #[inline]
     fn into_maybe_owned(self) -> MaybeOwnedVector<'a,T> { Borrowed(self) }
 }
 
 impl<'a,T> MaybeOwnedVector<'a,T> {
-    pub fn iter(&'a self) -> slice::Items<'a,T> {
+    pub fn iter(&'a self) -> slice::Iter<'a,T> {
         match self {
             &Growable(ref v) => v.as_slice().iter(),
             &Borrowed(ref v) => v.iter(),
@@ -66,6 +72,7 @@ impl<'a,T> MaybeOwnedVector<'a,T> {
 
     pub fn len(&self) -> uint { self.as_slice().len() }
 
+    #[allow(deprecated)]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
@@ -89,6 +96,7 @@ impl<'a, T: Ord> Ord for MaybeOwnedVector<'a, T> {
     }
 }
 
+#[allow(deprecated)]
 impl<'a, T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for MaybeOwnedVector<'a, T> {
     fn equiv(&self, other: &V) -> bool {
         self.as_slice() == other.as_slice()
@@ -114,6 +122,7 @@ impl<'b,T> AsSlice<T> for MaybeOwnedVector<'b,T> {
 }
 
 impl<'a,T> FromIterator<T> for MaybeOwnedVector<'a,T> {
+    #[allow(deprecated)]
     fn from_iter<I:Iterator<T>>(iterator: I) -> MaybeOwnedVector<'a,T> {
         // If we are building from scratch, might as well build the
         // most flexible variant.
@@ -127,22 +136,8 @@ impl<'a,T:fmt::Show> fmt::Show for MaybeOwnedVector<'a,T> {
     }
 }
 
-impl<'a,T:Clone> CloneSliceAllocPrelude<T> for MaybeOwnedVector<'a,T> {
-    /// Returns a copy of `self`.
-    fn to_vec(&self) -> Vec<T> {
-        self.as_slice().to_vec()
-    }
-
-    fn partitioned(&self, f: |&T| -> bool) -> (Vec<T>, Vec<T>) {
-        self.as_slice().partitioned(f)
-    }
-
-    fn permutations(&self) -> Permutations<T> {
-        self.as_slice().permutations()
-    }
-}
-
 impl<'a, T: Clone> Clone for MaybeOwnedVector<'a, T> {
+    #[allow(deprecated)]
     fn clone(&self) -> MaybeOwnedVector<'a, T> {
         match *self {
             Growable(ref v) => Growable(v.clone()),
@@ -152,13 +147,14 @@ impl<'a, T: Clone> Clone for MaybeOwnedVector<'a, T> {
 }
 
 impl<'a, T> Default for MaybeOwnedVector<'a, T> {
+    #[allow(deprecated)]
     fn default() -> MaybeOwnedVector<'a, T> {
         Growable(Vec::new())
     }
 }
 
 impl<'a> BytesContainer for MaybeOwnedVector<'a, u8> {
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+    fn container_as_bytes(&self) -> &[u8] {
         self.as_slice()
     }
 }

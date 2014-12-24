@@ -283,17 +283,13 @@ def load_east_asian_width(want_widths, except_cats):
     return widths
 
 def escape_char(c):
-    if c <= 0x7f:
-        return "'\\x%2.2x'" % c
-    if c <= 0xffff:
-        return "'\\u%4.4x'" % c
-    return "'\\U%8.8x'" % c
+    return "'\\u{%x}'" % c
 
 def emit_bsearch_range_table(f):
     f.write("""
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
-    use core::cmp::{Equal, Less, Greater};
-    use core::slice::SlicePrelude;
+    use core::cmp::Ordering::{Equal, Less, Greater};
+    use core::slice::SliceExt;
     r.binary_search(|&(lo,hi)| {
         if lo <= c && c <= hi { Equal }
         else if hi < c { Less }
@@ -350,23 +346,23 @@ def emit_regex_module(f, cats, w_data):
 def emit_conversions_module(f, lowerupper, upperlower):
     f.write("pub mod conversions {")
     f.write("""
-    use core::cmp::{Equal, Less, Greater};
-    use core::slice::SlicePrelude;
-    use core::tuple::Tuple2;
-    use core::option::{Option, Some, None};
+    use core::cmp::Ordering::{Equal, Less, Greater};
+    use core::slice::SliceExt;
+    use core::option::Option;
+    use core::option::Option::{Some, None};
     use core::slice;
 
     pub fn to_lower(c: char) -> char {
         match bsearch_case_table(c, LuLl_table) {
           None        => c,
-          Some(index) => LuLl_table[index].val1()
+          Some(index) => LuLl_table[index].1
         }
     }
 
     pub fn to_upper(c: char) -> char {
         match bsearch_case_table(c, LlLu_table) {
             None        => c,
-            Some(index) => LlLu_table[index].val1()
+            Some(index) => LlLu_table[index].1
         }
     }
 
@@ -376,8 +372,8 @@ def emit_conversions_module(f, lowerupper, upperlower):
             else if key < c { Less }
             else { Greater }
         }) {
-            slice::Found(i) => Some(i),
-            slice::NotFound(_) => None,
+            slice::BinarySearchResult::Found(i) => Some(i),
+            slice::BinarySearchResult::NotFound(_) => None,
         }
     }
 
@@ -390,7 +386,8 @@ def emit_conversions_module(f, lowerupper, upperlower):
 
 def emit_grapheme_module(f, grapheme_table, grapheme_cats):
     f.write("""pub mod grapheme {
-    use core::slice::SlicePrelude;
+    use core::kinds::Copy;
+    use core::slice::SliceExt;
     pub use self::GraphemeCat::*;
     use core::slice;
 
@@ -402,18 +399,20 @@ def emit_grapheme_module(f, grapheme_table, grapheme_cats):
         f.write("        GC_" + cat + ",\n")
     f.write("""    }
 
+    impl Copy for GraphemeCat {}
+
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, GraphemeCat)]) -> GraphemeCat {
-        use core::cmp::{Equal, Less, Greater};
+        use core::cmp::Ordering::{Equal, Less, Greater};
         match r.binary_search(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::Found(idx) => {
+            slice::BinarySearchResult::Found(idx) => {
                 let (_, _, cat) = r[idx];
                 cat
             }
-            slice::NotFound(_) => GC_Any
+            slice::BinarySearchResult::NotFound(_) => GC_Any
         }
     }
 
@@ -430,22 +429,23 @@ def emit_grapheme_module(f, grapheme_table, grapheme_cats):
 
 def emit_charwidth_module(f, width_table):
     f.write("pub mod charwidth {\n")
-    f.write("    use core::option::{Option, Some, None};\n")
-    f.write("    use core::slice::SlicePrelude;\n")
+    f.write("    use core::option::Option;\n")
+    f.write("    use core::option::Option::{Some, None};\n")
+    f.write("    use core::slice::SliceExt;\n")
     f.write("    use core::slice;\n")
     f.write("""
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
-        use core::cmp::{Equal, Less, Greater};
+        use core::cmp::Ordering::{Equal, Less, Greater};
         match r.binary_search(|&(lo, hi, _, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::Found(idx) => {
+            slice::BinarySearchResult::Found(idx) => {
                 let (_, _, r_ncjk, r_cjk) = r[idx];
                 if is_cjk { r_cjk } else { r_ncjk }
             }
-            slice::NotFound(_) => 1
+            slice::BinarySearchResult::NotFound(_) => 1
         }
     }
 """)
@@ -530,19 +530,19 @@ def emit_norm_module(f, canon, compat, combine, norm_props):
 
     f.write("""
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
-        use core::cmp::{Equal, Less, Greater};
-        use core::slice::SlicePrelude;
+        use core::cmp::Ordering::{Equal, Less, Greater};
+        use core::slice::SliceExt;
         use core::slice;
         match r.binary_search(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::Found(idx) => {
+            slice::BinarySearchResult::Found(idx) => {
                 let (_, _, result) = r[idx];
                 result
             }
-            slice::NotFound(_) => 0
+            slice::BinarySearchResult::NotFound(_) => 0
         }
     }\n
 """)
@@ -611,7 +611,7 @@ if __name__ == "__main__":
             unicode_version = re.search(pattern, readme.read()).groups()
         rf.write("""
 /// The version of [Unicode](http://www.unicode.org/)
-/// that the `UnicodeChar` and `UnicodeStrSlice` traits are based on.
+/// that the `UnicodeChar` and `UnicodeStrPrelude` traits are based on.
 pub const UNICODE_VERSION: (uint, uint, uint) = (%s, %s, %s);
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,

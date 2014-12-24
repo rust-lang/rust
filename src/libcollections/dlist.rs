@@ -10,10 +10,8 @@
 
 //! A doubly-linked list with owned nodes.
 //!
-//! The `DList` allows pushing and popping elements at either end.
-//!
-//! `DList` implements the trait `Deque`. It should be imported with
-//! `use collections::Deque`.
+//! The `DList` allows pushing and popping elements at either end and is thus
+//! efficiently usable as a double-ended queue.
 
 // DList is constructed like a singly-linked list over the field `next`.
 // including the last link being None; each Node owns its `next` field.
@@ -39,7 +37,12 @@ pub struct DList<T> {
 }
 
 type Link<T> = Option<Box<Node<T>>>;
-struct Rawlink<T> { p: *mut T }
+
+struct Rawlink<T> {
+    p: *mut T,
+}
+
+impl<T> Copy for Rawlink<T> {}
 
 struct Node<T> {
     next: Link<T>,
@@ -48,19 +51,21 @@ struct Node<T> {
 }
 
 /// An iterator over references to the items of a `DList`.
-pub struct Items<'a, T:'a> {
+pub struct Iter<'a, T:'a> {
     head: &'a Link<T>,
     tail: Rawlink<Node<T>>,
     nelem: uint,
 }
 
 // FIXME #11820: the &'a Option<> of the Link stops clone working.
-impl<'a, T> Clone for Items<'a, T> {
-    fn clone(&self) -> Items<'a, T> { *self }
+impl<'a, T> Clone for Iter<'a, T> {
+    fn clone(&self) -> Iter<'a, T> { *self }
 }
 
+impl<'a,T> Copy for Iter<'a,T> {}
+
 /// An iterator over mutable references to the items of a `DList`.
-pub struct MutItems<'a, T:'a> {
+pub struct IterMut<'a, T:'a> {
     list: &'a mut DList<T>,
     head: Rawlink<Node<T>>,
     tail: Rawlink<Node<T>>,
@@ -69,7 +74,7 @@ pub struct MutItems<'a, T:'a> {
 
 /// An iterator over mutable references to the items of a `DList`.
 #[deriving(Clone)]
-pub struct MoveItems<T> {
+pub struct IntoIter<T> {
     list: DList<T>
 }
 
@@ -187,8 +192,10 @@ impl<T> DList<T> {
     }
 }
 
+#[stable]
 impl<T> Default for DList<T> {
     #[inline]
+    #[stable]
     fn default() -> DList<T> { DList::new() }
 }
 
@@ -204,7 +211,7 @@ impl<T> DList<T> {
     ///
     /// If the list is empty, does nothing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -231,7 +238,7 @@ impl<T> DList<T> {
     ///
     /// If the list is empty, does nothing.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -258,7 +265,7 @@ impl<T> DList<T> {
     ///
     /// This operation should compute in O(1) time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -299,7 +306,7 @@ impl<T> DList<T> {
     ///
     /// This operation should compute in O(1) time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -328,7 +335,7 @@ impl<T> DList<T> {
     ///
     /// This operation should compute in O(N) time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -346,18 +353,16 @@ impl<T> DList<T> {
     ///     println!("{}", e); // prints 2, then 4, then 11, then 7, then 8
     /// }
     /// ```
-    pub fn insert_when(&mut self, elt: T, f: |&T, &T| -> bool) {
-        {
-            let mut it = self.iter_mut();
-            loop {
-                match it.peek_next() {
-                    None => break,
-                    Some(x) => if f(x, &elt) { break }
-                }
-                it.next();
+    pub fn insert_when<F>(&mut self, elt: T, mut f: F) where F: FnMut(&T, &T) -> bool {
+        let mut it = self.iter_mut();
+        loop {
+            match it.peek_next() {
+                None => break,
+                Some(x) => if f(x, &elt) { break }
             }
-            it.insert_next(elt);
+            it.next();
         }
+        it.insert_next(elt);
     }
 
     /// Merges `other` into this `DList`, using the function `f`.
@@ -366,7 +371,7 @@ impl<T> DList<T> {
     /// put `a` in the result if `f(a, b)` is true, and otherwise `b`.
     ///
     /// This operation should compute in O(max(N, M)) time.
-    pub fn merge(&mut self, mut other: DList<T>, f: |&T, &T| -> bool) {
+    pub fn merge<F>(&mut self, mut other: DList<T>, mut f: F) where F: FnMut(&T, &T) -> bool {
         {
             let mut it = self.iter_mut();
             loop {
@@ -389,19 +394,19 @@ impl<T> DList<T> {
     /// Provides a forward iterator.
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter<'a>(&'a self) -> Items<'a, T> {
-        Items{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
+    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
+        Iter{nelem: self.len(), head: &self.list_head, tail: self.list_tail}
     }
 
     /// Provides a forward iterator with mutable references.
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
         let head_raw = match self.list_head {
             Some(ref mut h) => Rawlink::some(&mut **h),
             None => Rawlink::none(),
         };
-        MutItems{
+        IterMut{
             nelem: self.len(),
             head: head_raw,
             tail: self.list_tail,
@@ -412,8 +417,8 @@ impl<T> DList<T> {
     /// Consumes the list into an iterator yielding elements by value.
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(self) -> MoveItems<T> {
-        MoveItems{list: self}
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter{list: self}
     }
 
     /// Returns `true` if the `DList` is empty.
@@ -446,7 +451,7 @@ impl<T> DList<T> {
     /// Provides a reference to the front element, or `None` if the list is
     /// empty.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front(&self) -> Option<&T> {
         self.list_head.as_ref().map(|head| &head.value)
     }
@@ -454,7 +459,7 @@ impl<T> DList<T> {
     /// Provides a mutable reference to the front element, or `None` if the list
     /// is empty.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         self.list_head.as_mut().map(|head| &mut head.value)
     }
@@ -462,7 +467,7 @@ impl<T> DList<T> {
     /// Provides a reference to the back element, or `None` if the list is
     /// empty.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back(&self) -> Option<&T> {
         self.list_tail.resolve_immut().as_ref().map(|tail| &tail.value)
     }
@@ -470,7 +475,7 @@ impl<T> DList<T> {
     /// Provides a mutable reference to the back element, or `None` if the list
     /// is empty.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         self.list_tail.resolve().map(|tail| &mut tail.value)
     }
@@ -500,7 +505,7 @@ impl<T> DList<T> {
 
     /// Appends an element to the back of a list
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -524,7 +529,7 @@ impl<T> DList<T> {
     /// Removes the last element from a list and returns it, or `None` if
     /// it is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::DList;
@@ -574,7 +579,7 @@ impl<T> Drop for DList<T> {
 }
 
 
-impl<'a, A> Iterator<&'a A> for Items<'a, A> {
+impl<'a, A> Iterator<&'a A> for Iter<'a, A> {
     #[inline]
     fn next(&mut self) -> Option<&'a A> {
         if self.nelem == 0 {
@@ -593,7 +598,7 @@ impl<'a, A> Iterator<&'a A> for Items<'a, A> {
     }
 }
 
-impl<'a, A> DoubleEndedIterator<&'a A> for Items<'a, A> {
+impl<'a, A> DoubleEndedIterator<&'a A> for Iter<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a A> {
         if self.nelem == 0 {
@@ -607,9 +612,9 @@ impl<'a, A> DoubleEndedIterator<&'a A> for Items<'a, A> {
     }
 }
 
-impl<'a, A> ExactSize<&'a A> for Items<'a, A> {}
+impl<'a, A> ExactSizeIterator<&'a A> for Iter<'a, A> {}
 
-impl<'a, A> Iterator<&'a mut A> for MutItems<'a, A> {
+impl<'a, A> Iterator<&'a mut A> for IterMut<'a, A> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
@@ -631,7 +636,7 @@ impl<'a, A> Iterator<&'a mut A> for MutItems<'a, A> {
     }
 }
 
-impl<'a, A> DoubleEndedIterator<&'a mut A> for MutItems<'a, A> {
+impl<'a, A> DoubleEndedIterator<&'a mut A> for IterMut<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
@@ -645,7 +650,7 @@ impl<'a, A> DoubleEndedIterator<&'a mut A> for MutItems<'a, A> {
     }
 }
 
-impl<'a, A> ExactSize<&'a mut A> for MutItems<'a, A> {}
+impl<'a, A> ExactSizeIterator<&'a mut A> for IterMut<'a, A> {}
 
 /// Allows mutating a `DList` while iterating.
 pub trait ListInsertion<A> {
@@ -659,8 +664,8 @@ pub trait ListInsertion<A> {
     fn peek_next<'a>(&'a mut self) -> Option<&'a mut A>;
 }
 
-// private methods for MutItems
-impl<'a, A> MutItems<'a, A> {
+// private methods for IterMut
+impl<'a, A> IterMut<'a, A> {
     fn insert_next_node(&mut self, mut ins_node: Box<Node<A>>) {
         // Insert before `self.head` so that it is between the
         // previously yielded element and self.head.
@@ -682,14 +687,14 @@ impl<'a, A> MutItems<'a, A> {
     }
 }
 
-impl<'a, A> ListInsertion<A> for MutItems<'a, A> {
+impl<'a, A> ListInsertion<A> for IterMut<'a, A> {
     #[inline]
     fn insert_next(&mut self, elt: A) {
         self.insert_next_node(box Node::new(elt))
     }
 
     #[inline]
-    fn peek_next<'a>(&'a mut self) -> Option<&'a mut A> {
+    fn peek_next(&mut self) -> Option<&mut A> {
         if self.nelem == 0 {
             return None
         }
@@ -697,7 +702,7 @@ impl<'a, A> ListInsertion<A> for MutItems<'a, A> {
     }
 }
 
-impl<A> Iterator<A> for MoveItems<A> {
+impl<A> Iterator<A> for IntoIter<A> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.list.pop_front() }
 
@@ -707,7 +712,7 @@ impl<A> Iterator<A> for MoveItems<A> {
     }
 }
 
-impl<A> DoubleEndedIterator<A> for MoveItems<A> {
+impl<A> DoubleEndedIterator<A> for IntoIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
@@ -753,6 +758,7 @@ impl<A: Ord> Ord for DList<A> {
     }
 }
 
+#[stable]
 impl<A: Clone> Clone for DList<A> {
     fn clone(&self) -> DList<A> {
         self.iter().map(|x| x.clone()).collect()
@@ -783,14 +789,14 @@ impl<S: Writer, A: Hash<S>> Hash<S> for DList<A> {
 
 #[cfg(test)]
 mod tests {
-    use std::prelude::*;
+    use prelude::*;
     use std::rand;
     use std::hash;
+    use std::task::spawn;
     use test::Bencher;
     use test;
 
     use super::{DList, Node, ListInsertion};
-    use vec::Vec;
 
     pub fn check_links<T>(list: &DList<T>) {
         let mut len = 0u;
@@ -926,7 +932,7 @@ mod tests {
         let mut m = list_from(v.as_slice());
         m.prepend(list_from(u.as_slice()));
         check_links(&m);
-        u.extend(v.as_slice().iter().map(|&b| b));
+        u.extend(v.iter().map(|&b| b));
         assert_eq!(u.len(), m.len());
         for elt in u.into_iter() {
             assert_eq!(m.pop_front(), Some(elt))
@@ -945,7 +951,7 @@ mod tests {
         let mut m = list_from(v.as_slice());
         m.rotate_backward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(v.iter().collect::<Vec<&int>>(), m.iter().collect());
+        assert_eq!(v.iter().collect::<Vec<&int>>(), m.iter().collect::<Vec<_>>());
         m.rotate_forward(); check_links(&m);
         m.rotate_forward(); check_links(&m);
         m.pop_front(); check_links(&m);
@@ -953,7 +959,7 @@ mod tests {
         m.rotate_backward(); check_links(&m);
         m.push_front(9); check_links(&m);
         m.rotate_forward(); check_links(&m);
-        assert_eq!(vec![3i,9,5,1,2], m.into_iter().collect());
+        assert_eq!(vec![3i,9,5,1,2], m.into_iter().collect::<Vec<_>>());
     }
 
     #[test]
@@ -1130,10 +1136,10 @@ mod tests {
     #[test]
     fn test_send() {
         let n = list_from(&[1i,2,3]);
-        spawn(proc() {
+        spawn(move || {
             check_links(&n);
             let a: &[_] = &[&1,&2,&3];
-            assert_eq!(a, n.iter().collect::<Vec<&int>>().as_slice());
+            assert_eq!(a, n.iter().collect::<Vec<&int>>());
         });
     }
 
@@ -1224,12 +1230,12 @@ mod tests {
     #[test]
     fn test_show() {
         let list: DList<int> = range(0i, 10).collect();
-        assert!(list.to_string().as_slice() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert!(list.to_string() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let list: DList<&str> = vec!["just", "one", "test", "more"].iter()
                                                                    .map(|&s| s)
                                                                    .collect();
-        assert!(list.to_string().as_slice() == "[just, one, test, more]");
+        assert!(list.to_string() == "[just, one, test, more]");
     }
 
     #[cfg(test)]

@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type t = { f: () }; //~ ERROR expected type, found token OpenDelim(Brace)
+type t = { f: () }; //~ ERROR expected type, found `{`

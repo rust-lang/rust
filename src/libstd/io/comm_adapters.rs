@@ -12,9 +12,9 @@ use clone::Clone;
 use cmp;
 use comm::{Sender, Receiver};
 use io;
-use option::{None, Some};
-use result::{Ok, Err};
-use slice::{bytes, CloneSliceAllocPrelude, SlicePrelude};
+use option::Option::{None, Some};
+use result::Result::{Ok, Err};
+use slice::{bytes, CloneSliceExt, SliceExt};
 use super::{Buffer, Reader, Writer, IoResult};
 use vec::Vec;
 
@@ -132,6 +132,7 @@ impl ChanWriter {
     }
 }
 
+#[stable]
 impl Clone for ChanWriter {
     fn clone(&self) -> ChanWriter {
         ChanWriter { tx: self.tx.clone() }
@@ -156,18 +157,18 @@ mod test {
     use prelude::*;
     use super::*;
     use io;
-    use task;
+    use thread::Thread;
 
     #[test]
     fn test_rx_reader() {
         let (tx, rx) = channel();
-        task::spawn(proc() {
+        Thread::spawn(move|| {
           tx.send(vec![1u8, 2u8]);
           tx.send(vec![]);
           tx.send(vec![3u8, 4u8]);
           tx.send(vec![5u8, 6u8]);
           tx.send(vec![7u8, 8u8]);
-        });
+        }).detach();
 
         let mut reader = ChanReader::new(rx);
         let mut buf = [0u8, ..3];
@@ -176,41 +177,41 @@ mod test {
 
         assert_eq!(Ok(3), reader.read(&mut buf));
         let a: &[u8] = &[1,2,3];
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
 
         assert_eq!(Ok(3), reader.read(&mut buf));
         let a: &[u8] = &[4,5,6];
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
 
         assert_eq!(Ok(2), reader.read(&mut buf));
         let a: &[u8] = &[7,8,6];
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
 
         match reader.read(buf.as_mut_slice()) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
 
         // Ensure it continues to panic in the same way.
         match reader.read(buf.as_mut_slice()) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, io::EndOfFile),
         }
-        assert_eq!(a, buf.as_slice());
+        assert_eq!(a, buf);
     }
 
     #[test]
     fn test_rx_buffer() {
         let (tx, rx) = channel();
-        task::spawn(proc() {
+        Thread::spawn(move|| {
           tx.send(b"he".to_vec());
           tx.send(b"llo wo".to_vec());
           tx.send(b"".to_vec());
           tx.send(b"rld\nhow ".to_vec());
           tx.send(b"are you?".to_vec());
           tx.send(b"".to_vec());
-        });
+        }).detach();
 
         let mut reader = ChanReader::new(rx);
 
@@ -229,7 +230,7 @@ mod test {
         writer.write_be_u32(42).unwrap();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
-        let got = match task::try(proc() { rx.recv() }) {
+        let got = match Thread::spawn(move|| { rx.recv() }).join() {
             Ok(got) => got,
             Err(_) => panic!(),
         };

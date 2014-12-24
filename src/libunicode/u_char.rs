@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * Unicode-intensive `char` methods.
- *
- * These methods implement functionality for `char` that requires knowledge of
- * Unicode definitions, including normalization, categorization, and display information.
- */
+//! Unicode-intensive `char` methods.
+//!
+//! These methods implement functionality for `char` that requires knowledge of
+//! Unicode definitions, including normalization, categorization, and display information.
 
 use core::option::Option;
 use tables::{derived_property, property, general_category, conversions, charwidth};

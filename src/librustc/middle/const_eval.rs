@@ -15,23 +15,20 @@ pub use self::const_val::*;
 pub use self::constness::*;
 
 use metadata::csearch;
-use middle::astencode;
-use middle::def;
+use middle::{astencode, def};
 use middle::pat_util::def_to_path;
-use middle::ty::{mod, Ty};
-use middle::typeck::astconv;
-use middle::typeck::check;
-use util::nodemap::{DefIdMap};
+use middle::ty::{mod};
+use middle::astconv_util::{ast_ty_to_prim_ty};
+use util::nodemap::DefIdMap;
 
 use syntax::ast::{mod, Expr};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::visit::Visitor;
-use syntax::visit;
+use syntax::visit::{mod, Visitor};
 use syntax::{ast_map, ast_util, codemap};
 
 use std::rc::Rc;
-use std::collections::hash_map::Vacant;
+use std::collections::hash_map::Entry::Vacant;
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -65,6 +62,7 @@ use std::collections::hash_map::Vacant;
 //   - Non-constants: everything else.
 //
 
+#[deriving(Copy)]
 pub enum constness {
     integral_const,
     general_const,
@@ -83,7 +81,7 @@ pub fn join(a: constness, b: constness) -> constness {
     }
 }
 
-pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
+pub fn join_all<It: Iterator<constness>>(cs: It) -> constness {
     cs.fold(integral_const, |a, b| join(a, b))
 }
 
@@ -119,7 +117,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
                 ast::ItemEnum(ast::EnumDef { ref variants }, _) => {
-                    variant_expr(variants.as_slice(), variant_def.node)
+                    variant_expr(variants[], variant_def.node)
                 }
                 _ => None
             },
@@ -140,7 +138,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
                     // NOTE this doesn't do the right thing, it compares inlined
                     // NodeId's to the original variant_def's NodeId, but they
                     // come from different crates, so they will likely never match.
-                    variant_expr(variants.as_slice(), variant_def.node).map(|e| e.id)
+                    variant_expr(variants[], variant_def.node).map(|e| e.id)
                 }
                 _ => None
             },
@@ -234,9 +232,9 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
                 }
             }
 
-            ast::ExprField(ref base, _, _) => self.classify(&**base),
+            ast::ExprField(ref base, _) => self.classify(&**base),
 
-            ast::ExprTupField(ref base, _, _) => self.classify(&**base),
+            ast::ExprTupField(ref base, _) => self.classify(&**base),
 
             ast::ExprIndex(ref base, ref idx) =>
                 join(self.classify(&**base), self.classify(&**idx)),
@@ -280,17 +278,6 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, t: &ast::Ty) {
-        match t.node {
-            ast::TyFixedLengthVec(_, ref expr) => {
-                check::check_const_in_type(self.tcx, &**expr, ty::mk_uint());
-            }
-            _ => {}
-        }
-
-        visit::walk_ty(self, t);
-    }
-
     fn visit_expr_post(&mut self, e: &Expr) {
         self.classify(e);
     }
@@ -324,10 +311,9 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
 
         ast::ExprCall(ref callee, ref args) => {
             let def = tcx.def_map.borrow()[callee.id].clone();
-            match tcx.def_map.borrow_mut().entry(expr.id) {
-              Vacant(entry) => { entry.set(def); }
-              _ => {}
-            };
+            if let Vacant(entry) = tcx.def_map.borrow_mut().entry(expr.id) {
+               entry.set(def);
+            }
             let path = match def {
                 def::DefStruct(def_id) => def_to_path(tcx, def_id),
                 def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),
@@ -378,7 +364,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
         Ok(r) => r,
-        Err(s) => tcx.sess.span_fatal(e.span, s.as_slice())
+        Err(s) => tcx.sess.span_fatal(e.span, s[])
     }
 }
 
@@ -511,7 +497,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
         // populated in the ctxt, which was causing things to blow up
         // (#5900). Fall back to doing a limited lookup to get past it.
         let ety = ty::expr_ty_opt(tcx, e)
-                .or_else(|| astconv::ast_ty_to_prim_ty(tcx, &**target_ty))
+                .or_else(|| ast_ty_to_prim_ty(tcx, &**target_ty))
                 .unwrap_or_else(|| {
                     tcx.sess.span_fatal(target_ty.span,
                                         "target type not found for const cast")
@@ -538,7 +524,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                 },)*
                 _ => Err("can't cast this type".to_string())
             })
-        )
+        );
 
         eval_const_expr_partial(tcx, &**base)
             .and_then(|val| define_casts!(val, {
@@ -570,6 +556,34 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
             None => Ok(const_int(0i64))
         }
       }
+      ast::ExprTupField(ref base, index) => {
+        // Get the base tuple if it is constant
+        if let Some(&ast::ExprTup(ref fields)) = lookup_const(tcx, &**base).map(|s| &s.node) {
+            // Check that the given index is within bounds and evaluate its value
+            if fields.len() > index.node {
+                return eval_const_expr_partial(tcx, &*fields[index.node])
+            } else {
+                return Err("tuple index out of bounds".to_string())
+            }
+        }
+
+        Err("non-constant struct in constant expr".to_string())
+      }
+      ast::ExprField(ref base, field_name) => {
+        // Get the base expression if it is a struct and it is constant
+        if let Some(&ast::ExprStruct(_, ref fields, _)) = lookup_const(tcx, &**base)
+                                                            .map(|s| &s.node) {
+            // Check that the given field exists and evaluate it
+            if let Some(f) = fields.iter().find(|f|
+                                           f.ident.node.as_str() == field_name.node.as_str()) {
+                return eval_const_expr_partial(tcx, &*f.expr)
+            } else {
+                return Err("nonexistent struct field".to_string())
+            }
+        }
+
+        Err("non-constant struct in constant expr".to_string())
+      }
       _ => Err("unsupported constant expr".to_string())
     }
 }
@@ -589,7 +603,7 @@ pub fn lit_to_const(lit: &ast::Lit) -> const_val {
         ast::LitInt(n, ast::UnsignedIntLit(_)) => const_uint(n),
         ast::LitFloat(ref n, _) |
         ast::LitFloatUnsuffixed(ref n) => {
-            const_float(from_str::<f64>(n.get()).unwrap() as f64)
+            const_float(n.get().parse::<f64>().unwrap() as f64)
         }
         ast::LitBool(b) => const_bool(b)
     }

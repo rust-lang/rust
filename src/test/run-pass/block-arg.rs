@@ -8,14 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn inty(fun: proc(int) -> int) -> int {
-    fun(100)
-}
-
-fn booly(fun: proc(bool) -> bool) -> bool {
-    fun(true)
-}
-
 // Check usage and precedence of block arguments in expressions:
 pub fn main() {
     let v = vec!(-1.0f64, 0.0, 1.0, 2.0, 3.0);

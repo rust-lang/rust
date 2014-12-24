@@ -58,7 +58,7 @@ macro_rules! early_return(
             _ => {}
         }
     );
-)
+);
 // ...
 early_return!(input_1 T::SpecialA);
 // ...
@@ -179,8 +179,8 @@ macro_rules! early_return(
             )+
             _ => {}
         }
-    );
-)
+    )
+);
 // ...
 early_return!(input_1, [T::SpecialA|T::SpecialC|T::SpecialD]);
 // ...
@@ -195,7 +195,7 @@ early_return!(input_2, [T::SpecialB]);
 As the above example demonstrates, `$(...)*` is also valid on the right-hand
 side of a macro definition. The behavior of `*` in transcription,
 especially in cases where multiple `*`s are nested, and multiple different
-names are involved, can seem somewhat magical and intuitive at first. The
+names are involved, can seem somewhat magical and unintuitive at first. The
 system that interprets them is called "Macro By Example". The two rules to
 keep in mind are (1) the behavior of `$(...)*` is to walk through one "layer"
 of repetitions for all of the `$name`s it contains in lockstep, and (2) each
@@ -275,17 +275,17 @@ macro_rules! biased_match (
             _ => { $err }
         };
     )
-)
+);
 
 # enum T1 { Good1(T2, uint), Bad1}
 # struct T2 { body: T3 }
 # enum T3 { Good2(uint), Bad2}
 # fn f(x: T1) -> uint {
 biased_match!((x)       ~ (T1::Good1(g1, val)) else { return 0 };
-              binds g1, val )
+              binds g1, val );
 biased_match!((g1.body) ~ (T3::Good2(result) )
                   else { panic!("Didn't get good_2") };
-              binds result )
+              binds result );
 // complicated stuff goes here
 return result + val;
 # }
@@ -303,7 +303,7 @@ pattern we want is clear:
     ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
       binds $( $bind_res:ident ),*
     )
-# => (0))
+# => (0));
 ~~~~
 
 However, it's not possible to directly expand to nested match statements. But
@@ -323,7 +323,7 @@ input patterns:
 # #![feature(macro_rules)]
 # macro_rules! b(
     ( binds $( $bind_res:ident ),* )
-# => (0))
+# => (0));
 # fn main() {}
 ~~~~
 
@@ -337,7 +337,7 @@ input patterns:
       $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*
       binds  $( $bind_res:ident ),*
     )
-# => (0))
+# => (0));
 ~~~~
 
 The resulting macro looks like this. Note that the separation into
@@ -366,7 +366,7 @@ macro_rules! biased_match_rec (
     );
     // Produce the requested values
     ( binds $( $bind_res:ident ),* ) => ( ($( $bind_res ),*) )
-)
+);
 
 // Wrap the whole thing in a `let`.
 macro_rules! biased_match (
@@ -388,7 +388,7 @@ macro_rules! biased_match (
             binds $( $bind_res ),*
         );
     )
-)
+);
 
 
 # enum T1 { Good1(T2, uint), Bad1}
@@ -398,7 +398,7 @@ macro_rules! biased_match (
 biased_match!(
     (x)       ~ (T1::Good1(g1, val)) else { return 0 };
     (g1.body) ~ (T3::Good2(result) ) else { panic!("Didn't get Good2") };
-    binds val, result )
+    binds val, result );
 // complicated stuff goes here
 return result + val;
 # }
@@ -444,7 +444,7 @@ macro_rules! loop_x (
             $e
         }
     );
-)
+);
 
 fn main() {
     'x: loop {
@@ -482,7 +482,7 @@ An example:
 
 ```rust
 # #![feature(macro_rules)]
-macro_rules! m1 (() => (()))
+macro_rules! m1 (() => (()));
 
 // visible here: m1
 
@@ -490,14 +490,14 @@ mod foo {
     // visible here: m1
 
     #[macro_export]
-    macro_rules! m2 (() => (()))
+    macro_rules! m2 (() => (()));
 
     // visible here: m1, m2
 }
 
 // visible here: m1
 
-macro_rules! m3 (() => (()))
+macro_rules! m3 (() => (()));
 
 // visible here: m1, m3
 
@@ -505,7 +505,7 @@ macro_rules! m3 (() => (()))
 mod bar {
     // visible here: m1, m3
 
-    macro_rules! m4 (() => (()))
+    macro_rules! m4 (() => (()));
 
     // visible here: m1, m3, m4
 }

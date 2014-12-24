@@ -11,8 +11,8 @@
 //! The ISAAC random number generator.
 
 use core::prelude::*;
-use core::iter::{range_step, Repeat};
-use core::slice::raw;
+use core::slice;
+use core::iter::{range_step, repeat};
 
 use {Rng, SeedableRng, Rand};
 
@@ -29,6 +29,7 @@ const RAND_SIZE_UINT: uint = 1 << (RAND_SIZE_LEN as uint);
 ///
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
+#[deriving(Copy)]
 pub struct IsaacRng {
     cnt: u32,
     rsl: [u32, ..RAND_SIZE_UINT],
@@ -37,6 +38,7 @@ pub struct IsaacRng {
     b: u32,
     c: u32
 }
+
 static EMPTY: IsaacRng = IsaacRng {
     cnt: 0,
     rsl: [0, ..RAND_SIZE_UINT],
@@ -205,7 +207,7 @@ impl<'a> SeedableRng<&'a [u32]> for IsaacRng {
     fn reseed(&mut self, seed: &'a [u32]) {
         // make the seed into [seed[0], seed[1], ..., seed[seed.len()
         // - 1], 0, 0, ...], to fill rng.rsl.
-        let seed_iter = seed.iter().map(|&x| x).chain(Repeat::new(0u32));
+        let seed_iter = seed.iter().map(|&x| x).chain(repeat(0u32));
 
         for (rsl_elem, seed_elem) in self.rsl.iter_mut().zip(seed_iter) {
             *rsl_elem = seed_elem;
@@ -234,12 +236,10 @@ impl Rand for IsaacRng {
     fn rand<R: Rng>(other: &mut R) -> IsaacRng {
         let mut ret = EMPTY;
         unsafe {
-            let ptr = ret.rsl.as_mut_ptr();
+            let ptr = ret.rsl.as_mut_ptr() as *mut u8;
 
-            raw::mut_buf_as_slice(ptr as *mut u8,
-                                  (RAND_SIZE*4) as uint, |slice| {
-                other.fill_bytes(slice);
-            })
+            let slice = slice::from_raw_mut_buf(&ptr, (RAND_SIZE * 4) as uint);
+            other.fill_bytes(slice);
         }
         ret.cnt = 0;
         ret.a = 0;
@@ -264,6 +264,7 @@ const RAND_SIZE_64: uint = 1 << RAND_SIZE_64_LEN;
 ///
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
+#[deriving(Copy)]
 pub struct Isaac64Rng {
     cnt: uint,
     rsl: [u64, .. RAND_SIZE_64],
@@ -431,7 +432,7 @@ impl Rng for Isaac64Rng {
 
         // See corresponding location in IsaacRng.next_u32 for
         // explanation.
-        debug_assert!(self.cnt < RAND_SIZE_64)
+        debug_assert!(self.cnt < RAND_SIZE_64);
         self.rsl[(self.cnt % RAND_SIZE_64) as uint]
     }
 }
@@ -440,7 +441,7 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
     fn reseed(&mut self, seed: &'a [u64]) {
         // make the seed into [seed[0], seed[1], ..., seed[seed.len()
         // - 1], 0, 0, ...], to fill rng.rsl.
-        let seed_iter = seed.iter().map(|&x| x).chain(Repeat::new(0u64));
+        let seed_iter = seed.iter().map(|&x| x).chain(repeat(0u64));
 
         for (rsl_elem, seed_elem) in self.rsl.iter_mut().zip(seed_iter) {
             *rsl_elem = seed_elem;
@@ -469,12 +470,10 @@ impl Rand for Isaac64Rng {
     fn rand<R: Rng>(other: &mut R) -> Isaac64Rng {
         let mut ret = EMPTY_64;
         unsafe {
-            let ptr = ret.rsl.as_mut_ptr();
+            let ptr = ret.rsl.as_mut_ptr() as *mut u8;
 
-            raw::mut_buf_as_slice(ptr as *mut u8,
-                                  (RAND_SIZE_64*8) as uint, |slice| {
-                other.fill_bytes(slice);
-            })
+            let slice = slice::from_raw_mut_buf(&ptr, (RAND_SIZE_64 * 8) as uint);
+            other.fill_bytes(slice);
         }
         ret.cnt = 0;
         ret.a = 0;

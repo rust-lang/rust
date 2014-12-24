@@ -19,6 +19,6 @@ fn start(tx: &Sender<int>, start: int, number_of_messages: int) {
 pub fn main() {
     println!("Check that we don't deadlock.");
     let (tx, rx) = channel();
-    task::try(proc() { start(&tx, 0, 10) });
+    task::try(move|| { start(&tx, 0, 10) });
     println!("Joined task");
 }

@@ -37,12 +37,17 @@ use {ast, ast_util};
 use ptr::P;
 use util::small_vector::SmallVector;
 
+enum ShouldFail {
+    No,
+    Yes(Option<InternedString>),
+}
+
 struct Test {
     span: Span,
     path: Vec<ast::Ident> ,
     bench: bool,
     ignore: bool,
-    should_fail: bool
+    should_fail: ShouldFail
 }
 
 struct TestCtxt<'a> {
@@ -68,14 +73,14 @@ pub fn modify_for_testing(sess: &ParseSess,
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains_name(krate.config.as_slice(), "test");
+    let should_test = attr::contains_name(krate.config[], "test");
 
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use some_name = __test::main;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
     // non-test builds.
     let reexport_test_harness_main =
-        attr::first_attr_value_str_by_name(krate.attrs.as_slice(),
+        attr::first_attr_value_str_by_name(krate.attrs[],
                                            "reexport_test_harness_main");
 
     if should_test {
@@ -114,11 +119,11 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             self.cx.path.push(ident);
         }
         debug!("current path: {}",
-               ast_util::path_name_i(self.cx.path.as_slice()));
+               ast_util::path_name_i(self.cx.path[]));
 
         if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
             match i.node {
-                ast::ItemFn(_, ast::UnsafeFn, _, _, _) => {
+                ast::ItemFn(_, ast::Unsafety::Unsafe, _, _, _) => {
                     let diag = self.cx.span_diagnostic;
                     diag.span_fatal(i.span,
                                     "unsafe functions cannot be used for \
@@ -272,8 +277,8 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     config::strip_items(krate, |attrs| {
-        !attr::contains_name(attrs.as_slice(), "test") &&
-        !attr::contains_name(attrs.as_slice(), "bench")
+        !attr::contains_name(attrs[], "test") &&
+        !attr::contains_name(attrs[], "bench")
     })
 }
 
@@ -286,7 +291,7 @@ enum HasTestSignature {
 
 
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
-    let has_test_attr = attr::contains_name(i.attrs.as_slice(), "test");
+    let has_test_attr = attr::contains_name(i.attrs[], "test");
 
     fn has_test_signature(i: &ast::Item) -> HasTestSignature {
         match &i.node {
@@ -324,7 +329,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 }
 
 fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
-    let has_bench_attr = attr::contains_name(i.attrs.as_slice(), "bench");
+    let has_bench_attr = attr::contains_name(i.attrs[], "bench");
 
     fn has_test_signature(i: &ast::Item) -> bool {
         match i.node {
@@ -360,8 +365,16 @@ fn is_ignored(i: &ast::Item) -> bool {
     i.attrs.iter().any(|attr| attr.check_name("ignore"))
 }
 
-fn should_fail(i: &ast::Item) -> bool {
-    attr::contains_name(i.attrs.as_slice(), "should_fail")
+fn should_fail(i: &ast::Item) -> ShouldFail {
+    match i.attrs.iter().find(|attr| attr.check_name("should_fail")) {
+        Some(attr) => {
+            let msg = attr.meta_item_list()
+                .and_then(|list| list.iter().find(|mi| mi.check_name("expected")))
+                .and_then(|mi| mi.value_str());
+            ShouldFail::Yes(msg)
+        }
+        None => ShouldFail::No,
+    }
 }
 
 /*
@@ -371,7 +384,7 @@ We're going to be building a module that looks more or less like:
 mod __test {
   extern crate test (name = "test", vers = "...");
   fn main() {
-    test::test_main_static(::os::args().as_slice(), tests)
+    test::test_main_static(::os::args()[], tests)
   }
 
   static tests : &'static [test::TestDescAndFn] = &[
@@ -482,8 +495,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     let ecx = &cx.ext_cx;
     let struct_type = ecx.ty_path(ecx.path(sp, vec![ecx.ident_of("self"),
                                                     ecx.ident_of("test"),
-                                                    ecx.ident_of("TestDescAndFn")]),
-                                  None);
+                                                    ecx.ident_of("TestDescAndFn")]));
     let static_lt = ecx.lifetime(sp, token::special_idents::static_lifetime.name);
     // &'static [self::test::TestDescAndFn]
     let static_type = ecx.ty_rptr(sp,
@@ -498,8 +510,8 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 }
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
-    match attr::find_crate_name(krate.attrs.as_slice()) {
-        Some(ref s) if "test" == s.get().as_slice() => true,
+    match attr::find_crate_name(krate.attrs[]) {
+        Some(ref s) if "test" == s.get()[] => true,
         _ => false
     }
 }
@@ -539,11 +551,11 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     // creates $name: $expr
     let field = |name, expr| ecx.field_imm(span, ecx.ident_of(name), expr);
 
-    debug!("encoding {}", ast_util::path_name_i(path.as_slice()));
+    debug!("encoding {}", ast_util::path_name_i(path[]));
 
     // path to the #[test] function: "foo::bar::baz"
-    let path_string = ast_util::path_name_i(path.as_slice());
-    let name_expr = ecx.expr_str(span, token::intern_and_get_ident(path_string.as_slice()));
+    let path_string = ast_util::path_name_i(path[]);
+    let name_expr = ecx.expr_str(span, token::intern_and_get_ident(path_string[]));
 
     // self::test::StaticTestName($name_expr)
     let name_expr = ecx.expr_call(span,
@@ -551,7 +563,20 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
                                   vec![name_expr]);
 
     let ignore_expr = ecx.expr_bool(span, test.ignore);
-    let fail_expr = ecx.expr_bool(span, test.should_fail);
+    let should_fail_path = |name| {
+        ecx.path(span, vec![self_id, test_id, ecx.ident_of("ShouldFail"), ecx.ident_of(name)])
+    };
+    let fail_expr = match test.should_fail {
+        ShouldFail::No => ecx.expr_path(should_fail_path("No")),
+        ShouldFail::Yes(ref msg) => {
+            let path = should_fail_path("Yes");
+            let arg = match *msg {
+                Some(ref msg) => ecx.expr_some(span, ecx.expr_str(span, msg.clone())),
+                None => ecx.expr_none(span),
+            };
+            ecx.expr_call(span, ecx.expr_path(path), vec![arg])
+        }
+    };
 
     // self::test::TestDesc { ... }
     let desc_expr = ecx.expr_struct(

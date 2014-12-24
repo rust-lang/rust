@@ -89,8 +89,7 @@ use libc;
 use c_str::CString;
 use mem;
 use ptr;
-use sync::atomic;
-use rustrt::mutex;
+use sync::{atomic, Mutex};
 use io::{mod, IoError, IoResult};
 use prelude::*;
 
@@ -126,7 +125,7 @@ impl Drop for Event {
 
 struct Inner {
     handle: libc::HANDLE,
-    lock: mutex::NativeMutex,
+    lock: Mutex<()>,
     read_closed: atomic::AtomicBool,
     write_closed: atomic::AtomicBool,
 }
@@ -135,7 +134,7 @@ impl Inner {
     fn new(handle: libc::HANDLE) -> Inner {
         Inner {
             handle: handle,
-            lock: unsafe { mutex::NativeMutex::new() },
+            lock: Mutex::new(()),
             read_closed: atomic::AtomicBool::new(false),
             write_closed: atomic::AtomicBool::new(false),
         }
@@ -329,7 +328,7 @@ impl UnixStream {
         }
     }
 
-    fn handle(&self) -> libc::HANDLE { self.inner.handle }
+    pub fn handle(&self) -> libc::HANDLE { self.inner.handle }
 
     fn read_closed(&self) -> bool {
         self.inner.read_closed.load(atomic::SeqCst)
@@ -585,6 +584,10 @@ impl UnixListener {
             }),
         })
     }
+
+    pub fn handle(&self) -> libc::HANDLE {
+        self.handle
+    }
 }
 
 impl Drop for UnixListener {
@@ -728,6 +731,10 @@ impl UnixAcceptor {
         } else {
             Ok(())
         }
+    }
+
+    pub fn handle(&self) -> libc::HANDLE {
+        self.listener.handle()
     }
 }
 

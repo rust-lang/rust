@@ -15,7 +15,7 @@
 
 pub use self::MetadataBlob::*;
 pub use self::LinkagePreference::*;
-pub use self::NativeLibaryKind::*;
+pub use self::NativeLibraryKind::*;
 
 use back::svh::Svh;
 use metadata::decoder;
@@ -48,14 +48,14 @@ pub struct crate_metadata {
     pub span: Span,
 }
 
-#[deriving(Show, PartialEq, Clone)]
+#[deriving(Copy, Show, PartialEq, Clone)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,
 }
 
-#[deriving(PartialEq, FromPrimitive, Clone)]
-pub enum NativeLibaryKind {
+#[deriving(Copy, Clone, PartialEq, FromPrimitive)]
+pub enum NativeLibraryKind {
     NativeStatic,    // native static library (.a archive)
     NativeFramework, // OSX-specific
     NativeUnknown,   // default way to specify a dynamic library
@@ -75,7 +75,7 @@ pub struct CStore {
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<ast::CrateNum>>,
     used_crate_sources: RefCell<Vec<CrateSource>>,
-    used_libraries: RefCell<Vec<(String, NativeLibaryKind)>>,
+    used_libraries: RefCell<Vec<(String, NativeLibraryKind)>>,
     used_link_args: RefCell<Vec<String>>,
     pub intr: Rc<IdentInterner>,
 }
@@ -109,16 +109,18 @@ impl CStore {
         self.metas.borrow_mut().insert(cnum, data);
     }
 
-    pub fn iter_crate_data(&self, i: |ast::CrateNum, &crate_metadata|) {
+    pub fn iter_crate_data<I>(&self, mut i: I) where
+        I: FnMut(ast::CrateNum, &crate_metadata),
+    {
         for (&k, v) in self.metas.borrow().iter() {
             i(k, &**v);
         }
     }
 
     /// Like `iter_crate_data`, but passes source paths (if available) as well.
-    pub fn iter_crate_data_origins(&self, i: |ast::CrateNum,
-                                              &crate_metadata,
-                                              Option<CrateSource>|) {
+    pub fn iter_crate_data_origins<I>(&self, mut i: I) where
+        I: FnMut(ast::CrateNum, &crate_metadata, Option<CrateSource>),
+    {
         for (&k, v) in self.metas.borrow().iter() {
             let origin = self.get_used_crate_source(k);
             origin.as_ref().map(|cs| { assert!(k == cs.cnum); });
@@ -162,7 +164,7 @@ impl CStore {
         let mut ordering = Vec::new();
         fn visit(cstore: &CStore, cnum: ast::CrateNum,
                  ordering: &mut Vec<ast::CrateNum>) {
-            if ordering.as_slice().contains(&cnum) { return }
+            if ordering.contains(&cnum) { return }
             let meta = cstore.get_crate_data(cnum);
             for (_, &dep) in meta.cnum_map.iter() {
                 visit(cstore, dep, ordering);
@@ -172,8 +174,7 @@ impl CStore {
         for (&num, _) in self.metas.borrow().iter() {
             visit(self, num, &mut ordering);
         }
-        ordering.as_mut_slice().reverse();
-        let ordering = ordering.as_slice();
+        ordering.reverse();
         let mut libs = self.used_crate_sources.borrow()
             .iter()
             .map(|src| (src.cnum, match prefer {
@@ -187,13 +188,14 @@ impl CStore {
         libs
     }
 
-    pub fn add_used_library(&self, lib: String, kind: NativeLibaryKind) {
+    pub fn add_used_library(&self, lib: String, kind: NativeLibraryKind) {
         assert!(!lib.is_empty());
         self.used_libraries.borrow_mut().push((lib, kind));
     }
 
     pub fn get_used_libraries<'a>(&'a self)
-                              -> &'a RefCell<Vec<(String, NativeLibaryKind)> > {
+                              -> &'a RefCell<Vec<(String,
+                                                  NativeLibraryKind)>> {
         &self.used_libraries
     }
 
@@ -227,9 +229,22 @@ impl crate_metadata {
 
 impl MetadataBlob {
     pub fn as_slice<'a>(&'a self) -> &'a [u8] {
-        match *self {
+        let slice = match *self {
             MetadataVec(ref vec) => vec.as_slice(),
             MetadataArchive(ref ar) => ar.as_slice(),
+        };
+        if slice.len() < 4 {
+            &[] // corrupt metadata
+        } else {
+            let len = (((slice[0] as u32) << 24) |
+                       ((slice[1] as u32) << 16) |
+                       ((slice[2] as u32) << 8) |
+                       ((slice[3] as u32) << 0)) as uint;
+            if len + 4 <= slice.len() {
+                slice.slice(4, len + 4)
+            } else {
+                &[] // corrupt or old metadata
+            }
         }
     }
 }

@@ -58,11 +58,17 @@
 // gdb-command: print none
 // gdb-check:$12 = None
 
+// gdb-command: print some_fat
+// gdb-check:$13 = Some = {"abc"}
+
+// gdb-command: print none_fat
+// gdb-check:$14 = None
+
 // gdb-command: print nested_variant1
-// gdb-check:$13 = NestedVariant1 = {NestedStruct = {regular_struct = RegularStruct = {the_first_field = 111, the_second_field = 112.5, the_third_field = true, the_fourth_field = "NestedStructString1"}, tuple_struct = TupleStruct = {113.5, 114}, empty_struct = EmptyStruct, c_style_enum = CStyleEnumVar2, mixed_enum = MixedEnumTupleVar = {115, 116, false}}}
+// gdb-check:$15 = NestedVariant1 = {NestedStruct = {regular_struct = RegularStruct = {the_first_field = 111, the_second_field = 112.5, the_third_field = true, the_fourth_field = "NestedStructString1"}, tuple_struct = TupleStruct = {113.5, 114}, empty_struct = EmptyStruct, c_style_enum = CStyleEnumVar2, mixed_enum = MixedEnumTupleVar = {115, 116, false}}}
 
 // gdb-command: print nested_variant2
-// gdb-check:$14 = NestedVariant2 = {abc = NestedStruct = {regular_struct = RegularStruct = {the_first_field = 117, the_second_field = 118.5, the_third_field = false, the_fourth_field = "NestedStructString10"}, tuple_struct = TupleStruct = {119.5, 120}, empty_struct = EmptyStruct, c_style_enum = CStyleEnumVar3, mixed_enum = MixedEnumStructVar = {field1 = 121.5, field2 = -122}}}
+// gdb-check:$16 = NestedVariant2 = {abc = NestedStruct = {regular_struct = RegularStruct = {the_first_field = 117, the_second_field = 118.5, the_third_field = false, the_fourth_field = "NestedStructString10"}, tuple_struct = TupleStruct = {119.5, 120}, empty_struct = EmptyStruct, c_style_enum = CStyleEnumVar3, mixed_enum = MixedEnumStructVar = {field1 = 121.5, field2 = -122}}}
 
 use self::CStyleEnum::{CStyleEnumVar1, CStyleEnumVar2, CStyleEnumVar3};
 use self::MixedEnum::{MixedEnumCStyleVar, MixedEnumTupleVar, MixedEnumStructVar};
@@ -129,6 +135,8 @@ fn main() {
 
     let some = Some(110u);
     let none: Option<int> = None;
+    let some_fat = Some("abc");
+    let none_fat: Option<&'static str> = None;
 
     let nested_variant1 = NestedVariant1(
         NestedStruct {

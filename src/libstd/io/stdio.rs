@@ -8,44 +8,47 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Non-blocking access to stdin, stdout, and stderr.
-
-This module provides bindings to the local event loop's TTY interface, using it
-to offer synchronous but non-blocking versions of stdio. These handles can be
-inspected for information about terminal dimensions or for related information
-about the stream or terminal to which it is attached.
-
-# Example
-
-```rust
-# #![allow(unused_must_use)]
-use std::io;
-
-let mut out = io::stdout();
-out.write(b"Hello, world!");
-```
-
-*/
+//! Non-blocking access to stdin, stdout, and stderr.
+//!
+//! This module provides bindings to the local event loop's TTY interface, using it
+//! to offer synchronous but non-blocking versions of stdio. These handles can be
+//! inspected for information about terminal dimensions or for related information
+//! about the stream or terminal to which it is attached.
+//!
+//! # Example
+//!
+//! ```rust
+//! # #![allow(unused_must_use)]
+//! use std::io;
+//!
+//! let mut out = io::stdout();
+//! out.write(b"Hello, world!");
+//! ```
 
 use self::StdSource::*;
 
-use failure::local_stderr;
+use boxed::Box;
+use cell::RefCell;
+use clone::Clone;
+use failure::LOCAL_STDERR;
 use fmt;
-use io::{Reader, Writer, IoResult, IoError, OtherIoError,
+use io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
-use iter::Iterator;
 use kinds::Send;
 use libc;
-use option::{Option, Some, None};
-use boxed::Box;
+use mem;
+use option::Option;
+use option::Option::{Some, None};
+use ops::{Deref, DerefMut, FnOnce};
+use result::Result::{Ok, Err};
+use rt;
+use slice::SliceExt;
+use str::StrExt;
+use string::String;
 use sys::{fs, tty};
-use result::{Ok, Err};
-use rustrt;
-use rustrt::local::Local;
-use rustrt::task::Task;
-use slice::SlicePrelude;
-use str::StrPrelude;
+use sync::{Arc, Mutex, MutexGuard, Once, ONCE_INIT};
 use uint;
+use vec::Vec;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -80,37 +83,156 @@ enum StdSource {
     File(fs::FileDesc),
 }
 
-fn src<T>(fd: libc::c_int, _readable: bool, f: |StdSource| -> T) -> T {
+fn src<T, F>(fd: libc::c_int, _readable: bool, f: F) -> T where
+    F: FnOnce(StdSource) -> T,
+{
     match tty::TTY::new(fd) {
         Ok(tty) => f(TTY(tty)),
         Err(_) => f(File(fs::FileDesc::new(fd, false))),
     }
 }
 
-local_data_key!(local_stdout: Box<Writer + Send>)
+thread_local! {
+    static LOCAL_STDOUT: RefCell<Option<Box<Writer + Send>>> = {
+        RefCell::new(None)
+    }
+}
 
-/// Creates a new non-blocking handle to the stdin of the current process.
+/// A synchronized wrapper around a buffered reader from stdin
+#[deriving(Clone)]
+pub struct StdinReader {
+    inner: Arc<Mutex<BufferedReader<StdReader>>>,
+}
+
+/// A guard for exclusive access to `StdinReader`'s internal `BufferedReader`.
+pub struct StdinReaderGuard<'a> {
+    inner: MutexGuard<'a, BufferedReader<StdReader>>,
+}
+
+impl<'a> Deref<BufferedReader<StdReader>> for StdinReaderGuard<'a> {
+    fn deref(&self) -> &BufferedReader<StdReader> {
+        &*self.inner
+    }
+}
+
+impl<'a> DerefMut<BufferedReader<StdReader>> for StdinReaderGuard<'a> {
+    fn deref_mut(&mut self) -> &mut BufferedReader<StdReader> {
+        &mut *self.inner
+    }
+}
+
+impl StdinReader {
+    /// Locks the `StdinReader`, granting the calling thread exclusive access
+    /// to the underlying `BufferedReader`.
+    ///
+    /// This provides access to methods like `chars` and `lines`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::io;
+    ///
+    /// for line in io::stdin().lock().lines() {
+    ///     println!("{}", line.unwrap());
+    /// }
+    /// ```
+    pub fn lock<'a>(&'a mut self) -> StdinReaderGuard<'a> {
+        StdinReaderGuard {
+            inner: self.inner.lock()
+        }
+    }
+
+    /// Like `Buffer::read_line`.
+    ///
+    /// The read is performed atomically - concurrent read calls in other
+    /// threads will not interleave with this one.
+    pub fn read_line(&mut self) -> IoResult<String> {
+        self.inner.lock().read_line()
+    }
+
+    /// Like `Buffer::read_until`.
+    ///
+    /// The read is performed atomically - concurrent read calls in other
+    /// threads will not interleave with this one.
+    pub fn read_until(&mut self, byte: u8) -> IoResult<Vec<u8>> {
+        self.inner.lock().read_until(byte)
+    }
+
+    /// Like `Buffer::read_char`.
+    ///
+    /// The read is performed atomically - concurrent read calls in other
+    /// threads will not interleave with this one.
+    pub fn read_char(&mut self) -> IoResult<char> {
+        self.inner.lock().read_char()
+    }
+}
+
+impl Reader for StdinReader {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        self.inner.lock().read(buf)
+    }
+
+    // We have to manually delegate all of these because the default impls call
+    // read more than once and we don't want those calls to interleave (or
+    // incur the costs of repeated locking).
+
+    fn read_at_least(&mut self, min: uint, buf: &mut [u8]) -> IoResult<uint> {
+        self.inner.lock().read_at_least(min, buf)
+    }
+
+    fn push_at_least(&mut self, min: uint, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
+        self.inner.lock().push_at_least(min, len, buf)
+    }
+
+    fn read_to_end(&mut self) -> IoResult<Vec<u8>> {
+        self.inner.lock().read_to_end()
+    }
+
+    fn read_le_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
+        self.inner.lock().read_le_uint_n(nbytes)
+    }
+
+    fn read_be_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
+        self.inner.lock().read_be_uint_n(nbytes)
+    }
+}
+
+/// Creates a new handle to the stdin of the current process.
 ///
-/// The returned handled is buffered by default with a `BufferedReader`. If
-/// buffered access is not desired, the `stdin_raw` function is provided to
-/// provided unbuffered access to stdin.
-///
-/// Care should be taken when creating multiple handles to the stdin of a
-/// process. Because this is a buffered reader by default, it's possible for
-/// pending input to be unconsumed in one reader and unavailable to other
-/// readers. It is recommended that only one handle at a time is created for the
-/// stdin of a process.
+/// The returned handle is a wrapper around a global `BufferedReader` shared
+/// by all threads. If buffered access is not desired, the `stdin_raw` function
+/// is provided to provided unbuffered access to stdin.
 ///
 /// See `stdout()` for more notes about this function.
-pub fn stdin() -> BufferedReader<StdReader> {
-    // The default buffer capacity is 64k, but apparently windows doesn't like
-    // 64k reads on stdin. See #13304 for details, but the idea is that on
-    // windows we use a slightly smaller buffer that's been seen to be
-    // acceptable.
-    if cfg!(windows) {
-        BufferedReader::with_capacity(8 * 1024, stdin_raw())
-    } else {
-        BufferedReader::new(stdin_raw())
+pub fn stdin() -> StdinReader {
+    // We're following the same strategy as kimundi's lazy_static library
+    static mut STDIN: *const StdinReader = 0 as *const StdinReader;
+    static ONCE: Once = ONCE_INIT;
+
+    unsafe {
+        ONCE.doit(|| {
+            // The default buffer capacity is 64k, but apparently windows doesn't like
+            // 64k reads on stdin. See #13304 for details, but the idea is that on
+            // windows we use a slightly smaller buffer that's been seen to be
+            // acceptable.
+            let stdin = if cfg!(windows) {
+                BufferedReader::with_capacity(8 * 1024, stdin_raw())
+            } else {
+                BufferedReader::new(stdin_raw())
+            };
+            let stdin = StdinReader {
+                inner: Arc::new(Mutex::new(stdin))
+            };
+            STDIN = mem::transmute(box stdin);
+
+            // Make sure to free it at exit
+            rt::at_exit(|| {
+                mem::transmute::<_, Box<StdinReader>>(STDIN);
+                STDIN = 0 as *const _;
+            });
+        });
+
+        (*STDIN).clone()
     }
 }
 
@@ -167,7 +289,10 @@ pub fn stderr_raw() -> StdWriter {
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stdout stream.
 pub fn set_stdout(stdout: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
-    local_stdout.replace(Some(stdout)).and_then(|mut s| {
+    let mut new = Some(stdout);
+    LOCAL_STDOUT.with(|slot| {
+        mem::replace(&mut *slot.borrow_mut(), new.take())
+    }).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
     })
@@ -182,7 +307,10 @@ pub fn set_stdout(stdout: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stderr stream.
 pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
-    local_stderr.replace(Some(stderr)).and_then(|mut s| {
+    let mut new = Some(stderr);
+    LOCAL_STDERR.with(|slot| {
+        mem::replace(&mut *slot.borrow_mut(), new.take())
+    }).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
     })
@@ -199,17 +327,16 @@ pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 //      })
 //  })
 fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
-    let result = if Local::exists(None::<Task>) {
-        let mut my_stdout = local_stdout.replace(None).unwrap_or_else(|| {
-            box stdout() as Box<Writer + Send>
-        });
-        let result = f(&mut *my_stdout);
-        local_stdout.replace(Some(my_stdout));
-        result
-    } else {
-        let mut io = rustrt::Stdout;
-        f(&mut io as &mut Writer)
-    };
+    let mut my_stdout = LOCAL_STDOUT.with(|slot| {
+        slot.borrow_mut().take()
+    }).unwrap_or_else(|| {
+        box stdout() as Box<Writer + Send>
+    });
+    let result = f(&mut *my_stdout);
+    let mut var = Some(my_stdout);
+    LOCAL_STDOUT.with(|slot| {
+        *slot.borrow_mut() = var.take();
+    });
     match result {
         Ok(()) => {}
         Err(e) => panic!("failed printing to stdout: {}", e),
@@ -399,25 +526,24 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        spawn(proc() {
+        spawn(move|| {
             set_stdout(box w);
             println!("hello!");
         });
-        assert_eq!(r.read_to_string().unwrap(), "hello!\n".to_string());
+        assert_eq!(r.read_to_string().unwrap(), "hello!\n");
     }
 
     #[test]
     fn capture_stderr() {
-        use realstd::comm::channel;
-        use realstd::io::{ChanReader, ChanWriter, Reader};
+        use io::{ChanReader, ChanWriter, Reader};
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        spawn(proc() {
-            ::realstd::io::stdio::set_stderr(box w);
+        spawn(move|| {
+            set_stderr(box w);
             panic!("my special message");
         });
         let s = r.read_to_string().unwrap();
-        assert!(s.as_slice().contains("my special message"));
+        assert!(s.contains("my special message"));
     }
 }

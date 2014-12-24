@@ -11,7 +11,7 @@ use self::Req::*;
 
 use libc::{mod, pid_t, c_void, c_int};
 use c_str::CString;
-use io::{mod, IoResult, IoError};
+use io::{mod, IoResult, IoError, EndOfFile};
 use mem;
 use os;
 use ptr;
@@ -24,11 +24,11 @@ use hash::Hash;
 use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval};
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
-use sys_common::{AsFileDesc, mkerr_libc, timeout};
+use sys_common::{AsInner, mkerr_libc, timeout};
 
 pub use sys_common::ProcessConfig;
 
-helper_init!(static HELPER: Helper<Req>)
+helper_init! { static HELPER: Helper<Req> }
 
 /// The unique id of the process (this should never be negative).
 pub struct Process {
@@ -38,6 +38,8 @@ pub struct Process {
 enum Req {
     NewChild(libc::pid_t, Sender<ProcessExit>, u64),
 }
+
+const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
 impl Process {
     pub fn id(&self) -> pid_t {
@@ -56,7 +58,7 @@ impl Process {
     pub fn spawn<K, V, C, P>(cfg: &C, in_fd: Option<P>,
                               out_fd: Option<P>, err_fd: Option<P>)
                               -> IoResult<Process>
-        where C: ProcessConfig<K, V>, P: AsFileDesc,
+        where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
               K: BytesContainer + Eq + Hash, V: BytesContainer
     {
         use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
@@ -92,8 +94,8 @@ impl Process {
             mem::transmute::<&ProcessConfig<K,V>,&'static ProcessConfig<K,V>>(cfg)
         };
 
-        with_envp(cfg.env(), proc(envp) {
-            with_argv(cfg.program(), cfg.args(), proc(argv) unsafe {
+        with_envp(cfg.env(), move|: envp: *const c_void| {
+            with_argv(cfg.program(), cfg.args(), move|: argv: *const *const libc::c_char| unsafe {
                 let (input, mut output) = try!(sys::os::pipe());
 
                 // We may use this in the child, so perform allocations before the
@@ -106,18 +108,36 @@ impl Process {
                 if pid < 0 {
                     return Err(super::last_error())
                 } else if pid > 0 {
+                    #[inline]
+                    fn combine(arr: &[u8]) -> i32 {
+                        let a = arr[0] as u32;
+                        let b = arr[1] as u32;
+                        let c = arr[2] as u32;
+                        let d = arr[3] as u32;
+
+                        ((a << 24) | (b << 16) | (c << 8) | (d << 0)) as i32
+                    }
+
+                    let p = Process{ pid: pid };
                     drop(output);
-                    let mut bytes = [0, ..4];
+                    let mut bytes = [0, ..8];
                     return match input.read(&mut bytes) {
-                        Ok(4) => {
-                            let errno = (bytes[0] as i32 << 24) |
-                                        (bytes[1] as i32 << 16) |
-                                        (bytes[2] as i32 <<  8) |
-                                        (bytes[3] as i32 <<  0);
+                        Ok(8) => {
+                            assert!(combine(CLOEXEC_MSG_FOOTER) == combine(bytes.slice(4, 8)),
+                                "Validation on the CLOEXEC pipe failed: {}", bytes);
+                            let errno = combine(bytes.slice(0, 4));
+                            assert!(p.wait(0).is_ok(), "wait(0) should either return Ok or panic");
                             Err(super::decode_error(errno))
                         }
-                        Err(..) => Ok(Process { pid: pid }),
-                        Ok(..) => panic!("short read on the cloexec pipe"),
+                        Err(ref e) if e.kind == EndOfFile => Ok(p),
+                        Err(e) => {
+                            assert!(p.wait(0).is_ok(), "wait(0) should either return Ok or panic");
+                            panic!("the CLOEXEC pipe failed: {}", e)
+                        },
+                        Ok(..) => { // pipe I/O up to PIPE_BUF bytes should be atomic
+                            assert!(p.wait(0).is_ok(), "wait(0) should either return Ok or panic");
+                            panic!("short read on the CLOEXEC pipe")
+                        }
                     };
                 }
 
@@ -154,13 +174,16 @@ impl Process {
                 let _ = libc::close(input.fd());
 
                 fn fail(output: &mut FileDesc) -> ! {
-                    let errno = sys::os::errno();
+                    let errno = sys::os::errno() as u32;
                     let bytes = [
                         (errno >> 24) as u8,
                         (errno >> 16) as u8,
                         (errno >>  8) as u8,
                         (errno >>  0) as u8,
+                        CLOEXEC_MSG_FOOTER[0], CLOEXEC_MSG_FOOTER[1],
+                        CLOEXEC_MSG_FOOTER[2], CLOEXEC_MSG_FOOTER[3]
                     ];
+                    // pipe I/O up to PIPE_BUF bytes should be atomic
                     assert!(output.write(&bytes).is_ok());
                     unsafe { libc::_exit(1) }
                 }
@@ -183,7 +206,7 @@ impl Process {
                             libc::open(devnull.as_ptr(), flags, 0)
                         }
                         Some(obj) => {
-                            let fd = obj.as_fd().fd();
+                            let fd = obj.as_inner().fd();
                             // Leak the memory and the file descriptor. We're in the
                             // child now an all our resources are going to be
                             // cleaned up very soon
@@ -356,8 +379,8 @@ impl Process {
                 // wait indefinitely for a message to arrive.
                 //
                 // FIXME: sure would be nice to not have to scan the entire array
-                let min = active.iter().map(|a| *a.ref2()).enumerate().min_by(|p| {
-                    p.val1()
+                let min = active.iter().map(|a| a.2).enumerate().min_by(|p| {
+                    p.1
                 });
                 let (p, idx) = match min {
                     Some((idx, deadline)) => {
@@ -508,8 +531,11 @@ impl Process {
     }
 }
 
-fn with_argv<T>(prog: &CString, args: &[CString],
-                cb: proc(*const *const libc::c_char) -> T) -> T {
+fn with_argv<T,F>(prog: &CString, args: &[CString],
+                  cb: F)
+                  -> T
+    where F : FnOnce(*const *const libc::c_char) -> T
+{
     let mut ptrs: Vec<*const libc::c_char> = Vec::with_capacity(args.len()+1);
 
     // Convert the CStrings into an array of pointers. Note: the
@@ -526,9 +552,12 @@ fn with_argv<T>(prog: &CString, args: &[CString],
     cb(ptrs.as_ptr())
 }
 
-fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
-                      cb: proc(*const c_void) -> T) -> T
-    where K: BytesContainer + Eq + Hash, V: BytesContainer
+fn with_envp<K,V,T,F>(env: Option<&collections::HashMap<K, V>>,
+                      cb: F)
+                      -> T
+    where F : FnOnce(*const c_void) -> T,
+          K : BytesContainer + Eq + Hash,
+          V : BytesContainer
 {
     // On posixy systems we can pass a char** for envp, which is a
     // null-terminated array of "k=v\0" strings. Since we must create
@@ -541,9 +570,9 @@ fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
 
             for pair in env.iter() {
                 let mut kv = Vec::new();
-                kv.push_all(pair.ref0().container_as_bytes());
+                kv.push_all(pair.0.container_as_bytes());
                 kv.push('=' as u8);
-                kv.push_all(pair.ref1().container_as_bytes());
+                kv.push_all(pair.1.container_as_bytes());
                 kv.push(0); // terminating null
                 tmps.push(kv);
             }

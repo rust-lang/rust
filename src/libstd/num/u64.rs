@@ -15,4 +15,6 @@
 
 pub use core::u64::{BITS, BYTES, MIN, MAX};
 
-uint_module!(u64)
+use ops::FnOnce;
+
+uint_module! { u64 }

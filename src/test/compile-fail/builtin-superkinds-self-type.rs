@@ -17,7 +17,6 @@ trait Foo : Sync+'static {
 
 impl <T: Sync> Foo for T { }
 //~^ ERROR the parameter type `T` may not live long enough
-//~^^ ERROR the parameter type `T` may not live long enough
 
 fn main() {
     let (tx, rx) = channel();

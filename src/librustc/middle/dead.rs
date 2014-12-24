@@ -12,20 +12,14 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
-use middle::def;
-use middle::pat_util;
-use middle::privacy;
-use middle::ty;
-use middle::typeck;
+use middle::{def, pat_util, privacy, ty};
 use lint;
 use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
-use syntax::ast;
-use syntax::ast_map;
+use syntax::{ast, ast_map, codemap};
 use syntax::ast_util::{local_def, is_local, PostExpansionMethod};
 use syntax::attr::{mod, AttrMetaMethods};
-use syntax::codemap;
 use syntax::visit::{mod, Visitor};
 
 // Any local node that may call something in its body block should be
@@ -96,23 +90,23 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn lookup_and_handle_method(&mut self, id: ast::NodeId,
                                 span: codemap::Span) {
-        let method_call = typeck::MethodCall::expr(id);
+        let method_call = ty::MethodCall::expr(id);
         match self.tcx.method_map.borrow().get(&method_call) {
             Some(method) => {
                 match method.origin {
-                    typeck::MethodStatic(def_id) => {
+                    ty::MethodStatic(def_id) => {
                         match ty::provided_source(self.tcx, def_id) {
                             Some(p_did) => self.check_def_id(p_did),
                             None => self.check_def_id(def_id)
                         }
                     }
-                    typeck::MethodStaticUnboxedClosure(_) => {}
-                    typeck::MethodTypeParam(typeck::MethodParam {
+                    ty::MethodStaticUnboxedClosure(_) => {}
+                    ty::MethodTypeParam(ty::MethodParam {
                         ref trait_ref,
                         method_num: index,
                         ..
                     }) |
-                    typeck::MethodTraitObject(typeck::MethodObject {
+                    ty::MethodTraitObject(ty::MethodObject {
                         ref trait_ref,
                         method_num: index,
                         ..
@@ -277,10 +271,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             ast::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.id, expr.span);
             }
-            ast::ExprField(ref lhs, ref ident, _) => {
+            ast::ExprField(ref lhs, ref ident) => {
                 self.handle_field_access(&**lhs, &ident.node);
             }
-            ast::ExprTupField(ref lhs, idx, _) => {
+            ast::ExprTupField(ref lhs, idx) => {
                 self.handle_tup_field_access(&**lhs, idx.node);
             }
             _ => ()
@@ -327,7 +321,7 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     for attr in lint::gather_attrs(attrs).into_iter() {
         match attr {
             Ok((ref name, lint::Allow, _))
-                if name.get() == dead_code.as_slice() => return true,
+                if name.get() == dead_code => return true,
             _ => (),
         }
     }
@@ -361,7 +355,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
             ast::ItemEnum(ref enum_def, _) if allow_dead_code => {
                 self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.id));
             }
-            ast::ItemImpl(_, Some(ref _trait_ref), _, ref impl_items) => {
+            ast::ItemImpl(_, _, Some(ref _trait_ref), _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
                         ast::MethodImplItem(ref method) => {

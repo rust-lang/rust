@@ -19,6 +19,8 @@ struct Struct {
     y: int,
 }
 
+impl Copy for Struct {}
+
 impl Trait for Struct {
     fn f(&self) {
         println!("Hi!");

@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-A mini version of ast::Ty, which is easier to use, and features an
-explicit `Self` type to use when specifying impls to be derived.
-*/
+//! A mini version of ast::Ty, which is easier to use, and features an explicit `Self` type to use
+//! when specifying impls to be derived.
 
 pub use self::PtrTy::*;
 pub use self::Ty::*;
@@ -70,7 +68,7 @@ impl<'a> Path<'a> {
                  self_ty: Ident,
                  self_generics: &Generics)
                  -> P<ast::Ty> {
-        cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
+        cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
     }
     pub fn to_path(&self,
                    cx: &ExtCtxt,
@@ -82,7 +80,7 @@ impl<'a> Path<'a> {
         let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
 
-        cx.path_all(span, self.global, idents, lt, tys)
+        cx.path_all(span, self.global, idents, lt, tys, Vec::new())
     }
 }
 
@@ -152,7 +150,7 @@ impl<'a> Ty<'a> {
             }
             Literal(ref p) => { p.to_ty(cx, span, self_ty, self_generics) }
             Self  => {
-                cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
+                cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
             }
             Tuple(ref fields) => {
                 let ty = ast::TyTup(fields.iter()
@@ -179,7 +177,7 @@ impl<'a> Ty<'a> {
                                                        .collect();
 
                 cx.path_all(span, false, vec!(self_ty), lifetimes,
-                            self_params.into_vec())
+                            self_params.into_vec(), Vec::new())
             }
             Literal(ref p) => {
                 p.to_path(cx, span, self_ty, self_generics)

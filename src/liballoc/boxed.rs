@@ -15,12 +15,14 @@ use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
-use core::intrinsics;
+use core::hash::{mod, Hash};
 use core::kinds::Sized;
 use core::mem;
 use core::option::Option;
 use core::raw::TraitObject;
-use core::result::{Ok, Err, Result};
+use core::result::Result;
+use core::result::Result::{Ok, Err};
+use core::ops::{Deref, DerefMut};
 
 /// A value that represents the global exchange heap. This is the default
 /// place that the `box` keyword allocates into when no place is supplied.
@@ -44,15 +46,19 @@ pub static HEAP: () = ();
 #[unstable = "custom allocators will add an additional type parameter (with default)"]
 pub struct Box<T>(*mut T);
 
+#[stable]
 impl<T: Default> Default for Box<T> {
+    #[stable]
     fn default() -> Box<T> { box Default::default() }
 }
 
+#[stable]
 impl<T> Default for Box<[T]> {
+    #[stable]
     fn default() -> Box<[T]> { box [] }
 }
 
-#[unstable]
+#[stable]
 impl<T: Clone> Clone for Box<T> {
     /// Returns a copy of the owned box.
     #[inline]
@@ -93,6 +99,14 @@ impl<Sized? T: Ord> Ord for Box<T> {
 }
 impl<Sized? T: Eq> Eq for Box<T> {}
 
+impl<S: hash::Writer, Sized? T: Hash<S>> Hash<S> for Box<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (**self).hash(state);
+    }
+}
+
+
 /// Extension methods for an owning `Any` trait object.
 #[unstable = "post-DST and coherence changes, this will not be a trait but \
               rather a direct `impl` on `Box<Any>`"]
@@ -104,17 +118,14 @@ pub trait BoxAny {
 }
 
 #[stable]
-impl BoxAny for Box<Any+'static> {
+impl BoxAny for Box<Any> {
     #[inline]
-    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any+'static>> {
+    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
                 let to: TraitObject =
-                    *mem::transmute::<&Box<Any>, &TraitObject>(&self);
-
-                // Prevent destructor on self being run
-                intrinsics::forget(self);
+                    mem::transmute::<Box<Any>, TraitObject>(self);
 
                 // Extract the data pointer
                 Ok(mem::transmute(to.data))
@@ -135,6 +146,14 @@ impl fmt::Show for Box<Any+'static> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
     }
+}
+
+impl<Sized? T> Deref<T> for Box<T> {
+    fn deref(&self) -> &T { &**self }
+}
+
+impl<Sized? T> DerefMut<T> for Box<T> {
+    fn deref_mut(&mut self) -> &mut T { &mut **self }
 }
 
 #[cfg(test)]
@@ -173,14 +192,20 @@ mod test {
         let b = box Test as Box<Any>;
         let a_str = a.to_str();
         let b_str = b.to_str();
-        assert_eq!(a_str.as_slice(), "Box<Any>");
-        assert_eq!(b_str.as_slice(), "Box<Any>");
+        assert_eq!(a_str, "Box<Any>");
+        assert_eq!(b_str, "Box<Any>");
 
         let a = &8u as &Any;
         let b = &Test as &Any;
         let s = format!("{}", a);
-        assert_eq!(s.as_slice(), "&Any");
+        assert_eq!(s, "&Any");
         let s = format!("{}", b);
-        assert_eq!(s.as_slice(), "&Any");
+        assert_eq!(s, "&Any");
+    }
+
+    #[test]
+    fn deref() {
+        fn homura<T: Deref<i32>>(_: T) { }
+        homura(box 765i32);
     }
 }

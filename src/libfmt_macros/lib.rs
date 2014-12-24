@@ -16,10 +16,15 @@
 
 #![crate_name = "fmt_macros"]
 #![experimental]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![feature(macro_rules, globs, import_shadowing)]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://doc.rust-lang.org/nightly/",
+       html_playground_url = "http://play.rust-lang.org/")]
+
+#![feature(macro_rules, globs, slicing_syntax)]
+
 pub use self::Piece::*;
 pub use self::Position::*;
 pub use self::Alignment::*;
@@ -31,7 +36,7 @@ use std::string;
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Piece<'a> {
     /// A literal string which should directly be emitted
     String(&'a str),
@@ -41,7 +46,7 @@ pub enum Piece<'a> {
 }
 
 /// Representation of an argument specification.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub struct Argument<'a> {
     /// Where to find this argument
     pub position: Position<'a>,
@@ -50,7 +55,7 @@ pub struct Argument<'a> {
 }
 
 /// Specification for the formatting of an argument in the format string.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub struct FormatSpec<'a> {
     /// Optionally specified character to fill alignment with
     pub fill: Option<char>,
@@ -69,7 +74,7 @@ pub struct FormatSpec<'a> {
 }
 
 /// Enum describing where an argument for a format can be located.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Position<'a> {
     /// The argument will be in the next position. This is the default.
     ArgumentNext,
@@ -80,7 +85,7 @@ pub enum Position<'a> {
 }
 
 /// Enum of alignments which are supported.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Alignment {
     /// The value will be aligned to the left.
     AlignLeft,
@@ -94,7 +99,7 @@ pub enum Alignment {
 
 /// Various flags which can be applied to format strings. The meaning of these
 /// flags is defined by the formatters themselves.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Flag {
     /// A `+` will be used to denote positive numbers.
     FlagSignPlus,
@@ -110,7 +115,7 @@ pub enum Flag {
 
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum Count<'a> {
     /// The count is specified explicitly.
     CountIs(uint),
@@ -132,7 +137,7 @@ pub enum Count<'a> {
 /// necessary there's probably lots of room for improvement performance-wise.
 pub struct Parser<'a> {
     input: &'a str,
-    cur: str::CharOffsets<'a>,
+    cur: str::CharIndices<'a>,
     /// Error messages accumulated during parsing
     pub errors: Vec<string::String>,
 }
@@ -167,7 +172,7 @@ impl<'a> Iterator<Piece<'a>> for Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// Creates a new parser for the given format string
-    pub fn new<'a>(s: &'a str) -> Parser<'a> {
+    pub fn new(s: &'a str) -> Parser<'a> {
         Parser {
             input: s,
             cur: s.char_indices(),
@@ -204,13 +209,11 @@ impl<'a> Parser<'a> {
                 self.cur.next();
             }
             Some((_, other)) => {
-                self.err(format!("expected `{}`, found `{}`",
-                                 c,
-                                 other).as_slice());
+                self.err(format!("expected `{}`, found `{}`", c, other)[]);
             }
             None => {
                 self.err(format!("expected `{}` but string was terminated",
-                                 c).as_slice());
+                                 c)[]);
             }
         }
     }
@@ -233,12 +236,12 @@ impl<'a> Parser<'a> {
             // we may not consume the character, so clone the iterator
             match self.cur.clone().next() {
                 Some((pos, '}')) | Some((pos, '{')) => {
-                    return self.input.slice(start, pos);
+                    return self.input[start..pos];
                 }
                 Some(..) => { self.cur.next(); }
                 None => {
                     self.cur.next();
-                    return self.input.slice(start, self.input.len());
+                    return self.input[start..self.input.len()];
                 }
             }
         }
@@ -278,7 +281,7 @@ impl<'a> Parser<'a> {
             flags: 0,
             precision: CountImplied,
             width: CountImplied,
-            ty: self.input.slice(0, 0),
+            ty: self.input[0..0],
         };
         if !self.consume(':') { return spec }
 
@@ -387,7 +390,7 @@ impl<'a> Parser<'a> {
                 self.cur.next();
                 pos
             }
-            Some(..) | None => { return self.input.slice(0, 0); }
+            Some(..) | None => { return self.input[0..0]; }
         };
         let mut end;
         loop {
@@ -399,7 +402,7 @@ impl<'a> Parser<'a> {
                 None => { end = self.input.len(); break }
             }
         }
-        self.input.slice(start, end)
+        self.input[start..end]
     }
 
     /// Optionally parses an integer at the current position. This doesn't deal
@@ -436,7 +439,7 @@ mod tests {
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {
         let mut parser = Parser::new(fmt);
-        assert!(p == parser.collect::<Vec<Piece<'static>>>().as_slice());
+        assert!(p == parser.collect::<Vec<Piece<'static>>>());
     }
 
     fn fmtdflt() -> FormatSpec<'static> {

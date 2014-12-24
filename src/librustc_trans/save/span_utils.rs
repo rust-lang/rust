@@ -21,6 +21,7 @@ use syntax::parse::lexer::{Reader,StringReader};
 use syntax::parse::token;
 use syntax::parse::token::{keywords, Token};
 
+#[deriving(Clone)]
 pub struct SpanUtils<'a> {
     pub sess: &'a Session,
     pub err_count: Cell<int>,
@@ -217,7 +218,7 @@ impl<'a> SpanUtils<'a> {
             let loc = self.sess.codemap().lookup_char_pos(span.lo);
             self.sess.span_bug(span,
                 format!("Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
-                        self.snippet(span), loc.file.name, loc.line).as_slice());
+                        self.snippet(span), loc.file.name, loc.line)[]);
         }
         if result.is_none() && prev.tok.is_ident() && bracket_count == 0 {
             return self.make_sub_span(span, Some(prev.sp));
@@ -243,7 +244,7 @@ impl<'a> SpanUtils<'a> {
                     let loc = self.sess.codemap().lookup_char_pos(span.lo);
                     self.sess.span_bug(span, format!(
                         "Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
-                         self.snippet(span), loc.file.name, loc.line).as_slice());
+                         self.snippet(span), loc.file.name, loc.line)[]);
                 }
                 return result
             }
@@ -293,7 +294,6 @@ impl<'a> SpanUtils<'a> {
                 if ts.tok == token::Eof {
                     return None
                 } else {
-                    println!("found keyword: {} at {}", ts, ts.sp);
                     return self.make_sub_span(span, Some(ts.sp));
                 }
             }

@@ -15,4 +15,4 @@
 
 pub use core::i16::{BITS, BYTES, MIN, MAX};
 
-int_module!(i16)
+int_module! { i16 }

@@ -18,13 +18,14 @@ use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use fmt;
 use kinds::Copy;
+use ops::Deref;
 use option::Option;
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
-            #[unstable = "waiting for Clone to stabilize"]
+            #[stable]
             impl<T:Copy> Clone for [T, ..$N] {
                 fn clone(&self) -> [T, ..$N] {
                     *self
@@ -39,15 +40,35 @@ macro_rules! array_impls {
             }
 
             #[unstable = "waiting for PartialEq to stabilize"]
-            impl<T:PartialEq> PartialEq for [T, ..$N] {
+            impl<A, B> PartialEq<[B, ..$N]> for [A, ..$N] where A: PartialEq<B> {
                 #[inline]
-                fn eq(&self, other: &[T, ..$N]) -> bool {
+                fn eq(&self, other: &[B, ..$N]) -> bool {
                     self[] == other[]
                 }
                 #[inline]
-                fn ne(&self, other: &[T, ..$N]) -> bool {
+                fn ne(&self, other: &[B, ..$N]) -> bool {
                     self[] != other[]
                 }
+            }
+
+            impl<'a, A, B, Rhs> PartialEq<Rhs> for [A, ..$N] where
+                A: PartialEq<B>,
+                Rhs: Deref<[B]>,
+            {
+                #[inline(always)]
+                fn eq(&self, other: &Rhs) -> bool { PartialEq::eq(self[], &**other) }
+                #[inline(always)]
+                fn ne(&self, other: &Rhs) -> bool { PartialEq::ne(self[], &**other) }
+            }
+
+            impl<'a, A, B, Lhs> PartialEq<[B, ..$N]> for Lhs where
+                A: PartialEq<B>,
+                Lhs: Deref<[A]>
+            {
+                #[inline(always)]
+                fn eq(&self, other: &[B, ..$N]) -> bool { PartialEq::eq(&**self, other[]) }
+                #[inline(always)]
+                fn ne(&self, other: &[B, ..$N]) -> bool { PartialEq::ne(&**self, other[]) }
             }
 
             #[unstable = "waiting for Eq to stabilize"]
@@ -94,4 +115,3 @@ array_impls! {
     20 21 22 23 24 25 26 27 28 29
     30 31 32
 }
-

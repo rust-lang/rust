@@ -181,7 +181,7 @@ for l in s.graphemes(true) {
 
 This prints:
 
-```{notrust,ignore}
+```{text}
 u͔
 n͈̰̎
 i̙̮͚̦
@@ -207,7 +207,7 @@ for l in s.chars() {
 
 This prints:
 
-```{notrust,ignore}
+```{text}
 u
 ͔
 n
@@ -252,7 +252,7 @@ for l in s.bytes() {
 
 This will print:
 
-```{notrust,ignore}
+```{text}
 117
 205
 148

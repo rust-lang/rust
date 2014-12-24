@@ -10,7 +10,7 @@
 
 fn periodical(n: int) -> Receiver<bool> {
     let (chan, port) = channel();
-    spawn(proc() {
+    spawn(move|| {
         loop {
             for _ in range(1, n) {
                 match chan.send_opt(false) {
@@ -29,7 +29,7 @@ fn periodical(n: int) -> Receiver<bool> {
 
 fn integers() -> Receiver<int> {
     let (chan, port) = channel();
-    spawn(proc() {
+    spawn(move|| {
         let mut i = 1;
         loop {
             match chan.send_opt(i) {

@@ -42,6 +42,7 @@ use syntax::ast;
 pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_attrs};
 
 /// Specification of a single lint.
+#[deriving(Copy)]
 pub struct Lint {
     /// A string identifier for the lint.
     ///
@@ -73,7 +74,7 @@ impl Lint {
 
 /// Build a `Lint` initializer.
 #[macro_export]
-macro_rules! lint_initializer (
+macro_rules! lint_initializer {
     ($name:ident, $level:ident, $desc:expr) => (
         ::rustc::lint::Lint {
             name: stringify!($name),
@@ -81,11 +82,11 @@ macro_rules! lint_initializer (
             desc: $desc,
         }
     )
-)
+}
 
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
-macro_rules! declare_lint (
+macro_rules! declare_lint {
     // FIXME(#14660): deduplicate
     (pub $name:ident, $level:ident, $desc:expr) => (
         pub static $name: &'static ::rustc::lint::Lint
@@ -95,17 +96,17 @@ macro_rules! declare_lint (
         static $name: &'static ::rustc::lint::Lint
             = &lint_initializer!($name, $level, $desc);
     );
-)
+}
 
 /// Declare a static `LintArray` and return it as an expression.
 #[macro_export]
-macro_rules! lint_array ( ($( $lint:expr ),*) => (
+macro_rules! lint_array { ($( $lint:expr ),*) => (
     {
         #[allow(non_upper_case_globals)]
         static array: LintArray = &[ $( &$lint ),* ];
         array
     }
-))
+) }
 
 pub type LintArray = &'static [&'static &'static Lint];
 
@@ -173,7 +174,7 @@ pub trait LintPass {
 pub type LintPassObject = Box<LintPass + 'static>;
 
 /// Identifies a lint known to the compiler.
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct LintId {
     // Identity is based on pointer equality of this field.
     lint: &'static Lint,
@@ -209,7 +210,7 @@ impl LintId {
 }
 
 /// Setting for how to handle a lint.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Level {
     Allow, Warn, Deny, Forbid
 }
@@ -238,7 +239,7 @@ impl Level {
 }
 
 /// How a lint level was set.
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Clone, Copy, PartialEq, Eq)]
 pub enum LintSource {
     /// Lint is at the default level as declared
     /// in rustc or a plugin.

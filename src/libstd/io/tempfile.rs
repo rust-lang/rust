@@ -14,14 +14,65 @@ use io::{fs, IoResult};
 use io;
 use libc;
 use ops::Drop;
-use option::{Option, None, Some};
+use option::Option;
+use option::Option::{None, Some};
 use os;
 use path::{Path, GenericPath};
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use sync::atomic;
 
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-based deletion.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::io::TempDir;
+///
+/// {
+///     // create a temporary directory
+///     let tmpdir = match TempDir::new("mysuffix") {
+///         Ok(dir) => dir,
+///         Err(e) => panic!("couldn't create temporary directory: {}", e)
+///     };
+///
+///     // get the path of the temporary directory without affecting the wrapper
+///     let tmppath = tmpdir.path();
+///
+///     println!("The path of temporary directory is {}", tmppath.display());
+///
+///     // the temporary directory is automatically removed when tmpdir goes
+///     // out of scope at the end of the block
+/// }
+/// {
+///     // create a temporary directory, this time using a custom path
+///     let tmpdir = match TempDir::new_in(&Path::new("/tmp/best/custom/path"), "mysuffix") {
+///         Ok(dir) => dir,
+///         Err(e) => panic!("couldn't create temporary directory: {}", e)
+///     };
+///
+///     // get the path of the temporary directory and disable automatic deletion in the wrapper
+///     let tmppath = tmpdir.into_inner();
+///
+///     println!("The path of the not-so-temporary directory is {}", tmppath.display());
+///
+///     // the temporary directory is not removed here
+///     // because the directory is detached from the wrapper
+/// }
+/// {
+///     // create a temporary directory
+///     let tmpdir = match TempDir::new("mysuffix") {
+///         Ok(dir) => dir,
+///         Err(e) => panic!("couldn't create temporary directory: {}", e)
+///     };
+///
+///     // close the temporary directory manually and check the result
+///     match tmpdir.close() {
+///         Ok(_) => println!("success!"),
+///         Err(e) => panic!("couldn't remove temporary directory: {}", e)
+///     };
+/// }
+/// ```
 pub struct TempDir {
     path: Option<Path>,
     disarmed: bool
@@ -73,10 +124,14 @@ impl TempDir {
     /// Unwrap the wrapped `std::path::Path` from the `TempDir` wrapper.
     /// This discards the wrapper so that the automatic deletion of the
     /// temporary directory is prevented.
-    pub fn unwrap(self) -> Path {
+    pub fn into_inner(self) -> Path {
         let mut tmpdir = self;
         tmpdir.path.take().unwrap()
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> Path { self.into_inner() }
 
     /// Access the wrapped `std::path::Path` to the temporary directory.
     pub fn path<'a>(&'a self) -> &'a Path {

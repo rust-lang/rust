@@ -39,5 +39,5 @@ pub fn main() {
 
     assert!(a != b);
     assert!(a < b);
-    assert_eq!(a.cmp(&b), ::std::cmp::Less);
+    assert_eq!(a.cmp(&b), ::std::cmp::Ordering::Less);
 }

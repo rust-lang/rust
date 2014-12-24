@@ -14,10 +14,14 @@ struct Foo {
   bar2: Bar
 }
 
+impl Copy for Foo {}
+
 struct Bar {
   int1: int,
   int2: int,
 }
+
+impl Copy for Bar {}
 
 fn make_foo() -> Box<Foo> { panic!() }
 

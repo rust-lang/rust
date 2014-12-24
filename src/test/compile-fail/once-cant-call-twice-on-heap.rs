@@ -14,14 +14,14 @@
 #![feature(once_fns)]
 use std::sync::Arc;
 
-fn foo(blk: proc()) {
+fn foo<F:FnOnce()>(blk: F) {
     blk();
     blk(); //~ ERROR use of moved value
 }
 
 fn main() {
     let x = Arc::new(true);
-    foo(proc() {
+    foo(move|| {
         assert!(*x);
         drop(x);
     });

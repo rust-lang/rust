@@ -15,11 +15,13 @@ use std::io;
 use std::os;
 use std::str;
 use std::string::String;
+use std::thunk::Thunk;
+use std::thread::Thread;
 
 use std::collections::{HashSet, HashMap};
 use testing;
 use rustc::session::{mod, config};
-use rustc_trans::driver::driver;
+use rustc_driver::driver;
 use syntax::ast;
 use syntax::codemap::{CodeMap, dummy_spanned};
 use syntax::diagnostic;
@@ -42,7 +44,7 @@ pub fn run(input: &str,
            crate_name: Option<String>)
            -> int {
     let input_path = Path::new(input);
-    let input = driver::FileInput(input_path.clone());
+    let input = config::Input::File(input_path.clone());
 
     let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
@@ -110,7 +112,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), true, as_test_harness);
-    let input = driver::StrInput(test.to_string());
+    let input = config::Input::Str(test.to_string());
 
     let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
@@ -142,7 +144,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
     let w1 = io::ChanWriter::new(tx);
     let w2 = w1.clone();
     let old = io::stdio::set_stderr(box w1);
-    spawn(proc() {
+    Thread::spawn(move |:| {
         let mut p = io::ChanReader::new(rx);
         let mut err = match old {
             Some(old) => {
@@ -153,7 +155,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
             None => box io::stderr() as Box<Writer>,
         };
         io::util::copy(&mut p, &mut err).unwrap();
-    });
+    }).detach();
     let emitter = diagnostic::EmitterWriter::new(box w2, None);
 
     // Compile the code
@@ -280,9 +282,9 @@ impl Collector {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name),
                 ignore: should_ignore,
-                should_fail: false, // compiler failures are test failures
+                should_fail: testing::ShouldFail::No, // compiler failures are test failures
             },
-            testfn: testing::DynTestFn(proc() {
+            testfn: testing::DynTestFn(Thunk::new(move|| {
                 runtest(test.as_slice(),
                         cratename.as_slice(),
                         libs,
@@ -290,7 +292,7 @@ impl Collector {
                         should_fail,
                         no_run,
                         as_test_harness);
-            }),
+            }))
         });
     }
 

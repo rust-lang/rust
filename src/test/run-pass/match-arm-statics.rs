@@ -38,6 +38,8 @@ const VARIANT2_NORTH: EnumWithStructVariants = EnumWithStructVariants::Variant2 
 pub mod glfw {
     pub struct InputState(uint);
 
+    impl Copy for InputState {}
+
     pub const RELEASE  : InputState = InputState(0);
     pub const PRESS    : InputState = InputState(1);
     pub const REPEAT   : InputState = InputState(2);
@@ -62,7 +64,7 @@ fn issue_6533() {
 }
 
 fn issue_13626() {
-    const VAL: [u8, ..1] = [0];
+    const VAL: [u8; 1] = [0];
     match [1] {
         VAL => unreachable!(),
         _ => ()

@@ -23,25 +23,36 @@ use prelude::*;
 use io::{mod, IoResult, IoError};
 use sys_common::mkerr_libc;
 
-macro_rules! helper_init( (static $name:ident: Helper<$m:ty>) => (
+macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
     static $name: Helper<$m> = Helper {
-        lock: ::rustrt::mutex::NATIVE_MUTEX_INIT,
+        lock: ::sync::MUTEX_INIT,
+        cond: ::sync::CONDVAR_INIT,
         chan: ::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
         signal: ::cell::UnsafeCell { value: 0 },
         initialized: ::cell::UnsafeCell { value: false },
+        shutdown: ::cell::UnsafeCell { value: false },
     };
-) )
+) }
 
+pub mod backtrace;
 pub mod c;
+pub mod ext;
+pub mod condvar;
 pub mod fs;
-pub mod os;
-pub mod tcp;
-pub mod udp;
-pub mod pipe;
 pub mod helper_signal;
+pub mod mutex;
+pub mod os;
+pub mod pipe;
 pub mod process;
+pub mod rwlock;
+pub mod stack_overflow;
+pub mod sync;
+pub mod tcp;
+pub mod thread;
+pub mod thread_local;
 pub mod timer;
 pub mod tty;
+pub mod udp;
 
 pub mod addrinfo {
     pub use sys_common::net::get_host_addresses;
@@ -117,7 +128,10 @@ pub fn decode_error_detailed(errno: i32) -> IoError {
 }
 
 #[inline]
-pub fn retry<T: SignedInt> (f: || -> T) -> T {
+pub fn retry<T, F> (mut f: F) -> T where
+    T: SignedInt,
+    F: FnMut() -> T,
+{
     let one: T = Int::one();
     loop {
         let n = f();

@@ -13,9 +13,9 @@
 
 // regression test for issue #10405, make sure we don't call println! too soon.
 
-use std::task::TaskBuilder;
+use std::thread::Builder;
 
 pub fn main() {
-    let mut t = TaskBuilder::new();
-    t.spawn(proc() ());
+    let mut t = Builder::new();
+    t.spawn(move|| ()).detach();
 }

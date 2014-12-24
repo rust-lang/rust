@@ -23,14 +23,11 @@ struct RegistrarFinder {
 
 impl<'v> Visitor<'v> for RegistrarFinder {
     fn visit_item(&mut self, item: &ast::Item) {
-        match item.node {
-            ast::ItemFn(..) => {
-                if attr::contains_name(item.attrs.as_slice(),
-                                       "plugin_registrar") {
-                    self.registrars.push((item.id, item.span));
-                }
+        if let ast::ItemFn(..) = item.node {
+            if attr::contains_name(item.attrs.as_slice(),
+                                   "plugin_registrar") {
+                self.registrars.push((item.id, item.span));
             }
-            _ => {}
         }
 
         visit::walk_item(self, item);

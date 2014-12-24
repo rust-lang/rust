@@ -8,21 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * A type representing values that may be computed concurrently and
- * operations for working with them.
- *
- * # Example
- *
- * ```rust
- * use std::sync::Future;
- * # fn fib(n: uint) -> uint {42};
- * # fn make_a_sandwich() {};
- * let mut delayed_fib = Future::spawn(proc() { fib(5000) });
- * make_a_sandwich();
- * println!("fib(5000) = {}", delayed_fib.get())
- * ```
- */
+//! A type representing values that may be computed concurrently and operations for working with
+//! them.
+//!
+//! # Example
+//!
+//! ```rust
+//! use std::sync::Future;
+//! # fn fib(n: uint) -> uint {42};
+//! # fn make_a_sandwich() {};
+//! let mut delayed_fib = Future::spawn(move|| { fib(5000) });
+//! make_a_sandwich();
+//! println!("fib(5000) = {}", delayed_fib.get())
+//! ```
 
 #![allow(missing_docs)]
 
@@ -31,7 +29,8 @@ use core::mem::replace;
 
 use self::FutureState::*;
 use comm::{Receiver, channel};
-use task::spawn;
+use thunk::{Thunk};
+use thread::Thread;
 
 /// A type encapsulating the result of a computation which may not be complete
 pub struct Future<A> {
@@ -39,7 +38,7 @@ pub struct Future<A> {
 }
 
 enum FutureState<A> {
-    Pending(proc():Send -> A),
+    Pending(Thunk<(),A>),
     Evaluating,
     Forced(A)
 }
@@ -54,7 +53,7 @@ impl<A:Clone> Future<A> {
 
 impl<A> Future<A> {
     /// Gets the value from this future, forcing evaluation.
-    pub fn unwrap(mut self) -> A {
+    pub fn into_inner(mut self) -> A {
         self.get_ref();
         let state = replace(&mut self.state, Evaluating);
         match state {
@@ -62,6 +61,10 @@ impl<A> Future<A> {
             _ => panic!( "Logic error." ),
         }
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> A { self.into_inner() }
 
     pub fn get_ref<'a>(&'a mut self) -> &'a A {
         /*!
@@ -76,7 +79,7 @@ impl<A> Future<A> {
                 match replace(&mut self.state, Evaluating) {
                     Forced(_) | Evaluating => panic!("Logic error."),
                     Pending(f) => {
-                        self.state = Forced(f());
+                        self.state = Forced(f.invoke(()));
                         self.get_ref()
                     }
                 }
@@ -95,7 +98,9 @@ impl<A> Future<A> {
         Future {state: Forced(val)}
     }
 
-    pub fn from_fn(f: proc():Send -> A) -> Future<A> {
+    pub fn from_fn<F>(f: F) -> Future<A>
+        where F : FnOnce() -> A, F : Send
+    {
         /*!
          * Create a future from a function.
          *
@@ -104,7 +109,7 @@ impl<A> Future<A> {
          * function. It is not spawned into another task.
          */
 
-        Future {state: Pending(f)}
+        Future {state: Pending(Thunk::new(f))}
     }
 }
 
@@ -117,12 +122,14 @@ impl<A:Send> Future<A> {
          * waiting for the result to be received on the port.
          */
 
-        Future::from_fn(proc() {
+        Future::from_fn(move|:| {
             rx.recv()
         })
     }
 
-    pub fn spawn(blk: proc():Send -> A) -> Future<A> {
+    pub fn spawn<F>(blk: F) -> Future<A>
+        where F : FnOnce() -> A, F : Send
+    {
         /*!
          * Create a future from a unique closure.
          *
@@ -132,10 +139,10 @@ impl<A:Send> Future<A> {
 
         let (tx, rx) = channel();
 
-        spawn(proc() {
+        Thread::spawn(move |:| {
             // Don't panic if the other end has hung up
             let _ = tx.send_opt(blk());
-        });
+        }).detach();
 
         Future::from_receiver(rx)
     }
@@ -146,12 +153,11 @@ mod test {
     use prelude::*;
     use sync::Future;
     use task;
-    use comm::{channel, Sender};
 
     #[test]
     fn test_from_value() {
         let mut f = Future::from_value("snail".to_string());
-        assert_eq!(f.get(), "snail".to_string());
+        assert_eq!(f.get(), "snail");
     }
 
     #[test]
@@ -159,25 +165,25 @@ mod test {
         let (tx, rx) = channel();
         tx.send("whale".to_string());
         let mut f = Future::from_receiver(rx);
-        assert_eq!(f.get(), "whale".to_string());
+        assert_eq!(f.get(), "whale");
     }
 
     #[test]
     fn test_from_fn() {
-        let mut f = Future::from_fn(proc() "brail".to_string());
-        assert_eq!(f.get(), "brail".to_string());
+        let mut f = Future::from_fn(move|| "brail".to_string());
+        assert_eq!(f.get(), "brail");
     }
 
     #[test]
     fn test_interface_get() {
         let mut f = Future::from_value("fail".to_string());
-        assert_eq!(f.get(), "fail".to_string());
+        assert_eq!(f.get(), "fail");
     }
 
     #[test]
     fn test_interface_unwrap() {
         let f = Future::from_value("fail".to_string());
-        assert_eq!(f.unwrap(), "fail".to_string());
+        assert_eq!(f.unwrap(), "fail");
     }
 
     #[test]
@@ -188,14 +194,14 @@ mod test {
 
     #[test]
     fn test_spawn() {
-        let mut f = Future::spawn(proc() "bale".to_string());
-        assert_eq!(f.get(), "bale".to_string());
+        let mut f = Future::spawn(move|| "bale".to_string());
+        assert_eq!(f.get(), "bale");
     }
 
     #[test]
     #[should_fail]
     fn test_future_panic() {
-        let mut f = Future::spawn(proc() panic!());
+        let mut f = Future::spawn(move|| panic!());
         let _x: String = f.get();
     }
 
@@ -203,35 +209,11 @@ mod test {
     fn test_sendable_future() {
         let expected = "schlorf";
         let (tx, rx) = channel();
-        let f = Future::spawn(proc() { expected });
-        task::spawn(proc() {
+        let f = Future::spawn(move|| { expected });
+        task::spawn(move|| {
             let mut f = f;
             tx.send(f.get());
         });
         assert_eq!(rx.recv(), expected);
-    }
-
-    #[test]
-    fn test_dropped_future_doesnt_panic() {
-        struct Bomb(Sender<bool>);
-
-        local_data_key!(LOCAL: Bomb)
-
-        impl Drop for Bomb {
-            fn drop(&mut self) {
-                let Bomb(ref tx) = *self;
-                tx.send(task::failing());
-            }
-        }
-
-        // Spawn a future, but drop it immediately. When we receive the result
-        // later on, we should never view the task as having panicked.
-        let (tx, rx) = channel();
-        drop(Future::spawn(proc() {
-            LOCAL.replace(Some(Bomb(tx)));
-        }));
-
-        // Make sure the future didn't panic the task.
-        assert!(!rx.recv());
     }
 }

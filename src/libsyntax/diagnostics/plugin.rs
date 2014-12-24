@@ -18,31 +18,31 @@ use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
 
-local_data_key!(registered_diagnostics: RefCell<HashMap<Name, Option<Name>>>)
-local_data_key!(used_diagnostics: RefCell<HashMap<Name, Span>>)
-
-fn with_registered_diagnostics<T>(f: |&mut HashMap<Name, Option<Name>>| -> T) -> T {
-    match registered_diagnostics.get() {
-        Some(cell) => f(cell.borrow_mut().deref_mut()),
-        None => {
-            let mut map = HashMap::new();
-            let value = f(&mut map);
-            registered_diagnostics.replace(Some(RefCell::new(map)));
-            value
-        }
+thread_local! {
+    static REGISTERED_DIAGNOSTICS: RefCell<HashMap<Name, Option<Name>>> = {
+        RefCell::new(HashMap::new())
+    }
+}
+thread_local! {
+    static USED_DIAGNOSTICS: RefCell<HashMap<Name, Span>> = {
+        RefCell::new(HashMap::new())
     }
 }
 
-fn with_used_diagnostics<T>(f: |&mut HashMap<Name, Span>| -> T) -> T {
-    match used_diagnostics.get() {
-        Some(cell) => f(cell.borrow_mut().deref_mut()),
-        None => {
-            let mut map = HashMap::new();
-            let value = f(&mut map);
-            used_diagnostics.replace(Some(RefCell::new(map)));
-            value
-        }
-    }
+fn with_registered_diagnostics<T, F>(f: F) -> T where
+    F: FnOnce(&mut HashMap<Name, Option<Name>>) -> T,
+{
+    REGISTERED_DIAGNOSTICS.with(move |slot| {
+        f(&mut *slot.borrow_mut())
+    })
+}
+
+fn with_used_diagnostics<T, F>(f: F) -> T where
+    F: FnOnce(&mut HashMap<Name, Span>) -> T,
+{
+    USED_DIAGNOSTICS.with(move |slot| {
+        f(&mut *slot.borrow_mut())
+    })
 }
 
 pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
@@ -53,21 +53,12 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
         [ast::TtToken(_, token::Ident(code, _))] => code,
         _ => unreachable!()
     };
-    with_registered_diagnostics(|diagnostics| {
-        if !diagnostics.contains_key(&code.name) {
-            ecx.span_err(span, format!(
-                "unknown diagnostic code {}; add to librustc/diagnostics.rs",
-                token::get_ident(code).get()
-            ).as_slice());
-        }
-        ()
-    });
     with_used_diagnostics(|diagnostics| {
         match diagnostics.insert(code.name, span) {
             Some(previous_span) => {
                 ecx.span_warn(span, format!(
                     "diagnostic code {} already used", token::get_ident(code).get()
-                ).as_slice());
+                )[]);
                 ecx.span_note(previous_span, "previous invocation");
             },
             None => ()
@@ -96,12 +87,12 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         if diagnostics.insert(code.name, description).is_some() {
             ecx.span_err(span, format!(
                 "diagnostic code {} already registered", token::get_ident(*code).get()
-            ).as_slice());
+            )[]);
         }
     });
     let sym = Ident::new(token::gensym((
         "__register_diagnostic_".to_string() + token::get_ident(*code).get()
-    ).as_slice()));
+    )[]));
     MacItems::new(vec![quote_item!(ecx, mod $sym {}).unwrap()].into_iter())
 }
 
@@ -114,25 +105,19 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         _ => unreachable!()
     };
 
-    let (count, expr) = with_used_diagnostics(|diagnostics_in_use| {
+    let (count, expr) =
         with_registered_diagnostics(|diagnostics| {
-            let descriptions: Vec<P<ast::Expr>> = diagnostics
-                .iter().filter_map(|(code, description)| {
-                if !diagnostics_in_use.contains_key(code) {
-                    ecx.span_warn(span, format!(
-                        "diagnostic code {} never used", token::get_name(*code).get()
-                    ).as_slice());
-                }
-                description.map(|description| {
-                    ecx.expr_tuple(span, vec![
-                        ecx.expr_str(span, token::get_name(*code)),
-                        ecx.expr_str(span, token::get_name(description))
-                    ])
-                })
-            }).collect();
+            let descriptions: Vec<P<ast::Expr>> =
+                diagnostics.iter().filter_map(|(code, description)| {
+                    description.map(|description| {
+                        ecx.expr_tuple(span, vec![
+                            ecx.expr_str(span, token::get_name(*code)),
+                            ecx.expr_str(span, token::get_name(description))])
+                    })
+                }).collect();
             (descriptions.len(), ecx.expr_vec(span, descriptions))
-        })
-    });
+        });
+
     MacItems::new(vec![quote_item!(ecx,
         pub static $name: [(&'static str, &'static str), ..$count] = $expr;
     ).unwrap()].into_iter())

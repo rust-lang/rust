@@ -160,10 +160,11 @@ use cmp::PartialEq;
 use default::Default;
 use kinds::{marker, Copy};
 use ops::{Deref, DerefMut, Drop};
-use option::{None, Option, Some};
+use option::Option;
+use option::Option::{None, Some};
 
 /// A mutable memory location that admits only `Copy` data.
-#[unstable = "likely to be renamed; otherwise stable"]
+#[stable]
 pub struct Cell<T> {
     value: UnsafeCell<T>,
     noshare: marker::NoSync,
@@ -207,15 +208,16 @@ impl<T:Copy> Cell<T> {
     }
 }
 
-#[unstable = "waiting for `Clone` trait to become stable"]
+#[stable]
 impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
     }
 }
 
-#[unstable]
+#[stable]
 impl<T:Default + Copy> Default for Cell<T> {
+    #[stable]
     fn default() -> Cell<T> {
         Cell::new(Default::default())
     }
@@ -229,11 +231,10 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 }
 
 /// A mutable memory location with dynamically checked borrow rules
-#[unstable = "likely to be renamed; otherwise stable"]
+#[stable]
 pub struct RefCell<T> {
     value: UnsafeCell<T>,
     borrow: Cell<BorrowFlag>,
-    nocopy: marker::NoCopy,
     noshare: marker::NoSync,
 }
 
@@ -250,17 +251,23 @@ impl<T> RefCell<T> {
         RefCell {
             value: UnsafeCell::new(value),
             borrow: Cell::new(UNUSED),
-            nocopy: marker::NoCopy,
             noshare: marker::NoSync,
         }
     }
 
     /// Consumes the `RefCell`, returning the wrapped value.
-    #[unstable = "may be renamed, depending on global conventions"]
-    pub fn unwrap(self) -> T {
+    #[stable]
+    pub fn into_inner(self) -> T {
+        // Since this function takes `self` (the `RefCell`) by value, the
+        // compiler statically verifies that it is not currently borrowed.
+        // Therefore the following assertion is just a `debug_assert!`.
         debug_assert!(self.borrow.get() == UNUSED);
-        unsafe{self.value.unwrap()}
+        unsafe { self.value.into_inner() }
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> T { self.into_inner() }
 
     /// Attempts to immutably borrow the wrapped value.
     ///
@@ -268,14 +275,11 @@ impl<T> RefCell<T> {
     /// immutable borrows can be taken out at the same time.
     ///
     /// Returns `None` if the value is currently mutably borrowed.
-    #[unstable = "may be renamed, depending on global conventions"]
+    #[unstable = "may be renamed or removed"]
     pub fn try_borrow<'a>(&'a self) -> Option<Ref<'a, T>> {
-        match self.borrow.get() {
-            WRITING => None,
-            borrow => {
-                self.borrow.set(borrow + 1);
-                Some(Ref { _parent: self })
-            }
+        match BorrowRef::new(&self.borrow) {
+            Some(b) => Some(Ref { _value: unsafe { &*self.value.get() }, _borrow: b }),
+            None => None,
         }
     }
 
@@ -287,7 +291,7 @@ impl<T> RefCell<T> {
     /// # Panics
     ///
     /// Panics if the value is currently mutably borrowed.
-    #[unstable]
+    #[stable]
     pub fn borrow<'a>(&'a self) -> Ref<'a, T> {
         match self.try_borrow() {
             Some(ptr) => ptr,
@@ -301,14 +305,11 @@ impl<T> RefCell<T> {
     /// cannot be borrowed while this borrow is active.
     ///
     /// Returns `None` if the value is currently borrowed.
-    #[unstable = "may be renamed, depending on global conventions"]
+    #[unstable = "may be renamed or removed"]
     pub fn try_borrow_mut<'a>(&'a self) -> Option<RefMut<'a, T>> {
-        match self.borrow.get() {
-            UNUSED => {
-                self.borrow.set(WRITING);
-                Some(RefMut { _parent: self })
-            },
-            _ => None
+        match BorrowRefMut::new(&self.borrow) {
+            Some(b) => Some(RefMut { _value: unsafe { &mut *self.value.get() }, _borrow: b }),
+            None => None,
         }
     }
 
@@ -320,7 +321,7 @@ impl<T> RefCell<T> {
     /// # Panics
     ///
     /// Panics if the value is currently borrowed.
-    #[unstable]
+    #[stable]
     pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
         match self.try_borrow_mut() {
             Some(ptr) => ptr,
@@ -340,15 +341,16 @@ impl<T> RefCell<T> {
     }
 }
 
-#[unstable = "waiting for `Clone` to become stable"]
+#[stable]
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
     }
 }
 
-#[unstable]
+#[stable]
 impl<T:Default> Default for RefCell<T> {
+    #[stable]
     fn default() -> RefCell<T> {
         RefCell::new(Default::default())
     }
@@ -361,29 +363,56 @@ impl<T: PartialEq> PartialEq for RefCell<T> {
     }
 }
 
-/// Wraps a borrowed reference to a value in a `RefCell` box.
-#[unstable]
-pub struct Ref<'b, T:'b> {
-    // FIXME #12808: strange name to try to avoid interfering with
-    // field accesses of the contained type via Deref
-    _parent: &'b RefCell<T>
+struct BorrowRef<'b> {
+    _borrow: &'b Cell<BorrowFlag>,
+}
+
+impl<'b> BorrowRef<'b> {
+    fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRef<'b>> {
+        match borrow.get() {
+            WRITING => None,
+            b => {
+                borrow.set(b + 1);
+                Some(BorrowRef { _borrow: borrow })
+            },
+        }
+    }
 }
 
 #[unsafe_destructor]
-#[unstable]
-impl<'b, T> Drop for Ref<'b, T> {
+impl<'b> Drop for BorrowRef<'b> {
     fn drop(&mut self) {
-        let borrow = self._parent.borrow.get();
+        let borrow = self._borrow.get();
         debug_assert!(borrow != WRITING && borrow != UNUSED);
-        self._parent.borrow.set(borrow - 1);
+        self._borrow.set(borrow - 1);
     }
+}
+
+impl<'b> Clone for BorrowRef<'b> {
+    fn clone(&self) -> BorrowRef<'b> {
+        // Since this Ref exists, we know the borrow flag
+        // is not set to WRITING.
+        let borrow = self._borrow.get();
+        debug_assert!(borrow != WRITING && borrow != UNUSED);
+        self._borrow.set(borrow + 1);
+        BorrowRef { _borrow: self._borrow }
+    }
+}
+
+/// Wraps a borrowed reference to a value in a `RefCell` box.
+#[stable]
+pub struct Ref<'b, T:'b> {
+    // FIXME #12808: strange name to try to avoid interfering with
+    // field accesses of the contained type via Deref
+    _value: &'b T,
+    _borrow: BorrowRef<'b>,
 }
 
 #[unstable = "waiting for `Deref` to become stable"]
 impl<'b, T> Deref<T> for Ref<'b, T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
-        unsafe { &*self._parent.value.get() }
+        self._value
     }
 }
 
@@ -394,41 +423,52 @@ impl<'b, T> Deref<T> for Ref<'b, T> {
 /// A `Clone` implementation would interfere with the widespread
 /// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
 #[experimental = "likely to be moved to a method, pending language changes"]
-pub fn clone_ref<'b, T>(orig: &Ref<'b, T>) -> Ref<'b, T> {
-    // Since this Ref exists, we know the borrow flag
-    // is not set to WRITING.
-    let borrow = orig._parent.borrow.get();
-    debug_assert!(borrow != WRITING && borrow != UNUSED);
-    orig._parent.borrow.set(borrow + 1);
-
+pub fn clone_ref<'b, T:Clone>(orig: &Ref<'b, T>) -> Ref<'b, T> {
     Ref {
-        _parent: orig._parent,
+        _value: orig._value,
+        _borrow: orig._borrow.clone(),
+    }
+}
+
+struct BorrowRefMut<'b> {
+    _borrow: &'b Cell<BorrowFlag>,
+}
+
+#[unsafe_destructor]
+impl<'b> Drop for BorrowRefMut<'b> {
+    fn drop(&mut self) {
+        let borrow = self._borrow.get();
+        debug_assert!(borrow == WRITING);
+        self._borrow.set(UNUSED);
+    }
+}
+
+impl<'b> BorrowRefMut<'b> {
+    fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRefMut<'b>> {
+        match borrow.get() {
+            UNUSED => {
+                borrow.set(WRITING);
+                Some(BorrowRefMut { _borrow: borrow })
+            },
+            _ => None,
+        }
     }
 }
 
 /// Wraps a mutable borrowed reference to a value in a `RefCell` box.
-#[unstable]
+#[stable]
 pub struct RefMut<'b, T:'b> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
-    _parent: &'b RefCell<T>
-}
-
-#[unsafe_destructor]
-#[unstable]
-impl<'b, T> Drop for RefMut<'b, T> {
-    fn drop(&mut self) {
-        let borrow = self._parent.borrow.get();
-        debug_assert!(borrow == WRITING);
-        self._parent.borrow.set(UNUSED);
-    }
+    _value: &'b mut T,
+    _borrow: BorrowRefMut<'b>,
 }
 
 #[unstable = "waiting for `Deref` to become stable"]
 impl<'b, T> Deref<T> for RefMut<'b, T> {
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
-        unsafe { &*self._parent.value.get() }
+        self._value
     }
 }
 
@@ -436,7 +476,7 @@ impl<'b, T> Deref<T> for RefMut<'b, T> {
 impl<'b, T> DerefMut<T> for RefMut<'b, T> {
     #[inline]
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
-        unsafe { &mut *self._parent.value.get() }
+        self._value
     }
 }
 
@@ -477,7 +517,7 @@ impl<'b, T> DerefMut<T> for RefMut<'b, T> {
 /// is not recommended to access its fields directly, `get` should be used
 /// instead.
 #[lang="unsafe"]
-#[unstable = "this type may be renamed in the future"]
+#[stable]
 pub struct UnsafeCell<T> {
     /// Wrapped value
     ///
@@ -499,21 +539,19 @@ impl<T> UnsafeCell<T> {
     }
 
     /// Gets a mutable pointer to the wrapped value.
-    ///
-    /// This function is unsafe as the pointer returned is an unsafe pointer and
-    /// no guarantees are made about the aliasing of the pointers being handed
-    /// out in this or other tasks.
     #[inline]
-    #[unstable = "conventions around acquiring an inner reference are still \
-                  under development"]
-    pub unsafe fn get(&self) -> *mut T { &self.value as *const T as *mut T }
+    #[stable]
+    pub fn get(&self) -> *mut T { &self.value as *const T as *mut T }
 
     /// Unwraps the value
     ///
     /// This function is unsafe because there is no guarantee that this or other
     /// tasks are currently inspecting the inner value.
     #[inline]
-    #[unstable = "conventions around the name `unwrap` are still under \
-                  development"]
-    pub unsafe fn unwrap(self) -> T { self.value }
+    #[stable]
+    pub unsafe fn into_inner(self) -> T { self.value }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub unsafe fn unwrap(self) -> T { self.into_inner() }
 }

@@ -35,7 +35,7 @@
 # that's per-target so you're allowed to conditionally add files based on the
 # target.
 ################################################################################
-NATIVE_LIBS := rust_builtin hoedown morestack miniz context_switch \
+NATIVE_LIBS := rust_builtin hoedown morestack miniz \
 		rustrt_native rust_test_helpers
 
 # $(1) is the target triple
@@ -58,8 +58,7 @@ NATIVE_DEPS_rustrt_native_$(1) := \
 			arch/$$(HOST_$(1))/record_sp.S
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
-NATIVE_DEPS_context_switch_$(1) := \
-			arch/$$(HOST_$(1))/_context.S
+
 
 ################################################################################
 # You shouldn't find it that necessary to edit anything below this line.
@@ -75,7 +74,7 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll $$(MKFILE_DEPS) \
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(LLC_$$(CFG_BUILD)) $$(CFG_LLC_FLAGS_$(1)) \
-	    -filetype=obj -mtriple=$(1) -relocation-model=pic -o $$@ $$<
+	    -filetype=obj -mtriple=$$(CFG_LLVM_TARGET_$(1)) -relocation-model=pic -o $$@ $$<
 
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)

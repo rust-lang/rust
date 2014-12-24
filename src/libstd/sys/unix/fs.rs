@@ -18,13 +18,10 @@ use io;
 use prelude::*;
 
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
-use io::{IoResult, FileStat, SeekStyle, Reader};
+use io::{IoResult, FileStat, SeekStyle};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
-use result::{Ok, Err};
 use sys::retry;
 use sys_common::{keep_going, eof, mkerr_libc};
-
-pub use path::PosixPath as Path;
 
 pub type fd_t = libc::c_int;
 
@@ -201,7 +198,7 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
 
     let size = unsafe { rust_dirent_t_size() };
     let mut buf = Vec::<u8>::with_capacity(size as uint);
-    let ptr = buf.as_mut_slice().as_mut_ptr() as *mut dirent_t;
+    let ptr = buf.as_mut_ptr() as *mut dirent_t;
 
     let p = p.to_c_str();
     let dir_ptr = unsafe {opendir(p.as_ptr())};
@@ -305,12 +302,12 @@ fn mkstat(stat: &libc::stat) -> FileStat {
     FileStat {
         size: stat.st_size as u64,
         kind: match (stat.st_mode as libc::mode_t) & libc::S_IFMT {
-            libc::S_IFREG => io::TypeFile,
-            libc::S_IFDIR => io::TypeDirectory,
-            libc::S_IFIFO => io::TypeNamedPipe,
-            libc::S_IFBLK => io::TypeBlockSpecial,
-            libc::S_IFLNK => io::TypeSymlink,
-            _ => io::TypeUnknown,
+            libc::S_IFREG => io::FileType::RegularFile,
+            libc::S_IFDIR => io::FileType::Directory,
+            libc::S_IFIFO => io::FileType::NamedPipe,
+            libc::S_IFBLK => io::FileType::BlockSpecial,
+            libc::S_IFLNK => io::FileType::Symlink,
+            _ => io::FileType::Unknown,
         },
         perm: FilePermission::from_bits_truncate(stat.st_mode as u32),
         created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),

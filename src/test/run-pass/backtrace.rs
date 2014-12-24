@@ -10,6 +10,9 @@
 
 // no-pretty-expanded FIXME #15189
 // ignore-windows FIXME #13259
+
+#![feature(unboxed_closures)]
+
 use std::os;
 use std::io::process::Command;
 use std::finally::Finally;
@@ -25,7 +28,7 @@ fn foo() {
 
 #[inline(never)]
 fn double() {
-    (|| {
+    (|&mut:| {
         panic!("once");
     }).finally(|| {
         panic!("twice");

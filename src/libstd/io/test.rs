@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Various utility functions useful for writing I/O tests */
+//! Various utility functions useful for writing I/O tests
 
 #![macro_escape]
 
@@ -95,17 +95,14 @@ pub fn raise_fd_limit() {
     unsafe { darwin_fd_limit::raise_fd_limit() }
 }
 
+/// darwin_fd_limit exists to work around an issue where launchctl on Mac OS X defaults the rlimit
+/// maxfiles to 256/unlimited. The default soft limit of 256 ends up being far too low for our
+/// multithreaded scheduler testing, depending on the number of cores available.
+///
+/// This fixes issue #7772.
 #[cfg(target_os="macos")]
 #[allow(non_camel_case_types)]
 mod darwin_fd_limit {
-    /*!
-     * darwin_fd_limit exists to work around an issue where launchctl on Mac OS X defaults the
-     * rlimit maxfiles to 256/unlimited. The default soft limit of 256 ends up being far too low
-     * for our multithreaded scheduler testing, depending on the number of cores available.
-     *
-     * This fixes issue #7772.
-     */
-
     use libc;
     type rlim_t = libc::uint64_t;
     #[repr(C)]

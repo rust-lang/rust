@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
 pub fn main() { test00(); }
 
@@ -16,19 +16,19 @@ fn start(_task_number: int) { println!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
-    let mut result = task::try_future(proc() {
+    let mut result = Thread::spawn(move|| {
         start(i)
     });
 
     // Sleep long enough for the task to finish.
     let mut i = 0u;
     while i < 10000 {
-        task::deschedule();
+        Thread::yield_now();
         i += 1;
     }
 
     // Try joining tasks that have already finished.
-    result.unwrap();
+    result.join();
 
     println!("Joined task.");
 }

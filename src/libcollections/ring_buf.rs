@@ -11,7 +11,6 @@
 //! This crate implements a double-ended queue with `O(1)` amortized inserts and removals from both
 //! ends of the container. It also has `O(1)` indexing like a vector. The contained elements are
 //! not required to be copyable, and the queue will be sendable if the contained type is sendable.
-//! Its interface `Deque` is defined in `collections`.
 
 use core::prelude::*;
 
@@ -34,10 +33,8 @@ static MINIMUM_CAPACITY: uint = 2u;
 
 // FIXME(conventions): implement shrink_to_fit. Awkward with the current design, but it should
 // be scrapped anyway. Defer to rewrite?
-// FIXME(conventions): implement into_iter
 
-
-/// `RingBuf` is a circular buffer that implements `Deque`.
+/// `RingBuf` is a circular buffer, which can be used as a double-ended queue efficiently.
 pub struct RingBuf<T> {
     // tail and head are pointers into the buffer. Tail always points
     // to the first element that could be read, Head always points
@@ -51,6 +48,7 @@ pub struct RingBuf<T> {
     ptr: *mut T
 }
 
+#[stable]
 impl<T: Clone> Clone for RingBuf<T> {
     fn clone(&self) -> RingBuf<T> {
         self.iter().map(|t| t.clone()).collect()
@@ -71,7 +69,9 @@ impl<T> Drop for RingBuf<T> {
     }
 }
 
+#[stable]
 impl<T> Default for RingBuf<T> {
+    #[stable]
     #[inline]
     fn default() -> RingBuf<T> { RingBuf::new() }
 }
@@ -79,7 +79,13 @@ impl<T> Default for RingBuf<T> {
 impl<T> RingBuf<T> {
     /// Turn ptr into a slice
     #[inline]
-    unsafe fn buffer_as_slice(&self) -> &[T] {
+    unsafe fn buffer_as_slice<'a>(&'a self) -> &'a [T] {
+        mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap })
+    }
+
+    /// Turn ptr into a mut slice
+    #[inline]
+    unsafe fn buffer_as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap })
     }
 
@@ -102,6 +108,19 @@ impl<T> RingBuf<T> {
     /// Returns the index in the underlying buffer for a given logical element index.
     #[inline]
     fn wrap_index(&self, idx: uint) -> uint { wrap_index(idx, self.cap) }
+
+    /// Copies a contiguous block of memory len long from src to dst
+    #[inline]
+    unsafe fn copy(&self, dst: uint, src: uint, len: uint) {
+        debug_assert!(dst + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
+                      self.cap);
+        debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
+                      self.cap);
+        ptr::copy_memory(
+            self.ptr.offset(dst as int),
+            self.ptr.offset(src as int) as *const T,
+            len);
+    }
 }
 
 impl<T> RingBuf<T> {
@@ -139,7 +158,7 @@ impl<T> RingBuf<T> {
 
     /// Retrieves an element in the `RingBuf` by index.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -162,7 +181,7 @@ impl<T> RingBuf<T> {
 
     /// Retrieves an element in the `RingBuf` mutably by index.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -196,7 +215,7 @@ impl<T> RingBuf<T> {
     ///
     /// Fails if there is no element with either index.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -209,6 +228,7 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf[0], 5);
     /// assert_eq!(buf[2], 3);
     /// ```
+    #[stable]
     pub fn swap(&mut self, i: uint, j: uint) {
         assert!(i < self.len());
         assert!(j < self.len());
@@ -222,7 +242,7 @@ impl<T> RingBuf<T> {
     /// Returns the number of elements the `RingBuf` can hold without
     /// reallocating.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -245,7 +265,7 @@ impl<T> RingBuf<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -266,7 +286,7 @@ impl<T> RingBuf<T> {
     ///
     /// Panics if the new capacity overflows `uint`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -344,7 +364,7 @@ impl<T> RingBuf<T> {
 
     /// Returns a front-to-back iterator.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -357,17 +377,17 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), b);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter(&self) -> Items<T> {
-        Items {
+    pub fn iter(&self) -> Iter<T> {
+        Iter {
             tail: self.tail,
             head: self.head,
             ring: unsafe { self.buffer_as_slice() }
         }
     }
 
-    /// Returns a front-to-back iterator which returns mutable references.
+    /// Returns a front-to-back iterator that returns mutable references.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -383,20 +403,69 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter_mut<'a>(&'a mut self) -> MutItems<'a, T> {
-        MutItems {
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+        IterMut {
             tail: self.tail,
             head: self.head,
             cap: self.cap,
             ptr: self.ptr,
             marker: marker::ContravariantLifetime::<'a>,
-            marker2: marker::NoCopy
+        }
+    }
+
+    /// Consumes the list into an iterator yielding elements by value.
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn into_iter(self) -> IntoIter<T> {
+        IntoIter {
+            inner: self,
+        }
+    }
+
+    /// Returns a pair of slices which contain, in order, the contents of the
+    /// `RingBuf`.
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn as_slices<'a>(&'a self) -> (&'a [T], &'a [T]) {
+        unsafe {
+            let contiguous = self.is_contiguous();
+            let buf = self.buffer_as_slice();
+            if contiguous {
+                let (empty, buf) = buf.split_at(0);
+                (buf[self.tail..self.head], empty)
+            } else {
+                let (mid, right) = buf.split_at(self.tail);
+                let (left, _) = mid.split_at(self.head);
+                (right, left)
+            }
+        }
+    }
+
+    /// Returns a pair of slices which contain, in order, the contents of the
+    /// `RingBuf`.
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn as_mut_slices<'a>(&'a mut self) -> (&'a mut [T], &'a mut [T]) {
+        unsafe {
+            let contiguous = self.is_contiguous();
+            let head = self.head;
+            let tail = self.tail;
+            let buf = self.buffer_as_mut_slice();
+
+            if contiguous {
+                let (empty, buf) = buf.split_at_mut(0);
+                (buf[mut tail..head], empty)
+            } else {
+                let (mid, right) = buf.split_at_mut(tail);
+                let (left, _) = mid.split_at_mut(head);
+
+                (right, left)
+            }
         }
     }
 
     /// Returns the number of elements in the `RingBuf`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -411,7 +480,7 @@ impl<T> RingBuf<T> {
 
     /// Returns true if the buffer contains no elements
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -424,9 +493,30 @@ impl<T> RingBuf<T> {
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
+    /// Creates a draining iterator that clears the `RingBuf` and iterates over
+    /// the removed items from start to end.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut v = RingBuf::new();
+    /// v.push_back(1i);
+    /// assert_eq!(v.drain().next(), Some(1));
+    /// assert!(v.is_empty());
+    /// ```
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
+        Drain {
+            inner: self,
+        }
+    }
+
     /// Clears the buffer, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -437,16 +527,15 @@ impl<T> RingBuf<T> {
     /// assert!(v.is_empty());
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[inline]
     pub fn clear(&mut self) {
-        while self.pop_front().is_some() {}
-        self.head = 0;
-        self.tail = 0;
+        self.drain();
     }
 
     /// Provides a reference to the front element, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -458,7 +547,7 @@ impl<T> RingBuf<T> {
     /// d.push_back(2i);
     /// assert_eq!(d.front(), Some(&1i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front(&self) -> Option<&T> {
         if !self.is_empty() { Some(&self[0]) } else { None }
     }
@@ -466,7 +555,7 @@ impl<T> RingBuf<T> {
     /// Provides a mutable reference to the front element, or `None` if the
     /// sequence is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -482,7 +571,7 @@ impl<T> RingBuf<T> {
     /// }
     /// assert_eq!(d.front(), Some(&9i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         if !self.is_empty() { Some(&mut self[0]) } else { None }
     }
@@ -490,7 +579,7 @@ impl<T> RingBuf<T> {
     /// Provides a reference to the back element, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -502,7 +591,7 @@ impl<T> RingBuf<T> {
     /// d.push_back(2i);
     /// assert_eq!(d.back(), Some(&2i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back(&self) -> Option<&T> {
         if !self.is_empty() { Some(&self[self.len() - 1]) } else { None }
     }
@@ -510,7 +599,7 @@ impl<T> RingBuf<T> {
     /// Provides a mutable reference to the back element, or `None` if the
     /// sequence is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -526,7 +615,7 @@ impl<T> RingBuf<T> {
     /// }
     /// assert_eq!(d.back(), Some(&9i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         let len = self.len();
         if !self.is_empty() { Some(&mut self[len - 1]) } else { None }
@@ -535,7 +624,7 @@ impl<T> RingBuf<T> {
     /// Removes the first element and returns it, or `None` if the sequence is
     /// empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -561,7 +650,7 @@ impl<T> RingBuf<T> {
 
     /// Inserts an element first in the sequence.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::RingBuf;
@@ -591,7 +680,7 @@ impl<T> RingBuf<T> {
 
     /// Appends an element to the back of a buffer
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -622,7 +711,7 @@ impl<T> RingBuf<T> {
     /// Removes the last element from a buffer and returns it, or `None` if
     /// it is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::collections::RingBuf;
@@ -643,6 +732,380 @@ impl<T> RingBuf<T> {
             unsafe { Some(self.buffer_read(head)) }
         }
     }
+
+    #[inline]
+    fn is_contiguous(&self) -> bool {
+        self.tail <= self.head
+    }
+
+    /// Inserts an element at position `i` within the ringbuf. Whichever
+    /// end is closer to the insertion point will be moved to make room,
+    /// and all the affected elements will be moved to new positions.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `i` is greater than ringbuf's length
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push_back(10i);
+    /// buf.push_back(12);
+    /// buf.insert(1,11);
+    /// assert_eq!(Some(&11), buf.get(1));
+    /// ```
+    pub fn insert(&mut self, i: uint, t: T) {
+        assert!(i <= self.len(), "index out of bounds");
+        if self.is_full() {
+            self.reserve(1);
+            debug_assert!(!self.is_full());
+        }
+
+        // Move the least number of elements in the ring buffer and insert
+        // the given object
+        //
+        // At most len/2 - 1 elements will be moved. O(min(n, n-i))
+        //
+        // There are three main cases:
+        //  Elements are contiguous
+        //      - special case when tail is 0
+        //  Elements are discontiguous and the insert is in the tail section
+        //  Elements are discontiguous and the insert is in the head section
+        //
+        // For each of those there are two more cases:
+        //  Insert is closer to tail
+        //  Insert is closer to head
+        //
+        // Key: H - self.head
+        //      T - self.tail
+        //      o - Valid element
+        //      I - Insertion element
+        //      A - The element that should be after the insertion point
+        //      M - Indicates element was moved
+
+        let idx = self.wrap_index(self.tail + i);
+
+        let distance_to_tail = i;
+        let distance_to_head = self.len() - i;
+
+        let contiguous = self.is_contiguous();
+
+        match (contiguous, distance_to_tail <= distance_to_head, idx >= self.tail) {
+            (true, true, _) if i == 0 => {
+                // push_front
+                //
+                //       T
+                //       I             H
+                //      [A o o o o o o . . . . . . . . .]
+                //
+                //                       H         T
+                //      [A o o o o o o o . . . . . I]
+                //
+
+                self.tail = self.wrap_index(self.tail - 1);
+            },
+            (true, true, _) => unsafe {
+                // contiguous, insert closer to tail:
+                //
+                //             T   I         H
+                //      [. . . o o A o o o o . . . . . .]
+                //
+                //           T               H
+                //      [. . o o I A o o o o . . . . . .]
+                //           M M
+                //
+                // contiguous, insert closer to tail and tail is 0:
+                //
+                //
+                //       T   I         H
+                //      [o o A o o o o . . . . . . . . .]
+                //
+                //                       H             T
+                //      [o I A o o o o o . . . . . . . o]
+                //       M                             M
+
+                let new_tail = self.wrap_index(self.tail - 1);
+
+                self.copy(new_tail, self.tail, 1);
+                // Already moved the tail, so we only copy `i - 1` elements.
+                self.copy(self.tail, self.tail + 1, i - 1);
+
+                self.tail = new_tail;
+            },
+            (true, false, _) => unsafe {
+                //  contiguous, insert closer to head:
+                //
+                //             T       I     H
+                //      [. . . o o o o A o o . . . . . .]
+                //
+                //             T               H
+                //      [. . . o o o o I A o o . . . . .]
+                //                       M M M
+
+                self.copy(idx + 1, idx, self.head - idx);
+                self.head = self.wrap_index(self.head + 1);
+            },
+            (false, true, true) => unsafe {
+                // discontiguous, insert closer to tail, tail section:
+                //
+                //                   H         T   I
+                //      [o o o o o o . . . . . o o A o o]
+                //
+                //                   H       T
+                //      [o o o o o o . . . . o o I A o o]
+                //                           M M
+
+                self.copy(self.tail - 1, self.tail, i);
+                self.tail -= 1;
+            },
+            (false, false, true) => unsafe {
+                // discontiguous, insert closer to head, tail section:
+                //
+                //           H             T         I
+                //      [o o . . . . . . . o o o o o A o]
+                //
+                //             H           T
+                //      [o o o . . . . . . o o o o o I A]
+                //       M M M                         M
+
+                // copy elements up to new head
+                self.copy(1, 0, self.head);
+
+                // copy last element into empty spot at bottom of buffer
+                self.copy(0, self.cap - 1, 1);
+
+                // move elements from idx to end forward not including ^ element
+                self.copy(idx + 1, idx, self.cap - 1 - idx);
+
+                self.head += 1;
+            },
+            (false, true, false) if idx == 0 => unsafe {
+                // discontiguous, insert is closer to tail, head section,
+                // and is at index zero in the internal buffer:
+                //
+                //       I                   H     T
+                //      [A o o o o o o o o o . . . o o o]
+                //
+                //                           H   T
+                //      [A o o o o o o o o o . . o o o I]
+                //                               M M M
+
+                // copy elements up to new tail
+                self.copy(self.tail - 1, self.tail, self.cap - self.tail);
+
+                // copy last element into empty spot at bottom of buffer
+                self.copy(self.cap - 1, 0, 1);
+
+                self.tail -= 1;
+            },
+            (false, true, false) => unsafe {
+                // discontiguous, insert closer to tail, head section:
+                //
+                //             I             H     T
+                //      [o o o A o o o o o o . . . o o o]
+                //
+                //                           H   T
+                //      [o o I A o o o o o o . . o o o o]
+                //       M M                     M M M M
+
+                // copy elements up to new tail
+                self.copy(self.tail - 1, self.tail, self.cap - self.tail);
+
+                // copy last element into empty spot at bottom of buffer
+                self.copy(self.cap - 1, 0, 1);
+
+                // move elements from idx-1 to end forward not including ^ element
+                self.copy(0, 1, idx - 1);
+
+                self.tail -= 1;
+            },
+            (false, false, false) => unsafe {
+                // discontiguous, insert closer to head, head section:
+                //
+                //               I     H           T
+                //      [o o o o A o o . . . . . . o o o]
+                //
+                //                     H           T
+                //      [o o o o I A o o . . . . . o o o]
+                //                 M M M
+
+                self.copy(idx + 1, idx, self.head - idx);
+                self.head += 1;
+            }
+        }
+
+        // tail might've been changed so we need to recalculate
+        let new_idx = self.wrap_index(self.tail + i);
+        unsafe {
+            self.buffer_write(new_idx, t);
+        }
+    }
+
+    /// Removes and returns the element at position `i` from the ringbuf.
+    /// Whichever end is closer to the removal point will be moved to make
+    /// room, and all the affected elements will be moved to new positions.
+    /// Returns `None` if `i` is out of bounds.
+    ///
+    /// # Example
+    /// ```rust
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push_back(5i);
+    /// buf.push_back(10i);
+    /// buf.push_back(12i);
+    /// buf.push_back(15);
+    /// buf.remove(2);
+    /// assert_eq!(Some(&15), buf.get(2));
+    /// ```
+    #[unstable = "matches collection reform specification; waiting on panic semantics"]
+    pub fn remove(&mut self, i: uint) -> Option<T> {
+        if self.is_empty() || self.len() <= i {
+            return None;
+        }
+
+        // There are three main cases:
+        //  Elements are contiguous
+        //  Elements are discontiguous and the removal is in the tail section
+        //  Elements are discontiguous and the removal is in the head section
+        //      - special case when elements are technically contiguous,
+        //        but self.head = 0
+        //
+        // For each of those there are two more cases:
+        //  Insert is closer to tail
+        //  Insert is closer to head
+        //
+        // Key: H - self.head
+        //      T - self.tail
+        //      o - Valid element
+        //      x - Element marked for removal
+        //      R - Indicates element that is being removed
+        //      M - Indicates element was moved
+
+        let idx = self.wrap_index(self.tail + i);
+
+        let elem = unsafe {
+            Some(self.buffer_read(idx))
+        };
+
+        let distance_to_tail = i;
+        let distance_to_head = self.len() - i;
+
+        let contiguous = self.tail <= self.head;
+
+        match (contiguous, distance_to_tail <= distance_to_head, idx >= self.tail) {
+            (true, true, _) => unsafe {
+                // contiguous, remove closer to tail:
+                //
+                //             T   R         H
+                //      [. . . o o x o o o o . . . . . .]
+                //
+                //               T           H
+                //      [. . . . o o o o o o . . . . . .]
+                //               M M
+
+                self.copy(self.tail + 1, self.tail, i);
+                self.tail += 1;
+            },
+            (true, false, _) => unsafe {
+                // contiguous, remove closer to head:
+                //
+                //             T       R     H
+                //      [. . . o o o o x o o . . . . . .]
+                //
+                //             T           H
+                //      [. . . o o o o o o . . . . . . .]
+                //                     M M
+
+                self.copy(idx, idx + 1, self.head - idx - 1);
+                self.head -= 1;
+            },
+            (false, true, true) => unsafe {
+                // discontiguous, remove closer to tail, tail section:
+                //
+                //                   H         T   R
+                //      [o o o o o o . . . . . o o x o o]
+                //
+                //                   H           T
+                //      [o o o o o o . . . . . . o o o o]
+                //                               M M
+
+                self.copy(self.tail + 1, self.tail, i);
+                self.tail = self.wrap_index(self.tail + 1);
+            },
+            (false, false, false) => unsafe {
+                // discontiguous, remove closer to head, head section:
+                //
+                //               R     H           T
+                //      [o o o o x o o . . . . . . o o o]
+                //
+                //                   H             T
+                //      [o o o o o o . . . . . . . o o o]
+                //               M M
+
+                self.copy(idx, idx + 1, self.head - idx - 1);
+                self.head -= 1;
+            },
+            (false, false, true) => unsafe {
+                // discontiguous, remove closer to head, tail section:
+                //
+                //             H           T         R
+                //      [o o o . . . . . . o o o o o x o]
+                //
+                //           H             T
+                //      [o o . . . . . . . o o o o o o o]
+                //       M M                         M M
+                //
+                // or quasi-discontiguous, remove next to head, tail section:
+                //
+                //       H                 T         R
+                //      [. . . . . . . . . o o o o o x o]
+                //
+                //                         T           H
+                //      [. . . . . . . . . o o o o o o .]
+                //                                   M
+
+                // draw in elements in the tail section
+                self.copy(idx, idx + 1, self.cap - idx - 1);
+
+                // Prevents underflow.
+                if self.head != 0 {
+                    // copy first element into empty spot
+                    self.copy(self.cap - 1, 0, 1);
+
+                    // move elements in the head section backwards
+                    self.copy(0, 1, self.head - 1);
+                }
+
+                self.head = self.wrap_index(self.head - 1);
+            },
+            (false, true, false) => unsafe {
+                // discontiguous, remove closer to tail, head section:
+                //
+                //           R               H     T
+                //      [o o x o o o o o o o . . . o o o]
+                //
+                //                           H       T
+                //      [o o o o o o o o o o . . . . o o]
+                //       M M M                       M M
+
+                // draw in elements up to idx
+                self.copy(1, 0, idx);
+
+                // copy last element into empty spot
+                self.copy(0, self.cap - 1, 1);
+
+                // move elements from tail to end forward, excluding the last one
+                self.copy(self.tail + 1, self.tail, self.cap - self.tail - 1);
+
+                self.tail = self.wrap_index(self.tail + 1);
+            }
+        }
+
+        return elem;
+    }
 }
 
 /// Returns the index in the underlying buffer for a given logical element index.
@@ -660,13 +1123,13 @@ fn count(tail: uint, head: uint, size: uint) -> uint {
 }
 
 /// `RingBuf` iterator.
-pub struct Items<'a, T:'a> {
+pub struct Iter<'a, T:'a> {
     ring: &'a [T],
     tail: uint,
     head: uint
 }
 
-impl<'a, T> Iterator<&'a T> for Items<'a, T> {
+impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         if self.tail == self.head {
@@ -684,7 +1147,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
         if self.tail == self.head {
@@ -695,10 +1158,9 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
     }
 }
 
+impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
 
-impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
-
-impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
+impl<'a, T> RandomAccessIterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         let (len, _) = self.size_hint();
@@ -716,20 +1178,19 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     }
 }
 
-// FIXME This was implemented differently from Items because of a problem
+// FIXME This was implemented differently from Iter because of a problem
 //       with returning the mutable reference. I couldn't find a way to
 //       make the lifetime checker happy so, but there should be a way.
 /// `RingBuf` mutable iterator.
-pub struct MutItems<'a, T:'a> {
+pub struct IterMut<'a, T:'a> {
     ptr: *mut T,
     tail: uint,
     head: uint,
     cap: uint,
     marker: marker::ContravariantLifetime<'a>,
-    marker2: marker::NoCopy
 }
 
-impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
+impl<'a, T> Iterator<&'a mut T> for IterMut<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
         if self.tail == self.head {
@@ -737,11 +1198,9 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
         }
         let tail = self.tail;
         self.tail = wrap_index(self.tail + 1, self.cap);
-        if mem::size_of::<T>() != 0 {
-            unsafe { Some(&mut *self.ptr.offset(tail as int)) }
-        } else {
-            // use a non-zero pointer
-            Some(unsafe { mem::transmute(1u) })
+
+        unsafe {
+            Some(&mut *self.ptr.offset(tail as int))
         }
     }
 
@@ -752,26 +1211,89 @@ impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut T> for IterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
         if self.tail == self.head {
             return None;
         }
         self.head = wrap_index(self.head - 1, self.cap);
-        unsafe { Some(&mut *self.ptr.offset(self.head as int)) }
+
+        unsafe {
+            Some(&mut *self.ptr.offset(self.head as int))
+        }
     }
 }
 
-impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
+impl<'a, T> ExactSizeIterator<&'a mut T> for IterMut<'a, T> {}
+
+// A by-value RingBuf iterator
+pub struct IntoIter<T> {
+    inner: RingBuf<T>,
+}
+
+impl<T> Iterator<T> for IntoIter<T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.inner.pop_front()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let len = self.inner.len();
+        (len, Some(len))
+    }
+}
+
+impl<T> DoubleEndedIterator<T> for IntoIter<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        self.inner.pop_back()
+    }
+}
+
+impl<T> ExactSizeIterator<T> for IntoIter<T> {}
+
+/// A draining RingBuf iterator
+pub struct Drain<'a, T: 'a> {
+    inner: &'a mut RingBuf<T>,
+}
+
+#[unsafe_destructor]
+impl<'a, T: 'a> Drop for Drain<'a, T> {
+    fn drop(&mut self) {
+        for _ in *self {}
+        self.inner.head = 0;
+        self.inner.tail = 0;
+    }
+}
+
+impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        self.inner.pop_front()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let len = self.inner.len();
+        (len, Some(len))
+    }
+}
+
+impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        self.inner.pop_back()
+    }
+}
+
+impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
 
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(|(a, b)| a.eq(b))
-    }
-    fn ne(&self, other: &RingBuf<A>) -> bool {
-        !self.eq(other)
     }
 }
 
@@ -847,14 +1369,15 @@ impl<T: fmt::Show> fmt::Show for RingBuf<T> {
 mod tests {
     use self::Taggy::*;
     use self::Taggypar::*;
+    use prelude::*;
+    use core::cmp;
+    use core::iter;
     use std::fmt::Show;
-    use std::prelude::*;
     use std::hash;
     use test::Bencher;
     use test;
 
     use super::RingBuf;
-    use vec::Vec;
 
     #[test]
     #[allow(deprecated)]
@@ -1069,7 +1592,6 @@ mod tests {
         })
     }
 
-
     #[deriving(Clone, PartialEq, Show)]
     enum Taggy {
         One(int),
@@ -1212,7 +1734,7 @@ mod tests {
         }
         {
             let b: &[_] = &[&0,&1,&2,&3,&4];
-            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+            assert_eq!(d.iter().collect::<Vec<&int>>(), b);
         }
 
         for i in range(6i, 9) {
@@ -1220,7 +1742,7 @@ mod tests {
         }
         {
             let b: &[_] = &[&8,&7,&6,&0,&1,&2,&3,&4];
-            assert_eq!(d.iter().collect::<Vec<&int>>().as_slice(), b);
+            assert_eq!(d.iter().collect::<Vec<&int>>(), b);
         }
 
         let mut it = d.iter();
@@ -1243,14 +1765,14 @@ mod tests {
         }
         {
             let b: &[_] = &[&4,&3,&2,&1,&0];
-            assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
+            assert_eq!(d.iter().rev().collect::<Vec<&int>>(), b);
         }
 
         for i in range(6i, 9) {
             d.push_front(i);
         }
         let b: &[_] = &[&4,&3,&2,&1,&0,&6,&7,&8];
-        assert_eq!(d.iter().rev().collect::<Vec<&int>>().as_slice(), b);
+        assert_eq!(d.iter().rev().collect::<Vec<&int>>(), b);
     }
 
     #[test]
@@ -1315,14 +1837,140 @@ mod tests {
     }
 
     #[test]
+    fn test_into_iter() {
+
+        // Empty iter
+        {
+            let d: RingBuf<int> = RingBuf::new();
+            let mut iter = d.into_iter();
+
+            assert_eq!(iter.size_hint(), (0, Some(0)));
+            assert_eq!(iter.next(), None);
+            assert_eq!(iter.size_hint(), (0, Some(0)));
+        }
+
+        // simple iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+
+            let b = vec![0,1,2,3,4];
+            assert_eq!(d.into_iter().collect::<Vec<int>>(), b);
+        }
+
+        // wrapped iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            let b = vec![8,7,6,0,1,2,3,4];
+            assert_eq!(d.into_iter().collect::<Vec<int>>(), b);
+        }
+
+        // partially used
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            let mut it = d.into_iter();
+            assert_eq!(it.size_hint(), (8, Some(8)));
+            assert_eq!(it.next(), Some(8));
+            assert_eq!(it.size_hint(), (7, Some(7)));
+            assert_eq!(it.next_back(), Some(4));
+            assert_eq!(it.size_hint(), (6, Some(6)));
+            assert_eq!(it.next(), Some(7));
+            assert_eq!(it.size_hint(), (5, Some(5)));
+        }
+    }
+
+    #[test]
+    fn test_drain() {
+
+        // Empty iter
+        {
+            let mut d: RingBuf<int> = RingBuf::new();
+
+            {
+                let mut iter = d.drain();
+
+                assert_eq!(iter.size_hint(), (0, Some(0)));
+                assert_eq!(iter.next(), None);
+                assert_eq!(iter.size_hint(), (0, Some(0)));
+            }
+
+            assert!(d.is_empty());
+        }
+
+        // simple iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+
+            assert_eq!(d.drain().collect::<Vec<int>>(), [0, 1, 2, 3, 4]);
+            assert!(d.is_empty());
+        }
+
+        // wrapped iter
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            assert_eq!(d.drain().collect::<Vec<int>>(), [8,7,6,0,1,2,3,4]);
+            assert!(d.is_empty());
+        }
+
+        // partially used
+        {
+            let mut d = RingBuf::new();
+            for i in range(0i, 5) {
+                d.push_back(i);
+            }
+            for i in range(6, 9) {
+                d.push_front(i);
+            }
+
+            {
+                let mut it = d.drain();
+                assert_eq!(it.size_hint(), (8, Some(8)));
+                assert_eq!(it.next(), Some(8));
+                assert_eq!(it.size_hint(), (7, Some(7)));
+                assert_eq!(it.next_back(), Some(4));
+                assert_eq!(it.size_hint(), (6, Some(6)));
+                assert_eq!(it.next(), Some(7));
+                assert_eq!(it.size_hint(), (5, Some(5)));
+            }
+            assert!(d.is_empty());
+        }
+    }
+
+    #[test]
     fn test_from_iter() {
-        use std::iter;
+        use core::iter;
         let v = vec!(1i,2,3,4,5,6,7);
         let deq: RingBuf<int> = v.iter().map(|&x| x).collect();
         let u: Vec<int> = deq.iter().map(|&x| x).collect();
         assert_eq!(u, v);
 
-        let mut seq = iter::count(0u, 2).take(256);
+        let seq = iter::count(0u, 2).take(256);
         let deq: RingBuf<uint> = seq.collect();
         for (i, &x) in deq.iter().enumerate() {
             assert_eq!(2*i, x);
@@ -1402,12 +2050,12 @@ mod tests {
     #[test]
     fn test_show() {
         let ringbuf: RingBuf<int> = range(0i, 10).collect();
-        assert!(format!("{}", ringbuf).as_slice() == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert!(format!("{}", ringbuf) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()
                                                                         .map(|&s| s)
                                                                         .collect();
-        assert!(format!("{}", ringbuf).as_slice() == "[just, one, test, more]");
+        assert!(format!("{}", ringbuf) == "[just, one, test, more]");
     }
 
     #[test]
@@ -1573,5 +2221,144 @@ mod tests {
         assert_eq!(ring.get_mut(0), Some(&mut -1));
         assert_eq!(ring.get_mut(1), Some(&mut 2));
         assert_eq!(ring.get_mut(2), None);
+    }
+
+    #[test]
+    fn test_insert() {
+        // This test checks that every single combination of tail position, length, and
+        // insertion position is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = RingBuf::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+
+
+        // len is the length *after* insertion
+        for len in range(1, cap) {
+            // 0, 1, 2, .., len - 1
+            let expected = iter::count(0, 1).take(len).collect();
+            for tail_pos in range(0, cap) {
+                for to_insert in range(0, len) {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    for i in range(0, len) {
+                        if i != to_insert {
+                            tester.push_back(i);
+                        }
+                    }
+                    tester.insert(to_insert, to_insert);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert_eq!(tester, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_remove() {
+        // This test checks that every single combination of tail position, length, and
+        // removal position is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = RingBuf::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+
+        // len is the length *after* removal
+        for len in range(0, cap - 1) {
+            // 0, 1, 2, .., len - 1
+            let expected = iter::count(0, 1).take(len).collect();
+            for tail_pos in range(0, cap) {
+                for to_remove in range(0, len + 1) {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    for i in range(0, len) {
+                        if i == to_remove {
+                            tester.push_back(1234);
+                        }
+                        tester.push_back(i);
+                    }
+                    if to_remove == len {
+                        tester.push_back(1234);
+                    }
+                    tester.remove(to_remove);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert_eq!(tester, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_front() {
+        let mut ring = RingBuf::new();
+        ring.push_back(10i);
+        ring.push_back(20i);
+        assert_eq!(ring.front(), Some(&10));
+        ring.pop_front();
+        assert_eq!(ring.front(), Some(&20));
+        ring.pop_front();
+        assert_eq!(ring.front(), None);
+    }
+
+    #[test]
+    fn test_as_slices() {
+        let mut ring: RingBuf<int> = RingBuf::with_capacity(127);
+        let cap = ring.capacity() as int;
+        let first = cap/2;
+        let last  = cap - first;
+        for i in range(0, first) {
+            ring.push_back(i);
+
+            let (left, right) = ring.as_slices();
+            let expected: Vec<_> = range(0, i+1).collect();
+            assert_eq!(left, expected);
+            assert_eq!(right, []);
+        }
+
+        for j in range(-last, 0) {
+            ring.push_front(j);
+            let (left, right) = ring.as_slices();
+            let expected_left: Vec<_> = range(-last, j+1).rev().collect();
+            let expected_right: Vec<_> = range(0, first).collect();
+            assert_eq!(left, expected_left);
+            assert_eq!(right, expected_right);
+        }
+
+        assert_eq!(ring.len() as int, cap);
+        assert_eq!(ring.capacity() as int, cap);
+    }
+
+    #[test]
+    fn test_as_mut_slices() {
+        let mut ring: RingBuf<int> = RingBuf::with_capacity(127);
+        let cap = ring.capacity() as int;
+        let first = cap/2;
+        let last  = cap - first;
+        for i in range(0, first) {
+            ring.push_back(i);
+
+            let (left, right) = ring.as_mut_slices();
+            let expected: Vec<_> = range(0, i+1).collect();
+            assert_eq!(left, expected);
+            assert_eq!(right, []);
+        }
+
+        for j in range(-last, 0) {
+            ring.push_front(j);
+            let (left, right) = ring.as_mut_slices();
+            let expected_left: Vec<_> = range(-last, j+1).rev().collect();
+            let expected_right: Vec<_> = range(0, first).collect();
+            assert_eq!(left, expected_left);
+            assert_eq!(right, expected_right);
+        }
+
+        assert_eq!(ring.len() as int, cap);
+        assert_eq!(ring.capacity() as int, cap);
     }
 }

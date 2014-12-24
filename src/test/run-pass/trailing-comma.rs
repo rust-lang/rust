@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(advanced_slice_patterns,)]
+
 fn f<T,>(_: T,) {}
 
 struct Foo<T,>;
@@ -24,9 +26,13 @@ enum Baz {
     Qux(int,),
 }
 
+#[allow(unused,)]
 pub fn main() {
     f::<int,>(0i,);
     let (_, _,) = (1i, 1i,);
+    let [_, _,] = [1i, 1,];
+    let [_, _, .., _,] = [1i, 1, 1, 1,];
+    let [_, _, _.., _,] = [1i, 1, 1, 1,];
 
     let x: Foo<int,> = Foo::<int,>;
 

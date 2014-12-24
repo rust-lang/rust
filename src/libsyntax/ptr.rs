@@ -56,12 +56,16 @@ pub fn P<T: 'static>(value: T) -> P<T> {
 impl<T: 'static> P<T> {
     /// Move out of the pointer.
     /// Intended for chaining transformations not covered by `map`.
-    pub fn and_then<U>(self, f: |T| -> U) -> U {
+    pub fn and_then<U, F>(self, f: F) -> U where
+        F: FnOnce(T) -> U,
+    {
         f(*self.ptr)
     }
 
     /// Transform the inner value, consuming `self` and producing a new `P<T>`.
-    pub fn map(mut self, f: |T| -> T) -> P<T> {
+    pub fn map<F>(mut self, f: F) -> P<T> where
+        F: FnOnce(T) -> T,
+    {
         unsafe {
             let p = &mut *self.ptr;
             // FIXME(#5016) this shouldn't need to zero to be safe.

@@ -15,4 +15,6 @@
 
 pub use core::u8::{BITS, BYTES, MIN, MAX};
 
-uint_module!(u8)
+use ops::FnOnce;
+
+uint_module! { u8 }

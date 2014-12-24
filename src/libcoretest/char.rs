@@ -121,52 +121,49 @@ fn test_escape_default() {
         return result;
     }
     let s = string('\n');
-    assert_eq!(s.as_slice(), "\\n");
+    assert_eq!(s, "\\n");
     let s = string('\r');
-    assert_eq!(s.as_slice(), "\\r");
+    assert_eq!(s, "\\r");
     let s = string('\'');
-    assert_eq!(s.as_slice(), "\\'");
+    assert_eq!(s, "\\'");
     let s = string('"');
-    assert_eq!(s.as_slice(), "\\\"");
+    assert_eq!(s, "\\\"");
     let s = string(' ');
-    assert_eq!(s.as_slice(), " ");
+    assert_eq!(s, " ");
     let s = string('a');
-    assert_eq!(s.as_slice(), "a");
+    assert_eq!(s, "a");
     let s = string('~');
-    assert_eq!(s.as_slice(), "~");
+    assert_eq!(s, "~");
     let s = string('\x00');
-    assert_eq!(s.as_slice(), "\\x00");
+    assert_eq!(s, "\\u{0}");
     let s = string('\x1f');
-    assert_eq!(s.as_slice(), "\\x1f");
+    assert_eq!(s, "\\u{1f}");
     let s = string('\x7f');
-    assert_eq!(s.as_slice(), "\\x7f");
-    let s = string('\u00ff');
-    assert_eq!(s.as_slice(), "\\u00ff");
-    let s = string('\u011b');
-    assert_eq!(s.as_slice(), "\\u011b");
-    let s = string('\U0001d4b6');
-    assert_eq!(s.as_slice(), "\\U0001d4b6");
+    assert_eq!(s, "\\u{7f}");
+    let s = string('\u{ff}');
+    assert_eq!(s, "\\u{ff}");
+    let s = string('\u{11b}');
+    assert_eq!(s, "\\u{11b}");
+    let s = string('\u{1d4b6}');
+    assert_eq!(s, "\\u{1d4b6}");
 }
 
 #[test]
 fn test_escape_unicode() {
-    fn string(c: char) -> String {
-        let mut result = String::new();
-        escape_unicode(c, |c| { result.push(c); });
-        return result;
-    }
+    fn string(c: char) -> String { c.escape_unicode().collect() }
+
     let s = string('\x00');
-    assert_eq!(s.as_slice(), "\\x00");
+    assert_eq!(s, "\\u{0}");
     let s = string('\n');
-    assert_eq!(s.as_slice(), "\\x0a");
+    assert_eq!(s, "\\u{a}");
     let s = string(' ');
-    assert_eq!(s.as_slice(), "\\x20");
+    assert_eq!(s, "\\u{20}");
     let s = string('a');
-    assert_eq!(s.as_slice(), "\\x61");
-    let s = string('\u011b');
-    assert_eq!(s.as_slice(), "\\u011b");
-    let s = string('\U0001d4b6');
-    assert_eq!(s.as_slice(), "\\U0001d4b6");
+    assert_eq!(s, "\\u{61}");
+    let s = string('\u{11b}');
+    assert_eq!(s, "\\u{11b}");
+    let s = string('\u{1d4b6}');
+    assert_eq!(s, "\\u{1d4b6}");
 }
 
 #[test]

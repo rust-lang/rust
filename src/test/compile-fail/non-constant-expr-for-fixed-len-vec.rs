@@ -12,7 +12,7 @@
 
 fn main() {
     fn bar(n: int) {
-        let _x: [int, ..n];
+        let _x: [int; n];
         //~^ ERROR expected constant expr for array length: non-constant path in constant expr
     }
 }

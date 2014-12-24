@@ -21,7 +21,7 @@ pub mod m1 {
     }
 }
 
-macro_rules! indirect_line( () => ( line!() ) )
+macro_rules! indirect_line( () => ( line!() ) );
 
 pub fn main() {
     assert_eq!(line!(), 27);

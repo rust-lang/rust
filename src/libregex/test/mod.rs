@@ -26,14 +26,14 @@ mod native_static;
 // Due to macro scoping rules, this definition only applies for the modules
 // defined below. Effectively, it allows us to use the same tests for both
 // native and dynamic regexes.
-macro_rules! regex(
+macro_rules! regex {
     ($re:expr) => (
         match ::regex::Regex::new($re) {
             Ok(re) => re,
             Err(err) => panic!("{}", err),
         }
     );
-)
+}
 
 #[path = "bench.rs"]
 mod dynamic_bench;

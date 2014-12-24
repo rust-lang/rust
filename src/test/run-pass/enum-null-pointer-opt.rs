@@ -14,8 +14,7 @@ use std::mem::size_of;
 trait Trait {}
 
 fn main() {
-    // Closures - || / proc()
-    assert_eq!(size_of::<proc()>(), size_of::<Option<proc()>>());
+    // Closures - ||
     assert_eq!(size_of::<||>(), size_of::<Option<||>>());
 
     // Functions

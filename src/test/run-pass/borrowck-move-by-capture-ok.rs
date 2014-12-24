@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 pub fn main() {
     let bar = box 3;
-    let h: proc() -> int = proc() *bar;
+    let h = |:| -> int *bar;
     assert_eq!(h(), 3);
 }
+

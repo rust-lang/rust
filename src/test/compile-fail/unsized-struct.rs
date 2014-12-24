@@ -8,13 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<T> { data: T }
 
-fn bar<T: Sized>() { }
-fn foo<Sized? T>() { bar::<Foo<T>>() }
+fn is_sized<T:Sized>() { }
+fn not_sized<Sized? T>() { }
+
+struct Foo<T> { data: T }
+fn foo1<T>() { not_sized::<Foo<T>>() } // Hunky dory.
+fn foo2<Sized? T>() { not_sized::<Foo<T>>() }
 //~^ ERROR the trait `core::kinds::Sized` is not implemented
-//~^^ ERROR the trait `core::kinds::Sized` is not implemented
-// One error is for the T in Foo<T>, the other is for Foo<T> as a value
-// for bar's type parameter.
+//
+// Not OK: `T` is not sized.
+
+struct Bar<Sized? T> { data: T }
+fn bar1<Sized? T>() { not_sized::<Bar<T>>() }
+fn bar2<Sized? T>() { is_sized::<Bar<T>>() }
+//~^ ERROR the trait `core::kinds::Sized` is not implemented
+//
+// Not OK: `Bar<T>` is not sized, but it should be.
 
 fn main() { }

@@ -200,7 +200,7 @@ impl Target {
     pub fn adjust_abi(&self, abi: abi::Abi) -> abi::Abi {
         match abi {
             abi::System => {
-                if self.options.is_like_windows && self.arch.as_slice() == "x86" {
+                if self.options.is_like_windows && self.arch == "x86" {
                     abi::Stdcall
                 } else {
                     abi::C
@@ -224,7 +224,7 @@ impl Target {
                 Some(val) => val,
                 None =>
                     handler.fatal((format!("Field {} in target specification is required", name))
-                                  .as_slice())
+                                  [])
             }
         };
 
@@ -256,7 +256,7 @@ impl Target {
                         )
                     );
             } );
-        )
+        );
 
         key!(cpu);
         key!(linker);
@@ -308,7 +308,6 @@ impl Target {
             ( $($name:ident),+ ) => (
                 {
                     let target = target.replace("-", "_");
-                    let target = target.as_slice();
                     if false { }
                     $(
                         else if target == stringify!($name) {
@@ -326,7 +325,7 @@ impl Target {
                     }
                 }
             )
-        )
+        );
 
         load_specific!(
             x86_64_unknown_linux_gnu,
@@ -349,7 +348,7 @@ impl Target {
 
             x86_64_pc_windows_gnu,
             i686_pc_windows_gnu
-        )
+        );
 
 
         let path = Path::new(target);
@@ -366,7 +365,7 @@ impl Target {
 
         let target_path = os::getenv("RUST_TARGET_PATH").unwrap_or(String::new());
 
-        let paths = os::split_paths(target_path.as_slice());
+        let paths = os::split_paths(target_path[]);
         // FIXME 16351: add a sane default search path?
 
         for dir in paths.iter() {

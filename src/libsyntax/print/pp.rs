@@ -66,19 +66,19 @@ pub use self::Token::*;
 use std::io;
 use std::string;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum Breaks {
     Consistent,
     Inconsistent,
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct BreakToken {
     offset: int,
     blank_space: int
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct BeginToken {
     offset: int,
     breaks: Breaks
@@ -139,19 +139,21 @@ pub fn buf_str(toks: Vec<Token>,
         }
         s.push_str(format!("{}={}",
                            szs[i],
-                           tok_str(toks[i].clone())).as_slice());
+                           tok_str(toks[i].clone()))[]);
         i += 1u;
         i %= n;
     }
     s.push(']');
-    return s.into_string();
+    s
 }
 
+#[deriving(Copy)]
 pub enum PrintStackBreak {
     Fits,
     Broken(Breaks),
 }
 
+#[deriving(Copy)]
 pub struct PrintStackElem {
     offset: int,
     pbreak: PrintStackBreak
@@ -599,7 +601,7 @@ impl Printer {
             assert_eq!(l, len);
             // assert!(l <= space);
             self.space -= len;
-            self.print_str(s.as_slice())
+            self.print_str(s[])
           }
           Eof => {
             // Eof should never get here.

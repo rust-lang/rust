@@ -18,8 +18,8 @@ use std::mem::*;            // shouldn't get errors for not using
                             // everything imported
 
 // Should get errors for both 'Some' and 'None'
-use std::option::{Some, None}; //~ ERROR unused import
-                                //~^ ERROR unused import
+use std::option::Option::{Some, None}; //~ ERROR unused import
+                                     //~^ ERROR unused import
 
 use test::A;       //~ ERROR unused import
 // Be sure that if we just bring some methods into scope that they're also

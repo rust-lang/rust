@@ -11,11 +11,12 @@
 #![macro_escape]
 #![doc(hidden)]
 
-macro_rules! assert_approx_eq(
+macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({
         use num::Float;
         let (a, b) = (&$a, &$b);
         assert!((*a - *b).abs() < 1.0e-6,
                 "{} is not approximately equal to {}", *a, *b);
     })
-)
+}
+

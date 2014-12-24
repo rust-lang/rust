@@ -65,7 +65,7 @@ pub fn main() {
     assert_eq!(receiver.recv_opt().ok(), None);
 
     let (sender, receiver) = channel();
-    task::spawn(proc() {
+    task::spawn(move|| {
         let v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
     });
     assert_eq!(receiver.recv(), Message::Dropped);
@@ -73,7 +73,7 @@ pub fn main() {
 
     let (sender, receiver) = channel();
     {
-        task::spawn(proc() {
+        task::spawn(move|| {
             let mut v = Foo::NestedVariant(box 42u, SendOnDrop {
                 sender: sender.clone()
             }, sender.clone());

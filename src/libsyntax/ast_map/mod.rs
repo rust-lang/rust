@@ -32,7 +32,7 @@ use std::slice;
 
 pub mod blocks;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum PathElem {
     PathMod(Name),
     PathName(Name)
@@ -73,9 +73,9 @@ impl<'a> Iterator<PathElem> for LinkedPath<'a> {
     }
 }
 
-// HACK(eddyb) move this into libstd (value wrapper for slice::Items).
+// HACK(eddyb) move this into libstd (value wrapper for slice::Iter).
 #[deriving(Clone)]
-pub struct Values<'a, T:'a>(pub slice::Items<'a, T>);
+pub struct Values<'a, T:'a>(pub slice::Iter<'a, T>);
 
 impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
     fn next(&mut self) -> Option<T> {
@@ -87,7 +87,7 @@ impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
 /// The type of the iterator used by with_path.
 pub type PathElems<'a, 'b> = iter::Chain<Values<'a, PathElem>, LinkedPath<'b>>;
 
-pub fn path_to_string<PI: Iterator<PathElem>>(mut path: PI) -> String {
+pub fn path_to_string<PI: Iterator<PathElem>>(path: PI) -> String {
     let itr = token::get_ident_interner();
 
     path.fold(String::new(), |mut s, e| {
@@ -95,12 +95,12 @@ pub fn path_to_string<PI: Iterator<PathElem>>(mut path: PI) -> String {
         if !s.is_empty() {
             s.push_str("::");
         }
-        s.push_str(e.as_slice());
+        s.push_str(e[]);
         s
     }).to_string()
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum Node<'ast> {
     NodeItem(&'ast Item),
     NodeForeignItem(&'ast ForeignItem),
@@ -122,7 +122,7 @@ pub enum Node<'ast> {
 
 /// Represents an entry and its parent Node ID
 /// The odd layout is to bring down the total size.
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 enum MapEntry<'ast> {
     /// Placeholder for holes in the map.
     NotPresent,
@@ -260,7 +260,7 @@ impl<'ast> Map<'ast> {
     }
 
     fn find_entry(&self, id: NodeId) -> Option<MapEntry<'ast>> {
-        self.map.borrow().as_slice().get(id as uint).map(|e| *e)
+        self.map.borrow().get(id as uint).map(|e| *e)
     }
 
     pub fn krate(&self) -> &'ast Crate {
@@ -418,7 +418,9 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn with_path<T>(&self, id: NodeId, f: |PathElems| -> T) -> T {
+    pub fn with_path<T, F>(&self, id: NodeId, f: F) -> T where
+        F: FnOnce(PathElems) -> T,
+    {
         self.with_path_next(id, None, f)
     }
 
@@ -432,7 +434,9 @@ impl<'ast> Map<'ast> {
         })
     }
 
-    fn with_path_next<T>(&self, id: NodeId, next: LinkedPath, f: |PathElems| -> T) -> T {
+    fn with_path_next<T, F>(&self, id: NodeId, next: LinkedPath, f: F) -> T where
+        F: FnOnce(PathElems) -> T,
+    {
         let parent = self.get_parent(id);
         let parent = match self.find_entry(id) {
             Some(EntryForeignItem(..)) | Some(EntryVariant(..)) => {
@@ -464,22 +468,24 @@ impl<'ast> Map<'ast> {
 
     /// Given a node ID and a closure, apply the closure to the array
     /// of attributes associated with the AST corresponding to the Node ID
-    pub fn with_attrs<T>(&self, id: NodeId, f: |Option<&[Attribute]>| -> T) -> T {
+    pub fn with_attrs<T, F>(&self, id: NodeId, f: F) -> T where
+        F: FnOnce(Option<&[Attribute]>) -> T,
+    {
         let attrs = match self.get(id) {
-            NodeItem(i) => Some(i.attrs.as_slice()),
-            NodeForeignItem(fi) => Some(fi.attrs.as_slice()),
+            NodeItem(i) => Some(i.attrs[]),
+            NodeForeignItem(fi) => Some(fi.attrs[]),
             NodeTraitItem(ref tm) => match **tm {
-                RequiredMethod(ref type_m) => Some(type_m.attrs.as_slice()),
-                ProvidedMethod(ref m) => Some(m.attrs.as_slice()),
-                TypeTraitItem(ref typ) => Some(typ.attrs.as_slice()),
+                RequiredMethod(ref type_m) => Some(type_m.attrs[]),
+                ProvidedMethod(ref m) => Some(m.attrs[]),
+                TypeTraitItem(ref typ) => Some(typ.attrs[]),
             },
             NodeImplItem(ref ii) => {
                 match **ii {
-                    MethodImplItem(ref m) => Some(m.attrs.as_slice()),
-                    TypeImplItem(ref t) => Some(t.attrs.as_slice()),
+                    MethodImplItem(ref m) => Some(m.attrs[]),
+                    TypeImplItem(ref t) => Some(t.attrs[]),
                 }
             }
-            NodeVariant(ref v) => Some(v.node.attrs.as_slice()),
+            NodeVariant(ref v) => Some(v.node.attrs[]),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
             // FIXME(eddyb) make this work again (requires access to the map).
@@ -498,8 +504,8 @@ impl<'ast> Map<'ast> {
     /// the iterator will produce node id's for items with paths
     /// such as `foo::bar::quux`, `bar::quux`, `other::bar::quux`, and
     /// any other such items it can find in the map.
-    pub fn nodes_matching_suffix<'a, S:Str>(&'a self, parts: &'a [S])
-                                 -> NodesMatchingSuffix<'a, 'ast, S> {
+    pub fn nodes_matching_suffix<'a>(&'a self, parts: &'a [String])
+                                 -> NodesMatchingSuffix<'a, 'ast> {
         NodesMatchingSuffix {
             map: self,
             item_name: parts.last().unwrap(),
@@ -551,18 +557,22 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn node_to_string(&self, id: NodeId) -> String {
-        node_id_to_string(self, id)
+        node_id_to_string(self, id, true)
+    }
+
+    pub fn node_to_user_string(&self, id: NodeId) -> String {
+        node_id_to_string(self, id, false)
     }
 }
 
-pub struct NodesMatchingSuffix<'a, 'ast:'a, S:'a> {
+pub struct NodesMatchingSuffix<'a, 'ast:'a> {
     map: &'a Map<'ast>,
-    item_name: &'a S,
-    in_which: &'a [S],
+    item_name: &'a String,
+    in_which: &'a [String],
     idx: NodeId,
 }
 
-impl<'a, 'ast, S:Str> NodesMatchingSuffix<'a, 'ast, S> {
+impl<'a, 'ast> NodesMatchingSuffix<'a, 'ast> {
     /// Returns true only if some suffix of the module path for parent
     /// matches `self.in_which`.
     ///
@@ -576,7 +586,7 @@ impl<'a, 'ast, S:Str> NodesMatchingSuffix<'a, 'ast, S> {
                 None => return false,
                 Some((node_id, name)) => (node_id, name),
             };
-            if part.as_slice() != mod_name.as_str() {
+            if part[] != mod_name.as_str() {
                 return false;
             }
             cursor = self.map.get_parent(mod_id);
@@ -614,12 +624,12 @@ impl<'a, 'ast, S:Str> NodesMatchingSuffix<'a, 'ast, S> {
     // We are looking at some node `n` with a given name and parent
     // id; do their names match what I am seeking?
     fn matches_names(&self, parent_of_n: NodeId, name: Name) -> bool {
-        name.as_str() == self.item_name.as_slice() &&
+        name.as_str() == self.item_name[] &&
             self.suffix_matches(parent_of_n)
     }
 }
 
-impl<'a, 'ast, S:Str> Iterator<NodeId> for NodesMatchingSuffix<'a, 'ast, S> {
+impl<'a, 'ast> Iterator<NodeId> for NodesMatchingSuffix<'a, 'ast> {
     fn next(&mut self) -> Option<NodeId> {
         loop {
             let idx = self.idx;
@@ -739,7 +749,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         let parent = self.parent;
         self.parent = i.id;
         match i.node {
-            ItemImpl(_, _, _, ref impl_items) => {
+            ItemImpl(_, _, _, _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
                         MethodImplItem(ref m) => {
@@ -770,13 +780,10 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                     None => {}
                 }
             }
-            ItemTrait(_, _, ref bounds, ref trait_items) => {
+            ItemTrait(_, _, _, ref bounds, ref trait_items) => {
                 for b in bounds.iter() {
-                    match *b {
-                        TraitTyParamBound(ref t) => {
-                            self.insert(t.trait_ref.ref_id, NodeItem(i));
-                        }
-                        _ => {}
+                    if let TraitTyParamBound(ref t) = *b {
+                        self.insert(t.trait_ref.ref_id, NodeItem(i));
                     }
                 }
 
@@ -846,7 +853,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_ty(&mut self, ty: &'ast Ty) {
         match ty.node {
-            TyClosure(ref fd) | TyProc(ref fd) => {
+            TyClosure(ref fd) => {
                 self.visit_fn_decl(&*fd.decl);
             }
             TyBareFn(ref fd) => {
@@ -1028,7 +1035,10 @@ impl<'a> NodePrinter for pprust::State<'a> {
     }
 }
 
-fn node_id_to_string(map: &Map, id: NodeId) -> String {
+fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
+    let id_str = format!(" (id={})", id);
+    let id_str = if include_id { id_str[] } else { "" };
+
     match map.find(id) {
         Some(NodeItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
@@ -1045,30 +1055,30 @@ fn node_id_to_string(map: &Map, id: NodeId) -> String {
                 ItemImpl(..) => "impl",
                 ItemMac(..) => "macro"
             };
-            format!("{} {} (id={})", item_str, path_str, id)
+            format!("{} {}{}", item_str, path_str, id_str)
         }
         Some(NodeForeignItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
-            format!("foreign item {} (id={})", path_str, id)
+            format!("foreign item {}{}", path_str, id_str)
         }
         Some(NodeImplItem(ref ii)) => {
             match **ii {
                 MethodImplItem(ref m) => {
                     match m.node {
                         MethDecl(ident, _, _, _, _, _, _, _) =>
-                            format!("method {} in {} (id={})",
+                            format!("method {} in {}{}",
                                     token::get_ident(ident),
-                                    map.path_to_string(id), id),
+                                    map.path_to_string(id), id_str),
                         MethMac(ref mac) =>
-                            format!("method macro {} (id={})",
-                                    pprust::mac_to_string(mac), id)
+                            format!("method macro {}{}",
+                                    pprust::mac_to_string(mac), id_str)
                     }
                 }
                 TypeImplItem(ref t) => {
-                    format!("typedef {} in {} (id={})",
+                    format!("typedef {} in {}{}",
                             token::get_ident(t.ident),
                             map.path_to_string(id),
-                            id)
+                            id_str)
                 }
             }
         }
@@ -1076,51 +1086,51 @@ fn node_id_to_string(map: &Map, id: NodeId) -> String {
             match **tm {
                 RequiredMethod(_) | ProvidedMethod(_) => {
                     let m = ast_util::trait_item_to_ty_method(&**tm);
-                    format!("method {} in {} (id={})",
+                    format!("method {} in {}{}",
                             token::get_ident(m.ident),
                             map.path_to_string(id),
-                            id)
+                            id_str)
                 }
                 TypeTraitItem(ref t) => {
-                    format!("type item {} in {} (id={})",
+                    format!("type item {} in {}{}",
                             token::get_ident(t.ty_param.ident),
                             map.path_to_string(id),
-                            id)
+                            id_str)
                 }
             }
         }
         Some(NodeVariant(ref variant)) => {
-            format!("variant {} in {} (id={})",
+            format!("variant {} in {}{}",
                     token::get_ident(variant.node.name),
-                    map.path_to_string(id), id)
+                    map.path_to_string(id), id_str)
         }
         Some(NodeExpr(ref expr)) => {
-            format!("expr {} (id={})", pprust::expr_to_string(&**expr), id)
+            format!("expr {}{}", pprust::expr_to_string(&**expr), id_str)
         }
         Some(NodeStmt(ref stmt)) => {
-            format!("stmt {} (id={})", pprust::stmt_to_string(&**stmt), id)
+            format!("stmt {}{}", pprust::stmt_to_string(&**stmt), id_str)
         }
         Some(NodeArg(ref pat)) => {
-            format!("arg {} (id={})", pprust::pat_to_string(&**pat), id)
+            format!("arg {}{}", pprust::pat_to_string(&**pat), id_str)
         }
         Some(NodeLocal(ref pat)) => {
-            format!("local {} (id={})", pprust::pat_to_string(&**pat), id)
+            format!("local {}{}", pprust::pat_to_string(&**pat), id_str)
         }
         Some(NodePat(ref pat)) => {
-            format!("pat {} (id={})", pprust::pat_to_string(&**pat), id)
+            format!("pat {}{}", pprust::pat_to_string(&**pat), id_str)
         }
         Some(NodeBlock(ref block)) => {
-            format!("block {} (id={})", pprust::block_to_string(&**block), id)
+            format!("block {}{}", pprust::block_to_string(&**block), id_str)
         }
         Some(NodeStructCtor(_)) => {
-            format!("struct_ctor {} (id={})", map.path_to_string(id), id)
+            format!("struct_ctor {}{}", map.path_to_string(id), id_str)
         }
         Some(NodeLifetime(ref l)) => {
-            format!("lifetime {} (id={})",
-                    pprust::lifetime_to_string(&**l), id)
+            format!("lifetime {}{}",
+                    pprust::lifetime_to_string(&**l), id_str)
         }
         None => {
-            format!("unknown node (id={})", id)
+            format!("unknown node{}", id_str)
         }
     }
 }

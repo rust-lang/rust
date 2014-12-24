@@ -20,11 +20,13 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
-pub fn expand_deriving_ord(cx: &mut ExtCtxt,
-                           span: Span,
-                           mitem: &MetaItem,
-                           item: &Item,
-                           push: |P<Item>|) {
+pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
+                              span: Span,
+                              mitem: &MetaItem,
+                              item: &Item,
+                              push: F) where
+    F: FnOnce(P<Item>),
+{
     macro_rules! md (
         ($name:expr, $op:expr, $equal:expr) => { {
             let inline = cx.meta_word(span, InternedString::new("inline"));
@@ -81,6 +83,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
+#[deriving(Copy)]
 pub enum OrderingOp {
     PartialCmpOp, LtOp, LeOp, GtOp, GeOp,
 }
@@ -105,6 +108,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
     let ordering = cx.path_global(span,
                                   vec!(cx.ident_of("std"),
                                        cx.ident_of("cmp"),
+                                       cx.ident_of("Ordering"),
                                        cx.ident_of("Equal")));
     let ordering = cx.expr_path(ordering);
     let equals_expr = cx.expr_some(span, ordering);
@@ -120,9 +124,9 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
     Builds:
 
     let __test = ::std::cmp::PartialOrd::partial_cmp(&self_field1, &other_field1);
-    if __test == ::std::option::Some(::std::cmp::Equal) {
+    if __test == ::std::option::Option::Some(::std::cmp::Ordering::Equal) {
         let __test = ::std::cmp::PartialOrd::partial_cmp(&self_field2, &other_field2);
-        if __test == ::std::option::Some(::std::cmp::Equal) {
+        if __test == ::std::option::Option::Some(::std::cmp::Ordering::Equal) {
             ...
         } else {
             __test
@@ -139,7 +143,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
         false,
         |cx, span, old, self_f, other_fs| {
             // let __test = new;
-            // if __test == Some(::std::cmp::Equal) {
+            // if __test == Some(::std::cmp::Ordering::Equal) {
             //    old
             // } else {
             //    __test

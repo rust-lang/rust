@@ -11,5 +11,5 @@
 struct S;
 
 impl S {
-    static fn f() {} //~ ERROR unexpected token: `static`
+    static fn f() {} //~ ERROR expected `fn`, found `static`
 }

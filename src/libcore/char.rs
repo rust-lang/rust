@@ -15,10 +15,12 @@
 #![allow(non_snake_case)]
 #![doc(primitive = "char")]
 
+use iter::Iterator;
 use mem::transmute;
-use option::{None, Option, Some};
-use iter::{range_step, Iterator, RangeStep};
-use slice::SlicePrelude;
+use ops::FnMut;
+use option::Option::{None, Some};
+use option::Option;
+use slice::SliceExt;
 
 // UTF-8 ranges and tags for encoding characters
 static TAG_CONT: u8    = 0b1000_0000u8;
@@ -64,7 +66,7 @@ static MAX_THREE_B: u32 =  0x10000u32;
 
 /// The highest valid code point
 #[stable]
-pub const MAX: char = '\U0010ffff';
+pub const MAX: char = '\u{10ffff}';
 
 /// Converts from `u32` to a `char`
 #[inline]
@@ -81,7 +83,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 ///
 /// Checks if a `char` parses as a numeric digit in the given radix
 ///
-/// Compared to `is_digit()`, this function only recognizes the
+/// Compared to `is_numeric()`, this function only recognizes the
 /// characters `0-9`, `a-z` and `A-Z`.
 ///
 /// # Return value
@@ -139,7 +141,7 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
 #[unstable = "pending decisions about costructors for primitives"]
 pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
-        panic!("from_digit: radix is to high (maximum 36)");
+        panic!("from_digit: radix is too high (maximum 36)");
     }
     if num < radix {
         unsafe {
@@ -154,36 +156,17 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     }
 }
 
-///
-/// Returns the hexadecimal Unicode escape of a `char`
-///
-/// The rules are as follows:
-///
-/// - chars in [0,0xff] get 2-digit escapes: `\\xNN`
-/// - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
-/// - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
-///
+/// Deprecated, call the escape_unicode method instead.
 #[deprecated = "use the Char::escape_unicode method"]
-pub fn escape_unicode(c: char, f: |char|) {
+pub fn escape_unicode<F>(c: char, mut f: F) where F: FnMut(char) {
     for char in c.escape_unicode() {
         f(char);
     }
 }
 
-///
-/// Returns a 'default' ASCII and C++11-like literal escape of a `char`
-///
-/// The default is chosen with a bias toward producing literals that are
-/// legal in a variety of languages, including C++11 and similar C-family
-/// languages. The exact rules are:
-///
-/// - Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
-/// - Single-quote, double-quote and backslash chars are backslash-escaped.
-/// - Any other chars in the range [0x20,0x7e] are not escaped.
-/// - Any other chars are given hex Unicode escapes; see `escape_unicode`.
-///
+/// Deprecated, call the escape_default method instead.
 #[deprecated = "use the Char::escape_default method"]
-pub fn escape_default(c: char, f: |char|) {
+pub fn escape_default<F>(c: char, mut f: F) where F: FnMut(char) {
     for c in c.escape_default() {
         f(c);
     }
@@ -201,7 +184,7 @@ pub fn len_utf8_bytes(c: char) -> uint {
 pub trait Char {
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
-    /// Compared to `is_digit()`, this function only recognizes the characters
+    /// Compared to `is_numeric()`, this function only recognizes the characters
     /// `0-9`, `a-z` and `A-Z`.
     ///
     /// # Return value
@@ -217,7 +200,7 @@ pub trait Char {
 
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
-    /// Compared to `is_digit()`, this function only recognizes the characters
+    /// Compared to `is_numeric()`, this function only recognizes the characters
     /// `0-9`, `a-z` and `A-Z`.
     ///
     /// # Return value
@@ -265,13 +248,11 @@ pub trait Char {
     /// Returns an iterator that yields the hexadecimal Unicode escape
     /// of a character, as `char`s.
     ///
-    /// The rules are as follows:
-    ///
-    /// * Characters in [0,0xff] get 2-digit escapes: `\\xNN`
-    /// * Characters in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`.
-    /// * Characters above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`.
+    /// All characters are escaped with Rust syntax of the form `\\u{NNNN}`
+    /// where `NNNN` is the shortest hexadecimal representation of the code
+    /// point.
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_unicode(self) -> UnicodeEscapedChars;
+    fn escape_unicode(self) -> EscapeUnicode;
 
     /// Returns an iterator that yields the 'default' ASCII and
     /// C++11-like literal escape of a character, as `char`s.
@@ -286,7 +267,7 @@ pub trait Char {
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_default(self) -> DefaultEscapedChars;
+    fn escape_default(self) -> EscapeDefault;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
@@ -356,23 +337,23 @@ impl Char for char {
     fn from_u32(i: u32) -> Option<char> { from_u32(i) }
 
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_unicode(self) -> UnicodeEscapedChars {
-        UnicodeEscapedChars { c: self, state: UnicodeEscapedCharsState::Backslash }
+    fn escape_unicode(self) -> EscapeUnicode {
+        EscapeUnicode { c: self, state: EscapeUnicodeState::Backslash }
     }
 
     #[unstable = "pending error conventions, trait organization"]
-    fn escape_default(self) -> DefaultEscapedChars {
+    fn escape_default(self) -> EscapeDefault {
         let init_state = match self {
-            '\t' => DefaultEscapedCharsState::Backslash('t'),
-            '\r' => DefaultEscapedCharsState::Backslash('r'),
-            '\n' => DefaultEscapedCharsState::Backslash('n'),
-            '\\' => DefaultEscapedCharsState::Backslash('\\'),
-            '\'' => DefaultEscapedCharsState::Backslash('\''),
-            '"'  => DefaultEscapedCharsState::Backslash('"'),
-            '\x20' ... '\x7e' => DefaultEscapedCharsState::Char(self),
-            _ => DefaultEscapedCharsState::Unicode(self.escape_unicode())
+            '\t' => EscapeDefaultState::Backslash('t'),
+            '\r' => EscapeDefaultState::Backslash('r'),
+            '\n' => EscapeDefaultState::Backslash('n'),
+            '\\' => EscapeDefaultState::Backslash('\\'),
+            '\'' => EscapeDefaultState::Backslash('\''),
+            '"'  => EscapeDefaultState::Backslash('"'),
+            '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
+            _ => EscapeDefaultState::Unicode(self.escape_unicode())
         };
-        DefaultEscapedChars { state: init_state }
+        EscapeDefault { state: init_state }
     }
 
     #[inline]
@@ -449,72 +430,87 @@ impl Char for char {
 
 /// An iterator over the characters that represent a `char`, as escaped by
 /// Rust's unicode escaping rules.
-pub struct UnicodeEscapedChars {
+pub struct EscapeUnicode {
     c: char,
-    state: UnicodeEscapedCharsState
+    state: EscapeUnicodeState
 }
 
-enum UnicodeEscapedCharsState {
+enum EscapeUnicodeState {
     Backslash,
     Type,
-    Value(RangeStep<i32>),
+    LeftBrace,
+    Value(uint),
+    RightBrace,
+    Done,
 }
 
-impl Iterator<char> for UnicodeEscapedChars {
+impl Iterator<char> for EscapeUnicode {
     fn next(&mut self) -> Option<char> {
         match self.state {
-            UnicodeEscapedCharsState::Backslash => {
-                self.state = UnicodeEscapedCharsState::Type;
+            EscapeUnicodeState::Backslash => {
+                self.state = EscapeUnicodeState::Type;
                 Some('\\')
             }
-            UnicodeEscapedCharsState::Type => {
-                let (typechar, pad) = if self.c <= '\x7f' { ('x', 2) }
-                                      else if self.c <= '\uffff' { ('u', 4) }
-                                      else { ('U', 8) };
-                self.state = UnicodeEscapedCharsState::Value(range_step(4 * (pad - 1), -1, -4i32));
-                Some(typechar)
+            EscapeUnicodeState::Type => {
+                self.state = EscapeUnicodeState::LeftBrace;
+                Some('u')
             }
-            UnicodeEscapedCharsState::Value(ref mut range_step) => match range_step.next() {
-                Some(offset) => {
-                    let offset = offset as uint;
-                    let v = match ((self.c as i32) >> offset) & 0xf {
-                        i @ 0 ... 9 => '0' as i32 + i,
-                        i => 'a' as i32 + (i - 10)
-                    };
-                    Some(unsafe { transmute(v) })
+            EscapeUnicodeState::LeftBrace => {
+                let mut n = 0u;
+                while (self.c as u32) >> (4 * (n + 1)) != 0 {
+                    n += 1;
                 }
-                None => None
+                self.state = EscapeUnicodeState::Value(n);
+                Some('{')
             }
+            EscapeUnicodeState::Value(offset) => {
+                let v = match ((self.c as i32) >> (offset * 4)) & 0xf {
+                    i @ 0 ... 9 => '0' as i32 + i,
+                    i => 'a' as i32 + (i - 10)
+                };
+                if offset == 0 {
+                    self.state = EscapeUnicodeState::RightBrace;
+                } else {
+                    self.state = EscapeUnicodeState::Value(offset - 1);
+                }
+                Some(unsafe { transmute(v) })
+            }
+            EscapeUnicodeState::RightBrace => {
+                self.state = EscapeUnicodeState::Done;
+                Some('}')
+            }
+            EscapeUnicodeState::Done => None,
         }
     }
 }
 
 /// An iterator over the characters that represent a `char`, escaped
 /// for maximum portability.
-pub struct DefaultEscapedChars {
-    state: DefaultEscapedCharsState
+pub struct EscapeDefault {
+    state: EscapeDefaultState
 }
 
-enum DefaultEscapedCharsState {
+enum EscapeDefaultState {
     Backslash(char),
     Char(char),
     Done,
-    Unicode(UnicodeEscapedChars),
+    Unicode(EscapeUnicode),
 }
 
-impl Iterator<char> for DefaultEscapedChars {
+impl Iterator<char> for EscapeDefault {
     fn next(&mut self) -> Option<char> {
         match self.state {
-            DefaultEscapedCharsState::Backslash(c) => {
-                self.state = DefaultEscapedCharsState::Char(c);
+            EscapeDefaultState::Backslash(c) => {
+                self.state = EscapeDefaultState::Char(c);
                 Some('\\')
             }
-            DefaultEscapedCharsState::Char(c) => {
-                self.state = DefaultEscapedCharsState::Done;
+            EscapeDefaultState::Char(c) => {
+                self.state = EscapeDefaultState::Done;
                 Some(c)
             }
-            DefaultEscapedCharsState::Done => None,
-            DefaultEscapedCharsState::Unicode(ref mut iter) => iter.next()
+            EscapeDefaultState::Done => None,
+            EscapeDefaultState::Unicode(ref mut iter) => iter.next()
         }
     }
 }
+

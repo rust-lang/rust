@@ -18,7 +18,7 @@ struct G;
 
 impl<'a, A: Add<int, int>> Fn<(A,), int> for G {
     extern "rust-call" fn call(&self, (arg,): (A,)) -> int {
-        arg.add(&1)
+        arg.add(1)
     }
 }
 

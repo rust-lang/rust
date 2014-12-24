@@ -13,5 +13,5 @@
 extern crate "unreachable-variant" as other;
 
 fn main() {
-    let _x = other::super_sekrit::baz; //~ ERROR is private
+    let _x = other::super_sekrit::sooper_sekrit::baz; //~ ERROR is private
 }

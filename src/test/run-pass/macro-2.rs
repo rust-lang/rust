@@ -19,7 +19,7 @@ pub fn main() {
             fn f($x: int) -> int { return $body; };
             f
         })
-    )
+    );
 
-    assert!(mylambda_tt!(y, y * 2)(8) == 16)
+    assert!(mylambda_tt!(y, y * 2)(8) == 16);
 }

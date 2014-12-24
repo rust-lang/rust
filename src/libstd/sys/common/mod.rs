@@ -13,14 +13,22 @@
 
 use io::{mod, IoError, IoResult};
 use prelude::*;
-use sys::{last_error, retry, fs};
+use sys::{last_error, retry};
 use c_str::CString;
 use num::Int;
 use path::BytesContainer;
 use collections;
 
-pub mod net;
+pub mod backtrace;
+pub mod condvar;
 pub mod helper_thread;
+pub mod mutex;
+pub mod net;
+pub mod rwlock;
+pub mod stack;
+pub mod thread;
+pub mod thread_info;
+pub mod thread_local;
 
 // common error constructors
 
@@ -65,7 +73,9 @@ pub fn mkerr_libc<T: Int>(ret: T) -> IoResult<()> {
     }
 }
 
-pub fn keep_going(data: &[u8], f: |*const u8, uint| -> i64) -> i64 {
+pub fn keep_going<F>(data: &[u8], mut f: F) -> i64 where
+    F: FnMut(*const u8, uint) -> i64,
+{
     let origamt = data.len();
     let mut data = data.as_ptr();
     let mut amt = origamt;
@@ -83,10 +93,9 @@ pub fn keep_going(data: &[u8], f: |*const u8, uint| -> i64) -> i64 {
     return (origamt - amt) as i64;
 }
 
-// traits for extracting representations from
-
-pub trait AsFileDesc {
-    fn as_fd(&self) -> &fs::FileDesc;
+// A trait for extracting representations from std::io types
+pub trait AsInner<Inner> {
+    fn as_inner(&self) -> &Inner;
 }
 
 pub trait ProcessConfig<K: BytesContainer, V: BytesContainer> {

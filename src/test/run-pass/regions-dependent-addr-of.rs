@@ -18,7 +18,7 @@ struct A {
 
 struct B {
     v1: int,
-    v2: [int, ..3],
+    v2: [int; 3],
     v3: Vec<int> ,
     v4: C,
     v5: Box<C>,
@@ -28,6 +28,8 @@ struct B {
 struct C {
     f: int
 }
+
+impl Copy for C {}
 
 fn get_v1(a: &A) -> &int {
     // Region inferencer must deduce that &v < L2 < L1

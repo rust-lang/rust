@@ -26,20 +26,17 @@ use sys::fs;
 use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval, timer};
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
-use sys_common::{AsFileDesc, mkerr_libc, timeout};
+use sys_common::{AsInner, mkerr_libc, timeout};
 
 use io::fs::PathExtensions;
-use string::String;
 
 pub use sys_common::ProcessConfig;
 
-/**
- * A value representing a child process.
- *
- * The lifetime of this value is linked to the lifetime of the actual
- * process - the Process destructor calls self.finish() which waits
- * for the process to terminate.
- */
+/// A value representing a child process.
+///
+/// The lifetime of this value is linked to the lifetime of the actual
+/// process - the Process destructor calls self.finish() which waits
+/// for the process to terminate.
 pub struct Process {
     /// The unique id of the process (this should never be negative).
     pid: pid_t,
@@ -105,7 +102,7 @@ impl Process {
     pub fn spawn<K, V, C, P>(cfg: &C, in_fd: Option<P>,
                               out_fd: Option<P>, err_fd: Option<P>)
                               -> IoResult<Process>
-        where C: ProcessConfig<K, V>, P: AsFileDesc,
+        where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
               K: BytesContainer + Eq + Hash, V: BytesContainer
     {
         use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
@@ -124,8 +121,8 @@ impl Process {
         use libc::funcs::extra::msvcrt::get_osfhandle;
 
         use mem;
-        use iter::Iterator;
-        use str::StrPrelude;
+        use iter::{Iterator, IteratorExt};
+        use str::StrExt;
 
         if cfg.gid().is_some() || cfg.uid().is_some() {
             return Err(IoError {
@@ -195,7 +192,7 @@ impl Process {
                         }
                     }
                     Some(ref fd) => {
-                        let orig = get_osfhandle(fd.as_fd().fd()) as HANDLE;
+                        let orig = get_osfhandle(fd.as_inner().fd()) as HANDLE;
                         if orig == INVALID_HANDLE_VALUE {
                             return Err(super::last_error())
                         }
@@ -225,7 +222,7 @@ impl Process {
 
             with_envp(cfg.env(), |envp| {
                 with_dirp(cfg.cwd(), |dirp| {
-                    let mut cmd_str: Vec<u16> = cmd_str.as_slice().utf16_units().collect();
+                    let mut cmd_str: Vec<u16> = cmd_str.utf16_units().collect();
                     cmd_str.push(0);
                     let created = CreateProcessW(ptr::null(),
                                                  cmd_str.as_mut_ptr(),
@@ -263,16 +260,14 @@ impl Process {
         }
     }
 
-    /**
-     * Waits for a process to exit and returns the exit code, failing
-     * if there is no process with the specified id.
-     *
-     * Note that this is private to avoid race conditions on unix where if
-     * a user calls waitpid(some_process.get_id()) then some_process.finish()
-     * and some_process.destroy() and some_process.finalize() will then either
-     * operate on a none-existent process or, even worse, on a newer process
-     * with the same id.
-     */
+    /// Waits for a process to exit and returns the exit code, failing
+    /// if there is no process with the specified id.
+    ///
+    /// Note that this is private to avoid race conditions on unix where if
+    /// a user calls waitpid(some_process.get_id()) then some_process.finish()
+    /// and some_process.destroy() and some_process.finalize() will then either
+    /// operate on a none-existent process or, even worse, on a newer process
+    /// with the same id.
     pub fn wait(&self, deadline: u64) -> IoResult<ProcessExit> {
         use libc::types::os::arch::extra::DWORD;
         use libc::consts::os::extra::{
@@ -422,9 +417,8 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
     }
 }
 
-fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
-                      cb: |*mut c_void| -> T) -> T
-    where K: BytesContainer + Eq + Hash, V: BytesContainer
+fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T where
+    K: BytesContainer + Eq + Hash, V: BytesContainer, F: FnOnce(*mut c_void) -> T,
 {
     // On Windows we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
@@ -435,9 +429,9 @@ fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
 
             for pair in env.iter() {
                 let kv = format!("{}={}",
-                                 pair.ref0().container_as_str().unwrap(),
-                                 pair.ref1().container_as_str().unwrap());
-                blk.extend(kv.as_slice().utf16_units());
+                                 pair.0.container_as_str().unwrap(),
+                                 pair.1.container_as_str().unwrap());
+                blk.extend(kv.utf16_units());
                 blk.push(0);
             }
 
@@ -449,7 +443,9 @@ fn with_envp<K, V, T>(env: Option<&collections::HashMap<K, V>>,
     }
 }
 
-fn with_dirp<T>(d: Option<&CString>, cb: |*const u16| -> T) -> T {
+fn with_dirp<T, F>(d: Option<&CString>, cb: F) -> T where
+    F: FnOnce(*const u16) -> T,
+{
     match d {
       Some(dir) => {
           let dir_str = dir.as_str()
@@ -488,24 +484,24 @@ mod tests {
 
         assert_eq!(
             test_wrapper("prog", &["aaa", "bbb", "ccc"]),
-            "prog aaa bbb ccc".to_string()
+            "prog aaa bbb ccc"
         );
 
         assert_eq!(
             test_wrapper("C:\\Program Files\\blah\\blah.exe", &["aaa"]),
-            "\"C:\\Program Files\\blah\\blah.exe\" aaa".to_string()
+            "\"C:\\Program Files\\blah\\blah.exe\" aaa"
         );
         assert_eq!(
             test_wrapper("C:\\Program Files\\test", &["aa\"bb"]),
-            "\"C:\\Program Files\\test\" aa\\\"bb".to_string()
+            "\"C:\\Program Files\\test\" aa\\\"bb"
         );
         assert_eq!(
             test_wrapper("echo", &["a b c"]),
-            "echo \"a b c\"".to_string()
+            "echo \"a b c\""
         );
         assert_eq!(
-            test_wrapper("\u03c0\u042f\u97f3\u00e6\u221e", &[]),
-            "\u03c0\u042f\u97f3\u00e6\u221e".to_string()
+            test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]),
+            "\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}"
         );
     }
 }

@@ -23,7 +23,7 @@ fn test53() {
 
 // ...unless they are properly bounded
 fn test60() {
-    assert_send::<&'static Dummy+Send>();
+    assert_send::<&'static (Dummy+Send)>();
 }
 fn test61() {
     assert_send::<Box<Dummy+Send>>();

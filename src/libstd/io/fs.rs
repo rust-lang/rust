@@ -10,61 +10,61 @@
 //
 // ignore-lexer-test FIXME #15679
 
-/*! Synchronous File I/O
-
-This module provides a set of functions and traits for working
-with regular files & directories on a filesystem.
-
-At the top-level of the module are a set of freestanding functions, associated
-with various filesystem operations. They all operate on `Path` objects.
-
-All operations in this module, including those as part of `File` et al
-block the task during execution. In the event of failure, all functions/methods
-will return an `IoResult` type with an `Err` value.
-
-Also included in this module is an implementation block on the `Path` object
-defined in `std::path::Path`. The impl adds useful methods about inspecting the
-metadata of a file. This includes getting the `stat` information, reading off
-particular bits of it, etc.
-
-# Example
-
-```rust
-# #![allow(unused_must_use)]
-use std::io::fs::PathExtensions;
-use std::io::{File, fs};
-
-let path = Path::new("foo.txt");
-
-// create the file, whether it exists or not
-let mut file = File::create(&path);
-file.write(b"foobar");
-# drop(file);
-
-// open the file in read-only mode
-let mut file = File::open(&path);
-file.read_to_end();
-
-println!("{}", path.stat().unwrap().size);
-# drop(file);
-fs::unlink(&path);
-```
-
-*/
+//! Synchronous File I/O
+//!
+//! This module provides a set of functions and traits for working
+//! with regular files & directories on a filesystem.
+//!
+//! At the top-level of the module are a set of freestanding functions, associated
+//! with various filesystem operations. They all operate on `Path` objects.
+//!
+//! All operations in this module, including those as part of `File` et al
+//! block the task during execution. In the event of failure, all functions/methods
+//! will return an `IoResult` type with an `Err` value.
+//!
+//! Also included in this module is an implementation block on the `Path` object
+//! defined in `std::path::Path`. The impl adds useful methods about inspecting the
+//! metadata of a file. This includes getting the `stat` information, reading off
+//! particular bits of it, etc.
+//!
+//! # Example
+//!
+//! ```rust
+//! # #![allow(unused_must_use)]
+//! use std::io::fs::PathExtensions;
+//! use std::io::{File, fs};
+//!
+//! let path = Path::new("foo.txt");
+//!
+//! // create the file, whether it exists or not
+//! let mut file = File::create(&path);
+//! file.write(b"foobar");
+//! # drop(file);
+//!
+//! // open the file in read-only mode
+//! let mut file = File::open(&path);
+//! file.read_to_end();
+//!
+//! println!("{}", path.stat().unwrap().size);
+//! # drop(file);
+//! fs::unlink(&path);
+//! ```
 
 use clone::Clone;
 use io::standard_error;
-use io::{FilePermission, Write, Open, FileAccess, FileMode};
-use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
+use io::{FilePermission, Write, Open, FileAccess, FileMode, FileType};
+use io::{IoResult, IoError, InvalidInput};
+use io::{FileStat, SeekStyle, Seek, Writer, Reader};
 use io::{Read, Truncate, ReadWrite, Append};
 use io::UpdateIoError;
 use io;
 use iter::{Iterator, Extend};
-use option::{Some, None, Option};
+use option::Option;
+use option::Option::{Some, None};
 use path::{Path, GenericPath};
 use path;
-use result::{Err, Ok};
-use slice::SlicePrelude;
+use result::Result::{Err, Ok};
+use slice::SliceExt;
 use string::String;
 use vec::Vec;
 
@@ -88,8 +88,8 @@ pub struct File {
     last_nread: int,
 }
 
-impl sys_common::AsFileDesc for File {
-    fn as_fd(&self) -> &fs_imp::FileDesc {
+impl sys_common::AsInner<fs_imp::FileDesc> for File {
+    fn as_inner(&self) -> &fs_imp::FileDesc {
         &self.fd
     }
 }
@@ -136,13 +136,26 @@ impl File {
     pub fn open_mode(path: &Path,
                      mode: FileMode,
                      access: FileAccess) -> IoResult<File> {
-        fs_imp::open(path, mode, access).map(|fd| {
-            File {
-                path: path.clone(),
-                fd: fd,
-                last_nread: -1
+        fs_imp::open(path, mode, access).and_then(|fd| {
+            // On *BSD systems, we can open a directory as a file and read from it:
+            // fd=open("/tmp", O_RDONLY); read(fd, buf, N);
+            // due to an old tradition before the introduction of opendir(3).
+            // We explicitly reject it because there are few use cases.
+            if cfg!(not(any(windows, target_os = "linux", target_os = "android"))) &&
+               try!(fd.fstat()).kind == FileType::Directory {
+                Err(IoError {
+                    kind: InvalidInput,
+                    desc: "is a directory",
+                    detail: None
+                })
+            } else {
+                Ok(File {
+                    path: path.clone(),
+                    fd: fd,
+                    last_nread: -1
+                })
             }
-        }).update_err("couldn't open file", |e| {
+        }).update_err("couldn't open path as file", |e| {
             format!("{}; path={}; mode={}; access={}", e, path.display(),
                 mode_string(mode), access_string(access))
         })
@@ -187,7 +200,7 @@ impl File {
              .update_desc("couldn't create file")
     }
 
-    /// Returns the original path which was used to open this file.
+    /// Returns the original path that was used to open this file.
     pub fn path<'a>(&'a self) -> &'a Path {
         &self.path
     }
@@ -202,7 +215,7 @@ impl File {
     }
 
     /// This function is similar to `fsync`, except that it may not synchronize
-    /// file metadata to the filesystem. This is intended for use case which
+    /// file metadata to the filesystem. This is intended for use cases that
     /// must synchronize content, but don't need the metadata on disk. The goal
     /// of this method is to reduce disk operations.
     pub fn datasync(&mut self) -> IoResult<()> {
@@ -239,7 +252,7 @@ impl File {
     }
 
     /// Queries information about the underlying file.
-    pub fn stat(&mut self) -> IoResult<FileStat> {
+    pub fn stat(&self) -> IoResult<FileStat> {
         self.fd.fstat()
             .update_err("couldn't fstat file", |e|
                 format!("{}; path={}", e, self.path.display()))
@@ -443,7 +456,7 @@ pub fn symlink(src: &Path, dst: &Path) -> IoResult<()> {
 /// # Error
 ///
 /// This function will return an error on failure. Failure conditions include
-/// reading a file that does not exist or reading a file which is not a symlink.
+/// reading a file that does not exist or reading a file that is not a symlink.
 pub fn readlink(path: &Path) -> IoResult<Path> {
     fs_imp::readlink(path)
            .update_err("couldn't resolve symlink for path", |e|
@@ -533,7 +546,7 @@ pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
                        |e| format!("{}; path={}", e, path.display()))
 }
 
-/// Returns an iterator which will recursively walk the directory structure
+/// Returns an iterator that will recursively walk the directory structure
 /// rooted at `path`. The path given will not be iterated over, and this will
 /// perform iteration in some top-down order.  The contents of unreadable
 /// subdirectories are ignored.
@@ -544,7 +557,7 @@ pub fn walk_dir(path: &Path) -> IoResult<Directories> {
     })
 }
 
-/// An iterator which walks over a directory
+/// An iterator that walks over a directory
 pub struct Directories {
     stack: Vec<Path>,
 }
@@ -592,7 +605,7 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
         match result {
             Err(mkdir_err) => {
                 // already exists ?
-                if try!(stat(&curpath)).kind != io::TypeDirectory {
+                if try!(stat(&curpath)).kind != FileType::Directory {
                     return Err(mkdir_err);
                 }
             }
@@ -638,7 +651,7 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
                 false => try!(update_err(lstat(&child), path))
             };
 
-            if child_type.kind == io::TypeDirectory {
+            if child_type.kind == FileType::Directory {
                 rm_stack.push(child);
                 has_child_dir = true;
             } else {
@@ -772,13 +785,13 @@ impl PathExtensions for path::Path {
     }
     fn is_file(&self) -> bool {
         match self.stat() {
-            Ok(s) => s.kind == io::TypeFile,
+            Ok(s) => s.kind == FileType::RegularFile,
             Err(..) => false
         }
     }
     fn is_dir(&self) -> bool {
         match self.stat() {
-            Ok(s) => s.kind == io::TypeDirectory,
+            Ok(s) => s.kind == FileType::Directory,
             Err(..) => false
         }
     }
@@ -806,29 +819,25 @@ fn access_string(access: FileAccess) -> &'static str {
 #[allow(unused_mut)]
 mod test {
     use prelude::*;
-    use io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite};
+    use io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite, FileType};
     use io;
     use str;
     use io::fs::*;
-    use path::Path;
-    use io;
-    use ops::Drop;
-    use str::StrPrelude;
 
-    macro_rules! check( ($e:expr) => (
+    macro_rules! check { ($e:expr) => (
         match $e {
             Ok(t) => t,
             Err(e) => panic!("{} failed with: {}", stringify!($e), e),
         }
-    ) )
+    ) }
 
-    macro_rules! error( ($e:expr, $s:expr) => (
+    macro_rules! error { ($e:expr, $s:expr) => (
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {}", $s),
-            Err(ref err) => assert!(err.to_string().as_slice().contains($s.as_slice()),
+            Err(ref err) => assert!(err.to_string().contains($s.as_slice()),
                                     format!("`{}` did not contain `{}`", err, $s))
         }
-    ) )
+    ) }
 
     pub struct TempDir(Path);
 
@@ -888,7 +897,7 @@ mod test {
         let filename = &tmpdir.join("file_that_does_not_exist.txt");
         let result = File::open_mode(filename, Open, Read);
 
-        error!(result, "couldn't open file");
+        error!(result, "couldn't open path as file");
         if cfg!(unix) {
             error!(result, "no such file or directory");
         }
@@ -983,7 +992,7 @@ mod test {
         }
         check!(unlink(filename));
         let read_str = str::from_utf8(&read_mem).unwrap();
-        assert!(read_str.as_slice() == final_msg.as_slice());
+        assert!(read_str == final_msg);
     }
 
     #[test]
@@ -1028,12 +1037,12 @@ mod test {
             fs.write(msg.as_bytes()).unwrap();
 
             let fstat_res = check!(fs.stat());
-            assert_eq!(fstat_res.kind, io::TypeFile);
+            assert_eq!(fstat_res.kind, FileType::RegularFile);
         }
         let stat_res_fn = check!(stat(filename));
-        assert_eq!(stat_res_fn.kind, io::TypeFile);
+        assert_eq!(stat_res_fn.kind, FileType::RegularFile);
         let stat_res_meth = check!(filename.stat());
-        assert_eq!(stat_res_meth.kind, io::TypeFile);
+        assert_eq!(stat_res_meth.kind, FileType::RegularFile);
         check!(unlink(filename));
     }
 
@@ -1043,9 +1052,9 @@ mod test {
         let filename = &tmpdir.join("file_stat_correct_on_is_dir");
         check!(mkdir(filename, io::USER_RWX));
         let stat_res_fn = check!(stat(filename));
-        assert!(stat_res_fn.kind == io::TypeDirectory);
+        assert!(stat_res_fn.kind == FileType::Directory);
         let stat_res_meth = check!(filename.stat());
-        assert!(stat_res_meth.kind == io::TypeDirectory);
+        assert!(stat_res_meth.kind == FileType::Directory);
         check!(rmdir(filename));
     }
 
@@ -1091,7 +1100,7 @@ mod test {
             let f = dir.join(format!("{}.txt", n));
             let mut w = check!(File::create(&f));
             let msg_str = format!("{}{}", prefix, n.to_string());
-            let msg = msg_str.as_slice().as_bytes();
+            let msg = msg_str.as_bytes();
             check!(w.write(msg));
         }
         let files = check!(readdir(dir));
@@ -1202,7 +1211,7 @@ mod test {
         assert!(dirpath.is_dir());
 
         let mut filepath = dirpath;
-        filepath.push("unicode-file-\uac00\u4e00\u30fc\u4f60\u597d.rs");
+        filepath.push("unicode-file-\u{ac00}\u{4e00}\u{30fc}\u{4f60}\u{597d}.rs");
         check!(File::create(&filepath)); // ignore return; touch only
         assert!(!filepath.is_dir());
         assert!(filepath.exists());
@@ -1315,8 +1324,8 @@ mod test {
         check!(File::create(&input).write("foobar".as_bytes()));
         check!(symlink(&input, &out));
         if cfg!(not(windows)) {
-            assert_eq!(check!(lstat(&out)).kind, io::TypeSymlink);
-            assert_eq!(check!(out.lstat()).kind, io::TypeSymlink);
+            assert_eq!(check!(lstat(&out)).kind, FileType::Symlink);
+            assert_eq!(check!(out.lstat()).kind, FileType::Symlink);
         }
         assert_eq!(check!(stat(&out)).size, check!(stat(&input)).size);
         assert_eq!(check!(File::open(&out).read_to_end()),
@@ -1350,8 +1359,8 @@ mod test {
         check!(File::create(&input).write("foobar".as_bytes()));
         check!(link(&input, &out));
         if cfg!(not(windows)) {
-            assert_eq!(check!(lstat(&out)).kind, io::TypeFile);
-            assert_eq!(check!(out.lstat()).kind, io::TypeFile);
+            assert_eq!(check!(lstat(&out)).kind, FileType::RegularFile);
+            assert_eq!(check!(out.lstat()).kind, FileType::RegularFile);
             assert_eq!(check!(stat(&out)).unstable.nlink, 2);
             assert_eq!(check!(out.stat()).unstable.nlink, 2);
         }
@@ -1530,7 +1539,7 @@ mod test {
 
         check!(File::create(&tmpdir.join("test")).write(&bytes));
         let actual = check!(File::open(&tmpdir.join("test")).read_to_end());
-        assert!(actual.as_slice() == &bytes);
+        assert!(actual == bytes.as_slice());
     }
 
     #[test]

@@ -85,6 +85,24 @@ pub fn is_shift_binop(b: BinOp) -> bool {
     }
 }
 
+/// Returns `true` if the binary operator takes its arguments by value
+pub fn is_by_value_binop(b: BinOp) -> bool {
+    match b {
+        BiAdd | BiSub | BiMul | BiDiv | BiRem | BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => {
+            true
+        }
+        _ => false
+    }
+}
+
+/// Returns `true` if the unary operator takes its argument by value
+pub fn is_by_value_unop(u: UnOp) -> bool {
+    match u {
+        UnNeg | UnNot => true,
+        _ => false,
+    }
+}
+
 pub fn unop_to_string(op: UnOp) -> &'static str {
     match op {
       UnUniq => "box() ",
@@ -174,10 +192,26 @@ pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
                 parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
                     lifetimes: Vec::new(),
                     types: OwnedSlice::empty(),
+                    bindings: OwnedSlice::empty(),
                 })
             }
         ),
     }
+}
+
+// If path is a single segment ident path, return that ident. Otherwise, return
+// None.
+pub fn path_to_ident(path: &Path) -> Option<Ident> {
+    if path.segments.len() != 1 {
+        return None;
+    }
+
+    let segment = &path.segments[0];
+    if !segment.parameters.is_empty() {
+        return None;
+    }
+
+    Some(segment.identifier)
 }
 
 pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> P<Pat> {
@@ -204,11 +238,11 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     match *trait_ref {
         Some(ref trait_ref) => {
             pretty.push('.');
-            pretty.push_str(pprust::path_to_string(&trait_ref.path).as_slice());
+            pretty.push_str(pprust::path_to_string(&trait_ref.path)[]);
         }
         None => {}
     }
-    token::gensym_ident(pretty.as_slice())
+    token::gensym_ident(pretty[])
 }
 
 pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
@@ -217,14 +251,14 @@ pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
                  ref generics,
                  abi,
                  ref explicit_self,
-                 fn_style,
+                 unsafety,
                  ref decl,
                  _,
                  vis) => {
             TypeMethod {
                 ident: ident,
                 attrs: method.attrs.clone(),
-                fn_style: fn_style,
+                unsafety: unsafety,
                 decl: (*decl).clone(),
                 generics: generics.clone(),
                 explicit_self: (*explicit_self).clone(),
@@ -309,7 +343,7 @@ pub fn empty_generics() -> Generics {
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
-#[deriving(Encodable, Decodable, Show)]
+#[deriving(RustcEncodable, RustcDecodable, Show, Copy)]
 pub struct IdRange {
     pub min: NodeId,
     pub max: NodeId,
@@ -412,13 +446,10 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         }
 
         self.operation.visit_id(item.id);
-        match item.node {
-            ItemEnum(ref enum_definition, _) => {
-                for variant in enum_definition.variants.iter() {
-                    self.operation.visit_id(variant.node.id)
-                }
+        if let ItemEnum(ref enum_definition, _) = item.node {
+            for variant in enum_definition.variants.iter() {
+                self.operation.visit_id(variant.node.id)
             }
-            _ => {}
         }
 
         visit::walk_item(self, item);
@@ -453,9 +484,8 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
 
     fn visit_ty(&mut self, typ: &Ty) {
         self.operation.visit_id(typ.id);
-        match typ.node {
-            TyPath(_, _, id) => self.operation.visit_id(id),
-            _ => {}
+        if let TyPath(_, id) = typ.node {
+            self.operation.visit_id(id);
         }
         visit::walk_ty(self, typ)
     }
@@ -500,9 +530,8 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
                        span);
 
         if !self.pass_through_items {
-            match function_kind {
-                visit::FkMethod(..) => self.visited_outermost = false,
-                _ => {}
+            if let visit::FkMethod(..) = function_kind {
+                self.visited_outermost = false;
             }
         }
     }
@@ -569,6 +598,7 @@ pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
     visitor.result
 }
 
+/// Computes the id range for a single fn body, ignoring nested items.
 pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
                                     decl: &FnDecl,
                                     body: &Block,
@@ -576,11 +606,6 @@ pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
                                     id: NodeId)
                                     -> IdRange
 {
-    /*!
-     * Computes the id range for a single fn body,
-     * ignoring nested items.
-     */
-
     let mut visitor = IdRangeComputingVisitor {
         result: IdRange::max()
     };
@@ -593,6 +618,7 @@ pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
     id_visitor.operation.result
 }
 
+// FIXME(#19596) unbox `it`
 pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
     if !it(pat) {
         return false;
@@ -623,21 +649,21 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
 }
 
 pub trait EachViewItem {
-    fn each_view_item(&self, f: |&ast::ViewItem| -> bool) -> bool;
+    fn each_view_item<F>(&self, f: F) -> bool where F: FnMut(&ast::ViewItem) -> bool;
 }
 
-struct EachViewItemData<'a> {
-    callback: |&ast::ViewItem|: 'a -> bool,
+struct EachViewItemData<F> where F: FnMut(&ast::ViewItem) -> bool {
+    callback: F,
 }
 
-impl<'a, 'v> Visitor<'v> for EachViewItemData<'a> {
+impl<'v, F> Visitor<'v> for EachViewItemData<F> where F: FnMut(&ast::ViewItem) -> bool {
     fn visit_view_item(&mut self, view_item: &ast::ViewItem) {
         let _ = (self.callback)(view_item);
     }
 }
 
 impl EachViewItem for ast::Crate {
-    fn each_view_item(&self, f: |&ast::ViewItem| -> bool) -> bool {
+    fn each_view_item<F>(&self, f: F) -> bool where F: FnMut(&ast::ViewItem) -> bool {
         let mut visit = EachViewItemData {
             callback: f,
         };
@@ -674,7 +700,7 @@ pub fn pat_is_ident(pat: P<ast::Pat>) -> bool {
 pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
     (a.span == b.span)
     && (a.global == b.global)
-    && (segments_name_eq(a.segments.as_slice(), b.segments.as_slice()))
+    && (segments_name_eq(a.segments[], b.segments[]))
 }
 
 // are two arrays of segments equal when compared unhygienically?
@@ -712,7 +738,7 @@ pub trait PostExpansionMethod {
     fn pe_generics<'a>(&'a self) -> &'a ast::Generics;
     fn pe_abi(&self) -> Abi;
     fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf;
-    fn pe_fn_style(&self) -> ast::FnStyle;
+    fn pe_unsafety(&self) -> ast::Unsafety;
     fn pe_fn_decl<'a>(&'a self) -> &'a ast::FnDecl;
     fn pe_body<'a>(&'a self) -> &'a ast::Block;
     fn pe_vis(&self) -> ast::Visibility;
@@ -733,16 +759,20 @@ macro_rules! mf_method{
 
 
 impl PostExpansionMethod for Method {
-    mf_method!(pe_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_,_),ident)
-    mf_method!(pe_generics,&'a ast::Generics,
-               MethDecl(_,ref generics,_,_,_,_,_,_),generics)
-    mf_method!(pe_abi,Abi,MethDecl(_,_,abi,_,_,_,_,_),abi)
-    mf_method!(pe_explicit_self,&'a ast::ExplicitSelf,
-               MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self)
-    mf_method!(pe_fn_style,ast::FnStyle,MethDecl(_,_,_,_,fn_style,_,_,_),fn_style)
-    mf_method!(pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,_,ref decl,_,_),&**decl)
-    mf_method!(pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,_,ref body,_),&**body)
-    mf_method!(pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,_,vis),vis)
+    mf_method! { pe_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_,_),ident }
+    mf_method! {
+        pe_generics,&'a ast::Generics,
+        MethDecl(_,ref generics,_,_,_,_,_,_),generics
+    }
+    mf_method! { pe_abi,Abi,MethDecl(_,_,abi,_,_,_,_,_),abi }
+    mf_method! {
+        pe_explicit_self,&'a ast::ExplicitSelf,
+        MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self
+    }
+    mf_method! { pe_unsafety,ast::Unsafety,MethDecl(_,_,_,_,unsafety,_,_,_),unsafety }
+    mf_method! { pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,_,ref decl,_,_),&**decl }
+    mf_method! { pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,_,ref body,_),&**body }
+    mf_method! { pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,_,vis),vis }
 }
 
 #[cfg(test)]
@@ -758,13 +788,13 @@ mod test {
     #[test] fn idents_name_eq_test() {
         assert!(segments_name_eq(
             [Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice(),
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[],
             [Ident{name:Name(3),ctxt:104}, Ident{name:Name(78),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[]));
         assert!(!segments_name_eq(
             [Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice(),
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[],
             [Ident{name:Name(3),ctxt:104}, Ident{name:Name(77),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().as_slice()));
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[]));
     }
 }

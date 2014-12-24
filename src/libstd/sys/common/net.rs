@@ -8,21 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::SocketStatus::*;
-pub use self::InAddr::*;
+use self::SocketStatus::*;
+use self::InAddr::*;
 
 use alloc::arc::Arc;
 use libc::{mod, c_char, c_int};
 use mem;
 use num::Int;
 use ptr::{mod, null, null_mut};
-use rustrt::mutex;
 use io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 use io::net::addrinfo;
 use io::{IoResult, IoError};
 use sys::{mod, retry, c, sock_t, last_error, last_net_error, last_gai_error, close_sock,
           wrlen, msglen_t, os, wouldblock, set_nonblocking, timer, ms_to_timeval,
           decode_error_detailed};
+use sync::{Mutex, MutexGuard};
 use sys_common::{mod, keep_going, short_write, timeout};
 use prelude::*;
 use cmp;
@@ -344,10 +344,10 @@ pub fn get_host_addresses(host: Option<&str>, servname: Option<&str>,
 // [1] http://twistedmatrix.com/pipermail/twisted-commits/2012-April/034692.html
 // [2] http://stackoverflow.com/questions/19819198/does-send-msg-dontwait
 
-pub fn read<T>(fd: sock_t,
-               deadline: u64,
-               lock: || -> T,
-               read: |bool| -> libc::c_int) -> IoResult<uint> {
+pub fn read<T, L, R>(fd: sock_t, deadline: u64, mut lock: L, mut read: R) -> IoResult<uint> where
+    L: FnMut() -> T,
+    R: FnMut(bool) -> libc::c_int,
+{
     let mut ret = -1;
     if deadline == 0 {
         ret = retry(|| read(false));
@@ -386,12 +386,15 @@ pub fn read<T>(fd: sock_t,
     }
 }
 
-pub fn write<T>(fd: sock_t,
-                deadline: u64,
-                buf: &[u8],
-                write_everything: bool,
-                lock: || -> T,
-                write: |bool, *const u8, uint| -> i64) -> IoResult<uint> {
+pub fn write<T, L, W>(fd: sock_t,
+                      deadline: u64,
+                      buf: &[u8],
+                      write_everything: bool,
+                      mut lock: L,
+                      mut write: W) -> IoResult<uint> where
+    L: FnMut() -> T,
+    W: FnMut(bool, *const u8, uint) -> i64,
+{
     let mut ret = -1;
     let mut written = 0;
     if deadline == 0 {
@@ -557,12 +560,12 @@ struct Inner {
 
     // Unused on Linux, where this lock is not necessary.
     #[allow(dead_code)]
-    lock: mutex::NativeMutex
+    lock: Mutex<()>,
 }
 
 impl Inner {
     fn new(fd: sock_t) -> Inner {
-        Inner { fd: fd, lock: unsafe { mutex::NativeMutex::new() } }
+        Inner { fd: fd, lock: Mutex::new(()) }
     }
 }
 
@@ -572,7 +575,7 @@ impl Drop for Inner {
 
 pub struct Guard<'a> {
     pub fd: sock_t,
-    pub guard: mutex::LockGuard<'a>,
+    pub guard: MutexGuard<'a, ()>,
 }
 
 #[unsafe_destructor]
@@ -666,7 +669,7 @@ impl TcpStream {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: unsafe { self.inner.lock.lock() },
+            guard: self.inner.lock.lock(),
         };
         assert!(set_nonblocking(self.fd(), true).is_ok());
         ret
@@ -674,8 +677,8 @@ impl TcpStream {
 
     pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let fd = self.fd();
-        let dolock = || self.lock_nonblocking();
-        let doread = |nb| unsafe {
+        let dolock = |&:| self.lock_nonblocking();
+        let doread = |&mut: nb| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::recv(fd,
                        buf.as_mut_ptr() as *mut libc::c_void,
@@ -687,8 +690,8 @@ impl TcpStream {
 
     pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let fd = self.fd();
-        let dolock = || self.lock_nonblocking();
-        let dowrite = |nb: bool, buf: *const u8, len: uint| unsafe {
+        let dolock = |&:| self.lock_nonblocking();
+        let dowrite = |&: nb: bool, buf: *const u8, len: uint| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::send(fd,
                        buf as *const _,
@@ -805,7 +808,7 @@ impl UdpSocket {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: unsafe { self.inner.lock.lock() },
+            guard: self.inner.lock.lock(),
         };
         assert!(set_nonblocking(self.fd(), true).is_ok());
         ret
@@ -822,7 +825,7 @@ impl UdpSocket {
         let mut addrlen: libc::socklen_t =
                 mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
 
-        let dolock = || self.lock_nonblocking();
+        let dolock = |&:| self.lock_nonblocking();
         let n = try!(read(fd, self.read_deadline, dolock, |nb| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::recvfrom(fd,
@@ -843,8 +846,8 @@ impl UdpSocket {
         let dstp = &storage as *const _ as *const libc::sockaddr;
 
         let fd = self.fd();
-        let dolock = || self.lock_nonblocking();
-        let dowrite = |nb, buf: *const u8, len: uint| unsafe {
+        let dolock = |&: | self.lock_nonblocking();
+        let dowrite = |&mut: nb, buf: *const u8, len: uint| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::sendto(fd,
                          buf as *const libc::c_void,

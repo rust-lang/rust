@@ -11,6 +11,6 @@
 enum State { ST_NULL, ST_WHITESPACE }
 
 fn main() {
-    [State::ST_NULL, ..(State::ST_WHITESPACE as uint)];
+    [State::ST_NULL; (State::ST_WHITESPACE as uint)];
     //~^ ERROR expected constant integer for repeat count, found non-constant expression
 }

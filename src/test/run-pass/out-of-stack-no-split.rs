@@ -28,7 +28,7 @@ pub fn black_box<T>(dummy: T) { unsafe { asm!("" : : "r"(&dummy)) } }
 
 #[no_stack_check]
 fn recurse() {
-    let buf = [0i, ..10];
+    let buf = [0i; 10];
     black_box(buf);
     recurse();
 }

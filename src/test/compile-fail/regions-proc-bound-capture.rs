@@ -8,19 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrowed_proc<'a>(x: &'a int) -> proc():'a -> int {
+fn borrowed_proc<'a>(x: &'a int) -> Box<FnMut()->(int) + 'a> {
     // This is legal, because the region bound on `proc`
     // states that it captures `x`.
-    proc() {
-        *x
-    }
+    box move|| { *x }
 }
 
-fn static_proc<'a>(x: &'a int) -> proc():'static -> int {
+fn static_proc(x: &int) -> Box<FnMut()->(int) + 'static> {
     // This is illegal, because the region bound on `proc` is 'static.
-    proc() { //~ ERROR captured variable `x` outlives the `proc()`
-        *x
-    }
+    box move|| { *x } //~ ERROR cannot infer
 }
 
 fn main() { }

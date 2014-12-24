@@ -19,7 +19,7 @@ fn main() {
     // Check that both closures are capturing by value
     assert_eq!(1, mem::size_of_val(&closure));
 
-    spawn(proc() {
+    spawn(move|| {
         let ok = closure;
     })
 }

@@ -10,7 +10,7 @@
 
 // no-pretty-expanded FIXME #15189
 
-use std::task;
+use std::thread::Thread;
 
 pub fn main() { println!("===== WITHOUT THREADS ====="); test00(); }
 
@@ -39,9 +39,9 @@ fn test00() {
     let mut results = Vec::new();
     while i < number_of_tasks {
         let tx = tx.clone();
-        results.push(task::try_future({
+        results.push(Thread::spawn({
             let i = i;
-            proc() {
+            move|| {
                 test00_start(&tx, i, number_of_messages)
             }
         }));
@@ -60,7 +60,7 @@ fn test00() {
     }
 
     // Join spawned tasks...
-    for r in results.iter_mut() { r.get_ref(); }
+    for r in results.into_iter() { r.join(); }
 
     println!("Completed: Final number is: ");
     println!("{}", sum);

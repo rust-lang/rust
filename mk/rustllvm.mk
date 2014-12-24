@@ -22,7 +22,8 @@ LLVM_EXTRA_INCDIRS_$(1)= -iquote $(S)src/llvm/include \
                          -iquote $$(CFG_LLVM_BUILD_DIR_$(1))/include
 endif
 
-RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, RustWrapper.cpp PassWrapper.cpp)
+RUSTLLVM_OBJS_CS_$(1) := $$(addprefix rustllvm/, \
+	ExecutionEngineWrapper.cpp RustWrapper.cpp PassWrapper.cpp)
 
 RUSTLLVM_DEF_$(1) := $(1)/rustllvm/rustllvm$(CFG_DEF_SUFFIX_$(1))
 

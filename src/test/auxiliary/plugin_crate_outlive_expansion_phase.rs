@@ -15,6 +15,7 @@
 extern crate rustc;
 
 use std::any::Any;
+use std::cell::RefCell;
 use rustc::plugin::Registry;
 
 struct Foo {
@@ -27,7 +28,7 @@ impl Drop for Foo {
 
 #[plugin_registrar]
 pub fn registrar(_: &mut Registry) {
-    local_data_key!(foo: Box<Any+Send>);
-    foo.replace(Some(box Foo { foo: 10 } as Box<Any+Send>));
+    thread_local!(static FOO: RefCell<Option<Box<Any+Send>>> = RefCell::new(None));
+    FOO.with(|s| *s.borrow_mut() = Some(box Foo { foo: 10 } as Box<Any+Send>));
 }
 

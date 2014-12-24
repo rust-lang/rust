@@ -28,7 +28,7 @@ use std::path::BytesContainer;
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -43,7 +43,7 @@ pub enum BinOpToken {
 }
 
 /// A delimeter token
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
     Paren,
@@ -53,14 +53,14 @@ pub enum DelimToken {
     Brace,
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum IdentStyle {
     /// `::` follows the identifier with no whitespace in-between.
     ModName,
     Plain,
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
@@ -86,7 +86,7 @@ impl Lit {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show)]
 pub enum Token {
     /* Expression-operator symbols. */
     Eq,
@@ -334,7 +334,7 @@ impl Token {
     }
 }
 
-#[deriving(Clone, Encodable, Decodable, PartialEq, Eq, Hash)]
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(P<ast::Item>),
@@ -421,17 +421,16 @@ macro_rules! declare_special_idents_and_keywords {(
         )*
     }
 
-    /**
-     * All the valid words that have meaning in the Rust language.
-     *
-     * Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
-     * appear as identifiers at all. Reserved keywords are not used anywhere in
-     * the language and may not appear as identifiers.
-     */
+    /// All the valid words that have meaning in the Rust language.
+    ///
+    /// Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
+    /// appear as identifiers at all. Reserved keywords are not used anywhere in
+    /// the language and may not appear as identifiers.
     pub mod keywords {
         pub use self::Keyword::*;
         use ast;
 
+        #[deriving(Copy)]
         pub enum Keyword {
             $( $sk_variant, )*
             $( $rk_variant, )*
@@ -455,7 +454,7 @@ macro_rules! declare_special_idents_and_keywords {(
         $(init_vec.push($si_str);)*
         $(init_vec.push($sk_str);)*
         $(init_vec.push($rk_str);)*
-        interner::StrInterner::prefill(init_vec.as_slice())
+        interner::StrInterner::prefill(init_vec[])
     }
 }}
 
@@ -560,15 +559,16 @@ pub type IdentInterner = StrInterner;
 // fresh one.
 // FIXME(eddyb) #8726 This should probably use a task-local reference.
 pub fn get_ident_interner() -> Rc<IdentInterner> {
-    local_data_key!(key: Rc<::parse::token::IdentInterner>)
-    match key.get() {
-        Some(interner) => interner.clone(),
-        None => {
-            let interner = Rc::new(mk_fresh_ident_interner());
-            key.replace(Some(interner.clone()));
-            interner
-        }
-    }
+    thread_local!(static KEY: Rc<::parse::token::IdentInterner> = {
+        Rc::new(mk_fresh_ident_interner())
+    });
+    KEY.with(|k| k.clone())
+}
+
+/// Reset the ident interner to its initial state.
+pub fn reset_ident_interner() {
+    let interner = get_ident_interner();
+    interner.reset(mk_fresh_ident_interner());
 }
 
 /// Represents a string stored in the task-local interner. Because the
@@ -602,8 +602,12 @@ impl InternedString {
 
     #[inline]
     pub fn get<'a>(&'a self) -> &'a str {
-        self.string.as_slice()
+        self.string[]
     }
+}
+
+impl Deref<str> for InternedString {
+    fn deref(&self) -> &str { &*self.string }
 }
 
 impl BytesContainer for InternedString {
@@ -620,26 +624,49 @@ impl BytesContainer for InternedString {
 
 impl fmt::Show for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.string.as_slice())
+        write!(f, "{}", self.string[])
     }
 }
 
+#[allow(deprecated)]
 impl<'a> Equiv<&'a str> for InternedString {
     fn equiv(&self, other: & &'a str) -> bool {
-        (*other) == self.string.as_slice()
+        (*other) == self.string[]
+    }
+}
+
+impl<'a> PartialEq<&'a str> for InternedString {
+    #[inline(always)]
+    fn eq(&self, other: & &'a str) -> bool {
+        PartialEq::eq(self.string[], *other)
+    }
+    #[inline(always)]
+    fn ne(&self, other: & &'a str) -> bool {
+        PartialEq::ne(self.string[], *other)
+    }
+}
+
+impl<'a> PartialEq<InternedString > for &'a str {
+    #[inline(always)]
+    fn eq(&self, other: &InternedString) -> bool {
+        PartialEq::eq(*self, other.string[])
+    }
+    #[inline(always)]
+    fn ne(&self, other: &InternedString) -> bool {
+        PartialEq::ne(*self, other.string[])
     }
 }
 
 impl<D:Decoder<E>, E> Decodable<D, E> for InternedString {
     fn decode(d: &mut D) -> Result<InternedString, E> {
         Ok(get_name(get_ident_interner().intern(
-                    try!(d.read_str()).as_slice())))
+                    try!(d.read_str())[])))
     }
 }
 
 impl<S:Encoder<E>, E> Encodable<S, E> for InternedString {
     fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(self.string.as_slice())
+        s.emit_str(self.string[])
     }
 }
 

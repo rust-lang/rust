@@ -21,6 +21,9 @@ use intrinsics;
 use libc::c_int;
 use num::{Float, FloatMath};
 use num::strconv;
+use num::strconv::ExponentFormat::{ExpNone, ExpDec};
+use num::strconv::SignificantDigits::{DigAll, DigMax, DigExact};
+use num::strconv::SignFormat::SignNeg;
 
 pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON, MIN_VALUE};
 pub use core::f32::{MIN_POS_VALUE, MAX_VALUE, MIN_EXP, MAX_EXP, MIN_10_EXP};
@@ -252,7 +255,7 @@ impl FloatMath for f32 {
 #[experimental = "may be removed or relocated"]
 pub fn to_string(num: f32) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
+        num, 10u, true, SignNeg, DigAll, ExpNone, false);
     r
 }
 
@@ -265,7 +268,7 @@ pub fn to_string(num: f32) -> String {
 #[experimental = "may be removed or relocated"]
 pub fn to_str_hex(num: f32) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 16u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
+        num, 16u, true, SignNeg, DigAll, ExpNone, false);
     r
 }
 
@@ -279,8 +282,7 @@ pub fn to_str_hex(num: f32) -> String {
 #[inline]
 #[experimental = "may be removed or relocated"]
 pub fn to_str_radix_special(num: f32, rdx: uint) -> (String, bool) {
-    strconv::float_to_str_common(num, rdx, true,
-                           strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false)
+    strconv::float_to_str_common(num, rdx, true, SignNeg, DigAll, ExpNone, false)
 }
 
 /// Converts a float to a string with exactly the number of
@@ -294,7 +296,7 @@ pub fn to_str_radix_special(num: f32, rdx: uint) -> (String, bool) {
 #[experimental = "may be removed or relocated"]
 pub fn to_str_exact(num: f32, dig: uint) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpNone, false);
+        num, 10u, true, SignNeg, DigExact(dig), ExpNone, false);
     r
 }
 
@@ -309,7 +311,7 @@ pub fn to_str_exact(num: f32, dig: uint) -> String {
 #[experimental = "may be removed or relocated"]
 pub fn to_str_digits(num: f32, dig: uint) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpNone, false);
+        num, 10u, true, SignNeg, DigMax(dig), ExpNone, false);
     r
 }
 
@@ -325,7 +327,7 @@ pub fn to_str_digits(num: f32, dig: uint) -> String {
 #[experimental = "may be removed or relocated"]
 pub fn to_str_exp_exact(num: f32, dig: uint, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpDec, upper);
+        num, 10u, true, SignNeg, DigExact(dig), ExpDec, upper);
     r
 }
 
@@ -341,7 +343,7 @@ pub fn to_str_exp_exact(num: f32, dig: uint, upper: bool) -> String {
 #[experimental = "may be removed or relocated"]
 pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpDec, upper);
+        num, 10u, true, SignNeg, DigMax(dig), ExpDec, upper);
     r
 }
 
@@ -349,7 +351,7 @@ pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> String {
 mod tests {
     use f32::*;
     use num::*;
-    use num;
+    use num::FpCategory as Fp;
 
     #[test]
     fn test_min_nan() {
@@ -364,8 +366,8 @@ mod tests {
     }
 
     #[test]
-    fn test_num() {
-        num::test_num(10f32, 2f32);
+    fn test_num_f32() {
+        test_num(10f32, 2f32);
     }
 
     #[test]
@@ -619,14 +621,14 @@ mod tests {
         let neg_inf: f32 = Float::neg_infinity();
         let zero: f32 = Float::zero();
         let neg_zero: f32 = Float::neg_zero();
-        assert_eq!(nan.classify(), FPNaN);
-        assert_eq!(inf.classify(), FPInfinite);
-        assert_eq!(neg_inf.classify(), FPInfinite);
-        assert_eq!(zero.classify(), FPZero);
-        assert_eq!(neg_zero.classify(), FPZero);
-        assert_eq!(1f32.classify(), FPNormal);
-        assert_eq!(1e-37f32.classify(), FPNormal);
-        assert_eq!(1e-38f32.classify(), FPSubnormal);
+        assert_eq!(nan.classify(), Fp::Nan);
+        assert_eq!(inf.classify(), Fp::Infinite);
+        assert_eq!(neg_inf.classify(), Fp::Infinite);
+        assert_eq!(zero.classify(), Fp::Zero);
+        assert_eq!(neg_zero.classify(), Fp::Zero);
+        assert_eq!(1f32.classify(), Fp::Normal);
+        assert_eq!(1e-37f32.classify(), Fp::Normal);
+        assert_eq!(1e-38f32.classify(), Fp::Subnormal);
     }
 
     #[test]
@@ -671,8 +673,8 @@ mod tests {
         let inf: f32 = Float::infinity();
         let neg_inf: f32 = Float::neg_infinity();
         let nan: f32 = Float::nan();
-        assert_eq!(match inf.frexp() { (x, _) => x }, inf)
-        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf)
+        assert_eq!(match inf.frexp() { (x, _) => x }, inf);
+        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
         assert!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 

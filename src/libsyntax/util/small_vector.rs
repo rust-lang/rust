@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use self::SmallVectorRepr::*;
-use self::MoveItemsRepr::*;
+use self::IntoIterRepr::*;
 
 use std::mem;
 use std::slice;
@@ -111,17 +111,17 @@ impl<T> SmallVector<T> {
 
     /// Deprecated: use `into_iter`.
     #[deprecated = "use into_iter"]
-    pub fn move_iter(self) -> MoveItems<T> {
+    pub fn move_iter(self) -> IntoIter<T> {
         self.into_iter()
     }
 
-    pub fn into_iter(self) -> MoveItems<T> {
+    pub fn into_iter(self) -> IntoIter<T> {
         let repr = match self.repr {
             Zero => ZeroIterator,
             One(v) => OneIterator(v),
             Many(vs) => ManyIterator(vs.into_iter())
         };
-        MoveItems { repr: repr }
+        IntoIter { repr: repr }
     }
 
     pub fn len(&self) -> uint {
@@ -135,17 +135,17 @@ impl<T> SmallVector<T> {
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
-pub struct MoveItems<T> {
-    repr: MoveItemsRepr<T>,
+pub struct IntoIter<T> {
+    repr: IntoIterRepr<T>,
 }
 
-enum MoveItemsRepr<T> {
+enum IntoIterRepr<T> {
     ZeroIterator,
     OneIterator(T),
-    ManyIterator(vec::MoveItems<T>),
+    ManyIterator(vec::IntoIter<T>),
 }
 
-impl<T> Iterator<T> for MoveItems<T> {
+impl<T> Iterator<T> for IntoIter<T> {
     fn next(&mut self) -> Option<T> {
         match self.repr {
             ZeroIterator => None,
@@ -171,7 +171,7 @@ impl<T> Iterator<T> for MoveItems<T> {
 }
 
 impl<T> MoveMap<T> for SmallVector<T> {
-    fn move_map(self, f: |T| -> T) -> SmallVector<T> {
+    fn move_map<F>(self, mut f: F) -> SmallVector<T> where F: FnMut(T) -> T {
         let repr = match self.repr {
             Zero => Zero,
             One(v) => One(f(v)),
@@ -224,10 +224,10 @@ mod test {
         assert_eq!(Vec::new(), v);
 
         let v = SmallVector::one(1i);
-        assert_eq!(vec!(1i), v.into_iter().collect());
+        assert_eq!(vec!(1i), v.into_iter().collect::<Vec<_>>());
 
         let v = SmallVector::many(vec!(1i, 2i, 3i));
-        assert_eq!(vec!(1i, 2i, 3i), v.into_iter().collect());
+        assert_eq!(vec!(1i, 2i, 3i), v.into_iter().collect::<Vec<_>>());
     }
 
     #[test]

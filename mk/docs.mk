@@ -25,7 +25,7 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial guide guide-ffi guide-macros guide-lifetimes \
+DOCS := index intro tutorial guide guide-ffi guide-macros guide-ownership \
 	guide-tasks guide-container guide-pointers guide-testing \
 	guide-plugin guide-crates complement-bugreport guide-error-handling \
 	complement-lang-faq complement-design-faq complement-project-faq \
@@ -216,56 +216,6 @@ endef
 $(foreach docname,$(DOCS),$(eval $(call DEF_DOC,$(docname))))
 
 
-# Localized documentation
-
-# FIXME: I (huonw) haven't actually been able to test properly, since
-# e.g. (by default) I'm doing an out-of-tree build (#12763), but even
-# adjusting for that, the files are too old(?) and are rejected by
-# po4a.
-#
-# As such, I've attempted to get it working as much as possible (and
-# switching from pandoc to rustdoc), but preserving the old behaviour
-# (e.g. only running on the guide)
-.PHONY: l10n-mds
-l10n-mds: $(D)/po4a.conf \
-		$(foreach lang,$(L10N_LANG),$(D)/po/$(lang)/*.md.po)
-	$(warning WARNING: localized documentation is experimental)
-	po4a --copyright-holder="The Rust Project Developers" \
-		--package-name="Rust" \
-		--package-version="$(CFG_RELEASE)" \
-		-M UTF-8 -L UTF-8 \
-		$(D)/po4a.conf
-
-define DEF_L10N_DOC
-DOC_L10N_TARGETS += doc/l10n/$(1)/$(2).html
-doc/l10n/$(1)/$(2).html: l10n-mds $$(HTML_DEPS) $$(RUSTDOC_DEPS_$(2))
-	@$$(call E, rustdoc: $$@)
-	$$(RUSTDOC) $$(RUSTDOC_HTML_OPTS) $$(RUSTDOC_FLAGS_$(1)) doc/l10n/$(1)/$(2).md
-endef
-
-$(foreach lang,$(L10N_LANGS),$(eval $(call DEF_L10N_DOC,$(lang),guide)))
-
-
-######################################################################
-# LLnextgen (grammar analysis from refman)
-######################################################################
-
-ifeq ($(CFG_LLNEXTGEN),)
-  $(info cfg: no llnextgen found, omitting grammar-verification)
-else
-.PHONY: verify-grammar
-
-doc/rust.g: $(D)/rust.md $(S)src/etc/extract_grammar.py
-	@$(call E, extract_grammar: $@)
-	$(Q)$(CFG_PYTHON) $(S)src/etc/extract_grammar.py $< >$@
-
-verify-grammar: doc/rust.g
-	@$(call E, LLnextgen: $<)
-	$(Q)$(CFG_LLNEXTGEN) --generate-lexer-wrapper=no $< >$@
-	$(Q)rm -f doc/rust.c doc/rust.h
-endif
-
-
 ######################################################################
 # Rustdoc (libstd/extra)
 ######################################################################
@@ -299,7 +249,8 @@ $(2) += doc/$(1)/index.html
 doc/$(1)/index.html: CFG_COMPILER_HOST_TRIPLE = $(CFG_TARGET)
 doc/$(1)/index.html: $$(LIB_DOC_DEP_$(1)) doc/$(1)/
 	@$$(call E, rustdoc: $$@)
-	$$(Q)$$(RUSTDOC) --cfg dox --cfg stage2 $$<
+	$$(Q)CFG_LLVM_LINKAGE_FILE=$$(LLVM_LINKAGE_PATH_$(CFG_BUILD)) \
+		$$(RUSTDOC) --cfg dox --cfg stage2 $$<
 endef
 
 $(foreach crate,$(DOC_CRATES),$(eval $(call DEF_LIB_DOC,$(crate),DOC_TARGETS)))
@@ -313,7 +264,3 @@ endif
 
 docs: $(DOC_TARGETS)
 compiler-docs: $(COMPILER_DOC_TARGETS)
-
-docs-l10n: $(DOC_L10N_TARGETS)
-
-.PHONY: docs-l10n

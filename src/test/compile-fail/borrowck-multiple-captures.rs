@@ -17,7 +17,7 @@ fn different_vars_after_borrows() {
     let p1 = &x1;
     let x2 = box 2i;
     let p2 = &x2;
-    task::spawn(proc() {
+    task::spawn(move|| {
         drop(x1); //~ ERROR cannot move `x1` into closure because it is borrowed
         drop(x2); //~ ERROR cannot move `x2` into closure because it is borrowed
     });
@@ -30,7 +30,7 @@ fn different_vars_after_moves() {
     drop(x1);
     let x2 = box 2i;
     drop(x2);
-    task::spawn(proc() {
+    task::spawn(move|| {
         drop(x1); //~ ERROR capture of moved value: `x1`
         drop(x2); //~ ERROR capture of moved value: `x2`
     });
@@ -39,7 +39,7 @@ fn different_vars_after_moves() {
 fn same_var_after_borrow() {
     let x = box 1i;
     let p = &x;
-    task::spawn(proc() {
+    task::spawn(move|| {
         drop(x); //~ ERROR cannot move `x` into closure because it is borrowed
         drop(x); //~ ERROR use of moved value: `x`
     });
@@ -49,7 +49,7 @@ fn same_var_after_borrow() {
 fn same_var_after_move() {
     let x = box 1i;
     drop(x);
-    task::spawn(proc() {
+    task::spawn(move|| {
         drop(x); //~ ERROR capture of moved value: `x`
         drop(x); //~ ERROR use of moved value: `x`
     });

@@ -10,7 +10,7 @@
 
 // ignore-test FIXME #11820: & is unreliable in deriving
 
-use std::cmp::{Less,Equal,Greater};
+use std::cmp::Ordering::{Less,Equal,Greater};
 
 #[deriving(Eq,Ord)]
 struct A<'a> {

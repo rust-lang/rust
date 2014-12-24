@@ -8,129 +8,122 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * A classic liveness analysis based on dataflow over the AST.  Computes,
- * for each local variable in a function, whether that variable is live
- * at a given point.  Program execution points are identified by their
- * id.
- *
- * # Basic idea
- *
- * The basic model is that each local variable is assigned an index.  We
- * represent sets of local variables using a vector indexed by this
- * index.  The value in the vector is either 0, indicating the variable
- * is dead, or the id of an expression that uses the variable.
- *
- * We conceptually walk over the AST in reverse execution order.  If we
- * find a use of a variable, we add it to the set of live variables.  If
- * we find an assignment to a variable, we remove it from the set of live
- * variables.  When we have to merge two flows, we take the union of
- * those two flows---if the variable is live on both paths, we simply
- * pick one id.  In the event of loops, we continue doing this until a
- * fixed point is reached.
- *
- * ## Checking initialization
- *
- * At the function entry point, all variables must be dead.  If this is
- * not the case, we can report an error using the id found in the set of
- * live variables, which identifies a use of the variable which is not
- * dominated by an assignment.
- *
- * ## Checking moves
- *
- * After each explicit move, the variable must be dead.
- *
- * ## Computing last uses
- *
- * Any use of the variable where the variable is dead afterwards is a
- * last use.
- *
- * # Implementation details
- *
- * The actual implementation contains two (nested) walks over the AST.
- * The outer walk has the job of building up the ir_maps instance for the
- * enclosing function.  On the way down the tree, it identifies those AST
- * nodes and variable IDs that will be needed for the liveness analysis
- * and assigns them contiguous IDs.  The liveness id for an AST node is
- * called a `live_node` (it's a newtype'd uint) and the id for a variable
- * is called a `variable` (another newtype'd uint).
- *
- * On the way back up the tree, as we are about to exit from a function
- * declaration we allocate a `liveness` instance.  Now that we know
- * precisely how many nodes and variables we need, we can allocate all
- * the various arrays that we will need to precisely the right size.  We then
- * perform the actual propagation on the `liveness` instance.
- *
- * This propagation is encoded in the various `propagate_through_*()`
- * methods.  It effectively does a reverse walk of the AST; whenever we
- * reach a loop node, we iterate until a fixed point is reached.
- *
- * ## The `Users` struct
- *
- * At each live node `N`, we track three pieces of information for each
- * variable `V` (these are encapsulated in the `Users` struct):
- *
- * - `reader`: the `LiveNode` ID of some node which will read the value
- *    that `V` holds on entry to `N`.  Formally: a node `M` such
- *    that there exists a path `P` from `N` to `M` where `P` does not
- *    write `V`.  If the `reader` is `invalid_node()`, then the current
- *    value will never be read (the variable is dead, essentially).
- *
- * - `writer`: the `LiveNode` ID of some node which will write the
- *    variable `V` and which is reachable from `N`.  Formally: a node `M`
- *    such that there exists a path `P` from `N` to `M` and `M` writes
- *    `V`.  If the `writer` is `invalid_node()`, then there is no writer
- *    of `V` that follows `N`.
- *
- * - `used`: a boolean value indicating whether `V` is *used*.  We
- *   distinguish a *read* from a *use* in that a *use* is some read that
- *   is not just used to generate a new value.  For example, `x += 1` is
- *   a read but not a use.  This is used to generate better warnings.
- *
- * ## Special Variables
- *
- * We generate various special variables for various, well, special purposes.
- * These are described in the `specials` struct:
- *
- * - `exit_ln`: a live node that is generated to represent every 'exit' from
- *   the function, whether it be by explicit return, panic, or other means.
- *
- * - `fallthrough_ln`: a live node that represents a fallthrough
- *
- * - `no_ret_var`: a synthetic variable that is only 'read' from, the
- *   fallthrough node.  This allows us to detect functions where we fail
- *   to return explicitly.
- * - `clean_exit_var`: a synthetic variable that is only 'read' from the
- *   fallthrough node.  It is only live if the function could converge
- *   via means other than an explicit `return` expression. That is, it is
- *   only dead if the end of the function's block can never be reached.
- *   It is the responsibility of typeck to ensure that there are no
- *   `return` expressions in a function declared as diverging.
- */
+//! A classic liveness analysis based on dataflow over the AST.  Computes,
+//! for each local variable in a function, whether that variable is live
+//! at a given point.  Program execution points are identified by their
+//! id.
+//!
+//! # Basic idea
+//!
+//! The basic model is that each local variable is assigned an index.  We
+//! represent sets of local variables using a vector indexed by this
+//! index.  The value in the vector is either 0, indicating the variable
+//! is dead, or the id of an expression that uses the variable.
+//!
+//! We conceptually walk over the AST in reverse execution order.  If we
+//! find a use of a variable, we add it to the set of live variables.  If
+//! we find an assignment to a variable, we remove it from the set of live
+//! variables.  When we have to merge two flows, we take the union of
+//! those two flows---if the variable is live on both paths, we simply
+//! pick one id.  In the event of loops, we continue doing this until a
+//! fixed point is reached.
+//!
+//! ## Checking initialization
+//!
+//! At the function entry point, all variables must be dead.  If this is
+//! not the case, we can report an error using the id found in the set of
+//! live variables, which identifies a use of the variable which is not
+//! dominated by an assignment.
+//!
+//! ## Checking moves
+//!
+//! After each explicit move, the variable must be dead.
+//!
+//! ## Computing last uses
+//!
+//! Any use of the variable where the variable is dead afterwards is a
+//! last use.
+//!
+//! # Implementation details
+//!
+//! The actual implementation contains two (nested) walks over the AST.
+//! The outer walk has the job of building up the ir_maps instance for the
+//! enclosing function.  On the way down the tree, it identifies those AST
+//! nodes and variable IDs that will be needed for the liveness analysis
+//! and assigns them contiguous IDs.  The liveness id for an AST node is
+//! called a `live_node` (it's a newtype'd uint) and the id for a variable
+//! is called a `variable` (another newtype'd uint).
+//!
+//! On the way back up the tree, as we are about to exit from a function
+//! declaration we allocate a `liveness` instance.  Now that we know
+//! precisely how many nodes and variables we need, we can allocate all
+//! the various arrays that we will need to precisely the right size.  We then
+//! perform the actual propagation on the `liveness` instance.
+//!
+//! This propagation is encoded in the various `propagate_through_*()`
+//! methods.  It effectively does a reverse walk of the AST; whenever we
+//! reach a loop node, we iterate until a fixed point is reached.
+//!
+//! ## The `Users` struct
+//!
+//! At each live node `N`, we track three pieces of information for each
+//! variable `V` (these are encapsulated in the `Users` struct):
+//!
+//! - `reader`: the `LiveNode` ID of some node which will read the value
+//!    that `V` holds on entry to `N`.  Formally: a node `M` such
+//!    that there exists a path `P` from `N` to `M` where `P` does not
+//!    write `V`.  If the `reader` is `invalid_node()`, then the current
+//!    value will never be read (the variable is dead, essentially).
+//!
+//! - `writer`: the `LiveNode` ID of some node which will write the
+//!    variable `V` and which is reachable from `N`.  Formally: a node `M`
+//!    such that there exists a path `P` from `N` to `M` and `M` writes
+//!    `V`.  If the `writer` is `invalid_node()`, then there is no writer
+//!    of `V` that follows `N`.
+//!
+//! - `used`: a boolean value indicating whether `V` is *used*.  We
+//!   distinguish a *read* from a *use* in that a *use* is some read that
+//!   is not just used to generate a new value.  For example, `x += 1` is
+//!   a read but not a use.  This is used to generate better warnings.
+//!
+//! ## Special Variables
+//!
+//! We generate various special variables for various, well, special purposes.
+//! These are described in the `specials` struct:
+//!
+//! - `exit_ln`: a live node that is generated to represent every 'exit' from
+//!   the function, whether it be by explicit return, panic, or other means.
+//!
+//! - `fallthrough_ln`: a live node that represents a fallthrough
+//!
+//! - `no_ret_var`: a synthetic variable that is only 'read' from, the
+//!   fallthrough node.  This allows us to detect functions where we fail
+//!   to return explicitly.
+//! - `clean_exit_var`: a synthetic variable that is only 'read' from the
+//!   fallthrough node.  It is only live if the function could converge
+//!   via means other than an explicit `return` expression. That is, it is
+//!   only dead if the end of the function's block can never be reached.
+//!   It is the responsibility of typeck to ensure that there are no
+//!   `return` expressions in a function declared as diverging.
 use self::LoopKind::*;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use middle::def::*;
 use middle::mem_categorization::Typer;
-use middle::pat_util;
-use middle::typeck;
-use middle::ty;
+use middle::{pat_util, ty};
 use lint;
 use util::nodemap::NodeMap;
 
-use std::fmt;
-use std::io;
+use std::{fmt, io, uint};
 use std::rc::Rc;
-use std::uint;
 use syntax::ast::{mod, NodeId, Expr};
 use syntax::codemap::{BytePos, original_sp, Span};
-use syntax::parse::token::special_idents;
-use syntax::parse::token;
+use syntax::parse::token::{mod, special_idents};
 use syntax::print::pprust::{expr_to_string, block_to_string};
 use syntax::ptr::P;
-use syntax::{visit, ast_util};
-use syntax::visit::{Visitor, FnKind};
+use syntax::ast_util;
+use syntax::visit::{mod, Visitor, FnKind};
 
 /// For use with `propagate_through_loop`.
 enum LoopKind<'a> {
@@ -142,9 +135,10 @@ enum LoopKind<'a> {
     ForLoop(&'a ast::Pat),
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 struct Variable(uint);
-#[deriving(PartialEq)]
+
+#[deriving(Copy, PartialEq)]
 struct LiveNode(uint);
 
 impl Variable {
@@ -161,7 +155,7 @@ impl Clone for LiveNode {
     }
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 enum LiveNodeKind {
     FreeVarNode(Span),
     ExprNode(Span),
@@ -247,13 +241,13 @@ struct CaptureInfo {
     var_nid: NodeId
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 struct LocalInfo {
     id: NodeId,
     ident: ast::Ident
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 enum VarKind {
     Arg(NodeId, ast::Ident),
     Local(LocalInfo),
@@ -329,7 +323,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             self.tcx
                 .sess
                 .span_bug(span, format!("no variable registered for id {}",
-                                        node_id).as_slice());
+                                        node_id)[]);
           }
         }
     }
@@ -452,13 +446,12 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ast::ExprPath(_) => {
         let def = ir.tcx.def_map.borrow()[expr.id].clone();
         debug!("expr {}: path that leads to {}", expr.id, def);
-        match def {
-            DefLocal(..) => ir.add_live_node_for_node(expr.id, ExprNode(expr.span)),
-            _ => {}
+        if let DefLocal(..) = def {
+            ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
         visit::walk_expr(ir, expr);
       }
-      ast::ExprClosure(..) | ast::ExprProc(..) => {
+      ast::ExprClosure(..) => {
         // Interesting control flow (for loops can contain labeled
         // breaks or continues)
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -470,13 +463,10 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         let mut call_caps = Vec::new();
         ty::with_freevars(ir.tcx, expr.id, |freevars| {
             for fv in freevars.iter() {
-                match fv.def {
-                    DefLocal(rv) => {
-                        let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
-                        call_caps.push(CaptureInfo {ln: fv_ln,
-                                                    var_nid: rv});
-                    }
-                    _ => {}
+                if let DefLocal(rv) = fv.def {
+                    let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
+                    call_caps.push(CaptureInfo {ln: fv_ln,
+                                                var_nid: rv});
                 }
             }
         });
@@ -524,7 +514,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ast::ExprBlock(..) | ast::ExprAssign(..) | ast::ExprAssignOp(..) |
       ast::ExprMac(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |
       ast::ExprParen(..) | ast::ExprInlineAsm(..) | ast::ExprBox(..) |
-      ast::ExprSlice(..) => {
+      ast::ExprSlice(..) | ast::ExprRange(..) => {
           visit::walk_expr(ir, expr);
       }
     }
@@ -536,7 +526,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
 // Actually we compute just a bit more than just liveness, but we use
 // the same basic propagation framework in all cases.
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 struct Users {
     reader: LiveNode,
     writer: LiveNode,
@@ -551,6 +541,7 @@ fn invalid_users() -> Users {
     }
 }
 
+#[deriving(Copy)]
 struct Specials {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,
@@ -603,7 +594,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.ir.tcx.sess.span_bug(
                 span,
                 format!("no live node registered for node {}",
-                        node_id).as_slice());
+                        node_id)[]);
           }
         }
     }
@@ -612,9 +603,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.ir.variable(node_id, span)
     }
 
-    fn pat_bindings(&mut self,
-                    pat: &ast::Pat,
-                    f: |&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId|) {
+    fn pat_bindings<F>(&mut self, pat: &ast::Pat, mut f: F) where
+        F: FnMut(&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId),
+    {
         pat_util::pat_bindings(&self.ir.tcx.def_map, pat, |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
             let var = self.variable(p_id, sp);
@@ -622,9 +613,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         })
     }
 
-    fn arm_pats_bindings(&mut self,
-                         pat: Option<&ast::Pat>,
-                         f: |&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId|) {
+    fn arm_pats_bindings<F>(&mut self, pat: Option<&ast::Pat>, f: F) where
+        F: FnMut(&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId),
+    {
         match pat {
             Some(pat) => {
                 self.pat_bindings(pat, f);
@@ -687,10 +678,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.assigned_on_entry(successor, var)
     }
 
-    fn indices2(&mut self,
-                ln: LiveNode,
-                succ_ln: LiveNode,
-                op: |&mut Liveness<'a, 'tcx>, uint, uint|) {
+    fn indices2<F>(&mut self, ln: LiveNode, succ_ln: LiveNode, mut op: F) where
+        F: FnMut(&mut Liveness<'a, 'tcx>, uint, uint),
+    {
         let node_base_idx = self.idx(ln, Variable(0u));
         let succ_base_idx = self.idx(succ_ln, Variable(0u));
         for var_idx in range(0u, self.ir.num_vars) {
@@ -698,10 +688,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn write_vars(&self,
-                  wr: &mut io::Writer,
-                  ln: LiveNode,
-                  test: |uint| -> LiveNode) -> io::IoResult<()> {
+    fn write_vars<F>(&self,
+                     wr: &mut io::Writer,
+                     ln: LiveNode,
+                     mut test: F)
+                     -> io::IoResult<()> where
+        F: FnMut(uint) -> LiveNode,
+    {
         let node_base_idx = self.idx(ln, Variable(0));
         for var_idx in range(0u, self.ir.num_vars) {
             let idx = node_base_idx + var_idx;
@@ -967,17 +960,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.access_path(expr, succ, ACC_READ | ACC_USE)
           }
 
-          ast::ExprField(ref e, _, _) => {
+          ast::ExprField(ref e, _) => {
               self.propagate_through_expr(&**e, succ)
           }
 
-          ast::ExprTupField(ref e, _, _) => {
+          ast::ExprTupField(ref e, _) => {
               self.propagate_through_expr(&**e, succ)
           }
 
-          ast::ExprClosure(_, _, _, ref blk) |
-          ast::ExprProc(_, ref blk) => {
-              debug!("{} is an ExprClosure or ExprProc",
+          ast::ExprClosure(_, _, _, ref blk) => {
+              debug!("{} is an ExprClosure",
                      expr_to_string(expr));
 
               /*
@@ -1076,7 +1068,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // the same bindings, and we also consider the first pattern to be
                 // the "authoritative" set of ids
                 let arm_succ =
-                    self.define_bindings_in_arm_pats(arm.pats.as_slice().head().map(|p| &**p),
+                    self.define_bindings_in_arm_pats(arm.pats.head().map(|p| &**p),
                                                      guard_succ);
                 self.merge_from_succ(ln, arm_succ, first_merge);
                 first_merge = false;
@@ -1137,7 +1129,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           // Uninteresting cases: just propagate in rev exec order
 
           ast::ExprVec(ref exprs) => {
-            self.propagate_through_exprs(exprs.as_slice(), succ)
+            self.propagate_through_exprs(exprs[], succ)
           }
 
           ast::ExprRepeat(ref element, ref count) => {
@@ -1162,12 +1154,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             } else {
                 succ
             };
-            let succ = self.propagate_through_exprs(args.as_slice(), succ);
+            let succ = self.propagate_through_exprs(args[], succ);
             self.propagate_through_expr(&**f, succ)
           }
 
           ast::ExprMethodCall(_, _, ref args) => {
-            let method_call = typeck::MethodCall::expr(expr.id);
+            let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.method_map.borrow().get(&method_call).unwrap().ty;
             let diverges = ty::ty_fn_ret(method_ty) == ty::FnDiverging;
             let succ = if diverges {
@@ -1175,11 +1167,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             } else {
                 succ
             };
-            self.propagate_through_exprs(args.as_slice(), succ)
+            self.propagate_through_exprs(args[], succ)
           }
 
           ast::ExprTup(ref exprs) => {
-            self.propagate_through_exprs(exprs.as_slice(), succ)
+            self.propagate_through_exprs(exprs[], succ)
           }
 
           ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op) => {
@@ -1194,7 +1186,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           ast::ExprIndex(ref l, ref r) |
           ast::ExprBinary(_, ref l, ref r) |
-          ast::ExprBox(ref l, ref r) => {
+          ast::ExprBox(Some(ref l), ref r) => {
             let r_succ = self.propagate_through_expr(&**r, succ);
             self.propagate_through_expr(&**l, r_succ)
           }
@@ -1205,6 +1197,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&**e1, succ)
           }
 
+          ast::ExprRange(ref e1, ref e2) => {
+            let succ = e2.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ));
+            self.propagate_through_expr(&**e1, succ)
+          }
+
+          ast::ExprBox(None, ref e) |
           ast::ExprAddrOf(_, ref e) |
           ast::ExprCast(ref e, _) |
           ast::ExprUnary(_, ref e) |
@@ -1295,8 +1293,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         match expr.node {
             ast::ExprPath(_) => succ,
-            ast::ExprField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
-            ast::ExprTupField(ref e, _, _) => self.propagate_through_expr(&**e, succ),
+            ast::ExprField(ref e, _) => self.propagate_through_expr(&**e, succ),
+            ast::ExprTupField(ref e, _) => self.propagate_through_expr(&**e, succ),
             _ => self.propagate_through_expr(expr, succ)
         }
     }
@@ -1404,12 +1402,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         cond_ln
     }
 
-    fn with_loop_nodes<R>(&mut self,
-                          loop_node_id: NodeId,
-                          break_ln: LiveNode,
-                          cont_ln: LiveNode,
-                          f: |&mut Liveness<'a, 'tcx>| -> R)
-                          -> R {
+    fn with_loop_nodes<R, F>(&mut self,
+                             loop_node_id: NodeId,
+                             break_ln: LiveNode,
+                             cont_ln: LiveNode,
+                             f: F)
+                             -> R where
+        F: FnOnce(&mut Liveness<'a, 'tcx>) -> R,
+    {
         debug!("with_loop_nodes: {} {}", loop_node_id, break_ln.get());
         self.loop_scope.push(loop_node_id);
         self.break_ln.insert(loop_node_id, break_ln);
@@ -1442,7 +1442,7 @@ fn check_arm(this: &mut Liveness, arm: &ast::Arm) {
     // only consider the first pattern; any later patterns must have
     // the same bindings, and we also consider the first pattern to be
     // the "authoritative" set of ids
-    this.arm_pats_bindings(arm.pats.as_slice().head().map(|p| &**p), |this, ln, var, sp, id| {
+    this.arm_pats_bindings(arm.pats.head().map(|p| &**p), |this, ln, var, sp, id| {
         this.warn_about_unused(sp, id, ln, var);
     });
     visit::walk_arm(this, arm);
@@ -1494,8 +1494,8 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ast::ExprBreak(..) | ast::ExprAgain(..) | ast::ExprLit(_) |
       ast::ExprBlock(..) | ast::ExprMac(..) | ast::ExprAddrOf(..) |
       ast::ExprStruct(..) | ast::ExprRepeat(..) | ast::ExprParen(..) |
-      ast::ExprClosure(..) | ast::ExprProc(..) |
-      ast::ExprPath(..) | ast::ExprBox(..) | ast::ExprSlice(..) => {
+      ast::ExprClosure(..) | ast::ExprPath(..) | ast::ExprBox(..) |
+      ast::ExprSlice(..) | ast::ExprRange(..) => {
         visit::walk_expr(this, expr);
       }
       ast::ExprIfLet(..) => {
@@ -1527,6 +1527,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     .unwrap()
                     .closure_type
                     .sig
+                    .0
                     .output,
             _ => ty::ty_fn_ret(fn_ty)
         }
@@ -1583,27 +1584,23 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
-          ast::ExprPath(_) => {
-            match self.ir.tcx.def_map.borrow()[expr.id].clone() {
-              DefLocal(nid) => {
-                // Assignment to an immutable variable or argument: only legal
-                // if there is no later assignment. If this local is actually
-                // mutable, then check for a reassignment to flag the mutability
-                // as being used.
-                let ln = self.live_node(expr.id, expr.span);
-                let var = self.variable(nid, expr.span);
-                self.warn_about_dead_assign(expr.span, expr.id, ln, var);
-              }
-              _ => {}
+            ast::ExprPath(_) => {
+                if let DefLocal(nid) = self.ir.tcx.def_map.borrow()[expr.id].clone() {
+                    // Assignment to an immutable variable or argument: only legal
+                    // if there is no later assignment. If this local is actually
+                    // mutable, then check for a reassignment to flag the mutability
+                    // as being used.
+                    let ln = self.live_node(expr.id, expr.span);
+                    let var = self.variable(nid, expr.span);
+                    self.warn_about_dead_assign(expr.span, expr.id, ln, var);
+                }
             }
-          }
-
-          _ => {
-            // For other kinds of lvalues, no checks are required,
-            // and any embedded expressions are actually rvalues
-            visit::walk_expr(self, expr);
-          }
-       }
+            _ => {
+                // For other kinds of lvalues, no checks are required,
+                // and any embedded expressions are actually rvalues
+                visit::walk_expr(self, expr);
+            }
+        }
     }
 
     fn should_warn(&self, var: Variable) -> Option<String> {

@@ -12,7 +12,7 @@
 
 /// Entry point of task panic, for details, see std::macros
 #[macro_export]
-macro_rules! panic(
+macro_rules! panic {
     () => (
         panic!("{}", "explicit panic")
     );
@@ -44,11 +44,11 @@ macro_rules! panic(
         }
         format_args!(_run_fmt, $fmt, $($arg)*)
     });
-)
+}
 
 /// Runtime assertion, for details see std::macros
 #[macro_export]
-macro_rules! assert(
+macro_rules! assert {
     ($cond:expr) => (
         if !$cond {
             panic!(concat!("assertion failed: ", stringify!($cond)))
@@ -59,21 +59,21 @@ macro_rules! assert(
             panic!($($arg)*)
         }
     );
-)
+}
 
 /// Runtime assertion, only without `--cfg ndebug`
 #[macro_export]
-macro_rules! debug_assert(
+macro_rules! debug_assert {
     ($(a:tt)*) => ({
         if cfg!(not(ndebug)) {
             assert!($($a)*);
         }
     })
-)
+}
 
 /// Runtime assertion for equality, for details see std::macros
 #[macro_export]
-macro_rules! assert_eq(
+macro_rules! assert_eq {
     ($cond1:expr, $cond2:expr) => ({
         let c1 = $cond1;
         let c2 = $cond2;
@@ -81,46 +81,47 @@ macro_rules! assert_eq(
             panic!("expressions not equal, left: {}, right: {}", c1, c2);
         }
     })
-)
+}
 
 /// Runtime assertion for equality, only without `--cfg ndebug`
 #[macro_export]
-macro_rules! debug_assert_eq(
+macro_rules! debug_assert_eq {
     ($($a:tt)*) => ({
         if cfg!(not(ndebug)) {
             assert_eq!($($a)*);
         }
     })
-)
+}
 
 /// Runtime assertion, disableable at compile time
 #[macro_export]
-macro_rules! debug_assert(
+macro_rules! debug_assert {
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert!($($arg)*); })
-)
+}
 
 /// Short circuiting evaluation on Err
 #[macro_export]
-macro_rules! try(
+macro_rules! try {
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-)
+}
 
 /// Writing a formatted string into a writer
 #[macro_export]
-macro_rules! write(
+macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ({
         let dst = &mut *$dst;
         format_args!(|args| { dst.write_fmt(args) }, $($arg)*)
     })
-)
+}
 
 /// Writing a formatted string plus a newline into a writer
 #[macro_export]
-macro_rules! writeln(
+macro_rules! writeln {
     ($dst:expr, $fmt:expr $($arg:tt)*) => (
         write!($dst, concat!($fmt, "\n") $($arg)*)
     )
-)
+}
 
 #[macro_export]
-macro_rules! unreachable( () => (panic!("unreachable code")) )
+macro_rules! unreachable { () => (panic!("unreachable code")) }
+

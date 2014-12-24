@@ -18,7 +18,9 @@ use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};
 use llvm::{True, False, Bool};
+use middle::cfg;
 use middle::def;
+use middle::infer;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::region;
@@ -36,8 +38,6 @@ use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
-use middle::typeck;
-use middle::typeck::infer;
 use util::ppaux::Repr;
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
@@ -95,26 +95,19 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     }
 }
 
+/// Identify types which have size zero at runtime.
 pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    /*!
-     * Identify types which have size zero at runtime.
-     */
-
     use trans::machine::llsize_of_alloc;
     use trans::type_of::sizing_type_of;
     let llty = sizing_type_of(ccx, ty);
     llsize_of_alloc(ccx, llty) == 0
 }
 
+/// Identifies types which we declare to be equivalent to `void` in C for the purpose of function
+/// return types. These are `()`, bot, and uninhabited enums. Note that all such types are also
+/// zero-size, but not all zero-size types use a `void` return type (in order to aid with C ABI
+/// compatibility).
 pub fn return_type_is_void(ccx: &CrateContext, ty: Ty) -> bool {
-    /*!
-     * Identifies types which we declare to be equivalent to `void`
-     * in C for the purpose of function return types. These are
-     * `()`, bot, and uninhabited enums. Note that all such types
-     * are also zero-size, but not all zero-size types use a `void`
-     * return type (in order to aid with C ABI compatibility).
-     */
-
     ty::type_is_nil(ty) || ty::type_is_empty(ccx.tcx(), ty)
 }
 
@@ -124,9 +117,10 @@ pub fn gensym_name(name: &str) -> PathElem {
     let num = token::gensym(name).uint();
     // use one colon which will get translated to a period by the mangler, and
     // we're guaranteed that `num` is globally unique for this crate.
-    PathName(token::gensym(format!("{}:{}", name, num).as_slice()))
+    PathName(token::gensym(format!("{}:{}", name, num)[]))
 }
 
+#[deriving(Copy)]
 pub struct tydesc_info<'tcx> {
     pub ty: Ty<'tcx>,
     pub tydesc: ValueRef,
@@ -161,6 +155,7 @@ pub struct tydesc_info<'tcx> {
  *
  */
 
+#[deriving(Copy)]
 pub struct NodeInfo {
     pub id: ast::NodeId,
     pub span: Span,
@@ -268,6 +263,8 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // Cleanup scopes.
     pub scopes: RefCell<Vec<cleanup::CleanupScope<'a, 'tcx>>>,
+
+    pub cfg: Option<cfg::CFG>,
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
@@ -278,11 +275,6 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         } else {
             arg
         }
-    }
-
-    pub fn out_arg_pos(&self) -> uint {
-        assert!(self.caller_expects_out_pointer);
-        0u
     }
 
     pub fn env_arg_pos(&self) -> uint {
@@ -444,7 +436,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             Some(v) => v.clone(),
             None => {
                 self.tcx().sess.bug(format!(
-                    "no def associated with node id {}", nid).as_slice());
+                    "no def associated with node id {}", nid)[]);
             }
         }
     }
@@ -475,7 +467,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
         Ok(node_id_type(self, id))
     }
 
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty<'tcx>> {
+    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
         self.tcx()
             .method_map
             .borrow()
@@ -488,7 +480,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.tcx().method_map.borrow().contains_key(&typeck::MethodCall::expr(id))
+        self.tcx().method_map.borrow().contains_key(&ty::MethodCall::expr(id))
     }
 
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
@@ -768,19 +760,14 @@ pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ex: &ast::Expr) -> T
     monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 
+/// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
+/// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
+/// guarantee to us that all nested obligations *could be* resolved if we wanted to.
 pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     span: Span,
-                                    trait_ref: Rc<ty::TraitRef<'tcx>>)
+                                    trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                                     -> traits::Vtable<'tcx, ()>
 {
-    /*!
-     * Attempts to resolve an obligation. The result is a shallow
-     * vtable resolution -- meaning that we do not (necessarily) resolve
-     * all nested obligations on the impl. Note that type check should
-     * guarantee to us that all nested obligations *could be* resolved
-     * if we wanted to.
-     */
-
     let tcx = ccx.tcx();
 
     // Remove any references to regions; this helps improve caching.
@@ -797,7 +784,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     debug!("trans fulfill_obligation: trait_ref={}", trait_ref.repr(ccx.tcx()));
 
-    ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id);
+    ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id());
     let infcx = infer::new_infer_ctxt(tcx);
 
     // Parameter environment is used to give details about type parameters,
@@ -807,7 +794,8 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
     let mut selcx = traits::SelectionContext::new(&infcx, &param_env, tcx);
-    let obligation = traits::Obligation::misc(span, trait_ref.clone());
+    let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
+                                             trait_ref.clone());
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
         Ok(None) => {
@@ -829,7 +817,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 span,
                 format!("Encountered error `{}` selecting `{}` during trans",
                         e.repr(tcx),
-                        trait_ref.repr(tcx)).as_slice())
+                        trait_ref.repr(tcx))[])
         }
     };
 
@@ -840,8 +828,8 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // fully bound. It could be a slight optimization to stop
     // iterating early.
     let mut fulfill_cx = traits::FulfillmentContext::new();
-    let vtable = selection.map_move_nested(|obligation| {
-        fulfill_cx.register_obligation(tcx, obligation);
+    let vtable = selection.map_move_nested(|predicate| {
+        fulfill_cx.register_predicate(infcx.tcx, predicate);
     });
     match fulfill_cx.select_all_or_error(&infcx, &param_env, tcx) {
         Ok(()) => { }
@@ -856,17 +844,17 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     span,
                     format!("Encountered errors `{}` fulfilling `{}` during trans",
                             errors.repr(tcx),
-                            trait_ref.repr(tcx)).as_slice());
+                            trait_ref.repr(tcx))[]);
             }
         }
     }
 
-    // Use skolemize to simultaneously replace all type variables with
+    // Use freshen to simultaneously replace all type variables with
     // their bindings and replace all regions with 'static.  This is
     // sort of overkill because we do not expect there to be any
-    // unbound type variables, hence no skolemized types should ever
-    // be inserted.
-    let vtable = vtable.fold_with(&mut infcx.skolemizer());
+    // unbound type variables, hence no `TyFresh` types should ever be
+    // inserted.
+    let vtable = vtable.fold_with(&mut infcx.freshener());
 
     info!("Cache miss: {}", trait_ref.repr(ccx.tcx()));
     ccx.trait_cache().borrow_mut().insert(trait_ref,
@@ -876,26 +864,25 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum ExprOrMethodCall {
     // Type parameters for a path like `None::<int>`
     ExprId(ast::NodeId),
 
     // Type parameters for a method call like `a.foo::<int>()`
-    MethodCall(typeck::MethodCall)
+    MethodCallKey(ty::MethodCall)
 }
 
 pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   node: ExprOrMethodCall)
-                                  -> subst::Substs<'tcx>
-{
+                                  -> subst::Substs<'tcx> {
     let tcx = bcx.tcx();
 
     let substs = match node {
         ExprId(id) => {
             ty::node_id_item_substs(tcx, id).substs
         }
-        MethodCall(method_call) => {
+        MethodCallKey(method_call) => {
             (*tcx.method_map.borrow())[method_call].substs.clone()
         }
     };
@@ -905,7 +892,7 @@ pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             format!("type parameters for node {} include inference types: \
                      {}",
                     node,
-                    substs.repr(bcx.tcx())).as_slice());
+                    substs.repr(bcx.tcx()))[]);
     }
 
     let substs = substs.erase_regions();
@@ -922,8 +909,8 @@ pub fn langcall(bcx: Block,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => bcx.tcx().sess.span_fatal(span, msg.as_slice()),
-                None => bcx.tcx().sess.fatal(msg.as_slice()),
+                Some(span) => bcx.tcx().sess.span_fatal(span, msg[]),
+                None => bcx.tcx().sess.fatal(msg[]),
             }
         }
     }

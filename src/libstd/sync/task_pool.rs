@@ -12,17 +12,18 @@
 
 use core::prelude::*;
 
-use task::spawn;
+use thread::Thread;
 use comm::{channel, Sender, Receiver};
 use sync::{Arc, Mutex};
+use thunk::Thunk;
 
 struct Sentinel<'a> {
-    jobs: &'a Arc<Mutex<Receiver<proc(): Send>>>,
+    jobs: &'a Arc<Mutex<Receiver<Thunk>>>,
     active: bool
 }
 
 impl<'a> Sentinel<'a> {
-    fn new(jobs: &Arc<Mutex<Receiver<proc(): Send>>>) -> Sentinel {
+    fn new(jobs: &Arc<Mutex<Receiver<Thunk>>>) -> Sentinel {
         Sentinel {
             jobs: jobs,
             active: true
@@ -60,7 +61,7 @@ impl<'a> Drop for Sentinel<'a> {
 /// let (tx, rx) = channel();
 /// for _ in range(0, 8u) {
 ///     let tx = tx.clone();
-///     pool.execute(proc() {
+///     pool.execute(move|| {
 ///         tx.send(1u);
 ///     });
 /// }
@@ -72,7 +73,7 @@ pub struct TaskPool {
     //
     // This is the only such Sender, so when it is dropped all subtasks will
     // quit.
-    jobs: Sender<proc(): Send>
+    jobs: Sender<Thunk>
 }
 
 impl TaskPool {
@@ -84,7 +85,7 @@ impl TaskPool {
     pub fn new(tasks: uint) -> TaskPool {
         assert!(tasks >= 1);
 
-        let (tx, rx) = channel::<proc(): Send>();
+        let (tx, rx) = channel::<Thunk>();
         let rx = Arc::new(Mutex::new(rx));
 
         // Taskpool tasks.
@@ -96,13 +97,15 @@ impl TaskPool {
     }
 
     /// Executes the function `job` on a task in the pool.
-    pub fn execute(&self, job: proc():Send) {
-        self.jobs.send(job);
+    pub fn execute<F>(&self, job: F)
+        where F : FnOnce(), F : Send
+    {
+        self.jobs.send(Thunk::new(job));
     }
 }
 
-fn spawn_in_pool(jobs: Arc<Mutex<Receiver<proc(): Send>>>) {
-    spawn(proc() {
+fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
+    Thread::spawn(move |:| {
         // Will spawn a new task on panic unless it is cancelled.
         let sentinel = Sentinel::new(&jobs);
 
@@ -115,7 +118,7 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<proc(): Send>>>) {
             };
 
             match message {
-                Ok(job) => job(),
+                Ok(job) => job.invoke(()),
 
                 // The Taskpool was dropped.
                 Err(..) => break
@@ -123,15 +126,13 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<proc(): Send>>>) {
         }
 
         sentinel.cancel();
-    })
+    }).detach();
 }
 
 #[cfg(test)]
 mod test {
-    use core::prelude::*;
+    use prelude::*;
     use super::*;
-    use comm::channel;
-    use iter::range;
 
     const TEST_TASKS: uint = 4u;
 
@@ -144,7 +145,7 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0, TEST_TASKS) {
             let tx = tx.clone();
-            pool.execute(proc() {
+            pool.execute(move|| {
                 tx.send(1u);
             });
         }
@@ -166,14 +167,14 @@ mod test {
 
         // Panic all the existing tasks.
         for _ in range(0, TEST_TASKS) {
-            pool.execute(proc() { panic!() });
+            pool.execute(move|| -> () { panic!() });
         }
 
         // Ensure new tasks were spawned to compensate.
         let (tx, rx) = channel();
         for _ in range(0, TEST_TASKS) {
             let tx = tx.clone();
-            pool.execute(proc() {
+            pool.execute(move|| {
                 tx.send(1u);
             });
         }
@@ -191,7 +192,7 @@ mod test {
         // Panic all the existing tasks in a bit.
         for _ in range(0, TEST_TASKS) {
             let waiter = waiter.clone();
-            pool.execute(proc() {
+            pool.execute(move|| {
                 waiter.wait();
                 panic!();
             });
@@ -203,4 +204,3 @@ mod test {
         waiter.wait();
     }
 }
-

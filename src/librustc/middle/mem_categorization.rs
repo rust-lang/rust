@@ -8,57 +8,55 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * # Categorization
- *
- * The job of the categorization module is to analyze an expression to
- * determine what kind of memory is used in evaluating it (for example,
- * where dereferences occur and what kind of pointer is dereferenced;
- * whether the memory is mutable; etc)
- *
- * Categorization effectively transforms all of our expressions into
- * expressions of the following forms (the actual enum has many more
- * possibilities, naturally, but they are all variants of these base
- * forms):
- *
- *     E = rvalue    // some computed rvalue
- *       | x         // address of a local variable or argument
- *       | *E        // deref of a ptr
- *       | E.comp    // access to an interior component
- *
- * Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
- * address where the result is to be found.  If Expr is an lvalue, then this
- * is the address of the lvalue.  If Expr is an rvalue, this is the address of
- * some temporary spot in memory where the result is stored.
- *
- * Now, cat_expr() classifies the expression Expr and the address A=ToAddr(Expr)
- * as follows:
- *
- * - cat: what kind of expression was this?  This is a subset of the
- *   full expression forms which only includes those that we care about
- *   for the purpose of the analysis.
- * - mutbl: mutability of the address A
- * - ty: the type of data found at the address A
- *
- * The resulting categorization tree differs somewhat from the expressions
- * themselves.  For example, auto-derefs are explicit.  Also, an index a[b] is
- * decomposed into two operations: a dereference to reach the array data and
- * then an index to jump forward to the relevant item.
- *
- * ## By-reference upvars
- *
- * One part of the translation which may be non-obvious is that we translate
- * closure upvars into the dereference of a borrowed pointer; this more closely
- * resembles the runtime translation. So, for example, if we had:
- *
- *     let mut x = 3;
- *     let y = 5;
- *     let inc = || x += y;
- *
- * Then when we categorize `x` (*within* the closure) we would yield a
- * result of `*x'`, effectively, where `x'` is a `cat_upvar` reference
- * tied to `x`. The type of `x'` will be a borrowed pointer.
- */
+//! # Categorization
+//!
+//! The job of the categorization module is to analyze an expression to
+//! determine what kind of memory is used in evaluating it (for example,
+//! where dereferences occur and what kind of pointer is dereferenced;
+//! whether the memory is mutable; etc)
+//!
+//! Categorization effectively transforms all of our expressions into
+//! expressions of the following forms (the actual enum has many more
+//! possibilities, naturally, but they are all variants of these base
+//! forms):
+//!
+//!     E = rvalue    // some computed rvalue
+//!       | x         // address of a local variable or argument
+//!       | *E        // deref of a ptr
+//!       | E.comp    // access to an interior component
+//!
+//! Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
+//! address where the result is to be found.  If Expr is an lvalue, then this
+//! is the address of the lvalue.  If Expr is an rvalue, this is the address of
+//! some temporary spot in memory where the result is stored.
+//!
+//! Now, cat_expr() classifies the expression Expr and the address A=ToAddr(Expr)
+//! as follows:
+//!
+//! - cat: what kind of expression was this?  This is a subset of the
+//!   full expression forms which only includes those that we care about
+//!   for the purpose of the analysis.
+//! - mutbl: mutability of the address A
+//! - ty: the type of data found at the address A
+//!
+//! The resulting categorization tree differs somewhat from the expressions
+//! themselves.  For example, auto-derefs are explicit.  Also, an index a[b] is
+//! decomposed into two operations: a dereference to reach the array data and
+//! then an index to jump forward to the relevant item.
+//!
+//! ## By-reference upvars
+//!
+//! One part of the translation which may be non-obvious is that we translate
+//! closure upvars into the dereference of a borrowed pointer; this more closely
+//! resembles the runtime translation. So, for example, if we had:
+//!
+//!     let mut x = 3;
+//!     let y = 5;
+//!     let inc = || x += y;
+//!
+//! Then when we categorize `x` (*within* the closure) we would yield a
+//! result of `*x'`, effectively, where `x'` is a `cat_upvar` reference
+//! tied to `x`. The type of `x'` will be a borrowed pointer.
 
 #![allow(non_camel_case_types)]
 
@@ -76,7 +74,6 @@ pub use self::categorization::*;
 use middle::def;
 use middle::region;
 use middle::ty::{mod, Ty};
-use middle::typeck;
 use util::nodemap::{DefIdMap, NodeMap};
 use util::ppaux::{ty_to_string, Repr};
 
@@ -98,13 +95,13 @@ pub enum categorization<'tcx> {
     cat_local(ast::NodeId),                    // local variable
     cat_deref(cmt<'tcx>, uint, PointerKind),   // deref of a ptr
     cat_interior(cmt<'tcx>, InteriorKind),     // something interior: field, tuple, etc
-    cat_downcast(cmt<'tcx>),                   // selects a particular enum variant (*1)
+    cat_downcast(cmt<'tcx>, ast::DefId),       // selects a particular enum variant (*1)
 
     // (*1) downcast is only required if the enum has more than one variant
 }
 
 // Represents any kind of upvar
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 pub struct Upvar {
     pub id: ty::UpvarId,
     // Unboxed closure kinds are used even for old-style closures for simplicity
@@ -114,7 +111,7 @@ pub struct Upvar {
 }
 
 // different kinds of pointers:
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum PointerKind {
     OwnedPtr,
     BorrowedPtr(ty::BorrowKind, ty::Region),
@@ -124,25 +121,25 @@ pub enum PointerKind {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum InteriorKind {
     InteriorField(FieldName),
     InteriorElement(ElementKind),
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum FieldName {
     NamedField(ast::Name),
     PositionalField(uint)
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum ElementKind {
     VecElement,
     OtherElement,
 }
 
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
@@ -154,7 +151,7 @@ pub enum MutabilityCategory {
 // Upvar categorization can generate a variable number of nested
 // derefs.  The note allows detecting them without deep pattern
 // matching on the categorization.
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 pub enum Note {
     NoteClosureEnv(ty::UpvarId), // Deref through closure env
     NoteUpvarRef(ty::UpvarId),   // Deref through by-ref upvar
@@ -189,6 +186,7 @@ pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
+#[deriving(Copy)]
 pub enum deref_kind {
     deref_ptr(PointerKind),
     deref_interior(InteriorKind),
@@ -240,7 +238,7 @@ pub fn deref_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> deref_kind {
       None => {
         tcx.sess.bug(
             format!("deref_kind() invoked on non-derefable type {}",
-                    ty_to_string(tcx, t)).as_slice());
+                    ty_to_string(tcx, t))[]);
       }
     }
 }
@@ -264,30 +262,30 @@ pub struct MemCategorizationContext<'t,TYPER:'t> {
     typer: &'t TYPER
 }
 
+impl<'t,TYPER:'t> Copy for MemCategorizationContext<'t,TYPER> {}
+
 pub type McResult<T> = Result<T, ()>;
 
-/**
- * The `Typer` trait provides the interface for the mem-categorization
- * module to the results of the type check. It can be used to query
- * the type assigned to an expression node, to inquire after adjustments,
- * and so on.
- *
- * This interface is needed because mem-categorization is used from
- * two places: `regionck` and `borrowck`. `regionck` executes before
- * type inference is complete, and hence derives types and so on from
- * intermediate tables.  This also implies that type errors can occur,
- * and hence `node_ty()` and friends return a `Result` type -- any
- * error will propagate back up through the mem-categorization
- * routines.
- *
- * In the borrow checker, in contrast, type checking is complete and we
- * know that no errors have occurred, so we simply consult the tcx and we
- * can be sure that only `Ok` results will occur.
- */
+/// The `Typer` trait provides the interface for the mem-categorization
+/// module to the results of the type check. It can be used to query
+/// the type assigned to an expression node, to inquire after adjustments,
+/// and so on.
+///
+/// This interface is needed because mem-categorization is used from
+/// two places: `regionck` and `borrowck`. `regionck` executes before
+/// type inference is complete, and hence derives types and so on from
+/// intermediate tables.  This also implies that type errors can occur,
+/// and hence `node_ty()` and friends return a `Result` type -- any
+/// error will propagate back up through the mem-categorization
+/// routines.
+///
+/// In the borrow checker, in contrast, type checking is complete and we
+/// know that no errors have occurred, so we simply consult the tcx and we
+/// can be sure that only `Ok` results will occur.
 pub trait Typer<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>>;
-    fn node_method_ty(&self, method_call: typeck::MethodCall) -> Option<Ty<'tcx>>;
+    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>>;
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
@@ -376,14 +374,14 @@ impl MutabilityCategory {
     }
 }
 
-macro_rules! if_ok(
+macro_rules! if_ok {
     ($inp: expr) => (
         match $inp {
             Ok(v) => { v }
             Err(e) => { return Err(e); }
         }
     )
-)
+}
 
 impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn new(typer: &'t TYPER) -> MemCategorizationContext<'t,TYPER> {
@@ -410,7 +408,28 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 
     fn pat_ty(&self, pat: &ast::Pat) -> McResult<Ty<'tcx>> {
-        self.typer.node_ty(pat.id)
+        let tcx = self.typer.tcx();
+        let base_ty = self.typer.node_ty(pat.id);
+        // FIXME (Issue #18207): This code detects whether we are
+        // looking at a `ref x`, and if so, figures out what the type
+        // *being borrowed* is.  But ideally we would put in a more
+        // fundamental fix to this conflated use of the node id.
+        let ret_ty = match pat.node {
+            ast::PatIdent(ast::BindByRef(_), _, _) => {
+                // a bind-by-ref means that the base_ty will be the type of the ident itself,
+                // but what we want here is the type of the underlying value being borrowed.
+                // So peel off one-level, turning the &T into T.
+                base_ty.map(|t| {
+                    ty::deref(t, false).unwrap_or_else(|| {
+                        panic!("encountered BindByRef with non &-type");
+                    }).ty
+                })
+            }
+            _ => base_ty,
+        };
+        debug!("pat_ty(pat={}) base_ty={} ret_ty={}",
+               pat.repr(tcx), base_ty.repr(tcx), ret_ty.repr(tcx));
+        ret_ty
     }
 
     pub fn cat_expr(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
@@ -422,8 +441,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustAddEnv(..) => {
-                        debug!("cat_expr(AdjustAddEnv): {}",
+                    ty::AdjustAddEnv(..) | ty::AdjustReifyFnPointer(..) => {
+                        debug!("cat_expr(AdjustAddEnv|AdjustReifyFnPointer): {}",
                                expr.repr(self.tcx()));
                         // Convert a bare fn to a closure by adding NULL env.
                         // Result is an rvalue.
@@ -477,7 +496,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             Ok(self.cat_deref(expr, base_cmt, 0, false))
           }
 
-          ast::ExprField(ref base, f_name, _) => {
+          ast::ExprField(ref base, f_name) => {
             let base_cmt = if_ok!(self.cat_expr(&**base));
             debug!("cat_expr(cat_field): id={} expr={} base={}",
                    expr.id,
@@ -486,13 +505,13 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             Ok(self.cat_field(expr, base_cmt, f_name.node.name, expr_ty))
           }
 
-          ast::ExprTupField(ref base, idx, _) => {
+          ast::ExprTupField(ref base, idx) => {
             let base_cmt = if_ok!(self.cat_expr(&**base));
             Ok(self.cat_tup_field(expr, base_cmt, idx.node, expr_ty))
           }
 
           ast::ExprIndex(ref base, _) => {
-            let method_call = typeck::MethodCall::expr(expr.id());
+            let method_call = ty::MethodCall::expr(expr.id());
             match self.typer.node_method_ty(method_call) {
                 Some(method_ty) => {
                     // If this is an index implemented by a method call, then it will
@@ -521,9 +540,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
           ast::ExprAddrOf(..) | ast::ExprCall(..) |
           ast::ExprAssign(..) | ast::ExprAssignOp(..) |
-          ast::ExprClosure(..) | ast::ExprProc(..) |
-          ast::ExprRet(..) |
-          ast::ExprUnary(..) | ast::ExprSlice(..) |
+          ast::ExprClosure(..) | ast::ExprRet(..) |
+          ast::ExprUnary(..) | ast::ExprSlice(..) | ast::ExprRange(..) |
           ast::ExprMethodCall(..) | ast::ExprCast(..) |
           ast::ExprVec(..) | ast::ExprTup(..) | ast::ExprIf(..) |
           ast::ExprBinary(..) | ast::ExprWhile(..) |
@@ -562,7 +580,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           def::DefTrait(_) | def::DefTy(..) | def::DefPrimTy(_) |
           def::DefTyParam(..) | def::DefTyParamBinder(..) | def::DefRegion(_) |
           def::DefLabel(_) | def::DefSelfTy(..) | def::DefMethod(..) |
-          def::DefAssociatedTy(..) => {
+          def::DefAssociatedTy(..) | def::DefAssociatedPath(..)=> {
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
@@ -617,7 +635,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           span,
                           format!("Upvar of non-closure {} - {}",
                                   fn_node_id,
-                                  ty.repr(self.tcx())).as_slice());
+                                  ty.repr(self.tcx()))[]);
                   }
               }
           }
@@ -694,7 +712,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 };
 
                 match fn_expr.node {
-                    ast::ExprProc(_, ref body) |
                     ast::ExprClosure(_, _, _, ref body) => body.id,
                     _ => unreachable!()
                 }
@@ -873,12 +890,12 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                              implicit: bool)
                              -> cmt<'tcx> {
         let adjustment = match self.typer.adjustments().borrow().get(&node.id()) {
-            Some(adj) if ty::adjust_is_object(adj) => typeck::AutoObject,
-            _ if deref_cnt != 0 => typeck::AutoDeref(deref_cnt),
-            _ => typeck::NoAdjustment
+            Some(adj) if ty::adjust_is_object(adj) => ty::AutoObject,
+            _ if deref_cnt != 0 => ty::AutoDeref(deref_cnt),
+            _ => ty::NoAdjustment
         };
 
-        let method_call = typeck::MethodCall {
+        let method_call = ty::MethodCall {
             expr_id: node.id(),
             adjustment: adjustment
         };
@@ -900,7 +917,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 self.tcx().sess.span_bug(
                     node.span(),
                     format!("Explicit deref of non-derefable type: {}",
-                            base_cmt.ty.repr(self.tcx())).as_slice());
+                            base_cmt.ty.repr(self.tcx()))[]);
             }
         }
     }
@@ -963,7 +980,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         //! - `elt`: the AST node being indexed
         //! - `base_cmt`: the cmt of `elt`
 
-        let method_call = typeck::MethodCall::expr(elt.id());
+        let method_call = ty::MethodCall::expr(elt.id());
         let method_ty = self.typer.node_method_ty(method_call);
 
         let element_ty = match method_ty {
@@ -979,7 +996,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         self.tcx().sess.span_bug(
                             elt.span(),
                             format!("Explicit index of non-index type `{}`",
-                                    base_cmt.ty.repr(self.tcx())).as_slice());
+                                    base_cmt.ty.repr(self.tcx()))[]);
                     }
                 }
             }
@@ -1037,20 +1054,17 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         }
     }
 
+    /// Given a pattern P like: `[_, ..Q, _]`, where `vec_cmt` is the cmt for `P`, `slice_pat` is
+    /// the pattern `Q`, returns:
+    ///
+    /// * a cmt for `Q`
+    /// * the mutability and region of the slice `Q`
+    ///
+    /// These last two bits of info happen to be things that borrowck needs.
     pub fn cat_slice_pattern(&self,
                              vec_cmt: cmt<'tcx>,
                              slice_pat: &ast::Pat)
                              -> McResult<(cmt<'tcx>, ast::Mutability, ty::Region)> {
-        /*!
-         * Given a pattern P like: `[_, ..Q, _]`, where `vec_cmt` is
-         * the cmt for `P`, `slice_pat` is the pattern `Q`, returns:
-         * - a cmt for `Q`
-         * - the mutability and region of the slice `Q`
-         *
-         * These last two bits of info happen to be things that
-         * borrowck needs.
-         */
-
         let slice_ty = if_ok!(self.node_ty(slice_pat.id));
         let (slice_mutbl, slice_r) = vec_slice_info(self.tcx(),
                                                     slice_pat,
@@ -1058,17 +1072,13 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         let cmt_slice = self.cat_index(slice_pat, self.deref_vec(slice_pat, vec_cmt));
         return Ok((cmt_slice, slice_mutbl, slice_r));
 
+        /// In a pattern like [a, b, ..c], normally `c` has slice type, but if you have [a, b,
+        /// ..ref c], then the type of `ref c` will be `&&[]`, so to extract the slice details we
+        /// have to recurse through rptrs.
         fn vec_slice_info(tcx: &ty::ctxt,
                           pat: &ast::Pat,
                           slice_ty: Ty)
                           -> (ast::Mutability, ty::Region) {
-            /*!
-             * In a pattern like [a, b, ..c], normally `c` has slice type,
-             * but if you have [a, b, ..ref c], then the type of `ref c`
-             * will be `&&[]`, so to extract the slice details we have
-             * to recurse through rptrs.
-             */
-
             match slice_ty.sty {
                 ty::ty_rptr(r, ref mt) => match mt.ty.sty {
                     ty::ty_vec(_, None) => (mt.mutbl, r),
@@ -1102,24 +1112,24 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn cat_downcast<N:ast_node>(&self,
                                     node: &N,
                                     base_cmt: cmt<'tcx>,
-                                    downcast_ty: Ty<'tcx>)
+                                    downcast_ty: Ty<'tcx>,
+                                    variant_did: ast::DefId)
                                     -> cmt<'tcx> {
         Rc::new(cmt_ {
             id: node.id(),
             span: node.span(),
             mutbl: base_cmt.mutbl.inherit(),
-            cat: cat_downcast(base_cmt),
+            cat: cat_downcast(base_cmt, variant_did),
             ty: downcast_ty,
             note: NoteNone
         })
     }
 
+    // FIXME(#19596) unbox `op`
     pub fn cat_pattern(&self,
                        cmt: cmt<'tcx>,
                        pat: &ast::Pat,
-                       op: |&MemCategorizationContext<TYPER>,
-                            cmt<'tcx>,
-                            &ast::Pat|)
+                       op: |&MemCategorizationContext<'t, TYPER>, cmt<'tcx>, &ast::Pat|)
                        -> McResult<()> {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
@@ -1172,6 +1182,21 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         op(self, cmt.clone(), pat);
 
+        let def_map = self.tcx().def_map.borrow();
+        let opt_def = def_map.get(&pat.id);
+
+        // Note: This goes up here (rather than within the PatEnum arm
+        // alone) because struct patterns can refer to struct types or
+        // to struct variants within enums.
+        let cmt = match opt_def {
+            Some(&def::DefVariant(enum_did, variant_did, _))
+                // univariant enums do not need downcasts
+                if !ty::enum_is_univariant(self.tcx(), enum_did) => {
+                    self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
+                }
+            _ => cmt
+        };
+
         match pat.node {
           ast::PatWild(_) => {
             // _
@@ -1181,24 +1206,15 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             // variant(..)
           }
           ast::PatEnum(_, Some(ref subpats)) => {
-            match self.tcx().def_map.borrow().get(&pat.id) {
-                Some(&def::DefVariant(enum_did, _, _)) => {
+            match opt_def {
+                Some(&def::DefVariant(..)) => {
                     // variant(x, y, z)
-
-                    let downcast_cmt = {
-                        if ty::enum_is_univariant(self.tcx(), enum_did) {
-                            cmt // univariant, no downcast needed
-                        } else {
-                            self.cat_downcast(pat, cmt.clone(), cmt.ty)
-                        }
-                    };
-
                     for (i, subpat) in subpats.iter().enumerate() {
                         let subpat_ty = if_ok!(self.pat_ty(&**subpat)); // see (*2)
 
                         let subcmt =
                             self.cat_imm_interior(
-                                pat, downcast_cmt.clone(), subpat_ty,
+                                pat, cmt.clone(), subpat_ty,
                                 InteriorField(PositionalField(i)));
 
                         if_ok!(self.cat_pattern(subcmt, &**subpat, |x,y,z| op(x,y,z)));
@@ -1356,18 +1372,20 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           cat_upvar(ref var) => {
               upvar_to_string(var, true)
           }
-          cat_downcast(ref cmt) => {
+          cat_downcast(ref cmt, _) => {
             self.cmt_to_string(&**cmt)
           }
         }
     }
 }
 
+#[deriving(Copy)]
 pub enum InteriorSafety {
     InteriorUnsafe,
     InteriorSafe
 }
 
+#[deriving(Copy)]
 pub enum AliasableReason {
     AliasableBorrowed,
     AliasableClosure(ast::NodeId), // Aliasable due to capture Fn closure env
@@ -1392,7 +1410,7 @@ impl<'tcx> cmt_<'tcx> {
             cat_upvar(..) => {
                 Rc::new((*self).clone())
             }
-            cat_downcast(ref b) |
+            cat_downcast(ref b, _) |
             cat_interior(ref b, _) |
             cat_deref(ref b, _, OwnedPtr) => {
                 b.guarantor()
@@ -1400,13 +1418,9 @@ impl<'tcx> cmt_<'tcx> {
         }
     }
 
+    /// Returns `Some(_)` if this lvalue represents a freely aliasable pointer type.
     pub fn freely_aliasable(&self, ctxt: &ty::ctxt<'tcx>)
                             -> Option<AliasableReason> {
-        /*!
-         * Returns `Some(_)` if this lvalue represents a freely aliasable
-         * pointer type.
-         */
-
         // Maybe non-obvious: copied upvars can only be considered
         // non-aliasable in once closures, since any other kind can be
         // aliased and eventually recused.
@@ -1416,7 +1430,7 @@ impl<'tcx> cmt_<'tcx> {
             cat_deref(ref b, _, Implicit(ty::MutBorrow, _)) |
             cat_deref(ref b, _, BorrowedPtr(ty::UniqueImmBorrow, _)) |
             cat_deref(ref b, _, Implicit(ty::UniqueImmBorrow, _)) |
-            cat_downcast(ref b) |
+            cat_downcast(ref b, _) |
             cat_deref(ref b, _, OwnedPtr) |
             cat_interior(ref b, _) => {
                 // Aliasability depends on base cmt
@@ -1500,7 +1514,7 @@ impl<'tcx> Repr<'tcx> for categorization<'tcx> {
             cat_interior(ref cmt, interior) => {
                 format!("{}.{}", cmt.cat.repr(tcx), interior.repr(tcx))
             }
-            cat_downcast(ref cmt) => {
+            cat_downcast(ref cmt, _) => {
                 format!("{}->(enum)", cmt.cat.repr(tcx))
             }
         }

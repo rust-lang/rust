@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn do_it(x: &int) { }
+
 fn main() {
-    let f = proc() {};
-    (proc() {
+    let x = box 22;
+    let f = move|:| do_it(&*x);
+    (move|:| {
         f();
         f();
         //~^ ERROR: use of moved value: `f`

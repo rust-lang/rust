@@ -45,7 +45,7 @@
 //!     so the "quality" of `/dev/random` is not better than `/dev/urandom` in most cases.
 //!     However, this means that `/dev/urandom` can yield somewhat predictable randomness
 //!     if the entropy pool is very small, such as immediately after first booting.
-//!     Linux 3,17 added `getrandom(2)` system call which solves the issue: it blocks if entropy
+//!     Linux 3.17 added the `getrandom(2)` system call which solves the issue: it blocks if entropy
 //!     pool is not initialized yet, but it does not block once initialized.
 //!     `OsRng` tries to use `getrandom(2)` if available, and use `/dev/urandom` fallback if not.
 //!     If an application does not have `getrandom` and likely to be run soon after first booting,
@@ -80,7 +80,7 @@
 //! circle, both centered at the origin. Since the area of a unit circle is π,
 //! we have:
 //!
-//! ```notrust
+//! ```text
 //!     (area of unit circle) / (area of square) = π / 4
 //! ```
 //!
@@ -126,7 +126,7 @@
 //! > Is it to your advantage to switch your choice?
 //!
 //! The rather unintuitive answer is that you will have a 2/3 chance of winning if
-//! you switch and a 1/3 chance of winning of you don't, so it's better to switch.
+//! you switch and a 1/3 chance of winning if you don't, so it's better to switch.
 //!
 //! This program will simulate the game show and with large enough simulation steps
 //! it will indeed confirm that it is better to switch.
@@ -224,11 +224,10 @@
 use cell::RefCell;
 use clone::Clone;
 use io::IoResult;
-use iter::Iterator;
+use iter::{Iterator, IteratorExt};
 use mem;
-use option::{Some, None};
 use rc::Rc;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use vec::Vec;
 
 #[cfg(not(target_word_size="64"))]
@@ -246,7 +245,10 @@ pub mod reader;
 
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
-pub struct StdRng { rng: IsaacWordRng }
+#[deriving(Copy)]
+pub struct StdRng {
+    rng: IsaacWordRng,
+}
 
 impl StdRng {
     /// Create a randomly seeded instance of `StdRng`.
@@ -337,24 +339,18 @@ pub struct TaskRng {
 /// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
 pub fn task_rng() -> TaskRng {
     // used to make space in TLS for a random number generator
-    local_data_key!(TASK_RNG_KEY: Rc<RefCell<TaskRngInner>>)
+    thread_local!(static TASK_RNG_KEY: Rc<RefCell<TaskRngInner>> = {
+        let r = match StdRng::new() {
+            Ok(r) => r,
+            Err(e) => panic!("could not initialize task_rng: {}", e)
+        };
+        let rng = reseeding::ReseedingRng::new(r,
+                                               TASK_RNG_RESEED_THRESHOLD,
+                                               TaskRngReseeder);
+        Rc::new(RefCell::new(rng))
+    });
 
-    match TASK_RNG_KEY.get() {
-        None => {
-            let r = match StdRng::new() {
-                Ok(r) => r,
-                Err(e) => panic!("could not initialize task_rng: {}", e)
-            };
-            let rng = reseeding::ReseedingRng::new(r,
-                                                   TASK_RNG_RESEED_THRESHOLD,
-                                                   TaskRngReseeder);
-            let rng = Rc::new(RefCell::new(rng));
-            TASK_RNG_KEY.replace(Some(rng.clone()));
-
-            TaskRng { rng: rng }
-        }
-        Some(rng) => TaskRng { rng: rng.clone() }
-    }
+    TaskRng { rng: TASK_RNG_KEY.with(|t| t.clone()) }
 }
 
 impl Rng for TaskRng {
@@ -536,7 +532,7 @@ mod test {
         let mut one = [1i];
         r.shuffle(&mut one);
         let b: &[_] = &[1];
-        assert_eq!(one.as_slice(), b);
+        assert_eq!(one, b);
 
         let mut two = [1i, 2];
         r.shuffle(&mut two);
@@ -545,7 +541,7 @@ mod test {
         let mut x = [1i, 1, 1];
         r.shuffle(&mut x);
         let b: &[_] = &[1, 1, 1];
-        assert_eq!(x.as_slice(), b);
+        assert_eq!(x, b);
     }
 
     #[test]
@@ -555,7 +551,7 @@ mod test {
         let mut v = [1i, 1, 1];
         r.shuffle(&mut v);
         let b: &[_] = &[1, 1, 1];
-        assert_eq!(v.as_slice(), b);
+        assert_eq!(v, b);
         assert_eq!(r.gen_range(0u, 1u), 0u);
     }
 

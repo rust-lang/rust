@@ -12,7 +12,7 @@ use std::task;
 
 pub fn main() {
     let mut i = 10;
-    while i > 0 { task::spawn({let i = i; proc() child(i)}); i = i - 1; }
+    while i > 0 { task::spawn({let i = i; move|| child(i)}); i = i - 1; }
     println!("main thread exiting");
 }
 

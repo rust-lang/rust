@@ -50,11 +50,12 @@
 ################################################################################
 
 TARGET_CRATES := libc std flate arena term \
-                 serialize sync getopts collections test time rand \
-                 log regex graphviz core rbml alloc rustrt \
+                 serialize getopts collections test time rand \
+                 log regex graphviz core rbml alloc \
                  unicode
-HOST_CRATES := syntax rustc rustc_trans rustdoc regex_macros fmt_macros \
-	       rustc_llvm rustc_back
+RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
+                rustc_trans rustc_back rustc_llvm
+HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc regex_macros fmt_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
@@ -62,17 +63,22 @@ DEPS_core :=
 DEPS_libc := core
 DEPS_unicode := core
 DEPS_alloc := core libc native:jemalloc
-DEPS_rustrt := alloc core libc collections native:rustrt_native
-DEPS_std := core libc rand alloc collections rustrt sync unicode \
-	native:rust_builtin native:backtrace
+DEPS_std := core libc rand alloc collections unicode \
+	native:rust_builtin native:backtrace native:rustrt_native
 DEPS_graphviz := std
 DEPS_syntax := std term serialize log fmt_macros arena libc
-DEPS_rustc_trans := rustc rustc_back rustc_llvm libc
+DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
+                     rustc_typeck rustc_resolve log syntax serialize rustc_llvm rustc_trans
+DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
+	                log syntax serialize rustc_llvm
+DEPS_rustc_typeck := rustc syntax
+DEPS_rustc_borrowck := rustc log graphviz syntax
+DEPS_rustc_resolve := rustc log syntax
 DEPS_rustc := syntax flate arena serialize getopts rbml \
               time log graphviz rustc_llvm rustc_back
 DEPS_rustc_llvm := native:rustllvm libc std
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
-DEPS_rustdoc := rustc rustc_trans native:hoedown serialize getopts \
+DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
                 test time
 DEPS_flate := std native:miniz
 DEPS_arena := std
@@ -81,7 +87,6 @@ DEPS_glob := std
 DEPS_serialize := std log
 DEPS_rbml := std log serialize
 DEPS_term := std log
-DEPS_sync := core alloc rustrt collections
 DEPS_getopts := std
 DEPS_collections := core alloc unicode
 DEPS_num := std
@@ -95,7 +100,7 @@ DEPS_fmt_macros = std
 
 TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc
-TOOL_DEPS_rustc := rustc_trans
+TOOL_DEPS_rustc := rustc_driver
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
 TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
@@ -111,8 +116,15 @@ ONLY_RLIB_unicode := 1
 # You should not need to edit below this line
 ################################################################################
 
-DOC_CRATES := $(filter-out rustc, $(filter-out rustc_trans, $(filter-out syntax, $(CRATES))))
-COMPILER_DOC_CRATES := rustc rustc_trans syntax
+DOC_CRATES := $(filter-out rustc, \
+              $(filter-out rustc_trans, \
+              $(filter-out rustc_typeck, \
+              $(filter-out rustc_borrowck, \
+              $(filter-out rustc_resolve, \
+              $(filter-out rustc_driver, \
+              $(filter-out syntax, $(CRATES))))))))
+COMPILER_DOC_CRATES := rustc rustc_trans rustc_borrowck rustc_resolve \
+                       rustc_typeck rustc_driver syntax
 
 # This macro creates some simple definitions for each crate being built, just
 # some munging of all of the parameters above.

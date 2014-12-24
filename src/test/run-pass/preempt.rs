@@ -26,7 +26,7 @@ pub fn main() {
     let (port, chan) = stream();
 
     println!("main started");
-    spawn(proc() {
+    spawn(move|| {
         starve_main(port);
     });
     let mut i: int = 0;

@@ -147,3 +147,6 @@ fn main() {
 }
 
 fn zzz() {()}
+
+impl<T:Copy> Copy for Struct<T> {}
+

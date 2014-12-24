@@ -10,9 +10,9 @@
 
 //! Operations and constants for architecture-sized signed integers (`int` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "int")]
 
 pub use core::int::{BITS, BYTES, MIN, MAX};
 
-int_module!(int)
+int_module! { int }

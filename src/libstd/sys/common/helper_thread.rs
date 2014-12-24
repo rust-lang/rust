@@ -20,15 +20,15 @@
 //! can be created in the future and there must be no active timers at that
 //! time.
 
-use mem;
-use rustrt::bookkeeping;
-use rustrt::mutex::StaticNativeMutex;
-use rustrt;
-use cell::UnsafeCell;
-use sys::helper_signal;
 use prelude::*;
 
-use task;
+use cell::UnsafeCell;
+use mem;
+use sync::{StaticMutex, StaticCondvar};
+use rt;
+use sys::helper_signal;
+
+use thread::Thread;
 
 /// A structure for management of a helper thread.
 ///
@@ -39,7 +39,8 @@ use task;
 /// is for static initialization.
 pub struct Helper<M> {
     /// Internal lock which protects the remaining fields
-    pub lock: StaticNativeMutex,
+    pub lock: StaticMutex,
+    pub cond: StaticCondvar,
 
     // You'll notice that the remaining fields are UnsafeCell<T>, and this is
     // because all helper thread operations are done through &self, but we need
@@ -53,6 +54,9 @@ pub struct Helper<M> {
 
     /// Flag if this helper thread has booted and been initialized yet.
     pub initialized: UnsafeCell<bool>,
+
+    /// Flag if this helper thread has shut down
+    pub shutdown: UnsafeCell<bool>,
 }
 
 impl<M: Send> Helper<M> {
@@ -65,9 +69,10 @@ impl<M: Send> Helper<M> {
     /// passed to the helper thread in a separate task.
     ///
     /// This function is safe to be called many times.
-    pub fn boot<T: Send>(&'static self,
-                         f: || -> T,
-                         helper: fn(helper_signal::signal, Receiver<M>, T)) {
+    pub fn boot<T, F>(&'static self, f: F, helper: fn(helper_signal::signal, Receiver<M>, T)) where
+        T: Send,
+        F: FnOnce() -> T,
+    {
         unsafe {
             let _guard = self.lock.lock();
             if !*self.initialized.get() {
@@ -77,13 +82,14 @@ impl<M: Send> Helper<M> {
                 *self.signal.get() = send as uint;
 
                 let t = f();
-                task::spawn(proc() {
-                    bookkeeping::decrement();
+                Thread::spawn(move |:| {
                     helper(receive, rx, t);
-                    self.lock.lock().signal()
-                });
+                    let _g = self.lock.lock();
+                    *self.shutdown.get() = true;
+                    self.cond.notify_one()
+                }).detach();
 
-                rustrt::at_exit(proc() { self.shutdown() });
+                rt::at_exit(move|:| { self.shutdown() });
                 *self.initialized.get() = true;
             }
         }
@@ -119,7 +125,9 @@ impl<M: Send> Helper<M> {
             helper_signal::signal(*self.signal.get() as helper_signal::signal);
 
             // Wait for the child to exit
-            guard.wait();
+            while !*self.shutdown.get() {
+                self.cond.wait(&guard);
+            }
             drop(guard);
 
             // Clean up after ourselves

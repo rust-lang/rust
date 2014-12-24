@@ -10,5 +10,5 @@
 
 // Useful for checking syscall usage of baseline scheduler usage
 fn main() {
-    spawn(proc() {});
+    spawn(move|| {});
 }

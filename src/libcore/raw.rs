@@ -18,6 +18,7 @@
 //!
 //! Their definition should always match the ABI defined in `rustc::back::abi`.
 
+use kinds::Copy;
 use mem;
 use kinds::Sized;
 
@@ -28,16 +29,12 @@ pub struct Slice<T> {
     pub len: uint,
 }
 
+impl<T> Copy for Slice<T> {}
+
 /// The representation of a Rust closure
 #[repr(C)]
+#[deriving(Copy)]
 pub struct Closure {
-    pub code: *mut (),
-    pub env: *mut (),
-}
-
-/// The representation of a Rust procedure (`proc()`)
-#[repr(C)]
-pub struct Procedure {
     pub code: *mut (),
     pub env: *mut (),
 }
@@ -47,6 +44,7 @@ pub struct Procedure {
 /// This struct does not have a `Repr` implementation
 /// because there is no way to refer to all trait objects generically.
 #[repr(C)]
+#[deriving(Copy)]
 pub struct TraitObject {
     pub data: *mut (),
     pub vtable: *mut (),

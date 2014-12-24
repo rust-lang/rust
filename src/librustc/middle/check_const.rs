@@ -11,7 +11,6 @@
 
 use middle::def::*;
 use middle::ty;
-use middle::typeck;
 use util::ppaux;
 
 use syntax::ast;
@@ -25,16 +24,22 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
-    fn with_const(&mut self, in_const: bool, f: |&mut CheckCrateVisitor<'a, 'tcx>|) {
+    fn with_const<F>(&mut self, in_const: bool, f: F) where
+        F: FnOnce(&mut CheckCrateVisitor<'a, 'tcx>),
+    {
         let was_const = self.in_const;
         self.in_const = in_const;
         f(self);
         self.in_const = was_const;
     }
-    fn inside_const(&mut self, f: |&mut CheckCrateVisitor<'a, 'tcx>|) {
+    fn inside_const<F>(&mut self, f: F) where
+        F: FnOnce(&mut CheckCrateVisitor<'a, 'tcx>),
+    {
         self.with_const(true, f);
     }
-    fn outside_const(&mut self, f: |&mut CheckCrateVisitor<'a, 'tcx>|) {
+    fn outside_const<F>(&mut self, f: F) where
+        F: FnOnce(&mut CheckCrateVisitor<'a, 'tcx>),
+    {
         self.with_const(false, f);
     }
 }
@@ -111,7 +116,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) -> bool {
         }
         ast::ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {}
         ast::ExprBinary(..) | ast::ExprUnary(..) => {
-            let method_call = typeck::MethodCall::expr(e.id);
+            let method_call = ty::MethodCall::expr(e.id);
             if v.tcx.method_map.borrow().contains_key(&method_call) {
                 span_err!(v.tcx.sess, e.span, E0011,
                           "user-defined operators are not allowed in constant \
@@ -122,7 +127,11 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) -> bool {
         ast::ExprCast(ref from, _) => {
             let toty = ty::expr_ty(v.tcx, e);
             let fromty = ty::expr_ty(v.tcx, &**from);
-            if !ty::type_is_numeric(toty) && !ty::type_is_unsafe_ptr(toty) {
+            let is_legal_cast =
+                ty::type_is_numeric(toty) ||
+                ty::type_is_unsafe_ptr(toty) ||
+                (ty::type_is_bare_fn(toty) && ty::type_is_bare_fn_item(fromty));
+            if !is_legal_cast {
                 span_err!(v.tcx.sess, e.span, E0012,
                           "can not cast to `{}` in a constant expression",
                           ppaux::ty_to_string(v.tcx, toty));

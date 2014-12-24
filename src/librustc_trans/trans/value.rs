@@ -14,20 +14,19 @@ use trans::basic_block::BasicBlock;
 use trans::common::Block;
 use libc::c_uint;
 
+#[deriving(Copy)]
 pub struct Value(pub ValueRef);
 
-macro_rules! opt_val ( ($e:expr) => (
+macro_rules! opt_val { ($e:expr) => (
     unsafe {
         match $e {
             p if p.is_not_null() => Some(Value(p)),
             _ => None
         }
     }
-))
+) }
 
-/**
- * Wrapper for LLVM ValueRef
- */
+/// Wrapper for LLVM ValueRef
 impl Value {
     /// Returns the native ValueRef
     pub fn get(&self) -> ValueRef {
@@ -125,11 +124,10 @@ impl Value {
     }
 }
 
+/// Wrapper for LLVM UseRef
+#[deriving(Copy)]
 pub struct Use(UseRef);
 
-/**
- * Wrapper for LLVM UseRef
- */
 impl Use {
     pub fn get(&self) -> UseRef {
         let Use(v) = *self; v
@@ -152,6 +150,7 @@ impl Use {
 }
 
 /// Iterator for the users of a value
+#[allow(missing_copy_implementations)]
 pub struct Users {
     next: Option<Use>
 }

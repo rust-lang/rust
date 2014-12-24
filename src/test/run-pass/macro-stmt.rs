@@ -16,9 +16,9 @@ macro_rules! myfn(
     ( $f:ident, ( $( $x:ident ),* ), $body:block ) => (
         fn $f( $( $x : int),* ) -> int $body
     )
-)
+);
 
-myfn!(add, (a,b), { return a+b; } )
+myfn!(add, (a,b), { return a+b; } );
 
 pub fn main() {
 
@@ -37,7 +37,7 @@ pub fn main() {
 
     macro_rules! actually_an_expr_macro (
         () => ( 16i )
-    )
+    );
 
     assert_eq!({ actually_an_expr_macro!() }, 16i);
 

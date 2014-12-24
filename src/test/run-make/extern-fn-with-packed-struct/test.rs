@@ -16,6 +16,8 @@ struct Foo {
     c: i8
 }
 
+impl Copy for Foo {}
+
 #[link(name = "test", kind = "static")]
 extern {
     fn foo(f: Foo) -> Foo;

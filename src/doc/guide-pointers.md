@@ -84,7 +84,7 @@ println!("{}", x + z);
 
 This gives us an error:
 
-```{notrust,ignore}
+```text
 hello.rs:6:24: 6:25 error: mismatched types: expected `int` but found `&int` (expected int but found &-ptr)
 hello.rs:6     println!("{}", x + z);
                                   ^
@@ -132,7 +132,7 @@ Pointers are useful in languages that are pass-by-value, rather than
 pass-by-reference. Basically, languages can make two choices (this is made
 up syntax, it's not Rust):
 
-```{notrust,ignore}
+```text
 func foo(x) {
     x = 5
 }
@@ -152,7 +152,7 @@ and therefore, can change its value. At the comment, `i` will be `5`.
 So what do pointers have to do with this? Well, since pointers point to a
 location in memory...
 
-```{notrust,ignore}
+```text
 func foo(&int x) {
     *x = 5
 }
@@ -179,7 +179,7 @@ but here are problems with pointers in other languages:
 Uninitialized pointers can cause a problem. For example, what does this program
 do?
 
-```{notrust,ignore}
+```{ignore}
 &int x;
 *x = 5; // whoops!
 ```
@@ -191,7 +191,7 @@ knows. This might be harmless, and it might be catastrophic.
 When you combine pointers and functions, it's easy to accidentally invalidate
 the memory the pointer is pointing to. For example:
 
-```{notrust,ignore}
+```text
 func make_pointer(): &int {
     x = 5;
 
@@ -213,7 +213,7 @@ As one last example of a big problem with pointers, **aliasing** can be an
 issue. Two pointers are said to alias when they point at the same location
 in memory. Like this:
 
-```{notrust,ignore}
+```text
 func mutate(&int i, int j) {
     *i = j;
 }
@@ -398,7 +398,7 @@ fn main() {
 
 It gives this error:
 
-```{notrust,ignore}
+```text
 test.rs:5:8: 5:10 error: cannot assign to `*x` because it is borrowed
 test.rs:5         *x -= 1;
                   ^~
@@ -408,8 +408,8 @@ test.rs:4         let y = &x;
 ```
 
 As you might guess, this kind of analysis is complex for a human, and therefore
-hard for a computer, too! There is an entire [guide devoted to references
-and lifetimes](guide-lifetimes.html) that goes into lifetimes in
+hard for a computer, too! There is an entire [guide devoted to references, ownership,
+and lifetimes](guide-ownership.html) that goes into this topic in
 great detail, so if you want the full details, check that out.
 
 ## Best practices
@@ -445,10 +445,31 @@ fn succ(x: &int) -> int { *x + 1 }
 to
 
 ```{rust}
+use std::rc::Rc;
+
 fn box_succ(x: Box<int>) -> int { *x + 1 }
 
-fn rc_succ(x: std::rc::Rc<int>) -> int { *x + 1 }
+fn rc_succ(x: Rc<int>) -> int { *x + 1 }
 ```
+
+Note that the caller of your function will have to modify their calls slightly:
+
+```{rust}
+use std::rc::Rc;
+
+fn succ(x: &int) -> int { *x + 1 }
+
+let ref_x = &5i;
+let box_x = box 5i;
+let rc_x  = Rc::new(5i);
+
+succ(ref_x);
+succ(&*box_x);
+succ(&*rc_x);
+```
+
+The initial `*` dereferences the pointer, and then `&` takes a reference to
+those contents.
 
 # Boxes
 
@@ -501,7 +522,7 @@ boxes, though. As a rough approximation, you can treat this Rust code:
 
 As being similar to this C code:
 
-```{notrust,ignore}
+```c
 {
     int *x;
     x = (int *)malloc(sizeof(int));
@@ -526,7 +547,7 @@ with some improvements:
 4. Rust enforces that no other writeable pointers alias to this heap memory,
    which means writing to an invalid pointer is not possible.
 
-See the section on references or the [lifetimes guide](guide-lifetimes.html)
+See the section on references or the [ownership guide](guide-ownership.html)
 for more detail on how lifetimes work.
 
 Using boxes and references together is very common. For example:
@@ -572,7 +593,7 @@ fn add_one(x: &mut int) -> int {
 fn main() {
     let x = box 5i;
 
-    println!("{}", add_one(&*x)); // error: cannot borrow immutable dereference 
+    println!("{}", add_one(&*x)); // error: cannot borrow immutable dereference
                                   // of `&`-pointer as mutable
 }
 ```
@@ -605,7 +626,7 @@ fn main() {
 
 This prints:
 
-```{notrust,ignore}
+```text
 Cons(1, box Cons(2, box Cons(3, box Nil)))
 ```
 
@@ -700,9 +721,9 @@ This gives you flexibility without sacrificing performance.
 
 You may think that this gives us terrible performance: return a value and then
 immediately box it up ?! Isn't that the worst of both worlds? Rust is smarter
-than that. There is no copy in this code. main allocates enough room for the
-`box , passes a pointer to that memory into foo as x, and then foo writes the
-value straight into that pointer. This writes the return value directly into
+than that. There is no copy in this code. `main` allocates enough room for the
+`box`, passes a pointer to that memory into `foo` as `x`, and then `foo` writes
+the value straight into that pointer. This writes the return value directly into
 the allocated box.
 
 This is important enough that it bears repeating: pointers are not for
@@ -759,5 +780,5 @@ Here's a quick rundown of Rust's pointer types:
 # Related resources
 
 * [API documentation for Box](std/boxed/index.html)
-* [Lifetimes guide](guide-lifetimes.html)
+* [Ownership guide](guide-ownership.html)
 * [Cyclone paper on regions](http://www.cs.umd.edu/projects/cyclone/papers/cyclone-regions.pdf), which inspired Rust's lifetime system

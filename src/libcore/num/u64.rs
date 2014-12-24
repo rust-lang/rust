@@ -13,4 +13,4 @@
 #![stable]
 #![doc(primitive = "u64")]
 
-uint_module!(u64, i64, 64)
+uint_module! { u64, i64, 64 }

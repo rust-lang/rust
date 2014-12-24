@@ -16,7 +16,7 @@ use self::FormatState::*;
 use self::FormatOp::*;
 use std::mem::replace;
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum States {
     Nothing,
     Percent,
@@ -33,7 +33,7 @@ enum States {
     SeekIfEndPercent(int)
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 enum FormatState {
     FormatStateFlags,
     FormatStateWidth,
@@ -80,17 +80,15 @@ impl Variables {
     }
 }
 
-/**
-  Expand a parameterized capability
-
-  # Arguments
-  * `cap`    - string to expand
-  * `params` - vector of params for %p1 etc
-  * `vars`   - Variables struct for %Pa etc
-
-  To be compatible with ncurses, `vars` should be the same between calls to `expand` for
-  multiple capabilities for the same terminal.
-  */
+/// Expand a parameterized capability
+///
+/// # Arguments
+/// * `cap`    - string to expand
+/// * `params` - vector of params for %p1 etc
+/// * `vars`   - Variables struct for %Pa etc
+///
+/// To be compatible with ncurses, `vars` should be the same between calls to `expand` for
+/// multiple capabilities for the same terminal.
 pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     -> Result<Vec<u8> , String> {
     let mut state = Nothing;
@@ -444,7 +442,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     Ok(output)
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 struct Flags {
     width: uint,
     precision: uint,
@@ -461,6 +459,7 @@ impl Flags {
     }
 }
 
+#[deriving(Copy)]
 enum FormatOp {
     FormatDigit,
     FormatOctal,
@@ -531,11 +530,9 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                     }
                 }
                 FormatHEX => {
-                    s = s.as_slice()
-                         .to_ascii()
-                         .to_uppercase()
-                         .into_bytes()
-                         .into_iter()
+                    s = s.to_ascii()
+                         .iter()
+                         .map(|b| b.to_uppercase().as_byte())
                          .collect();
                     if flags.alternate {
                         let s_ = replace(&mut s, vec!(b'0', b'X'));
@@ -579,19 +576,19 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
 #[cfg(test)]
 mod test {
     use super::{expand,Param,Words,Variables,Number};
-    use std::result::Ok;
+    use std::result::Result::Ok;
 
     #[test]
     fn test_basic_setabf() {
         let s = b"\\E[48;5;%p1%dm";
         assert_eq!(expand(s, &[Number(1)], &mut Variables::new()).unwrap(),
-                   "\\E[48;5;1m".bytes().collect());
+                   "\\E[48;5;1m".bytes().collect::<Vec<_>>());
     }
 
     #[test]
     fn test_multiple_int_constants() {
         assert_eq!(expand(b"%{1}%{2}%d%d", &[], &mut Variables::new()).unwrap(),
-                   "21".bytes().collect());
+                   "21".bytes().collect::<Vec<_>>());
     }
 
     #[test]
@@ -599,9 +596,9 @@ mod test {
         let mut vars = Variables::new();
         assert_eq!(expand(b"%p1%d%p2%d%p3%d%i%p1%d%p2%d%p3%d",
                           &[Number(1),Number(2),Number(3)], &mut vars),
-                   Ok("123233".bytes().collect()));
+                   Ok("123233".bytes().collect::<Vec<_>>()));
         assert_eq!(expand(b"%p1%d%p2%d%i%p1%d%p2%d", &[], &mut vars),
-                   Ok("0011".bytes().collect()));
+                   Ok("0011".bytes().collect::<Vec<_>>()));
     }
 
     #[test]
@@ -675,15 +672,15 @@ mod test {
         let res = expand(s, &[Number(1)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
-                   "\\E[31m".bytes().collect());
+                   "\\E[31m".bytes().collect::<Vec<_>>());
         let res = expand(s, &[Number(8)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
-                   "\\E[90m".bytes().collect());
+                   "\\E[90m".bytes().collect::<Vec<_>>());
         let res = expand(s, &[Number(42)], &mut vars);
         assert!(res.is_ok(), res.unwrap_err());
         assert_eq!(res.unwrap(),
-                   "\\E[38;5;42m".bytes().collect());
+                   "\\E[38;5;42m".bytes().collect::<Vec<_>>());
     }
 
     #[test]
@@ -695,13 +692,13 @@ mod test {
                             Words("foo".to_string()),
                             Words("f".to_string()),
                             Words("foo".to_string())], vars),
-                   Ok("foofoo ffo".bytes().collect()));
+                   Ok("foofoo ffo".bytes().collect::<Vec<_>>()));
         assert_eq!(expand(b"%p1%:-4.2s", &[Words("foo".to_string())], vars),
-                   Ok("fo  ".bytes().collect()));
+                   Ok("fo  ".bytes().collect::<Vec<_>>()));
 
         assert_eq!(expand(b"%p1%d%p1%.3d%p1%5d%p1%:+d", &[Number(1)], vars),
-                   Ok("1001    1+1".bytes().collect()));
+                   Ok("1001    1+1".bytes().collect::<Vec<_>>()));
         assert_eq!(expand(b"%p1%o%p1%#o%p2%6.4x%p2%#6.4X", &[Number(15), Number(27)], vars),
-                   Ok("17017  001b0X001B".bytes().collect()));
+                   Ok("17017  001b0X001B".bytes().collect::<Vec<_>>()));
     }
 }

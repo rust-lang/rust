@@ -15,14 +15,17 @@
 // when this bug was opened. The cases where the compiler
 // panics before the fix have a comment.
 
+#![feature(default_type_params)]
+
+use std::thunk::Thunk;
+
 struct S {x:()}
 
-
-fn test(slot: &mut Option<proc() -> proc()>, _: proc()) -> () {
+fn test(slot: &mut Option<Thunk<(),Thunk>>) -> () {
   let a = slot.take();
   let _a = match a {
     // `{let .. a(); }` would break
-    Some(a) => { let _a = a(); },
+    Some(a) => { let _a = a.invoke(()); },
     None => (),
   };
 }
@@ -41,7 +44,7 @@ pub fn main() {
     let _r = {};
     let mut slot = None;
     // `{ test(...); }` would break
-    let _s : S  = S{ x: { test(&mut slot, proc() {}); } };
+    let _s : S  = S{ x: { test(&mut slot); } };
 
     let _b = not(true);
 }

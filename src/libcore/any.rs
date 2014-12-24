@@ -71,8 +71,9 @@
 
 #![stable]
 
-use mem::{transmute, transmute_copy};
-use option::{Option, Some, None};
+use mem::{transmute};
+use option::Option;
+use option::Option::{Some, None};
 use raw::TraitObject;
 use intrinsics::TypeId;
 
@@ -88,7 +89,7 @@ use intrinsics::TypeId;
 #[stable]
 pub trait Any: 'static {
     /// Get the `TypeId` of `self`
-    #[stable]
+    #[experimental = "this method will likely be replaced by an associated static"]
     fn get_type_id(&self) -> TypeId;
 }
 
@@ -134,7 +135,7 @@ impl<'a> AnyRefExt<'a> for &'a Any {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
-                let to: TraitObject = transmute_copy(&self);
+                let to: TraitObject = transmute(self);
 
                 // Extract the data pointer
                 Some(transmute(to.data))
@@ -162,7 +163,7 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Any {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
-                let to: TraitObject = transmute_copy(&self);
+                let to: TraitObject = transmute(self);
 
                 // Extract the data pointer
                 Some(transmute(to.data))

@@ -19,12 +19,12 @@ extern crate libc;
 
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
-use std::task::TaskBuilder;
+use std::thread::Builder;
 use std::time::Duration;
 
 fn main() {
     // This test has a chance to time out, try to not let it time out
-    spawn(proc() {
+    spawn(move|| {
         use std::io::timer;
         timer::sleep(Duration::milliseconds(30 * 1000));
         println!("timed out!");
@@ -32,7 +32,7 @@ fn main() {
     });
 
     let (tx, rx) = channel();
-    spawn(proc() {
+    spawn(move|| {
         let mut listener = TcpListener::bind("127.0.0.1:0").unwrap();
         tx.send(listener.socket_name().unwrap());
         let mut acceptor = listener.listen();
@@ -53,7 +53,7 @@ fn main() {
     let (tx, rx) = channel();
     for _ in range(0u, 1000) {
         let tx = tx.clone();
-        TaskBuilder::new().stack_size(64 * 1024).spawn(proc() {
+        Builder::new().stack_size(64 * 1024).spawn(move|| {
             match TcpStream::connect(addr) {
                 Ok(stream) => {
                     let mut stream = stream;
@@ -64,7 +64,7 @@ fn main() {
                 Err(e) => debug!("{}", e)
             }
             tx.send(());
-        });
+        }).detach();
     }
 
     // Wait for all clients to exit, but don't wait for the server to exit. The

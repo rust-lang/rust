@@ -34,7 +34,7 @@ impl log::Logger for ChannelLogger {
 pub fn main() {
     let (logger, rx) = ChannelLogger::new();
 
-    spawn(proc() {
+    spawn(move|| {
         log::set_logger(logger);
 
         // our regex is "f.o"

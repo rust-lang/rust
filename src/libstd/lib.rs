@@ -96,8 +96,6 @@
 
 #![crate_name = "std"]
 #![unstable]
-#![comment = "The Rust standard library"]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -106,9 +104,9 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, globs, linkage)]
+#![feature(macro_rules, globs, linkage, thread_local, asm)]
 #![feature(default_type_params, phase, lang_items, unsafe_destructor)]
-#![feature(import_shadowing, slicing_syntax)]
+#![feature(slicing_syntax, unboxed_closures)]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -124,9 +122,7 @@ extern crate unicode;
 extern crate core;
 extern crate "collections" as core_collections;
 extern crate "rand" as core_rand;
-extern crate "sync" as core_sync;
 extern crate libc;
-extern crate rustrt;
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate "std" as realstd;
@@ -139,7 +135,6 @@ extern crate rustrt;
 // NB: These reexports are in the order they should be listed in rustdoc
 
 pub use core::any;
-pub use core::bool;
 pub use core::borrow;
 pub use core::cell;
 pub use core::clone;
@@ -154,14 +149,10 @@ pub use core::mem;
 pub use core::ptr;
 pub use core::raw;
 pub use core::simd;
-pub use core::tuple;
-// FIXME #15320: primitive documentation needs top-level modules, this
-// should be `std::tuple::unit`.
-pub use core::unit;
 pub use core::result;
 pub use core::option;
 
-pub use alloc::boxed;
+#[cfg(not(test))] pub use alloc::boxed;
 pub use alloc::rc;
 
 pub use core_collections::slice;
@@ -169,12 +160,7 @@ pub use core_collections::str;
 pub use core_collections::string;
 pub use core_collections::vec;
 
-pub use rustrt::c_str;
-pub use rustrt::local_data;
-
 pub use unicode::char;
-
-pub use core_sync::comm;
 
 /* Exported macros */
 
@@ -209,35 +195,38 @@ pub mod prelude;
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
 
-pub mod rand;
-
 pub mod ascii;
-
-pub mod time;
+pub mod thunk;
 
 /* Common traits */
 
 pub mod error;
 pub mod num;
 
+/* Runtime and platform support */
+
+pub mod thread_local;
+pub mod c_str;
+pub mod c_vec;
+pub mod dynamic_lib;
+pub mod fmt;
+pub mod io;
+pub mod os;
+pub mod path;
+pub mod rand;
+pub mod time;
+
 /* Common data structures */
 
 pub mod collections;
 pub mod hash;
 
-/* Tasks and communication */
+/* Threads and communication */
 
 pub mod task;
+pub mod thread;
 pub mod sync;
-
-/* Runtime and platform support */
-
-pub mod c_vec;
-pub mod dynamic_lib;
-pub mod os;
-pub mod io;
-pub mod path;
-pub mod fmt;
+pub mod comm;
 
 #[cfg(unix)]
 #[path = "sys/unix/mod.rs"] mod sys;
@@ -248,6 +237,12 @@ pub mod fmt;
 
 pub mod rt;
 mod failure;
+
+// Documentation for primitive types
+
+mod bool;
+mod unit;
+mod tuple;
 
 // A curious inner-module that's not exported that contains the binding
 // 'std' so that macro-expanded references to std::error and such
@@ -263,10 +258,12 @@ mod std {
     pub use error; // used for try!()
     pub use fmt; // used for any formatting strings
     pub use io; // used for println!()
-    pub use local_data; // used for local_data_key!()
     pub use option; // used for bitflags!{}
     pub use rt; // used for panic!()
     pub use vec; // used for vec![]
+    pub use cell; // used for tls!
+    pub use thread_local; // used for thread_local!
+    pub use kinds; // used for tls!
 
     // The test runner calls ::std::os::args() but really wants realstd
     #[cfg(test)] pub use realstd::os as os;
@@ -276,4 +273,5 @@ mod std {
     pub use slice;
 
     pub use boxed; // used for vec![]
+
 }

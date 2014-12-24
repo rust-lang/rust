@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
 pub fn main() { test00(); }
 
@@ -23,7 +23,7 @@ fn test00() {
     let (tx, rx) = channel();
     let number_of_messages: int = 10;
 
-    let result = task::try_future(proc() {
+    let result = Thread::spawn(move|| {
         test00_start(&tx, number_of_messages);
     });
 
@@ -34,7 +34,7 @@ fn test00() {
         i += 1;
     }
 
-    result.unwrap();
+    result.join();
 
     assert_eq!(sum, number_of_messages * (number_of_messages - 1) / 2);
 }

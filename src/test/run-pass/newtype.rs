@@ -10,7 +10,14 @@
 
 struct mytype(Mytype);
 
-struct Mytype {compute: fn(mytype) -> int, val: int}
+impl Copy for mytype {}
+
+struct Mytype {
+    compute: fn(mytype) -> int,
+    val: int,
+}
+
+impl Copy for Mytype {}
 
 fn compute(i: mytype) -> int {
     let mytype(m) = i;

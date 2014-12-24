@@ -123,9 +123,62 @@ const MIN_ALIGN: uint = 8;
           target_arch = "x86_64"))]
 const MIN_ALIGN: uint = 16;
 
-#[cfg(jemalloc)]
+#[cfg(external_funcs)]
 mod imp {
-    use core::option::{None, Option};
+    extern {
+        fn rust_allocate(size: uint, align: uint) -> *mut u8;
+        fn rust_deallocate(ptr: *mut u8, old_size: uint, align: uint);
+        fn rust_reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8;
+        fn rust_reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint,
+                                   align: uint) -> uint;
+        fn rust_usable_size(size: uint, align: uint) -> uint;
+        fn rust_stats_print();
+    }
+
+    #[inline]
+    pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
+        rust_allocate(size, align)
+    }
+
+    #[inline]
+    pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint,
+                                     align: uint) -> uint {
+        rust_reallocate_inplace(ptr, old_size, size, align)
+    }
+
+    #[inline]
+    pub unsafe fn deallocate(ptr: *mut u8, old_size: uint, align: uint) {
+        rust_deallocate(ptr, old_size, align)
+    }
+
+    #[inline]
+    pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint,
+                                     align: uint) -> uint {
+        rust_reallocate_inplace(ptr, old_size, size, align)
+    }
+
+    #[inline]
+    pub fn usable_size(size: uint, align: uint) -> uint {
+        unsafe { rust_usable_size(size, align) }
+    }
+
+    #[inline]
+    pub fn stats_print() {
+        unsafe { rust_stats_print() }
+    }
+}
+
+#[cfg(external_crate)]
+mod imp {
+    extern crate external;
+    pub use self::external::{allocate, deallocate, reallocate_inplace, reallocate};
+    pub use self::external::{usable_size, stats_print};
+}
+
+#[cfg(all(not(external_funcs), not(external_crate), jemalloc))]
+mod imp {
+    use core::option::Option;
+    use core::option::Option::None;
     use core::ptr::{null_mut, null};
     use core::num::Int;
     use libc::{c_char, c_int, c_void, size_t};
@@ -199,7 +252,7 @@ mod imp {
     }
 }
 
-#[cfg(all(not(jemalloc), unix))]
+#[cfg(all(not(external_funcs), not(external_crate), not(jemalloc), unix))]
 mod imp {
     use core::cmp;
     use core::ptr;
@@ -260,7 +313,7 @@ mod imp {
     pub fn stats_print() {}
 }
 
-#[cfg(all(not(jemalloc), windows))]
+#[cfg(all(not(external_funcs), not(external_crate), not(jemalloc), windows))]
 mod imp {
     use libc::{c_void, size_t};
     use libc;
