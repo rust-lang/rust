@@ -21,11 +21,13 @@ use ptr::P;
 
 use std::collections::HashMap;
 
-pub fn expand_deriving_show(cx: &mut ExtCtxt,
-                            span: Span,
-                            mitem: &MetaItem,
-                            item: &Item,
-                            push: |P<Item>|) {
+pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
+                               span: Span,
+                               mitem: &MetaItem,
+                               item: &Item,
+                               push: F) where
+    F: FnOnce(P<Item>),
+{
     // &mut ::std::fmt::Formatter
     let fmtr = Ptr(box Literal(Path::new(vec!("std", "fmt", "Formatter"))),
                    Borrowed(None, ast::MutMutable));
@@ -125,7 +127,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     let formatter = substr.nonself_args[0].clone();
 
     let meth = cx.ident_of("write_fmt");
-    let s = token::intern_and_get_ident(format_string.as_slice());
+    let s = token::intern_and_get_ident(format_string[]);
     let format_string = cx.expr_str(span, s);
 
     // phew, not our responsibility any more!

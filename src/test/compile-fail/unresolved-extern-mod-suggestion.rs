@@ -9,6 +9,7 @@
 // except according to those terms.
 
 extern crate core;
-use core; //~ ERROR unresolved import (maybe you meant `core::*`?)
+use core;
+//~^ ERROR import `core` conflicts with imported crate in this module
 
 fn main() {}

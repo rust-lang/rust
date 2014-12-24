@@ -18,7 +18,7 @@ fn start(tx: &Sender<Sender<int>>) {
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _child = task::spawn(proc() {
+    let _child = task::spawn(move|| {
         start(&tx)
     });
     let _tx = rx.recv();

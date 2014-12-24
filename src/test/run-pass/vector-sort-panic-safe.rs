@@ -14,7 +14,7 @@ use std::rand::{task_rng, Rng, Rand};
 
 const REPEATS: uint = 5;
 const MAX_LEN: uint = 32;
-static drop_counts: [AtomicUint, .. MAX_LEN] =
+static drop_counts: [AtomicUint;  MAX_LEN] =
     // FIXME #5244: AtomicUint is not Copy.
     [
         INIT_ATOMIC_UINT, INIT_ATOMIC_UINT, INIT_ATOMIC_UINT, INIT_ATOMIC_UINT,
@@ -77,7 +77,7 @@ pub fn main() {
 
                 let v = main.clone();
 
-                let _ = task::try(proc() {
+                let _ = task::try(move|| {
                         let mut v = v;
                         let mut panic_countdown = panic_countdown;
                         v.as_mut_slice().sort_by(|a, b| {

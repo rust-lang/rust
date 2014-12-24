@@ -15,7 +15,7 @@
 // ignore-test
 
 fn loopy(n: int) {
-    if n > 0 { spawn(proc() { loopy(n - 1) }); spawn(proc() { loopy(n - 1) }); }
+    if n > 0 { spawn(move|| { loopy(n - 1) }); spawn(move|| { loopy(n - 1) }); }
     loop { }
 }
 
@@ -23,5 +23,5 @@ pub fn main() {
     // Commenting this out, as this will hang forever otherwise.
     // Even after seeing the comment above, I'm not sure what the
     // intention of this test is.
-    // spawn(proc() { loopy(5) });
+    // spawn(move|| { loopy(5) });
 }

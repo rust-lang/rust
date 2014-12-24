@@ -546,22 +546,26 @@ CFG_TARGET=$(to_llvm_triple $CFG_TARGET)
 # there's no rpath. This is where the build system itself puts libraries;
 # --libdir is used to configure the installation directory.
 # FIXME: This needs to parameterized over target triples. Do it in platform.mk
-CFG_LIBDIR_RELATIVE=lib
 if [ "$CFG_OSTYPE" = "pc-windows-gnu" ]
 then
     CFG_LIBDIR_RELATIVE=bin
-    CFG_LIBDIR="${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}"
 else
-    valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries (ignored on windows platform)"
+    CFG_LIBDIR_RELATIVE=lib
+fi
 
-    case "$CFG_LIBDIR" in
-	"$CFG_PREFIX"/*) CAT_INC=2;;
-	"$CFG_PREFIX"*)  CAT_INC=1;;
-	*)
-            err "libdir must begin with the prefix. Use --prefix to set it accordingly.";;
-    esac
+valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries (do not set it on windows platform)"
 
-    CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
+case "$CFG_LIBDIR" in
+    "$CFG_PREFIX"/*) CAT_INC=2;;
+    "$CFG_PREFIX"*)  CAT_INC=1;;
+    *)
+        err "libdir must begin with the prefix. Use --prefix to set it accordingly.";;
+esac
+
+CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
+
+if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] && [ "$CFG_LIBDIR_RELATIVE" != "bin" ]; then
+    err "libdir on windows should be set to 'bin'"
 fi
 
 if [ $HELP -eq 1 ]
@@ -620,7 +624,6 @@ probe CFG_LD               ld
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_ISCC             iscc
-probe CFG_LLNEXTGEN        LLnextgen
 probe CFG_JAVAC            javac
 probe CFG_ANTLR4           antlr4
 probe CFG_GRUN             grun
@@ -711,11 +714,6 @@ then
     fi
     step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
     putvar CFG_LOCAL_RUST_ROOT
-else
-    if [ ! -z "$CFG_LOCAL_RUST_ROOT" ]
-    then
-       warn "Use of --local-rust-root without --enable-local-rust"
-    fi
 fi
 
 # Force freebsd to build with clang; gcc doesn't like us there
@@ -990,8 +988,7 @@ do
     make_dir $t/rt/jemalloc
     for i in                                          \
       isaac sync test \
-      arch/i386 arch/x86_64 arch/arm arch/mips  \
-      sundown/src sundown/html
+      arch/i386 arch/x86_64 arch/arm arch/mips
     do
       make_dir $t/rt/stage$s/$i
     done
@@ -1042,19 +1039,18 @@ do
     make_dir $h/test/debuginfo-gdb
     make_dir $h/test/debuginfo-lldb
     make_dir $h/test/codegen
-    make_dir $h/test/doc-tutorial
     make_dir $h/test/doc-guide
     make_dir $h/test/doc-guide-ffi
     make_dir $h/test/doc-guide-runtime
     make_dir $h/test/doc-guide-macros
-    make_dir $h/test/doc-guide-lifetimes
+    make_dir $h/test/doc-guide-ownership
     make_dir $h/test/doc-guide-pointers
     make_dir $h/test/doc-guide-container
     make_dir $h/test/doc-guide-tasks
     make_dir $h/test/doc-guide-plugin
     make_dir $h/test/doc-guide-crates
     make_dir $h/test/doc-guide-error-handling
-    make_dir $h/test/doc-rust
+    make_dir $h/test/doc-reference
 done
 
 # Configure submodules

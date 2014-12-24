@@ -12,7 +12,7 @@ use std::task;
 
 pub fn foo<T:Send + Clone>(x: T) -> Receiver<T> {
     let (tx, rx) = channel();
-    task::spawn(proc() {
+    task::spawn(move|| {
         tx.send(x.clone());
     });
     rx

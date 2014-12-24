@@ -50,7 +50,7 @@
 #[doc(no_inline)] pub use ops::{Fn, FnMut, FnOnce};
 
 // Reexported functions
-#[doc(no_inline)] pub use iter::{range, repeat};
+#[doc(no_inline)] pub use iter::range;
 #[doc(no_inline)] pub use mem::drop;
 #[doc(no_inline)] pub use str::from_str;
 
@@ -58,16 +58,18 @@
 
 #[doc(no_inline)] pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
 #[doc(no_inline)] pub use ascii::IntoBytes;
+#[doc(no_inline)] pub use borrow::IntoCow;
 #[doc(no_inline)] pub use c_str::ToCStr;
 #[doc(no_inline)] pub use char::{Char, UnicodeChar};
 #[doc(no_inline)] pub use clone::Clone;
 #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 #[doc(no_inline)] pub use cmp::{Ordering, Equiv};
 #[doc(no_inline)] pub use cmp::Ordering::{Less, Equal, Greater};
-#[doc(no_inline)] pub use iter::{FromIterator, Extend, ExactSize};
-#[doc(no_inline)] pub use iter::{Iterator, DoubleEndedIterator};
-#[doc(no_inline)] pub use iter::{RandomAccessIterator, CloneableIterator};
-#[doc(no_inline)] pub use iter::{OrdIterator, MutableDoubleEndedIterator};
+#[doc(no_inline)] pub use iter::{FromIterator, Extend, ExactSizeIterator};
+#[doc(no_inline)] pub use iter::{Iterator, IteratorExt, DoubleEndedIterator};
+#[doc(no_inline)] pub use iter::{DoubleEndedIteratorExt, CloneIteratorExt};
+#[doc(no_inline)] pub use iter::{RandomAccessIterator, IteratorCloneExt};
+#[doc(no_inline)] pub use iter::{IteratorOrdExt, MutableDoubleEndedIterator};
 #[doc(no_inline)] pub use num::{ToPrimitive, FromPrimitive};
 #[doc(no_inline)] pub use boxed::Box;
 #[doc(no_inline)] pub use option::Option;
@@ -77,14 +79,15 @@
 #[doc(no_inline)] pub use result::Result;
 #[doc(no_inline)] pub use result::Result::{Ok, Err};
 #[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek, BufferPrelude};
-#[doc(no_inline)] pub use str::{Str, StrVector, StrPrelude};
-#[doc(no_inline)] pub use str::{IntoMaybeOwned, StrAllocating, UnicodeStrPrelude};
-#[doc(no_inline)] pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
-#[doc(no_inline)] pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
-#[doc(no_inline)] pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
-#[doc(no_inline)] pub use slice::{SlicePrelude, AsSlice, CloneSlicePrelude};
-#[doc(no_inline)] pub use slice::{VectorVector, PartialEqSlicePrelude, OrdSlicePrelude};
-#[doc(no_inline)] pub use slice::{CloneSliceAllocPrelude, OrdSliceAllocPrelude, SliceAllocPrelude};
+#[doc(no_inline)] pub use core::prelude::{Tuple1, Tuple2, Tuple3, Tuple4};
+#[doc(no_inline)] pub use core::prelude::{Tuple5, Tuple6, Tuple7, Tuple8};
+#[doc(no_inline)] pub use core::prelude::{Tuple9, Tuple10, Tuple11, Tuple12};
+#[doc(no_inline)] pub use str::{Str, StrVector};
+#[doc(no_inline)] pub use str::StrExt;
+#[doc(no_inline)] pub use slice::AsSlice;
+#[doc(no_inline)] pub use slice::{VectorVector, PartialEqSliceExt};
+#[doc(no_inline)] pub use slice::{CloneSliceExt, OrdSliceExt, SliceExt};
+#[doc(no_inline)] pub use slice::{BoxedSliceExt};
 #[doc(no_inline)] pub use string::{IntoString, String, ToString};
 #[doc(no_inline)] pub use vec::Vec;
 

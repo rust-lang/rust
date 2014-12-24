@@ -15,7 +15,6 @@
 
 #![crate_name = "rustc_llvm"]
 #![experimental]
-#![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -24,6 +23,7 @@
 
 #![feature(globs)]
 #![feature(link_args)]
+#![feature(unboxed_closures)]
 
 extern crate libc;
 
@@ -45,6 +45,7 @@ pub use self::DiagnosticKind::*;
 pub use self::CallConv::*;
 pub use self::Visibility::*;
 pub use self::DiagnosticSeverity::*;
+pub use self::Linkage::*;
 
 use std::c_str::ToCStr;
 use std::cell::RefCell;
@@ -67,7 +68,7 @@ pub const False: Bool = 0 as Bool;
 
 // Consts for the LLVM CallConv type, pre-cast to uint.
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum CallConv {
     CCallConv = 0,
     FastCallConv = 8,
@@ -77,6 +78,7 @@ pub enum CallConv {
     X86_64_Win64 = 79,
 }
 
+#[deriving(Copy)]
 pub enum Visibility {
     LLVMDefaultVisibility = 0,
     HiddenVisibility = 1,
@@ -87,6 +89,7 @@ pub enum Visibility {
 // DLLExportLinkage, GhostLinkage and LinkOnceODRAutoHideLinkage.
 // LinkerPrivateLinkage and LinkerPrivateWeakLinkage are not included either;
 // they've been removed in upstream LLVM commit r203866.
+#[deriving(Copy)]
 pub enum Linkage {
     ExternalLinkage = 0,
     AvailableExternallyLinkage = 1,
@@ -102,7 +105,7 @@ pub enum Linkage {
 }
 
 #[repr(C)]
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum DiagnosticSeverity {
     Error,
     Warning,
@@ -141,7 +144,9 @@ bitflags! {
     }
 }
 
+
 #[repr(u64)]
+#[deriving(Copy)]
 pub enum OtherAttribute {
     // The following are not really exposed in
     // the LLVM c api so instead to add these
@@ -162,11 +167,13 @@ pub enum OtherAttribute {
     NonNullAttribute = 1 << 44,
 }
 
+#[deriving(Copy)]
 pub enum SpecialAttribute {
     DereferenceableAttribute(u64)
 }
 
 #[repr(C)]
+#[deriving(Copy)]
 pub enum AttributeSet {
     ReturnIndex = 0,
     FunctionIndex = !0
@@ -258,6 +265,7 @@ impl AttrBuilder {
 }
 
 // enum for the LLVM IntPredicate type
+#[deriving(Copy)]
 pub enum IntPredicate {
     IntEQ = 32,
     IntNE = 33,
@@ -272,6 +280,7 @@ pub enum IntPredicate {
 }
 
 // enum for the LLVM RealPredicate type
+#[deriving(Copy)]
 pub enum RealPredicate {
     RealPredicateFalse = 0,
     RealOEQ = 1,
@@ -293,7 +302,7 @@ pub enum RealPredicate {
 
 // The LLVM TypeKind type - must stay in sync with the def of
 // LLVMTypeKind in llvm/include/llvm-c/Core.h
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 #[repr(C)]
 pub enum TypeKind {
     Void      = 0,
@@ -315,6 +324,7 @@ pub enum TypeKind {
 }
 
 #[repr(C)]
+#[deriving(Copy)]
 pub enum AtomicBinOp {
     AtomicXchg = 0,
     AtomicAdd  = 1,
@@ -330,6 +340,7 @@ pub enum AtomicBinOp {
 }
 
 #[repr(C)]
+#[deriving(Copy)]
 pub enum AtomicOrdering {
     NotAtomic = 0,
     Unordered = 1,
@@ -343,11 +354,13 @@ pub enum AtomicOrdering {
 
 // Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
 #[repr(C)]
+#[deriving(Copy)]
 pub enum FileType {
     AssemblyFileType = 0,
     ObjectFileType = 1
 }
 
+#[deriving(Copy)]
 pub enum MetadataType {
     MD_dbg = 0,
     MD_tbaa = 1,
@@ -358,12 +371,13 @@ pub enum MetadataType {
 }
 
 // Inline Asm Dialect
+#[deriving(Copy)]
 pub enum AsmDialect {
     AD_ATT   = 0,
     AD_Intel = 1
 }
 
-#[deriving(PartialEq, Clone)]
+#[deriving(Copy, PartialEq, Clone)]
 #[repr(C)]
 pub enum CodeGenOptLevel {
     CodeGenLevelNone = 0,
@@ -372,7 +386,7 @@ pub enum CodeGenOptLevel {
     CodeGenLevelAggressive = 3,
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 #[repr(C)]
 pub enum RelocMode {
     RelocDefault = 0,
@@ -382,6 +396,7 @@ pub enum RelocMode {
 }
 
 #[repr(C)]
+#[deriving(Copy)]
 pub enum CodeGenModel {
     CodeModelDefault = 0,
     CodeModelJITDefault = 1,
@@ -392,6 +407,7 @@ pub enum CodeGenModel {
 }
 
 #[repr(C)]
+#[deriving(Copy)]
 pub enum DiagnosticKind {
     DK_InlineAsm = 0,
     DK_StackSize,
@@ -404,46 +420,70 @@ pub enum DiagnosticKind {
 }
 
 // Opaque pointer types
+#[allow(missing_copy_implementations)]
 pub enum Module_opaque {}
 pub type ModuleRef = *mut Module_opaque;
+#[allow(missing_copy_implementations)]
 pub enum Context_opaque {}
 pub type ContextRef = *mut Context_opaque;
+#[allow(missing_copy_implementations)]
 pub enum Type_opaque {}
 pub type TypeRef = *mut Type_opaque;
+#[allow(missing_copy_implementations)]
 pub enum Value_opaque {}
 pub type ValueRef = *mut Value_opaque;
+#[allow(missing_copy_implementations)]
 pub enum BasicBlock_opaque {}
 pub type BasicBlockRef = *mut BasicBlock_opaque;
+#[allow(missing_copy_implementations)]
 pub enum Builder_opaque {}
 pub type BuilderRef = *mut Builder_opaque;
+#[allow(missing_copy_implementations)]
 pub enum ExecutionEngine_opaque {}
 pub type ExecutionEngineRef = *mut ExecutionEngine_opaque;
+#[allow(missing_copy_implementations)]
+pub enum RustJITMemoryManager_opaque {}
+pub type RustJITMemoryManagerRef = *mut RustJITMemoryManager_opaque;
+#[allow(missing_copy_implementations)]
 pub enum MemoryBuffer_opaque {}
 pub type MemoryBufferRef = *mut MemoryBuffer_opaque;
+#[allow(missing_copy_implementations)]
 pub enum PassManager_opaque {}
 pub type PassManagerRef = *mut PassManager_opaque;
+#[allow(missing_copy_implementations)]
 pub enum PassManagerBuilder_opaque {}
 pub type PassManagerBuilderRef = *mut PassManagerBuilder_opaque;
+#[allow(missing_copy_implementations)]
 pub enum Use_opaque {}
 pub type UseRef = *mut Use_opaque;
+#[allow(missing_copy_implementations)]
 pub enum TargetData_opaque {}
 pub type TargetDataRef = *mut TargetData_opaque;
+#[allow(missing_copy_implementations)]
 pub enum ObjectFile_opaque {}
 pub type ObjectFileRef = *mut ObjectFile_opaque;
+#[allow(missing_copy_implementations)]
 pub enum SectionIterator_opaque {}
 pub type SectionIteratorRef = *mut SectionIterator_opaque;
+#[allow(missing_copy_implementations)]
 pub enum Pass_opaque {}
 pub type PassRef = *mut Pass_opaque;
+#[allow(missing_copy_implementations)]
 pub enum TargetMachine_opaque {}
 pub type TargetMachineRef = *mut TargetMachine_opaque;
+#[allow(missing_copy_implementations)]
 pub enum Archive_opaque {}
 pub type ArchiveRef = *mut Archive_opaque;
+#[allow(missing_copy_implementations)]
 pub enum Twine_opaque {}
 pub type TwineRef = *mut Twine_opaque;
+#[allow(missing_copy_implementations)]
 pub enum DiagnosticInfo_opaque {}
 pub type DiagnosticInfoRef = *mut DiagnosticInfo_opaque;
+#[allow(missing_copy_implementations)]
 pub enum DebugLoc_opaque {}
 pub type DebugLocRef = *mut DebugLoc_opaque;
+#[allow(missing_copy_implementations)]
 pub enum SMDiagnostic_opaque {}
 pub type SMDiagnosticRef = *mut SMDiagnostic_opaque;
 
@@ -454,6 +494,7 @@ pub mod debuginfo {
     pub use self::DIDescriptorFlags::*;
     use super::{ValueRef};
 
+    #[allow(missing_copy_implementations)]
     pub enum DIBuilder_opaque {}
     pub type DIBuilderRef = *mut DIBuilder_opaque;
 
@@ -472,6 +513,7 @@ pub mod debuginfo {
     pub type DIArray = DIDescriptor;
     pub type DISubrange = DIDescriptor;
 
+    #[deriving(Copy)]
     pub enum DIDescriptorFlags {
       FlagPrivate            = 1 << 0,
       FlagProtected          = 1 << 1,
@@ -520,24 +562,24 @@ extern {
     pub fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
     pub fn LLVMDisposeModule(M: ModuleRef);
 
-    /** Data layout. See Module::getDataLayout. */
+    /// Data layout. See Module::getDataLayout.
     pub fn LLVMGetDataLayout(M: ModuleRef) -> *const c_char;
     pub fn LLVMSetDataLayout(M: ModuleRef, Triple: *const c_char);
 
-    /** Target triple. See Module::getTargetTriple. */
+    /// Target triple. See Module::getTargetTriple.
     pub fn LLVMGetTarget(M: ModuleRef) -> *const c_char;
     pub fn LLVMSetTarget(M: ModuleRef, Triple: *const c_char);
 
-    /** See Module::dump. */
+    /// See Module::dump.
     pub fn LLVMDumpModule(M: ModuleRef);
 
-    /** See Module::setModuleInlineAsm. */
+    /// See Module::setModuleInlineAsm.
     pub fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
 
-    /** See llvm::LLVMTypeKind::getTypeID. */
+    /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMGetTypeKind(Ty: TypeRef) -> TypeKind;
 
-    /** See llvm::LLVMType::getContext. */
+    /// See llvm::LLVMType::getContext.
     pub fn LLVMGetTypeContext(Ty: TypeRef) -> ContextRef;
 
     /* Operations on integer types */
@@ -1000,7 +1042,18 @@ extern {
                                          Instr: ValueRef,
                                          Name: *const c_char);
     pub fn LLVMDisposeBuilder(Builder: BuilderRef);
+
+    /* Execution engine */
+    pub fn LLVMRustCreateJITMemoryManager(morestack: *const ())
+                                          -> RustJITMemoryManagerRef;
+    pub fn LLVMBuildExecutionEngine(Mod: ModuleRef,
+                                    MM: RustJITMemoryManagerRef) -> ExecutionEngineRef;
     pub fn LLVMDisposeExecutionEngine(EE: ExecutionEngineRef);
+    pub fn LLVMExecutionEngineFinalizeObject(EE: ExecutionEngineRef);
+    pub fn LLVMRustLoadDynamicLibrary(path: *const c_char) -> Bool;
+    pub fn LLVMExecutionEngineAddModule(EE: ExecutionEngineRef, M: ModuleRef);
+    pub fn LLVMExecutionEngineRemoveModule(EE: ExecutionEngineRef, M: ModuleRef)
+                                           -> Bool;
 
     /* Metadata */
     pub fn LLVMSetCurrentDebugLocation(Builder: BuilderRef, L: ValueRef);
@@ -1460,30 +1513,29 @@ extern {
     pub fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
     pub fn LLVMIsAStoreInst(Inst: ValueRef) -> ValueRef;
 
-    /** Writes a module to the specified path. Returns 0 on success. */
+    /// Writes a module to the specified path. Returns 0 on success.
     pub fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: *const c_char) -> c_int;
 
-    /** Creates target data from a target layout string. */
+    /// Creates target data from a target layout string.
     pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
     /// Adds the target data to the given pass manager. The pass manager
     /// references the target data only weakly.
     pub fn LLVMAddTargetData(TD: TargetDataRef, PM: PassManagerRef);
-    /** Number of bytes clobbered when doing a Store to *T. */
+    /// Number of bytes clobbered when doing a Store to *T.
     pub fn LLVMStoreSizeOfType(TD: TargetDataRef, Ty: TypeRef)
                                -> c_ulonglong;
 
-    /** Number of bytes clobbered when doing a Store to *T. */
+    /// Number of bytes clobbered when doing a Store to *T.
     pub fn LLVMSizeOfTypeInBits(TD: TargetDataRef, Ty: TypeRef)
                                 -> c_ulonglong;
 
-    /** Distance between successive elements in an array of T.
-    Includes ABI padding. */
+    /// Distance between successive elements in an array of T. Includes ABI padding.
     pub fn LLVMABISizeOfType(TD: TargetDataRef, Ty: TypeRef) -> c_ulonglong;
 
-    /** Returns the preferred alignment of a type. */
+    /// Returns the preferred alignment of a type.
     pub fn LLVMPreferredAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
                                         -> c_uint;
-    /** Returns the minimum alignment of a type. */
+    /// Returns the minimum alignment of a type.
     pub fn LLVMABIAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
                                   -> c_uint;
 
@@ -1494,41 +1546,39 @@ extern {
                                Element: c_uint)
                                -> c_ulonglong;
 
-    /**
-     * Returns the minimum alignment of a type when part of a call frame.
-     */
+    /// Returns the minimum alignment of a type when part of a call frame.
     pub fn LLVMCallFrameAlignmentOfType(TD: TargetDataRef, Ty: TypeRef)
                                         -> c_uint;
 
-    /** Disposes target data. */
+    /// Disposes target data.
     pub fn LLVMDisposeTargetData(TD: TargetDataRef);
 
-    /** Creates a pass manager. */
+    /// Creates a pass manager.
     pub fn LLVMCreatePassManager() -> PassManagerRef;
 
-    /** Creates a function-by-function pass manager */
+    /// Creates a function-by-function pass manager
     pub fn LLVMCreateFunctionPassManagerForModule(M: ModuleRef)
                                                   -> PassManagerRef;
 
-    /** Disposes a pass manager. */
+    /// Disposes a pass manager.
     pub fn LLVMDisposePassManager(PM: PassManagerRef);
 
-    /** Runs a pass manager on a module. */
+    /// Runs a pass manager on a module.
     pub fn LLVMRunPassManager(PM: PassManagerRef, M: ModuleRef) -> Bool;
 
-    /** Runs the function passes on the provided function. */
+    /// Runs the function passes on the provided function.
     pub fn LLVMRunFunctionPassManager(FPM: PassManagerRef, F: ValueRef)
                                       -> Bool;
 
-    /** Initializes all the function passes scheduled in the manager */
+    /// Initializes all the function passes scheduled in the manager
     pub fn LLVMInitializeFunctionPassManager(FPM: PassManagerRef) -> Bool;
 
-    /** Finalizes all the function passes scheduled in the manager */
+    /// Finalizes all the function passes scheduled in the manager
     pub fn LLVMFinalizeFunctionPassManager(FPM: PassManagerRef) -> Bool;
 
     pub fn LLVMInitializePasses();
 
-    /** Adds a verification pass. */
+    /// Adds a verification pass.
     pub fn LLVMAddVerifierPass(PM: PassManagerRef);
 
     pub fn LLVMAddGlobalOptimizerPass(PM: PassManagerRef);
@@ -1598,38 +1648,38 @@ extern {
         Internalize: Bool,
         RunInliner: Bool);
 
-    /** Destroys a memory buffer. */
+    /// Destroys a memory buffer.
     pub fn LLVMDisposeMemoryBuffer(MemBuf: MemoryBufferRef);
 
 
     /* Stuff that's in rustllvm/ because it's not upstream yet. */
 
-    /** Opens an object file. */
+    /// Opens an object file.
     pub fn LLVMCreateObjectFile(MemBuf: MemoryBufferRef) -> ObjectFileRef;
-    /** Closes an object file. */
+    /// Closes an object file.
     pub fn LLVMDisposeObjectFile(ObjFile: ObjectFileRef);
 
-    /** Enumerates the sections in an object file. */
+    /// Enumerates the sections in an object file.
     pub fn LLVMGetSections(ObjFile: ObjectFileRef) -> SectionIteratorRef;
-    /** Destroys a section iterator. */
+    /// Destroys a section iterator.
     pub fn LLVMDisposeSectionIterator(SI: SectionIteratorRef);
-    /** Returns true if the section iterator is at the end of the section
-    list: */
+    /// Returns true if the section iterator is at the end of the section
+    /// list:
     pub fn LLVMIsSectionIteratorAtEnd(ObjFile: ObjectFileRef,
                                       SI: SectionIteratorRef)
                                       -> Bool;
-    /** Moves the section iterator to point to the next section. */
+    /// Moves the section iterator to point to the next section.
     pub fn LLVMMoveToNextSection(SI: SectionIteratorRef);
-    /** Returns the current section size. */
+    /// Returns the current section size.
     pub fn LLVMGetSectionSize(SI: SectionIteratorRef) -> c_ulonglong;
-    /** Returns the current section contents as a string buffer. */
+    /// Returns the current section contents as a string buffer.
     pub fn LLVMGetSectionContents(SI: SectionIteratorRef) -> *const c_char;
 
-    /** Reads the given file and returns it as a memory buffer. Use
-    LLVMDisposeMemoryBuffer() to get rid of it. */
+    /// Reads the given file and returns it as a memory buffer. Use
+    /// LLVMDisposeMemoryBuffer() to get rid of it.
     pub fn LLVMRustCreateMemoryBufferWithContentsOfFile(Path: *const c_char)
                                                         -> MemoryBufferRef;
-    /** Borrows the contents of the memory buffer (doesn't copy it) */
+    /// Borrows the contents of the memory buffer (doesn't copy it)
     pub fn LLVMCreateMemoryBufferWithMemoryRange(InputData: *const c_char,
                                                  InputDataLength: size_t,
                                                  BufferName: *const c_char,
@@ -1643,8 +1693,7 @@ extern {
     pub fn LLVMIsMultithreaded() -> Bool;
     pub fn LLVMStartMultithreaded() -> Bool;
 
-    /** Returns a string describing the last error caused by an LLVMRust*
-    call. */
+    /// Returns a string describing the last error caused by an LLVMRust* call.
     pub fn LLVMRustGetLastError() -> *const c_char;
 
     /// Print the pass timings since static dtors aren't picking them up.
@@ -1662,10 +1711,10 @@ extern {
                                 Count: c_uint)
                                 -> ValueRef;
 
-    /** Enables LLVM debug output. */
+    /// Enables LLVM debug output.
     pub fn LLVMSetDebug(Enabled: c_int);
 
-    /** Prepares inline assembly. */
+    /// Prepares inline assembly.
     pub fn LLVMInlineAsm(Ty: TypeRef,
                          AsmString: *const c_char,
                          Constraints: *const c_char,
@@ -2127,6 +2176,7 @@ pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
     }
 }
 
+#[allow(missing_copy_implementations)]
 pub enum RustString_opaque {}
 pub type RustStringRef = *mut RustString_opaque;
 type RustStringRepr = *mut RefCell<Vec<u8>>;
@@ -2145,10 +2195,10 @@ pub unsafe extern "C" fn rust_llvm_string_write_impl(sr: RustStringRef,
     (*sr).borrow_mut().push_all(slice);
 }
 
-pub fn build_string(f: |RustStringRef|) -> Option<String> {
+pub fn build_string<F>(f: F) -> Option<String> where F: FnOnce(RustStringRef){
     let mut buf = RefCell::new(Vec::new());
     f(&mut buf as RustStringRepr as RustStringRef);
-    String::from_utf8(buf.unwrap()).ok()
+    String::from_utf8(buf.into_inner()).ok()
 }
 
 pub unsafe fn twine_to_string(tr: TwineRef) -> String {
@@ -2214,4 +2264,6 @@ pub unsafe fn static_link_hack_this_sucks() {
 // parts of LLVM that rustllvm depends on aren't thrown away by the linker.
 // Works to the above fix for #15460 to ensure LLVM dependencies that
 // are only used by rustllvm don't get stripped by the linker.
-mod llvmdeps;
+mod llvmdeps {
+    include! { env!("CFG_LLVM_LINKAGE_FILE") }
+}

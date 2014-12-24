@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Utility implementations of Reader and Writer */
+//! Utility implementations of Reader and Writer
 
 use prelude::*;
 use cmp;
@@ -28,7 +28,11 @@ impl<R: Reader> LimitReader<R> {
     }
 
     /// Consumes the `LimitReader`, returning the underlying `Reader`.
-    pub fn unwrap(self) -> R { self.inner }
+    pub fn into_inner(self) -> R { self.inner }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner"]
+    pub fn unwrap(self) -> R { self.into_inner() }
 
     /// Returns the number of bytes that can be read before the `LimitReader`
     /// will return EOF.
@@ -77,6 +81,7 @@ impl<R: Buffer> Buffer for LimitReader<R> {
 }
 
 /// A `Writer` which ignores bytes written to it, like /dev/null.
+#[deriving(Copy)]
 pub struct NullWriter;
 
 impl Writer for NullWriter {
@@ -85,6 +90,7 @@ impl Writer for NullWriter {
 }
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
+#[deriving(Copy)]
 pub struct ZeroReader;
 
 impl Reader for ZeroReader {
@@ -105,6 +111,7 @@ impl Buffer for ZeroReader {
 }
 
 /// A `Reader` which is always at EOF, like /dev/null.
+#[deriving(Copy)]
 pub struct NullReader;
 
 impl Reader for NullReader {
@@ -207,10 +214,14 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 
     /// Consumes the `TeeReader`, returning the underlying `Reader` and
     /// `Writer`.
-    pub fn unwrap(self) -> (R, W) {
+    pub fn into_inner(self) -> (R, W) {
         let TeeReader { reader, writer } = self;
         (reader, writer)
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner"]
+    pub fn unwrap(self) -> (R, W) { self.into_inner() }
 }
 
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
@@ -265,7 +276,7 @@ impl<T: Iterator<u8>> Reader for IterReader<T> {
 
 #[cfg(test)]
 mod test {
-    use io::{MemReader, BufReader, ByRefReader};
+    use io::{MemReader, ByRefReader};
     use io;
     use boxed::Box;
     use super::*;
@@ -387,8 +398,7 @@ mod test {
 
     #[test]
     fn limit_reader_buffer() {
-        let data = "0123456789\n0123456789\n";
-        let mut r = BufReader::new(data.as_bytes());
+        let r = &mut b"0123456789\n0123456789\n";
         {
             let mut r = LimitReader::new(r.by_ref(), 3);
             assert_eq!(r.read_line(), Ok("012".to_string()));

@@ -17,6 +17,6 @@ struct Fat<Sized? T> {
 pub fn main() {
     // With a vec of ints.
     let f1: &Fat<[int]> = &Fat { ptr: [1, 2, 3] };
-    let f2: &Fat<[int, ..3]> = f1;
-    //~^ ERROR mismatched types: expected `&Fat<[int, ..3]>`, found `&Fat<[int]>`
+    let f2: &Fat<[int; 3]> = f1;
+    //~^ ERROR mismatched types: expected `&Fat<[int; 3]>`, found `&Fat<[int]>`
 }

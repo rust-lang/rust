@@ -20,7 +20,11 @@ use std::os;
 
 use util::fs as myfs;
 
-pub enum FileMatch { FileMatches, FileDoesntMatch }
+#[deriving(Copy)]
+pub enum FileMatch {
+    FileMatches,
+    FileDoesntMatch,
+}
 
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should
@@ -37,7 +41,9 @@ pub struct FileSearch<'a> {
 }
 
 impl<'a> FileSearch<'a> {
-    pub fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
+    pub fn for_each_lib_search_path<F>(&self, mut f: F) where
+        F: FnMut(&Path) -> FileMatch,
+    {
         let mut visited_dirs = HashSet::new();
         let mut found = false;
 
@@ -214,7 +220,7 @@ pub fn rust_path() -> Vec<Path> {
     let mut env_rust_path: Vec<Path> = match get_rust_path() {
         Some(env_path) => {
             let env_path_components =
-                env_path.as_slice().split_str(PATH_ENTRY_SEPARATOR);
+                env_path.split_str(PATH_ENTRY_SEPARATOR);
             env_path_components.map(|s| Path::new(s)).collect()
         }
         None => Vec::new()

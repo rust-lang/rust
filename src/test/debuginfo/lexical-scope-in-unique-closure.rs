@@ -77,7 +77,7 @@ fn main() {
     zzz(); // #break
     sentinel();
 
-    let unique_closure: proc(int) = proc(x) {
+    let unique_closure = |: x:int| {
         zzz(); // #break
         sentinel();
 

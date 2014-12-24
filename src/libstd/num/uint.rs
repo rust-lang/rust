@@ -10,9 +10,11 @@
 
 //! Operations and constants for architecture-sized unsigned integers (`uint` type)
 
-#![unstable]
+#![stable]
 #![doc(primitive = "uint")]
 
 pub use core::uint::{BITS, BYTES, MIN, MAX};
 
-uint_module!(uint)
+use ops::FnOnce;
+
+uint_module! { uint }

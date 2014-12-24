@@ -23,10 +23,11 @@ use clean::{Crate, Item, ModuleItem, Module, EnumItem, Enum};
 use clean::{ImplItem, Impl, Trait, TraitItem, TraitMethod, ProvidedMethod, RequiredMethod};
 use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem, Stability};
 
-use html::render::cache_key;
+use html::render::cache;
 
-#[deriving(Zero, Encodable, Decodable, PartialEq, Eq)]
+#[deriving(Zero, RustcEncodable, RustcDecodable, PartialEq, Eq)]
 /// The counts for each stability level.
+#[deriving(Copy)]
 pub struct Counts {
     pub deprecated: uint,
     pub experimental: uint,
@@ -40,7 +41,7 @@ pub struct Counts {
 }
 
 impl Add<Counts, Counts> for Counts {
-    fn add(&self, other: &Counts) -> Counts {
+    fn add(self, other: Counts) -> Counts {
         Counts {
             deprecated:   self.deprecated   + other.deprecated,
             experimental: self.experimental + other.experimental,
@@ -72,7 +73,7 @@ impl Counts {
     }
 }
 
-#[deriving(Encodable, Decodable, PartialEq, Eq)]
+#[deriving(RustcEncodable, RustcDecodable, PartialEq, Eq)]
 /// A summarized module, which includes total counts and summarized children
 /// modules.
 pub struct ModuleSummary {
@@ -116,7 +117,7 @@ fn count_stability(stab: Option<&Stability>) -> Counts {
 }
 
 fn summarize_methods(item: &Item) -> Counts {
-    match cache_key.get().unwrap().impls.get(&item.def_id) {
+    match cache().impls.get(&item.def_id) {
         Some(v) => {
             v.iter().map(|i| {
                 let count = count_stability(i.stability.as_ref());
@@ -149,14 +150,14 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
         ImplItem(Impl { items: ref subitems, trait_: None, .. }) => {
             let subcounts = subitems.iter().filter(|i| visible(*i))
                                            .map(summarize_item)
-                                           .map(|s| s.val0())
+                                           .map(|s| s.0)
                                            .fold(Counts::zero(), |acc, x| acc + x);
             (subcounts, None)
         }
         // `pub` automatically
         EnumItem(Enum { variants: ref subitems, .. }) => {
             let subcounts = subitems.iter().map(summarize_item)
-                                           .map(|s| s.val0())
+                                           .map(|s| s.0)
                                            .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
@@ -174,7 +175,7 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             let subcounts = trait_items.iter()
                                        .map(extract_item)
                                        .map(summarize_item)
-                                       .map(|s| s.val0())
+                                       .map(|s| s.0)
                                        .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
@@ -210,7 +211,7 @@ pub fn build(krate: &Crate) -> ModuleSummary {
             submodules: Vec::new(),
         },
         Some(ref item) => ModuleSummary {
-            name: krate.name.clone(), .. summarize_item(item).val1().unwrap()
+            name: krate.name.clone(), .. summarize_item(item).1.unwrap()
         }
     }
 }

@@ -31,7 +31,7 @@ macro_rules! html (
     ( $($body:tt)* ) => (
         parse_node!( []; []; $($body)* )
     )
-)
+);
 
 macro_rules! parse_node (
     (
@@ -85,7 +85,7 @@ macro_rules! parse_node (
     );
 
     ( []; [:$e:expr]; ) => ( $e );
-)
+);
 
 pub fn main() {
     let _page = html! (

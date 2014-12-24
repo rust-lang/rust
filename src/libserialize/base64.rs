@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -16,10 +16,10 @@ pub use self::FromBase64Error::*;
 pub use self::CharacterSet::*;
 
 use std::fmt;
-use std::string;
 use std::error;
 
 /// Available encoding character sets
+#[deriving(Copy)]
 pub enum CharacterSet {
     /// The standard character set (uses `+` and `/`)
     Standard,
@@ -27,10 +27,22 @@ pub enum CharacterSet {
     UrlSafe
 }
 
+/// Available newline types
+#[deriving(Copy)]
+pub enum Newline {
+    /// A linefeed (i.e. Unix-style newline)
+    LF,
+    /// A carriage return and a linefeed (i.e. Windows-style newline)
+    CRLF
+}
+
 /// Contains configuration parameters for `to_base64`.
+#[deriving(Copy)]
 pub struct Config {
     /// Character set to use
     pub char_set: CharacterSet,
+    /// Newline to use
+    pub newline: Newline,
     /// True to pad output with `=` characters
     pub pad: bool,
     /// `Some(len)` to wrap lines at `len`, `None` to disable line wrapping
@@ -39,15 +51,15 @@ pub struct Config {
 
 /// Configuration for RFC 4648 standard base64 encoding
 pub static STANDARD: Config =
-    Config {char_set: Standard, pad: true, line_length: None};
+    Config {char_set: Standard, newline: Newline::CRLF, pad: true, line_length: None};
 
 /// Configuration for RFC 4648 base64url encoding
 pub static URL_SAFE: Config =
-    Config {char_set: UrlSafe, pad: false, line_length: None};
+    Config {char_set: UrlSafe, newline: Newline::CRLF, pad: false, line_length: None};
 
 /// Configuration for RFC 2045 MIME base64 encoding
 pub static MIME: Config =
-    Config {char_set: Standard, pad: true, line_length: Some(76)};
+    Config {char_set: Standard, newline: Newline::CRLF, pad: true, line_length: Some(76)};
 
 static STANDARD_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                         abcdefghijklmnopqrstuvwxyz\
@@ -65,45 +77,49 @@ pub trait ToBase64 for Sized? {
 }
 
 impl ToBase64 for [u8] {
-    /**
-     * Turn a vector of `u8` bytes into a base64 string.
-     *
-     * # Example
-     *
-     * ```rust
-     * extern crate serialize;
-     * use serialize::base64::{ToBase64, STANDARD};
-     *
-     * fn main () {
-     *     let str = [52,32].to_base64(STANDARD);
-     *     println!("base 64 output: {}", str);
-     * }
-     * ```
-     */
+    /// Turn a vector of `u8` bytes into a base64 string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// extern crate serialize;
+    /// use serialize::base64::{ToBase64, STANDARD};
+    ///
+    /// fn main () {
+    ///     let str = [52,32].to_base64(STANDARD);
+    ///     println!("base 64 output: {}", str);
+    /// }
+    /// ```
     fn to_base64(&self, config: Config) -> String {
         let bytes = match config.char_set {
             Standard => STANDARD_CHARS,
             UrlSafe => URLSAFE_CHARS
         };
 
-        let mut v = Vec::new();
+        // In general, this Vec only needs (4/3) * self.len() memory, but
+        // addition is faster than multiplication and division.
+        let mut v = Vec::with_capacity(self.len() + self.len());
         let mut i = 0;
         let mut cur_length = 0;
         let len = self.len();
-        while i < len - (len % 3) {
-            match config.line_length {
-                Some(line_length) =>
-                    if cur_length >= line_length {
-                        v.push(b'\r');
-                        v.push(b'\n');
-                        cur_length = 0;
-                    },
-                None => ()
+        let mod_len = len % 3;
+        let cond_len = len - mod_len;
+        let newline = match config.newline {
+            Newline::LF => b"\n",
+            Newline::CRLF => b"\r\n"
+        };
+        while i < cond_len {
+            let (first, second, third) = (self[i], self[i + 1], self[i + 2]);
+            if let Some(line_length) = config.line_length {
+                if cur_length >= line_length {
+                    v.push_all(newline);
+                    cur_length = 0;
+                }
             }
 
-            let n = (self[i] as u32) << 16 |
-                    (self[i + 1] as u32) << 8 |
-                    (self[i + 2] as u32);
+            let n = (first  as u32) << 16 |
+                    (second as u32) << 8 |
+                    (third  as u32);
 
             // This 24-bit number gets separated into four 6-bit numbers.
             v.push(bytes[((n >> 18) & 63) as uint]);
@@ -115,20 +131,17 @@ impl ToBase64 for [u8] {
             i += 3;
         }
 
-        if len % 3 != 0 {
-            match config.line_length {
-                Some(line_length) =>
-                    if cur_length >= line_length {
-                        v.push(b'\r');
-                        v.push(b'\n');
-                    },
-                None => ()
+        if mod_len != 0 {
+            if let Some(line_length) = config.line_length {
+                if cur_length >= line_length {
+                    v.push_all(newline);
+                }
             }
         }
 
         // Heh, would be cool if we knew this was exhaustive
         // (the dream of bounded integer types)
-        match len % 3 {
+        match mod_len {
             0 => (),
             1 => {
                 let n = (self[i] as u32) << 16;
@@ -152,9 +165,7 @@ impl ToBase64 for [u8] {
             _ => panic!("Algebra is broken, please alert the math police")
         }
 
-        unsafe {
-            string::raw::from_utf8(v)
-        }
+        unsafe { String::from_utf8_unchecked(v) }
     }
 }
 
@@ -166,6 +177,7 @@ pub trait FromBase64 for Sized? {
 }
 
 /// Errors that can occur when decoding a base64 encoded string
+#[deriving(Copy)]
 pub enum FromBase64Error {
     /// The input contained a character not part of the base64 format
     InvalidBase64Byte(u8, uint),
@@ -197,34 +209,32 @@ impl error::Error for FromBase64Error {
 }
 
 impl FromBase64 for str {
-    /**
-     * Convert any base64 encoded string (literal, `@`, `&`, or `~`)
-     * to the byte values it encodes.
-     *
-     * You can use the `String::from_utf8` function in `std::string` to turn a
-     * `Vec<u8>` into a string with characters corresponding to those values.
-     *
-     * # Example
-     *
-     * This converts a string literal to base64 and back.
-     *
-     * ```rust
-     * extern crate serialize;
-     * use serialize::base64::{ToBase64, FromBase64, STANDARD};
-     *
-     * fn main () {
-     *     let hello_str = b"Hello, World".to_base64(STANDARD);
-     *     println!("base64 output: {}", hello_str);
-     *     let res = hello_str.as_slice().from_base64();
-     *     if res.is_ok() {
-     *       let opt_bytes = String::from_utf8(res.unwrap());
-     *       if opt_bytes.is_ok() {
-     *         println!("decoded from base64: {}", opt_bytes.unwrap());
-     *       }
-     *     }
-     * }
-     * ```
-     */
+    /// Convert any base64 encoded string (literal, `@`, `&`, or `~`)
+    /// to the byte values it encodes.
+    ///
+    /// You can use the `String::from_utf8` function to turn a `Vec<u8>` into a
+    /// string with characters corresponding to those values.
+    ///
+    /// # Example
+    ///
+    /// This converts a string literal to base64 and back.
+    ///
+    /// ```rust
+    /// extern crate serialize;
+    /// use serialize::base64::{ToBase64, FromBase64, STANDARD};
+    ///
+    /// fn main () {
+    ///     let hello_str = b"Hello, World".to_base64(STANDARD);
+    ///     println!("base64 output: {}", hello_str);
+    ///     let res = hello_str.as_slice().from_base64();
+    ///     if res.is_ok() {
+    ///       let opt_bytes = String::from_utf8(res.unwrap());
+    ///       if opt_bytes.is_ok() {
+    ///         println!("decoded from base64: {}", opt_bytes.unwrap());
+    ///       }
+    ///     }
+    /// }
+    /// ```
     #[inline]
     fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error> {
         self.as_bytes().from_base64()
@@ -233,7 +243,7 @@ impl FromBase64 for str {
 
 impl FromBase64 for [u8] {
     fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error> {
-        let mut r = Vec::new();
+        let mut r = Vec::with_capacity(self.len());
         let mut buf: u32 = 0;
         let mut modulus = 0i;
 
@@ -289,63 +299,79 @@ impl FromBase64 for [u8] {
 mod tests {
     extern crate test;
     use self::test::Bencher;
-    use base64::{Config, FromBase64, ToBase64, STANDARD, URL_SAFE};
+    use base64::{Config, Newline, FromBase64, ToBase64, STANDARD, URL_SAFE};
 
     #[test]
     fn test_to_base64_basic() {
-        assert_eq!("".as_bytes().to_base64(STANDARD), "".to_string());
-        assert_eq!("f".as_bytes().to_base64(STANDARD), "Zg==".to_string());
-        assert_eq!("fo".as_bytes().to_base64(STANDARD), "Zm8=".to_string());
-        assert_eq!("foo".as_bytes().to_base64(STANDARD), "Zm9v".to_string());
-        assert_eq!("foob".as_bytes().to_base64(STANDARD), "Zm9vYg==".to_string());
-        assert_eq!("fooba".as_bytes().to_base64(STANDARD), "Zm9vYmE=".to_string());
-        assert_eq!("foobar".as_bytes().to_base64(STANDARD), "Zm9vYmFy".to_string());
+        assert_eq!("".as_bytes().to_base64(STANDARD), "");
+        assert_eq!("f".as_bytes().to_base64(STANDARD), "Zg==");
+        assert_eq!("fo".as_bytes().to_base64(STANDARD), "Zm8=");
+        assert_eq!("foo".as_bytes().to_base64(STANDARD), "Zm9v");
+        assert_eq!("foob".as_bytes().to_base64(STANDARD), "Zm9vYg==");
+        assert_eq!("fooba".as_bytes().to_base64(STANDARD), "Zm9vYmE=");
+        assert_eq!("foobar".as_bytes().to_base64(STANDARD), "Zm9vYmFy");
     }
 
     #[test]
-    fn test_to_base64_line_break() {
+    fn test_to_base64_crlf_line_break() {
         assert!(![0u8, ..1000].to_base64(Config {line_length: None, ..STANDARD})
-                              .as_slice()
                               .contains("\r\n"));
-        assert_eq!("foobar".as_bytes().to_base64(Config {line_length: Some(4),
-                                                         ..STANDARD}),
-                   "Zm9v\r\nYmFy".to_string());
+        assert_eq!(b"foobar".to_base64(Config {line_length: Some(4),
+                                               ..STANDARD}),
+                   "Zm9v\r\nYmFy");
+    }
+
+    #[test]
+    fn test_to_base64_lf_line_break() {
+        assert!(![0u8, ..1000].to_base64(Config {line_length: None,
+                                                 newline: Newline::LF,
+                                                 ..STANDARD})
+                              .as_slice()
+                              .contains("\n"));
+        assert_eq!(b"foobar".to_base64(Config {line_length: Some(4),
+                                               newline: Newline::LF,
+                                               ..STANDARD}),
+                   "Zm9v\nYmFy");
     }
 
     #[test]
     fn test_to_base64_padding() {
-        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zg".to_string());
-        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zm8".to_string());
+        assert_eq!("f".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zg");
+        assert_eq!("fo".as_bytes().to_base64(Config {pad: false, ..STANDARD}), "Zm8");
     }
 
     #[test]
     fn test_to_base64_url_safe() {
-        assert_eq!([251, 255].to_base64(URL_SAFE), "-_8".to_string());
-        assert_eq!([251, 255].to_base64(STANDARD), "+/8=".to_string());
+        assert_eq!([251, 255].to_base64(URL_SAFE), "-_8");
+        assert_eq!([251, 255].to_base64(STANDARD), "+/8=");
     }
 
     #[test]
     fn test_from_base64_basic() {
-        assert_eq!("".from_base64().unwrap().as_slice(), "".as_bytes());
-        assert_eq!("Zg==".from_base64().unwrap().as_slice(), "f".as_bytes());
-        assert_eq!("Zm8=".from_base64().unwrap().as_slice(), "fo".as_bytes());
-        assert_eq!("Zm9v".from_base64().unwrap().as_slice(), "foo".as_bytes());
-        assert_eq!("Zm9vYg==".from_base64().unwrap().as_slice(), "foob".as_bytes());
-        assert_eq!("Zm9vYmE=".from_base64().unwrap().as_slice(), "fooba".as_bytes());
-        assert_eq!("Zm9vYmFy".from_base64().unwrap().as_slice(), "foobar".as_bytes());
+        assert_eq!("".from_base64().unwrap(), b"");
+        assert_eq!("Zg==".from_base64().unwrap(), b"f");
+        assert_eq!("Zm8=".from_base64().unwrap(), b"fo");
+        assert_eq!("Zm9v".from_base64().unwrap(), b"foo");
+        assert_eq!("Zm9vYg==".from_base64().unwrap(), b"foob");
+        assert_eq!("Zm9vYmE=".from_base64().unwrap(), b"fooba");
+        assert_eq!("Zm9vYmFy".from_base64().unwrap(), b"foobar");
     }
 
     #[test]
     fn test_from_base64_bytes() {
-        assert_eq!(b"Zm9vYmFy".from_base64().unwrap().as_slice(), "foobar".as_bytes());
+        assert_eq!(b"Zm9vYmFy".from_base64().unwrap(), b"foobar");
     }
 
     #[test]
     fn test_from_base64_newlines() {
-        assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap().as_slice(),
-                   "foobar".as_bytes());
-        assert_eq!("Zm9vYg==\r\n".from_base64().unwrap().as_slice(),
-                   "foob".as_bytes());
+        assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap(),
+                   b"foobar");
+        assert_eq!("Zm9vYg==\r\n".from_base64().unwrap(),
+                   b"foob");
+        assert_eq!("Zm9v\nYmFy".from_base64().unwrap(),
+                   b"foobar");
+        assert_eq!("Zm9vYg==\n".from_base64().unwrap(),
+                   b"foob");
     }
 
     #[test]
@@ -355,7 +381,7 @@ mod tests {
 
     #[test]
     fn test_from_base64_invalid_char() {
-        assert!("Zm$=".from_base64().is_err())
+        assert!("Zm$=".from_base64().is_err());
         assert!("Zg==$".from_base64().is_err());
     }
 
@@ -371,13 +397,10 @@ mod tests {
         for _ in range(0u, 1000) {
             let times = task_rng().gen_range(1u, 100);
             let v = Vec::from_fn(times, |_| random::<u8>());
-            assert_eq!(v.as_slice()
-                        .to_base64(STANDARD)
-                        .as_slice()
+            assert_eq!(v.to_base64(STANDARD)
                         .from_base64()
-                        .unwrap()
-                        .as_slice(),
-                       v.as_slice());
+                        .unwrap(),
+                       v);
         }
     }
 
@@ -397,7 +420,7 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_base64(STANDARD);
         b.iter(|| {
-            sb.as_slice().from_base64().unwrap();
+            sb.from_base64().unwrap();
         });
         b.bytes = sb.len() as u64;
     }

@@ -16,207 +16,206 @@
 //        error handling
 
 
-/*! I/O, including files, networking, timers, and processes
-
-`std::io` provides Rust's basic I/O types,
-for reading and writing to files, TCP, UDP,
-and other types of sockets and pipes,
-manipulating the file system, spawning processes.
-
-# Examples
-
-Some examples of obvious things you might want to do
-
-* Read lines from stdin
-
-    ```rust
-    use std::io;
-
-    for line in io::stdin().lines() {
-        print!("{}", line.unwrap());
-    }
-    ```
-
-* Read a complete file
-
-    ```rust
-    use std::io::File;
-
-    let contents = File::open(&Path::new("message.txt")).read_to_end();
-    ```
-
-* Write a line to a file
-
-    ```rust
-    # #![allow(unused_must_use)]
-    use std::io::File;
-
-    let mut file = File::create(&Path::new("message.txt"));
-    file.write(b"hello, file!\n");
-    # drop(file);
-    # ::std::io::fs::unlink(&Path::new("message.txt"));
-    ```
-
-* Iterate over the lines of a file
-
-    ```rust,no_run
-    use std::io::BufferedReader;
-    use std::io::File;
-
-    let path = Path::new("message.txt");
-    let mut file = BufferedReader::new(File::open(&path));
-    for line in file.lines() {
-        print!("{}", line.unwrap());
-    }
-    ```
-
-* Pull the lines of a file into a vector of strings
-
-    ```rust,no_run
-    use std::io::BufferedReader;
-    use std::io::File;
-
-    let path = Path::new("message.txt");
-    let mut file = BufferedReader::new(File::open(&path));
-    let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
-    ```
-
-* Make a simple TCP client connection and request
-
-    ```rust
-    # #![allow(unused_must_use)]
-    use std::io::TcpStream;
-
-    # // connection doesn't fail if a server is running on 8080
-    # // locally, we still want to be type checking this code, so lets
-    # // just stop it running (#11576)
-    # if false {
-    let mut socket = TcpStream::connect("127.0.0.1:8080").unwrap();
-    socket.write(b"GET / HTTP/1.0\n\n");
-    let response = socket.read_to_end();
-    # }
-    ```
-
-* Make a simple TCP server
-
-    ```rust
-    # fn main() { }
-    # fn foo() {
-    # #![allow(dead_code)]
-    use std::io::{TcpListener, TcpStream};
-    use std::io::{Acceptor, Listener};
-
-    let listener = TcpListener::bind("127.0.0.1:80");
-
-    // bind the listener to the specified address
-    let mut acceptor = listener.listen();
-
-    fn handle_client(mut stream: TcpStream) {
-        // ...
-    # &mut stream; // silence unused mutability/variable warning
-    }
-    // accept connections and process them, spawning a new tasks for each one
-    for stream in acceptor.incoming() {
-        match stream {
-            Err(e) => { /* connection failed */ }
-            Ok(stream) => spawn(proc() {
-                // connection succeeded
-                handle_client(stream)
-            })
-        }
-    }
-
-    // close the socket server
-    drop(acceptor);
-    # }
-    ```
-
-
-# Error Handling
-
-I/O is an area where nearly every operation can result in unexpected
-errors. Errors should be painfully visible when they happen, and handling them
-should be easy to work with. It should be convenient to handle specific I/O
-errors, and it should also be convenient to not deal with I/O errors.
-
-Rust's I/O employs a combination of techniques to reduce boilerplate
-while still providing feedback about errors. The basic strategy:
-
-* All I/O operations return `IoResult<T>` which is equivalent to
-  `Result<T, IoError>`. The `Result` type is defined in the `std::result`
-  module.
-* If the `Result` type goes unused, then the compiler will by default emit a
-  warning about the unused result. This is because `Result` has the
-  `#[must_use]` attribute.
-* Common traits are implemented for `IoResult`, e.g.
-  `impl<R: Reader> Reader for IoResult<R>`, so that error values do not have
-  to be 'unwrapped' before use.
-
-These features combine in the API to allow for expressions like
-`File::create(&Path::new("diary.txt")).write(b"Met a girl.\n")`
-without having to worry about whether "diary.txt" exists or whether
-the write succeeds. As written, if either `new` or `write_line`
-encounters an error then the result of the entire expression will
-be an error.
-
-If you wanted to handle the error though you might write:
-
-```rust
-# #![allow(unused_must_use)]
-use std::io::File;
-
-match File::create(&Path::new("diary.txt")).write(b"Met a girl.\n") {
-    Ok(()) => (), // succeeded
-    Err(e) => println!("failed to write to my diary: {}", e),
-}
-
-# ::std::io::fs::unlink(&Path::new("diary.txt"));
-```
-
-So what actually happens if `create` encounters an error?
-It's important to know that what `new` returns is not a `File`
-but an `IoResult<File>`.  If the file does not open, then `new` will simply
-return `Err(..)`. Because there is an implementation of `Writer` (the trait
-required ultimately required for types to implement `write_line`) there is no
-need to inspect or unwrap the `IoResult<File>` and we simply call `write_line`
-on it. If `new` returned an `Err(..)` then the followup call to `write_line`
-will also return an error.
-
-## `try!`
-
-Explicit pattern matching on `IoResult`s can get quite verbose, especially
-when performing many I/O operations. Some examples (like those above) are
-alleviated with extra methods implemented on `IoResult`, but others have more
-complex interdependencies among each I/O operation.
-
-The `try!` macro from `std::macros` is provided as a method of early-return
-inside `Result`-returning functions. It expands to an early-return on `Err`
-and otherwise unwraps the contained `Ok` value.
-
-If you wanted to read several `u32`s from a file and return their product:
-
-```rust
-use std::io::{File, IoResult};
-
-fn file_product(p: &Path) -> IoResult<u32> {
-    let mut f = File::open(p);
-    let x1 = try!(f.read_le_u32());
-    let x2 = try!(f.read_le_u32());
-
-    Ok(x1 * x2)
-}
-
-match file_product(&Path::new("numbers.bin")) {
-    Ok(x) => println!("{}", x),
-    Err(e) => println!("Failed to read numbers!")
-}
-```
-
-With `try!` in `file_product`, each `read_le_u32` need not be directly
-concerned with error handling; instead its caller is responsible for
-responding to errors that may occur while attempting to read the numbers.
-
-*/
+//! I/O, including files, networking, timers, and processes
+//!
+//! `std::io` provides Rust's basic I/O types,
+//! for reading and writing to files, TCP, UDP,
+//! and other types of sockets and pipes,
+//! manipulating the file system, spawning processes.
+//!
+//! # Examples
+//!
+//! Some examples of obvious things you might want to do
+//!
+//! * Read lines from stdin
+//!
+//!     ```rust
+//!     use std::io;
+//!
+//!     for line in io::stdin().lock().lines() {
+//!         print!("{}", line.unwrap());
+//!     }
+//!     ```
+//!
+//! * Read a complete file
+//!
+//!     ```rust
+//!     use std::io::File;
+//!
+//!     let contents = File::open(&Path::new("message.txt")).read_to_end();
+//!     ```
+//!
+//! * Write a line to a file
+//!
+//!     ```rust
+//!     # #![allow(unused_must_use)]
+//!     use std::io::File;
+//!
+//!     let mut file = File::create(&Path::new("message.txt"));
+//!     file.write(b"hello, file!\n");
+//!     # drop(file);
+//!     # ::std::io::fs::unlink(&Path::new("message.txt"));
+//!     ```
+//!
+//! * Iterate over the lines of a file
+//!
+//!     ```rust,no_run
+//!     use std::io::BufferedReader;
+//!     use std::io::File;
+//!
+//!     let path = Path::new("message.txt");
+//!     let mut file = BufferedReader::new(File::open(&path));
+//!     for line in file.lines() {
+//!         print!("{}", line.unwrap());
+//!     }
+//!     ```
+//!
+//! * Pull the lines of a file into a vector of strings
+//!
+//!     ```rust,no_run
+//!     use std::io::BufferedReader;
+//!     use std::io::File;
+//!
+//!     let path = Path::new("message.txt");
+//!     let mut file = BufferedReader::new(File::open(&path));
+//!     let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
+//!     ```
+//!
+//! * Make a simple TCP client connection and request
+//!
+//!     ```rust
+//!     # #![allow(unused_must_use)]
+//!     use std::io::TcpStream;
+//!
+//!     # // connection doesn't fail if a server is running on 8080
+//!     # // locally, we still want to be type checking this code, so lets
+//!     # // just stop it running (#11576)
+//!     # if false {
+//!     let mut socket = TcpStream::connect("127.0.0.1:8080").unwrap();
+//!     socket.write(b"GET / HTTP/1.0\n\n");
+//!     let response = socket.read_to_end();
+//!     # }
+//!     ```
+//!
+//! * Make a simple TCP server
+//!
+//!     ```rust
+//!     # fn main() { }
+//!     # fn foo() {
+//!     # #![allow(dead_code)]
+//!     use std::io::{TcpListener, TcpStream};
+//!     use std::io::{Acceptor, Listener};
+//!     use std::thread::Thread;
+//!
+//!     let listener = TcpListener::bind("127.0.0.1:80");
+//!
+//!     // bind the listener to the specified address
+//!     let mut acceptor = listener.listen();
+//!
+//!     fn handle_client(mut stream: TcpStream) {
+//!         // ...
+//!     # &mut stream; // silence unused mutability/variable warning
+//!     }
+//!     // accept connections and process them, spawning a new tasks for each one
+//!     for stream in acceptor.incoming() {
+//!         match stream {
+//!             Err(e) => { /* connection failed */ }
+//!             Ok(stream) => Thread::spawn(move|| {
+//!                 // connection succeeded
+//!                 handle_client(stream)
+//!             }).detach()
+//!         }
+//!     }
+//!
+//!     // close the socket server
+//!     drop(acceptor);
+//!     # }
+//!     ```
+//!
+//!
+//! # Error Handling
+//!
+//! I/O is an area where nearly every operation can result in unexpected
+//! errors. Errors should be painfully visible when they happen, and handling them
+//! should be easy to work with. It should be convenient to handle specific I/O
+//! errors, and it should also be convenient to not deal with I/O errors.
+//!
+//! Rust's I/O employs a combination of techniques to reduce boilerplate
+//! while still providing feedback about errors. The basic strategy:
+//!
+//! * All I/O operations return `IoResult<T>` which is equivalent to
+//!   `Result<T, IoError>`. The `Result` type is defined in the `std::result`
+//!   module.
+//! * If the `Result` type goes unused, then the compiler will by default emit a
+//!   warning about the unused result. This is because `Result` has the
+//!   `#[must_use]` attribute.
+//! * Common traits are implemented for `IoResult`, e.g.
+//!   `impl<R: Reader> Reader for IoResult<R>`, so that error values do not have
+//!   to be 'unwrapped' before use.
+//!
+//! These features combine in the API to allow for expressions like
+//! `File::create(&Path::new("diary.txt")).write(b"Met a girl.\n")`
+//! without having to worry about whether "diary.txt" exists or whether
+//! the write succeeds. As written, if either `new` or `write_line`
+//! encounters an error then the result of the entire expression will
+//! be an error.
+//!
+//! If you wanted to handle the error though you might write:
+//!
+//! ```rust
+//! # #![allow(unused_must_use)]
+//! use std::io::File;
+//!
+//! match File::create(&Path::new("diary.txt")).write(b"Met a girl.\n") {
+//!     Ok(()) => (), // succeeded
+//!     Err(e) => println!("failed to write to my diary: {}", e),
+//! }
+//!
+//! # ::std::io::fs::unlink(&Path::new("diary.txt"));
+//! ```
+//!
+//! So what actually happens if `create` encounters an error?
+//! It's important to know that what `new` returns is not a `File`
+//! but an `IoResult<File>`.  If the file does not open, then `new` will simply
+//! return `Err(..)`. Because there is an implementation of `Writer` (the trait
+//! required ultimately required for types to implement `write_line`) there is no
+//! need to inspect or unwrap the `IoResult<File>` and we simply call `write_line`
+//! on it. If `new` returned an `Err(..)` then the followup call to `write_line`
+//! will also return an error.
+//!
+//! ## `try!`
+//!
+//! Explicit pattern matching on `IoResult`s can get quite verbose, especially
+//! when performing many I/O operations. Some examples (like those above) are
+//! alleviated with extra methods implemented on `IoResult`, but others have more
+//! complex interdependencies among each I/O operation.
+//!
+//! The `try!` macro from `std::macros` is provided as a method of early-return
+//! inside `Result`-returning functions. It expands to an early-return on `Err`
+//! and otherwise unwraps the contained `Ok` value.
+//!
+//! If you wanted to read several `u32`s from a file and return their product:
+//!
+//! ```rust
+//! use std::io::{File, IoResult};
+//!
+//! fn file_product(p: &Path) -> IoResult<u32> {
+//!     let mut f = File::open(p);
+//!     let x1 = try!(f.read_le_u32());
+//!     let x2 = try!(f.read_le_u32());
+//!
+//!     Ok(x1 * x2)
+//! }
+//!
+//! match file_product(&Path::new("numbers.bin")) {
+//!     Ok(x) => println!("{}", x),
+//!     Err(e) => println!("Failed to read numbers!")
+//! }
+//! ```
+//!
+//! With `try!` in `file_product`, each `read_le_u32` need not be directly
+//! concerned with error handling; instead its caller is responsible for
+//! responding to errors that may occur while attempting to read the numbers.
 
 #![experimental]
 #![deny(unused_must_use)]
@@ -224,7 +223,6 @@ responding to errors that may occur while attempting to read the numbers.
 pub use self::SeekStyle::*;
 pub use self::FileMode::*;
 pub use self::FileAccess::*;
-pub use self::FileType::*;
 pub use self::IoErrorKind::*;
 
 use char::Char;
@@ -233,19 +231,22 @@ use default::Default;
 use error::{FromError, Error};
 use fmt;
 use int;
-use iter::Iterator;
+use iter::{Iterator, IteratorExt};
 use mem::transmute;
-use ops::{BitOr, BitXor, BitAnd, Sub, Not};
-use option::{Option, Some, None};
+use ops::{BitOr, BitXor, BitAnd, Sub, Not, FnOnce};
+use option::Option;
+use option::Option::{Some, None};
 use os;
 use boxed::Box;
-use result::{Ok, Err, Result};
+use result::Result;
+use result::Result::{Ok, Err};
 use sys;
-use slice::{AsSlice, SlicePrelude};
-use str::{Str, StrPrelude};
+use slice::SliceExt;
+use str::StrExt;
 use str;
 use string::String;
 use uint;
+use unicode;
 use unicode::char::UnicodeChar;
 use vec::Vec;
 
@@ -319,7 +320,7 @@ impl IoError {
     pub fn from_errno(errno: uint, detail: bool) -> IoError {
         let mut err = sys::decode_error(errno as i32);
         if detail && err.kind == OtherIoError {
-            err.detail = Some(os::error_string(errno).as_slice().chars()
+            err.detail = Some(os::error_string(errno).chars()
                                  .map(|c| c.to_lowercase()).collect())
         }
         err
@@ -366,7 +367,7 @@ impl FromError<IoError> for Box<Error> {
 }
 
 /// A list specifying general categories of I/O error.
-#[deriving(PartialEq, Eq, Clone, Show)]
+#[deriving(Copy, PartialEq, Eq, Clone, Show)]
 pub enum IoErrorKind {
     /// Any I/O error not part of this list.
     OtherIoError,
@@ -424,18 +425,22 @@ pub enum IoErrorKind {
 /// A trait that lets you add a `detail` to an IoError easily
 trait UpdateIoError<T> {
     /// Returns an IoError with updated description and detail
-    fn update_err(self, desc: &'static str, detail: |&IoError| -> String) -> Self;
+    fn update_err<D>(self, desc: &'static str, detail: D) -> Self where
+        D: FnOnce(&IoError) -> String;
 
     /// Returns an IoError with updated detail
-    fn update_detail(self, detail: |&IoError| -> String) -> Self;
+    fn update_detail<D>(self, detail: D) -> Self where
+        D: FnOnce(&IoError) -> String;
 
     /// Returns an IoError with update description
     fn update_desc(self, desc: &'static str) -> Self;
 }
 
 impl<T> UpdateIoError<T> for IoResult<T> {
-    fn update_err(self, desc: &'static str, detail: |&IoError| -> String) -> IoResult<T> {
-        self.map_err(|mut e| {
+    fn update_err<D>(self, desc: &'static str, detail: D) -> IoResult<T> where
+        D: FnOnce(&IoError) -> String,
+    {
+        self.map_err(move |mut e| {
             let detail = detail(&e);
             e.desc = desc;
             e.detail = Some(detail);
@@ -443,8 +448,10 @@ impl<T> UpdateIoError<T> for IoResult<T> {
         })
     }
 
-    fn update_detail(self, detail: |&IoError| -> String) -> IoResult<T> {
-        self.map_err(|mut e| { e.detail = Some(detail(&e)); e })
+    fn update_detail<D>(self, detail: D) -> IoResult<T> where
+        D: FnOnce(&IoError) -> String,
+    {
+        self.map_err(move |mut e| { e.detail = Some(detail(&e)); e })
     }
 
     fn update_desc(self, desc: &'static str) -> IoResult<T> {
@@ -911,7 +918,7 @@ impl<'a> Reader for Box<Reader+'a> {
     }
 }
 
-impl<'a> Reader for &'a mut Reader+'a {
+impl<'a> Reader for &'a mut (Reader+'a) {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { (*self).read(buf) }
 }
 
@@ -973,7 +980,7 @@ impl<'a, R: Reader> Reader for RefReader<'a, R> {
 }
 
 impl<'a, R: Buffer> Buffer for RefReader<'a, R> {
-    fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> { self.inner.fill_buf() }
+    fn fill_buf(&mut self) -> IoResult<&[u8]> { self.inner.fill_buf() }
     fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
 }
 
@@ -1279,7 +1286,7 @@ impl<'a> Writer for Box<Writer+'a> {
     }
 }
 
-impl<'a> Writer for &'a mut Writer+'a {
+impl<'a> Writer for &'a mut (Writer+'a) {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { (**self).write(buf) }
 
@@ -1416,10 +1423,10 @@ pub trait Buffer: Reader {
     /// # Example
     ///
     /// ```rust
-    /// use std::io;
+    /// use std::io::BufReader;
     ///
-    /// let mut reader = io::stdin();
-    /// let input = reader.read_line().ok().unwrap_or("nothing".to_string());
+    /// let mut reader = BufReader::new(b"hello\nworld");
+    /// assert_eq!("hello\n", &*reader.read_line().unwrap());
     /// ```
     ///
     /// # Error
@@ -1499,7 +1506,7 @@ pub trait Buffer: Reader {
     /// valid utf-8 encoded codepoint as the next few bytes in the stream.
     fn read_char(&mut self) -> IoResult<char> {
         let first_byte = try!(self.read_byte());
-        let width = str::utf8_char_width(first_byte);
+        let width = unicode::str::utf8_char_width(first_byte);
         if width == 1 { return Ok(first_byte as char) }
         if width == 0 { return Err(standard_error(InvalidInput)) } // not utf8
         let mut buf = [first_byte, 0, 0, 0];
@@ -1513,7 +1520,7 @@ pub trait Buffer: Reader {
                 }
             }
         }
-        match str::from_utf8(buf[..width]) {
+        match str::from_utf8(buf[..width]).ok() {
             Some(s) => Ok(s.char_at(0)),
             None => Err(standard_error(InvalidInput))
         }
@@ -1552,6 +1559,7 @@ impl<T: Buffer> BufferPrelude for T {
 
 /// When seeking, the resulting cursor is offset from a base by the offset given
 /// to the `seek` function. The base used is specified by this enumeration.
+#[deriving(Copy)]
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
     SeekSet,
@@ -1674,6 +1682,7 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
 /// A mode specifies how a file should be opened or created. These modes are
 /// passed to `File::open_mode` and are used to control where the file is
 /// positioned when it is initially opened.
+#[deriving(Copy)]
 pub enum FileMode {
     /// Opens a file positioned at the beginning.
     Open,
@@ -1685,6 +1694,7 @@ pub enum FileMode {
 
 /// Access permissions with which the file should be opened. `File`s
 /// opened with `Read` will return an error if written to.
+#[deriving(Copy)]
 pub enum FileAccess {
     /// Read-only access, requests to write will result in an error
     Read,
@@ -1695,25 +1705,25 @@ pub enum FileAccess {
 }
 
 /// Different kinds of files which can be identified by a call to stat
-#[deriving(PartialEq, Show, Hash, Clone)]
+#[deriving(Copy, PartialEq, Show, Hash, Clone)]
 pub enum FileType {
     /// This is a normal file, corresponding to `S_IFREG`
-    TypeFile,
+    RegularFile,
 
     /// This file is a directory, corresponding to `S_IFDIR`
-    TypeDirectory,
+    Directory,
 
     /// This file is a named pipe, corresponding to `S_IFIFO`
-    TypeNamedPipe,
+    NamedPipe,
 
     /// This file is a block device, corresponding to `S_IFBLK`
-    TypeBlockSpecial,
+    BlockSpecial,
 
     /// This file is a symbolic link to another file, corresponding to `S_IFLNK`
-    TypeSymlink,
+    Symlink,
 
     /// The type of this file is not recognized as one of the other categories
-    TypeUnknown,
+    Unknown,
 }
 
 /// A structure used to describe metadata information about a file. This
@@ -1733,7 +1743,7 @@ pub enum FileType {
 /// println!("byte size: {}", info.size);
 /// # }
 /// ```
-#[deriving(Hash)]
+#[deriving(Copy, Hash)]
 pub struct FileStat {
     /// The size of the file, in bytes
     pub size: u64,
@@ -1772,7 +1782,7 @@ pub struct FileStat {
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
 #[unstable]
-#[deriving(Hash)]
+#[deriving(Copy, Hash)]
 pub struct UnstableFileStat {
     /// The ID of the device containing the file.
     pub device: u64,
@@ -1890,7 +1900,10 @@ bitflags! {
     }
 }
 
+
+#[stable]
 impl Default for FilePermission {
+    #[stable]
     #[inline]
     fn default() -> FilePermission { FilePermission::empty() }
 }
@@ -2008,14 +2021,14 @@ mod tests {
     fn test_show() {
         use super::*;
 
-        assert_eq!(format!("{}", USER_READ), "0400".to_string());
-        assert_eq!(format!("{}", USER_FILE), "0644".to_string());
-        assert_eq!(format!("{}", USER_EXEC), "0755".to_string());
-        assert_eq!(format!("{}", USER_RWX),  "0700".to_string());
-        assert_eq!(format!("{}", GROUP_RWX), "0070".to_string());
-        assert_eq!(format!("{}", OTHER_RWX), "0007".to_string());
-        assert_eq!(format!("{}", ALL_PERMISSIONS), "0777".to_string());
-        assert_eq!(format!("{}", USER_READ | USER_WRITE | OTHER_WRITE), "0602".to_string());
+        assert_eq!(format!("{}", USER_READ), "0400");
+        assert_eq!(format!("{}", USER_FILE), "0644");
+        assert_eq!(format!("{}", USER_EXEC), "0755");
+        assert_eq!(format!("{}", USER_RWX),  "0700");
+        assert_eq!(format!("{}", GROUP_RWX), "0070");
+        assert_eq!(format!("{}", OTHER_RWX), "0007");
+        assert_eq!(format!("{}", ALL_PERMISSIONS), "0777");
+        assert_eq!(format!("{}", USER_READ | USER_WRITE | OTHER_WRITE), "0602");
     }
 
     fn _ensure_buffer_is_object_safe<T: Buffer>(x: &T) -> &Buffer {

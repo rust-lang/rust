@@ -8,15 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-The compiler code necessary to implement the `#[deriving]` extensions.
-
-
-FIXME (#2810): hygiene. Search for "__" strings (in other files too).
-We also assume "extra" is the standard library, and "std" is the core
-library.
-
-*/
+//! The compiler code necessary to implement the `#[deriving]` extensions.
+//!
+//! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
+//! the standard library, and "std" is the core library.
 
 use ast::{Item, MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
@@ -75,8 +70,26 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
 
                             "Hash" => expand!(hash::expand_deriving_hash),
 
-                            "Encodable" => expand!(encodable::expand_deriving_encodable),
-                            "Decodable" => expand!(decodable::expand_deriving_decodable),
+                            "RustcEncodable" => {
+                                expand!(encodable::expand_deriving_rustc_encodable)
+                            }
+                            "RustcDecodable" => {
+                                expand!(decodable::expand_deriving_rustc_decodable)
+                            }
+                            "Encodable" => {
+                                cx.span_warn(titem.span,
+                                             "deriving(Encodable) is deprecated \
+                                              in favor of deriving(RustcEncodable)");
+
+                                expand!(encodable::expand_deriving_encodable)
+                            }
+                            "Decodable" => {
+                                cx.span_warn(titem.span,
+                                             "deriving(Decodable) is deprecated \
+                                              in favor of deriving(RustcDecodable)");
+
+                                expand!(decodable::expand_deriving_decodable)
+                            }
 
                             "PartialEq" => expand!(eq::expand_deriving_eq),
                             "Eq" => expand!(totaleq::expand_deriving_totaleq),
@@ -100,7 +113,7 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                                 cx.span_err(titem.span,
                                             format!("unknown `deriving` \
                                                      trait: `{}`",
-                                                    *tname).as_slice());
+                                                    *tname)[]);
                             }
                         };
                     }

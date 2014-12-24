@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Synchronous Timers
-
-This module exposes the functionality to create timers, block the current task,
-and create receivers which will receive notifications after a period of time.
-
-*/
+//! Synchronous Timers
+//!
+//! This module exposes the functionality to create timers, block the current task,
+//! and create receivers which will receive notifications after a period of time.
 
 // FIXME: These functions take Durations but only pass ms to the backend impls.
 
@@ -229,10 +225,10 @@ fn in_ms_u64(d: Duration) -> u64 {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use time::Duration;
-    use task::spawn;
     use prelude::*;
+
+    use super::Timer;
+    use time::Duration;
 
     #[test]
     fn test_io_timer_sleep_simple() {
@@ -361,7 +357,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(proc() {
+        spawn(move|| {
             let _ = timer_rx.recv_opt();
         });
 
@@ -375,7 +371,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(proc() {
+        spawn(move|| {
             let _ = timer_rx.recv_opt();
         });
 
@@ -388,7 +384,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(proc() {
+        spawn(move|| {
             let _ = timer_rx.recv_opt();
         });
 

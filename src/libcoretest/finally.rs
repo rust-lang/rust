@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::finally::{try_finally, Finally};
-use std::task::failing;
+use std::thread::Thread;
 
 #[test]
 fn test_success() {
@@ -20,7 +20,7 @@ fn test_success() {
             *i = 10;
         },
         |i| {
-            assert!(!failing());
+            assert!(!Thread::panicking());
             assert_eq!(*i, 10);
             *i = 20;
         });
@@ -38,14 +38,14 @@ fn test_fail() {
             panic!();
         },
         |i| {
-            assert!(failing());
+            assert!(Thread::panicking());
             assert_eq!(*i, 10);
         })
 }
 
 #[test]
 fn test_retval() {
-    let mut closure: || -> int = || 10;
+    let mut closure = |&mut:| 10i;
     let i = closure.finally(|| { });
     assert_eq!(i, 10);
 }

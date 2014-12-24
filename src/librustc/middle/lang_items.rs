@@ -45,7 +45,7 @@ macro_rules! lets_do_this {
         $( $variant:ident, $name:expr, $method:ident; )*
     ) => {
 
-#[deriving(FromPrimitive, PartialEq, Eq, Hash)]
+#[deriving(Copy, FromPrimitive, PartialEq, Eq, Hash)]
 pub enum LangItem {
     $($variant),*
 }
@@ -65,7 +65,7 @@ impl LanguageItems {
         }
     }
 
-    pub fn items<'a>(&'a self) -> Enumerate<slice::Items<'a, Option<ast::DefId>>> {
+    pub fn items<'a>(&'a self) -> Enumerate<slice::Iter<'a, Option<ast::DefId>>> {
         self.items.iter().enumerate()
     }
 
@@ -110,6 +110,22 @@ impl LanguageItems {
         } else {
             None
         }
+    }
+
+    pub fn fn_trait_kind(&self, id: ast::DefId) -> Option<ty::UnboxedClosureKind> {
+        let def_id_kinds = [
+            (self.fn_trait(), ty::FnUnboxedClosureKind),
+            (self.fn_mut_trait(), ty::FnMutUnboxedClosureKind),
+            (self.fn_once_trait(), ty::FnOnceUnboxedClosureKind),
+            ];
+
+        for &(opt_def_id, kind) in def_id_kinds.iter() {
+            if Some(id) == opt_def_id {
+                return Some(kind);
+            }
+        }
+
+        None
     }
 
     $(
@@ -251,6 +267,9 @@ lets_do_this! {
     IndexMutTraitLangItem,           "index_mut",               index_mut_trait;
     SliceTraitLangItem,              "slice",                   slice_trait;
     SliceMutTraitLangItem,           "slice_mut",               slice_mut_trait;
+    RangeStructLangItem,             "range",                   range_struct;
+    RangeFromStructLangItem,         "range_from",              range_from_struct;
+    FullRangeStructLangItem,         "full_range",              full_range_struct;
 
     UnsafeTypeLangItem,              "unsafe",                  unsafe_type;
 

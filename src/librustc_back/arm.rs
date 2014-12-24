@@ -12,7 +12,7 @@ use target_strs;
 use syntax::abi;
 
 pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs::t {
-    let cc_args = if target_triple.as_slice().contains("thumb") {
+    let cc_args = if target_triple.contains("thumb") {
         vec!("-mthumb".to_string())
     } else {
         vec!("-marm".to_string())

@@ -11,7 +11,7 @@
 use std::task;
 
 pub fn main() {
-    task::spawn(proc() child(10) );
+    task::spawn(move|| child(10) );
 }
 
 fn child(i: int) { println!("{}", i); assert!((i == 10)); }

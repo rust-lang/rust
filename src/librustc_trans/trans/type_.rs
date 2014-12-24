@@ -25,19 +25,17 @@ use std::cell::RefCell;
 
 use libc::c_uint;
 
-#[deriving(Clone, PartialEq, Show)]
+#[deriving(Clone, Copy, PartialEq, Show)]
 #[repr(C)]
 pub struct Type {
     rf: TypeRef
 }
 
-macro_rules! ty (
+macro_rules! ty {
     ($e:expr) => ( Type::from_ref(unsafe { $e }))
-)
+}
 
-/**
- * Wrapper for LLVM TypeRef
- */
+/// Wrapper for LLVM TypeRef
 impl Type {
     #[inline(always)]
     pub fn from_ref(r: TypeRef) -> Type {
@@ -104,7 +102,7 @@ impl Type {
     }
 
     pub fn int(ccx: &CrateContext) -> Type {
-        match ccx.tcx().sess.target.target.target_word_size.as_slice() {
+        match ccx.tcx().sess.target.target.target_word_size[] {
             "32" => Type::i32(ccx),
             "64" => Type::i64(ccx),
             tws => panic!("Unsupported target word size for int: {}", tws),

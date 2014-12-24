@@ -21,7 +21,8 @@ $(eval $(call RUST_CRATE,coretest))
 
 TEST_TARGET_CRATES = $(filter-out core unicode,$(TARGET_CRATES)) coretest
 TEST_DOC_CRATES = $(DOC_CRATES)
-TEST_HOST_CRATES = $(HOST_CRATES)
+TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve rustc_trans,\
+                     $(HOST_CRATES))
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 ######################################################################
@@ -72,21 +73,6 @@ endif
 
 TEST_LOG_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
 TEST_OK_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).ok
-
-TEST_RATCHET_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4)-metrics.json
-TEST_RATCHET_NOISE_PERCENT=10.0
-
-# Whether to ratchet or merely save benchmarks
-ifdef CFG_RATCHET_BENCH
-CRATE_TEST_EXTRA_ARGS= \
-  --test $(TEST_BENCH) \
-  --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
-  --ratchet-noise-percent $(TEST_RATCHET_NOISE_PERCENT)
-else
-CRATE_TEST_EXTRA_ARGS= \
-  --test $(TEST_BENCH) \
-  --save-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4))
-endif
 
 # If we're sharding the testsuite between parallel testers,
 # pass this argument along to the compiletest and crate test
@@ -412,7 +398,8 @@ $(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): \
 		$$(CRATEFILE_$(4)) \
 		$$(TESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, rustc: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test \
+	$(Q)CFG_LLVM_LINKAGE_FILE=$$(LLVM_LINKAGE_PATH_$(3)) \
+	    $$(subst @,,$$(STAGE$(1)_T_$(2)_H_$(3))) -o $$@ $$< --test \
 		-L "$$(RT_OUTPUT_DIR_$(2))" \
 		-L "$$(LLVM_LIBDIR_$(2))" \
 		$$(RUSTFLAGS_$(4))
@@ -453,7 +440,6 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	$$(Q)touch tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
 	$$(Q)$(CFG_ADB) pull $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log tmp/
 	$$(Q)$(CFG_ADB) shell rm $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
-	$$(Q)$(CFG_ADB) pull $(CFG_ADB_TEST_DIR)/$$(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) tmp/
 	@if grep -q "result: ok" tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp; \
 	then \
 		rm tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp; \
@@ -597,7 +583,7 @@ CTEST_DISABLE_debuginfo-lldb = "lldb tests are only run on darwin"
 endif
 
 ifeq ($(CFG_OSTYPE),apple-darwin)
-CTEST_DISABLE_debuginfo-gdb = "gdb on darwing needs root"
+CTEST_DISABLE_debuginfo-gdb = "gdb on darwin needs root"
 endif
 
 # CTEST_DISABLE_NONSELFHOST_$(TEST_GROUP), if set, will cause that
@@ -695,7 +681,6 @@ CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4) := \
         $$(CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3)) \
         --src-base $$(S)src/test/$$(CTEST_SRC_BASE_$(4))/ \
         --build-base $(3)/test/$$(CTEST_BUILD_BASE_$(4))/ \
-        --ratchet-metrics $(call TEST_RATCHET_FILE,$(1),$(2),$(3),$(4)) \
         --mode $$(CTEST_MODE_$(4)) \
 	$$(CTEST_RUNTOOL_$(4))
 
@@ -890,7 +875,8 @@ endif
 ifeq ($(2),$$(CFG_BUILD))
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4)): $$(CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, run doc-crate-$(4) [$(2)])
-	$$(Q)$$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --test --cfg dox \
+	$$(Q)CFG_LLVM_LINKAGE_FILE=$$(LLVM_LINKAGE_PATH_$(3)) \
+	    $$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --test --cfg dox \
 	    	$$(CRATEFILE_$(4)) --test-args "$$(TESTARGS)" && touch $$@
 else
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4)):

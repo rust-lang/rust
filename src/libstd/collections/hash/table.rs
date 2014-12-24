@@ -10,18 +10,19 @@
 //
 // ignore-lexer-test FIXME #15883
 
-pub use self::BucketState::*;
+use self::BucketState::*;
 
 use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, count};
-use kinds::{Sized, marker};
+use kinds::{Copy, Sized, marker};
 use mem::{min_align_of, size_of};
 use mem;
 use num::{Int, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
-use option::{Some, None, Option};
+use option::Option;
+use option::Option::{Some, None};
 use ptr::{RawPtr, copy_nonoverlapping_memory, zero_memory};
 use ptr;
 use rt::heap::{allocate, deallocate};
@@ -80,11 +81,15 @@ struct RawBucket<K, V> {
     val:  *mut V
 }
 
+impl<K,V> Copy for RawBucket<K,V> {}
+
 pub struct Bucket<K, V, M> {
     raw:   RawBucket<K, V>,
     idx:   uint,
     table: M
 }
+
+impl<K,V,M:Copy> Copy for Bucket<K,V,M> {}
 
 pub struct EmptyBucket<K, V, M> {
     raw:   RawBucket<K, V>,
@@ -119,7 +124,7 @@ struct GapThenFull<K, V, M> {
 
 /// A hash that is not zero, since we use a hash of zero to represent empty
 /// buckets.
-#[deriving(PartialEq)]
+#[deriving(PartialEq, Copy)]
 pub struct SafeHash {
     hash: u64,
 }
@@ -206,7 +211,7 @@ impl<K, V, M> Bucket<K, V, M> {
 }
 
 impl<K, V, M: Deref<RawTable<K, V>>> Bucket<K, V, M> {
-    pub fn new(table: M, hash: &SafeHash) -> Bucket<K, V, M> {
+    pub fn new(table: M, hash: SafeHash) -> Bucket<K, V, M> {
         Bucket::at_index(table, hash.inspect() as uint)
     }
 
@@ -659,21 +664,34 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
-    pub fn iter_mut(&mut self) -> MutEntries<K, V> {
-        MutEntries {
+    pub fn iter_mut(&mut self) -> IterMut<K, V> {
+        IterMut {
             iter: self.raw_buckets(),
             elems_left: self.size(),
         }
     }
 
-    pub fn into_iter(self) -> MoveEntries<K, V> {
+    pub fn into_iter(self) -> IntoIter<K, V> {
         let RawBuckets { raw, hashes_end, .. } = self.raw_buckets();
         // Replace the marker regardless of lifetime bounds on parameters.
-        MoveEntries {
+        IntoIter {
             iter: RawBuckets {
                 raw: raw,
                 hashes_end: hashes_end,
                 marker: marker::ContravariantLifetime,
+            },
+            table: self,
+        }
+    }
+
+    pub fn drain(&mut self) -> Drain<K, V> {
+        let RawBuckets { raw, hashes_end, .. } = self.raw_buckets();
+        // Replace the marker regardless of lifetime bounds on parameters.
+        Drain {
+            iter: RawBuckets {
+                raw: raw,
+                hashes_end: hashes_end,
+                marker: marker::ContravariantLifetime::<'static>,
             },
             table: self,
         }
@@ -758,15 +776,21 @@ pub struct Entries<'a, K: 'a, V: 'a> {
 }
 
 /// Iterator over mutable references to entries in a table.
-pub struct MutEntries<'a, K: 'a, V: 'a> {
+pub struct IterMut<'a, K: 'a, V: 'a> {
     iter: RawBuckets<'a, K, V>,
     elems_left: uint,
 }
 
 /// Iterator over the entries in a table, consuming the table.
-pub struct MoveEntries<K, V> {
+pub struct IntoIter<K, V> {
     table: RawTable<K, V>,
     iter: RawBuckets<'static, K, V>
+}
+
+/// Iterator over the entries in a table, clearing the table.
+pub struct Drain<'a, K: 'a, V: 'a> {
+    table: &'a mut RawTable<K, V>,
+    iter: RawBuckets<'static, K, V>,
 }
 
 impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
@@ -785,7 +809,7 @@ impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
     }
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for IterMut<'a, K, V> {
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
         self.iter.next().map(|bucket| {
             self.elems_left -= 1;
@@ -801,7 +825,7 @@ impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
     }
 }
 
-impl<K, V> Iterator<(SafeHash, K, V)> for MoveEntries<K, V> {
+impl<K, V> Iterator<(SafeHash, K, V)> for IntoIter<K, V> {
     fn next(&mut self) -> Option<(SafeHash, K, V)> {
         self.iter.next().map(|bucket| {
             self.table.size -= 1;
@@ -820,6 +844,36 @@ impl<K, V> Iterator<(SafeHash, K, V)> for MoveEntries<K, V> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let size = self.table.size();
         (size, Some(size))
+    }
+}
+
+impl<'a, K: 'a, V: 'a> Iterator<(SafeHash, K, V)> for Drain<'a, K, V> {
+    #[inline]
+    fn next(&mut self) -> Option<(SafeHash, K, V)> {
+        self.iter.next().map(|bucket| {
+            self.table.size -= 1;
+            unsafe {
+                (
+                    SafeHash {
+                        hash: ptr::replace(bucket.hash, EMPTY_BUCKET),
+                    },
+                    ptr::read(bucket.key as *const K),
+                    ptr::read(bucket.val as *const V)
+                )
+            }
+        })
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        let size = self.table.size();
+        (size, Some(size))
+    }
+}
+
+#[unsafe_destructor]
+impl<'a, K: 'a, V: 'a> Drop for Drain<'a, K, V> {
+    fn drop(&mut self) {
+        for _ in *self {}
     }
 }
 

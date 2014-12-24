@@ -10,6 +10,7 @@
 
 pub fn main() {
     enum x { foo }
+    impl Copy for x {}
     impl ::std::cmp::PartialEq for x {
         fn eq(&self, other: &x) -> bool {
             (*self) as int == (*other) as int

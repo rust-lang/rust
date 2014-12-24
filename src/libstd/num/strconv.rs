@@ -12,20 +12,21 @@
 
 #![allow(missing_docs)]
 
-pub use self::ExponentFormat::*;
-pub use self::SignificantDigits::*;
-pub use self::SignFormat::*;
+use self::ExponentFormat::*;
+use self::SignificantDigits::*;
+use self::SignFormat::*;
 
-use char;
-use char::Char;
-use num;
-use num::{Int, Float, FPNaN, FPInfinite, ToPrimitive};
-use slice::{SlicePrelude, CloneSliceAllocPrelude};
-use str::StrPrelude;
+use char::{mod, Char};
+use num::{mod, Int, Float, ToPrimitive};
+use num::FpCategory as Fp;
+use ops::FnMut;
+use slice::{SliceExt, CloneSliceExt};
+use str::StrExt;
 use string::String;
 use vec::Vec;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
+#[deriving(Copy)]
 pub enum ExponentFormat {
     /// Do not use exponential notation.
     ExpNone,
@@ -40,6 +41,7 @@ pub enum ExponentFormat {
 
 /// The number of digits used for emitting the fractional part of a number, if
 /// any.
+#[deriving(Copy)]
 pub enum SignificantDigits {
     /// All calculable digits will be printed.
     ///
@@ -56,6 +58,7 @@ pub enum SignificantDigits {
 }
 
 /// How to emit the sign of a number.
+#[deriving(Copy)]
 pub enum SignFormat {
     /// No sign will be printed. The exponent sign will also be emitted.
     SignNone,
@@ -67,32 +70,29 @@ pub enum SignFormat {
     SignAll,
 }
 
-/**
- * Converts an integral number to its string representation as a byte vector.
- * This is meant to be a common base implementation for all integral string
- * conversion functions like `to_string()` or `to_str_radix()`.
- *
- * # Arguments
- * - `num`           - The number to convert. Accepts any number that
- *                     implements the numeric traits.
- * - `radix`         - Base to use. Accepts only the values 2-36.
- * - `sign`          - How to emit the sign. Options are:
- *     - `SignNone`: No sign at all. Basically emits `abs(num)`.
- *     - `SignNeg`:  Only `-` on negative values.
- *     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
- * - `f`             - a callback which will be invoked for each ascii character
- *                     which composes the string representation of this integer
- *
- * # Return value
- * A tuple containing the byte vector, and a boolean flag indicating
- * whether it represents a special value like `inf`, `-inf`, `NaN` or not.
- * It returns a tuple because there can be ambiguity between a special value
- * and a number representation at higher bases.
- *
- * # Panics
- * - Panics if `radix` < 2 or `radix` > 36.
- */
-fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8|) {
+/// Converts an integral number to its string representation as a byte vector.
+/// This is meant to be a common base implementation for all integral string
+/// conversion functions like `to_string()` or `to_str_radix()`.
+///
+/// # Arguments
+///
+/// - `num`           - The number to convert. Accepts any number that
+///                     implements the numeric traits.
+/// - `radix`         - Base to use. Accepts only the values 2-36.
+/// - `sign`          - How to emit the sign. Options are:
+///     - `SignNone`: No sign at all. Basically emits `abs(num)`.
+///     - `SignNeg`:  Only `-` on negative values.
+///     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
+/// - `f`             - a callback which will be invoked for each ascii character
+///                     which composes the string representation of this integer
+///
+/// # Panics
+///
+/// - Panics if `radix` < 2 or `radix` > 36.
+fn int_to_str_bytes_common<T, F>(num: T, radix: uint, sign: SignFormat, mut f: F) where
+    T: Int,
+    F: FnMut(u8),
+{
     assert!(2 <= radix && radix <= 36);
 
     let _0: T = Int::zero();
@@ -146,40 +146,41 @@ fn int_to_str_bytes_common<T: Int>(num: T, radix: uint, sign: SignFormat, f: |u8
     }
 }
 
-/**
- * Converts a number to its string representation as a byte vector.
- * This is meant to be a common base implementation for all numeric string
- * conversion functions like `to_string()` or `to_str_radix()`.
- *
- * # Arguments
- * - `num`           - The number to convert. Accepts any number that
- *                     implements the numeric traits.
- * - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
- *                     is used, then this base is only used for the significand. The exponent
- *                     itself always printed using a base of 10.
- * - `negative_zero` - Whether to treat the special value `-0` as
- *                     `-0` or as `+0`.
- * - `sign`          - How to emit the sign. See `SignFormat`.
- * - `digits`        - The amount of digits to use for emitting the fractional
- *                     part, if any. See `SignificantDigits`.
- * - `exp_format`   - Whether or not to use the exponential (scientific) notation.
- *                    See `ExponentFormat`.
- * - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
- *                     exponential notation is desired.
- *
- * # Return value
- * A tuple containing the byte vector, and a boolean flag indicating
- * whether it represents a special value like `inf`, `-inf`, `NaN` or not.
- * It returns a tuple because there can be ambiguity between a special value
- * and a number representation at higher bases.
- *
- * # Panics
- * - Panics if `radix` < 2 or `radix` > 36.
- * - Panics if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
- *   between digit and exponent sign `'e'`.
- * - Panics if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
- *   between digit and exponent sign `'p'`.
- */
+/// Converts a number to its string representation as a byte vector.
+/// This is meant to be a common base implementation for all numeric string
+/// conversion functions like `to_string()` or `to_str_radix()`.
+///
+/// # Arguments
+///
+/// - `num`           - The number to convert. Accepts any number that
+///                     implements the numeric traits.
+/// - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
+///                     is used, then this base is only used for the significand. The exponent
+///                     itself always printed using a base of 10.
+/// - `negative_zero` - Whether to treat the special value `-0` as
+///                     `-0` or as `+0`.
+/// - `sign`          - How to emit the sign. See `SignFormat`.
+/// - `digits`        - The amount of digits to use for emitting the fractional
+///                     part, if any. See `SignificantDigits`.
+/// - `exp_format`   - Whether or not to use the exponential (scientific) notation.
+///                    See `ExponentFormat`.
+/// - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
+///                     exponential notation is desired.
+///
+/// # Return value
+///
+/// A tuple containing the byte vector, and a boolean flag indicating
+/// whether it represents a special value like `inf`, `-inf`, `NaN` or not.
+/// It returns a tuple because there can be ambiguity between a special value
+/// and a number representation at higher bases.
+///
+/// # Panics
+///
+/// - Panics if `radix` < 2 or `radix` > 36.
+/// - Panics if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
+///   between digit and exponent sign `'e'`.
+/// - Panics if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
+///   between digit and exponent sign `'p'`.
 pub fn float_to_str_bytes_common<T: Float>(
         num: T, radix: uint, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_upper: bool
@@ -199,14 +200,14 @@ pub fn float_to_str_bytes_common<T: Float>(
     let _1: T = Float::one();
 
     match num.classify() {
-        FPNaN => { return (b"NaN".to_vec(), true); }
-        FPInfinite if num > _0 => {
+        Fp::Nan => { return (b"NaN".to_vec(), true); }
+        Fp::Infinite if num > _0 => {
             return match sign {
                 SignAll => (b"+inf".to_vec(), true),
                 _       => (b"inf".to_vec(), true)
             };
         }
-        FPInfinite if num < _0 => {
+        Fp::Infinite if num < _0 => {
             return match sign {
                 SignNone => (b"inf".to_vec(), true),
                 _        => (b"-inf".to_vec(), true),
@@ -407,10 +408,8 @@ pub fn float_to_str_bytes_common<T: Float>(
     (buf, false)
 }
 
-/**
- * Converts a number to its string representation. This is a wrapper for
- * `to_str_bytes_common()`, for details see there.
- */
+/// Converts a number to its string representation. This is a wrapper for
+/// `to_str_bytes_common()`, for details see there.
 #[inline]
 pub fn float_to_str_common<T: Float>(
         num: T, radix: uint, negative_zero: bool,
@@ -433,28 +432,28 @@ mod tests {
     #[test]
     fn test_int_to_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!(i8_val.to_string(), "127".to_string());
+        assert_eq!(i8_val.to_string(), "127");
 
         i8_val += 1 as i8;
-        assert_eq!(i8_val.to_string(), "-128".to_string());
+        assert_eq!(i8_val.to_string(), "-128");
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!(i16_val.to_string(), "32767".to_string());
+        assert_eq!(i16_val.to_string(), "32767");
 
         i16_val += 1 as i16;
-        assert_eq!(i16_val.to_string(), "-32768".to_string());
+        assert_eq!(i16_val.to_string(), "-32768");
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!(i32_val.to_string(), "2147483647".to_string());
+        assert_eq!(i32_val.to_string(), "2147483647");
 
         i32_val += 1 as i32;
-        assert_eq!(i32_val.to_string(), "-2147483648".to_string());
+        assert_eq!(i32_val.to_string(), "-2147483648");
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!(i64_val.to_string(), "9223372036854775807".to_string());
+        assert_eq!(i64_val.to_string(), "9223372036854775807");
 
         i64_val += 1 as i64;
-        assert_eq!(i64_val.to_string(), "-9223372036854775808".to_string());
+        assert_eq!(i64_val.to_string(), "-9223372036854775808");
     }
 }
 

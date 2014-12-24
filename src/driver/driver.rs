@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![no_start]
-
 #[cfg(rustdoc)]
 extern crate "rustdoc" as this;
 
 #[cfg(rustc)]
-extern crate "rustc_trans" as this;
+extern crate "rustc_driver" as this;
 
 fn main() { this::main() }

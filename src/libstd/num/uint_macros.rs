@@ -13,7 +13,7 @@
 #![doc(hidden)]
 #![allow(unsigned_negation)]
 
-macro_rules! uint_module (($T:ty) => (
+macro_rules! uint_module { ($T:ty) => (
 
 // String conversion functions and impl num -> str
 
@@ -32,7 +32,9 @@ macro_rules! uint_module (($T:ty) => (
 /// ```
 #[inline]
 #[deprecated = "just use .to_string(), or a BufWriter with write! if you mustn't allocate"]
-pub fn to_str_bytes<U>(n: $T, radix: uint, f: |v: &[u8]| -> U) -> U {
+pub fn to_str_bytes<U, F>(n: $T, radix: uint, f: F) -> U where
+    F: FnOnce(&[u8]) -> U,
+{
     use io::{Writer, Seek};
     // The radix can be as low as 2, so we need at least 64 characters for a
     // base 2 number, and then we need another for a possible '-' character.
@@ -79,28 +81,28 @@ mod tests {
     #[test]
     fn test_uint_to_str_overflow() {
         let mut u8_val: u8 = 255_u8;
-        assert_eq!(u8_val.to_string(), "255".to_string());
+        assert_eq!(u8_val.to_string(), "255");
 
         u8_val += 1 as u8;
-        assert_eq!(u8_val.to_string(), "0".to_string());
+        assert_eq!(u8_val.to_string(), "0");
 
         let mut u16_val: u16 = 65_535_u16;
-        assert_eq!(u16_val.to_string(), "65535".to_string());
+        assert_eq!(u16_val.to_string(), "65535");
 
         u16_val += 1 as u16;
-        assert_eq!(u16_val.to_string(), "0".to_string());
+        assert_eq!(u16_val.to_string(), "0");
 
         let mut u32_val: u32 = 4_294_967_295_u32;
-        assert_eq!(u32_val.to_string(), "4294967295".to_string());
+        assert_eq!(u32_val.to_string(), "4294967295");
 
         u32_val += 1 as u32;
-        assert_eq!(u32_val.to_string(), "0".to_string());
+        assert_eq!(u32_val.to_string(), "0");
 
         let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
-        assert_eq!(u64_val.to_string(), "18446744073709551615".to_string());
+        assert_eq!(u64_val.to_string(), "18446744073709551615");
 
         u64_val += 1 as u64;
-        assert_eq!(u64_val.to_string(), "0".to_string());
+        assert_eq!(u64_val.to_string(), "0");
     }
 
     #[test]
@@ -139,4 +141,4 @@ mod tests {
     }
 }
 
-))
+) }

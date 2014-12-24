@@ -37,7 +37,7 @@
 /// panic!("this is a {} {message}", "fancy", message = "message");
 /// ```
 #[macro_export]
-macro_rules! panic(
+macro_rules! panic {
     () => ({
         panic!("explicit panic")
     });
@@ -70,7 +70,7 @@ macro_rules! panic(
         }
         format_args!(_run_fmt, $fmt, $($arg)*)
     });
-)
+}
 
 /// Ensure that a boolean expression is `true` at runtime.
 ///
@@ -93,7 +93,7 @@ macro_rules! panic(
 /// assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
-macro_rules! assert(
+macro_rules! assert {
     ($cond:expr) => (
         if !$cond {
             panic!(concat!("assertion failed: ", stringify!($cond)))
@@ -104,7 +104,7 @@ macro_rules! assert(
             panic!($($arg),+)
         }
     );
-)
+}
 
 /// Asserts that two expressions are equal to each other, testing equality in
 /// both directions.
@@ -119,20 +119,20 @@ macro_rules! assert(
 /// assert_eq!(a, b);
 /// ```
 #[macro_export]
-macro_rules! assert_eq(
-    ($given:expr , $expected:expr) => ({
-        match (&($given), &($expected)) {
-            (given_val, expected_val) => {
+macro_rules! assert_eq {
+    ($left:expr , $right:expr) => ({
+        match (&($left), &($right)) {
+            (left_val, right_val) => {
                 // check both directions of equality....
-                if !((*given_val == *expected_val) &&
-                     (*expected_val == *given_val)) {
+                if !((*left_val == *right_val) &&
+                     (*right_val == *left_val)) {
                     panic!("assertion failed: `(left == right) && (right == left)` \
-                           (left: `{}`, right: `{}`)", *given_val, *expected_val)
+                           (left: `{}`, right: `{}`)", *left_val, *right_val)
                 }
             }
         }
     })
-)
+}
 
 /// Ensure that a boolean expression is `true` at runtime.
 ///
@@ -160,9 +160,9 @@ macro_rules! assert_eq(
 /// debug_assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
-macro_rules! debug_assert(
+macro_rules! debug_assert {
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert!($($arg)*); })
-)
+}
 
 /// Asserts that two expressions are equal to each other, testing equality in
 /// both directions.
@@ -182,35 +182,51 @@ macro_rules! debug_assert(
 /// debug_assert_eq!(a, b);
 /// ```
 #[macro_export]
-macro_rules! debug_assert_eq(
+macro_rules! debug_assert_eq {
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert_eq!($($arg)*); })
-)
+}
 
-/// A utility macro for indicating unreachable code. It will panic if
-/// executed. This is occasionally useful to put after loops that never
-/// terminate normally, but instead directly return from a function.
+/// A utility macro for indicating unreachable code.
 ///
-/// # Example
+/// This is useful any time that the compiler can't determine that some code is unreachable. For
+/// example:
 ///
-/// ```{.rust}
-/// struct Item { weight: uint }
+/// * Match arms with guard conditions.
+/// * Loops that dynamically terminate.
+/// * Iterators that dynamically terminate.
 ///
-/// fn choose_weighted_item(v: &[Item]) -> Item {
-///     assert!(!v.is_empty());
-///     let mut so_far = 0u;
-///     for item in v.iter() {
-///         so_far += item.weight;
-///         if so_far > 100 {
-///             return *item;
-///         }
+/// # Panics
+///
+/// This will always panic.
+///
+/// # Examples
+///
+/// Match arms:
+///
+/// ```rust
+/// fn foo(x: Option<int>) {
+///     match x {
+///         Some(n) if n >= 0 => println!("Some(Non-negative)"),
+///         Some(n) if n <  0 => println!("Some(Negative)"),
+///         Some(_)           => unreachable!(), // compile error if commented out
+///         None              => println!("None")
 ///     }
-///     // The above loop always returns, so we must hint to the
-///     // type checker that it isn't possible to get down here
+/// }
+/// ```
+///
+/// Iterators:
+///
+/// ```rust
+/// fn divide_by_three(x: u32) -> u32 { // one of the poorest implementations of x/3
+///     for i in std::iter::count(0_u32, 1) {
+///         if 3*i < i { panic!("u32 overflow"); }
+///         if x < 3*i { return i-1; }
+///     }
 ///     unreachable!();
 /// }
 /// ```
 #[macro_export]
-macro_rules! unreachable(
+macro_rules! unreachable {
     () => ({
         panic!("internal error: entered unreachable code")
     });
@@ -220,14 +236,14 @@ macro_rules! unreachable(
     ($fmt:expr, $($arg:tt)*) => ({
         panic!(concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
     });
-)
+}
 
 /// A standardised placeholder for marking unfinished code. It panics with the
 /// message `"not yet implemented"` when executed.
 #[macro_export]
-macro_rules! unimplemented(
+macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
-)
+}
 
 /// Use the syntax described in `std::fmt` to create a value of type `String`.
 /// See `std::fmt` for more information.
@@ -241,11 +257,11 @@ macro_rules! unimplemented(
 /// ```
 #[macro_export]
 #[stable]
-macro_rules! format(
+macro_rules! format {
     ($($arg:tt)*) => (
         format_args!(::std::fmt::format, $($arg)*)
     )
-)
+}
 
 /// Use the `format!` syntax to write data into a buffer of type `&mut Writer`.
 /// See `std::fmt` for more information.
@@ -261,30 +277,30 @@ macro_rules! format(
 /// ```
 #[macro_export]
 #[stable]
-macro_rules! write(
+macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ({
         let dst = &mut *$dst;
         format_args!(|args| { dst.write_fmt(args) }, $($arg)*)
     })
-)
+}
 
 /// Equivalent to the `write!` macro, except that a newline is appended after
 /// the message is written.
 #[macro_export]
 #[stable]
-macro_rules! writeln(
+macro_rules! writeln {
     ($dst:expr, $fmt:expr $($arg:tt)*) => (
         write!($dst, concat!($fmt, "\n") $($arg)*)
     )
-)
+}
 
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
 #[macro_export]
 #[stable]
-macro_rules! print(
+macro_rules! print {
     ($($arg:tt)*) => (format_args!(::std::io::stdio::print_args, $($arg)*))
-)
+}
 
 /// Macro for printing to a task's stdout handle.
 ///
@@ -300,55 +316,33 @@ macro_rules! print(
 /// ```
 #[macro_export]
 #[stable]
-macro_rules! println(
+macro_rules! println {
     ($($arg:tt)*) => (format_args!(::std::io::stdio::println_args, $($arg)*))
-)
-
-/// Declare a task-local key with a specific type.
-///
-/// # Example
-///
-/// ```
-/// local_data_key!(my_integer: int)
-///
-/// my_integer.replace(Some(2));
-/// println!("{}", my_integer.get().map(|a| *a));
-/// ```
-#[macro_export]
-macro_rules! local_data_key(
-    ($name:ident: $ty:ty) => (
-        #[allow(non_upper_case_globals)]
-        static $name: ::std::local_data::Key<$ty> = &::std::local_data::KeyValueKey;
-    );
-    (pub $name:ident: $ty:ty) => (
-        #[allow(non_upper_case_globals)]
-        pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::KeyValueKey;
-    );
-)
+}
 
 /// Helper macro for unwrapping `Result` values while returning early with an
 /// error if the value of the expression is `Err`. For more information, see
 /// `std::io`.
 #[macro_export]
-macro_rules! try (
+macro_rules! try {
     ($expr:expr) => ({
         match $expr {
             Ok(val) => val,
             Err(err) => return Err(::std::error::FromError::from_error(err))
         }
     })
-)
+}
 
 /// Create a `std::vec::Vec` containing the arguments.
 #[macro_export]
-macro_rules! vec[
+macro_rules! vec {
     ($($x:expr),*) => ({
-        use std::slice::BoxedSlicePrelude;
+        use std::slice::BoxedSliceExt;
         let xs: ::std::boxed::Box<[_]> = box [$($x),*];
         xs.into_vec()
     });
     ($($x:expr,)*) => (vec![$($x),*])
-]
+}
 
 /// A macro to select an event from a number of receivers.
 ///
@@ -359,13 +353,15 @@ macro_rules! vec[
 /// # Example
 ///
 /// ```
+/// use std::thread::Thread;
+///
 /// let (tx1, rx1) = channel();
 /// let (tx2, rx2) = channel();
 /// # fn long_running_task() {}
 /// # fn calculate_the_answer() -> int { 42i }
 ///
-/// spawn(proc() { long_running_task(); tx1.send(()) });
-/// spawn(proc() { tx2.send(calculate_the_answer()) });
+/// Thread::spawn(move|| { long_running_task(); tx1.send(()) }).detach();
+/// Thread::spawn(move|| { tx2.send(calculate_the_answer()) }).detach();
 ///
 /// select! (
 ///     () = rx1.recv() => println!("the long running task finished first"),
@@ -400,11 +396,11 @@ macro_rules! select {
 // uses. To get around this difference, we redefine the log!() macro here to be
 // just a dumb version of what it should be.
 #[cfg(test)]
-macro_rules! log (
+macro_rules! log {
     ($lvl:expr, $($args:tt)*) => (
         if log_enabled!($lvl) { println!($($args)*) }
     )
-)
+}
 
 /// Built-in macros to the compiler itself.
 ///
@@ -436,9 +432,9 @@ pub mod builtin {
     /// }, "hello {}", "world");
     /// ```
     #[macro_export]
-    macro_rules! format_args( ($closure:expr, $fmt:expr $($args:tt)*) => ({
+    macro_rules! format_args { ($closure:expr, $fmt:expr $($args:tt)*) => ({
         /* compiler built-in */
-    }) )
+    }) }
 
     /// Inspect an environment variable at compile time.
     ///
@@ -456,7 +452,7 @@ pub mod builtin {
     /// println!("the $PATH variable at the time of compiling was: {}", path);
     /// ```
     #[macro_export]
-    macro_rules! env( ($name:expr) => ({ /* compiler built-in */ }) )
+    macro_rules! env { ($name:expr) => ({ /* compiler built-in */ }) }
 
     /// Optionally inspect an environment variable at compile time.
     ///
@@ -475,7 +471,7 @@ pub mod builtin {
     /// println!("the secret key might be: {}", key);
     /// ```
     #[macro_export]
-    macro_rules! option_env( ($name:expr) => ({ /* compiler built-in */ }) )
+    macro_rules! option_env { ($name:expr) => ({ /* compiler built-in */ }) }
 
     /// Concatenate literals into a static byte slice.
     ///
@@ -495,7 +491,7 @@ pub mod builtin {
     /// assert_eq!(rust[4], 255);
     /// ```
     #[macro_export]
-    macro_rules! bytes( ($($e:expr),*) => ({ /* compiler built-in */ }) )
+    macro_rules! bytes { ($($e:expr),*) => ({ /* compiler built-in */ }) }
 
     /// Concatenate identifiers into one identifier.
     ///
@@ -519,7 +515,9 @@ pub mod builtin {
     /// # }
     /// ```
     #[macro_export]
-    macro_rules! concat_idents( ($($e:ident),*) => ({ /* compiler built-in */ }) )
+    macro_rules! concat_idents {
+        ($($e:ident),*) => ({ /* compiler built-in */ })
+    }
 
     /// Concatenates literals into a static string slice.
     ///
@@ -537,7 +535,7 @@ pub mod builtin {
     /// assert_eq!(s, "test10btrue");
     /// ```
     #[macro_export]
-    macro_rules! concat( ($($e:expr),*) => ({ /* compiler built-in */ }) )
+    macro_rules! concat { ($($e:expr),*) => ({ /* compiler built-in */ }) }
 
     /// A macro which expands to the line number on which it was invoked.
     ///
@@ -552,7 +550,7 @@ pub mod builtin {
     /// println!("defined on line: {}", current_line);
     /// ```
     #[macro_export]
-    macro_rules! line( () => ({ /* compiler built-in */ }) )
+    macro_rules! line { () => ({ /* compiler built-in */ }) }
 
     /// A macro which expands to the column number on which it was invoked.
     ///
@@ -567,7 +565,7 @@ pub mod builtin {
     /// println!("defined on column: {}", current_col);
     /// ```
     #[macro_export]
-    macro_rules! column( () => ({ /* compiler built-in */ }) )
+    macro_rules! column { () => ({ /* compiler built-in */ }) }
 
     /// A macro which expands to the file name from which it was invoked.
     ///
@@ -583,7 +581,7 @@ pub mod builtin {
     /// println!("defined in file: {}", this_file);
     /// ```
     #[macro_export]
-    macro_rules! file( () => ({ /* compiler built-in */ }) )
+    macro_rules! file { () => ({ /* compiler built-in */ }) }
 
     /// A macro which stringifies its argument.
     ///
@@ -598,7 +596,7 @@ pub mod builtin {
     /// assert_eq!(one_plus_one, "1 + 1");
     /// ```
     #[macro_export]
-    macro_rules! stringify( ($t:tt) => ({ /* compiler built-in */ }) )
+    macro_rules! stringify { ($t:tt) => ({ /* compiler built-in */ }) }
 
     /// Includes a utf8-encoded file as a string.
     ///
@@ -612,7 +610,7 @@ pub mod builtin {
     /// let secret_key = include_str!("secret-key.ascii");
     /// ```
     #[macro_export]
-    macro_rules! include_str( ($file:expr) => ({ /* compiler built-in */ }) )
+    macro_rules! include_str { ($file:expr) => ({ /* compiler built-in */ }) }
 
     /// Includes a file as a byte slice.
     ///
@@ -626,7 +624,7 @@ pub mod builtin {
     /// let secret_key = include_bin!("secret-key.bin");
     /// ```
     #[macro_export]
-    macro_rules! include_bin( ($file:expr) => ({ /* compiler built-in */ }) )
+    macro_rules! include_bin { ($file:expr) => ({ /* compiler built-in */ }) }
 
     /// Expands to a string that represents the current module path.
     ///
@@ -646,7 +644,7 @@ pub mod builtin {
     /// test::foo();
     /// ```
     #[macro_export]
-    macro_rules! module_path( () => ({ /* compiler built-in */ }) )
+    macro_rules! module_path { () => ({ /* compiler built-in */ }) }
 
     /// Boolean evaluation of configuration flags.
     ///
@@ -667,5 +665,5 @@ pub mod builtin {
     /// };
     /// ```
     #[macro_export]
-    macro_rules! cfg( ($cfg:tt) => ({ /* compiler built-in */ }) )
+    macro_rules! cfg { ($cfg:tt) => ({ /* compiler built-in */ }) }
 }

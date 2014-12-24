@@ -8,17 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn asSendfn(f: proc() -> uint) -> uint {
-   return f();
-}
-
 fn asBlock(f: || -> uint) -> uint {
    return f();
 }
 
 pub fn main() {
-   let x = asSendfn(proc() 22u);
-   assert_eq!(x, 22u);
    let x = asBlock(|| 22u);
    assert_eq!(x, 22u);
 }

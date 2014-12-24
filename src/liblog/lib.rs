@@ -10,7 +10,7 @@
 
 //! Utilities for program-wide and customizable logging
 //!
-//! ## Example
+//! # Examples
 //!
 //! ```
 //! #![feature(phase)]
@@ -64,8 +64,7 @@
 //! INFO:main: the answer was: 12
 //! ```
 //!
-//!
-//! ## Logging Macros
+//! # Logging Macros
 //!
 //! There are five macros that the logging subsystem uses:
 //!
@@ -86,7 +85,7 @@
 //!
 //! * `log_enabled!(level)` - returns true if logging of the given level is enabled
 //!
-//! ## Enabling logging
+//! # Enabling logging
 //!
 //! Log levels are controlled on a per-module basis, and by default all logging is
 //! disabled except for `error!` (a log level of 1). Logging is controlled via the
@@ -123,7 +122,7 @@
 //! * `hello,std::option` turns on hello, and std's option logging
 //! * `error,hello=warn` turn on global error logging and also warn for hello
 //!
-//! ## Filtering results
+//! # Filtering results
 //!
 //! A RUST_LOG directive may include a regex filter. The syntax is to append `/`
 //! followed by a regex. Each message is checked against the regex, and is only
@@ -143,7 +142,7 @@
 //!  hello. In both cases the log message must include a single digit number
 //!  followed by 'scopes'
 //!
-//! ## Performance and Side Effects
+//! # Performance and Side Effects
 //!
 //! Each of these macros will expand to code similar to:
 //!
@@ -158,20 +157,19 @@
 //! if logging is disabled, none of the components of the log will be executed.
 
 #![crate_name = "log"]
-#![experimental]
-#![license = "MIT/ASL2"]
+#![experimental = "use the crates.io `log` library instead"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(macro_rules)]
+#![feature(macro_rules, unboxed_closures, slicing_syntax)]
 #![deny(missing_docs)]
 
 extern crate regex;
 
-use regex::Regex;
+use std::cell::RefCell;
 use std::fmt;
 use std::io::LineBufferedWriter;
 use std::io;
@@ -180,6 +178,8 @@ use std::os;
 use std::rt;
 use std::slice;
 use std::sync::{Once, ONCE_INIT};
+
+use regex::Regex;
 
 use directive::LOG_LEVEL_NAMES;
 
@@ -213,7 +213,11 @@ pub const WARN: u32 = 2;
 /// Error log level
 pub const ERROR: u32 = 1;
 
-local_data_key!(local_logger: Box<Logger + Send>)
+thread_local! {
+    static LOCAL_LOGGER: RefCell<Option<Box<Logger + Send>>> = {
+        RefCell::new(None)
+    }
+}
 
 /// A trait used to represent an interface to a task-local logger. Each task
 /// can have its own custom logger which can respond to logging messages
@@ -228,7 +232,7 @@ struct DefaultLogger {
 }
 
 /// Wraps the log level with fmt implementations.
-#[deriving(PartialEq, PartialOrd)]
+#[deriving(Copy, PartialEq, PartialOrd)]
 pub struct LogLevel(pub u32);
 
 impl fmt::Show for LogLevel {
@@ -276,14 +280,16 @@ pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
     // Test the literal string from args against the current filter, if there
     // is one.
     match unsafe { FILTER.as_ref() } {
-        Some(filter) if !filter.is_match(args.to_string().as_slice()) => return,
+        Some(filter) if !filter.is_match(args.to_string()[]) => return,
         _ => {}
     }
 
     // Completely remove the local logger from TLS in case anyone attempts to
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
-    let mut logger = local_logger.replace(None).unwrap_or_else(|| {
+    let mut logger = LOCAL_LOGGER.with(|s| {
+        s.borrow_mut().take()
+    }).unwrap_or_else(|| {
         box DefaultLogger { handle: io::stderr() } as Box<Logger + Send>
     });
     logger.log(&LogRecord {
@@ -293,7 +299,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
         module_path: loc.module_path,
         line: loc.line,
     });
-    local_logger.replace(Some(logger));
+    set_logger(logger);
 }
 
 /// Getter for the global log level. This is a function so that it can be called
@@ -305,7 +311,10 @@ pub fn log_level() -> u32 { unsafe { LOG_LEVEL } }
 /// Replaces the task-local logger with the specified logger, returning the old
 /// logger.
 pub fn set_logger(logger: Box<Logger + Send>) -> Option<Box<Logger + Send>> {
-    local_logger.replace(Some(logger))
+    let mut l = Some(logger);
+    LOCAL_LOGGER.with(|slot| {
+        mem::replace(&mut *slot.borrow_mut(), l.take())
+    })
 }
 
 /// A LogRecord is created by the logging macros, and passed as the only
@@ -330,6 +339,7 @@ pub struct LogRecord<'a> {
 }
 
 #[doc(hidden)]
+#[deriving(Copy)]
 pub struct LogLocation {
     pub module_path: &'static str,
     pub file: &'static str,
@@ -360,12 +370,12 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
 
 fn enabled(level: u32,
            module: &str,
-           iter: slice::Items<directive::LogDirective>)
+           iter: slice::Iter<directive::LogDirective>)
            -> bool {
     // Search for the longest match, the vector is assumed to be pre-sorted.
     for directive in iter.rev() {
         match directive.name {
-            Some(ref name) if !module.starts_with(name.as_slice()) => {},
+            Some(ref name) if !module.starts_with(name[]) => {},
             Some(..) | None => {
                 return level <= directive.level
             }
@@ -380,7 +390,7 @@ fn enabled(level: u32,
 /// `Once` primitive (and this function is called from that primitive).
 fn init() {
     let (mut directives, filter) = match os::getenv("RUST_LOG") {
-        Some(spec) => directive::parse_logging_spec(spec.as_slice()),
+        Some(spec) => directive::parse_logging_spec(spec[]),
         None => (Vec::new(), None),
     };
 
@@ -410,7 +420,7 @@ fn init() {
         DIRECTIVES = mem::transmute(box directives);
 
         // Schedule the cleanup for the globals for when the runtime exits.
-        rt::at_exit(proc() {
+        rt::at_exit(move |:| {
             assert!(!DIRECTIVES.is_null());
             let _directives: Box<Vec<directive::LogDirective>> =
                 mem::transmute(DIRECTIVES);

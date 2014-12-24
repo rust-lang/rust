@@ -58,14 +58,13 @@
 
 #![crate_name = "alloc"]
 #![experimental]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![no_std]
-#![feature(lang_items, phase, unsafe_destructor)]
+#![feature(lang_items, phase, unsafe_destructor, default_type_params)]
 
 #[phase(plugin, link)]
 extern crate core;

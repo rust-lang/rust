@@ -8,38 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! rustc compiler intrinsics.
-
-The corresponding definitions are in librustc/middle/trans/foreign.rs.
-
-# Volatiles
-
-The volatile intrinsics provide operations intended to act on I/O
-memory, which are guaranteed to not be reordered by the compiler
-across other volatile intrinsics. See the LLVM documentation on
-[[volatile]].
-
-[volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
-
-# Atomics
-
-The atomic intrinsics provide common atomic operations on machine
-words, with multiple possible memory orderings. They obey the same
-semantics as C++11. See the LLVM documentation on [[atomics]].
-
-[atomics]: http://llvm.org/docs/Atomics.html
-
-A quick refresher on memory ordering:
-
-* Acquire - a barrier for acquiring a lock. Subsequent reads and writes
-  take place after the barrier.
-* Release - a barrier for releasing a lock. Preceding reads and writes
-  take place before the barrier.
-* Sequentially consistent - sequentially consistent operations are
-  guaranteed to happen in order. This is the standard mode for working
-  with atomic types and is equivalent to Java's `volatile`.
-
-*/
+//! rustc compiler intrinsics.
+//!
+//! The corresponding definitions are in librustc_trans/trans/intrinsic.rs.
+//!
+//! # Volatiles
+//!
+//! The volatile intrinsics provide operations intended to act on I/O
+//! memory, which are guaranteed to not be reordered by the compiler
+//! across other volatile intrinsics. See the LLVM documentation on
+//! [[volatile]].
+//!
+//! [volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
+//!
+//! # Atomics
+//!
+//! The atomic intrinsics provide common atomic operations on machine
+//! words, with multiple possible memory orderings. They obey the same
+//! semantics as C++11. See the LLVM documentation on [[atomics]].
+//!
+//! [atomics]: http://llvm.org/docs/Atomics.html
+//!
+//! A quick refresher on memory ordering:
+//!
+//! * Acquire - a barrier for acquiring a lock. Subsequent reads and writes
+//!   take place after the barrier.
+//! * Release - a barrier for releasing a lock. Preceding reads and writes
+//!   take place before the barrier.
+//! * Sequentially consistent - sequentially consistent operations are
+//!   guaranteed to happen in order. This is the standard mode for working
+//!   with atomic types and is equivalent to Java's `volatile`.
 
 #![experimental]
 #![allow(missing_docs)]
@@ -47,6 +45,7 @@ A quick refresher on memory ordering:
 pub type GlueFn = extern "Rust" fn(*const i8);
 
 #[lang="ty_desc"]
+#[deriving(Copy)]
 pub struct TyDesc {
     // sizeof(T)
     pub size: uint,
@@ -215,6 +214,7 @@ extern "rust-intrinsic" {
     ///
     /// `forget` is unsafe because the caller is responsible for
     /// ensuring the argument is deallocated already.
+    #[stable]
     pub fn forget<T>(_: T) -> ();
 
     /// Unsafely transforms a value of one type into a value of another type.
@@ -222,14 +222,15 @@ extern "rust-intrinsic" {
     /// Both types must have the same size and alignment, and this guarantee
     /// is enforced at compile-time.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::mem;
     ///
     /// let v: &[u8] = unsafe { mem::transmute("L") };
-    /// assert!(v == &[76u8]);
+    /// assert!(v == [76u8]);
     /// ```
+    #[stable]
     pub fn transmute<T,U>(e: T) -> U;
 
     /// Gives the address for the return value of the enclosing function.
@@ -252,14 +253,20 @@ extern "rust-intrinsic" {
     /// integer, since the conversion would throw away aliasing information.
     pub fn offset<T>(dst: *const T, offset: int) -> *const T;
 
-    /// Copies data from one location to another.
-    ///
-    /// Copies `count` elements (not bytes) from `src` to `dst`. The source
+    /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may *not* overlap.
     ///
     /// `copy_nonoverlapping_memory` is semantically equivalent to C's `memcpy`.
     ///
-    /// # Example
+    /// # Safety
+    ///
+    /// Beyond requiring that both regions of memory be allocated, it is Undefined Behaviour
+    /// for source and destination to overlap. Care must also be taken with the ownership of
+    /// `src` and `dst`. This method semantically moves the values of `src` into `dst`.
+    /// However it does not drop the contents of `dst`, or prevent the contents of `src`
+    /// from being dropped or used.
+    ///
+    /// # Examples
     ///
     /// A safe swap function:
     ///
@@ -283,22 +290,22 @@ extern "rust-intrinsic" {
     ///     }
     /// }
     /// ```
-    ///
-    /// # Safety Note
-    ///
-    /// If the source and destination overlap then the behavior of this
-    /// function is undefined.
     #[unstable]
     pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint);
 
-    /// Copies data from one location to another.
-    ///
-    /// Copies `count` elements (not bytes) from `src` to `dst`. The source
+    /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may overlap.
     ///
     /// `copy_memory` is semantically equivalent to C's `memmove`.
     ///
-    /// # Example
+    /// # Safety
+    ///
+    /// Care must be taken with the ownership of `src` and `dst`.
+    /// This method semantically moves the values of `src` into `dst`.
+    /// However it does not drop the contents of `dst`, or prevent the contents of `src`
+    /// from being dropped or used.
+    ///
+    /// # Examples
     ///
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
@@ -536,7 +543,7 @@ extern "rust-intrinsic" {
 /// `TypeId` represents a globally unique identifier for a type
 #[lang="type_id"] // This needs to be kept in lockstep with the code in trans/intrinsic.rs and
                   // middle/lang_items.rs
-#[deriving(Clone, PartialEq, Eq, Show)]
+#[deriving(Clone, Copy, PartialEq, Eq, Show)]
 pub struct TypeId {
     t: u64,
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_type = "bin"]
-#![feature(phase, slicing_syntax, globs)]
+#![feature(phase, slicing_syntax, globs, unboxed_closures)]
 
 #![deny(warnings)]
 
@@ -23,6 +23,7 @@ use std::os;
 use std::io;
 use std::io::fs;
 use std::str::FromStr;
+use std::thunk::{Thunk};
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
@@ -151,7 +152,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
             matches.opt_str("ratchet-metrics").map(|s| Path::new(s)),
         ratchet_noise_percent:
             matches.opt_str("ratchet-noise-percent")
-                   .and_then(|s| from_str::<f64>(s.as_slice())),
+                   .and_then(|s| s.as_slice().parse::<f64>()),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
@@ -189,9 +190,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("filter: {}",
                     opt_str(&config.filter
                                    .as_ref()
-                                   .map(|re| {
-                                       re.to_string().into_string()
-                                   }))));
+                                   .map(|re| re.to_string()))));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(c, format!("host-rustcflags: {}",
                     opt_str(&config.host_rustcflags)));
@@ -286,6 +285,9 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         test_shard: config.test_shard.clone(),
         nocapture: false,
         color: test::AutoColor,
+        show_boxplot: false,
+        boxplot_width: 50,
+        show_all_stats: false,
     }
 }
 
@@ -343,7 +345,7 @@ pub fn make_test(config: &Config, testfile: &Path, f: || -> test::TestFn)
         desc: test::TestDesc {
             name: make_test_name(config, testfile),
             ignore: header::is_test_ignored(config, testfile),
-            should_fail: false
+            should_fail: test::ShouldFail::No,
         },
         testfn: f(),
     }
@@ -366,16 +368,16 @@ pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = testfile.as_str().unwrap().to_string();
-    test::DynTestFn(proc() {
+    test::DynTestFn(Thunk::new(move || {
         runtest::run(config, testfile)
-    })
+    }))
 }
 
 pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = testfile.as_str().unwrap().to_string();
-    test::DynMetricFn(proc(mm) {
+    test::DynMetricFn(box move |: mm: &mut test::MetricMap| {
         runtest::run_metrics(config, testfile, mm)
     })
 }
@@ -390,7 +392,7 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
 
             match re.captures(full_version_line) {
                 Some(captures) => {
-                    Some(captures.at(2).to_string())
+                    Some(captures.at(2).unwrap_or("").to_string())
                 }
                 None => {
                     println!("Could not extract GDB version from line '{}'",
@@ -424,7 +426,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
 
             match re.captures(full_version_line) {
                 Some(captures) => {
-                    Some(captures.at(1).to_string())
+                    Some(captures.at(1).unwrap_or("").to_string())
                 }
                 None => {
                     println!("Could not extract LLDB version from line '{}'",

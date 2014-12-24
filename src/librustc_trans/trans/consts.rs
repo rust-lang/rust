@@ -13,22 +13,14 @@ use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, Bool, True, False};
 use llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, IntSLT, IntSLE,
-    RealOEQ, RealOGT, RealOGE, RealOLT, RealOLE, RealONE};
+           RealOEQ, RealOGT, RealOGE, RealOLT, RealOLE, RealONE};
 use metadata::csearch;
-use middle::const_eval;
-use middle::def;
-use trans::adt;
-use trans::base;
-use trans::base::push_ctxt;
-use trans::closure;
+use middle::{const_eval, def};
+use trans::{adt, closure, consts, debuginfo, expr, inline, machine};
+use trans::base::{mod, push_ctxt};
 use trans::common::*;
-use trans::consts;
-use trans::expr;
-use trans::inline;
-use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
-use trans::debuginfo;
 use middle::ty::{mod, Ty};
 use util::ppaux::{Repr, ty_to_string};
 
@@ -62,7 +54,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
                 _ => cx.sess().span_bug(lit.span,
                         format!("integer literal has type {} (expected int \
                                  or uint)",
-                                ty_to_string(cx.tcx(), lit_int_ty)).as_slice())
+                                ty_to_string(cx.tcx(), lit_int_ty))[])
             }
         }
         ast::LitFloat(ref fs, t) => {
@@ -82,7 +74,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
         }
         ast::LitBool(b) => C_bool(cx, b),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
-        ast::LitBinary(ref data) => C_binary_slice(cx, data.as_slice()),
+        ast::LitBinary(ref data) => C_binary_slice(cx, data[]),
     }
 }
 
@@ -99,13 +91,13 @@ fn const_vec(cx: &CrateContext, e: &ast::Expr,
     let vec_ty = ty::expr_ty(cx.tcx(), e);
     let unit_ty = ty::sequence_element_type(cx.tcx(), vec_ty);
     let llunitty = type_of::type_of(cx, unit_ty);
-    let vs = es.iter().map(|e| const_expr(cx, &**e).val0())
+    let vs = es.iter().map(|e| const_expr(cx, &**e).0)
                       .collect::<Vec<_>>();
     // If the vector contains enums, an LLVM array won't work.
     let v = if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-        C_struct(cx, vs.as_slice(), false)
+        C_struct(cx, vs[], false)
     } else {
-        C_array(llunitty, vs.as_slice())
+        C_array(llunitty, vs[])
     };
     (v, llunitty)
 }
@@ -160,13 +152,13 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, v: ValueRef,
                 }
                 _ => {
                     cx.sess().bug(format!("unexpected dereferenceable type {}",
-                                          ty_to_string(cx.tcx(), t)).as_slice())
+                                          ty_to_string(cx.tcx(), t))[])
                 }
             }
         }
         None => {
             cx.sess().bug(format!("cannot dereference const of type {}",
-                                  ty_to_string(cx.tcx(), t)).as_slice())
+                                  ty_to_string(cx.tcx(), t))[])
         }
     }
 }
@@ -179,9 +171,8 @@ pub fn get_const_val(cx: &CrateContext,
             def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
 
-        match cx.tcx().map.expect_item(def_id.node).node {
-            ast::ItemConst(..) => { base::get_item_val(cx, def_id.node); }
-            _ => {}
+        if let ast::ItemConst(..) = cx.tcx().map.expect_item(def_id.node).node {
+            base::get_item_val(cx, def_id.node);
         }
     }
 
@@ -199,20 +190,23 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
         None => { }
         Some(adj) => {
             match adj {
-                ty::AdjustAddEnv(ty::RegionTraitStore(ty::ReStatic, _)) => {
-                    let def = ty::resolve_expr(cx.tcx(), e);
+                ty::AdjustAddEnv(def_id, ty::RegionTraitStore(ty::ReStatic, _)) => {
                     let wrapper = closure::get_wrapper_for_bare_fn(cx,
                                                                    ety_adjusted,
-                                                                   def,
+                                                                   def_id,
                                                                    llconst,
                                                                    true);
                     llconst = C_struct(cx, &[wrapper, C_null(Type::i8p(cx))], false)
                 }
-                ty::AdjustAddEnv(store) => {
+                ty::AdjustAddEnv(_, store) => {
                     cx.sess()
                       .span_bug(e.span,
                                 format!("unexpected static function: {}",
-                                        store).as_slice())
+                                        store)[])
+                }
+                ty::AdjustReifyFnPointer(_def_id) => {
+                    // FIXME(#19925) once fn item types are
+                    // zero-sized, we'll need to do something here
                 }
                 ty::AdjustDerefRef(ref adj) => {
                     let mut ty = ety;
@@ -264,8 +258,8 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
                                         ty::ty_vec(unit_ty, Some(len)) => {
                                             let llunitty = type_of::type_of(cx, unit_ty);
                                             let llptr = const_ptrcast(cx, llconst, llunitty);
-                                            assert_eq!(abi::slice_elt_base, 0);
-                                            assert_eq!(abi::slice_elt_len, 1);
+                                            assert_eq!(abi::FAT_PTR_ADDR, 0);
+                                            assert_eq!(abi::FAT_PTR_EXTRA, 1);
                                             llconst = C_struct(cx, &[
                                                 llptr,
                                                 C_uint(cx, len)
@@ -273,7 +267,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
                                         }
                                         _ => cx.sess().span_bug(e.span,
                                             format!("unimplemented type in const unsize: {}",
-                                                    ty_to_string(cx.tcx(), ty)).as_slice())
+                                                    ty_to_string(cx.tcx(), ty))[])
                                     }
                                 }
                                 _ => {
@@ -281,7 +275,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
                                       .span_bug(e.span,
                                                 format!("unimplemented const \
                                                          autoref {}",
-                                                        autoref).as_slice())
+                                                        autoref)[])
                                 }
                             }
                         }
@@ -302,7 +296,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
         }
         cx.sess().bug(format!("const {} of type {} has size {} instead of {}",
                          e.repr(cx.tcx()), ty_to_string(cx.tcx(), ety),
-                         csize, tsize).as_slice());
+                         csize, tsize)[]);
     }
     (llconst, ety_adjusted)
 }
@@ -311,7 +305,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
 // if it's assigned to a static.
 fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
     let map_list = |exprs: &[P<ast::Expr>]| {
-        exprs.iter().map(|e| const_expr(cx, &**e).val0())
+        exprs.iter().map(|e| const_expr(cx, &**e).0)
              .fold(Vec::new(), |mut l, val| { l.push(val); l })
     };
     unsafe {
@@ -418,7 +412,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
               }
             }
           }
-          ast::ExprField(ref base, field, _) => {
+          ast::ExprField(ref base, field) => {
               let (bv, bt) = const_expr(cx, &**base);
               let brepr = adt::represent_type(cx, bt);
               expr::with_field_tys(cx.tcx(), bt, None, |discr, field_tys| {
@@ -426,7 +420,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   adt::const_get_field(cx, &*brepr, bv, discr, ix)
               })
           }
-          ast::ExprTupField(ref base, idx, _) => {
+          ast::ExprTupField(ref base, idx) => {
               let (bv, bt) = const_expr(cx, &**base);
               let brepr = adt::represent_type(cx, bt);
               expr::with_field_tys(cx.tcx(), bt, None, |discr, _| {
@@ -452,7 +446,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                       _ => cx.sess().span_bug(base.span,
                                               format!("index-expr base must be a vector \
                                                        or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt)).as_slice())
+                                                      ty_to_string(cx.tcx(), bt))[])
                   },
                   ty::ty_rptr(_, mt) => match mt.ty.sty {
                       ty::ty_vec(_, Some(u)) => {
@@ -461,12 +455,12 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                       _ => cx.sess().span_bug(base.span,
                                               format!("index-expr base must be a vector \
                                                        or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt)).as_slice())
+                                                      ty_to_string(cx.tcx(), bt))[])
                   },
                   _ => cx.sess().span_bug(base.span,
                                           format!("index-expr base must be a vector \
                                                    or string type, found {}",
-                                                  ty_to_string(cx.tcx(), bt)).as_slice())
+                                                  ty_to_string(cx.tcx(), bt))[])
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
@@ -554,12 +548,9 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   }
               }
               let opt_def = cx.tcx().def_map.borrow().get(&cur.id).cloned();
-              match opt_def {
-                  Some(def::DefStatic(def_id, _)) => {
-                      let ty = ty::expr_ty(cx.tcx(), e);
-                      return get_static_val(cx, def_id, ty);
-                  }
-                  _ => {}
+              if let Some(def::DefStatic(def_id, _)) = opt_def {
+                  let ty = ty::expr_ty(cx.tcx(), e);
+                  return get_static_val(cx, def_id, ty);
               }
 
               // If this isn't the address of a static, then keep going through
@@ -570,8 +561,8 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
           ast::ExprTup(ref es) => {
               let ety = ty::expr_ty(cx.tcx(), e);
               let repr = adt::represent_type(cx, ety);
-              let vals = map_list(es.as_slice());
-              adt::trans_const(cx, &*repr, 0, vals.as_slice())
+              let vals = map_list(es[]);
+              adt::trans_const(cx, &*repr, 0, vals[])
           }
           ast::ExprStruct(_, ref fs, ref base_opt) => {
               let ety = ty::expr_ty(cx.tcx(), e);
@@ -587,7 +578,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   let cs = field_tys.iter().enumerate()
                                     .map(|(ix, &field_ty)| {
                       match fs.iter().find(|f| field_ty.name == f.ident.node.name) {
-                          Some(ref f) => const_expr(cx, &*f.expr).val0(),
+                          Some(ref f) => const_expr(cx, &*f.expr).0,
                           None => {
                               match base_val {
                                   Some((bv, _)) => {
@@ -602,11 +593,11 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                           }
                       }
                   }).collect::<Vec<_>>();
-                  adt::trans_const(cx, &*repr, discr, cs.as_slice())
+                  adt::trans_const(cx, &*repr, discr, cs[])
               })
           }
           ast::ExprVec(ref es) => {
-            const_vec(cx, e, es.as_slice()).val0()
+            const_vec(cx, e, es.as_slice()).0
           }
           ast::ExprRepeat(ref elem, ref count) => {
             let vec_ty = ty::expr_ty(cx.tcx(), e);
@@ -617,11 +608,11 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                 const_eval::const_uint(i) => i as uint,
                 _ => cx.sess().span_bug(count.span, "count must be integral const expression.")
             };
-            let vs = Vec::from_elem(n, const_expr(cx, &**elem).val0());
+            let vs = Vec::from_elem(n, const_expr(cx, &**elem).0);
             if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-                C_struct(cx, vs.as_slice(), false)
+                C_struct(cx, vs[], false)
             } else {
-                C_array(llunitty, vs.as_slice())
+                C_array(llunitty, vs[])
             }
           }
           ast::ExprPath(ref pth) => {
@@ -667,8 +658,8 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   Some(def::DefStruct(_)) => {
                       let ety = ty::expr_ty(cx.tcx(), e);
                       let repr = adt::represent_type(cx, ety);
-                      let arg_vals = map_list(args.as_slice());
-                      adt::trans_const(cx, &*repr, 0, arg_vals.as_slice())
+                      let arg_vals = map_list(args[]);
+                      adt::trans_const(cx, &*repr, 0, arg_vals[])
                   }
                   Some(def::DefVariant(enum_did, variant_did, _)) => {
                       let ety = ty::expr_ty(cx.tcx(), e);
@@ -676,19 +667,19 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                       let vinfo = ty::enum_variant_with_id(cx.tcx(),
                                                            enum_did,
                                                            variant_did);
-                      let arg_vals = map_list(args.as_slice());
+                      let arg_vals = map_list(args[]);
                       adt::trans_const(cx,
                                        &*repr,
                                        vinfo.disr_val,
-                                       arg_vals.as_slice())
+                                       arg_vals[])
                   }
                   _ => cx.sess().span_bug(e.span, "expected a struct or variant def")
               }
           }
-          ast::ExprParen(ref e) => const_expr(cx, &**e).val0(),
+          ast::ExprParen(ref e) => const_expr(cx, &**e).0,
           ast::ExprBlock(ref block) => {
             match block.expr {
-                Some(ref expr) => const_expr(cx, &**expr).val0(),
+                Some(ref expr) => const_expr(cx, &**expr).0,
                 None => C_nil(cx)
             }
           }

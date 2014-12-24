@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-14 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,18 +12,27 @@
 fn main() {
 
     // Testing that method lookup does not automatically borrow
-    // vectors to slices then automatically create a &mut self
-    // reference.  That would allow creating a mutable pointer to a
-    // temporary, which would be a source of confusion
+    // vectors to slices then automatically create a self reference.
 
     let mut a = vec!(0);
     a.test_mut(); //~ ERROR does not implement any method in scope named `test_mut`
+    a.test(); //~ ERROR does not implement any method in scope named `test`
+
+    ([1]).test(); //~ ERROR does not implement any method in scope named `test`
+    (&[1]).test(); //~ ERROR does not implement any method in scope named `test`
 }
 
 trait MyIter {
     fn test_mut(&mut self);
+    fn test(&self);
 }
 
 impl<'a> MyIter for &'a [int] {
     fn test_mut(&mut self) { }
+    fn test(&self) { }
+}
+
+impl<'a> MyIter for &'a str {
+    fn test_mut(&mut self) { }
+    fn test(&self) { }
 }

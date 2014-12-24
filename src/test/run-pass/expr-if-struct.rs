@@ -16,6 +16,8 @@
 
 struct I { i: int }
 
+impl Copy for I {}
+
 fn test_rec() {
     let rs = if true { I {i: 100} } else { I {i: 101} };
     assert_eq!(rs.i, 100);
@@ -23,6 +25,8 @@ fn test_rec() {
 
 #[deriving(Show)]
 enum mood { happy, sad, }
+
+impl Copy for mood {}
 
 impl PartialEq for mood {
     fn eq(&self, other: &mood) -> bool {

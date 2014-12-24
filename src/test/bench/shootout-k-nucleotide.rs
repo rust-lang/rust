@@ -46,10 +46,10 @@ use std::string::String;
 use std::slice;
 use std::sync::{Arc, Future};
 
-static TABLE: [u8, ..4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
+static TABLE: [u8;4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
 static TABLE_SIZE: uint = 2 << 16;
 
-static OCCURRENCES: [&'static str, ..5] = [
+static OCCURRENCES: [&'static str;5] = [
     "GGT",
     "GGTA",
     "GGTATT",
@@ -61,6 +61,8 @@ static OCCURRENCES: [&'static str, ..5] = [
 
 #[deriving(PartialEq, PartialOrd, Ord, Eq)]
 struct Code(u64);
+
+impl Copy for Code {}
 
 impl Code {
     fn hash(&self) -> u64 {
@@ -128,7 +130,7 @@ struct Table {
 
 struct Items<'a> {
     cur: Option<&'a Entry>,
-    items: slice::Items<'a, Option<Box<Entry>>>,
+    items: slice::Iter<'a, Option<Box<Entry>>>,
 }
 
 impl Table {
@@ -295,17 +297,17 @@ fn main() {
         let fd = std::io::File::open(&Path::new("shootout-k-nucleotide.data"));
         get_sequence(&mut std::io::BufferedReader::new(fd), ">THREE")
     } else {
-        get_sequence(&mut std::io::stdin(), ">THREE")
+        get_sequence(&mut *std::io::stdin().lock(), ">THREE")
     };
     let input = Arc::new(input);
 
     let nb_freqs: Vec<(uint, Future<Table>)> = range(1u, 3).map(|i| {
         let input = input.clone();
-        (i, Future::spawn(proc() generate_frequencies(input.as_slice(), i)))
+        (i, Future::spawn(move|| generate_frequencies(input.as_slice(), i)))
     }).collect();
     let occ_freqs: Vec<Future<Table>> = OCCURRENCES.iter().map(|&occ| {
         let input = input.clone();
-        Future::spawn(proc() generate_frequencies(input.as_slice(), occ.len()))
+        Future::spawn(move|| generate_frequencies(input.as_slice(), occ.len()))
     }).collect();
 
     for (i, freq) in nb_freqs.into_iter() {

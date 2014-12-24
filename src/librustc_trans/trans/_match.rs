@@ -8,183 +8,179 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- *
- * # Compilation of match statements
- *
- * I will endeavor to explain the code as best I can.  I have only a loose
- * understanding of some parts of it.
- *
- * ## Matching
- *
- * The basic state of the code is maintained in an array `m` of `Match`
- * objects.  Each `Match` describes some list of patterns, all of which must
- * match against the current list of values.  If those patterns match, then
- * the arm listed in the match is the correct arm.  A given arm may have
- * multiple corresponding match entries, one for each alternative that
- * remains.  As we proceed these sets of matches are adjusted by the various
- * `enter_XXX()` functions, each of which adjusts the set of options given
- * some information about the value which has been matched.
- *
- * So, initially, there is one value and N matches, each of which have one
- * constituent pattern.  N here is usually the number of arms but may be
- * greater, if some arms have multiple alternatives.  For example, here:
- *
- *     enum Foo { A, B(int), C(uint, uint) }
- *     match foo {
- *         A => ...,
- *         B(x) => ...,
- *         C(1u, 2) => ...,
- *         C(_) => ...
- *     }
- *
- * The value would be `foo`.  There would be four matches, each of which
- * contains one pattern (and, in one case, a guard).  We could collect the
- * various options and then compile the code for the case where `foo` is an
- * `A`, a `B`, and a `C`.  When we generate the code for `C`, we would (1)
- * drop the two matches that do not match a `C` and (2) expand the other two
- * into two patterns each.  In the first case, the two patterns would be `1u`
- * and `2`, and the in the second case the _ pattern would be expanded into
- * `_` and `_`.  The two values are of course the arguments to `C`.
- *
- * Here is a quick guide to the various functions:
- *
- * - `compile_submatch()`: The main workhouse.  It takes a list of values and
- *   a list of matches and finds the various possibilities that could occur.
- *
- * - `enter_XXX()`: modifies the list of matches based on some information
- *   about the value that has been matched.  For example,
- *   `enter_rec_or_struct()` adjusts the values given that a record or struct
- *   has been matched.  This is an infallible pattern, so *all* of the matches
- *   must be either wildcards or record/struct patterns.  `enter_opt()`
- *   handles the fallible cases, and it is correspondingly more complex.
- *
- * ## Bindings
- *
- * We store information about the bound variables for each arm as part of the
- * per-arm `ArmData` struct.  There is a mapping from identifiers to
- * `BindingInfo` structs.  These structs contain the mode/id/type of the
- * binding, but they also contain an LLVM value which points at an alloca
- * called `llmatch`. For by value bindings that are Copy, we also create
- * an extra alloca that we copy the matched value to so that any changes
- * we do to our copy is not reflected in the original and vice-versa.
- * We don't do this if it's a move since the original value can't be used
- * and thus allowing us to cheat in not creating an extra alloca.
- *
- * The `llmatch` binding always stores a pointer into the value being matched
- * which points at the data for the binding.  If the value being matched has
- * type `T`, then, `llmatch` will point at an alloca of type `T*` (and hence
- * `llmatch` has type `T**`).  So, if you have a pattern like:
- *
- *    let a: A = ...;
- *    let b: B = ...;
- *    match (a, b) { (ref c, d) => { ... } }
- *
- * For `c` and `d`, we would generate allocas of type `C*` and `D*`
- * respectively.  These are called the `llmatch`.  As we match, when we come
- * up against an identifier, we store the current pointer into the
- * corresponding alloca.
- *
- * Once a pattern is completely matched, and assuming that there is no guard
- * pattern, we will branch to a block that leads to the body itself.  For any
- * by-value bindings, this block will first load the ptr from `llmatch` (the
- * one of type `D*`) and then load a second time to get the actual value (the
- * one of type `D`). For by ref bindings, the value of the local variable is
- * simply the first alloca.
- *
- * So, for the example above, we would generate a setup kind of like this:
- *
- *        +-------+
- *        | Entry |
- *        +-------+
- *            |
- *        +--------------------------------------------+
- *        | llmatch_c = (addr of first half of tuple)  |
- *        | llmatch_d = (addr of second half of tuple) |
- *        +--------------------------------------------+
- *            |
- *        +--------------------------------------+
- *        | *llbinding_d = **llmatch_d           |
- *        +--------------------------------------+
- *
- * If there is a guard, the situation is slightly different, because we must
- * execute the guard code.  Moreover, we need to do so once for each of the
- * alternatives that lead to the arm, because if the guard fails, they may
- * have different points from which to continue the search. Therefore, in that
- * case, we generate code that looks more like:
- *
- *        +-------+
- *        | Entry |
- *        +-------+
- *            |
- *        +-------------------------------------------+
- *        | llmatch_c = (addr of first half of tuple) |
- *        | llmatch_d = (addr of first half of tuple) |
- *        +-------------------------------------------+
- *            |
- *        +-------------------------------------------------+
- *        | *llbinding_d = **llmatch_d                      |
- *        | check condition                                 |
- *        | if false { goto next case }                     |
- *        | if true { goto body }                           |
- *        +-------------------------------------------------+
- *
- * The handling for the cleanups is a bit... sensitive.  Basically, the body
- * is the one that invokes `add_clean()` for each binding.  During the guard
- * evaluation, we add temporary cleanups and revoke them after the guard is
- * evaluated (it could fail, after all). Note that guards and moves are
- * just plain incompatible.
- *
- * Some relevant helper functions that manage bindings:
- * - `create_bindings_map()`
- * - `insert_lllocals()`
- *
- *
- * ## Notes on vector pattern matching.
- *
- * Vector pattern matching is surprisingly tricky. The problem is that
- * the structure of the vector isn't fully known, and slice matches
- * can be done on subparts of it.
- *
- * The way that vector pattern matches are dealt with, then, is as
- * follows. First, we make the actual condition associated with a
- * vector pattern simply a vector length comparison. So the pattern
- * [1, .. x] gets the condition "vec len >= 1", and the pattern
- * [.. x] gets the condition "vec len >= 0". The problem here is that
- * having the condition "vec len >= 1" hold clearly does not mean that
- * only a pattern that has exactly that condition will match. This
- * means that it may well be the case that a condition holds, but none
- * of the patterns matching that condition match; to deal with this,
- * when doing vector length matches, we have match failures proceed to
- * the next condition to check.
- *
- * There are a couple more subtleties to deal with. While the "actual"
- * condition associated with vector length tests is simply a test on
- * the vector length, the actual vec_len Opt entry contains more
- * information used to restrict which matches are associated with it.
- * So that all matches in a submatch are matching against the same
- * values from inside the vector, they are split up by how many
- * elements they match at the front and at the back of the vector. In
- * order to make sure that arms are properly checked in order, even
- * with the overmatching conditions, each vec_len Opt entry is
- * associated with a range of matches.
- * Consider the following:
- *
- *   match &[1, 2, 3] {
- *       [1, 1, .. _] => 0,
- *       [1, 2, 2, .. _] => 1,
- *       [1, 2, 3, .. _] => 2,
- *       [1, 2, .. _] => 3,
- *       _ => 4
- *   }
- * The proper arm to match is arm 2, but arms 0 and 3 both have the
- * condition "len >= 2". If arm 3 was lumped in with arm 0, then the
- * wrong branch would be taken. Instead, vec_len Opts are associated
- * with a contiguous range of matches that have the same "shape".
- * This is sort of ugly and requires a bunch of special handling of
- * vec_len options.
- *
- */
+//! # Compilation of match statements
+//!
+//! I will endeavor to explain the code as best I can.  I have only a loose
+//! understanding of some parts of it.
+//!
+//! ## Matching
+//!
+//! The basic state of the code is maintained in an array `m` of `Match`
+//! objects.  Each `Match` describes some list of patterns, all of which must
+//! match against the current list of values.  If those patterns match, then
+//! the arm listed in the match is the correct arm.  A given arm may have
+//! multiple corresponding match entries, one for each alternative that
+//! remains.  As we proceed these sets of matches are adjusted by the various
+//! `enter_XXX()` functions, each of which adjusts the set of options given
+//! some information about the value which has been matched.
+//!
+//! So, initially, there is one value and N matches, each of which have one
+//! constituent pattern.  N here is usually the number of arms but may be
+//! greater, if some arms have multiple alternatives.  For example, here:
+//!
+//!     enum Foo { A, B(int), C(uint, uint) }
+//!     match foo {
+//!         A => ...,
+//!         B(x) => ...,
+//!         C(1u, 2) => ...,
+//!         C(_) => ...
+//!     }
+//!
+//! The value would be `foo`.  There would be four matches, each of which
+//! contains one pattern (and, in one case, a guard).  We could collect the
+//! various options and then compile the code for the case where `foo` is an
+//! `A`, a `B`, and a `C`.  When we generate the code for `C`, we would (1)
+//! drop the two matches that do not match a `C` and (2) expand the other two
+//! into two patterns each.  In the first case, the two patterns would be `1u`
+//! and `2`, and the in the second case the _ pattern would be expanded into
+//! `_` and `_`.  The two values are of course the arguments to `C`.
+//!
+//! Here is a quick guide to the various functions:
+//!
+//! - `compile_submatch()`: The main workhouse.  It takes a list of values and
+//!   a list of matches and finds the various possibilities that could occur.
+//!
+//! - `enter_XXX()`: modifies the list of matches based on some information
+//!   about the value that has been matched.  For example,
+//!   `enter_rec_or_struct()` adjusts the values given that a record or struct
+//!   has been matched.  This is an infallible pattern, so *all* of the matches
+//!   must be either wildcards or record/struct patterns.  `enter_opt()`
+//!   handles the fallible cases, and it is correspondingly more complex.
+//!
+//! ## Bindings
+//!
+//! We store information about the bound variables for each arm as part of the
+//! per-arm `ArmData` struct.  There is a mapping from identifiers to
+//! `BindingInfo` structs.  These structs contain the mode/id/type of the
+//! binding, but they also contain an LLVM value which points at an alloca
+//! called `llmatch`. For by value bindings that are Copy, we also create
+//! an extra alloca that we copy the matched value to so that any changes
+//! we do to our copy is not reflected in the original and vice-versa.
+//! We don't do this if it's a move since the original value can't be used
+//! and thus allowing us to cheat in not creating an extra alloca.
+//!
+//! The `llmatch` binding always stores a pointer into the value being matched
+//! which points at the data for the binding.  If the value being matched has
+//! type `T`, then, `llmatch` will point at an alloca of type `T*` (and hence
+//! `llmatch` has type `T**`).  So, if you have a pattern like:
+//!
+//!    let a: A = ...;
+//!    let b: B = ...;
+//!    match (a, b) { (ref c, d) => { ... } }
+//!
+//! For `c` and `d`, we would generate allocas of type `C*` and `D*`
+//! respectively.  These are called the `llmatch`.  As we match, when we come
+//! up against an identifier, we store the current pointer into the
+//! corresponding alloca.
+//!
+//! Once a pattern is completely matched, and assuming that there is no guard
+//! pattern, we will branch to a block that leads to the body itself.  For any
+//! by-value bindings, this block will first load the ptr from `llmatch` (the
+//! one of type `D*`) and then load a second time to get the actual value (the
+//! one of type `D`). For by ref bindings, the value of the local variable is
+//! simply the first alloca.
+//!
+//! So, for the example above, we would generate a setup kind of like this:
+//!
+//!        +-------+
+//!        | Entry |
+//!        +-------+
+//!            |
+//!        +--------------------------------------------+
+//!        | llmatch_c = (addr of first half of tuple)  |
+//!        | llmatch_d = (addr of second half of tuple) |
+//!        +--------------------------------------------+
+//!            |
+//!        +--------------------------------------+
+//!        | *llbinding_d = **llmatch_d           |
+//!        +--------------------------------------+
+//!
+//! If there is a guard, the situation is slightly different, because we must
+//! execute the guard code.  Moreover, we need to do so once for each of the
+//! alternatives that lead to the arm, because if the guard fails, they may
+//! have different points from which to continue the search. Therefore, in that
+//! case, we generate code that looks more like:
+//!
+//!        +-------+
+//!        | Entry |
+//!        +-------+
+//!            |
+//!        +-------------------------------------------+
+//!        | llmatch_c = (addr of first half of tuple) |
+//!        | llmatch_d = (addr of first half of tuple) |
+//!        +-------------------------------------------+
+//!            |
+//!        +-------------------------------------------------+
+//!        | *llbinding_d = **llmatch_d                      |
+//!        | check condition                                 |
+//!        | if false { goto next case }                     |
+//!        | if true { goto body }                           |
+//!        +-------------------------------------------------+
+//!
+//! The handling for the cleanups is a bit... sensitive.  Basically, the body
+//! is the one that invokes `add_clean()` for each binding.  During the guard
+//! evaluation, we add temporary cleanups and revoke them after the guard is
+//! evaluated (it could fail, after all). Note that guards and moves are
+//! just plain incompatible.
+//!
+//! Some relevant helper functions that manage bindings:
+//! - `create_bindings_map()`
+//! - `insert_lllocals()`
+//!
+//!
+//! ## Notes on vector pattern matching.
+//!
+//! Vector pattern matching is surprisingly tricky. The problem is that
+//! the structure of the vector isn't fully known, and slice matches
+//! can be done on subparts of it.
+//!
+//! The way that vector pattern matches are dealt with, then, is as
+//! follows. First, we make the actual condition associated with a
+//! vector pattern simply a vector length comparison. So the pattern
+//! [1, .. x] gets the condition "vec len >= 1", and the pattern
+//! [.. x] gets the condition "vec len >= 0". The problem here is that
+//! having the condition "vec len >= 1" hold clearly does not mean that
+//! only a pattern that has exactly that condition will match. This
+//! means that it may well be the case that a condition holds, but none
+//! of the patterns matching that condition match; to deal with this,
+//! when doing vector length matches, we have match failures proceed to
+//! the next condition to check.
+//!
+//! There are a couple more subtleties to deal with. While the "actual"
+//! condition associated with vector length tests is simply a test on
+//! the vector length, the actual vec_len Opt entry contains more
+//! information used to restrict which matches are associated with it.
+//! So that all matches in a submatch are matching against the same
+//! values from inside the vector, they are split up by how many
+//! elements they match at the front and at the back of the vector. In
+//! order to make sure that arms are properly checked in order, even
+//! with the overmatching conditions, each vec_len Opt entry is
+//! associated with a range of matches.
+//! Consider the following:
+//!
+//!   match &[1, 2, 3] {
+//!       [1, 1, .. _] => 0,
+//!       [1, 2, 2, .. _] => 1,
+//!       [1, 2, 3, .. _] => 2,
+//!       [1, 2, .. _] => 3,
+//!       _ => 4
+//!   }
+//! The proper arm to match is arm 2, but arms 0 and 3 both have the
+//! condition "len >= 2". If arm 3 was lumped in with arm 0, then the
+//! wrong branch would be taken. Instead, vec_len Opts are associated
+//! with a contiguous range of matches that have the same "shape".
+//! This is sort of ugly and requires a bunch of special handling of
+//! vec_len options.
 
 pub use self::BranchKind::*;
 pub use self::OptResult::*;
@@ -197,12 +193,11 @@ use llvm::{ValueRef, BasicBlockRef};
 use middle::check_match::StaticInliner;
 use middle::check_match;
 use middle::const_eval;
-use middle::def;
+use middle::def::{mod, DefMap};
 use middle::expr_use_visitor as euv;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
 use middle::pat_util::*;
-use middle::resolve::DefMap;
 use trans::adt;
 use trans::base::*;
 use trans::build::{AddCase, And, BitCast, Br, CondBr, GEPi, InBoundsGEP, Load};
@@ -232,7 +227,7 @@ use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::ptr::P;
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
@@ -303,7 +298,7 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
     }
 }
 
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 pub enum BranchKind {
     NoBranch,
     Single,
@@ -318,22 +313,21 @@ pub enum OptResult<'blk, 'tcx: 'blk> {
     LowerBound(Result<'blk, 'tcx>)
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub enum TransBindingMode {
     TrByCopy(/* llbinding */ ValueRef),
     TrByMove,
     TrByRef,
 }
 
-/**
- * Information about a pattern binding:
- * - `llmatch` is a pointer to a stack slot.  The stack slot contains a
- *   pointer into the value being matched.  Hence, llmatch has type `T**`
- *   where `T` is the value being matched.
- * - `trmode` is the trans binding mode
- * - `id` is the node id of the binding
- * - `ty` is the Rust type of the binding */
- #[deriving(Clone)]
+/// Information about a pattern binding:
+/// - `llmatch` is a pointer to a stack slot.  The stack slot contains a
+///   pointer into the value being matched.  Hence, llmatch has type `T**`
+///   where `T` is the value being matched.
+/// - `trmode` is the trans binding mode
+/// - `id` is the node id of the binding
+/// - `ty` is the Rust type of the binding
+#[deriving(Clone, Copy)]
 pub struct BindingInfo<'tcx> {
     pub llmatch: ValueRef,
     pub trmode: TransBindingMode,
@@ -350,12 +344,10 @@ struct ArmData<'p, 'blk, 'tcx: 'blk> {
     bindings_map: BindingsMap<'tcx>
 }
 
-/**
- * Info about Match.
- * If all `pats` are matched then arm `data` will be executed.
- * As we proceed `bound_ptrs` are filled with pointers to values to be bound,
- * these pointers are stored in llmatch variables just before executing `data` arm.
- */
+/// Info about Match.
+/// If all `pats` are matched then arm `data` will be executed.
+/// As we proceed `bound_ptrs` are filled with pointers to values to be bound,
+/// these pointers are stored in llmatch variables just before executing `data` arm.
 struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pats: Vec<&'p ast::Pat>,
     data: &'a ArmData<'p, 'blk, 'tcx>,
@@ -435,7 +427,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _indenter = indenter();
 
     m.iter().filter_map(|br| {
-        e(br.pats.as_slice()).map(|pats| {
+        e(br.pats[]).map(|pats| {
             let this = br.pats[col];
             let mut bound_ptrs = br.bound_ptrs.clone();
             match this.node {
@@ -445,14 +437,11 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     }
                 }
                 ast::PatVec(ref before, Some(ref slice), ref after) => {
-                    match slice.node {
-                        ast::PatIdent(_, ref path, None) => {
-                            let subslice_val = bind_subslice_pat(
-                                bcx, this.id, val,
-                                before.len(), after.len());
-                            bound_ptrs.push((path.node, subslice_val));
-                        }
-                        _ => {}
+                    if let ast::PatIdent(_, ref path, None) = slice.node {
+                        let subslice_val = bind_subslice_pat(
+                            bcx, this.id, val,
+                            before.len(), after.len());
+                        bound_ptrs.push((path.node, subslice_val));
                     }
                 }
                 _ => {}
@@ -553,9 +542,13 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
             check_match::Constructor::Variant(def_id)
     };
 
-    let mcx = check_match::MatchCheckCtxt { tcx: bcx.tcx() };
+    let param_env = ty::empty_parameter_environment();
+    let mcx = check_match::MatchCheckCtxt {
+        tcx: bcx.tcx(),
+        param_env: param_env,
+    };
     enter_match(bcx, dm, m, col, val, |pats|
-        check_match::specialize(&mcx, pats.as_slice(), &ctor, col, variant_size)
+        check_match::specialize(&mcx, pats[], &ctor, col, variant_size)
     )
 }
 
@@ -620,12 +613,9 @@ fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     ExtractedBlock { vals: args, bcx: bcx }
 }
 
+/// Helper for converting from the ValueRef that we pass around in the match code, which is always
+/// an lvalue, into a Datum. Eventually we should just pass around a Datum and be done with it.
 fn match_datum<'tcx>(val: ValueRef, left_ty: Ty<'tcx>) -> Datum<'tcx, Lvalue> {
-    /*!
-     * Helper for converting from the ValueRef that we pass around in
-     * the match code, which is always an lvalue, into a Datum. Eventually
-     * we should just pass around a Datum and be done with it.
-     */
     Datum::new(val, left_ty, Lvalue)
 }
 
@@ -649,8 +639,8 @@ fn bind_subslice_pat(bcx: Block,
                                 ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable});
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
     Store(bcx, slice_begin,
-          GEPi(bcx, scratch.val, &[0u, abi::slice_elt_base]));
-    Store(bcx, slice_len, GEPi(bcx, scratch.val, &[0u, abi::slice_elt_len]));
+          GEPi(bcx, scratch.val, &[0u, abi::FAT_PTR_ADDR]));
+    Store(bcx, slice_len, GEPi(bcx, scratch.val, &[0u, abi::FAT_PTR_EXTRA]));
     scratch.val
 }
 
@@ -677,7 +667,7 @@ fn extract_vec_elems<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // pattern.  Note that, because the macro is well-typed, either ALL of the
 // matches should fit that sort of pattern or NONE (however, some of the
 // matches may be wildcards like _ or identifiers).
-macro_rules! any_pat (
+macro_rules! any_pat {
     ($m:expr, $col:expr, $pattern:pat) => (
         ($m).iter().any(|br| {
             match br.pats[$col].node {
@@ -686,7 +676,7 @@ macro_rules! any_pat (
             }
         })
     )
-)
+}
 
 fn any_uniq_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, col, ast::PatBox(_))
@@ -772,7 +762,7 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<uint> {
         }
     };
 
-    let column_contains_any_nonwild_patterns: |&uint| -> bool = |&col| {
+    let column_contains_any_nonwild_patterns = |&: &col: &uint| -> bool {
         m.iter().any(|row| match row.pats[col].node {
             ast::PatWild(_) => false,
             _ => true
@@ -800,7 +790,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         let did = langcall(cx,
                            None,
                            format!("comparison of `{}`",
-                                   cx.ty_to_string(rhs_t)).as_slice(),
+                                   cx.ty_to_string(rhs_t))[],
                            StrEqFnLangItem);
         callee::trans_lang_call(cx, did, &[lhs, rhs], None)
     }
@@ -831,15 +821,11 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 }
 
+/// For each binding in `data.bindings_map`, adds an appropriate entry into the `fcx.lllocals` map
 fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                bindings_map: &BindingsMap<'tcx>,
                                cs: Option<cleanup::ScopeId>)
                                -> Block<'blk, 'tcx> {
-    /*!
-     * For each binding in `data.bindings_map`, adds an appropriate entry into
-     * the `fcx.lllocals` map
-     */
-
     for (&ident, &binding_info) in bindings_map.iter() {
         let llval = match binding_info.trmode {
             // By value mut binding for a copy type: load from the ptr
@@ -849,9 +835,8 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let datum = Datum::new(llval, binding_info.ty, Lvalue);
                 call_lifetime_start(bcx, llbinding);
                 bcx = datum.store_to(bcx, llbinding);
-                match cs {
-                    Some(cs) => bcx.fcx.schedule_lifetime_end(cs, llbinding),
-                    _ => {}
+                if let Some(cs) = cs {
+                    bcx.fcx.schedule_lifetime_end(cs, llbinding);
                 }
 
                 llbinding
@@ -865,12 +850,9 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         };
 
         let datum = Datum::new(llval, binding_info.ty, Lvalue);
-        match cs {
-            Some(cs) => {
-                bcx.fcx.schedule_drop_and_zero_mem(cs, llval, binding_info.ty);
-                bcx.fcx.schedule_lifetime_end(cs, binding_info.llmatch);
-            }
-            _ => {}
+        if let Some(cs) = cs {
+            bcx.fcx.schedule_drop_and_zero_mem(cs, llval, binding_info.ty);
+            bcx.fcx.schedule_lifetime_end(cs, binding_info.llmatch);
         }
 
         debug!("binding {} to {}",
@@ -908,9 +890,8 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let val = val.to_llbool(bcx);
 
     for (_, &binding_info) in data.bindings_map.iter() {
-        match binding_info.trmode {
-            TrByCopy(llbinding) => call_lifetime_end(bcx, llbinding),
-            _ => {}
+        if let TrByCopy(llbinding) = binding_info.trmode {
+            call_lifetime_end(bcx, llbinding);
         }
     }
 
@@ -962,7 +943,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if has_nested_bindings(m, col) {
                 let expanded = expand_nested_bindings(bcx, m, col, val);
                 compile_submatch_continue(bcx,
-                                          expanded.as_slice(),
+                                          expanded[],
                                           vals,
                                           chk,
                                           col,
@@ -1023,7 +1004,10 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         node_id_type(bcx, pat_id)
     };
 
-    let mcx = check_match::MatchCheckCtxt { tcx: bcx.tcx() };
+    let mcx = check_match::MatchCheckCtxt {
+        tcx: bcx.tcx(),
+        param_env: ty::empty_parameter_environment(),
+    };
     let adt_vals = if any_irrefutable_adt_pat(bcx.tcx(), m, col) {
         let repr = adt::represent_type(bcx.ccx(), left_ty);
         let arg_count = adt::num_args(&*repr, 0);
@@ -1051,8 +1035,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                         field_vals.len())
             );
             let mut vals = field_vals;
-            vals.push_all(vals_left.as_slice());
-            compile_submatch(bcx, pats.as_slice(), vals.as_slice(), chk, has_genuine_default);
+            vals.push_all(vals_left[]);
+            compile_submatch(bcx, pats[], vals[], chk, has_genuine_default);
             return;
         }
         _ => ()
@@ -1205,10 +1189,10 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         let opt_ms = enter_opt(opt_cx, pat_id, dm, m, opt, col, size, val);
         let mut opt_vals = unpacked;
-        opt_vals.push_all(vals_left.as_slice());
+        opt_vals.push_all(vals_left[]);
         compile_submatch(opt_cx,
-                         opt_ms.as_slice(),
-                         opt_vals.as_slice(),
+                         opt_ms[],
+                         opt_vals[],
                          branch_chk.as_ref().unwrap_or(chk),
                          has_genuine_default);
     }
@@ -1227,8 +1211,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
             _ => {
                 compile_submatch(else_cx,
-                                 defaults.as_slice(),
-                                 vals_left.as_slice(),
+                                 defaults[],
+                                 vals_left[],
                                  chk,
                                  has_genuine_default);
             }
@@ -1248,32 +1232,54 @@ pub fn trans_match<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Checks whether the binding in `discr` is assigned to anywhere in the expression `body`
 fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool {
-    match discr.node {
+    let (vid, field) = match discr.node {
         ast::ExprPath(..) => match bcx.def(discr.id) {
-            def::DefLocal(vid) | def::DefUpvar(vid, _, _) => {
-                let mut rc = ReassignmentChecker {
-                    node: vid,
-                    reassigned: false
-                };
-                {
-                    let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx);
-                    visitor.walk_expr(body);
-                }
-                rc.reassigned
-            }
-            _ => false
+            def::DefLocal(vid) | def::DefUpvar(vid, _, _) => (vid, None),
+            _ => return false
         },
-        _ => false
+        ast::ExprField(ref base, field) => {
+            let vid = match bcx.tcx().def_map.borrow().get(&base.id) {
+                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _, _)) => vid,
+                _ => return false
+            };
+            (vid, Some(mc::NamedField(field.node.name)))
+        },
+        ast::ExprTupField(ref base, field) => {
+            let vid = match bcx.tcx().def_map.borrow().get(&base.id) {
+                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _, _)) => vid,
+                _ => return false
+            };
+            (vid, Some(mc::PositionalField(field.node)))
+        },
+        _ => return false
+    };
+
+    let mut rc = ReassignmentChecker {
+        node: vid,
+        field: field,
+        reassigned: false
+    };
+    {
+        let param_env = ty::empty_parameter_environment();
+        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx, param_env);
+        visitor.walk_expr(body);
     }
+    rc.reassigned
 }
 
 struct ReassignmentChecker {
     node: ast::NodeId,
+    field: Option<mc::FieldName>,
     reassigned: bool
 }
 
+// Determine if the expression we're matching on is reassigned to within
+// the body of the match's arm.
+// We only care for the `mutate` callback since this check only matters
+// for cases where the matched value is moved.
 impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
     fn consume(&mut self, _: ast::NodeId, _: Span, _: mc::cmt, _: euv::ConsumeMode) {}
+    fn matched_pat(&mut self, _: &ast::Pat, _: mc::cmt, _: euv::MatchMode) {}
     fn consume_pat(&mut self, _: &ast::Pat, _: mc::cmt, _: euv::ConsumeMode) {}
     fn borrow(&mut self, _: ast::NodeId, _: Span, _: mc::cmt, _: ty::Region,
               _: ty::BorrowKind, _: euv::LoanCause) {}
@@ -1283,6 +1289,15 @@ impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
         match cmt.cat {
             mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
             mc::cat_local(vid) => self.reassigned = self.node == vid,
+            mc::cat_interior(ref base_cmt, mc::InteriorField(field)) => {
+                match base_cmt.cat {
+                    mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
+                    mc::cat_local(vid) => {
+                        self.reassigned = self.node == vid && Some(field) == self.field
+                    },
+                    _ => {}
+                }
+            },
             _ => {}
         }
     }
@@ -1304,18 +1319,21 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
         let tcx = bcx.tcx();
+        let param_env = ty::empty_parameter_environment();
 
         let llmatch;
         let trmode;
         match bm {
             ast::BindByValue(_)
-                if !ty::type_moves_by_default(tcx, variable_ty) || reassigned => {
+                if !ty::type_moves_by_default(tcx,
+                                              variable_ty,
+                                              &param_env) || reassigned => {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
                                  "__llmatch");
                 trmode = TrByCopy(alloca_no_lifetime(bcx,
                                          llvariable_ty,
-                                         bcx.ident(ident).as_slice()));
+                                         bcx.ident(ident)[]));
             }
             ast::BindByValue(_) => {
                 // in this case, the final type of the variable will be T,
@@ -1323,13 +1341,13 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                 // above
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
-                                 bcx.ident(ident).as_slice());
+                                 bcx.ident(ident)[]);
                 trmode = TrByMove;
             }
             ast::BindByRef(_) => {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty,
-                                 bcx.ident(ident).as_slice());
+                                 bcx.ident(ident)[]);
                 trmode = TrByRef;
             }
         };
@@ -1397,7 +1415,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         && arm.pats.last().unwrap().node == ast::PatWild(ast::PatWildSingle)
     });
 
-    compile_submatch(bcx, matches.as_slice(), &[discr_datum.val], &chk, has_default);
+    compile_submatch(bcx, matches[], &[discr_datum.val], &chk, has_default);
 
     let mut arm_cxs = Vec::new();
     for arm_data in arm_datas.iter() {
@@ -1411,17 +1429,15 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         arm_cxs.push(bcx);
     }
 
-    bcx = scope_cx.fcx.join_blocks(match_id, arm_cxs.as_slice());
+    bcx = scope_cx.fcx.join_blocks(match_id, arm_cxs[]);
     return bcx;
 }
 
+/// Generates code for a local variable declaration like `let <pat>;` or `let <pat> =
+/// <opt_init_expr>`.
 pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                local: &ast::Local)
                                -> Block<'blk, 'tcx> {
-    /*!
-     * Generates code for a local variable declaration like
-     * `let <pat>;` or `let <pat> = <opt_init_expr>`.
-     */
     let _icx = push_ctxt("match::store_local");
     let mut bcx = bcx;
     let tcx = bcx.tcx();
@@ -1481,24 +1497,21 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
+/// Generates code for argument patterns like `fn foo(<pat>: T)`.
+/// Creates entries in the `lllocals` map for each of the bindings
+/// in `pat`.
+///
+/// # Arguments
+///
+/// - `pat` is the argument pattern
+/// - `llval` is a pointer to the argument value (in other words,
+///   if the argument type is `T`, then `llval` is a `T*`). In some
+///   cases, this code may zero out the memory `llval` points at.
 pub fn store_arg<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              pat: &ast::Pat,
                              arg: Datum<'tcx, Rvalue>,
                              arg_scope: cleanup::ScopeId)
                              -> Block<'blk, 'tcx> {
-    /*!
-     * Generates code for argument patterns like `fn foo(<pat>: T)`.
-     * Creates entries in the `lllocals` map for each of the bindings
-     * in `pat`.
-     *
-     * # Arguments
-     *
-     * - `pat` is the argument pattern
-     * - `llval` is a pointer to the argument value (in other words,
-     *   if the argument type is `T`, then `llval` is a `T*`). In some
-     *   cases, this code may zero out the memory `llval` points at.
-     */
-
     let _icx = push_ctxt("match::store_arg");
 
     match simple_identifier(&*pat) {
@@ -1556,18 +1569,19 @@ pub fn store_for_loop_binding<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bind_irrefutable_pat(bcx, pat, llvalue, body_scope)
 }
 
-fn mk_binding_alloca<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
-                                    p_id: ast::NodeId,
-                                    ident: &ast::Ident,
-                                    cleanup_scope: cleanup::ScopeId,
-                                    arg: A,
-                                    populate: |A, Block<'blk, 'tcx>, ValueRef, Ty<'tcx>|
-                                              -> Block<'blk, 'tcx>)
-                                    -> Block<'blk, 'tcx> {
+fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
+                                       p_id: ast::NodeId,
+                                       ident: &ast::Ident,
+                                       cleanup_scope: cleanup::ScopeId,
+                                       arg: A,
+                                       populate: F)
+                                       -> Block<'blk, 'tcx> where
+    F: FnOnce(A, Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+{
     let var_ty = node_id_type(bcx, p_id);
 
     // Allocate memory on stack for the binding.
-    let llval = alloc_ty(bcx, var_ty, bcx.ident(*ident).as_slice());
+    let llval = alloc_ty(bcx, var_ty, bcx.ident(*ident)[]);
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
@@ -1582,33 +1596,30 @@ fn mk_binding_alloca<'blk, 'tcx, A>(bcx: Block<'blk, 'tcx>,
     bcx
 }
 
+/// A simple version of the pattern matching code that only handles
+/// irrefutable patterns. This is used in let/argument patterns,
+/// not in match statements. Unifying this code with the code above
+/// sounds nice, but in practice it produces very inefficient code,
+/// since the match code is so much more general. In most cases,
+/// LLVM is able to optimize the code, but it causes longer compile
+/// times and makes the generated code nigh impossible to read.
+///
+/// # Arguments
+/// - bcx: starting basic block context
+/// - pat: the irrefutable pattern being matched.
+/// - val: the value being matched -- must be an lvalue (by ref, with cleanup)
 fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     pat: &ast::Pat,
                                     val: ValueRef,
                                     cleanup_scope: cleanup::ScopeId)
                                     -> Block<'blk, 'tcx> {
-    /*!
-     * A simple version of the pattern matching code that only handles
-     * irrefutable patterns. This is used in let/argument patterns,
-     * not in match statements. Unifying this code with the code above
-     * sounds nice, but in practice it produces very inefficient code,
-     * since the match code is so much more general. In most cases,
-     * LLVM is able to optimize the code, but it causes longer compile
-     * times and makes the generated code nigh impossible to read.
-     *
-     * # Arguments
-     * - bcx: starting basic block context
-     * - pat: the irrefutable pattern being matched.
-     * - val: the value being matched -- must be an lvalue (by ref, with cleanup)
-     */
-
     debug!("bind_irrefutable_pat(bcx={}, pat={})",
            bcx.to_str(),
            pat.repr(bcx.tcx()));
 
     if bcx.sess().asm_comments() {
         add_comment(bcx, format!("bind_irrefutable_pat(pat={})",
-                                 pat.repr(bcx.tcx())).as_slice());
+                                 pat.repr(bcx.tcx()))[]);
     }
 
     let _indenter = indenter();

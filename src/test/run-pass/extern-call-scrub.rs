@@ -44,7 +44,7 @@ fn count(n: libc::uintptr_t) -> libc::uintptr_t {
 pub fn main() {
     // Make sure we're on a task with small Rust stacks (main currently
     // has a large stack)
-    task::spawn(proc() {
+    task::spawn(move|| {
         let result = count(12);
         println!("result = {}", result);
         assert_eq!(result, 2048);

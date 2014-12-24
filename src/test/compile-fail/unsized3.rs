@@ -57,6 +57,9 @@ fn f8<Sized? X>(x1: &S<X>, x2: &S<X>) {
 fn f9<Sized? X>(x1: Box<S<X>>, x2: Box<E<X>>) {
     f5(&(*x1, 34i));
     //~^ ERROR the trait `core::kinds::Sized` is not implemented
+}
+
+fn f10<Sized? X>(x1: Box<S<X>>, x2: Box<E<X>>) {
     f5(&(32i, *x2));
     //~^ ERROR the trait `core::kinds::Sized` is not implemented
 }

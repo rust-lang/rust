@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::{TrieMap, TreeMap, HashMap, HashSet};
+#![feature(unboxed_closures)]
+
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::os;
 use std::rand::{Rng, IsaacRng, SeedableRng};
 use std::time::Duration;
 use std::uint;
 
-fn timed(label: &str, f: ||) {
+fn timed<F>(label: &str, f: F) where F: FnMut() {
     println!("  {}: {}", label, Duration::span(f));
 }
 
@@ -24,17 +26,12 @@ trait MutableMap {
     fn find(&self, k: &uint) -> Option<&uint>;
 }
 
-impl MutableMap for TreeMap<uint, uint> {
+impl MutableMap for BTreeMap<uint, uint> {
     fn insert(&mut self, k: uint, v: uint) { self.insert(k, v); }
     fn remove(&mut self, k: &uint) -> bool { self.remove(k).is_some() }
     fn find(&self, k: &uint) -> Option<&uint> { self.get(k) }
 }
 impl MutableMap for HashMap<uint, uint> {
-    fn insert(&mut self, k: uint, v: uint) { self.insert(k, v); }
-    fn remove(&mut self, k: &uint) -> bool { self.remove(k).is_some() }
-    fn find(&self, k: &uint) -> Option<&uint> { self.get(k) }
-}
-impl MutableMap for TrieMap<uint> {
     fn insert(&mut self, k: uint, v: uint) { self.insert(k, v); }
     fn remove(&mut self, k: &uint) -> bool { self.remove(k).is_some() }
     fn find(&self, k: &uint) -> Option<&uint> { self.get(k) }
@@ -132,21 +129,21 @@ fn main() {
     println!("{} keys", n_keys);
 
     // FIXME: #9970
-    println!("{}", "\nTreeMap:");
+    println!("{}", "\nBTreeMap:");
 
     {
-        let mut map: TreeMap<uint,uint> = TreeMap::new();
+        let mut map: BTreeMap<uint,uint> = BTreeMap::new();
         ascending(&mut map, n_keys);
     }
 
     {
-        let mut map: TreeMap<uint,uint> = TreeMap::new();
+        let mut map: BTreeMap<uint,uint> = BTreeMap::new();
         descending(&mut map, n_keys);
     }
 
     {
         println!(" Random integers:");
-        let mut map: TreeMap<uint,uint> = TreeMap::new();
+        let mut map: BTreeMap<uint,uint> = BTreeMap::new();
         vector(&mut map, n_keys, rand.as_slice());
     }
 
@@ -166,25 +163,6 @@ fn main() {
     {
         println!(" Random integers:");
         let mut map: HashMap<uint,uint> = HashMap::new();
-        vector(&mut map, n_keys, rand.as_slice());
-    }
-
-    // FIXME: #9970
-    println!("{}", "\nTrieMap:");
-
-    {
-        let mut map: TrieMap<uint> = TrieMap::new();
-        ascending(&mut map, n_keys);
-    }
-
-    {
-        let mut map: TrieMap<uint> = TrieMap::new();
-        descending(&mut map, n_keys);
-    }
-
-    {
-        println!(" Random integers:");
-        let mut map: TrieMap<uint> = TrieMap::new();
         vector(&mut map, n_keys, rand.as_slice());
     }
 }

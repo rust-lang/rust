@@ -20,16 +20,18 @@ pub use self::IpAddr::*;
 use fmt;
 use io::{mod, IoResult, IoError};
 use io::net;
-use iter::Iterator;
-use option::{Option, None, Some};
-use result::{Ok, Err};
-use str::{FromStr, StrPrelude};
-use slice::{CloneSlicePrelude, SlicePrelude};
+use iter::{Iterator, IteratorExt};
+use ops::FnOnce;
+use option::Option;
+use option::Option::{None, Some};
+use result::Result::{Ok, Err};
+use slice::{CloneSliceExt, SliceExt};
+use str::{FromStr, StrExt};
 use vec::Vec;
 
 pub type Port = u16;
 
-#[deriving(PartialEq, Eq, Clone, Hash)]
+#[deriving(Copy, PartialEq, Eq, Clone, Hash)]
 pub enum IpAddr {
     Ipv4Addr(u8, u8, u8, u8),
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
@@ -60,7 +62,7 @@ impl fmt::Show for IpAddr {
     }
 }
 
-#[deriving(PartialEq, Eq, Clone, Hash)]
+#[deriving(Copy, PartialEq, Eq, Clone, Hash)]
 pub struct SocketAddr {
     pub ip: IpAddr,
     pub port: Port,
@@ -94,8 +96,9 @@ impl<'a> Parser<'a> {
     }
 
     // Commit only if parser returns Some
-    fn read_atomically<T>(&mut self, cb: |&mut Parser| -> Option<T>)
-                       -> Option<T> {
+    fn read_atomically<T, F>(&mut self, cb: F) -> Option<T> where
+        F: FnOnce(&mut Parser) -> Option<T>,
+    {
         let pos = self.pos;
         let r = cb(self);
         if r.is_none() {
@@ -105,9 +108,10 @@ impl<'a> Parser<'a> {
     }
 
     // Commit only if parser read till EOF
-    fn read_till_eof<T>(&mut self, cb: |&mut Parser| -> Option<T>)
-                     -> Option<T> {
-        self.read_atomically(|p| {
+    fn read_till_eof<T, F>(&mut self, cb: F) -> Option<T> where
+        F: FnOnce(&mut Parser) -> Option<T>,
+    {
+        self.read_atomically(move |p| {
             match cb(p) {
                 Some(x) => if p.is_eof() {Some(x)} else {None},
                 None => None,
@@ -128,15 +132,16 @@ impl<'a> Parser<'a> {
     }
 
     // Apply 3 parsers sequentially
-    fn read_seq_3<A,
-                  B,
-                  C>(
-                  &mut self,
-                  pa: |&mut Parser| -> Option<A>,
-                  pb: |&mut Parser| -> Option<B>,
-                  pc: |&mut Parser| -> Option<C>)
-                  -> Option<(A, B, C)> {
-        self.read_atomically(|p| {
+    fn read_seq_3<A, B, C, PA, PB, PC>(&mut self,
+                                       pa: PA,
+                                       pb: PB,
+                                       pc: PC)
+                                       -> Option<(A, B, C)> where
+        PA: FnOnce(&mut Parser) -> Option<A>,
+        PB: FnOnce(&mut Parser) -> Option<B>,
+        PC: FnOnce(&mut Parser) -> Option<C>,
+    {
+        self.read_atomically(move |p| {
             let a = pa(p);
             let b = if a.is_some() { pb(p) } else { None };
             let c = if b.is_some() { pc(p) } else { None };
@@ -321,22 +326,22 @@ impl<'a> Parser<'a> {
     }
 
     fn read_socket_addr(&mut self) -> Option<SocketAddr> {
-        let ip_addr = |p: &mut Parser| {
+        let ip_addr = |&: p: &mut Parser| {
             let ipv4_p = |p: &mut Parser| p.read_ip_addr();
             let ipv6_p = |p: &mut Parser| {
-                let open_br = |p: &mut Parser| p.read_given_char('[');
-                let ip_addr = |p: &mut Parser| p.read_ipv6_addr();
-                let clos_br = |p: &mut Parser| p.read_given_char(']');
-                p.read_seq_3::<char, IpAddr, char>(open_br, ip_addr, clos_br)
+                let open_br = |&: p: &mut Parser| p.read_given_char('[');
+                let ip_addr = |&: p: &mut Parser| p.read_ipv6_addr();
+                let clos_br = |&: p: &mut Parser| p.read_given_char(']');
+                p.read_seq_3::<char, IpAddr, char, _, _, _>(open_br, ip_addr, clos_br)
                         .map(|t| match t { (_, ip, _) => ip })
             };
             p.read_or(&mut [ipv4_p, ipv6_p])
         };
-        let colon = |p: &mut Parser| p.read_given_char(':');
-        let port  = |p: &mut Parser| p.read_number(10, 5, 0x10000).map(|n| n as u16);
+        let colon = |&: p: &mut Parser| p.read_given_char(':');
+        let port  = |&: p: &mut Parser| p.read_number(10, 5, 0x10000).map(|n| n as u16);
 
         // host, colon, port
-        self.read_seq_3::<IpAddr, char, u16>(ip_addr, colon, port)
+        self.read_seq_3::<IpAddr, char, u16, _, _, _>(ip_addr, colon, port)
                 .map(|t| match t { (ip, _, port) => SocketAddr { ip: ip, port: port } })
     }
 }
@@ -378,8 +383,8 @@ impl FromStr for SocketAddr {
 ///    expected by its `FromStr` implementation or a string like `<host_name>:<port>` pair
 ///    where `<port>` is a `u16` value.
 ///
-///    For the former, `to_socker_addr_all` returns a vector with a single element corresponding
-///    to that socker address.
+///    For the former, `to_socket_addr_all` returns a vector with a single element corresponding
+///    to that socket address.
 ///
 ///    For the latter, it tries to resolve the host name and returns a vector of all IP addresses
 ///    for the host name, each joined with the port.
@@ -438,7 +443,7 @@ pub trait ToSocketAddr {
 
     /// Converts this object to all available socket address values.
     ///
-    /// Some values like host name string naturally corrrespond to multiple IP addresses.
+    /// Some values like host name string naturally correspond to multiple IP addresses.
     /// This method tries to return all available addresses corresponding to this object.
     ///
     /// By default this method delegates to `to_socket_addr` method, creating a singleton
@@ -468,7 +473,7 @@ fn resolve_socket_addr(s: &str, p: u16) -> IoResult<Vec<SocketAddr>> {
 }
 
 fn parse_and_resolve_socket_addr(s: &str) -> IoResult<Vec<SocketAddr>> {
-    macro_rules! try_opt(
+    macro_rules! try_opt {
         ($e:expr, $msg:expr) => (
             match $e {
                 Some(r) => r,
@@ -479,7 +484,7 @@ fn parse_and_resolve_socket_addr(s: &str) -> IoResult<Vec<SocketAddr>> {
                 })
             }
         )
-    )
+    }
 
     // split the string by ':' and convert the second part to u16
     let mut parts_iter = s.rsplitn(2, ':');
@@ -640,10 +645,10 @@ mod test {
     #[test]
     fn ipv6_addr_to_string() {
         let a1 = Ipv6Addr(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280);
-        assert!(a1.to_string() == "::ffff:192.0.2.128".to_string() ||
-                a1.to_string() == "::FFFF:192.0.2.128".to_string());
+        assert!(a1.to_string() == "::ffff:192.0.2.128" ||
+                a1.to_string() == "::FFFF:192.0.2.128");
         assert_eq!(Ipv6Addr(8, 9, 10, 11, 12, 13, 14, 15).to_string(),
-                   "8:9:a:b:c:d:e:f".to_string());
+                   "8:9:a:b:c:d:e:f");
     }
 
     #[test]

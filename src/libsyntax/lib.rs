@@ -16,7 +16,6 @@
 
 #![crate_name = "syntax"]
 #![experimental]
-#![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -24,8 +23,9 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![allow(unknown_features)]
-#![feature(if_let, macro_rules, globs, default_type_params, phase, slicing_syntax)]
-#![feature(quote, unsafe_destructor, import_shadowing)]
+#![feature(macro_rules, globs, default_type_params, phase, slicing_syntax)]
+#![feature(quote, unsafe_destructor)]
+#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate fmt_macros;
@@ -33,6 +33,8 @@ extern crate fmt_macros;
 extern crate serialize;
 extern crate term;
 extern crate libc;
+
+extern crate "serialize" as rustc_serialize; // used by deriving
 
 pub mod util {
     pub mod interner;

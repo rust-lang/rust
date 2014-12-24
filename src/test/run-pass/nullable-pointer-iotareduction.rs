@@ -20,7 +20,7 @@ use std::{option, mem};
 // trying to get assert failure messages that at least identify which case
 // failed.
 
-enum E<T> { Thing(int, T), Nothing((), ((), ()), [i8, ..0]) }
+enum E<T> { Thing(int, T), Nothing((), ((), ()), [i8; 0]) }
 impl<T> E<T> {
     fn is_none(&self) -> bool {
         match *self {
@@ -41,9 +41,9 @@ macro_rules! check_option {
         check_option!($e: $T, |ptr| assert!(*ptr == $e));
     }};
     ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{
-        assert!(option::None::<$T>.is_none());
+        assert!(option::Option::None::<$T>.is_none());
         let e = $e;
-        let s_ = option::Some::<$T>(e);
+        let s_ = option::Option::Some::<$T>(e);
         let $v = s_.as_ref().unwrap();
         $chk
     }}
@@ -54,7 +54,7 @@ macro_rules! check_fancy {
         check_fancy!($e: $T, |ptr| assert!(*ptr == $e));
     }};
     ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{
-        assert!(E::Nothing::<$T>((), ((), ()), [23i8, ..0]).is_none());
+        assert!(E::Nothing::<$T>((), ((), ()), [23i8; 0]).is_none());
         let e = $e;
         let t_ = E::Thing::<$T>(23, e);
         match t_.get_ref() {

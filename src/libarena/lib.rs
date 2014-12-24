@@ -23,12 +23,12 @@
 #![experimental]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(unsafe_destructor)]
+#![feature(unboxed_closures)]
 #![allow(missing_docs)]
 
 extern crate alloc;
@@ -210,7 +210,7 @@ impl Arena {
     }
 
     #[inline]
-    fn alloc_copy<T>(&self, op: || -> T) -> &mut T {
+    fn alloc_copy<T, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
         unsafe {
             let ptr = self.alloc_copy_inner(mem::size_of::<T>(),
                                             mem::min_align_of::<T>());
@@ -264,7 +264,7 @@ impl Arena {
     }
 
     #[inline]
-    fn alloc_noncopy<T>(&self, op: || -> T) -> &mut T {
+    fn alloc_noncopy<T, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
@@ -288,7 +288,7 @@ impl Arena {
     /// Allocates a new item in the arena, using `op` to initialize the value,
     /// and returns a reference to it.
     #[inline]
-    pub fn alloc<T>(&self, op: || -> T) -> &mut T {
+    pub fn alloc<T, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
         unsafe {
             if intrinsics::needs_drop::<T>() {
                 self.alloc_noncopy(op)
@@ -340,7 +340,7 @@ fn test_arena_destructors_fail() {
         arena.alloc(|| { [0u8, 1u8, 2u8] });
     }
     // Now, panic while allocating
-    arena.alloc::<Rc<int>>(|| {
+    arena.alloc::<Rc<int>, _>(|| {
         panic!();
     });
 }
@@ -467,7 +467,7 @@ impl<T> TypedArena<T> {
         }
 
         let ptr: &mut T = unsafe {
-            let ptr: &mut T = mem::transmute(self.ptr);
+            let ptr: &mut T = mem::transmute(self.ptr.clone());
             ptr::write(ptr, object);
             self.ptr.set(self.ptr.get().offset(1));
             ptr

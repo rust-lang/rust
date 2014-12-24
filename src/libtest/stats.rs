@@ -11,7 +11,7 @@
 #![allow(missing_docs)]
 
 use std::collections::hash_map;
-use std::collections::hash_map::{Occupied, Vacant};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
@@ -250,7 +250,7 @@ impl<T: FloatMath + FromPrimitive> Stats<T> for [T] {
         // This constant is derived by smarter statistics brains than me, but it is
         // consistent with how R and other packages treat the MAD.
         let number = FromPrimitive::from_f64(1.4826).unwrap();
-        abs_devs.as_slice().median() * number
+        abs_devs.median() * number
     }
 
     fn median_abs_dev_pct(&self) -> T {
@@ -331,8 +331,8 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
 }
 
 /// Render writes the min, max and quartiles of the provided `Summary` to the provided `Writer`.
-pub fn write_5_number_summary<T: Float + Show>(w: &mut io::Writer,
-                                               s: &Summary<T>) -> io::IoResult<()> {
+pub fn write_5_number_summary<W: Writer, T: Float + Show>(w: &mut W,
+                                                          s: &Summary<T>) -> io::IoResult<()> {
     let (q1,q2,q3) = s.quartiles;
     write!(w, "(min={}, q1={}, med={}, q3={}, max={})",
                      s.min,
@@ -353,8 +353,8 @@ pub fn write_5_number_summary<T: Float + Show>(w: &mut io::Writer,
 /// ```{.ignore}
 ///   10 |        [--****#******----------]          | 40
 /// ```
-pub fn write_boxplot<T: Float + Show + FromPrimitive>(
-                     w: &mut io::Writer,
+pub fn write_boxplot<W: Writer, T: Float + Show + FromPrimitive>(
+                     w: &mut W,
                      s: &Summary<T>,
                      width_hint: uint)
                       -> io::IoResult<()> {
@@ -459,21 +459,21 @@ mod tests {
     use std::io;
     use std::f64;
 
-    macro_rules! assert_approx_eq(
+    macro_rules! assert_approx_eq {
         ($a:expr, $b:expr) => ({
             use std::num::Float;
             let (a, b) = (&$a, &$b);
             assert!((*a - *b).abs() < 1.0e-6,
                     "{} is not approximately equal to {}", *a, *b);
         })
-    )
+    }
 
     fn check(samples: &[f64], summ: &Summary<f64>) {
 
         let summ2 = Summary::new(samples);
 
         let mut w = io::stdout();
-        let w = &mut w as &mut io::Writer;
+        let w = &mut w;
         (write!(w, "\n")).unwrap();
         write_5_number_summary(w, &summ2).unwrap();
         (write!(w, "\n")).unwrap();
@@ -1028,7 +1028,7 @@ mod tests {
     fn test_boxplot_nonpositive() {
         fn t(s: &Summary<f64>, expected: String) {
             let mut m = Vec::new();
-            write_boxplot(&mut m as &mut io::Writer, s, 30).unwrap();
+            write_boxplot(&mut m, s, 30).unwrap();
             let out = String::from_utf8(m).unwrap();
             assert_eq!(out, expected);
         }

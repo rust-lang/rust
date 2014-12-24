@@ -53,7 +53,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();
-    let mut cons = "".to_string();
+    let mut clobs = Vec::new();
     let mut volatile = false;
     let mut alignstack = false;
     let mut dialect = ast::AsmAtt;
@@ -64,7 +64,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         match state {
             Asm => {
                 let (s, style) = match expr_to_string(cx, p.parse_expr(),
-                                                   "inline assembly must be a string literal.") {
+                                                   "inline assembly must be a string literal") {
                     Some((s, st)) => (s, st),
                     // let compilation continue
                     None => return DummyResult::expr(sp),
@@ -100,8 +100,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         Some(('=', _)) => None,
                         Some(('+', operand)) => {
                             Some(token::intern_and_get_ident(format!(
-                                        "={}",
-                                        operand).as_slice()))
+                                        "={}", operand)[]))
                         }
                         _ => {
                             cx.span_err(span, "output operand constraint lacks '=' or '+'");
@@ -138,7 +137,6 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
             }
             Clobbers => {
-                let mut clobs = Vec::new();
                 while p.token != token::Eof &&
                       p.token != token::Colon &&
                       p.token != token::ModSep {
@@ -148,26 +146,23 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     }
 
                     let (s, _str_style) = p.parse_str();
-                    let clob = format!("~{{{}}}", s);
-                    clobs.push(clob);
 
-                    if OPTIONS.iter().any(|opt| s.equiv(opt)) {
+                    if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.last_span, "expected a clobber, found an option");
                     }
+                    clobs.push(s);
                 }
-
-                cons = clobs.connect(",");
             }
             Options => {
                 let (option, _str_style) = p.parse_str();
 
-                if option.equiv(&("volatile")) {
+                if option == "volatile" {
                     // Indicates that the inline assembly has side effects
                     // and must not be optimized out along with its outputs.
                     volatile = true;
-                } else if option.equiv(&("alignstack")) {
+                } else if option == "alignstack" {
                     alignstack = true;
-                } else if option.equiv(&("intel")) {
+                } else if option == "intel" {
                     dialect = ast::AsmIntel;
                 } else {
                     cx.span_warn(p.last_span, "unrecognized option");
@@ -216,7 +211,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             asm_str_style: asm_str_style.unwrap(),
             outputs: outputs,
             inputs: inputs,
-            clobbers: token::intern_and_get_ident(cons.as_slice()),
+            clobbers: clobs,
             volatile: volatile,
             alignstack: alignstack,
             dialect: dialect,

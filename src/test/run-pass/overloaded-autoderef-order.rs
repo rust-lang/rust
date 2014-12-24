@@ -15,6 +15,8 @@ struct DerefWrapper<X, Y> {
     y: Y
 }
 
+impl<X:Copy,Y:Copy> Copy for DerefWrapper<X,Y> {}
+
 impl<X, Y> DerefWrapper<X, Y> {
     fn get_x(self) -> X {
         self.x
@@ -32,6 +34,8 @@ mod priv_test {
         x: X,
         pub y: Y
     }
+
+    impl<X:Copy,Y:Copy> Copy for DerefWrapperHideX<X,Y> {}
 
     impl<X, Y> DerefWrapperHideX<X, Y> {
         pub fn new(x: X, y: Y) -> DerefWrapperHideX<X, Y> {

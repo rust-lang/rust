@@ -15,35 +15,30 @@
 pub use self::Ordering::*;
 
 use intrinsics;
-use std::kinds::marker;
 use cell::UnsafeCell;
 
 /// A boolean type which can be safely shared between threads.
 #[stable]
 pub struct AtomicBool {
     v: UnsafeCell<uint>,
-    nocopy: marker::NoCopy
 }
 
 /// A signed integer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicInt {
     v: UnsafeCell<int>,
-    nocopy: marker::NoCopy
 }
 
 /// An unsigned integer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicUint {
     v: UnsafeCell<uint>,
-    nocopy: marker::NoCopy
 }
 
 /// A raw pointer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicPtr<T> {
     p: UnsafeCell<uint>,
-    nocopy: marker::NoCopy
 }
 
 /// Atomic memory orderings
@@ -57,6 +52,7 @@ pub struct AtomicPtr<T> {
 /// Rust's memory orderings are [the same as
 /// C++'s](http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync).
 #[stable]
+#[deriving(Copy)]
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
     #[stable]
@@ -84,15 +80,15 @@ pub enum Ordering {
 /// An `AtomicBool` initialized to `false`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
 pub const INIT_ATOMIC_BOOL: AtomicBool =
-        AtomicBool { v: UnsafeCell { value: 0 }, nocopy: marker::NoCopy };
+        AtomicBool { v: UnsafeCell { value: 0 } };
 /// An `AtomicInt` initialized to `0`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
 pub const INIT_ATOMIC_INT: AtomicInt =
-        AtomicInt { v: UnsafeCell { value: 0 }, nocopy: marker::NoCopy };
+        AtomicInt { v: UnsafeCell { value: 0 } };
 /// An `AtomicUint` initialized to `0`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
 pub const INIT_ATOMIC_UINT: AtomicUint =
-        AtomicUint { v: UnsafeCell { value: 0, }, nocopy: marker::NoCopy };
+        AtomicUint { v: UnsafeCell { value: 0, } };
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
 const UINT_TRUE: uint = -1;
@@ -112,7 +108,7 @@ impl AtomicBool {
     #[stable]
     pub fn new(v: bool) -> AtomicBool {
         let val = if v { UINT_TRUE } else { 0 };
-        AtomicBool { v: UnsafeCell::new(val), nocopy: marker::NoCopy }
+        AtomicBool { v: UnsafeCell::new(val) }
     }
 
     /// Loads a value from the bool.
@@ -352,7 +348,7 @@ impl AtomicInt {
     #[inline]
     #[stable]
     pub fn new(v: int) -> AtomicInt {
-        AtomicInt {v: UnsafeCell::new(v), nocopy: marker::NoCopy}
+        AtomicInt {v: UnsafeCell::new(v)}
     }
 
     /// Loads a value from the int.
@@ -538,7 +534,7 @@ impl AtomicUint {
     #[inline]
     #[stable]
     pub fn new(v: uint) -> AtomicUint {
-        AtomicUint { v: UnsafeCell::new(v), nocopy: marker::NoCopy }
+        AtomicUint { v: UnsafeCell::new(v) }
     }
 
     /// Loads a value from the uint.
@@ -725,7 +721,7 @@ impl<T> AtomicPtr<T> {
     #[inline]
     #[stable]
     pub fn new(p: *mut T) -> AtomicPtr<T> {
-        AtomicPtr { p: UnsafeCell::new(p as uint), nocopy: marker::NoCopy }
+        AtomicPtr { p: UnsafeCell::new(p as uint) }
     }
 
     /// Loads a value from the pointer.

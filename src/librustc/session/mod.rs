@@ -54,6 +54,8 @@ pub struct Session {
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: Cell<uint>,
+
+    pub can_print_warnings: bool
 }
 
 impl Session {
@@ -82,13 +84,25 @@ impl Session {
         self.diagnostic().handler().abort_if_errors()
     }
     pub fn span_warn(&self, sp: Span, msg: &str) {
-        self.diagnostic().span_warn(sp, msg)
+        if self.can_print_warnings {
+            self.diagnostic().span_warn(sp, msg)
+        }
     }
     pub fn span_warn_with_code(&self, sp: Span, msg: &str, code: &str) {
-        self.diagnostic().span_warn_with_code(sp, msg, code)
+        if self.can_print_warnings {
+            self.diagnostic().span_warn_with_code(sp, msg, code)
+        }
     }
     pub fn warn(&self, msg: &str) {
-        self.diagnostic().handler().warn(msg)
+        if self.can_print_warnings {
+            self.diagnostic().handler().warn(msg)
+        }
+    }
+    pub fn opt_span_warn(&self, opt_sp: Option<Span>, msg: &str) {
+        match opt_sp {
+            Some(sp) => self.span_warn(sp, msg),
+            None => self.warn(msg),
+        }
     }
     pub fn span_note(&self, sp: Span, msg: &str) {
         self.diagnostic().span_note(sp, msg)
@@ -107,6 +121,12 @@ impl Session {
     }
     pub fn help(&self, msg: &str) {
         self.diagnostic().handler().note(msg)
+    }
+    pub fn opt_span_bug(&self, opt_sp: Option<Span>, msg: &str) -> ! {
+        match opt_sp {
+            Some(sp) => self.span_bug(sp, msg),
+            None => self.bug(msg),
+        }
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.diagnostic().span_bug(sp, msg)
@@ -152,7 +172,7 @@ impl Session {
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp,
-                      format!("impossible case reached: {}", msg).as_slice());
+                      format!("impossible case reached: {}", msg)[]);
     }
     pub fn verbose(&self) -> bool { self.debugging_opt(config::VERBOSE) }
     pub fn time_passes(&self) -> bool { self.debugging_opt(config::TIME_PASSES) }
@@ -191,7 +211,7 @@ impl Session {
     }
     pub fn target_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
         filesearch::FileSearch::new(self.sysroot(),
-                                    self.opts.target_triple.as_slice(),
+                                    self.opts.target_triple[],
                                     &self.opts.addl_lib_search_paths)
     }
     pub fn host_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
@@ -235,6 +255,13 @@ pub fn build_session_(sopts: config::Options,
         }
     );
 
+    let can_print_warnings = sopts.lint_opts
+        .iter()
+        .filter(|&&(ref key, _)| *key == "warnings")
+        .map(|&(_, ref level)| *level != lint::Allow)
+        .last()
+        .unwrap_or(true);
+
     let sess = Session {
         target: target_cfg,
         opts: sopts,
@@ -253,6 +280,7 @@ pub fn build_session_(sopts: config::Options,
         crate_metadata: RefCell::new(Vec::new()),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
+        can_print_warnings: can_print_warnings
     };
 
     sess.lint_store.borrow_mut().register_builtin(Some(&sess));
@@ -260,7 +288,9 @@ pub fn build_session_(sopts: config::Options,
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-pub fn expect<T>(sess: &Session, opt: Option<T>, msg: || -> String) -> T {
+pub fn expect<T, M>(sess: &Session, opt: Option<T>, msg: M) -> T where
+    M: FnOnce() -> String,
+{
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 

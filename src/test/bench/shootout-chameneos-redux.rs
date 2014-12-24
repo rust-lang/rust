@@ -53,7 +53,14 @@ fn print_complements() {
     }
 }
 
-enum Color { Red, Yellow, Blue }
+enum Color {
+    Red,
+    Yellow,
+    Blue,
+}
+
+impl Copy for Color {}
+
 impl fmt::Show for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let str = match *self {
@@ -69,6 +76,8 @@ struct CreatureInfo {
     name: uint,
     color: Color
 }
+
+impl Copy for CreatureInfo {}
 
 fn show_color_list(set: Vec<Color>) -> String {
     let mut out = String::new();
@@ -179,7 +188,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
             let (to_creature, from_rendezvous) = channel();
-            spawn(proc() {
+            spawn(move|| {
                 creature(ii,
                          col,
                          from_rendezvous,

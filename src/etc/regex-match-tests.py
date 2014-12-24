@@ -63,7 +63,7 @@ def read_tests(f):
 def test_tostr(t):
     lineno, pat, text, groups = t
     options = map(group_tostr, groups)
-    return 'mat!(match_%s, r"%s", r"%s", %s)' \
+    return 'mat!{match_%s, r"%s", r"%s", %s}' \
            % (lineno, pat, '' if text == "NULL" else text, ', '.join(options))
 
 

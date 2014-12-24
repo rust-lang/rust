@@ -31,8 +31,7 @@ use trans::machine;
 use trans::type_::Type;
 use trans::type_of::*;
 use middle::ty::{mod, Ty};
-use middle::typeck;
-use middle::typeck::MethodCall;
+use middle::ty::MethodCall;
 use util::ppaux::Repr;
 
 use std::c_str::ToCStr;
@@ -46,12 +45,10 @@ use syntax::codemap::DUMMY_SP;
 // drop_glue pointer, size, align.
 static VTABLE_OFFSET: uint = 3;
 
-/**
-The main "translation" pass for methods.  Generates code
-for non-monomorphized methods only.  Other methods will
-be generated once they are invoked with specific type parameters,
-see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
-*/
+/// The main "translation" pass for methods.  Generates code
+/// for non-monomorphized methods only.  Other methods will
+/// be generated once they are invoked with specific type parameters,
+/// see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 pub fn trans_impl(ccx: &CrateContext,
                   name: ast::Ident,
                   impl_items: &[ast::ImplItem],
@@ -80,7 +77,7 @@ pub fn trans_impl(ccx: &CrateContext,
         match *impl_item {
             ast::MethodImplItem(ref method) => {
                 if method.pe_generics().ty_params.len() == 0u {
-                    let trans_everywhere = attr::requests_inline(method.attrs.as_slice());
+                    let trans_everywhere = attr::requests_inline(method.attrs[]);
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
                         let llfn = get_item_val(ccx, method.id);
                         trans_fn(ccx,
@@ -121,35 +118,35 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                  .unwrap();
 
     match origin {
-        typeck::MethodStatic(did) |
-        typeck::MethodStaticUnboxedClosure(did) => {
+        ty::MethodStatic(did) |
+        ty::MethodStaticUnboxedClosure(did) => {
             Callee {
                 bcx: bcx,
                 data: Fn(callee::trans_fn_ref(bcx,
                                               did,
-                                              MethodCall(method_call))),
+                                              MethodCallKey(method_call))),
             }
         }
 
-        typeck::MethodTypeParam(typeck::MethodParam {
+        ty::MethodTypeParam(ty::MethodParam {
             ref trait_ref,
             method_num
         }) => {
             let trait_ref =
-                Rc::new(trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs));
+                Rc::new(ty::Binder((**trait_ref).subst(bcx.tcx(), bcx.fcx.param_substs)));
             let span = bcx.tcx().map.span(method_call.expr_id);
             debug!("method_call={} trait_ref={}",
                    method_call,
                    trait_ref.repr(bcx.tcx()));
             let origin = fulfill_obligation(bcx.ccx(),
                                             span,
-                                            (*trait_ref).clone());
+                                            trait_ref.clone());
             debug!("origin = {}", origin.repr(bcx.tcx()));
-            trans_monomorphized_callee(bcx, method_call, trait_ref.def_id,
+            trans_monomorphized_callee(bcx, method_call, trait_ref.def_id(),
                                        method_num, origin)
         }
 
-        typeck::MethodTraitObject(ref mt) => {
+        ty::MethodTraitObject(ref mt) => {
             let self_expr = match self_expr {
                 Some(self_expr) => self_expr,
                 None => {
@@ -242,8 +239,8 @@ pub fn trans_static_method_callee(bcx: Block,
                                              rcvr_assoc,
                                              Vec::new()));
     debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
-    let trait_ref = Rc::new(ty::TraitRef { def_id: trait_id,
-                                           substs: trait_substs });
+    let trait_ref = Rc::new(ty::Binder(ty::TraitRef { def_id: trait_id,
+                                                      substs: trait_substs }));
     let vtbl = fulfill_obligation(bcx.ccx(),
                                   DUMMY_SP,
                                   trait_ref);
@@ -296,7 +293,7 @@ pub fn trans_static_method_callee(bcx: Block,
         _ => {
             bcx.tcx().sess.bug(
                 format!("static call to invalid vtable: {}",
-                        vtbl.repr(bcx.tcx())).as_slice());
+                        vtbl.repr(bcx.tcx()))[]);
         }
     }
 }
@@ -347,12 +344,12 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // those from the impl and those from the method:
             let callee_substs =
                 combine_impl_and_methods_tps(
-                    bcx, MethodCall(method_call), vtable_impl.substs);
+                    bcx, MethodCallKey(method_call), vtable_impl.substs);
 
             // translate the function
             let llfn = trans_fn_ref_with_substs(bcx,
                                                 mth_id,
-                                                MethodCall(method_call),
+                                                MethodCallKey(method_call),
                                                 callee_substs);
 
             Callee { bcx: bcx, data: Fn(llfn) }
@@ -362,7 +359,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // after passing through fulfill_obligation
             let llfn = trans_fn_ref_with_substs(bcx,
                                                 closure_def_id,
-                                                MethodCall(method_call),
+                                                MethodCallKey(method_call),
                                                 substs);
 
             Callee {
@@ -370,35 +367,34 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 data: Fn(llfn),
             }
         }
-        _ => {
-            bcx.tcx().sess.bug(
-                "vtable_param left in monomorphized function's vtable substs");
+        traits::VtableFnPointer(fn_ty) => {
+            let llfn = trans_fn_pointer_shim(bcx.ccx(), fn_ty);
+            Callee { bcx: bcx, data: Fn(llfn) }
+        }
+        traits::VtableBuiltin(..) |
+        traits::VtableParam(..) => {
+            bcx.sess().bug(
+                format!("resolved vtable bad vtable {} in trans",
+                        vtable.repr(bcx.tcx()))[]);
         }
     }
 }
 
+ /// Creates a concatenated set of substitutions which includes those from the impl and those from
+ /// the method.  This are some subtle complications here.  Statically, we have a list of type
+ /// parameters like `[T0, T1, T2, M1, M2, M3]` where `Tn` are type parameters that appear on the
+ /// receiver.  For example, if the receiver is a method parameter `A` with a bound like
+ /// `trait<B,C,D>` then `Tn` would be `[B,C,D]`.
+ ///
+ /// The weird part is that the type `A` might now be bound to any other type, such as `foo<X>`.
+ /// In that case, the vector we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is to slice
+ /// off the method type parameters and append them to the type parameters from the type that the
+ /// receiver is mapped to.
 fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                             node: ExprOrMethodCall,
                                             rcvr_substs: subst::Substs<'tcx>)
                                             -> subst::Substs<'tcx>
 {
-    /*!
-     * Creates a concatenated set of substitutions which includes
-     * those from the impl and those from the method.  This are
-     * some subtle complications here.  Statically, we have a list
-     * of type parameters like `[T0, T1, T2, M1, M2, M3]` where
-     * `Tn` are type parameters that appear on the receiver.  For
-     * example, if the receiver is a method parameter `A` with a
-     * bound like `trait<B,C,D>` then `Tn` would be `[B,C,D]`.
-     *
-     * The weird part is that the type `A` might now be bound to
-     * any other type, such as `foo<X>`.  In that case, the vector
-     * we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is
-     * to slice off the method type parameters and append them to
-     * the type parameters from the type that the receiver is
-     * mapped to.
-     */
-
     let ccx = bcx.ccx();
 
     let node_substs = node_id_substs(bcx, node);
@@ -422,21 +418,16 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
+/// Create a method callee where the method is coming from a trait object (e.g., Box<Trait> type).
+/// In this case, we must pull the fn pointer out of the vtable that is packaged up with the
+/// object. Objects are represented as a pair, so we first evaluate the self expression and then
+/// extract the self data and vtable out of the pair.
 fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   method_ty: Ty<'tcx>,
                                   n_method: uint,
                                   self_expr: &ast::Expr,
                                   arg_cleanup_scope: cleanup::ScopeId)
                                   -> Callee<'blk, 'tcx> {
-    /*!
-     * Create a method callee where the method is coming from a trait
-     * object (e.g., Box<Trait> type).  In this case, we must pull the fn
-     * pointer out of the vtable that is packaged up with the object.
-     * Objects are represented as a pair, so we first evaluate the self
-     * expression and then extract the self data and vtable out of the
-     * pair.
-     */
-
     let _icx = push_ctxt("meth::trans_trait_callee");
     let mut bcx = bcx;
 
@@ -466,22 +457,19 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     trans_trait_callee_from_llval(bcx, method_ty, n_method, llval)
 }
 
+/// Same as `trans_trait_callee()` above, except that it is given a by-ref pointer to the object
+/// pair.
 pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                  callee_ty: Ty<'tcx>,
                                                  n_method: uint,
                                                  llpair: ValueRef)
                                                  -> Callee<'blk, 'tcx> {
-    /*!
-     * Same as `trans_trait_callee()` above, except that it is given
-     * a by-ref pointer to the object pair.
-     */
-
     let _icx = push_ctxt("meth::trans_trait_callee");
     let ccx = bcx.ccx();
 
     // Load the data pointer from the object.
     debug!("(translating trait callee) loading second index from pair");
-    let llboxptr = GEPi(bcx, llpair, &[0u, abi::trt_field_box]);
+    let llboxptr = GEPi(bcx, llpair, &[0u, abi::FAT_PTR_ADDR]);
     let llbox = Load(bcx, llboxptr);
     let llself = PointerCast(bcx, llbox, Type::i8p(ccx));
 
@@ -489,11 +477,11 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("(translating trait callee) loading method");
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let llcallee_ty = match callee_ty.sty {
-        ty::ty_bare_fn(ref f) if f.abi == Rust || f.abi == RustCall => {
+        ty::ty_bare_fn(_, ref f) if f.abi == Rust || f.abi == RustCall => {
             type_of_rust_fn(ccx,
                             Some(Type::i8p(ccx)),
-                            f.sig.inputs.slice_from(1),
-                            f.sig.output,
+                            f.sig.0.inputs.slice_from(1),
+                            f.sig.0.output,
                             f.abi)
         }
         _ => {
@@ -503,7 +491,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llvtable = Load(bcx,
                         PointerCast(bcx,
                                     GEPi(bcx, llpair,
-                                         &[0u, abi::trt_field_vtable]),
+                                         &[0u, abi::FAT_PTR_EXTRA]),
                                     Type::vtable(ccx).ptr_to().ptr_to()));
     let mptr = Load(bcx, GEPi(bcx, llvtable, &[0u, n_method + VTABLE_OFFSET]));
     let mptr = PointerCast(bcx, mptr, llcallee_ty.ptr_to());
@@ -527,7 +515,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// This will hopefully change now that DST is underway.
 pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               box_ty: Ty<'tcx>,
-                              trait_ref: Rc<ty::TraitRef<'tcx>>)
+                              trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
                               -> ValueRef
 {
     debug!("get_vtable(box_ty={}, trait_ref={})",
@@ -562,75 +550,23 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 emit_vtable_methods(bcx, id, substs).into_iter()
             }
             traits::VtableUnboxedClosure(closure_def_id, substs) => {
-                // Look up closure type
-                let self_ty = ty::node_id_to_type(bcx.tcx(), closure_def_id.node);
-                // Apply substitutions from closure param environment.
-                // The substitutions should have no type parameters
-                // remaining after passing through fulfill_obligation
-                let self_ty = self_ty.subst(bcx.tcx(), &substs);
-
-                let mut llfn = trans_fn_ref_with_substs(
+                let llfn = trans_fn_ref_with_substs(
                     bcx,
                     closure_def_id,
                     ExprId(0),
                     substs.clone());
 
-                {
-                    let unboxed_closures = bcx.tcx()
-                                              .unboxed_closures
-                                              .borrow();
-                    let closure_info =
-                        unboxed_closures.get(&closure_def_id)
-                                        .expect("get_vtable(): didn't find \
-                                                 unboxed closure");
-                    if closure_info.kind == ty::FnOnceUnboxedClosureKind {
-                        // Untuple the arguments and create an unboxing shim.
-                        let (new_inputs, new_output) = match self_ty.sty {
-                            ty::ty_unboxed_closure(_, _, ref substs) => {
-                                let mut new_inputs = vec![self_ty.clone()];
-                                match closure_info.closure_type.sig.inputs[0].sty {
-                                    ty::ty_tup(ref elements) => {
-                                        for element in elements.iter() {
-                                            new_inputs.push(element.subst(bcx.tcx(), substs));
-                                        }
-                                    }
-                                    _ => {
-                                        bcx.tcx().sess.bug("get_vtable(): closure \
-                                                            type wasn't a tuple")
-                                    }
-                                }
-                                (new_inputs,
-                                 closure_info.closure_type.sig.output.subst(bcx.tcx(), substs))
-                            },
-                            _ => bcx.tcx().sess.bug("get_vtable(): def wasn't an unboxed closure")
-                        };
-
-                        let closure_type = ty::BareFnTy {
-                            fn_style: closure_info.closure_type.fn_style,
-                            abi: Rust,
-                            sig: ty::FnSig {
-                                inputs: new_inputs,
-                                output: new_output,
-                                variadic: false,
-                            },
-                        };
-                        debug!("get_vtable(): closure type is {}",
-                               closure_type.repr(bcx.tcx()));
-                        llfn = trans_unboxing_shim(bcx,
-                                                   llfn,
-                                                   &closure_type,
-                                                   closure_def_id,
-                                                   &substs);
-                    }
-                }
-
                 (vec!(llfn)).into_iter()
+            }
+            traits::VtableFnPointer(bare_fn_ty) => {
+                let llfn = vec![trans_fn_pointer_shim(bcx.ccx(), bare_fn_ty)];
+                llfn.into_iter()
             }
             traits::VtableParam(..) => {
                 bcx.sess().bug(
                     format!("resolved vtable for {} to bad vtable {} in trans",
                             trait_ref.repr(bcx.tcx()),
-                            vtable.repr(bcx.tcx())).as_slice());
+                            vtable.repr(bcx.tcx()))[]);
             }
         }
     });
@@ -662,7 +598,7 @@ pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
     let components: Vec<_> = head.into_iter().chain(ptrs).collect();
 
     unsafe {
-        let tbl = C_struct(ccx, components.as_slice(), false);
+        let tbl = C_struct(ccx, components[], false);
         let sym = token::gensym("vtable");
         let vt_gvar = format!("vtable{}", sym.uint()).with_c_str(|buf| {
             llvm::LLVMAddGlobal(ccx.llmod(), val_ty(tbl).to_ref(), buf)
@@ -703,24 +639,22 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                        m.repr(tcx),
                        substs.repr(tcx));
                 if m.generics.has_type_params(subst::FnSpace) ||
-                   ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone())) {
+                    ty::type_has_self(ty::mk_bare_fn(tcx, None, m.fty.clone()))
+                {
                     debug!("(making impl vtable) method has self or type \
                             params: {}",
                            token::get_name(name));
                     Some(C_null(Type::nil(ccx).ptr_to())).into_iter()
                 } else {
-                    let mut fn_ref = trans_fn_ref_with_substs(
+                    let fn_ref = trans_fn_ref_with_substs(
                         bcx,
                         m_id,
                         ExprId(0),
                         substs.clone());
-                    if m.explicit_self == ty::ByValueExplicitSelfCategory {
-                        fn_ref = trans_unboxing_shim(bcx,
-                                                     fn_ref,
-                                                     &m.fty,
-                                                     m_id,
-                                                     &substs);
-                    }
+
+                    // currently, at least, by-value self is not object safe
+                    assert!(m.explicit_self != ty::ByValueExplicitSelfCategory);
+
                     Some(fn_ref).into_iter()
                 }
             }
@@ -731,19 +665,15 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }).collect()
 }
 
+/// Generates the code to convert from a pointer (`Box<T>`, `&T`, etc) into an object
+/// (`Box<Trait>`, `&Trait`, etc). This means creating a pair where the first word is the vtable
+/// and the second word is the pointer.
 pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     datum: Datum<'tcx, Expr>,
                                     id: ast::NodeId,
-                                    trait_ref: Rc<ty::TraitRef<'tcx>>,
+                                    trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
                                     dest: expr::Dest)
                                     -> Block<'blk, 'tcx> {
-    /*!
-     * Generates the code to convert from a pointer (`Box<T>`, `&T`, etc)
-     * into an object (`Box<Trait>`, `&Trait`, etc). This means creating a
-     * pair where the first word is the vtable and the second word is
-     * the pointer.
-     */
-
     let mut bcx = bcx;
     let _icx = push_ctxt("meth::trans_trait_cast");
 
@@ -761,13 +691,13 @@ pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llbox_ty = type_of(bcx.ccx(), datum_ty);
 
     // Store the pointer into the first half of pair.
-    let llboxdest = GEPi(bcx, lldest, &[0u, abi::trt_field_box]);
+    let llboxdest = GEPi(bcx, lldest, &[0u, abi::FAT_PTR_ADDR]);
     let llboxdest = PointerCast(bcx, llboxdest, llbox_ty.ptr_to());
     bcx = datum.store_to(bcx, llboxdest);
 
     // Store the vtable into the second half of pair.
     let vtable = get_vtable(bcx, datum_ty, trait_ref);
-    let llvtabledest = GEPi(bcx, lldest, &[0u, abi::trt_field_vtable]);
+    let llvtabledest = GEPi(bcx, lldest, &[0u, abi::FAT_PTR_EXTRA]);
     let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
     Store(bcx, vtable, llvtabledest);
 

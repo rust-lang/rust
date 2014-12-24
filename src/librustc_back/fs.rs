@@ -37,7 +37,7 @@ pub fn realpath(original: &Path) -> io::IoResult<Path> {
 
             match fs::lstat(&result) {
                 Err(..) => break,
-                Ok(ref stat) if stat.kind != io::TypeSymlink => break,
+                Ok(ref stat) if stat.kind != io::FileType::Symlink => break,
                 Ok(..) => {
                     followed += 1;
                     let path = try!(fs::readlink(&result));

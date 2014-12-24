@@ -33,6 +33,8 @@ fn foo2<T:ToBar>(x: &Fat<[T]>) {
 #[deriving(PartialEq,Eq)]
 struct Bar;
 
+impl Copy for Bar {}
+
 trait ToBar {
     fn to_bar(&self) -> Bar;
 }

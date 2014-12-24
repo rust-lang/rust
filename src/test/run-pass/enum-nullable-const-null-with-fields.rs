@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::result::{Result,Ok};
+use std::result::Result;
+use std::result::Result::Ok;
 
 static C: Result<(), Box<int>> = Ok(());
 

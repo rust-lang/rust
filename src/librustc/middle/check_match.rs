@@ -18,10 +18,11 @@ use middle::def::*;
 use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
 use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
 use middle::expr_use_visitor::{WriteAndRead};
+use middle::expr_use_visitor as euv;
 use middle::mem_categorization::cmt;
 use middle::pat_util::*;
 use middle::ty::*;
-use middle::ty::{mod, Ty};
+use middle::ty;
 use std::fmt;
 use std::iter::AdditiveIterator;
 use std::iter::range_inclusive;
@@ -92,13 +93,14 @@ impl<'a> fmt::Show for Matrix<'a> {
 }
 
 impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
-    fn from_iter<T: Iterator<Vec<&'a Pat>>>(mut iterator: T) -> Matrix<'a> {
+    fn from_iter<T: Iterator<Vec<&'a Pat>>>(iterator: T) -> Matrix<'a> {
         Matrix(iterator.collect())
     }
 }
 
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
-    pub tcx: &'a ty::ctxt<'tcx>
+    pub tcx: &'a ty::ctxt<'tcx>,
+    pub param_env: ParameterEnvironment<'tcx>,
 }
 
 #[deriving(Clone, PartialEq)]
@@ -125,6 +127,7 @@ enum Usefulness {
     NotUseful
 }
 
+#[deriving(Copy)]
 enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness
@@ -144,7 +147,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {
-    visit::walk_crate(&mut MatchCheckCtxt { tcx: tcx }, tcx.map.krate());
+    visit::walk_crate(&mut MatchCheckCtxt {
+        tcx: tcx,
+        param_env: ty::empty_parameter_environment(),
+    }, tcx.map.krate());
     tcx.sess.abort_if_errors();
 }
 
@@ -152,19 +158,14 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
     visit::walk_expr(cx, ex);
     match ex.node {
         ast::ExprMatch(ref scrut, ref arms, source) => {
-            // First, check legality of move bindings.
             for arm in arms.iter() {
+                // First, check legality of move bindings.
                 check_legality_of_move_bindings(cx,
                                                 arm.guard.is_some(),
-                                                arm.pats.as_slice());
-                for pat in arm.pats.iter() {
-                    check_legality_of_bindings_in_at_patterns(cx, &**pat);
-                }
-            }
+                                                arm.pats[]);
 
-            // Second, if there is a guard on each arm, make sure it isn't
-            // assigning or borrowing anything mutably.
-            for arm in arms.iter() {
+                // Second, if there is a guard on each arm, make sure it isn't
+                // assigning or borrowing anything mutably.
                 match arm.guard {
                     Some(ref guard) => check_for_mutation_in_guard(cx, &**guard),
                     None => {}
@@ -178,17 +179,27 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                 }).collect(), arm.guard.as_ref().map(|e| &**e))
             }).collect::<Vec<(Vec<P<Pat>>, Option<&ast::Expr>)>>();
 
+            // Bail out early if inlining failed.
             if static_inliner.failed {
                 return;
             }
 
-            // Third, check if there are any references to NaN that we should warn about.
-            for &(ref pats, _) in inlined_arms.iter() {
-                check_for_static_nan(cx, pats.as_slice());
+            for pat in inlined_arms
+                .iter()
+                .flat_map(|&(ref pats, _)| pats.iter()) {
+                // Third, check legality of move bindings.
+                check_legality_of_bindings_in_at_patterns(cx, &**pat);
+
+                // Fourth, check if there are any references to NaN that we should warn about.
+                check_for_static_nan(cx, &**pat);
+
+                // Fifth, check if for any of the patterns that match an enumerated type
+                // are bindings with the same name as one of the variants of said type.
+                check_for_bindings_named_the_same_as_variants(cx, &**pat);
             }
 
             // Fourth, check for unreachable arms.
-            check_arms(cx, inlined_arms.as_slice(), source);
+            check_arms(cx, inlined_arms[], source);
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
@@ -208,7 +219,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
             let matrix: Matrix = inlined_arms
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
-                .flat_map(|arm| arm.ref0().iter())
+                .flat_map(|arm| arm.0.iter())
                 .map(|pat| vec![&**pat])
                 .collect();
             check_exhaustive(cx, ex.span, &matrix);
@@ -220,7 +231,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                     pat.span,
                     format!("refutable pattern in `for` loop binding: \
                             `{}` not covered",
-                            pat_to_string(uncovered_pat)).as_slice());
+                            pat_to_string(uncovered_pat))[]);
             });
 
             // Check legality of move bindings.
@@ -238,21 +249,49 @@ fn is_expr_const_nan(tcx: &ty::ctxt, expr: &ast::Expr) -> bool {
     }
 }
 
-// Check that we do not match against a static NaN (#6804)
-fn check_for_static_nan(cx: &MatchCheckCtxt, pats: &[P<Pat>]) {
-    for pat in pats.iter() {
-        walk_pat(&**pat, |p| {
-            match p.node {
-                ast::PatLit(ref expr) if is_expr_const_nan(cx.tcx, &**expr) => {
-                    span_warn!(cx.tcx.sess, p.span, E0003,
-                        "unmatchable NaN in pattern, \
-                            use the is_nan method in a guard instead");
+fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat) {
+    walk_pat(pat, |p| {
+        match p.node {
+            ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident, None) => {
+                let pat_ty = ty::pat_ty(cx.tcx, p);
+                if let ty::ty_enum(def_id, _) = pat_ty.sty {
+                    let def = cx.tcx.def_map.borrow().get(&p.id).cloned();
+                    if let Some(DefLocal(_)) = def {
+                        if ty::enum_variants(cx.tcx, def_id).iter().any(|variant|
+                            token::get_name(variant.name) == token::get_name(ident.node.name)
+                                && variant.args.len() == 0
+                        ) {
+                            span_warn!(cx.tcx.sess, p.span, E0170,
+                                "pattern binding `{}` is named the same as one \
+                                 of the variants of the type `{}`",
+                                token::get_ident(ident.node).get(), ty_to_string(cx.tcx, pat_ty));
+                            span_help!(cx.tcx.sess, p.span,
+                                "if you meant to match on a variant, \
+                                 consider making the path in the pattern qualified: `{}::{}`",
+                                ty_to_string(cx.tcx, pat_ty), token::get_ident(ident.node).get());
+                        }
+                    }
                 }
-                _ => ()
             }
-            true
-        });
-    }
+            _ => ()
+        }
+        true
+    });
+}
+
+// Check that we do not match against a static NaN (#6804)
+fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
+    walk_pat(pat, |p| {
+        match p.node {
+            ast::PatLit(ref expr) if is_expr_const_nan(cx.tcx, &**expr) => {
+                span_warn!(cx.tcx.sess, p.span, E0003,
+                    "unmatchable NaN in pattern, \
+                        use the is_nan method in a guard instead");
+            }
+            _ => ()
+        }
+        true
+    });
 }
 
 // Check for unreachable patterns
@@ -265,10 +304,10 @@ fn check_arms(cx: &MatchCheckCtxt,
         for pat in pats.iter() {
             let v = vec![&**pat];
 
-            match is_useful(cx, &seen, v.as_slice(), LeaveOutWitness) {
+            match is_useful(cx, &seen, v[], LeaveOutWitness) {
                 NotUseful => {
                     match source {
-                        ast::MatchIfLetDesugar => {
+                        ast::MatchSource::IfLetDesugar { .. } => {
                             if printed_if_let_err {
                                 // we already printed an irrefutable if-let pattern error.
                                 // We don't want two, that's just confusing.
@@ -282,7 +321,7 @@ fn check_arms(cx: &MatchCheckCtxt,
                             }
                         },
 
-                        ast::MatchWhileLetDesugar => {
+                        ast::MatchSource::WhileLetDesugar => {
                             // find the first arm pattern so we can use its span
                             let &(ref first_arm_pats, _) = &arms[0];
                             let first_pat = &first_arm_pats[0];
@@ -290,7 +329,7 @@ fn check_arms(cx: &MatchCheckCtxt,
                             span_err!(cx.tcx.sess, span, E0165, "irrefutable while-let pattern");
                         },
 
-                        ast::MatchNormal => {
+                        ast::MatchSource::Normal => {
                             span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
                         },
                     }
@@ -317,7 +356,7 @@ fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
     match is_useful(cx, matrix, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
-            let witness = match pats.as_slice() {
+            let witness = match pats[] {
                 [ref witness] => &**witness,
                 [] => DUMMY_WILD_PAT,
                 _ => unreachable!()
@@ -352,7 +391,7 @@ pub struct StaticInliner<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'a>(tcx: &'a ty::ctxt<'tcx>) -> StaticInliner<'a, 'tcx> {
+    pub fn new<'b>(tcx: &'b ty::ctxt<'tcx>) -> StaticInliner<'b, 'tcx> {
         StaticInliner {
             tcx: tcx,
             failed: false
@@ -413,8 +452,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
                 &Variant(vid) =>
                     (vid, ty::enum_variant_with_id(cx.tcx, cid, vid).arg_names.is_some()),
                 _ =>
-                    (cid, ty::lookup_struct_fields(cx.tcx, cid).iter()
-                        .any(|field| field.name != token::special_idents::unnamed_field.name))
+                    (cid, !ty::is_tuple_struct(cx.tcx, cid))
             };
             if is_structure {
                 let fields = ty::lookup_struct_fields(cx.tcx, vid);
@@ -572,7 +610,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                         UsefulWithWitness(pats) => UsefulWithWitness({
                             let arity = constructor_arity(cx, &c, left_ty);
                             let mut result = {
-                                let pat_slice = pats.as_slice();
+                                let pat_slice = pats[];
                                 let subpats = Vec::from_fn(arity, |i| {
                                     pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
                                 });
@@ -619,10 +657,10 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
                          witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
     let matrix = Matrix(m.iter().filter_map(|r| {
-        specialize(cx, r.as_slice(), &ctor, 0u, arity)
+        specialize(cx, r[], &ctor, 0u, arity)
     }).collect());
     match specialize(cx, v, &ctor, 0u, arity) {
-        Some(v) => is_useful(cx, &matrix, v.as_slice(), witness),
+        Some(v) => is_useful(cx, &matrix, v[], witness),
         None => NotUseful
     }
 }
@@ -921,8 +959,14 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             decl: &ast::FnDecl,
             body: &ast::Block,
             sp: Span,
-            _: NodeId) {
+            fn_id: NodeId) {
+    match kind {
+        visit::FkFnBlock => {}
+        _ => cx.param_env = ParameterEnvironment::for_item(cx.tcx, fn_id),
+    }
+
     visit::walk_fn(cx, kind, decl, body, sp);
+
     for input in decl.inputs.iter() {
         is_refutable(cx, &*input.pat, |pat| {
             span_err!(cx.tcx.sess, input.pat.span, E0006,
@@ -935,7 +979,9 @@ fn check_fn(cx: &mut MatchCheckCtxt,
     }
 }
 
-fn is_refutable<A>(cx: &MatchCheckCtxt, pat: &Pat, refutable: |&Pat| -> A) -> Option<A> {
+fn is_refutable<A, F>(cx: &MatchCheckCtxt, pat: &Pat, refutable: F) -> Option<A> where
+    F: FnOnce(&Pat) -> A,
+{
     let pats = Matrix(vec!(vec!(pat)));
     match is_useful(cx, &pats, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
@@ -987,7 +1033,9 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 match p.node {
                     ast::PatIdent(ast::BindByValue(_), _, ref sub) => {
                         let pat_ty = ty::node_id_to_type(tcx, p.id);
-                        if ty::type_moves_by_default(tcx, pat_ty) {
+                        if ty::type_moves_by_default(tcx,
+                                                      pat_ty,
+                                                      &cx.param_env) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
                     }
@@ -999,7 +1047,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                             format!("binding pattern {} is not an \
                                      identifier: {}",
                                     p.id,
-                                    p.node).as_slice());
+                                    p.node)[]);
                     }
                 }
             }
@@ -1015,7 +1063,9 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
     let mut checker = MutationChecker {
         cx: cx,
     };
-    let mut visitor = ExprUseVisitor::new(&mut checker, checker.cx.tcx);
+    let mut visitor = ExprUseVisitor::new(&mut checker,
+                                          checker.cx.tcx,
+                                          cx.param_env.clone());
     visitor.walk_expr(guard);
 }
 
@@ -1024,6 +1074,7 @@ struct MutationChecker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
+    fn matched_pat(&mut self, _: &Pat, _: cmt, _: euv::MatchMode) {}
     fn consume(&mut self, _: NodeId, _: Span, _: cmt, _: ConsumeMode) {}
     fn consume_pat(&mut self, _: &Pat, _: cmt, _: ConsumeMode) {}
     fn borrow(&mut self,
@@ -1089,4 +1140,3 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
         }
     }
 }
-

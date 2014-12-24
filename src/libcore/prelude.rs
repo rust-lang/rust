@@ -39,7 +39,7 @@ pub use ops::{Slice, SliceMut};
 pub use ops::{Fn, FnMut, FnOnce};
 
 // Reexported functions
-pub use iter::{range, repeat};
+pub use iter::range;
 pub use mem::drop;
 pub use str::from_str;
 
@@ -50,18 +50,19 @@ pub use clone::Clone;
 pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 pub use cmp::{Ordering, Equiv};
 pub use cmp::Ordering::{Less, Equal, Greater};
-pub use iter::{FromIterator, Extend};
-pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};
-pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
+pub use iter::{FromIterator, Extend, IteratorExt};
+pub use iter::{Iterator, DoubleEndedIterator, DoubleEndedIteratorExt, RandomAccessIterator};
+pub use iter::{IteratorCloneExt, CloneIteratorExt};
+pub use iter::{IteratorOrdExt, MutableDoubleEndedIterator, ExactSizeIterator};
 pub use num::{ToPrimitive, FromPrimitive};
 pub use option::Option;
 pub use option::Option::{Some, None};
 pub use ptr::RawPtr;
 pub use result::Result;
 pub use result::Result::{Ok, Err};
-pub use str::{Str, StrPrelude};
+pub use str::{Str, StrExt};
 pub use tuple::{Tuple1, Tuple2, Tuple3, Tuple4};
 pub use tuple::{Tuple5, Tuple6, Tuple7, Tuple8};
 pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
-pub use slice::{PartialEqSlicePrelude, OrdSlicePrelude};
-pub use slice::{AsSlice, SlicePrelude};
+pub use slice::{PartialEqSliceExt, OrdSliceExt};
+pub use slice::{AsSlice, SliceExt};

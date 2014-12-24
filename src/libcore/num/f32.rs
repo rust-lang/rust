@@ -18,7 +18,8 @@
 
 use intrinsics;
 use mem;
-use num::{Float, FPNormal, FPCategory, FPZero, FPSubnormal, FPInfinite, FPNaN};
+use num::Float;
+use num::FpCategory as Fp;
 use num::from_str_radix;
 use option::Option;
 
@@ -156,23 +157,23 @@ impl Float for f32 {
     /// Returns `true` if the number is neither zero, infinite, subnormal or NaN.
     #[inline]
     fn is_normal(self) -> bool {
-        self.classify() == FPNormal
+        self.classify() == Fp::Normal
     }
 
     /// Returns the floating point category of the number. If only one property
     /// is going to be tested, it is generally faster to use the specific
     /// predicate instead.
-    fn classify(self) -> FPCategory {
+    fn classify(self) -> Fp {
         const EXP_MASK: u32 = 0x7f800000;
         const MAN_MASK: u32 = 0x007fffff;
 
         let bits: u32 = unsafe { mem::transmute(self) };
         match (bits & MAN_MASK, bits & EXP_MASK) {
-            (0, 0)        => FPZero,
-            (_, 0)        => FPSubnormal,
-            (0, EXP_MASK) => FPInfinite,
-            (_, EXP_MASK) => FPNaN,
-            _             => FPNormal,
+            (0, 0)        => Fp::Zero,
+            (_, 0)        => Fp::Subnormal,
+            (0, EXP_MASK) => Fp::Infinite,
+            (_, EXP_MASK) => Fp::Nan,
+            _             => Fp::Normal,
         }
     }
 

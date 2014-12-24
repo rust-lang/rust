@@ -15,7 +15,7 @@ pub fn main() {
 
     tx.send("hello, world");
 
-    spawn(proc() {
+    spawn(move|| {
         println(rx.recv());
     });
 }

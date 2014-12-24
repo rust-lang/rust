@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! See `doc.rs` for high-level documentation */
+//! See `doc.rs` for high-level documentation
 
 use super::SelectionContext;
-use super::Obligation;
+use super::{Obligation, ObligationCause};
 use super::util;
 
 use middle::subst;
 use middle::subst::Subst;
 use middle::ty::{mod, Ty};
-use middle::typeck::infer::{mod, InferCtxt};
+use middle::infer::InferCtxt;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 use util::ppaux::Repr;
@@ -37,18 +38,14 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
     let impl1_substs =
         util::fresh_substs_for_impl(infcx, DUMMY_SP, impl1_def_id);
     let impl1_trait_ref =
-        ty::impl_trait_ref(infcx.tcx, impl1_def_id).unwrap()
-                                                   .subst(infcx.tcx, &impl1_substs);
-    let impl1_trait_ref =
-        infcx.replace_late_bound_regions_with_fresh_var(DUMMY_SP,
-                                                        infer::FnCall,
-                                                        &impl1_trait_ref).0;
+        (*ty::impl_trait_ref(infcx.tcx, impl1_def_id).unwrap()).subst(infcx.tcx, &impl1_substs);
 
     // Determine whether `impl2` can provide an implementation for those
     // same types.
     let param_env = ty::empty_parameter_environment();
     let mut selcx = SelectionContext::intercrate(infcx, &param_env, infcx.tcx);
-    let obligation = Obligation::misc(DUMMY_SP, impl1_trait_ref);
+    let obligation = Obligation::new(ObligationCause::dummy(),
+                                     Rc::new(ty::Binder(impl1_trait_ref)));
     debug!("impl_can_satisfy(obligation={})", obligation.repr(infcx.tcx));
     selcx.evaluate_impl(impl2_def_id, &obligation)
 }
@@ -143,7 +140,7 @@ pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         }
 
         ty::ty_trait(ref tt) => {
-            tt.principal.def_id.krate == ast::LOCAL_CRATE
+            tt.principal.def_id().krate == ast::LOCAL_CRATE
         }
 
         // Type parameters may be bound to types that are not local to
@@ -157,7 +154,7 @@ pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::ty_err => {
             tcx.sess.bug(
                 format!("ty_is_local invoked on unexpected type: {}",
-                        ty.repr(tcx)).as_slice())
+                        ty.repr(tcx))[])
         }
     }
 }

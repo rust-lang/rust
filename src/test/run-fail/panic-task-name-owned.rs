@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:task 'owned name' panicked at 'test'
+// error-pattern:thread 'owned name' panicked at 'test'
 
-use std::task::TaskBuilder;
+use std::thread::Builder;
 
 fn main() {
-    let r: Result<int,_> = TaskBuilder::new().named("owned name".to_string())
-                                             .try(proc() {
+    let r: Result<int,_> = Builder::new().name("owned name".to_string()).spawn(move|| {
         panic!("test");
         1i
-    });
+    }).join();
     assert!(r.is_ok());
 }

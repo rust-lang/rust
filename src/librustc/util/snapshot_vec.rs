@@ -8,28 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * A utility class for implementing "snapshottable" things; a
- * snapshottable data structure permits you to take a snapshot (via
- * `start_snapshot`) and then, after making some changes, elect either
- * to rollback to the start of the snapshot or commit those changes.
- *
- * This vector is intended to be used as part of an abstraction, not
- * serve as a complete abstraction on its own. As such, while it will
- * roll back most changes on its own, it also supports a `get_mut`
- * operation that gives you an abitrary mutable pointer into the
- * vector. To ensure that any changes you make this with this pointer
- * are rolled back, you must invoke `record` to record any changes you
- * make and also supplying a delegate capable of reversing those
- * changes.
- */
+//! A utility class for implementing "snapshottable" things; a snapshottable data structure permits
+//! you to take a snapshot (via `start_snapshot`) and then, after making some changes, elect either
+//! to rollback to the start of the snapshot or commit those changes.
+//!
+//! This vector is intended to be used as part of an abstraction, not serve as a complete
+//! abstraction on its own. As such, while it will roll back most changes on its own, it also
+//! supports a `get_mut` operation that gives you an abitrary mutable pointer into the vector. To
+//! ensure that any changes you make this with this pointer are rolled back, you must invoke
+//! `record` to record any changes you make and also supplying a delegate capable of reversing
+//! those changes.
 use self::UndoLog::*;
 
-use std::kinds::marker;
 use std::mem;
 
 #[deriving(PartialEq)]
-enum UndoLog<T,U> {
+pub enum UndoLog<T,U> {
     /// Indicates where a snapshot started.
     OpenSnapshot,
 
@@ -52,10 +46,9 @@ pub struct SnapshotVec<T,U,D> {
     delegate: D
 }
 
+// Snapshots are tokens that should be created/consumed linearly.
+#[allow(missing_copy_implementations)]
 pub struct Snapshot {
-    // Snapshots are tokens that should be created/consumed linearly.
-    marker: marker::NoCopy,
-
     // Length of the undo log at the time the snapshot was taken.
     length: uint,
 }
@@ -98,23 +91,16 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
         &self.values[index]
     }
 
+    /// Returns a mutable pointer into the vec; whatever changes you make here cannot be undone
+    /// automatically, so you should be sure call `record()` with some sort of suitable undo
+    /// action.
     pub fn get_mut<'a>(&'a mut self, index: uint) -> &'a mut T {
-        /*!
-         * Returns a mutable pointer into the vec; whatever changes
-         * you make here cannot be undone automatically, so you should
-         * be sure call `record()` with some sort of suitable undo
-         * action.
-         */
-
         &mut self.values[index]
     }
 
+    /// Updates the element at the given index. The old value will saved (and perhaps restored) if
+    /// a snapshot is active.
     pub fn set(&mut self, index: uint, new_elem: T) {
-        /*!
-         * Updates the element at the given index. The old value will
-         * saved (and perhaps restored) if a snapshot is active.
-         */
-
         let old_elem = mem::replace(&mut self.values[index], new_elem);
         if self.in_snapshot() {
             self.undo_log.push(SetElem(index, old_elem));
@@ -124,8 +110,13 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
     pub fn start_snapshot(&mut self) -> Snapshot {
         let length = self.undo_log.len();
         self.undo_log.push(OpenSnapshot);
-        Snapshot { length: length,
-                   marker: marker::NoCopy }
+        Snapshot { length: length }
+    }
+
+    pub fn actions_since_snapshot(&self,
+                                  snapshot: &Snapshot)
+                                  -> &[UndoLog<T,U>] {
+        self.undo_log[snapshot.length..]
     }
 
     fn assert_open_snapshot(&self, snapshot: &Snapshot) {
@@ -177,10 +168,8 @@ impl<T,U,D:SnapshotVecDelegate<T,U>> SnapshotVec<T,U,D> {
         assert!(self.undo_log.len() == snapshot.length);
     }
 
-    /**
-     * Commits all changes since the last snapshot. Of course, they
-     * can still be undone if there is a snapshot further out.
-     */
+    /// Commits all changes since the last snapshot. Of course, they
+    /// can still be undone if there is a snapshot further out.
     pub fn commit(&mut self, snapshot: Snapshot) {
         debug!("commit({})", snapshot.length);
 

@@ -64,34 +64,38 @@ fn next_permutation(perm: &mut [i32], count: &mut [i32]) {
 }
 
 struct P {
-    p: [i32, .. 16],
+    p: [i32; 16],
 }
 
+impl Copy for P {}
+
 struct Perm {
-    cnt: [i32, .. 16],
-    fact: [u32, .. 16],
+    cnt: [i32; 16],
+    fact: [u32; 16],
     n: u32,
     permcount: u32,
     perm: P,
 }
 
+impl Copy for Perm {}
+
 impl Perm {
     fn new(n: u32) -> Perm {
-        let mut fact = [1, .. 16];
+        let mut fact = [1; 16];
         for i in range(1, n as uint + 1) {
             fact[i] = fact[i - 1] * i as u32;
         }
         Perm {
-            cnt: [0, .. 16],
+            cnt: [0; 16],
             fact: fact,
             n: n,
             permcount: 0,
-            perm: P { p: [0, .. 16 ] }
+            perm: P { p: [0; 16 ] }
         }
     }
 
     fn get(&mut self, mut idx: i32) -> P {
-        let mut pp = [0u8, .. 16];
+        let mut pp = [0u8; 16];
         self.permcount = idx as u32;
         for (i, place) in self.perm.p.iter_mut().enumerate() {
             *place = i as i32 + 1;
@@ -164,7 +168,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
     for (i, j) in range(0, N).zip(iter::count(0, k)) {
         let max = cmp::min(j+k, perm.max());
 
-        futures.push(Future::spawn(proc() {
+        futures.push(Future::spawn(move|| {
             work(perm, j as uint, max as uint)
         }))
     }

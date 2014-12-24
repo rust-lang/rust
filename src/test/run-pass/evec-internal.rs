@@ -13,16 +13,16 @@
 // Doesn't work; needs a design decision.
 
 pub fn main() {
-    let x : [int, ..5] = [1,2,3,4,5];
-    let _y : [int, ..5] = [1,2,3,4,5];
+    let x : [int; 5] = [1,2,3,4,5];
+    let _y : [int; 5] = [1,2,3,4,5];
     let mut z = [1,2,3,4,5];
     z = x;
     assert_eq!(z[0], 1);
     assert_eq!(z[4], 5);
 
-    let a : [int, ..5] = [1,1,1,1,1];
-    let b : [int, ..5] = [2,2,2,2,2];
-    let c : [int, ..5] = [2,2,2,2,3];
+    let a : [int; 5] = [1,1,1,1,1];
+    let b : [int; 5] = [2,2,2,2,2];
+    let c : [int; 5] = [2,2,2,2,3];
 
     log(debug, a);
 

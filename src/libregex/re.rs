@@ -13,7 +13,7 @@ pub use self::Regex::*;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::str::{MaybeOwned, Owned, Slice};
+use std::str::CowString;
 
 use compile::Program;
 use parse;
@@ -126,6 +126,7 @@ pub struct ExDynamic {
 }
 
 #[doc(hidden)]
+#[deriving(Copy)]
 pub struct ExNative {
     #[doc(hidden)]
     pub original: &'static str,
@@ -136,7 +137,9 @@ pub struct ExNative {
 }
 
 impl Clone for ExNative {
-    fn clone(&self) -> ExNative { *self }
+    fn clone(&self) -> ExNative {
+        *self
+    }
 }
 
 impl fmt::Show for Regex {
@@ -269,9 +272,9 @@ impl Regex {
     /// let re = regex!(r"'([^']+)'\s+\((\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
     /// let caps = re.captures(text).unwrap();
-    /// assert_eq!(caps.at(1), "Citizen Kane");
-    /// assert_eq!(caps.at(2), "1941");
-    /// assert_eq!(caps.at(0), "'Citizen Kane' (1941)");
+    /// assert_eq!(caps.at(1), Some("Citizen Kane"));
+    /// assert_eq!(caps.at(2), Some("1941"));
+    /// assert_eq!(caps.at(0), Some("'Citizen Kane' (1941)"));
     /// # }
     /// ```
     ///
@@ -287,9 +290,9 @@ impl Regex {
     /// let re = regex!(r"'(?P<title>[^']+)'\s+\((?P<year>\d{4})\)");
     /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
     /// let caps = re.captures(text).unwrap();
-    /// assert_eq!(caps.name("title"), "Citizen Kane");
-    /// assert_eq!(caps.name("year"), "1941");
-    /// assert_eq!(caps.at(0), "'Citizen Kane' (1941)");
+    /// assert_eq!(caps.name("title"), Some("Citizen Kane"));
+    /// assert_eq!(caps.name("year"), Some("1941"));
+    /// assert_eq!(caps.at(0), Some("'Citizen Kane' (1941)"));
     /// # }
     /// ```
     ///
@@ -414,7 +417,7 @@ impl Regex {
     /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # fn main() {
     /// let re = regex!("[^01]+");
-    /// assert_eq!(re.replace("1078910", "").as_slice(), "1010");
+    /// assert_eq!(re.replace("1078910", ""), "1010");
     /// # }
     /// ```
     ///
@@ -425,13 +428,14 @@ impl Regex {
     ///
     /// ```rust
     /// # #![feature(phase)]
+    /// # #![feature(unboxed_closures)]
     /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
     /// # use regex::Captures; fn main() {
     /// let re = regex!(r"([^,\s]+),\s+(\S+)");
-    /// let result = re.replace("Springsteen, Bruce", |caps: &Captures| {
-    ///     format!("{} {}", caps.at(2), caps.at(1))
+    /// let result = re.replace("Springsteen, Bruce", |&: caps: &Captures| {
+    ///     format!("{} {}", caps.at(2).unwrap_or(""), caps.at(1).unwrap_or(""))
     /// });
-    /// assert_eq!(result.as_slice(), "Bruce Springsteen");
+    /// assert_eq!(result, "Bruce Springsteen");
     /// # }
     /// ```
     ///
@@ -446,7 +450,7 @@ impl Regex {
     /// # fn main() {
     /// let re = regex!(r"(?P<last>[^,\s]+),\s+(?P<first>\S+)");
     /// let result = re.replace("Springsteen, Bruce", "$first $last");
-    /// assert_eq!(result.as_slice(), "Bruce Springsteen");
+    /// assert_eq!(result, "Bruce Springsteen");
     /// # }
     /// ```
     ///
@@ -465,7 +469,7 @@ impl Regex {
     ///
     /// let re = regex!(r"(?P<last>[^,\s]+),\s+(\S+)");
     /// let result = re.replace("Springsteen, Bruce", NoExpand("$2 $last"));
-    /// assert_eq!(result.as_slice(), "$2 $last");
+    /// assert_eq!(result, "$2 $last");
     /// # }
     /// ```
     pub fn replace<R: Replacer>(&self, text: &str, rep: R) -> String {
@@ -501,19 +505,19 @@ impl Regex {
             }
 
             let (s, e) = cap.pos(0).unwrap(); // captures only reports matches
-            new.push_str(text.slice(last_match, s));
-            new.push_str(rep.reg_replace(&cap).as_slice());
+            new.push_str(text[last_match..s]);
+            new.push_str(rep.reg_replace(&cap)[]);
             last_match = e;
         }
-        new.push_str(text.slice(last_match, text.len()));
+        new.push_str(text[last_match..text.len()]);
         return new;
     }
 
     /// Returns the original string of this regex.
     pub fn as_str<'a>(&'a self) -> &'a str {
         match *self {
-            Dynamic(ExDynamic { ref original, .. }) => original.as_slice(),
-            Native(ExNative { ref original, .. }) => original.as_slice(),
+            Dynamic(ExDynamic { ref original, .. }) => original[],
+            Native(ExNative { ref original, .. }) => original[],
         }
     }
 
@@ -536,8 +540,8 @@ impl Regex {
 }
 
 pub enum NamesIter<'a> {
-    NamesIterNative(::std::slice::Items<'a, Option<&'static str>>),
-    NamesIterDynamic(::std::slice::Items<'a, Option<String>>)
+    NamesIterNative(::std::slice::Iter<'a, Option<&'static str>>),
+    NamesIterDynamic(::std::slice::Iter<'a, Option<String>>)
 }
 
 impl<'a> Iterator<Option<String>> for NamesIter<'a> {
@@ -565,25 +569,25 @@ pub trait Replacer {
     ///
     /// The `'a` lifetime refers to the lifetime of a borrowed string when
     /// a new owned string isn't needed (e.g., for `NoExpand`).
-    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a>;
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a>;
 }
 
 impl<'t> Replacer for NoExpand<'t> {
-    fn reg_replace<'a>(&'a mut self, _: &Captures) -> MaybeOwned<'a> {
+    fn reg_replace<'a>(&'a mut self, _: &Captures) -> CowString<'a> {
         let NoExpand(s) = *self;
-        Slice(s)
+        s.into_cow()
     }
 }
 
 impl<'t> Replacer for &'t str {
-    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a> {
-        Owned(caps.expand(*self))
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a> {
+        caps.expand(*self).into_cow()
     }
 }
 
-impl<'t> Replacer for |&Captures|: 't -> String {
-    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> MaybeOwned<'a> {
-        Owned((*self)(caps))
+impl<F> Replacer for F where F: FnMut(&Captures) -> String {
+    fn reg_replace<'a>(&'a mut self, caps: &Captures) -> CowString<'a> {
+        (*self)(caps).into_cow()
     }
 }
 
@@ -604,13 +608,13 @@ impl<'r, 't> Iterator<&'t str> for RegexSplits<'r, 't> {
                 if self.last >= text.len() {
                     None
                 } else {
-                    let s = text.slice(self.last, text.len());
+                    let s = text[self.last..text.len()];
                     self.last = text.len();
                     Some(s)
                 }
             }
             Some((s, e)) => {
-                let matched = text.slice(self.last, s);
+                let matched = text[self.last..s];
                 self.last = e;
                 Some(matched)
             }
@@ -638,7 +642,7 @@ impl<'r, 't> Iterator<&'t str> for RegexSplitsN<'r, 't> {
         } else {
             self.cur += 1;
             if self.cur >= self.limit {
-                Some(text.slice(self.splits.last, text.len()))
+                Some(text[self.splits.last..text.len()])
             } else {
                 self.splits.next()
             }
@@ -707,27 +711,25 @@ impl<'t> Captures<'t> {
         Some((self.locs[s].unwrap(), self.locs[e].unwrap()))
     }
 
-    /// Returns the matched string for the capture group `i`.
-    /// If `i` isn't a valid capture group or didn't match anything, then the
-    /// empty string is returned.
-    pub fn at(&self, i: uint) -> &'t str {
+    /// Returns the matched string for the capture group `i`.  If `i` isn't
+    /// a valid capture group or didn't match anything, then `None` is
+    /// returned.
+    pub fn at(&self, i: uint) -> Option<&'t str> {
         match self.pos(i) {
-            None => "",
-            Some((s, e)) => {
-                self.text.slice(s, e)
-            }
+            None => None,
+            Some((s, e)) => Some(self.text.slice(s, e))
         }
     }
 
-    /// Returns the matched string for the capture group named `name`.
-    /// If `name` isn't a valid capture group or didn't match anything, then
-    /// the empty string is returned.
-    pub fn name(&self, name: &str) -> &'t str {
+    /// Returns the matched string for the capture group named `name`.  If
+    /// `name` isn't a valid capture group or didn't match anything, then
+    /// `None` is returned.
+    pub fn name(&self, name: &str) -> Option<&'t str> {
         match self.named {
-            None => "",
+            None => None,
             Some(ref h) => {
                 match h.get(name) {
-                    None => "",
+                    None => None,
                     Some(i) => self.at(*i),
                 }
             }
@@ -763,16 +765,17 @@ impl<'t> Captures<'t> {
         // How evil can you get?
         // FIXME: Don't use regexes for this. It's completely unnecessary.
         let re = Regex::new(r"(^|[^$]|\b)\$(\w+)").unwrap();
-        let text = re.replace_all(text, |refs: &Captures| -> String {
-            let (pre, name) = (refs.at(1), refs.at(2));
+        let text = re.replace_all(text, |&mut: refs: &Captures| -> String {
+            let pre = refs.at(1).unwrap_or("");
+            let name = refs.at(2).unwrap_or("");
             format!("{}{}", pre,
-                    match from_str::<uint>(name.as_slice()) {
-                None => self.name(name).to_string(),
-                Some(i) => self.at(i).to_string(),
+                    match name.parse::<uint>() {
+                None => self.name(name).unwrap_or("").to_string(),
+                Some(i) => self.at(i).unwrap_or("").to_string(),
             })
         });
         let re = Regex::new(r"\$\$").unwrap();
-        re.replace_all(text.as_slice(), NoExpand("$"))
+        re.replace_all(text[], NoExpand("$"))
     }
 
     /// Returns the number of captured groups.
@@ -797,7 +800,7 @@ impl<'t> Iterator<&'t str> for SubCaptures<'t> {
     fn next(&mut self) -> Option<&'t str> {
         if self.idx < self.caps.len() {
             self.idx += 1;
-            Some(self.caps.at(self.idx - 1))
+            Some(self.caps.at(self.idx - 1).unwrap_or(""))
         } else {
             None
         }
@@ -917,7 +920,7 @@ fn exec_slice(re: &Regex, which: MatchKind,
               input: &str, s: uint, e: uint) -> CaptureLocs {
     match *re {
         Dynamic(ExDynamic { ref prog, .. }) => vm::run(which, prog, input, s, e),
-        Native(ExNative { prog, .. }) => prog(which, input, s, e),
+        Native(ExNative { ref prog, .. }) => (*prog)(which, input, s, e),
     }
 }
 

@@ -8,31 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * A different sort of visitor for walking fn bodies.  Unlike the
- * normal visitor, which just walks the entire body in one shot, the
- * `ExprUseVisitor` determines how expressions are being used.
- */
+//! A different sort of visitor for walking fn bodies.  Unlike the
+//! normal visitor, which just walks the entire body in one shot, the
+//! `ExprUseVisitor` determines how expressions are being used.
 
 pub use self::MutateMode::*;
 pub use self::LoanCause::*;
 pub use self::ConsumeMode::*;
 pub use self::MoveReason::*;
+pub use self::MatchMode::*;
+use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
+use middle::{def, region, pat_util};
 use middle::mem_categorization as mc;
-use middle::def;
 use middle::mem_categorization::Typer;
-use middle::region;
-use middle::pat_util;
-use middle::ty::{mod, Ty};
-use middle::typeck::{MethodCall, MethodObject, MethodTraitObject};
-use middle::typeck::{MethodOrigin, MethodParam, MethodTypeParam};
-use middle::typeck::{MethodStatic, MethodStaticUnboxedClosure};
-use middle::typeck;
+use middle::ty::{mod, ParameterEnvironment, Ty};
+use middle::ty::{MethodCall, MethodObject, MethodTraitObject};
+use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
+use middle::ty::{MethodStatic, MethodStaticUnboxedClosure};
 use util::ppaux::Repr;
 
-use syntax::ast;
+use std::kinds;
+use syntax::{ast, ast_util};
 use syntax::ptr::P;
 use syntax::codemap::Span;
 
@@ -49,6 +47,23 @@ pub trait Delegate<'tcx> {
                consume_span: Span,
                cmt: mc::cmt<'tcx>,
                mode: ConsumeMode);
+
+    // The value found at `cmt` has been determined to match the
+    // pattern binding `matched_pat`, and its subparts are being
+    // copied or moved depending on `mode`.  Note that `matched_pat`
+    // is called on all variant/structs in the pattern (i.e., the
+    // interior nodes of the pattern's tree structure) while
+    // consume_pat is called on the binding identifiers in the pattern
+    // (which are leaves of the pattern's tree structure).
+    //
+    // Note that variants/structs and identifiers are disjoint; thus
+    // `matched_pat` and `consume_pat` are never both called on the
+    // same input pattern structure (though of `consume_pat` can be
+    // called on a subpart of an input passed to `matched_pat).
+    fn matched_pat(&mut self,
+                   matched_pat: &ast::Pat,
+                   cmt: mc::cmt<'tcx>,
+                   mode: MatchMode);
 
     // The value found at `cmt` is either copied or moved via the
     // pattern binding `consume_pat`, depending on mode.
@@ -80,7 +95,7 @@ pub trait Delegate<'tcx> {
               mode: MutateMode);
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum LoanCause {
     ClosureCapture(Span),
     AddrOf,
@@ -92,26 +107,104 @@ pub enum LoanCause {
     MatchDiscriminant
 }
 
-#[deriving(PartialEq, Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum ConsumeMode {
     Copy,                // reference to x where x has a type that copies
     Move(MoveReason),    // reference to x where x has a type that moves
 }
 
-#[deriving(PartialEq,Show)]
+#[deriving(Copy, PartialEq, Show)]
 pub enum MoveReason {
     DirectRefMove,
     PatBindingMove,
     CaptureMove,
 }
 
+#[deriving(Copy, PartialEq, Show)]
+pub enum MatchMode {
+    NonBindingMatch,
+    BorrowingMatch,
+    CopyingMatch,
+    MovingMatch,
+}
+
 #[deriving(PartialEq,Show)]
+enum TrackMatchMode<T> {
+    Unknown,
+    Definite(MatchMode),
+    Conflicting,
+}
+
+impl<T> kinds::Copy for TrackMatchMode<T> {}
+
+impl<T> TrackMatchMode<T> {
+    // Builds up the whole match mode for a pattern from its constituent
+    // parts.  The lattice looks like this:
+    //
+    //          Conflicting
+    //            /     \
+    //           /       \
+    //      Borrowing   Moving
+    //           \       /
+    //            \     /
+    //            Copying
+    //               |
+    //          NonBinding
+    //               |
+    //            Unknown
+    //
+    // examples:
+    //
+    // * `(_, some_int)` pattern is Copying, since
+    //   NonBinding + Copying => Copying
+    //
+    // * `(some_int, some_box)` pattern is Moving, since
+    //   Copying + Moving => Moving
+    //
+    // * `(ref x, some_box)` pattern is Conflicting, since
+    //   Borrowing + Moving => Conflicting
+    //
+    // Note that the `Unknown` and `Conflicting` states are
+    // represented separately from the other more interesting
+    // `Definite` states, which simplifies logic here somewhat.
+    fn lub(&mut self, mode: MatchMode) {
+        *self = match (*self, mode) {
+            // Note that clause order below is very significant.
+            (Unknown, new) => Definite(new),
+            (Definite(old), new) if old == new => Definite(old),
+
+            (Definite(old), NonBindingMatch) => Definite(old),
+            (Definite(NonBindingMatch), new) => Definite(new),
+
+            (Definite(old), CopyingMatch) => Definite(old),
+            (Definite(CopyingMatch), new) => Definite(new),
+
+            (Definite(_), _) => Conflicting,
+            (Conflicting, _) => *self,
+        };
+    }
+
+    fn match_mode(&self) -> MatchMode {
+        match *self {
+            Unknown => NonBindingMatch,
+            Definite(mode) => mode,
+            Conflicting => {
+                // Conservatively return MovingMatch to let the
+                // compiler continue to make progress.
+                MovingMatch
+            }
+        }
+    }
+}
+
+#[deriving(Copy, PartialEq, Show)]
 pub enum MutateMode {
     Init,
     JustWrite,    // x = y
     WriteAndRead, // x += y
 }
 
+#[deriving(Copy)]
 enum OverloadedCallType {
     FnOverloadedCall,
     FnMutOverloadedCall,
@@ -205,7 +298,8 @@ impl OverloadedCallType {
 pub struct ExprUseVisitor<'d,'t,'tcx,TYPER:'t> {
     typer: &'t TYPER,
     mc: mc::MemCategorizationContext<'t,TYPER>,
-    delegate: &'d mut Delegate<'tcx>+'d,
+    delegate: &'d mut (Delegate<'tcx>+'d),
+    param_env: ParameterEnvironment<'tcx>,
 }
 
 // If the TYPER results in an error, it's because the type check
@@ -215,22 +309,32 @@ pub struct ExprUseVisitor<'d,'t,'tcx,TYPER:'t> {
 //
 // Note that this macro appears similar to try!(), but, unlike try!(),
 // it does not propagate the error.
-macro_rules! return_if_err(
+macro_rules! return_if_err {
     ($inp: expr) => (
         match $inp {
             Ok(v) => v,
             Err(()) => return
         }
     )
-)
+}
+
+/// Whether the elements of an overloaded operation are passed by value or by reference
+enum PassArgs {
+    ByValue,
+    ByRef,
+}
 
 impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     pub fn new(delegate: &'d mut Delegate<'tcx>,
-               typer: &'t TYPER)
+               typer: &'t TYPER,
+               param_env: ParameterEnvironment<'tcx>)
                -> ExprUseVisitor<'d,'t,'tcx,TYPER> {
-        ExprUseVisitor { typer: typer,
-                         mc: mc::MemCategorizationContext::new(typer),
-                         delegate: delegate }
+        ExprUseVisitor {
+            typer: typer,
+            mc: mc::MemCategorizationContext::new(typer),
+            delegate: delegate,
+            param_env: param_env,
+        }
     }
 
     pub fn walk_fn(&mut self,
@@ -253,7 +357,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 ty::ReScope(fn_body_scope), // Args live only as long as the fn body.
                 arg_ty);
 
-            self.walk_pat(arg_cmt, &*arg.pat);
+            self.walk_irrefutable_pat(arg_cmt, &*arg.pat);
         }
     }
 
@@ -265,7 +369,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         consume_id: ast::NodeId,
                         consume_span: Span,
                         cmt: mc::cmt<'tcx>) {
-        let mode = copy_or_move(self.tcx(), cmt.ty, DirectRefMove);
+        let mode = copy_or_move(self.tcx(),
+                                cmt.ty,
+                                &self.param_env,
+                                DirectRefMove);
         self.delegate.consume(consume_id, consume_span, cmt, mode);
     }
 
@@ -326,21 +433,21 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             ast::ExprPath(..) => { }
 
             ast::ExprUnary(ast::UnDeref, ref base) => {      // *base
-                if !self.walk_overloaded_operator(expr, &**base, Vec::new()) {
+                if !self.walk_overloaded_operator(expr, &**base, Vec::new(), PassArgs::ByRef) {
                     self.select_from_expr(&**base);
                 }
             }
 
-            ast::ExprField(ref base, _, _) => {         // base.f
+            ast::ExprField(ref base, _) => {         // base.f
                 self.select_from_expr(&**base);
             }
 
-            ast::ExprTupField(ref base, _, _) => {         // base.<n>
+            ast::ExprTupField(ref base, _) => {         // base.<n>
                 self.select_from_expr(&**base);
             }
 
             ast::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
-                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs]) {
+                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs], PassArgs::ByRef) {
                     self.select_from_expr(&**lhs);
                     self.consume_expr(&**rhs);
                 }
@@ -353,8 +460,14 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     (&None, &Some(ref e)) => vec![&**e],
                     (&None, &None) => Vec::new()
                 };
-                let overloaded = self.walk_overloaded_operator(expr, &**base, args);
+                let overloaded =
+                    self.walk_overloaded_operator(expr, &**base, args, PassArgs::ByRef);
                 assert!(overloaded);
+            }
+
+            ast::ExprRange(ref start, ref end) => {
+                self.consume_expr(&**start);
+                end.as_ref().map(|e| self.consume_expr(&**e));
             }
 
             ast::ExprCall(ref callee, ref args) => {    // callee(args)
@@ -392,7 +505,9 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
                 // treatment of the discriminant is handled while walking the arms.
                 for arm in arms.iter() {
-                    self.walk_arm(discr_cmt.clone(), arm);
+                    let mode = self.arm_move_mode(discr_cmt.clone(), arm);
+                    let mode = mode.match_mode();
+                    self.walk_arm(discr_cmt.clone(), arm, mode);
                 }
             }
 
@@ -450,19 +565,31 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                                  pat.span,
                                                  ty::ReScope(blk_scope),
                                                  pattern_type);
-                self.walk_pat(pat_cmt, &**pat);
+                self.walk_irrefutable_pat(pat_cmt, &**pat);
 
                 self.walk_block(&**blk);
             }
 
-            ast::ExprUnary(_, ref lhs) => {
-                if !self.walk_overloaded_operator(expr, &**lhs, Vec::new()) {
+            ast::ExprUnary(op, ref lhs) => {
+                let pass_args = if ast_util::is_by_value_unop(op) {
+                    PassArgs::ByValue
+                } else {
+                    PassArgs::ByRef
+                };
+
+                if !self.walk_overloaded_operator(expr, &**lhs, Vec::new(), pass_args) {
                     self.consume_expr(&**lhs);
                 }
             }
 
-            ast::ExprBinary(_, ref lhs, ref rhs) => {
-                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs]) {
+            ast::ExprBinary(op, ref lhs, ref rhs) => {
+                let pass_args = if ast_util::is_by_value_binop(op) {
+                    PassArgs::ByValue
+                } else {
+                    PassArgs::ByRef
+                };
+
+                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs], pass_args) {
                     self.consume_expr(&**lhs);
                     self.consume_expr(&**rhs);
                 }
@@ -499,13 +626,15 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 self.consume_expr(&**count);
             }
 
-            ast::ExprClosure(..) |
-            ast::ExprProc(..) => {
+            ast::ExprClosure(..) => {
                 self.walk_captures(expr)
             }
 
             ast::ExprBox(ref place, ref base) => {
-                self.consume_expr(&**place);
+                match *place {
+                    Some(ref place) => self.consume_expr(&**place),
+                    None => {}
+                }
                 self.consume_expr(&**base);
             }
 
@@ -554,7 +683,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         self.tcx().sess.span_bug(
                             callee.span,
                             format!("unexpected callee type {}",
-                                    callee_ty.repr(self.tcx())).as_slice())
+                                    callee_ty.repr(self.tcx()))[])
                     }
                 };
                 match overloaded_call_type {
@@ -619,17 +748,14 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 // `walk_pat`:
                 self.walk_expr(&**expr);
                 let init_cmt = return_if_err!(self.mc.cat_expr(&**expr));
-                self.walk_pat(init_cmt, &*local.pat);
+                self.walk_irrefutable_pat(init_cmt, &*local.pat);
             }
         }
     }
 
+    /// Indicates that the value of `blk` will be consumed, meaning either copied or moved
+    /// depending on its type.
     fn walk_block(&mut self, blk: &ast::Block) {
-        /*!
-         * Indicates that the value of `blk` will be consumed,
-         * meaning either copied or moved depending on its type.
-         */
-
         debug!("walk_block(blk.id={})", blk.id);
 
         for stmt in blk.stmts.iter() {
@@ -703,10 +829,12 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             None => { }
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustAddEnv(..) => {
-                        // Creating a closure consumes the input and stores it
-                        // into the resulting rvalue.
-                        debug!("walk_adjustment(AutoAddEnv)");
+                    ty::AdjustAddEnv(..) |
+                    ty::AdjustReifyFnPointer(..) => {
+                        // Creating a closure/fn-pointer consumes the
+                        // input and stores it into the resulting
+                        // rvalue.
+                        debug!("walk_adjustment(AutoAddEnv|AdjustReifyFnPointer)");
                         let cmt_unadjusted =
                             return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
@@ -729,20 +857,16 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         }
     }
 
+    /// Autoderefs for overloaded Deref calls in fact reference their receiver. That is, if we have
+    /// `(*x)` where `x` is of type `Rc<T>`, then this in fact is equivalent to `x.deref()`. Since
+    /// `deref()` is declared with `&self`, this is an autoref of `x`.
     fn walk_autoderefs(&mut self,
                        expr: &ast::Expr,
                        autoderefs: uint) {
-        /*!
-         * Autoderefs for overloaded Deref calls in fact reference
-         * their receiver. That is, if we have `(*x)` where `x` is of
-         * type `Rc<T>`, then this in fact is equivalent to
-         * `x.deref()`. Since `deref()` is declared with `&self`, this
-         * is an autoref of `x`.
-         */
         debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
 
         for i in range(0, autoderefs) {
-            let deref_id = typeck::MethodCall::autoderef(expr.id, i);
+            let deref_id = ty::MethodCall::autoderef(expr.id, i);
             match self.typer.node_method_ty(deref_id) {
                 None => {}
                 Some(method_ty) => {
@@ -752,7 +876,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 format!("bad overloaded deref type {}",
-                                    method_ty.repr(self.tcx())).as_slice())
+                                    method_ty.repr(self.tcx()))[])
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
@@ -804,11 +928,24 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     fn walk_overloaded_operator(&mut self,
                                 expr: &ast::Expr,
                                 receiver: &ast::Expr,
-                                rhs: Vec<&ast::Expr>)
+                                rhs: Vec<&ast::Expr>,
+                                pass_args: PassArgs)
                                 -> bool
     {
         if !self.typer.is_method_call(expr.id) {
             return false;
+        }
+
+        match pass_args {
+            PassArgs::ByValue => {
+                self.consume_expr(receiver);
+                for &arg in rhs.iter() {
+                    self.consume_expr(arg);
+                }
+
+                return true;
+            },
+            PassArgs::ByRef => {},
         }
 
         self.walk_expr(receiver);
@@ -826,9 +963,17 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         return true;
     }
 
-    fn walk_arm(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &ast::Arm) {
+    fn arm_move_mode(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &ast::Arm) -> TrackMatchMode<Span> {
+        let mut mode = Unknown;
         for pat in arm.pats.iter() {
-            self.walk_pat(discr_cmt.clone(), &**pat);
+            self.determine_pat_move_mode(discr_cmt.clone(), &**pat, &mut mode);
+        }
+        mode
+    }
+
+    fn walk_arm(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &ast::Arm, mode: MatchMode) {
+        for pat in arm.pats.iter() {
+            self.walk_pat(discr_cmt.clone(), &**pat, mode);
         }
 
         for guard in arm.guard.iter() {
@@ -838,21 +983,74 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         self.consume_expr(&*arm.body);
     }
 
-    fn walk_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &ast::Pat) {
+    /// Walks an pat that occurs in isolation (i.e. top-level of fn
+    /// arg or let binding.  *Not* a match arm or nested pat.)
+    fn walk_irrefutable_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &ast::Pat) {
+        let mut mode = Unknown;
+        self.determine_pat_move_mode(cmt_discr.clone(), pat, &mut mode);
+        let mode = mode.match_mode();
+        self.walk_pat(cmt_discr, pat, mode);
+    }
+
+    /// Identifies any bindings within `pat` and accumulates within
+    /// `mode` whether the overall pattern/match structure is a move,
+    /// copy, or borrow.
+    fn determine_pat_move_mode(&mut self,
+                               cmt_discr: mc::cmt<'tcx>,
+                               pat: &ast::Pat,
+                               mode: &mut TrackMatchMode<Span>) {
+        debug!("determine_pat_move_mode cmt_discr={} pat={}", cmt_discr.repr(self.tcx()),
+               pat.repr(self.tcx()));
+        return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |_mc, cmt_pat, pat| {
+            let tcx = self.typer.tcx();
+            let def_map = &self.typer.tcx().def_map;
+            if pat_util::pat_is_binding(def_map, pat) {
+                match pat.node {
+                    ast::PatIdent(ast::BindByRef(_), _, _) =>
+                        mode.lub(BorrowingMatch),
+                    ast::PatIdent(ast::BindByValue(_), _, _) => {
+                        match copy_or_move(tcx,
+                                           cmt_pat.ty,
+                                           &self.param_env,
+                                           PatBindingMove) {
+                            Copy => mode.lub(CopyingMatch),
+                            Move(_) => mode.lub(MovingMatch),
+                        }
+                    }
+                    _ => {
+                        tcx.sess.span_bug(
+                            pat.span,
+                            "binding pattern not an identifier");
+                    }
+                }
+            }
+        }));
+    }
+
+    /// The core driver for walking a pattern; `match_mode` must be
+    /// established up front, e.g. via `determine_pat_move_mode` (see
+    /// also `walk_irrefutable_pat` for patterns that stand alone).
+    fn walk_pat(&mut self,
+                cmt_discr: mc::cmt<'tcx>,
+                pat: &ast::Pat,
+                match_mode: MatchMode) {
         debug!("walk_pat cmt_discr={} pat={}", cmt_discr.repr(self.tcx()),
                pat.repr(self.tcx()));
+
         let mc = &self.mc;
         let typer = self.typer;
         let tcx = typer.tcx();
         let def_map = &self.typer.tcx().def_map;
         let delegate = &mut self.delegate;
-        return_if_err!(mc.cat_pattern(cmt_discr, &*pat, |mc, cmt_pat, pat| {
+        let param_env = &mut self.param_env;
+        return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
             if pat_util::pat_is_binding(def_map, pat) {
                 let tcx = typer.tcx();
 
-                debug!("binding cmt_pat={} pat={}",
+                debug!("binding cmt_pat={} pat={} match_mode={}",
                        cmt_pat.repr(tcx),
-                       pat.repr(tcx));
+                       pat.repr(tcx),
+                       match_mode);
 
                 // pat_ty: the type of the binding being produced.
                 let pat_ty = return_if_err!(typer.node_ty(pat.id));
@@ -878,7 +1076,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                              r, bk, RefBinding);
                     }
                     ast::PatIdent(ast::BindByValue(_), _, _) => {
-                        let mode = copy_or_move(typer.tcx(), cmt_pat.ty, PatBindingMove);
+                        let mode = copy_or_move(typer.tcx(),
+                                                cmt_pat.ty,
+                                                param_env,
+                                                PatBindingMove);
                         debug!("walk_pat binding consuming pat");
                         delegate.consume_pat(pat, cmt_pat, mode);
                     }
@@ -935,6 +1136,93 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 }
             }
         }));
+
+        // Do a second pass over the pattern, calling `matched_pat` on
+        // the interior nodes (enum variants and structs), as opposed
+        // to the above loop's visit of than the bindings that form
+        // the leaves of the pattern tree structure.
+        return_if_err!(mc.cat_pattern(cmt_discr, pat, |mc, cmt_pat, pat| {
+            let def_map = def_map.borrow();
+            let tcx = typer.tcx();
+
+            match pat.node {
+                ast::PatEnum(_, _) | ast::PatIdent(_, _, None) | ast::PatStruct(..) => {
+                    match def_map.get(&pat.id) {
+                        None => {
+                            // no definition found: pat is not a
+                            // struct or enum pattern.
+                        }
+
+                        Some(&def::DefVariant(enum_did, variant_did, _is_struct)) => {
+                            let downcast_cmt =
+                                if ty::enum_is_univariant(tcx, enum_did) {
+                                    cmt_pat
+                                } else {
+                                    let cmt_pat_ty = cmt_pat.ty;
+                                    mc.cat_downcast(pat, cmt_pat, cmt_pat_ty, variant_did)
+                                };
+
+                            debug!("variant downcast_cmt={} pat={}",
+                                   downcast_cmt.repr(tcx),
+                                   pat.repr(tcx));
+
+                            delegate.matched_pat(pat, downcast_cmt, match_mode);
+                        }
+
+                        Some(&def::DefStruct(..)) | Some(&def::DefTy(_, false)) => {
+                            // A struct (in either the value or type
+                            // namespace; we encounter the former on
+                            // e.g. patterns for unit structs).
+
+                            debug!("struct cmt_pat={} pat={}",
+                                   cmt_pat.repr(tcx),
+                                   pat.repr(tcx));
+
+                            delegate.matched_pat(pat, cmt_pat, match_mode);
+                        }
+
+                        Some(&def::DefConst(..)) |
+                        Some(&def::DefLocal(..)) => {
+                            // This is a leaf (i.e. identifier binding
+                            // or constant value to match); thus no
+                            // `matched_pat` call.
+                        }
+
+                        Some(def @ &def::DefTy(_, true)) => {
+                            // An enum's type -- should never be in a
+                            // pattern.
+
+                            let msg = format!("Pattern has unexpected type: {}", def);
+                            tcx.sess.span_bug(pat.span, msg[])
+                        }
+
+                        Some(def) => {
+                            // Remaining cases are e.g. DefFn, to
+                            // which identifiers within patterns
+                            // should not resolve.
+
+                            let msg = format!("Pattern has unexpected def: {}", def);
+                            tcx.sess.span_bug(pat.span, msg[])
+                        }
+                    }
+                }
+
+                ast::PatIdent(_, _, Some(_)) => {
+                    // Do nothing; this is a binding (not a enum
+                    // variant or struct), and the cat_pattern call
+                    // will visit the substructure recursively.
+                }
+
+                ast::PatWild(_) | ast::PatTup(..) | ast::PatBox(..) |
+                ast::PatRegion(..) | ast::PatLit(..) | ast::PatRange(..) |
+                ast::PatVec(..) | ast::PatMac(..) => {
+                    // Similarly, each of these cases does not
+                    // correspond to a enum variant or struct, so we
+                    // do not do any `matched_pat` calls for these
+                    // cases either.
+                }
+            }
+        }));
     }
 
     fn walk_captures(&mut self, closure_expr: &ast::Expr) {
@@ -984,7 +1272,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
                                                                closure_expr.span,
                                                                freevar.def));
-            let mode = copy_or_move(self.tcx(), cmt_var.ty, CaptureMove);
+            let mode = copy_or_move(self.tcx(),
+                                    cmt_var.ty,
+                                    &self.param_env,
+                                    CaptureMove);
             self.delegate.consume(closure_expr.id, freevar.span, cmt_var, mode);
         }
     }
@@ -1002,8 +1293,15 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 }
 
-fn copy_or_move<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>,
-                      move_reason: MoveReason) -> ConsumeMode {
-    if ty::type_moves_by_default(tcx, ty) { Move(move_reason) } else { Copy }
+fn copy_or_move<'tcx>(tcx: &ty::ctxt<'tcx>,
+                      ty: Ty<'tcx>,
+                      param_env: &ParameterEnvironment<'tcx>,
+                      move_reason: MoveReason)
+                      -> ConsumeMode {
+    if ty::type_moves_by_default(tcx, ty, param_env) {
+        Move(move_reason)
+    } else {
+        Copy
+    }
 }
 

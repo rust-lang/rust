@@ -99,10 +99,10 @@
 
 // VECTORS
 // gdb-command:whatis fixed_size_vec1
-// gdb-check:type = struct ([type-names::Struct1, ..3], i16)
+// gdb-check:type = struct ([type-names::Struct1; 3], i16)
 
 // gdb-command:whatis fixed_size_vec2
-// gdb-check:type = struct ([uint, ..3], i16)
+// gdb-check:type = struct ([uint; 3], i16)
 
 // gdb-command:whatis slice1
 // gdb-check:type = struct &[uint]
@@ -167,9 +167,6 @@
 
 
 // CLOSURES
-// gdb-command:whatis some_proc
-// gdb-check:type = struct (once proc(int, u8) -> (int, u8), uint)
-
 // gdb-command:whatis stack_closure1
 // gdb-check:type = struct (&mut|int|, uint)
 
@@ -322,8 +319,6 @@ fn main() {
     // how that maps to rustc's internal representation of these forms.
     // Once closures have reached their 1.0 form, the tests below should
     // probably be expanded.
-    let some_proc = (proc(a:int, b:u8) (a, b), 0u);
-
     let stack_closure1 = (|x:int| {}, 0u);
     let stack_closure2 = (|x:i8, y: f32| { (x as f32) + y }, 0u);
 

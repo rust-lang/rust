@@ -450,7 +450,7 @@ fn main() {
         sentinel();
 
         val
-    }, ..10];
+    }; 10];
 
     zzz(); // #break
     sentinel();
@@ -491,7 +491,7 @@ fn main() {
     sentinel();
 
     // index expression
-    let a_vector = [10i, ..20];
+    let a_vector = [10i; 20];
     let _ = a_vector[{
         zzz(); // #break
         sentinel();

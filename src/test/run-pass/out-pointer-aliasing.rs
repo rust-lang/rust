@@ -13,6 +13,8 @@ pub struct Foo {
     _f2: int,
 }
 
+impl Copy for Foo {}
+
 #[inline(never)]
 pub fn foo(f: &mut Foo) -> Foo {
     let ret = *f;

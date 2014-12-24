@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-# Translation of inline assembly.
-*/
+//! # Translation of inline assembly.
 
 use llvm;
 use trans::build::*;
@@ -74,35 +72,38 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                     callee::DontAutorefArg)
         })
     }).collect::<Vec<_>>();
-    inputs.push_all(ext_inputs.as_slice());
+    inputs.push_all(ext_inputs[]);
 
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);
 
-    let mut constraints =
-        String::from_str(constraints.iter()
-                                    .map(|s| s.get().to_string())
-                                    .chain(ext_constraints.into_iter())
-                                    .collect::<Vec<String>>()
-                                    .connect(",")
-                                    .as_slice());
+    let mut constraints = constraints.iter()
+                                     .map(|s| s.get().to_string())
+                                     .chain(ext_constraints.into_iter())
+                                     .collect::<Vec<String>>()
+                                     .connect(",");
 
-    let mut clobbers = get_clobbers();
-    if !ia.clobbers.get().is_empty() && !clobbers.is_empty() {
-        clobbers = format!("{},{}", ia.clobbers.get(), clobbers);
-    } else {
-        clobbers.push_str(ia.clobbers.get());
+    let mut clobbers = ia.clobbers.iter()
+                                  .map(|s| format!("~{{{}}}", s.get()))
+                                  .collect::<Vec<String>>()
+                                  .connect(",");
+    let more_clobbers = get_clobbers();
+    if !more_clobbers.is_empty() {
+        if !clobbers.is_empty() {
+            clobbers.push(',');
+        }
+        clobbers.push_str(more_clobbers[]);
     }
 
     // Add the clobbers to our constraints list
     if clobbers.len() != 0 && constraints.len() != 0 {
         constraints.push(',');
-        constraints.push_str(clobbers.as_slice());
+        constraints.push_str(clobbers[]);
     } else {
-        constraints.push_str(clobbers.as_slice());
+        constraints.push_str(clobbers[]);
     }
 
-    debug!("Asm Constraints: {}", constraints.as_slice());
+    debug!("Asm Constraints: {}", constraints[]);
 
     let num_outputs = outputs.len();
 
@@ -112,7 +113,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     } else if num_outputs == 1 {
         output_types[0]
     } else {
-        Type::struct_(bcx.ccx(), output_types.as_slice(), false)
+        Type::struct_(bcx.ccx(), output_types[], false)
     };
 
     let dialect = match ia.dialect {
@@ -121,11 +122,11 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     };
 
     let r = ia.asm.get().with_c_str(|a| {
-        constraints.as_slice().with_c_str(|c| {
+        constraints.with_c_str(|c| {
             InlineAsmCall(bcx,
                           a,
                           c,
-                          inputs.as_slice(),
+                          inputs[],
                           output_type,
                           ia.volatile,
                           ia.alignstack,

@@ -270,6 +270,7 @@
       '|"|
       \\|n|r|t|0|
       x\%{hex_digit}{2}|
+      u{\%{hex_digit}{1,6}}|
       u\%{hex_digit}{4}|
       U\%{hex_digit}{8}
     </define-regex>

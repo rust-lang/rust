@@ -19,10 +19,12 @@ struct Foo {
     baz: u64
 }
 
-pub fn main() {
-    let foos = [Foo { bar: 1, baz: 2 }, .. 10];
+impl Copy for Foo {}
 
-    assert_eq!(mem::size_of::<[Foo, .. 10]>(), 90);
+pub fn main() {
+    let foos = [Foo { bar: 1, baz: 2 }; 10];
+
+    assert_eq!(mem::size_of::<[Foo; 10]>(), 90);
 
     for i in range(0u, 10) {
         assert_eq!(foos[i], Foo { bar: 1, baz: 2});

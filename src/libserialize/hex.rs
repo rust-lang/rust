@@ -15,7 +15,6 @@
 pub use self::FromHexError::*;
 
 use std::fmt;
-use std::string;
 use std::error;
 
 /// A trait for converting a value to hexadecimal encoding
@@ -28,21 +27,19 @@ pub trait ToHex for Sized? {
 static CHARS: &'static[u8] = b"0123456789abcdef";
 
 impl ToHex for [u8] {
-    /**
-     * Turn a vector of `u8` bytes into a hexadecimal string.
-     *
-     * # Example
-     *
-     * ```rust
-     * extern crate serialize;
-     * use serialize::hex::ToHex;
-     *
-     * fn main () {
-     *     let str = [52,32].to_hex();
-     *     println!("{}", str);
-     * }
-     * ```
-     */
+    /// Turn a vector of `u8` bytes into a hexadecimal string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// extern crate serialize;
+    /// use serialize::hex::ToHex;
+    ///
+    /// fn main () {
+    ///     let str = [52,32].to_hex();
+    ///     println!("{}", str);
+    /// }
+    /// ```
     fn to_hex(&self) -> String {
         let mut v = Vec::with_capacity(self.len() * 2);
         for &byte in self.iter() {
@@ -51,7 +48,7 @@ impl ToHex for [u8] {
         }
 
         unsafe {
-            string::raw::from_utf8(v)
+            String::from_utf8_unchecked(v)
         }
     }
 }
@@ -64,6 +61,7 @@ pub trait FromHex for Sized? {
 }
 
 /// Errors that can occur when decoding a hex encoded string
+#[deriving(Copy)]
 pub enum FromHexError {
     /// The input contained a character not part of the hex format
     InvalidHexCharacter(char, uint),
@@ -96,31 +94,29 @@ impl error::Error for FromHexError {
 
 
 impl FromHex for str {
-    /**
-     * Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
-     * to the byte values it encodes.
-     *
-     * You can use the `String::from_utf8` function in `std::string` to turn a
-     * `Vec<u8>` into a string with characters corresponding to those values.
-     *
-     * # Example
-     *
-     * This converts a string literal to hexadecimal and back.
-     *
-     * ```rust
-     * extern crate serialize;
-     * use serialize::hex::{FromHex, ToHex};
-     *
-     * fn main () {
-     *     let hello_str = "Hello, World".as_bytes().to_hex();
-     *     println!("{}", hello_str);
-     *     let bytes = hello_str.as_slice().from_hex().unwrap();
-     *     println!("{}", bytes);
-     *     let result_str = String::from_utf8(bytes).unwrap();
-     *     println!("{}", result_str);
-     * }
-     * ```
-     */
+    /// Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
+    /// to the byte values it encodes.
+    ///
+    /// You can use the `String::from_utf8` function to turn a
+    /// `Vec<u8>` into a string with characters corresponding to those values.
+    ///
+    /// # Example
+    ///
+    /// This converts a string literal to hexadecimal and back.
+    ///
+    /// ```rust
+    /// extern crate serialize;
+    /// use serialize::hex::{FromHex, ToHex};
+    ///
+    /// fn main () {
+    ///     let hello_str = "Hello, World".as_bytes().to_hex();
+    ///     println!("{}", hello_str);
+    ///     let bytes = hello_str.as_slice().from_hex().unwrap();
+    ///     println!("{}", bytes);
+    ///     let result_str = String::from_utf8(bytes).unwrap();
+    ///     println!("{}", result_str);
+    /// }
+    /// ```
     fn from_hex(&self) -> Result<Vec<u8>, FromHexError> {
         // This may be an overestimate if there is any whitespace
         let mut b = Vec::with_capacity(self.len() / 2);
@@ -163,15 +159,15 @@ mod tests {
 
     #[test]
     pub fn test_to_hex() {
-        assert_eq!("foobar".as_bytes().to_hex(), "666f6f626172".to_string());
+        assert_eq!("foobar".as_bytes().to_hex(), "666f6f626172");
     }
 
     #[test]
     pub fn test_from_hex_okay() {
-        assert_eq!("666f6f626172".from_hex().unwrap().as_slice(),
-                   "foobar".as_bytes());
-        assert_eq!("666F6F626172".from_hex().unwrap().as_slice(),
-                   "foobar".as_bytes());
+        assert_eq!("666f6f626172".from_hex().unwrap(),
+                   b"foobar");
+        assert_eq!("666F6F626172".from_hex().unwrap(),
+                   b"foobar");
     }
 
     #[test]
@@ -187,8 +183,8 @@ mod tests {
 
     #[test]
     pub fn test_from_hex_ignores_whitespace() {
-        assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap().as_slice(),
-                   "foobar".as_bytes());
+        assert_eq!("666f 6f6\r\n26172 ".from_hex().unwrap(),
+                   b"foobar");
     }
 
     #[test]
@@ -202,15 +198,11 @@ mod tests {
     pub fn test_from_hex_all_bytes() {
         for i in range(0u, 256) {
             let ii: &[u8] = &[i as u8];
-            assert_eq!(format!("{:02x}", i as uint).as_slice()
-                                                   .from_hex()
-                                                   .unwrap()
-                                                   .as_slice(),
+            assert_eq!(format!("{:02x}", i as uint).from_hex()
+                                                   .unwrap(),
                        ii);
-            assert_eq!(format!("{:02X}", i as uint).as_slice()
-                                                   .from_hex()
-                                                   .unwrap()
-                                                   .as_slice(),
+            assert_eq!(format!("{:02X}", i as uint).from_hex()
+                                                   .unwrap(),
                        ii);
         }
     }
@@ -231,7 +223,7 @@ mod tests {
                  ウヰノオクヤマ ケフコエテ アサキユメミシ ヱヒモセスン";
         let sb = s.as_bytes().to_hex();
         b.iter(|| {
-            sb.as_slice().from_hex().unwrap();
+            sb.from_hex().unwrap();
         });
         b.bytes = sb.len() as u64;
     }

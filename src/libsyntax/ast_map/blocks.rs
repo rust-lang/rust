@@ -37,10 +37,11 @@ use visit;
 ///
 /// More specifically, it is one of either:
 ///   - A function item,
-///   - A closure expr (i.e. an ExprClosure or ExprProc), or
+///   - A closure expr (i.e. an ExprClosure), or
 ///   - The default implementation for a trait method.
 ///
 /// To construct one, use the `Code::from_node` function.
+#[deriving(Copy)]
 pub struct FnLikeNode<'a> { node: ast_map::Node<'a> }
 
 /// MaybeFnLike wraps a method that indicates if an object
@@ -71,7 +72,7 @@ impl MaybeFnLike for ast::TraitItem {
 impl MaybeFnLike for ast::Expr {
     fn is_fn_like(&self) -> bool {
         match self.node {
-            ast::ExprClosure(..) | ast::ExprProc(..) => true,
+            ast::ExprClosure(..) => true,
             _ => false,
         }
     }
@@ -80,6 +81,7 @@ impl MaybeFnLike for ast::Expr {
 /// Carries either an FnLikeNode or a Block, as these are the two
 /// constructs that correspond to "code" (as in, something from which
 /// we can construct a control-flow graph).
+#[deriving(Copy)]
 pub enum Code<'a> {
     FnLikeCode(FnLikeNode<'a>),
     BlockCode(&'a Block),
@@ -118,7 +120,7 @@ impl<'a> Code<'a> {
 struct ItemFnParts<'a> {
     ident:    ast::Ident,
     decl:     &'a ast::FnDecl,
-    style:    ast::FnStyle,
+    unsafety: ast::Unsafety,
     abi:      abi::Abi,
     generics: &'a ast::Generics,
     body:     &'a Block,
@@ -177,27 +179,28 @@ impl<'a> FnLikeNode<'a> {
     }
 
     pub fn kind(self) -> visit::FnKind<'a> {
-        let item = |p: ItemFnParts<'a>| -> visit::FnKind<'a> {
-            visit::FkItemFn(p.ident, p.generics, p.style, p.abi)
+        let item = |: p: ItemFnParts<'a>| -> visit::FnKind<'a> {
+            visit::FkItemFn(p.ident, p.generics, p.unsafety, p.abi)
         };
-        let closure = |_: ClosureParts| {
+        let closure = |: _: ClosureParts| {
             visit::FkFnBlock
         };
-        let method = |m: &'a ast::Method| {
+        let method = |: m: &'a ast::Method| {
             visit::FkMethod(m.pe_ident(), m.pe_generics(), m)
         };
         self.handle(item, method, closure)
     }
 
-    fn handle<A>(self,
-                 item_fn: |ItemFnParts<'a>| -> A,
-                 method: |&'a ast::Method| -> A,
-                 closure: |ClosureParts<'a>| -> A) -> A {
+    fn handle<A, I, M, C>(self, item_fn: I, method: M, closure: C) -> A where
+        I: FnOnce(ItemFnParts<'a>) -> A,
+        M: FnOnce(&'a ast::Method) -> A,
+        C: FnOnce(ClosureParts<'a>) -> A,
+    {
         match self.node {
             ast_map::NodeItem(i) => match i.node {
-                ast::ItemFn(ref decl, style, abi, ref generics, ref block) =>
+                ast::ItemFn(ref decl, unsafety, abi, ref generics, ref block) =>
                     item_fn(ItemFnParts{
-                        ident: i.ident, decl: &**decl, style: style, body: &**block,
+                        ident: i.ident, decl: &**decl, unsafety: unsafety, body: &**block,
                         generics: generics, abi: abi, id: i.id, span: i.span
                     }),
                 _ => panic!("item FnLikeNode that is not fn-like"),
@@ -216,8 +219,6 @@ impl<'a> FnLikeNode<'a> {
             }
             ast_map::NodeExpr(e) => match e.node {
                 ast::ExprClosure(_, _, ref decl, ref block) =>
-                    closure(ClosureParts::new(&**decl, &**block, e.id, e.span)),
-                ast::ExprProc(ref decl, ref block) =>
                     closure(ClosureParts::new(&**decl, &**block, e.id, e.span)),
                 _ => panic!("expr FnLikeNode that is not fn-like"),
             },

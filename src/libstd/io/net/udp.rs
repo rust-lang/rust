@@ -18,9 +18,11 @@
 use clone::Clone;
 use io::net::ip::{SocketAddr, IpAddr, ToSocketAddr};
 use io::{Reader, Writer, IoResult};
+use ops::FnOnce;
 use option::Option;
-use result::{Ok, Err};
+use result::Result::{Ok, Err};
 use sys::udp::UdpSocket as UdpSocketImp;
+use sys_common;
 
 /// A User Datagram Protocol socket.
 ///
@@ -80,7 +82,7 @@ impl UdpSocket {
     /// Sends data on the socket to the given address. Returns nothing on
     /// success.
     ///
-    /// Address type can be any implementor of `ToSocketAddr` trait. See its
+    /// Address type can be any implementer of `ToSocketAddr` trait. See its
     /// documentation for concrete examples.
     pub fn send_to<A: ToSocketAddr>(&mut self, buf: &[u8], addr: A) -> IoResult<()> {
         super::with_addresses(addr, |addr| self.inner.send_to(buf, addr))
@@ -184,6 +186,12 @@ impl Clone for UdpSocket {
     }
 }
 
+impl sys_common::AsInner<UdpSocketImp> for UdpSocket {
+    fn as_inner(&self) -> &UdpSocketImp {
+        &self.inner
+    }
+}
+
 /// A type that allows convenient usage of a UDP stream connected to one
 /// address via the `Reader` and `Writer` traits.
 ///
@@ -203,7 +211,9 @@ impl UdpStream {
     /// Allows access to the underlying UDP socket owned by this stream. This
     /// is useful to, for example, use the socket to send data to hosts other
     /// than the one that this stream is connected to.
-    pub fn as_socket<T>(&mut self, f: |&mut UdpSocket| -> T) -> T {
+    pub fn as_socket<T, F>(&mut self, f: F) -> T where
+        F: FnOnce(&mut UdpSocket) -> T,
+    {
         f(&mut self.socket)
     }
 
@@ -262,7 +272,7 @@ mod test {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
 
-        spawn(proc() {
+        spawn(move|| {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx1.recv();
@@ -297,7 +307,7 @@ mod test {
         let client_ip = next_test_ip6();
         let (tx, rx) = channel::<()>();
 
-        spawn(proc() {
+        spawn(move|| {
             match UdpSocket::bind(client_ip) {
                 Ok(ref mut client) => {
                     rx.recv();
@@ -333,7 +343,7 @@ mod test {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
 
-        spawn(proc() {
+        spawn(move|| {
             let send_as = |ip, val: &[u8]| {
                 match UdpSocket::bind(ip) {
                     Ok(client) => {
@@ -377,7 +387,7 @@ mod test {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
 
-        spawn(proc() {
+        spawn(move|| {
             match UdpSocket::bind(client_ip) {
                 Ok(client) => {
                     let client = box client;
@@ -439,7 +449,7 @@ mod test {
         let mut sock1 = UdpSocket::bind(addr1).unwrap();
         let sock2 = UdpSocket::bind(addr2).unwrap();
 
-        spawn(proc() {
+        spawn(move|| {
             let mut sock2 = sock2;
             let mut buf = [0, 0];
             assert_eq!(sock2.recv_from(&mut buf), Ok((1, addr1)));
@@ -451,7 +461,7 @@ mod test {
 
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
-        spawn(proc() {
+        spawn(move|| {
             let mut sock3 = sock3;
             rx1.recv();
             sock3.send_to(&[1], addr2).unwrap();
@@ -472,7 +482,7 @@ mod test {
         let (tx1, rx) = channel();
         let tx2 = tx1.clone();
 
-        spawn(proc() {
+        spawn(move|| {
             let mut sock2 = sock2;
             sock2.send_to(&[1], addr1).unwrap();
             rx.recv();
@@ -483,7 +493,7 @@ mod test {
         let sock3 = sock1.clone();
 
         let (done, rx) = channel();
-        spawn(proc() {
+        spawn(move|| {
             let mut sock3 = sock3;
             let mut buf = [0, 0];
             sock3.recv_from(&mut buf).unwrap();
@@ -507,7 +517,7 @@ mod test {
         let (tx, rx) = channel();
         let (serv_tx, serv_rx) = channel();
 
-        spawn(proc() {
+        spawn(move|| {
             let mut sock2 = sock2;
             let mut buf = [0, 1];
 
@@ -523,7 +533,7 @@ mod test {
 
         let (done, rx) = channel();
         let tx2 = tx.clone();
-        spawn(proc() {
+        spawn(move|| {
             let mut sock3 = sock3;
             match sock3.send_to(&[1], addr2) {
                 Ok(..) => { let _ = tx2.send_opt(()); }
@@ -547,11 +557,12 @@ mod test {
         let addr1 = next_test_ip4();
         let addr2 = next_test_ip4();
         let mut a = UdpSocket::bind(addr1).unwrap();
+        let a2 = UdpSocket::bind(addr2).unwrap();
 
         let (tx, rx) = channel();
         let (tx2, rx2) = channel();
-        spawn(proc() {
-            let mut a = UdpSocket::bind(addr2).unwrap();
+        spawn(move|| {
+            let mut a = a2;
             assert_eq!(a.recv_from(&mut [0]), Ok((1, addr1)));
             assert_eq!(a.send_to(&[0], addr1), Ok(()));
             rx.recv();

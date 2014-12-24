@@ -187,19 +187,18 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 
 <p id="keyword-table-marker"></p>
 
-|          |          |          |          |        |
-|----------|----------|----------|----------|--------|
-| abstract | alignof  | as       | be       | box    |
-| break    | const    | continue | crate    | do     |
-| else     | enum     | extern   | false    | final  |
-| fn       | for      | if       | impl     | in     |
-| let      | loop     | match    | mod      | move   |
-| mut      | offsetof | once     | override | priv   |
-| proc     | pub      | pure     | ref      | return |
-| sizeof   | static   | self     | struct   | super  |
-| true     | trait    | type     | typeof   | unsafe |
-| unsized  | use      | virtual  | where    | while  |
-| yield    |          |          |          |        |
+|          |          |          |          |         |
+|----------|----------|----------|----------|---------|
+| abstract | alignof  | as       | be       | box     |
+| break    | const    | continue | crate    | do      |
+| else     | enum     | extern   | false    | final   |
+| fn       | for      | if       | impl     | in      |
+| let      | loop     | match    | mod      | move    |
+| mut      | offsetof | once     | override | priv    |
+| pub      | pure     | ref      | return   | sizeof  |
+| static   | self     | struct   | super    | true    |
+| trait    | type     | typeof   | unsafe   | unsized |
+| use      | virtual  | where    | while    | yield   |
 
 
 Each of these keywords has special meaning in its grammar, and all of them are
@@ -496,9 +495,8 @@ Examples of integer literals of various forms:
 
 A _floating-point literal_ has one of two forms:
 
-* Two _decimal literals_ separated by a period
-  character `U+002E` (`.`), with an optional _exponent_ trailing after the
-  second decimal literal.
+* A _decimal literal_ followed by a period character `U+002E` (`.`). This is
+  optionally followed by another decimal literal, with an optional _exponent_.
 * A single _decimal literal_ followed by an _exponent_.
 
 By default, a floating-point literal has a generic type, and, like integer
@@ -509,20 +507,25 @@ types), which explicitly determine the type of the literal.
 Examples of floating-point literals of various forms:
 
 ```
-123.0f64;                          // type f64
-0.1f64;                            // type f64
-0.1f32;                            // type f32
-12E+99_f64;                        // type f64
+123.0f64;        // type f64
+0.1f64;          // type f64
+0.1f32;          // type f32
+12E+99_f64;      // type f64
+let x: f64 = 2.; // type f64
 ```
 
-##### Boolean literals
+This last example is different because it is not possible to use the suffix
+syntax with a floating point literal ending in a period. `2.f64` would attempt
+to call a method named `f64` on `2`.
+
+#### Boolean literals
 
 The two values of the boolean type are written `true` and `false`.
 
 ### Symbols
 
 ```{.ebnf .gram}
-symbol : "::" "->"
+symbol : "::" | "->"
        | '#' | '[' | ']' | '(' | ')' | '{' | '}'
        | ',' | ';' ;
 ```
@@ -777,13 +780,8 @@ metadata that influences the behavior of the compiler.
 
 ```{.rust}
 # #![allow(unused_attribute)]
-// Crate ID
-#![crate_id = "projx#2.5"]
-
-// Additional metadata attributes
-#![desc = "Project X"]
-#![license = "BSD"]
-#![comment = "This is a comment on Project X."]
+// Crate name
+#![crate_name = "projx"]
 
 // Specify the output type
 #![crate_type = "lib"]
@@ -936,7 +934,7 @@ kinds of view items:
 
 ```{.ebnf .gram}
 extern_crate_decl : "extern" "crate" crate_name
-crate_name: ident | ( string_lit as ident )
+crate_name: ident | ( string_lit "as" ident )
 ```
 
 An _`extern crate` declaration_ specifies a dependency on an external crate.
@@ -999,7 +997,7 @@ An example of `use` declarations:
 
 ```
 use std::iter::range_step;
-use std::option::{Some, None};
+use std::option::Option::{Some, None};
 use std::collections::hash_map::{mod, HashMap};
 
 fn foo<T>(_: T){}
@@ -1009,8 +1007,8 @@ fn main() {
     // Equivalent to 'std::iter::range_step(0u, 10u, 2u);'
     range_step(0u, 10u, 2u);
 
-    // Equivalent to 'foo(vec![std::option::Some(1.0f64),
-    // std::option::None]);'
+    // Equivalent to 'foo(vec![std::option::Option::Some(1.0f64),
+    // std::option::Option::None]);'
     foo(vec![Some(1.0f64), None]);
 
     // Both `hash_map` and `HashMap` are in scope.
@@ -1319,10 +1317,10 @@ let fptr: extern "C" fn() -> int = new_int;
 Extern functions may be called directly from Rust code as Rust uses large,
 contiguous stack segments like C.
 
-### Type definitions
+### Type aliases
 
-A _type definition_ defines a new name for an existing [type](#types). Type
-definitions are declared with the keyword `type`. Every value has a single,
+A _type alias_ defines a new name for an existing [type](#types). Type
+aliases are declared with the keyword `type`. Every value has a single,
 specific type; the type-specified aspects of a value include:
 
 * Whether the value is composed of sub-values or is indivisible.
@@ -1334,7 +1332,12 @@ specific type; the type-specified aspects of a value include:
 For example, the type `(u8, u8)` defines the set of immutable values that are
 composite pairs, each containing two unsigned 8-bit integers accessed by
 pattern-matching and laid out in memory with the `x` component preceding the
-`y` component.
+`y` component:
+
+```
+type Point = (u8, u8);
+let p: Point = (41, 68);
+```
 
 ### Structures
 
@@ -1660,6 +1663,7 @@ Implementations are defined with the keyword `impl`.
 
 ```
 # struct Point {x: f64, y: f64};
+# impl Copy for Point {}
 # type Surface = int;
 # struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
 # trait Shape { fn draw(&self, Surface); fn bounding_box(&self) -> BoundingBox; }
@@ -1668,6 +1672,8 @@ struct Circle {
     radius: f64,
     center: Point,
 }
+
+impl Copy for Circle {}
 
 impl Shape for Circle {
     fn draw(&self, s: Surface) { do_draw_circle(s, *self); }
@@ -1684,7 +1690,20 @@ methods in such an implementation can only be used as direct calls on the
 values of the type that the implementation targets. In such an implementation,
 the trait type and `for` after `impl` are omitted. Such implementations are
 limited to nominal types (enums, structs), and the implementation must appear
-in the same module or a sub-module as the `self` type.
+in the same module or a sub-module as the `self` type:
+
+```
+struct Point {x: int, y: int}
+
+impl Point {
+    fn log(&self) {
+        println!("Point is at ({}, {})", self.x, self.y);
+    }
+}
+
+let my_point = Point {x: 10, y:11};
+my_point.log();
+```
 
 When a trait _is_ specified in an `impl`, all methods declared as part of the
 trait must be implemented, with matching types and type parameter counts.
@@ -1778,6 +1797,7 @@ default visibility with the `priv` keyword. When an item is declared as `pub`,
 it can be thought of as being accessible to the outside world. For example:
 
 ```
+# #![allow(missing_copy_implementations)]
 # fn main() {}
 // Declare a private struct
 struct Foo;
@@ -1943,7 +1963,7 @@ An example of attributes:
 
 ```{.rust}
 // General metadata applied to the enclosing module or crate.
-#![license = "BSD"]
+#![crate_type = "lib"]
 
 // A function marked as a unit test
 #[test]
@@ -2528,10 +2548,6 @@ The currently implemented features of the reference compiler are:
 * `default_type_params` - Allows use of default type parameters. The future of
                           this feature is uncertain.
 
-* `if_let` - Allows use of the `if let` syntax.
-
-* `while_let` - Allows use of the `while let` syntax.
-
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 
@@ -2617,8 +2633,6 @@ The currently implemented features of the reference compiler are:
 * `unsafe_destructor` - Allows use of the `#[unsafe_destructor]` attribute,
                         which is considered wildly unsafe and will be
                         obsoleted by language improvements.
-
-* `tuple_indexing` - Allows use of tuple indexing (expressions like `expr.0`)
 
 * `associated_types` - Allows type aliases in traits. Experimental.
 
@@ -3124,8 +3138,8 @@ as
 ```
 
 Operators at the same precedence level are evaluated left-to-right. [Unary
-operators](#unary-operator-expressions) have the same precedence level and it
-is stronger than any of the binary operators'.
+operators](#unary-operator-expressions) have the same precedence level and are
+stronger than any of the binary operators.
 
 ### Grouped expressions
 
@@ -3163,7 +3177,7 @@ Some examples of call expressions:
 # fn add(x: int, y: int) -> int { 0 }
 
 let x: int = add(1, 2);
-let pi: Option<f32> = from_str("3.14");
+let pi: Option<f32> = "3.14".parse();
 ```
 
 ### Lambda expressions
@@ -3821,8 +3835,6 @@ x = bo(5,7);
 ```{.ebnf .notation}
 closure_type := [ 'unsafe' ] [ '<' lifetime-list '>' ] '|' arg-list '|'
                 [ ':' bound-list ] [ '->' type ]
-procedure_type := 'proc' [ '<' lifetime-list '>' ] '(' arg-list ')'
-                  [ ':' bound-list ] [ '->' type ]
 lifetime-list := lifetime | lifetime ',' lifetime-list
 arg-list := ident ':' type | ident ':' type ',' arg-list
 bound-list := bound | bound '+' bound-list
@@ -3831,8 +3843,6 @@ bound := path | lifetime
 
 The type of a closure mapping an input of type `A` to an output of type `B` is
 `|A| -> B`. A closure with no arguments or return values has type `||`.
-Similarly, a procedure mapping `A` to `B` is `proc(A) -> B` and a no-argument
-and no-return value closure has type `proc()`.
 
 An example of creating and calling a closure:
 
@@ -3852,30 +3862,6 @@ fn call_closure(c1: ||, c2: |int| -> int) {
 }
 
 call_closure(closure_no_args, closure_args);
-
-```
-
-Unlike closures, procedures may only be invoked once, but own their
-environment, and are allowed to move out of their environment. Procedures are
-allocated on the heap (unlike closures). An example of creating and calling a
-procedure:
-
-```rust
-let string = "Hello".to_string();
-
-// Creates a new procedure, passing it to the `spawn` function.
-spawn(proc() {
-  println!("{} world!", string);
-});
-
-// the variable `string` has been moved into the previous procedure, so it is
-// no longer usable.
-
-
-// Create an invoke a procedure. Note that the procedure is *moved* when
-// invoked, so it cannot be invoked again.
-let f = proc(n: int) { n + 22 };
-println!("answer: {}", f(20));
 
 ```
 

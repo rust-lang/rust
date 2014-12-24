@@ -11,16 +11,16 @@
 #![macro_escape]
 #![doc(hidden)]
 
-macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (
+macro_rules! uint_module { ($T:ty, $T_SIGNED:ty, $bits:expr) => (
 
 #[unstable]
 pub const BITS : uint = $bits;
 #[unstable]
 pub const BYTES : uint = ($bits / 8);
 
-#[unstable]
+#[stable]
 pub const MIN: $T = 0 as $T;
-#[unstable]
+#[stable]
 pub const MAX: $T = 0 as $T - 1 as $T;
 
-))
+) }

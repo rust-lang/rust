@@ -43,8 +43,6 @@ def print_struct_val(val, internal_dict):
     return print_struct_val_starting_from(0, val, internal_dict)
 
 def print_vec_slice_val(val, internal_dict):
-  output = "&["
-
   length = val.GetChildAtIndex(1).GetValueAsUnsigned()
 
   data_ptr_val = val.GetChildAtIndex(0)
@@ -56,16 +54,12 @@ def print_vec_slice_val(val, internal_dict):
 
   start_address = data_ptr_val.GetValueAsUnsigned()
 
-  for i in range(length):
+  def render_element(i):
     address = start_address + i * element_type_size
-    element_val = val.CreateValueFromAddress( val.GetName() + ("[%s]" % i), address, element_type )
-    output += print_val(element_val, internal_dict)
+    element_val = val.CreateValueFromAddress( val.GetName() + ("[%s]" % i), address, element_type)
+    return print_val(element_val, internal_dict)
 
-    if i != length - 1:
-      output += ", "
-
-  output += "]"
-  return output
+  return "&[%s]" % (', '.join([render_element(i) for i in range(length)]))
 
 def print_struct_val_starting_from(field_start_index, val, internal_dict):
   '''
@@ -75,48 +69,45 @@ def print_struct_val_starting_from(field_start_index, val, internal_dict):
   assert val.GetType().GetTypeClass() == lldb.eTypeClassStruct
 
   t = val.GetType()
-  has_field_names = type_has_field_names(t)
   type_name = extract_type_name(t.GetName())
-  output = ""
-
-  if not type_name.startswith("("):
-    # this is a tuple, so don't print the type name
-    output += type_name
-
-  if has_field_names:
-    output += " { \n"
-  else:
-    output += "("
-
   num_children = val.num_children
 
-  for child_index in range(field_start_index, num_children):
-    if has_field_names:
-      field_name = t.GetFieldAtIndex(child_index).GetName()
-      output += field_name + ": "
+  if (num_children - field_start_index) == 0:
+    # The only field of this struct is the enum discriminant
+    return type_name
 
-    field_val = val.GetChildAtIndex(child_index)
-    output += print_val(field_val, internal_dict)
-
-    if child_index != num_children - 1:
-      output += ", "
-
-    if has_field_names:
-      output += "\n"
+  has_field_names = type_has_field_names(t)
 
   if has_field_names:
-    output += "}"
+      template = "%(type_name)s {\n%(body)s\n}"
+      separator = ", \n"
   else:
-    output += ")"
+      template = "%(type_name)s(%(body)s)"
+      separator = ", "
 
-  return output
+  if type_name.startswith("("):
+    # this is a tuple, so don't print the type name
+    type_name = ""
+
+  def render_child(child_index):
+    this = ""
+    if has_field_names:
+      field_name = t.GetFieldAtIndex(child_index).GetName()
+      this += field_name + ": "
+
+    field_val = val.GetChildAtIndex(child_index)
+    return this + print_val(field_val, internal_dict)
+
+  body = separator.join([render_child(idx) for idx in range(field_start_index, num_children)])
+
+  return template % {"type_name": type_name,
+                     "body": body}
 
 
 def print_enum_val(val, internal_dict):
   '''Prints an enum value with Rust syntax'''
 
   assert val.GetType().GetTypeClass() == lldb.eTypeClassUnion
-
 
   if val.num_children == 1:
     # This is either an enum with just one variant, or it is an Option-like enum
@@ -147,9 +138,14 @@ def print_enum_val(val, internal_dict):
         return "<invalid enum encoding: %s>" % first_variant_name
 
       # Read the discriminant
-      disr_val = val.GetChildAtIndex(0).GetChildAtIndex(disr_field_index).GetValueAsUnsigned()
+      disr_val = val.GetChildAtIndex(0).GetChildAtIndex(disr_field_index)
 
-      if disr_val == 0:
+      # If the discriminant field is a fat pointer we have to consider the
+      # first word as the true discriminant
+      if disr_val.GetType().GetTypeClass() == lldb.eTypeClassStruct:
+          disr_val = disr_val.GetChildAtIndex(0)
+
+      if disr_val.GetValueAsUnsigned() == 0:
         # Null case: Print the name of the null-variant
         null_variant_name = first_variant_name[last_separator_index + 1:]
         return null_variant_name
@@ -243,3 +239,5 @@ def is_vec_slice(val):
 
   type_name = extract_type_name(ty.GetName()).replace("&'static", "&").replace(" ", "")
   return type_name.startswith("&[") and type_name.endswith("]")
+
+# vi: sw=2:ts=2

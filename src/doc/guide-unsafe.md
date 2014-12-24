@@ -37,7 +37,7 @@ build safe interfaces.
 ## References
 
 One of Rust's biggest features is memory safety.  This is achieved in
-part via [the lifetime system](guide-lifetimes.html), which is how the
+part via [the ownership system](guide-ownership.html), which is how the
 compiler can guarantee that every `&` reference is always valid, and,
 for example, never pointing to freed memory.
 
@@ -660,6 +660,9 @@ extern crate libc;
 extern {
     fn abort() -> !;
 }
+
+#[lang = "owned_box"]
+pub struct Box<T>(*mut T);
 
 #[lang="exchange_malloc"]
 unsafe fn allocate(size: uint, _align: uint) -> *mut u8 {

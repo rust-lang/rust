@@ -16,7 +16,7 @@
 //! [terminfo][ti] database, and `WinConsole`, which uses the [Win32 Console
 //! API][win].
 //!
-//! ## Example
+//! # Examples
 //!
 //! ```no_run
 //! extern crate term;
@@ -40,8 +40,6 @@
 
 #![crate_name = "term"]
 #![experimental]
-#![comment = "Simple ANSI color library"]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -115,7 +113,7 @@ pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 #[cfg(not(windows))]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
-pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
+pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     TerminfoTerminal::new(WriterWrapper {
         wrapped: box std::io::stderr() as Box<Writer + Send>,
     })
@@ -124,7 +122,7 @@ pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
 #[cfg(windows)]
 /// Return a Terminal wrapping stderr, or None if a terminal couldn't be
 /// opened.
-pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send> + Send> {
+pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     let ti = TerminfoTerminal::new(WriterWrapper {
         wrapped: box std::io::stderr() as Box<Writer + Send>,
     });
@@ -173,6 +171,7 @@ pub mod attr {
     /// Most attributes can only be turned on and must be turned off with term.reset().
     /// The ones that can be turned off explicitly take a boolean value.
     /// Color is also represented as an attribute for convenience.
+    #[deriving(Copy)]
     pub enum Attr {
         /// Bold (or possibly bright) mode
         Bold,

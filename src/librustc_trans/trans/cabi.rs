@@ -20,7 +20,7 @@ use trans::cabi_arm;
 use trans::cabi_mips;
 use trans::type_::Type;
 
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, Copy, PartialEq)]
 pub enum ArgKind {
     /// Pass the argument directly using the normal converted
     /// LLVM type or by coercing to another specified type
@@ -35,7 +35,7 @@ pub enum ArgKind {
 /// should be passed to or returned from a function
 ///
 /// This is borrowed from clang's ABIInfo.h
-#[deriving(Clone)]
+#[deriving(Clone, Copy)]
 pub struct ArgType {
     pub kind: ArgKind,
     /// Original LLVM type
@@ -65,8 +65,8 @@ impl ArgType {
         ArgType {
             kind: Indirect,
             ty: ty,
-            cast: option::None,
-            pad: option::None,
+            cast: option::Option::None,
+            pad: option::Option::None,
             attr: attr
         }
     }
@@ -107,7 +107,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
-    match ccx.sess().target.target.arch.as_slice() {
+    match ccx.sess().target.target.arch[] {
         "x86" => cabi_x86::compute_abi_info(ccx, atys, rty, ret_def),
         "x86_64" => if ccx.sess().target.target.options.is_like_windows {
             cabi_x86_win64::compute_abi_info(ccx, atys, rty, ret_def)
@@ -117,6 +117,6 @@ pub fn compute_abi_info(ccx: &CrateContext,
         "arm" => cabi_arm::compute_abi_info(ccx, atys, rty, ret_def),
         "mips" => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
         a => ccx.sess().fatal((format!("unrecognized arch \"{}\" in target specification", a))
-                              .as_slice()),
+                              []),
     }
 }

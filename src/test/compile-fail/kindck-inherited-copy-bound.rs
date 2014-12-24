@@ -21,10 +21,15 @@ impl<T:Copy> Foo for T {
 
 fn take_param<T:Foo>(foo: &T) { }
 
-fn main() {
+fn a() {
     let x = box 3i;
     take_param(&x); //~ ERROR `core::kinds::Copy` is not implemented
+}
 
+fn b() {
+    let x = box 3i;
     let y = &x;
     let z = &x as &Foo; //~ ERROR `core::kinds::Copy` is not implemented
 }
+
+fn main() { }

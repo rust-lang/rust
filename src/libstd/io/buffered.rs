@@ -14,11 +14,12 @@
 
 use cmp;
 use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
-use iter::ExactSize;
+use iter::ExactSizeIterator;
 use ops::Drop;
-use option::{Some, None, Option};
-use result::{Ok, Err};
-use slice::{SlicePrelude};
+use option::Option;
+use option::Option::{Some, None};
+use result::Result::{Ok, Err};
+use slice::{SliceExt};
 use slice;
 use vec::Vec;
 
@@ -75,15 +76,23 @@ impl<R: Reader> BufferedReader<R> {
     }
 
     /// Gets a reference to the underlying reader.
+    pub fn get_ref<'a>(&self) -> &R { &self.inner }
+
+    /// Gets a mutable reference to the underlying reader.
     ///
-    /// This type does not expose the ability to get a mutable reference to the
-    /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a R { &self.inner }
+    /// # Warning
+    ///
+    /// It is inadvisable to directly read from the underlying reader.
+    pub fn get_mut(&mut self) -> &mut R { &mut self.inner }
 
     /// Unwraps this `BufferedReader`, returning the underlying reader.
     ///
     /// Note that any leftover data in the internal buffer is lost.
-    pub fn unwrap(self) -> R { self.inner }
+    pub fn into_inner(self) -> R { self.inner }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> R { self.into_inner() }
 }
 
 impl<R: Reader> Buffer for BufferedReader<R> {
@@ -172,19 +181,27 @@ impl<W: Writer> BufferedWriter<W> {
     }
 
     /// Gets a reference to the underlying writer.
+    pub fn get_ref(&self) -> &W { self.inner.as_ref().unwrap() }
+
+    /// Gets a mutable reference to the underlying write.
     ///
-    /// This type does not expose the ability to get a mutable reference to the
-    /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.as_ref().unwrap() }
+    /// # Warning
+    ///
+    /// It is inadvisable to directly read from the underlying writer.
+    pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
 
     /// Unwraps this `BufferedWriter`, returning the underlying writer.
     ///
     /// The buffer is flushed before returning the writer.
-    pub fn unwrap(mut self) -> W {
+    pub fn into_inner(mut self) -> W {
         // FIXME(#12628): is panicking the right thing to do if flushing panicks?
         self.flush_buf().unwrap();
         self.inner.take().unwrap()
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> W { self.into_inner() }
 }
 
 impl<W: Writer> Writer for BufferedWriter<W> {
@@ -244,7 +261,11 @@ impl<W: Writer> LineBufferedWriter<W> {
     /// Unwraps this `LineBufferedWriter`, returning the underlying writer.
     ///
     /// The internal buffer is flushed before returning the writer.
-    pub fn unwrap(self) -> W { self.inner.unwrap() }
+    pub fn into_inner(self) -> W { self.inner.into_inner() }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> W { self.into_inner() }
 }
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {
@@ -329,22 +350,34 @@ impl<S: Stream> BufferedStream<S> {
     }
 
     /// Gets a reference to the underlying stream.
-    ///
-    /// This type does not expose the ability to get a mutable reference to the
-    /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a S {
+    pub fn get_ref(&self) -> &S {
         let InternalBufferedWriter(ref w) = self.inner.inner;
         w.get_ref()
+    }
+
+    /// Gets a mutable reference to the underlying stream.
+    ///
+    /// # Warning
+    ///
+    /// It is inadvisable to read directly from or write directly to the
+    /// underlying stream.
+    pub fn get_mut(&mut self) -> &mut S {
+        let InternalBufferedWriter(ref mut w) = self.inner.inner;
+        w.get_mut()
     }
 
     /// Unwraps this `BufferedStream`, returning the underlying stream.
     ///
     /// The internal buffer is flushed before returning the stream. Any leftover
     /// data in the read buffer is lost.
-    pub fn unwrap(self) -> S {
+    pub fn into_inner(self) -> S {
         let InternalBufferedWriter(w) = self.inner.inner;
-        w.unwrap()
+        w.into_inner()
     }
+
+    /// Deprecated, use into_inner() instead
+    #[deprecated = "renamed to into_inner()"]
+    pub fn unwrap(self) -> S { self.into_inner() }
 }
 
 impl<S: Stream> Buffer for BufferedStream<S> {
@@ -374,9 +407,8 @@ mod test {
     use prelude::*;
     use super::*;
     use super::super::{IoResult, EndOfFile};
-    use super::super::mem::{MemReader, BufReader};
+    use super::super::mem::MemReader;
     use self::test::Bencher;
-    use str::StrPrelude;
 
     /// A type, free to create, primarily intended for benchmarking creation of
     /// wrappers that, just for construction, don't need a Reader/Writer that
@@ -417,30 +449,30 @@ mod test {
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(3), nread);
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         let mut buf = [0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(2), nread);
         let b: &[_] = &[0, 1];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         let mut buf = [0];
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(1), nread);
         let b: &[_] = &[2];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(1), nread);
         let b: &[_] = &[3, 0, 0];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         let nread = reader.read(&mut buf);
         assert_eq!(Ok(1), nread);
         let b: &[_] = &[4, 0, 0];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
 
         assert!(reader.read(&mut buf).is_err());
     }
@@ -594,14 +626,14 @@ mod test {
     #[test]
     fn read_char_buffered() {
         let buf = [195u8, 159u8];
-        let mut reader = BufferedReader::with_capacity(1, BufReader::new(&buf));
+        let mut reader = BufferedReader::with_capacity(1, buf[]);
         assert_eq!(reader.read_char(), Ok('ß'));
     }
 
     #[test]
     fn test_chars() {
         let buf = [195u8, 159u8, b'a'];
-        let mut reader = BufferedReader::with_capacity(1, BufReader::new(&buf));
+        let mut reader = BufferedReader::with_capacity(1, buf[]);
         let mut it = reader.chars();
         assert_eq!(it.next(), Some(Ok('ß')));
         assert_eq!(it.next(), Some(Ok('a')));

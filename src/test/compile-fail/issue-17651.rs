@@ -13,5 +13,6 @@
 
 fn main() {
     (|| box *[0u].as_slice())();
-    //~^ ERROR cannot move a value of type [uint]
+    //~^ ERROR cannot move out of dereference
+    //~^^ ERROR cannot move a value of type [uint]
 }

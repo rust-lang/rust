@@ -19,7 +19,7 @@ pub fn main() {
     while (i > 0) {
         println!("{}", i);
         let tx = tx.clone();
-        task::spawn({let i = i; proc() { child(i, &tx) }});
+        task::spawn({let i = i; move|| { child(i, &tx) }});
         i = i - 1;
     }
 

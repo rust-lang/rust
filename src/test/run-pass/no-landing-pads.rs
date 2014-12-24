@@ -23,7 +23,7 @@ impl Drop for A {
 }
 
 fn main() {
-    task::try::<()>(proc() {
+    task::try(move|| -> () {
         let _a = A;
         panic!();
     });

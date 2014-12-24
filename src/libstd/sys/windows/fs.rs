@@ -15,7 +15,7 @@ use libc::{mod, c_int};
 
 use c_str::CString;
 use mem;
-use os::windows::fill_utf16_buf_and_decode;
+use sys::os::fill_utf16_buf_and_decode;
 use path;
 use ptr;
 use str;
@@ -23,13 +23,13 @@ use io;
 
 use prelude::*;
 use sys;
+use sys::os;
 use sys_common::{keep_going, eof, mkerr_libc};
 
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
-use io::{IoResult, IoError, FileStat, SeekStyle, Seek, Writer, Reader};
+use io::{IoResult, IoError, FileStat, SeekStyle};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 
-pub use path::WindowsPath as Path;
 pub type fd_t = libc::c_int;
 
 pub struct FileDesc {
@@ -131,7 +131,7 @@ impl FileDesc {
         return ret;
     }
 
-    pub fn fstat(&mut self) -> IoResult<io::FileStat> {
+    pub fn fstat(&self) -> IoResult<io::FileStat> {
         let mut stat: libc::stat = unsafe { mem::zeroed() };
         match unsafe { libc::fstat(self.fd(), &mut stat) } {
             0 => Ok(mkstat(&stat)),
@@ -263,7 +263,7 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
             let mut more_files = 1 as libc::BOOL;
             while more_files != 0 {
                 {
-                    let filename = str::truncate_utf16_at_nul(&wfd.cFileName);
+                    let filename = os::truncate_utf16_at_nul(&wfd.cFileName);
                     match String::from_utf16(filename) {
                         Some(filename) => paths.push(Path::new(filename)),
                         None => {
@@ -376,8 +376,8 @@ pub fn readlink(p: &Path) -> IoResult<Path> {
                                   libc::VOLUME_NAME_DOS)
     });
     let ret = match ret {
-        Some(ref s) if s.as_slice().starts_with(r"\\?\") => { // "
-            Ok(Path::new(s.as_slice().slice_from(4)))
+        Some(ref s) if s.starts_with(r"\\?\") => { // "
+            Ok(Path::new(s.slice_from(4)))
         }
         Some(s) => Ok(Path::new(s)),
         None => Err(super::last_error()),
@@ -407,12 +407,12 @@ fn mkstat(stat: &libc::stat) -> FileStat {
     FileStat {
         size: stat.st_size as u64,
         kind: match (stat.st_mode as libc::c_int) & libc::S_IFMT {
-            libc::S_IFREG => io::TypeFile,
-            libc::S_IFDIR => io::TypeDirectory,
-            libc::S_IFIFO => io::TypeNamedPipe,
-            libc::S_IFBLK => io::TypeBlockSpecial,
-            libc::S_IFLNK => io::TypeSymlink,
-            _ => io::TypeUnknown,
+            libc::S_IFREG => io::FileType::RegularFile,
+            libc::S_IFDIR => io::FileType::Directory,
+            libc::S_IFIFO => io::FileType::NamedPipe,
+            libc::S_IFBLK => io::FileType::BlockSpecial,
+            libc::S_IFLNK => io::FileType::Symlink,
+            _ => io::FileType::Unknown,
         },
         perm: FilePermission::from_bits_truncate(stat.st_mode as u32),
         created: stat.st_ctime as u64,

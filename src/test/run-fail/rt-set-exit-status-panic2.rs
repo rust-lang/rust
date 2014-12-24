@@ -36,7 +36,7 @@ fn r(x:int) -> r {
 
 fn main() {
     error!("whatever");
-    task::spawn(proc() {
+    task::spawn(move|| {
       let _i = r(5);
     });
     panic!();

@@ -8,32 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Dynamic library facilities.
-
-A simple wrapper over the platform's dynamic library facilities
-
-*/
+//! Dynamic library facilities.
+//!
+//! A simple wrapper over the platform's dynamic library facilities
 
 #![experimental]
 #![allow(missing_docs)]
 
-use clone::Clone;
-use c_str::ToCStr;
-use iter::Iterator;
+use prelude::*;
 use mem;
-use ops::*;
-use option::*;
 use os;
-use path::{Path,GenericPath};
-use result::*;
-use slice::{AsSlice,SlicePrelude};
 use str;
-use string::String;
-use vec::Vec;
 
-pub struct DynamicLibrary { handle: *mut u8 }
+#[allow(missing_copy_implementations)]
+pub struct DynamicLibrary {
+    handle: *mut u8
+}
 
 impl Drop for DynamicLibrary {
     fn drop(&mut self) {
@@ -210,13 +200,12 @@ mod test {
           target_os = "freebsd",
           target_os = "dragonfly"))]
 pub mod dl {
-    pub use self::Rtld::*;
+    use self::Rtld::*;
 
-    use c_str::{CString, ToCStr};
+    use prelude::*;
+    use c_str::CString;
     use libc;
     use ptr;
-    use result::*;
-    use string::String;
 
     pub unsafe fn open_external<T: ToCStr>(filename: T) -> *mut u8 {
         filename.with_c_str(|raw_name| {
@@ -228,9 +217,11 @@ pub mod dl {
         dlopen(ptr::null(), Lazy as libc::c_int) as *mut u8
     }
 
-    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
-        use rustrt::mutex::{StaticNativeMutex, NATIVE_MUTEX_INIT};
-        static LOCK: StaticNativeMutex = NATIVE_MUTEX_INIT;
+    pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
+        F: FnOnce() -> T,
+    {
+        use sync::{StaticMutex, MUTEX_INIT};
+        static LOCK: StaticMutex = MUTEX_INIT;
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
             // sequence
@@ -259,6 +250,7 @@ pub mod dl {
         dlclose(handle as *mut libc::c_void); ()
     }
 
+    #[deriving(Copy)]
     pub enum Rtld {
         Lazy = 1,
         Now = 2,
@@ -280,13 +272,15 @@ pub mod dl {
 #[cfg(target_os = "windows")]
 pub mod dl {
     use c_str::ToCStr;
-    use iter::Iterator;
+    use iter::IteratorExt;
     use libc;
+    use ops::FnOnce;
     use os;
     use ptr;
-    use result::{Ok, Err, Result};
-    use slice::SlicePrelude;
-    use str::StrPrelude;
+    use result::Result;
+    use result::Result::{Ok, Err};
+    use slice::SliceExt;
+    use str::StrExt;
     use str;
     use string::String;
     use vec::Vec;
@@ -306,7 +300,9 @@ pub mod dl {
         handle as *mut u8
     }
 
-    pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, String> {
+    pub fn check_for_errors_in<T, F>(f: F) -> Result<T, String> where
+        F: FnOnce() -> T,
+    {
         unsafe {
             SetLastError(0);
 

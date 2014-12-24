@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-Support for parsing unsupported, old syntaxes, for the
-purpose of reporting errors. Parsing of these syntaxes
-is tested by compile-test/obsolete-syntax.rs.
-
-Obsolete syntax that becomes too hard to parse can be
-removed.
-*/
+//! Support for parsing unsupported, old syntaxes, for the purpose of reporting errors. Parsing of
+//! these syntaxes is tested by compile-test/obsolete-syntax.rs.
+//!
+//! Obsolete syntax that becomes too hard to parse can be removed.
 
 pub use self::ObsoleteSyntax::*;
 
@@ -26,7 +22,7 @@ use parse::token;
 use ptr::P;
 
 /// The specific types of unsupported syntax
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(Copy, PartialEq, Eq, Hash)]
 pub enum ObsoleteSyntax {
     ObsoleteOwnedType,
     ObsoleteOwnedExpr,
@@ -36,6 +32,8 @@ pub enum ObsoleteSyntax {
     ObsoleteImportRenaming,
     ObsoleteSubsliceMatch,
     ObsoleteExternCrateRenaming,
+    ObsoleteProcType,
+    ObsoleteProcExpr,
 }
 
 pub trait ParserObsoleteMethods {
@@ -57,6 +55,14 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(&mut self, sp: Span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
+            ObsoleteProcType => (
+                "the `proc` type",
+                "use unboxed closures instead",
+            ),
+            ObsoleteProcExpr => (
+                "`proc` expression",
+                "use a `move ||` expression instead",
+            ),
             ObsoleteOwnedType => (
                 "`~` notation for owned pointers",
                 "use `Box<T>` in `std::owned` instead"
@@ -107,13 +113,13 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
               kind_str: &str,
               desc: &str) {
         self.span_err(sp,
-                      format!("obsolete syntax: {}", kind_str).as_slice());
+                      format!("obsolete syntax: {}", kind_str)[]);
 
         if !self.obsolete_set.contains(&kind) {
             self.sess
                 .span_diagnostic
                 .handler()
-                .note(format!("{}", desc).as_slice());
+                .note(format!("{}", desc)[]);
             self.obsolete_set.insert(kind);
         }
     }
@@ -121,7 +127,7 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
     fn is_obsolete_ident(&mut self, ident: &str) -> bool {
         match self.token {
             token::Ident(sid, _) => {
-                token::get_ident(sid).equiv(&ident)
+                token::get_ident(sid) == ident
             }
             _ => false
         }

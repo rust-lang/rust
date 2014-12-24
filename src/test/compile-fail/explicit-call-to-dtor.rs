@@ -20,5 +20,5 @@ impl Drop for Foo {
 
 fn main() {
     let x = Foo { x: 3 };
-    x.drop();   //~ ERROR explicit call to destructor
+    x.drop();   //~ ERROR explicit use of destructor method
 }

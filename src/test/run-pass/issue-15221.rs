@@ -11,10 +11,10 @@
 #![feature(macro_rules)]
 
 macro_rules! inner (
-    ($e:pat ) => ($e))
+    ($e:pat ) => ($e));
 
 macro_rules! outer (
-    ($e:pat ) => (inner!($e)))
+    ($e:pat ) => (inner!($e)));
 
 fn main() {
     let outer!(g1) = 13i;

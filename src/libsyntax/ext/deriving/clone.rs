@@ -17,11 +17,13 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
-pub fn expand_deriving_clone(cx: &mut ExtCtxt,
-                             span: Span,
-                             mitem: &MetaItem,
-                             item: &Item,
-                             push: |P<Item>|) {
+pub fn expand_deriving_clone<F>(cx: &mut ExtCtxt,
+                                span: Span,
+                                mitem: &MetaItem,
+                                item: &Item,
+                                push: F) where
+    F: FnOnce(P<Item>),
+{
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
@@ -60,7 +62,7 @@ fn cs_clone(
         cx.ident_of("Clone"),
         cx.ident_of("clone"),
     ];
-    let subcall = |field: &FieldInfo| {
+    let subcall = |&: field: &FieldInfo| {
         let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
 
         cx.expr_call_global(field.span, fn_path.clone(), args)
@@ -78,13 +80,11 @@ fn cs_clone(
         EnumNonMatchingCollapsed (..) => {
             cx.span_bug(trait_span,
                         format!("non-matching enum variants in \
-                                 `deriving({})`",
-                                name).as_slice())
+                                 `deriving({})`", name)[])
         }
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span,
-                        format!("static method in `deriving({})`",
-                                name).as_slice())
+                        format!("static method in `deriving({})`", name)[])
         }
     }
 
@@ -101,8 +101,7 @@ fn cs_clone(
                 None => {
                     cx.span_bug(trait_span,
                                 format!("unnamed field in normal struct in \
-                                         `deriving({})`",
-                                        name).as_slice())
+                                         `deriving({})`", name)[])
                 }
             };
             cx.field_imm(field.span, ident, subcall(field))

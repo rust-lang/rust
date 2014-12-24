@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::prelude::*;
+use prelude::*;
 use std::rand;
 use std::rand::Rng;
 use test::Bencher;
 
-pub fn insert_rand_n<M>(n: uint, map: &mut M, b: &mut Bencher,
-                        insert: |&mut M, uint|,
-                        remove: |&mut M, uint|) {
+pub fn insert_rand_n<M, I, R>(n: uint,
+                              map: &mut M,
+                              b: &mut Bencher,
+                              mut insert: I,
+                              mut remove: R) where
+    I: FnMut(&mut M, uint),
+    R: FnMut(&mut M, uint),
+{
     // setup
     let mut rng = rand::weak_rng();
 
@@ -31,9 +36,14 @@ pub fn insert_rand_n<M>(n: uint, map: &mut M, b: &mut Bencher,
     })
 }
 
-pub fn insert_seq_n<M>(n: uint, map: &mut M, b: &mut Bencher,
-                       insert: |&mut M, uint|,
-                       remove: |&mut M, uint|) {
+pub fn insert_seq_n<M, I, R>(n: uint,
+                             map: &mut M,
+                             b: &mut Bencher,
+                             mut insert: I,
+                             mut remove: R) where
+    I: FnMut(&mut M, uint),
+    R: FnMut(&mut M, uint),
+{
     // setup
     for i in range(0u, n) {
         insert(map, i * 2);
@@ -48,9 +58,14 @@ pub fn insert_seq_n<M>(n: uint, map: &mut M, b: &mut Bencher,
     })
 }
 
-pub fn find_rand_n<M, T>(n: uint, map: &mut M, b: &mut Bencher,
-                         insert: |&mut M, uint|,
-                         find: |&M, uint| -> T) {
+pub fn find_rand_n<M, T, I, F>(n: uint,
+                               map: &mut M,
+                               b: &mut Bencher,
+                               mut insert: I,
+                               mut find: F) where
+    I: FnMut(&mut M, uint),
+    F: FnMut(&M, uint) -> T,
+{
     // setup
     let mut rng = rand::weak_rng();
     let mut keys = Vec::from_fn(n, |_| rng.gen::<uint>() % n);
@@ -70,9 +85,14 @@ pub fn find_rand_n<M, T>(n: uint, map: &mut M, b: &mut Bencher,
     })
 }
 
-pub fn find_seq_n<M, T>(n: uint, map: &mut M, b: &mut Bencher,
-                        insert: |&mut M, uint|,
-                        find: |&M, uint| -> T) {
+pub fn find_seq_n<M, T, I, F>(n: uint,
+                              map: &mut M,
+                              b: &mut Bencher,
+                              mut insert: I,
+                              mut find: F) where
+    I: FnMut(&mut M, uint),
+    F: FnMut(&M, uint) -> T,
+{
     // setup
     for i in range(0u, n) {
         insert(map, i);

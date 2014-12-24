@@ -104,6 +104,10 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
             record_extern_fqn(cx, did, clean::TypeStatic);
             clean::StaticItem(build_static(cx, tcx, did, mtbl))
         }
+        def::DefConst(did) => {
+            record_extern_fqn(cx, did, clean::TypeConst);
+            clean::ConstantItem(build_const(cx, tcx, did))
+        }
         _ => return None,
     };
     let fqn = csearch::get_item_path(tcx, did);
@@ -151,7 +155,7 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
     let def = ty::lookup_trait_def(tcx, did);
     let trait_items = ty::trait_items(tcx, did).clean(cx);
     let provided = ty::provided_trait_methods(tcx, did);
-    let mut items = trait_items.into_iter().map(|trait_item| {
+    let items = trait_items.into_iter().map(|trait_item| {
         if provided.iter().any(|a| a.def_id == trait_item.def_id) {
             clean::ProvidedMethod(trait_item)
         } else {
@@ -159,24 +163,26 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
         }
     });
     let trait_def = ty::lookup_trait_def(tcx, did);
-    let bounds = trait_def.bounds.clean(cx);
+    let (bounds, default_unbound) = trait_def.bounds.clean(cx);
     clean::Trait {
+        unsafety: def.unsafety,
         generics: (&def.generics, subst::TypeSpace).clean(cx),
         items: items.collect(),
         bounds: bounds,
+        default_unbound: default_unbound
     }
 }
 
 fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Function {
     let t = ty::lookup_item_type(tcx, did);
     let (decl, style) = match t.ty.sty {
-        ty::ty_bare_fn(ref f) => ((did, &f.sig).clean(cx), f.fn_style),
+        ty::ty_bare_fn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety),
         _ => panic!("bad function"),
     };
     clean::Function {
         decl: decl,
         generics: (&t.generics, subst::FnSpace).clean(cx),
-        fn_style: style,
+        unsafety: style,
     }
 }
 
@@ -298,10 +304,10 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
                 let mut item = method.clean(cx);
                 item.inner = match item.inner.clone() {
                     clean::TyMethodItem(clean::TyMethod {
-                        fn_style, decl, self_, generics
+                        unsafety, decl, self_, generics
                     }) => {
                         clean::MethodItem(clean::Method {
-                            fn_style: fn_style,
+                            unsafety: unsafety,
                             decl: decl,
                             self_: self_,
                             generics: generics,
@@ -340,10 +346,10 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
 
     fn is_doc_hidden(a: &clean::Attribute) -> bool {
         match *a {
-            clean::List(ref name, ref inner) if name.as_slice() == "doc" => {
+            clean::List(ref name, ref inner) if *name == "doc" => {
                 inner.iter().any(|a| {
                     match *a {
-                        clean::Word(ref s) => s.as_slice() == "hidden",
+                        clean::Word(ref s) => *s == "hidden",
                         _ => false,
                     }
                 })
@@ -383,6 +389,24 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
                 decoder::DlField => panic!("unimplemented field"),
             }
         });
+    }
+}
+
+fn build_const(cx: &DocContext, tcx: &ty::ctxt,
+               did: ast::DefId) -> clean::Constant {
+    use rustc::middle::const_eval;
+    use syntax::print::pprust;
+
+    let expr = const_eval::lookup_const_by_id(tcx, did).unwrap_or_else(|| {
+        panic!("expected lookup_const_by_id to succeed for {}", did);
+    });
+    debug!("converting constant expr {} to snippet", expr);
+    let sn = pprust::expr_to_string(expr);
+    debug!("got snippet {}", sn);
+
+    clean::Constant {
+        type_: ty::lookup_item_type(tcx, did).ty.clean(cx),
+        expr: sn
     }
 }
 

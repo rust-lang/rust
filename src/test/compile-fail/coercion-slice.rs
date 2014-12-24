@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that we forbid coercion from `[T, ..n]` to `&[T]`
+// Tests that we forbid coercion from `[T; n]` to `&[T]`
 
 fn main() {
-    let _: &[int] = [0i]; //~ERROR: mismatched types: expected `&[int]`, found `[int, ..1]`
+    let _: &[int] = [0i]; //~ERROR: mismatched types: expected `&[int]`, found `[int; 1]`
 }

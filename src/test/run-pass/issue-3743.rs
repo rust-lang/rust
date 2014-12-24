@@ -13,6 +13,8 @@ struct Vec2 {
     y: f64
 }
 
+impl Copy for Vec2 {}
+
 // methods we want to export as methods as well as operators
 impl Vec2 {
 #[inline(always)]
@@ -26,7 +28,7 @@ trait RhsOfVec2Mul<Result> { fn mul_vec2_by(&self, lhs: &Vec2) -> Result; }
 
 // Vec2's implementation of Mul "from the other side" using the above trait
 impl<Res, Rhs: RhsOfVec2Mul<Res>> Mul<Rhs,Res> for Vec2 {
-    fn mul(&self, rhs: &Rhs) -> Res { rhs.mul_vec2_by(self) }
+    fn mul(self, rhs: Rhs) -> Res { rhs.mul_vec2_by(&self) }
 }
 
 // Implementation of 'f64 as right-hand-side of Vec2::Mul'

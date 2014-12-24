@@ -13,7 +13,7 @@ use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
 use llvm::{TargetData};
 use llvm::mk_target_data;
 use metadata::common::LinkMeta;
-use middle::resolve;
+use middle::def::ExportMap;
 use middle::traits;
 use trans::adt;
 use trans::base;
@@ -61,7 +61,7 @@ pub struct SharedCrateContext<'tcx> {
     metadata_llmod: ModuleRef,
     metadata_llcx: ContextRef,
 
-    exp_map2: resolve::ExportMap2,
+    export_map: ExportMap,
     reachable: NodeSet,
     item_symbols: RefCell<NodeMap<String>>,
     link_meta: LinkMeta,
@@ -84,6 +84,7 @@ pub struct LocalCrateContext<'tcx> {
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     item_vals: RefCell<NodeMap<ValueRef>>,
+    fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     tydescs: RefCell<FnvHashMap<Ty<'tcx>, Rc<tydesc_info<'tcx>>>>,
     /// Set when running emit_tydescs to enforce that no more tydescs are
@@ -98,7 +99,7 @@ pub struct LocalCrateContext<'tcx> {
     monomorphized: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<uint>>,
     /// Cache generated vtables
-    vtables: RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::TraitRef<'tcx>>), ValueRef>>,
+    vtables: RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::PolyTraitRef<'tcx>>), ValueRef>>,
     /// Cache of constant strings,
     const_cstr_cache: RefCell<FnvHashMap<InternedString, ValueRef>>,
 
@@ -149,7 +150,7 @@ pub struct LocalCrateContext<'tcx> {
     /// contexts around the same size.
     n_llvm_insns: Cell<uint>,
 
-    trait_cache: RefCell<FnvHashMap<Rc<ty::TraitRef<'tcx>>,
+    trait_cache: RefCell<FnvHashMap<Rc<ty::PolyTraitRef<'tcx>>,
                                     traits::Vtable<'tcx, ()>>>,
 }
 
@@ -221,14 +222,12 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     sess.target
         .target
         .data_layout
-        .as_slice()
         .with_c_str(|buf| {
         llvm::LLVMSetDataLayout(llmod, buf);
     });
     sess.target
         .target
         .llvm_target
-        .as_slice()
         .with_c_str(|buf| {
         llvm::LLVMRustSetNormalizedTarget(llmod, buf);
     });
@@ -239,7 +238,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
     pub fn new(crate_name: &str,
                local_count: uint,
                tcx: ty::ctxt<'tcx>,
-               emap2: resolve::ExportMap2,
+               export_map: ExportMap,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet)
@@ -252,7 +251,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             local_ccxs: Vec::with_capacity(local_count),
             metadata_llmod: metadata_llmod,
             metadata_llcx: metadata_llcx,
-            exp_map2: emap2,
+            export_map: export_map,
             reachable: reachable,
             item_symbols: RefCell::new(NodeMap::new()),
             link_meta: link_meta,
@@ -285,7 +284,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             // such as a function name in the module.
             // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
             let llmod_id = format!("{}.{}.rs", crate_name, i);
-            let local_ccx = LocalCrateContext::new(&shared_ccx, llmod_id.as_slice());
+            let local_ccx = LocalCrateContext::new(&shared_ccx, llmod_id[]);
             shared_ccx.local_ccxs.push(local_ccx);
         }
 
@@ -330,8 +329,8 @@ impl<'tcx> SharedCrateContext<'tcx> {
         self.metadata_llcx
     }
 
-    pub fn exp_map2<'a>(&'a self) -> &'a resolve::ExportMap2 {
-        &self.exp_map2
+    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
+        &self.export_map
     }
 
     pub fn reachable<'a>(&'a self) -> &'a NodeSet {
@@ -344,10 +343,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
 
     pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
         &self.link_meta
-    }
-
-    pub fn symbol_hasher<'a>(&'a self) -> &'a RefCell<Sha256> {
-        &self.symbol_hasher
     }
 
     pub fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
@@ -379,7 +374,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                                           .target
                                           .target
                                           .data_layout
-                                          .as_slice());
+                                          []);
 
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
@@ -394,6 +389,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 tn: TypeNames::new(),
                 externs: RefCell::new(FnvHashMap::new()),
                 item_vals: RefCell::new(NodeMap::new()),
+                fn_pointer_shims: RefCell::new(FnvHashMap::new()),
                 drop_glues: RefCell::new(FnvHashMap::new()),
                 tydescs: RefCell::new(FnvHashMap::new()),
                 finished_tydescs: Cell::new(false),
@@ -519,9 +515,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn get_intrinsic(&self, key: & &'static str) -> ValueRef {
-        match self.intrinsics().borrow().get(key).cloned() {
-            Some(v) => return v,
-            _ => {}
+        if let Some(v) = self.intrinsics().borrow().get(key).cloned() {
+            return v;
         }
         match declare_intrinsic(self, key) {
             Some(v) => return v,
@@ -558,8 +553,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.item_vals
     }
 
-    pub fn exp_map2<'a>(&'a self) -> &'a resolve::ExportMap2 {
-        &self.shared.exp_map2
+    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
+        &self.shared.export_map
     }
 
     pub fn reachable<'a>(&'a self) -> &'a NodeSet {
@@ -572,6 +567,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
         &self.shared.link_meta
+    }
+
+    pub fn fn_pointer_shims(&self) -> &RefCell<FnvHashMap<Ty<'tcx>, ValueRef>> {
+        &self.local.fn_pointer_shims
     }
 
     pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, ValueRef>> {
@@ -602,7 +601,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.monomorphizing
     }
 
-    pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::TraitRef<'tcx>>),
+    pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::PolyTraitRef<'tcx>>),
                                                             ValueRef>> {
         &self.local.vtables
     }
@@ -700,7 +699,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.n_llvm_insns.set(self.local.n_llvm_insns.get() + 1);
     }
 
-    pub fn trait_cache(&self) -> &RefCell<FnvHashMap<Rc<ty::TraitRef<'tcx>>,
+    pub fn trait_cache(&self) -> &RefCell<FnvHashMap<Rc<ty::PolyTraitRef<'tcx>>,
                                                      traits::Vtable<'tcx, ()>>> {
         &self.local.trait_cache
     }
@@ -727,7 +726,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {
         self.sess().fatal(
             format!("the type `{}` is too big for the current architecture",
-                    obj.repr(self.tcx())).as_slice())
+                    obj.repr(self.tcx()))[])
     }
 }
 
@@ -750,10 +749,10 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 return Some(f);
             }
         )
-    )
+    );
     macro_rules! mk_struct (
         ($($field_ty:expr),*) => (Type::struct_(ccx, &[$($field_ty),*], false))
-    )
+    );
 
     let i8p = Type::i8p(ccx);
     let void = Type::void(ccx);
@@ -887,7 +886,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 return Some(f);
             }
         )
-    )
+    );
 
     compatible_ifn!("llvm.copysign.f32", copysignf(t_f32, t_f32) -> t_f32);
     compatible_ifn!("llvm.copysign.f64", copysign(t_f64, t_f64) -> t_f64);

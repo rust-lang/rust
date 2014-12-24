@@ -16,7 +16,6 @@
 #![crate_name = "collections"]
 #![experimental]
 #![crate_type = "rlib"]
-#![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
@@ -24,7 +23,8 @@
 
 #![allow(unknown_features)]
 #![feature(macro_rules, default_type_params, phase, globs)]
-#![feature(unsafe_destructor, import_shadowing, slicing_syntax)]
+#![feature(unsafe_destructor, slicing_syntax)]
+#![feature(unboxed_closures)]
 #![no_std]
 
 #[phase(plugin, link)] extern crate core;
@@ -46,10 +46,6 @@ pub use dlist::DList;
 pub use enum_set::EnumSet;
 pub use ring_buf::RingBuf;
 pub use string::String;
-pub use tree_map::TreeMap;
-pub use tree_set::TreeSet;
-pub use trie_map::TrieMap;
-pub use trie_set::TrieSet;
 pub use vec::Vec;
 pub use vec_map::VecMap;
 
@@ -61,13 +57,10 @@ mod btree;
 pub mod dlist;
 pub mod enum_set;
 pub mod ring_buf;
-mod tree;
-mod trie;
 pub mod slice;
 pub mod str;
 pub mod string;
 pub mod vec;
-pub mod hash;
 pub mod vec_map;
 
 pub mod bitv {
@@ -76,22 +69,6 @@ pub mod bitv {
 
 pub mod bitv_set {
     pub use bit::{BitvSet, BitPositions, TwoBitPositions};
-}
-
-pub mod tree_map {
-    pub use tree::map::*;
-}
-
-pub mod tree_set {
-    pub use tree::set::*;
-}
-
-pub mod trie_map {
-    pub use trie::map::*;
-}
-
-pub mod trie_set {
-    pub use trie::set::*;
 }
 
 pub mod btree_map {
@@ -115,5 +92,44 @@ mod std {
     pub use core::option;   // necessary for panic!()
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
-    pub use hash;           // deriving(Hash)
+    pub use core::kinds;    // deriving(Copy)
+    pub use core::hash;     // deriving(Hash)
+}
+
+#[cfg(test)]
+mod prelude {
+    // from core.
+    pub use core::borrow::IntoCow;
+    pub use core::char::Char;
+    pub use core::clone::Clone;
+    pub use core::cmp::{PartialEq, Eq, Equiv, PartialOrd, Ord};
+    pub use core::cmp::Ordering::{Less, Equal, Greater};
+    pub use core::iter::range;
+    pub use core::iter::{FromIterator, Extend, IteratorExt};
+    pub use core::iter::{Iterator, DoubleEndedIterator, RandomAccessIterator};
+    pub use core::iter::{IteratorCloneExt, CloneIteratorExt, DoubleEndedIteratorExt};
+    pub use core::iter::{IteratorOrdExt, MutableDoubleEndedIterator, ExactSizeIterator};
+    pub use core::kinds::{Copy, Send, Sized, Sync};
+    pub use core::mem::drop;
+    pub use core::ops::{Drop, Fn, FnMut, FnOnce};
+    pub use core::option::Option;
+    pub use core::option::Option::{Some, None};
+    pub use core::ptr::RawPtr;
+    pub use core::result::Result;
+    pub use core::result::Result::{Ok, Err};
+
+    // in core and collections (may differ).
+    pub use slice::{PartialEqSliceExt, OrdSliceExt};
+    pub use slice::{AsSlice, SliceExt};
+    pub use str::{from_str, Str};
+
+    // from other crates.
+    pub use alloc::boxed::Box;
+    pub use unicode::char::UnicodeChar;
+
+    // from collections.
+    pub use slice::{CloneSliceExt, VectorVector};
+    pub use str::{IntoMaybeOwned, StrVector};
+    pub use string::{String, ToString};
+    pub use vec::Vec;
 }

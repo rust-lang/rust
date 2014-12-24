@@ -12,6 +12,7 @@
 // Microbenchmarks for various functions in std and extra
 
 #![feature(macro_rules)]
+#![feature(unboxed_closures)]
 
 use std::io::File;
 use std::mem::swap;
@@ -30,7 +31,7 @@ fn main() {
         ($id:ident) =>
             (maybe_run_test(argv.as_slice(),
                             stringify!($id).to_string(),
-                            $id)))
+                            $id)));
 
     bench!(shift_push);
     bench!(read_line);
@@ -41,7 +42,7 @@ fn main() {
     bench!(is_utf8_multibyte);
 }
 
-fn maybe_run_test(argv: &[String], name: String, test: ||) {
+fn maybe_run_test<F>(argv: &[String], name: String, test: F) where F: FnOnce() {
     let mut run_test = false;
 
     if os::getenv("RUST_BENCH").is_some() {

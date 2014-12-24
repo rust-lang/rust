@@ -19,7 +19,7 @@ fn helper(rx: Receiver<Sender<()>>) {
 
 fn main() {
     let (tx, rx) = channel();
-    spawn(proc() { helper(rx) });
+    spawn(move|| { helper(rx) });
     let (snd, rcv) = channel::<int>();
     for _ in range(1i, 100000i) {
         snd.send(1i);

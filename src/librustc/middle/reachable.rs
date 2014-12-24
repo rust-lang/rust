@@ -17,7 +17,6 @@
 
 use middle::def;
 use middle::ty;
-use middle::typeck;
 use middle::privacy;
 use session::config;
 use util::nodemap::NodeSet;
@@ -51,12 +50,12 @@ fn generics_require_inlining(generics: &ast::Generics) -> bool {
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
 fn item_might_be_inlined(item: &ast::Item) -> bool {
-    if attributes_specify_inlining(item.attrs.as_slice()) {
+    if attributes_specify_inlining(item.attrs[]) {
         return true
     }
 
     match item.node {
-        ast::ItemImpl(ref generics, _, _, _) |
+        ast::ItemImpl(_, ref generics, _, _, _) |
         ast::ItemFn(_, _, _, ref generics, _) => {
             generics_require_inlining(generics)
         }
@@ -66,7 +65,7 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
 
 fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
                            impl_src: ast::DefId) -> bool {
-    if attributes_specify_inlining(method.attrs.as_slice()) ||
+    if attributes_specify_inlining(method.attrs[]) ||
         generics_require_inlining(method.pe_generics()) {
         return true
     }
@@ -137,9 +136,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                 }
             }
             ast::ExprMethodCall(..) => {
-                let method_call = typeck::MethodCall::expr(expr.id);
+                let method_call = ty::MethodCall::expr(expr.id);
                 match (*self.tcx.method_map.borrow())[method_call].origin {
-                    typeck::MethodStatic(def_id) => {
+                    ty::MethodStatic(def_id) => {
                         if is_local(def_id) {
                             if self.def_id_represents_local_inlined_item(def_id) {
                                 self.worklist.push(def_id.node)
@@ -203,7 +202,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     ast::MethodImplItem(ref method) => {
                         if generics_require_inlining(method.pe_generics()) ||
                                 attributes_specify_inlining(
-                                    method.attrs.as_slice()) {
+                                    method.attrs[]) {
                             true
                         } else {
                             let impl_did = self.tcx
@@ -217,7 +216,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                                       .map
                                       .expect_item(impl_did.node)
                                       .node {
-                                ast::ItemImpl(ref generics, _, _, _) => {
+                                ast::ItemImpl(_, ref generics, _, _, _) => {
                                     generics_require_inlining(generics)
                                 }
                                 _ => false
@@ -250,7 +249,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 None => {
                     self.tcx.sess.bug(format!("found unmapped ID in worklist: \
                                                {}",
-                                              search_item).as_slice())
+                                              search_item)[])
                 }
             }
         }
@@ -264,18 +263,12 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // functions may still participate in some form of native interface,
             // but all other rust-only interfaces can be private (they will not
             // participate in linkage after this product is produced)
-            match *node {
-                ast_map::NodeItem(item) => {
-                    match item.node {
-                        ast::ItemFn(_, _, abi, _, _) => {
-                            if abi != abi::Rust {
-                                self.reachable_symbols.insert(search_item);
-                            }
-                        }
-                        _ => {}
+            if let ast_map::NodeItem(item) = *node {
+                if let ast::ItemFn(_, _, abi, _, _) = item.node {
+                    if abi != abi::Rust {
+                        self.reachable_symbols.insert(search_item);
                     }
                 }
-                _ => {}
             }
         } else {
             // If we are building a library, then reachable symbols will
@@ -348,7 +341,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     .bug(format!("found unexpected thingy in worklist: {}",
                                  self.tcx
                                      .map
-                                     .node_to_string(search_item)).as_slice())
+                                     .node_to_string(search_item))[])
             }
         }
     }

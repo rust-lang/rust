@@ -221,7 +221,7 @@ fn test_iterator_flat_map() {
 #[test]
 fn test_inspect() {
     let xs = [1u, 2, 3, 4];
-    let mut n = 0;
+    let mut n = 0u;
 
     let ys = xs.iter()
                .map(|&x| x)
@@ -334,7 +334,7 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.size_hint(), (10, Some(10)));
 
     assert_eq!(c.take(5).size_hint(), (5, Some(5)));
-    assert_eq!(c.skip(5).size_hint().val1(), None);
+    assert_eq!(c.skip(5).size_hint().1, None);
     assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.enumerate().size_hint(), (uint::MAX, None));
@@ -522,15 +522,15 @@ fn test_double_ended_chain() {
     let xs = [1i, 2, 3, 4, 5];
     let ys = [7i, 9, 11];
     let mut it = xs.iter().chain(ys.iter()).rev();
-    assert_eq!(it.next().unwrap(), &11)
-    assert_eq!(it.next().unwrap(), &9)
-    assert_eq!(it.next_back().unwrap(), &1)
-    assert_eq!(it.next_back().unwrap(), &2)
-    assert_eq!(it.next_back().unwrap(), &3)
-    assert_eq!(it.next_back().unwrap(), &4)
-    assert_eq!(it.next_back().unwrap(), &5)
-    assert_eq!(it.next_back().unwrap(), &7)
-    assert_eq!(it.next_back(), None)
+    assert_eq!(it.next().unwrap(), &11);
+    assert_eq!(it.next().unwrap(), &9);
+    assert_eq!(it.next_back().unwrap(), &1);
+    assert_eq!(it.next_back().unwrap(), &2);
+    assert_eq!(it.next_back().unwrap(), &3);
+    assert_eq!(it.next_back().unwrap(), &4);
+    assert_eq!(it.next_back().unwrap(), &5);
+    assert_eq!(it.next_back().unwrap(), &7);
+    assert_eq!(it.next_back(), None);
 }
 
 #[test]
@@ -800,7 +800,7 @@ fn test_min_max() {
 #[test]
 fn test_min_max_result() {
     let r: MinMaxResult<int> = NoElements;
-    assert_eq!(r.into_option(), None)
+    assert_eq!(r.into_option(), None);
 
     let r = OneElement(1i);
     assert_eq!(r.into_option(), Some((1,1)));

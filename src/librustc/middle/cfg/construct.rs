@@ -12,7 +12,6 @@ use middle::cfg::*;
 use middle::def;
 use middle::graph;
 use middle::region::CodeExtent;
-use middle::typeck;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
@@ -27,6 +26,7 @@ struct CFGBuilder<'a, 'tcx: 'a> {
     loop_scopes: Vec<LoopScope>,
 }
 
+#[deriving(Copy)]
 struct LoopScope {
     loop_id: ast::NodeId,     // id of loop/while node
     continue_index: CFGIndex, // where to go on a `loop`
@@ -150,11 +150,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn pats_all<'a, I: Iterator<&'a P<ast::Pat>>>(&mut self,
+    fn pats_all<'b, I: Iterator<&'b P<ast::Pat>>>(&mut self,
                                           pats: I,
                                           pred: CFGIndex) -> CFGIndex {
         //! Handles case where all of the patterns must match.
-        let mut pats = pats;
         pats.fold(pred, |pred, pat| self.pat(&**pat, pred))
     }
 
@@ -363,7 +362,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 let mut cond_exit = discr_exit;
                 for arm in arms.iter() {
                     cond_exit = self.add_dummy_node(&[cond_exit]);        // 2
-                    let pats_exit = self.pats_any(arm.pats.as_slice(),
+                    let pats_exit = self.pats_any(arm.pats[],
                                                   cond_exit);            // 3
                     let guard_exit = self.opt_expr(&arm.guard,
                                                    pats_exit);           // 4
@@ -440,6 +439,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                           start.iter().chain(end.iter()).map(|x| &**x))
             }
 
+            ast::ExprRange(ref start, ref end) => {
+                let fields = Some(&**start).into_iter()
+                    .chain(end.as_ref().map(|e| &**e).into_iter());
+                self.straightline(expr, pred, fields)
+            }
+
             ast::ExprUnary(_, ref e) if self.is_method_call(expr) => {
                 self.call(expr, pred, &**e, None::<ast::Expr>.iter())
             }
@@ -462,21 +467,19 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.straightline(expr, pred, [r, l].iter().map(|&e| &**e))
             }
 
+            ast::ExprBox(Some(ref l), ref r) |
             ast::ExprIndex(ref l, ref r) |
             ast::ExprBinary(_, ref l, ref r) => { // NB: && and || handled earlier
                 self.straightline(expr, pred, [l, r].iter().map(|&e| &**e))
             }
 
-            ast::ExprBox(ref p, ref e) => {
-                self.straightline(expr, pred, [p, e].iter().map(|&e| &**e))
-            }
-
+            ast::ExprBox(None, ref e) |
             ast::ExprAddrOf(_, ref e) |
             ast::ExprCast(ref e, _) |
             ast::ExprUnary(_, ref e) |
             ast::ExprParen(ref e) |
-            ast::ExprField(ref e, _, _) |
-            ast::ExprTupField(ref e, _, _) => {
+            ast::ExprField(ref e, _) |
+            ast::ExprTupField(ref e, _) => {
                 self.straightline(expr, pred, Some(&**e).into_iter())
             }
 
@@ -498,7 +501,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             ast::ExprMac(..) |
             ast::ExprClosure(..) |
-            ast::ExprProc(..) |
             ast::ExprLit(..) |
             ast::ExprPath(..) => {
                 self.straightline(expr, pred, None::<ast::Expr>.iter())
@@ -506,12 +508,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn call<'a, I: Iterator<&'a ast::Expr>>(&mut self,
+    fn call<'b, I: Iterator<&'b ast::Expr>>(&mut self,
             call_expr: &ast::Expr,
             pred: CFGIndex,
             func_or_rcvr: &ast::Expr,
             args: I) -> CFGIndex {
-        let method_call = typeck::MethodCall::expr(call_expr.id);
+        let method_call = ty::MethodCall::expr(call_expr.id);
         let return_ty = ty::ty_fn_ret(match self.tcx.method_map.borrow().get(&method_call) {
             Some(method) => method.ty,
             None => ty::expr_ty(self.tcx, func_or_rcvr)
@@ -526,8 +528,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn exprs<'a, I: Iterator<&'a ast::Expr>>(&mut self,
-                                             mut exprs: I,
+    fn exprs<'b, I: Iterator<&'b ast::Expr>>(&mut self,
+                                             exprs: I,
                                              pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `exprs` evaluated in order
         exprs.fold(pred, |p, e| self.expr(e, p))
@@ -540,7 +542,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         opt_expr.iter().fold(pred, |p, e| self.expr(&**e, p))
     }
 
-    fn straightline<'a, I: Iterator<&'a ast::Expr>>(&mut self,
+    fn straightline<'b, I: Iterator<&'b ast::Expr>>(&mut self,
                     expr: &ast::Expr,
                     pred: CFGIndex,
                     subexprs: I) -> CFGIndex {
@@ -621,14 +623,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         self.tcx.sess.span_bug(
                             expr.span,
                             format!("no loop scope for id {}",
-                                    loop_id).as_slice());
+                                    loop_id)[]);
                     }
 
                     r => {
                         self.tcx.sess.span_bug(
                             expr.span,
                             format!("bad entry `{}` in def_map for label",
-                                    r).as_slice());
+                                    r)[]);
                     }
                 }
             }
@@ -636,7 +638,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
-        let method_call = typeck::MethodCall::expr(expr.id);
+        let method_call = ty::MethodCall::expr(expr.id);
         self.tcx.method_map.borrow().contains_key(&method_call)
     }
 }

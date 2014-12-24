@@ -14,7 +14,7 @@
 // in ORDER matching up to when it ran.
 // Correct order is: matched, inner, outer
 
-static mut ORDER: [uint, ..3] = [0, 0, 0];
+static mut ORDER: [uint; 3] = [0, 0, 0];
 static mut INDEX: uint = 0;
 
 struct A;

@@ -8,40 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
- * # Representation of Algebraic Data Types
- *
- * This module determines how to represent enums, structs, and tuples
- * based on their monomorphized types; it is responsible both for
- * choosing a representation and translating basic operations on
- * values of those types.  (Note: exporting the representations for
- * debuggers is handled in debuginfo.rs, not here.)
- *
- * Note that the interface treats everything as a general case of an
- * enum, so structs/tuples/etc. have one pseudo-variant with
- * discriminant 0; i.e., as if they were a univariant enum.
- *
- * Having everything in one place will enable improvements to data
- * structure representation; possibilities include:
- *
- * - User-specified alignment (e.g., cacheline-aligning parts of
- *   concurrently accessed data structures); LLVM can't represent this
- *   directly, so we'd have to insert padding fields in any structure
- *   that might contain one and adjust GEP indices accordingly.  See
- *   issue #4578.
- *
- * - Store nested enums' discriminants in the same word.  Rather, if
- *   some variants start with enums, and those enums representations
- *   have unused alignment padding between discriminant and body, the
- *   outer enum's discriminant can be stored there and those variants
- *   can start at offset 0.  Kind of fancy, and might need work to
- *   make copies of the inner enum type cooperate, but it could help
- *   with `Option` or `Result` wrapped around another enum.
- *
- * - Tagged pointers would be neat, but given that any type can be
- *   used unboxed and any field can have pointers (including mutable)
- *   taken to it, implementing them for Rust seems difficult.
- */
+//! # Representation of Algebraic Data Types
+//!
+//! This module determines how to represent enums, structs, and tuples
+//! based on their monomorphized types; it is responsible both for
+//! choosing a representation and translating basic operations on
+//! values of those types.  (Note: exporting the representations for
+//! debuggers is handled in debuginfo.rs, not here.)
+//!
+//! Note that the interface treats everything as a general case of an
+//! enum, so structs/tuples/etc. have one pseudo-variant with
+//! discriminant 0; i.e., as if they were a univariant enum.
+//!
+//! Having everything in one place will enable improvements to data
+//! structure representation; possibilities include:
+//!
+//! - User-specified alignment (e.g., cacheline-aligning parts of
+//!   concurrently accessed data structures); LLVM can't represent this
+//!   directly, so we'd have to insert padding fields in any structure
+//!   that might contain one and adjust GEP indices accordingly.  See
+//!   issue #4578.
+//!
+//! - Store nested enums' discriminants in the same word.  Rather, if
+//!   some variants start with enums, and those enums representations
+//!   have unused alignment padding between discriminant and body, the
+//!   outer enum's discriminant can be stored there and those variants
+//!   can start at offset 0.  Kind of fancy, and might need work to
+//!   make copies of the inner enum type cooperate, but it could help
+//!   with `Option` or `Result` wrapped around another enum.
+//!
+//! - Tagged pointers would be neat, but given that any type can be
+//!   used unboxed and any field can have pointers (including mutable)
+//!   taken to it, implementing them for Rust seems difficult.
 
 #![allow(unsigned_negation)]
 
@@ -52,7 +50,7 @@ use std::num::Int;
 use std::rc::Rc;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
-use back::abi::slice_elt_base;
+use back::abi;
 use middle::subst;
 use middle::subst::Subst;
 use trans::_match;
@@ -79,46 +77,38 @@ type Hint = attr::ReprAttr;
 pub enum Repr<'tcx> {
     /// C-like enums; basically an int.
     CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
-    /**
-     * Single-case variants, and structs/tuples/records.
-     *
-     * Structs with destructors need a dynamic destroyedness flag to
-     * avoid running the destructor too many times; this is included
-     * in the `Struct` if present.
-     */
+    /// Single-case variants, and structs/tuples/records.
+    ///
+    /// Structs with destructors need a dynamic destroyedness flag to
+    /// avoid running the destructor too many times; this is included
+    /// in the `Struct` if present.
     Univariant(Struct<'tcx>, bool),
-    /**
-     * General-case enums: for each case there is a struct, and they
-     * all start with a field for the discriminant.
-     *
-     * Types with destructors need a dynamic destroyedness flag to
-     * avoid running the destructor too many times; the last argument
-     * indicates whether such a flag is present.
-     */
+    /// General-case enums: for each case there is a struct, and they
+    /// all start with a field for the discriminant.
+    ///
+    /// Types with destructors need a dynamic destroyedness flag to
+    /// avoid running the destructor too many times; the last argument
+    /// indicates whether such a flag is present.
     General(IntType, Vec<Struct<'tcx>>, bool),
-    /**
-     * Two cases distinguished by a nullable pointer: the case with discriminant
-     * `nndiscr` must have single field which is known to be nonnull due to its type.
-     * The other case is known to be zero sized. Hence we represent the enum
-     * as simply a nullable pointer: if not null it indicates the `nndiscr` variant,
-     * otherwise it indicates the other case.
-     */
+    /// Two cases distinguished by a nullable pointer: the case with discriminant
+    /// `nndiscr` must have single field which is known to be nonnull due to its type.
+    /// The other case is known to be zero sized. Hence we represent the enum
+    /// as simply a nullable pointer: if not null it indicates the `nndiscr` variant,
+    /// otherwise it indicates the other case.
     RawNullablePointer {
         nndiscr: Disr,
         nnty: Ty<'tcx>,
         nullfields: Vec<Ty<'tcx>>
     },
-    /**
-     * Two cases distinguished by a nullable pointer: the case with discriminant
-     * `nndiscr` is represented by the struct `nonnull`, where the `ptrfield`th
-     * field is known to be nonnull due to its type; if that field is null, then
-     * it represents the other case, which is inhabited by at most one value
-     * (and all other fields are undefined/unused).
-     *
-     * For example, `std::option::Option` instantiated at a safe pointer type
-     * is represented such that `None` is a null pointer and `Some` is the
-     * identity function.
-     */
+    /// Two cases distinguished by a nullable pointer: the case with discriminant
+    /// `nndiscr` is represented by the struct `nonnull`, where the `ptrfield`th
+    /// field is known to be nonnull due to its type; if that field is null, then
+    /// it represents the other case, which is inhabited by at most one value
+    /// (and all other fields are undefined/unused).
+    ///
+    /// For example, `std::option::Option` instantiated at a safe pointer type
+    /// is represented such that `None` is a null pointer and `Some` is the
+    /// identity function.
     StructWrappedNullablePointer {
         nonnull: Struct<'tcx>,
         nndiscr: Disr,
@@ -139,11 +129,9 @@ pub struct Struct<'tcx> {
     pub fields: Vec<Ty<'tcx>>
 }
 
-/**
- * Convenience for `represent_type`.  There should probably be more or
- * these, for places in trans where the `Ty` isn't directly
- * available.
- */
+/// Convenience for `represent_type`.  There should probably be more or
+/// these, for places in trans where the `Ty` isn't directly
+/// available.
 pub fn represent_node<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   node: ast::NodeId) -> Rc<Repr<'tcx>> {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
@@ -159,7 +147,7 @@ pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 
     let repr = Rc::new(represent_type_uncached(cx, t));
-    debug!("Represented as: {}", repr)
+    debug!("Represented as: {}", repr);
     cx.adt_reprs().borrow_mut().insert(t, repr.clone());
     repr
 }
@@ -168,7 +156,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      t: Ty<'tcx>) -> Repr<'tcx> {
     match t.sty {
         ty::ty_tup(ref elems) => {
-            Univariant(mk_struct(cx, elems.as_slice(), false, t), false)
+            Univariant(mk_struct(cx, elems[], false, t), false)
         }
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx(), def_id);
@@ -179,16 +167,16 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
             if dtor { ftys.push(ty::mk_bool()); }
 
-            Univariant(mk_struct(cx, ftys.as_slice(), packed, t), dtor)
+            Univariant(mk_struct(cx, ftys[], packed, t), dtor)
         }
         ty::ty_unboxed_closure(def_id, _, ref substs) => {
             let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id, substs);
             let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
-            Univariant(mk_struct(cx, upvar_types.as_slice(), false, t), false)
+            Univariant(mk_struct(cx, upvar_types[], false, t), false)
         }
         ty::ty_enum(def_id, ref substs) => {
             let cases = get_cases(cx.tcx(), def_id, substs);
-            let hint = *ty::lookup_repr_hints(cx.tcx(), def_id).as_slice().get(0)
+            let hint = *ty::lookup_repr_hints(cx.tcx(), def_id)[].get(0)
                 .unwrap_or(&attr::ReprAny);
 
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
@@ -198,7 +186,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 // (Typechecking will reject discriminant-sizing attrs.)
                 assert_eq!(hint, attr::ReprAny);
                 let ftys = if dtor { vec!(ty::mk_bool()) } else { vec!() };
-                return Univariant(mk_struct(cx, ftys.as_slice(), false, t),
+                return Univariant(mk_struct(cx, ftys[], false, t),
                                   dtor);
             }
 
@@ -221,7 +209,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 cx.sess().bug(format!("non-C-like enum {} with specified \
                                       discriminants",
                                       ty::item_path_str(cx.tcx(),
-                                                        def_id)).as_slice());
+                                                        def_id))[]);
             }
 
             if cases.len() == 1 {
@@ -230,7 +218,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 assert_eq!(hint, attr::ReprAny);
                 let mut ftys = cases[0].tys.clone();
                 if dtor { ftys.push(ty::mk_bool()); }
-                return Univariant(mk_struct(cx, ftys.as_slice(), false, t),
+                return Univariant(mk_struct(cx, ftys[], false, t),
                                   dtor);
             }
 
@@ -239,7 +227,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let mut discr = 0;
                 while discr < 2 {
                     if cases[1 - discr].is_zerolen(cx, t) {
-                        let st = mk_struct(cx, cases[discr].tys.as_slice(),
+                        let st = mk_struct(cx, cases[discr].tys[],
                                            false, t);
                         match cases[discr].find_ptr(cx) {
                             Some(ThinPointer(_)) if st.fields.len() == 1 => {
@@ -272,17 +260,17 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let fields : Vec<_> = cases.iter().map(|c| {
                 let mut ftys = vec!(ty_of_inttype(ity));
-                ftys.push_all(c.tys.as_slice());
+                ftys.push_all(c.tys[]);
                 if dtor { ftys.push(ty::mk_bool()); }
-                mk_struct(cx, ftys.as_slice(), false, t)
+                mk_struct(cx, ftys[], false, t)
             }).collect();
 
-            ensure_enum_fits_in_address_space(cx, ity, fields.as_slice(), t);
+            ensure_enum_fits_in_address_space(cx, ity, fields[], t);
 
             General(ity, fields, dtor)
         }
         _ => cx.sess().bug(format!("adt::represent_type called on non-ADT type: {}",
-                           ty_to_string(cx.tcx(), t)).as_slice())
+                           ty_to_string(cx.tcx(), t))[])
     }
 }
 
@@ -293,15 +281,16 @@ struct Case<'tcx> {
 }
 
 
-#[deriving(Eq, PartialEq, Show)]
+#[deriving(Copy, Eq, PartialEq, Show)]
 pub enum PointerField {
     ThinPointer(uint),
     FatPointer(uint)
 }
 
 impl<'tcx> Case<'tcx> {
-    fn is_zerolen<'a>(&self, cx: &CrateContext<'a, 'tcx>, scapegoat: Ty<'tcx>) -> bool {
-        mk_struct(cx, self.tys.as_slice(), false, scapegoat).size == 0
+    fn is_zerolen<'a>(&self, cx: &CrateContext<'a, 'tcx>, scapegoat: Ty<'tcx>)
+                      -> bool {
+        mk_struct(cx, self.tys[], false, scapegoat).size == 0
     }
 
     fn find_ptr<'a>(&self, cx: &CrateContext<'a, 'tcx>) -> Option<PointerField> {
@@ -363,9 +352,9 @@ fn mk_struct<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
            .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
     };
 
-    ensure_struct_fits_in_address_space(cx, lltys.as_slice(), packed, scapegoat);
+    ensure_struct_fits_in_address_space(cx, lltys[], packed, scapegoat);
 
-    let llty_rec = Type::struct_(cx, lltys.as_slice(), packed);
+    let llty_rec = Type::struct_(cx, lltys[], packed);
     Struct {
         size: machine::llsize_of_alloc(cx, llty_rec),
         align: machine::llalign_of_min(cx, llty_rec),
@@ -414,7 +403,7 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
             return ity;
         }
         attr::ReprExtern => {
-            attempts = match cx.sess().target.target.arch.as_slice() {
+            attempts = match cx.sess().target.target.arch[] {
                 // WARNING: the ARM EABI has two variants; the one corresponding to `at_least_32`
                 // appears to be used on Linux and NetBSD, but some systems may use the variant
                 // corresponding to `choose_shortest`.  However, we don't run on those yet...?
@@ -514,16 +503,14 @@ fn ensure_enum_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 
-/**
- * LLVM-level types are a little complicated.
- *
- * C-like enums need to be actual ints, not wrapped in a struct,
- * because that changes the ABI on some platforms (see issue #10308).
- *
- * For nominal types, in some cases, we need to use LLVM named structs
- * and fill in the actual contents in a second pass to prevent
- * unbounded recursion; see also the comments in `trans::type_of`.
- */
+/// LLVM-level types are a little complicated.
+///
+/// C-like enums need to be actual ints, not wrapped in a struct,
+/// because that changes the ABI on some platforms (see issue #10308).
+///
+/// For nominal types, in some cases, we need to use LLVM named structs
+/// and fill in the actual contents in a second pass to prevent
+/// unbounded recursion; see also the comments in `trans::type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>) -> Type {
     generic_type_of(cx, r, None, false, false)
 }
@@ -543,7 +530,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     match *r {
         CEnum(..) | General(..) | RawNullablePointer { .. } => { }
         Univariant(ref st, _) | StructWrappedNullablePointer { nonnull: ref st, .. } =>
-            llty.set_struct_body(struct_llfields(cx, st, false, false).as_slice(),
+            llty.set_struct_body(struct_llfields(cx, st, false, false)[],
                                  st.packed)
     }
 }
@@ -559,7 +546,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         Univariant(ref st, _) | StructWrappedNullablePointer { nonnull: ref st, .. } => {
             match name {
                 None => {
-                    Type::struct_(cx, struct_llfields(cx, st, sizing, dst).as_slice(),
+                    Type::struct_(cx, struct_llfields(cx, st, sizing, dst)[],
                                   st.packed)
                 }
                 Some(name) => { assert_eq!(sizing, false); Type::named_struct(cx, name) }
@@ -578,7 +565,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // of the size.
             //
             // FIXME #10604: this breaks when vector types are present.
-            let (size, align) = union_size_and_align(sts.as_slice());
+            let (size, align) = union_size_and_align(sts[]);
             let align_s = align as u64;
             let discr_ty = ll_inttype(cx, ity);
             let discr_size = machine::llsize_of_alloc(cx, discr_ty);
@@ -599,10 +586,10 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                            Type::array(&discr_ty, align_s / discr_size - 1),
                            pad_ty);
             match name {
-                None => Type::struct_(cx, fields.as_slice(), false),
+                None => Type::struct_(cx, fields[], false),
                 Some(name) => {
                     let mut llty = Type::named_struct(cx, name);
-                    llty.set_struct_body(fields.as_slice(), false);
+                    llty.set_struct_body(fields[], false);
                     llty
                 }
             }
@@ -620,12 +607,10 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, st: &Struct<'tcx>,
     }
 }
 
-/**
- * Obtain a representation of the discriminant sufficient to translate
- * destructuring; this may or may not involve the actual discriminant.
- *
- * This should ideally be less tightly tied to `_match`.
- */
+/// Obtain a representation of the discriminant sufficient to translate
+/// destructuring; this may or may not involve the actual discriminant.
+///
+/// This should ideally be less tightly tied to `_match`.
 pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 r: &Repr<'tcx>, scrutinee: ValueRef)
                                 -> (_match::BranchKind, Option<ValueRef>) {
@@ -684,7 +669,7 @@ fn struct_wrapped_nullable_bitdiscr(bcx: Block, nndiscr: Disr, ptrfield: Pointer
                                     scrutinee: ValueRef) -> ValueRef {
     let llptrptr = match ptrfield {
         ThinPointer(field) => GEPi(bcx, scrutinee, &[0, field]),
-        FatPointer(field) => GEPi(bcx, scrutinee, &[0, field, slice_elt_base])
+        FatPointer(field) => GEPi(bcx, scrutinee, &[0, field, abi::FAT_PTR_ADDR])
     };
     let llptr = Load(bcx, llptrptr);
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
@@ -713,12 +698,10 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     }
 }
 
-/**
- * Yield information about how to dispatch a case of the
- * discriminant-like value returned by `trans_switch`.
- *
- * This should ideally be less tightly tied to `_match`.
- */
+/// Yield information about how to dispatch a case of the
+/// discriminant-like value returned by `trans_switch`.
+///
+/// This should ideally be less tightly tied to `_match`.
 pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
                               -> _match::OptResult<'blk, 'tcx> {
     match *r {
@@ -741,10 +724,8 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
     }
 }
 
-/**
- * Set the discriminant for a new value of the given case of the given
- * representation.
- */
+/// Set the discriminant for a new value of the given case of the given
+/// representation.
 pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                                    val: ValueRef, discr: Disr) {
     match *r {
@@ -782,7 +763,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                         (GEPi(bcx, val, &[0, field]),
                          type_of::type_of(bcx.ccx(), nonnull.fields[field])),
                     FatPointer(field) => {
-                        let v = GEPi(bcx, val, &[0, field, slice_elt_base]);
+                        let v = GEPi(bcx, val, &[0, field, abi::FAT_PTR_ADDR]);
                         (v, val_ty(v).element_type())
                     }
                 };
@@ -799,10 +780,8 @@ fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {
     }
 }
 
-/**
- * The number of fields in a given case; for use when obtaining this
- * information from the type or definition is less convenient.
- */
+/// The number of fields in a given case; for use when obtaining this
+/// information from the type or definition is less convenient.
 pub fn num_args(r: &Repr, discr: Disr) -> uint {
     match *r {
         CEnum(..) => 0,
@@ -868,7 +847,7 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
     let val = if needs_cast {
         let ccx = bcx.ccx();
         let fields = st.fields.iter().map(|&ty| type_of::type_of(ccx, ty)).collect::<Vec<_>>();
-        let real_ty = Type::struct_(ccx, fields.as_slice(), st.packed);
+        let real_ty = Type::struct_(ccx, fields[], st.packed);
         PointerCast(bcx, val, real_ty.ptr_to())
     } else {
         val
@@ -877,10 +856,13 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
     GEPi(bcx, val, &[0, ix])
 }
 
-pub fn fold_variants<'blk, 'tcx>(
-        bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>, value: ValueRef,
-        f: |Block<'blk, 'tcx>, &Struct<'tcx>, ValueRef| -> Block<'blk, 'tcx>)
-        -> Block<'blk, 'tcx> {
+pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+                                    r: &Repr<'tcx>,
+                                    value: ValueRef,
+                                    mut f: F)
+                                    -> Block<'blk, 'tcx> where
+    F: FnMut(Block<'blk, 'tcx>, &Struct<'tcx>, ValueRef) -> Block<'blk, 'tcx>,
+{
     let fcx = bcx.fcx;
     match *r {
         Univariant(ref st, _) => {
@@ -897,14 +879,14 @@ pub fn fold_variants<'blk, 'tcx>(
 
             for (discr, case) in cases.iter().enumerate() {
                 let mut variant_cx = fcx.new_temp_block(
-                    format!("enum-variant-iter-{}", discr.to_string()).as_slice()
+                    format!("enum-variant-iter-{}", discr.to_string())[]
                 );
                 let rhs_val = C_integral(ll_inttype(ccx, ity), discr as u64, true);
                 AddCase(llswitch, rhs_val, variant_cx.llbb);
 
                 let fields = case.fields.iter().map(|&ty|
                     type_of::type_of(bcx.ccx(), ty)).collect::<Vec<_>>();
-                let real_ty = Type::struct_(ccx, fields.as_slice(), case.packed);
+                let real_ty = Type::struct_(ccx, fields[], case.packed);
                 let variant_value = PointerCast(variant_cx, value, real_ty.ptr_to());
 
                 variant_cx = f(variant_cx, case, variant_value);
@@ -946,27 +928,25 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, r: &Repr<'tcx
     }
 }
 
-/**
- * Construct a constant value, suitable for initializing a
- * GlobalVariable, given a case and constant values for its fields.
- * Note that this may have a different LLVM type (and different
- * alignment!) from the representation's `type_of`, so it needs a
- * pointer cast before use.
- *
- * The LLVM type system does not directly support unions, and only
- * pointers can be bitcast, so a constant (and, by extension, the
- * GlobalVariable initialized by it) will have a type that can vary
- * depending on which case of an enum it is.
- *
- * To understand the alignment situation, consider `enum E { V64(u64),
- * V32(u32, u32) }` on Windows.  The type has 8-byte alignment to
- * accommodate the u64, but `V32(x, y)` would have LLVM type `{i32,
- * i32, i32}`, which is 4-byte aligned.
- *
- * Currently the returned value has the same size as the type, but
- * this could be changed in the future to avoid allocating unnecessary
- * space after values of shorter-than-maximum cases.
- */
+/// Construct a constant value, suitable for initializing a
+/// GlobalVariable, given a case and constant values for its fields.
+/// Note that this may have a different LLVM type (and different
+/// alignment!) from the representation's `type_of`, so it needs a
+/// pointer cast before use.
+///
+/// The LLVM type system does not directly support unions, and only
+/// pointers can be bitcast, so a constant (and, by extension, the
+/// GlobalVariable initialized by it) will have a type that can vary
+/// depending on which case of an enum it is.
+///
+/// To understand the alignment situation, consider `enum E { V64(u64),
+/// V32(u32, u32) }` on Windows.  The type has 8-byte alignment to
+/// accommodate the u64, but `V32(x, y)` would have LLVM type `{i32,
+/// i32, i32}`, which is 4-byte aligned.
+///
+/// Currently the returned value has the same size as the type, but
+/// this could be changed in the future to avoid allocating unnecessary
+/// space after values of shorter-than-maximum cases.
 pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr: Disr,
                              vals: &[ValueRef]) -> ValueRef {
     match *r {
@@ -981,14 +961,14 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr as u64, true);
             let mut f = vec![lldiscr];
             f.push_all(vals);
-            let mut contents = build_const_struct(ccx, case, f.as_slice());
+            let mut contents = build_const_struct(ccx, case, f[]);
             contents.push_all(&[padding(ccx, max_sz - case.size)]);
-            C_struct(ccx, contents.as_slice(), false)
+            C_struct(ccx, contents[], false)
         }
         Univariant(ref st, _dro) => {
             assert!(discr == 0);
             let contents = build_const_struct(ccx, st, vals);
-            C_struct(ccx, contents.as_slice(), st.packed)
+            C_struct(ccx, contents[], st.packed)
         }
         RawNullablePointer { nndiscr, nnty, .. } => {
             if discr == nndiscr {
@@ -1002,7 +982,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             if discr == nndiscr {
                 C_struct(ccx, build_const_struct(ccx,
                                                  nonnull,
-                                                 vals).as_slice(),
+                                                 vals)[],
                          false)
             } else {
                 let vals = nonnull.fields.iter().map(|&ty| {
@@ -1012,16 +992,14 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
                 }).collect::<Vec<ValueRef>>();
                 C_struct(ccx, build_const_struct(ccx,
                                                  nonnull,
-                                                 vals.as_slice()).as_slice(),
+                                                 vals[])[],
                          false)
             }
         }
     }
 }
 
-/**
- * Compute struct field offsets relative to struct begin.
- */
+/// Compute struct field offsets relative to struct begin.
 fn compute_struct_field_offsets<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           st: &Struct<'tcx>) -> Vec<u64> {
     let mut offsets = vec!();
@@ -1040,16 +1018,14 @@ fn compute_struct_field_offsets<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     offsets
 }
 
-/**
- * Building structs is a little complicated, because we might need to
- * insert padding if a field's value is less aligned than its type.
- *
- * Continuing the example from `trans_const`, a value of type `(u32,
- * E)` should have the `E` at offset 8, but if that field's
- * initializer is 4-byte aligned then simply translating the tuple as
- * a two-element struct will locate it at offset 4, and accesses to it
- * will read the wrong memory.
- */
+/// Building structs is a little complicated, because we might need to
+/// insert padding if a field's value is less aligned than its type.
+///
+/// Continuing the example from `trans_const`, a value of type `(u32,
+/// E)` should have the `E` at offset 8, but if that field's
+/// initializer is 4-byte aligned then simply translating the tuple as
+/// a two-element struct will locate it at offset 4, and accesses to it
+/// will read the wrong memory.
 fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 st: &Struct<'tcx>, vals: &[ValueRef])
                                 -> Vec<ValueRef> {
@@ -1118,7 +1094,7 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)
         StructWrappedNullablePointer { nndiscr, ptrfield, .. } => {
             let (idx, sub_idx) = match ptrfield {
                 ThinPointer(field) => (field, None),
-                FatPointer(field) => (field, Some(slice_elt_base))
+                FatPointer(field) => (field, Some(abi::FAT_PTR_ADDR))
             };
             if is_null(const_struct_field(ccx, val, idx, sub_idx)) {
                 /* subtraction as uint is ok because nndiscr is either 0 or 1 */
@@ -1130,13 +1106,11 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)
     }
 }
 
-/**
- * Extract a field of a constant value, as appropriate for its
- * representation.
- *
- * (Not to be confused with `common::const_get_elt`, which operates on
- * raw LLVM-level structs and arrays.)
- */
+/// Extract a field of a constant value, as appropriate for its
+/// representation.
+///
+/// (Not to be confused with `common::const_get_elt`, which operates on
+/// raw LLVM-level structs and arrays.)
 pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
                        _discr: Disr, ix: uint) -> ValueRef {
     match *r {

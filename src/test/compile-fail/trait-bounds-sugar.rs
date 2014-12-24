@@ -16,14 +16,14 @@ trait Foo {}
 fn a(_x: Box<Foo+Send>) {
 }
 
-fn b(_x: &'static Foo+'static) {
+fn b(_x: &'static (Foo+'static)) {
 }
 
 fn c(x: Box<Foo+Sync>) {
     a(x); //~ ERROR mismatched types
 }
 
-fn d(x: &'static Foo+Sync) {
+fn d(x: &'static (Foo+Sync)) {
     b(x); //~ ERROR cannot infer
     //~^ ERROR mismatched types
 }

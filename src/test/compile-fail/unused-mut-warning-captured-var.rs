@@ -13,5 +13,5 @@
 fn main() {
     let mut x = 1i;
     //~^ ERROR: variable does not need to be mutable
-    proc() { println!("{}", x); };
+    move|:| { println!("{}", x); };
 }

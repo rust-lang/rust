@@ -15,13 +15,15 @@ use std::ops;
 
 #[simd] struct f32x4(f32, f32, f32, f32);
 
+impl Copy for f32x4 {}
+
 fn add<T: ops::Add<T, T>>(lhs: T, rhs: T) -> T {
     lhs + rhs
 }
 
 impl ops::Add<f32x4, f32x4> for f32x4 {
-    fn add(&self, rhs: &f32x4) -> f32x4 {
-        *self + *rhs
+    fn add(self, rhs: f32x4) -> f32x4 {
+        self + rhs
     }
 }
 

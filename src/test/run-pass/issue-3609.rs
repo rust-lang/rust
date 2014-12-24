@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(default_type_params)]
+
 use std::task;
+use std::thunk::Invoke;
 
 type RingBuffer = Vec<f64> ;
-type SamplesFn = proc(samples: &RingBuffer):Send;
+type SamplesFn = Box<FnMut(&RingBuffer) + Send>;
 
 enum Msg
 {
@@ -19,13 +22,16 @@ enum Msg
 }
 
 fn foo(name: String, samples_chan: Sender<Msg>) {
-    task::spawn(proc() {
+    task::spawn(move|| {
         let mut samples_chan = samples_chan;
-        let callback: SamplesFn = proc(buffer) {
+
+        // `box() (...)` syntax is needed to make pretty printer converge in one try:
+        let callback: SamplesFn = box() (move |buffer| {
             for i in range(0u, buffer.len()) {
                 println!("{}: {}", i, buffer[i])
             }
-        };
+        });
+
         samples_chan.send(Msg::GetSamples(name.clone(), callback));
     });
 }

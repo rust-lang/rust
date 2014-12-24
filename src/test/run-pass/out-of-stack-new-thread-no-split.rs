@@ -27,7 +27,7 @@ pub fn black_box<T>(dummy: T) { unsafe { asm!("" : : "r"(&dummy)) } }
 
 #[no_stack_check]
 fn recurse() {
-    let buf = [0i, ..10];
+    let buf = [0i; 10];
     black_box(buf);
     recurse();
 }
@@ -37,7 +37,7 @@ fn main() {
     let args = args.as_slice();
     if args.len() > 1 && args[1].as_slice() == "recurse" {
         let (tx, rx) = channel();
-        spawn(proc() {
+        spawn(move|| {
             recurse();
             tx.send(());
         });

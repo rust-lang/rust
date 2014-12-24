@@ -6,6 +6,6 @@
 # used in the inner functions should each appear only once in the generated IR.
 
 all:
-	$(RUSTC) foo.rs --emit=ir
+	$(RUSTC) foo.rs --emit=llvm-ir
 	[ "$$(grep -c 8675309 "$(TMPDIR)/foo.ll")" -eq "1" ]
 	[ "$$(grep -c 11235813 "$(TMPDIR)/foo.ll")" -eq "1" ]

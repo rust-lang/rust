@@ -2,7 +2,7 @@
 
 # I think I found a bug in the compiler!
 
-If you see this message: `error: internal compiler error: unexpected failure`,
+If you see this message: `error: internal compiler error: unexpected panic`,
 then you have definitely found a bug in the compiler. It's also possible that
 your code is not well-typed, but if you saw this message, it's still a bug in
 error reporting.
@@ -34,10 +34,10 @@ miss out on valid bug reports.
 It generally helps our diagnosis to include your specific OS (for example: Mac OS X 10.8.3,
 Windows 7, Ubuntu 12.04) and your hardware architecture (for example: i686, x86_64).
 It's also helpful to provide the exact version and host by copying the output of
-re-running the erroneous rustc command with the `--version=verbose` flag, which will
+re-running the erroneous rustc command with the `--version --verbose` flags, which will
 produce something like this:
 
-```{ignore}
+```text
 rustc 0.12.0 (ba4081a5a 2014-10-07 13:44:41 -0700)
 binary: rustc
 commit-hash: ba4081a5a8573875fed17545846f6f6902c8ba8d
@@ -46,8 +46,13 @@ host: i686-apple-darwin
 release: 0.12.0
 ```
 
-Finally, if you can run the offending command under gdb, pasting a stack trace can be
-useful; to do so, you will need to set a breakpoint on `rust_panic`.
+Finally, if you can also provide a backtrace, that'd be great. You can get a
+backtrace by setting the `RUST_BACKTRACE` environment variable to `1`, like
+this: 
+
+```bash
+$ RUST_BACKTRACE=1 rustc ...
+```
 
 # I submitted a bug, but nobody has commented on it!
 

@@ -17,10 +17,14 @@ struct Fat<Sized? T> {
 #[deriving(PartialEq,Eq)]
 struct Bar;
 
+impl Copy for Bar {}
+
 #[deriving(PartialEq,Eq)]
 struct Bar1 {
     f: int
 }
+
+impl Copy for Bar1 {}
 
 trait ToBar {
     fn to_bar(&self) -> Bar;

@@ -13,11 +13,11 @@
 // give `x` a very short lifetime).
 
 static i: uint = 3;
-fn foo(_: proc():'static) {}
+fn foo<F:FnOnce()+'static>(_: F) {}
 fn read(_: uint) { }
 pub fn main() {
     let x = &i;
-    foo(proc() {
+    foo(move|| {
         read(*x);
     });
 }

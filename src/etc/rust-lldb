@@ -1,0 +1,30 @@
+#!/bin/sh
+# Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+# file at the top-level directory of this distribution and at
+# http://rust-lang.org/COPYRIGHT.
+#
+# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+# option. This file may not be copied, modified, or distributed
+# except according to those terms.
+
+# Exit if anything fails
+set -e
+
+# Create a tempfile containing the LLDB script we want to execute on startup
+TMPFILE=`mktemp /tmp/rust-lldb-commands.XXXXXX`
+
+# Make sure to delete the tempfile no matter what
+trap "rm -f $TMPFILE; exit" INT TERM EXIT
+
+# Find out where to look for the pretty printer Python module
+RUSTC_SYSROOT=`rustc --print sysroot`
+
+# Write the LLDB script to the tempfile
+echo "command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_rust_formatters.py\"" >> $TMPFILE
+echo "type summary add --no-value --python-function lldb_rust_formatters.print_val -x \".*\" --category Rust" >> $TMPFILE
+echo "type category enable Rust" >> $TMPFILE
+
+# Call LLDB with the script added to the argument list
+lldb --source-before-file="$TMPFILE" "$@"

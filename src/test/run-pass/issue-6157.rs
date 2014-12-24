@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait OpInt<'a> { fn call<'a>(&'a mut self, int, int) -> int; }
+pub trait OpInt<'a> { fn call(&mut self, int, int) -> int; }
 
 impl<'a> OpInt<'a> for |int, int|: 'a -> int {
     fn call(&mut self, a:int, b:int) -> int {

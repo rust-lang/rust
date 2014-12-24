@@ -32,7 +32,7 @@ impl Logger for MyWriter {
 fn main() {
     let (tx, rx) = channel();
     let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-    spawn(proc() {
+    spawn(move|| {
         set_logger(box MyWriter(w) as Box<Logger+Send>);
         debug!("debug");
         info!("info");

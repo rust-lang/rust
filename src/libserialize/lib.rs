@@ -15,16 +15,16 @@ Core encoding and decoding interfaces.
 */
 
 #![crate_name = "serialize"]
-#![experimental]
+#![unstable = "deprecated in favor of rustc-serialize on crates.io"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![license = "MIT/ASL2"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![allow(unknown_features)]
 #![feature(macro_rules, default_type_params, phase, slicing_syntax, globs)]
+#![feature(unboxed_closures)]
 
 // test harness access
 #[cfg(test)]
@@ -32,6 +32,9 @@ extern crate test;
 
 #[phase(plugin, link)]
 extern crate log;
+extern crate unicode;
+
+extern crate collections;
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
                           DecoderHelpers, EncoderHelpers};
@@ -42,3 +45,7 @@ mod collection_impls;
 pub mod base64;
 pub mod hex;
 pub mod json;
+
+mod rustc_serialize {
+    pub use serialize::*;
+}

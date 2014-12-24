@@ -10,7 +10,7 @@
 
 // ignore-tidy-linelength
 
-impl B { //~ERROR inherent implementations are not allowed for types not defined in the current module.
+impl B { //~ERROR inherent implementations are not allowed for types not defined in the current module
 }
 
 fn main() {

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -17,7 +17,6 @@
 //! interface through `std::rand`.
 
 #![crate_name = "rand"]
-#![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
@@ -25,6 +24,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules, phase, globs)]
+#![feature(unboxed_closures)]
 #![no_std]
 #![experimental]
 
@@ -185,7 +185,7 @@ pub trait Rng {
         Rand::rand(self)
     }
 
-    /// Return an iterator which will yield an infinite number of randomly
+    /// Return an iterator that will yield an infinite number of randomly
     /// generated items.
     ///
     /// # Example
@@ -378,11 +378,23 @@ pub trait SeedableRng<Seed>: Rng {
 /// [1]: Marsaglia, George (July 2003). ["Xorshift
 /// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
 /// Statistical Software*. Vol. 8 (Issue 14).
+#[allow(missing_copy_implementations)]
 pub struct XorShiftRng {
     x: u32,
     y: u32,
     z: u32,
     w: u32,
+}
+
+impl Clone for XorShiftRng {
+    fn clone(&self) -> XorShiftRng {
+        XorShiftRng {
+            x: self.x,
+            y: self.y,
+            z: self.z,
+            w: self.w,
+        }
+    }
 }
 
 impl XorShiftRng {
@@ -489,6 +501,7 @@ pub struct Closed01<F>(pub F);
 #[cfg(not(test))]
 mod std {
     pub use core::{option, fmt}; // panic!()
+    pub use core::kinds;
 }
 
 #[cfg(test)]

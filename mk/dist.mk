@@ -48,7 +48,6 @@ PKG_FILES := \
     $(S)configure $(S)Makefile.in              \
     $(S)man                                    \
     $(addprefix $(S)src/,                      \
-      README.md                                \
       compiletest                              \
       doc                                      \
       driver                                   \
@@ -59,6 +58,7 @@ PKG_FILES := \
       rt                                       \
       rustllvm                                 \
       snapshots.txt                            \
+      rust-installer                           \
       test)                                    \
     $(PKG_GITMODULES)                          \
     $(filter-out config.stamp, \
@@ -123,7 +123,8 @@ PKG_EXE = dist/$(PKG_NAME)-$(CFG_BUILD).exe
 $(PKG_EXE): rust.iss modpath.iss upgrade.iss LICENSE.txt rust-logo.ico \
             $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
             dist-prepare-win
-	$(CFG_PYTHON) $(S)src/etc/make-win-dist.py tmp/dist/win $(CFG_BUILD)
+	$(Q)rm -rf tmp/dist/win/gcc
+	$(CFG_PYTHON) $(S)src/etc/make-win-dist.py tmp/dist/win/rust tmp/dist/win/gcc $(CFG_BUILD)
 	@$(call E, ISCC: $@)
 	$(Q)$(CFG_ISCC) $<
 
@@ -131,7 +132,7 @@ $(eval $(call DEF_PREPARE,win))
 
 dist-prepare-win: PREPARE_HOST=$(CFG_BUILD)
 dist-prepare-win: PREPARE_TARGETS=$(CFG_BUILD)
-dist-prepare-win: PREPARE_DEST_DIR=tmp/dist/win
+dist-prepare-win: PREPARE_DEST_DIR=tmp/dist/win/rust
 dist-prepare-win: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-prepare-win: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-prepare-win: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
@@ -209,33 +210,40 @@ distcheck-osx: dist-osx
 # Unix binary installer tarballs
 ######################################################################
 
+NON_INSTALLED_PREFIXES=COPYRIGHT,LICENSE-APACHE,LICENSE-MIT,README.md,doc
+
 define DEF_INSTALLER
 
 $$(eval $$(call DEF_PREPARE,dir-$(1)))
 
 dist-install-dir-$(1): PREPARE_HOST=$(1)
 dist-install-dir-$(1): PREPARE_TARGETS=$(2)
-dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)
+dist-install-dir-$(1): PREPARE_DEST_DIR=tmp/dist/$$(PKG_NAME)-$(1)-image
 dist-install-dir-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
 dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-install-dir-$(1): PREPARE_CLEAN=true
 dist-install-dir-$(1): prepare-base-dir-$(1) docs compiler-docs
-	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find . -type f | sed 's/^\.\///') \
-      > tmp/dist/manifest-$(1).in
-	$$(Q)mv tmp/dist/manifest-$(1).in $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/rustlib/manifest.in
-# Add remaining non-installed files
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)COPYRIGHT $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-MIT $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)README.md $$(PREPARE_DEST_DIR)
-	$$(Q)cp -r doc $$(PREPARE_DEST_DIR)
-	$$(Q)$$(PREPARE_BIN_CMD) $$(S)src/etc/install.sh $$(PREPARE_DEST_DIR)
+	$$(Q)[ ! -d doc ] || cp -r doc $$(PREPARE_DEST_DIR)
 
 dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 	@$(call E, build: $$@)
-	$$(Q)tar -czf dist/$$(PKG_NAME)-$(1).tar.gz -C tmp/dist $$(PKG_NAME)-$(1)
+	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
+		--product-name=Rust \
+		--verify-bin=rustc \
+		--rel-manifest-dir=rustlib \
+		--success-message=Rust-is-ready-to-roll. \
+		--image-dir=tmp/dist/$$(PKG_NAME)-$(1)-image \
+		--work-dir=tmp/dist \
+		--output-dir=dist \
+		--non-installed-prefixes=$$(NON_INSTALLED_PREFIXES) \
+		--package-name=$$(PKG_NAME)-$(1)
+	$$(Q)rm -R tmp/dist/$$(PKG_NAME)-$(1)-image
 
 endef
 
@@ -304,9 +312,17 @@ MAYBE_DIST_TAR_SRC=dist-tar-src
 MAYBE_DISTCHECK_TAR_SRC=distcheck-tar-src
 endif
 
-dist: $(MAYBE_DIST_TAR_SRC) dist-osx dist-tar-bins dist-docs
+ifneq ($(CFG_DISABLE_DOCS),)
+MAYBE_DIST_DOCS=
+MAYBE_DISTCHECK_DOCS=
+else
+MAYBE_DIST_DOCS=dist-docs
+MAYBE_DISTCHECK_DOCS=distcheck-docs
+endif
 
-distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-osx distcheck-tar-bins distcheck-docs
+dist: $(MAYBE_DIST_TAR_SRC) dist-osx dist-tar-bins $(MAYBE_DIST_DOCS)
+
+distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-osx distcheck-tar-bins $(MAYBE_DISTCHECK_DOCS)
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------

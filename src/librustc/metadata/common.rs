@@ -113,7 +113,7 @@ pub const tag_items_data_item_reexport_def_id: uint = 0x39;
 pub const tag_items_data_item_reexport_name: uint = 0x3a;
 
 // used to encode crate_ctxt side tables
-#[deriving(PartialEq)]
+#[deriving(Copy, PartialEq)]
 #[repr(uint)]
 pub enum astencode_tag { // Reserves 0x40 -- 0x5f
     tag_ast = 0x40,
@@ -144,6 +144,7 @@ pub enum astencode_tag { // Reserves 0x40 -- 0x5f
     tag_table_capture_modes = 0x56,
     tag_table_object_cast_map = 0x57,
 }
+
 static first_astencode_tag: uint = tag_ast as uint;
 static last_astencode_tag: uint = tag_table_object_cast_map as uint;
 impl astencode_tag {
@@ -249,3 +250,9 @@ pub const tag_type_param_def: uint = 0xa5;
 
 pub const tag_item_generics: uint = 0xa6;
 pub const tag_method_ty_generics: uint = 0xa7;
+
+pub const tag_predicate: uint = 0xa8;
+pub const tag_predicate_space: uint = 0xa9;
+pub const tag_predicate_data: uint = 0xb0;
+
+pub const tag_unsafety: uint = 0xb1;

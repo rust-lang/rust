@@ -82,7 +82,8 @@ fn add_bytes_to_bits<T: Int + ToBits>(bits: T, bytes: T) -> T {
 trait FixedBuffer {
     /// Input a vector of bytes. If the buffer becomes full, process it with the provided
     /// function and then clear the buffer.
-    fn input(&mut self, input: &[u8], func: |&[u8]|);
+    fn input<F>(&mut self, input: &[u8], func: F) where
+        F: FnMut(&[u8]);
 
     /// Reset the buffer.
     fn reset(&mut self);
@@ -125,7 +126,9 @@ impl FixedBuffer64 {
 }
 
 impl FixedBuffer for FixedBuffer64 {
-    fn input(&mut self, input: &[u8], func: |&[u8]|) {
+    fn input<F>(&mut self, input: &[u8], mut func: F) where
+        F: FnMut(&[u8]),
+    {
         let mut i = 0;
 
         let size = self.size();
@@ -201,11 +204,11 @@ trait StandardPadding {
     /// guaranteed to have exactly rem remaining bytes when it returns. If there are not at least
     /// rem bytes available, the buffer will be zero padded, processed, cleared, and then filled
     /// with zeros again until only rem bytes are remaining.
-    fn standard_padding(&mut self, rem: uint, func: |&[u8]|);
+    fn standard_padding<F>(&mut self, rem: uint, func: F) where F: FnMut(&[u8]);
 }
 
 impl <T: FixedBuffer> StandardPadding for T {
-    fn standard_padding(&mut self, rem: uint, func: |&[u8]|) {
+    fn standard_padding<F>(&mut self, rem: uint, mut func: F) where F: FnMut(&[u8]) {
         let size = self.size();
 
         self.next(1)[0] = 128;
@@ -263,7 +266,7 @@ pub trait Digest {
     /// Convenience function that retrieves the result of a digest as a
     /// String in hexadecimal format.
     fn result_str(&mut self) -> String {
-        self.result_bytes().as_slice().to_hex().to_string()
+        self.result_bytes().to_hex().to_string()
     }
 }
 
@@ -346,7 +349,7 @@ impl Engine256State {
         macro_rules! schedule_round( ($t:expr) => (
                 w[$t] = sigma1(w[$t - 2]) + w[$t - 7] + sigma0(w[$t - 15]) + w[$t - 16];
                 )
-        )
+        );
 
         macro_rules! sha2_round(
             ($A:ident, $B:ident, $C:ident, $D:ident,
@@ -357,7 +360,7 @@ impl Engine256State {
                     $H += sum0($A) + maj($A, $B, $C);
                 }
              )
-        )
+        );
 
         read_u32v_be(w[mut 0..16], data);
 
@@ -451,7 +454,7 @@ impl Engine256 {
     }
 
     fn input(&mut self, input: &[u8]) {
-        assert!(!self.finished)
+        assert!(!self.finished);
         // Assumes that input.len() can be converted to u64 without overflow
         self.length_bits = add_bytes_to_bits(self.length_bits, input.len() as u64);
         let self_state = &mut self.state;
@@ -568,7 +571,6 @@ mod tests {
             while left > 0u {
                 let take = (left + 1u) / 2u;
                 sh.input_str(t.input
-                              .as_slice()
                               .slice(len - left, take + len - left));
                 left = left - take;
             }

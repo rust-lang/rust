@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! foo(() => ())
+macro_rules! foo(() => ());
 //~^ ERROR: macro definitions are not stable enough for use
 
 fn main() {}

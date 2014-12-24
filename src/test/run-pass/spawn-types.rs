@@ -24,5 +24,5 @@ fn iotask(_tx: &ctx, ip: String) {
 
 pub fn main() {
     let (tx, _rx) = channel::<int>();
-    task::spawn(proc() iotask(&tx, "localhost".to_string()) );
+    task::spawn(move|| iotask(&tx, "localhost".to_string()) );
 }

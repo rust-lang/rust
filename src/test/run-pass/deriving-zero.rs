@@ -15,10 +15,10 @@ use std::num::Zero;
 struct Vector2<T>(T, T);
 
 impl<T: Add<T, T>> Add<Vector2<T>, Vector2<T>> for Vector2<T> {
-    fn add(&self, other: &Vector2<T>) -> Vector2<T> {
+    fn add(self, other: Vector2<T>) -> Vector2<T> {
         match (self, other) {
-            (&Vector2(ref x0, ref y0), &Vector2(ref x1, ref y1)) => {
-                Vector2(*x0 + *x1, *y0 + *y1)
+            (Vector2(x0, y0), Vector2(x1, y1)) => {
+                Vector2(x0 + x1, y0 + y1)
             }
         }
     }
@@ -30,7 +30,7 @@ struct Vector3<T> {
 }
 
 impl<T: Add<T, T>> Add<Vector3<T>, Vector3<T>> for Vector3<T> {
-    fn add(&self, other: &Vector3<T>) -> Vector3<T> {
+    fn add(self, other: Vector3<T>) -> Vector3<T> {
         Vector3 {
             x: self.x + other.x,
             y: self.y + other.y,
@@ -47,7 +47,7 @@ struct Matrix3x2<T> {
 }
 
 impl<T: Add<T, T>> Add<Matrix3x2<T>, Matrix3x2<T>> for Matrix3x2<T> {
-    fn add(&self, other: &Matrix3x2<T>) -> Matrix3x2<T> {
+    fn add(self, other: Matrix3x2<T>) -> Matrix3x2<T> {
         Matrix3x2 {
             x: self.x + other.x,
             y: self.y + other.y,

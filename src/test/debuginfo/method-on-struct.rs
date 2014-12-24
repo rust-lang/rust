@@ -146,3 +146,6 @@ fn main() {
 }
 
 fn zzz() {()}
+
+impl Copy for Struct {}
+

@@ -9,10 +9,9 @@
 // except according to those terms.
 
 extern crate libc;
-extern crate rustrt;
 
 use std::mem;
-use rustrt::thread::Thread;
+use std::thread::Thread;
 
 #[link(name = "rust_test_helpers")]
 extern {
@@ -22,7 +21,7 @@ extern {
 
 pub fn main() {
     unsafe {
-        Thread::start(proc() {
+        Thread::spawn(move|| {
             let i = &100i;
             rust_dbg_call(callback, mem::transmute(i));
         }).join();

@@ -35,7 +35,7 @@ fn test() {
         let a = a.clone();
         let cnt = cnt.clone();
         let srv_tx = srv_tx.clone();
-        spawn(proc() {
+        spawn(move|| {
             let mut a = a;
             loop {
                 match a.accept() {
@@ -54,7 +54,7 @@ fn test() {
 
     for _ in range(0, N) {
         let cli_tx = cli_tx.clone();
-        spawn(proc() {
+        spawn(move|| {
             for _ in range(0, M) {
                 let _s = TcpStream::connect(addr).unwrap();
             }

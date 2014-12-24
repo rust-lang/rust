@@ -15,4 +15,4 @@
 
 pub use core::i64::{BITS, BYTES, MIN, MAX};
 
-int_module!(i64)
+int_module! { i64 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::*;
+use llvm::ValueRef;
 use middle::def;
 use middle::lang_items::{PanicFnLangItem, PanicBoundsCheckFnLangItem};
 use trans::_match;
@@ -27,7 +27,7 @@ use trans::meth;
 use trans::type_::Type;
 use trans;
 use middle::ty;
-use middle::typeck::MethodCall;
+use middle::ty::MethodCall;
 use session::config::FullDebugInfo;
 use util::ppaux::Repr;
 use util::ppaux;
@@ -48,14 +48,14 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     debug!("trans_stmt({})", s.repr(cx.tcx()));
 
     if cx.sess().asm_comments() {
-        add_span_comment(cx, s.span, s.repr(cx.tcx()).as_slice());
+        add_span_comment(cx, s.span, s.repr(cx.tcx())[]);
     }
 
     let mut bcx = cx;
 
     let id = ast_util::stmt_id(s);
     let cleanup_debug_loc =
-        debuginfo::get_cleanup_debug_loc_for_ast_node(id, s.span, false);
+        debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(), id, s.span, false);
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
     match s.node {
@@ -103,7 +103,7 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
 
     let cleanup_debug_loc =
-        debuginfo::get_cleanup_debug_loc_for_ast_node(b.id, b.span, true);
+        debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(), b.id, b.span, true);
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
     for s in b.stmts.iter() {
@@ -112,8 +112,17 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     if dest != expr::Ignore {
         let block_ty = node_id_type(bcx, b.id);
+
         if b.expr.is_none() || type_is_zero_size(bcx.ccx(), block_ty) {
             dest = expr::Ignore;
+        } else if b.expr.is_some() {
+            // If the block has an expression, but that expression isn't reachable,
+            // don't save into the destination given, ignore it.
+            if let Some(ref cfg) = bcx.fcx.cfg {
+                if !cfg.node_is_reachable(b.expr.as_ref().unwrap().id) {
+                    dest = expr::Ignore;
+                }
+            }
         }
     }
 
@@ -179,7 +188,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let name = format!("then-block-{}-", thn.id);
-    let then_bcx_in = bcx.fcx.new_id_block(name.as_slice(), thn.id);
+    let then_bcx_in = bcx.fcx.new_id_block(name[], thn.id);
     let then_bcx_out = trans_block(then_bcx_in, &*thn, dest);
     trans::debuginfo::clear_source_location(bcx.fcx);
 
@@ -425,7 +434,7 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 Some(&def::DefLabel(loop_id)) => loop_id,
                 ref r => {
                     bcx.tcx().sess.bug(format!("{} in def-map for label",
-                                               r).as_slice())
+                                               r)[])
                 }
             }
         }
@@ -465,17 +474,14 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         _ => expr::Ignore,
     };
-    match e {
-        Some(x) => {
-            bcx = expr::trans_into(bcx, &*x, dest);
-            match dest {
-                expr::SaveIn(slot) if fcx.needs_ret_allocas => {
-                    Store(bcx, slot, fcx.llretslotptr.get().unwrap());
-                }
-                _ => {}
+    if let Some(x) = e {
+        bcx = expr::trans_into(bcx, &*x, dest);
+        match dest {
+            expr::SaveIn(slot) if fcx.needs_ret_allocas => {
+                Store(bcx, slot, fcx.llretslotptr.get().unwrap());
             }
+            _ => {}
         }
-        _ => {}
     }
     let cleanup_llbb = fcx.return_exit_block();
     Br(bcx, cleanup_llbb);
@@ -492,7 +498,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let v_str = C_str_slice(ccx, fail_str);
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let filename = token::intern_and_get_ident(loc.file.name.as_slice());
+    let filename = token::intern_and_get_ident(loc.file.name[]);
     let filename = C_str_slice(ccx, filename);
     let line = C_uint(ccx, loc.line);
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
@@ -501,7 +507,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let did = langcall(bcx, Some(sp), "", PanicFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
-                                      args.as_slice(),
+                                      args[],
                                       Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
@@ -517,7 +523,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Extract the file/line from the span
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let filename = token::intern_and_get_ident(loc.file.name.as_slice());
+    let filename = token::intern_and_get_ident(loc.file.name[]);
 
     // Invoke the lang item
     let filename = C_str_slice(ccx,  filename);
@@ -528,7 +534,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let did = langcall(bcx, Some(sp), "", PanicBoundsCheckFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
-                                      args.as_slice(),
+                                      args[],
                                       Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;

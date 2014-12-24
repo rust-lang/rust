@@ -14,8 +14,8 @@
 // macros can occur.
 
 // items
-trace_macros!(false)
-log_syntax!()
+trace_macros!(false);
+log_syntax!();
 
 fn main() {
 

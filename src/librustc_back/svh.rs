@@ -65,7 +65,7 @@ impl Svh {
     }
 
     pub fn as_str<'a>(&'a self) -> &'a str {
-        self.hash.as_slice()
+        self.hash[]
     }
 
     pub fn calculate(metadata: &Vec<String>, krate: &ast::Crate) -> Svh {
@@ -242,12 +242,12 @@ mod svh_visitor {
         SawExprWhile,
         SawExprMatch,
         SawExprClosure,
-        SawExprProc,
         SawExprBlock,
         SawExprAssign,
         SawExprAssignOp(ast::BinOp),
         SawExprIndex,
         SawExprSlice,
+        SawExprRange,
         SawExprPath,
         SawExprAddrOf(ast::Mutability),
         SawExprRet,
@@ -274,14 +274,14 @@ mod svh_visitor {
             ExprLoop(_, id)          => SawExprLoop(id.map(content)),
             ExprMatch(..)            => SawExprMatch,
             ExprClosure(..)          => SawExprClosure,
-            ExprProc(..)             => SawExprProc,
             ExprBlock(..)            => SawExprBlock,
             ExprAssign(..)           => SawExprAssign,
             ExprAssignOp(op, _, _)   => SawExprAssignOp(op),
-            ExprField(_, id, _)      => SawExprField(content(id.node)),
-            ExprTupField(_, id, _)   => SawExprTupField(id.node),
+            ExprField(_, id)         => SawExprField(content(id.node)),
+            ExprTupField(_, id)      => SawExprTupField(id.node),
             ExprIndex(..)            => SawExprIndex,
             ExprSlice(..)            => SawExprSlice,
+            ExprRange(..)            => SawExprRange,
             ExprPath(..)             => SawExprPath,
             ExprAddrOf(m, _)         => SawExprAddrOf(m),
             ExprBreak(id)            => SawExprBreak(id.map(content)),
@@ -342,14 +342,17 @@ mod svh_visitor {
                 // expensive; a direct content-based hash on token
                 // trees might be faster. Implementing this is far
                 // easier in short term.
-                let macro_defn_as_string =
-                    pprust::to_string(|pp_state| pp_state.print_mac(macro));
+                let macro_defn_as_string = pprust::to_string(|pp_state| {
+                    pp_state.print_mac(macro, token::Paren)
+                });
                 macro_defn_as_string.hash(self.st);
             } else {
                 // It is not possible to observe any kind of macro
                 // invocation at this stage except `macro_rules!`.
                 panic!("reached macro somehow: {}",
-                      pprust::to_string(|pp_state| pp_state.print_mac(macro)));
+                      pprust::to_string(|pp_state| {
+                          pp_state.print_mac(macro, token::Paren)
+                      }));
             }
 
             visit::walk_mac(self, macro);
@@ -357,7 +360,7 @@ mod svh_visitor {
             fn macro_name(macro: &Mac) -> token::InternedString {
                 match &macro.node {
                     &MacInvocTT(ref path, ref _tts, ref _stx_ctxt) => {
-                        let s = path.segments.as_slice();
+                        let s = path.segments[];
                         assert_eq!(s.len(), 1);
                         content(s[0].identifier)
                     }

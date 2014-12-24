@@ -14,11 +14,17 @@
 
 #[repr(u8)]
 enum Eu { Lu = 0, Hu = 255 }
+
+impl Copy for Eu {}
+
 static CLu: Eu = Eu::Lu;
 static CHu: Eu = Eu::Hu;
 
 #[repr(i8)]
 enum Es { Ls = -128, Hs = 127 }
+
+impl Copy for Es {}
+
 static CLs: Es = Es::Ls;
 static CHs: Es = Es::Hs;
 

@@ -30,7 +30,7 @@ fn object_invoke1<'d>(x: &'d Trait<'d>) -> (int, int) {
 }
 
 struct Struct1<'e> {
-    f: &'e Trait<'e>+'e
+    f: &'e (Trait<'e>+'e)
 }
 
 fn field_invoke1<'f, 'g>(x: &'g Struct1<'f>) -> (int,int) {
@@ -40,7 +40,7 @@ fn field_invoke1<'f, 'g>(x: &'g Struct1<'f>) -> (int,int) {
 }
 
 struct Struct2<'h, 'i> {
-    f: &'h Trait<'i>+'h
+    f: &'h (Trait<'i>+'h)
 }
 
 fn object_invoke2<'j, 'k>(x: &'k Trait<'j>) -> int {
