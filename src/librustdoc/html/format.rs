@@ -129,10 +129,10 @@ impl<'a> fmt::Show for WhereClause<'a> {
                 try!(f.write(", ".as_bytes()));
             }
             match pred {
-                &clean::WherePredicate::BoundPredicate {ref ty, ref bounds } => {
+                &clean::WherePredicate::BoundPredicate { ref ty, ref bounds } => {
                     let bounds = bounds.as_slice();
                     try!(write!(f, "{}: {}", ty, TyParamBounds(bounds)));
-                },
+                }
                 &clean::WherePredicate::RegionPredicate { ref lifetime,
                                                           ref bounds } => {
                     try!(write!(f, "{}: ", lifetime));
@@ -143,7 +143,7 @@ impl<'a> fmt::Show for WhereClause<'a> {
 
                         try!(write!(f, "{}", lifetime));
                     }
-                },
+                }
                 &clean::WherePredicate::EqPredicate => {
                     unimplemented!()
                 }
