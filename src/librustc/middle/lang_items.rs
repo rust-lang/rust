@@ -267,6 +267,9 @@ lets_do_this! {
     IndexMutTraitLangItem,           "index_mut",               index_mut_trait;
     SliceTraitLangItem,              "slice",                   slice_trait;
     SliceMutTraitLangItem,           "slice_mut",               slice_mut_trait;
+    RangeStructLangItem,             "range",                   range_struct;
+    RangeFromStructLangItem,         "range_from",              range_from_struct;
+    FullRangeStructLangItem,         "full_range",              full_range_struct;
 
     UnsafeTypeLangItem,              "unsafe",                  unsafe_type;
 

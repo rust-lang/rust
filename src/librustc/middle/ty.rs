@@ -4261,6 +4261,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprCall(..) |
         ast::ExprMethodCall(..) |
         ast::ExprStruct(..) |
+        ast::ExprRange(..) |
         ast::ExprTup(..) |
         ast::ExprIf(..) |
         ast::ExprMatch(..) |

@@ -4251,7 +4251,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                   check_expr(fcx, e);
                   let e_t = fcx.expr_ty(e);
                   if ty::type_is_error(e_t) {
-                    fcx.write_ty(id, e_t);
+                    fcx.write_ty(e.id, e_t);
                     some_err = true;
                   }
               };
@@ -4291,6 +4291,62 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
               }
           }
        }
+       ast::ExprRange(ref start, ref end) => {
+          check_expr(fcx, &**start);
+          let t_start = fcx.expr_ty(&**start);
+
+          let idx_type = if let &Some(ref e) = end {
+            check_expr(fcx, &**e);
+            let t_end = fcx.expr_ty(&**e);
+            if ty::type_is_error(t_end) {
+                ty::mk_err()
+            } else if t_start == ty::mk_err() {
+                ty::mk_err()
+            } else {
+                infer::common_supertype(fcx.infcx(),
+                                        infer::RangeExpression(expr.span),
+                                        true,
+                                        t_start,
+                                        t_end)
+            }
+          } else {
+            t_start
+          };
+
+          // Note that we don't check the type of start/end satisfy any
+          // bounds because right the range structs do not have any. If we add
+          // some bounds, then we'll need to check `t_start` against them here.
+
+          let range_type = if idx_type == ty::mk_err() {
+            ty::mk_err()
+          } else {
+            // Find the did from the appropriate lang item.
+            let did = if end.is_some() {
+                // Range
+                tcx.lang_items.range_struct()
+            } else {
+                // RangeFrom
+                tcx.lang_items.range_from_struct()
+            };
+
+            if let Some(did) = did {
+                let polytype = ty::lookup_item_type(tcx, did);
+                let substs = Substs::new_type(vec![idx_type], vec![]);
+                let bounds = polytype.generics.to_bounds(tcx, &substs);
+                fcx.add_obligations_for_parameters(
+                    traits::ObligationCause::new(expr.span,
+                                                 fcx.body_id,
+                                                 traits::ItemObligation(did)),
+                    &bounds);
+
+                ty::mk_struct(tcx, did, substs)
+            } else {
+                ty::mk_err()
+            }
+          };
+          fcx.write_ty(id, range_type);
+       }
+
     }
 
     debug!("type of expr({}) {} is...", expr.id,
