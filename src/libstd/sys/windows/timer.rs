@@ -48,6 +48,9 @@ pub enum Req {
     RemoveTimer(libc::HANDLE, Sender<()>),
 }
 
+unsafe impl Send for Req {}
+
+
 fn helper(input: libc::HANDLE, messages: Receiver<Req>, _: ()) {
     let mut objs = vec![input];
     let mut chans = vec![];
