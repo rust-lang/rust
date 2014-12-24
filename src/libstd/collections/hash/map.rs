@@ -1239,7 +1239,7 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Deprecated: Use `map.get(k).cloned()`.
     ///
     /// Return a copy of the value corresponding to the key.
-    #[deprecated = "Use `map.get(k).cloned()`"]
+    #[deprecated = "Use `map.get(k).clone()`"]
     pub fn find_copy(&self, k: &K) -> Option<V> {
         self.get(k).cloned()
     }
