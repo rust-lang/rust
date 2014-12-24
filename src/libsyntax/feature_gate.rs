@@ -24,7 +24,7 @@ use ast::NodeId;
 use ast;
 use attr;
 use attr::AttrMetaMethods;
-use codemap::Span;
+use codemap::{CodeMap, Span};
 use diagnostic::SpanHandler;
 use visit;
 use visit::Visitor;
@@ -127,6 +127,7 @@ impl Features {
 struct Context<'a> {
     features: Vec<&'static str>,
     span_handler: &'a SpanHandler,
+    cm: &'a CodeMap,
 }
 
 impl<'a> Context<'a> {
@@ -144,7 +145,71 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a, 'v> Visitor<'v> for Context<'a> {
+struct MacroVisitor<'a> {
+    context: &'a Context<'a>
+}
+
+impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
+    fn visit_view_item(&mut self, i: &ast::ViewItem) {
+        match i.node {
+            ast::ViewItemExternCrate(..) => {
+                for attr in i.attrs.iter() {
+                    if attr.name().get() == "phase"{
+                        self.context.gate_feature("phase", attr.span,
+                                          "compile time crate loading is \
+                                           experimental and possibly buggy");
+                    }
+                }
+            },
+            _ => { }
+        }
+        visit::walk_view_item(self, i)
+    }
+
+    fn visit_mac(&mut self, macro: &ast::Mac) {
+        let ast::MacInvocTT(ref path, _, _) = macro.node;
+        let id = path.segments.last().unwrap().identifier;
+
+        if id == token::str_to_ident("macro_rules") {
+            self.context.gate_feature("macro_rules", path.span, "macro definitions are \
+                not stable enough for use and are subject to change");
+        }
+
+        else if id == token::str_to_ident("asm") {
+            self.context.gate_feature("asm", path.span, "inline assembly is not \
+                stable enough for use and is subject to change");
+        }
+
+        else if id == token::str_to_ident("log_syntax") {
+            self.context.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
+                stable enough for use and is subject to change");
+        }
+
+        else if id == token::str_to_ident("trace_macros") {
+            self.context.gate_feature("trace_macros", path.span, "`trace_macros` is not \
+                stable enough for use and is subject to change");
+        }
+
+        else if id == token::str_to_ident("concat_idents") {
+            self.context.gate_feature("concat_idents", path.span, "`concat_idents` is not \
+                stable enough for use and is subject to change");
+        }
+    }
+}
+
+struct PostExpansionVisitor<'a> {
+    context: &'a Context<'a>
+}
+
+impl<'a> PostExpansionVisitor<'a> {
+    fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
+        if !self.context.cm.span_is_internal(span) {
+            self.context.gate_feature(feature, span, explain)
+        }
+    }
+}
+
+impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
         if !token::get_name(name).get().is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
@@ -217,7 +282,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
             }
 
             ast::ItemImpl(_, _, _, _, ref items) => {
-                if attr::contains_name(i.attrs.as_slice(),
+                if attr::contains_name(i.attrs[],
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",
                                       i.span,
@@ -253,36 +318,6 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
                                   ti.ty_param.span,
                                   "associated types are experimental")
             }
-        }
-    }
-
-    fn visit_mac(&mut self, macro: &ast::Mac) {
-        let ast::MacInvocTT(ref path, _, _) = macro.node;
-        let id = path.segments.last().unwrap().identifier;
-
-        if id == token::str_to_ident("macro_rules") {
-            self.gate_feature("macro_rules", path.span, "macro definitions are \
-                not stable enough for use and are subject to change");
-        }
-
-        else if id == token::str_to_ident("asm") {
-            self.gate_feature("asm", path.span, "inline assembly is not \
-                stable enough for use and is subject to change");
-        }
-
-        else if id == token::str_to_ident("log_syntax") {
-            self.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
-                stable enough for use and is subject to change");
-        }
-
-        else if id == token::str_to_ident("trace_macros") {
-            self.gate_feature("trace_macros", path.span, "`trace_macros` is not \
-                stable enough for use and is subject to change");
-        }
-
-        else if id == token::str_to_ident("concat_idents") {
-            self.gate_feature("concat_idents", path.span, "`concat_idents` is not \
-                stable enough for use and is subject to change");
         }
     }
 
@@ -371,10 +406,15 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     }
 }
 
-pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features, Vec<Span>) {
+fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
+                        check: F)
+                       -> (Features, Vec<Span>)
+    where F: FnOnce(&mut Context, &ast::Crate)
+{
     let mut cx = Context {
         features: Vec::new(),
         span_handler: span_handler,
+        cm: cm,
     };
 
     let mut unknown_features = Vec::new();
@@ -419,7 +459,7 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
         }
     }
 
-    visit::walk_crate(&mut cx, krate);
+    check(&mut cx, krate);
 
     (Features {
         default_type_params: cx.has_feature("default_type_params"),
@@ -431,4 +471,17 @@ pub fn check_crate(span_handler: &SpanHandler, krate: &ast::Crate) -> (Features,
         opt_out_copy: cx.has_feature("opt_out_copy"),
     },
     unknown_features)
+}
+
+pub fn check_crate_macros(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
+-> (Features, Vec<Span>) {
+    check_crate_inner(cm, span_handler, krate,
+                      |ctx, krate| visit::walk_crate(&mut MacroVisitor { context: ctx }, krate))
+}
+
+pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
+-> (Features, Vec<Span>) {
+    check_crate_inner(cm, span_handler, krate,
+                      |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
+                                                     krate))
 }
