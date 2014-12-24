@@ -256,7 +256,62 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             assert!((cases.len() - 1) as i64 >= 0);
             let bounds = IntBounds { ulo: 0, uhi: (cases.len() - 1) as u64,
                                      slo: 0, shi: (cases.len() - 1) as i64 };
-            let ity = range_to_inttype(cx, hint, &bounds);
+            let min_ity = range_to_inttype(cx, hint, &bounds);
+
+            // Create the set of structs that represent each variant
+            // Use the minimum integer type we figured out above
+            let fields : Vec<_> = cases.iter().map(|c| {
+                let mut ftys = vec!(ty_of_inttype(min_ity));
+                ftys.push_all(c.tys.as_slice());
+                if dtor { ftys.push(ty::mk_bool()); }
+                mk_struct(cx, ftys.as_slice(), false, t)
+            }).collect();
+
+
+            // Check to see if we should use a different type for the
+            // discriminant. If the overall alignment of the type is
+            // the same as the first field in each variant, we can safely use
+            // an alignment-sized type.
+            // We increase the size of the discriminant to avoid LLVM copying
+            // padding when it doesn't need to. This normally causes unaligned
+            // load/stores and excessive memcpy/memset operations. By using a
+            // bigger integer size, LLVM can be sure about it's contents and
+            // won't be so conservative.
+            // This check is needed to avoid increasing the size of types when
+            // the alignment of the first field is smaller than the overall
+            // alignment of the type.
+            let (_, align) = union_size_and_align(fields.as_slice());
+            let mut use_align = true;
+            for st in fields.iter() {
+                // Get the first non-zero-sized field
+                let field = st.fields.iter().skip(1).filter(|ty| {
+                    let t = type_of::sizing_type_of(cx, **ty);
+                    machine::llsize_of_real(cx, t) != 0 ||
+                    // This case is only relevant for zero-sized types with large alignment
+                    machine::llalign_of_min(cx, t) != 1
+                }).next();
+
+                if let Some(field) = field {
+                    let field_align = type_of::align_of(cx, *field);
+                    if field_align != align {
+                        use_align = false;
+                        break;
+                    }
+                }
+            }
+            let ity = if use_align {
+                // Use the overall alignment
+                match align {
+                    1 => attr::UnsignedInt(ast::TyU8),
+                    2 => attr::UnsignedInt(ast::TyU16),
+                    4 => attr::UnsignedInt(ast::TyU32),
+                    8 if machine::llalign_of_min(cx, Type::i64(cx)) == 8 =>
+                        attr::UnsignedInt(ast::TyU64),
+                    _ => min_ity // use min_ity as a fallback
+                }
+            } else {
+                min_ity
+            };
 
             let fields : Vec<_> = cases.iter().map(|c| {
                 let mut ftys = vec!(ty_of_inttype(ity));
@@ -570,7 +625,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let discr_ty = ll_inttype(cx, ity);
             let discr_size = machine::llsize_of_alloc(cx, discr_ty);
             let align_units = (size + align_s - 1) / align_s - 1;
-            let pad_ty = match align_s {
+            let fill_ty = match align_s {
                 1 => Type::array(&Type::i8(cx), align_units),
                 2 => Type::array(&Type::i16(cx), align_units),
                 4 => Type::array(&Type::i32(cx), align_units),
@@ -580,11 +635,11 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                               align_units),
                 _ => panic!("unsupported enum alignment: {}", align)
             };
-            assert_eq!(machine::llalign_of_min(cx, pad_ty), align);
+            assert_eq!(machine::llalign_of_min(cx, fill_ty), align);
             assert_eq!(align_s % discr_size, 0);
-            let fields = vec!(discr_ty,
-                           Type::array(&discr_ty, align_s / discr_size - 1),
-                           pad_ty);
+            let fields = [discr_ty,
+                          Type::array(&discr_ty, align_s / discr_size - 1),
+                          fill_ty];
             match name {
                 None => Type::struct_(cx, fields[], false),
                 Some(name) => {
