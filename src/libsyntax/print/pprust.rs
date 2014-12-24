@@ -965,13 +965,18 @@ impl<'a> State<'a> {
                 try!(self.word_nbsp("trait"));
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(generics));
-                // TODO find and print the unbound, remove it from bounds
-                /*if let &Some(ref tref) = unbound {
-                    try!(space(&mut self.s));
-                    try!(self.word_space("for ?"));
-                    try!(self.print_trait_ref(tref));
-                }*/
-                try!(self.print_bounds(":", bounds[]));
+                let bounds: Vec<_> = bounds.iter().map(|b| b.clone()).collect();
+                let mut real_bounds = Vec::with_capacity(bounds.len());
+                for b in bounds.into_iter() {
+                    if let TraitTyParamBound(ref ptr, ast::TraitBoundModifier::Maybe) = b {
+                        try!(space(&mut self.s));
+                        try!(self.word_space("for ?"));
+                        try!(self.print_trait_ref(&ptr.trait_ref));
+                    } else {
+                        real_bounds.push(b);
+                    }
+                }
+                try!(self.print_bounds(":", real_bounds[]));
                 try!(self.print_where_clause(generics));
                 try!(word(&mut self.s, " "));
                 try!(self.bopen());
