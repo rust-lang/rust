@@ -178,21 +178,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     *sess.crate_metadata.borrow_mut() =
         collect_crate_metadata(sess, krate.attrs[]);
 
-    time(time_passes, "gated feature checking", (), |_| {
-        let (features, unknown_features) =
-            syntax::feature_gate::check_crate(&sess.parse_sess.span_diagnostic, &krate);
-
-        for uf in unknown_features.iter() {
-            sess.add_lint(lint::builtin::UNKNOWN_FEATURES,
-                          ast::CRATE_NODE_ID,
-                          *uf,
-                          "unknown feature".to_string());
-        }
-
-        sess.abort_if_errors();
-        *sess.features.borrow_mut() = features;
-    });
-
     time(time_passes, "recursion limit", (), |_| {
         middle::recursion_limit::update_recursion_limit(sess, &krate);
     });
@@ -204,6 +189,23 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     //   mod bar { macro_rules! baz!(() => {{}}) }
     //
     // baz! should not use this definition unless foo is enabled.
+
+    time(time_passes, "gated macro checking", (), |_| {
+        let (features, unknown_features) =
+            syntax::feature_gate::check_crate_macros(sess.codemap(),
+                                                     &sess.parse_sess.span_diagnostic,
+                                                     &krate);
+        for uf in unknown_features.iter() {
+            sess.add_lint(lint::builtin::UNKNOWN_FEATURES,
+                          ast::CRATE_NODE_ID,
+                          *uf,
+                          "unknown feature".to_string());
+        }
+
+        // these need to be set "early" so that expansion sees `quote` if enabled.
+        *sess.features.borrow_mut() = features;
+        sess.abort_if_errors();
+    });
 
     krate = time(time_passes, "configuration 1", krate, |krate|
                  syntax::config::strip_unconfigured_items(sess.diagnostic(), krate));
@@ -288,6 +290,14 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             ret
         }
     );
+
+    // Needs to go *after* expansion to be able to check the results of macro expansion.
+    time(time_passes, "complete gated feature checking", (), |_| {
+        syntax::feature_gate::check_crate(sess.codemap(),
+                                          &sess.parse_sess.span_diagnostic,
+                                          &krate);
+        sess.abort_if_errors();
+    });
 
     // JBC: make CFG processing part of expansion to avoid this problem:
 
