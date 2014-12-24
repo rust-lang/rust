@@ -710,7 +710,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         // super-traits
         for super_bound in trait_refs.iter() {
             let trait_ref = match *super_bound {
-                ast::TraitTyParamBound(ref trait_ref) => {
+                ast::TraitTyParamBound(ref trait_ref, _) => {
                     trait_ref
                 }
                 ast::RegionTyParamBound(..) => {
@@ -1052,7 +1052,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                   &**typ,
                                   impl_items)
             }
-            ast::ItemTrait(_, ref generics, _, ref trait_refs, ref methods) =>
+            ast::ItemTrait(_, ref generics, ref trait_refs, ref methods) =>
                 self.process_trait(item, generics, trait_refs, methods),
             ast::ItemMod(ref m) => self.process_mod(item, m),
             ast::ItemTy(ref ty, ref ty_params) => {
@@ -1076,7 +1076,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
     fn visit_generics(&mut self, generics: &ast::Generics) {
         for param in generics.ty_params.iter() {
             for bound in param.bounds.iter() {
-                if let ast::TraitTyParamBound(ref trait_ref) = *bound {
+                if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
                     self.process_trait_ref(&trait_ref.trait_ref, None);
                 }
             }

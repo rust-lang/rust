@@ -85,8 +85,8 @@ pub trait Visitor<'v> {
     fn visit_ty_param_bound(&mut self, bounds: &'v TyParamBound) {
         walk_ty_param_bound(self, bounds)
     }
-    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef) {
-        walk_poly_trait_ref(self, t)
+    fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef, m: &'v TraitBoundModifier) {
+        walk_poly_trait_ref(self, t, m)
     }
     fn visit_struct_def(&mut self, s: &'v StructDef, _: Ident, _: &'v Generics, _: NodeId) {
         walk_struct_def(self, s)
@@ -244,7 +244,8 @@ pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V,
 /// Like with walk_method_helper this doesn't correspond to a method
 /// in Visitor, and so it gets a _helper suffix.
 pub fn walk_poly_trait_ref<'v, V>(visitor: &mut V,
-                                         trait_ref: &'v PolyTraitRef)
+                                  trait_ref: &'v PolyTraitRef,
+                                  _modifier: &'v TraitBoundModifier)
     where V: Visitor<'v>
 {
     walk_lifetime_decls_helper(visitor, &trait_ref.bound_lifetimes);
@@ -324,7 +325,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                                      generics,
                                      item.id)
         }
-        ItemTrait(_, ref generics, _, ref bounds, ref methods) => {
+        ItemTrait(_, ref generics, ref bounds, ref methods) => {
             visitor.visit_generics(generics);
             walk_ty_param_bounds_helper(visitor, bounds);
             for method in methods.iter() {
@@ -558,8 +559,8 @@ pub fn walk_ty_param_bounds_helper<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V,
                                                bound: &'v TyParamBound) {
     match *bound {
-        TraitTyParamBound(ref typ) => {
-            visitor.visit_poly_trait_ref(typ);
+        TraitTyParamBound(ref typ, ref modifier) => {
+            visitor.visit_poly_trait_ref(typ, modifier);
         }
         RegionTyParamBound(ref lifetime) => {
             visitor.visit_lifetime_bound(lifetime);

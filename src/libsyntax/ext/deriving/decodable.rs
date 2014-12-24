@@ -58,10 +58,10 @@ fn expand_deriving_decodable_imp<F>(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds {
             lifetimes: Vec::new(),
-            bounds: vec!(("__D", None, vec!(Path::new_(
+            bounds: vec!(("__D", vec!(Path::new_(
                             vec!(krate, "Decoder"), None,
                             vec!(box Literal(Path::new_local("__E"))), true))),
-                         ("__E", None, vec!()))
+                         ("__E", vec!()))
         },
         methods: vec!(
             MethodDef {

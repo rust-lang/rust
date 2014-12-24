@@ -736,18 +736,17 @@ pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
                                    -> TyParamBound
                                    where T: Folder {
     match tpb {
-        TraitTyParamBound(ty) => TraitTyParamBound(fld.fold_poly_trait_ref(ty)),
+        TraitTyParamBound(ty, modifier) => TraitTyParamBound(fld.fold_poly_trait_ref(ty), modifier),
         RegionTyParamBound(lifetime) => RegionTyParamBound(fld.fold_lifetime(lifetime)),
     }
 }
 
 pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
-    let TyParam {id, ident, bounds, unbound, default, span} = tp;
+    let TyParam {id, ident, bounds, default, span} = tp;
     TyParam {
         id: fld.new_id(id),
         ident: ident,
         bounds: fld.fold_bounds(bounds),
-        unbound: unbound.map(|x| fld.fold_trait_ref(x)),
         default: default.map(|x| fld.fold_ty(x)),
         span: span
     }
@@ -1043,7 +1042,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                      folder.fold_ty(ty),
                      new_impl_items)
         }
-        ItemTrait(unsafety, generics, unbound, bounds, methods) => {
+        ItemTrait(unsafety, generics, bounds, methods) => {
             let bounds = folder.fold_bounds(bounds);
             let methods = methods.into_iter().flat_map(|method| {
                 let r = match method {
@@ -1073,7 +1072,6 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
             }).collect();
             ItemTrait(unsafety,
                       folder.fold_generics(generics),
-                      unbound,
                       bounds,
                       methods)
         }
