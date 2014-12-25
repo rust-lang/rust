@@ -55,7 +55,7 @@ use rustc::middle::lang_items::LanguageItems;
 use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
-use rustc::middle::ty::{CaptureModeMap, Freevar, FreevarMap, TraitMap};
+use rustc::middle::ty::{CaptureModeMap, Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 use rustc::util::lev_distance::lev_distance;
 
@@ -66,7 +66,7 @@ use syntax::ast::{ExprPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemFn};
 use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
-use syntax::ast::{ItemStruct, ItemTrait, ItemTy, Local};
+use syntax::ast::{ItemStruct, ItemTrait, ItemTy, Local, LOCAL_CRATE};
 use syntax::ast::{MethodImplItem, Mod, Name, NamedField, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PathListIdent, PathListMod};
@@ -109,10 +109,6 @@ struct BindingInfo {
 
 // Map from the name in a pattern to its binding mode.
 type BindingMap = HashMap<Name, BindingInfo>;
-
-// Map from the NodeId of a glob import to a list of items which are actually
-// imported.
-pub type GlobMap = HashMap<NodeId, HashSet<Name>>;
 
 #[deriving(Copy, PartialEq)]
 enum PatternBindingMode {
@@ -970,20 +966,6 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
 }
 
-<<<<<<< HEAD:src/librustc_resolve/lib.rs
-=======
-struct UnusedImportCheckVisitor<'a, 'b:'a, 'tcx:'b> {
-    resolver: &'a mut Resolver<'b, 'tcx>
-}
-
-impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    fn visit_view_item(&mut self, vi: &ViewItem) {
-        self.resolver.check_for_item_unused_imports(vi);
-        visit::walk_view_item(self, vi);
-    }
-}
-
->>>>>>> save-analysis: emit names of items that a glob import actually imports.:src/librustc/middle/resolve.rs
 #[deriving(PartialEq)]
 enum FallbackChecks {
     Everything,

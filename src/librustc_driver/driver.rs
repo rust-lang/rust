@@ -343,10 +343,11 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                           middle::lang_items::collect_language_items(krate, &sess));
 
     let make_glob_map = if save_analysis(&sess) {
-        middle::resolve::MakeGlobMap::Yes
+        resolve::MakeGlobMap::Yes
     } else {
-        middle::resolve::MakeGlobMap::No
+        resolve::MakeGlobMap::No
     };
+    let resolve::CrateMap {
         def_map,
         freevars,
         capture_mode_map,
@@ -358,6 +359,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     } =
         time(time_passes, "resolution", (),
              |_| resolve::resolve_crate(&sess,
+                                        &ast_map,
                                         &lang_items,
                                         krate,
                                         make_glob_map));
