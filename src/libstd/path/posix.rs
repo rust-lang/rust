@@ -448,7 +448,9 @@ static dot_dot_static: &'static [u8] = b"..";
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prelude::*;
+    use prelude::Option::{mod, Some, None};
+    use prelude::{Vec, Clone, AsSlice, SliceExt, CloneSliceExt, IteratorExt};
+    use prelude::{DoubleEndedIteratorExt, Str, StrExt, ToString, GenericPath};
     use str;
 
     macro_rules! t {

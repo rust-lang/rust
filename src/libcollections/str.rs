@@ -3330,10 +3330,10 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
+    use super::*;
     use prelude::*;
     use test::Bencher;
     use test::black_box;
-    use super::*;
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {
