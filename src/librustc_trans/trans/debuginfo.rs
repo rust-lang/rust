@@ -182,7 +182,6 @@
 //! comparatively expensive to construct, though, `ty::type_id()` is still used
 //! additionally as an optimization for cases where the exact same type has been
 //! seen before (which is most of the time).
-use self::FunctionDebugContextRepr::*;
 use self::VariableAccess::*;
 use self::VariableKind::*;
 use self::MemberOffset::*;
@@ -679,12 +678,8 @@ impl<'tcx> CrateDebugContext<'tcx> {
     }
 }
 
-pub struct FunctionDebugContext {
-    repr: FunctionDebugContextRepr,
-}
-
-enum FunctionDebugContextRepr {
-    DebugInfo(Box<FunctionDebugContextData>),
+pub enum FunctionDebugContext {
+    RegularContext(Box<FunctionDebugContextData>),
     DebugInfoDisabled,
     FunctionWithoutDebugInfo,
 }
@@ -694,13 +689,13 @@ impl FunctionDebugContext {
                    cx: &CrateContext,
                    span: Span)
                    -> &'a FunctionDebugContextData {
-        match self.repr {
-            DebugInfo(box ref data) => data,
-            DebugInfoDisabled => {
+        match *self {
+            FunctionDebugContext::RegularContext(box ref data) => data,
+            FunctionDebugContext::DebugInfoDisabled => {
                 cx.sess().span_bug(span,
                                    FunctionDebugContext::debuginfo_disabled_message());
             }
-            FunctionWithoutDebugInfo => {
+            FunctionDebugContext::FunctionWithoutDebugInfo => {
                 cx.sess().span_bug(span,
                                    FunctionDebugContext::should_be_ignored_message());
             }
@@ -844,6 +839,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
 /// Creates debug information for the given local variable.
 ///
+/// This function assumes that there's a datum for each pattern component of the
+/// local in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
     if fn_should_be_ignored(bcx.fcx) {
@@ -852,11 +849,10 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
 
     let cx = bcx.ccx();
     let def_map = &cx.tcx().def_map;
+    let locals = bcx.fcx.lllocals.borrow();
 
-    pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, path1| {
-        let var_ident = path1.node;
-
-        let datum = match bcx.fcx.lllocals.borrow().get(&node_id).cloned() {
+    pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, var_ident| {
+        let datum = match locals.get(&node_id) {
             Some(datum) => datum,
             None => {
                 bcx.sess().span_bug(span,
@@ -865,10 +861,15 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
             }
         };
 
+        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
+            cx.sess().span_bug(span, "debuginfo::create_local_var_metadata() - \
+                                      Referenced variable location is not an alloca!");
+        }
+
         let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
 
         declare_local(bcx,
-                      var_ident,
+                      var_ident.node,
                       datum.ty,
                       scope_metadata,
                       DirectVariable { alloca: datum.val },
@@ -981,7 +982,7 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // for the binding. For ByRef bindings that's a `T*` but for ByMove bindings we
     // actually have `T**`. So to get the actual variable we need to dereference once
     // more. For ByCopy we just use the stack slot we created for the binding.
-    let var_type = match binding.trmode {
+    let var_access = match binding.trmode {
         TrByCopy(llbinding) => DirectVariable {
             alloca: llbinding
         },
@@ -998,27 +999,31 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   variable_ident,
                   binding.ty,
                   scope_metadata,
-                  var_type,
+                  var_access,
                   LocalVariable,
                   binding.span);
 }
 
 /// Creates debug information for the given function argument.
 ///
+/// This function assumes that there's a datum for each pattern component of the
+/// argument in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
     }
 
-    let fcx = bcx.fcx;
-    let cx = fcx.ccx;
+    let def_map = &bcx.tcx().def_map;
+    let scope_metadata = bcx
+                         .fcx
+                         .debug_context
+                         .get_ref(bcx.ccx(), arg.pat.span)
+                         .fn_metadata;
+    let locals = bcx.fcx.lllocals.borrow();
 
-    let def_map = &cx.tcx().def_map;
-    let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
-
-    pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, path1| {
-        let llarg = match bcx.fcx.lllocals.borrow().get(&node_id).cloned() {
+    pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, var_ident| {
+        let datum = match locals.get(&node_id) {
             Some(v) => v,
             None => {
                 bcx.sess().span_bug(span,
@@ -1027,24 +1032,68 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
             }
         };
 
-        if unsafe { llvm::LLVMIsAAllocaInst(llarg.val) } == ptr::null_mut() {
-            cx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
-                                    Referenced variable location is not an alloca!");
+        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
+            bcx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
+                                       Referenced variable location is not an alloca!");
         }
 
         let argument_index = {
-            let counter = &fcx.debug_context.get_ref(cx, span).argument_counter;
+            let counter = &bcx
+                          .fcx
+                          .debug_context
+                          .get_ref(bcx.ccx(), span)
+                          .argument_counter;
             let argument_index = counter.get();
             counter.set(argument_index + 1);
             argument_index
         };
 
         declare_local(bcx,
-                      path1.node,
-                      llarg.ty,
+                      var_ident.node,
+                      datum.ty,
                       scope_metadata,
-                      DirectVariable { alloca: llarg.val },
+                      DirectVariable { alloca: datum.val },
                       ArgumentVariable(argument_index),
+                      span);
+    })
+}
+
+/// Creates debug information for the given for-loop variable.
+///
+/// This function assumes that there's a datum for each pattern component of the
+/// loop variable in `bcx.fcx.lllocals`.
+/// Adds the created metadata nodes directly to the crate's IR.
+pub fn create_for_loop_var_metadata(bcx: Block, pat: &ast::Pat) {
+    if fn_should_be_ignored(bcx.fcx) {
+        return;
+    }
+
+    let def_map = &bcx.tcx().def_map;
+    let locals = bcx.fcx.lllocals.borrow();
+
+    pat_util::pat_bindings(def_map, pat, |_, node_id, span, var_ident| {
+        let datum = match locals.get(&node_id) {
+            Some(datum) => datum,
+            None => {
+                bcx.sess().span_bug(span,
+                    format!("no entry in lllocals table for {}",
+                            node_id).as_slice());
+            }
+        };
+
+        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
+            bcx.sess().span_bug(span, "debuginfo::create_for_loop_var_metadata() - \
+                                       Referenced variable location is not an alloca!");
+        }
+
+        let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
+
+        declare_local(bcx,
+                      var_ident.node,
+                      datum.ty,
+                      scope_metadata,
+                      DirectVariable { alloca: datum.val },
+                      LocalVariable,
                       span);
     })
 }
@@ -1117,13 +1166,13 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 pub fn set_source_location(fcx: &FunctionContext,
                            node_id: ast::NodeId,
                            span: Span) {
-    match fcx.debug_context.repr {
-        DebugInfoDisabled => return,
-        FunctionWithoutDebugInfo => {
+    match fcx.debug_context {
+        FunctionDebugContext::DebugInfoDisabled => return,
+        FunctionDebugContext::FunctionWithoutDebugInfo => {
             set_debug_location(fcx.ccx, UnknownLocation);
             return;
         }
-        DebugInfo(box ref function_debug_context) => {
+        FunctionDebugContext::RegularContext(box ref function_debug_context) => {
             let cx = fcx.ccx;
 
             debug!("set_source_location: {}", cx.sess().codemap().span_to_string(span));
@@ -1160,8 +1209,8 @@ pub fn clear_source_location(fcx: &FunctionContext) {
 /// switches source location emitting on and must therefore be called before the
 /// first real statement/expression of the function is translated.
 pub fn start_emitting_source_locations(fcx: &FunctionContext) {
-    match fcx.debug_context.repr {
-        DebugInfo(box ref data) => {
+    match fcx.debug_context {
+        FunctionDebugContext::RegularContext(box ref data) => {
             data.source_locations_enabled.set(true)
         },
         _ => { /* safe to ignore */ }
@@ -1179,7 +1228,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                param_substs: &Substs<'tcx>,
                                                llfn: ValueRef) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
-        return FunctionDebugContext { repr: DebugInfoDisabled };
+        return FunctionDebugContext::DebugInfoDisabled;
     }
 
     // Clear the debug location so we don't assign them in the function prelude.
@@ -1189,7 +1238,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     if fn_ast_id == ast::DUMMY_NODE_ID {
         // This is a function not linked to any source location, so don't
         // generate debuginfo for it.
-        return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
+        return FunctionDebugContext::FunctionWithoutDebugInfo;
     }
 
     let empty_generics = ast_util::empty_generics();
@@ -1199,7 +1248,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
         ast_map::NodeItem(ref item) => {
             if contains_nodebug_attribute(item.attrs.as_slice()) {
-                return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
+                return FunctionDebugContext::FunctionWithoutDebugInfo;
             }
 
             match item.node {
@@ -1216,9 +1265,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             match **item {
                 ast::MethodImplItem(ref method) => {
                     if contains_nodebug_attribute(method.attrs.as_slice()) {
-                        return FunctionDebugContext {
-                            repr: FunctionWithoutDebugInfo
-                        };
+                        return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
                     (method.pe_ident(),
@@ -1257,9 +1304,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             match **trait_method {
                 ast::ProvidedMethod(ref method) => {
                     if contains_nodebug_attribute(method.attrs.as_slice()) {
-                        return FunctionDebugContext {
-                            repr: FunctionWithoutDebugInfo
-                        };
+                        return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
                     (method.pe_ident(),
@@ -1280,7 +1325,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ast_map::NodeForeignItem(..) |
         ast_map::NodeVariant(..) |
         ast_map::NodeStructCtor(..) => {
-            return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
+            return FunctionDebugContext::FunctionWithoutDebugInfo;
         }
         _ => cx.sess().bug(format!("create_function_debug_context: \
                                     unexpected sort of node: {}",
@@ -1289,7 +1334,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // This can be the case for functions inlined from another crate
     if span == codemap::DUMMY_SP {
-        return FunctionDebugContext { repr: FunctionWithoutDebugInfo };
+        return FunctionDebugContext::FunctionWithoutDebugInfo;
     }
 
     let loc = span_start(cx, span);
@@ -1356,22 +1401,23 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         })
     });
 
+    let scope_map = create_scope_map(cx,
+                                     fn_decl.inputs.as_slice(),
+                                     &*top_level_block,
+                                     fn_metadata,
+                                     fn_ast_id);
+
     // Initialize fn debug context (including scope map and namespace map)
     let fn_debug_context = box FunctionDebugContextData {
-        scope_map: RefCell::new(NodeMap::new()),
+        scope_map: RefCell::new(scope_map),
         fn_metadata: fn_metadata,
         argument_counter: Cell::new(1),
         source_locations_enabled: Cell::new(false),
     };
 
-    populate_scope_map(cx,
-                       fn_decl.inputs.as_slice(),
-                       &*top_level_block,
-                       fn_metadata,
-                       fn_ast_id,
-                       &mut *fn_debug_context.scope_map.borrow_mut());
 
-    return FunctionDebugContext { repr: DebugInfo(fn_debug_context) };
+
+    return FunctionDebugContext::RegularContext(fn_debug_context);
 
     fn get_function_signature<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                         fn_ast_id: ast::NodeId,
@@ -3134,8 +3180,8 @@ fn DIB(cx: &CrateContext) -> DIBuilderRef {
 }
 
 fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
-    match fcx.debug_context.repr {
-        DebugInfo(_) => false,
+    match fcx.debug_context {
+        FunctionDebugContext::RegularContext(_) => false,
         _ => true
     }
 }
@@ -3169,12 +3215,14 @@ fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: ast::DefId)
 // what belongs to which scope, creating DIScope DIEs along the way, and
 // introducing *artificial* lexical scope descriptors where necessary. These
 // artificial scopes allow GDB to correctly handle name shadowing.
-fn populate_scope_map(cx: &CrateContext,
-                      args: &[ast::Arg],
-                      fn_entry_block: &ast::Block,
-                      fn_metadata: DISubprogram,
-                      fn_ast_id: ast::NodeId,
-                      scope_map: &mut NodeMap<DIScope>) {
+fn create_scope_map(cx: &CrateContext,
+                    args: &[ast::Arg],
+                    fn_entry_block: &ast::Block,
+                    fn_metadata: DISubprogram,
+                    fn_ast_id: ast::NodeId)
+                 -> NodeMap<DIScope> {
+    let mut scope_map = NodeMap::new();
+
     let def_map = &cx.tcx().def_map;
 
     struct ScopeStackEntry {
@@ -3200,10 +3248,13 @@ fn populate_scope_map(cx: &CrateContext,
     with_new_scope(cx,
                    fn_entry_block.span,
                    &mut scope_stack,
-                   scope_map,
+                   &mut scope_map,
                    |cx, scope_stack, scope_map| {
         walk_block(cx, fn_entry_block, scope_stack, scope_map);
     });
+
+    return scope_map;
+
 
     // local helper functions for walking the AST.
     fn with_new_scope<F>(cx: &CrateContext,
@@ -3440,7 +3491,7 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::PatMac(_) => {
-                cx.sess().span_bug(pat.span, "debuginfo::populate_scope_map() - \
+                cx.sess().span_bug(pat.span, "debuginfo::create_scope_map() - \
                                               Found unexpanded macro.");
             }
         }
@@ -3531,7 +3582,7 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::ExprIfLet(..) => {
-                cx.sess().span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                cx.sess().span_bug(exp.span, "debuginfo::create_scope_map() - \
                                               Found unexpanded if-let.");
             }
 
@@ -3548,7 +3599,7 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::ExprWhileLet(..) => {
-                cx.sess().span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                cx.sess().span_bug(exp.span, "debuginfo::create_scope_map() - \
                                               Found unexpanded while-let.");
             }
 
@@ -3573,7 +3624,7 @@ fn populate_scope_map(cx: &CrateContext,
             }
 
             ast::ExprMac(_) => {
-                cx.sess().span_bug(exp.span, "debuginfo::populate_scope_map() - \
+                cx.sess().span_bug(exp.span, "debuginfo::create_scope_map() - \
                                               Found unexpanded macro.");
             }
 
