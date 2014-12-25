@@ -888,8 +888,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter(&self) -> Entries<K, V> {
-        Entries { inner: self.table.iter() }
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter { inner: self.table.iter() }
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order,
@@ -1305,8 +1305,8 @@ impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> IndexMut<Q, V> for HashMap<K
 }
 
 /// HashMap iterator
-pub struct Entries<'a, K: 'a, V: 'a> {
-    inner: table::Entries<'a, K, V>
+pub struct Iter<'a, K: 'a, V: 'a> {
+    inner: table::Iter<'a, K, V>
 }
 
 /// HashMap mutable values iterator
@@ -1326,12 +1326,12 @@ pub struct IntoIter<K, V> {
 
 /// HashMap keys iterator
 pub struct Keys<'a, K: 'a, V: 'a> {
-    inner: Map<(&'a K, &'a V), &'a K, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
+    inner: Map<(&'a K, &'a V), &'a K, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
 }
 
 /// HashMap values iterator
 pub struct Values<'a, K: 'a, V: 'a> {
-    inner: Map<(&'a K, &'a V), &'a V, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+    inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
 }
 
 /// HashMap drain iterator
@@ -1373,7 +1373,7 @@ enum VacantEntryState<K, V, M> {
     NoElem(EmptyBucket<K, V, M>),
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a V)> for Iter<'a, K, V> {
     #[inline] fn next(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
