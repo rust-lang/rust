@@ -278,11 +278,11 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: vec!(
-                        ty::mk_int(),
-                        ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, ty::mk_u8()))
+                        tcx.types.int,
+                        ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, tcx.types.u8))
                     ),
-                    output: ty::FnConverging(ty::mk_int()),
-                    variadic: false
+                    output: ty::FnConverging(tcx.types.int),
+                    variadic: false,
                 }),
             }));
 

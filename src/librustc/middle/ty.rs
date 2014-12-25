@@ -639,6 +639,24 @@ impl<'tcx> CtxtArenas<'tcx> {
     }
 }
 
+pub struct CommonTypes<'tcx> {
+    pub bool: Ty<'tcx>,
+    pub char: Ty<'tcx>,
+    pub int: Ty<'tcx>,
+    pub i8: Ty<'tcx>,
+    pub i16: Ty<'tcx>,
+    pub i32: Ty<'tcx>,
+    pub i64: Ty<'tcx>,
+    pub uint: Ty<'tcx>,
+    pub u8: Ty<'tcx>,
+    pub u16: Ty<'tcx>,
+    pub u32: Ty<'tcx>,
+    pub u64: Ty<'tcx>,
+    pub f32: Ty<'tcx>,
+    pub f64: Ty<'tcx>,
+    pub err: Ty<'tcx>,
+}
+
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
@@ -651,10 +669,14 @@ pub struct ctxt<'tcx> {
     // FIXME(eddyb) use a FnvHashSet<InternedTy<'tcx>> when equivalent keys can
     // queried from a HashSet.
     interner: RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
+
     // FIXME as above, use a hashset if equivalent elements can be queried.
     substs_interner: RefCell<FnvHashMap<&'tcx Substs<'tcx>, &'tcx Substs<'tcx>>>,
     bare_fn_interner: RefCell<FnvHashMap<&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>>>,
     region_interner: RefCell<FnvHashMap<&'tcx Region, &'tcx Region>>,
+
+    /// Common types, pre-interned for your convenience.
+    pub types: CommonTypes<'tcx>,
 
     pub sess: Session,
     pub def_map: DefMap,
@@ -1295,54 +1317,6 @@ pub enum BoundRegion {
     // Anonymous region for the implicit env pointer parameter
     // to a closure
     BrEnv
-}
-
-#[inline]
-pub fn mk_prim_t<'tcx>(primitive: &'tcx TyS<'static>) -> Ty<'tcx> {
-    // FIXME(#17596) Ty<'tcx> is incorrectly invariant w.r.t 'tcx.
-    unsafe { &*(primitive as *const _ as *const TyS<'tcx>) }
-}
-
-// Do not change these from static to const, interning types requires
-// the primitives to have a significant address.
-macro_rules! def_prim_tys {
-    ($($name:ident -> $sty:expr;)*) => (
-        $(#[inline] pub fn $name<'tcx>() -> Ty<'tcx> {
-            static PRIM_TY: TyS<'static> = TyS {
-                sty: $sty,
-                flags: NO_TYPE_FLAGS,
-                region_depth: 0,
-            };
-            mk_prim_t(&PRIM_TY)
-        })*
-    )
-}
-
-def_prim_tys!{
-    mk_bool ->  ty_bool;
-    mk_char ->  ty_char;
-    mk_int ->   ty_int(ast::TyI);
-    mk_i8 ->    ty_int(ast::TyI8);
-    mk_i16 ->   ty_int(ast::TyI16);
-    mk_i32 ->   ty_int(ast::TyI32);
-    mk_i64 ->   ty_int(ast::TyI64);
-    mk_uint ->  ty_uint(ast::TyU);
-    mk_u8 ->    ty_uint(ast::TyU8);
-    mk_u16 ->   ty_uint(ast::TyU16);
-    mk_u32 ->   ty_uint(ast::TyU32);
-    mk_u64 ->   ty_uint(ast::TyU64);
-    mk_f32 ->   ty_float(ast::TyF32);
-    mk_f64 ->   ty_float(ast::TyF64);
-}
-
-#[inline]
-pub fn mk_err<'tcx>() -> Ty<'tcx> {
-    static TY_ERR: TyS<'static> = TyS {
-        sty: ty_err,
-        flags: HAS_TY_ERR,
-        region_depth: 0,
-    };
-    mk_prim_t(&TY_ERR)
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -2102,6 +2076,31 @@ impl UnboxedClosureKind {
     }
 }
 
+impl<'tcx> CommonTypes<'tcx> {
+    fn new(arena: &'tcx TypedArena<TyS<'tcx>>,
+           interner: &mut FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>)
+           -> CommonTypes<'tcx>
+    {
+        CommonTypes {
+            bool: intern_ty(arena, interner, ty_bool),
+            char: intern_ty(arena, interner, ty_char),
+            err: intern_ty(arena, interner, ty_err),
+            int: intern_ty(arena, interner, ty_int(ast::TyI)),
+            i8: intern_ty(arena, interner, ty_int(ast::TyI8)),
+            i16: intern_ty(arena, interner, ty_int(ast::TyI16)),
+            i32: intern_ty(arena, interner, ty_int(ast::TyI32)),
+            i64: intern_ty(arena, interner, ty_int(ast::TyI64)),
+            uint: intern_ty(arena, interner, ty_uint(ast::TyU)),
+            u8: intern_ty(arena, interner, ty_uint(ast::TyU8)),
+            u16: intern_ty(arena, interner, ty_uint(ast::TyU16)),
+            u32: intern_ty(arena, interner, ty_uint(ast::TyU32)),
+            u64: intern_ty(arena, interner, ty_uint(ast::TyU64)),
+            f32: intern_ty(arena, interner, ty_float(ast::TyF32)),
+            f64: intern_ty(arena, interner, ty_float(ast::TyF64)),
+        }
+    }
+}
+
 pub fn mk_ctxt<'tcx>(s: Session,
                      arenas: &'tcx CtxtArenas<'tcx>,
                      dm: DefMap,
@@ -2111,13 +2110,18 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      capture_modes: RefCell<CaptureModeMap>,
                      region_maps: middle::region::RegionMaps,
                      lang_items: middle::lang_items::LanguageItems,
-                     stability: stability::Index) -> ctxt<'tcx> {
+                     stability: stability::Index) -> ctxt<'tcx>
+{
+    let mut interner = FnvHashMap::new();
+    let common_types = CommonTypes::new(&arenas.type_, &mut interner);
+
     ctxt {
         arenas: arenas,
         interner: RefCell::new(FnvHashMap::new()),
         substs_interner: RefCell::new(FnvHashMap::new()),
         bare_fn_interner: RefCell::new(FnvHashMap::new()),
         region_interner: RefCell::new(FnvHashMap::new()),
+        types: common_types,
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
         variance_computed: Cell::new(false),
@@ -2212,31 +2216,32 @@ impl<'tcx> ctxt<'tcx> {
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for Ty above).
 pub fn mk_t<'tcx>(cx: &ctxt<'tcx>, st: sty<'tcx>) -> Ty<'tcx> {
-    // Check for primitive types.
-    match st {
-        ty_err => return mk_err(),
-        ty_bool => return mk_bool(),
-        ty_int(i) => return mk_mach_int(i),
-        ty_uint(u) => return mk_mach_uint(u),
-        ty_float(f) => return mk_mach_float(f),
-        ty_char => return mk_char(),
-        _ => {}
-    };
+    let mut interner = cx.interner.borrow_mut();
+    intern_ty(cx.type_arena, &mut *interner, st)
+}
 
-    match cx.interner.borrow().get(&st) {
+fn intern_ty<'tcx>(type_arena: &'tcx TypedArena<TyS<'tcx>>,
+                   interner: &mut FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>,
+                   st: sty<'tcx>)
+                   -> Ty<'tcx>
+{
+    match interner.get(&st) {
         Some(ty) => return *ty,
         _ => ()
     }
 
     let flags = FlagComputation::for_sty(&st);
 
-    let ty = cx.arenas.type_.alloc(TyS {
+    let ty = type_arena.alloc(TyS {
         sty: st,
         flags: flags.flags,
         region_depth: flags.depth,
     });
 
-    cx.interner.borrow_mut().insert(InternedTy { ty: ty }, ty);
+    debug!("Interned type: {} Pointer: {}",
+           ty, ty as *const _);
+
+    interner.insert(InternedTy { ty: ty }, ty);
 
     ty
 }
@@ -2416,30 +2421,30 @@ impl FlagComputation {
     }
 }
 
-pub fn mk_mach_int<'tcx>(tm: ast::IntTy) -> Ty<'tcx> {
+pub fn mk_mach_int<'tcx>(tcx: &ctxt<'tcx>, tm: ast::IntTy) -> Ty<'tcx> {
     match tm {
-        ast::TyI    => mk_int(),
-        ast::TyI8   => mk_i8(),
-        ast::TyI16  => mk_i16(),
-        ast::TyI32  => mk_i32(),
-        ast::TyI64  => mk_i64(),
+        ast::TyI    => tcx.types.int,
+        ast::TyI8   => tcx.types.i8,
+        ast::TyI16  => tcx.types.i16,
+        ast::TyI32  => tcx.types.i32,
+        ast::TyI64  => tcx.types.i64,
     }
 }
 
-pub fn mk_mach_uint<'tcx>(tm: ast::UintTy) -> Ty<'tcx> {
+pub fn mk_mach_uint<'tcx>(tcx: &ctxt<'tcx>, tm: ast::UintTy) -> Ty<'tcx> {
     match tm {
-        ast::TyU    => mk_uint(),
-        ast::TyU8   => mk_u8(),
-        ast::TyU16  => mk_u16(),
-        ast::TyU32  => mk_u32(),
-        ast::TyU64  => mk_u64(),
+        ast::TyU    => tcx.types.uint,
+        ast::TyU8   => tcx.types.u8,
+        ast::TyU16  => tcx.types.u16,
+        ast::TyU32  => tcx.types.u32,
+        ast::TyU64  => tcx.types.u64,
     }
 }
 
-pub fn mk_mach_float<'tcx>(tm: ast::FloatTy) -> Ty<'tcx> {
+pub fn mk_mach_float<'tcx>(tcx: &ctxt<'tcx>, tm: ast::FloatTy) -> Ty<'tcx> {
     match tm {
-        ast::TyF32  => mk_f32(),
-        ast::TyF64  => mk_f64(),
+        ast::TyF32  => tcx.types.f32,
+        ast::TyF64  => tcx.types.f64,
     }
 }
 
@@ -2769,7 +2774,7 @@ pub fn type_is_simd(cx: &ctxt, ty: Ty) -> bool {
 pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_vec(ty, _) => ty,
-        ty_str => mk_mach_uint(ast::TyU8),
+        ty_str => mk_mach_uint(cx, ast::TyU8),
         ty_open(ty) => sequence_element_type(cx, ty),
         _ => cx.sess.bug(format!("sequence_element_type called on non-sequence value: {}",
                                  ty_to_string(cx, ty))[]),
@@ -3760,10 +3765,10 @@ pub fn index<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
 // Returns the type of elements contained within an 'array-like' type.
 // This is exactly the same as the above, except it supports strings,
 // which can't actually be indexed.
-pub fn array_element_ty<'tcx>(ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+pub fn array_element_ty<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match ty.sty {
         ty_vec(ty, _) => Some(ty),
-        ty_str => Some(mk_u8()),
+        ty_str => Some(tcx.types.u8),
         _ => None
     }
 }

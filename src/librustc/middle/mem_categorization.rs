@@ -755,7 +755,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         // instead of bothering to construct a proper
                         // one.
                         base.mutbl = McImmutable;
-                        base.ty = ty::mk_err();
+                        base.ty = self.tcx().types.err;
                         Rc::new(cmt_ {
                             id: id,
                             span: span,
@@ -781,7 +781,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         is_unboxed: is_unboxed
                     }),
                     mutbl: McImmutable,
-                    ty: ty::mk_err(),
+                    ty: self.tcx().types.err,
                     note: NoteNone
                 };
 
@@ -792,7 +792,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                             span: span,
                             cat: cat_deref(Rc::new(base), 0, env_ptr),
                             mutbl: env_mutbl,
-                            ty: ty::mk_err(),
+                            ty: self.tcx().types.err,
                             note: NoteClosureEnv(upvar_id)
                         };
                     }
@@ -987,7 +987,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 ty::ty_fn_args(method_ty)[0]
             }
             None => {
-                match ty::array_element_ty(base_cmt.ty) {
+                match ty::array_element_ty(self.tcx(), base_cmt.ty) {
                     Some(ty) => ty,
                     None => {
                         self.tcx().sess.span_bug(

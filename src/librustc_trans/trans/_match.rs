@@ -1122,7 +1122,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     let t = if kind == Compare {
                         left_ty
                     } else {
-                        ty::mk_uint() // vector length
+                        tcx.types.uint // vector length
                     };
                     let Result { bcx: after_cx, val: matches } = {
                         match opt.trans(bcx) {

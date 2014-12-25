@@ -786,7 +786,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                     substs, f);
               }
               (_match::Switch, Some(lldiscrim_a)) => {
-                  cx = f(cx, lldiscrim_a, ty::mk_int());
+                  cx = f(cx, lldiscrim_a, cx.tcx().types.int);
                   let unr_cx = fcx.new_temp_block("enum-iter-unr");
                   Unreachable(unr_cx);
                   let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
@@ -1765,7 +1765,7 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
                 retptr.erase_from_parent();
             }
 
-            let retval = if retty == ty::FnConverging(ty::mk_bool()) {
+            let retval = if retty == ty::FnConverging(fcx.ccx.tcx().types.bool) {
                 Trunc(ret_cx, retval, Type::i1(fcx.ccx))
             } else {
                 retval

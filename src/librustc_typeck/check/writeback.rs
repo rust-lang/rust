@@ -169,7 +169,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         match t.node {
             ast::TyFixedLengthVec(ref ty, ref count_expr) => {
                 self.visit_ty(&**ty);
-                write_ty_to_tcx(self.tcx(), count_expr.id, ty::mk_uint());
+                write_ty_to_tcx(self.tcx(), count_expr.id, self.tcx().types.uint);
             }
             _ => visit::walk_ty(self, t)
         }
@@ -441,7 +441,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
                 debug!("Resolver::fold_ty: input type `{}` not fully resolvable",
                        t.repr(self.tcx));
                 self.report_error(e);
-                ty::mk_err()
+                self.tcx().types.err
             }
         }
     }

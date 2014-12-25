@@ -736,7 +736,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                         let f = base::decl_cdecl_fn(self.ccx,
                                                     "rust_eh_personality",
                                                     fty,
-                                                    ty::mk_i32());
+                                                    self.ccx.tcx().types.i32);
                         *personality = Some(f);
                         f
                     }

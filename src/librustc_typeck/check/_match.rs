@@ -142,7 +142,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**inner, inner_ty);
             } else {
                 fcx.write_error(pat.id);
-                check_pat(pcx, &**inner, ty::mk_err());
+                check_pat(pcx, &**inner, tcx.types.err);
             }
         }
         ast::PatRegion(ref inner) => {
@@ -162,7 +162,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**inner, inner_ty);
             } else {
                 fcx.write_error(pat.id);
-                check_pat(pcx, &**inner, ty::mk_err());
+                check_pat(pcx, &**inner, tcx.types.err);
             }
         }
         ast::PatVec(ref before, ref slice, ref after) => {
@@ -285,11 +285,11 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         if let Some(ref e) = arm.guard {
-            check_expr_has_type(fcx, &**e, ty::mk_bool());
+            check_expr_has_type(fcx, &**e, tcx.types.bool);
         }
 
         if ty::type_is_error(result_ty) || ty::type_is_error(bty) {
-            ty::mk_err()
+            tcx.types.err
         } else {
             let (origin, expected, found) = match match_src {
                 /* if-let construct without an else block */
@@ -339,7 +339,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
             fcx.write_error(pat.id);
 
             for field in fields.iter() {
-                check_pat(pcx, &*field.node.pat, ty::mk_err());
+                check_pat(pcx, &*field.node.pat, tcx.types.err);
             }
             return;
         },
@@ -358,7 +358,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
                     fcx.write_error(pat.id);
 
                     for field in fields.iter() {
-                        check_pat(pcx, &*field.node.pat, ty::mk_err());
+                        check_pat(pcx, &*field.node.pat, tcx.types.err);
                     }
                     return;
                 }
@@ -430,7 +430,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
 
             if let Some(ref subpats) = *subpats {
                 for pat in subpats.iter() {
-                    check_pat(pcx, &**pat, ty::mk_err());
+                    check_pat(pcx, &**pat, tcx.types.err);
                 }
             }
             return;
@@ -448,7 +448,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
                       subpats.len(), if subpats.len() == 1 {""} else {"s"}, kind_name);
 
             for pat in subpats.iter() {
-                check_pat(pcx, &**pat, ty::mk_err());
+                check_pat(pcx, &**pat, tcx.types.err);
             }
         } else {
             span_err!(tcx.sess, pat.span, E0023,
@@ -458,7 +458,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
                       arg_tys.len(), if arg_tys.len() == 1 {""} else {"s"});
 
             for pat in subpats.iter() {
-                check_pat(pcx, &**pat, ty::mk_err());
+                check_pat(pcx, &**pat, tcx.types.err);
             }
         }
     }
@@ -496,7 +496,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 span_note!(tcx.sess, *occupied.get(),
                     "field `{}` previously bound here",
                     token::get_ident(field.ident));
-                ty::mk_err()
+                tcx.types.err
             }
             Vacant(vacant) => {
                 vacant.set(span);
@@ -506,7 +506,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                             "struct `{}` does not have a field named `{}`",
                             ty::item_path_str(tcx, struct_id),
                             token::get_ident(field.ident));
-                        ty::mk_err()
+                        tcx.types.err
                     })
             }
         };

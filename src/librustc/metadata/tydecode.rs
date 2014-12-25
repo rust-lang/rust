@@ -384,39 +384,40 @@ fn parse_trait_ref<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
 }
 
 fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
+    let tcx = st.tcx;
     match next(st) {
-      'b' => return ty::mk_bool(),
-      'i' => return ty::mk_int(),
-      'u' => return ty::mk_uint(),
+      'b' => return tcx.types.bool,
+      'i' => return tcx.types.int,
+      'u' => return tcx.types.uint,
       'M' => {
         match next(st) {
-          'b' => return ty::mk_mach_uint(ast::TyU8),
-          'w' => return ty::mk_mach_uint(ast::TyU16),
-          'l' => return ty::mk_mach_uint(ast::TyU32),
-          'd' => return ty::mk_mach_uint(ast::TyU64),
-          'B' => return ty::mk_mach_int(ast::TyI8),
-          'W' => return ty::mk_mach_int(ast::TyI16),
-          'L' => return ty::mk_mach_int(ast::TyI32),
-          'D' => return ty::mk_mach_int(ast::TyI64),
-          'f' => return ty::mk_mach_float(ast::TyF32),
-          'F' => return ty::mk_mach_float(ast::TyF64),
+          'b' => return tcx.types.u8,
+          'w' => return tcx.types.u16,
+          'l' => return tcx.types.u32,
+          'd' => return tcx.types.u64,
+          'B' => return tcx.types.i8,
+          'W' => return tcx.types.i16,
+          'L' => return tcx.types.i32,
+          'D' => return tcx.types.i64,
+          'f' => return tcx.types.f32,
+          'F' => return tcx.types.f64,
           _ => panic!("parse_ty: bad numeric type")
         }
       }
-      'c' => return ty::mk_char(),
+      'c' => return tcx.types.char,
       't' => {
         assert_eq!(next(st), '[');
         let def = parse_def(st, NominalType, |x,y| conv(x,y));
         let substs = parse_substs(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
-        return ty::mk_enum(st.tcx, def, st.tcx.mk_substs(substs));
+        return ty::mk_enum(tcx, def, st.tcx.mk_substs(substs));
       }
       'x' => {
         assert_eq!(next(st), '[');
         let trait_ref = ty::Binder(parse_trait_ref(st, |x,y| conv(x,y)));
         let bounds = parse_existential_bounds(st, |x,y| conv(x,y));
         assert_eq!(next(st), ']');
-        return ty::mk_trait(st.tcx, trait_ref, bounds);
+        return ty::mk_trait(tcx, trait_ref, bounds);
       }
       'p' => {
         let did = parse_def(st, TypeParameter, |x,y| conv(x,y));
@@ -425,41 +426,41 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
         assert_eq!(next(st), '|');
         let space = parse_param_space(st);
         assert_eq!(next(st), '|');
-        return ty::mk_param(st.tcx, space, index, did);
+        return ty::mk_param(tcx, space, index, did);
       }
-      '~' => return ty::mk_uniq(st.tcx, parse_ty(st, |x,y| conv(x,y))),
-      '*' => return ty::mk_ptr(st.tcx, parse_mt(st, |x,y| conv(x,y))),
+      '~' => return ty::mk_uniq(tcx, parse_ty(st, |x,y| conv(x,y))),
+      '*' => return ty::mk_ptr(tcx, parse_mt(st, |x,y| conv(x,y))),
       '&' => {
         let r = parse_region(st, |x,y| conv(x,y));
         let mt = parse_mt(st, |x,y| conv(x,y));
-        return ty::mk_rptr(st.tcx, st.tcx.mk_region(r), mt);
+        return ty::mk_rptr(tcx, tcx.mk_region(r), mt);
       }
       'V' => {
         let t = parse_ty(st, |x,y| conv(x,y));
         let sz = parse_size(st);
-        return ty::mk_vec(st.tcx, t, sz);
+        return ty::mk_vec(tcx, t, sz);
       }
       'v' => {
-        return ty::mk_str(st.tcx);
+        return ty::mk_str(tcx);
       }
       'T' => {
         assert_eq!(next(st), '[');
         let mut params = Vec::new();
         while peek(st) != ']' { params.push(parse_ty(st, |x,y| conv(x,y))); }
         st.pos = st.pos + 1u;
-        return ty::mk_tup(st.tcx, params);
+        return ty::mk_tup(tcx, params);
       }
       'f' => {
-        return ty::mk_closure(st.tcx, parse_closure_ty(st, |x,y| conv(x,y)));
+        return ty::mk_closure(tcx, parse_closure_ty(st, |x,y| conv(x,y)));
       }
       'F' => {
           let def_id = parse_def(st, NominalType, |x,y| conv(x,y));
-          return ty::mk_bare_fn(st.tcx, Some(def_id),
-                                st.tcx.mk_bare_fn(parse_bare_fn_ty(st, |x,y| conv(x,y))));
+          return ty::mk_bare_fn(tcx, Some(def_id),
+                                tcx.mk_bare_fn(parse_bare_fn_ty(st, |x,y| conv(x,y))));
       }
       'G' => {
-          return ty::mk_bare_fn(st.tcx, None,
-                                st.tcx.mk_bare_fn(parse_bare_fn_ty(st, |x,y| conv(x,y))));
+          return ty::mk_bare_fn(tcx, None,
+                                tcx.mk_bare_fn(parse_bare_fn_ty(st, |x,y| conv(x,y))));
       }
       '#' => {
         let pos = parse_hex(st);
@@ -470,7 +471,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
                                          pos: pos,
                                          len: len };
 
-        match st.tcx.rcache.borrow().get(&key).cloned() {
+        match tcx.rcache.borrow().get(&key).cloned() {
           Some(tt) => return tt,
           None => {}
         }
@@ -479,7 +480,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
             .. *st
         };
         let tt = parse_ty(&mut ps, |x,y| conv(x,y));
-        st.tcx.rcache.borrow_mut().insert(key, tt);
+        tcx.rcache.borrow_mut().insert(key, tt);
         return tt;
       }
       '\"' => {
@@ -504,7 +505,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
                   st.tcx.mk_region(region), st.tcx.mk_substs(substs));
       }
       'e' => {
-          return ty::mk_err();
+          return tcx.types.err;
       }
       c => { panic!("unexpected char in type string: {}", c);}
     }
