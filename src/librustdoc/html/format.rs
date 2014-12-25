@@ -142,6 +142,22 @@ impl fmt::Show for clean::Lifetime {
     }
 }
 
+impl fmt::Show for clean::PolyTrait {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.lifetimes.len() > 0 {
+            try!(f.write("for&lt;".as_bytes()));
+            for (i, lt) in self.lifetimes.iter().enumerate() {
+                if i > 0 {
+                    try!(f.write(", ".as_bytes()));
+                }
+                try!(write!(f, "{}", lt));
+            }
+            try!(f.write("&gt; ".as_bytes()));
+        }
+        write!(f, "{}", self.trait_)
+    }
+}
+
 impl fmt::Show for clean::TyParamBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -155,6 +171,58 @@ impl fmt::Show for clean::TyParamBound {
     }
 }
 
+impl fmt::Show for clean::PathParameters {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            clean::PathParameters::AngleBracketed { ref lifetimes, ref types } => {
+                if lifetimes.len() > 0 || types.len() > 0 {
+                    try!(f.write("&lt;".as_bytes()));
+                    let mut comma = false;
+                    for lifetime in lifetimes.iter() {
+                        if comma {
+                            try!(f.write(", ".as_bytes()));
+                        }
+                        comma = true;
+                        try!(write!(f, "{}", *lifetime));
+                    }
+                    for ty in types.iter() {
+                        if comma {
+                            try!(f.write(", ".as_bytes()));
+                        }
+                        comma = true;
+                        try!(write!(f, "{}", *ty));
+                    }
+                    try!(f.write("&gt;".as_bytes()));
+                }
+            }
+            clean::PathParameters::Parenthesized { ref inputs, ref output } => {
+                try!(f.write("(".as_bytes()));
+                let mut comma = false;
+                for ty in inputs.iter() {
+                    if comma {
+                        try!(f.write(", ".as_bytes()));
+                    }
+                    comma = true;
+                    try!(write!(f, "{}", *ty));
+                }
+                try!(f.write(")".as_bytes()));
+                if let Some(ref ty) = *output {
+                    try!(f.write(" -&gt; ".as_bytes()));
+                    try!(write!(f, "{}", ty));
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Show for clean::PathSegment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(f.write(self.name.as_bytes()));
+        write!(f, "{}", self.params)
+    }
+}
+
 impl fmt::Show for clean::Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.global {
@@ -165,27 +233,7 @@ impl fmt::Show for clean::Path {
             if i > 0 {
                 try!(f.write("::".as_bytes()))
             }
-            try!(f.write(seg.name.as_bytes()));
-
-            if seg.lifetimes.len() > 0 || seg.types.len() > 0 {
-                try!(f.write("&lt;".as_bytes()));
-                let mut comma = false;
-                for lifetime in seg.lifetimes.iter() {
-                    if comma {
-                        try!(f.write(", ".as_bytes()));
-                    }
-                    comma = true;
-                    try!(write!(f, "{}", *lifetime));
-                }
-                for ty in seg.types.iter() {
-                    if comma {
-                        try!(f.write(", ".as_bytes()));
-                    }
-                    comma = true;
-                    try!(write!(f, "{}", *ty));
-                }
-                try!(f.write("&gt;".as_bytes()));
-            }
+            try!(write!(f, "{}", seg));
         }
         Ok(())
     }
@@ -227,23 +275,8 @@ fn path<F, G>(w: &mut fmt::Formatter,
     G: FnOnce(&render::Cache) -> Option<(Vec<String>, ItemType)>,
 {
     // The generics will get written to both the title and link
-    let mut generics = String::new();
     let last = path.segments.last().unwrap();
-    if last.lifetimes.len() > 0 || last.types.len() > 0 {
-        let mut counter = 0u;
-        generics.push_str("&lt;");
-        for lifetime in last.lifetimes.iter() {
-            if counter > 0 { generics.push_str(", "); }
-            counter += 1;
-            generics.push_str(format!("{}", *lifetime).as_slice());
-        }
-        for ty in last.types.iter() {
-            if counter > 0 { generics.push_str(", "); }
-            counter += 1;
-            generics.push_str(format!("{}", *ty).as_slice());
-        }
-        generics.push_str("&gt;");
-    }
+    let generics = format!("{}", last.params);
 
     let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
     let cache = cache();
@@ -389,15 +422,6 @@ impl fmt::Show for clean::Type {
                 try!(resolved_path(f, did, path, false));
                 tybounds(f, typarams)
             }
-            clean::PolyTraitRef(ref bounds) => {
-                for (i, bound) in bounds.iter().enumerate() {
-                    if i != 0 {
-                        try!(write!(f, " + "));
-                    }
-                    try!(write!(f, "{}", *bound));
-                }
-                Ok(())
-            }
             clean::Infer => write!(f, "_"),
             clean::Self(..) => f.write("Self".as_bytes()),
             clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
@@ -407,7 +431,7 @@ impl fmt::Show for clean::Type {
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_string()
                        } else {
-                           format!("&lt;{:#}&gt;", decl.lifetimes)
+                           format!("for &lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
                        arrow = decl.decl.output,
@@ -436,7 +460,7 @@ impl fmt::Show for clean::Type {
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_string()
                        } else {
-                           format!("&lt;{:#}&gt;", decl.lifetimes)
+                           format!("for &lt;{:#}&gt;", decl.lifetimes)
                        },
                        args = decl.decl.inputs,
                        bounds = if decl.bounds.len() == 0 {
@@ -504,6 +528,15 @@ impl fmt::Show for clean::Type {
                         write!(f, "&amp;{}{}{}", lt, m, **ty)
                     }
                 }
+            }
+            clean::PolyTraitRef(ref bounds) => {
+                for (i, bound) in bounds.iter().enumerate() {
+                    if i != 0 {
+                        try!(write!(f, " + "));
+                    }
+                    try!(write!(f, "{}", *bound));
+                }
+                Ok(())
             }
             clean::QPath { ref name, ref self_type, ref trait_ } => {
                 write!(f, "&lt;{} as {}&gt;::{}", self_type, trait_, name)
@@ -644,8 +677,10 @@ impl fmt::Show for clean::ViewListIdent {
                     global: false,
                     segments: vec!(clean::PathSegment {
                         name: self.name.clone(),
-                        lifetimes: Vec::new(),
-                        types: Vec::new(),
+                        params: clean::PathParameters::AngleBracketed {
+                            lifetimes: Vec::new(),
+                            types: Vec::new(),
+                        }
                     })
                 };
                 resolved_path(f, did, &path, false)
