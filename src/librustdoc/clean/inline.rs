@@ -328,7 +328,7 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
             derived: clean::detect_derived(attrs.as_slice()),
             trait_: associated_trait.clean(cx).map(|bound| {
                 match bound {
-                    clean::TraitBound(ty) => ty,
+                    clean::TraitBound(polyt) => polyt.trait_,
                     clean::RegionBound(..) => unreachable!(),
                 }
             }),

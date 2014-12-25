@@ -43,8 +43,7 @@ use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::def;
-use rustc::middle::subst;
-use rustc::middle::subst::VecPerParamSpace;
+use rustc::middle::subst::{mod, ParamSpace, VecPerParamSpace};
 use rustc::middle::ty;
 use rustc::middle::stability;
 use rustc::session::config;
@@ -493,7 +492,7 @@ impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
 #[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq)]
 pub enum TyParamBound {
     RegionBound(Lifetime),
-    TraitBound(Type)
+    TraitBound(PolyTrait)
 }
 
 impl Clean<TyParamBound> for ast::TyParamBound {
@@ -516,19 +515,55 @@ impl Clean<Vec<TyParamBound>> for ty::ExistentialBounds {
     }
 }
 
-fn external_path(cx: &DocContext, name: &str, substs: &subst::Substs) -> Path {
+fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
+                        substs: &subst::Substs) -> PathParameters {
+    use rustc::middle::ty::sty;
     let lifetimes = substs.regions().get_slice(subst::TypeSpace)
                     .iter()
                     .filter_map(|v| v.clean(cx))
                     .collect();
     let types = substs.types.get_slice(subst::TypeSpace).to_vec();
-    let types = types.clean(cx);
+
+    match (trait_did, cx.tcx_opt()) {
+        // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
+        (Some(did), Some(ref tcx)) if tcx.lang_items.fn_trait_kind(did).is_some() => {
+            assert_eq!(types.len(), 2);
+            let inputs = match types[0].sty {
+                sty::ty_tup(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
+                _ => {
+                    return PathParameters::AngleBracketed {
+                        lifetimes: lifetimes,
+                        types: types.clean(cx)
+                    }
+                }
+            };
+            let output = match types[1].sty {
+                sty::ty_tup(ref v) if v.is_empty() => None, // -> ()
+                _ => Some(types[1].clean(cx))
+            };
+            PathParameters::Parenthesized {
+                inputs: inputs,
+                output: output
+            }
+        },
+        (_, _) => {
+            PathParameters::AngleBracketed {
+                lifetimes: lifetimes,
+                types: types.clean(cx),
+            }
+        }
+    }
+}
+
+// trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
+// from Fn<(A, B,), C> to Fn(A, B) -> C
+fn external_path(cx: &DocContext, name: &str, trait_did: Option<ast::DefId>,
+                 substs: &subst::Substs) -> Path {
     Path {
         global: false,
         segments: vec![PathSegment {
             name: name.to_string(),
-            lifetimes: lifetimes,
-            types: types,
+            params: external_path_params(cx, trait_did, substs)
         }],
     }
 }
@@ -543,25 +578,28 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
         let (did, path) = match *self {
             ty::BoundSend =>
                 (tcx.lang_items.send_trait().unwrap(),
-                 external_path(cx, "Send", &empty)),
+                 external_path(cx, "Send", None, &empty)),
             ty::BoundSized =>
                 (tcx.lang_items.sized_trait().unwrap(),
-                 external_path(cx, "Sized", &empty)),
+                 external_path(cx, "Sized", None, &empty)),
             ty::BoundCopy =>
                 (tcx.lang_items.copy_trait().unwrap(),
-                 external_path(cx, "Copy", &empty)),
+                 external_path(cx, "Copy", None, &empty)),
             ty::BoundSync =>
                 (tcx.lang_items.sync_trait().unwrap(),
-                 external_path(cx, "Sync", &empty)),
+                 external_path(cx, "Sync", None, &empty)),
         };
         let fqn = csearch::get_item_path(tcx, did);
         let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(did,
                                                                 (fqn, TypeTrait));
-        TraitBound(ResolvedPath {
-            path: path,
-            typarams: None,
-            did: did,
+        TraitBound(PolyTrait {
+            trait_: ResolvedPath {
+                path: path,
+                typarams: None,
+                did: did,
+            },
+            lifetimes: vec![]
         })
     }
 }
@@ -582,13 +620,34 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         let fqn = fqn.into_iter().map(|i| i.to_string())
                      .collect::<Vec<String>>();
         let path = external_path(cx, fqn.last().unwrap().as_slice(),
-                                 &self.substs);
+                                 Some(self.def_id), &self.substs);
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(self.def_id,
                                                             (fqn, TypeTrait));
-        TraitBound(ResolvedPath {
-            path: path,
-            typarams: None,
-            did: self.def_id,
+
+        debug!("ty::TraitRef\n  substs.types(TypeSpace): {}\n",
+               self.substs.types.get_slice(ParamSpace::TypeSpace));
+
+        // collect any late bound regions
+        let mut late_bounds = vec![];
+        for &ty_s in self.substs.types.get_slice(ParamSpace::TypeSpace).iter() {
+            use rustc::middle::ty::{Region, sty};
+            if let sty::ty_tup(ref ts) = ty_s.sty {
+                for &ty_s in ts.iter() {
+                    if let sty::ty_rptr(ref reg, _) = ty_s.sty {
+                        if let &Region::ReLateBound(_, _) = reg {
+                            debug!("  hit an ReLateBound {}", reg);
+                            if let Some(lt) = reg.clean(cx) {
+                                late_bounds.push(lt)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        TraitBound(PolyTrait {
+            trait_: ResolvedPath { path: path, typarams: None, did: self.def_id, },
+            lifetimes: late_bounds
         })
     }
 }
@@ -615,7 +674,7 @@ impl<'tcx> Clean<(Vec<TyParamBound>, Option<Type>)> for ty::ParamBounds<'tcx> {
             (v, None)
         } else {
             let ty = match ty::BoundSized.clean(cx) {
-                TraitBound(ty) => ty,
+                TraitBound(polyt) => polyt.trait_,
                 _ => unreachable!()
             };
             (v, Some(ty))
@@ -627,7 +686,10 @@ impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
         v.extend(self.regions().iter().filter_map(|r| r.clean(cx)).map(RegionBound));
-        v.extend(self.types.iter().map(|t| TraitBound(t.clean(cx))));
+        v.extend(self.types.iter().map(|t| TraitBound(PolyTrait {
+            trait_: t.clean(cx),
+            lifetimes: vec![]
+        })));
         if v.len() > 0 {Some(v)} else {None}
     }
 }
@@ -1006,9 +1068,12 @@ impl Clean<Type> for ast::TraitRef {
     }
 }
 
-impl Clean<Type> for ast::PolyTraitRef {
-    fn clean(&self, cx: &DocContext) -> Type {
-        self.trait_ref.clean(cx)
+impl Clean<PolyTrait> for ast::PolyTraitRef {
+    fn clean(&self, cx: &DocContext) -> PolyTrait {
+        PolyTrait {
+            trait_: self.trait_ref.clean(cx),
+            lifetimes: self.bound_lifetimes.clean(cx)
+        }
     }
 }
 
@@ -1127,6 +1192,13 @@ impl<'tcx> Clean<Item> for ty::ImplOrTraitItem<'tcx> {
             ty::TypeTraitItem(ref tti) => tti.clean(cx),
         }
     }
+}
+
+/// A trait reference, which may have higher ranked lifetimes.
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+pub struct PolyTrait {
+    pub trait_: Type,
+    pub lifetimes: Vec<Lifetime>
 }
 
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
@@ -1399,7 +1471,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     _ => TypeEnum,
                 };
                 let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
-                                         substs);
+                                         None, substs);
                 cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
                 ResolvedPath {
                     path: path,
@@ -1708,31 +1780,48 @@ impl Clean<Path> for ast::Path {
 }
 
 #[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+pub enum PathParameters {
+    AngleBracketed {
+        lifetimes: Vec<Lifetime>,
+        types: Vec<Type>,
+    },
+    Parenthesized {
+        inputs: Vec<Type>,
+        output: Option<Type>
+    }
+}
+
+impl Clean<PathParameters> for ast::PathParameters {
+    fn clean(&self, cx: &DocContext) -> PathParameters {
+        match *self {
+            ast::AngleBracketedParameters(ref data) => {
+                PathParameters::AngleBracketed {
+                    lifetimes: data.lifetimes.clean(cx),
+                    types: data.types.clean(cx)
+                }
+            }
+
+            ast::ParenthesizedParameters(ref data) => {
+                PathParameters::Parenthesized {
+                    inputs: data.inputs.clean(cx),
+                    output: data.output.clean(cx)
+                }
+            }
+        }
+    }
+}
+
+#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq)]
 pub struct PathSegment {
     pub name: String,
-    pub lifetimes: Vec<Lifetime>,
-    pub types: Vec<Type>,
+    pub params: PathParameters
 }
 
 impl Clean<PathSegment> for ast::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
-        let (lifetimes, types) = match self.parameters {
-            ast::AngleBracketedParameters(ref data) => {
-                (data.lifetimes.clean(cx), data.types.clean(cx))
-            }
-
-            ast::ParenthesizedParameters(ref data) => {
-                // FIXME -- rustdoc should be taught about Foo() notation
-                let inputs = Tuple(data.inputs.clean(cx));
-                let output = data.output.as_ref().map(|t| t.clean(cx)).unwrap_or(Tuple(Vec::new()));
-                (Vec::new(), vec![inputs, output])
-            }
-        };
-
         PathSegment {
             name: self.identifier.clean(cx),
-            lifetimes: lifetimes,
-            types: types,
+            params: self.parameters.clean(cx)
         }
     }
 }
@@ -2363,8 +2452,10 @@ fn lang_struct(cx: &DocContext, did: Option<ast::DefId>,
             global: false,
             segments: vec![PathSegment {
                 name: name.to_string(),
-                lifetimes: vec![],
-                types: vec![t.clean(cx)],
+                params: PathParameters::AngleBracketed {
+                    lifetimes: vec![],
+                    types: vec![t.clean(cx)],
+                }
             }],
         },
     }
