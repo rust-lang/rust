@@ -264,27 +264,35 @@ fn test_resize_policy() {
 /// }
 /// ```
 ///
-/// The easiest way to use `HashMap` with a custom type is to derive `Eq` and `Hash`.
+/// The easiest way to use `HashMap` with a custom type as key is to derive `Eq` and `Hash`.
 /// We must also derive `PartialEq`.
 ///
 /// ```
 /// use std::collections::HashMap;
 ///
 /// #[deriving(Hash, Eq, PartialEq, Show)]
-/// struct Viking<'a> {
-///     name: &'a str,
-///     power: uint,
+/// struct Viking {
+///     name: String,
+///     country: String,
 /// }
 ///
+/// impl Viking {
+///     /// Create a new Viking.
+///     pub fn new(name: &str, country: &str) -> Viking {
+///         Viking { name: name.to_string(), country: country.to_string() }
+///     }
+/// }
+///
+/// // Use a HashMap to store the vikings' health points.
 /// let mut vikings = HashMap::new();
 ///
-/// vikings.insert("Norway", Viking { name: "Einar", power: 9u });
-/// vikings.insert("Denmark", Viking { name: "Olaf", power: 4u });
-/// vikings.insert("Iceland", Viking { name: "Harald", power: 8u });
+/// vikings.insert(Viking::new("Einar", "Norway"), 25u);
+/// vikings.insert(Viking::new("Olaf", "Denmark"), 24u);
+/// vikings.insert(Viking::new("Harald", "Iceland"), 12u);
 ///
-/// // Use derived implementation to print the vikings.
-/// for (land, viking) in vikings.iter() {
-///     println!("{} at {}", viking, land);
+/// // Use derived implementation to print the status of the vikings.
+/// for (viking, health) in vikings.iter() {
+///     println!("{} has {} hp", viking, health);
 /// }
 /// ```
 #[deriving(Clone)]
