@@ -309,7 +309,7 @@ impl Thread {
 
     /// Spawn a new joinable thread, returning a `JoinGuard` for it.
     ///
-    /// The join guard can be used to explicitly join the child thead (via
+    /// The join guard can be used to explicitly join the child thread (via
     /// `join`), returning `Result<T>`, or it will implicitly join the child
     /// upon being dropped. To detach the child, allowing it to outlive the
     /// current thread, use `detach`.  See the module documentation for additional details.
