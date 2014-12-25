@@ -88,6 +88,7 @@ impl LintPass for StrToStringPass {
 
 declare_lint!(CLIPPY_TOPLEVEL_REF_ARG, Warn, "Warn about pattern matches with top-level `ref` bindings");
 
+#[allow(missing_copy_implementations)]
 pub struct TopLevelRefPass;
 
 impl LintPass for TopLevelRefPass {
