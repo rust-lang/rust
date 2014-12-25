@@ -128,8 +128,26 @@ impl<'a> fmt::Show for WhereClause<'a> {
             if i > 0 {
                 try!(f.write(", ".as_bytes()));
             }
-            let bounds = pred.bounds.as_slice();
-            try!(write!(f, "{}: {}", pred.ty, TyParamBounds(bounds)));
+            match pred {
+                &clean::WherePredicate::BoundPredicate { ref ty, ref bounds } => {
+                    let bounds = bounds.as_slice();
+                    try!(write!(f, "{}: {}", ty, TyParamBounds(bounds)));
+                }
+                &clean::WherePredicate::RegionPredicate { ref lifetime,
+                                                          ref bounds } => {
+                    try!(write!(f, "{}: ", lifetime));
+                    for (i, lifetime) in bounds.iter().enumerate() {
+                        if i > 0 {
+                            try!(f.write(" + ".as_bytes()));
+                        }
+
+                        try!(write!(f, "{}", lifetime));
+                    }
+                }
+                &clean::WherePredicate::EqPredicate => {
+                    unimplemented!()
+                }
+            }
         }
         Ok(())
     }

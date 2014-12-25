@@ -745,23 +745,32 @@ impl Clean<Option<Lifetime>> for ty::Region {
 }
 
 #[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq)]
-pub struct WherePredicate {
-    pub ty: Type,
-    pub bounds: Vec<TyParamBound>
+pub enum WherePredicate {
+    BoundPredicate { ty: Type, bounds: Vec<TyParamBound> },
+    RegionPredicate { lifetime: Lifetime, bounds: Vec<Lifetime>},
+    // FIXME (#20041)
+    EqPredicate
 }
 
 impl Clean<WherePredicate> for ast::WherePredicate {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
         match *self {
             ast::WherePredicate::BoundPredicate(ref wbp) => {
-                WherePredicate {
+                WherePredicate::BoundPredicate {
                     ty: wbp.bounded_ty.clean(cx),
                     bounds: wbp.bounds.clean(cx)
                 }
             }
-            // FIXME(#20048)
-            _ => {
-                unimplemented!();
+
+            ast::WherePredicate::RegionPredicate(ref wrp) => {
+                WherePredicate::RegionPredicate {
+                    lifetime: wrp.lifetime.clean(cx),
+                    bounds: wrp.bounds.clean(cx)
+                }
+            }
+
+            ast::WherePredicate::EqPredicate(_) => {
+                WherePredicate::EqPredicate
             }
         }
     }
