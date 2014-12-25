@@ -2197,6 +2197,21 @@ fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
     document(w, it)
 }
 
+fn escape_title(title: &str) -> String {
+    let title = markdown::plain_summary_line(title);
+    let mut result = String::with_capacity(title.len());
+    for c in title.chars() {
+        match c {
+            '<' => result.push_str("&lt;"),
+            '>' => result.push_str("&gt;"),
+            '"' => result.push_str("&quot;"),
+            '\'' => result.push_str("&#39;"),
+            _ => result.push(c),
+        }
+    }
+    result
+}
+
 impl<'a> fmt::String for Sidebar<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = self.cx;
@@ -2236,7 +2251,7 @@ impl<'a> fmt::String for Sidebar<'a> {
                        } else {
                            format!("{}.{}.html", short, name.as_slice())
                        },
-                       title = doc.as_ref().unwrap().as_slice(),
+                       title = escape_title(doc.as_ref().unwrap().as_slice()),
                        name = name.as_slice()));
             }
             try!(write!(w, "</div>"));
