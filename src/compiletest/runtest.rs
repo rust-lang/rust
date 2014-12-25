@@ -21,6 +21,8 @@ use util::logv;
 #[cfg(target_os = "windows")]
 use util;
 
+#[cfg(target_os = "windows")]
+use std::ascii::AsciiExt;
 use std::io::File;
 use std::io::fs::PathExtensions;
 use std::io::fs;
@@ -985,22 +987,9 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         format!("{}:{}:", testfile.display(), ee.line)
     }).collect::<Vec<String> >();
 
-    #[cfg(target_os = "windows")]
-    fn to_lower( s : &str ) -> String {
-        let i = s.chars();
-        let c : Vec<char> = i.map( |c| {
-            if c.is_ascii() {
-                c.to_ascii().to_lowercase().as_char()
-            } else {
-                c
-            }
-        } ).collect();
-        String::from_chars(c.as_slice())
-    }
-
     #[cfg(windows)]
     fn prefix_matches( line : &str, prefix : &str ) -> bool {
-        to_lower(line).as_slice().starts_with(to_lower(prefix).as_slice())
+        line.to_ascii_lowercase().starts_with(prefix.to_ascii_lowercase().as_slice())
     }
 
     #[cfg(unix)]
