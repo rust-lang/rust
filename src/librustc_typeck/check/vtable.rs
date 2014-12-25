@@ -133,7 +133,8 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
                                  object_trait: &ty::TyTrait<'tcx>,
                                  span: Span)
 {
-    let object_trait_ref = object_trait.principal_trait_ref_with_self_ty(tcx, ty::mk_err());
+    let object_trait_ref =
+        object_trait.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
     for tr in traits::supertraits(tcx, object_trait_ref) {
         check_object_safety_inner(tcx, &*tr, span);
     }

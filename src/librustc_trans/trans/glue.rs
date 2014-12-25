@@ -85,7 +85,7 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return t
     }
     if !type_needs_drop(tcx, t) {
-        return ty::mk_i8();
+        return tcx.types.i8;
     }
     match t.sty {
         ty::ty_uniq(typ) if !type_needs_drop(tcx, typ)
@@ -93,7 +93,7 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let llty = sizing_type_of(ccx, typ);
             // `Box<ZeroSizeType>` does not allocate.
             if llsize_of_alloc(ccx, llty) == 0 {
-                ty::mk_i8()
+                tcx.types.i8
             } else {
                 t
             }
@@ -200,7 +200,7 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         Load(bcx, llval)
     };
     let drop_flag = unpack_datum!(bcx, adt::trans_drop_flag_ptr(bcx, &*repr, struct_data));
-    with_cond(bcx, load_ty(bcx, drop_flag.val, ty::mk_bool()), |cx| {
+    with_cond(bcx, load_ty(bcx, drop_flag.val, bcx.tcx().types.bool), |cx| {
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     })
 }

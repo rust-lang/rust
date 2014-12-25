@@ -183,7 +183,7 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         span_err!(self.tcx.sess, span, E0121,
                   "the type placeholder `_` is not allowed within types on item signatures");
-        ty::mk_err()
+        self.tcx().types.err
     }
 
     fn associated_types_of_trait_are_valid(&self, _: Ty<'tcx>, _: ast::DefId)

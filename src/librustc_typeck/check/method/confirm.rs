@@ -342,7 +342,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             } else if num_supplied_types != num_method_types {
                 span_err!(self.tcx().sess, self.span, E0036,
                     "incorrect number of type parameters given for this method");
-                Vec::from_elem(num_method_types, ty::mk_err())
+                Vec::from_elem(num_method_types, self.tcx().types.err)
             } else {
                 supplied_method_types
             }
@@ -410,7 +410,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let method_bounds_substs = match pick.kind {
             probe::ObjectPick(..) => {
                 let mut temp_substs = all_substs.clone();
-                temp_substs.types.get_mut_slice(subst::SelfSpace)[0] = ty::mk_err();
+                temp_substs.types.get_mut_slice(subst::SelfSpace)[0] = self.tcx().types.err;
                 temp_substs
             }
             _ => {

@@ -397,8 +397,8 @@ pub fn expected_found<'tcx, C: Combine<'tcx>, T>(
 pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
                                          a: Ty<'tcx>,
                                          b: Ty<'tcx>)
-                                         -> cres<'tcx, Ty<'tcx>> {
-
+                                         -> cres<'tcx, Ty<'tcx>>
+{
     let tcx = this.infcx().tcx;
     let a_sty = &a.sty;
     let b_sty = &b.sty;
@@ -415,7 +415,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
       }
 
       (&ty::ty_err, _) | (_, &ty::ty_err) => {
-          Ok(ty::mk_err())
+          Ok(tcx.types.err)
       }
 
         // Relate integral variables to other types
@@ -592,8 +592,8 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
     {
         try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         match val {
-            IntType(v) => Ok(ty::mk_mach_int(v)),
-            UintType(v) => Ok(ty::mk_mach_uint(v))
+            IntType(v) => Ok(ty::mk_mach_int(this.tcx(), v)),
+            UintType(v) => Ok(ty::mk_mach_uint(this.tcx(), v))
         }
     }
 
@@ -604,7 +604,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
         val: ast::FloatTy) -> cres<'tcx, Ty<'tcx>>
     {
         try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
-        Ok(ty::mk_mach_float(val))
+        Ok(ty::mk_mach_float(this.tcx(), val))
     }
 }
 
@@ -763,7 +763,7 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
             ty::ty_infer(ty::TyVar(vid)) => {
                 if vid == self.for_vid {
                     self.cycle_detected = true;
-                    ty::mk_err()
+                    self.tcx().types.err
                 } else {
                     match self.infcx.type_variables.borrow().probe(vid) {
                         Some(u) => self.fold_ty(u),
