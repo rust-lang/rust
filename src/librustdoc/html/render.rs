@@ -67,7 +67,7 @@ use html::markdown;
 use stability_summary;
 
 /// A pair of name and its optional document.
-#[deriving(Clone, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct NameDoc(String, Option<String>);
 
 /// Major driving force in all rustdoc rendering. This contains information

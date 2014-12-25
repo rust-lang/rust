@@ -72,6 +72,13 @@ type blockcodefn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
 type headerfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                               libc::c_int, *mut libc::c_void);
 
+type linkfn = extern "C" fn (*mut hoedown_buffer, *const hoedown_buffer,
+                             *const hoedown_buffer, *const hoedown_buffer,
+                             *mut libc::c_void) -> libc::c_int;
+
+type normaltextfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                  *mut libc::c_void);
+
 #[repr(C)]
 struct hoedown_renderer {
     opaque: *mut libc::c_void,
@@ -83,21 +90,18 @@ struct hoedown_renderer {
                                     *mut libc::c_void)>,
     header: Option<headerfn>,
 
-    other_block_level_callbacks: [libc::size_t, ..9],
+    other_block_level_callbacks: [libc::size_t; 9],
 
     /* span level callbacks - NULL or return 0 prints the span verbatim */
-    other_span_level_callbacks_1: [libc::size_t, ..9],
-    link: Option<extern "C" fn (*mut hoedown_buffer, *const hoedown_buffer,
-                                *const hoedown_buffer, *const hoedown_buffer,
-                                *mut libc::c_void) -> libc::c_int>,
-    other_span_level_callbacks_2: [libc::size_t, ..5],
+    other_span_level_callbacks_1: [libc::size_t; 9],
+    link: Option<linkfn>,
+    other_span_level_callbacks_2: [libc::size_t; 5],
     // hoedown will add `math` callback here, but we use an old version of it.
 
     /* low level callbacks - NULL copies input directly into the output */
     entity: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                  *mut libc::c_void)>,
-    normal_text: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                      *mut libc::c_void)>,
+    normal_text: Option<normaltextfn>,
 
     /* header and footer */
     doc_header: Option<extern "C" fn(*mut hoedown_buffer, *mut libc::c_void)>,
@@ -502,14 +506,18 @@ pub fn plain_summary_line(md: &str) -> String {
         let mut plain_renderer: hoedown_renderer = ::std::mem::zeroed();
         let renderer = &mut plain_renderer as *mut hoedown_renderer;
         (*renderer).opaque = ob as *mut libc::c_void;
-        (*renderer).link = Some(link);
-        (*renderer).normal_text = Some(normal_text);
+        (*renderer).link = Some(link as linkfn);
+        (*renderer).normal_text = Some(normal_text as normaltextfn);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, md.as_ptr(),
                                 md.len() as libc::size_t);
         hoedown_document_free(document);
-        let plain = String::from_raw_buf_len((*ob).data, (*ob).size as uint);
+        let plain_slice = slice::from_raw_buf(&(*ob).data, (*ob).size as uint);
+        let plain = match str::from_utf8(plain_slice) {
+            Ok(s) => s.to_string(),
+            Err(_) => "".to_string(),
+        };
         hoedown_buffer_free(ob);
         plain
     }
