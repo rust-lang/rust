@@ -10,9 +10,9 @@ use syntax::codemap::Span;
 #[allow(missing_copy_implementations)]
 pub struct TypePass;
 
-declare_lint!(pub CLIPPY_BOX_VEC, Warn,
+declare_lint!(pub BOX_VEC, Warn,
               "Warn on usage of Box<Vec<T>>");
-declare_lint!(pub CLIPPY_DLIST, Warn,
+declare_lint!(pub DLIST, Warn,
               "Warn on usage of DList");
 
 /// Matches a type with a provided string, and returns its type parameters if successful
@@ -48,7 +48,7 @@ pub fn span_note_and_lint(cx: &Context, lint: &'static Lint, span: Span, msg: &s
 
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(CLIPPY_BOX_VEC, CLIPPY_DLIST)
+        lint_array!(BOX_VEC, DLIST)
     }
 
     fn check_ty(&mut self, cx: &Context, ty: &ast::Ty) {
@@ -60,7 +60,7 @@ impl LintPass for TypePass {
         match_ty_unwrap(ty, &["std", "boxed", "Box"]).and_then(|t| t.head())
           .map(|t| match_ty_unwrap(&**t, &["std", "vec", "Vec"]))
           .map(|_| {
-            span_note_and_lint(cx, CLIPPY_BOX_VEC, ty.span,
+            span_note_and_lint(cx, BOX_VEC, ty.span,
                               "You seem to be trying to use Box<Vec<T>>. Did you mean to use Vec<T>?",
                               "Vec<T> is already on the heap, Box<Vec<T>> makes an extra allocation");
           });
@@ -75,7 +75,7 @@ impl LintPass for TypePass {
                       vec!["collections","dlist","DList"]];
         for path in dlists.iter() {
             if match_ty_unwrap(ty, path.as_slice()).is_some() {
-                span_note_and_lint(cx, CLIPPY_DLIST, ty.span,
+                span_note_and_lint(cx, DLIST, ty.span,
                                    "I see you're using a DList! Perhaps you meant some other data structure?",
                                    "A RingBuf might work.");
                 return;
