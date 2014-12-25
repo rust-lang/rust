@@ -7,6 +7,7 @@ use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use syntax::codemap::Span;
 
 /// Handles all the linting of funky types
+#[allow(missing_copy_implementations)]
 pub struct TypePass;
 
 declare_lint!(CLIPPY_BOX_VEC, Warn,

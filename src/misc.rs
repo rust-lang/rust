@@ -9,6 +9,7 @@ use types::span_note_and_lint;
 
 /// Handles uncategorized lints
 /// Currently handles linting of if-let-able matches
+#[allow(missing_copy_implementations)]
 pub struct MiscPass;
 
 
@@ -21,7 +22,7 @@ impl LintPass for MiscPass {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-        if let ExprMatch(ref ex, ref arms, MatchNormal) = expr.node {
+        if let ExprMatch(ref ex, ref arms, ast::MatchSource::Normal) = expr.node {
             if arms.len() == 2 {
                 if arms[0].guard.is_none() && arms[1].pats.len() == 1 {
                     match arms[1].body.node {
@@ -49,6 +50,7 @@ impl LintPass for MiscPass {
 
 declare_lint!(CLIPPY_STR_TO_STRING, Warn, "Warn when a String could use into_string() instead of to_string()");
 
+#[allow(missing_copy_implementations)]
 pub struct StrToStringPass;
 
 impl LintPass for StrToStringPass {
