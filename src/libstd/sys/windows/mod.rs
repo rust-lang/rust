@@ -121,6 +121,8 @@ pub fn decode_error(errno: i32) -> IoError {
              "invalid handle provided to function"),
         libc::ERROR_NOTHING_TO_TERMINATE =>
             (io::InvalidInput, "no process to kill"),
+        libc::ERROR_ALREADY_EXISTS =>
+            (io::PathAlreadyExists, "path already exists"),
 
         // libuv maps this error code to EISDIR. we do too. if it is found
         // to be incorrect, we can add in some more machinery to only
