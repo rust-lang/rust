@@ -180,7 +180,7 @@ $$(JEMALLOC_LOCAL_$(1)): $$(JEMALLOC_DEPS) $$(MKFILE_DEPS)
 		AR="$$(AR_$(1))" \
 		RANLIB="$$(AR_$(1)) s" \
 		CPPFLAGS="-I $(S)src/rt/" \
-		EXTRA_CFLAGS="-g1"
+		EXTRA_CFLAGS="-g1 -ffunction-sections -fdata-sections"
 	$$(Q)$$(MAKE) -C "$$(JEMALLOC_BUILD_DIR_$(1))" build_lib_static
 
 ifeq ($$(CFG_DISABLE_JEMALLOC),)
