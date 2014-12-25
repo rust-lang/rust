@@ -115,10 +115,10 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
 
                         // in theory we can demangle any Unicode code point, but
                         // for simplicity we just catch the common ones.
-                        "$x20" => " ",
-                        "$x27" => "'",
-                        "$x5b" => "[",
-                        "$x5d" => "]"
+                        "$u{20}" => " ",
+                        "$u{27}" => "'",
+                        "$u{5b}" => "[",
+                        "$u{5d}" => "]"
                     )
                 } else {
                     let idx = match rest.find('$') {
