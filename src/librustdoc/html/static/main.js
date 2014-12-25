@@ -671,10 +671,7 @@
 
         function plainSummaryLine(markdown) {
             var str = markdown.replace(/\n/g, ' ')
-            str = str.replace(/</g, "&lt;")
-            str = str.replace(/>/g, "&gt;")
-            str = str.replace(/"/g, "&quot;")
-            str = str.replace(/'/g, "&#39;")
+            str = str.replace(/'/g, "\'")
             str = str.replace(/^#+? (.+?)/, "$1")
             str = str.replace(/\[(.*?)\]\(.*?\)/g, "$1")
             str = str.replace(/\[(.*?)\]\[.*?\]/g, "$1")
