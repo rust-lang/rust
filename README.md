@@ -10,6 +10,7 @@ Lints included in this crate:
  - `clippy_box_vec`: Warns on usage of `Box<Vec<T>>`
  - `clippy_dlist`: Warns on usage of `DList`
  - `clippy_str_to_string`: Warns on usage of `str::to_string()`
+ - `clippy_toplevel_ref_arg`: Warns when a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`).
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
 

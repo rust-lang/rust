@@ -1,6 +1,7 @@
 use syntax::ptr::P;
 use syntax::ast;
 use syntax::ast::*;
+use syntax::visit::{FnKind};
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use rustc::middle::ty::{mod, expr_ty, ty_str, ty_ptr, ty_rptr};
 use syntax::codemap::Span;
@@ -39,7 +40,7 @@ impl LintPass for MiscPass {
                               format!("Try if let {} = {} {{ ... }}",
                                       map.span_to_snippet(arms[0].pats[0].span).unwrap_or("..".to_string()),
                                       map.span_to_snippet(ex.span).unwrap_or("..".to_string())).as_slice()
-                        );                        
+                        );
                     }
                 }
             }
@@ -79,6 +80,29 @@ impl LintPass for StrToStringPass {
             match walk_ty(expr_ty(cx.tcx, expr)).sty {
                 ty_str => true,
                 _ => false
+            }
+        }
+    }
+}
+
+
+declare_lint!(CLIPPY_TOPLEVEL_REF_ARG, Warn, "Warn about pattern matches with top-level `ref` bindings");
+
+pub struct TopLevelRefPass;
+
+impl LintPass for TopLevelRefPass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(CLIPPY_TOPLEVEL_REF_ARG)
+    }
+
+    fn check_fn(&mut self, cx: &Context, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+        for ref arg in decl.inputs.iter() {
+            if let PatIdent(BindByRef(_), _, _) = arg.pat.node {
+                cx.span_lint(
+                    CLIPPY_TOPLEVEL_REF_ARG,
+                    arg.pat.span,
+                    "`ref` directly on a function argument is ignored. Have you considered using a reference type instead?"
+                );
             }
         }
     }
