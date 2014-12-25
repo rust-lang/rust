@@ -74,14 +74,34 @@ type headerfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
 
 #[repr(C)]
 struct hoedown_renderer {
-    opaque: *mut hoedown_html_renderer_state,
+    opaque: *mut libc::c_void,
+
     blockcode: Option<blockcodefn>,
     blockquote: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                      *mut libc::c_void)>,
     blockhtml: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                     *mut libc::c_void)>,
     header: Option<headerfn>,
-    other: [libc::size_t; 28],
+
+    other_block_level_callbacks: [libc::size_t, ..9],
+
+    /* span level callbacks - NULL or return 0 prints the span verbatim */
+    other_span_level_callbacks_1: [libc::size_t, ..9],
+    link: Option<extern "C" fn (*mut hoedown_buffer, *const hoedown_buffer,
+                                *const hoedown_buffer, *const hoedown_buffer,
+                                *mut libc::c_void) -> libc::c_int>,
+    other_span_level_callbacks_2: [libc::size_t, ..5],
+    // hoedown will add `math` callback here, but we use an old version of it.
+
+    /* low level callbacks - NULL copies input directly into the output */
+    entity: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                 *mut libc::c_void)>,
+    normal_text: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                      *mut libc::c_void)>,
+
+    /* header and footer */
+    doc_header: Option<extern "C" fn(*mut hoedown_buffer, *mut libc::c_void)>,
+    doc_footer: Option<extern "C" fn(*mut hoedown_buffer, *mut libc::c_void)>,
 }
 
 #[repr(C)]
@@ -134,6 +154,8 @@ extern {
     fn hoedown_document_free(md: *mut hoedown_document);
 
     fn hoedown_buffer_new(unit: libc::size_t) -> *mut hoedown_buffer;
+    fn hoedown_buffer_put(b: *mut hoedown_buffer, c: *const libc::c_char,
+                          n: libc::size_t);
     fn hoedown_buffer_puts(b: *mut hoedown_buffer, c: *const libc::c_char);
     fn hoedown_buffer_free(b: *mut hoedown_buffer);
 
@@ -279,7 +301,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             dfltblk: (*renderer).blockcode.unwrap(),
             toc_builder: if print_toc {Some(TocBuilder::new())} else {None}
         };
-        (*(*renderer).opaque).opaque = &mut opaque as *mut _ as *mut libc::c_void;
+        (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
+                = &mut opaque as *mut _ as *mut libc::c_void;
         (*renderer).blockcode = Some(block as blockcodefn);
         (*renderer).header = Some(header as headerfn);
 
@@ -355,7 +378,8 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
         let renderer = hoedown_html_renderer_new(0, 0);
         (*renderer).blockcode = Some(block as blockcodefn);
         (*renderer).header = Some(header as headerfn);
-        (*(*renderer).opaque).opaque = tests as *mut _ as *mut libc::c_void;
+        (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
+                = tests as *mut _ as *mut libc::c_void;
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, doc.as_ptr(),
@@ -442,9 +466,59 @@ impl<'a> fmt::String for MarkdownWithToc<'a> {
     }
 }
 
+pub fn plain_summary_line(md: &str) -> String {
+    extern "C" fn link(_ob: *mut hoedown_buffer,
+                       _link: *const hoedown_buffer,
+                       _title: *const hoedown_buffer,
+                       content: *const hoedown_buffer,
+                       opaque: *mut libc::c_void) -> libc::c_int
+    {
+        unsafe {
+            if !content.is_null() && (*content).size > 0 {
+                // FIXME(liigo): I don't know why the parameter `_ob` is
+                // not the value passed in by `hoedown_document_render`.
+                // I have to manually pass in `ob` through `opaque` currently.
+                let ob = opaque as *mut hoedown_buffer;
+                hoedown_buffer_put(ob, (*content).data as *const libc::c_char,
+                                   (*content).size);
+            }
+        }
+        1
+    }
+
+    extern "C" fn normal_text(_ob: *mut hoedown_buffer,
+                              text: *const hoedown_buffer,
+                              opaque: *mut libc::c_void)
+    {
+        unsafe {
+            let ob = opaque as *mut hoedown_buffer;
+            hoedown_buffer_put(ob, (*text).data as *const libc::c_char,
+                               (*text).size);
+        }
+    }
+
+    unsafe {
+        let ob = hoedown_buffer_new(DEF_OUNIT);
+        let mut plain_renderer: hoedown_renderer = ::std::mem::zeroed();
+        let renderer = &mut plain_renderer as *mut hoedown_renderer;
+        (*renderer).opaque = ob as *mut libc::c_void;
+        (*renderer).link = Some(link);
+        (*renderer).normal_text = Some(normal_text);
+
+        let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
+        hoedown_document_render(document, ob, md.as_ptr(),
+                                md.len() as libc::size_t);
+        hoedown_document_free(document);
+        let plain = String::from_raw_buf_len((*ob).data, (*ob).size as uint);
+        hoedown_buffer_free(ob);
+        plain
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{LangString, Markdown};
+    use super::plain_summary_line;
 
     #[test]
     fn test_lang_string_parse() {
@@ -477,5 +551,19 @@ mod tests {
     fn issue_17736() {
         let markdown = "# title";
         format!("{}", Markdown(markdown.as_slice()));
+    }
+
+    #[test]
+    fn test_plain_summary_line() {
+        fn t(input: &str, expect: &str) {
+            let output = plain_summary_line(input);
+            assert_eq!(output, expect);
+        }
+
+        t("hello [Rust](http://rust-lang.org) :)", "hello Rust :)");
+        t("code `let x = i32;` ...", "code `let x = i32;` ...");
+        t("type `Type<'static>` ...", "type `Type<'static>` ...");
+        t("# top header", "top header");
+        t("## header", "header");
     }
 }
