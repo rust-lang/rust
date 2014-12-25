@@ -932,7 +932,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                  trait_ref, bounds[])
                     }
                     Err(ErrorReported) => {
-                        ty::mk_err()
+                        this.tcx().types.err
                     }
                 }
             }
@@ -1046,7 +1046,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                           .unwrap()
                                                           .identifier)
                                                   .get())[]);
-                        ty::mk_err()
+                        this.tcx().types.err
                     }
                     def::DefAssociatedPath(typ, assoc_ident) => {
                         // FIXME(#19541): in both branches we should consider
@@ -1485,8 +1485,8 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
                                                         partitioned_bounds);
 
     match main_trait_bound {
-        None => ty::mk_err(),
-        Some(principal) => ty::mk_trait(this.tcx(), (*principal).clone(), bounds)
+        None => this.tcx().types.err,
+        Some(principal) => ty::mk_trait(this.tcx(), principal, bounds)
     }
 }
 

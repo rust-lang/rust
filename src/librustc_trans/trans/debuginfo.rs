@@ -2487,9 +2487,10 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
                 let (discriminant_size, discriminant_align) =
                     size_and_align_of(cx, discriminant_llvm_type);
-                let discriminant_base_type_metadata = type_metadata(cx,
-                                                                    adt::ty_of_inttype(inttype),
-                                                                    codemap::DUMMY_SP);
+                let discriminant_base_type_metadata =
+                    type_metadata(cx,
+                                  adt::ty_of_inttype(cx.tcx(), inttype),
+                                  codemap::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
                 let discriminant_type_metadata = discriminant_name.get().with_c_str(|name| {
@@ -2797,7 +2798,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         MemberDescription {
             name: "length".to_string(),
             llvm_type: member_llvm_types[1],
-            type_metadata: type_metadata(cx, ty::mk_uint(), span),
+            type_metadata: type_metadata(cx, cx.tcx().types.uint, span),
             offset: ComputedMemberOffset,
             flags: FLAGS_NONE
         },
@@ -2963,7 +2964,7 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         // FIXME Can we do better than this for unsized vec/str fields?
         ty::ty_vec(typ, None) => fixed_vec_metadata(cx, unique_type_id, typ, 0, usage_site_span),
-        ty::ty_str => fixed_vec_metadata(cx, unique_type_id, ty::mk_i8(), 0, usage_site_span),
+        ty::ty_str => fixed_vec_metadata(cx, unique_type_id, cx.tcx().types.i8, 0, usage_site_span),
         ty::ty_trait(..) => {
             MetadataCreationResult::new(
                         trait_pointer_metadata(cx, t, None, unique_type_id),
@@ -2975,7 +2976,7 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
                 }
                 ty::ty_str => {
-                    vec_slice_metadata(cx, t, ty::mk_u8(), unique_type_id, usage_site_span)
+                    vec_slice_metadata(cx, t, cx.tcx().types.u8, unique_type_id, usage_site_span)
                 }
                 ty::ty_trait(..) => {
                     MetadataCreationResult::new(

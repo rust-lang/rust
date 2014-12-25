@@ -324,7 +324,7 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
         Ok(t) => t,
         Err(ref err) => {
             cx.report_and_explain_type_error(trace, err);
-            ty::mk_err()
+            cx.tcx.types.err
         }
     }
 }
@@ -1058,12 +1058,12 @@ impl<'tcx> TypeTrace<'tcx> {
         self.origin.span()
     }
 
-    pub fn dummy() -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: &ty::ctxt<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
             values: Types(ty::expected_found {
-                expected: ty::mk_err(),
-                found: ty::mk_err(),
+                expected: tcx.types.err,
+                found: tcx.types.err,
             })
         }
     }
