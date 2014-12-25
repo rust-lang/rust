@@ -14,7 +14,7 @@ use types::span_note_and_lint;
 pub struct MiscPass;
 
 
-declare_lint!(CLIPPY_SINGLE_MATCH, Warn,
+declare_lint!(pub CLIPPY_SINGLE_MATCH, Warn,
               "Warn on usage of matches with a single nontrivial arm");
 
 impl LintPass for MiscPass {
@@ -49,7 +49,7 @@ impl LintPass for MiscPass {
 }
 
 
-declare_lint!(CLIPPY_STR_TO_STRING, Warn, "Warn when a String could use into_string() instead of to_string()");
+declare_lint!(pub CLIPPY_STR_TO_STRING, Warn, "Warn when a String could use into_string() instead of to_string()");
 
 #[allow(missing_copy_implementations)]
 pub struct StrToStringPass;
@@ -86,7 +86,7 @@ impl LintPass for StrToStringPass {
 }
 
 
-declare_lint!(CLIPPY_TOPLEVEL_REF_ARG, Warn, "Warn about pattern matches with top-level `ref` bindings");
+declare_lint!(pub CLIPPY_TOPLEVEL_REF_ARG, Warn, "Warn about pattern matches with top-level `ref` bindings");
 
 #[allow(missing_copy_implementations)]
 pub struct TopLevelRefPass;

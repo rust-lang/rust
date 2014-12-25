@@ -10,9 +10,9 @@ use syntax::codemap::Span;
 #[allow(missing_copy_implementations)]
 pub struct TypePass;
 
-declare_lint!(CLIPPY_BOX_VEC, Warn,
+declare_lint!(pub CLIPPY_BOX_VEC, Warn,
               "Warn on usage of Box<Vec<T>>");
-declare_lint!(CLIPPY_DLIST, Warn,
+declare_lint!(pub CLIPPY_DLIST, Warn,
               "Warn on usage of DList");
 
 /// Matches a type with a provided string, and returns its type parameters if successful
