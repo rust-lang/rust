@@ -172,7 +172,7 @@ pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static st
     Ok(joined)
 }
 
-#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+#[cfg(target_os = "freebsd")]
 pub fn load_self() -> Option<Vec<u8>> {
     unsafe {
         use libc::funcs::bsd44::*;
@@ -195,6 +195,16 @@ pub fn load_self() -> Option<Vec<u8>> {
         if sz == 0 { return None; }
         v.set_len(sz as uint - 1); // chop off trailing NUL
         Some(v)
+    }
+}
+
+#[cfg(target_os = "dragonfly")]
+pub fn load_self() -> Option<Vec<u8>> {
+    use std::io;
+
+    match io::fs::readlink(&Path::new("/proc/curproc/file")) {
+        Ok(path) => Some(path.into_vec()),
+        Err(..) => None
     }
 }
 

@@ -1095,6 +1095,7 @@ pub mod types {
                 pub type sighandler_t = size_t;
             }
             pub mod bsd44 {
+                use types::common::c95::{c_void};
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
@@ -1167,6 +1168,17 @@ pub mod types {
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char, ..104]
                 }
+                #[repr(C)]
+                #[deriving(Copy)] pub struct ifaddrs {
+                    pub ifa_next: *mut ifaddrs,
+                    pub ifa_name: *mut c_char,
+                    pub ifa_flags: c_uint,
+                    pub ifa_addr: *mut sockaddr,
+                    pub ifa_netmask: *mut sockaddr,
+                    pub ifa_dstaddr: *mut sockaddr,
+                    pub ifa_data: *mut c_void
+                }
+
             }
         }
 
