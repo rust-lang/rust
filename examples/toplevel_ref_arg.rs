@@ -1,7 +1,7 @@
 #![feature(phase)]
 
 #[phase(plugin)]
-extern crate rust_clippy;
+extern crate clippy;
 
 fn the_answer(ref mut x: u8) {
   *x = 42;

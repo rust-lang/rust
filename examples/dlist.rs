@@ -1,7 +1,7 @@
 #![feature(phase)]
 
 #[phase(plugin)]
-extern crate rust_clippy;
+extern crate clippy;
 extern crate collections;
 use collections::dlist::DList;
 

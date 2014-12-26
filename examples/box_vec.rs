@@ -1,7 +1,7 @@
 #![feature(phase)]
 
 #[phase(plugin)]
-extern crate rust_clippy;
+extern crate clippy;
 
 pub fn test(foo: Box<Vec<uint>>) {
     println!("{}", foo)

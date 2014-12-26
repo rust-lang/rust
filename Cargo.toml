@@ -1,10 +1,10 @@
 [package]
 
-name = "rust-clippy"
+name = "clippy"
 version = "0.0.1"
 authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
 
 [lib]
-name = "rust_clippy"
+name = "clippy"
 crate_type = ["dylib"]
 
