@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types. Check we get type errors
-// where we should.
+// Check that the user gets an errror if they omit a binding from an
+// object type.
 
 #![feature(associated_types)]
 
 pub trait Foo {
     type A;
+    type B;
     fn boo(&self) -> <Self as Foo>::A;
 }
 
@@ -22,27 +23,22 @@ struct Bar;
 
 impl Foo for int {
     type A = uint;
+    type B = char;
     fn boo(&self) -> uint {
         42
     }
 }
 
-fn foo1<I: Foo<A=Bar>>(x: I) {
-    let _: Bar = x.boo();
-}
-
-fn foo2<I: Foo>(x: I) {
-    let _: Bar = x.boo(); //~ERROR mismatched types
-}
-
-
-pub fn baz(x: &Foo<A=Bar>) {
-    let _: Bar = x.boo();
-}
-
-
 pub fn main() {
-    let a = 42i;
-    foo1(a); //~ERROR expected uint, found struct Bar
-    baz(&a); //~ERROR expected uint, found struct Bar
+    let a = &42i as &Foo<A=uint, B=char>;
+
+    let b = &42i as &Foo<A=uint>;
+    //~^ ERROR the value of the associated type `B` (from the trait `Foo`) must be specified
+
+    let c = &42i as &Foo<B=char>;
+    //~^ ERROR the value of the associated type `A` (from the trait `Foo`) must be specified
+
+    let d = &42i as &Foo;
+    //~^ ERROR the value of the associated type `A` (from the trait `Foo`) must be specified
+    //~| ERROR the value of the associated type `B` (from the trait `Foo`) must be specified
 }

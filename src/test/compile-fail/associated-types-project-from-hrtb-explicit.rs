@@ -8,18 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test you can't use a higher-ranked trait bound inside of a qualified
+// path (just won't parse).
+
 #![feature(associated_types)]
 
-pub trait Hasher {
-    type State;
+pub trait Foo<T> {
+    type A;
 
-    fn hash<T: Hash<
-        <Self as Hasher>::State //~ ERROR no suitable bound on `Self`
-    >>(&self, value: &T) -> u64;
+    fn get(&self, t: T) -> Self::A;
 }
 
-pub trait Hash<S> {
-    fn hash(&self, state: &mut S);
+fn foo2<I>(x: <I as for<'x> Foo<&'x int>>::A)
+    //~^ ERROR expected identifier, found keyword `for`
+    //~| ERROR expected one of `::` or `>`
+{
 }
 
-fn main() {}
+pub fn main() {}

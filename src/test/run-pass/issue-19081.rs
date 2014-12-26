@@ -8,13 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that bounds are sized-compatible.
+// ignore-pretty -- currently pretty prints as `Hash<<Self as Hasher...` which fails to parse
 
-trait T {}
+#![feature(associated_types)]
 
-fn f<Sized? Y: T>() {
-//~^ERROR incompatible bounds on `Y`, bound `T` does not allow unsized type
+pub trait Hasher {
+    type State;
+
+    fn hash<T: Hash<
+        <Self as Hasher>::State
+    >>(&self, value: &T) -> u64;
 }
 
-pub fn main() {
+pub trait Hash<S> {
+    fn hash(&self, state: &mut S);
 }
+
+fn main() {}
