@@ -124,7 +124,7 @@ const MIN_ALIGN: uint = 8;
           target_arch = "aarch64"))]
 const MIN_ALIGN: uint = 16;
 
-#[cfg(external_funcs)]
+#[cfg(feature = "external_funcs")]
 mod imp {
     extern {
         fn rust_allocate(size: uint, align: uint) -> *mut u8;
@@ -169,14 +169,14 @@ mod imp {
     }
 }
 
-#[cfg(external_crate)]
+#[cfg(feature = "external_crate")]
 mod imp {
     extern crate external;
     pub use self::external::{allocate, deallocate, reallocate_inplace, reallocate};
     pub use self::external::{usable_size, stats_print};
 }
 
-#[cfg(all(not(external_funcs), not(external_crate), jemalloc))]
+#[cfg(all(not(feature = "external_funcs"), not(feature = "external_crate"), jemalloc))]
 mod imp {
     use core::option::Option;
     use core::option::Option::None;
@@ -253,7 +253,7 @@ mod imp {
     }
 }
 
-#[cfg(all(not(external_funcs), not(external_crate), not(jemalloc), unix))]
+#[cfg(all(not(feature = "external_funcs"), not(feature = "external_crate"), not(jemalloc), unix))]
 mod imp {
     use core::cmp;
     use core::ptr;
@@ -314,7 +314,7 @@ mod imp {
     pub fn stats_print() {}
 }
 
-#[cfg(all(not(external_funcs), not(external_crate), not(jemalloc), windows))]
+#[cfg(all(not(feature = "external_funcs"), not(feature = "external_crate"), not(jemalloc), windows))]
 mod imp {
     use libc::{c_void, size_t};
     use libc;
