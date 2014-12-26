@@ -19,7 +19,7 @@ use super::VtableImplData;
 
 use middle::infer;
 use middle::subst::Subst;
-use middle::ty::{mod, ToPolyTraitRef, Ty};
+use middle::ty::{mod, AsPredicate, ToPolyTraitRef, Ty};
 use std::fmt;
 use util::ppaux::Repr;
 
@@ -46,7 +46,7 @@ pub enum ProjectionError<'tcx> {
 
 #[deriving(Clone)]
 pub struct MismatchedProjectionTypes<'tcx> {
-    pub err: ty::type_err<'tcx> // TODO expected/actual/etc
+    pub err: ty::type_err<'tcx>
 }
 
 pub type ProjectionResult<'tcx, T> = Result<T, ProjectionError<'tcx>>;
@@ -123,9 +123,20 @@ pub fn project_type<'cx,'tcx>(
                                                 obligation,
                                                 &mut candidates);
 
-    let () = try!(assemble_candidates_from_impls(selcx,
-                                                 obligation,
-                                                 &mut candidates));
+    let () = assemble_candidates_from_object_type(selcx,
+                                                  obligation,
+                                                  &mut candidates);
+
+    if candidates.vec.is_empty() {
+        // TODO This `if` is not necessarily wrong, but it needs an
+        // explanation, and it should probably be accompanied by a
+        // similar rule in `select.rs`. Currently it's *needed*
+        // because the impl-trait-for-trait branch has not landed.
+
+        let () = try!(assemble_candidates_from_impls(selcx,
+                                                     obligation,
+                                                     &mut candidates));
+    }
 
     debug!("{} candidates, ambiguous={}",
            candidates.vec.len(),
@@ -155,9 +166,21 @@ fn assemble_candidates_from_param_env<'cx,'tcx>(
     obligation:  &ProjectionTyObligation<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
 {
-    let infcx = selcx.infcx();
     let env_predicates = selcx.param_env().caller_bounds.predicates.clone();
     let env_predicates = env_predicates.iter().cloned().collect();
+    assemble_candidates_from_predicates(selcx, obligation, candidate_set, env_predicates);
+}
+
+fn assemble_candidates_from_predicates<'cx,'tcx>(
+    selcx: &mut SelectionContext<'cx,'tcx>,
+    obligation:  &ProjectionTyObligation<'tcx>,
+    candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
+    env_predicates: Vec<ty::Predicate<'tcx>>)
+{
+    debug!("assemble_candidates_from_predicates(obligation={}, env_predicates={})",
+           obligation.repr(selcx.tcx()),
+           env_predicates.repr(selcx.tcx()));
+    let infcx = selcx.infcx();
     for predicate in elaborate_predicates(selcx.tcx(), env_predicates) {
         match predicate {
             ty::Predicate::Projection(ref data) => {
@@ -181,6 +204,26 @@ fn assemble_candidates_from_param_env<'cx,'tcx>(
             _ => { }
         }
     }
+}
+
+fn assemble_candidates_from_object_type<'cx,'tcx>(
+    selcx: &mut SelectionContext<'cx,'tcx>,
+    obligation:  &ProjectionTyObligation<'tcx>,
+    candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
+{
+    let infcx = selcx.infcx();
+    let trait_ref = infcx.resolve_type_vars_if_possible(&obligation.predicate.trait_ref);
+    debug!("assemble_candidates_from_object_type(trait_ref={})",
+           trait_ref.repr(infcx.tcx));
+    let self_ty = trait_ref.self_ty();
+    let data = match self_ty.sty {
+        ty::ty_trait(ref data) => data,
+        _ => { return; }
+    };
+    let env_predicates = data.projection_bounds_with_self_ty(self_ty).iter()
+                                                                     .map(|p| p.as_predicate())
+                                                                     .collect();
+    assemble_candidates_from_predicates(selcx, obligation, candidate_set, env_predicates)
 }
 
 fn assemble_candidates_from_impls<'cx,'tcx>(

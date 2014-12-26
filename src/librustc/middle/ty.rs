@@ -1401,6 +1401,31 @@ impl<'tcx> TyTrait<'tcx> {
             substs: tcx.mk_substs(self.principal.0.substs.with_self_ty(self_ty)),
         }))
     }
+
+    pub fn projection_bounds_with_self_ty(&self, self_ty: Ty<'tcx>)
+                                          -> Vec<ty::PolyProjectionPredicate<'tcx>>
+    {
+        // otherwise the escaping regions would be captured by the binders
+        assert!(!self_ty.has_escaping_regions());
+
+        self.bounds.projection_bounds.iter()
+            .map(|in_poly_projection_predicate| {
+                let in_projection_ty = &in_poly_projection_predicate.0.projection_ty;
+                let trait_ref =
+                    Rc::new(ty::TraitRef::new(
+                        in_projection_ty.trait_ref.def_id,
+                        in_projection_ty.trait_ref.substs.with_self_ty(self_ty)));
+                let projection_ty = ty::ProjectionTy {
+                    trait_ref: trait_ref,
+                    item_name: in_projection_ty.item_name
+                };
+                ty::Binder(ty::ProjectionPredicate {
+                    projection_ty: projection_ty,
+                    ty: in_poly_projection_predicate.0.ty
+                })
+            })
+            .collect()
+    }
 }
 
 /// A complete reference to a trait. These take numerous guises in syntax,

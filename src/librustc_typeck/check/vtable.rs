@@ -13,12 +13,12 @@ use middle::subst::{FnSpace, SelfSpace};
 use middle::traits;
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
-use middle::ty::{mod, Ty, AsPredicate, ToPolyTraitRef};
+use middle::ty::{mod, Ty, AsPredicate};
 use middle::infer;
-use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
-use util::ppaux::{Repr, ty_to_string};
+use util::nodemap::FnvHashSet;
+use util::ppaux::{Repr, UserString};
 
 pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                    cast_expr: &ast::Expr,
@@ -133,10 +133,33 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
                                  object_trait: &ty::TyTrait<'tcx>,
                                  span: Span)
 {
+    // Also check that the type `object_trait` specifies all
+    // associated types for all supertraits.
+    let mut associated_types: FnvHashSet<(ast::DefId, ast::Name)> = FnvHashSet::new();
+
     let object_trait_ref =
         object_trait.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
-    for tr in traits::supertraits(tcx, object_trait_ref) {
+    for tr in traits::supertraits(tcx, object_trait_ref.clone()) {
         check_object_safety_inner(tcx, &tr, span);
+
+        let trait_def = ty::lookup_trait_def(tcx, object_trait_ref.def_id());
+        for &associated_type_name in trait_def.associated_type_names.iter() {
+            associated_types.insert((object_trait_ref.def_id(), associated_type_name));
+        }
+    }
+
+    for projection_bound in object_trait.bounds.projection_bounds.iter() {
+        let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
+                    projection_bound.0.projection_ty.item_name);
+        associated_types.remove(&pair);
+    }
+
+    for (trait_def_id, name) in associated_types.into_iter() {
+        tcx.sess.span_err(
+            span,
+            format!("the value of the associated type `{}` (from the trait `{}`) must be specified",
+                    name.user_string(tcx),
+                    ty::item_path_str(tcx, trait_def_id)).as_slice());
     }
 }
 
@@ -201,7 +224,7 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
                 Some(format!(
                     "cannot call a method (`{}`) whose type contains \
                      a self-type (`{}`) through a trait object",
-                    method_name, ty_to_string(tcx, ty)))
+                    method_name, ty.user_string(tcx)))
             } else {
                 None
             }
@@ -343,15 +366,15 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            referent_ty.repr(fcx.tcx()),
            object_trait_ty.repr(fcx.tcx()));
 
+    let cause = ObligationCause::new(span,
+                                     fcx.body_id,
+                                     traits::ObjectCastObligation(object_trait_ty));
+
     // Create the obligation for casting from T to Trait.
     let object_trait_ref =
         object_trait.principal_trait_ref_with_self_ty(fcx.tcx(), referent_ty);
     let object_obligation =
-        Obligation::new(
-            ObligationCause::new(span,
-                                 fcx.body_id,
-                                 traits::ObjectCastObligation(object_trait_ty)),
-            object_trait_ref.as_predicate());
+        Obligation::new(cause.clone(), object_trait_ref.as_predicate());
     fcx.register_predicate(object_obligation);
 
     // Create additional obligations for all the various builtin
@@ -362,7 +385,15 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.register_builtin_bound(
             referent_ty,
             builtin_bound,
-            ObligationCause::new(span, fcx.body_id, traits::ObjectCastObligation(object_trait_ty)));
+            cause.clone());
+    }
+
+    // Finally, create obligations for the projection predicates.
+    let projection_bounds = object_trait.projection_bounds_with_self_ty(referent_ty);
+    for projection_bound in projection_bounds.iter() {
+        let projection_obligation =
+            Obligation::new(cause.clone(), projection_bound.as_predicate());
+        fcx.register_predicate(projection_obligation);
     }
 
     object_trait_ref
