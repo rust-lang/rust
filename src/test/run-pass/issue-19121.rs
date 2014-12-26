@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that bounds are sized-compatible.
+// Test that a partially specified trait object with unspecified associated
+// type does not ICE.
 
-trait T {}
+#![feature(associated_types)]
 
-fn f<Sized? Y: T>() {
-//~^ERROR incompatible bounds on `Y`, bound `T` does not allow unsized type
+trait Foo {
+    type A;
 }
 
-pub fn main() {
-}
+fn bar(x: &Foo) {}
+// FIXME(#19482) -- `Foo` should specify `A`, but this is not
+// currently enforced except at object creation
+
+pub fn main() {}

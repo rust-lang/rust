@@ -8,22 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
+// Test sized-ness checking in substitution in impls.
 
-trait Get {
-    type Value;
-    fn get(&self) -> <Self as Get>::Value;
+// impl - struct
+trait T3<Sized? Z> {
 }
 
-struct Struct {
-    x: int,
+struct S5<Y>;
+
+impl<Sized? X> T3<X> for S5<X> { //~ ERROR not implemented
 }
 
-impl Struct {
-    fn uhoh<T>(foo: <T as Get>::Value) {}
-    //~^ ERROR no suitable bound on `T`
-}
-
-fn main() {
-}
-
+fn main() { }

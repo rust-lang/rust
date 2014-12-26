@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that bounds are sized-compatible.
+// Test sized-ness checking in substitution in impls.
 
-trait T {}
-
-fn f<Sized? Y: T>() {
-//~^ERROR incompatible bounds on `Y`, bound `T` does not allow unsized type
+// impl - unbounded
+trait T2<Z> {
+}
+struct S4<Sized? Y>;
+impl<Sized? X> T2<X> for S4<X> {
+    //~^ ERROR `core::kinds::Sized` is not implemented for the type `X`
 }
 
-pub fn main() {
-}
+fn main() { }

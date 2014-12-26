@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that a partially specified trait object with unspecified associated
-// type does not ICE.
+// Test sized-ness checking in substitution in impls.
 
-#![feature(associated_types)]
+// impl - struct
 
-trait Foo {
-    type A;
+struct S5<Y>;
+
+impl<Sized? X> S5<X> { //~ ERROR not implemented
 }
 
-fn bar(x: &Foo) {} //~ERROR missing type for associated type `A`
-
-pub fn main() {}
+fn main() { }

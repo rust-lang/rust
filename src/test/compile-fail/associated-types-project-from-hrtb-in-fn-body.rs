@@ -8,24 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types. Check we get an error when an
-// equality constraint is used in a qualified path.
+// Check projection of an associated type out of a higher-ranked
+// trait-bound in the context of a function body.
 
 #![feature(associated_types)]
 
-pub trait Foo {
+pub trait Foo<T> {
     type A;
-    fn boo(&self) -> <Self as Foo>::A;
+
+    fn get(&self, t: T) -> Self::A;
 }
 
-struct Bar;
-
-impl Foo for int {
-    type A = uint;
-    fn boo(&self) -> uint { 42 }
+fn foo<'a, I : for<'x> Foo<&'x int>>(
+    x: <I as Foo<&'a int>>::A)
+{
+    let y: I::A = x;
 }
 
-fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}
-//~^ ERROR associated type bindings are not allowed here
+fn bar<'a, 'b, I : for<'x> Foo<&'x int>>(
+    x: <I as Foo<&'a int>>::A,
+    y: <I as Foo<&'b int>>::A,
+    cond: bool)
+{ //~ ERROR cannot infer
+    // x and y here have two distinct lifetimes:
+    let z: I::A = if cond { x } else { y };
+}
 
 pub fn main() {}
