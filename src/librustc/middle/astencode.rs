@@ -842,7 +842,8 @@ trait rbml_writer_helpers<'tcx> {
                             type_scheme: ty::TypeScheme<'tcx>);
     fn emit_substs<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                        substs: &subst::Substs<'tcx>);
-    fn emit_existential_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::ExistentialBounds);
+    fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
+                                   bounds: &ty::ExistentialBounds<'tcx>);
     fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds);
     fn emit_auto_adjustment<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                 adj: &ty::AutoAdjustment<'tcx>);
@@ -982,7 +983,8 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
         });
     }
 
-    fn emit_existential_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::ExistentialBounds) {
+    fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
+                                   bounds: &ty::ExistentialBounds<'tcx>) {
         self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(this.writer,
                                                                     &ecx.ty_str_ctxt(),
                                                                     bounds)));
@@ -1372,7 +1374,7 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     fn read_type_scheme<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                 -> ty::TypeScheme<'tcx>;
     fn read_existential_bounds<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                       -> ty::ExistentialBounds;
+                                       -> ty::ExistentialBounds<'tcx>;
     fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                            -> subst::Substs<'tcx>;
     fn read_auto_adjustment<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1626,7 +1628,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     }
 
     fn read_existential_bounds<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                       -> ty::ExistentialBounds
+                                       -> ty::ExistentialBounds<'tcx>
     {
         self.read_opaque(|this, doc| {
             Ok(tydecode::parse_existential_bounds_data(doc.data,

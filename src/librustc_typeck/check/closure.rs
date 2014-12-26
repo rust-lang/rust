@@ -289,7 +289,7 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                 (&ty::UniqTraitStore, _) => ast::Once,
                 (&ty::RegionTraitStore(..), _) => ast::Many,
             };
-            (Some(sig), onceness, cenv.bounds)
+            (Some(sig), onceness, cenv.bounds.clone())
         }
         _ => {
             // Not an error! Means we're inferring the closure type
