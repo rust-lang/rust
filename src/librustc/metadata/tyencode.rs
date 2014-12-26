@@ -392,9 +392,14 @@ pub fn enc_builtin_bounds(w: &mut SeekableMemWriter, _cx: &ctxt, bs: &ty::Builti
     mywrite!(w, ".");
 }
 
-pub fn enc_existential_bounds(w: &mut SeekableMemWriter, cx: &ctxt, bs: &ty::ExistentialBounds) {
-    enc_region(w, cx, bs.region_bound);
-    enc_builtin_bounds(w, cx, &bs.builtin_bounds);
+pub fn enc_existential_bounds<'a,'tcx>(w: &mut SeekableMemWriter,
+                                       cx: &ctxt<'a,'tcx>,
+                                       bs: &ty::ExistentialBounds<'tcx>) {
+    let param_bounds = ty::ParamBounds { trait_bounds: vec!(),
+                                         region_bounds: vec!(bs.region_bound),
+                                         builtin_bounds: bs.builtin_bounds,
+                                         projection_bounds: bs.projection_bounds.clone() };
+    enc_bounds(w, cx, &param_bounds);
 }
 
 pub fn enc_bounds<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,

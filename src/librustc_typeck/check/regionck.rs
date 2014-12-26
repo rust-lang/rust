@@ -768,7 +768,7 @@ fn constrain_cast(rcx: &mut Rcx,
             }
 
             /*From:*/ (_,
-            /*To:  */  &ty::ty_trait(box ty::TyTrait { bounds, .. })) => {
+            /*To:  */  &ty::ty_trait(box ty::TyTrait { ref bounds, .. })) => {
                 // When T is existentially quantified as a trait
                 // `Foo+'to`, it must outlive the region bound `'to`.
                 type_must_outlive(rcx, infer::RelateObjectBound(cast_expr.span),
@@ -851,7 +851,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     }
 
     match function_type.sty {
-        ty::ty_closure(box ty::ClosureTy {bounds, ..}) => {
+        ty::ty_closure(box ty::ClosureTy {ref bounds, ..}) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);
             })
@@ -859,7 +859,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         ty::ty_unboxed_closure(_, region, _) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 let bounds = ty::region_existential_bound(*region);
-                ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);
+                ensure_free_variable_types_outlive_closure_bound(rcx, &bounds, expr, freevars);
             })
         }
         _ => {}
@@ -870,7 +870,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     /// over values outliving the object's lifetime bound.
     fn ensure_free_variable_types_outlive_closure_bound(
         rcx: &mut Rcx,
-        bounds: ty::ExistentialBounds,
+        bounds: &ty::ExistentialBounds,
         expr: &ast::Expr,
         freevars: &[ty::Freevar])
     {

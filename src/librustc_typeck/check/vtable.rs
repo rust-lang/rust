@@ -244,7 +244,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let object_trait_ty =
         ty::mk_trait(fcx.tcx(),
                      object_trait.principal.clone(),
-                     object_trait.bounds);
+                     object_trait.bounds.clone());
 
     debug!("register_object_cast_obligations: referent_ty={} object_trait_ty={}",
            referent_ty.repr(fcx.tcx()),

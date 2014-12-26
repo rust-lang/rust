@@ -804,11 +804,13 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     }
 }
 
+type TraitAndProjections<'tcx> = (ty::PolyTraitRef<'tcx>, Vec<ty::PolyProjectionPredicate<'tcx>>);
+
 fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                    rscope: &RS,
                                    ty: &ast::Ty,
                                    bounds: &[ast::TyParamBound])
-                                   -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
+                                   -> Result<TraitAndProjections<'tcx>, ErrorReported>
     where AC : AstConv<'tcx>, RS : RegionScope
 {
     /*!
@@ -826,14 +828,17 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
         ast::TyPath(ref path, id) => {
             match this.tcx().def_map.borrow().get(&id) {
                 Some(&def::DefTrait(trait_def_id)) => {
-                    // TODO do something with this
-                    let mut projections = Vec::new();
-                    Ok(ty::Binder(ast_path_to_trait_ref(this,
-                                                        rscope,
-                                                        trait_def_id,
-                                                        None,
-                                                        path,
-                                                        Some(&mut projections))))
+                    let mut projection_bounds = Vec::new();
+                    let trait_ref = ty::Binder(ast_path_to_trait_ref(this,
+                                                                     rscope,
+                                                                     trait_def_id,
+                                                                     None,
+                                                                     path,
+                                                                     Some(&mut projection_bounds)));
+                    let projection_bounds = projection_bounds.into_iter()
+                                                             .map(ty::Binder)
+                                                             .collect();
+                    Ok((trait_ref, projection_bounds))
                 }
                 _ => {
                     span_err!(this.tcx().sess, ty.span, E0172, "expected a reference to a trait");
@@ -876,6 +881,7 @@ fn trait_ref_to_object_type<'tcx,AC,RS>(this: &AC,
                                         rscope: &RS,
                                         span: Span,
                                         trait_ref: ty::PolyTraitRef<'tcx>,
+                                        projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
                                         bounds: &[ast::TyParamBound])
                                         -> Ty<'tcx>
     where AC : AstConv<'tcx>, RS : RegionScope
@@ -884,6 +890,7 @@ fn trait_ref_to_object_type<'tcx,AC,RS>(this: &AC,
                                                      rscope,
                                                      span,
                                                      Some(trait_ref.clone()),
+                                                     projection_bounds,
                                                      bounds);
 
     let result = ty::mk_trait(this.tcx(), trait_ref, existential_bounds);
@@ -1013,9 +1020,9 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             }
             ast::TyObjectSum(ref ty, ref bounds) => {
                 match ast_ty_to_trait_ref(this, rscope, &**ty, bounds[]) {
-                    Ok(trait_ref) => {
+                    Ok((trait_ref, projection_bounds)) => {
                         trait_ref_to_object_type(this, rscope, ast_ty.span,
-                                                 trait_ref, bounds[])
+                                                 trait_ref, projection_bounds, bounds[])
                     }
                     Err(ErrorReported) => {
                         this.tcx().types.err
@@ -1056,13 +1063,15 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                      rscope,
                                                      ast_ty.span,
                                                      None,
+                                                     Vec::new(),
                                                      f.bounds.as_slice());
+                let region_bound = bounds.region_bound;
                 let fn_decl = ty_of_closure(this,
                                             f.unsafety,
                                             f.onceness,
                                             bounds,
                                             ty::RegionTraitStore(
-                                                bounds.region_bound,
+                                                region_bound,
                                                 ast::MutMutable),
                                             &*f.decl,
                                             abi::Rust,
@@ -1086,15 +1095,19 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     def::DefTrait(trait_def_id) => {
                         // N.B. this case overlaps somewhat with
                         // TyObjectSum, see that fn for details
-                        let mut projections = Vec::new(); // TODO
+                        let mut projection_bounds = Vec::new();
                         let trait_ref = ast_path_to_trait_ref(this,
                                                               rscope,
                                                               trait_def_id,
                                                               None,
                                                               path,
-                                                              Some(&mut projections));
+                                                              Some(&mut projection_bounds));
                         let trait_ref = ty::Binder(trait_ref);
-                        trait_ref_to_object_type(this, rscope, path.span, trait_ref, &[])
+                        let projection_bounds = projection_bounds.into_iter()
+                                                                 .map(ty::Binder)
+                                                                 .collect();
+                        trait_ref_to_object_type(this, rscope, path.span,
+                                                 trait_ref, projection_bounds, &[])
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
                         ast_path_to_ty(this, rscope, did, path).ty
@@ -1431,7 +1444,7 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
     this: &AC,
     unsafety: ast::Unsafety,
     onceness: ast::Onceness,
-    bounds: ty::ExistentialBounds,
+    bounds: ty::ExistentialBounds<'tcx>,
     store: ty::TraitStore,
     decl: &ast::FnDecl,
     abi: abi::Abi,
@@ -1494,14 +1507,15 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     rscope: &RS,
     span: Span,
     principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>, // None for boxed closures
+    projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
     ast_bounds: &[ast::TyParamBound])
-    -> ty::ExistentialBounds
+    -> ty::ExistentialBounds<'tcx>
 {
     let partitioned_bounds =
         partition_bounds(this.tcx(), span, ast_bounds);
 
     conv_existential_bounds_from_partitioned_bounds(
-        this, rscope, span, principal_trait_ref, partitioned_bounds)
+        this, rscope, span, principal_trait_ref, projection_bounds, partitioned_bounds)
 }
 
 fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
@@ -1514,14 +1528,14 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
 {
     let mut partitioned_bounds = partition_bounds(this.tcx(), span, ast_bounds[]);
 
-    let mut projections = Vec::new();
+    let mut projection_bounds = Vec::new();
     let main_trait_bound = match partitioned_bounds.trait_bounds.remove(0) {
         Some(trait_bound) => {
             let ptr = instantiate_poly_trait_ref(this,
                                                  rscope,
                                                  trait_bound,
                                                  None,
-                                                 &mut projections);
+                                                 &mut projection_bounds);
             Some(ptr)
         }
         None => {
@@ -1532,13 +1546,12 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
         }
     };
 
-    // TODO use projections somewhere
-
     let bounds =
         conv_existential_bounds_from_partitioned_bounds(this,
                                                         rscope,
                                                         span,
                                                         main_trait_bound.clone(),
+                                                        projection_bounds,
                                                         partitioned_bounds);
 
     match main_trait_bound {
@@ -1552,8 +1565,9 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
     rscope: &RS,
     span: Span,
     principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>, // None for boxed closures
+    mut projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>, // Empty for boxed closures
     partitioned_bounds: PartitionedBounds)
-    -> ty::ExistentialBounds
+    -> ty::ExistentialBounds<'tcx>
     where AC: AstConv<'tcx>, RS:RegionScope
 {
     let PartitionedBounds { builtin_bounds,
@@ -1576,9 +1590,12 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
                                             principal_trait_ref,
                                             builtin_bounds);
 
+    ty::sort_bounds_list(projection_bounds.as_mut_slice());
+
     ty::ExistentialBounds {
         region_bound: region_bound,
         builtin_bounds: builtin_bounds,
+        projection_bounds: projection_bounds,
     }
 }
 

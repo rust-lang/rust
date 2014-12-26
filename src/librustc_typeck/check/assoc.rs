@@ -15,7 +15,6 @@ use middle::ty::{mod, HasProjectionTypes, Ty};
 use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
 use syntax::ast;
 use syntax::codemap::Span;
-use std::rc::Rc;
 
 pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                                 fulfillment_cx: &mut FulfillmentContext<'tcx>,

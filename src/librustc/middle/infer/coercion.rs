@@ -351,11 +351,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 (&ty::ty_trait(..), &ty::ty_trait(..)) => {
                     None
                 }
-                (_, &ty::ty_trait(box ty::TyTrait { ref principal, bounds })) => {
+                (_, &ty::ty_trait(box ty::TyTrait { ref principal, ref bounds })) => {
                     // FIXME what is the purpose of `ty`?
-                    let ty = ty::mk_trait(tcx, principal.clone(), bounds);
-                    Some((ty, ty::UnsizeVtable(ty::TyTrait { principal: (*principal).clone(),
-                                                             bounds: bounds },
+                    let ty = ty::mk_trait(tcx, principal.clone(), bounds.clone());
+                    Some((ty, ty::UnsizeVtable(ty::TyTrait { principal: principal.clone(),
+                                                             bounds: bounds.clone() },
                                                ty_a)))
                 }
                 (&ty::ty_struct(did_a, substs_a), &ty::ty_struct(did_b, substs_b))
@@ -458,10 +458,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         match a.sty {
             ty::ty_rptr(_, ty::mt{ty, mutbl}) => match ty.sty {
-                ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
+                ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
                     debug!("mutbl={} b_mutbl={}", mutbl, b_mutbl);
-                    // FIXME what is purpose of this type `tr`?
-                    let tr = ty::mk_trait(tcx, principal.clone(), bounds);
+                    let tr = ty::mk_trait(tcx, principal.clone(), bounds.clone());
                     try!(self.subtype(mk_ty(tr), b));
                     Ok(Some(AdjustDerefRef(AutoDerefRef {
                         autoderefs: 1,
