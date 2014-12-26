@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use check::{FnCtxt, structurally_resolved_type};
-use middle::subst::{FnSpace};
+use middle::subst::{FnSpace, SelfSpace};
 use middle::traits;
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
@@ -141,15 +141,15 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 object_trait: &ty::PolyTraitRef<'tcx>,
-                                 span: Span) {
+                                   object_trait: &ty::PolyTraitRef<'tcx>,
+                                   span: Span) {
     let trait_items = ty::trait_items(tcx, object_trait.def_id());
 
     let mut errors = Vec::new();
     for item in trait_items.iter() {
         match *item {
             ty::MethodTraitItem(ref m) => {
-                errors.push(check_object_safety_of_method(tcx, &**m))
+                errors.push(check_object_safety_of_method(tcx, object_trait, &**m))
             }
             ty::TypeTraitItem(_) => {}
         }
@@ -173,6 +173,7 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
     /// type is not known (that's the whole point of a trait instance, after all, to obscure the
     /// self type) and (b) the call must go through a vtable and hence cannot be monomorphized.
     fn check_object_safety_of_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                           object_trait: &ty::PolyTraitRef<'tcx>,
                                            method: &ty::Method<'tcx>)
                                            -> Vec<String> {
         let mut msgs = Vec::new();
@@ -196,7 +197,7 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // reason (a) above
         let check_for_self_ty = |ty| {
-            if ty::type_has_self(ty) {
+            if contains_illegal_self_type_reference(tcx, object_trait.def_id(), ty) {
                 Some(format!(
                     "cannot call a method (`{}`) whose type contains \
                      a self-type (`{}`) through a trait object",
@@ -224,6 +225,98 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
 
         msgs
+    }
+
+    fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                                  trait_def_id: ast::DefId,
+                                                  ty: Ty<'tcx>)
+                                                  -> bool
+    {
+        // This is somewhat subtle. In general, we want to forbid
+        // references to `Self` in the argument and return types,
+        // since the value of `Self` is erased. However, there is one
+        // exception: it is ok to reference `Self` in order to access
+        // an associated type of the current trait, since we retain
+        // the value of those associated types in the object type
+        // itself.
+        //
+        // ```rust
+        // trait SuperTrait {
+        //     type X;
+        // }
+        //
+        // trait Trait : SuperTrait {
+        //     type Y;
+        //     fn foo(&self, x: Self) // bad
+        //     fn foo(&self) -> Self // bad
+        //     fn foo(&self) -> Option<Self> // bad
+        //     fn foo(&self) -> Self::Y // OK, desugars to next example
+        //     fn foo(&self) -> <Self as Trait>::Y // OK
+        //     fn foo(&self) -> Self::X // OK, desugars to next example
+        //     fn foo(&self) -> <Self as SuperTrait>::X // OK
+        // }
+        // ```
+        //
+        // However, it is not as simple as allowing `Self` in a projected
+        // type, because there are illegal ways to use `Self` as well:
+        //
+        // ```rust
+        // trait Trait : SuperTrait {
+        //     ...
+        //     fn foo(&self) -> <Self as SomeOtherTrait>::X;
+        // }
+        // ```
+        //
+        // Here we will not have the type of `X` recorded in the
+        // object type, and we cannot resolve `Self as SomeOtherTrait`
+        // without knowing what `Self` is.
+
+        let mut supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>> = None;
+        let mut error = false;
+        ty::maybe_walk_ty(ty, |ty| {
+            match ty.sty {
+                ty::ty_param(ref param_ty) => {
+                    if param_ty.space == SelfSpace {
+                        error = true;
+                    }
+
+                    false // no contained types to walk
+                }
+
+                ty::ty_projection(ref data) => {
+                    // This is a projected type `<Foo as SomeTrait>::X`.
+
+                    // Compute supertraits of current trait lazilly.
+                    if supertraits.is_none() {
+                        let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
+                        let trait_ref = ty::Binder(trait_def.trait_ref.clone());
+                        supertraits = Some(traits::supertraits(tcx, trait_ref).collect());
+                    }
+
+                    // Determine whether the trait reference `Foo as
+                    // SomeTrait` is in fact a supertrait of the
+                    // current trait. In that case, this type is
+                    // legal, because the type `X` will be specified
+                    // in the object type.  Note that we can just use
+                    // direct equality here because all of these types
+                    // are part of the formal parameter listing, and
+                    // hence there should be no inference variables.
+                    let projection_trait_ref = ty::Binder(data.trait_ref.clone());
+                    let is_supertrait_of_current_trait =
+                        supertraits.as_ref().unwrap().contains(&projection_trait_ref);
+
+                    if is_supertrait_of_current_trait {
+                        false // do not walk contained types, do not report error, do collect $200
+                    } else {
+                        true // DO walk contained types, POSSIBLY reporting an error
+                    }
+                }
+
+                _ => true, // walk contained types, if any
+            }
+        });
+
+        error
     }
 }
 
