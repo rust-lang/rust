@@ -8,13 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that bounds are sized-compatible.
+#![feature(associated_types)]
 
-trait T {}
-
-fn f<Sized? Y: T>() {
-//~^ERROR incompatible bounds on `Y`, bound `T` does not allow unsized type
+trait Get {
+    type Value;
+    fn get(&self) -> <Self as Get>::Value;
 }
 
-pub fn main() {
+struct Struct {
+    x: int,
 }
+
+impl Struct {
+    fn uhoh<T>(foo: <T as Get>::Value) {}
+    //~^ ERROR the trait `Get` is not implemented for the type `T`
+}
+
+fn main() {
+}
+

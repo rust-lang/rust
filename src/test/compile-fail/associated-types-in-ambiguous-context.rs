@@ -18,16 +18,6 @@ trait Get {
 fn get<T:Get,U:Get>(x: T, y: U) -> Get::Value {}
 //~^ ERROR ambiguous associated type
 
-trait Other {
-    fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
-    //~^ ERROR no suitable bound on `Self`
-}
-
-impl<T:Get> Other for T {
-    fn uhoh<U:Get>(&self, foo: U, bar: <(T, U) as Get>::Value) {}
-    //~^ ERROR currently unsupported
-}
-
 trait Grab {
     type Value;
     fn grab(&self) -> Grab::Value;
