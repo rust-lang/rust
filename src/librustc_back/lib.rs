@@ -32,6 +32,7 @@
 #![allow(unknown_features)]
 #![feature(globs, phase, macro_rules, slicing_syntax)]
 #![feature(unboxed_closures)]
+#![feature(old_orphan_check)]
 
 #[phase(plugin, link)]
 extern crate log;

@@ -77,8 +77,11 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     // to bootstrap fix for #5723.
     ("issue_5723_bootstrap", Accepted),
 
-    // A way to temporary opt out of opt in copy. This will *never* be accepted.
-    ("opt_out_copy", Active),
+    // A way to temporarily opt out of opt in copy. This will *never* be accepted.
+    ("opt_out_copy", Deprecated),
+
+    // A way to temporarily opt out of the new orphan rules. This will *never* be accepted.
+    ("old_orphan_check", Deprecated),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -90,6 +93,10 @@ enum Status {
     /// Represents an active feature that is currently being implemented or
     /// currently being considered for addition/removal.
     Active,
+
+    /// Represents a feature gate that is temporarily enabling deprecated behavior.
+    /// This gate will never be accepted.
+    Deprecated,
 
     /// Represents a feature which has since been removed (it was once Active)
     Removed,
@@ -108,6 +115,7 @@ pub struct Features {
     pub visible_private_types: bool,
     pub quote: bool,
     pub opt_out_copy: bool,
+    pub old_orphan_check: bool,
 }
 
 impl Features {
@@ -120,6 +128,7 @@ impl Features {
             visible_private_types: false,
             quote: false,
             opt_out_copy: false,
+            old_orphan_check: false,
         }
     }
 }
@@ -442,7 +451,16 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
                     };
                     match KNOWN_FEATURES.iter()
                                         .find(|& &(n, _)| name == n) {
-                        Some(&(name, Active)) => { cx.features.push(name); }
+                        Some(&(name, Active)) => {
+                            cx.features.push(name);
+                        }
+                        Some(&(name, Deprecated)) => {
+                            cx.features.push(name);
+                            span_handler.span_warn(
+                                mi.span,
+                                "feature is deprecated and will only be available \
+                                 for a limited time, please rewrite code that relies on it");
+                        }
                         Some(&(_, Removed)) => {
                             span_handler.span_err(mi.span, "feature has been removed");
                         }
@@ -469,6 +487,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         visible_private_types: cx.has_feature("visible_private_types"),
         quote: cx.has_feature("quote"),
         opt_out_copy: cx.has_feature("opt_out_copy"),
+        old_orphan_check: cx.has_feature("old_orphan_check"),
     },
     unknown_features)
 }

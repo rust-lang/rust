@@ -25,6 +25,8 @@ use syntax::codemap::{Span, DUMMY_SP};
 use util::ppaux::Repr;
 
 pub use self::error_reporting::report_fulfillment_errors;
+pub use self::coherence::orphan_check;
+pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::normalize;
@@ -243,15 +245,6 @@ pub struct VtableImplData<'tcx, N> {
 #[deriving(Show,Clone)]
 pub struct VtableBuiltinData<N> {
     pub nested: subst::VecPerParamSpace<N>
-}
-
-/// True if neither the trait nor self type is local. Note that `impl_def_id` must refer to an impl
-/// of a trait, not an inherent impl.
-pub fn is_orphan_impl(tcx: &ty::ctxt,
-                      impl_def_id: ast::DefId)
-                      -> bool
-{
-    !coherence::impl_is_local(tcx, impl_def_id)
 }
 
 /// True if there exist types that satisfy both of the two given impls.
