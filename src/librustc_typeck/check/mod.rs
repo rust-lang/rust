@@ -4355,7 +4355,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                  traits::ItemObligation(did)),
                     &bounds);
 
-                ty::mk_struct(tcx, did, substs)
+                ty::mk_struct(tcx, did, tcx.mk_substs(substs))
             } else {
                 ty::mk_err()
             }

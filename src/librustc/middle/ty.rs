@@ -1383,12 +1383,13 @@ impl<'tcx> TyTrait<'tcx> {
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self-type. A common choice is `mk_err()`
     /// or some skolemized type.
-    pub fn principal_trait_ref_with_self_ty(&self, self_ty: Ty<'tcx>)
+    pub fn principal_trait_ref_with_self_ty(&self,
+                                            tcx: &ctxt<'tcx>, self_ty: Ty<'tcx>)
                                             -> Rc<ty::PolyTraitRef<'tcx>>
     {
         Rc::new(ty::Binder(ty::TraitRef {
             def_id: self.principal.def_id(),
-            substs: self.principal.substs().with_self_ty(self_ty),
+            substs: tcx.mk_substs(self.principal.substs().with_self_ty(self_ty)),
         }))
     }
 }
@@ -1425,8 +1426,8 @@ impl<'tcx> PolyTraitRef<'tcx> {
         self.0.def_id
     }
 
-    pub fn substs(&self) -> &Substs<'tcx> {
-        &self.0.substs
+    pub fn substs(&self) -> &'tcx Substs<'tcx> {
+        self.0.substs
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
@@ -4159,8 +4160,8 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
 
                 AdjustReifyFnPointer(_) => {
                     match unadjusted_ty.sty {
-                        ty::ty_bare_fn(Some(_), ref b) => {
-                            ty::mk_bare_fn(cx, None, (*b).clone())
+                        ty::ty_bare_fn(Some(_), b) => {
+                            ty::mk_bare_fn(cx, None, b)
                         }
                         ref b => {
                             cx.sess.bug(
@@ -6727,42 +6728,42 @@ pub trait RegionEscape {
         self.has_regions_escaping_depth(0)
     }
 
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool;
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool;
 }
 
 impl<'tcx> RegionEscape for Ty<'tcx> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         ty::type_escapes_depth(*self, depth)
     }
 }
 
 impl RegionEscape for Region {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.escapes_depth(depth)
     }
 }
 
 impl<'tcx> RegionEscape for TraitRef<'tcx> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.substs.types.iter().any(|t| t.has_regions_escaping_depth(depth)) &&
             self.substs.regions().iter().any(|t| t.has_regions_escaping_depth(depth))
     }
 }
 
 impl<'tcx,T:RegionEscape> RegionEscape for Binder<T> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.0.has_regions_escaping_depth(depth + 1)
     }
 }
 
 impl<'tcx> RegionEscape for EquatePredicate<'tcx> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.0.has_regions_escaping_depth(depth) || self.1.has_regions_escaping_depth(depth)
     }
 }
 
 impl<T:RegionEscape,U:RegionEscape> RegionEscape for OutlivesPredicate<T,U> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.0.has_regions_escaping_depth(depth) || self.1.has_regions_escaping_depth(depth)
     }
 }

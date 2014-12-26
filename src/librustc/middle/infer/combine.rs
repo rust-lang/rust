@@ -343,8 +343,8 @@ pub trait Combine<'tcx> {
         if a.def_id != b.def_id {
             Err(ty::terr_traits(expected_found(self, a.def_id, b.def_id)))
         } else {
-            let substs = try!(self.substs(a.def_id, &a.substs, &b.substs));
-            Ok(ty::TraitRef { def_id: a.def_id, substs: substs })
+            let substs = try!(self.substs(a.def_id, a.substs, b.substs));
+            Ok(ty::TraitRef { def_id: a.def_id, substs: self.tcx().mk_substs(substs) })
         }
     }
 
@@ -572,7 +572,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             if a_opt_def_id == b_opt_def_id =>
         {
             let fty = try!(this.bare_fn_tys(a_fty, b_fty));
-            Ok(ty::mk_bare_fn(tcx, a_opt_def_id, fty))
+            Ok(ty::mk_bare_fn(tcx, a_opt_def_id, tcx.mk_bare_fn(fty)))
         }
 
       (&ty::ty_closure(ref a_fty), &ty::ty_closure(ref b_fty)) => {

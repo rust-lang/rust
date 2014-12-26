@@ -299,12 +299,12 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                                      tcx.mk_bare_fn(ty::BareFnTy {
                                          unsafety: ast::Unsafety::Normal,
                                          abi: synabi::RustCall,
-                                         sig: ty::FnSig {
+                                         sig: ty::Binder(ty::FnSig {
                                              inputs: vec![bare_fn_ty_ref,
                                                           tuple_input_ty],
                                              output: output_ty,
                                              variadic: false
-                                         }}));
+                                         })}));
     debug!("tuple_fn_ty: {}", tuple_fn_ty.repr(tcx));
 
     //

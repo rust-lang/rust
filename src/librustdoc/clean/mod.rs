@@ -620,7 +620,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         let fqn = fqn.into_iter().map(|i| i.to_string())
                      .collect::<Vec<String>>();
         let path = external_path(cx, fqn.last().unwrap().as_slice(),
-                                 Some(self.def_id), &self.substs);
+                                 Some(self.def_id), self.substs);
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(self.def_id,
                                                             (fqn, TypeTrait));
 
@@ -634,7 +634,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
             if let sty::ty_tup(ref ts) = ty_s.sty {
                 for &ty_s in ts.iter() {
                     if let sty::ty_rptr(ref reg, _) = ty_s.sty {
-                        if let &Region::ReLateBound(_, _) = reg {
+                        if let &Region::ReLateBound(_, _) = *reg {
                             debug!("  hit an ReLateBound {}", reg);
                             if let Some(lt) = reg.clean(cx) {
                                 late_bounds.push(lt)

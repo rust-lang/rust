@@ -361,7 +361,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
         },
 
         // Is this the NonZero lang item wrapping a pointer or integer type?
-        ty::ty_struct(did, ref substs) if Some(did) == tcx.lang_items.non_zero() => {
+        ty::ty_struct(did, substs) if Some(did) == tcx.lang_items.non_zero() => {
             let nonzero_fields = ty::lookup_struct_fields(tcx, did);
             assert_eq!(nonzero_fields.len(), 1);
             let nonzero_field = ty::lookup_field_type(tcx, did, nonzero_fields[0].id, substs);
@@ -376,7 +376,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Perhaps one of the fields of this struct is non-zero
         // let's recurse and find out
-        ty::ty_struct(def_id, ref substs) => {
+        ty::ty_struct(def_id, substs) => {
             let fields = ty::lookup_struct_fields(tcx, def_id);
             for (j, field) in fields.iter().enumerate() {
                 let field_ty = ty::lookup_field_type(tcx, def_id, field.id, substs);
