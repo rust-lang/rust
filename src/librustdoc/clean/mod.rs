@@ -18,8 +18,7 @@ pub use self::TypeKind::*;
 pub use self::StructField::*;
 pub use self::VariantKind::*;
 pub use self::Mutability::*;
-pub use self::ViewItemInner::*;
-pub use self::ViewPath::*;
+pub use self::Import::*;
 pub use self::ItemEnum::*;
 pub use self::Attribute::*;
 pub use self::TyParamBound::*;
@@ -309,6 +308,8 @@ impl Item {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum ItemEnum {
+    ExternCrateItem(String, Option<String>),
+    ImportItem(Import),
     StructItem(Struct),
     EnumItem(Enum),
     FunctionItem(Function),
@@ -318,8 +319,6 @@ pub enum ItemEnum {
     ConstantItem(Constant),
     TraitItem(Trait),
     ImplItem(Impl),
-    /// `use` and `extern crate`
-    ViewItemItem(ViewItem),
     /// A method signature only. Used for required methods in traits (ie,
     /// non-default-methods).
     TyMethodItem(TyMethod),
@@ -349,27 +348,21 @@ impl Clean<Item> for doctree::Module {
         } else {
             "".to_string()
         };
-        let mut foreigns = Vec::new();
-        for subforeigns in self.foreigns.clean(cx).into_iter() {
-            for foreign in subforeigns.into_iter() {
-                foreigns.push(foreign)
-            }
-        }
-        let items: Vec<Vec<Item> > = vec!(
-            self.structs.clean(cx),
-            self.enums.clean(cx),
-            self.fns.clean(cx),
-            foreigns,
-            self.mods.clean(cx),
-            self.typedefs.clean(cx),
-            self.statics.clean(cx),
-            self.constants.clean(cx),
-            self.traits.clean(cx),
-            self.impls.clean(cx),
-            self.view_items.clean(cx).into_iter()
-                           .flat_map(|s| s.into_iter()).collect(),
-            self.macros.clean(cx),
-        );
+        let items: Vec<Item> =
+                   self.extern_crates.iter().map(|x| x.clean(cx))
+            .chain(self.imports.iter().flat_map(|x| x.clean(cx).into_iter()))
+            .chain(self.structs.iter().map(|x| x.clean(cx)))
+            .chain(self.enums.iter().map(|x| x.clean(cx)))
+            .chain(self.fns.iter().map(|x| x.clean(cx)))
+            .chain(self.foreigns.iter().flat_map(|x| x.clean(cx).into_iter()))
+            .chain(self.mods.iter().map(|x| x.clean(cx)))
+            .chain(self.typedefs.iter().map(|x| x.clean(cx)))
+            .chain(self.statics.iter().map(|x| x.clean(cx)))
+            .chain(self.constants.iter().map(|x| x.clean(cx)))
+            .chain(self.traits.iter().map(|x| x.clean(cx)))
+            .chain(self.impls.iter().map(|x| x.clean(cx)))
+            .chain(self.macros.iter().map(|x| x.clean(cx)))
+            .collect();
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -395,9 +388,7 @@ impl Clean<Item> for doctree::Module {
             def_id: ast_util::local_def(self.id),
             inner: ModuleItem(Module {
                is_crate: self.is_crate,
-               items: items.iter()
-                           .flat_map(|x| x.iter().map(|x| (*x).clone()))
-                           .collect(),
+               items: items
             })
         }
     }
@@ -2120,12 +2111,21 @@ impl Clean<Item> for doctree::Impl {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct ViewItem {
-    pub inner: ViewItemInner,
+impl Clean<Item> for doctree::ExternCrate {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            name: None,
+            attrs: self.attrs.clean(cx),
+            source: self.whence.clean(cx),
+            def_id: ast_util::local_def(0),
+            visibility: self.vis.clean(cx),
+            stability: None,
+            inner: ExternCrateItem(self.name.clean(cx), self.path.clone())
+        }
+    }
 }
 
-impl Clean<Vec<Item>> for ast::ViewItem {
+impl Clean<Vec<Item>> for doctree::Import {
     fn clean(&self, cx: &DocContext) -> Vec<Item> {
         // We consider inlining the documentation of `pub use` statements, but we
         // forcefully don't inline if this is not public or if the
@@ -2136,81 +2136,63 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                 None => false,
             }
         });
-        let convert = |&: node: &ast::ViewItem_| {
-            Item {
-                name: None,
-                attrs: self.attrs.clean(cx),
-                source: self.span.clean(cx),
-                def_id: ast_util::local_def(0),
-                visibility: self.vis.clean(cx),
-                stability: None,
-                inner: ViewItemItem(ViewItem { inner: node.clean(cx) }),
+        let (mut ret, inner) = match self.node {
+            ast::ViewPathGlob(ref p) => {
+                (vec![], GlobImport(resolve_use_source(cx, p.clean(cx), self.id)))
             }
-        };
-        let mut ret = Vec::new();
-        match self.node {
-            ast::ViewItemUse(ref path) if !denied => {
-                match path.node {
-                    ast::ViewPathGlob(..) => ret.push(convert(&self.node)),
-                    ast::ViewPathList(ref a, ref list, ref b) => {
-                        // Attempt to inline all reexported items, but be sure
-                        // to keep any non-inlineable reexports so they can be
-                        // listed in the documentation.
-                        let remaining = list.iter().filter(|path| {
-                            match inline::try_inline(cx, path.node.id(), None) {
-                                Some(items) => {
-                                    ret.extend(items.into_iter()); false
-                                }
-                                None => true,
+            ast::ViewPathList(ref p, ref list) => {
+                // Attempt to inline all reexported items, but be sure
+                // to keep any non-inlineable reexports so they can be
+                // listed in the documentation.
+                let mut ret = vec![];
+                let remaining = if !denied {
+                    let mut remaining = vec![];
+                    for path in list.iter() {
+                        match inline::try_inline(cx, path.node.id(), None) {
+                            Some(items) => {
+                                ret.extend(items.into_iter());
                             }
-                        }).map(|a| a.clone()).collect::<Vec<ast::PathListItem>>();
-                        if remaining.len() > 0 {
-                            let path = ast::ViewPathList(a.clone(),
-                                                         remaining,
-                                                         b.clone());
-                            let path = syntax::codemap::dummy_spanned(path);
-                            ret.push(convert(&ast::ViewItemUse(P(path))));
+                            None => {
+                                remaining.push(path.clean(cx));
+                            }
                         }
                     }
-                    ast::ViewPathSimple(ident, _, id) => {
-                        match inline::try_inline(cx, id, Some(ident)) {
-                            Some(items) => ret.extend(items.into_iter()),
-                            None => ret.push(convert(&self.node)),
-                        }
+                    remaining
+                } else {
+                    list.clean(cx)
+                };
+                if remaining.is_empty() {
+                    return ret;
+                }
+                (ret, ImportList(resolve_use_source(cx, p.clean(cx), self.id),
+                                 remaining))
+            }
+            ast::ViewPathSimple(i, ref p) => {
+                if !denied {
+                    match inline::try_inline(cx, self.id, Some(i)) {
+                        Some(items) => return items,
+                        None => {}
                     }
                 }
+                (vec![], SimpleImport(i.clean(cx),
+                                      resolve_use_source(cx, p.clean(cx), self.id)))
             }
-            ref n => ret.push(convert(n)),
-        }
-        return ret;
+        };
+        ret.push(Item {
+            name: None,
+            attrs: self.attrs.clean(cx),
+            source: self.whence.clean(cx),
+            def_id: ast_util::local_def(0),
+            visibility: self.vis.clean(cx),
+            stability: None,
+            inner: ImportItem(inner)
+        });
+        ret
     }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
-pub enum ViewItemInner {
-    ExternCrate(String, Option<String>, ast::NodeId),
-    Import(ViewPath)
-}
-
-impl Clean<ViewItemInner> for ast::ViewItem_ {
-    fn clean(&self, cx: &DocContext) -> ViewItemInner {
-        match self {
-            &ast::ViewItemExternCrate(ref i, ref p, ref id) => {
-                let string = match *p {
-                    None => None,
-                    Some((ref x, _)) => Some(x.get().to_string()),
-                };
-                ExternCrate(i.clean(cx), string, *id)
-            }
-            &ast::ViewItemUse(ref vp) => {
-                Import(vp.clean(cx))
-            }
-        }
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub enum ViewPath {
+pub enum Import {
     // use source as str;
     SimpleImport(String, ImportSource),
     // use source::*;
@@ -2223,21 +2205,6 @@ pub enum ViewPath {
 pub struct ImportSource {
     pub path: Path,
     pub did: Option<ast::DefId>,
-}
-
-impl Clean<ViewPath> for ast::ViewPath {
-    fn clean(&self, cx: &DocContext) -> ViewPath {
-        match self.node {
-            ast::ViewPathSimple(ref i, ref p, id) =>
-                SimpleImport(i.clean(cx), resolve_use_source(cx, p.clean(cx), id)),
-            ast::ViewPathGlob(ref p, id) =>
-                GlobImport(resolve_use_source(cx, p.clean(cx), id)),
-            ast::ViewPathList(ref p, ref pl, id) => {
-                ImportList(resolve_use_source(cx, p.clean(cx), id),
-                           pl.clean(cx))
-            }
-        }
-    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
