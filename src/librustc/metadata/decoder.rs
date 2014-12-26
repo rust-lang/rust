@@ -245,13 +245,13 @@ pub fn item_type<'tcx>(_item_id: ast::DefId, item: rbml::Doc,
 }
 
 fn doc_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                       -> ty::TraitRef<'tcx> {
+                       -> Rc<ty::TraitRef<'tcx>> {
     parse_trait_ref_data(doc.data, cdata.cnum, doc.start, tcx,
                          |_, did| translate_def_id(cdata, did))
 }
 
 fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                        -> ty::TraitRef<'tcx> {
+                        -> Rc<ty::TraitRef<'tcx>> {
     let tp = reader::get_doc(doc, tag_item_trait_ref);
     doc_trait_ref(tp, tcx, cdata)
 }
@@ -394,7 +394,7 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
         unsafety: unsafety,
         generics: generics,
         bounds: bounds,
-        trait_ref: Rc::new(item_trait_ref(item_doc, tcx, cdata)),
+        trait_ref: item_trait_ref(item_doc, tcx, cdata),
         associated_type_names: associated_type_names,
     }
 }
@@ -441,7 +441,7 @@ pub fn get_impl_trait<'tcx>(cdata: Cmd,
 {
     let item_doc = lookup_item(id, cdata.data());
     reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
-        Rc::new(doc_trait_ref(tp, tcx, cdata))
+        doc_trait_ref(tp, tcx, cdata)
     })
 }
 
@@ -937,7 +937,7 @@ pub fn get_supertraits<'tcx>(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt<'tcx>)
         // FIXME(#8559): The builtin bounds shouldn't be encoded in the first place.
         let trait_ref = doc_trait_ref(trait_doc, tcx, cdata);
         if tcx.lang_items.to_builtin_kind(trait_ref.def_id).is_none() {
-            results.push(Rc::new(trait_ref));
+            results.push(trait_ref);
         }
         true
     });

@@ -1352,13 +1352,13 @@ pub enum sty<'tcx> {
 
     ty_closure(Box<ClosureTy<'tcx>>),
     ty_trait(Box<TyTrait<'tcx>>),
-    ty_struct(DefId, &'tcx Substs<'tcx>),
+    ty_struct(DefId, Substs<'tcx>),
 
     ty_unboxed_closure(DefId, &'tcx Region, &'tcx Substs<'tcx>),
 
     ty_tup(Vec<Ty<'tcx>>),
 
-    ty_projection(Box<TyProjection<'tcx>>),
+    ty_projection(ProjectionTy<'tcx>),
     ty_param(ParamTy), // type parameter
 
     ty_open(Ty<'tcx>), // A deref'ed fat pointer, i.e., a dynamically sized value
@@ -1375,8 +1375,7 @@ pub enum sty<'tcx> {
 
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TyTrait<'tcx> {
-    // Principal trait reference.
-    pub principal: ty::Binder<TraitRef<'tcx>>,
+    pub principal: ty::PolyTraitRef<'tcx>,
     pub bounds: ExistentialBounds
 }
 
@@ -1447,12 +1446,6 @@ impl<'tcx> PolyTraitRef<'tcx> {
     pub fn to_poly_trait_predicate(&self) -> PolyTraitPredicate<'tcx> {
         // Note that we preserve binding levels
         Binder(TraitPredicate { trait_ref: self.0.clone() })
-    }
-
-    pub fn remove_rc(&self) -> ty::Binder<ty::TraitRef<'tcx>> {
-        // Annoyingly, we can't easily put a `Rc` into a `sty` structure,
-        // and hence we have to remove the rc to put this into a `TyTrait`.
-        ty::Binder((*self.0).clone())
     }
 }
 
@@ -1830,15 +1823,6 @@ pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ProjectionTy<'tcx> {
     pub trait_ref: Rc<ty::TraitRef<'tcx>>,
-    pub item_name: ast::Name,
-}
-
-// Annoying: a version of `ProjectionTy` that avoids the `Rc`, because
-// it is difficult to place an `Rc` in the `sty` struct. Eventually
-// these two types ought to be unified.
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
-pub struct TyProjection<'tcx> {
-    pub trait_ref: ty::TraitRef<'tcx>,
     pub item_name: ast::Name,
 }
 
@@ -2690,10 +2674,9 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
 }
 
 pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
-                      principal: ty::Binder<ty::TraitRef<'tcx>>,
+                      principal: ty::PolyTraitRef<'tcx>,
                       bounds: ExistentialBounds)
                       -> Ty<'tcx> {
-    // take a copy of substs so that we own the vectors inside
     let inner = box TyTrait {
         principal: principal,
         bounds: bounds
@@ -2702,11 +2685,11 @@ pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
 }
 
 pub fn mk_projection<'tcx>(cx: &ctxt<'tcx>,
-                           trait_ref: ty::TraitRef<'tcx>,
+                           trait_ref: Rc<ty::TraitRef<'tcx>>,
                            item_name: ast::Name)
                            -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
-    let inner = box TyProjection { trait_ref: trait_ref, item_name: item_name };
+    let inner = ProjectionTy { trait_ref: trait_ref, item_name: item_name };
     mk_t(cx, ty_projection(inner))
 }
 
@@ -2776,7 +2759,7 @@ pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
                 maybe_walk_ty(*subty, |x| f(x));
             }
         }
-        ty_projection(box TyProjection { ref trait_ref, .. }) => {
+        ty_projection(ProjectionTy { ref trait_ref, .. }) => {
             for subty in trait_ref.substs.types.iter() {
                 maybe_walk_ty(*subty, |x| f(x));
             }
@@ -5783,7 +5766,7 @@ pub fn each_bound_trait_and_supertraits<'tcx, F>(tcx: &ctxt<'tcx>,
 
 pub fn object_region_bounds<'tcx>(
     tcx: &ctxt<'tcx>,
-    opt_principal: Option<&Binder<TraitRef<'tcx>>>, // None for closures
+    opt_principal: Option<&PolyTraitRef<'tcx>>, // None for closures
     others: BuiltinBounds)
     -> Vec<ty::Region>
 {
@@ -6910,14 +6893,6 @@ impl<'tcx> Repr<'tcx> for ty::ProjectionPredicate<'tcx> {
         format!("ProjectionPredicate({}, {})",
                 self.projection_ty.repr(tcx),
                 self.ty.repr(tcx))
-    }
-}
-
-impl<'tcx> Repr<'tcx> for ty::TyProjection<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("TyProjection({}, {})",
-                self.trait_ref.repr(tcx),
-                self.item_name.repr(tcx))
     }
 }
 
