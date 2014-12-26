@@ -58,7 +58,7 @@ a guide that can help you out:
 * [Strings](guide-strings.html)
 * [Pointers](guide-pointers.html)
 * [Crates and modules](guide-crates.html)
-* [Tasks and Communication](guide-tasks.html)
+* [Threads and Communication](guide-threads.html)
 * [Error Handling](guide-error-handling.html)
 * [Foreign Function Interface](guide-ffi.html)
 * [Writing Unsafe and Low-Level Code](guide-unsafe.html)
