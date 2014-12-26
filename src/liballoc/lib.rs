@@ -70,7 +70,7 @@
 #[macro_use]
 extern crate core;
 
-#[cfg(all(not(external_funcs), not(external_crate)))]
+#[cfg(all(not(feature = "external_funcs"), not(feature = "external_crate")))]
 extern crate libc;
 
 // Allow testing this library
