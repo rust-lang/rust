@@ -387,7 +387,7 @@ impl LangString {
             should_fail: false,
             no_run: false,
             ignore: false,
-            rust: false,
+            rust: true,  // NB This used to be `notrust = false`
             test_harness: false,
         }
     }
@@ -413,7 +413,7 @@ impl LangString {
             }
         }
 
-        data.rust |=  !seen_other_tags || seen_rust_tags;
+        data.rust &= !seen_other_tags || seen_rust_tags;
 
         data
     }
@@ -465,17 +465,18 @@ mod tests {
             })
         }
 
-        t("", false,false,false,true,false);
-        t("rust", false,false,false,true,false);
-        t("sh", false,false,false,false,false);
-        t("ignore", false,false,true,true,false);
-        t("should_fail", true,false,false,true,false);
-        t("no_run", false,true,false,true,false);
-        t("test_harness", false,false,false,true,true);
-        t("{.no_run .example}", false,true,false,true,false);
-        t("{.sh .should_fail}", true,false,false,true,false);
-        t("{.example .rust}", false,false,false,true,false);
-        t("{.test_harness .rust}", false,false,false,true,true);
+        // marker                | should_fail | no_run | ignore | rust | test_harness
+        t("",                      false,        false,   false,   true,  false);
+        t("rust",                  false,        false,   false,   true,  false);
+        t("sh",                    false,        false,   false,   false, false);
+        t("ignore",                false,        false,   true,    true,  false);
+        t("should_fail",           true,         false,   false,   true,  false);
+        t("no_run",                false,        true,    false,   true,  false);
+        t("test_harness",          false,        false,   false,   true,  true);
+        t("{.no_run .example}",    false,        true,    false,   true,  false);
+        t("{.sh .should_fail}",    true,         false,   false,   true,  false);
+        t("{.example .rust}",      false,        false,   false,   true,  false);
+        t("{.test_harness .rust}", false,        false,   false,   true,  true);
     }
 
     #[test]
