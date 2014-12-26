@@ -500,13 +500,14 @@ impl Clean<TyParamBound> for ast::TyParamBound {
     }
 }
 
-impl Clean<Vec<TyParamBound>> for ty::ExistentialBounds {
+impl<'tcx> Clean<Vec<TyParamBound>> for ty::ExistentialBounds<'tcx> {
     fn clean(&self, cx: &DocContext) -> Vec<TyParamBound> {
         let mut vec = vec![];
         self.region_bound.clean(cx).map(|b| vec.push(RegionBound(b)));
         for bb in self.builtin_bounds.iter() {
             vec.push(bb.clean(cx));
         }
+        // TODO projection bounds
         vec
     }
 }
@@ -1441,18 +1442,11 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 }
             }
             ty::ty_struct(did, substs) |
-            ty::ty_enum(did, substs) |
-            ty::ty_trait(box ty::TyTrait {
-                principal: ty::Binder(ty::TraitRef { def_id: did, substs }),
-                .. }) =>
-            {
+            ty::ty_enum(did, substs) => {
                 let fqn = csearch::get_item_path(cx.tcx(), did);
-                let fqn: Vec<String> = fqn.into_iter().map(|i| {
-                    i.to_string()
-                }).collect();
+                let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
                 let kind = match self.sty {
                     ty::ty_struct(..) => TypeStruct,
-                    ty::ty_trait(..) => TypeTrait,
                     _ => TypeEnum,
                 };
                 let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
@@ -1464,11 +1458,24 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     did: did,
                 }
             }
+            ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
+                let did = principal.def_id();
+                let fqn = csearch::get_item_path(cx.tcx(), did);
+                let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
+                let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
+                                         Some(did), principal.substs());
+                cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, TypeTrait));
+                ResolvedPath {
+                    path: path,
+                    typarams: Some(bounds.clean(cx)),
+                    did: did,
+                }
+            }
             ty::ty_tup(ref t) => Tuple(t.clean(cx)),
 
             ty::ty_projection(ref data) => {
                 let trait_ref = match data.trait_ref.clean(cx) {
-                    TyParamBound::TraitBound(t) => t,
+                    TyParamBound::TraitBound(t) => t.trait_,
                     TyParamBound::RegionBound(_) => panic!("cleaning a trait got a region??"),
                 };
                 Type::QPath {

@@ -121,8 +121,8 @@ pub trait TypeFolder<'tcx> {
         super_fold_trait_store(self, s)
     }
 
-    fn fold_existential_bounds(&mut self, s: ty::ExistentialBounds)
-                               -> ty::ExistentialBounds {
+    fn fold_existential_bounds(&mut self, s: &ty::ExistentialBounds<'tcx>)
+                               -> ty::ExistentialBounds<'tcx> {
         super_fold_existential_bounds(self, s)
     }
 
@@ -349,9 +349,9 @@ impl<'tcx> TypeFoldable<'tcx> for ty::BuiltinBounds {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialBounds {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::ExistentialBounds {
-        folder.fold_existential_bounds(*self)
+impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialBounds<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::ExistentialBounds<'tcx> {
+        folder.fold_existential_bounds(self)
     }
 }
 
@@ -449,7 +449,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::UnsizeKind<'tcx> {
         match *self {
             ty::UnsizeLength(len) => ty::UnsizeLength(len),
             ty::UnsizeStruct(box ref k, n) => ty::UnsizeStruct(box k.fold_with(folder), n),
-            ty::UnsizeVtable(ty::TyTrait{ref principal, bounds}, self_ty) => {
+            ty::UnsizeVtable(ty::TyTrait{ref principal, ref bounds}, self_ty) => {
                 ty::UnsizeVtable(
                     ty::TyTrait {
                         principal: principal.fold_with(folder),
@@ -565,9 +565,9 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             let substs = substs.fold_with(this);
             ty::ty_enum(tid, this.tcx().mk_substs(substs))
         }
-        ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
+        ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
             ty::ty_trait(box ty::TyTrait {
-                principal: (*principal).fold_with(this),
+                principal: principal.fold_with(this),
                 bounds: bounds.fold_with(this),
             })
         }
@@ -693,12 +693,15 @@ pub fn super_fold_trait_store<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
     }
 }
 
-pub fn super_fold_existential_bounds<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                                bounds: ty::ExistentialBounds)
-                                                                -> ty::ExistentialBounds {
+pub fn super_fold_existential_bounds<'tcx, T: TypeFolder<'tcx>>(
+    this: &mut T,
+    bounds: &ty::ExistentialBounds<'tcx>)
+    -> ty::ExistentialBounds<'tcx>
+{
     ty::ExistentialBounds {
         region_bound: bounds.region_bound.fold_with(this),
         builtin_bounds: bounds.builtin_bounds,
+        projection_bounds: bounds.projection_bounds.fold_with(this),
     }
 }
 

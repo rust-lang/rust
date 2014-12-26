@@ -200,9 +200,9 @@ pub fn parse_bounds_data<'tcx>(data: &[u8], crate_num: ast::CrateNum,
     parse_bounds(&mut st, conv)
 }
 
-pub fn parse_existential_bounds_data(data: &[u8], crate_num: ast::CrateNum,
-                                     pos: uint, tcx: &ty::ctxt, conv: conv_did)
-                                     -> ty::ExistentialBounds {
+pub fn parse_existential_bounds_data<'tcx>(data: &[u8], crate_num: ast::CrateNum,
+                                           pos: uint, tcx: &ty::ctxt<'tcx>, conv: conv_did)
+                                           -> ty::ExistentialBounds<'tcx> {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_existential_bounds(&mut st, conv)
 }
@@ -744,10 +744,18 @@ fn parse_type_param_def<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
     }
 }
 
-fn parse_existential_bounds(st: &mut PState, conv: conv_did) -> ty::ExistentialBounds {
-    let r = parse_region(st, |x,y| conv(x,y));
-    let bb = parse_builtin_bounds(st, conv);
-    return ty::ExistentialBounds { region_bound: r, builtin_bounds: bb };
+fn parse_existential_bounds<'a,'tcx>(st: &mut PState<'a,'tcx>,
+                                     conv: conv_did)
+                                     -> ty::ExistentialBounds<'tcx>
+{
+    let ty::ParamBounds { trait_bounds, mut region_bounds, builtin_bounds, projection_bounds } =
+         parse_bounds(st, conv);
+    assert_eq!(region_bounds.len(), 1);
+    assert_eq!(trait_bounds.len(), 0);
+    let region_bound = region_bounds.pop().unwrap();
+    return ty::ExistentialBounds { region_bound: region_bound,
+                                   builtin_bounds: builtin_bounds,
+                                   projection_bounds: projection_bounds };
 }
 
 fn parse_builtin_bounds(st: &mut PState, _conv: conv_did) -> ty::BuiltinBounds {

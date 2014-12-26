@@ -739,8 +739,8 @@ impl<'tcx> Repr<'tcx> for ty::BuiltinBounds {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::ExistentialBounds {
-    fn repr(&self, tcx: &ctxt) -> String {
+impl<'tcx> Repr<'tcx> for ty::ExistentialBounds<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         self.user_string(tcx)
     }
 }
@@ -1142,8 +1142,8 @@ impl<'tcx> UserString<'tcx> for ty::ParamBounds<'tcx> {
     }
 }
 
-impl<'tcx> UserString<'tcx> for ty::ExistentialBounds {
-    fn user_string(&self, tcx: &ctxt) -> String {
+impl<'tcx> UserString<'tcx> for ty::ExistentialBounds<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         if self.builtin_bounds.contains(&ty::BoundSend) &&
             self.region_bound == ty::ReStatic
         { // Region bound is implied by builtin bounds:

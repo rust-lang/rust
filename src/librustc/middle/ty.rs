@@ -396,14 +396,14 @@ pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Opti
     fn type_of_autoref<'tcx>(cx: &ctxt<'tcx>, autoref: &AutoRef<'tcx>) -> Option<Ty<'tcx>> {
         match autoref {
             &AutoUnsize(ref k) => match k {
-                &UnsizeVtable(TyTrait { ref principal, bounds }, _) => {
-                    Some(mk_trait(cx, (*principal).clone(), bounds))
+                &UnsizeVtable(TyTrait { ref principal, ref bounds }, _) => {
+                    Some(mk_trait(cx, principal.clone(), bounds.clone()))
                 }
                 _ => None
             },
             &AutoUnsizeUniq(ref k) => match k {
-                &UnsizeVtable(TyTrait { ref principal, bounds }, _) => {
-                    Some(mk_uniq(cx, mk_trait(cx, (*principal).clone(), bounds)))
+                &UnsizeVtable(TyTrait { ref principal, ref bounds }, _) => {
+                    Some(mk_uniq(cx, mk_trait(cx, principal.clone(), bounds.clone())))
                 }
                 _ => None
             },
@@ -1040,7 +1040,7 @@ pub struct ClosureTy<'tcx> {
     pub unsafety: ast::Unsafety,
     pub onceness: ast::Onceness,
     pub store: TraitStore,
-    pub bounds: ExistentialBounds,
+    pub bounds: ExistentialBounds<'tcx>,
     pub sig: PolyFnSig<'tcx>,
     pub abi: abi::Abi,
 }
@@ -1376,7 +1376,7 @@ pub enum sty<'tcx> {
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TyTrait<'tcx> {
     pub principal: ty::PolyTraitRef<'tcx>,
-    pub bounds: ExistentialBounds
+    pub bounds: ExistentialBounds<'tcx>,
 }
 
 impl<'tcx> TyTrait<'tcx> {
@@ -1510,7 +1510,9 @@ pub enum type_err<'tcx> {
     terr_builtin_bounds(expected_found<BuiltinBounds>),
     terr_variadic_mismatch(expected_found<bool>),
     terr_cyclic_ty,
-    terr_convergence_mismatch(expected_found<bool>)
+    terr_convergence_mismatch(expected_found<bool>),
+    terr_projection_name_mismatched(expected_found<ast::Name>),
+    terr_projection_bounds_length(expected_found<uint>),
 }
 
 /// Bounds suitable for a named type parameter like `A` in `fn foo<A>`
@@ -1528,10 +1530,11 @@ pub struct ParamBounds<'tcx> {
 /// major difference between this case and `ParamBounds` is that
 /// general purpose trait bounds are omitted and there must be
 /// *exactly one* region.
-#[deriving(Copy, PartialEq, Eq, Hash, Clone, Show)]
-pub struct ExistentialBounds {
+#[deriving(PartialEq, Eq, Hash, Clone, Show)]
+pub struct ExistentialBounds<'tcx> {
     pub region_bound: ty::Region,
-    pub builtin_bounds: BuiltinBounds
+    pub builtin_bounds: BuiltinBounds,
+    pub projection_bounds: Vec<PolyProjectionPredicate<'tcx>>,
 }
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
@@ -1559,9 +1562,10 @@ pub fn all_builtin_bounds() -> BuiltinBounds {
 }
 
 /// An existential bound that does not implement any traits.
-pub fn region_existential_bound(r: ty::Region) -> ExistentialBounds {
+pub fn region_existential_bound<'tcx>(r: ty::Region) -> ExistentialBounds<'tcx> {
     ty::ExistentialBounds { region_bound: r,
-                            builtin_bounds: empty_builtin_bounds() }
+                            builtin_bounds: empty_builtin_bounds(),
+                            projection_bounds: Vec::new() }
 }
 
 impl CLike for BuiltinBound {
@@ -1820,10 +1824,22 @@ pub struct ProjectionPredicate<'tcx> {
 
 pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
+impl<'tcx> PolyProjectionPredicate<'tcx> {
+    pub fn sort_key(&self) -> (ast::DefId, ast::Name) {
+        self.0.projection_ty.sort_key()
+    }
+}
+
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ProjectionTy<'tcx> {
     pub trait_ref: Rc<ty::TraitRef<'tcx>>,
     pub item_name: ast::Name,
+}
+
+impl<'tcx> ProjectionTy<'tcx> {
+    pub fn sort_key(&self) -> (ast::DefId, ast::Name) {
+        (self.trait_ref.def_id, self.item_name)
+    }
 }
 
 pub trait ToPolyTraitRef<'tcx> {
@@ -2675,13 +2691,26 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
 
 pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
                       principal: ty::PolyTraitRef<'tcx>,
-                      bounds: ExistentialBounds)
-                      -> Ty<'tcx> {
+                      bounds: ExistentialBounds<'tcx>)
+                      -> Ty<'tcx>
+{
+    assert!(bound_list_is_sorted(bounds.projection_bounds.as_slice()));
+
     let inner = box TyTrait {
         principal: principal,
         bounds: bounds
     };
     mk_t(cx, ty_trait(inner))
+}
+
+fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
+    bounds.len() == 0 ||
+        bounds[1..].iter().enumerate().all(
+            |(index, bound)| bounds[index].sort_key() <= bound.sort_key())
+}
+
+pub fn sort_bounds_list(bounds: &mut [ty::PolyProjectionPredicate]) {
+    bounds.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()))
 }
 
 pub fn mk_projection<'tcx>(cx: &ctxt<'tcx>,
@@ -3226,7 +3255,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 }
             }
 
-            ty_trait(box TyTrait { bounds, .. }) => {
+            ty_trait(box TyTrait { ref bounds, .. }) => {
                 object_contents(bounds) | TC::ReachesFfiUnsafe | TC::Nonsized
             }
 
@@ -3391,7 +3420,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
     fn closure_contents(cty: &ClosureTy) -> TypeContents {
         // Closure contents are just like trait contents, but with potentially
         // even more stuff.
-        let st = object_contents(cty.bounds);
+        let st = object_contents(&cty.bounds);
 
         let st = match cty.store {
             UniqTraitStore => {
@@ -3405,7 +3434,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         st
     }
 
-    fn object_contents(bounds: ExistentialBounds) -> TypeContents {
+    fn object_contents(bounds: &ExistentialBounds) -> TypeContents {
         // These are the type contents of the (opaque) interior. We
         // make no assumptions (other than that it cannot have an
         // in-scope type parameter within, which makes no sense).
@@ -4205,6 +4234,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                             let bounds = ty::ExistentialBounds {
                                 region_bound: ReStatic,
                                 builtin_bounds: all_builtin_bounds(),
+                                projection_bounds: vec!(),
                             };
 
                             ty::mk_closure(
@@ -4339,8 +4369,8 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
                                   format!("UnsizeStruct with bad sty: {}",
                                           ty_to_string(cx, ty))[])
         },
-        &UnsizeVtable(TyTrait { ref principal, bounds }, _) => {
-            mk_trait(cx, (*principal).clone(), bounds)
+        &UnsizeVtable(TyTrait { ref principal, ref bounds }, _) => {
+            mk_trait(cx, principal.clone(), bounds.clone())
         }
     }
 }
@@ -4759,6 +4789,16 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
             format!("expected {} fn, found {} function",
                     if values.expected { "converging" } else { "diverging" },
                     if values.found { "converging" } else { "diverging" })
+        }
+        terr_projection_name_mismatched(ref values) => {
+            format!("expected {}, found {}",
+                    token::get_name(values.expected),
+                    token::get_name(values.found))
+        }
+        terr_projection_bounds_length(ref values) => {
+            format!("expected {} associated type bindings, found {}",
+                    values.expected,
+                    values.found)
         }
     }
 }
