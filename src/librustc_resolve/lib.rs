@@ -3934,6 +3934,30 @@ impl<'a> Resolver<'a> {
         None
     }
 
+    fn search_label(&self, name: Name) -> Option<DefLike> {
+        for rib in self.label_ribs.iter().rev() {
+            match rib.kind {
+                NormalRibKind => {
+                    // Continue
+                }
+                _ => {
+                    // Do not resolve labels across function boundary
+                    return None
+                }
+            }
+            let result = rib.bindings.get(&name).cloned();
+            match result {
+                Some(_) => {
+                    return result
+                }
+                None => {
+                    // Continue
+                }
+            }
+        }
+        None
+    }
+
     fn resolve_crate(&mut self, krate: &ast::Crate) {
         debug!("(resolving crate) starting");
 
@@ -5752,8 +5776,7 @@ impl<'a> Resolver<'a> {
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let renamed = mtwt::resolve(label);
-                match self.search_ribs(self.label_ribs[],
-                                       renamed, expr.span) {
+                match self.search_label(renamed) {
                     None => {
                         self.resolve_error(
                             expr.span,
