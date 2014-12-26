@@ -8,9 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
-    let bar = box 3;
-    let _g = || {
-        let _h = move |:| -> int { *bar }; //~ ERROR cannot move out of captured outer variable
+fn foo(t: &mut int){
+    println!("{}", t);
+}
+
+fn main() {
+    let test = 10;
+
+    let h = move || {  //~error boxed closures can't capture by value
+        let mut r = &mut test.clone();
+        foo(r);
     };
+
+    h();
 }

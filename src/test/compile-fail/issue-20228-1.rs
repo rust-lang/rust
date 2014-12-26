@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
-    let bar = box 3;
-    let _g = || {
-        let _h = move |:| -> int { *bar }; //~ ERROR cannot move out of captured outer variable
-    };
+struct S;
+
+impl S {
+    fn foo(&self) {
+        let _ = move || { self };  //~error boxed closures can't capture by value
+    }
+}
+
+fn main() {
 }

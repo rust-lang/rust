@@ -19,11 +19,13 @@ use middle::ty::{mod, Ty};
 use rscope::RegionScope;
 use syntax::abi;
 use syntax::ast;
+use syntax::ast::CaptureClause::*;
 use syntax::ast_util;
 use util::ppaux::Repr;
 
 pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    expr: &ast::Expr,
+                                   capture: ast::CaptureClause,
                                    opt_kind: Option<ast::UnboxedClosureKind>,
                                    decl: &ast::FnDecl,
                                    body: &ast::Block,
@@ -48,12 +50,24 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                                                    fcx.infcx(),
                                                                    expr.span,
                                                                    &None);
+
                     check_boxed_closure(fcx,
                                         expr,
                                         ty::RegionTraitStore(region, ast::MutMutable),
                                         decl,
                                         body,
                                         expected);
+
+                    match capture {
+                        CaptureByValue => {
+                            fcx.ccx.tcx.sess.span_err(
+                                expr.span,
+                                "boxed closures can't capture by value, \
+                                if you want to use an unboxed closure, \
+                                explicitly annotate its kind: e.g. `move |:|`");
+                        },
+                        CaptureByRef => {}
+                    }
                 }
                 Some((sig, kind)) => {
                     check_unboxed_closure(fcx, expr, kind, decl, body, Some(sig));
