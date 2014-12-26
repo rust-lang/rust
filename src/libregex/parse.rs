@@ -320,9 +320,10 @@ impl<'a> Parser<'a> {
     }
 
     fn push_repeater(&mut self, c: char) -> Result<(), Error> {
-        if self.stack.len() == 0 {
-            return self.err(
-                "A repeat operator must be preceded by a valid expression.")
+        match self.stack.last() {
+            Some(&Expr(..)) => (),
+            // self.stack is empty, or the top item is not an Expr
+            _ => return self.err("A repeat operator must be preceded by a valid expression."),
         }
         let rep: Repeater = match c {
             '?' => ZeroOne, '*' => ZeroMore, '+' => OneMore,
