@@ -17,6 +17,7 @@
 
 extern crate collections;
 
+use std::ascii::{AsciiExt, OwnedAsciiExt};
 use std::collections::HashMap;
 use std::mem::replace;
 use std::num::Float;
@@ -64,10 +65,8 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
    let mut buffer = String::new();
    for &(ref k, v) in pairs_sorted.iter() {
        buffer.push_str(format!("{} {:0.3}\n",
-                               k.as_slice()
-                               .to_ascii()
-                               .to_uppercase()
-                               .into_string(), v).as_slice());
+                               k.to_ascii_uppercase(),
+                               v).as_slice());
    }
 
    return buffer
@@ -75,7 +74,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
-   let key = key.into_ascii().as_slice().to_lowercase().into_string();
+   let key = key.into_ascii_lowercase();
    match mm.get(key.as_bytes()) {
       option::Option::None      => { return 0u; }
       option::Option::Some(&num) => { return num; }

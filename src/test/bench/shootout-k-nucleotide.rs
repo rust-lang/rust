@@ -42,6 +42,7 @@
 
 #![feature(slicing_syntax)]
 
+use std::ascii::OwnedAsciiExt;
 use std::string::String;
 use std::slice;
 use std::sync::{Arc, Future};
@@ -286,10 +287,7 @@ fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
     {
         res.push_all(l.as_slice().trim().as_bytes());
     }
-    for b in res.iter_mut() {
-        *b = b.to_ascii().to_uppercase().to_byte();
-    }
-    res
+    res.into_ascii_uppercase()
 }
 
 fn main() {
