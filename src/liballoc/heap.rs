@@ -176,7 +176,9 @@ mod imp {
     pub use self::external::{usable_size, stats_print};
 }
 
-#[cfg(all(not(feature = "external_funcs"), not(feature = "external_crate"), jemalloc))]
+#[cfg(all(not(feature = "external_funcs"),
+          not(feature = "external_crate"),
+          jemalloc))]
 mod imp {
     use core::option::Option;
     use core::option::Option::None;
@@ -253,7 +255,10 @@ mod imp {
     }
 }
 
-#[cfg(all(not(feature = "external_funcs"), not(feature = "external_crate"), not(jemalloc), unix))]
+#[cfg(all(not(feature = "external_funcs"),
+          not(feature = "external_crate"),
+          not(jemalloc),
+          unix))]
 mod imp {
     use core::cmp;
     use core::ptr;
@@ -314,7 +319,10 @@ mod imp {
     pub fn stats_print() {}
 }
 
-#[cfg(all(not(feature = "external_funcs"), not(feature = "external_crate"), not(jemalloc), windows))]
+#[cfg(all(not(feature = "external_funcs"),
+          not(feature = "external_crate"),
+          not(jemalloc),
+          windows))]
 mod imp {
     use libc::{c_void, size_t};
     use libc;
