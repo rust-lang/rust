@@ -245,6 +245,7 @@
 		<context attribute="CharEscape" lineEndContext="#pop" name="CharEscape">
 			<AnyChar String="nrt\&apos;&quot;" attribute="CharEscape" context="#pop"/>
 			<RegExpr String="x[0-9a-fA-F]{2}" attribute="CharEscape" context="#pop"/>
+			<RegExpr String="u\{[0-9a-fA-F]{1,6}\}" attribute="CharEscape" context="#pop"/>
 			<RegExpr String="u[0-9a-fA-F]{4}" attribute="CharEscape" context="#pop"/>
 			<RegExpr String="U[0-9a-fA-F]{8}" attribute="CharEscape" context="#pop"/>
 			<RegExpr String="." attribute="Error" context="#pop"/>
@@ -255,7 +256,7 @@
 			<Detect2Chars char="*" char1="/" attribute="Comment" context="#pop" endRegion="Comment"/>
 		</context>
 	</contexts>
-    <itemDatas>
+	<itemDatas>
 		<itemData name="Normal Text"  defStyleNum="dsNormal"/>
 		<itemData name="Keyword"      defStyleNum="dsKeyword" color="#770088" bold="1"/>
 		<itemData name="Self"         defStyleNum="dsKeyword" color="#FF0000" bold="1"/>
