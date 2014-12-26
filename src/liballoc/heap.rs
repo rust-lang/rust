@@ -142,14 +142,13 @@ mod imp {
     }
 
     #[inline]
-    pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint,
-                                     align: uint) -> uint {
-        rust_reallocate_inplace(ptr, old_size, size, align)
+    pub unsafe fn deallocate(ptr: *mut u8, old_size: uint, align: uint) {
+        rust_deallocate(ptr, old_size, align)
     }
 
     #[inline]
-    pub unsafe fn deallocate(ptr: *mut u8, old_size: uint, align: uint) {
-        rust_deallocate(ptr, old_size, align)
+    pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
+        rust_reallocate(ptr, old_size, size, align)
     }
 
     #[inline]
