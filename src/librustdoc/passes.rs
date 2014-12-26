@@ -149,7 +149,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 }
             }
 
-            clean::ViewItemItem(..) => {
+            clean::ExternCrateItem(..) | clean::ImportItem(_) => {
                 if i.visibility != Some(ast::Public) {
                     return None
                 }

@@ -21,7 +21,7 @@ use syntax::ast::Public;
 
 use clean::{Crate, Item, ModuleItem, Module, EnumItem, Enum};
 use clean::{ImplItem, Impl, Trait, TraitItem, TraitMethod, ProvidedMethod, RequiredMethod};
-use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem, Stability};
+use clean::{TypeTraitItem, ExternCrateItem, ImportItem, PrimitiveItem, Stability};
 
 use html::render::cache;
 
@@ -199,7 +199,8 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
             }))
         }
         // no stability information for the following items:
-        ViewItemItem(_) | PrimitiveItem(_) => (Counts::zero(), None),
+        ExternCrateItem(..) | ImportItem(_) |
+        PrimitiveItem(_) => (Counts::zero(), None),
         _ => (item_counts, None)
     }
 }
