@@ -94,7 +94,7 @@ allowed tokens for the given NT's fragment specifier, and is defined below.
         1. If `T` has the form `$(...)+` or `$(...)*`, run the algorithm on
            the contents with `F` set to `EOF`. If it accepts, continue, else,
            reject.
-        2. If `T` has the form `$(...)U+` or $(...)U*` for some token `U`, run
+        2. If `T` has the form `$(...)U+` or `$(...)U*` for some token `U`, run
            the algorithm on the contents with `F` set to `U`. If it accepts,
            continue, else, reject.
 
