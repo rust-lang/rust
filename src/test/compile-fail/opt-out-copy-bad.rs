@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![feature(opt_out_copy)]
+//~^ WARNING feature is deprecated
+//~| WARNING feature is deprecated
 
 // Test that when using the `opt-out-copy` feature we still consider
 // destructors to be non-movable

@@ -81,7 +81,7 @@
 //! use serialize::json;
 //!
 //! // Automatically generate `Decodable` and `Encodable` trait implementations
-//! #[deriving(Decodable, Encodable)]
+//! #[deriving(RustcDecodable, RustcEncodable)]
 //! pub struct TestStruct  {
 //!     data_int: u8,
 //!     data_str: String,

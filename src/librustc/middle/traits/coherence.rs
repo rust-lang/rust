@@ -14,10 +14,10 @@ use super::SelectionContext;
 use super::{Obligation, ObligationCause};
 use super::util;
 
-use middle::subst;
 use middle::subst::Subst;
 use middle::ty::{mod, Ty};
 use middle::infer::InferCtxt;
+use std::collections::HashSet;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
@@ -52,9 +52,21 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
     selcx.evaluate_impl(impl2_def_id, &obligation)
 }
 
-pub fn impl_is_local(tcx: &ty::ctxt,
-                     impl_def_id: ast::DefId)
-                     -> bool
+#[allow(missing_copy_implementations)]
+pub enum OrphanCheckErr {
+    NoLocalInputType,
+    UncoveredTypeParameter(ty::ParamTy),
+}
+
+/// Checks the coherence orphan rules. `impl_def_id` should be the
+/// def-id of a trait impl. To pass, either the trait must be local, or else
+/// two conditions must be satisfied:
+///
+/// 1. At least one of the input types must involve a local type.
+/// 2. All type parameters must be covered by a local type.
+pub fn orphan_check(tcx: &ty::ctxt,
+                    impl_def_id: ast::DefId)
+                    -> Result<(), OrphanCheckErr>
 {
     debug!("impl_is_local({})", impl_def_id.repr(tcx));
 
@@ -63,20 +75,40 @@ pub fn impl_is_local(tcx: &ty::ctxt,
     let trait_ref = ty::impl_trait_ref(tcx, impl_def_id).unwrap();
     debug!("trait_ref={}", trait_ref.repr(tcx));
 
-    // If the trait is local to the crate, ok.
+    // If the *trait* is local to the crate, ok.
     if trait_ref.def_id.krate == ast::LOCAL_CRATE {
         debug!("trait {} is local to current crate",
                trait_ref.def_id.repr(tcx));
-        return true;
+        return Ok(());
     }
 
-    // Otherwise, at least one of the input types must be local to the
-    // crate.
-    trait_ref.input_types().iter().any(|&t| ty_is_local(tcx, t))
+    // Check condition 1: at least one type must be local.
+    if !trait_ref.input_types().iter().any(|&t| ty_reaches_local(tcx, t)) {
+        return Err(OrphanCheckErr::NoLocalInputType);
+    }
+
+    // Check condition 2: type parameters must be "covered" by a local type.
+    let covered_params: HashSet<_> =
+        trait_ref.input_types().iter()
+                               .flat_map(|&t| type_parameters_covered_by_ty(tcx, t).into_iter())
+                               .collect();
+    let all_params: HashSet<_> =
+        trait_ref.input_types().iter()
+                               .flat_map(|&t| type_parameters_reachable_from_ty(t).into_iter())
+                               .collect();
+    for &param in all_params.difference(&covered_params) {
+        return Err(OrphanCheckErr::UncoveredTypeParameter(param));
+    }
+
+    return Ok(());
 }
 
-pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    debug!("ty_is_local({})", ty.repr(tcx));
+fn ty_reaches_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.walk().any(|t| ty_is_local_constructor(tcx, t))
+}
+
+fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    debug!("ty_is_local_constructor({})", ty.repr(tcx));
 
     match ty.sty {
         ty::ty_bool |
@@ -84,78 +116,33 @@ pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::ty_int(..) |
         ty::ty_uint(..) |
         ty::ty_float(..) |
-        ty::ty_str(..) => {
-            false
-        }
-
-        ty::ty_unboxed_closure(..) => {
-            // This routine is invoked on types specified by users as
-            // part of an impl and hence an unboxed closure type
-            // cannot appear.
-            tcx.sess.bug("ty_is_local applied to unboxed closure type")
-        }
-
+        ty::ty_str(..) |
         ty::ty_bare_fn(..) |
-        ty::ty_closure(..) => {
+        ty::ty_closure(..) |
+        ty::ty_vec(..) |
+        ty::ty_ptr(..) |
+        ty::ty_rptr(..) |
+        ty::ty_tup(..) |
+        ty::ty_param(..) |
+        ty::ty_projection(..) => {
             false
         }
 
-        ty::ty_uniq(t) => {
+        ty::ty_enum(def_id, _) |
+        ty::ty_struct(def_id, _) => {
+            def_id.krate == ast::LOCAL_CRATE
+        }
+
+        ty::ty_uniq(_) => { // treat ~T like Box<T>
             let krate = tcx.lang_items.owned_box().map(|d| d.krate);
-            krate == Some(ast::LOCAL_CRATE) || ty_is_local(tcx, t)
-        }
-
-        ty::ty_vec(t, _) |
-        ty::ty_ptr(ty::mt { ty: t, .. }) |
-        ty::ty_rptr(_, ty::mt { ty: t, .. }) => {
-            ty_is_local(tcx, t)
-        }
-
-        ty::ty_tup(ref ts) => {
-            ts.iter().any(|&t| ty_is_local(tcx, t))
-        }
-
-        ty::ty_enum(def_id, ref substs) |
-        ty::ty_struct(def_id, ref substs) => {
-            def_id.krate == ast::LOCAL_CRATE || {
-                let variances = ty::item_variances(tcx, def_id);
-                subst::ParamSpace::all().iter().any(|&space| {
-                    substs.types.get_slice(space).iter().enumerate().any(
-                        |(i, &t)| {
-                            match *variances.types.get(space, i) {
-                                ty::Bivariant => {
-                                    // If Foo<T> is bivariant with respect to
-                                    // T, then it doesn't matter whether T is
-                                    // local or not, because `Foo<U>` for any
-                                    // U will be a subtype of T.
-                                    false
-                                }
-                                ty::Contravariant |
-                                ty::Covariant |
-                                ty::Invariant => {
-                                    ty_is_local(tcx, t)
-                                }
-                            }
-                        })
-                })
-            }
+            krate == Some(ast::LOCAL_CRATE)
         }
 
         ty::ty_trait(ref tt) => {
             tt.principal_def_id().krate == ast::LOCAL_CRATE
         }
 
-        // Type parameters may be bound to types that are not local to
-        // the crate.
-        ty::ty_param(..) => {
-            false
-        }
-
-        // Associated types could be anything, I guess.
-        ty::ty_projection(..) => {
-            false
-        }
-
+        ty::ty_unboxed_closure(..) |
         ty::ty_infer(..) |
         ty::ty_open(..) |
         ty::ty_err => {
@@ -165,3 +152,27 @@ pub fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         }
     }
 }
+
+fn type_parameters_covered_by_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                 ty: Ty<'tcx>)
+                                 -> HashSet<ty::ParamTy>
+{
+    if ty_is_local_constructor(tcx, ty) {
+        type_parameters_reachable_from_ty(ty)
+    } else {
+        ty.walk_children().flat_map(|t| type_parameters_covered_by_ty(tcx, t).into_iter()).collect()
+    }
+}
+
+/// All type parameters reachable from `ty`
+fn type_parameters_reachable_from_ty<'tcx>(ty: Ty<'tcx>) -> HashSet<ty::ParamTy> {
+    ty.walk()
+        .filter_map(|t| {
+            match t.sty {
+                ty::ty_param(ref param_ty) => Some(param_ty.clone()),
+                _ => None,
+            }
+        })
+        .collect()
+}
+

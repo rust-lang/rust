@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// If `Index` used an associated type for its output, this test would
+// work more smoothly.
+#![feature(old_orphan_check)]
+
 struct Mat<T> { data: Vec<T>, cols: uint, }
 
 impl<T> Mat<T> {
