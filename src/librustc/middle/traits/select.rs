@@ -1100,7 +1100,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         } else {
                             // Recursively check all supertraits to find out if any further
                             // bounds are required and thus we must fulfill.
-                            let tmp_tr = data.principal_trait_ref_with_self_ty(ty::mk_err());
+                            let tmp_tr = data.principal_trait_ref_with_self_ty(self.tcx(),
+                                                                               ty::mk_err());
                             for tr in util::supertraits(self.tcx(), tmp_tr) {
                                 let td = ty::lookup_trait_def(self.tcx(), tr.def_id());
 

@@ -1211,8 +1211,6 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
         parameterized(tcx, path_str.as_slice(), self.substs,
                       &trait_def.generics, self.def_id)
-        let did = trait_def.trait_ref.def_id;
-        parameterized(tcx, base.as_slice(), trait_ref.substs, &trait_def.generics, did)
     }
 }
 

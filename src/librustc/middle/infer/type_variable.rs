@@ -15,7 +15,7 @@ use self::UndoEntry::*;
 use middle::ty::{mod, Ty};
 use std::cmp::min;
 use std::mem;
-use std::uint;
+use std::u32;
 use util::snapshot_vec as sv;
 
 pub struct TypeVariableTable<'tcx> {
@@ -161,7 +161,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
          * unified `V1` with `T1`, this function would return `{T0}`.
          */
 
-        let mut new_elem_threshold = uint::MAX;
+        let mut new_elem_threshold = u32::MAX;
         let mut escaping_types = Vec::new();
         let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
         debug!("actions_since_snapshot.len() = {}", actions_since_snapshot.len());
@@ -173,7 +173,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     // always be the first one we see). Note that this
                     // action must precede those variables being
                     // specified.
-                    new_elem_threshold = min(new_elem_threshold, index);
+                    new_elem_threshold = min(new_elem_threshold, index as u32);
                     debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
                 }
 

@@ -223,7 +223,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     // been ruled out when we deemed the trait to be
                     // "object safe".
                     let original_poly_trait_ref =
-                        data.principal_trait_ref_with_self_ty(object_ty);
+                        data.principal_trait_ref_with_self_ty(this.tcx(), object_ty);
                     let upcast_poly_trait_ref =
                         this.upcast(original_poly_trait_ref.clone(), trait_def_id);
                     let upcast_trait_ref =

@@ -499,7 +499,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn coerce_from_fn_item(&self,
                            a: Ty<'tcx>,
                            fn_def_id_a: ast::DefId,
-                           fn_ty_a: &ty::BareFnTy<'tcx>,
+                           fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
                            b: Ty<'tcx>)
                            -> CoerceResult<'tcx> {
         /*!
@@ -528,7 +528,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     Ok(Some(adj))
                 }
                 ty::ty_bare_fn(None, _) => {
-                    let a_fn_pointer = ty::mk_bare_fn(self.tcx(), None, (*fn_ty_a).clone());
+                    let a_fn_pointer = ty::mk_bare_fn(self.tcx(), None, fn_ty_a);
                     try!(self.subtype(a_fn_pointer, b));
                     Ok(Some(ty::AdjustReifyFnPointer(fn_def_id_a)))
                 }

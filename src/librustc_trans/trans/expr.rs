@@ -1085,7 +1085,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              None,
                              expr.span,
                              expr.id,
-                             ty::mk_struct(tcx, did, substs),
+                             ty::mk_struct(tcx, did, tcx.mk_substs(substs)),
                              dest)
             } else {
                 tcx.sess.span_bug(expr.span,

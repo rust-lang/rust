@@ -219,7 +219,7 @@ pub struct RegionVarBindings<'a, 'tcx: 'a> {
 #[allow(missing_copy_implementations)]
 pub struct RegionSnapshot {
     length: uint,
-    skolemization_count: uint,
+    skolemization_count: u32,
 }
 
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {

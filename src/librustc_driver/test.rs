@@ -256,7 +256,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         let input_args = input_tys.iter().map(|ty| *ty).collect();
         ty::mk_bare_fn(self.infcx.tcx,
                        None,
-                       ty::BareFnTy {
+                       self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
                            unsafety: ast::Unsafety::Normal,
                            abi: abi::Rust,
                            sig: ty::Binder(ty::FnSig {
@@ -264,7 +264,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                                output: ty::FnConverging(output_ty),
                                variadic: false
                            })
-                       })
+                       }))
     }
 
     pub fn t_nil(&self) -> Ty<'tcx> {
