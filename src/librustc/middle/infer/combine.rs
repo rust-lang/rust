@@ -596,8 +596,8 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
 
       (&ty::ty_projection(ref a_data), &ty::ty_projection(ref b_data)) => {
           if a_data.item_name == b_data.item_name {
-              let trait_ref = try!(this.trait_refs(&a_data.trait_ref, &b_data.trait_ref));
-              Ok(ty::mk_projection(tcx, trait_ref, a_data.item_name))
+              let trait_ref = try!(this.trait_refs(&*a_data.trait_ref, &*b_data.trait_ref));
+              Ok(ty::mk_projection(tcx, Rc::new(trait_ref), a_data.item_name))
           } else {
               Err(ty::terr_sorts(expected_found(this, a, b)))
           }

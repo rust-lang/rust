@@ -436,15 +436,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ProjectionTy<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::TyProjection<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::TyProjection<'tcx> {
-        ty::TyProjection {
-            trait_ref: self.trait_ref.fold_with(folder),
-            item_name: self.item_name,
-        }
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for ty::GenericBounds<'tcx> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::GenericBounds<'tcx> {
         ty::GenericBounds {

@@ -177,7 +177,7 @@ impl<'a, 'tcx> AstConv<'tcx> for CrateCtxt<'a, 'tcx> {
                     item_name: ast::Name)
                     -> Ty<'tcx>
     {
-        ty::mk_projection(self.tcx, (*trait_ref).clone(), item_name)
+        ty::mk_projection(self.tcx, trait_ref, item_name)
     }
 }
 
