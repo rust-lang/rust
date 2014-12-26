@@ -180,7 +180,7 @@ pub fn parse_bare_fn_ty_data<'tcx>(data: &[u8], crate_num: ast::CrateNum, pos: u
 
 pub fn parse_trait_ref_data<'tcx>(data: &[u8], crate_num: ast::CrateNum, pos: uint,
                                   tcx: &ty::ctxt<'tcx>, conv: conv_did)
-                                  -> ty::TraitRef<'tcx> {
+                                  -> Rc<ty::TraitRef<'tcx>> {
     debug!("parse_trait_ref_data {}", data_log_string(data, pos));
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_trait_ref(&mut st, conv)
@@ -377,10 +377,10 @@ fn parse_str(st: &mut PState, term: char) -> String {
 }
 
 fn parse_trait_ref<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
-                             -> ty::TraitRef<'tcx> {
+                             -> Rc<ty::TraitRef<'tcx>> {
     let def = parse_def(st, NominalType, |x,y| conv(x,y));
-    let substs = parse_substs(st, |x,y| conv(x,y));
-    ty::TraitRef {def_id: def, substs: st.tcx.mk_substs(substs)}
+    let substs = st.tcx.mk_substs(parse_substs(st, |x,y| conv(x,y)));
+    Rc::new(ty::TraitRef {def_id: def, substs: substs})
 }
 
 fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
@@ -689,7 +689,7 @@ pub fn parse_predicate<'a,'tcx>(st: &mut PState<'a, 'tcx>,
                                 -> ty::Predicate<'tcx>
 {
     match next(st) {
-        't' => ty::Binder(Rc::new(parse_trait_ref(st, conv))).as_predicate(),
+        't' => ty::Binder(parse_trait_ref(st, conv)).as_predicate(),
         'e' => ty::Binder(ty::EquatePredicate(parse_ty(st, |x,y| conv(x,y)),
                                               parse_ty(st, |x,y| conv(x,y)))).as_predicate(),
         'r' => ty::Binder(ty::OutlivesPredicate(parse_region(st, |x,y| conv(x,y)),
@@ -708,7 +708,7 @@ fn parse_projection_predicate<'a,'tcx>(
 {
     ty::ProjectionPredicate {
         projection_ty: ty::ProjectionTy {
-            trait_ref: Rc::new(parse_trait_ref(st, |x,y| conv(x,y))),
+            trait_ref: parse_trait_ref(st, |x,y| conv(x,y)),
             item_name: token::str_to_ident(parse_str(st, '|').as_slice()).name,
         },
         ty: parse_ty(st, |x,y| conv(x,y)),
@@ -795,7 +795,7 @@ fn parse_bounds<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did)
             }
             'I' => {
                 param_bounds.trait_bounds.push(
-                    ty::Binder(Rc::new(parse_trait_ref(st, |x,y| conv(x,y)))));
+                    ty::Binder(parse_trait_ref(st, |x,y| conv(x,y))));
             }
             'P' => {
                 param_bounds.projection_bounds.push(

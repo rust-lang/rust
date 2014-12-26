@@ -422,8 +422,8 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                         // somewhat constrained, and we cannot verify
                         // that constraint, so yield an error.
                         let ty_projection = ty::mk_projection(tcx,
-                                                             (*trait_ref.0).clone(),
-                                                             data.0.projection_ty.item_name);
+                                                              trait_ref.0.clone(),
+                                                              data.0.projection_ty.item_name);
 
                         debug!("process_predicate: falling back to projection {}",
                                ty_projection.repr(selcx.tcx()));

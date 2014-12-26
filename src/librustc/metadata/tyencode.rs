@@ -91,7 +91,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
         ty::ty_trait(box ty::TyTrait { ref principal,
                                        ref bounds }) => {
             mywrite!(w, "x[");
-            enc_trait_ref(w, cx, &principal.0);
+            enc_trait_ref(w, cx, &*principal.0);
             enc_existential_bounds(w, cx, bounds);
             mywrite!(w, "]");
         }
@@ -151,7 +151,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
         }
         ty::ty_projection(ref data) => {
             mywrite!(w, "P[");
-            enc_trait_ref(w, cx, &data.trait_ref);
+            enc_trait_ref(w, cx, &*data.trait_ref);
             mywrite!(w, "{}]", token::get_name(data.item_name));
         }
         ty::ty_err => {

@@ -58,7 +58,7 @@ impl<'a,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'tcx> {
                         self.span,
                         self.body_id,
                         ObligationCauseCode::MiscObligation);
-                let trait_ref = Rc::new(data.trait_ref.clone());
+                let trait_ref = data.trait_ref.clone();
                 self.fulfillment_cx
                     .normalize_associated_type(self.infcx,
                                                trait_ref,
