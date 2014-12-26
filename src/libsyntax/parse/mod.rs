@@ -1109,25 +1109,25 @@ mod test {
 
     #[test] fn parse_use() {
         let use_s = "use foo::bar::baz;";
-        let vitem = string_to_item(use_s.to_string());
-        let vitem_s = item_to_string(&vitem);
+        let vitem = string_to_item(use_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], use_s);
 
         let use_s = "use foo::bar as baz;";
-        let vitem = string_to_item(use_s.to_string());
-        let vitem_s = item_to_string(&vitem);
+        let vitem = string_to_item(use_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], use_s);
     }
 
     #[test] fn parse_extern_crate() {
         let ex_s = "extern crate foo;";
-        let vitem = string_to_item(ex_s.to_string());
-        let vitem_s = item_to_string(&vitem);
+        let vitem = string_to_item(ex_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], ex_s);
 
         let ex_s = "extern crate \"foo\" as bar;";
-        let vitem = string_to_item(ex_s.to_string());
-        let vitem_s = item_to_string(&vitem);
+        let vitem = string_to_item(ex_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], ex_s);
     }
 
