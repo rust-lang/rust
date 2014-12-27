@@ -142,6 +142,7 @@ noparse!{fail_range_end_no_class, "[a-[:lower:]]"}
 noparse!{fail_range_end_no_begin, r"[a-\A]"}
 noparse!{fail_range_end_no_end, r"[a-\z]"}
 noparse!{fail_range_end_no_boundary, r"[a-\b]"}
+noparse!{fail_repeat_no_expr, r"-|+"}
 
 macro_rules! mat {
     ($name:ident, $re:expr, $text:expr, $($loc:tt)+) => (
