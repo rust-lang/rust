@@ -138,8 +138,8 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         krate.encode(&mut json).unwrap();
     }
 
-    if sess.opts.show_span.is_some() {
-        syntax::show_span::run(sess.diagnostic(), &krate);
+    if let Some(ref s) = sess.opts.show_span {
+        syntax::show_span::run(sess.diagnostic(), s.as_slice(), &krate);
     }
 
     krate
