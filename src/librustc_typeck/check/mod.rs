@@ -86,7 +86,7 @@ use check::_match::pat_ctxt;
 use middle::{const_eval, def};
 use middle::infer;
 use middle::lang_items::IteratorItem;
-use middle::mem_categorization::{mod, McResult};
+use middle::mem_categorization as mc;
 use middle::pat_util::{mod, pat_id_map};
 use middle::region::CodeExtent;
 use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
@@ -282,16 +282,31 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
     ccx: &'a CrateCtxt<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> mem_categorization::Typer<'tcx> for FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.ccx.tcx
     }
-    fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        Ok(self.node_ty(id))
+    fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
+        let ty = self.node_ty(id);
+        self.infcx().resolve_type_vars_if_possible(&ty)
+    }
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
+        let ty = self.expr_ty_adjusted(expr);
+        self.infcx().resolve_type_vars_if_possible(&ty)
     }
     fn node_method_ty(&self, method_call: ty::MethodCall)
                       -> Option<Ty<'tcx>> {
-        self.inh.method_map.borrow().get(&method_call).map(|m| m.ty)
+        self.inh.method_map.borrow()
+                           .get(&method_call)
+                           .map(|method| method.ty)
+                           .map(|ty| self.infcx().resolve_type_vars_if_possible(&ty))
+    }
+    fn node_method_origin(&self, method_call: ty::MethodCall)
+                          -> Option<ty::MethodOrigin<'tcx>>
+    {
+        self.inh.method_map.borrow()
+                           .get(&method_call)
+                           .map(|method| method.origin.clone())
     }
     fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
         &self.inh.adjustments
