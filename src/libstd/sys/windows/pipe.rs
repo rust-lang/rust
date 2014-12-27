@@ -214,6 +214,9 @@ pub struct UnixStream {
     write_deadline: u64,
 }
 
+unsafe impl Send for UnixStream {}
+unsafe impl Sync for UnixStream {}
+
 impl UnixStream {
     fn try_connect(p: *const u16) -> Option<libc::HANDLE> {
         // Note that most of this is lifted from the libuv implementation.
@@ -559,6 +562,7 @@ pub struct UnixListener {
     name: CString,
 }
 
+unsafe impl Send for UnixListener {}
 unsafe impl Sync for UnixListener {}
 
 impl UnixListener {
@@ -605,6 +609,7 @@ pub struct UnixAcceptor {
     deadline: u64,
 }
 
+unsafe impl Send for UnixAcceptor {}
 unsafe impl Sync for UnixAcceptor {}
 
 struct AcceptorState {
@@ -612,6 +617,7 @@ struct AcceptorState {
     closed: atomic::AtomicBool,
 }
 
+unsafe impl Send for AcceptorState {}
 unsafe impl Sync for AcceptorState {}
 
 impl UnixAcceptor {
