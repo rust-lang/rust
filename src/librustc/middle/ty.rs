@@ -3004,9 +3004,9 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
                 let upvars = unboxed_closure_upvars(cx, did, substs);
-                TypeContents::union(upvars[],
-                                    |f| tc_ty(cx, f.ty, cache)) |
-                    borrowed_contents(r, MutMutable)
+                TypeContents::union(upvars.as_slice(),
+                                    |f| tc_ty(cx, f.ty, cache))
+                    | borrowed_contents(r, MutMutable)
             }
 
             ty_tup(ref tys) => {
@@ -6166,12 +6166,22 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
         self
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
-        Ok(ty::node_id_to_type(self, id))
+    fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
+        ty::node_id_to_type(self, id)
     }
 
-    fn node_method_ty(&self, method_call: MethodCall) -> Option<Ty<'tcx>> {
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
+        ty::expr_ty_adjusted(self, expr)
+    }
+
+    fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
         self.method_map.borrow().get(&method_call).map(|method| method.ty)
+    }
+
+    fn node_method_origin(&self, method_call: ty::MethodCall)
+                          -> Option<ty::MethodOrigin<'tcx>>
+    {
+        self.method_map.borrow().get(&method_call).map(|method| method.origin.clone())
     }
 
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
