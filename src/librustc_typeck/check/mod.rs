@@ -1871,7 +1871,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                   cause: traits::ObligationCause<'tcx>)
     {
         self.inh.fulfillment_cx.borrow_mut()
-            .register_builtin_bound(self.tcx(), ty, builtin_bound, cause);
+            .register_builtin_bound(self.infcx(), ty, builtin_bound, cause);
     }
 
     pub fn register_predicate(&self,
@@ -1882,7 +1882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.inh.fulfillment_cx
             .borrow_mut()
-            .register_predicate(self.tcx(), obligation);
+            .register_predicate(self.infcx(), obligation);
     }
 
     pub fn to_ty(&self, ast_t: &ast::Ty) -> Ty<'tcx> {
@@ -2026,7 +2026,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       cause: traits::ObligationCause<'tcx>)
     {
         let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
-        fulfillment_cx.register_region_obligation(self.tcx(), ty, region, cause);
+        fulfillment_cx.register_region_obligation(self.infcx(), ty, region, cause);
     }
 
     pub fn add_default_region_param_bounds(&self,

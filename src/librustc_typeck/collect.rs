@@ -848,16 +848,15 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             generics,
                                             items);
 
+    assert_eq!(mk_item_substs(ccx, &ty_generics), substs);
+
     let self_param_ty = ty::ParamTy::for_self(def_id);
 
     let bounds = compute_bounds(ccx,
-                                token::SELF_KEYWORD_NAME,
-                                self_param_ty,
+                                self_param_ty.to_ty(ccx.tcx),
                                 bounds.as_slice(),
                                 unbound,
                                 it.span);
-
-    let substs = ccx.tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
 
     let associated_type_names: Vec<_> =
         items.iter()
@@ -869,14 +868,16 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
              })
             .collect();
 
+    let trait_ref = Rc::new(ty::TraitRef {
+        def_id: def_id,
+        substs: substs
+    });
+
     let trait_def = Rc::new(ty::TraitDef {
         unsafety: unsafety,
         generics: ty_generics,
         bounds: bounds,
-        trait_ref: Rc::new(ty::TraitRef {
-            def_id: def_id,
-            substs: substs
-        }),
+        trait_ref: trait_ref,
         associated_type_names: associated_type_names,
     });
     tcx.trait_defs.borrow_mut().insert(def_id, trait_def.clone());
@@ -1034,9 +1035,12 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                    trait_id: ast::NodeId,
                                    substs: &'tcx subst::Substs<'tcx>,
                                    ast_generics: &ast::Generics,
-                                   _items: &[ast::TraitItem])
+                                   trait_items: &[ast::TraitItem])
                                    -> ty::Generics<'tcx>
 {
+    debug!("ty_generics_for_trait(trait_id={}, substs={})",
+           local_def(trait_id).repr(ccx.tcx), substs.repr(ccx.tcx));
+
     let mut generics =
         ty_generics(ccx,
                     subst::TypeSpace,
@@ -1052,8 +1056,8 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let param_id = trait_id;
 
     let self_trait_ref =
-        ty::Binder(Rc::new(ty::TraitRef { def_id: local_def(trait_id),
-                                          substs: substs }));
+        Rc::new(ty::TraitRef { def_id: local_def(trait_id),
+                               substs: substs });
 
     let def = ty::TypeParameterDef {
         space: subst::SelfSpace,
@@ -1063,7 +1067,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         bounds: ty::ParamBounds {
             region_bounds: vec!(),
             builtin_bounds: ty::empty_builtin_bounds(),
-            trait_bounds: vec!(self_trait_ref.clone()),
+            trait_bounds: vec!(ty::Binder(self_trait_ref.clone())),
             projection_bounds: vec!(),
         },
         default: None
@@ -1075,7 +1079,47 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     generics.predicates.push(subst::SelfSpace, self_trait_ref.as_predicate());
 
-    generics
+    let assoc_predicates = predicates_for_associated_types(ccx,
+                                                           &self_trait_ref,
+                                                           trait_items);
+
+    debug!("ty_generics_for_trait: assoc_predicates={}", assoc_predicates.repr(ccx.tcx));
+
+    for assoc_predicate in assoc_predicates.into_iter() {
+        generics.predicates.push(subst::SelfSpace, assoc_predicate);
+    }
+
+    return generics;
+
+    fn predicates_for_associated_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                                 self_trait_ref: &Rc<ty::TraitRef<'tcx>>,
+                                                 trait_items: &[ast::TraitItem])
+                                                 -> Vec<ty::Predicate<'tcx>>
+    {
+        trait_items
+            .iter()
+            .flat_map(|trait_item| {
+                let assoc_type_def = match *trait_item {
+                    ast::TypeTraitItem(ref assoc_type) => &assoc_type.ty_param,
+                    ast::RequiredMethod(..) | ast::ProvidedMethod(..) => {
+                        return vec!().into_iter();
+                    }
+                };
+
+                let assoc_ty = ty::mk_projection(ccx.tcx,
+                                                 self_trait_ref.clone(),
+                                                 assoc_type_def.ident.name);
+
+                let bounds = compute_bounds(ccx,
+                                            assoc_ty,
+                                            assoc_type_def.bounds.as_slice(),
+                                            &assoc_type_def.unbound,
+                                            assoc_type_def.span);
+
+                ty::predicates(ccx.tcx, assoc_ty, &bounds).into_iter()
+            })
+            .collect()
+    }
 }
 
 fn ty_generics_for_fn_or_method<'tcx,AC>(
@@ -1268,8 +1312,7 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
 
     let param_ty = ty::ParamTy::new(space, index, local_def(param.id));
     let bounds = compute_bounds(this,
-                                param.ident.name,
-                                param_ty,
+                                param_ty.to_ty(this.tcx()),
                                 param.bounds[],
                                 &param.unbound,
                                 param.span);
@@ -1312,8 +1355,7 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
 fn compute_bounds<'tcx,AC>(this: &AC,
-                           name_of_bounded_thing: ast::Name,
-                           param_ty: ty::ParamTy,
+                           param_ty: ty::Ty<'tcx>,
                            ast_bounds: &[ast::TyParamBound],
                            unbound: &Option<ast::TraitRef>,
                            span: Span)
@@ -1331,7 +1373,7 @@ fn compute_bounds<'tcx,AC>(this: &AC,
                       span);
 
     check_bounds_compatible(this.tcx(),
-                            name_of_bounded_thing,
+                            param_ty,
                             &param_bounds,
                             span);
 
@@ -1341,7 +1383,7 @@ fn compute_bounds<'tcx,AC>(this: &AC,
 }
 
 fn check_bounds_compatible<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 name_of_bounded_thing: ast::Name,
+                                 param_ty: Ty<'tcx>,
                                  param_bounds: &ty::ParamBounds<'tcx>,
                                  span: Span) {
     // Currently the only bound which is incompatible with other bounds is
@@ -1354,9 +1396,9 @@ fn check_bounds_compatible<'tcx>(tcx: &ty::ctxt<'tcx>,
                 let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id());
                 if trait_def.bounds.builtin_bounds.contains(&ty::BoundSized) {
                     span_err!(tcx.sess, span, E0129,
-                              "incompatible bounds on type parameter `{}`, \
+                              "incompatible bounds on `{}`, \
                                bound `{}` does not allow unsized type",
-                              name_of_bounded_thing.user_string(tcx),
+                              param_ty.user_string(tcx),
                               trait_ref.user_string(tcx));
                 }
                 true
@@ -1366,7 +1408,7 @@ fn check_bounds_compatible<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 fn conv_param_bounds<'tcx,AC>(this: &AC,
                               span: Span,
-                              param_ty: ty::ParamTy,
+                              param_ty: ty::Ty<'tcx>,
                               ast_bounds: &[ast::TyParamBound])
                               -> ty::ParamBounds<'tcx>
                               where AC: AstConv<'tcx>
@@ -1384,7 +1426,7 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
             astconv::instantiate_poly_trait_ref(this,
                                                 &ExplicitRscope,
                                                 bound,
-                                                Some(param_ty.to_ty(this.tcx())),
+                                                Some(param_ty),
                                                 &mut projection_bounds)
         })
         .collect();

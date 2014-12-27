@@ -20,7 +20,7 @@ use util::common::ErrorReported;
 use util::ppaux::Repr;
 
 use super::{Obligation, ObligationCause, PredicateObligation,
-            VtableImpl, VtableParam, VtableParamData, VtableImplData};
+            VtableImpl, VtableParam, VtableImplData};
 
 ///////////////////////////////////////////////////////////////////////////
 // `Elaboration` iterator
@@ -78,6 +78,10 @@ pub fn elaborate_predicates<'cx, 'tcx>(
 }
 
 impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
+    pub fn filter_to_traits(self) -> Supertraits<'cx, 'tcx> {
+        Supertraits { elaborator: self }
+    }
+
     fn push(&mut self, predicate: &ty::Predicate<'tcx>) {
         match *predicate {
             ty::Predicate::Trait(ref data) => {
@@ -183,16 +187,14 @@ pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
                               trait_ref: ty::PolyTraitRef<'tcx>)
                               -> Supertraits<'cx, 'tcx>
 {
-    let elaborator = elaborate_trait_ref(tcx, trait_ref);
-    Supertraits { elaborator: elaborator }
+    elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
 }
 
 pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
                                     bounds: &[ty::PolyTraitRef<'tcx>])
                                     -> Supertraits<'cx, 'tcx>
 {
-    let elaborator = elaborate_trait_refs(tcx, bounds);
-    Supertraits { elaborator: elaborator }
+    elaborate_trait_refs(tcx, bounds).filter_to_traits()
 }
 
 impl<'cx, 'tcx> Iterator<ty::PolyTraitRef<'tcx>> for Supertraits<'cx, 'tcx> {
@@ -244,12 +246,6 @@ pub fn fresh_substs_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 impl<'tcx, N> fmt::Show for VtableImplData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "VtableImpl({})", self.impl_def_id)
-    }
-}
-
-impl<'tcx> fmt::Show for VtableParamData<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableParam(...)")
     }
 }
 
@@ -306,26 +302,6 @@ pub fn predicate_for_builtin_bound<'tcx>(
     })
 }
 
-/// Starting from a caller obligation `caller_bound` (which has coordinates `space`/`i` in the list
-/// of caller obligations), search through the trait and supertraits to find one where `test(d)` is
-/// true, where `d` is the def-id of the trait/supertrait. If any is found, return `Some(p)` where
-/// `p` is the path to that trait/supertrait. Else `None`.
-pub fn search_trait_and_supertraits_from_bound<'tcx,F>(tcx: &ty::ctxt<'tcx>,
-                                                       caller_bound: ty::PolyTraitRef<'tcx>,
-                                                       mut test: F)
-                                                       -> Option<VtableParamData<'tcx>>
-    where F: FnMut(ast::DefId) -> bool,
-{
-    for bound in transitive_bounds(tcx, &[caller_bound]) {
-        if test(bound.def_id()) {
-            let vtable_param = VtableParamData { bound: bound };
-            return Some(vtable_param);
-        }
-    }
-
-    return None;
-}
-
 impl<'tcx,O:Repr<'tcx>> Repr<'tcx> for super::Obligation<'tcx, O> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("Obligation(predicate={},depth={})",
@@ -349,8 +325,8 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
                 format!("VtableFnPointer({})",
                         d.repr(tcx)),
 
-            super::VtableParam(ref v) =>
-                format!("VtableParam({})", v.repr(tcx)),
+            super::VtableParam =>
+                format!("VtableParam"),
 
             super::VtableBuiltin(ref d) =>
                 d.repr(tcx)
@@ -371,13 +347,6 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableBuiltinData<N> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("VtableBuiltin(nested={})",
                 self.nested.repr(tcx))
-    }
-}
-
-impl<'tcx> Repr<'tcx> for super::VtableParamData<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("VtableParam(bound={})",
-                self.bound.repr(tcx))
     }
 }
 

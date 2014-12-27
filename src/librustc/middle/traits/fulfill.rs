@@ -119,43 +119,43 @@ impl<'tcx> FulfillmentContext<'tcx> {
                 ty: ty_var
             });
         let obligation = Obligation::new(cause, projection.as_predicate());
-        self.register_predicate(infcx.tcx, obligation);
+        self.register_predicate(infcx, obligation);
         ty_var
     }
 
-    pub fn register_builtin_bound(&mut self,
-                                  tcx: &ty::ctxt<'tcx>,
-                                  ty: Ty<'tcx>,
-                                  builtin_bound: ty::BuiltinBound,
-                                  cause: ObligationCause<'tcx>)
+    pub fn register_builtin_bound<'a>(&mut self,
+                                      infcx: &InferCtxt<'a,'tcx>,
+                                      ty: Ty<'tcx>,
+                                      builtin_bound: ty::BuiltinBound,
+                                      cause: ObligationCause<'tcx>)
     {
-        match predicate_for_builtin_bound(tcx, cause, builtin_bound, 0, ty) {
+        match predicate_for_builtin_bound(infcx.tcx, cause, builtin_bound, 0, ty) {
             Ok(predicate) => {
-                self.register_predicate(tcx, predicate);
+                self.register_predicate(infcx, predicate);
             }
             Err(ErrorReported) => { }
         }
     }
 
-    pub fn register_region_obligation(&mut self,
-                                      tcx: &ty::ctxt<'tcx>,
-                                      t_a: Ty<'tcx>,
-                                      r_b: ty::Region,
-                                      cause: ObligationCause<'tcx>)
+    pub fn register_region_obligation<'a>(&mut self,
+                                          infcx: &InferCtxt<'a,'tcx>,
+                                          t_a: Ty<'tcx>,
+                                          r_b: ty::Region,
+                                          cause: ObligationCause<'tcx>)
     {
-        register_region_obligation(tcx, t_a, r_b, cause, &mut self.region_obligations);
+        register_region_obligation(infcx.tcx, t_a, r_b, cause, &mut self.region_obligations);
     }
 
     pub fn register_predicate<'a>(&mut self,
-                                  tcx: &ty::ctxt<'tcx>,
+                                  infcx: &InferCtxt<'a,'tcx>,
                                   obligation: PredicateObligation<'tcx>)
     {
         if !self.duplicate_set.insert(obligation.predicate.clone()) {
-            debug!("register_predicate({}) -- already seen, skip", obligation.repr(tcx));
+            debug!("register_predicate({}) -- already seen, skip", obligation.repr(infcx.tcx));
             return;
         }
 
-        debug!("register_predicate({})", obligation.repr(tcx));
+        debug!("register_predicate({})", obligation.repr(infcx.tcx));
         self.predicates.push(obligation);
     }
 
@@ -230,7 +230,6 @@ impl<'tcx> FulfillmentContext<'tcx> {
                self.predicates.len(),
                only_new_obligations);
 
-        let tcx = selcx.tcx();
         let mut errors = Vec::new();
 
         loop {
@@ -279,7 +278,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             // Now go through all the successful ones,
             // registering any nested obligations for the future.
             for new_obligation in new_obligations.into_iter() {
-                self.register_predicate(tcx, new_obligation);
+                self.register_predicate(selcx.infcx(), new_obligation);
             }
         }
 
@@ -469,17 +468,22 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                             CodeProjectionError(e)));
                     true
                 }
-                Err(project::ProjectionError::TraitSelectionError(e)) => {
-                    // Extract just the `T : Trait` from `<T as
-                    // Trait>::Name == U`, so that when we report an
-                    // error to the user, it says something like "`T :
-                    // Trait` not satisfied".5D
+                Err(project::ProjectionError::TraitSelectionError(_)) => {
+                    // There was an error matching `T : Trait` (which
+                    // is a pre-requisite for `<T as Trait>::Name`
+                    // being valid).  We could just report the error
+                    // now, but that tends to lead to double error
+                    // reports for the user (one for the obligation `T
+                    // : Trait`, typically incurred somewhere else,
+                    // and one from here). Instead, we'll create the
+                    // `T : Trait` obligation and add THAT as a
+                    // requirement. This will (eventually) trigger the
+                    // same error, but it will also wind up flagged as
+                    // a duplicate if another requirement that `T :
+                    // Trait` arises from somewhere else.
                     let trait_predicate = data.to_poly_trait_ref();
                     let trait_obligation = obligation.with(trait_predicate.as_predicate());
-                    errors.push(
-                        FulfillmentError::new(
-                            trait_obligation,
-                            CodeSelectionError(e)));
+                    new_obligations.push(trait_obligation);
                     true
                 }
             }

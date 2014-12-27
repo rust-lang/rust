@@ -128,10 +128,12 @@ pub fn project_type<'cx,'tcx>(
                                                   &mut candidates);
 
     if candidates.vec.is_empty() {
-        // TODO This `if` is not necessarily wrong, but it needs an
-        // explanation, and it should probably be accompanied by a
-        // similar rule in `select.rs`. Currently it's *needed*
-        // because the impl-trait-for-trait branch has not landed.
+        // FIXME(#20297) -- In `select.rs` there is similar logic that
+        // gives precedence to where-clauses, but it's a bit more
+        // fine-grained. I was lazy here and just always give
+        // precedence to where-clauses or other such sources over
+        // actually dredging through impls. This logic probably should
+        // be tightened up.
 
         let () = try!(assemble_candidates_from_impls(selcx,
                                                      obligation,

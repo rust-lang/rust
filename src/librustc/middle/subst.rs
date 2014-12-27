@@ -412,6 +412,10 @@ impl<T> VecPerParamSpace<T> {
         self.content.as_slice()
     }
 
+    pub fn to_vec(self) -> Vec<T> {
+        self.content
+    }
+
     pub fn all_vecs<P>(&self, mut pred: P) -> bool where
         P: FnMut(&[T]) -> bool,
     {

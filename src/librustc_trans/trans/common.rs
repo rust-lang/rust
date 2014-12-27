@@ -960,7 +960,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // iterating early.
     let mut fulfill_cx = traits::FulfillmentContext::new();
     let vtable = selection.map_move_nested(|predicate| {
-        fulfill_cx.register_predicate(infcx.tcx, predicate);
+        fulfill_cx.register_predicate(&infcx, predicate);
     });
     match fulfill_cx.select_all_or_error(&infcx, &param_env, tcx) {
         Ok(()) => { }
