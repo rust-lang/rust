@@ -67,7 +67,7 @@ fn parse_expected(last_nonfollow_error: Option<uint>,
                   re: &Regex) -> Option<(WhichLine, ExpectedError)> {
     re.captures(line).and_then(|caps| {
         let adjusts = caps.name("adjusts").unwrap_or("").len();
-        let kind = caps.name("kind").unwrap_or("").to_ascii_lower();
+        let kind = caps.name("kind").unwrap_or("").to_ascii_lowercase();
         let msg = caps.name("msg").unwrap_or("").trim().to_string();
         let follow = caps.name("follow").unwrap_or("").len() > 0;
 

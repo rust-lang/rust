@@ -31,6 +31,8 @@ use visit::Visitor;
 use parse::token;
 
 use std::slice;
+use std::ascii::AsciiExt;
+
 
 // if you change this list without updating src/doc/reference.md, @cmr will be sad
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
