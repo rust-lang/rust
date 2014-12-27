@@ -68,7 +68,7 @@ pub struct Lint {
 impl Lint {
     /// Get the lint's name, with ASCII letters converted to lowercase.
     pub fn name_lower(&self) -> String {
-        self.name.to_ascii_lower()
+        self.name.to_ascii_lowercase()
     }
 }
 

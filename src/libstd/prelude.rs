@@ -56,8 +56,6 @@
 
 // Reexported types and traits
 
-#[doc(no_inline)] pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
-#[doc(no_inline)] pub use ascii::IntoBytes;
 #[doc(no_inline)] pub use borrow::IntoCow;
 #[doc(no_inline)] pub use c_str::ToCStr;
 #[doc(no_inline)] pub use char::{Char, UnicodeChar};

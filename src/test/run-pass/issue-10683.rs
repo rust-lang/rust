@@ -13,7 +13,7 @@ use std::ascii::AsciiExt;
 static NAME: &'static str = "hello world";
 
 fn main() {
-    match NAME.to_ascii_lower().as_slice() {
+    match NAME.to_ascii_lowercase().as_slice() {
         "foo" => {}
         _ => {}
     }
