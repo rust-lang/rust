@@ -28,24 +28,24 @@ use syntax::ast::{ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::visit::{mod, Visitor};
 
-struct UnusedImportCheckVisitor<'a, 'b:'a> {
-    resolver: &'a mut Resolver<'b>
+struct UnusedImportCheckVisitor<'a, 'b:'a, 'tcx:'b> {
+    resolver: &'a mut Resolver<'b, 'tcx>
 }
 
 // Deref and DerefMut impls allow treating UnusedImportCheckVisitor as Resolver.
-impl<'a, 'b> Deref<Resolver<'b>> for UnusedImportCheckVisitor<'a, 'b> {
-    fn deref<'c>(&'c self) -> &'c Resolver<'b> {
+impl<'a, 'b, 'tcx:'b> Deref<Resolver<'b, 'tcx>> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
+    fn deref<'c>(&'c self) -> &'c Resolver<'b, 'tcx> {
         &*self.resolver
     }
 }
 
-impl<'a, 'b> DerefMut<Resolver<'b>> for UnusedImportCheckVisitor<'a, 'b> {
-    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b> {
+impl<'a, 'b, 'tcx:'b> DerefMut<Resolver<'b, 'tcx>> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
+    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b, 'tcx> {
         &mut *self.resolver
     }
 }
 
-impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
+impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     // We have information about whether `use` (import) directives are actually used now.
     // If an import is not used at all, we signal a lint error. If an import is only used
     // for a single namespace, we remove the other namespace from the recorded privacy
@@ -104,7 +104,7 @@ impl<'a, 'b> UnusedImportCheckVisitor<'a, 'b> {
     }
 }
 
-impl<'a, 'b, 'v> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b> {
+impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     fn visit_view_item(&mut self, vi: &ViewItem) {
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span

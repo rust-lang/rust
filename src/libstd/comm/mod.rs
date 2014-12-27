@@ -333,12 +333,10 @@ macro_rules! test {
         mod $name {
             #![allow(unused_imports)]
 
-            use prelude::*;
-            use rt;
-
-            use comm::*;
             use super::*;
+            use comm::*;
             use thread::Thread;
+            use prelude::*;
 
             $(#[$a])* #[test] fn f() { $b }
         }
@@ -1022,10 +1020,9 @@ impl<T: Send> Drop for Receiver<T> {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
-
-    use os;
     use super::*;
+    use prelude::*;
+    use os;
 
     pub fn stress_factor() -> uint {
         match os::getenv("RUST_TEST_STRESS") {

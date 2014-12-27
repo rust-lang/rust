@@ -27,24 +27,24 @@ use syntax::parse::token;
 
 use std::rc::Rc;
 
-struct ExportRecorder<'a, 'b:'a> {
-    resolver: &'a mut Resolver<'b>
+struct ExportRecorder<'a, 'b:'a, 'tcx:'b> {
+    resolver: &'a mut Resolver<'b, 'tcx>
 }
 
 // Deref and DerefMut impls allow treating ExportRecorder as Resolver.
-impl<'a, 'b> Deref<Resolver<'b>> for ExportRecorder<'a, 'b> {
-    fn deref<'c>(&'c self) -> &'c Resolver<'b> {
+impl<'a, 'b, 'tcx:'b> Deref<Resolver<'b, 'tcx>> for ExportRecorder<'a, 'b, 'tcx> {
+    fn deref<'c>(&'c self) -> &'c Resolver<'b, 'tcx> {
         &*self.resolver
     }
 }
 
-impl<'a, 'b> DerefMut<Resolver<'b>> for ExportRecorder<'a, 'b> {
-    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b> {
+impl<'a, 'b, 'tcx:'b> DerefMut<Resolver<'b, 'tcx>> for ExportRecorder<'a, 'b, 'tcx> {
+    fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b, 'tcx> {
         &mut *self.resolver
     }
 }
 
-impl<'a, 'b> ExportRecorder<'a, 'b> {
+impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
     fn record_exports_for_module_subtree(&mut self,
                                          module_: Rc<Module>) {
         // If this isn't a local krate, then bail out. We don't need to record

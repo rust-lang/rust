@@ -77,7 +77,7 @@ use std::mem;
 use std::ops;
 use std::rc::Rc;
 use collections::enum_set::{EnumSet, CLike};
-use std::collections::hash_map::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, Ident, ItemTrait, LOCAL_CRATE};
@@ -105,6 +105,7 @@ pub struct CrateAnalysis<'tcx> {
     pub ty_cx: ty::ctxt<'tcx>,
     pub reachable: NodeSet,
     pub name: String,
+    pub glob_map: Option<GlobMap>,
 }
 
 #[deriving(Copy, PartialEq, Eq, Hash)]
@@ -6284,6 +6285,10 @@ pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
 
 // Trait method resolution
 pub type TraitMap = NodeMap<Vec<DefId>>;
+
+// Map from the NodeId of a glob import to a list of items which are actually
+// imported.
+pub type GlobMap = HashMap<NodeId, HashSet<Name>>;
 
 pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
     F: FnOnce(&[Freevar]) -> T,

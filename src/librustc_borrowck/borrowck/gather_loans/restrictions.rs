@@ -13,8 +13,6 @@
 pub use self::RestrictionResult::*;
 
 use borrowck::*;
-use borrowck::LoanPathElem::*;
-use borrowck::LoanPathKind::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::ty;

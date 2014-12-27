@@ -781,6 +781,14 @@ pub fn get_impl_items(cdata: Cmd, impl_id: ast::NodeId)
     impl_items
 }
 
+pub fn get_trait_name(intr: Rc<IdentInterner>,
+                      cdata: Cmd,
+                      id: ast::NodeId)
+                      -> ast::Name {
+    let doc = lookup_item(id, cdata.data());
+    item_name(&*intr, doc)
+}
+
 pub fn get_trait_item_name_and_kind(intr: Rc<IdentInterner>,
                                     cdata: Cmd,
                                     id: ast::NodeId)
