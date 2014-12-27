@@ -138,6 +138,52 @@ impl<V> VecMap<V> {
         self.v.capacity()
     }
 
+    /// Reserves capacity for the given `VecMap` to contain `len` distinct keys.
+    /// In the case of `VecMap` this means reallocations will not occur as long
+    /// as all inserted keys are less than `len`.
+    ///
+    /// The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    /// let mut map: VecMap<&str> = VecMap::new();
+    /// map.reserve_len(10);
+    /// assert!(map.capacity() >= 10);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve_len(&mut self, len: uint) {
+        let cur_len = self.v.len();
+        if len >= cur_len {
+            self.v.reserve(len - cur_len);
+        }
+    }
+
+    /// Reserves the minimum capacity for the given `VecMap` to contain `len` distinct keys.
+    /// In the case of `VecMap` this means reallocations will not occur as long as all inserted
+    /// keys are less than `len`.
+    ///
+    /// Note that the allocator may give the collection more space than it requests.
+    /// Therefore capacity cannot be relied upon to be precisely minimal.  Prefer
+    /// `reserve_len` if future insertions are expected.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    /// let mut map: VecMap<&str> = VecMap::new();
+    /// map.reserve_len_exact(10);
+    /// assert!(map.capacity() >= 10);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn reserve_len_exact(&mut self, len: uint) {
+        let cur_len = self.v.len();
+        if len >= cur_len {
+            self.v.reserve_exact(len - cur_len);
+        }
+    }
+
     /// Returns an iterator visiting all keys in ascending order by the keys.
     /// The iterator's element type is `uint`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
