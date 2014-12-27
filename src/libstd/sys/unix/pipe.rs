@@ -117,6 +117,9 @@ pub struct UnixStream {
     write_deadline: u64,
 }
 
+unsafe impl Send for UnixStream {}
+unsafe impl Sync for UnixStream {}
+
 impl UnixStream {
     pub fn connect(addr: &CString,
                    timeout: Option<u64>) -> IoResult<UnixStream> {
@@ -215,6 +218,7 @@ pub struct UnixListener {
     path: CString,
 }
 
+unsafe impl Send for UnixListener {}
 unsafe impl Sync for UnixListener {}
 
 impl UnixListener {
@@ -261,6 +265,7 @@ struct AcceptorInner {
     closed: atomic::AtomicBool,
 }
 
+unsafe impl Send for AcceptorInner {}
 unsafe impl Sync for AcceptorInner {}
 
 impl UnixAcceptor {
