@@ -17,7 +17,6 @@
 // sure that all of these loans are honored.
 
 use borrowck::*;
-use borrowck::LoanPathKind::*;
 use borrowck::move_data::MoveData;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;

@@ -266,10 +266,10 @@ impl sys_common::AsInner<UnixAcceptorImp> for UnixAcceptor {
 #[cfg(test)]
 #[allow(experimental)]
 mod tests {
-    use prelude::*;
     use super::*;
     use io::*;
     use io::test::*;
+    use prelude::*;
     use io::fs::PathExtensions;
     use time::Duration;
 

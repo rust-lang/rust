@@ -14,7 +14,6 @@ pub use self::MaybeOwnedVector::*;
 
 use std::default::Default;
 use std::fmt;
-use std::iter::FromIterator;
 use std::path::BytesContainer;
 use std::slice;
 

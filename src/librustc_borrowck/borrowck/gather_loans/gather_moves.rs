@@ -11,7 +11,6 @@
 //! Computes moves.
 
 use borrowck::*;
-use borrowck::LoanPathKind::*;
 use borrowck::gather_loans::move_error::MoveSpanAndPath;
 use borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use borrowck::move_data::*;

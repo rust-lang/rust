@@ -534,12 +534,11 @@ pub unsafe fn from_c_multistring<F>(buf: *const libc::c_char,
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use prelude::*;
     use ptr;
     use thread::Thread;
     use libc;
-
-    use super::*;
 
     #[test]
     fn test_str_multistring_parsing() {

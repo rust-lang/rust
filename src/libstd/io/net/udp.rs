@@ -249,10 +249,10 @@ impl Writer for UdpStream {
 #[allow(experimental)]
 mod test {
     use super::*;
-    use prelude::*;
-    use io::*;
     use io::net::ip::*;
+    use io::*;
     use io::test::*;
+    use prelude::*;
 
     // FIXME #11530 this fails on android because tests are run as root
     #[cfg_attr(any(windows, target_os = "android"), ignore)]

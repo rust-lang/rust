@@ -399,9 +399,9 @@ impl<'a> Buffer for BufReader<'a> {
 #[cfg(test)]
 mod test {
     extern crate "test" as test_crate;
-    use prelude::*;
     use super::*;
     use io::*;
+    use prelude::*;
     use io;
     use self::test_crate::Bencher;
 
