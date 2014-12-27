@@ -3973,8 +3973,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprMatch(ref discrim, ref arms, match_src) => {
         _match::check_match(fcx, expr, &**discrim, arms.as_slice(), expected, match_src);
       }
-      ast::ExprClosure(_, opt_kind, ref decl, ref body) => {
-          closure::check_expr_closure(fcx, expr, opt_kind, &**decl, &**body, expected);
+      ast::ExprClosure(capture, opt_kind, ref decl, ref body) => {
+          closure::check_expr_closure(fcx, expr, capture, opt_kind, &**decl, &**body, expected);
       }
       ast::ExprBlock(ref b) => {
         check_block_with_expected(fcx, &**b, expected);
