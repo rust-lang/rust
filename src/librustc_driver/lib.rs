@@ -132,7 +132,7 @@ fn run_compiler(args: &[String]) {
         _ => early_error("multiple input filenames provided")
     };
 
-    let sess = build_session(sopts, input_file_path, descriptions);
+    let mut sess = build_session(sopts, input_file_path, descriptions);
     let cfg = config::build_configuration(&sess);
     if print_crate_info(&sess, Some(&input), &odir, &ofile) {
         return
@@ -158,6 +158,10 @@ fn run_compiler(args: &[String]) {
             return;
         }
         None => {/* continue */ }
+    }
+
+    if sess.unstable_options() {
+        sess.opts.show_span = matches.opt_str("show-span");
     }
 
     let r = matches.opt_strs("Z");
