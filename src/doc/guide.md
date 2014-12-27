@@ -482,7 +482,7 @@ src/main.rs:2     let x;
 
 Giving it a type will compile, though:
 
-```{ignore}
+```{rust}
 let x: int;
 ```
 
@@ -1044,7 +1044,9 @@ struct Point(int, int, int);
 
 These two will not be equal, even if they have the same values:
 
-```{rust,ignore}
+```{rust}
+# struct Color(int, int, int);
+# struct Point(int, int, int);
 let black  = Color(0, 0, 0);
 let origin = Point(0, 0, 0);
 ```
@@ -4290,7 +4292,9 @@ let square = |x: int| { x * x };
 We've seen this before. We make a closure that takes an integer, and returns
 its square.
 
-```{rust,ignore}
+```{rust}
+# fn twice(x: int, f: |int| -> int) -> int { f(x) + f(x) }
+# let square = |x: int| { x * x };
 twice(5i, square); // evaluates to 50
 ```
 
