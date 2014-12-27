@@ -982,18 +982,19 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     }
                 };
                 for &Spanned { node: ref field, span } in fields.iter() {
-                    self.visit_pat(&*field.pat);
+                    let sub_span = self.span.span_for_first_ident(span);
                     let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
                     for f in fields.iter() {
                         if f.name == field.ident.name {
                             self.fmt.ref_str(recorder::VarRef,
-                                             p.span,
-                                             Some(span),
+                                             span,
+                                             sub_span,
                                              f.id,
                                              self.cur_scope);
                             break;
                         }
                     }
+                    self.visit_pat(&*field.pat);
                 }
             }
             ast::PatEnum(ref path, _) => {
