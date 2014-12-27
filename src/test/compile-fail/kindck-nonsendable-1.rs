@@ -17,6 +17,8 @@ fn bar<F:FnOnce() + Send>(_: F) { }
 
 fn main() {
     let x = Rc::new(3u);
-    bar(move|| foo(x)); //~ ERROR `core::kinds::Send` is not implemented
+    bar(move|| foo(x));
+    //~^ ERROR `core::kinds::Send` is not implemented
+    //~^^ ERROR `core::kinds::Send` is not implemented
 }
 

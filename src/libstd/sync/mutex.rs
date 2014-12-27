@@ -73,6 +73,10 @@ pub struct Mutex<T> {
     data: UnsafeCell<T>,
 }
 
+unsafe impl<T:Send> Send for Mutex<T> { }
+
+unsafe impl<T:Send> Sync for Mutex<T> { }
+
 /// The static mutex type is provided to allow for static allocation of mutexes.
 ///
 /// Note that this is a separate type because using a Mutex correctly means that
@@ -98,6 +102,8 @@ pub struct StaticMutex {
     lock: sys::Mutex,
     poison: UnsafeCell<poison::Flag>,
 }
+
+unsafe impl Sync for StaticMutex {}
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
@@ -278,6 +284,11 @@ mod test {
     use thread::Thread;
     use sync::{Arc, Mutex, StaticMutex, MUTEX_INIT, Condvar};
 
+    struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
+
+    unsafe impl<T:'static+Send> Send for Packet<T> {}
+    unsafe impl<T> Sync for Packet<T> {}
+
     #[test]
     fn smoke() {
         let m = Mutex::new(());
@@ -337,19 +348,19 @@ mod test {
 
     #[test]
     fn test_mutex_arc_condvar() {
-        let arc = Arc::new((Mutex::new(false), Condvar::new()));
-        let arc2 = arc.clone();
+        let packet = Packet(Arc::new((Mutex::new(false), Condvar::new())));
+        let packet2 = Packet(packet.0.clone());
         let (tx, rx) = channel();
         spawn(move|| {
             // wait until parent gets in
             rx.recv();
-            let &(ref lock, ref cvar) = &*arc2;
+            let &(ref lock, ref cvar) = &*packet2.0;
             let mut lock = lock.lock();
             *lock = true;
             cvar.notify_one();
         });
 
-        let &(ref lock, ref cvar) = &*arc;
+        let &(ref lock, ref cvar) = &*packet.0;
         let lock = lock.lock();
         tx.send(());
         assert!(!*lock);
@@ -361,20 +372,20 @@ mod test {
     #[test]
     #[should_fail]
     fn test_arc_condvar_poison() {
-        let arc = Arc::new((Mutex::new(1i), Condvar::new()));
-        let arc2 = arc.clone();
+        let packet = Packet(Arc::new((Mutex::new(1i), Condvar::new())));
+        let packet2 = Packet(packet.0.clone());
         let (tx, rx) = channel();
 
         spawn(move|| {
             rx.recv();
-            let &(ref lock, ref cvar) = &*arc2;
+            let &(ref lock, ref cvar) = &*packet2.0;
             let _g = lock.lock();
             cvar.notify_one();
             // Parent should fail when it wakes up.
             panic!();
         });
 
-        let &(ref lock, ref cvar) = &*arc;
+        let &(ref lock, ref cvar) = &*packet.0;
         let lock = lock.lock();
         tx.send(());
         while *lock == 1 {

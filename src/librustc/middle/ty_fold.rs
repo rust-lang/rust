@@ -439,7 +439,7 @@ impl<'tcx,O> TypeFoldable<'tcx> for traits::Obligation<'tcx,O>
 {
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Obligation<'tcx, O> {
         traits::Obligation {
-            cause: self.cause,
+            cause: self.cause.clone(),
             recursion_depth: self.recursion_depth,
             trait_ref: self.trait_ref.fold_with(folder),
         }

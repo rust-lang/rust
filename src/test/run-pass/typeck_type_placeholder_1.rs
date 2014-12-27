@@ -11,7 +11,14 @@
 // This test checks that the `_` type placeholder works
 // correctly for enabling type inference.
 
-static CONSTEXPR: *const int = &413 as *const _;
+struct TestStruct {
+    x: *const int
+}
+
+unsafe impl Sync for TestStruct {}
+
+static CONSTEXPR: TestStruct = TestStruct{x: &413 as *const _};
+
 
 pub fn main() {
     let x: Vec<_> = range(0u, 5).collect();

@@ -24,6 +24,9 @@ pub use sys_common::net::TcpStream;
 
 pub struct Event(c::WSAEVENT);
 
+unsafe impl Send for Event {}
+unsafe impl Sync for Event {}
+
 impl Event {
     pub fn new() -> IoResult<Event> {
         let event = unsafe { c::WSACreateEvent() };
@@ -48,6 +51,9 @@ impl Drop for Event {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct TcpListener { sock: sock_t }
+
+unsafe impl Send for TcpListener {}
+unsafe impl Sync for TcpListener {}
 
 impl TcpListener {
     pub fn bind(addr: ip::SocketAddr) -> IoResult<TcpListener> {
@@ -109,12 +115,18 @@ pub struct TcpAcceptor {
     deadline: u64,
 }
 
+unsafe impl Send for TcpAcceptor {}
+unsafe impl Sync for TcpAcceptor {}
+
 struct AcceptorInner {
     listener: TcpListener,
     abort: Event,
     accept: Event,
     closed: atomic::AtomicBool,
 }
+
+unsafe impl Send for AcceptorInner {}
+unsafe impl Sync for AcceptorInner {}
 
 impl TcpAcceptor {
     pub fn socket(&self) -> sock_t { self.inner.listener.socket() }

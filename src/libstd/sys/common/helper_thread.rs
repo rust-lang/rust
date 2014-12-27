@@ -59,6 +59,15 @@ pub struct Helper<M> {
     pub shutdown: UnsafeCell<bool>,
 }
 
+unsafe impl<M:Send> Send for Helper<M> { }
+
+unsafe impl<M:Send> Sync for Helper<M> { }
+
+struct RaceBox(helper_signal::signal);
+
+unsafe impl Send for RaceBox {}
+unsafe impl Sync for RaceBox {}
+
 impl<M: Send> Helper<M> {
     /// Lazily boots a helper thread, becoming a no-op if the helper has already
     /// been spawned.
@@ -81,9 +90,11 @@ impl<M: Send> Helper<M> {
                 let (receive, send) = helper_signal::new();
                 *self.signal.get() = send as uint;
 
+                let receive = RaceBox(receive);
+
                 let t = f();
                 Thread::spawn(move |:| {
-                    helper(receive, rx, t);
+                    helper(receive.0, rx, t);
                     let _g = self.lock.lock();
                     *self.shutdown.get() = true;
                     self.cond.notify_one()

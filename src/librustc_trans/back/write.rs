@@ -281,6 +281,8 @@ struct ModuleConfig {
     time_passes: bool,
 }
 
+unsafe impl Send for ModuleConfig { }
+
 impl ModuleConfig {
     fn new(tm: TargetMachineRef, passes: Vec<String>) -> ModuleConfig {
         ModuleConfig {

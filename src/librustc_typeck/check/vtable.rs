@@ -11,16 +11,14 @@
 use check::{FnCtxt, structurally_resolved_type};
 use middle::subst::{FnSpace};
 use middle::traits;
-use middle::traits::{SelectionError, OutputTypeParameterMismatch, Overflow, Unimplemented};
 use middle::traits::{Obligation, ObligationCause};
-use middle::traits::{FulfillmentError, CodeSelectionError, CodeAmbiguity};
-use middle::traits::{PredicateObligation};
+use middle::traits::report_fulfillment_errors;
 use middle::ty::{mod, Ty};
 use middle::infer;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
-use util::ppaux::{UserString, Repr, ty_to_string};
+use util::ppaux::{Repr, ty_to_string};
 
 pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                    cast_expr: &ast::Expr,
@@ -285,199 +283,7 @@ pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {
                                                fcx);
     match r {
         Ok(()) => { }
-        Err(errors) => { report_fulfillment_errors(fcx, &errors); }
-    }
-}
-
-pub fn report_fulfillment_errors<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                           errors: &Vec<FulfillmentError<'tcx>>) {
-    for error in errors.iter() {
-        report_fulfillment_error(fcx, error);
-    }
-}
-
-pub fn report_fulfillment_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                          error: &FulfillmentError<'tcx>) {
-    match error.code {
-        CodeSelectionError(ref e) => {
-            report_selection_error(fcx, &error.obligation, e);
-        }
-        CodeAmbiguity => {
-            maybe_report_ambiguity(fcx, &error.obligation);
-        }
-    }
-}
-
-pub fn report_selection_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                        obligation: &PredicateObligation<'tcx>,
-                                        error: &SelectionError<'tcx>)
-{
-    match *error {
-        Overflow => {
-            // We could track the stack here more precisely if we wanted, I imagine.
-            let predicate =
-                fcx.infcx().resolve_type_vars_if_possible(&obligation.trait_ref);
-            fcx.tcx().sess.span_err(
-                obligation.cause.span,
-                format!(
-                    "overflow evaluating the requirement `{}`",
-                    predicate.user_string(fcx.tcx())).as_slice());
-
-            let current_limit = fcx.tcx().sess.recursion_limit.get();
-            let suggested_limit = current_limit * 2;
-            fcx.tcx().sess.span_note(
-                obligation.cause.span,
-                format!(
-                    "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-                    suggested_limit)[]);
-
-            note_obligation_cause(fcx, obligation);
-        }
-        Unimplemented => {
-            match obligation.trait_ref {
-                ty::Predicate::Trait(ref trait_ref) => {
-                    let trait_ref = fcx.infcx().resolve_type_vars_if_possible(&**trait_ref);
-                    if !ty::type_is_error(trait_ref.self_ty()) {
-                        fcx.tcx().sess.span_err(
-                            obligation.cause.span,
-                            format!(
-                                "the trait `{}` is not implemented for the type `{}`",
-                                trait_ref.user_string(fcx.tcx()),
-                                trait_ref.self_ty().user_string(fcx.tcx())).as_slice());
-                    }
-                }
-
-                ty::Predicate::Equate(ref predicate) => {
-                    let predicate = fcx.infcx().resolve_type_vars_if_possible(predicate);
-                    let err = fcx.infcx().equality_predicate(obligation.cause.span,
-                                                             &predicate).unwrap_err();
-                    fcx.tcx().sess.span_err(
-                        obligation.cause.span,
-                        format!(
-                            "the requirement `{}` is not satisfied (`{}`)",
-                            predicate.user_string(fcx.tcx()),
-                            ty::type_err_to_str(fcx.tcx(), &err)).as_slice());
-                }
-
-                ty::Predicate::RegionOutlives(ref predicate) => {
-                    let predicate = fcx.infcx().resolve_type_vars_if_possible(predicate);
-                    let err = fcx.infcx().region_outlives_predicate(obligation.cause.span,
-                                                                    &predicate).unwrap_err();
-                    fcx.tcx().sess.span_err(
-                        obligation.cause.span,
-                        format!(
-                            "the requirement `{}` is not satisfied (`{}`)",
-                            predicate.user_string(fcx.tcx()),
-                            ty::type_err_to_str(fcx.tcx(), &err)).as_slice());
-                }
-
-                ty::Predicate::TypeOutlives(ref predicate) => {
-                    let predicate = fcx.infcx().resolve_type_vars_if_possible(predicate);
-                    fcx.tcx().sess.span_err(
-                        obligation.cause.span,
-                        format!(
-                            "the requirement `{}` is not satisfied",
-                            predicate.user_string(fcx.tcx())).as_slice());
-                }
-            }
-
-            note_obligation_cause(fcx, obligation);
-        }
-        OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, ref e) => {
-            let expected_trait_ref =
-                fcx.infcx().resolve_type_vars_if_possible(
-                    &**expected_trait_ref);
-            let actual_trait_ref =
-                fcx.infcx().resolve_type_vars_if_possible(
-                    &**actual_trait_ref);
-            if !ty::type_is_error(actual_trait_ref.self_ty()) {
-                fcx.tcx().sess.span_err(
-                    obligation.cause.span,
-                    format!(
-                        "type mismatch: the type `{}` implements the trait `{}`, \
-                         but the trait `{}` is required ({})",
-                        expected_trait_ref.self_ty().user_string(fcx.tcx()),
-                        expected_trait_ref.user_string(fcx.tcx()),
-                        actual_trait_ref.user_string(fcx.tcx()),
-                        ty::type_err_to_str(fcx.tcx(), e)).as_slice());
-                note_obligation_cause(fcx, obligation);
-            }
-        }
-    }
-}
-
-pub fn maybe_report_ambiguity<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                        obligation: &PredicateObligation<'tcx>) {
-    // Unable to successfully determine, probably means
-    // insufficient type information, but could mean
-    // ambiguous impls. The latter *ought* to be a
-    // coherence violation, so we don't report it here.
-
-    let trait_ref = match obligation.trait_ref {
-        ty::Predicate::Trait(ref trait_ref) => {
-            fcx.infcx().resolve_type_vars_if_possible(&**trait_ref)
-        }
-        _ => {
-            fcx.tcx().sess.span_bug(
-                obligation.cause.span,
-                format!("ambiguity from something other than a trait: {}",
-                        obligation.trait_ref.repr(fcx.tcx())).as_slice());
-        }
-    };
-    let self_ty = trait_ref.self_ty();
-
-    debug!("maybe_report_ambiguity(trait_ref={}, self_ty={}, obligation={})",
-           trait_ref.repr(fcx.tcx()),
-           self_ty.repr(fcx.tcx()),
-           obligation.repr(fcx.tcx()));
-    let all_types = &trait_ref.substs().types;
-    if all_types.iter().any(|&t| ty::type_is_error(t)) {
-    } else if all_types.iter().any(|&t| ty::type_needs_infer(t)) {
-        // This is kind of a hack: it frequently happens that some earlier
-        // error prevents types from being fully inferred, and then we get
-        // a bunch of uninteresting errors saying something like "<generic
-        // #0> doesn't implement Sized".  It may even be true that we
-        // could just skip over all checks where the self-ty is an
-        // inference variable, but I was afraid that there might be an
-        // inference variable created, registered as an obligation, and
-        // then never forced by writeback, and hence by skipping here we'd
-        // be ignoring the fact that we don't KNOW the type works
-        // out. Though even that would probably be harmless, given that
-        // we're only talking about builtin traits, which are known to be
-        // inhabited. But in any case I just threw in this check for
-        // has_errors() to be sure that compilation isn't happening
-        // anyway. In that case, why inundate the user.
-        if !fcx.tcx().sess.has_errors() {
-            if fcx.ccx.tcx.lang_items.sized_trait()
-                  .map_or(false, |sized_id| sized_id == trait_ref.def_id()) {
-                fcx.tcx().sess.span_err(
-                    obligation.cause.span,
-                    format!(
-                        "unable to infer enough type information about `{}`; type annotations \
-                         required",
-                        self_ty.user_string(fcx.tcx()))[]);
-            } else {
-                fcx.tcx().sess.span_err(
-                    obligation.cause.span,
-                    format!(
-                        "unable to infer enough type information to \
-                         locate the impl of the trait `{}` for \
-                         the type `{}`; type annotations required",
-                        trait_ref.user_string(fcx.tcx()),
-                        self_ty.user_string(fcx.tcx()))[]);
-                note_obligation_cause(fcx, obligation);
-            }
-        }
-    } else if !fcx.tcx().sess.has_errors() {
-         // Ambiguity. Coherence should have reported an error.
-        fcx.tcx().sess.span_bug(
-            obligation.cause.span,
-            format!(
-                "coherence failed to report ambiguity: \
-                 cannot locate the impl of the trait `{}` for \
-                 the type `{}`",
-                trait_ref.user_string(fcx.tcx()),
-                self_ty.user_string(fcx.tcx()))[]);
+        Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
     }
 }
 
@@ -490,7 +296,7 @@ pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt)
         .select_where_possible(fcx.infcx(), &fcx.inh.param_env, fcx)
     {
         Ok(()) => { }
-        Err(errors) => { report_fulfillment_errors(fcx, &errors); }
+        Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
     }
 }
 
@@ -504,83 +310,6 @@ pub fn select_new_fcx_obligations(fcx: &FnCtxt) {
         .select_new_obligations(fcx.infcx(), &fcx.inh.param_env, fcx)
     {
         Ok(()) => { }
-        Err(errors) => { report_fulfillment_errors(fcx, &errors); }
-    }
-}
-
-fn note_obligation_cause<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                   obligation: &PredicateObligation<'tcx>) {
-    let tcx = fcx.tcx();
-    match obligation.cause.code {
-        traits::MiscObligation => { }
-        traits::ItemObligation(item_def_id) => {
-            let item_name = ty::item_path_str(tcx, item_def_id);
-            tcx.sess.span_note(
-                obligation.cause.span,
-                format!(
-                    "required by `{}`",
-                    item_name).as_slice());
-        }
-        traits::ObjectCastObligation(object_ty) => {
-            tcx.sess.span_note(
-                obligation.cause.span,
-                format!(
-                    "required for the cast to the object type `{}`",
-                    fcx.infcx().ty_to_string(object_ty)).as_slice());
-        }
-        traits::RepeatVec => {
-            tcx.sess.span_note(
-                obligation.cause.span,
-                "the `Copy` trait is required because the \
-                 repeated element will be copied");
-        }
-        traits::VariableType(_) => {
-            tcx.sess.span_note(
-                obligation.cause.span,
-                "all local variables must have a statically known size");
-        }
-        traits::ReturnType => {
-            tcx.sess.span_note(
-                obligation.cause.span,
-                "the return type of a function must have a \
-                 statically known size");
-        }
-        traits::AssignmentLhsSized => {
-            tcx.sess.span_note(
-                obligation.cause.span,
-                "the left-hand-side of an assignment must have a statically known size");
-        }
-        traits::StructInitializerSized => {
-            tcx.sess.span_note(
-                obligation.cause.span,
-                "structs must have a statically known size to be initialized");
-        }
-        traits::DropTrait => {
-            span_note!(tcx.sess, obligation.cause.span,
-                      "cannot implement a destructor on a \
-                      structure or enumeration that does not satisfy Send");
-            span_help!(tcx.sess, obligation.cause.span,
-                       "use \"#[unsafe_destructor]\" on the implementation \
-                       to force the compiler to allow this");
-        }
-        traits::ClosureCapture(var_id, closure_span, builtin_bound) => {
-            let def_id = tcx.lang_items.from_builtin_kind(builtin_bound).unwrap();
-            let trait_name = ty::item_path_str(tcx, def_id);
-            let name = ty::local_var_name_str(tcx, var_id);
-            span_note!(tcx.sess, closure_span,
-                       "the closure that captures `{}` requires that all captured variables \"
-                       implement the trait `{}`",
-                       name,
-                       trait_name);
-        }
-        traits::FieldSized => {
-            span_note!(tcx.sess, obligation.cause.span,
-                       "only the last field of a struct or enum variant \
-                       may have a dynamically sized type")
-        }
-        traits::ObjectSized => {
-            span_note!(tcx.sess, obligation.cause.span,
-                       "only sized types can be made into objects");
-        }
+        Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
     }
 }

@@ -72,13 +72,12 @@ use libc;
 
 use fmt;
 use hash;
-use kinds::marker;
 use mem;
 use ptr;
 use slice::{mod, ImmutableIntSlice};
 use str;
 use string::String;
-
+use core::kinds::marker;
 
 /// The representation of a C String.
 ///
@@ -89,6 +88,9 @@ pub struct CString {
     buf: *const libc::c_char,
     owns_buffer_: bool,
 }
+
+unsafe impl Send for CString { }
+unsafe impl Sync for CString { }
 
 impl Clone for CString {
     /// Clone this CString into a new, uniquely owned CString. For safety

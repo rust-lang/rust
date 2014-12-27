@@ -10,8 +10,14 @@
 
 use std::ptr;
 
-static a: *const u8 = 0 as *const u8;
+struct TestStruct {
+    x: *const u8
+}
+
+unsafe impl Sync for TestStruct {}
+
+static a: TestStruct = TestStruct{x: 0 as *const u8};
 
 pub fn main() {
-    assert_eq!(a, ptr::null());
+    assert_eq!(a.x, ptr::null());
 }

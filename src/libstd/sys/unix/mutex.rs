@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use cell::UnsafeCell;
+use kinds::Sync;
 use sys::sync as ffi;
 use sys_common::mutex;
 
@@ -22,6 +23,8 @@ pub unsafe fn raw(m: &Mutex) -> *mut ffi::pthread_mutex_t {
 pub const MUTEX_INIT: Mutex = Mutex {
     inner: UnsafeCell { value: ffi::PTHREAD_MUTEX_INITIALIZER },
 };
+
+unsafe impl Sync for Mutex {}
 
 impl Mutex {
     #[inline]

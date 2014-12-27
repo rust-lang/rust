@@ -31,11 +31,11 @@ use std::rc::Rc;
 
 // FIXME (#16118): These functions are intended to allow the borrow checker to
 // be less precise in its handling of Box while still allowing moves out of a
-// Box. They should be removed when OwnedPtr is removed from LoanPath.
+// Box. They should be removed when Unique is removed from LoanPath.
 
 fn owned_ptr_base_path<'a, 'tcx>(loan_path: &'a LoanPath<'tcx>) -> &'a LoanPath<'tcx> {
-    //! Returns the base of the leftmost dereference of an OwnedPtr in
-    //! `loan_path`. If there is no dereference of an OwnedPtr in `loan_path`,
+    //! Returns the base of the leftmost dereference of an Unique in
+    //! `loan_path`. If there is no dereference of an Unique in `loan_path`,
     //! then it just returns `loan_path` itself.
 
     return match helper(loan_path) {
@@ -46,7 +46,7 @@ fn owned_ptr_base_path<'a, 'tcx>(loan_path: &'a LoanPath<'tcx>) -> &'a LoanPath<
     fn helper<'a, 'tcx>(loan_path: &'a LoanPath<'tcx>) -> Option<&'a LoanPath<'tcx>> {
         match loan_path.kind {
             LpVar(_) | LpUpvar(_) => None,
-            LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
+            LpExtend(ref lp_base, _, LpDeref(mc::Unique)) => {
                 match helper(&**lp_base) {
                     v @ Some(_) => v,
                     None => Some(&**lp_base)
@@ -70,7 +70,7 @@ fn owned_ptr_base_path_rc<'tcx>(loan_path: &Rc<LoanPath<'tcx>>) -> Rc<LoanPath<'
     fn helper<'tcx>(loan_path: &Rc<LoanPath<'tcx>>) -> Option<Rc<LoanPath<'tcx>>> {
         match loan_path.kind {
             LpVar(_) | LpUpvar(_) => None,
-            LpExtend(ref lp_base, _, LpDeref(mc::OwnedPtr)) => {
+            LpExtend(ref lp_base, _, LpDeref(mc::Unique)) => {
                 match helper(lp_base) {
                     v @ Some(_) => v,
                     None => Some(lp_base.clone())
@@ -878,7 +878,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                         }
                     }
 
-                    mc::cat_deref(b, _, mc::OwnedPtr) => {
+                    mc::cat_deref(b, _, mc::Unique) => {
                         assert_eq!(cmt.mutbl, mc::McInherited);
                         cmt = b;
                     }
