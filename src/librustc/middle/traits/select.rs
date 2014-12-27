@@ -24,7 +24,7 @@ use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch
 use super::{Selection};
 use super::{SelectionResult};
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableUnboxedClosure, VtableFnPointer};
-use super::{VtableImplData, VtableParamData, VtableBuiltinData};
+use super::{VtableImplData, VtableBuiltinData};
 use super::{util};
 
 use middle::fast_reject;
@@ -131,8 +131,12 @@ pub enum MethodMatchedData {
 #[deriving(PartialEq,Eq,Show,Clone)]
 enum SelectionCandidate<'tcx> {
     BuiltinCandidate(ty::BuiltinBound),
-    ParamCandidate(VtableParamData<'tcx>),
+    ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(ast::DefId),
+
+    /// This is a trait matching with a projected type as `Self`, and
+    /// we found an applicable bound in the trait definition.
+    ProjectionCandidate,
 
     /// Implementation of a `Fn`-family trait by one of the
     /// anonymous types generated for a `||` expression.
@@ -507,8 +511,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut candidates = candidate_set.vec;
 
-        debug!("assembled {} candidates for {}",
-               candidates.len(), stack.repr(self.tcx()));
+        debug!("assembled {} candidates for {}: {}",
+               candidates.len(),
+               stack.repr(self.tcx()),
+               candidates.repr(self.tcx()));
 
         // At this point, we know that each of the entries in the
         // candidate set is *individually* applicable. Now we have to
@@ -706,9 +712,135 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
+        self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
         try!(self.assemble_candidates_from_caller_bounds(obligation, &mut candidates));
         debug!("candidate list size: {}", candidates.vec.len());
         Ok(candidates)
+    }
+
+    fn assemble_candidates_from_projected_tys(&mut self,
+                                              obligation: &TraitObligation<'tcx>,
+                                              candidates: &mut SelectionCandidateSet<'tcx>)
+    {
+        let poly_trait_predicate =
+            self.infcx().resolve_type_vars_if_possible(&obligation.predicate);
+
+        debug!("assemble_candidates_for_projected_tys({},{})",
+               obligation.repr(self.tcx()),
+               poly_trait_predicate.repr(self.tcx()));
+
+        // FIXME(#20297) -- just examining the self-type is very simplistic
+
+        // before we go into the whole skolemization thing, just
+        // quickly check if the self-type is a projection at all.
+        let trait_def_id = match poly_trait_predicate.0.trait_ref.self_ty().sty {
+            ty::ty_projection(ref data) => data.trait_ref.def_id,
+            ty::ty_infer(ty::TyVar(_)) => {
+                // TODO ignore potential ambiguity so that we can do
+                // better inference, need to get our story
+                // straight(er) here, I think.
+                // candidates.ambiguous = true;
+                return;
+            }
+            _ => { return; }
+        };
+
+        debug!("assemble_candidates_for_projected_tys: trait_def_id={}",
+               trait_def_id.repr(self.tcx()));
+
+        let result = self.infcx.probe(|snapshot| {
+            self.match_projection_obligation_against_bounds_from_trait(obligation,
+                                                                       snapshot)
+        });
+
+        if result {
+            candidates.vec.push(ProjectionCandidate);
+        }
+    }
+
+    fn match_projection_obligation_against_bounds_from_trait(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        snapshot: &infer::CombinedSnapshot)
+        -> bool
+    {
+        let poly_trait_predicate =
+            self.infcx().resolve_type_vars_if_possible(&obligation.predicate);
+        let (skol_trait_predicate, skol_map) =
+            self.infcx().skolemize_late_bound_regions(&poly_trait_predicate, snapshot);
+        debug!("match_projection_obligation_against_bounds_from_trait: \
+                skol_trait_predicate={} skol_map={}",
+               skol_trait_predicate.repr(self.tcx()),
+               skol_map.repr(self.tcx()));
+
+        let projection_trait_ref = match skol_trait_predicate.trait_ref.self_ty().sty {
+            ty::ty_projection(ref data) => &data.trait_ref,
+            _ => {
+                self.tcx().sess.span_bug(
+                    obligation.cause.span,
+                    format!("match_projection_obligation_against_bounds_from_trait() called \
+                             but self-ty not a projection: {}",
+                            skol_trait_predicate.trait_ref.self_ty().repr(self.tcx())).as_slice());
+            }
+        };
+        debug!("match_projection_obligation_against_bounds_from_trait: \
+                projection_trait_ref={}",
+               projection_trait_ref.repr(self.tcx()));
+
+        let trait_def = ty::lookup_trait_def(self.tcx(), projection_trait_ref.def_id);
+        let bounds = trait_def.generics.to_bounds(self.tcx(), &projection_trait_ref.substs);
+        debug!("match_projection_obligation_against_bounds_from_trait: \
+                bounds={}",
+               bounds.repr(self.tcx()));
+
+        let matching_bound =
+            util::elaborate_predicates(self.tcx(), bounds.predicates.to_vec())
+            .filter_to_traits()
+            .find(
+                |bound| self.infcx.probe(
+                    |_| self.match_projection(obligation,
+                                              bound.clone(),
+                                              skol_trait_predicate.trait_ref.clone(),
+                                              &skol_map,
+                                              snapshot)));
+
+        debug!("match_projection_obligation_against_bounds_from_trait: \
+                matching_bound={}",
+               matching_bound.repr(self.tcx()));
+        match matching_bound {
+            None => false,
+            Some(bound) => {
+                // Repeat the successful match, if any, this time outside of a probe.
+                let result = self.match_projection(obligation,
+                                                   bound,
+                                                   skol_trait_predicate.trait_ref.clone(),
+                                                   &skol_map,
+                                                   snapshot);
+                assert!(result);
+                true
+            }
+        }
+    }
+
+    fn match_projection(&mut self,
+                        obligation: &TraitObligation<'tcx>,
+                        trait_bound: ty::PolyTraitRef<'tcx>,
+                        skol_trait_ref: Rc<ty::TraitRef<'tcx>>,
+                        skol_map: &infer::SkolemizationMap,
+                        snapshot: &infer::CombinedSnapshot)
+                        -> bool
+    {
+        assert!(!skol_trait_ref.has_escaping_regions());
+        let origin = infer::RelateOutputImplTypes(obligation.cause.span);
+        match self.infcx.sub_poly_trait_refs(false,
+                                             origin,
+                                             trait_bound.clone(),
+                                             ty::Binder(skol_trait_ref.clone())) {
+            Ok(()) => { }
+            Err(_) => { return false; }
+        }
+
+        self.infcx.leak_check(skol_map, snapshot).is_ok()
     }
 
     /// Given an obligation like `<SomeTrait for T>`, search the obligations that the caller
@@ -738,8 +870,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     |_| self.match_where_clause(obligation, bound.clone())).is_ok());
 
         let param_candidates =
-            matching_bounds.map(
-                |bound| ParamCandidate(VtableParamData { bound: bound }));
+            matching_bounds.map(|bound| ParamCandidate(bound));
 
         candidates.vec.extend(param_candidates);
 
@@ -933,7 +1064,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                    -> bool
     {
         match (candidate_i, candidate_j) {
-            (&ImplCandidate(impl_def_id), &ParamCandidate(ref vt)) => {
+            (&ImplCandidate(impl_def_id), &ParamCandidate(ref bound)) => {
                 debug!("Considering whether to drop param {} in favor of impl {}",
                        candidate_i.repr(self.tcx()),
                        candidate_j.repr(self.tcx()));
@@ -954,9 +1085,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let origin =
                         infer::RelateOutputImplTypes(stack.obligation.cause.span);
                     self.infcx
-                        .sub_poly_trait_refs(false, origin, poly_impl_trait_ref, vt.bound.clone())
+                        .sub_poly_trait_refs(false, origin, poly_impl_trait_ref, bound.clone())
                         .is_ok()
                 })
+            }
+            (&ProjectionCandidate, &ParamCandidate(_)) => {
+                // FIXME(#20297) -- this gives where clauses precedent
+                // over projections. Really these are just two means
+                // of deducing information (one based on the where
+                // clauses on the trait definition; one based on those
+                // on the enclosing scope), and it'd be better to
+                // integrate them more intelligently. But for now this
+                // seems ok. If we DON'T give where clauses
+                // precedence, we run into trouble in default methods,
+                // where both the projection bounds for `Self::A` and
+                // the where clauses are in scope.
+                true
             }
             _ => {
                 *candidate_i == *candidate_j
@@ -1390,8 +1534,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ParamCandidate(param) => {
-                Ok(VtableParam(
-                    try!(self.confirm_param_candidate(obligation, param))))
+                self.confirm_param_candidate(obligation, param);
+                Ok(VtableParam)
             }
 
             ImplCandidate(impl_def_id) => {
@@ -1410,14 +1554,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     try!(self.confirm_fn_pointer_candidate(obligation));
                 Ok(VtableFnPointer(fn_type))
             }
+
+            ProjectionCandidate => {
+                self.confirm_projection_candidate(obligation);
+                Ok(VtableParam)
+            }
         }
+    }
+
+    fn confirm_projection_candidate(&mut self,
+                                    obligation: &TraitObligation<'tcx>)
+    {
+        let _: Result<(),()> =
+            self.infcx.try(|snapshot| {
+                let result =
+                    self.match_projection_obligation_against_bounds_from_trait(obligation,
+                                                                               snapshot);
+                assert!(result);
+                Ok(())
+            });
     }
 
     fn confirm_param_candidate(&mut self,
                                obligation: &TraitObligation<'tcx>,
-                               param: VtableParamData<'tcx>)
-                               -> Result<VtableParamData<'tcx>,
-                                         SelectionError<'tcx>>
+                               param: ty::PolyTraitRef<'tcx>)
     {
         debug!("confirm_param_candidate({},{})",
                obligation.repr(self.tcx()),
@@ -1429,12 +1589,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // transactional boundary; it should not fail.
         match self.confirm_poly_trait_refs(obligation.cause.clone(),
                                            obligation.predicate.to_poly_trait_ref(),
-                                           param.bound.clone()) {
-            Ok(()) => Ok(param),
+                                           param.clone()) {
+            Ok(()) => { }
             Err(_) => {
                 self.tcx().sess.bug(
                     format!("Where clause `{}` was applicable to `{}` but now is not",
-                            param.bound.repr(self.tcx()),
+                            param.repr(self.tcx()),
                             obligation.repr(self.tcx())).as_slice());
             }
         }
@@ -1981,14 +2141,13 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
         match *self {
             ErrorCandidate => format!("ErrorCandidate"),
             BuiltinCandidate(b) => format!("BuiltinCandidate({})", b),
+            ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
+            ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
+            ProjectionCandidate => format!("ProjectionCandidate"),
+            FnPointerCandidate => format!("FnPointerCandidate"),
             UnboxedClosureCandidate(c, ref s) => {
                 format!("UnboxedClosureCandidate({},{})", c, s.repr(tcx))
             }
-            FnPointerCandidate => {
-                format!("FnPointerCandidate")
-            }
-            ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
-            ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
         }
     }
 }

@@ -26,9 +26,10 @@ pub fn f2<T: Foo>(a: T) -> T::A {
 }
 
 pub fn main() {
-    f1(2i, 4i); //~ERROR the trait `Foo` is not implemented
-    f1(2u, 4u); //~ERROR the trait `Foo` is not implemented
-    f1(2u, 4i); //~ERROR the trait `Foo` is not implemented
+    f1(2i, 4i); //~ ERROR expected uint, found int
+    f1(2i, 4u);
+    f1(2u, 4u); //~ ERROR the trait `Foo` is not implemented
+    f1(2u, 4i); //~ ERROR the trait `Foo` is not implemented
 
-    let _: int = f2(2i); //~ERROR mismatched types: expected `int`, found `uint`
+    let _: int = f2(2i); //~ERROR expected `int`, found `uint`
 }

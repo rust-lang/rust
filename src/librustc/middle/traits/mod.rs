@@ -37,7 +37,6 @@ pub use self::util::elaborate_predicates;
 pub use self::util::trait_ref_for_builtin_bound;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
-pub use self::util::search_trait_and_supertraits_from_bound;
 pub use self::util::transitive_bounds;
 
 mod coherence;
@@ -189,10 +188,10 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 ///
 ///    // Case B: Vtable must be provided by caller. This applies when
 ///    // type is a type parameter.
-///    param.clone();    // VtableParam(Oblig_1)
+///    param.clone();    // VtableParam
 ///
 ///    // Case C: A mix of cases A and B.
-///    mixed.clone();    // Vtable(Impl_1, [VtableParam(Oblig_1)])
+///    mixed.clone();    // Vtable(Impl_1, [VtableParam])
 /// }
 /// ```
 ///
@@ -206,7 +205,7 @@ pub enum Vtable<'tcx, N> {
 
     /// Successful resolution to an obligation provided by the caller
     /// for some type parameter.
-    VtableParam(VtableParamData<'tcx>),
+    VtableParam,
 
     /// Successful resolution for a builtin trait.
     VtableBuiltin(VtableBuiltinData<N>),
@@ -241,15 +240,6 @@ pub struct VtableImplData<'tcx, N> {
 #[deriving(Show,Clone)]
 pub struct VtableBuiltinData<N> {
     pub nested: subst::VecPerParamSpace<N>
-}
-
-/// A vtable provided as a parameter by the caller. For example, in a
-/// function like `fn foo<T:Eq>(...)`, if the `eq()` method is invoked
-/// on an instance of `T`, the vtable would be of type `VtableParam`.
-#[deriving(PartialEq,Eq,Clone)]
-pub struct VtableParamData<'tcx> {
-    // In the above example, this would `Eq`
-    pub bound: ty::PolyTraitRef<'tcx>,
 }
 
 /// True if neither the trait nor self type is local. Note that `impl_def_id` must refer to an impl
@@ -302,7 +292,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     // (there shouldn't really be any anyhow).
     let cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
 
-    fulfill_cx.register_builtin_bound(infcx.tcx, ty, bound, cause);
+    fulfill_cx.register_builtin_bound(infcx, ty, bound, cause);
 
     // Note: we only assume something is `Copy` if we can
     // *definitively* show that it implements `Copy`. Otherwise,
@@ -361,7 +351,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(ref i) => i.iter_nested(),
             VtableFnPointer(..) => (&[]).iter(),
             VtableUnboxedClosure(..) => (&[]).iter(),
-            VtableParam(_) => (&[]).iter(),
+            VtableParam => (&[]).iter(),
             VtableBuiltin(ref i) => i.iter_nested(),
         }
     }
@@ -371,7 +361,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(ref i) => VtableImpl(i.map_nested(op)),
             VtableFnPointer(ref sig) => VtableFnPointer((*sig).clone()),
             VtableUnboxedClosure(d, ref s) => VtableUnboxedClosure(d, s.clone()),
-            VtableParam(ref p) => VtableParam((*p).clone()),
+            VtableParam => VtableParam,
             VtableBuiltin(ref b) => VtableBuiltin(b.map_nested(op)),
         }
     }
@@ -383,7 +373,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(i) => VtableImpl(i.map_move_nested(op)),
             VtableFnPointer(sig) => VtableFnPointer(sig),
             VtableUnboxedClosure(d, s) => VtableUnboxedClosure(d, s),
-            VtableParam(p) => VtableParam(p),
+            VtableParam => VtableParam,
             VtableBuiltin(no) => VtableBuiltin(no.map_move_nested(op)),
         }
     }
