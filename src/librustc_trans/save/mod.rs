@@ -636,7 +636,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         item.id);
 
                     for field in struct_def.fields.iter() {
-                        self.process_struct_field_def(field, enum_name[], variant.node.id);
+                        self.process_struct_field_def(field, qualname[], variant.node.id);
                         self.visit_ty(&*field.node.ty);
                     }
                 }
@@ -1422,8 +1422,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             let def_map = self.analysis.ty_cx.def_map.borrow();
             if !def_map.contains_key(&id) {
                 self.sess.span_bug(p.span,
-                                   format!("def_map has no key for {} in visit_arm",
-                                           id)[]);
+                                   format!("def_map has no key for {} in visit_arm", id)[]);
             }
             let def = &(*def_map)[id];
             match *def {
@@ -1433,16 +1432,15 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                                             path_to_string(p)[],
                                                             value[],
                                                             ""),
-                def::DefVariant(_,id,_) => self.fmt.ref_str(ref_kind,
-                                                            p.span,
-                                                            sub_span,
-                                                            id,
-                                                            self.cur_scope),
+                def::DefVariant(_, id ,_) => self.fmt.ref_str(ref_kind,
+                                                              p.span,
+                                                              sub_span,
+                                                              id,
+                                                              self.cur_scope),
                 // FIXME(nrc) what is this doing here?
                 def::DefStatic(_, _) => {}
                 def::DefConst(..) => {}
-                _ => error!("unexpected definition kind when processing collected paths: {}",
-                            *def)
+                _ => error!("unexpected definition kind when processing collected paths: {}", *def)
             }
         }
         self.collected_paths.clear();
