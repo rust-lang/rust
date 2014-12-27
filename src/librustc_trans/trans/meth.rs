@@ -565,7 +565,7 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let llfn = vec![trans_fn_pointer_shim(bcx.ccx(), bare_fn_ty)];
                 llfn.into_iter()
             }
-            traits::VtableParam(..) => {
+            traits::VtableParam => {
                 bcx.sess().bug(
                     format!("resolved vtable for {} to bad vtable {} in trans",
                             trait_ref.repr(bcx.tcx()),
