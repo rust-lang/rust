@@ -1162,8 +1162,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         }
 
         match i.node {
-            ast::ViewItemUse(ref path) => {
-                match path.node {
+            ast::ViewItemUse(ref item) => {
+                match item.node {
                     ast::ViewPathSimple(ident, ref path, id) => {
                         let sub_span = self.span.span_for_last_ident(path.span);
                         let mod_id = match self.lookup_type_ref(id) {
@@ -1184,7 +1184,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                         // 'use' always introduces an alias, if there is not an explicit
                         // one, there is an implicit one.
                         let sub_span =
-                            match self.span.sub_span_before_token(path.span, token::Eq) {
+                            match self.span.sub_span_after_keyword(item.span, keywords::As) {
                                 Some(sub_span) => Some(sub_span),
                                 None => sub_span,
                             };
