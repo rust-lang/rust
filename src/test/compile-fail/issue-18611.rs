@@ -10,10 +10,9 @@
 
 #![feature(associated_types)]
 
-fn add_state(op:
-    <int as HasState>::State
-//~^ ERROR it is currently unsupported to access associated types except through a type parameter
-) {}
+fn add_state(op: <int as HasState>::State) {
+//~^ ERROR the trait `HasState` is not implemented for the type `int`
+}
 
 trait HasState {
     type State;

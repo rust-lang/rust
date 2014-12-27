@@ -12,8 +12,6 @@ fn main() {
     return
         { return () }
 //~^ ERROR the type of this value must be known in this context
-//~| ERROR this function takes 1 parameter
-//~| ERROR mismatched types
     ()
     ;
 }

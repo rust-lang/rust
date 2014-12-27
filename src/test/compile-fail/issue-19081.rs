@@ -10,7 +10,7 @@
 
 #![feature(associated_types)]
 
-pub trait Hasher{
+pub trait Hasher {
     type State;
 
     fn hash<T: Hash<
@@ -18,7 +18,7 @@ pub trait Hasher{
     >>(&self, value: &T) -> u64;
 }
 
-trait Hash<S> {
+pub trait Hash<S> {
     fn hash(&self, state: &mut S);
 }
 
