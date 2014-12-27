@@ -168,9 +168,6 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) {
                     }
                 }
             }
-            if let Some(ref expr) = block.expr {
-                check_expr(v, &**expr);
-            }
         }
         ast::ExprVec(_) |
         ast::ExprAddrOf(ast::MutImmutable, _) |
