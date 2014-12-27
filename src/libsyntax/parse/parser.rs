@@ -5917,7 +5917,7 @@ impl<'a> Parser<'a> {
     }
 
 
-    /// Matches view_path : MOD? IDENT EQ non_global_path
+    /// Matches view_path : MOD? non_global_path as IDENT
     /// | MOD? non_global_path MOD_SEP LBRACE RBRACE
     /// | MOD? non_global_path MOD_SEP LBRACE ident_seq RBRACE
     /// | MOD? non_global_path MOD_SEP STAR
@@ -6029,7 +6029,7 @@ impl<'a> Parser<'a> {
         }
         let mut rename_to = path[path.len() - 1u];
         let path = ast::Path {
-            span: mk_sp(lo, self.span.hi),
+            span: mk_sp(lo, self.last_span.hi),
             global: false,
             segments: path.into_iter().map(|identifier| {
                 ast::PathSegment {
@@ -6041,7 +6041,8 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(keywords::As) {
             rename_to = self.parse_ident()
         }
-        P(spanned(lo, self.last_span.hi,
+        P(spanned(lo,
+                  self.last_span.hi,
                   ViewPathSimple(rename_to, path, ast::DUMMY_NODE_ID)))
     }
 
