@@ -202,6 +202,9 @@ impl Session {
     pub fn show_span(&self) -> bool {
         self.debugging_opt(config::SHOW_SPAN)
     }
+    pub fn unstable_options(&self) -> bool {
+        self.debugging_opt(config::UNSTABLE_OPTIONS)
+    }
     pub fn sysroot<'a>(&'a self) -> &'a Path {
         match self.opts.maybe_sysroot {
             Some (ref sysroot) => sysroot,

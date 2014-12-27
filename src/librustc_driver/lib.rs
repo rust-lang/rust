@@ -143,7 +143,7 @@ fn run_compiler(args: &[String]) {
         pretty::parse_pretty(&sess, a.as_slice(), false)
     });
     let pretty = if pretty.is_none() &&
-        sess.debugging_opt(config::UNSTABLE_OPTIONS) {
+        sess.unstable_options() {
             matches.opt_str("xpretty").map(|a| {
                 // extended with unstable pretty-print variants
                 pretty::parse_pretty(&sess, a.as_slice(), true)
