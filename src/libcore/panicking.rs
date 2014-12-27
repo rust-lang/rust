@@ -16,7 +16,7 @@
 //! interface for panicking is:
 //!
 //! ```ignore
-//! fn panic_impl(fmt: &fmt::Arguments, &(&'static str, uint)) -> !;
+//! fn panic_impl(fmt: fmt::Arguments, &(&'static str, uint)) -> !;
 //! ```
 //!
 //! This definition allows for panicking with any general message, but it does not
@@ -31,8 +31,20 @@
 #![allow(dead_code, missing_docs)]
 
 use fmt;
-use intrinsics;
+// NOTE(stage0): Remove import after a snapshot
+#[cfg(stage0)] use intrinsics;
 
+// NOTE(stage0): Remove cfg after a snapshot
+#[cfg(not(stage0))]
+#[cold] #[inline(never)] // this is the slow path, always
+#[lang="panic"]
+pub fn panic(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
+    let (expr, file, line) = *expr_file_line;
+    panic_fmt(format_args!("{}", expr), &(file, line))
+}
+
+// NOTE(stage0): Remove function after a snapshot
+#[cfg(stage0)]
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang="panic"]
 pub fn panic(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
@@ -45,6 +57,18 @@ pub fn panic(expr_file_line: &(&'static str, &'static str, uint)) -> ! {
     unsafe { intrinsics::abort() }
 }
 
+// NOTE(stage0): Remove cfg after a snapshot
+#[cfg(not(stage0))]
+#[cold] #[inline(never)]
+#[lang="panic_bounds_check"]
+fn panic_bounds_check(file_line: &(&'static str, uint),
+                     index: uint, len: uint) -> ! {
+    panic_fmt(format_args!("index out of bounds: the len is {} but the index is {}",
+                           len, index), file_line)
+}
+
+// NOTE(stage0): Remove function after a snapshot
+#[cfg(stage0)]
 #[cold] #[inline(never)]
 #[lang="panic_bounds_check"]
 fn panic_bounds_check(file_line: &(&'static str, uint),
@@ -55,6 +79,21 @@ fn panic_bounds_check(file_line: &(&'static str, uint),
     unsafe { intrinsics::abort() }
 }
 
+// NOTE(stage0): Remove cfg after a snapshot
+#[cfg(not(stage0))]
+#[cold] #[inline(never)]
+pub fn panic_fmt(fmt: fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
+    #[allow(improper_ctypes)]
+    extern {
+        #[lang = "panic_fmt"]
+        fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: uint) -> !;
+    }
+    let (file, line) = *file_line;
+    unsafe { panic_impl(fmt, file, line) }
+}
+
+// NOTE(stage0): Remove function after a snapshot
+#[cfg(stage0)]
 #[cold] #[inline(never)]
 pub fn panic_fmt(fmt: &fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(improper_ctypes)]
