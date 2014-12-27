@@ -60,6 +60,9 @@ pub struct RWLock<T> {
     data: UnsafeCell<T>,
 }
 
+unsafe impl<T:'static+Send> Send for RWLock<T> {}
+unsafe impl<T> Sync for RWLock<T> {}
+
 /// Structure representing a statically allocated RWLock.
 ///
 /// This structure is intended to be used inside of a `static` and will provide
@@ -87,6 +90,9 @@ pub struct StaticRWLock {
     inner: sys::RWLock,
     poison: UnsafeCell<poison::Flag>,
 }
+
+unsafe impl Send for StaticRWLock {}
+unsafe impl Sync for StaticRWLock {}
 
 /// Constant initialization for a statically-initialized rwlock.
 pub const RWLOCK_INIT: StaticRWLock = StaticRWLock {

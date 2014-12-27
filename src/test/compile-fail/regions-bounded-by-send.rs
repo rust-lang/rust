@@ -12,8 +12,11 @@
 // in this file all test region bound and lifetime violations that are
 // detected during type check.
 
+extern crate core;
+use core::ptr::Unique;
+
 fn assert_send<T:Send>() { }
-trait Dummy { }
+trait Dummy:Send { }
 
 // lifetime pointers with 'static lifetime are ok
 
@@ -58,7 +61,7 @@ fn box_with_region_not_ok<'a>() {
 
 fn object_with_random_bound_not_ok<'a>() {
     assert_send::<&'a (Dummy+'a)>();
-    //~^ ERROR not implemented
+    //~^ ERROR reference has a longer lifetime
 }
 
 fn object_with_send_bound_not_ok<'a>() {
@@ -73,17 +76,12 @@ fn closure_with_lifetime_not_ok<'a>() {
 
 // unsafe pointers are ok unless they point at unsendable things
 
+struct UniqueUnsafePtr(Unique<*const int>);
+
+unsafe impl Send for UniqueUnsafePtr {}
+
 fn unsafe_ok1<'a>(_: &'a int) {
-    assert_send::<*const int>();
-    assert_send::<*mut int>();
-}
-
-fn unsafe_ok2<'a>(_: &'a int) {
-    assert_send::<*const &'a int>(); //~ ERROR declared lifetime bound not satisfied
-}
-
-fn unsafe_ok3<'a>(_: &'a int) {
-    assert_send::<*mut &'a int>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<UniqueUnsafePtr>();
 }
 
 fn main() {

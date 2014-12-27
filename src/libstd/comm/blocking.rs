@@ -13,6 +13,7 @@
 use thread::Thread;
 use sync::atomic::{AtomicBool, INIT_ATOMIC_BOOL, Ordering};
 use sync::Arc;
+use kinds::{Sync, Send};
 use kinds::marker::{NoSend, NoSync};
 use mem;
 use clone::Clone;
@@ -21,6 +22,9 @@ struct Inner {
     thread: Thread,
     woken: AtomicBool,
 }
+
+unsafe impl Send for Inner {}
+unsafe impl Sync for Inner {}
 
 #[deriving(Clone)]
 pub struct SignalToken {

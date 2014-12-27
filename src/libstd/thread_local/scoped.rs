@@ -198,9 +198,10 @@ impl<T> Key<T> {
 mod imp {
     use std::cell::UnsafeCell;
 
-    // FIXME: Should be a `Cell`, but that's not `Sync`
     #[doc(hidden)]
     pub struct KeyInner<T> { pub inner: UnsafeCell<*mut T> }
+
+    unsafe impl<T> ::kinds::Sync for KeyInner<T> { }
 
     #[doc(hidden)]
     impl<T> KeyInner<T> {
@@ -221,6 +222,8 @@ mod imp {
         pub inner: OsStaticKey,
         pub marker: marker::InvariantType<T>,
     }
+
+    unsafe impl<T> ::kinds::Sync for KeyInner<T> { }
 
     #[doc(hidden)]
     impl<T> KeyInner<T> {

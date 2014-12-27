@@ -108,6 +108,11 @@ fn dot(v: &[f64], u: &[f64]) -> f64 {
     v.iter().zip(u.iter()).map(|(a, b)| *a * *b).sum()
 }
 
+
+struct Racy<T>(T);
+
+unsafe impl<T: 'static> Send for Racy<T> {}
+
 // Executes a closure in parallel over the given mutable slice. The closure `f`
 // is run in parallel and yielded the starting index within `v` as well as a
 // sub-slice of `v`.
@@ -122,11 +127,11 @@ fn parallel<'a, T, F>(v: &'a mut [T], f: F)
 
         // Need to convert `f` and `chunk` to something that can cross the task
         // boundary.
-        let f = &f as *const _ as *const uint;
-        let raw = chunk.repr();
+        let f = Racy(&f as *const _ as *const uint);
+        let raw = Racy(chunk.repr());
         spawn(move|| {
-            let f = f as *const F;
-            unsafe { (*f)(i * size, mem::transmute(raw)) }
+            let f = f.0 as *const F;
+            unsafe { (*f)(i * size, mem::transmute(raw.0)) }
             drop(tx)
         });
     }

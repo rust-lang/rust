@@ -17,4 +17,5 @@ fn test_send<S: Send>() {}
 pub fn main() {
     test_send::<rand::TaskRng>();
     //~^ ERROR `core::kinds::Send` is not implemented
+    //~^^ ERROR `core::kinds::Send` is not implemented
 }

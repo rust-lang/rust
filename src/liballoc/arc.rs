@@ -117,6 +117,10 @@ pub struct Arc<T> {
     _ptr: *mut ArcInner<T>,
 }
 
+unsafe impl<T: Sync + Send> Send for Arc<T> { }
+unsafe impl<T: Sync + Send> Sync for Arc<T> { }
+
+
 /// A weak pointer to an `Arc`.
 ///
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be used to break cycles
@@ -129,13 +133,19 @@ pub struct Weak<T> {
     _ptr: *mut ArcInner<T>,
 }
 
+unsafe impl<T: Sync + Send> Send for Weak<T> { }
+unsafe impl<T: Sync + Send> Sync for Weak<T> { }
+
 struct ArcInner<T> {
     strong: atomic::AtomicUint,
     weak: atomic::AtomicUint,
     data: T,
 }
 
-impl<T: Sync + Send> Arc<T> {
+unsafe impl<T: Sync + Send> Send for ArcInner<T> {}
+unsafe impl<T: Sync + Send> Sync for ArcInner<T> {}
+
+impl<T> Arc<T> {
     /// Constructs a new `Arc<T>`.
     ///
     /// # Examples
@@ -587,6 +597,7 @@ mod tests {
     use std::str::Str;
     use std::sync::atomic;
     use std::task;
+    use std::kinds::Send;
     use std::vec::Vec;
     use super::{Arc, Weak, weak_count, strong_count};
     use std::sync::Mutex;

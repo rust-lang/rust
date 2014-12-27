@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use kinds::Sync;
 use sys::mutex as imp;
 
 /// An OS-based mutual exclusion lock.
@@ -16,6 +17,8 @@ use sys::mutex as imp;
 /// this mutex is unsafe and it is recommended to instead use the safe wrapper
 /// at the top level of the crate instead of this type.
 pub struct Mutex(imp::Mutex);
+
+unsafe impl Sync for Mutex {}
 
 /// Constant initializer for statically allocated mutexes.
 pub const MUTEX_INIT: Mutex = Mutex(imp::MUTEX_INIT);

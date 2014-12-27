@@ -33,6 +33,8 @@ pub struct TcpListener {
     pub inner: FileDesc,
 }
 
+unsafe impl Sync for TcpListener {}
+
 impl TcpListener {
     pub fn bind(addr: ip::SocketAddr) -> IoResult<TcpListener> {
         let fd = try!(net::socket(addr, libc::SOCK_STREAM));
@@ -95,6 +97,8 @@ struct AcceptorInner {
     writer: FileDesc,
     closed: atomic::AtomicBool,
 }
+
+unsafe impl Sync for AcceptorInner {}
 
 impl TcpAcceptor {
     pub fn fd(&self) -> sock_t { self.inner.listener.fd() }

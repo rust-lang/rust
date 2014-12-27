@@ -180,12 +180,12 @@ mod tests {
 
     fn malloc(n: uint) -> CVec<u8> {
         unsafe {
-            let mem = libc::malloc(n as libc::size_t);
-            if mem.is_null() { ::alloc::oom() }
+            let mem = ptr::Unique(libc::malloc(n as libc::size_t));
+            if mem.0.is_null() { ::alloc::oom() }
 
-            CVec::new_with_dtor(mem as *mut u8,
+            CVec::new_with_dtor(mem.0 as *mut u8,
                                 n,
-                                move|| { libc::free(mem as *mut libc::c_void); })
+                                move|| { libc::free(mem.0 as *mut libc::c_void); })
         }
     }
 

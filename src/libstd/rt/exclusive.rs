@@ -26,6 +26,10 @@ pub struct Exclusive<T> {
     data: UnsafeCell<T>,
 }
 
+unsafe impl<T:Send> Send for Exclusive<T> { }
+
+unsafe impl<T:Send> Sync for Exclusive<T> { }
+
 /// An RAII guard returned via `lock`
 pub struct ExclusiveGuard<'a, T:'a> {
     // FIXME #12808: strange name to try to avoid interfering with

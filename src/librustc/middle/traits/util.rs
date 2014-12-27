@@ -260,7 +260,7 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
            generic_bounds.repr(tcx));
 
     generic_bounds.predicates.map(|predicate| {
-        Obligation { cause: cause,
+        Obligation { cause: cause.clone(),
                      recursion_depth: recursion_depth,
                      trait_ref: predicate.clone() }
     })

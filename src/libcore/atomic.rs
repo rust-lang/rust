@@ -14,6 +14,8 @@
 
 pub use self::Ordering::*;
 
+use kinds::Sync;
+
 use intrinsics;
 use cell::UnsafeCell;
 
@@ -23,11 +25,15 @@ pub struct AtomicBool {
     v: UnsafeCell<uint>,
 }
 
+unsafe impl Sync for AtomicBool {}
+
 /// A signed integer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicInt {
     v: UnsafeCell<int>,
 }
+
+unsafe impl Sync for AtomicInt {}
 
 /// An unsigned integer type which can be safely shared between threads.
 #[stable]
@@ -35,11 +41,15 @@ pub struct AtomicUint {
     v: UnsafeCell<uint>,
 }
 
+unsafe impl Sync for AtomicUint {}
+
 /// A raw pointer type which can be safely shared between threads.
 #[stable]
 pub struct AtomicPtr<T> {
     p: UnsafeCell<uint>,
 }
+
+unsafe impl<T> Sync for AtomicPtr<T> {}
 
 /// Atomic memory orderings
 ///

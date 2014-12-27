@@ -30,12 +30,15 @@ fn test<T: Sync>(s: T){
 fn main() {
     let us = UnsafeCell::new(MySync{u: UnsafeCell::new(0i)});
     test(us);
+    //~^ ERROR `core::kinds::Sync` is not implemented
 
     let uns = UnsafeCell::new(NoSync{m: marker::NoSync});
     test(uns);
+    //~^ ERROR `core::kinds::Sync` is not implemented
 
     let ms = MySync{u: uns};
     test(ms);
+    //~^ ERROR `core::kinds::Sync` is not implemented
 
     let ns = NoSync{m: marker::NoSync};
     test(ns);

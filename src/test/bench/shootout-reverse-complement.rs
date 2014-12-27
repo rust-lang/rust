@@ -46,7 +46,7 @@ extern crate libc;
 
 use std::io::stdio::{stdin_raw, stdout_raw};
 use std::num::{div_rem};
-use std::ptr::{copy_memory};
+use std::ptr::{copy_memory, Unique};
 use std::io::{IoResult, EndOfFile};
 
 struct Tables {
@@ -219,10 +219,15 @@ fn reverse_complement(seq: &mut [u8], tables: &Tables) {
     }
 }
 
+
+struct Racy<T>(T);
+
+unsafe impl<T: 'static> Send for Racy<T> {}
+
 /// Executes a closure in parallel over the given iterator over mutable slice.
 /// The closure `f` is run in parallel with an element of `iter`.
 fn parallel<'a, I, T, F>(mut iter: I, f: F)
-        where T: Send + Sync,
+        where T: 'a+Send + Sync,
               I: Iterator<&'a mut [T]>,
               F: Fn(&'a mut [T]) + Sync {
     use std::mem;
@@ -234,11 +239,11 @@ fn parallel<'a, I, T, F>(mut iter: I, f: F)
 
         // Need to convert `f` and `chunk` to something that can cross the task
         // boundary.
-        let f = &f as *const F as *const uint;
-        let raw = chunk.repr();
+        let f = Racy(&f as *const F as *const uint);
+        let raw = Racy(chunk.repr());
         spawn(move|| {
-            let f = f as *const F;
-            unsafe { (*f)(mem::transmute(raw)) }
+            let f = f.0 as *const F;
+            unsafe { (*f)(mem::transmute(raw.0)) }
             drop(tx)
         });
     }
