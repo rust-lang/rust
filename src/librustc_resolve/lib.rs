@@ -3913,6 +3913,8 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// Searches the current set of local scopes and
+    /// applies translations for closures.
     fn search_ribs(&self,
                    ribs: &[Rib],
                    name: Name,
@@ -3934,6 +3936,8 @@ impl<'a> Resolver<'a> {
         None
     }
 
+    /// Searches the current set of local scopes for labels.
+    /// Stops after meeting a closure.
     fn search_label(&self, name: Name) -> Option<DefLike> {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
@@ -3946,13 +3950,8 @@ impl<'a> Resolver<'a> {
                 }
             }
             let result = rib.bindings.get(&name).cloned();
-            match result {
-                Some(_) => {
-                    return result
-                }
-                None => {
-                    // Continue
-                }
+            if result.is_some() {
+                return result
             }
         }
         None
