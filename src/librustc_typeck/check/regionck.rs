@@ -1848,11 +1848,9 @@ fn param_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     // well-formed, then, A must be lower-bounded by `'a`, but we
     // don't know that this holds from first principles.
     for &(ref r, ref p) in rcx.region_param_pairs.iter() {
-        debug!("param_ty={}/{} p={}/{}",
+        debug!("param_ty={} p={}",
                param_ty.repr(rcx.tcx()),
-               param_ty.def_id,
-               p.repr(rcx.tcx()),
-               p.def_id);
+               p.repr(rcx.tcx()));
         if param_ty == *p {
             param_bounds.push(*r);
         }

@@ -448,7 +448,7 @@ impl tr for def::Def {
           def::DefAssociatedPath(def::TyParamProvenance::FromParam(did), ident) =>
               def::DefAssociatedPath(def::TyParamProvenance::FromParam(did.tr(dcx)), ident),
           def::DefPrimTy(p) => def::DefPrimTy(p),
-          def::DefTyParam(s, did, v) => def::DefTyParam(s, did.tr(dcx), v),
+          def::DefTyParam(s, index, def_id, n) => def::DefTyParam(s, index, def_id.tr(dcx), n),
           def::DefUse(did) => def::DefUse(did.tr(dcx)),
           def::DefUpvar(nid1, nid2, nid3) => {
             def::DefUpvar(dcx.tr_id(nid1),

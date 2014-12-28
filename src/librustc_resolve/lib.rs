@@ -3906,7 +3906,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // If the def is a ty param, and came from the parent
                             // item, it's ok
                             match def {
-                                DefTyParam(_, did, _) if {
+                                DefTyParam(_, _, did, _) if {
                                     self.def_map.borrow().get(&did.node).cloned()
                                         == Some(DefTyParamBinder(item_id))
                                 } => {} // ok
@@ -3959,7 +3959,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // If the def is a ty param, and came from the parent
                             // item, it's ok
                             match def {
-                                DefTyParam(_, did, _) if {
+                                DefTyParam(_, _, did, _) if {
                                     self.def_map.borrow().get(&did.node).cloned()
                                         == Some(DefTyParamBinder(item_id))
                                 } => {} // ok
@@ -4265,8 +4265,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     seen_bindings.insert(name);
 
                     let def_like = DlDef(DefTyParam(space,
+                                                    index as u32,
                                                     local_def(type_parameter.id),
-                                                    index as u32));
+                                                    name));
                     // Associate this type parameter with
                     // the item that bound it
                     self.record_def(type_parameter.id,
@@ -5161,7 +5162,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                           path.span) {
                 Some((def, last_private)) => {
                     match def {
-                        DefTyParam(_, did, _) => {
+                        DefTyParam(_, _, did, _) => {
                             let def = DefAssociatedPath(TyParamProvenance::FromParam(did),
                                                         path.segments.last()
                                                             .unwrap().identifier);

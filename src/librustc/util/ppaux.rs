@@ -1328,17 +1328,8 @@ impl<'tcx> Repr<'tcx> for ty::ExplicitSelfCategory {
 }
 
 impl<'tcx> UserString<'tcx> for ParamTy {
-    fn user_string(&self, tcx: &ctxt) -> String {
-        let id = self.idx;
-        let did = self.def_id;
-        let ident = match tcx.ty_param_defs.borrow().get(&did.node) {
-            Some(def) => token::get_name(def.name).get().to_string(),
-
-            // This can only happen when a type mismatch error happens and
-            // the actual type has more type parameters than the expected one.
-            None => format!("<generic #{}>", id),
-        };
-        ident
+    fn user_string(&self, _tcx: &ctxt) -> String {
+        format!("{}", token::get_name(self.name))
     }
 }
 

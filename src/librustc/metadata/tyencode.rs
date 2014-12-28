@@ -135,8 +135,8 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
         ty::ty_infer(_) => {
             cx.diag.handler().bug("cannot encode inference variable types");
         }
-        ty::ty_param(ParamTy {space, idx: id, def_id: did}) => {
-            mywrite!(w, "p{}|{}|{}|", (cx.ds)(did), id, space.to_uint())
+        ty::ty_param(ParamTy {space, idx, name}) => {
+            mywrite!(w, "p[{}|{}|{}]", idx, space.to_uint(), token::get_name(name))
         }
         ty::ty_struct(def, substs) => {
             mywrite!(w, "a[{}|", (cx.ds)(def));

@@ -86,7 +86,7 @@ use syntax::ast::{Visibility};
 use syntax::ast_util::{mod, is_local, lit_is_str, local_def, PostExpansionMethod};
 use syntax::attr::{mod, AttrMetaMethods};
 use syntax::codemap::Span;
-use syntax::parse::token::{mod, InternedString};
+use syntax::parse::token::{mod, InternedString, special_idents};
 use syntax::{ast, ast_map};
 
 pub type Disr = u64;
@@ -1079,7 +1079,7 @@ pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 pub struct ParamTy {
     pub space: subst::ParamSpace,
     pub idx: u32,
-    pub def_id: DefId
+    pub name: ast::Name,
 }
 
 /// A [De Bruijn index][dbi] is a standard means of representing
@@ -2775,17 +2775,19 @@ pub fn mk_infer<'tcx>(cx: &ctxt<'tcx>, it: InferTy) -> Ty<'tcx> {
     mk_t(cx, ty_infer(it))
 }
 
-pub fn mk_param<'tcx>(cx: &ctxt<'tcx>, space: subst::ParamSpace,
-                      n: u32, k: DefId) -> Ty<'tcx> {
-    mk_t(cx, ty_param(ParamTy { space: space, idx: n, def_id: k }))
+pub fn mk_param<'tcx>(cx: &ctxt<'tcx>,
+                      space: subst::ParamSpace,
+                      index: u32,
+                      name: ast::Name) -> Ty<'tcx> {
+    mk_t(cx, ty_param(ParamTy { space: space, idx: index, name: name }))
 }
 
-pub fn mk_self_type<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId) -> Ty<'tcx> {
-    mk_param(cx, subst::SelfSpace, 0, did)
+pub fn mk_self_type<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
+    mk_param(cx, subst::SelfSpace, 0, special_idents::type_self.name)
 }
 
 pub fn mk_param_from_def<'tcx>(cx: &ctxt<'tcx>, def: &TypeParameterDef) -> Ty<'tcx> {
-    mk_param(cx, def.space, def.index, def.def_id)
+    mk_param(cx, def.space, def.index, def.name)
 }
 
 pub fn mk_open<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> { mk_t(cx, ty_open(ty)) }
@@ -2854,21 +2856,21 @@ pub fn fold_ty<'tcx, F>(cx: &ctxt<'tcx>, t0: Ty<'tcx>,
 impl ParamTy {
     pub fn new(space: subst::ParamSpace,
                index: u32,
-               def_id: ast::DefId)
+               name: ast::Name)
                -> ParamTy {
-        ParamTy { space: space, idx: index, def_id: def_id }
+        ParamTy { space: space, idx: index, name: name }
     }
 
-    pub fn for_self(trait_def_id: ast::DefId) -> ParamTy {
-        ParamTy::new(subst::SelfSpace, 0, trait_def_id)
+    pub fn for_self() -> ParamTy {
+        ParamTy::new(subst::SelfSpace, 0, special_idents::type_self.name)
     }
 
     pub fn for_def(def: &TypeParameterDef) -> ParamTy {
-        ParamTy::new(def.space, def.index, def.def_id)
+        ParamTy::new(def.space, def.index, def.name)
     }
 
     pub fn to_ty<'tcx>(self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
-        ty::mk_param(tcx, self.space, self.idx, self.def_id)
+        ty::mk_param(tcx, self.space, self.idx, self.name)
     }
 
     pub fn is_self(&self) -> bool {
@@ -6256,8 +6258,9 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 }
                 ty_param(p) => {
                     byte!(20);
+                    hash!(p.space);
                     hash!(p.idx);
-                    did(state, p.def_id);
+                    hash!(token::get_name(p.name));
                 }
                 ty_open(_) => byte!(22),
                 ty_infer(_) => unreachable!(),
@@ -6312,17 +6315,11 @@ pub fn construct_parameter_environment<'tcx>(
 
     // map T => T
     let mut types = VecPerParamSpace::empty();
-    for &space in subst::ParamSpace::all().iter() {
-        push_types_from_defs(tcx, &mut types, space,
-                             generics.types.get_slice(space));
-    }
+    push_types_from_defs(tcx, &mut types, generics.types.as_slice());
 
     // map bound 'a => free 'a
     let mut regions = VecPerParamSpace::empty();
-    for &space in subst::ParamSpace::all().iter() {
-        push_region_params(&mut regions, space, free_id,
-                           generics.regions.get_slice(space));
-    }
+    push_region_params(&mut regions, free_id, generics.regions.as_slice());
 
     let free_substs = Substs {
         types: types,
@@ -6359,27 +6356,22 @@ pub fn construct_parameter_environment<'tcx>(
     };
 
     fn push_region_params(regions: &mut VecPerParamSpace<ty::Region>,
-                          space: subst::ParamSpace,
                           free_id: ast::NodeId,
                           region_params: &[RegionParameterDef])
     {
         for r in region_params.iter() {
-            regions.push(space, ty::free_region_from_def(free_id, r));
+            regions.push(r.space, ty::free_region_from_def(free_id, r));
         }
     }
 
     fn push_types_from_defs<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   types: &mut subst::VecPerParamSpace<Ty<'tcx>>,
-                                  space: subst::ParamSpace,
                                   defs: &[TypeParameterDef<'tcx>]) {
-        for (i, def) in defs.iter().enumerate() {
-            debug!("construct_parameter_environment(): push_types_from_defs: \
-                    space={} def={} index={}",
-                   space,
-                   def.repr(tcx),
-                   i);
-            let ty = ty::mk_param(tcx, space, i as u32, def.def_id);
-            types.push(space, ty);
+        for def in defs.iter() {
+            debug!("construct_parameter_environment(): push_types_from_defs: def={}",
+                   def.repr(tcx));
+            let ty = ty::mk_param_from_def(tcx, def);
+            types.push(def.space, ty);
         }
     }
 
