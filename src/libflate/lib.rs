@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_flate_round_trip() {
-        let mut r = rand::task_rng();
+        let mut r = rand::thread_rng();
         let mut words = vec!();
         for _ in range(0u, 20) {
             let range = r.gen_range(1u, 10);

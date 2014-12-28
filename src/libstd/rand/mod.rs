@@ -18,10 +18,10 @@
 //! See the `distributions` submodule for sampling random numbers from
 //! distributions like normal and exponential.
 //!
-//! # Task-local RNG
+//! # Thread-local RNG
 //!
-//! There is built-in support for a RNG associated with each task stored
-//! in task-local storage. This RNG can be accessed via `task_rng`, or
+//! There is built-in support for a RNG associated with each thread stored
+//! in thread-local storage. This RNG can be accessed via `thread_rng`, or
 //! used implicitly via `random`. This RNG is normally randomly seeded
 //! from an operating-system source of randomness, e.g. `/dev/urandom` on
 //! Unix systems, and will automatically reseed itself from this source
@@ -61,7 +61,7 @@
 //! use std::rand;
 //! use std::rand::Rng;
 //!
-//! let mut rng = rand::task_rng();
+//! let mut rng = rand::thread_rng();
 //! if rng.gen() { // random bool
 //!     println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
 //! }
@@ -97,7 +97,7 @@
 //!
 //! fn main() {
 //!    let between = Range::new(-1f64, 1.);
-//!    let mut rng = rand::task_rng();
+//!    let mut rng = rand::thread_rng();
 //!
 //!    let total = 1_000_000u;
 //!    let mut in_circle = 0u;
@@ -183,7 +183,7 @@
 //!     // The estimation will be more accurate with more simulations
 //!     let num_simulations = 10000u;
 //!
-//!     let mut rng = rand::task_rng();
+//!     let mut rng = rand::thread_rng();
 //!     let random_door = Range::new(0u, 3);
 //!
 //!     let (mut switch_wins, mut switch_losses) = (0u, 0u);
@@ -257,7 +257,7 @@ impl StdRng {
     /// randomness from the operating system and use this in an
     /// expensive seeding operation. If one is only generating a small
     /// number of random numbers, or doesn't need the utmost speed for
-    /// generating each number, `task_rng` and/or `random` may be more
+    /// generating each number, `thread_rng` and/or `random` may be more
     /// appropriate.
     ///
     /// Reading the randomness from the OS may fail, and any error is
@@ -307,28 +307,28 @@ pub fn weak_rng() -> XorShiftRng {
     }
 }
 
-/// Controls how the task-local RNG is reseeded.
-struct TaskRngReseeder;
+/// Controls how the thread-local RNG is reseeded.
+struct ThreadRngReseeder;
 
-impl reseeding::Reseeder<StdRng> for TaskRngReseeder {
+impl reseeding::Reseeder<StdRng> for ThreadRngReseeder {
     fn reseed(&mut self, rng: &mut StdRng) {
         *rng = match StdRng::new() {
             Ok(r) => r,
-            Err(e) => panic!("could not reseed task_rng: {}", e)
+            Err(e) => panic!("could not reseed thread_rng: {}", e)
         }
     }
 }
-static TASK_RNG_RESEED_THRESHOLD: uint = 32_768;
-type TaskRngInner = reseeding::ReseedingRng<StdRng, TaskRngReseeder>;
+static THREAD_RNG_RESEED_THRESHOLD: uint = 32_768;
+type ThreadRngInner = reseeding::ReseedingRng<StdRng, ThreadRngReseeder>;
 
-/// The task-local RNG.
-pub struct TaskRng {
-    rng: Rc<RefCell<TaskRngInner>>,
+/// The thread-local RNG.
+pub struct ThreadRng {
+    rng: Rc<RefCell<ThreadRngInner>>,
 }
 
-/// Retrieve the lazily-initialized task-local random number
+/// Retrieve the lazily-initialized thread-local random number
 /// generator, seeded by the system. Intended to be used in method
-/// chaining style, e.g. `task_rng().gen::<int>()`.
+/// chaining style, e.g. `thread_rng().gen::<int>()`.
 ///
 /// The RNG provided will reseed itself from the operating system
 /// after generating a certain amount of randomness.
@@ -337,23 +337,23 @@ pub struct TaskRng {
 /// if the operating system random number generator is rigged to give
 /// the same sequence always. If absolute consistency is required,
 /// explicitly select an RNG, e.g. `IsaacRng` or `Isaac64Rng`.
-pub fn task_rng() -> TaskRng {
+pub fn thread_rng() -> ThreadRng {
     // used to make space in TLS for a random number generator
-    thread_local!(static TASK_RNG_KEY: Rc<RefCell<TaskRngInner>> = {
+    thread_local!(static THREAD_RNG_KEY: Rc<RefCell<ThreadRngInner>> = {
         let r = match StdRng::new() {
             Ok(r) => r,
-            Err(e) => panic!("could not initialize task_rng: {}", e)
+            Err(e) => panic!("could not initialize thread_rng: {}", e)
         };
         let rng = reseeding::ReseedingRng::new(r,
-                                               TASK_RNG_RESEED_THRESHOLD,
-                                               TaskRngReseeder);
+                                               THREAD_RNG_RESEED_THRESHOLD,
+                                               ThreadRngReseeder);
         Rc::new(RefCell::new(rng))
     });
 
-    TaskRng { rng: TASK_RNG_KEY.with(|t| t.clone()) }
+    ThreadRng { rng: THREAD_RNG_KEY.with(|t| t.clone()) }
 }
 
-impl Rng for TaskRng {
+impl Rng for ThreadRng {
     fn next_u32(&mut self) -> u32 {
         self.rng.borrow_mut().next_u32()
     }
@@ -368,7 +368,7 @@ impl Rng for TaskRng {
     }
 }
 
-/// Generates a random value using the task-local random number generator.
+/// Generates a random value using the thread-local random number generator.
 ///
 /// `random()` can generate various types of random things, and so may require
 /// type hinting to generate the specific type you want.
@@ -390,7 +390,7 @@ impl Rng for TaskRng {
 /// ```
 #[inline]
 pub fn random<T: Rand>() -> T {
-    task_rng().gen()
+    thread_rng().gen()
 }
 
 /// Randomly sample up to `amount` elements from an iterator.
@@ -398,9 +398,9 @@ pub fn random<T: Rand>() -> T {
 /// # Example
 ///
 /// ```rust
-/// use std::rand::{task_rng, sample};
+/// use std::rand::{thread_rng, sample};
 ///
-/// let mut rng = task_rng();
+/// let mut rng = thread_rng();
 /// let sample = sample(&mut rng, range(1i, 100), 5);
 /// println!("{}", sample);
 /// ```
@@ -420,7 +420,7 @@ pub fn sample<T, I: Iterator<T>, R: Rng>(rng: &mut R,
 #[cfg(test)]
 mod test {
     use prelude::*;
-    use super::{Rng, task_rng, random, SeedableRng, StdRng, sample};
+    use super::{Rng, thread_rng, random, SeedableRng, StdRng, sample};
     use iter::order;
 
     struct ConstRng { i: u64 }
@@ -453,7 +453,7 @@ mod test {
 
     #[test]
     fn test_gen_range() {
-        let mut r = task_rng();
+        let mut r = thread_rng();
         for _ in range(0u, 1000) {
             let a = r.gen_range(-3i, 42);
             assert!(a >= -3 && a < 42);
@@ -473,20 +473,20 @@ mod test {
     #[test]
     #[should_fail]
     fn test_gen_range_panic_int() {
-        let mut r = task_rng();
+        let mut r = thread_rng();
         r.gen_range(5i, -2);
     }
 
     #[test]
     #[should_fail]
     fn test_gen_range_panic_uint() {
-        let mut r = task_rng();
+        let mut r = thread_rng();
         r.gen_range(5u, 2u);
     }
 
     #[test]
     fn test_gen_f64() {
-        let mut r = task_rng();
+        let mut r = thread_rng();
         let a = r.gen::<f64>();
         let b = r.gen::<f64>();
         debug!("{}", (a, b));
@@ -494,14 +494,14 @@ mod test {
 
     #[test]
     fn test_gen_weighted_bool() {
-        let mut r = task_rng();
+        let mut r = thread_rng();
         assert_eq!(r.gen_weighted_bool(0u), true);
         assert_eq!(r.gen_weighted_bool(1u), true);
     }
 
     #[test]
     fn test_gen_ascii_str() {
-        let mut r = task_rng();
+        let mut r = thread_rng();
         assert_eq!(r.gen_ascii_chars().take(0).count(), 0u);
         assert_eq!(r.gen_ascii_chars().take(10).count(), 10u);
         assert_eq!(r.gen_ascii_chars().take(16).count(), 16u);
@@ -509,7 +509,7 @@ mod test {
 
     #[test]
     fn test_gen_vec() {
-        let mut r = task_rng();
+        let mut r = thread_rng();
         assert_eq!(r.gen_iter::<u8>().take(0).count(), 0u);
         assert_eq!(r.gen_iter::<u8>().take(10).count(), 10u);
         assert_eq!(r.gen_iter::<f64>().take(16).count(), 16u);
@@ -517,7 +517,7 @@ mod test {
 
     #[test]
     fn test_choose() {
-        let mut r = task_rng();
+        let mut r = thread_rng();
         assert_eq!(r.choose(&[1i, 1, 1]).map(|&x|x), Some(1));
 
         let v: &[int] = &[];
@@ -526,7 +526,7 @@ mod test {
 
     #[test]
     fn test_shuffle() {
-        let mut r = task_rng();
+        let mut r = thread_rng();
         let empty: &mut [int] = &mut [];
         r.shuffle(empty);
         let mut one = [1i];
@@ -545,8 +545,8 @@ mod test {
     }
 
     #[test]
-    fn test_task_rng() {
-        let mut r = task_rng();
+    fn test_thread_rng() {
+        let mut r = thread_rng();
         r.gen::<int>();
         let mut v = [1i, 1, 1];
         r.shuffle(&mut v);
@@ -574,7 +574,7 @@ mod test {
         let min_val = 1i;
         let max_val = 100i;
 
-        let mut r = task_rng();
+        let mut r = thread_rng();
         let vals = range(min_val, max_val).collect::<Vec<int>>();
         let small_sample = sample(&mut r, vals.iter(), 5);
         let large_sample = sample(&mut r, vals.iter(), vals.len() + 5);
@@ -589,7 +589,7 @@ mod test {
 
     #[test]
     fn test_std_rng_seeded() {
-        let s = task_rng().gen_iter::<uint>().take(256).collect::<Vec<uint>>();
+        let s = thread_rng().gen_iter::<uint>().take(256).collect::<Vec<uint>>();
         let mut ra: StdRng = SeedableRng::from_seed(s.as_slice());
         let mut rb: StdRng = SeedableRng::from_seed(s.as_slice());
         assert!(order::equals(ra.gen_ascii_chars().take(100),
@@ -598,7 +598,7 @@ mod test {
 
     #[test]
     fn test_std_rng_reseed() {
-        let s = task_rng().gen_iter::<uint>().take(256).collect::<Vec<uint>>();
+        let s = thread_rng().gen_iter::<uint>().take(256).collect::<Vec<uint>>();
         let mut r: StdRng = SeedableRng::from_seed(s.as_slice());
         let string1 = r.gen_ascii_chars().take(100).collect::<String>();
 

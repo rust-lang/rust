@@ -394,7 +394,7 @@ mod tests {
         for _ in range(0, N) {
             let tx = tx.clone();
             spawn(move|| {
-                let mut rng = rand::task_rng();
+                let mut rng = rand::thread_rng();
                 for _ in range(0, M) {
                     if rng.gen_weighted_bool(N) {
                         drop(R.write());
