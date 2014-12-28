@@ -12,6 +12,9 @@ Lints included in this crate:
  - `clippy_str_to_string`: Warns on usage of `str::to_string()`
  - `clippy_toplevel_ref_arg`: Warns when a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`).
 
+You can allow/warn/deny the whole set using the `clippy` lint group (`#[allow(clippy)]`, etc)
+
+
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
 
 Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.
