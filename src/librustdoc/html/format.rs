@@ -123,7 +123,7 @@ impl<'a> fmt::Show for WhereClause<'a> {
         if gens.where_predicates.len() == 0 {
             return Ok(());
         }
-        try!(f.write(" where ".as_bytes()));
+        try!(f.write(" <span class='where'>where ".as_bytes()));
         for (i, pred) in gens.where_predicates.iter().enumerate() {
             if i > 0 {
                 try!(f.write(", ".as_bytes()));
@@ -149,6 +149,7 @@ impl<'a> fmt::Show for WhereClause<'a> {
                 }
             }
         }
+        try!(f.write("</span>".as_bytes()));
         Ok(())
     }
 }

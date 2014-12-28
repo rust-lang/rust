@@ -306,6 +306,9 @@ nav.sub {
     font-size: 1em;
     position: relative;
 }
+/* Shift "where ..." part of method definition down a line and indent it */
+.content .method .where { display: block; padding-left: 3.75em; }
+
 .content .methods .docblock { margin-left: 40px; }
 
 .content .impl-items .docblock { margin-left: 40px; }
