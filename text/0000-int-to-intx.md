@@ -65,11 +65,11 @@ Update code and documentation to use pointer-sized integers more narrowly for th
 
 # Alternatives
 
-- Keep the status quo.
+**A. Keep the status quo.**
 
 Which may hurt in the long run, especially when there is at least one (would-be?) high-profile language (which is Rust-inspired) taking the opposite stance of Rust.
 
-- Use `ix/ux` as the new type names, not just literal suffixes.
+**B. Use `ix/ux` as the new type names, not just literal suffixes.**
 
 While `ix/ux` more closely follow the `i32/u32` pattern, they may be too short (and tempting) and may not look like integer types for some.
 
