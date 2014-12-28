@@ -190,18 +190,16 @@ fn test_format_args() {
     let mut buf = Vec::new();
     {
         let w = &mut buf as &mut io::Writer;
-        format_args!(|args| { write!(w, "{}", args); }, "{}", 1i);
-        format_args!(|args| { write!(w, "{}", args); }, "test");
-        format_args!(|args| { write!(w, "{}", args); }, "{test}", test=3i);
+        write!(w, "{}", format_args!("{}", 1i));
+        write!(w, "{}", format_args!("test"));
+        write!(w, "{}", format_args!("{test}", test=3i));
     }
     let s = String::from_utf8(buf).unwrap();
     t!(s, "1test3");
 
-    let s = format_args!(fmt::format, "hello {}", "world");
+    let s = fmt::format(format_args!("hello {}", "world"));
     t!(s, "hello world");
-    let s = format_args!(|args| {
-        format!("{}: {}", "args were", args)
-    }, "hello {}", "world");
+    let s = format!("{}: {}", "args were", format_args!("hello {}", "world"));
     t!(s, "args were: hello world");
 }
 

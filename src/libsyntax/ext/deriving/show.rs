@@ -131,8 +131,10 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     let format_string = cx.expr_str(span, s);
 
     // phew, not our responsibility any more!
-    format::expand_preparsed_format_args(cx, span,
-                                         format::MethodCall(formatter, meth),
-                                         format_string, exprs, Vec::new(),
-                                         HashMap::new())
+
+    let args = vec![
+        format::expand_preparsed_format_args(cx, span, format_string,
+                                             exprs, vec![], HashMap::new())
+    ];
+    cx.expr_method_call(span, formatter, meth, args)
 }
