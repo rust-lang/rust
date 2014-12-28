@@ -655,6 +655,7 @@ impl<'a, A> DoubleEndedIterator<&'a mut A> for IterMut<'a, A> {
 impl<'a, A> ExactSizeIterator<&'a mut A> for IterMut<'a, A> {}
 
 /// Allows mutating a `DList` while iterating.
+#[deprecated = "Trait is deprecated, use inherent methods on the iterator instead"]
 pub trait ListInsertion<A> {
     /// Inserts `elt` just after to the element most recently returned by
     /// `.next()`
@@ -689,14 +690,50 @@ impl<'a, A> IterMut<'a, A> {
     }
 }
 
-impl<'a, A> ListInsertion<A> for IterMut<'a, A> {
+impl<'a, A> IterMut<'a, A> {
+    /// Inserts `elt` just after the element most recently returned by `.next()`.
+    /// The inserted element does not appear in the iteration.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::collections::DList;
+    ///
+    /// let mut list: DList<int> = vec![1, 3, 4].into_iter().collect();
+    ///
+    /// {
+    ///     let mut it = list.iter_mut();
+    ///     assert_eq!(it.next().unwrap(), &1);
+    ///     // insert `2` after `1`
+    ///     it.insert_next(2);
+    /// }
+    /// {
+    ///     let vec: Vec<int> = list.into_iter().collect();
+    ///     assert_eq!(vec, vec![1i, 2, 3, 4]);
+    /// }
+    /// ```
     #[inline]
-    fn insert_next(&mut self, elt: A) {
+    pub fn insert_next(&mut self, elt: A) {
         self.insert_next_node(box Node::new(elt))
     }
 
+    /// Provides a reference to the next element, without changing the iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::collections::DList;
+    ///
+    /// let mut list: DList<int> = vec![1, 2, 3].into_iter().collect();
+    ///
+    /// let mut it = list.iter_mut();
+    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.peek_next().unwrap(), &2);
+    /// // We just peeked at 2, so it was not consumed from the iterator.
+    /// assert_eq!(it.next().unwrap(), &2);
+    /// ```
     #[inline]
-    fn peek_next(&mut self) -> Option<&mut A> {
+    pub fn peek_next(&mut self) -> Option<&mut A> {
         if self.nelem == 0 {
             return None
         }
@@ -798,7 +835,7 @@ mod tests {
     use test::Bencher;
     use test;
 
-    use super::{DList, Node, ListInsertion};
+    use super::{DList, Node};
 
     pub fn check_links<T>(list: &DList<T>) {
         let mut len = 0u;
