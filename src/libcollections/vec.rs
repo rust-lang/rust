@@ -139,6 +139,9 @@ pub struct Vec<T> {
     cap: uint,
 }
 
+unsafe impl<T: Send> Send for Vec<T> { }
+unsafe impl<T: Sync> Sync for Vec<T> { }
+
 /// A clone-on-write vector
 pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
 
