@@ -4,19 +4,13 @@
 
 # Summary
 
-Stabilize the `std::{c_str, c_vec}` modules by re-working their interfaces and
-refocusing each primitive for one particular task. The three broad categories of
-interoperating with C will work via:
-
-1. If you have a Rust string/byte slice which needs to be given to C, then the
-   `CString` type will be used to statically guarantee that a terminating nul
-   character and no interior nuls exist.
-
-2. If C hands you a string which you want to inspect, but not own, then a helper
-   function will assist in converting the C string to a byte slice.
-
-3. If C hands you a string which you want to inspect and own, then a helper type
-   will consume ownership and will act as a `Box<[u8]>` in essence.
+* Remove the `std::c_vec` module
+* Move `std::c_str` under a new `std::ffi` module, not exporting the `c_str`
+  module.
+* Focus `CString` on *Rust-owned* bytes, providing a static assertion that a
+  pile of bytes has no interior nuls but has a trailing nul.
+* Provide convenience functions for translating *C-owned* types into slices in
+  Rust.
 
 # Motivation
 
@@ -46,8 +40,7 @@ originating from C.
 
 # Detailed design
 
-In refactoring `c_str` and `c_vec`, all usage could be categorized into one of
-three categories:
+In refactoring all usage could be categorized into one of three categories:
 
 1. A Rust type wants to be passed into C.
 2. A C type was handed to Rust, but Rust does not own it.
@@ -57,15 +50,15 @@ The current `CString` attempts to handle all three of these concerns all at
 once, somewhat conflating desires. Additionally, `CVec` provides a fairly
 different interface than `CString` while providing similar functionality.
 
-## A new `std::c_string`
+## A new `std::ffi`
 
-> **Note**: an implementation of the design below can be found [in a branch of
-> mine][c_str]
+> **Note**: an old implementation of the design below can be found [in a branch
+> of mine][c_str]
 
 [c_str]: https://github.com/alexcrichton/rust/blob/cstr/src/librustrt/c_str.rs
 
 The entire `c_str` module will be deleted as-is today and replaced with the
-following interface at the new location `std::c_string`:
+following interface at the new location `std::ffi`:
 
 ```rust
 #[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
@@ -85,8 +78,8 @@ impl CString {
 impl Deref<[libc::c_char]> for CString { /* ... */ }
 impl Show for CString { /* ... */ }
 
-pub unsafe fn from_raw_buf<'a>(raw: &'a *const libc::c_char) -> &'a [u8] { /* ... */ }
-pub unsafe fn from_raw_buf_with_nul<'a>(raw: &'a *const libc::c_char) -> &'a [u8] { /* ... */ }
+pub unsafe fn c_str_to_bytes<'a>(raw: &'a *const libc::c_char) -> &'a [u8] { /* ... */ }
+pub unsafe fn c_str_to_bytes_with_nul<'a>(raw: &'a *const libc::c_char) -> &'a [u8] { /* ... */ }
 ```
 
 The new `CString` API is focused solely on providing a static assertion that a
@@ -134,18 +127,18 @@ interpreted in Rust as a `u8` slice. With these two functions, all of the
 following functions will also be deprecated:
 
 * `std::str::from_c_str` - this function should be replaced with
-  `c_str::from_raw_buf` plus one of `str::from_utf8` or
+  `ffi::c_str_to_bytes` plus one of `str::from_utf8` or
   `str::from_utf8_unchecked`.
 * `String::from_raw_buf` - similarly to `from_c_str`, each step should be
   composed individually to perform the required checks. This would involve using
-  `c_str::from_raw_buf`, `str::from_utf8`, and `.to_string()`.
+  `ffi::c_str_to_bytes`, `str::from_utf8`, and `.to_string()`.
 * `String::from_raw_buf_len` - this should be replaced the same way as
   `String::from_raw_buf` except that `slice::from_raw_buf` is used instead of
-  `c_str`.
+  `ffi`.
 
 ## Removing `c_vec`
 
-The new `c_string` module serves as a solution to desires (1) and (2) above, but
+The new `ffi` module serves as a solution to desires (1) and (2) above, but
 the third use case is left unsolved so far. This is what the current `c_vec`
 module is attempting to solve, but it does so in a somewhat ad-hoc fashion. The
 constructor for the type takes a `proc` destructor to invoke when the vector is
