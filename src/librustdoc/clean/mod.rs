@@ -34,8 +34,7 @@ use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::{DUMMY_SP, Pos, Spanned};
-use syntax::parse::token::InternedString;
-use syntax::parse::token;
+use syntax::parse::token::{mod, InternedString, special_idents};
 use syntax::ptr::P;
 
 use rustc_trans::back::link;
@@ -1200,11 +1199,9 @@ pub enum Type {
     },
     // I have no idea how to usefully use this.
     TyParamBinder(ast::NodeId),
-    /// For parameterized types, so the consumer of the JSON don't go looking
-    /// for types which don't exist anywhere.
-    Generic(ast::DefId),
-    /// For references to self
-    Self(ast::DefId),
+    /// For parameterized types, so the consumer of the JSON don't go
+    /// looking for types which don't exist anywhere.
+    Generic(String),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
     Primitive(PrimitiveType),
     Closure(Box<ClosureDecl>),
@@ -1485,13 +1482,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 }
             }
 
-            ty::ty_param(ref p) => {
-                if p.space == subst::SelfSpace {
-                    Self(p.def_id)
-                } else {
-                    Generic(p.def_id)
-                }
-            }
+            ty::ty_param(ref p) => Generic(token::get_name(p.name).to_string()),
 
             ty::ty_unboxed_closure(..) => Tuple(vec![]), // FIXME(pcwalton)
 
@@ -2276,7 +2267,9 @@ fn resolve_type(cx: &DocContext,
     };
 
     match def {
-        def::DefSelfTy(i) => return Self(ast_util::local_def(i)),
+        def::DefSelfTy(..) => {
+            return Generic(token::get_name(special_idents::type_self.name).to_string());
+        }
         def::DefPrimTy(p) => match p {
             ast::TyStr => return Primitive(Str),
             ast::TyBool => return Primitive(Bool),
@@ -2294,7 +2287,7 @@ fn resolve_type(cx: &DocContext,
             ast::TyFloat(ast::TyF32) => return Primitive(F32),
             ast::TyFloat(ast::TyF64) => return Primitive(F64),
         },
-        def::DefTyParam(_, i, _) => return Generic(i),
+        def::DefTyParam(_, _, _, n) => return Generic(token::get_name(n).to_string()),
         def::DefTyParamBinder(i) => return TyParamBinder(i),
         _ => {}
     };

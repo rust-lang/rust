@@ -1118,17 +1118,16 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     def::DefTy(did, _) | def::DefStruct(did) => {
                         ast_path_to_ty(this, rscope, did, path).ty
                     }
-                    def::DefTyParam(space, id, n) => {
+                    def::DefTyParam(space, index, _, name) => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                        ty::mk_param(tcx, space, n, id)
+                        ty::mk_param(tcx, space, index, name)
                     }
-                    def::DefSelfTy(id) => {
+                    def::DefSelfTy(_) => {
                         // n.b.: resolve guarantees that the this type only appears in a
                         // trait, which we rely upon in various places when creating
                         // substs
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                        let did = ast_util::local_def(id);
-                        ty::mk_self_type(tcx, did)
+                        ty::mk_self_type(tcx)
                     }
                     def::DefMod(id) => {
                         tcx.sess.span_fatal(ast_ty.span,

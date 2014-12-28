@@ -5065,7 +5065,7 @@ pub fn type_scheme_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
       def::DefAssociatedTy(..) |
       def::DefAssociatedPath(..) |
       def::DefPrimTy(_) |
-      def::DefTyParam(..)=> {
+      def::DefTyParam(..) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type");
       }
       def::DefMod(..) | def::DefForeignMod(..) => {
@@ -5635,7 +5635,8 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
-        ty::mk_param(ccx.tcx, subst::FnSpace, n, local_def(0))
+        let name = token::intern(format!("P{}", n).as_slice());
+        ty::mk_param(ccx.tcx, subst::FnSpace, n, name)
     }
 
     let tcx = ccx.tcx;

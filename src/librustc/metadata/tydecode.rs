@@ -420,13 +420,13 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
         return ty::mk_trait(tcx, trait_ref, bounds);
       }
       'p' => {
-        let did = parse_def(st, TypeParameter, |x,y| conv(x,y));
-        debug!("parsed ty_param: did={}", did);
+        assert_eq!(next(st), '[');
         let index = parse_u32(st);
         assert_eq!(next(st), '|');
         let space = parse_param_space(st);
         assert_eq!(next(st), '|');
-        return ty::mk_param(tcx, space, index, did);
+        let name = token::intern(parse_str(st, ']')[]);
+        return ty::mk_param(tcx, space, index, name);
       }
       '~' => return ty::mk_uniq(tcx, parse_ty(st, |x,y| conv(x,y))),
       '*' => return ty::mk_ptr(tcx, parse_mt(st, |x,y| conv(x,y))),
@@ -507,7 +507,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
       'P' => {
           assert_eq!(next(st), '[');
           let trait_ref = parse_trait_ref(st, |x,y| conv(x,y));
-          let name = token::str_to_ident(parse_str(st, ']').as_slice()).name;
+          let name = token::intern(parse_str(st, ']').as_slice());
           return ty::mk_projection(tcx, trait_ref, name);
       }
       'e' => {

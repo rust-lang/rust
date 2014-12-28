@@ -349,7 +349,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 (*trait_generics).clone());
 
         let (fty, explicit_self_category) = {
-            let trait_self_ty = ty::mk_self_type(ccx.tcx, local_def(trait_id));
+            let trait_self_ty = ty::mk_self_type(ccx.tcx);
             astconv::ty_of_method(ccx,
                                   *m_unsafety,
                                   trait_self_ty,
@@ -639,10 +639,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                    trait_def.repr(ccx.tcx()));
 
             for trait_method in trait_methods.iter() {
-                let self_type = ty::mk_param(ccx.tcx,
-                                             subst::SelfSpace,
-                                             0,
-                                             local_def(it.id));
+                let self_type = ty::mk_self_type(tcx);
                 match *trait_method {
                     ast::RequiredMethod(ref type_method) => {
                         let rscope = BindingRscope::new();
@@ -668,8 +665,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
             }
 
             // Run convert_methods on the provided methods.
-            let untransformed_rcvr_ty = ty::mk_self_type(tcx,
-                                                         local_def(it.id));
+            let untransformed_rcvr_ty = ty::mk_self_type(tcx);
             convert_methods(ccx,
                             TraitContainer(local_def(it.id)),
                             trait_methods.iter().filter_map(|m| match *m {
@@ -834,7 +830,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         }
     };
 
-    let substs = ccx.tcx.mk_substs(mk_trait_substs(ccx, it.id, generics));
+    let substs = ccx.tcx.mk_substs(mk_trait_substs(ccx, generics));
 
     let ty_generics = ty_generics_for_trait(ccx,
                                             it.id,
@@ -844,7 +840,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     assert_eq!(mk_item_substs(ccx, &ty_generics), substs);
 
-    let self_param_ty = ty::ParamTy::for_self(def_id);
+    let self_param_ty = ty::ParamTy::for_self();
 
     let bounds = compute_bounds(ccx,
                                 self_param_ty.to_ty(ccx.tcx),
@@ -878,7 +874,6 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     return trait_def;
 
     fn mk_trait_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                 trait_id: ast::NodeId,
                                  generics: &ast::Generics)
                                  -> subst::Substs<'tcx>
     {
@@ -899,12 +894,11 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     .iter()
                     .enumerate()
                     .map(|(i, def)| ty::mk_param(ccx.tcx, subst::TypeSpace,
-                                                 i as u32, local_def(def.id)))
+                                                 i as u32, def.ident.name))
                     .collect();
 
         // ...and also create the `Self` parameter.
-        let self_ty =
-            ty::mk_param(ccx.tcx, subst::SelfSpace, 0, local_def(trait_id));
+        let self_ty = ty::mk_self_type(ccx.tcx);
 
         subst::Substs::new_trait(types, regions, Vec::new(), self_ty)
     }
@@ -1311,7 +1305,7 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
         None => { }
     }
 
-    let param_ty = ty::ParamTy::new(space, index, local_def(param.id));
+    let param_ty = ty::ParamTy::new(space, index, param.ident.name);
     let bounds = compute_bounds(this,
                                 param_ty.to_ty(this.tcx()),
                                 param.bounds[],
