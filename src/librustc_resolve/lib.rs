@@ -972,7 +972,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-
     // Import resolution
     //
     // This is a fixed-point algorithm. We resolve imports until our efforts
@@ -2841,7 +2840,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
-            ItemImpl(_,
+            ItemImpl(_, _,
                      ref generics,
                      ref implemented_traits,
                      ref self_type,

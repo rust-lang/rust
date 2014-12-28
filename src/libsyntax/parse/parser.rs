@@ -4802,6 +4802,13 @@ impl<'a> Parser<'a> {
         // allow this to be parsed as a trait.
         let could_be_trait = self.token != token::OpenDelim(token::Paren);
 
+        let neg_span = self.span;
+        let polarity = if self.eat(&token::Not) {
+            ast::ImplPolarity::Negative
+        } else {
+            ast::ImplPolarity::Positive
+        };
+
         // Parse the trait.
         let mut ty = self.parse_ty_sum();
 
@@ -4824,6 +4831,14 @@ impl<'a> Parser<'a> {
             ty = self.parse_ty_sum();
             opt_trait_ref
         } else {
+            match polarity {
+                ast::ImplPolarity::Negative => {
+                    // This is a negated type implementation
+                    // `impl !MyType {}`, which is not allowed.
+                    self.span_err(neg_span, "inherent implementation can't be negated");
+                },
+                _ => {}
+            }
             None
         };
 
@@ -4833,7 +4848,7 @@ impl<'a> Parser<'a> {
         let ident = ast_util::impl_pretty_name(&opt_trait, &*ty);
 
         (ident,
-         ItemImpl(unsafety, generics, opt_trait, ty, impl_items),
+         ItemImpl(unsafety, polarity, generics, opt_trait, ty, impl_items),
          Some(attrs))
     }
 
