@@ -33,7 +33,8 @@ pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     let mut normalizer = AssociatedTypeNormalizer { span: span,
                                                     body_id: body_id,
                                                     infcx: infcx,
-                                                    fulfillment_cx: fulfillment_cx };
+                                                    fulfillment_cx: fulfillment_cx,
+                                                    region_binders: 0 };
     value.fold_with(&mut normalizer)
 }
 
@@ -42,6 +43,7 @@ struct AssociatedTypeNormalizer<'a,'tcx:'a> {
     fulfillment_cx: &'a mut FulfillmentContext<'tcx>,
     span: Span,
     body_id: ast::NodeId,
+    region_binders: uint,
 }
 
 impl<'a,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'tcx> {
@@ -49,9 +51,29 @@ impl<'a,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'tcx> {
         self.infcx.tcx
     }
 
+    fn enter_region_binder(&mut self) {
+        self.region_binders += 1;
+    }
+
+    fn exit_region_binder(&mut self) {
+        self.region_binders -= 1;
+    }
+
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        // We don't want to normalize associated types that occur inside of region
+        // binders, because they may contain bound regions, and we can't cope with that.
+        //
+        // Example:
+        //
+        //     for<'a> fn(<T as Foo<&'a>>::A)
+        //
+        // Instead of normalizing `<T as Foo<&'a>>::A` here, we'll
+        // normalize it when we instantiate those bound regions (which
+        // should occur eventually).
+        let no_region_binders = self.region_binders == 0;
+
         match ty.sty {
-            ty::ty_projection(ref data) => {
+            ty::ty_projection(ref data) if no_region_binders => {
                 let cause =
                     ObligationCause::new(
                         self.span,

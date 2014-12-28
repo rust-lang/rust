@@ -14,6 +14,7 @@ use super::{check_fn, Expectation, FnCtxt};
 
 use astconv;
 use middle::infer;
+use middle::region::CodeExtent;
 use middle::subst;
 use middle::ty::{mod, ToPolyTraitRef, Ty};
 use rscope::RegionScope;
@@ -132,10 +133,13 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     fcx.write_ty(expr.id, closure_type);
 
+    let fn_sig =
+        ty::liberate_late_bound_regions(fcx.tcx(), CodeExtent::from_node_id(body.id), &fn_ty.sig);
+
     check_fn(fcx.ccx,
              ast::Unsafety::Normal,
              expr.id,
-             &fn_ty.sig,
+             &fn_sig,
              decl,
              expr.id,
              &*body,
@@ -310,7 +314,7 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                        decl,
                                        abi::Rust,
                                        expected_sig);
-    let fty_sig = fn_ty.sig.clone();
+    let fn_sig = fn_ty.sig.clone();
     let fty = ty::mk_closure(tcx, fn_ty);
     debug!("check_expr_fn fty={}", fcx.infcx().ty_to_string(fty));
 
@@ -325,10 +329,13 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         ty::UniqTraitStore => (ast::Unsafety::Normal, expr.id)
     };
 
+    let fn_sig =
+        ty::liberate_late_bound_regions(tcx, CodeExtent::from_node_id(body.id), &fn_sig);
+
     check_fn(fcx.ccx,
              inherited_style,
              inherited_style_id,
-             &fty_sig,
+             &fn_sig,
              &*decl,
              expr.id,
              &*body,
