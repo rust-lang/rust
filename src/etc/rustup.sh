@@ -413,7 +413,9 @@ then
     CFG_INSTALL_FLAGS="${CFG_INSTALL_FLAGS} --prefix=${CFG_PREFIX}"
 fi
 
-CFG_TMP_DIR=`mktemp -d 2>/dev/null || mktemp -d -t 'rustup-tmp-install' 2>/dev/null` || CFG_TMP_DIR=$(create_tmp_dir)
+CFG_TMP_DIR=$(mktemp -d 2>/dev/null \
+           || mktemp -d -t 'rustup-tmp-install' 2>/dev/null \
+           || create_tmp_dir)
 
 RUST_URL="https://static.rust-lang.org/dist"
 RUST_PACKAGE_NAME=rust-nightly
