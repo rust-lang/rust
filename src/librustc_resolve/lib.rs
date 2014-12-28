@@ -345,9 +345,6 @@ impl Rib {
 #[deriving(Show,PartialEq,Clone,Copy)]
 enum Shadowable {
     Always,
-    /// Means that the recorded import obeys the glob shadowing rules, i.e., can
-    /// only be shadowed by another glob import.
-    Glob,
     Never
 }
 
@@ -1719,11 +1716,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                     view_path.span,
                                                     id,
                                                     is_public,
-                                                    if shadowable == Shadowable::Never {
-                                                        Shadowable::Glob
-                                                    } else {
-                                                        shadowable
-                                                    });
+                                                    shadowable);
                     }
                 }
             }
