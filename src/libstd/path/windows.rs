@@ -21,7 +21,7 @@ use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use hash;
 use io::Writer;
 use iter::{AdditiveIterator, DoubleEndedIteratorExt, Extend};
-use iter::{Iterator, IteratorExt, Map};
+use iter::{Iterator, IteratorExt, Map, repeat};
 use mem;
 use option::Option;
 use option::Option::{Some, None};
@@ -777,7 +777,7 @@ impl Path {
                             }
                         }
                     } else if is_abs && comps.is_empty() {
-                        Some(String::from_char(1, SEP))
+                        Some(repeat(SEP).take(1).collect())
                     } else {
                         let prefix_ = s[0..prefix_len(prefix)];
                         let n = prefix_.len() +
