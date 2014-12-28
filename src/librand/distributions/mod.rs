@@ -96,7 +96,7 @@ pub struct Weighted<T> {
 ///                      Weighted { weight: 4, item: 'b' },
 ///                      Weighted { weight: 1, item: 'c' });
 /// let wc = WeightedChoice::new(items.as_mut_slice());
-/// let mut rng = rand::task_rng();
+/// let mut rng = rand::thread_rng();
 /// for _ in range(0u, 16) {
 ///      // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
 ///      println!("{}", wc.ind_sample(&mut rng));

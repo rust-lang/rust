@@ -10,7 +10,7 @@
 
 use std::task;
 use std::sync::atomic::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
-use std::rand::{task_rng, Rng, Rand};
+use std::rand::{thread_rng, Rng, Rand};
 
 const REPEATS: uint = 5;
 const MAX_LEN: uint = 32;
@@ -59,7 +59,7 @@ pub fn main() {
             // IDs start from 0.
             creation_count.store(0, Relaxed);
 
-            let main = task_rng().gen_iter::<DropCounter>()
+            let main = thread_rng().gen_iter::<DropCounter>()
                                  .take(len)
                                  .collect::<Vec<DropCounter>>();
 
