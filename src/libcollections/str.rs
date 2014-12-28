@@ -87,8 +87,6 @@ pub use core::str::Str;
 pub use core::str::{from_utf8_unchecked, from_c_str};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
 
-// FIXME(conventions): ensure bit/char conventions are followed by str's API
-
 /*
 Section: Creating a string
 */
