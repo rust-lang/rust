@@ -190,19 +190,21 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     debug!("lookup_in_trait_adjusted: method_num={} method_ty={}",
            method_num, method_ty.repr(fcx.tcx()));
 
-    // Substitute the trait parameters into the method type and
-    // instantiate late-bound regions to get the actual method type.
-    let bare_fn_ty = fcx.instantiate_type_scheme(span,
-                                                 &trait_ref.substs,
-                                                 &method_ty.fty);
+    // Instantiate late-bound regions and substitute the trait
+    // parameters into the method type to get the actual method type.
+    //
+    // NB: Instantiate late-bound regions first so that
+    // `instantiate_type_scheme` can normalize associated types that
+    // may reference those regions.
     let fn_sig = fcx.infcx().replace_late_bound_regions_with_fresh_var(span,
                                                                        infer::FnCall,
-                                                                       &bare_fn_ty.sig).0;
+                                                                       &method_ty.fty.sig).0;
+    let fn_sig = fcx.instantiate_type_scheme(span, &trait_ref.substs, &fn_sig);
     let transformed_self_ty = fn_sig.inputs[0];
     let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
-        unsafety: bare_fn_ty.unsafety,
-        abi: bare_fn_ty.abi.clone(),
+        unsafety: method_ty.fty.unsafety,
+        abi: method_ty.fty.abi.clone(),
     }));
 
     debug!("lookup_in_trait_adjusted: matched method fty={} obligation={}",

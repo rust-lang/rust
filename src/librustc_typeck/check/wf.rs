@@ -349,8 +349,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                     //
                     // (I believe we should do the same for traits, but
                     // that will require an RFC. -nmatsakis)
-                    let bounds = type_scheme
-.generics.to_bounds(self.tcx(), substs);
+                    let bounds = type_scheme.generics.to_bounds(self.tcx(), substs);
                     let bounds = filter_to_trait_obligations(bounds);
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,

@@ -6903,8 +6903,19 @@ impl RegionEscape for Region {
 
 impl<'tcx> RegionEscape for TraitRef<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
-        self.substs.types.iter().any(|t| t.has_regions_escaping_depth(depth)) &&
-            self.substs.regions().iter().any(|t| t.has_regions_escaping_depth(depth))
+        self.substs.types.iter().any(|t| t.has_regions_escaping_depth(depth)) ||
+            self.substs.regions.has_regions_escaping_depth(depth)
+    }
+}
+
+impl<'tcx> RegionEscape for subst::RegionSubsts {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        match *self {
+            subst::ErasedRegions => false,
+            subst::NonerasedRegions(ref r) => {
+                r.iter().any(|t| t.has_regions_escaping_depth(depth))
+            }
+        }
     }
 }
 
@@ -6921,7 +6932,7 @@ impl<'tcx> RegionEscape for EquatePredicate<'tcx> {
 }
 
 impl<'tcx> RegionEscape for TraitPredicate<'tcx> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.trait_ref.has_regions_escaping_depth(depth)
     }
 }
@@ -6933,14 +6944,14 @@ impl<T:RegionEscape,U:RegionEscape> RegionEscape for OutlivesPredicate<T,U> {
 }
 
 impl<'tcx> RegionEscape for ProjectionPredicate<'tcx> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.projection_ty.has_regions_escaping_depth(depth) ||
             self.ty.has_regions_escaping_depth(depth)
     }
 }
 
 impl<'tcx> RegionEscape for ProjectionTy<'tcx> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.trait_ref.has_regions_escaping_depth(depth)
     }
 }

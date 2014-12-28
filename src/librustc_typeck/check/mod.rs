@@ -432,13 +432,15 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ty::ty_bare_fn(_, ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
 
-            // Compute the fty from point of view of inside fn
-            // (replace any type-scheme with a type, and normalize
-            // associated types appearing in the fn signature).
-            let fn_ty = fn_ty.subst(ccx.tcx, &inh.param_env.free_substs);
-            let fn_ty = inh.normalize_associated_types_in(body.span, body.id, &fn_ty);
+            // Compute the fty from point of view of inside fn.
+            let fn_sig =
+                fn_ty.sig.subst(ccx.tcx, &inh.param_env.free_substs);
+            let fn_sig =
+                liberate_late_bound_regions(ccx.tcx, CodeExtent::from_node_id(body.id), &fn_sig);
+            let fn_sig =
+                inh.normalize_associated_types_in(body.span, body.id, &fn_sig);
 
-            let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_ty.sig,
+            let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_sig,
                                decl, id, body, &inh);
 
             vtable::select_all_fcx_obligations_or_error(&fcx);
@@ -542,7 +544,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
 fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                       unsafety: ast::Unsafety,
                       unsafety_id: ast::NodeId,
-                      fn_sig: &ty::PolyFnSig<'tcx>,
+                      fn_sig: &ty::FnSig<'tcx>,
                       decl: &ast::FnDecl,
                       fn_id: ast::NodeId,
                       body: &ast::Block,
@@ -551,10 +553,6 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
 {
     let tcx = ccx.tcx;
     let err_count_on_creation = tcx.sess.err_count();
-
-    // First, we have to replace any bound regions in the fn type with free ones.
-    // The free region references will be bound the node_id of the body block.
-    let fn_sig = liberate_late_bound_regions(tcx, CodeExtent::from_node_id(body.id), fn_sig);
 
     let arg_tys = fn_sig.inputs[];
     let ret_ty = fn_sig.output;
@@ -1161,39 +1159,80 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
     }
 
+    // We now need to check that the signature of the impl method is
+    // compatible with that of the trait method. We do this by
+    // checking that `impl_fty <: trait_fty`.
+    //
+    // FIXME. Unfortunately, this doesn't quite work right now because
+    // associated type normalization is not integrated into subtype
+    // checks. For the comparison to be valid, we need to
+    // normalize the associated types in the impl/trait methods
+    // first. However, because function types bind regions, just
+    // calling `normalize_associated_types_in` would have no effect on
+    // any associated types appearing in the fn arguments or return
+    // type.
+
+
     // Compute skolemized form of impl and trait method tys.
     let impl_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(impl_m.fty.clone()));
     let impl_fty = impl_fty.subst(tcx, impl_to_skol_substs);
     let trait_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(trait_m.fty.clone()));
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
-    let trait_fty =
-        assoc::normalize_associated_types_in(&infcx,
-                                             &mut fulfillment_cx,
-                                             impl_m_span,
-                                             impl_m_body_id,
-                                             &trait_fty);
 
-    // Check the impl method type IM is a subtype of the trait method
-    // type TM. To see why this makes sense, think of a vtable. The
-    // expected type of the function pointers in the vtable is the
-    // type TM of the trait method.  The actual type will be the type
-    // IM of the impl method. Because we know that IM <: TM, that
-    // means that anywhere a TM is expected, a IM will do instead. In
-    // other words, anyone expecting to call a method with the type
-    // from the trait, can safely call a method with the type from the
-    // impl instead.
-    debug!("checking trait method for compatibility: impl ty {}, trait ty {}",
-           impl_fty.repr(tcx),
-           trait_fty.repr(tcx));
-    match infer::mk_subty(&infcx, false, infer::MethodCompatCheck(impl_m_span),
-                          impl_fty, trait_fty) {
-        Ok(()) => {}
-        Err(ref terr) => {
+    let err = infcx.try(|snapshot| {
+        let origin = infer::MethodCompatCheck(impl_m_span);
+
+        let (impl_sig, _) =
+            infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
+                                                            infer::HigherRankedType,
+                                                            &impl_m.fty.sig);
+        let impl_sig =
+            impl_sig.subst(tcx, impl_to_skol_substs);
+        let impl_sig =
+            assoc::normalize_associated_types_in(&infcx,
+                                                 &mut fulfillment_cx,
+                                                 impl_m_span,
+                                                 impl_m_body_id,
+                                                 &impl_sig);
+        let impl_fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy { unsafety: impl_m.fty.unsafety,
+                                                                abi: impl_m.fty.abi,
+                                                                sig: ty::Binder(impl_sig) });
+        debug!("compare_impl_method: impl_fty={}",
+               impl_fty.repr(tcx));
+
+        let (trait_sig, skol_map) =
+            infcx.skolemize_late_bound_regions(&trait_m.fty.sig, snapshot);
+        let trait_sig =
+            trait_sig.subst(tcx, &trait_to_skol_substs);
+        let trait_sig =
+            assoc::normalize_associated_types_in(&infcx,
+                                                 &mut fulfillment_cx,
+                                                 impl_m_span,
+                                                 impl_m_body_id,
+                                                 &trait_sig);
+        let trait_fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy { unsafety: trait_m.fty.unsafety,
+                                                                 abi: trait_m.fty.abi,
+                                                                 sig: ty::Binder(trait_sig) });
+
+        debug!("compare_impl_method: trait_fty={}",
+               trait_fty.repr(tcx));
+
+        try!(infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty));
+
+        infcx.leak_check(&skol_map, snapshot)
+    });
+
+    match err {
+        Ok(()) => { }
+        Err(terr) => {
+            debug!("checking trait method for compatibility: impl ty {}, trait ty {}",
+                   impl_fty.repr(tcx),
+                   trait_fty.repr(tcx));
             span_err!(tcx.sess, impl_m_span, E0053,
-                "method `{}` has an incompatible type for trait: {}",
-                token::get_name(trait_m.name),
-                ty::type_err_to_str(tcx, terr));
-            ty::note_and_explain_type_err(tcx, terr);
+                      "method `{}` has an incompatible type for trait: {}",
+                      token::get_name(trait_m.name),
+                      ty::type_err_to_str(tcx, &terr));
+            return;
         }
     }
 
@@ -1791,7 +1830,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Also returns the substitution from the type parameters on `def_id` to the fresh variables.
     /// Registers any trait obligations specified on `def_id` at the same time.
     ///
-    /// Note that function is only intended to be used with types (notably, not impls). This is
+    /// Note that function is only intended to be used with types (notably, not fns). This is
     /// because it doesn't do any instantiation of late-bound regions.
     pub fn instantiate_type(&self,
                             span: Span,
@@ -3061,12 +3100,18 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             }
         };
 
-        // Replace any bound regions that appear in the function
-        // signature with region variables
+        // Replace any late-bound regions that appear in the function
+        // signature with region variables. We also have to
+        // renormalize the associated types at this point, since they
+        // previously appeared within a `Binder<>` and hence would not
+        // have been normalized before.
         let fn_sig =
             fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                   infer::FnCall,
                                                                   fn_sig).0;
+        let fn_sig =
+            fcx.normalize_associated_types_in(call_expr.span,
+                                              &fn_sig);
 
         // Call the generic checker.
         check_argument_types(fcx,

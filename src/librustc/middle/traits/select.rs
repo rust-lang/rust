@@ -1141,7 +1141,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                      obligation: &TraitObligation<'tcx>)
                      -> Result<BuiltinBoundConditions<'tcx>,SelectionError<'tcx>>
     {
-        // TODO seems like we ought to skolemize here, oder?
+        // Note: these tests operate on types that may contain bound
+        // regions. To be proper, we ought to skolemize here, but we
+        // forego the skolemization and defer it until the
+        // confirmation step.
+
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.0.self_ty());
         return match self_ty.sty {
             ty::ty_infer(ty::IntVar(_)) |
@@ -1627,13 +1631,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            -> VtableBuiltinData<PredicateObligation<'tcx>>
     {
         let derived_cause = self.derived_cause(obligation, BuiltinDerivedObligation);
-        let obligations = nested.iter().map(|&t| {
-            util::predicate_for_builtin_bound(
-                self.tcx(),
-                derived_cause.clone(),
-                bound,
-                obligation.recursion_depth + 1,
-                t)
+        let obligations = nested.iter().map(|&bound_ty| {
+            // the obligation might be higher-ranked, e.g. for<'a> &'a
+            // int : Copy. In that case, we will wind up with
+            // late-bound regions in the `nested` vector. So for each
+            // one we instantiate to a skolemized region, do our work
+            // to produce something like `&'0 int : Copy`, and then
+            // re-bind it. This is a bit of busy-work but preserves
+            // the invariant that we only manipulate free regions, not
+            // bound ones.
+            self.infcx.try(|snapshot| {
+                let (skol_ty, skol_map) =
+                    self.infcx().skolemize_late_bound_regions(&ty::Binder(bound_ty), snapshot);
+                let skol_predicate =
+                    util::predicate_for_builtin_bound(
+                        self.tcx(),
+                        derived_cause.clone(),
+                        bound,
+                        obligation.recursion_depth + 1,
+                        skol_ty);
+                match skol_predicate {
+                    Ok(skol_predicate) => Ok(self.infcx().plug_leaks(skol_map, snapshot,
+                                                                     &skol_predicate)),
+                    Err(ErrorReported) => Err(ErrorReported)
+                }
+            })
         }).collect::<Result<_, _>>();
         let mut obligations = match obligations {
             Ok(o) => o,

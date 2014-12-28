@@ -109,6 +109,10 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                          cause: ObligationCause<'tcx>)
                                          -> Ty<'tcx>
     {
+        debug!("normalize_associated_type(trait_ref={}, item_name={})",
+               trait_ref.repr(infcx.tcx),
+               item_name.repr(infcx.tcx));
+
         assert!(!trait_ref.has_escaping_regions());
 
         let ty_var = infcx.next_ty_var();
@@ -120,6 +124,9 @@ impl<'tcx> FulfillmentContext<'tcx> {
             });
         let obligation = Obligation::new(cause, projection.as_predicate());
         self.register_predicate(infcx, obligation);
+
+        debug!("normalize_associated_type: result={}", ty_var.repr(infcx.tcx));
+
         ty_var
     }
 
