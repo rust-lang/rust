@@ -133,6 +133,9 @@ pub trait Visitor<'v> {
     fn visit_path_parameters(&mut self, path_span: Span, path_parameters: &'v PathParameters) {
         walk_path_parameters(self, path_span, path_parameters)
     }
+    fn visit_assoc_type_binding(&mut self, type_binding: &'v TypeBinding) {
+        walk_assoc_type_binding(self, type_binding)
+    }
     fn visit_attribute(&mut self, _attr: &'v Attribute) {}
 }
 
@@ -467,6 +470,9 @@ pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
             for lifetime in data.lifetimes.iter() {
                 visitor.visit_lifetime_ref(lifetime);
             }
+            for binding in data.bindings.iter() {
+                visitor.visit_assoc_type_binding(&**binding);
+            }
         }
         ast::ParenthesizedParameters(ref data) => {
             for typ in data.inputs.iter() {
@@ -477,6 +483,12 @@ pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
             }
         }
     }
+}
+
+pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
+                                                   type_binding: &'v TypeBinding) {
+    visitor.visit_ident(type_binding.span, type_binding.ident);
+    visitor.visit_ty(&*type_binding.ty);
 }
 
 pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
