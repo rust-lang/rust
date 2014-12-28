@@ -221,8 +221,8 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
                               arg: Vec<ast::TokenTree> )
                               -> Box<MacResult+'cx> {
 
-    let lhs_nm =  gensym_ident("lhs");
-    let rhs_nm =  gensym_ident("rhs");
+    let lhs_nm = gensym_ident("lhs");
+    let rhs_nm = gensym_ident("rhs");
 
     // The pattern that macro_rules matches.
     // The grammar for macro_rules! is:
@@ -271,6 +271,20 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
     let rhses = match *argument_map[rhs_nm] {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
         _ => cx.span_bug(sp, "wrong-structured rhs")
+    };
+
+    // Warn if the name already exists in our local macro syntax environment
+    match cx.syntax_env.find(&name.name) {
+        Some(_) => {
+          cx.span_warn(
+              sp,
+              format!(
+                  "shadowing macro definition: {}",
+                  name.as_str()
+              )[]
+          );
+        },
+        None => {}
     };
 
     let exp = box MacroRulesMacroExpander {
