@@ -14,7 +14,7 @@ The problem is, `int/uint` *look* like default integer types, but pointer-sized 
 
 And it is a quite popular opinion that, the best way to discourage their use is to rename them.
 
-Previously, the latest renaming attempt [RFC PR 464](https://github.com/rust-lang/rfcs/pull/464) was rejected. (Some parts of this RFC is based on that RFC.) [A tale of two's complement](http://discuss.rust-lang.org/t/a-tale-of-twos-complement/1062/17) states the following reasons:
+Previously, the latest renaming attempt [RFC PR 464](https://github.com/rust-lang/rfcs/pull/464) was rejected. (Some parts of this RFC is based on that RFC.) [A tale of two's complement](http://discuss.rust-lang.org/t/a-tale-of-twos-complement/1062) states the following reasons:
 
 - Changing the names would affect literally every Rust program ever written.
 - Adjusting the guidelines and tutorial can be equally effective in helping people to select the correct type.
@@ -38,7 +38,7 @@ Thus, it is very likely that newcomers will come to Rust, expecting `int/uint` t
 
 Not renaming `int/uint` violates the principle of least surprise, and is not newcomer friendly.
 
-As stated in previous discussions, all suggested alternative names have some drawbacks that may be unbearable. (Please refer to [A tale of two's complement](http://discuss.rust-lang.org/t/a-tale-of-twos-complement/1062/17) and related discussions for details.)
+As stated in previous discussions, all suggested alternative names have some drawbacks that may be unbearable. (Please refer to [A tale of two's complement](http://discuss.rust-lang.org/t/a-tale-of-twos-complement/1062) and related discussions for details.)
 
 Therefore this RFC proposes a new pair of alternatives: `intx`/`uintx`, where the `x` suffix means "unknown size"/"variable size", or "platform-dependent size".
 
