@@ -30,7 +30,6 @@ use visit;
 use visit::Visitor;
 use parse::token;
 
-use std::ascii::AsciiCast;
 use std::slice;
 use std::ascii::AsciiExt;
 
