@@ -5410,7 +5410,7 @@ fn main() {
 }
 ```
 
-You can have the macros expanded like this: `rustc print.rs --pretty=expanded`, which will
+You can have the macros expanded like this: `rustc --pretty=expanded print.rs`, which will
 give us this huge result:
 
 ```{rust,ignore}
