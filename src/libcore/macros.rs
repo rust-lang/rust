@@ -10,6 +10,30 @@
 
 #![macro_escape]
 
+// NOTE(stage0): Remove cfg after a snapshot
+#[cfg(not(stage0))]
+/// Entry point of task panic, for details, see std::macros
+#[macro_export]
+macro_rules! panic {
+    () => (
+        panic!("explicit panic")
+    );
+    ($msg:expr) => ({
+        static _MSG_FILE_LINE: (&'static str, &'static str, uint) = ($msg, file!(), line!());
+        ::core::panicking::panic(&_MSG_FILE_LINE)
+    });
+    ($fmt:expr, $($arg:tt)*) => ({
+        // The leading _'s are to avoid dead code warnings if this is
+        // used inside a dead function. Just `#[allow(dead_code)]` is
+        // insufficient, since the user may have
+        // `#[forbid(dead_code)]` and which cannot be overridden.
+        static _FILE_LINE: (&'static str, uint) = (file!(), line!());
+        ::core::panicking::panic_fmt(format_args!($fmt, $($arg)*), &_FILE_LINE)
+    });
+}
+
+// NOTE(stage0): Remove macro after a snapshot
+#[cfg(stage0)]
 /// Entry point of task panic, for details, see std::macros
 #[macro_export]
 macro_rules! panic {
@@ -105,6 +129,16 @@ macro_rules! try {
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 }
 
+// NOTE(stage0): Remove cfg after a snapshot
+#[cfg(not(stage0))]
+/// Writing a formatted string into a writer
+#[macro_export]
+macro_rules! write {
+    ($dst:expr, $($arg:tt)*) => ((&mut *$dst).write_fmt(format_args!($($arg)*)))
+}
+
+// NOTE(stage0): Remove macro after a snapshot
+#[cfg(stage0)]
 /// Writing a formatted string into a writer
 #[macro_export]
 macro_rules! write {

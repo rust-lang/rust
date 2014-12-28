@@ -34,13 +34,6 @@ pub fn bar() {
                 [int; 3]) as &[int; 3]) as *const _ as *const [int; 3]) as
             *const [int; (3u as uint)] as *const [int; 3]);
 
-    (match (() as ()) {
-         () => {
-             #[inline]
-             #[allow(dead_code)]
-             static __STATIC_FMTSTR: &'static [&'static str] =
-                 (&([("test" as &'static str)] as [&'static str; 1]) as
-                     &'static [&'static str; 1]);
 
 
 
@@ -49,24 +42,45 @@ pub fn bar() {
 
 
 
-             ((::std::fmt::format as
-                  fn(&core::fmt::Arguments<'_>) -> collections::string::String {std::fmt::format})((&((::std::fmt::Arguments::new
-                                                                                                          as
-                                                                                                          fn(&[&str], &[core::fmt::Argument<'_>]) -> core::fmt::Arguments<'_> {core::fmt::Arguments<'a>::new})((__STATIC_FMTSTR
-                                                                                                                                                                                                                   as
-                                                                                                                                                                                                                   &'static [&'static str]),
-                                                                                                                                                                                                               (&([]
-                                                                                                                                                                                                                     as
-                                                                                                                                                                                                                     [core::fmt::Argument<'_>; 0])
-                                                                                                                                                                                                                   as
-                                                                                                                                                                                                                   &[core::fmt::Argument<'_>; 0]))
-                                                                                                         as
-                                                                                                         core::fmt::Arguments<'_>)
-                                                                                                       as
-                                                                                                       &core::fmt::Arguments<'_>))
-                 as collections::string::String)
-         }
-     } as collections::string::String);
+    ((::std::fmt::format as
+         fn(core::fmt::Arguments<'_>) -> collections::string::String {std::fmt::format})(((::std::fmt::Arguments::new
+                                                                                              as
+                                                                                              fn(&[&str], &[core::fmt::Argument<'_>]) -> core::fmt::Arguments<'_> {core::fmt::Arguments<'a>::new})(({
+                                                                                                                                                                                                        #[inline]
+                                                                                                                                                                                                        #[allow(dead_code)]
+                                                                                                                                                                                                        static __STATIC_FMTSTR:
+                                                                                                                                                                                                               &'static [&'static str]
+                                                                                                                                                                                                               =
+                                                                                                                                                                                                            (&([("test"
+                                                                                                                                                                                                                    as
+                                                                                                                                                                                                                    &'static str)]
+                                                                                                                                                                                                                  as
+                                                                                                                                                                                                                  [&'static str; 1])
+                                                                                                                                                                                                                as
+                                                                                                                                                                                                                &'static [&'static str; 1]);
+                                                                                                                                                                                                        (__STATIC_FMTSTR
+                                                                                                                                                                                                            as
+                                                                                                                                                                                                            &'static [&'static str])
+                                                                                                                                                                                                    }
+                                                                                                                                                                                                       as
+                                                                                                                                                                                                       &[&str]),
+                                                                                                                                                                                                   (&(match (()
+                                                                                                                                                                                                                as
+                                                                                                                                                                                                                ())
+                                                                                                                                                                                                          {
+                                                                                                                                                                                                          ()
+                                                                                                                                                                                                          =>
+                                                                                                                                                                                                          ([]
+                                                                                                                                                                                                              as
+                                                                                                                                                                                                              [core::fmt::Argument<'_>; 0]),
+                                                                                                                                                                                                      }
+                                                                                                                                                                                                         as
+                                                                                                                                                                                                         [core::fmt::Argument<'_>; 0])
+                                                                                                                                                                                                       as
+                                                                                                                                                                                                       &[core::fmt::Argument<'_>; 0]))
+                                                                                             as
+                                                                                             core::fmt::Arguments<'_>))
+        as collections::string::String);
 }
 pub type Foo = [int; (3u as uint)];
 pub struct Bar {

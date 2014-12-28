@@ -16,13 +16,6 @@
 //! This macro is implemented in the compiler to emit calls to this module in
 //! order to format arguments at runtime into strings and streams.
 //!
-//! The functions contained in this module should not normally be used in
-//! everyday use cases of `format!`. The assumptions made by these functions are
-//! unsafe for all inputs, and the compiler performs a large amount of
-//! validation on the arguments to `format!` in order to ensure safety at
-//! runtime. While it is possible to call these functions directly, it is not
-//! recommended to do so in the general case.
-//!
 //! ## Usage
 //!
 //! The `format!` macro is intended to be familiar to those coming from C's
@@ -275,34 +268,27 @@
 //!
 //! # #[allow(unused_must_use)]
 //! # fn main() {
-//! format_args!(fmt::format, "this returns {}", "String");
+//! fmt::format(format_args!("this returns {}", "String"));
 //!
 //! let some_writer: &mut io::Writer = &mut io::stdout();
-//! format_args!(|args| { write!(some_writer, "{}", args) },
-//!              "print with a {}", "closure");
+//! write!(some_writer, "{}", format_args!("print with a {}", "macro"));
 //!
-//! fn my_fmt_fn(args: &fmt::Arguments) {
+//! fn my_fmt_fn(args: fmt::Arguments) {
 //!     write!(&mut io::stdout(), "{}", args);
 //! }
-//! format_args!(my_fmt_fn, "or a {} too", "function");
+//! my_fmt_fn(format_args!("or a {} too", "function"));
 //! # }
 //! ```
 //!
-//! The first argument of the `format_args!` macro is a function (or closure)
-//! which takes one argument of type `&fmt::Arguments`. This structure can then
-//! be passed to the `write` and `format` functions inside this module in order
-//! to process the format string. The goal of this macro is to even further
-//! prevent intermediate allocations when dealing formatting strings.
+//! The result of the `format_args!` macro is a value of type `fmt::Arguments`.
+//! This structure can then be passed to the `write` and `format` functions
+//! inside this module in order to process the format string.
+//! The goal of this macro is to even further prevent intermediate allocations
+//! when dealing formatting strings.
 //!
 //! For example, a logging library could use the standard formatting syntax, but
 //! it would internally pass around this structure until it has been determined
 //! where output should go to.
-//!
-//! It is unsafe to programmatically create an instance of `fmt::Arguments`
-//! because the operations performed when executing a format string require the
-//! compile-time checks provided by the compiler. The `format_args!` macro is
-//! the only method of safely creating these structures, but they can be
-//! unsafely created with the constructor provided.
 //!
 //! ## Syntax
 //!
@@ -420,14 +406,39 @@ pub use core::fmt::{Argument, Arguments, write, radix, Radix, RadixFmt};
 #[doc(hidden)]
 pub use core::fmt::{argument, argumentuint};
 
+// NOTE(stage0): Remove cfg after a snapshot
+#[cfg(not(stage0))]
 /// The format function takes a precompiled format string and a list of
 /// arguments, to return the resulting formatted string.
 ///
 /// # Arguments
 ///
 ///   * args - a structure of arguments generated via the `format_args!` macro.
-///            Because this structure can only be safely generated at
-///            compile-time, this function is safe.
+///
+/// # Example
+///
+/// ```rust
+/// use std::fmt;
+///
+/// let s = fmt::format(format_args!("Hello, {}!", "world"));
+/// assert_eq!(s, "Hello, world!".to_string());
+/// ```
+#[experimental = "this is an implementation detail of format! and should not \
+                  be called directly"]
+pub fn format(args: Arguments) -> string::String {
+    let mut output = Vec::new();
+    let _ = write!(&mut output as &mut Writer, "{}", args);
+    string::String::from_utf8(output).unwrap()
+}
+
+// NOTE(stage0): Remove function after a snapshot
+#[cfg(stage0)]
+/// The format function takes a precompiled format string and a list of
+/// arguments, to return the resulting formatted string.
+///
+/// # Arguments
+///
+///   * args - a structure of arguments generated via the `format_args!` macro.
 ///
 /// # Example
 ///

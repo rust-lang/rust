@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    format_args!("test"); //~ ERROR: expected token
-    format_args!("", || {}); //~ ERROR: must be a string literal
+    format_args!(); //~ ERROR: requires at least a format string argument
+    format_args!(|| {}); //~ ERROR: must be a string literal
 }
