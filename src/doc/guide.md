@@ -30,7 +30,7 @@ If you're concerned about the [potential insecurity](http://curlpipesh.tumblr.co
 please keep reading and see our disclaimer below. And feel free to use a two-step version of the installation and examine our installation script:
 
 ```bash
-curl -L https://static.rust-lang.org/rustup.sh -o rustup.sh
+curl -L https://static.rust-lang.org/rustup.sh -O
 sudo sh rustup.sh
 ```
 
