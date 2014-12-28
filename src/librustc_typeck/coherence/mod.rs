@@ -102,7 +102,7 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
         //debug!("(checking coherence) item '{}'", token::get_ident(item.ident));
 
         match item.node {
-            ItemImpl(_, _, ref opt_trait, _, _) => {
+            ItemImpl(_, _, _, ref opt_trait, _, _) => {
                 match opt_trait.clone() {
                     Some(opt_trait) => {
                         self.cc.check_implementation(item, &[opt_trait]);
@@ -283,7 +283,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     // Converts an implementation in the AST to a vector of items.
     fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
-            ItemImpl(_, _, ref trait_refs, _, ref ast_items) => {
+            ItemImpl(_, _, _, ref trait_refs, _, ref ast_items) => {
                 let mut items: Vec<ImplOrTraitItemId> =
                         ast_items.iter()
                                  .map(|ast_item| {

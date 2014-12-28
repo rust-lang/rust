@@ -287,7 +287,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             //   undefined symbols at linkage time if this case is not handled.
             //
             // * Private trait impls for private types can be completely ignored
-            ast::ItemImpl(_, _, _, ref ty, ref impl_items) => {
+            ast::ItemImpl(_, _, _, _, ref ty, ref impl_items) => {
                 let public_ty = match ty.node {
                     ast::TyPath(_, id) => {
                         match self.tcx.def_map.borrow()[id].clone() {
@@ -657,7 +657,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                     // invoked, and the struct/enum itself is private. Crawl
                     // back up the chains to find the relevant struct/enum that
                     // was private.
-                    ast::ItemImpl(_, _, _, ref ty, _) => {
+                    ast::ItemImpl(_, _, _, _, ref ty, _) => {
                         let id = match ty.node {
                             ast::TyPath(_, id) => id,
                             _ => return Some((err_span, err_msg, None)),
@@ -1137,7 +1137,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
         match item.node {
             // implementations of traits don't need visibility qualifiers because
             // that's controlled by having the trait in scope.
-            ast::ItemImpl(_, _, Some(..), _, ref impl_items) => {
+            ast::ItemImpl(_, _, _, Some(..), _, ref impl_items) => {
                 check_inherited(item.span, item.vis,
                                 "visibility qualifiers have no effect on trait \
                                  impls");
@@ -1216,7 +1216,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
         };
         check_inherited(tcx, item.span, item.vis);
         match item.node {
-            ast::ItemImpl(_, _, _, _, ref impl_items) => {
+            ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
                         ast::MethodImplItem(ref m) => {
@@ -1361,7 +1361,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
             // (i.e. we could just return here to not check them at
             // all, or some worse estimation of whether an impl is
             // publicly visible.
-            ast::ItemImpl(_, ref g, ref trait_ref, ref self_, ref impl_items) => {
+            ast::ItemImpl(_, _, ref g, ref trait_ref, ref self_, ref impl_items) => {
                 // `impl [... for] Private` is never visible.
                 let self_contains_private;
                 // impl [... for] Public<...>, but not `impl [... for]

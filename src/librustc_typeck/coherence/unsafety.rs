@@ -30,7 +30,7 @@ struct UnsafetyChecker<'cx, 'tcx:'cx> {
 impl<'cx, 'tcx,'v> visit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v ast::Item) {
         match item.node {
-            ast::ItemImpl(unsafety, _, _, _, _) => {
+            ast::ItemImpl(unsafety, _, _, _, _, _) => {
                 match ty::impl_trait_ref(self.tcx, ast_util::local_def(item.id)) {
                     None => {
                         // Inherent impl.

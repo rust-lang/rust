@@ -337,9 +337,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.traits.push(t);
             },
-            ast::ItemImpl(unsafety, ref gen, ref tr, ref ty, ref items) => {
+            ast::ItemImpl(unsafety, polarity, ref gen, ref tr, ref ty, ref items) => {
                 let i = Impl {
                     unsafety: unsafety,
+                    polarity: polarity,
                     generics: gen.clone(),
                     trait_: tr.clone(),
                     for_: ty.clone(),

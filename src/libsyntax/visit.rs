@@ -297,7 +297,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_generics(type_parameters);
             walk_enum_def(visitor, enum_definition, type_parameters)
         }
-        ItemImpl(_,
+        ItemImpl(_, _,
                  ref type_parameters,
                  ref trait_reference,
                  ref typ,

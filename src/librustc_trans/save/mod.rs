@@ -283,7 +283,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 NodeItem(item) => {
                     scope_id = item.id;
                     match item.node {
-                        ast::ItemImpl(_, _, _, ref ty, _) => {
+                        ast::ItemImpl(_, _, _, _, ref ty, _) => {
                             let mut result = String::from_str("<");
                             result.push_str(ty_to_string(&**ty)[]);
 
@@ -1040,7 +1040,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 self.process_const(item, &**typ, &**expr),
             ast::ItemStruct(ref def, ref ty_params) => self.process_struct(item, &**def, ty_params),
             ast::ItemEnum(ref def, ref ty_params) => self.process_enum(item, def, ty_params),
-            ast::ItemImpl(_,
+            ast::ItemImpl(_, _,
                           ref ty_params,
                           ref trait_ref,
                           ref typ,

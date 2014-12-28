@@ -133,11 +133,11 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
     F: FnMut(&[ast::Attribute]) -> bool
 {
     let item = match item {
-        ast::ItemImpl(u, a, b, c, impl_items) => {
+        ast::ItemImpl(u, o, a, b, c, impl_items) => {
             let impl_items = impl_items.into_iter()
                                        .filter(|ii| impl_item_in_cfg(cx, ii))
                                        .collect();
-            ast::ItemImpl(u, a, b, c, impl_items)
+            ast::ItemImpl(u, o, a, b, c, impl_items)
         }
         ast::ItemTrait(u, a, b, methods) => {
             let methods = methods.into_iter()

@@ -699,7 +699,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
         check_bare_fn(ccx, &**decl, &**body, it.id, fn_pty.ty, param_env);
       }
-      ast::ItemImpl(_, _, _, _, ref impl_items) => {
+      ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
         debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
 
         let impl_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));

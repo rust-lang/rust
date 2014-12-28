@@ -1207,7 +1207,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             None => {}
         }
       }
-      ast::ItemImpl(unsafety, _, ref opt_trait, ref ty, ref ast_items) => {
+      ast::ItemImpl(unsafety, polarity, _, ref opt_trait, ref ty, ref ast_items) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
         let impl_items = tcx.impl_items.borrow();
@@ -1221,6 +1221,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, item.attrs[]);
         encode_unsafety(rbml_w, unsafety);
+        encode_polarity(rbml_w, polarity);
         match ty.node {
             ast::TyPath(ref path, _) if path.segments.len() == 1 => {
                 let ident = path.segments.last().unwrap().identifier;
@@ -1704,6 +1705,14 @@ fn encode_associated_type_names(rbml_w: &mut Encoder, names: &[ast::Name]) {
     rbml_w.end_tag();
 }
 
+fn encode_polarity(rbml_w: &mut Encoder, polarity: ast::ImplPolarity) {
+    let byte: u8 = match polarity {
+        ast::ImplPolarity::Positive => 0,
+        ast::ImplPolarity::Negative => 1,
+    };
+    rbml_w.wr_tagged_u8(tag_polarity, byte);
+}
+
 fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
     fn get_ordered_deps(cstore: &cstore::CStore) -> Vec<decoder::CrateDep> {
         // Pull the cnums and name,vers,hash out of cstore
@@ -1885,7 +1894,7 @@ struct ImplVisitor<'a, 'b:'a, 'c:'a, 'tcx:'b> {
 
 impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
-        if let ast::ItemImpl(_, _, Some(ref trait_ref), _, _) = item.node {
+        if let ast::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
             let def_map = &self.ecx.tcx.def_map;
             let trait_def = def_map.borrow()[trait_ref.ref_id].clone();
             let def_id = trait_def.def_id();

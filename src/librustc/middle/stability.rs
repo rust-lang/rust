@@ -82,7 +82,7 @@ impl<'v> Visitor<'v> for Annotator {
         // stability of the trait. This is WRONG, but expedient to get
         // libstd stabilized for the 1.0 release.
         let use_parent = match i.node {
-            ast::ItemImpl(_, _, Some(_), _, _) => false,
+            ast::ItemImpl(_, _, _, Some(_), _, _) => false,
             _ => true,
         };
 

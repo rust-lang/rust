@@ -259,3 +259,5 @@ pub const tag_unsafety: uint = 0xb1;
 
 pub const tag_associated_type_names: uint = 0xb2;
 pub const tag_associated_type_name: uint = 0xb3;
+
+pub const tag_polarity: uint = 0xb4;

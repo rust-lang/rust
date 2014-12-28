@@ -291,7 +291,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemImpl(_, _, _, _, ref items) => {
+            ast::ItemImpl(_, _, _, _, _, ref items) => {
                 if attr::contains_name(i.attrs[],
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",
