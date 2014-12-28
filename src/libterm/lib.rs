@@ -39,7 +39,7 @@
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
 #![crate_name = "term"]
-#![experimental]
+#![experimental = "use the crates.io `term` library instead"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
