@@ -90,9 +90,9 @@
 use mem;
 use clone::Clone;
 use intrinsics;
+use kinds::{Send, Sync};
 use option::Option;
 use option::Option::{Some, None};
-use kinds::{Send, Sync};
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd, Equiv};
 use cmp::Ordering;
@@ -108,6 +108,7 @@ pub use intrinsics::copy_memory;
 
 #[experimental = "uncertain about naming and semantics"]
 pub use intrinsics::set_memory;
+
 
 /// Creates a null raw pointer.
 ///

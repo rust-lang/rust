@@ -25,6 +25,7 @@ mod fmt;
 mod hash;
 mod iter;
 mod mem;
+mod nonzero;
 mod num;
 mod ops;
 mod option;
