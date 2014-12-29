@@ -22,7 +22,6 @@ use result::Result::{Ok, Err};
 use slice::{SliceExt};
 use slice;
 use vec::Vec;
-use kinds::{Send,Sync};
 
 /// Wraps a Reader and buffers input from it
 ///
@@ -51,11 +50,6 @@ pub struct BufferedReader<R> {
     pos: uint,
     cap: uint,
 }
-
-
-unsafe impl<R: Send> Send for BufferedReader<R> {}
-unsafe impl<R: Send+Sync> Sync for BufferedReader<R> {}
-
 
 impl<R: Reader> BufferedReader<R> {
     /// Creates a new `BufferedReader` with the specified buffer capacity

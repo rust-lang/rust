@@ -218,7 +218,7 @@ pub fn stdin() -> StdinReader {
     static ONCE: Once = ONCE_INIT;
 
     unsafe {
-        ONCE.doit(|| {
+        ONCE.call_once(|| {
             // The default buffer capacity is 64k, but apparently windows doesn't like
             // 64k reads on stdin. See #13304 for details, but the idea is that on
             // windows we use a slightly smaller buffer that's been seen to be

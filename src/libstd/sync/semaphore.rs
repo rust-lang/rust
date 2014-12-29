@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable = "the interaction between semaphores and the acquisition/release \
+               of resources is currently unclear"]
+
 use ops::Drop;
 use sync::{Mutex, Condvar};
 

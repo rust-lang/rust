@@ -70,9 +70,9 @@ fn int_xor() {
     assert_eq!(x.load(SeqCst), 0xf731 ^ 0x137f);
 }
 
-static S_BOOL : AtomicBool = INIT_ATOMIC_BOOL;
-static S_INT  : AtomicInt  = INIT_ATOMIC_INT;
-static S_UINT : AtomicUint = INIT_ATOMIC_UINT;
+static S_BOOL : AtomicBool = ATOMIC_BOOL_INIT;
+static S_INT  : AtomicInt  = ATOMIC_INT_INIT;
+static S_UINT : AtomicUint = ATOMIC_UINT_INIT;
 
 #[test]
 fn static_init() {

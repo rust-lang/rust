@@ -2263,7 +2263,7 @@ mod tests {
             }
         }
         const NUM_ELEMENTS: uint = 2;
-        static DROP_COUNTER: AtomicUint = atomic::INIT_ATOMIC_UINT;
+        static DROP_COUNTER: AtomicUint = atomic::ATOMIC_UINT_INIT;
 
         let v = Vec::from_elem(NUM_ELEMENTS, Nothing);
 

@@ -206,6 +206,7 @@ getting the result later.
 The basic example below illustrates this.
 
 ```{rust,ignore}
+# #![allow(deprecated)]
 use std::sync::Future;
 
 # fn main() {
@@ -233,6 +234,7 @@ Here is another example showing how futures allow you to background
 computations. The workload will be distributed on the available cores.
 
 ```{rust,ignore}
+# #![allow(deprecated)]
 # use std::num::Float;
 # use std::sync::Future;
 fn partial_sum(start: uint) -> f64 {
