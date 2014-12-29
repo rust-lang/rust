@@ -3746,9 +3746,9 @@ impl<'a> Parser<'a> {
             if id.name == token::special_idents::invalid.name {
                 P(spanned(lo,
                           hi,
-                          StmtMac(spanned(lo,
+                          StmtMac(P(spanned(lo,
                                           hi,
-                                          MacInvocTT(pth, tts, EMPTY_CTXT)),
+                                          MacInvocTT(pth, tts, EMPTY_CTXT))),
                                   style)))
             } else {
                 // if it has a special ident, it's definitely an item
@@ -3911,7 +3911,7 @@ impl<'a> Parser<'a> {
                                 _ => {
                                     let e = self.mk_mac_expr(span.lo,
                                                              span.hi,
-                                                             macro.node);
+                                                             macro.and_then(|m| m.node));
                                     let e =
                                         self.parse_dot_or_call_expr_with(e);
                                     self.handle_expression_like_statement(
@@ -3940,7 +3940,7 @@ impl<'a> Parser<'a> {
                                     expr = Some(
                                         self.mk_mac_expr(span.lo,
                                                          span.hi,
-                                                         m.node));
+                                                         m.and_then(|x| x.node)));
                                 }
                                 _ => {
                                     stmts.push(P(Spanned {

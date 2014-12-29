@@ -633,7 +633,7 @@ fn ast_path_to_trait_ref<'tcx,AC,RS>(
                                             regions,
                                             assoc_bindings);
 
-    ty::TraitRef::new(trait_def_id, substs)
+    ty::TraitRef::new(trait_def_id, this.tcx().mk_substs(substs))
 }
 
 pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
@@ -940,7 +940,7 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                 let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
                 debug!("ty_rptr r={}", r.repr(this.tcx()));
                 let t = ast_ty_to_ty(this, rscope, &*mt.ty);
-                ty::mk_rptr(tcx, r, ty::mt {ty: t, mutbl: mt.mutbl})
+                ty::mk_rptr(tcx, tcx.mk_region(r), ty::mt {ty: t, mutbl: mt.mutbl})
             }
             ast::TyTup(ref fields) => {
                 let flds = fields.iter()
@@ -954,7 +954,8 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     tcx.sess.span_err(ast_ty.span,
                                       "variadic function must have C calling convention");
                 }
-                ty::mk_bare_fn(tcx, None, ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl))
+                let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl);
+                ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(bare_fn))
             }
             ast::TyClosure(ref f) => {
                 // Use corresponding trait store to figure out default bounds
@@ -1217,7 +1218,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx, AC: AstConv<'tcx>>(
                 }
                 ty::ByReferenceExplicitSelfCategory(region, mutability) => {
                     (Some(ty::mk_rptr(this.tcx(),
-                                      region,
+                                      this.tcx().mk_region(region),
                                       ty::mt {
                                         ty: self_info.untransformed_self_ty,
                                         mutbl: mutability
@@ -1350,7 +1351,7 @@ fn determine_explicit_self_category<'a, 'tcx, AC: AstConv<'tcx>,
                 ty::ByValueExplicitSelfCategory
             } else {
                 match explicit_type.sty {
-                    ty::ty_rptr(r, mt) => ty::ByReferenceExplicitSelfCategory(r, mt.mutbl),
+                    ty::ty_rptr(r, mt) => ty::ByReferenceExplicitSelfCategory(*r, mt.mutbl),
                     ty::ty_uniq(_) => ty::ByBoxExplicitSelfCategory,
                     _ => ty::ByValueExplicitSelfCategory,
                 }

@@ -347,9 +347,9 @@ impl<'a,'tcx,V:SimplyUnifiable<'tcx>,K:UnifyKey<'tcx, Option<V>>>
 // Integral type keys
 
 impl<'tcx> UnifyKey<'tcx, Option<IntVarValue>> for ty::IntVid {
-    fn index(&self) -> uint { self.index }
+    fn index(&self) -> uint { self.index as uint }
 
-    fn from_index(i: uint) -> ty::IntVid { ty::IntVid { index: i } }
+    fn from_index(i: uint) -> ty::IntVid { ty::IntVid { index: i as u32 } }
 
     fn unification_table<'v>(infcx: &'v InferCtxt)
         -> &'v RefCell<UnificationTable<ty::IntVid, Option<IntVarValue>>>
@@ -380,9 +380,9 @@ impl<'tcx> UnifyValue<'tcx> for Option<IntVarValue> { }
 // Floating point type keys
 
 impl<'tcx> UnifyKey<'tcx, Option<ast::FloatTy>> for ty::FloatVid {
-    fn index(&self) -> uint { self.index }
+    fn index(&self) -> uint { self.index as uint }
 
-    fn from_index(i: uint) -> ty::FloatVid { ty::FloatVid { index: i } }
+    fn from_index(i: uint) -> ty::FloatVid { ty::FloatVid { index: i as u32 } }
 
     fn unification_table<'v>(infcx: &'v InferCtxt)
         -> &'v RefCell<UnificationTable<ty::FloatVid, Option<ast::FloatTy>>>

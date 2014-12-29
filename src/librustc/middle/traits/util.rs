@@ -1,4 +1,3 @@
-
 // Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -276,7 +275,7 @@ pub fn poly_trait_ref_for_builtin_bound<'tcx>(
         Ok(def_id) => {
             Ok(Rc::new(ty::Binder(ty::TraitRef {
                 def_id: def_id,
-                substs: Substs::empty().with_self_ty(param_ty)
+                substs: tcx.mk_substs(Substs::empty().with_self_ty(param_ty))
             })))
         }
         Err(e) => {

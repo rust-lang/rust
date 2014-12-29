@@ -305,7 +305,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // a substitution that replaces `Self` with the object type
         // itself. Hence, a `&self` method will wind up with an
         // argument type like `&Trait`.
-        let trait_ref = data.principal_trait_ref_with_self_ty(self_ty);
+        let trait_ref = data.principal_trait_ref_with_self_ty(self.tcx(), self_ty);
         self.elaborate_bounds(&[trait_ref.clone()], false, |this, new_trait_ref, m, method_num| {
             let vtable_index =
                 get_method_index(tcx, &*new_trait_ref, trait_ref.clone(), method_num);
@@ -499,7 +499,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
             // Determine the receiver type that the method itself expects.
             let xform_self_ty =
-                self.xform_self_ty(&method, &impl_trait_ref.substs);
+                self.xform_self_ty(&method, impl_trait_ref.substs);
 
             debug!("xform_self_ty={}", xform_self_ty.repr(self.tcx()));
 
@@ -657,7 +657,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let tcx = self.tcx();
         self.search_mutabilities(
             |m| AutoRef(m, box step.adjustment.clone()),
-            |m,r| ty::mk_rptr(tcx, r, ty::mt {ty:step.self_ty, mutbl:m}))
+            |m,r| ty::mk_rptr(tcx, tcx.mk_region(r), ty::mt {ty:step.self_ty, mutbl:m}))
     }
 
     fn search_mutabilities<F, G>(&mut self,

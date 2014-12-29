@@ -33,7 +33,7 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
 use std::cell::{Cell, RefCell};
-use std::uint;
+use std::u32;
 use syntax::ast;
 
 mod doc;
@@ -196,8 +196,8 @@ pub struct RegionVarBindings<'a, 'tcx: 'a> {
 
     lubs: RefCell<CombineMap>,
     glbs: RefCell<CombineMap>,
-    skolemization_count: Cell<uint>,
-    bound_count: Cell<uint>,
+    skolemization_count: Cell<u32>,
+    bound_count: Cell<u32>,
 
     // The undo log records actions that might later be undone.
     //
@@ -219,7 +219,7 @@ pub struct RegionVarBindings<'a, 'tcx: 'a> {
 #[allow(missing_copy_implementations)]
 pub struct RegionSnapshot {
     length: uint,
-    skolemization_count: uint,
+    skolemization_count: u32,
 }
 
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
@@ -278,7 +278,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 AddVar(vid) => {
                     let mut var_origins = self.var_origins.borrow_mut();
                     var_origins.pop().unwrap();
-                    assert_eq!(var_origins.len(), vid.index);
+                    assert_eq!(var_origins.len(), vid.index as uint);
                 }
                 AddConstraint(ref constraint) => {
                     self.constraints.borrow_mut().remove(constraint);
@@ -303,8 +303,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         self.skolemization_count.set(snapshot.skolemization_count);
     }
 
-    pub fn num_vars(&self) -> uint {
-        self.var_origins.borrow().len()
+    pub fn num_vars(&self) -> u32 {
+        let len = self.var_origins.borrow().len();
+        // enforce no overflow
+        assert!(len as u32 as uint == len);
+        len as u32
     }
 
     pub fn new_region_var(&self, origin: RegionVariableOrigin<'tcx>) -> RegionVid {
@@ -547,7 +550,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         match *self.values.borrow() {
             None => {
                 self.tcx.sess.span_bug(
-                    (*self.var_origins.borrow())[rid.index].span(),
+                    (*self.var_origins.borrow())[rid.index as uint].span(),
                     "attempt to resolve region variable before values have \
                      been computed!")
             }
@@ -737,7 +740,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
           (ReInfer(ReVar(v_id)), _) | (_, ReInfer(ReVar(v_id))) => {
             self.tcx.sess.span_bug(
-                (*self.var_origins.borrow())[v_id.index].span(),
+                (*self.var_origins.borrow())[v_id.index as uint].span(),
                 format!("lub_concrete_regions invoked with \
                          non-concrete regions: {}, {}",
                         a,
@@ -840,7 +843,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             (ReInfer(ReVar(v_id)), _) |
             (_, ReInfer(ReVar(v_id))) => {
                 self.tcx.sess.span_bug(
-                    (*self.var_origins.borrow())[v_id.index].span(),
+                    (*self.var_origins.borrow())[v_id.index as uint].span(),
                     format!("glb_concrete_regions invoked with \
                              non-concrete regions: {}, {}",
                             a,
@@ -972,7 +975,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn construct_var_data(&self) -> Vec<VarData> {
-        Vec::from_fn(self.num_vars(), |_| {
+        Vec::from_fn(self.num_vars() as uint, |_| {
             VarData {
                 // All nodes are initially classified as contracting; during
                 // the expansion phase, we will shift the classification for
@@ -1001,14 +1004,14 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                    .repr(self.tcx));
             match *constraint {
               ConstrainRegSubVar(a_region, b_vid) => {
-                let b_data = &mut var_data[b_vid.index];
+                let b_data = &mut var_data[b_vid.index as uint];
                 self.expand_node(a_region, b_vid, b_data)
               }
               ConstrainVarSubVar(a_vid, b_vid) => {
-                match var_data[a_vid.index].value {
+                match var_data[a_vid.index as uint].value {
                   NoValue | ErrorValue => false,
                   Value(a_region) => {
-                    let b_node = &mut var_data[b_vid.index];
+                    let b_node = &mut var_data[b_vid.index as uint];
                     self.expand_node(a_region, b_vid, b_node)
                   }
                 }
@@ -1089,16 +1092,16 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 false
               }
               ConstrainVarSubVar(a_vid, b_vid) => {
-                match var_data[b_vid.index].value {
+                match var_data[b_vid.index as uint].value {
                   NoValue | ErrorValue => false,
                   Value(b_region) => {
-                    let a_data = &mut var_data[a_vid.index];
+                    let a_data = &mut var_data[a_vid.index as uint];
                     self.contract_node(a_vid, a_data, b_region)
                   }
                 }
               }
               ConstrainVarSubReg(a_vid, b_region) => {
-                let a_data = &mut var_data[a_vid.index];
+                let a_data = &mut var_data[a_vid.index as uint];
                 self.contract_node(a_vid, a_data, b_region)
               }
             }
@@ -1244,11 +1247,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec = Vec::from_elem(self.num_vars(), uint::MAX);
+        let mut dup_vec = Vec::from_elem(self.num_vars() as uint, u32::MAX);
 
         let mut opt_graph = None;
 
-        for idx in range(0u, self.num_vars()) {
+        for idx in range(0u, self.num_vars() as uint) {
             match var_data[idx].value {
                 Value(_) => {
                     /* Inference successful */
@@ -1288,7 +1291,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     }
                     let graph = opt_graph.as_ref().unwrap();
 
-                    let node_vid = RegionVid { index: idx };
+                    let node_vid = RegionVid { index: idx as u32 };
                     match var_data[idx].classification {
                         Expanding => {
                             self.collect_error_for_expanding_node(
@@ -1305,7 +1308,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
         }
 
-        Vec::from_fn(self.num_vars(), |idx| var_data[idx].value)
+        Vec::from_fn(self.num_vars() as uint, |idx| var_data[idx].value)
     }
 
     fn construct_graph(&self) -> RegionGraph {
@@ -1314,10 +1317,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         let constraints = self.constraints.borrow();
         let num_edges = constraints.len();
 
-        let mut graph = graph::Graph::with_capacity(num_vars + 1,
+        let mut graph = graph::Graph::with_capacity(num_vars as uint + 1,
                                                     num_edges);
 
-        for _ in range(0u, num_vars) {
+        for _ in range(0, num_vars) {
             graph.add_node(());
         }
         let dummy_idx = graph.add_node(());
@@ -1325,17 +1328,17 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         for (constraint, _) in constraints.iter() {
             match *constraint {
                 ConstrainVarSubVar(a_id, b_id) => {
-                    graph.add_edge(NodeIndex(a_id.index),
-                                   NodeIndex(b_id.index),
+                    graph.add_edge(NodeIndex(a_id.index as uint),
+                                   NodeIndex(b_id.index as uint),
                                    *constraint);
                 }
                 ConstrainRegSubVar(_, b_id) => {
                     graph.add_edge(dummy_idx,
-                                   NodeIndex(b_id.index),
+                                   NodeIndex(b_id.index as uint),
                                    *constraint);
                 }
                 ConstrainVarSubReg(a_id, _) => {
-                    graph.add_edge(NodeIndex(a_id.index),
+                    graph.add_edge(NodeIndex(a_id.index as uint),
                                    dummy_idx,
                                    *constraint);
                 }
@@ -1349,7 +1352,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         &self,
         graph: &RegionGraph,
         var_data: &[VarData],
-        dup_vec: &mut [uint],
+        dup_vec: &mut [u32],
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
@@ -1387,7 +1390,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
                     errors.push(SubSupConflict(
-                        (*self.var_origins.borrow())[node_idx.index].clone(),
+                        (*self.var_origins.borrow())[node_idx.index as uint].clone(),
                         lower_bound.origin.clone(),
                         lower_bound.region,
                         upper_bound.origin.clone(),
@@ -1398,7 +1401,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
 
         self.tcx.sess.span_bug(
-            (*self.var_origins.borrow())[node_idx.index].span(),
+            (*self.var_origins.borrow())[node_idx.index as uint].span(),
             format!("collect_error_for_expanding_node() could not find error \
                     for var {}, lower_bounds={}, upper_bounds={}",
                     node_idx,
@@ -1410,7 +1413,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         &self,
         graph: &RegionGraph,
         var_data: &[VarData],
-        dup_vec: &mut [uint],
+        dup_vec: &mut [u32],
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
@@ -1431,7 +1434,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                   Ok(_) => {}
                   Err(_) => {
                     errors.push(SupSupConflict(
-                        (*self.var_origins.borrow())[node_idx.index].clone(),
+                        (*self.var_origins.borrow())[node_idx.index as uint].clone(),
                         upper_bound_1.origin.clone(),
                         upper_bound_1.region,
                         upper_bound_2.origin.clone(),
@@ -1443,7 +1446,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
 
         self.tcx.sess.span_bug(
-            (*self.var_origins.borrow())[node_idx.index].span(),
+            (*self.var_origins.borrow())[node_idx.index as uint].span(),
             format!("collect_error_for_contracting_node() could not find error \
                      for var {}, upper_bounds={}",
                     node_idx,
@@ -1455,7 +1458,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                 var_data: &[VarData],
                                 orig_node_idx: RegionVid,
                                 dir: Direction,
-                                dup_vec: &mut [uint])
+                                dup_vec: &mut [u32])
                                 -> (Vec<RegionAndOrigin<'tcx>>, bool) {
         struct WalkState<'tcx> {
             set: FnvHashSet<RegionVid>,
@@ -1477,12 +1480,12 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         while !state.stack.is_empty() {
             let node_idx = state.stack.pop().unwrap();
-            let classification = var_data[node_idx.index].classification;
+            let classification = var_data[node_idx.index as uint].classification;
 
             // check whether we've visited this node on some previous walk
-            if dup_vec[node_idx.index] == uint::MAX {
-                dup_vec[node_idx.index] = orig_node_idx.index;
-            } else if dup_vec[node_idx.index] != orig_node_idx.index {
+            if dup_vec[node_idx.index as uint] == u32::MAX {
+                dup_vec[node_idx.index as uint] = orig_node_idx.index;
+            } else if dup_vec[node_idx.index as uint] != orig_node_idx.index {
                 state.dup_found = true;
             }
 
@@ -1510,7 +1513,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                          dir: Direction) {
             debug!("process_edges(source_vid={}, dir={})", source_vid, dir);
 
-            let source_node_index = NodeIndex(source_vid.index);
+            let source_node_index = NodeIndex(source_vid.index as uint);
             graph.each_adjacent_edge(source_node_index, dir, |_, edge| {
                 match edge.data {
                     ConstrainVarSubVar(from_vid, to_vid) => {
@@ -1595,7 +1598,7 @@ fn normalize(values: &Vec<VarValue>, r: ty::Region) -> ty::Region {
 }
 
 fn lookup(values: &Vec<VarValue>, rid: ty::RegionVid) -> ty::Region {
-    match values[rid.index] {
+    match values[rid.index as uint] {
         Value(r) => r,
         NoValue => ReEmpty, // No constraints, return ty::ReEmpty
         ErrorValue => ReStatic, // Previously reported error.

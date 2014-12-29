@@ -37,7 +37,7 @@ use util::nodemap::NodeMap;
 pub enum DefRegion {
     DefStaticRegion,
     DefEarlyBoundRegion(/* space */ subst::ParamSpace,
-                        /* index */ uint,
+                        /* index */ u32,
                         /* lifetime decl */ ast::NodeId),
     DefLateBoundRegion(ty::DebruijnIndex,
                        /* lifetime decl */ ast::NodeId),
@@ -508,10 +508,10 @@ impl<'a> LifetimeContext<'a> {
 
 fn search_lifetimes<'a>(lifetimes: &'a Vec<ast::LifetimeDef>,
                     lifetime_ref: &ast::Lifetime)
-                    -> Option<(uint, &'a ast::Lifetime)> {
+                    -> Option<(u32, &'a ast::Lifetime)> {
     for (i, lifetime_decl) in lifetimes.iter().enumerate() {
         if lifetime_decl.lifetime.name == lifetime_ref.name {
-            return Some((i, &lifetime_decl.lifetime));
+            return Some((i as u32, &lifetime_decl.lifetime));
         }
     }
     return None;

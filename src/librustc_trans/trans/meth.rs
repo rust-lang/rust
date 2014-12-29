@@ -240,7 +240,7 @@ pub fn trans_static_method_callee(bcx: Block,
                                              Vec::new()));
     debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
     let trait_ref = Rc::new(ty::Binder(ty::TraitRef { def_id: trait_id,
-                                                      substs: trait_substs }));
+                                                      substs: bcx.tcx().mk_substs(trait_substs) }));
     let vtbl = fulfill_obligation(bcx.ccx(),
                                   DUMMY_SP,
                                   trait_ref);
@@ -639,7 +639,7 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                        m.repr(tcx),
                        substs.repr(tcx));
                 if m.generics.has_type_params(subst::FnSpace) ||
-                    ty::type_has_self(ty::mk_bare_fn(tcx, None, m.fty.clone()))
+                    ty::type_has_self(ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(m.fty.clone())))
                 {
                     debug!("(making impl vtable) method has self or type \
                             params: {}",

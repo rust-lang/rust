@@ -767,7 +767,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         // Select just those fields of the `with`
         // expression that will actually be used
         let with_fields = match with_cmt.ty.sty {
-            ty::ty_struct(did, ref substs) => {
+            ty::ty_struct(did, substs) => {
                 ty::struct_fields(self.tcx(), did, substs)
             }
             _ => {
@@ -861,7 +861,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
-                                         r, bk, AutoRef);
+                                         *r, bk, AutoRef);
                 }
             }
         }
@@ -1271,4 +1271,3 @@ fn copy_or_move<'tcx>(tcx: &ty::ctxt<'tcx>,
         Copy
     }
 }
-

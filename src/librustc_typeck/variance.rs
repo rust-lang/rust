@@ -732,7 +732,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::ty_rptr(region, ref mt) => {
                 let contra = self.contravariant(variance);
-                self.add_constraints_from_region(region, contra);
+                self.add_constraints_from_region(*region, contra);
                 self.add_constraints_from_mt(mt, variance);
             }
 
@@ -750,8 +750,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ty_enum(def_id, ref substs) |
-            ty::ty_struct(def_id, ref substs) => {
+            ty::ty_enum(def_id, substs) |
+            ty::ty_struct(def_id, substs) => {
                 let item_type = ty::lookup_item_type(self.tcx(), def_id);
                 let generics = &item_type.generics;
 
@@ -814,7 +814,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ty_bare_fn(_, ty::BareFnTy { ref sig, .. }) |
+            ty::ty_bare_fn(_, &ty::BareFnTy { ref sig, .. }) |
             ty::ty_closure(box ty::ClosureTy {
                     ref sig,
                     store: ty::UniqTraitStore,
@@ -854,18 +854,18 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         for p in type_param_defs.iter() {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id, TypeParam,
-                                       p.space, p.index);
+                                       p.space, p.index as uint);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_ty = *substs.types.get(p.space, p.index);
+            let substs_ty = *substs.types.get(p.space, p.index as uint);
             self.add_constraints_from_ty(substs_ty, variance_i);
         }
 
         for p in region_param_defs.iter() {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id,
-                                       RegionParam, p.space, p.index);
+                                       RegionParam, p.space, p.index as uint);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_r = *substs.regions().get(p.space, p.index);
+            let substs_r = *substs.regions().get(p.space, p.index as uint);
             self.add_constraints_from_region(substs_r, variance_i);
         }
     }

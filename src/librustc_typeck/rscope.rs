@@ -106,7 +106,7 @@ impl RegionScope for SpecificRscope {
 /// A scope in which we generate anonymous, late-bound regions for
 /// omitted regions. This occurs in function signatures.
 pub struct BindingRscope {
-    anon_bindings: Cell<uint>,
+    anon_bindings: Cell<u32>,
 }
 
 impl BindingRscope {

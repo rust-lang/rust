@@ -272,14 +272,14 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
            bare_fn_ty.repr(tcx));
 
     // This is an impl of `Fn` trait, so receiver is `&self`.
-    let bare_fn_ty_ref = ty::mk_imm_rptr(tcx, ty::ReStatic, bare_fn_ty);
+    let bare_fn_ty_ref = ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), bare_fn_ty);
 
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.
     let (opt_def_id, input_tys, output_ty) =
         match bare_fn_ty.sty {
             ty::ty_bare_fn(opt_def_id,
-                           ty::BareFnTy { unsafety: ast::Unsafety::Normal,
+                           &ty::BareFnTy { unsafety: ast::Unsafety::Normal,
                                           abi: synabi::Rust,
                                           sig: ty::Binder(ty::FnSig { inputs: ref input_tys,
                                                                       output: output_ty,
@@ -296,14 +296,15 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let tuple_input_ty = ty::mk_tup(tcx, input_tys.to_vec());
     let tuple_fn_ty = ty::mk_bare_fn(tcx,
                                      opt_def_id,
-                                     ty::BareFnTy { unsafety: ast::Unsafety::Normal,
-                                                    abi: synabi::RustCall,
-                                                    sig: ty::Binder(ty::FnSig {
-                                                        inputs: vec![bare_fn_ty_ref,
-                                                                     tuple_input_ty],
-                                                        output: output_ty,
-                                                        variadic: false
-                                                    })});
+                                     tcx.mk_bare_fn(ty::BareFnTy {
+                                         unsafety: ast::Unsafety::Normal,
+                                         abi: synabi::RustCall,
+                                         sig: ty::Binder(ty::FnSig {
+                                             inputs: vec![bare_fn_ty_ref,
+                                                          tuple_input_ty],
+                                             output: output_ty,
+                                             variadic: false
+                                         })}));
     debug!("tuple_fn_ty: {}", tuple_fn_ty.repr(tcx));
 
     //

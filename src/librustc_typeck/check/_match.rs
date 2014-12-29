@@ -93,7 +93,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     // and T is the expected type
                     let region_var = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
                     let mt = ty::mt { ty: expected, mutbl: mutbl };
-                    let region_ty = ty::mk_rptr(tcx, region_var, mt);
+                    let region_ty = ty::mk_rptr(tcx, tcx.mk_region(region_var), mt);
                     demand::eqtype(fcx, pat.span, region_ty, typ);
                 }
                 // otherwise the type of x is the expected type T
@@ -154,7 +154,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
             let mt = ty::mt { ty: inner_ty, mutbl: mutbl };
             let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
-            let rptr_ty = ty::mk_rptr(tcx, region, mt);
+            let rptr_ty = ty::mk_rptr(tcx, tcx.mk_region(region), mt);
 
             if check_dereferencable(pcx, pat.span, expected, &**inner) {
                 demand::suptype(fcx, pat.span, expected, rptr_ty);
@@ -178,7 +178,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 })),
                 _ => {
                     let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
-                    ty::mk_slice(tcx, region, ty::mt {
+                    ty::mk_slice(tcx, tcx.mk_region(region), ty::mt {
                         ty: inner_ty,
                         mutbl: ty::deref(expected_ty, true)
                             .map_or(ast::MutImmutable, |mt| mt.mutbl)
@@ -197,7 +197,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 let mutbl = ty::deref(expected_ty, true)
                     .map_or(ast::MutImmutable, |mt| mt.mutbl);
 
-                let slice_ty = ty::mk_slice(tcx, region, ty::mt {
+                let slice_ty = ty::mk_slice(tcx, tcx.mk_region(region), ty::mt {
                     ty: inner_ty,
                     mutbl: mutbl
                 });
@@ -411,13 +411,13 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
 
     let real_path_ty = fcx.node_ty(pat.id);
     let (arg_tys, kind_name) = match real_path_ty.sty {
-        ty::ty_enum(enum_def_id, ref expected_substs)
+        ty::ty_enum(enum_def_id, expected_substs)
             if def == def::DefVariant(enum_def_id, def.def_id(), false) => {
             let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
             (variant.args.iter().map(|t| t.subst(tcx, expected_substs)).collect::<Vec<_>>(),
                 "variant")
         }
-        ty::ty_struct(struct_def_id, ref expected_substs) => {
+        ty::ty_struct(struct_def_id, expected_substs) => {
             let struct_fields = ty::struct_fields(tcx, struct_def_id, expected_substs);
             (struct_fields.iter().map(|field| field.mt.ty).collect::<Vec<_>>(),
                 "struct")

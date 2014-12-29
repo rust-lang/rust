@@ -4254,7 +4254,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     let def_like = DlDef(DefTyParam(space,
                                                     local_def(type_parameter.id),
-                                                    index));
+                                                    index as u32));
                     // Associate this type parameter with
                     // the item that bound it
                     self.record_def(type_parameter.id,

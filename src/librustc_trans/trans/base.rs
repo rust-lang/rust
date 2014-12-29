@@ -264,10 +264,10 @@ pub fn self_type_for_unboxed_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let unboxed_closure = &(*unboxed_closures)[closure_id];
     match unboxed_closure.kind {
         ty::FnUnboxedClosureKind => {
-            ty::mk_imm_rptr(ccx.tcx(), ty::ReStatic, fn_ty)
+            ty::mk_imm_rptr(ccx.tcx(), ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
         ty::FnMutUnboxedClosureKind => {
-            ty::mk_mut_rptr(ccx.tcx(), ty::ReStatic, fn_ty)
+            ty::mk_mut_rptr(ccx.tcx(), ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
         ty::FnOnceUnboxedClosureKind => fn_ty
     }
@@ -288,7 +288,7 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::ty_closure(ref f) => {
             (f.sig.0.inputs.clone(), f.sig.0.output, f.abi, Some(Type::i8p(ccx)))
         }
-        ty::ty_unboxed_closure(closure_did, _, ref substs) => {
+        ty::ty_unboxed_closure(closure_did, _, substs) => {
             let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
             let unboxed_closure = &(*unboxed_closures)[closure_did];
             let function_type = unboxed_closure.closure_type.clone();
@@ -529,9 +529,9 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         assert_eq!(did.krate, ast::LOCAL_CRATE);
 
         // Since we're in trans we don't care for any region parameters
-        let ref substs = subst::Substs::erased(substs.types.clone());
+        let substs = subst::Substs::erased(substs.types.clone());
 
-        let (val, _) = monomorphize::monomorphic_fn(ccx, did, substs, None);
+        let (val, _) = monomorphize::monomorphic_fn(ccx, did, &substs, None);
 
         val
     } else if did.krate == ast::LOCAL_CRATE {
@@ -749,7 +749,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
               }
           })
       }
-      ty::ty_unboxed_closure(def_id, _, ref substs) => {
+      ty::ty_unboxed_closure(def_id, _, substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
           let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id, substs);
           for (i, upvar) in upvars.iter().enumerate() {
@@ -769,7 +769,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
               cx = f(cx, llfld_a, *arg);
           }
       }
-      ty::ty_enum(tid, ref substs) => {
+      ty::ty_enum(tid, substs) => {
           let fcx = cx.fcx;
           let ccx = fcx.ccx;
 
@@ -2125,14 +2125,20 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
 fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span, id: ast::NodeId) {
     let mut sizes = Vec::new(); // does no allocation if no pushes, thankfully
 
+    let print_info = ccx.sess().print_enum_sizes();
+
     let levels = ccx.tcx().node_lint_levels.borrow();
     let lint_id = lint::LintId::of(lint::builtin::VARIANT_SIZE_DIFFERENCES);
-    let lvlsrc = match levels.get(&(id, lint_id)) {
-        None | Some(&(lint::Allow, _)) => return,
-        Some(&lvlsrc) => lvlsrc,
-    };
+    let lvlsrc = levels.get(&(id, lint_id));
+    let is_allow = lvlsrc.map_or(true, |&(lvl, _)| lvl == lint::Allow);
 
-    let avar = adt::represent_type(ccx, ty::node_id_to_type(ccx.tcx(), id));
+    if is_allow && !print_info {
+        // we're not interested in anything here
+        return
+    }
+
+    let ty = ty::node_id_to_type(ccx.tcx(), id);
+    let avar = adt::represent_type(ccx, ty);
     match *avar {
         adt::General(_, ref variants, _) => {
             for var in variants.iter() {
@@ -2158,13 +2164,29 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
             }
     );
 
+    if print_info {
+        let llty = type_of::sizing_type_of(ccx, ty);
+
+        let sess = &ccx.tcx().sess;
+        sess.span_note(sp, &*format!("total size: {} bytes", llsize_of_real(ccx, llty)));
+        match *avar {
+            adt::General(..) => {
+                for (i, var) in enum_def.variants.iter().enumerate() {
+                    ccx.tcx().sess.span_note(var.span,
+                                             &*format!("variant data: {} bytes", sizes[i]));
+                }
+            }
+            _ => {}
+        }
+    }
+
     // we only warn if the largest variant is at least thrice as large as
     // the second-largest.
-    if largest > slargest * 3 && slargest > 0 {
+    if !is_allow && largest > slargest * 3 && slargest > 0 {
         // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
         // pass for the latter already ran.
         lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::VARIANT_SIZE_DIFFERENCES,
-                            lvlsrc, Some(sp),
+                            *lvlsrc.unwrap(), Some(sp),
                             format!("enum variant is more than three times larger \
                                      ({} bytes) than the next largest (ignoring padding)",
                                     largest)[]);
@@ -2332,8 +2354,12 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
       ast::ItemMod(ref m) => {
         trans_mod(&ccx.rotate(), m);
       }
-      ast::ItemEnum(ref enum_definition, _) => {
-        enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
+      ast::ItemEnum(ref enum_definition, ref gens) => {
+        if gens.ty_params.is_empty() {
+            // sizes only make sense for non-generic types
+
+            enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
+        }
       }
       ast::ItemConst(_, ref expr) => {
           // Recurse on the expression to catch items in blocks
@@ -2440,7 +2466,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     let (fn_sig, abi, has_env) = match fn_ty.sty {
         ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
         ty::ty_bare_fn(_, ref f) => (f.sig.clone(), f.abi, false),
-        ty::ty_unboxed_closure(closure_did, _, ref substs) => {
+        ty::ty_unboxed_closure(closure_did, _, substs) => {
             let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
             let ref function_type = (*unboxed_closures)[closure_did]
                                                     .closure_type;
@@ -2573,14 +2599,14 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
                     attrs.arg(idx, llvm::ReadOnlyAttribute);
                 }
 
-                if let ReLateBound(_, BrAnon(_)) = b {
+                if let ReLateBound(_, BrAnon(_)) = *b {
                     attrs.arg(idx, llvm::NoCaptureAttribute);
                 }
             }
 
             // When a reference in an argument has no named lifetime, it's impossible for that
             // reference to escape this function (returned or stored beyond the call by a closure).
-            ty::ty_rptr(ReLateBound(_, BrAnon(_)), mt) => {
+            ty::ty_rptr(&ReLateBound(_, BrAnon(_)), mt) => {
                 let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
                 attrs.arg(idx, llvm::NoCaptureAttribute)
                      .arg(idx, llvm::DereferenceableAttribute(llsz));

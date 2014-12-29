@@ -164,7 +164,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     // Construct a trait-reference `self_ty : Trait<input_tys>`
     let substs = subst::Substs::new_trait(input_types, Vec::new(), assoc_types, self_ty);
-    let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, substs));
+    let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs)));
 
     // Construct an obligation
     let poly_trait_ref = Rc::new(ty::Binder((*trait_ref).clone()));
@@ -194,16 +194,16 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     // Substitute the trait parameters into the method type and
     // instantiate late-bound regions to get the actual method type.
     let ref bare_fn_ty = method_ty.fty;
-    let fn_sig = bare_fn_ty.sig.subst(tcx, &trait_ref.substs);
+    let fn_sig = bare_fn_ty.sig.subst(tcx, trait_ref.substs);
     let fn_sig = fcx.infcx().replace_late_bound_regions_with_fresh_var(span,
                                                                        infer::FnCall,
                                                                        &fn_sig).0;
     let transformed_self_ty = fn_sig.inputs[0];
-    let fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy {
+    let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
         unsafety: bare_fn_ty.unsafety,
         abi: bare_fn_ty.abi.clone(),
-    });
+    }));
 
     debug!("lookup_in_trait_adjusted: matched method fty={} obligation={}",
            fty.repr(fcx.tcx()),
@@ -217,7 +217,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     //
     // Note that as the method comes from a trait, it should not have
     // any late-bound regions appearing in its bounds.
-    let method_bounds = method_ty.generics.to_bounds(fcx.tcx(), &trait_ref.substs);
+    let method_bounds = method_ty.generics.to_bounds(fcx.tcx(), trait_ref.substs);
     assert!(!method_bounds.has_escaping_regions());
     fcx.add_obligations_for_parameters(
         traits::ObligationCause::misc(span, fcx.body_id),
@@ -260,7 +260,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                 span,
                                 ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
-                                    autoref: Some(ty::AutoPtr(region, mutbl, autoref))
+                                    autoref: Some(ty::AutoPtr(*region, mutbl, autoref))
                                 }));
                         }
 
@@ -425,4 +425,3 @@ fn impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         .find(|m| m.name() == method_name)
         .and_then(|item| item.as_opt_method())
 }
-

@@ -1461,7 +1461,7 @@ pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
             }))
         }
         StmtMac(mac, semi) => SmallVector::one(P(Spanned {
-            node: StmtMac(folder.fold_mac(mac), semi),
+            node: StmtMac(mac.map(|m| folder.fold_mac(m)), semi),
             span: span
         }))
     }
