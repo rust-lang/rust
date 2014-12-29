@@ -6876,8 +6876,8 @@ pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
     Ok(())
 }
 
-// TODO -- all of these types basically walk various structures to
-// test whether types/regions are reachable with various
+// FIXME(#20298) -- all of these types basically walk various
+// structures to test whether types/regions are reachable with various
 // properties. It should be possible to express them in terms of one
 // common "walker" trait or something.
 
