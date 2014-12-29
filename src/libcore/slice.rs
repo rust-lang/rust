@@ -647,7 +647,9 @@ impl<'a, T> Default for &'a [T] {
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
         #[experimental = "needs review"]
-        impl<'a, T> Iterator<$elem> for $name<'a, T> {
+        impl<'a, T> Iterator for $name<'a, T> {
+            type Item = $elem;
+
             #[inline]
             fn next(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
@@ -683,7 +685,7 @@ macro_rules! iterator {
         }
 
         #[experimental = "needs review"]
-        impl<'a, T> DoubleEndedIterator<$elem> for $name<'a, T> {
+        impl<'a, T> DoubleEndedIterator for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
@@ -766,7 +768,7 @@ impl<'a,T> Copy for Iter<'a,T> {}
 iterator!{struct Iter -> *const T, &'a T}
 
 #[experimental = "needs review"]
-impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
+impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 #[stable]
 impl<'a, T> Clone for Iter<'a, T> {
@@ -774,7 +776,7 @@ impl<'a, T> Clone for Iter<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> RandomAccessIterator<&'a T> for Iter<'a, T> {
+impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         let (exact, _) = self.size_hint();
@@ -860,14 +862,14 @@ impl<'a, T> IterMut<'a, T> {
 iterator!{struct IterMut -> *mut T, &'a mut T}
 
 #[experimental = "needs review"]
-impl<'a, T> ExactSizeIterator<&'a mut T> for IterMut<'a, T> {}
+impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// An internal abstraction over the splitting iterators, so that
 /// splitn, splitn_mut etc can be implemented once.
-trait SplitIter<E>: DoubleEndedIterator<E> {
+trait SplitIter: DoubleEndedIterator {
     /// Mark the underlying iterator as complete, extracting the remaining
     /// portion of the slice.
-    fn finish(&mut self) -> Option<E>;
+    fn finish(&mut self) -> Option< <Self as Iterator>::Item>;
 }
 
 /// An iterator over subslices separated by elements that match a predicate
@@ -892,7 +894,9 @@ impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
 }
 
 #[experimental = "needs review"]
-impl<'a, T, P> Iterator<&'a [T]> for Split<'a, T, P> where P: FnMut(&T) -> bool {
+impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
+    type Item = &'a [T];
+
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
@@ -918,7 +922,7 @@ impl<'a, T, P> Iterator<&'a [T]> for Split<'a, T, P> where P: FnMut(&T) -> bool 
 }
 
 #[experimental = "needs review"]
-impl<'a, T, P> DoubleEndedIterator<&'a [T]> for Split<'a, T, P> where P: FnMut(&T) -> bool {
+impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
@@ -934,7 +938,7 @@ impl<'a, T, P> DoubleEndedIterator<&'a [T]> for Split<'a, T, P> where P: FnMut(&
     }
 }
 
-impl<'a, T, P> SplitIter<&'a [T]> for Split<'a, T, P> where P: FnMut(&T) -> bool {
+impl<'a, T, P> SplitIter for Split<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn finish(&mut self) -> Option<&'a [T]> {
         if self.finished { None } else { self.finished = true; Some(self.v) }
@@ -950,7 +954,7 @@ pub struct SplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
     finished: bool
 }
 
-impl<'a, T, P> SplitIter<&'a mut [T]> for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
+impl<'a, T, P> SplitIter for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn finish(&mut self) -> Option<&'a mut [T]> {
         if self.finished {
@@ -963,7 +967,9 @@ impl<'a, T, P> SplitIter<&'a mut [T]> for SplitMut<'a, T, P> where P: FnMut(&T) 
 }
 
 #[experimental = "needs review"]
-impl<'a, T, P> Iterator<&'a mut [T]> for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
+impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
+    type Item = &'a mut [T];
+
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
@@ -996,7 +1002,7 @@ impl<'a, T, P> Iterator<&'a mut [T]> for SplitMut<'a, T, P> where P: FnMut(&T) -
 }
 
 #[experimental = "needs review"]
-impl<'a, T, P> DoubleEndedIterator<&'a mut [T]> for SplitMut<'a, T, P> where
+impl<'a, T, P> DoubleEndedIterator for SplitMut<'a, T, P> where
     P: FnMut(&T) -> bool,
 {
     #[inline]
@@ -1029,9 +1035,11 @@ struct GenericSplitN<I> {
 }
 
 #[experimental = "needs review"]
-impl<E, I: SplitIter<E>> Iterator<E> for GenericSplitN<I> {
+impl<T, I: SplitIter + Iterator<Item=T>> Iterator for GenericSplitN<I> {
+    type Item = T;
+
     #[inline]
-    fn next(&mut self) -> Option<E> {
+    fn next(&mut self) -> Option<T> {
         if self.count == 0 {
             self.iter.finish()
         } else {
@@ -1075,9 +1083,11 @@ pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 macro_rules! forward_iterator {
     ($name:ident: $elem:ident, $iter_of:ty) => {
-        impl<'a, $elem, P> Iterator<$iter_of> for $name<'a, $elem, P> where
+        impl<'a, $elem, P> Iterator for $name<'a, $elem, P> where
             P: FnMut(&T) -> bool
         {
+            type Item = $iter_of;
+
             #[inline]
             fn next(&mut self) -> Option<$iter_of> {
                 self.inner.next()
@@ -1104,7 +1114,9 @@ pub struct Windows<'a, T:'a> {
     size: uint
 }
 
-impl<'a, T> Iterator<&'a [T]> for Windows<'a, T> {
+impl<'a, T> Iterator for Windows<'a, T> {
+    type Item = &'a [T];
+
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
         if self.size > self.v.len() {
@@ -1140,7 +1152,9 @@ pub struct Chunks<'a, T:'a> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> Iterator<&'a [T]> for Chunks<'a, T> {
+impl<'a, T> Iterator for Chunks<'a, T> {
+    type Item = &'a [T];
+
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
         if self.v.len() == 0 {
@@ -1167,7 +1181,7 @@ impl<'a, T> Iterator<&'a [T]> for Chunks<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> DoubleEndedIterator<&'a [T]> for Chunks<'a, T> {
+impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
         if self.v.len() == 0 {
@@ -1183,7 +1197,7 @@ impl<'a, T> DoubleEndedIterator<&'a [T]> for Chunks<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> RandomAccessIterator<&'a [T]> for Chunks<'a, T> {
+impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         self.v.len()/self.size + if self.v.len() % self.size != 0 { 1 } else { 0 }
@@ -1213,7 +1227,9 @@ pub struct ChunksMut<'a, T:'a> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> Iterator<&'a mut [T]> for ChunksMut<'a, T> {
+impl<'a, T> Iterator for ChunksMut<'a, T> {
+    type Item = &'a mut [T];
+
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
         if self.v.len() == 0 {
@@ -1241,7 +1257,7 @@ impl<'a, T> Iterator<&'a mut [T]> for ChunksMut<'a, T> {
 }
 
 #[experimental = "needs review"]
-impl<'a, T> DoubleEndedIterator<&'a mut [T]> for ChunksMut<'a, T> {
+impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
         if self.v.len() == 0 {

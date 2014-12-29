@@ -777,7 +777,9 @@ struct Item<A> {
     opt: Option<A>
 }
 
-impl<A> Iterator<A> for Item<A> {
+impl<A> Iterator for Item<A> {
+    type Item = A;
+
     #[inline]
     fn next(&mut self) -> Option<A> {
         self.opt.take()
@@ -792,32 +794,34 @@ impl<A> Iterator<A> for Item<A> {
     }
 }
 
-impl<A> DoubleEndedIterator<A> for Item<A> {
+impl<A> DoubleEndedIterator for Item<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         self.opt.take()
     }
 }
 
-impl<A> ExactSizeIterator<A> for Item<A> {}
+impl<A> ExactSizeIterator for Item<A> {}
 
 /// An iterator over a reference of the contained item in an Option.
 #[stable]
 pub struct Iter<'a, A: 'a> { inner: Item<&'a A> }
 
-impl<'a, A> Iterator<&'a A> for Iter<'a, A> {
+impl<'a, A> Iterator for Iter<'a, A> {
+    type Item = &'a A;
+
     #[inline]
     fn next(&mut self) -> Option<&'a A> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
-impl<'a, A> DoubleEndedIterator<&'a A> for Iter<'a, A> {
+impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a A> { self.inner.next_back() }
 }
 
-impl<'a, A> ExactSizeIterator<&'a A> for Iter<'a, A> {}
+impl<'a, A> ExactSizeIterator for Iter<'a, A> {}
 
 #[stable]
 impl<'a, A> Clone for Iter<'a, A> {
@@ -830,37 +834,41 @@ impl<'a, A> Clone for Iter<'a, A> {
 #[stable]
 pub struct IterMut<'a, A: 'a> { inner: Item<&'a mut A> }
 
-impl<'a, A> Iterator<&'a mut A> for IterMut<'a, A> {
+impl<'a, A> Iterator for IterMut<'a, A> {
+    type Item = &'a mut A;
+
     #[inline]
     fn next(&mut self) -> Option<&'a mut A> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
-impl<'a, A> DoubleEndedIterator<&'a mut A> for IterMut<'a, A> {
+impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut A> { self.inner.next_back() }
 }
 
-impl<'a, A> ExactSizeIterator<&'a mut A> for IterMut<'a, A> {}
+impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 
 /// An iterator over the item contained inside an Option.
 #[stable]
 pub struct IntoIter<A> { inner: Item<A> }
 
-impl<A> Iterator<A> for IntoIter<A> {
+impl<A> Iterator for IntoIter<A> {
+    type Item = A;
+
     #[inline]
     fn next(&mut self) -> Option<A> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
-impl<A> DoubleEndedIterator<A> for IntoIter<A> {
+impl<A> DoubleEndedIterator for IntoIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.inner.next_back() }
 }
 
-impl<A> ExactSizeIterator<A> for IntoIter<A> {}
+impl<A> ExactSizeIterator for IntoIter<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // FromIterator
@@ -887,7 +895,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// ```
     #[inline]
     #[stable]
-    fn from_iter<I: Iterator<Option<A>>>(iter: I) -> Option<V> {
+    fn from_iter<I: Iterator<Item=Option<A>>>(iter: I) -> Option<V> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
@@ -896,7 +904,9 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
             found_none: bool,
         }
 
-        impl<T, Iter: Iterator<Option<T>>> Iterator<T> for Adapter<Iter> {
+        impl<T, Iter: Iterator<Item=Option<T>>> Iterator for Adapter<Iter> {
+            type Item = T;
+
             #[inline]
             fn next(&mut self) -> Option<T> {
                 match self.iter.next() {
