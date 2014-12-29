@@ -1475,7 +1475,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.find(x), None);
     /// ```
-    #[unstable = "might be superseded by match_indices"]
+    #[stable]
     fn find<P: CharEq>(&self, pat: P) -> Option<uint> {
         core_str::StrExt::find(self[], pat)
     }
@@ -1503,7 +1503,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.rfind(x), None);
     /// ```
-    #[unstable = "might be superseded by match_indices"]
+    #[stable]
     fn rfind<P: CharEq>(&self, pat: P) -> Option<uint> {
         core_str::StrExt::rfind(self[], pat)
     }
