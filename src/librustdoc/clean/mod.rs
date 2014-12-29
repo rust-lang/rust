@@ -506,7 +506,9 @@ impl<'tcx> Clean<Vec<TyParamBound>> for ty::ExistentialBounds<'tcx> {
         for bb in self.builtin_bounds.iter() {
             vec.push(bb.clean(cx));
         }
-        // TODO projection bounds
+
+        // FIXME(#20299) -- should do something with projection bounds
+
         vec
     }
 }
