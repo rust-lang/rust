@@ -914,7 +914,7 @@ impl<'tcx> ctxt<'tcx> {
         sty_debug_print!(
             self,
             ty_enum, ty_uniq, ty_vec, ty_ptr, ty_rptr, ty_bare_fn, ty_closure, ty_trait,
-            ty_struct, ty_unboxed_closure, ty_tup, ty_param, ty_open, ty_infer);
+            ty_struct, ty_unboxed_closure, ty_tup, ty_param, ty_open, ty_infer, ty_projection);
 
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
         println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
@@ -1352,7 +1352,7 @@ pub enum sty<'tcx> {
 
     ty_closure(Box<ClosureTy<'tcx>>),
     ty_trait(Box<TyTrait<'tcx>>),
-    ty_struct(DefId, Substs<'tcx>),
+    ty_struct(DefId, &'tcx Substs<'tcx>),
 
     ty_unboxed_closure(DefId, &'tcx Region, &'tcx Substs<'tcx>),
 
@@ -1402,7 +1402,9 @@ impl<'tcx> TyTrait<'tcx> {
         }))
     }
 
-    pub fn projection_bounds_with_self_ty(&self, self_ty: Ty<'tcx>)
+    pub fn projection_bounds_with_self_ty(&self,
+                                          tcx: &ctxt<'tcx>,
+                                          self_ty: Ty<'tcx>)
                                           -> Vec<ty::PolyProjectionPredicate<'tcx>>
     {
         // otherwise the escaping regions would be captured by the binders
@@ -1411,10 +1413,10 @@ impl<'tcx> TyTrait<'tcx> {
         self.bounds.projection_bounds.iter()
             .map(|in_poly_projection_predicate| {
                 let in_projection_ty = &in_poly_projection_predicate.0.projection_ty;
+                let substs = tcx.mk_substs(in_projection_ty.trait_ref.substs.with_self_ty(self_ty));
                 let trait_ref =
-                    Rc::new(ty::TraitRef::new(
-                        in_projection_ty.trait_ref.def_id,
-                        in_projection_ty.trait_ref.substs.with_self_ty(self_ty)));
+                    Rc::new(ty::TraitRef::new(in_projection_ty.trait_ref.def_id,
+                                              substs));
                 let projection_ty = ty::ProjectionTy {
                     trait_ref: trait_ref,
                     item_name: in_projection_ty.item_name
@@ -2286,7 +2288,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
 
     ctxt {
         arenas: arenas,
-        interner: RefCell::new(FnvHashMap::new()),
+        interner: RefCell::new(interner),
         substs_interner: RefCell::new(FnvHashMap::new()),
         bare_fn_interner: RefCell::new(FnvHashMap::new()),
         region_interner: RefCell::new(FnvHashMap::new()),
@@ -2386,7 +2388,7 @@ impl<'tcx> ctxt<'tcx> {
 // and returns the box as cast to an unsafe ptr (see comments for Ty above).
 pub fn mk_t<'tcx>(cx: &ctxt<'tcx>, st: sty<'tcx>) -> Ty<'tcx> {
     let mut interner = cx.interner.borrow_mut();
-    intern_ty(cx.type_arena, &mut *interner, st)
+    intern_ty(&cx.arenas.type_, &mut *interner, st)
 }
 
 fn intern_ty<'tcx>(type_arena: &'tcx TypedArena<TyS<'tcx>>,
@@ -2501,12 +2503,12 @@ impl FlagComputation {
 
             &ty_projection(ref data) => {
                 self.add_flags(HAS_PROJECTION);
-                self.add_substs(&data.trait_ref.substs);
+                self.add_substs(data.trait_ref.substs);
             }
 
             &ty_trait(box TyTrait { ref principal, ref bounds }) => {
                 let mut computation = FlagComputation::new();
-                computation.add_substs(&principal.0.substs);
+                computation.add_substs(principal.0.substs);
                 self.add_bound_computation(&computation);
 
                 self.add_bounds(bounds);

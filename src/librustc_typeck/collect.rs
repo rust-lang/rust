@@ -838,8 +838,6 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             generics,
                                             items);
 
-    assert_eq!(mk_item_substs(ccx, &ty_generics), substs);
-
     let self_param_ty = ty::ParamTy::for_self();
 
     let bounds = compute_bounds(ccx,
@@ -1476,7 +1474,7 @@ pub fn ty_of_foreign_fn_decl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             sig: ty::Binder(ty::FnSig {inputs: input_tys,
                                        output: output,
                                        variadic: decl.variadic}),
-        });
+        }));
     let scheme = TypeScheme {
         generics: ty_generics_for_fn_or_method,
         ty: t_fn

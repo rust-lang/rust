@@ -389,7 +389,8 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     // Finally, create obligations for the projection predicates.
-    let projection_bounds = object_trait.projection_bounds_with_self_ty(referent_ty);
+    let projection_bounds =
+        object_trait.projection_bounds_with_self_ty(fcx.tcx(), referent_ty);
     for projection_bound in projection_bounds.iter() {
         let projection_obligation =
             Obligation::new(cause.clone(), projection_bound.as_predicate());
