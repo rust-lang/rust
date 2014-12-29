@@ -2866,6 +2866,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // Continue.
                         }
                         Some(ref value_target) => {
+                            self.check_for_conflicting_import(&dest_import_resolution.value_target,
+                                                              import_directive.span,
+                                                              *ident,
+                                                              ValueNS);
                             dest_import_resolution.value_target = Some(value_target.clone());
                         }
                     }
@@ -2874,6 +2878,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // Continue.
                         }
                         Some(ref type_target) => {
+                            self.check_for_conflicting_import(&dest_import_resolution.type_target,
+                                                              import_directive.span,
+                                                              *ident,
+                                                              TypeNS);
                             dest_import_resolution.type_target = Some(type_target.clone());
                         }
                     }
