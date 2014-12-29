@@ -410,7 +410,7 @@ pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Opti
             },
             &AutoPtr(r, m, Some(box ref autoref)) => {
                 match type_of_autoref(cx, autoref) {
-                    Some(ty) => Some(mk_rptr(cx, r, mt {mutbl: m, ty: ty})),
+                    Some(ty) => Some(mk_rptr(cx, cx.mk_region(r), mt {mutbl: m, ty: ty})),
                     None => None
                 }
             }
@@ -604,18 +604,42 @@ pub struct TransmuteRestriction<'tcx> {
     pub id: ast::NodeId,
 }
 
+/// Internal storage
+pub struct CtxtArenas<'tcx> {
+    type_: TypedArena<TyS<'tcx>>,
+    substs: TypedArena<Substs<'tcx>>,
+    bare_fn: TypedArena<BareFnTy<'tcx>>,
+    region: TypedArena<Region>,
+}
+
+impl<'tcx> CtxtArenas<'tcx> {
+    pub fn new() -> CtxtArenas<'tcx> {
+        CtxtArenas {
+            type_: TypedArena::new(),
+            substs: TypedArena::new(),
+            bare_fn: TypedArena::new(),
+            region: TypedArena::new(),
+        }
+    }
+}
+
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
 pub struct ctxt<'tcx> {
-    /// The arena that types are allocated from.
-    type_arena: &'tcx TypedArena<TyS<'tcx>>,
+    /// The arenas that types etc are allocated from.
+    arenas: &'tcx CtxtArenas<'tcx>,
 
     /// Specifically use a speedy hash algorithm for this hash map, it's used
     /// quite often.
     // FIXME(eddyb) use a FnvHashSet<InternedTy<'tcx>> when equivalent keys can
     // queried from a HashSet.
     interner: RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
+    // FIXME as above, use a hashset if equivalent elements can be queried.
+    substs_interner: RefCell<FnvHashMap<&'tcx Substs<'tcx>, &'tcx Substs<'tcx>>>,
+    bare_fn_interner: RefCell<FnvHashMap<&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>>>,
+    region_interner: RefCell<FnvHashMap<&'tcx Region, &'tcx Region>>,
+
     pub sess: Session,
     pub def_map: DefMap,
 
@@ -779,13 +803,87 @@ bitflags! {
     }
 }
 
+macro_rules! sty_debug_print {
+    ($ctxt: expr, $($variant: ident),*) => {{
+        // curious inner module to allow variant names to be used as
+        // variable names.
+        mod inner {
+            use middle::ty;
+            #[deriving(Copy)]
+            struct DebugStat {
+                total: uint,
+                region_infer: uint,
+                ty_infer: uint,
+                both_infer: uint,
+            }
+
+            pub fn go(tcx: &ty::ctxt) {
+                let mut total = DebugStat {
+                    total: 0,
+                    region_infer: 0, ty_infer: 0, both_infer: 0,
+                };
+                $(let mut $variant = total;)*
+
+
+                for (_, t) in tcx.interner.borrow().iter() {
+                    let variant = match t.sty {
+                        ty::ty_bool | ty::ty_char | ty::ty_int(..) | ty::ty_uint(..) |
+                            ty::ty_float(..) | ty::ty_str => continue,
+                        ty::ty_err => /* unimportant */ continue,
+                        $(ty::$variant(..) => &mut $variant,)*
+                    };
+                    let region = t.flags.intersects(ty::HAS_RE_INFER);
+                    let ty = t.flags.intersects(ty::HAS_TY_INFER);
+
+                    variant.total += 1;
+                    total.total += 1;
+                    if region { total.region_infer += 1; variant.region_infer += 1 }
+                    if ty { total.ty_infer += 1; variant.ty_infer += 1 }
+                    if region && ty { total.both_infer += 1; variant.both_infer += 1 }
+                }
+                println!("Ty interner             total           ty region  both");
+                $(println!("    {:18}: {uses:6} {usespc:4.1}%, \
+{ty:4.1}% {region:5.1}% {both:4.1}%",
+                           stringify!($variant),
+                           uses = $variant.total,
+                           usespc = $variant.total as f64 * 100.0 / total.total as f64,
+                           ty = $variant.ty_infer as f64 * 100.0  / total.total as f64,
+                           region = $variant.region_infer as f64 * 100.0  / total.total as f64,
+                           both = $variant.both_infer as f64 * 100.0  / total.total as f64);
+                  )*
+                println!("                  total {uses:6}        \
+{ty:4.1}% {region:5.1}% {both:4.1}%",
+                         uses = total.total,
+                         ty = total.ty_infer as f64 * 100.0  / total.total as f64,
+                         region = total.region_infer as f64 * 100.0  / total.total as f64,
+                         both = total.both_infer as f64 * 100.0  / total.total as f64)
+            }
+        }
+
+        inner::go($ctxt)
+    }}
+}
+
+impl<'tcx> ctxt<'tcx> {
+    pub fn print_debug_stats(&self) {
+        sty_debug_print!(
+            self,
+            ty_enum, ty_uniq, ty_vec, ty_ptr, ty_rptr, ty_bare_fn, ty_closure, ty_trait,
+            ty_struct, ty_unboxed_closure, ty_tup, ty_param, ty_open, ty_infer);
+
+        println!("Substs interner: #{}", self.substs_interner.borrow().len());
+        println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
+        println!("Region interner: #{}", self.region_interner.borrow().len());
+    }
+}
+
 #[deriving(Show)]
 pub struct TyS<'tcx> {
     pub sty: sty<'tcx>,
     pub flags: TypeFlags,
 
     // the maximal depth of any bound regions appearing in this type.
-    region_depth: uint,
+    region_depth: u32,
 }
 
 impl fmt::Show for TypeFlags {
@@ -878,7 +976,7 @@ pub fn type_has_escaping_regions(ty: Ty) -> bool {
     type_escapes_depth(ty, 0)
 }
 
-pub fn type_escapes_depth(ty: Ty, depth: uint) -> bool {
+pub fn type_escapes_depth(ty: Ty, depth: u32) -> bool {
     ty.region_depth > depth
 }
 
@@ -932,7 +1030,7 @@ pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 #[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub struct ParamTy {
     pub space: subst::ParamSpace,
-    pub idx: uint,
+    pub idx: u32,
     pub def_id: DefId
 }
 
@@ -979,7 +1077,7 @@ pub struct ParamTy {
 pub struct DebruijnIndex {
     // We maintain the invariant that this is never 0. So 1 indicates
     // the innermost binder. To ensure this, create with `DebruijnIndex::new`.
-    pub depth: uint,
+    pub depth: u32,
 }
 
 /// Representation of regions:
@@ -990,7 +1088,7 @@ pub enum Region {
     // parameters are substituted.
     ReEarlyBound(/* param id */ ast::NodeId,
                  subst::ParamSpace,
-                 /*index*/ uint,
+                 /*index*/ u32,
                  ast::Name),
 
     // Region bound in a function scope, which will be substituted when the
@@ -1140,7 +1238,7 @@ impl Region {
         }
     }
 
-    pub fn escapes_depth(&self, depth: uint) -> bool {
+    pub fn escapes_depth(&self, depth: u32) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn.depth > depth,
             _ => false,
@@ -1161,7 +1259,7 @@ pub struct FreeRegion {
            RustcEncodable, RustcDecodable, Show, Copy)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
-    BrAnon(uint),
+    BrAnon(u32),
 
     /// Named region parameters for functions (a in &'a T)
     ///
@@ -1170,7 +1268,7 @@ pub enum BoundRegion {
     BrNamed(ast::DefId, ast::Name),
 
     /// Fresh bound identifiers created during GLB computations.
-    BrFresh(uint),
+    BrFresh(u32),
 
     // Anonymous region for the implicit env pointer parameter
     // to a closure
@@ -1241,22 +1339,22 @@ pub enum sty<'tcx> {
     /// from the tcx, use the `NodeId` from the `ast::Ty` and look it up in
     /// the `ast_ty_to_ty_cache`. This is probably true for `ty_struct` as
     /// well.`
-    ty_enum(DefId, Substs<'tcx>),
+    ty_enum(DefId, &'tcx Substs<'tcx>),
     ty_uniq(Ty<'tcx>),
     ty_str,
     ty_vec(Ty<'tcx>, Option<uint>), // Second field is length.
     ty_ptr(mt<'tcx>),
-    ty_rptr(Region, mt<'tcx>),
+    ty_rptr(&'tcx Region, mt<'tcx>),
 
     // If the def-id is Some(_), then this is the type of a specific
     // fn item. Otherwise, if None(_), it a fn pointer type.
-    ty_bare_fn(Option<DefId>, BareFnTy<'tcx>),
+    ty_bare_fn(Option<DefId>, &'tcx BareFnTy<'tcx>),
 
     ty_closure(Box<ClosureTy<'tcx>>),
     ty_trait(Box<TyTrait<'tcx>>),
-    ty_struct(DefId, Substs<'tcx>),
+    ty_struct(DefId, &'tcx Substs<'tcx>),
 
-    ty_unboxed_closure(DefId, Region, Substs<'tcx>),
+    ty_unboxed_closure(DefId, &'tcx Region, &'tcx Substs<'tcx>),
 
     ty_tup(Vec<Ty<'tcx>>),
 
@@ -1285,12 +1383,13 @@ impl<'tcx> TyTrait<'tcx> {
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self-type. A common choice is `mk_err()`
     /// or some skolemized type.
-    pub fn principal_trait_ref_with_self_ty(&self, self_ty: Ty<'tcx>)
+    pub fn principal_trait_ref_with_self_ty(&self,
+                                            tcx: &ctxt<'tcx>, self_ty: Ty<'tcx>)
                                             -> Rc<ty::PolyTraitRef<'tcx>>
     {
         Rc::new(ty::Binder(ty::TraitRef {
             def_id: self.principal.def_id(),
-            substs: self.principal.substs().with_self_ty(self_ty),
+            substs: tcx.mk_substs(self.principal.substs().with_self_ty(self_ty)),
         }))
     }
 }
@@ -1313,7 +1412,7 @@ impl<'tcx> TyTrait<'tcx> {
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
-    pub substs: Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
 }
 
 pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
@@ -1327,8 +1426,8 @@ impl<'tcx> PolyTraitRef<'tcx> {
         self.0.def_id
     }
 
-    pub fn substs(&self) -> &Substs<'tcx> {
-        &self.0.substs
+    pub fn substs(&self) -> &'tcx Substs<'tcx> {
+        self.0.substs
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
@@ -1461,22 +1560,22 @@ impl CLike for BuiltinBound {
 
 #[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TyVid {
-    pub index: uint
+    pub index: u32
 }
 
 #[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntVid {
-    pub index: uint
+    pub index: u32
 }
 
 #[deriving(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FloatVid {
-    pub index: uint
+    pub index: u32
 }
 
 #[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct RegionVid {
-    pub index: uint
+    pub index: u32
 }
 
 #[deriving(Clone, Copy, PartialEq, Eq, Hash)]
@@ -1488,18 +1587,18 @@ pub enum InferTy {
     /// A `FreshTy` is one that is generated as a replacement for an
     /// unbound type variable. This is convenient for caching etc. See
     /// `middle::infer::freshen` for more details.
-    FreshTy(uint),
+    FreshTy(u32),
 
     // FIXME -- once integral fallback is impl'd, we should remove
     // this type. It's only needed to prevent spurious errors for
     // integers whose type winds up never being constrained.
-    FreshIntTy(uint),
+    FreshIntTy(u32),
 }
 
 #[deriving(Clone, RustcEncodable, RustcDecodable, Eq, Hash, Show, Copy)]
 pub enum InferRegion {
     ReVar(RegionVid),
-    ReSkolemized(uint, BoundRegion)
+    ReSkolemized(u32, BoundRegion)
 }
 
 impl cmp::PartialEq for InferRegion {
@@ -1576,7 +1675,7 @@ pub struct TypeParameterDef<'tcx> {
     pub name: ast::Name,
     pub def_id: ast::DefId,
     pub space: subst::ParamSpace,
-    pub index: uint,
+    pub index: u32,
     pub associated_with: Option<ast::DefId>,
     pub bounds: ParamBounds<'tcx>,
     pub default: Option<Ty<'tcx>>,
@@ -1587,7 +1686,7 @@ pub struct RegionParameterDef {
     pub name: ast::Name,
     pub def_id: ast::DefId,
     pub space: subst::ParamSpace,
-    pub index: uint,
+    pub index: u32,
     pub bounds: Vec<ty::Region>,
 }
 
@@ -1749,7 +1848,7 @@ impl<'tcx> GenericBounds<'tcx> {
 }
 
 impl<'tcx> TraitRef<'tcx> {
-    pub fn new(def_id: ast::DefId, substs: Substs<'tcx>) -> TraitRef<'tcx> {
+    pub fn new(def_id: ast::DefId, substs: &'tcx Substs<'tcx>) -> TraitRef<'tcx> {
         TraitRef { def_id: def_id, substs: substs }
     }
 
@@ -1977,7 +2076,7 @@ impl UnboxedClosureKind {
 }
 
 pub fn mk_ctxt<'tcx>(s: Session,
-                     type_arena: &'tcx TypedArena<TyS<'tcx>>,
+                     arenas: &'tcx CtxtArenas<'tcx>,
                      dm: DefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
@@ -1987,8 +2086,11 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      lang_items: middle::lang_items::LanguageItems,
                      stability: stability::Index) -> ctxt<'tcx> {
     ctxt {
-        type_arena: type_arena,
+        arenas: arenas,
         interner: RefCell::new(FnvHashMap::new()),
+        substs_interner: RefCell::new(FnvHashMap::new()),
+        bare_fn_interner: RefCell::new(FnvHashMap::new()),
+        region_interner: RefCell::new(FnvHashMap::new()),
         named_region_map: named_region_map,
         item_variance_map: RefCell::new(DefIdMap::new()),
         variance_computed: Cell::new(false),
@@ -2048,6 +2150,38 @@ pub fn mk_ctxt<'tcx>(s: Session,
 
 // Type constructors
 
+impl<'tcx> ctxt<'tcx> {
+    pub fn mk_substs(&self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
+        if let Some(substs) = self.substs_interner.borrow().get(&substs) {
+            return *substs;
+        }
+
+        let substs = self.arenas.substs.alloc(substs);
+        self.substs_interner.borrow_mut().insert(substs, substs);
+        substs
+    }
+
+    pub fn mk_bare_fn(&self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
+        if let Some(bare_fn) = self.bare_fn_interner.borrow().get(&bare_fn) {
+            return *bare_fn;
+        }
+
+        let bare_fn = self.arenas.bare_fn.alloc(bare_fn);
+        self.bare_fn_interner.borrow_mut().insert(bare_fn, bare_fn);
+        bare_fn
+    }
+
+    pub fn mk_region(&self, region: Region) -> &'tcx Region {
+        if let Some(region) = self.region_interner.borrow().get(&region) {
+            return *region;
+        }
+
+        let region = self.arenas.region.alloc(region);
+        self.region_interner.borrow_mut().insert(region, region);
+        region
+    }
+}
+
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for Ty above).
 pub fn mk_t<'tcx>(cx: &ctxt<'tcx>, st: sty<'tcx>) -> Ty<'tcx> {
@@ -2069,7 +2203,7 @@ pub fn mk_t<'tcx>(cx: &ctxt<'tcx>, st: sty<'tcx>) -> Ty<'tcx> {
 
     let flags = FlagComputation::for_sty(&st);
 
-    let ty = cx.type_arena.alloc(TyS {
+    let ty = cx.arenas.type_.alloc(TyS {
         sty: st,
         flags: flags.flags,
         region_depth: flags.depth,
@@ -2084,7 +2218,7 @@ struct FlagComputation {
     flags: TypeFlags,
 
     // maximum depth of any bound region that we have seen thus far
-    depth: uint,
+    depth: u32,
 }
 
 impl FlagComputation {
@@ -2102,7 +2236,7 @@ impl FlagComputation {
         self.flags = self.flags | flags;
     }
 
-    fn add_depth(&mut self, depth: uint) {
+    fn add_depth(&mut self, depth: u32) {
         if depth > self.depth {
             self.depth = depth;
         }
@@ -2151,7 +2285,7 @@ impl FlagComputation {
                 }
             }
 
-            &ty_unboxed_closure(_, ref region, ref substs) => {
+            &ty_unboxed_closure(_, region, substs) => {
                 self.add_region(*region);
                 self.add_substs(substs);
             }
@@ -2160,7 +2294,7 @@ impl FlagComputation {
                 self.add_flags(HAS_TY_INFER)
             }
 
-            &ty_enum(_, ref substs) | &ty_struct(_, ref substs) => {
+            &ty_enum(_, substs) | &ty_struct(_, substs) => {
                 self.add_substs(substs);
             }
 
@@ -2181,7 +2315,7 @@ impl FlagComputation {
             }
 
             &ty_rptr(r, ref m) => {
-                self.add_region(r);
+                self.add_region(*r);
                 self.add_ty(m.ty);
             }
 
@@ -2286,7 +2420,7 @@ pub fn mk_str<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_str)
 }
 
-pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: Region, m: ast::Mutability) -> Ty<'tcx> {
+pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, m: ast::Mutability) -> Ty<'tcx> {
     mk_rptr(cx, r,
             mt {
                 ty: mk_t(cx, ty_str),
@@ -2294,7 +2428,7 @@ pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: Region, m: ast::Mutability) -> Ty<
             })
 }
 
-pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: Substs<'tcx>) -> Ty<'tcx> {
+pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, ty_enum(did, substs))
 }
@@ -2303,14 +2437,14 @@ pub fn mk_uniq<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> { mk_t(cx, ty_un
 
 pub fn mk_ptr<'tcx>(cx: &ctxt<'tcx>, tm: mt<'tcx>) -> Ty<'tcx> { mk_t(cx, ty_ptr(tm)) }
 
-pub fn mk_rptr<'tcx>(cx: &ctxt<'tcx>, r: Region, tm: mt<'tcx>) -> Ty<'tcx> {
+pub fn mk_rptr<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, tm: mt<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_rptr(r, tm))
 }
 
-pub fn mk_mut_rptr<'tcx>(cx: &ctxt<'tcx>, r: Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+pub fn mk_mut_rptr<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
     mk_rptr(cx, r, mt {ty: ty, mutbl: ast::MutMutable})
 }
-pub fn mk_imm_rptr<'tcx>(cx: &ctxt<'tcx>, r: Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+pub fn mk_imm_rptr<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
     mk_rptr(cx, r, mt {ty: ty, mutbl: ast::MutImmutable})
 }
 
@@ -2330,7 +2464,7 @@ pub fn mk_vec<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, sz: Option<uint>) -> Ty<'tcx>
     mk_t(cx, ty_vec(ty, sz))
 }
 
-pub fn mk_slice<'tcx>(cx: &ctxt<'tcx>, r: Region, tm: mt<'tcx>) -> Ty<'tcx> {
+pub fn mk_slice<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, tm: mt<'tcx>) -> Ty<'tcx> {
     mk_rptr(cx, r,
             mt {
                 ty: mk_vec(cx, tm.ty, None),
@@ -2352,7 +2486,7 @@ pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, fty: ClosureTy<'tcx>) -> Ty<'tcx> {
 
 pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>,
                         opt_def_id: Option<ast::DefId>,
-                        fty: BareFnTy<'tcx>) -> Ty<'tcx> {
+                        fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
     mk_t(cx, ty_bare_fn(opt_def_id, fty))
 }
 
@@ -2363,7 +2497,7 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
     let input_args = input_tys.iter().map(|ty| *ty).collect();
     mk_bare_fn(cx,
                Some(def_id),
-               BareFnTy {
+               cx.mk_bare_fn(BareFnTy {
                    unsafety: ast::Unsafety::Normal,
                    abi: abi::Rust,
                    sig: ty::Binder(FnSig {
@@ -2371,7 +2505,7 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
                     output: ty::FnConverging(output),
                     variadic: false
                    })
-                })
+                }))
 }
 
 
@@ -2388,13 +2522,13 @@ pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
 }
 
 pub fn mk_struct<'tcx>(cx: &ctxt<'tcx>, struct_id: ast::DefId,
-                       substs: Substs<'tcx>) -> Ty<'tcx> {
+                       substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
     mk_t(cx, ty_struct(struct_id, substs))
 }
 
 pub fn mk_unboxed_closure<'tcx>(cx: &ctxt<'tcx>, closure_id: ast::DefId,
-                                region: Region, substs: Substs<'tcx>)
+                                region: &'tcx Region, substs: &'tcx Substs<'tcx>)
                                 -> Ty<'tcx> {
     mk_t(cx, ty_unboxed_closure(closure_id, region, substs))
 }
@@ -2416,7 +2550,7 @@ pub fn mk_infer<'tcx>(cx: &ctxt<'tcx>, it: InferTy) -> Ty<'tcx> {
 }
 
 pub fn mk_param<'tcx>(cx: &ctxt<'tcx>, space: subst::ParamSpace,
-                      n: uint, k: DefId) -> Ty<'tcx> {
+                      n: u32, k: DefId) -> Ty<'tcx> {
     mk_t(cx, ty_param(ParamTy { space: space, idx: n, def_id: k }))
 }
 
@@ -2488,7 +2622,7 @@ pub fn fold_ty<'tcx, F>(cx: &ctxt<'tcx>, t0: Ty<'tcx>,
 
 impl ParamTy {
     pub fn new(space: subst::ParamSpace,
-               index: uint,
+               index: u32,
                def_id: ast::DefId)
                -> ParamTy {
         ParamTy { space: space, idx: index, def_id: def_id }
@@ -2617,7 +2751,7 @@ pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 
 pub fn simd_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
-        ty_struct(did, ref substs) => {
+        ty_struct(did, substs) => {
             let fields = lookup_struct_fields(cx, did);
             lookup_field_type(cx, did, fields[0].id, substs)
         }
@@ -2716,7 +2850,7 @@ pub fn type_needs_unwind_cleanup<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
                 ty_bool | ty_int(_) | ty_uint(_) |
                 ty_float(_) | ty_tup(_) | ty_ptr(_) => false,
 
-                ty_enum(did, ref substs) =>
+                ty_enum(did, substs) =>
                     enum_variants(cx, did).iter().any(|v|
                         v.args.iter().any(|aty| {
                             let t = aty.subst(cx, substs);
@@ -2969,9 +3103,10 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
             ty_rptr(r, ref mt) => {
                 TC::ReachesFfiUnsafe | match mt.ty.sty {
-                    ty_str => borrowed_contents(r, ast::MutImmutable),
-                    ty_vec(..) => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(r, mt.mutbl)),
-                    _ => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(r, mt.mutbl)),
+                    ty_str => borrowed_contents(*r, ast::MutImmutable),
+                    ty_vec(..) => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(*r,
+                                                                                      mt.mutbl)),
+                    _ => tc_ty(cx, mt.ty, cache).reference(borrowed_contents(*r, mt.mutbl)),
                 }
             }
 
@@ -2984,7 +3119,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
             ty_str => TC::Nonsized,
 
-            ty_struct(did, ref substs) => {
+            ty_struct(did, substs) => {
                 let flds = struct_fields(cx, did, substs);
                 let mut res =
                     TypeContents::union(flds[],
@@ -3000,13 +3135,13 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
-            ty_unboxed_closure(did, r, ref substs) => {
+            ty_unboxed_closure(did, r, substs) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
                 let upvars = unboxed_closure_upvars(cx, did, substs);
                 TypeContents::union(upvars.as_slice(),
                                     |f| tc_ty(cx, f.ty, cache))
-                    | borrowed_contents(r, MutMutable)
+                    | borrowed_contents(*r, MutMutable)
             }
 
             ty_tup(ref tys) => {
@@ -3014,7 +3149,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                                     |ty| tc_ty(cx, *ty, cache))
             }
 
-            ty_enum(did, ref substs) => {
+            ty_enum(did, substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
                 let mut res =
                     TypeContents::union(variants[], |variant| {
@@ -3306,7 +3441,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 false
             }
 
-            ty_struct(did, ref substs) => {
+            ty_struct(did, substs) => {
                 seen.push(did);
                 let fields = struct_fields(cx, did, substs);
                 let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
@@ -3314,7 +3449,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 r
             }
 
-            ty_unboxed_closure(did, _, ref substs) => {
+            ty_unboxed_closure(did, _, substs) => {
                 let upvars = unboxed_closure_upvars(cx, did, substs);
                 upvars.iter().any(|f| type_requires(cx, seen, r_ty, f.ty))
             }
@@ -3327,7 +3462,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 false
             }
 
-            ty_enum(did, ref substs) => {
+            ty_enum(did, substs) => {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
                 let r = !vs.is_empty() && vs.iter().all(|variant| {
@@ -3394,11 +3529,11 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
             ty_vec(ty, Some(_)) => {
                 is_type_structurally_recursive(cx, sp, seen, ty)
             }
-            ty_struct(did, ref substs) => {
+            ty_struct(did, substs) => {
                 let fields = struct_fields(cx, did, substs);
                 find_nonrepresentable(cx, sp, seen, fields.iter().map(|f| f.mt.ty))
             }
-            ty_enum(did, ref substs) => {
+            ty_enum(did, substs) => {
                 let vs = enum_variants(cx, did);
                 let iter = vs.iter()
                     .flat_map(|variant| { variant.args.iter() })
@@ -3406,7 +3541,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
                 find_nonrepresentable(cx, sp, seen, iter)
             }
-            ty_unboxed_closure(did, _, ref substs) => {
+            ty_unboxed_closure(did, _, substs) => {
                 let upvars = unboxed_closure_upvars(cx, did, substs);
                 find_nonrepresentable(cx, sp, seen, upvars.iter().map(|f| f.ty))
             }
@@ -3626,7 +3761,7 @@ pub fn lltype_is_sized<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn unsized_part_of_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_str | ty_trait(..) | ty_vec(..) => ty,
-        ty_struct(def_id, ref substs) => {
+        ty_struct(def_id, substs) => {
             let unsized_fields: Vec<_> = struct_fields(cx, def_id, substs).iter()
                 .map(|f| f.mt.ty).filter(|ty| !type_is_sized(cx, *ty)).collect();
             // Exactly one of the fields must be unsized.
@@ -3678,7 +3813,7 @@ pub fn deref<'tcx>(ty: Ty<'tcx>, explicit: bool) -> Option<mt<'tcx>> {
 
 pub fn close_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
-        ty_open(ty) => mk_rptr(cx, ReStatic, mt {ty: ty, mutbl:ast::MutImmutable}),
+        ty_open(ty) => mk_rptr(cx, cx.mk_region(ReStatic), mt {ty: ty, mutbl:ast::MutImmutable}),
         _ => cx.sess.bug(format!("Trying to close a non-open type {}",
                                  ty_to_string(cx, ty))[])
     }
@@ -3730,16 +3865,16 @@ pub fn positional_element_ty<'tcx>(cx: &ctxt<'tcx>,
         (&ty_tup(ref v), None) => v.get(i).map(|&t| t),
 
 
-        (&ty_struct(def_id, ref substs), None) => lookup_struct_fields(cx, def_id)
+        (&ty_struct(def_id, substs), None) => lookup_struct_fields(cx, def_id)
             .get(i)
             .map(|&t|lookup_item_type(cx, t.id).ty.subst(cx, substs)),
 
-        (&ty_enum(def_id, ref substs), Some(variant_def_id)) => {
+        (&ty_enum(def_id, substs), Some(variant_def_id)) => {
             let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
             variant_info.args.get(i).map(|t|t.subst(cx, substs))
         }
 
-        (&ty_enum(def_id, ref substs), None) => {
+        (&ty_enum(def_id, substs), None) => {
             assert!(enum_is_univariant(cx, def_id));
             let enum_variants = enum_variants(cx, def_id);
             let variant_info = &(*enum_variants)[0];
@@ -3758,12 +3893,12 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
                               variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
 
     match (&ty.sty, variant) {
-        (&ty_struct(def_id, ref substs), None) => {
+        (&ty_struct(def_id, substs), None) => {
             let r = lookup_struct_fields(cx, def_id);
             r.iter().find(|f| f.name == n)
                 .map(|&f| lookup_field_type(cx, def_id, f.id, substs))
         }
-        (&ty_enum(def_id, ref substs), Some(variant_def_id)) => {
+        (&ty_enum(def_id, substs), Some(variant_def_id)) => {
             let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
             variant_info.arg_names.as_ref()
                 .expect("must have struct enum variant if accessing a named fields")
@@ -3882,7 +4017,7 @@ pub fn ty_region(tcx: &ctxt,
                  span: Span,
                  ty: Ty) -> Region {
     match ty.sty {
-        ty_rptr(r, _) => r,
+        ty_rptr(r, _) => *r,
         ref s => {
             tcx.sess.span_bug(
                 span,
@@ -4025,8 +4160,8 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
 
                 AdjustReifyFnPointer(_) => {
                     match unadjusted_ty.sty {
-                        ty::ty_bare_fn(Some(_), ref b) => {
-                            ty::mk_bare_fn(cx, None, (*b).clone())
+                        ty::ty_bare_fn(Some(_), b) => {
+                            ty::mk_bare_fn(cx, None, b)
                         }
                         ref b => {
                             cx.sess.bug(
@@ -4088,7 +4223,7 @@ pub fn adjust_ty_for_autoref<'tcx>(cx: &ctxt<'tcx>,
                 &Some(box ref a) => adjust_ty_for_autoref(cx, span, ty, Some(a)),
                 &None => ty
             };
-            mk_rptr(cx, r, mt {
+            mk_rptr(cx, cx.mk_region(r), mt {
                 ty: adjusted_ty,
                 mutbl: m
             })
@@ -4126,12 +4261,12 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
                                           ty_to_string(cx, ty))[])
         },
         &UnsizeStruct(box ref k, tp_index) => match ty.sty {
-            ty_struct(did, ref substs) => {
+            ty_struct(did, substs) => {
                 let ty_substs = substs.types.get_slice(subst::TypeSpace);
                 let new_ty = unsize_ty(cx, ty_substs[tp_index], k, span);
                 let mut unsized_substs = substs.clone();
                 unsized_substs.types.get_mut_slice(subst::TypeSpace)[tp_index] = new_ty;
-                mk_struct(cx, did, unsized_substs)
+                mk_struct(cx, did, cx.mk_substs(unsized_substs))
             }
             _ => cx.sess.span_bug(span,
                                   format!("UnsizeStruct with bad sty: {}",
@@ -4731,7 +4866,7 @@ pub fn associated_type_parameter_index(cx: &ctxt,
                                        -> uint {
     for type_parameter_def in trait_def.generics.types.iter() {
         if type_parameter_def.def_id == associated_type_id {
-            return type_parameter_def.index
+            return type_parameter_def.index as uint
         }
     }
     cx.sess.bug("couldn't find associated type parameter index")
@@ -5156,9 +5291,10 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
         trait_def.bounds.trait_bounds
         .iter()
         .map(|bound_trait_ref| {
+            let substs = tcx.mk_substs(bound_trait_ref.substs().subst(tcx, trait_ref.substs()));
             ty::Binder(
                 ty::TraitRef::new(bound_trait_ref.def_id(),
-                                  bound_trait_ref.substs().subst(tcx, trait_ref.substs())))
+                                  substs))
         })
         .map(|bound_trait_ref| Rc::new(bound_trait_ref))
         .collect();
@@ -5375,7 +5511,7 @@ pub fn unboxed_closure_upvars<'tcx>(tcx: &ctxt<'tcx>, closure_id: ast::DefId, su
                         var_id: freevar_def_id.node,
                         closure_expr_id: closure_id.node
                     }].clone();
-                    freevar_ty = mk_rptr(tcx, borrow.region, ty::mt {
+                    freevar_ty = mk_rptr(tcx, tcx.mk_region(borrow.region), ty::mt {
                         ty: freevar_ty,
                         mutbl: borrow.kind.to_mutbl_lossy()
                     });
@@ -5568,7 +5704,7 @@ pub fn object_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
 
     let opt_trait_ref = opt_principal.map_or(Vec::new(), |principal| {
         let substs = principal.substs().with_self_ty(open_ty);
-        vec!(Rc::new(ty::Binder(ty::TraitRef::new(principal.def_id(), substs))))
+        vec!(Rc::new(ty::Binder(ty::TraitRef::new(principal.def_id(), tcx.mk_substs(substs)))))
     });
 
     let param_bounds = ty::ParamBounds {
@@ -5927,7 +6063,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 }
                 ty_rptr(r, m) => {
                     byte!(13);
-                    region(state, r);
+                    region(state, *r);
                     mt(state, m);
                 }
                 ty_bare_fn(opt_def_id, ref b) => {
@@ -5987,7 +6123,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 ty_unboxed_closure(d, r, _) => {
                     byte!(24);
                     did(state, d);
-                    region(state, r);
+                    region(state, *r);
                 }
             }
             true
@@ -6095,7 +6231,7 @@ pub fn construct_parameter_environment<'tcx>(
                    space,
                    def.repr(tcx),
                    i);
-            let ty = ty::mk_param(tcx, space, i, def.def_id);
+            let ty = ty::mk_param(tcx, space, i as u32, def.def_id);
             types.push(space, ty);
         }
     }
@@ -6229,13 +6365,13 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
     walk_ty(ty, |ty| {
         match ty.sty {
             ty_rptr(region, _) => {
-                accumulator.push(region)
+                accumulator.push(*region)
             }
             ty_trait(ref t) => {
                 accumulator.push_all(t.principal.substs().regions().as_slice());
             }
-            ty_enum(_, ref substs) |
-            ty_struct(_, ref substs) => {
+            ty_enum(_, substs) |
+            ty_struct(_, substs) => {
                 accum_substs(accumulator, substs);
             }
             ty_closure(ref closure_ty) => {
@@ -6244,7 +6380,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
                     UniqTraitStore => {}
                 }
             }
-            ty_unboxed_closure(_, ref region, ref substs) => {
+            ty_unboxed_closure(_, region, substs) => {
                 accumulator.push(*region);
                 accum_substs(accumulator, substs);
             }
@@ -6416,12 +6552,12 @@ pub fn replace_late_bound_regions<'tcx, T, F>(
 }
 
 impl DebruijnIndex {
-    pub fn new(depth: uint) -> DebruijnIndex {
+    pub fn new(depth: u32) -> DebruijnIndex {
         assert!(depth > 0);
         DebruijnIndex { depth: depth }
     }
 
-    pub fn shifted(&self, amount: uint) -> DebruijnIndex {
+    pub fn shifted(&self, amount: u32) -> DebruijnIndex {
         DebruijnIndex { depth: self.depth + amount }
     }
 }
@@ -6559,7 +6695,7 @@ pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
                                      param_env: &ParameterEnvironment<'tcx>)
                                      -> Result<(),CopyImplementationError> {
     match self_type.sty {
-        ty::ty_struct(struct_did, ref substs) => {
+        ty::ty_struct(struct_did, substs) => {
             let fields = ty::struct_fields(tcx, struct_did, substs);
             for field in fields.iter() {
                 if type_moves_by_default(tcx, field.mt.ty, param_env) {
@@ -6567,7 +6703,7 @@ pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
                 }
             }
         }
-        ty::ty_enum(enum_did, ref substs) => {
+        ty::ty_enum(enum_did, substs) => {
             let enum_variants = ty::enum_variants(tcx, enum_did);
             for variant in enum_variants.iter() {
                 for variant_arg_type in variant.args.iter() {
@@ -6592,43 +6728,42 @@ pub trait RegionEscape {
         self.has_regions_escaping_depth(0)
     }
 
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool;
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool;
 }
 
 impl<'tcx> RegionEscape for Ty<'tcx> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         ty::type_escapes_depth(*self, depth)
     }
 }
 
 impl RegionEscape for Region {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.escapes_depth(depth)
     }
 }
 
 impl<'tcx> RegionEscape for TraitRef<'tcx> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.substs.types.iter().any(|t| t.has_regions_escaping_depth(depth)) &&
             self.substs.regions().iter().any(|t| t.has_regions_escaping_depth(depth))
     }
 }
 
 impl<'tcx,T:RegionEscape> RegionEscape for Binder<T> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.0.has_regions_escaping_depth(depth + 1)
     }
 }
 
 impl<'tcx> RegionEscape for EquatePredicate<'tcx> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.0.has_regions_escaping_depth(depth) || self.1.has_regions_escaping_depth(depth)
     }
 }
 
 impl<T:RegionEscape,U:RegionEscape> RegionEscape for OutlivesPredicate<T,U> {
-    fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.0.has_regions_escaping_depth(depth) || self.1.has_regions_escaping_depth(depth)
     }
 }
-

@@ -672,7 +672,7 @@ fn expand_stmt(s: Stmt, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
         StmtMac(mac, style) => (mac, style),
         _ => return expand_non_macro_stmt(s, fld)
     };
-    let expanded_stmt = match expand_mac_invoc(mac, s.span,
+    let expanded_stmt = match expand_mac_invoc(mac.and_then(|m| m), s.span,
                                                 |r| r.make_stmt(),
                                                 mark_stmt, fld) {
         Some(stmt) => stmt,

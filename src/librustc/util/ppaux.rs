@@ -401,7 +401,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             }, ty_to_string(cx, tm.ty))
         }
         ty_rptr(r, ref tm) => {
-            let mut buf = region_ptr_to_string(cx, r);
+            let mut buf = region_ptr_to_string(cx, *r);
             buf.push_str(mt_to_string(cx, tm)[]);
             buf
         }
@@ -432,7 +432,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 param_ty.user_string(cx)
             }
         }
-        ty_enum(did, ref substs) | ty_struct(did, ref substs) => {
+        ty_enum(did, substs) | ty_struct(did, substs) => {
             let base = ty::item_path_str(cx, did);
             let generics = ty::lookup_item_type(cx, did).generics;
             parameterized(cx, base.as_slice(), substs, &generics, did)
@@ -449,7 +449,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     bound_str)
         }
         ty_str => "str".to_string(),
-        ty_unboxed_closure(ref did, _, ref substs) => {
+        ty_unboxed_closure(ref did, _, substs) => {
             let unboxed_closures = cx.unboxed_closures.borrow();
             unboxed_closures.get(did).map(|cl| {
                 closure_to_string(cx, &cl.closure_type.subst(cx, substs))
@@ -759,7 +759,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitRef<'tcx> {
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
         format!("TraitRef({}, {})",
                 self.substs.self_ty().repr(tcx),
-                parameterized(tcx, base.as_slice(), &self.substs, &trait_def.generics, self.def_id))
+                parameterized(tcx, base.as_slice(), self.substs, &trait_def.generics, self.def_id))
     }
 }
 
@@ -1209,7 +1209,7 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         let path_str = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        parameterized(tcx, path_str.as_slice(), &self.substs,
+        parameterized(tcx, path_str.as_slice(), self.substs,
                       &trait_def.generics, self.def_id)
     }
 }

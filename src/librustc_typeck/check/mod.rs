@@ -1154,9 +1154,9 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 
     // Compute skolemized form of impl and trait method tys.
-    let impl_fty = ty::mk_bare_fn(tcx, None, impl_m.fty.clone());
+    let impl_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(impl_m.fty.clone()));
     let impl_fty = impl_fty.subst(tcx, &impl_to_skol_substs);
-    let trait_fty = ty::mk_bare_fn(tcx, None, trait_m.fty.clone());
+    let trait_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(trait_m.fty.clone()));
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
     // Check the impl method type IM is a subtype of the trait method
@@ -2736,9 +2736,10 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-        ast::LitStr(..) => ty::mk_str_slice(tcx, ty::ReStatic, ast::MutImmutable),
+        ast::LitStr(..) => ty::mk_str_slice(tcx, tcx.mk_region(ty::ReStatic), ast::MutImmutable),
         ast::LitBinary(..) => {
-            ty::mk_slice(tcx, ty::ReStatic, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable })
+            ty::mk_slice(tcx, tcx.mk_region(ty::ReStatic),
+                         ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable })
         }
         ast::LitByte(_) => ty::mk_u8(),
         ast::LitChar(_) => ty::mk_char(),
@@ -2949,7 +2950,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         });
 
         let fn_sig = match fn_ty.sty {
-            ty::ty_bare_fn(_, ty::BareFnTy {ref sig, ..}) |
+            ty::ty_bare_fn(_, &ty::BareFnTy {ref sig, ..}) |
             ty::ty_closure(box ty::ClosureTy {ref sig, ..}) => sig,
             _ => {
                 fcx.type_error_message(call_expr.span, |actual| {
@@ -3098,8 +3099,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 let (adj_ty, adjustment) = match lhs_ty.sty {
                     ty::ty_rptr(r_in, mt) => {
                         let r_adj = fcx.infcx().next_region_var(infer::Autoref(lhs.span));
-                        fcx.mk_subr(infer::Reborrow(lhs.span), r_adj, r_in);
-                        let adjusted_ty = ty::mk_rptr(fcx.tcx(), r_adj, mt);
+                        fcx.mk_subr(infer::Reborrow(lhs.span), r_adj, *r_in);
+                        let adjusted_ty = ty::mk_rptr(fcx.tcx(), fcx.tcx().mk_region(r_adj), mt);
                         let autoptr = ty::AutoPtr(r_adj, mt.mutbl, None);
                         let adjustment = ty::AutoDerefRef { autoderefs: 1, autoref: Some(autoptr) };
                         (adjusted_ty, adjustment)
@@ -3331,7 +3332,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let (_, autoderefs, field_ty) =
             autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
                 match base_t.sty {
-                    ty::ty_struct(base_id, ref substs) => {
+                    ty::ty_struct(base_id, substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
                         let fields = ty::lookup_struct_fields(tcx, base_id);
                         lookup_field_ty(tcx, base_id, fields[],
@@ -3392,7 +3393,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let (_, autoderefs, field_ty) =
             autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
                 match base_t.sty {
-                    ty::ty_struct(base_id, ref substs) => {
+                    ty::ty_struct(base_id, substs) => {
                         tuple_like = ty::is_tuple_struct(tcx, base_id);
                         if tuple_like {
                             debug!("tuple struct named {}", ppaux::ty_to_string(tcx, base_t));
@@ -3443,7 +3444,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                 span: Span,
                                                 class_id: ast::DefId,
                                                 node_id: ast::NodeId,
-                                                substitutions: subst::Substs<'tcx>,
+                                                substitutions: &'tcx subst::Substs<'tcx>,
                                                 field_types: &[ty::field_ty],
                                                 ast_fields: &[ast::Field],
                                                 check_completeness: bool,
@@ -3495,7 +3496,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 Some((field_id, false)) => {
                     expected_field_type =
                         ty::lookup_field_type(
-                            tcx, class_id, field_id, &substitutions);
+                            tcx, class_id, field_id, substitutions);
                     class_field_map.insert(
                         field.ident.node.name, (field_id, true));
                     fields_found += 1;
@@ -3561,7 +3562,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                        span,
                                        class_id,
                                        id,
-                                       struct_substs,
+                                       fcx.ccx.tcx.mk_substs(struct_substs),
                                        class_fields[],
                                        fields,
                                        base_expr.is_none(),
@@ -3604,7 +3605,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                        span,
                                        variant_id,
                                        id,
-                                       substitutions,
+                                       fcx.ccx.tcx.mk_substs(substitutions),
                                        variant_fields[],
                                        fields,
                                        true,
@@ -3737,7 +3738,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             Some(mt) => mt.ty,
                             None => {
                                 let is_newtype = match oprnd_t.sty {
-                                    ty::ty_struct(did, ref substs) => {
+                                    ty::ty_struct(did, substs) => {
                                         let fields = ty::struct_fields(fcx.tcx(), did, substs);
                                         fields.len() == 1
                                         && fields[0].name ==
@@ -3839,11 +3840,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     // `'static`!
                     let region = fcx.infcx().next_region_var(
                         infer::AddrOfSlice(expr.span));
-                    ty::mk_rptr(tcx, region, tm)
+                    ty::mk_rptr(tcx, tcx.mk_region(region), tm)
                 }
                 _ => {
                     let region = fcx.infcx().next_region_var(infer::AddrOfRegion(expr.span));
-                    ty::mk_rptr(tcx, region, tm)
+                    ty::mk_rptr(tcx, tcx.mk_region(region), tm)
                 }
             }
         };
@@ -4354,7 +4355,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                  traits::ItemObligation(did)),
                     &bounds);
 
-                ty::mk_struct(tcx, did, substs)
+                ty::mk_struct(tcx, did, tcx.mk_substs(substs))
             } else {
                 ty::mk_err()
             }
@@ -4749,7 +4750,7 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
         return;
     }
     match t.sty {
-        ty::ty_struct(did, ref substs) => {
+        ty::ty_struct(did, substs) => {
             let fields = ty::lookup_struct_fields(tcx, did);
             if fields.is_empty() {
                 span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty");
@@ -5502,7 +5503,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             match t.sty {
                 ty::ty_param(ParamTy {idx, ..}) => {
                     debug!("Found use of ty param num {}", idx);
-                    tps_used[idx] = true;
+                    tps_used[idx as uint] = true;
                 }
                 _ => ()
             }
@@ -5518,7 +5519,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
-    fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: uint) -> Ty<'tcx> {
+    fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
         ty::mk_param(ccx.tcx, subst::FnSpace, n, local_def(0))
     }
 
@@ -5561,16 +5562,18 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "breakpoint" => (0, Vec::new(), ty::mk_nil(tcx)),
             "size_of" |
             "pref_align_of" | "min_align_of" => (1u, Vec::new(), ty::mk_uint()),
-            "init" => (1u, Vec::new(), param(ccx, 0u)),
-            "uninit" => (1u, Vec::new(), param(ccx, 0u)),
+            "init" => (1u, Vec::new(), param(ccx, 0)),
+            "uninit" => (1u, Vec::new(), param(ccx, 0)),
             "forget" => (1u, vec!( param(ccx, 0) ), ty::mk_nil(tcx)),
             "transmute" => (2, vec!( param(ccx, 0) ), param(ccx, 1)),
             "move_val_init" => {
                 (1u,
                  vec!(
-                    ty::mk_mut_rptr(tcx, ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(0)),
+                    ty::mk_mut_rptr(tcx,
+                                    tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
+                                                                  ty::BrAnon(0))),
                                     param(ccx, 0)),
-                    param(ccx, 0u)
+                    param(ccx, 0)
                   ),
                ty::mk_nil(tcx))
             }
@@ -5594,7 +5597,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                     Ok(did) => (1u,
                                 Vec::new(),
                                 ty::mk_struct(ccx.tcx, did,
-                                              subst::Substs::empty())),
+                                              ccx.tcx.mk_substs(subst::Substs::empty()))),
                     Err(msg) => {
                         tcx.sess.span_fatal(it.span, msg[]);
                     }
@@ -5769,7 +5772,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         };
         (n_tps, inputs, ty::FnConverging(output))
     };
-    let fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy {
+    let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: ast::Unsafety::Unsafe,
         abi: abi::RustIntrinsic,
         sig: ty::Binder(FnSig {
@@ -5777,7 +5780,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             output: output,
             variadic: false,
         }),
-    });
+    }));
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     if i_n_tps != n_tps {
@@ -5798,4 +5801,3 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             });
     }
 }
-

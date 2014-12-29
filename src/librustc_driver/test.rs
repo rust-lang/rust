@@ -127,9 +127,9 @@ fn test_env<F>(source_string: &str,
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
     let region_map = region::resolve_crate(&sess, krate);
     let stability_index = stability::Index::build(krate);
-    let type_arena = TypedArena::new();
+    let arenas = ty::CtxtArenas::new();
     let tcx = ty::mk_ctxt(sess,
-                          &type_arena,
+                          &arenas,
                           def_map,
                           named_region_map,
                           ast_map,
@@ -256,7 +256,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         let input_args = input_tys.iter().map(|ty| *ty).collect();
         ty::mk_bare_fn(self.infcx.tcx,
                        None,
-                       ty::BareFnTy {
+                       self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
                            unsafety: ast::Unsafety::Normal,
                            abi: abi::Rust,
                            sig: ty::Binder(ty::FnSig {
@@ -264,7 +264,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                                output: ty::FnConverging(output_ty),
                                variadic: false
                            })
-                       })
+                       }))
     }
 
     pub fn t_nil(&self) -> Ty<'tcx> {
@@ -295,13 +295,13 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         })
     }
 
-    pub fn t_param(&self, space: subst::ParamSpace, index: uint) -> Ty<'tcx> {
+    pub fn t_param(&self, space: subst::ParamSpace, index: u32) -> Ty<'tcx> {
         ty::mk_param(self.infcx.tcx, space, index, ast_util::local_def(ast::DUMMY_NODE_ID))
     }
 
     pub fn re_early_bound(&self,
                           space: subst::ParamSpace,
-                          index: uint,
+                          index: u32,
                           name: &'static str)
                           -> ty::Region
     {
@@ -309,44 +309,48 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         ty::ReEarlyBound(ast::DUMMY_NODE_ID, space, index, name)
     }
 
-    pub fn re_late_bound_with_debruijn(&self, id: uint, debruijn: ty::DebruijnIndex) -> ty::Region {
+    pub fn re_late_bound_with_debruijn(&self, id: u32, debruijn: ty::DebruijnIndex) -> ty::Region {
         ty::ReLateBound(debruijn, ty::BrAnon(id))
     }
 
     pub fn t_rptr(&self, r: ty::Region) -> Ty<'tcx> {
-        ty::mk_imm_rptr(self.infcx.tcx, r, ty::mk_int())
+        ty::mk_imm_rptr(self.infcx.tcx, self.infcx.tcx.mk_region(r), ty::mk_int())
     }
 
-    pub fn t_rptr_late_bound(&self, id: uint) -> Ty<'tcx> {
+    pub fn t_rptr_late_bound(&self, id: u32) -> Ty<'tcx> {
+        let r = self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1));
         ty::mk_imm_rptr(self.infcx.tcx,
-                        self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1)),
+                        self.infcx.tcx.mk_region(r),
                         ty::mk_int())
     }
 
     pub fn t_rptr_late_bound_with_debruijn(&self,
-                                           id: uint,
+                                           id: u32,
                                            debruijn: ty::DebruijnIndex)
                                            -> Ty<'tcx> {
+        let r = self.re_late_bound_with_debruijn(id, debruijn);
         ty::mk_imm_rptr(self.infcx.tcx,
-                        self.re_late_bound_with_debruijn(id, debruijn),
+                        self.infcx.tcx.mk_region(r),
                         ty::mk_int())
     }
 
     pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty<'tcx> {
-        ty::mk_imm_rptr(self.infcx.tcx, ty::ReScope(CodeExtent::from_node_id(id)), ty::mk_int())
+        let r = ty::ReScope(CodeExtent::from_node_id(id));
+        ty::mk_imm_rptr(self.infcx.tcx, self.infcx.tcx.mk_region(r), ty::mk_int())
     }
 
-    pub fn re_free(&self, nid: ast::NodeId, id: uint) -> ty::Region {
+    pub fn re_free(&self, nid: ast::NodeId, id: u32) -> ty::Region {
         ty::ReFree(ty::FreeRegion { scope: CodeExtent::from_node_id(nid),
                                     bound_region: ty::BrAnon(id)})
     }
 
-    pub fn t_rptr_free(&self, nid: ast::NodeId, id: uint) -> Ty<'tcx> {
-        ty::mk_imm_rptr(self.infcx.tcx, self.re_free(nid, id), ty::mk_int())
+    pub fn t_rptr_free(&self, nid: ast::NodeId, id: u32) -> Ty<'tcx> {
+        let r = self.re_free(nid, id);
+        ty::mk_imm_rptr(self.infcx.tcx, self.infcx.tcx.mk_region(r), ty::mk_int())
     }
 
     pub fn t_rptr_static(&self) -> Ty<'tcx> {
-        ty::mk_imm_rptr(self.infcx.tcx, ty::ReStatic, ty::mk_int())
+        ty::mk_imm_rptr(self.infcx.tcx, self.infcx.tcx.mk_region(ty::ReStatic), ty::mk_int())
     }
 
     pub fn dummy_type_trace(&self) -> infer::TypeTrace<'tcx> {
@@ -816,4 +820,3 @@ fn subst_region_renumber_region() {
         assert_eq!(t_substituted, t_expected);
     })
 }
-

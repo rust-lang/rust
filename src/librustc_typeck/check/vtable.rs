@@ -63,8 +63,8 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // Ensure that if &'a T is cast to &'b Trait, then 'b <= 'a
                 infer::mk_subr(fcx.infcx(),
                                infer::RelateObjectBound(source_expr.span),
-                               target_region,
-                               referent_region);
+                               *target_region,
+                               *referent_region);
 
                 check_object_safety(fcx.tcx(), object_trait, source_expr.span);
             }
@@ -133,7 +133,7 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
                                  object_trait: &ty::TyTrait<'tcx>,
                                  span: Span)
 {
-    let object_trait_ref = object_trait.principal_trait_ref_with_self_ty(ty::mk_err());
+    let object_trait_ref = object_trait.principal_trait_ref_with_self_ty(tcx, ty::mk_err());
     for tr in traits::supertraits(tcx, object_trait_ref) {
         check_object_safety_inner(tcx, &*tr, span);
     }
@@ -251,7 +251,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // Create the obligation for casting from T to Trait.
     let object_trait_ref =
-        object_trait.principal_trait_ref_with_self_ty(referent_ty);
+        object_trait.principal_trait_ref_with_self_ty(fcx.tcx(), referent_ty);
     let object_obligation =
         Obligation::new(
             ObligationCause::new(span,

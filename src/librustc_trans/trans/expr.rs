@@ -322,7 +322,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let substs = principal.substs().with_self_ty(unadjusted_ty).erase_regions();
                 let trait_ref =
                     Rc::new(ty::Binder(ty::TraitRef { def_id: principal.def_id(),
-                                                      substs: substs }));
+                                                      substs: bcx.tcx().mk_substs(substs) }));
                 let trait_ref = trait_ref.subst(bcx.tcx(), bcx.fcx.param_substs);
                 let box_ty = mk_ty(unadjusted_ty);
                 PointerCast(bcx,
@@ -350,7 +350,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                               expr.id,
                                               datum_ty,
                                               |t| ty::mk_rptr(tcx,
-                                                              ty::ReStatic,
+                                                              tcx.mk_region(ty::ReStatic),
                                                               ty::mt{
                                                                   ty: t,
                                                                   mutbl: ast::MutImmutable
@@ -1085,7 +1085,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              None,
                              expr.span,
                              expr.id,
-                             ty::mk_struct(tcx, did, substs),
+                             ty::mk_struct(tcx, did, tcx.mk_substs(substs)),
                              dest)
             } else {
                 tcx.sess.span_bug(expr.span,
@@ -1339,7 +1339,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
     F: FnOnce(ty::Disr, &[ty::field<'tcx>]) -> R,
 {
     match ty.sty {
-        ty::ty_struct(did, ref substs) => {
+        ty::ty_struct(did, substs) => {
             op(0, struct_fields(tcx, did, substs)[])
         }
 
@@ -1347,7 +1347,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
             op(0, tup_fields(v[])[])
         }
 
-        ty::ty_enum(_, ref substs) => {
+        ty::ty_enum(_, substs) => {
             // We want the *variant* ID here, not the enum ID.
             match node_id_opt {
                 None => {
@@ -2130,7 +2130,7 @@ fn auto_ref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Compute final type. Note that we are loose with the region and
     // mutability, since those things don't matter in trans.
     let referent_ty = lv_datum.ty;
-    let ptr_ty = ty::mk_imm_rptr(bcx.tcx(), ty::ReStatic, referent_ty);
+    let ptr_ty = ty::mk_imm_rptr(bcx.tcx(), bcx.tcx().mk_region(ty::ReStatic), referent_ty);
 
     // Get the pointer.
     let llref = lv_datum.to_llref();

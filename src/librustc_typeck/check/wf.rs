@@ -264,7 +264,7 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
         let trait_def = ty::lookup_trait_def(self.fcx.tcx(), trait_ref.def_id);
 
-        let bounds = trait_def.generics.to_bounds(self.tcx(), &trait_ref.substs);
+        let bounds = trait_def.generics.to_bounds(self.tcx(), trait_ref.substs);
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 self.span,
@@ -311,8 +311,8 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         }
 
         match t.sty{
-            ty::ty_struct(type_id, ref substs) |
-            ty::ty_enum(type_id, ref substs) => {
+            ty::ty_struct(type_id, substs) |
+            ty::ty_enum(type_id, substs) => {
                 let polytype = ty::lookup_item_type(self.fcx.tcx(), type_id);
 
                 if self.binding_count == 0 {
@@ -355,7 +355,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
 
                 self.fold_substs(substs);
             }
-            ty::ty_bare_fn(_, ty::BareFnTy{sig: ref fn_sig, ..}) |
+            ty::ty_bare_fn(_, &ty::BareFnTy{sig: ref fn_sig, ..}) |
             ty::ty_closure(box ty::ClosureTy{sig: ref fn_sig, ..}) => {
                 self.binding_count += 1;
 

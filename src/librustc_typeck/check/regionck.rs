@@ -645,7 +645,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             };
             if let ty::ty_rptr(r_ptr, _) = base_ty.sty {
                 mk_subregion_due_to_dereference(
-                    rcx, expr.span, ty::ReScope(CodeExtent::from_node_id(expr.id)), r_ptr);
+                    rcx, expr.span, ty::ReScope(CodeExtent::from_node_id(expr.id)), *r_ptr);
             }
 
             visit::walk_expr(rcx, expr);
@@ -763,7 +763,7 @@ fn constrain_cast(rcx: &mut Rcx,
             /*From:*/ (&ty::ty_rptr(from_r, ref from_mt),
             /*To:  */  &ty::ty_rptr(to_r, ref to_mt)) => {
                 // Target cannot outlive source, naturally.
-                rcx.fcx.mk_subr(infer::Reborrow(cast_expr.span), to_r, from_r);
+                rcx.fcx.mk_subr(infer::Reborrow(cast_expr.span), *to_r, *from_r);
                 walk_cast(rcx, cast_expr, from_mt.ty, to_mt.ty);
             }
 
@@ -822,7 +822,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
                         // Variables being referenced must be constrained and registered
                         // in the upvar borrow map
                         constrain_free_variables_in_by_ref_closure(
-                            rcx, region, expr, freevars);
+                            rcx, *region, expr, freevars);
                     }
                 })
             }
@@ -858,7 +858,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         }
         ty::ty_unboxed_closure(_, region, _) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
-                let bounds = ty::region_existential_bound(region);
+                let bounds = ty::region_existential_bound(*region);
                 ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);
             })
         }
@@ -897,7 +897,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             let var_ty = match rcx.fcx.inh.upvar_borrow_map.borrow().get(&upvar_id) {
                 Some(upvar_borrow) => {
                     ty::mk_rptr(rcx.tcx(),
-                                upvar_borrow.region,
+                                rcx.tcx().mk_region(upvar_borrow.region),
                                 ty::mt { mutbl: upvar_borrow.kind.to_mutbl_lossy(),
                                          ty: raw_var_ty })
                 }
@@ -1137,7 +1137,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 {
                     let mc = mc::MemCategorizationContext::new(rcx.fcx);
                     let self_cmt = mc.cat_expr_autoderefd(deref_expr, i);
-                    link_region(rcx, deref_expr.span, r,
+                    link_region(rcx, deref_expr.span, *r,
                                 ty::BorrowKind::from_mutbl(m), self_cmt);
                 }
 
@@ -1158,7 +1158,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
 
         if let ty::ty_rptr(r_ptr, _) =  derefd_ty.sty {
             mk_subregion_due_to_dereference(rcx, deref_expr.span,
-                                            r_deref_expr, r_ptr);
+                                            r_deref_expr, *r_ptr);
         }
 
         match ty::deref(derefd_ty, true) {
@@ -1193,7 +1193,7 @@ fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
         match mt.ty.sty {
             ty::ty_vec(_, None) | ty::ty_str => {
                 rcx.fcx.mk_subr(infer::IndexSlice(index_expr.span),
-                                r_index_expr, r_ptr);
+                                r_index_expr, *r_ptr);
             }
             _ => {}
         }

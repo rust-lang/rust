@@ -98,10 +98,10 @@ impl<'tcx> Substs<'tcx> {
     }
 
     pub fn type_for_def(&self, ty_param_def: &ty::TypeParameterDef) -> Ty<'tcx> {
-        *self.types.get(ty_param_def.space, ty_param_def.index)
+        *self.types.get(ty_param_def.space, ty_param_def.index as uint)
     }
 
-    pub fn has_regions_escaping_depth(&self, depth: uint) -> bool {
+    pub fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.types.iter().any(|&t| ty::type_escapes_depth(t, depth)) || {
             match self.regions {
                 ErasedRegions =>
@@ -582,7 +582,7 @@ struct SubstFolder<'a, 'tcx: 'a> {
     ty_stack_depth: uint,
 
     // Number of region binders we have passed through while doing the substitution
-    region_binders_passed: uint,
+    region_binders_passed: u32,
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
@@ -607,7 +607,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                 match self.substs.regions {
                     ErasedRegions => ty::ReStatic,
                     NonerasedRegions(ref regions) =>
-                        match regions.opt_get(space, i) {
+                        match regions.opt_get(space, i as uint) {
                             Some(&r) => {
                                 self.shift_region_through_binders(r)
                             }
@@ -663,7 +663,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
 impl<'a,'tcx> SubstFolder<'a,'tcx> {
     fn ty_for_param(&self, p: ty::ParamTy, source_ty: Ty<'tcx>) -> Ty<'tcx> {
         // Look up the type in the substitutions. It really should be in there.
-        let opt_ty = self.substs.types.opt_get(p.space, p.idx);
+        let opt_ty = self.substs.types.opt_get(p.space, p.idx as uint);
         let ty = match opt_ty {
             Some(t) => *t,
             None => {

@@ -635,7 +635,7 @@ fn bind_subslice_pat(bcx: Block,
     let slice_len_offset = C_uint(bcx.ccx(), offset_left + offset_right);
     let slice_len = Sub(bcx, len, slice_len_offset);
     let slice_ty = ty::mk_slice(bcx.tcx(),
-                                ty::ReStatic,
+                                bcx.tcx().mk_region(ty::ReStatic),
                                 ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable});
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
     Store(bcx, slice_begin,
@@ -808,7 +808,9 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                 ty::ty_uint(ast::TyU8) => {
                     // NOTE: cast &[u8] to &str and abuse the str_eq lang item,
                     // which calls memcmp().
-                    let t = ty::mk_str_slice(cx.tcx(), ty::ReStatic, ast::MutImmutable);
+                    let t = ty::mk_str_slice(cx.tcx(),
+                                             cx.tcx().mk_region(ty::ReStatic),
+                                             ast::MutImmutable);
                     let lhs = BitCast(cx, lhs, type_of::type_of(cx.ccx(), t).ptr_to());
                     let rhs = BitCast(cx, rhs, type_of::type_of(cx.ccx(), t).ptr_to());
                     compare_str(cx, lhs, rhs, rhs_t)

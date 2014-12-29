@@ -527,7 +527,8 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             ty::ty_open(typ.fold_with(this))
         }
         ty::ty_enum(tid, ref substs) => {
-            ty::ty_enum(tid, substs.fold_with(this))
+            let substs = substs.fold_with(this);
+            ty::ty_enum(tid, this.tcx().mk_substs(substs))
         }
         ty::ty_trait(box ty::TyTrait { ref principal, bounds }) => {
             ty::ty_trait(box ty::TyTrait {
@@ -539,19 +540,24 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             ty::ty_tup(ts.fold_with(this))
         }
         ty::ty_bare_fn(opt_def_id, ref f) => {
-            ty::ty_bare_fn(opt_def_id, f.fold_with(this))
+            let bfn = f.fold_with(this);
+            ty::ty_bare_fn(opt_def_id, this.tcx().mk_bare_fn(bfn))
         }
         ty::ty_closure(ref f) => {
             ty::ty_closure(box f.fold_with(this))
         }
         ty::ty_rptr(r, ref tm) => {
-            ty::ty_rptr(r.fold_with(this), tm.fold_with(this))
+            let r = r.fold_with(this);
+            ty::ty_rptr(this.tcx().mk_region(r), tm.fold_with(this))
         }
         ty::ty_struct(did, ref substs) => {
-            ty::ty_struct(did, substs.fold_with(this))
+            let substs = substs.fold_with(this);
+            ty::ty_struct(did, this.tcx().mk_substs(substs))
         }
         ty::ty_unboxed_closure(did, ref region, ref substs) => {
-            ty::ty_unboxed_closure(did, region.fold_with(this), substs.fold_with(this))
+            let r = region.fold_with(this);
+            let s = substs.fold_with(this);
+            ty::ty_unboxed_closure(did, this.tcx().mk_region(r), this.tcx().mk_substs(s))
         }
         ty::ty_bool | ty::ty_char | ty::ty_str |
         ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
@@ -624,9 +630,10 @@ pub fn super_fold_trait_ref<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                        t: &ty::TraitRef<'tcx>)
                                                        -> ty::TraitRef<'tcx>
 {
+    let substs = t.substs.fold_with(this);
     ty::TraitRef {
         def_id: t.def_id,
-        substs: t.substs.fold_with(this),
+        substs: this.tcx().mk_substs(substs),
     }
 }
 
@@ -717,13 +724,13 @@ impl<'a, 'tcx, F> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx, F> where
 
 pub struct RegionFolder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    current_depth: uint,
-    fld_r: &'a mut (FnMut(ty::Region, uint) -> ty::Region + 'a),
+    current_depth: u32,
+    fld_r: &'a mut (FnMut(ty::Region, u32) -> ty::Region + 'a),
 }
 
 impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
     pub fn new<F>(tcx: &'a ty::ctxt<'tcx>, fld_r: &'a mut F) -> RegionFolder<'a, 'tcx>
-        where F : FnMut(ty::Region, uint) -> ty::Region
+        where F : FnMut(ty::Region, u32) -> ty::Region
     {
         RegionFolder {
             tcx: tcx,
@@ -745,7 +752,7 @@ pub fn fold_regions<'tcx,T,F>(tcx: &ty::ctxt<'tcx>,
                               value: &T,
                               mut f: F)
                               -> T
-    where F : FnMut(ty::Region, uint) -> ty::Region,
+    where F : FnMut(ty::Region, u32) -> ty::Region,
           T : TypeFoldable<'tcx>,
 {
     value.fold_with(&mut RegionFolder::new(tcx, &mut f))
@@ -813,7 +820,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
 // regions. See comment on `shift_regions_through_binders` method in
 // `subst.rs` for more details.
 
-pub fn shift_region(region: ty::Region, amount: uint) -> ty::Region {
+pub fn shift_region(region: ty::Region, amount: u32) -> ty::Region {
     match region {
         ty::ReLateBound(debruijn, br) => {
             ty::ReLateBound(debruijn.shifted(amount), br)
@@ -825,7 +832,7 @@ pub fn shift_region(region: ty::Region, amount: uint) -> ty::Region {
 }
 
 pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>+Repr<'tcx>>(tcx: &ty::ctxt<'tcx>,
-                                                            amount: uint, value: &T) -> T {
+                                                            amount: u32, value: &T) -> T {
     debug!("shift_regions(value={}, amount={})",
            value.repr(tcx), amount);
 
@@ -833,4 +840,3 @@ pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>+Repr<'tcx>>(tcx: &ty::ctxt<'tcx>
         shift_region(region, amount)
     }))
 }
-
