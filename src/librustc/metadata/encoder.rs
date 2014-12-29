@@ -900,6 +900,9 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
     encode_parent_item(rbml_w, local_def(parent_id));
     encode_item_sort(rbml_w, 't');
 
+    let type_scheme = ty::lookup_item_type(ecx.tcx, associated_type.def_id);
+    encode_bounds_and_type(rbml_w, ecx, &type_scheme);
+
     let stab = stability::lookup(ecx.tcx, associated_type.def_id);
     encode_stability(rbml_w, stab);
 
