@@ -280,7 +280,7 @@ mod test {
     use io;
     use boxed::Box;
     use super::*;
-    use prelude::*;
+    use prelude::{Ok, range, Vec, Buffer, Writer, Reader, ToString, AsSlice};
 
     #[test]
     fn test_limit_reader_unlimited() {

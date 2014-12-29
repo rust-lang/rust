@@ -336,7 +336,8 @@ macro_rules! test {
             use super::*;
             use comm::*;
             use thread::Thread;
-            use prelude::*;
+            use prelude::{Ok, Err, spawn, range, drop, Box, Some, None, Option};
+            use prelude::{Vec, Buffer, from_str, Clone};
 
             $(#[$a])* #[test] fn f() { $b }
         }
@@ -1046,7 +1047,7 @@ unsafe impl<T> kinds::Sync for RacyCell<T> { } // Oh dear
 #[cfg(test)]
 mod test {
     use super::*;
-    use prelude::*;
+    use prelude::{spawn, range, Some, None, from_str, Clone, Str};
     use os;
 
     pub fn stress_factor() -> uint {

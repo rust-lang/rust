@@ -180,7 +180,7 @@ impl<T: Send> Drop for AtomicOption<T> {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::{Some, None};
     use super::*;
 
     #[test]

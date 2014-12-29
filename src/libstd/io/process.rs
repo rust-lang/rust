@@ -745,8 +745,10 @@ mod tests {
 
     use super::*;
     use io::timer::*;
-    use io::*;
-    use prelude::*;
+    use io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
+    use prelude::{Ok, Err, spawn, range, drop, Box, Some, None, Option, Vec, Buffer};
+    use prelude::{from_str, Path, String, channel, Reader, Writer, Clone, Slice};
+    use prelude::{SliceExt, Str, StrExt, AsSlice, ToString, GenericPath};
     use io::fs::PathExtensions;
     use time::Duration;
     use str;
