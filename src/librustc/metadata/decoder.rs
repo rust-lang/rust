@@ -1366,7 +1366,7 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
         if spec.len() == 0 { continue }
         let cnum = spec.split(':').nth(0).unwrap();
         let link = spec.split(':').nth(1).unwrap();
-        let cnum = cnum.parse().unwrap();
+        let cnum: ast::CrateNum = cnum.parse().unwrap();
         let cnum = match cdata.cnum_map.get(&cnum) {
             Some(&n) => n,
             None => panic!("didn't find a crate in the cnum_map")
