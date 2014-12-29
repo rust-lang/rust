@@ -115,6 +115,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
         assert!(!trait_ref.has_escaping_regions());
 
+        // FIXME(#20304) -- cache
+
         let ty_var = infcx.next_ty_var();
         let projection =
             ty::Binder(ty::ProjectionPredicate {
