@@ -691,13 +691,14 @@ pub trait IteratorExt<A>: Iterator<A> {
 impl<A, I> IteratorExt<A> for I where I: Iterator<A> {}
 
 /// Extention trait for iterators of pairs.
+#[unstable = "newly added trait, likely to be merged with IteratorExt"]
 pub trait IteratorPairExt<A, B>: Iterator<(A, B)> {
     /// Converts an iterator of pairs into a pair of containers.
     ///
     /// Loops through the entire iterator, collecting the first component of
     /// each item into one new container, and the second component into another.
     fn unzip<FromA, FromB>(mut self) -> (FromA, FromB) where
-        FromA: FromIterator<A> + Extend<A>, FromB: FromIterator<B> + Extend<B>
+        FromA: Default + Extend<A>, FromB: Default + Extend<B>
     {
         struct SizeHint<A>(uint, Option<uint>);
         impl<A> Iterator<A> for SizeHint<A> {
@@ -708,8 +709,11 @@ pub trait IteratorPairExt<A, B>: Iterator<(A, B)> {
         }
 
         let (lo, hi) = self.size_hint();
-        let mut ts: FromA = FromIterator::from_iter(SizeHint(lo, hi));
-        let mut us: FromB = FromIterator::from_iter(SizeHint(lo, hi));
+        let mut ts: FromA = Default::default();
+        let mut us: FromB = Default::default();
+
+        ts.extend(SizeHint(lo, hi));
+        us.extend(SizeHint(lo, hi));
 
         for (t, u) in self {
             ts.extend(Some(t).into_iter());

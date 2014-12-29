@@ -831,7 +831,7 @@ pub trait CloneSliceExt<T> for Sized? {
     /// assert_eq!(Some(vec![1i, 3, 2]), perms.next());
     /// assert_eq!(Some(vec![3i, 1, 2]), perms.next());
     /// ```
-    #[stable]
+    #[unstable]
     fn permutations(&self) -> Permutations<T>;
 
     /// Copies as many elements from `src` as it can into `self` (the
@@ -950,7 +950,7 @@ pub trait OrdSliceExt<T> for Sized? {
     /// let b: &mut [_] = &mut [1i, 0, 2];
     /// assert!(v == b);
     /// ```
-    #[stable]
+    #[unstable = "uncertain if this merits inclusion in std"]
     fn next_permutation(&mut self) -> bool;
 
     /// Mutates the slice to the previous lexicographic permutation.
@@ -969,7 +969,7 @@ pub trait OrdSliceExt<T> for Sized? {
     /// let b: &mut [_] = &mut [0i, 1, 2];
     /// assert!(v == b);
     /// ```
-    #[stable]
+    #[unstable = "uncertain if this merits inclusion in std"]
     fn prev_permutation(&mut self) -> bool;
 }
 
@@ -1165,7 +1165,7 @@ impl Iterator<(uint, uint)> for ElementSwaps {
 /// swap applied.
 ///
 /// Generates even and odd permutations alternately.
-#[stable]
+#[unstable]
 pub struct Permutations<T> {
     swaps: ElementSwaps,
     v: Vec<T>,

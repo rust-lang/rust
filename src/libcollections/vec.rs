@@ -261,7 +261,7 @@ impl<T> Vec<T> {
     /// owned by the returned `Vec<T>`. The elements of the buffer are copied into the vector
     /// without cloning, as if `ptr::read()` were called on them.
     #[inline]
-    #[stable]
+    #[unstable = "may be better expressed via composition"]
     pub unsafe fn from_raw_buf(ptr: *const T, elts: uint) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
