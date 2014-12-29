@@ -125,7 +125,8 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             ty::ty_projection(ref data) => {
                 // `<T as TraitRef<..>>::Name`
 
-                // TODO What region constraints are necessary here, if any??
+                // FIXME(#20303) -- gain ability to require that ty_projection : in-scope region,
+                // like a type parameter
 
                 // this seems like a minimal requirement:
                 let trait_def = ty::lookup_trait_def(self.tcx, data.trait_ref.def_id);
