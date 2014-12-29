@@ -80,12 +80,14 @@ use vec::Vec;
 
 pub use core::str::{from_utf8, CharEq, Chars, CharIndices};
 pub use core::str::{Bytes, CharSplits, is_utf8};
-pub use core::str::{CharSplitsN, Lines, LinesAny, MatchIndices, StrSplits};
+pub use core::str::{CharSplitsN, Lines, LinesAny, MatchIndices, StrSplits, SplitStr};
 pub use core::str::{CharRange};
 pub use core::str::{FromStr, from_str, Utf8Error};
 pub use core::str::Str;
 pub use core::str::{from_utf8_unchecked, from_c_str};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
+pub use core::str::{Split, SplitTerminator};
+pub use core::str::{SplitN, RSplitN};
 
 // FIXME(conventions): ensure bit/char conventions are followed by str's API
 
@@ -721,7 +723,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// // not found, so no change.
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
+    #[stable]
     fn replace(&self, from: &str, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;
@@ -828,36 +830,36 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
         }
     }
 
-    /// Returns true if one string contains another
+    /// Returns true if a string contains a string pattern.
     ///
     /// # Arguments
     ///
-    /// - needle - The string to look for
+    /// - pat - The string pattern to look for
     ///
     /// # Example
     ///
     /// ```rust
     /// assert!("bananas".contains("nana"));
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn contains(&self, needle: &str) -> bool {
-        core_str::StrExt::contains(self[], needle)
+    #[stable]
+    fn contains(&self, pat: &str) -> bool {
+        core_str::StrExt::contains(self[], pat)
     }
 
-    /// Returns true if a string contains a char.
+    /// Returns true if a string contains a char pattern.
     ///
     /// # Arguments
     ///
-    /// - needle - The char to look for
+    /// - pat - The char pattern to look for
     ///
     /// # Example
     ///
     /// ```rust
     /// assert!("hello".contains_char('e'));
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn contains_char(&self, needle: char) -> bool {
-        core_str::StrExt::contains_char(self[], needle)
+    #[unstable = "might get removed in favour of a more generic contains()"]
+    fn contains_char<P: CharEq>(&self, pat: P) -> bool {
+        core_str::StrExt::contains_char(self[], pat)
     }
 
     /// An iterator over the characters of `self`. Note, this iterates
@@ -894,7 +896,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     }
 
     /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`.
+    /// matched by the pattern `pat`.
     ///
     /// # Example
     ///
@@ -911,13 +913,13 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let v: Vec<&str> = "".split('X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<Sep> {
-        core_str::StrExt::split(self[], sep)
+    #[stable]
+    fn split<P: CharEq>(&self, pat: P) -> Split<P> {
+        core_str::StrExt::split(self[], pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`, restricted to splitting at most `count`
+    /// matched by the pattern `pat`, restricted to splitting at most `count`
     /// times.
     ///
     /// # Example
@@ -938,13 +940,13 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let v: Vec<&str> = "".splitn(1, 'X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn splitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<Sep> {
-        core_str::StrExt::splitn(self[], count, sep)
+    #[stable]
+    fn splitn<P: CharEq>(&self, count: uint, pat: P) -> SplitN<P> {
+        core_str::StrExt::splitn(self[], count, pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`.
+    /// matched by the pattern `pat`.
     ///
     /// Equivalent to `split`, except that the trailing substring
     /// is skipped if empty (terminator semantics).
@@ -967,13 +969,13 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplits<Sep> {
-        core_str::StrExt::split_terminator(self[], sep)
+    #[unstable = "might get removed"]
+    fn split_terminator<P: CharEq>(&self, pat: P) -> SplitTerminator<P> {
+        core_str::StrExt::split_terminator(self[], pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`, starting from the end of the string.
+    /// matched by the pattern `pat`, starting from the end of the string.
     /// Restricted to splitting at most `count` times.
     ///
     /// # Example
@@ -988,13 +990,13 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn rsplitn<Sep: CharEq>(&self, count: uint, sep: Sep) -> CharSplitsN<Sep> {
-        core_str::StrExt::rsplitn(self[], count, sep)
+    #[stable]
+    fn rsplitn<P: CharEq>(&self, count: uint, pat: P) -> RSplitN<P> {
+        core_str::StrExt::rsplitn(self[], count, pat)
     }
 
     /// An iterator over the start and end indices of the disjoint
-    /// matches of `sep` within `self`.
+    /// matches of the pattern `pat` within `self`.
     ///
     /// That is, each returned value `(start, end)` satisfies
     /// `self.slice(start, end) == sep`. For matches of `sep` within
@@ -1013,12 +1015,12 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let v: Vec<(uint, uint)> = "ababa".match_indices("aba").collect();
     /// assert_eq!(v, vec![(0, 3)]); // only the first `aba`
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a> {
-        core_str::StrExt::match_indices(self[], sep)
+    #[unstable = "might have its iterator type changed"]
+    fn match_indices<'a>(&'a self, pat: &'a str) -> MatchIndices<'a> {
+        core_str::StrExt::match_indices(self[], pat)
     }
 
-    /// An iterator over the substrings of `self` separated by `sep`.
+    /// An iterator over the substrings of `self` separated by the pattern `sep`.
     ///
     /// # Example
     ///
@@ -1029,9 +1031,9 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let v: Vec<&str> = "1abcabc2".split_str("abc").collect();
     /// assert_eq!(v, vec!["1", "", "2"]);
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn split_str<'a>(&'a self, s: &'a str) -> StrSplits<'a> {
-        core_str::StrExt::split_str(self[], s)
+    #[unstable = "might get removed in the future in favor of a more generic split()"]
+    fn split_str<'a>(&'a self, pat: &'a str) -> StrSplits<'a> {
+        core_str::StrExt::split_str(self[], pat)
     }
 
     /// An iterator over the lines of a string (subsequences separated
@@ -1204,85 +1206,106 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
         core_str::StrExt::slice_unchecked(self[], begin, end)
     }
 
-    /// Returns true if `needle` is a prefix of the string.
+    /// Returns true if the pattern `pat` is a prefix of the string.
     ///
     /// # Example
     ///
     /// ```rust
     /// assert!("banana".starts_with("ba"));
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn starts_with(&self, needle: &str) -> bool {
-        core_str::StrExt::starts_with(self[], needle)
+    #[stable]
+    fn starts_with(&self, pat: &str) -> bool {
+        core_str::StrExt::starts_with(self[], pat)
     }
 
-    /// Returns true if `needle` is a suffix of the string.
+    /// Returns true if the pattern `pat` is a suffix of the string.
     ///
     /// # Example
     ///
     /// ```rust
     /// assert!("banana".ends_with("nana"));
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn ends_with(&self, needle: &str) -> bool {
-        core_str::StrExt::ends_with(self[], needle)
+    #[stable]
+    fn ends_with(&self, pat: &str) -> bool {
+        core_str::StrExt::ends_with(self[], pat)
     }
 
-    /// Returns a string with characters that match `to_trim` removed from the left and the right.
+    /// Returns a string with all pre- and suffixes that match
+    /// the pattern `pat` repeatedly removed.
     ///
     /// # Arguments
     ///
-    /// * to_trim - a character matcher
+    /// * pat - a string pattern
     ///
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar");
+    /// assert_eq!("11foo1bar11".trim_matches('1'), "foo1bar");
     /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_chars(x), "foo1bar");
-    /// assert_eq!("123foo1bar123".trim_chars(|&: c: char| c.is_numeric()), "foo1bar");
+    /// assert_eq!("12foo1bar12".trim_matches(x), "foo1bar");
+    /// assert_eq!("123foo1bar123".trim_matches(|&: c: char| c.is_numeric()), "foo1bar");
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn trim_chars<C: CharEq>(&self, to_trim: C) -> &str {
-        core_str::StrExt::trim_chars(self[], to_trim)
+    #[stable]
+    fn trim_matches<P: CharEq>(&self, pat: P) -> &str {
+        core_str::StrExt::trim_matches(self[], pat)
     }
 
-    /// Returns a string with leading `chars_to_trim` removed.
+    /// Deprecated
+    #[deprecated = "Replaced by `trim_matches`"]
+    fn trim_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str {
+        self.trim_matches(to_trim)
+    }
+
+    /// Returns a string with all prefixes that match
+    /// the pattern `pat` repeatedly removed.
     ///
     /// # Arguments
     ///
-    /// * to_trim - a character matcher
+    /// * pat - a string pattern
     ///
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11");
+    /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
     /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_left_chars(x), "foo1bar12");
-    /// assert_eq!("123foo1bar123".trim_left_chars(|&: c: char| c.is_numeric()), "foo1bar123");
+    /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
+    /// assert_eq!("123foo1bar123".trim_left_matches(|&: c: char| c.is_numeric()), "foo1bar123");
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn trim_left_chars<C: CharEq>(&self, to_trim: C) -> &str {
-        core_str::StrExt::trim_left_chars(self[], to_trim)
+    #[stable]
+    fn trim_left_matches<P: CharEq>(&self, pat: P) -> &str {
+        core_str::StrExt::trim_left_matches(self[], pat)
     }
 
-    /// Returns a string with trailing `chars_to_trim` removed.
+    /// Deprecated
+    #[deprecated = "Replaced by `trim_left_matches`"]
+    fn trim_left_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str {
+        self.trim_left_matches(to_trim)
+    }
+
+    /// Returns a string with all suffixes that match
+    /// the pattern `pat` repeatedly removed.
     ///
     /// # Arguments
     ///
-    /// * to_trim - a character matcher
+    /// * pat - a string pattern
     ///
     /// # Example
     ///
     /// ```rust
-    /// assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar");
+    /// assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
     /// let x: &[_] = &['1', '2'];
-    /// assert_eq!("12foo1bar12".trim_right_chars(x), "12foo1bar");
-    /// assert_eq!("123foo1bar123".trim_right_chars(|&: c: char| c.is_numeric()), "123foo1bar");
+    /// assert_eq!("12foo1bar12".trim_right_matches(x), "12foo1bar");
+    /// assert_eq!("123foo1bar123".trim_right_matches(|&: c: char| c.is_numeric()), "123foo1bar");
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn trim_right_chars<C: CharEq>(&self, to_trim: C) -> &str {
-        core_str::StrExt::trim_right_chars(self[], to_trim)
+    #[stable]
+    fn trim_right_matches<P: CharEq>(&self, pat: P) -> &str {
+        core_str::StrExt::trim_right_matches(self[], pat)
+    }
+
+    /// Deprecated
+    #[deprecated = "Replaced by `trim_right_matches`"]
+    fn trim_right_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str {
+        self.trim_right_matches(to_trim)
     }
 
     /// Check that `index`-th byte lies at the start and/or end of a
@@ -1430,7 +1453,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     }
 
     /// Returns the byte index of the first character of `self` that
-    /// matches `search`.
+    /// matches the pattern `pat`.
     ///
     /// # Return value
     ///
@@ -1452,13 +1475,13 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.find(x), None);
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn find<C: CharEq>(&self, search: C) -> Option<uint> {
-        core_str::StrExt::find(self[], search)
+    #[stable]
+    fn find<P: CharEq>(&self, pat: P) -> Option<uint> {
+        core_str::StrExt::find(self[], pat)
     }
 
     /// Returns the byte index of the last character of `self` that
-    /// matches `search`.
+    /// matches the pattern `pat`.
     ///
     /// # Return value
     ///
@@ -1480,9 +1503,9 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.rfind(x), None);
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
-    fn rfind<C: CharEq>(&self, search: C) -> Option<uint> {
-        core_str::StrExt::rfind(self[], search)
+    #[stable]
+    fn rfind<P: CharEq>(&self, pat: P) -> Option<uint> {
+        core_str::StrExt::rfind(self[], pat)
     }
 
     /// Returns the byte index of the first matching substring
@@ -1504,7 +1527,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// assert_eq!(s.find_str("老虎 L"), Some(6));
     /// assert_eq!(s.find_str("muffin man"), None);
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
+    #[unstable = "might get removed in favor of a more generic find in the future"]
     fn find_str(&self, needle: &str) -> Option<uint> {
         core_str::StrExt::find_str(self[], needle)
     }
@@ -1546,7 +1569,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
     /// assert!(string.subslice_offset(lines[2]) == 4); // &"c"
     /// ```
-    #[unstable = "awaiting pattern/matcher stabilization"]
+    #[unstable = "awaiting convention about comparability of arbitrary slices"]
     fn subslice_offset(&self, inner: &str) -> uint {
         core_str::StrExt::subslice_offset(self[], inner)
     }
