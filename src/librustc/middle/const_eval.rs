@@ -12,79 +12,21 @@
 #![allow(unsigned_negation)]
 
 pub use self::const_val::*;
-pub use self::constness::*;
 
 use metadata::csearch;
 use middle::{astencode, def};
 use middle::pat_util::def_to_path;
 use middle::ty::{self};
 use middle::astconv_util::{ast_ty_to_prim_ty};
-use util::nodemap::DefIdMap;
 
 use syntax::ast::{self, Expr};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::visit::{self, Visitor};
 use syntax::{ast_map, ast_util, codemap};
 
 use std::collections::hash_map::Entry::Vacant;
 use std::rc::Rc;
-
-//
-// This pass classifies expressions by their constant-ness.
-//
-// Constant-ness comes in 3 flavours:
-//
-//   - Integer-constants: can be evaluated by the frontend all the way down
-//     to their actual value. They are used in a few places (enum
-//     discriminants, switch arms) and are a subset of
-//     general-constants. They cover all the integer and integer-ish
-//     literals (nil, bool, int, uint, char, iNN, uNN) and all integer
-//     operators and copies applied to them.
-//
-//   - General-constants: can be evaluated by LLVM but not necessarily by
-//     the frontend; usually due to reliance on target-specific stuff such
-//     as "where in memory the value goes" or "what floating point mode the
-//     target uses". This _includes_ integer-constants, plus the following
-//     constructors:
-//
-//        fixed-size vectors and strings: [] and ""/_
-//        vector and string slices: &[] and &""
-//        tuples: (,)
-//        enums: foo(...)
-//        floating point literals and operators
-//        & and * pointers
-//        copies of general constants
-//
-//        (in theory, probably not at first: if/match on integer-const
-//         conditions / discriminants)
-//
-//   - Non-constants: everything else.
-//
-
-#[derive(Copy)]
-pub enum constness {
-    integral_const,
-    general_const,
-    non_const
-}
-
-type constness_cache = DefIdMap<constness>;
-
-pub fn join(a: constness, b: constness) -> constness {
-    match (a, b) {
-      (integral_const, integral_const) => integral_const,
-      (integral_const, general_const)
-      | (general_const, integral_const)
-      | (general_const, general_const) => general_const,
-      _ => non_const
-    }
-}
-
-pub fn join_all<It: Iterator<Item=constness>>(cs: It) -> constness {
-    cs.fold(integral_const, |a, b| join(a, b))
-}
 
 fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
     let opt_def = tcx.def_map.borrow().get(&e.id).cloned();
@@ -185,113 +127,6 @@ pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
         expr_id.map(|id| tcx.map.expect_expr(id))
     }
 }
-
-struct ConstEvalVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
-    ccache: constness_cache,
-}
-
-impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
-    fn classify(&mut self, e: &Expr) -> constness {
-        let did = ast_util::local_def(e.id);
-        match self.ccache.get(&did) {
-            Some(&x) => return x,
-            None => {}
-        }
-        let cn = match e.node {
-            ast::ExprLit(ref lit) => {
-                match lit.node {
-                    ast::LitStr(..) | ast::LitFloat(..) => general_const,
-                    _ => integral_const
-                }
-            }
-
-            ast::ExprUnary(_, ref inner) | ast::ExprParen(ref inner) =>
-                self.classify(&**inner),
-
-            ast::ExprBinary(_, ref a, ref b) =>
-                join(self.classify(&**a), self.classify(&**b)),
-
-            ast::ExprTup(ref es) |
-            ast::ExprVec(ref es) =>
-                join_all(es.iter().map(|e| self.classify(&**e))),
-
-            ast::ExprStruct(_, ref fs, None) => {
-                let cs = fs.iter().map(|f| self.classify(&*f.expr));
-                join_all(cs)
-            }
-
-            ast::ExprCast(ref base, _) => {
-                let ty = ty::expr_ty(self.tcx, e);
-                let base = self.classify(&**base);
-                if ty::type_is_integral(ty) {
-                    join(integral_const, base)
-                } else if ty::type_is_fp(ty) {
-                    join(general_const, base)
-                } else {
-                    non_const
-                }
-            }
-
-            ast::ExprField(ref base, _) => self.classify(&**base),
-
-            ast::ExprTupField(ref base, _) => self.classify(&**base),
-
-            ast::ExprIndex(ref base, ref idx) =>
-                join(self.classify(&**base), self.classify(&**idx)),
-
-            ast::ExprAddrOf(ast::MutImmutable, ref base) =>
-                self.classify(&**base),
-
-            // FIXME: (#3728) we can probably do something CCI-ish
-            // surrounding nonlocal constants. But we don't yet.
-            ast::ExprPath(_) | ast::ExprQPath(_) => self.lookup_constness(e),
-
-            ast::ExprRepeat(..) => general_const,
-
-            ast::ExprBlock(ref block) => {
-                match block.expr {
-                    Some(ref e) => self.classify(&**e),
-                    None => integral_const
-                }
-            }
-
-            _ => non_const
-        };
-        self.ccache.insert(did, cn);
-        cn
-    }
-
-    fn lookup_constness(&self, e: &Expr) -> constness {
-        match lookup_const(self.tcx, e) {
-            Some(rhs) => {
-                let ty = ty::expr_ty(self.tcx, &*rhs);
-                if ty::type_is_integral(ty) {
-                    integral_const
-                } else {
-                    general_const
-                }
-            }
-            None => non_const
-        }
-    }
-
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
-    fn visit_expr_post(&mut self, e: &Expr) {
-        self.classify(e);
-    }
-}
-
-pub fn process_crate(tcx: &ty::ctxt) {
-    visit::walk_crate(&mut ConstEvalVisitor {
-        tcx: tcx,
-        ccache: DefIdMap(),
-    }, tcx.map.krate());
-    tcx.sess.abort_if_errors();
-}
-
 
 // FIXME (#33): this doesn't handle big integer/float literals correctly
 // (nor does the rest of our literal handling).

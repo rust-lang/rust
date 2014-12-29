@@ -614,10 +614,6 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     time(time_passes, "check static items", (), |_|
          middle::check_static::check_crate(&ty_cx));
 
-    // These next two const passes can probably be merged
-    time(time_passes, "const marking", (), |_|
-         middle::const_eval::process_crate(&ty_cx));
-
     time(time_passes, "const checking", (), |_|
          middle::check_const::check_crate(&ty_cx));
 

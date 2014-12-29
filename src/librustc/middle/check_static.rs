@@ -79,6 +79,7 @@ pub fn check_crate(tcx: &ty::ctxt) {
         mode: InNothing,
         checker: &mut checker,
     }, tcx.map.krate());
+    tcx.sess.abort_if_errors();
 }
 
 impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
