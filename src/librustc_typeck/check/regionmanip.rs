@@ -131,7 +131,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 // this seems like a minimal requirement:
                 let trait_def = ty::lookup_trait_def(self.tcx, data.trait_ref.def_id);
                 self.accumulate_from_adt(ty, data.trait_ref.def_id,
-                                         &trait_def.generics, &data.trait_ref.substs)
+                                         &trait_def.generics, data.trait_ref.substs)
             }
 
             ty::ty_tup(ref tuptys) => {

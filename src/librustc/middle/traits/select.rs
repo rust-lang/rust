@@ -791,7 +791,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                projection_trait_ref.repr(self.tcx()));
 
         let trait_def = ty::lookup_trait_def(self.tcx(), projection_trait_ref.def_id);
-        let bounds = trait_def.generics.to_bounds(self.tcx(), &projection_trait_ref.substs);
+        let bounds = trait_def.generics.to_bounds(self.tcx(), projection_trait_ref.substs);
         debug!("match_projection_obligation_against_bounds_from_trait: \
                 bounds={}",
                bounds.repr(self.tcx()));

@@ -321,7 +321,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             &ty::UnsizeVtable(ty::TyTrait { ref principal, .. }, _) => {
                 // Note that we preserve binding levels here:
                 let substs = principal.0.substs.with_self_ty(unadjusted_ty).erase_regions();
-                let substs = tcx.tcx().mk_substs(substs);
+                let substs = bcx.tcx().mk_substs(substs);
                 let trait_ref =
                     ty::Binder(Rc::new(ty::TraitRef { def_id: principal.def_id(),
                                                       substs: substs }));

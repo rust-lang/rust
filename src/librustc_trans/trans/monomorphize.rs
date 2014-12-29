@@ -348,6 +348,7 @@ impl<'a,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'tcx> {
 
                 let tcx = self.selcx.tcx();
                 let substs = data.trait_ref.substs.clone().erase_regions();
+                let substs = self.tcx().mk_substs(substs);
                 assert!(substs.types.iter().all(|&t| (!ty::type_has_params(t) &&
                                                       !ty::type_has_self(t))));
                 let trait_ref = Rc::new(ty::TraitRef::new(data.trait_ref.def_id, substs));

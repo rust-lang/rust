@@ -1194,9 +1194,12 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &impl_sig);
-        let impl_fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy { unsafety: impl_m.fty.unsafety,
-                                                                abi: impl_m.fty.abi,
-                                                                sig: ty::Binder(impl_sig) });
+        let impl_fty =
+            ty::mk_bare_fn(tcx,
+                           None,
+                           tcx.mk_bare_fn(ty::BareFnTy { unsafety: impl_m.fty.unsafety,
+                                                         abi: impl_m.fty.abi,
+                                                         sig: ty::Binder(impl_sig) }));
         debug!("compare_impl_method: impl_fty={}",
                impl_fty.repr(tcx));
 
@@ -1210,9 +1213,12 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &trait_sig);
-        let trait_fty = ty::mk_bare_fn(tcx, None, ty::BareFnTy { unsafety: trait_m.fty.unsafety,
-                                                                 abi: trait_m.fty.abi,
-                                                                 sig: ty::Binder(trait_sig) });
+        let trait_fty =
+            ty::mk_bare_fn(tcx,
+                           None,
+                           tcx.mk_bare_fn(ty::BareFnTy { unsafety: trait_m.fty.unsafety,
+                                                         abi: trait_m.fty.abi,
+                                                         sig: ty::Binder(trait_sig) }));
 
         debug!("compare_impl_method: trait_fty={}",
                trait_fty.repr(tcx));

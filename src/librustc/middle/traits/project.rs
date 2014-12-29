@@ -222,9 +222,10 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
         ty::ty_trait(ref data) => data,
         _ => { return; }
     };
-    let env_predicates = data.projection_bounds_with_self_ty(self_ty).iter()
-                                                                     .map(|p| p.as_predicate())
-                                                                     .collect();
+    let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), self_ty);
+    let env_predicates = projection_bounds.iter()
+                                          .map(|p| p.as_predicate())
+                                          .collect();
     assemble_candidates_from_predicates(selcx, obligation, candidate_set, env_predicates)
 }
 
