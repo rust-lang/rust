@@ -864,10 +864,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let region_param_defs = generics.regions.get_slice(subst::TypeSpace);
         let regions = self.region_vars_for_defs(span, region_param_defs);
 
-        let assoc_type_parameter_count = generics.types.len(subst::AssocSpace);
-        let assoc_type_parameters = self.next_ty_vars(assoc_type_parameter_count);
-
-        subst::Substs::new_trait(type_parameters, regions, assoc_type_parameters, self_ty)
+        subst::Substs::new_trait(type_parameters, regions, self_ty)
     }
 
     pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region {
