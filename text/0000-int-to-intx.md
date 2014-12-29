@@ -24,7 +24,7 @@ However:
 
 Rust was and is undergoing quite a lot of breaking changes. Even though the `int/uint` renaming will "break the world", it is not unheard of, and it is mainly a "search & replace". Also, a transition period can be provided, during which `int/uint` can be deprecated, while the new names can take time to replace them. So "to avoid breaking the world" shouldn't stop the renaming.
 
-`int/uint` have a long tradition of being the default integer type names, so programmers *will* be tempted to use them in Rust, even the experienced ones, no matter what the documentation says. The semantics of `int/uint` in Rust is quite different from those in many other mainstream languages. Worse, the Swift programming language, which is heavily influenced by Rust, has the types `Int/UInt` with *almost* the *same semantics* as Rust's `int/uint`, but it *actively encourages* programmers to use `Int` as much as possible. From [the Swift Programming Language](https://developer.apple.com/library/prerelease/ios/documentation/Swift/Conceptual/Swift_Programming_Language/TheBasics.html#//apple_ref/doc/uid/TP40014097-CH5-ID319):
+`int/uint` have a long tradition of being the default integer type names, so programmers *will* be tempted to use them in Rust, even the experienced ones, no matter what the documentation says. The semantics of `int/uint` in Rust is quite different from that in many other mainstream languages. Worse, the Swift programming language, which is heavily influenced by Rust, has the types `Int/UInt` with *almost* the *same semantics* as Rust's `int/uint`, but it *actively encourages* programmers to use `Int` as much as possible. From [the Swift Programming Language](https://developer.apple.com/library/prerelease/ios/documentation/Swift/Conceptual/Swift_Programming_Language/TheBasics.html#//apple_ref/doc/uid/TP40014097-CH5-ID319):
 
 > Swift provides an additional integer type, Int, which has the same size as the current platform’s native word size: ...
 
@@ -40,7 +40,7 @@ Not renaming `int/uint` violates the principle of least surprise, and is not new
 
 As stated in previous discussions, all suggested alternative names have some drawbacks that may be unbearable. (Please refer to [A tale of two's complement](http://discuss.rust-lang.org/t/a-tale-of-twos-complement/1062) and related discussions for details.)
 
-Therefore this RFC proposes a new pair of alternatives: `intx`/`uintx`, where the `x` suffix means "unknown size"/"variable size", or "platform-dependent size".
+Therefore this RFC proposes a new pair of alternatives: `intx/uintx`, where the `x` suffix means "unknown size"/"variable size", or "platform-dependent size".
 
 The pros:
 
@@ -62,6 +62,7 @@ Update code and documentation to use pointer-sized integers more narrowly for th
 
 - Renaming `int`/`uint` requires changing much existing code. On the other hand, this is an ideal opportunity to fix integer portability bugs.
 - The new names are longer (but not much longer).
+- The `x` suffix may be too generic and doesn't carry enough meaning. In particular, it signifies the fact that the size is "unknown"/"variable" "in some way", but what is this "some way" after all?
 
 # Alternatives
 
@@ -72,6 +73,30 @@ Which may hurt in the long run, especially when there is at least one (would-be?
 **B. Use `ix/ux` as the new type names, not just literal suffixes.**
 
 While `ix/ux` more closely follow the `i32/u32` pattern, they may be too short (and tempting) and may not look like integer types for some.
+
+**C. Use `intx/uintx` as the new literal suffixes, not just type names.**
+
+For some, `42intx/42uintx` are too long and don't look pretty, but then again others may find this desirable.
+
+**D. Use `intp/uintp` and/or `ip/up` instead.**
+
+Here `p` means "pointer (sized)" or "platform (dependent)", thus making the semantics of `intp/uintp` clearer than that of `intx/uintx`.
+
+The drawback here is that some people may incorrectly assume that `intp/uintp` *only* have the same use case as C/C++'s `intptr_t/uintptr_t`, which are *only* for storing casted pointer values.
+
+Also, as literal suffixes or type names, `ip/up` may be more confusing than `ix/ux`, as `ip/up` have meanings that aren't related to integers.
+
+**E. Use `imem/umem` and/or `im/um` instead.**
+
+While `imem/umem` was rejected previously, it is still controversial whether they are truly "ugly" or "not integer-like". Also, they may have some advantages over `intx/uintx`:
+
+- They actually more closely follow the `i32/u32` pattern: `i/u` + **mem**ory pointer-sized.
+- So they also better describe what size they have, instead of just stating "unknown"/"variable", but the unfortunate implications of `intp/uintp` are avoided.
+- If one prefers `imem/umem` as type names, then they also make better suffixes than `intx`/`uintx` because `umem` is shorter than `uintx` and `imem/umem` are of the same length.
+
+`im/um` may also be more (or less) confusing than `ix/ux`.
+
+A related pair of variants `intm/uintm` may also be worth considering.
 
 # Unresolved questions
 
