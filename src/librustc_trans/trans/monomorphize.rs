@@ -319,7 +319,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, t: &T) -> T
         return t.clone();
     }
 
-    // TODO cache
+    // FIXME(#20304) -- cache
 
     let infcx = infer::new_infer_ctxt(tcx);
     let param_env = ty::empty_parameter_environment();
