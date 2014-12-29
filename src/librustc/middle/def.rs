@@ -36,6 +36,7 @@ pub enum Def {
     // A partially resolved path to an associated type `T::U` where `T` is a concrete
     // type (indicated by the DefId) which implements a trait which has an associated
     // type `U` (indicated by the Ident).
+    // FIXME(#20301) -- should use Name
     DefAssociatedPath(TyParamProvenance, ast::Ident),
     DefTrait(ast::DefId),
     DefPrimTy(ast::PrimTy),

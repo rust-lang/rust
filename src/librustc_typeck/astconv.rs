@@ -992,7 +992,7 @@ fn qpath_to_ty<'tcx,AC,RS>(this: &AC,
 
     return this.projected_ty(ast_ty.span,
                              trait_ref,
-                             qpath.item_name.name); // TODO change qpath to use name
+                             qpath.item_name.name);
 }
 
 // Parses the programmer's textual representation of a type into our
@@ -1155,7 +1155,6 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                         this.tcx().types.err
                     }
                     def::DefAssociatedPath(provenance, assoc_ident) => {
-                        // TODO update DefAssociatedPath to use name
                         associated_path_def_to_ty(this, ast_ty, provenance, assoc_ident.name)
                     }
                     _ => {

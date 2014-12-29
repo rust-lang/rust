@@ -764,7 +764,7 @@ pub enum Expr_ {
 pub struct QPath {
     pub self_type: P<Ty>,
     pub trait_ref: P<TraitRef>,
-    pub item_name: Ident,
+    pub item_name: Ident, // FIXME(#20301) -- should use Name
 }
 
 #[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
