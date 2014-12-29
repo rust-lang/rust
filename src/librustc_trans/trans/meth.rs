@@ -209,7 +209,6 @@ pub fn trans_static_method_callee(bcx: Block,
     let subst::SeparateVecsPerParamSpace {
         types: rcvr_type,
         selfs: rcvr_self,
-        assocs: rcvr_assoc,
         fns: rcvr_method
     } = rcvr_substs.types.split();
 
@@ -238,7 +237,6 @@ pub fn trans_static_method_callee(bcx: Block,
     let trait_substs =
         Substs::erased(VecPerParamSpace::new(rcvr_type,
                                              rcvr_self,
-                                             rcvr_assoc,
                                              Vec::new()));
     let trait_substs = bcx.tcx().mk_substs(trait_substs);
     debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
@@ -276,13 +274,11 @@ pub fn trans_static_method_callee(bcx: Block,
             let subst::SeparateVecsPerParamSpace {
                 types: impl_type,
                 selfs: impl_self,
-                assocs: impl_assoc,
                 fns: _
             } = impl_substs.types.split();
             let callee_substs =
                 Substs::erased(VecPerParamSpace::new(impl_type,
                                                      impl_self,
-                                                     impl_assoc,
                                                      rcvr_method));
 
             let mth_id = method_with_name(ccx, impl_did, mname);
@@ -411,13 +407,12 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let subst::SeparateVecsPerParamSpace {
         types: rcvr_type,
         selfs: rcvr_self,
-        assocs: rcvr_assoc,
         fns: rcvr_method
     } = rcvr_substs.types.clone().split();
     assert!(rcvr_method.is_empty());
     subst::Substs {
         regions: subst::ErasedRegions,
-        types: subst::VecPerParamSpace::new(rcvr_type, rcvr_self, rcvr_assoc, node_method)
+        types: subst::VecPerParamSpace::new(rcvr_type, rcvr_self, node_method)
     }
 }
 

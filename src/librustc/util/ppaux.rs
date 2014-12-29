@@ -701,10 +701,9 @@ impl<'tcx> Repr<'tcx> for subst::Substs<'tcx> {
 
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for subst::VecPerParamSpace<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("[{};{};{};{}]",
+        format!("[{};{};{}]",
                 self.get_slice(subst::TypeSpace).repr(tcx),
                 self.get_slice(subst::SelfSpace).repr(tcx),
-                self.get_slice(subst::AssocSpace).repr(tcx),
                 self.get_slice(subst::FnSpace).repr(tcx))
     }
 }
