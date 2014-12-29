@@ -1738,7 +1738,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                         if ty::try_add_builtin_trait(tcx,
                                                      trait_did,
                                                      &mut builtin_bounds) {
-                            // TODO Copy<T>?
+                            // FIXME(#20302) -- we should check for things like Copy<T>
                             continue; // success
                         }
                     }
