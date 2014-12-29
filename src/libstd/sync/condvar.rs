@@ -12,10 +12,10 @@ use prelude::*;
 
 use sync::atomic::{mod, AtomicUint};
 use sync::poison::{mod, LockResult};
-use sync::CondvarGuard;
 use sys_common::condvar as sys;
 use sys_common::mutex as sys_mutex;
 use time::Duration;
+use sync::{mutex, MutexGuard};
 
 /// A Condition Variable
 ///
@@ -57,6 +57,7 @@ use time::Duration;
 ///     started = cvar.wait(started).unwrap();
 /// }
 /// ```
+#[stable]
 pub struct Condvar { inner: Box<StaticCondvar> }
 
 unsafe impl Send for Condvar {}
@@ -74,6 +75,7 @@ unsafe impl Sync for Condvar {}
 ///
 /// static CVAR: StaticCondvar = CONDVAR_INIT;
 /// ```
+#[unstable = "may be merged with Condvar in the future"]
 pub struct StaticCondvar {
     inner: sys::Condvar,
     mutex: AtomicUint,
@@ -83,24 +85,16 @@ unsafe impl Send for StaticCondvar {}
 unsafe impl Sync for StaticCondvar {}
 
 /// Constant initializer for a statically allocated condition variable.
+#[unstable = "may be merged with Condvar in the future"]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
     inner: sys::CONDVAR_INIT,
     mutex: atomic::INIT_ATOMIC_UINT,
 };
 
-/// A trait for vaules which can be passed to the waiting methods of condition
-/// variables. This is implemented by the mutex guards in this module.
-///
-/// Note that this trait should likely not be implemented manually unless you
-/// really know what you're doing.
-pub trait AsGuard {
-    #[allow(missing_docs)]
-    fn as_guard(&self) -> CondvarGuard;
-}
-
 impl Condvar {
     /// Creates a new condition variable which is ready to be waited on and
     /// notified.
+    #[stable]
     pub fn new() -> Condvar {
         Condvar {
             inner: box StaticCondvar {
@@ -136,11 +130,12 @@ impl Condvar {
     /// over time. Each condition variable is dynamically bound to exactly one
     /// mutex to ensure defined behavior across platforms. If this functionality
     /// is not desired, then unsafe primitives in `sys` are provided.
-    pub fn wait<T: AsGuard>(&self, mutex_guard: T)
-                            -> LockResult<T> {
+    #[stable]
+    pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>)
+                       -> LockResult<MutexGuard<'a, T>> {
         unsafe {
             let me: &'static Condvar = &*(self as *const _);
-            me.inner.wait(mutex_guard)
+            me.inner.wait(guard)
         }
     }
 
@@ -164,11 +159,11 @@ impl Condvar {
     // provide. There are also additional concerns about the unix-specific
     // implementation which may need to be addressed.
     #[allow(dead_code)]
-    fn wait_timeout<T: AsGuard>(&self, mutex_guard: T, dur: Duration)
-                                -> LockResult<(T, bool)> {
+    fn wait_timeout<'a, T>(&self, guard: MutexGuard<'a, T>, dur: Duration)
+                           -> LockResult<(MutexGuard<'a, T>, bool)> {
         unsafe {
             let me: &'static Condvar = &*(self as *const _);
-            me.inner.wait_timeout(mutex_guard, dur)
+            me.inner.wait_timeout(guard, dur)
         }
     }
 
@@ -179,6 +174,7 @@ impl Condvar {
     /// `notify_one` are not buffered in any way.
     ///
     /// To wake up all threads, see `notify_one()`.
+    #[stable]
     pub fn notify_one(&self) { unsafe { self.inner.inner.notify_one() } }
 
     /// Wake up all blocked threads on this condvar.
@@ -188,6 +184,7 @@ impl Condvar {
     /// way.
     ///
     /// To wake up only one thread, see `notify_one()`.
+    #[stable]
     pub fn notify_all(&self) { unsafe { self.inner.inner.notify_all() } }
 }
 
@@ -202,17 +199,19 @@ impl StaticCondvar {
     /// notification.
     ///
     /// See `Condvar::wait`.
-    pub fn wait<T: AsGuard>(&'static self, mutex_guard: T) -> LockResult<T> {
+    #[unstable = "may be merged with Condvar in the future"]
+    pub fn wait<'a, T>(&'static self, guard: MutexGuard<'a, T>)
+                       -> LockResult<MutexGuard<'a, T>> {
         let poisoned = unsafe {
-            let cvar_guard = mutex_guard.as_guard();
-            self.verify(cvar_guard.lock);
-            self.inner.wait(cvar_guard.lock);
-            cvar_guard.poisoned.get()
+            let lock = mutex::guard_lock(&guard);
+            self.verify(lock);
+            self.inner.wait(lock);
+            mutex::guard_poison(&guard).get()
         };
         if poisoned {
-            Err(poison::new_poison_error(mutex_guard))
+            Err(poison::new_poison_error(guard))
         } else {
-            Ok(mutex_guard)
+            Ok(guard)
         }
     }
 
@@ -221,29 +220,31 @@ impl StaticCondvar {
     ///
     /// See `Condvar::wait_timeout`.
     #[allow(dead_code)] // may want to stabilize this later, see wait_timeout above
-    fn wait_timeout<T: AsGuard>(&'static self, mutex_guard: T, dur: Duration)
-                                -> LockResult<(T, bool)> {
+    fn wait_timeout<'a, T>(&'static self, guard: MutexGuard<'a, T>, dur: Duration)
+                           -> LockResult<(MutexGuard<'a, T>, bool)> {
         let (poisoned, success) = unsafe {
-            let cvar_guard = mutex_guard.as_guard();
-            self.verify(cvar_guard.lock);
-            let success = self.inner.wait_timeout(cvar_guard.lock, dur);
-            (cvar_guard.poisoned.get(), success)
+            let lock = mutex::guard_lock(&guard);
+            self.verify(lock);
+            let success = self.inner.wait_timeout(lock, dur);
+            (mutex::guard_poison(&guard).get(), success)
         };
         if poisoned {
-            Err(poison::new_poison_error((mutex_guard, success)))
+            Err(poison::new_poison_error((guard, success)))
         } else {
-            Ok((mutex_guard, success))
+            Ok((guard, success))
         }
     }
 
     /// Wake up one blocked thread on this condvar.
     ///
     /// See `Condvar::notify_one`.
+    #[unstable = "may be merged with Condvar in the future"]
     pub fn notify_one(&'static self) { unsafe { self.inner.notify_one() } }
 
     /// Wake up all blocked threads on this condvar.
     ///
     /// See `Condvar::notify_all`.
+    #[unstable = "may be merged with Condvar in the future"]
     pub fn notify_all(&'static self) { unsafe { self.inner.notify_all() } }
 
     /// Deallocate all resources associated with this static condvar.
@@ -252,6 +253,7 @@ impl StaticCondvar {
     /// active users of the condvar, and this also doesn't prevent any future
     /// users of the condvar. This method is required to be called to not leak
     /// memory on all platforms.
+    #[unstable = "may be merged with Condvar in the future"]
     pub unsafe fn destroy(&'static self) {
         self.inner.destroy()
     }

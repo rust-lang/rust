@@ -53,18 +53,22 @@ pub struct Guard {
 /// is held. The precise semantics for when a lock is poisoned is documented on
 /// each lock, but once a lock is poisoned then all future acquisitions will
 /// return this error.
+#[stable]
 pub struct PoisonError<T> {
     guard: T,
 }
 
 /// An enumeration of possible errors which can occur while calling the
 /// `try_lock` method.
+#[stable]
 pub enum TryLockError<T> {
     /// The lock could not be acquired because another task failed while holding
     /// the lock.
+    #[stable]
     Poisoned(PoisonError<T>),
     /// The lock could not be acquired at this time because the operation would
     /// otherwise block.
+    #[stable]
     WouldBlock,
 }
 
@@ -75,6 +79,7 @@ pub enum TryLockError<T> {
 /// that the primitive was poisoned. Note that the `Err` variant *also* carries
 /// the associated guard, and it can be acquired through the `into_inner`
 /// method.
+#[stable]
 pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 
 /// A type alias for the result of a nonblocking locking method.
@@ -82,6 +87,7 @@ pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 /// For more information, see `LockResult`. A `TryLockResult` doesn't
 /// necessarily hold the associated guard in the `Err` type as the lock may not
 /// have been acquired for other reasons.
+#[stable]
 pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 
 impl<T> fmt::Show for PoisonError<T> {
@@ -93,6 +99,7 @@ impl<T> fmt::Show for PoisonError<T> {
 impl<T> PoisonError<T> {
     /// Consumes this error indicating that a lock is poisoned, returning the
     /// underlying guard to allow access regardless.
+    #[stable]
     pub fn into_guard(self) -> T { self.guard }
 }
 
