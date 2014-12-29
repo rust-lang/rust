@@ -23,6 +23,7 @@
 # * dist-docs - Stage docs for upload
 
 PKG_NAME := $(CFG_PACKAGE_NAME)
+DOC_PKG_NAME := rust-docs-$(CFG_PACKAGE_VERS)
 
 # License suitable for displaying in a popup
 LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
@@ -229,7 +230,11 @@ dist-install-dir-$(1): prepare-base-dir-$(1) docs compiler-docs
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-MIT $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)README.md $$(PREPARE_DEST_DIR)
-	$$(Q)[ ! -d doc ] || cp -r doc $$(PREPARE_DEST_DIR)
+	$$(Q)mkdir -p $$(PREPARE_DEST_DIR)/share/doc/rust
+	$$(Q)$$(PREPARE_MAN_CMD) $$(S)COPYRIGHT $$(PREPARE_DEST_DIR)/share/doc/rust
+	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)/share/doc/rust
+	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-MIT $$(PREPARE_DEST_DIR)/share/doc/rust
+	$$(Q)$$(PREPARE_MAN_CMD) $$(S)README.md $$(PREPARE_DEST_DIR)/share/doc/rust
 
 dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 	@$(call E, build: $$@)
@@ -247,6 +252,26 @@ dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 		--legacy-manifest-dirs=rustlib,cargo
 	$$(Q)rm -R tmp/dist/$$(PKG_NAME)-$(1)-image
 
+dist-doc-install-dir-$(1): docs compiler-docs
+	$$(Q)mkdir -p tmp/dist/$$(DOC_PKG_NAME)-$(1)-image/share/doc/rust
+	$$(Q)cp -r doc tmp/dist/$$(DOC_PKG_NAME)-$(1)-image/share/doc/rust/html
+
+dist/$$(DOC_PKG_NAME)-$(1).tar.gz: dist-doc-install-dir-$(1)
+	@$(call E, build: $$@)
+	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
+		--product-name=Rust-Documentation \
+		--rel-manifest-dir=rustlib \
+		--success-message=Rust-documentation-is-installed. \
+		--image-dir=tmp/dist/$$(DOC_PKG_NAME)-$(1)-image \
+		--work-dir=tmp/dist \
+		--output-dir=dist \
+		--package-name=$$(DOC_PKG_NAME)-$(1) \
+		--component-name=rust-docs \
+		--legacy-manifest-dirs=rustlib,cargo \
+		--bulk-dirs=share/doc/rust/html
+	$$(Q)rm -R tmp/dist/$$(DOC_PKG_NAME)-$(1)-image
+
+
 endef
 
 ifneq ($(CFG_ENABLE_DIST_HOST_ONLY),)
@@ -259,7 +284,12 @@ endif
 
 dist-install-dirs: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
 
+ifneq ($(CFG_DISABLE_DOCS),)
 dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz)
+else
+dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz) \
+               $(foreach host,$(CFG_HOST),dist/$(DOC_PKG_NAME)-$(host).tar.gz)
+endif
 
 # Just try to run the compiler for the build host
 distcheck-tar-bins: dist-tar-bins
