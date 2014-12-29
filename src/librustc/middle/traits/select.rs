@@ -1259,12 +1259,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         } else {
                             // Recursively check all supertraits to find out if any further
                             // bounds are required and thus we must fulfill.
-                            let tmp_tr =
+                            let principal =
                                 data.principal_trait_ref_with_self_ty(self.tcx(),
                                                                       self.tcx().types.err);
-                            for tr in util::supertraits(self.tcx(), tmp_tr) {
+                            for tr in util::supertraits(self.tcx(), principal) {
                                 let td = ty::lookup_trait_def(self.tcx(), tr.def_id());
-
                                 if td.bounds.builtin_bounds.contains(&bound) {
                                     return Ok(If(Vec::new()))
                                 }
