@@ -229,6 +229,18 @@ validate_opt() {
     done
 }
 
+create_tmp_dir() {
+    local TMP_DIR=./rustup-tmp-install
+
+    rm -Rf "${TMP_DIR}"
+    need_ok "failed to remove temporary installation directory"
+
+    mkdir -p "${TMP_DIR}"
+    need_ok "failed to create create temporary installation directory"
+
+    echo $TMP_DIR
+}
+
 probe_need CFG_CURL  curl
 probe_need CFG_TAR   tar
 probe_need CFG_FILE  file
@@ -401,7 +413,9 @@ then
     CFG_INSTALL_FLAGS="${CFG_INSTALL_FLAGS} --prefix=${CFG_PREFIX}"
 fi
 
-CFG_TMP_DIR="./rustup-tmp-install"
+CFG_TMP_DIR=$(mktemp -d 2>/dev/null \
+           || mktemp -d -t 'rustup-tmp-install' 2>/dev/null \
+           || create_tmp_dir)
 
 RUST_URL="https://static.rust-lang.org/dist"
 RUST_PACKAGE_NAME=rust-nightly
@@ -423,9 +437,6 @@ download_package() {
     local_tarball="$2"
 
     msg "Downloading ${remote_tarball} to ${local_tarball}"
-
-    mkdir -p "${CFG_TMP_DIR}"
-    need_ok "failed to create create download directory"
 
     "${CFG_CURL}" -f -o "${local_tarball}" "${remote_tarball}"
     if [ $? -ne 0 ]
