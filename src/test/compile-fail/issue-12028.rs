@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test an example where we fail to infer the type parameter H. This
+// is because there is really nothing constraining it. At one time, we
+// would infer based on the where clauses in scope, but that no longer
+// works.
+
 trait Hash<H> {
     fn hash2(&self, hasher: &H) -> u64;
 }
@@ -30,7 +35,7 @@ trait StreamHash<S: Stream, H: StreamHasher<S>>: Hash<H> {
 impl<S: Stream, H: StreamHasher<S>> Hash<H> for u8 {
     fn hash2(&self, hasher: &H) -> u64 {
         let mut stream = hasher.stream();
-        self.input_stream(&mut stream);
+        self.input_stream(&mut stream); //~ ERROR type annotations required
         stream.result()
     }
 }

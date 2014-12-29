@@ -8,25 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we correctly infer that `E` must be `()` here.  This is
-// known because there is just one impl that could apply where
-// `Self=()`.
+// Test equality constraints on associated types in a where clause.
 
-pub trait FromError<E> {
-    fn from_error(err: E) -> Self;
+#![feature(associated_types)]
+
+pub trait ToInt {
+    fn to_int(&self) -> int;
 }
 
-impl<E> FromError<E> for E {
-    fn from_error(err: E) -> E {
-        err
-    }
+pub trait GetToInt
+{
+    type R;
+
+    fn get(&self) -> <Self as GetToInt>::R;
 }
 
-fn test() -> Result<(), ()> {
-    Err(FromError::from_error(()))
+fn foo<G>(g: G) -> int
+    where G : GetToInt
+{
+    ToInt::to_int(&g.get()) //~ ERROR not implemented
 }
 
-fn main() {
-    let result = (|| Err(FromError::from_error(())))();
-    let foo: () = result.unwrap_or(());
+fn bar<G : GetToInt>(g: G) -> int
+    where G::R : ToInt
+{
+    ToInt::to_int(&g.get()) // OK
+}
+
+pub fn main() {
 }

@@ -736,10 +736,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_def_id = match poly_trait_predicate.0.trait_ref.self_ty().sty {
             ty::ty_projection(ref data) => data.trait_ref.def_id,
             ty::ty_infer(ty::TyVar(_)) => {
-                // TODO ignore potential ambiguity so that we can do
-                // better inference, need to get our story
-                // straight(er) here, I think.
-                // candidates.ambiguous = true;
+                // If the self-type is an inference variable, then it MAY wind up
+                // being a projected type, so induce an ambiguity.
+                //
+                // FIXME(#20297) -- being strict about this can cause
+                // inference failures with BorrowFrom, which is
+                // unfortunate. Can we do better here?
+                candidates.ambiguous = true;
                 return;
             }
             _ => { return; }
