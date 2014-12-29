@@ -244,7 +244,21 @@ create_tmp_dir() {
 probe_need CFG_CURL  curl
 probe_need CFG_TAR   tar
 probe_need CFG_FILE  file
-probe_need CFG_SHASUM shasum
+
+probe CFG_SHA256SUM sha256sum
+probe CFG_SHASUM shasum
+
+if [ -z "$CFG_SHA256SUM" -a -z "$CFG_SHASUM" ]; then
+    err "unable to find either sha256sum or shasum"
+fi
+
+calculate_hash() {
+    if [ -n "$CFG_SHA256SUM" ]; then
+        ${CFG_SHA256SUM} $@
+    else
+        ${CFG_SHASUM} -a 256 $@
+    fi
+}
 
 CFG_SRC_DIR="$(cd $(dirname $0) && pwd)/"
 CFG_SELF="$0"
@@ -474,7 +488,7 @@ verify_hash() {
     fi
 
     msg "Verifying hash"
-    local_sha256=`"${CFG_SHASUM}" -a 256 "${local_file}"`
+    local_sha256=$(calculate_hash "${local_file}")
     if [ "$?" -ne 0 ]; then
         rm -Rf "${CFG_TMP_DIR}"
         err "Failed to compute hash for ${local_tarball}"
