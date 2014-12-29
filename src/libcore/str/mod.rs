@@ -18,7 +18,6 @@
 
 use self::Searcher::{Naive, TwoWay, TwoWayLong};
 
-use clone::Clone;
 use cmp::{mod, Eq};
 use default::Default;
 use iter::range;
@@ -34,6 +33,70 @@ use raw::{Repr, Slice};
 use result::Result::{mod, Ok, Err};
 use slice::{mod, SliceExt};
 use uint;
+
+macro_rules! delegate_iter {
+    (exact $te:ty in $ti:ty) => {
+        delegate_iter!{$te in $ti}
+        impl<'a> ExactSizeIterator<$te> for $ti {
+            #[inline]
+            fn rposition<P>(&mut self, predicate: P) -> Option<uint> where P: FnMut($te) -> bool{
+                self.0.rposition(predicate)
+            }
+            #[inline]
+            fn len(&self) -> uint {
+                self.0.len()
+            }
+        }
+    };
+    ($te:ty in $ti:ty) => {
+        impl<'a> Iterator<$te> for $ti {
+            #[inline]
+            fn next(&mut self) -> Option<$te> {
+                self.0.next()
+            }
+            #[inline]
+            fn size_hint(&self) -> (uint, Option<uint>) {
+                self.0.size_hint()
+            }
+        }
+        impl<'a> DoubleEndedIterator<$te> for $ti {
+            #[inline]
+            fn next_back(&mut self) -> Option<$te> {
+                self.0.next_back()
+            }
+        }
+    };
+    (pattern $te:ty in $ti:ty) => {
+        impl<'a, P: CharEq> Iterator<$te> for $ti {
+            #[inline]
+            fn next(&mut self) -> Option<$te> {
+                self.0.next()
+            }
+            #[inline]
+            fn size_hint(&self) -> (uint, Option<uint>) {
+                self.0.size_hint()
+            }
+        }
+        impl<'a, P: CharEq> DoubleEndedIterator<$te> for $ti {
+            #[inline]
+            fn next_back(&mut self) -> Option<$te> {
+                self.0.next_back()
+            }
+        }
+    };
+    (pattern forward $te:ty in $ti:ty) => {
+        impl<'a, P: CharEq> Iterator<$te> for $ti {
+            #[inline]
+            fn next(&mut self) -> Option<$te> {
+                self.0.next()
+            }
+            #[inline]
+            fn size_hint(&self) -> (uint, Option<uint>) {
+                self.0.size_hint()
+            }
+        }
+    }
+}
 
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.
@@ -333,29 +396,28 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharIndices<'a> {
 
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
+///
+/// Created with `StrExt::bytes`
 #[stable]
 #[deriving(Clone)]
-pub struct Bytes<'a> {
-    inner: Map<&'a u8, u8, slice::Iter<'a, u8>, BytesFn>,
-}
+pub struct Bytes<'a>(Map<&'a u8, u8, slice::Iter<'a, u8>, BytesDeref>);
+delegate_iter!{exact u8 in Bytes<'a>}
 
-/// A temporary new type wrapper that ensures that the `Bytes` iterator
+/// A temporary fn new type that ensures that the `Bytes` iterator
 /// is cloneable.
-#[deriving(Copy)]
-struct BytesFn(fn(&u8) -> u8);
+#[deriving(Copy, Clone)]
+struct BytesDeref;
 
-impl<'a> Fn(&'a u8) -> u8 for BytesFn {
+impl<'a> Fn(&'a u8) -> u8 for BytesDeref {
+    #[inline]
     extern "rust-call" fn call(&self, (ptr,): (&'a u8,)) -> u8 {
-        (self.0)(ptr)
+        *ptr
     }
-}
-
-impl Clone for BytesFn {
-    fn clone(&self) -> BytesFn { *self }
 }
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
+#[deprecated = "Type is now named `Split` or `SplitTerminator`"]
 pub struct CharSplits<'a, Sep> {
     /// The slice remaining to be iterated
     string: &'a str,
@@ -369,6 +431,7 @@ pub struct CharSplits<'a, Sep> {
 /// An iterator over the substrings of a string, separated by `sep`,
 /// splitting at most `count` times.
 #[deriving(Clone)]
+#[deprecated = "Type is now named `SplitN` or `RSplitN`"]
 pub struct CharSplitsN<'a, Sep> {
     iter: CharSplits<'a, Sep>,
     /// The number of splits remaining
@@ -790,11 +853,16 @@ pub struct MatchIndices<'a> {
 /// An iterator over the substrings of a string separated by a given
 /// search string
 #[deriving(Clone)]
-pub struct StrSplits<'a> {
+#[unstable = "Type might get removed"]
+pub struct SplitStr<'a> {
     it: MatchIndices<'a>,
     last_end: uint,
     finished: bool
 }
+
+/// Deprecated
+#[deprecated = "Type is now named `SplitStr`"]
+pub type StrSplits<'a> = SplitStr<'a>;
 
 impl<'a> Iterator<(uint, uint)> for MatchIndices<'a> {
     #[inline]
@@ -810,7 +878,7 @@ impl<'a> Iterator<(uint, uint)> for MatchIndices<'a> {
     }
 }
 
-impl<'a> Iterator<&'a str> for StrSplits<'a> {
+impl<'a> Iterator<&'a str> for SplitStr<'a> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         if self.finished { return None; }
@@ -1158,23 +1226,47 @@ impl<'a, Sized? S> Str for &'a S where S: Str {
     fn as_slice(&self) -> &str { Str::as_slice(*self) }
 }
 
+/// Return type of `StrExt::split`
+#[deriving(Clone)]
+#[stable]
+pub struct Split<'a, P>(CharSplits<'a, P>);
+delegate_iter!{pattern &'a str in Split<'a, P>}
+
+/// Return type of `StrExt::split_terminator`
+#[deriving(Clone)]
+#[unstable = "might get removed in favour of a constructor method on Split"]
+pub struct SplitTerminator<'a, P>(CharSplits<'a, P>);
+delegate_iter!{pattern &'a str in SplitTerminator<'a, P>}
+
+/// Return type of `StrExt::splitn`
+#[deriving(Clone)]
+#[stable]
+pub struct SplitN<'a, P>(CharSplitsN<'a, P>);
+delegate_iter!{pattern forward &'a str in SplitN<'a, P>}
+
+/// Return type of `StrExt::rsplitn`
+#[deriving(Clone)]
+#[stable]
+pub struct RSplitN<'a, P>(CharSplitsN<'a, P>);
+delegate_iter!{pattern forward &'a str in RSplitN<'a, P>}
+
 /// Methods for string slices
 #[allow(missing_docs)]
 pub trait StrExt for Sized? {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.
 
-    fn contains(&self, needle: &str) -> bool;
-    fn contains_char(&self, needle: char) -> bool;
+    fn contains(&self, pat: &str) -> bool;
+    fn contains_char<P: CharEq>(&self, pat: P) -> bool;
     fn chars<'a>(&'a self) -> Chars<'a>;
     fn bytes<'a>(&'a self) -> Bytes<'a>;
     fn char_indices<'a>(&'a self) -> CharIndices<'a>;
-    fn split<'a, Sep: CharEq>(&'a self, sep: Sep) -> CharSplits<'a, Sep>;
-    fn splitn<'a, Sep: CharEq>(&'a self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
-    fn split_terminator<'a, Sep: CharEq>(&'a self, sep: Sep) -> CharSplits<'a, Sep>;
-    fn rsplitn<'a, Sep: CharEq>(&'a self, count: uint, sep: Sep) -> CharSplitsN<'a, Sep>;
+    fn split<'a, P: CharEq>(&'a self, pat: P) -> Split<'a, P>;
+    fn splitn<'a, P: CharEq>(&'a self, count: uint, pat: P) -> SplitN<'a, P>;
+    fn split_terminator<'a, P: CharEq>(&'a self, pat: P) -> SplitTerminator<'a, P>;
+    fn rsplitn<'a, P: CharEq>(&'a self, count: uint, pat: P) -> RSplitN<'a, P>;
     fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a>;
-    fn split_str<'a>(&'a self, &'a str) -> StrSplits<'a>;
+    fn split_str<'a>(&'a self, pat: &'a str) -> SplitStr<'a>;
     fn lines<'a>(&'a self) -> Lines<'a>;
     fn lines_any<'a>(&'a self) -> LinesAny<'a>;
     fn char_len(&self) -> uint;
@@ -1183,20 +1275,20 @@ pub trait StrExt for Sized? {
     fn slice_to<'a>(&'a self, end: uint) -> &'a str;
     fn slice_chars<'a>(&'a self, begin: uint, end: uint) -> &'a str;
     unsafe fn slice_unchecked<'a>(&'a self, begin: uint, end: uint) -> &'a str;
-    fn starts_with(&self, needle: &str) -> bool;
-    fn ends_with(&self, needle: &str) -> bool;
-    fn trim_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str;
-    fn trim_left_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str;
-    fn trim_right_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str;
+    fn starts_with(&self, pat: &str) -> bool;
+    fn ends_with(&self, pat: &str) -> bool;
+    fn trim_matches<'a, P: CharEq>(&'a self, pat: P) -> &'a str;
+    fn trim_left_matches<'a, P: CharEq>(&'a self, pat: P) -> &'a str;
+    fn trim_right_matches<'a, P: CharEq>(&'a self, pat: P) -> &'a str;
     fn is_char_boundary(&self, index: uint) -> bool;
     fn char_range_at(&self, start: uint) -> CharRange;
     fn char_range_at_reverse(&self, start: uint) -> CharRange;
     fn char_at(&self, i: uint) -> char;
     fn char_at_reverse(&self, i: uint) -> char;
     fn as_bytes<'a>(&'a self) -> &'a [u8];
-    fn find<C: CharEq>(&self, search: C) -> Option<uint>;
-    fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
-    fn find_str(&self, &str) -> Option<uint>;
+    fn find<P: CharEq>(&self, pat: P) -> Option<uint>;
+    fn rfind<P: CharEq>(&self, pat: P) -> Option<uint>;
+    fn find_str(&self, pat: &str) -> Option<uint>;
     fn slice_shift_char<'a>(&'a self) -> Option<(char, &'a str)>;
     fn subslice_offset(&self, inner: &str) -> uint;
     fn as_ptr(&self) -> *const u8;
@@ -1218,8 +1310,8 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn contains_char(&self, needle: char) -> bool {
-        self.find(needle).is_some()
+    fn contains_char<P: CharEq>(&self, pat: P) -> bool {
+        self.find(pat).is_some()
     }
 
     #[inline]
@@ -1229,9 +1321,7 @@ impl StrExt for str {
 
     #[inline]
     fn bytes(&self) -> Bytes {
-        fn deref(&x: &u8) -> u8 { x }
-
-        Bytes { inner: self.as_bytes().iter().map(BytesFn(deref)) }
+        Bytes(self.as_bytes().iter().map(BytesDeref))
     }
 
     #[inline]
@@ -1240,43 +1330,44 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<Sep> {
-        CharSplits {
+    #[allow(deprecated)] // For using CharSplits
+    fn split<P: CharEq>(&self, pat: P) -> Split<P> {
+        Split(CharSplits {
             string: self,
-            only_ascii: sep.only_ascii(),
-            sep: sep,
+            only_ascii: pat.only_ascii(),
+            sep: pat,
             allow_trailing_empty: true,
             finished: false,
-        }
+        })
     }
 
     #[inline]
-    fn splitn<Sep: CharEq>(&self, count: uint, sep: Sep)
-        -> CharSplitsN<Sep> {
-        CharSplitsN {
-            iter: self.split(sep),
+    #[allow(deprecated)] // For using CharSplitsN
+    fn splitn<P: CharEq>(&self, count: uint, pat: P) -> SplitN<P> {
+        SplitN(CharSplitsN {
+            iter: self.split(pat).0,
             count: count,
             invert: false,
-        }
+        })
     }
 
     #[inline]
-    fn split_terminator<Sep: CharEq>(&self, sep: Sep)
-        -> CharSplits<Sep> {
-        CharSplits {
+    #[allow(deprecated)] // For using CharSplits
+    fn split_terminator<P: CharEq>(&self, pat: P) -> SplitTerminator<P> {
+        SplitTerminator(CharSplits {
             allow_trailing_empty: false,
-            ..self.split(sep)
-        }
+            ..self.split(pat).0
+        })
     }
 
     #[inline]
-    fn rsplitn<Sep: CharEq>(&self, count: uint, sep: Sep)
-        -> CharSplitsN<Sep> {
-        CharSplitsN {
-            iter: self.split(sep),
+    #[allow(deprecated)] // For using CharSplitsN
+    fn rsplitn<P: CharEq>(&self, count: uint, pat: P) -> RSplitN<P> {
+        RSplitN(CharSplitsN {
+            iter: self.split(pat).0,
             count: count,
             invert: true,
-        }
+        })
     }
 
     #[inline]
@@ -1290,8 +1381,8 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn split_str<'a>(&'a self, sep: &'a str) -> StrSplits<'a> {
-        StrSplits {
+    fn split_str<'a>(&'a self, sep: &'a str) -> SplitStr<'a> {
+        SplitStr {
             it: self.match_indices(sep),
             last_end: 0,
             finished: false
@@ -1300,7 +1391,7 @@ impl StrExt for str {
 
     #[inline]
     fn lines(&self) -> Lines {
-        Lines { inner: self.split_terminator('\n') }
+        Lines { inner: self.split_terminator('\n').0 }
     }
 
     fn lines_any(&self) -> LinesAny {
@@ -1393,12 +1484,12 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn trim_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
-        let cur = match self.find(|&mut: c: char| !to_trim.matches(c)) {
+    fn trim_matches<P: CharEq>(&self, mut pat: P) -> &str {
+        let cur = match self.find(|&mut: c: char| !pat.matches(c)) {
             None => "",
             Some(i) => unsafe { self.slice_unchecked(i, self.len()) }
         };
-        match cur.rfind(|&mut: c: char| !to_trim.matches(c)) {
+        match cur.rfind(|&mut: c: char| !pat.matches(c)) {
             None => "",
             Some(i) => {
                 let right = cur.char_range_at(i).next;
@@ -1408,16 +1499,16 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn trim_left_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
-        match self.find(|&mut: c: char| !to_trim.matches(c)) {
+    fn trim_left_matches<P: CharEq>(&self, mut pat: P) -> &str {
+        match self.find(|&mut: c: char| !pat.matches(c)) {
             None => "",
             Some(first) => unsafe { self.slice_unchecked(first, self.len()) }
         }
     }
 
     #[inline]
-    fn trim_right_chars<C: CharEq>(&self, mut to_trim: C) -> &str {
-        match self.rfind(|&mut: c: char| !to_trim.matches(c)) {
+    fn trim_right_matches<P: CharEq>(&self, mut pat: P) -> &str {
+        match self.rfind(|&mut: c: char| !pat.matches(c)) {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;
@@ -1504,23 +1595,23 @@ impl StrExt for str {
         unsafe { mem::transmute(self) }
     }
 
-    fn find<C: CharEq>(&self, mut search: C) -> Option<uint> {
-        if search.only_ascii() {
-            self.bytes().position(|b| search.matches(b as char))
+    fn find<P: CharEq>(&self, mut pat: P) -> Option<uint> {
+        if pat.only_ascii() {
+            self.bytes().position(|b| pat.matches(b as char))
         } else {
             for (index, c) in self.char_indices() {
-                if search.matches(c) { return Some(index); }
+                if pat.matches(c) { return Some(index); }
             }
             None
         }
     }
 
-    fn rfind<C: CharEq>(&self, mut search: C) -> Option<uint> {
-        if search.only_ascii() {
-            self.bytes().rposition(|b| search.matches(b as char))
+    fn rfind<P: CharEq>(&self, mut pat: P) -> Option<uint> {
+        if pat.only_ascii() {
+            self.bytes().rposition(|b| pat.matches(b as char))
         } else {
             for (index, c) in self.char_indices().rev() {
-                if search.matches(c) { return Some(index); }
+                if pat.matches(c) { return Some(index); }
             }
             None
         }
@@ -1596,14 +1687,3 @@ impl<'a> DoubleEndedIterator<&'a str> for LinesAny<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
 }
-impl<'a> Iterator<u8> for Bytes<'a> {
-    #[inline]
-    fn next(&mut self) -> Option<u8> { self.inner.next() }
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
-}
-impl<'a> DoubleEndedIterator<u8> for Bytes<'a> {
-    #[inline]
-    fn next_back(&mut self) -> Option<u8> { self.inner.next_back() }
-}
-impl<'a> ExactSizeIterator<u8> for Bytes<'a> {}

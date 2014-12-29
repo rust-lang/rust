@@ -817,7 +817,7 @@ impl NonCamelCaseTypes {
         fn is_camel_case(ident: ast::Ident) -> bool {
             let ident = token::get_ident(ident);
             if ident.get().is_empty() { return true; }
-            let ident = ident.get().trim_chars('_');
+            let ident = ident.get().trim_matches('_');
 
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
@@ -940,8 +940,8 @@ impl NonSnakeCase {
         fn is_snake_case(ident: ast::Ident) -> bool {
             let ident = token::get_ident(ident);
             if ident.get().is_empty() { return true; }
-            let ident = ident.get().trim_left_chars('\'');
-            let ident = ident.trim_chars('_');
+            let ident = ident.get().trim_left_matches('\'');
+            let ident = ident.trim_matches('_');
 
             let mut allow_underscore = true;
             ident.chars().all(|c| {
