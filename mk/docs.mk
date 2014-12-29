@@ -236,7 +236,8 @@ LIB_DOC_DEP_$(1) = \
 	$$(RSINPUTS_$(1)) \
 	$$(RUSTDOC_EXE) \
 	$$(foreach dep,$$(RUST_DEPS_$(1)), \
-		$$(TLIB2_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.$$(dep) \
+		$$(TLIB2_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.$$(dep)) \
+	$$(foreach dep,$$(filter $$(DOC_CRATES), $$(RUST_DEPS_$(1))), \
 		doc/$$(dep)/)
 else
 LIB_DOC_DEP_$(1) = $$(CRATEFILE_$(1)) $$(RSINPUTS_$(1))
