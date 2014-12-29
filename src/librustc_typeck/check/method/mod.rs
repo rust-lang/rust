@@ -16,7 +16,6 @@ use check::{impl_self_ty};
 use check::vtable;
 use check::vtable::select_new_fcx_obligations;
 use middle::subst;
-use middle::subst::{Subst};
 use middle::traits;
 use middle::ty::*;
 use middle::ty;
@@ -156,18 +155,15 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
         }
     };
 
-    let number_assoc_types = trait_def.generics.types.len(subst::AssocSpace);
-    let assoc_types = fcx.inh.infcx.next_ty_vars(number_assoc_types);
-
     assert_eq!(trait_def.generics.types.len(subst::FnSpace), 0);
     assert!(trait_def.generics.regions.is_empty());
 
     // Construct a trait-reference `self_ty : Trait<input_tys>`
-    let substs = subst::Substs::new_trait(input_types, Vec::new(), assoc_types, self_ty);
+    let substs = subst::Substs::new_trait(input_types, Vec::new(), self_ty);
     let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs)));
 
     // Construct an obligation
-    let poly_trait_ref = Rc::new(ty::Binder((*trait_ref).clone()));
+    let poly_trait_ref = trait_ref.to_poly_trait_ref();
     let obligation = traits::Obligation::misc(span,
                                               fcx.body_id,
                                               poly_trait_ref.as_predicate());
@@ -191,18 +187,21 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     debug!("lookup_in_trait_adjusted: method_num={} method_ty={}",
            method_num, method_ty.repr(fcx.tcx()));
 
-    // Substitute the trait parameters into the method type and
-    // instantiate late-bound regions to get the actual method type.
-    let ref bare_fn_ty = method_ty.fty;
-    let fn_sig = bare_fn_ty.sig.subst(tcx, trait_ref.substs);
+    // Instantiate late-bound regions and substitute the trait
+    // parameters into the method type to get the actual method type.
+    //
+    // NB: Instantiate late-bound regions first so that
+    // `instantiate_type_scheme` can normalize associated types that
+    // may reference those regions.
     let fn_sig = fcx.infcx().replace_late_bound_regions_with_fresh_var(span,
                                                                        infer::FnCall,
-                                                                       &fn_sig).0;
+                                                                       &method_ty.fty.sig).0;
+    let fn_sig = fcx.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
     let transformed_self_ty = fn_sig.inputs[0];
     let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
-        unsafety: bare_fn_ty.unsafety,
-        abi: bare_fn_ty.abi.clone(),
+        unsafety: method_ty.fty.unsafety,
+        abi: method_ty.fty.abi.clone(),
     }));
 
     debug!("lookup_in_trait_adjusted: matched method fty={} obligation={}",

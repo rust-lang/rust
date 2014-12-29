@@ -10,8 +10,9 @@
 
 use super::probe;
 
-use check::{mod, FnCtxt, NoPreference, PreferMutLvalue, callee};
-use middle::subst::{mod, Subst};
+use check::{mod, FnCtxt, NoPreference, PreferMutLvalue, callee, demand};
+use middle::mem_categorization::Typer;
+use middle::subst::{mod};
 use middle::traits;
 use middle::ty::{mod, Ty};
 use middle::ty::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
@@ -227,14 +228,14 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     let upcast_poly_trait_ref =
                         this.upcast(original_poly_trait_ref.clone(), trait_def_id);
                     let upcast_trait_ref =
-                        this.replace_late_bound_regions_with_fresh_var(&*upcast_poly_trait_ref);
+                        this.replace_late_bound_regions_with_fresh_var(&upcast_poly_trait_ref);
                     debug!("original_poly_trait_ref={} upcast_trait_ref={} target_trait={}",
                            original_poly_trait_ref.repr(this.tcx()),
                            upcast_trait_ref.repr(this.tcx()),
                            trait_def_id.repr(this.tcx()));
                     let substs = upcast_trait_ref.substs.clone();
                     let origin = MethodTraitObject(MethodObject {
-                        trait_ref: Rc::new(upcast_trait_ref),
+                        trait_ref: upcast_trait_ref,
                         object_trait_id: trait_def_id,
                         method_num: method_num,
                         real_index: real_index,
@@ -254,9 +255,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 // parameters from the trait ([$A,$B]), not those from
                 // the impl ([$A,$B,$C]) not the receiver type ([$C]).
                 let impl_polytype = check::impl_self_ty(self.fcx, self.span, impl_def_id);
-                let impl_trait_ref = ty::impl_trait_ref(self.tcx(), impl_def_id)
-                                     .unwrap()
-                                     .subst(self.tcx(), &impl_polytype.substs);
+                let impl_trait_ref =
+                    self.fcx.instantiate_type_scheme(
+                        self.span,
+                        &impl_polytype.substs,
+                        &ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap());
                 let origin = MethodTypeParam(MethodParam { trait_ref: impl_trait_ref.clone(),
                                                            method_num: method_num });
                 (impl_trait_ref.substs.clone(), origin)
@@ -284,9 +287,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             probe::WhereClausePick(ref poly_trait_ref, method_num) => {
                 // Where clauses can have bound regions in them. We need to instantiate
                 // those to convert from a poly-trait-ref to a trait-ref.
-                let trait_ref = self.replace_late_bound_regions_with_fresh_var(&**poly_trait_ref);
+                let trait_ref = self.replace_late_bound_regions_with_fresh_var(&*poly_trait_ref);
                 let substs = trait_ref.substs.clone();
-                let origin = MethodTypeParam(MethodParam { trait_ref: Rc::new(trait_ref),
+                let origin = MethodTypeParam(MethodParam { trait_ref: trait_ref,
                                                            method_num: method_num });
                 (substs, origin)
             }
@@ -342,7 +345,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             } else if num_supplied_types != num_method_types {
                 span_err!(self.tcx().sess, self.span, E0036,
                     "incorrect number of type parameters given for this method");
-                Vec::from_elem(num_method_types, ty::mk_err())
+                Vec::from_elem(num_method_types, self.tcx().types.err)
             } else {
                 supplied_method_types
             }
@@ -410,7 +413,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let method_bounds_substs = match pick.kind {
             probe::ObjectPick(..) => {
                 let mut temp_substs = all_substs.clone();
-                temp_substs.types.get_mut_slice(subst::SelfSpace)[0] = ty::mk_err();
+                temp_substs.types.get_mut_slice(subst::SelfSpace)[0] = self.tcx().types.err;
                 temp_substs
             }
             _ => {
@@ -422,13 +425,18 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         debug!("method_bounds after subst = {}",
                method_bounds.repr(self.tcx()));
 
-        // Substitute the type/early-bound-regions into the method
-        // signature. In addition, the method signature may bind
-        // late-bound regions, so instantiate those.
-        let method_sig = pick.method_ty.fty.sig.subst(self.tcx(), &all_substs);
-        let method_sig = self.replace_late_bound_regions_with_fresh_var(&method_sig);
-
+        // Instantiate late-bound regions and substitute the trait
+        // parameters into the method type to get the actual method type.
+        //
+        // NB: Instantiate late-bound regions first so that
+        // `instantiate_type_scheme` can normalize associated types that
+        // may reference those regions.
+        let method_sig = self.replace_late_bound_regions_with_fresh_var(&pick.method_ty.fty.sig);
         debug!("late-bound lifetimes from method instantiated, method_sig={}",
+               method_sig.repr(self.tcx()));
+
+        let method_sig = self.fcx.instantiate_type_scheme(self.span, &all_substs, &method_sig);
+        debug!("type scheme substituted, method_sig={}",
                method_sig.repr(self.tcx()));
 
         InstantiatedMethodSig {
@@ -534,7 +542,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             // Don't retry the first one or we might infinite loop!
             if i != 0 {
                 match expr.node {
-                    ast::ExprIndex(ref base_expr, _) => {
+                    ast::ExprIndex(ref base_expr, ref index_expr) => {
                         let mut base_adjustment =
                             match self.fcx.inh.adjustments.borrow().get(&base_expr.id) {
                                 Some(&ty::AdjustDerefRef(ref adr)) => (*adr).clone(),
@@ -570,7 +578,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                 &**base_expr,
                                 Some(&ty::AdjustDerefRef(base_adjustment.clone())));
 
-                        check::try_index_step(
+                        let result = check::try_index_step(
                             self.fcx,
                             MethodCall::expr(expr.id),
                             *expr,
@@ -578,6 +586,14 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             adjusted_base_ty,
                             base_adjustment,
                             PreferMutLvalue);
+
+                        if let Some((input_ty, return_ty)) = result {
+                            let index_expr_ty = self.fcx.expr_ty(&**index_expr);
+                            demand::suptype(self.fcx, index_expr.span, input_ty, index_expr_ty);
+
+                            let expr_ty = self.fcx.expr_ty(&**expr);
+                            demand::suptype(self.fcx, expr.span, expr_ty, return_ty);
+                        }
                     }
                     ast::ExprUnary(ast::UnDeref, ref base_expr) => {
                         // if this is an overloaded deref, then re-evaluate with
@@ -627,9 +643,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn upcast(&mut self,
-              source_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
+              source_trait_ref: ty::PolyTraitRef<'tcx>,
               target_trait_def_id: ast::DefId)
-              -> Rc<ty::PolyTraitRef<'tcx>>
+              -> ty::PolyTraitRef<'tcx>
     {
         for super_trait_ref in traits::supertraits(self.tcx(), source_trait_ref.clone()) {
             if super_trait_ref.def_id() == target_trait_def_id {

@@ -32,7 +32,7 @@ use middle::ty::{mod, Ty};
 use syntax::abi::RustIntrinsic;
 use syntax::ast;
 use syntax::parse::token;
-use util::ppaux::ty_to_string;
+use util::ppaux::{Repr, ty_to_string};
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
     let name = match token::get_ident(item.ident).get() {
@@ -90,46 +90,53 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Opti
 /// Performs late verification that intrinsics are used correctly. At present,
 /// the only intrinsic that needs such verification is `transmute`.
 pub fn check_intrinsics(ccx: &CrateContext) {
-    for transmute_restriction in ccx.tcx()
-                                    .transmute_restrictions
-                                    .borrow()
-                                    .iter() {
+    let mut last_failing_id = None;
+    for transmute_restriction in ccx.tcx().transmute_restrictions.borrow().iter() {
+        // Sometimes, a single call to transmute will push multiple
+        // type pairs to test in order to exhaustively test the
+        // possibility around a type parameter. If one of those fails,
+        // there is no sense reporting errors on the others.
+        if last_failing_id == Some(transmute_restriction.id) {
+            continue;
+        }
+
+        debug!("transmute_restriction: {}", transmute_restriction.repr(ccx.tcx()));
+
+        assert!(!ty::type_has_params(transmute_restriction.substituted_from));
+        assert!(!ty::type_has_params(transmute_restriction.substituted_to));
+
         let llfromtype = type_of::sizing_type_of(ccx,
-                                                 transmute_restriction.from);
+                                                 transmute_restriction.substituted_from);
         let lltotype = type_of::sizing_type_of(ccx,
-                                               transmute_restriction.to);
+                                               transmute_restriction.substituted_to);
         let from_type_size = machine::llbitsize_of_real(ccx, llfromtype);
         let to_type_size = machine::llbitsize_of_real(ccx, lltotype);
         if from_type_size != to_type_size {
-            ccx.sess()
-               .span_err(transmute_restriction.span,
-                format!("transmute called on types with different sizes: \
-                         {} ({} bit{}) to {} ({} bit{})",
-                        ty_to_string(ccx.tcx(), transmute_restriction.from),
-                        from_type_size as uint,
-                        if from_type_size == 1 {
-                            ""
-                        } else {
-                            "s"
-                        },
-                        ty_to_string(ccx.tcx(), transmute_restriction.to),
-                        to_type_size as uint,
-                        if to_type_size == 1 {
-                            ""
-                        } else {
-                            "s"
-                        })[]);
-        }
-        if ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.to) ||
-           ty::type_is_fat_ptr(ccx.tcx(), transmute_restriction.from) {
-            ccx.sess()
-               .add_lint(::lint::builtin::FAT_PTR_TRANSMUTES,
-                         transmute_restriction.id,
-                         transmute_restriction.span,
-                         format!("Transmuting fat pointer types; {} to {}.\
-                                  Beware of relying on the compiler's representation",
-                                 ty_to_string(ccx.tcx(), transmute_restriction.from),
-                                 ty_to_string(ccx.tcx(), transmute_restriction.to)));
+            last_failing_id = Some(transmute_restriction.id);
+
+            if transmute_restriction.original_from != transmute_restriction.substituted_from {
+                ccx.sess().span_err(
+                    transmute_restriction.span,
+                    format!("transmute called on types with potentially different sizes: \
+                             {} (could be {} bit{}) to {} (could be {} bit{})",
+                            ty_to_string(ccx.tcx(), transmute_restriction.original_from),
+                            from_type_size as uint,
+                            if from_type_size == 1 {""} else {"s"},
+                            ty_to_string(ccx.tcx(), transmute_restriction.original_to),
+                            to_type_size as uint,
+                            if to_type_size == 1 {""} else {"s"}).as_slice());
+            } else {
+                ccx.sess().span_err(
+                    transmute_restriction.span,
+                    format!("transmute called on types with different sizes: \
+                             {} ({} bit{}) to {} ({} bit{})",
+                            ty_to_string(ccx.tcx(), transmute_restriction.original_from),
+                            from_type_size as uint,
+                            if from_type_size == 1 {""} else {"s"},
+                            ty_to_string(ccx.tcx(), transmute_restriction.original_to),
+                            to_type_size as uint,
+                            if to_type_size == 1 {""} else {"s"}).as_slice());
+            }
         }
     }
     ccx.sess().abort_if_errors();
@@ -365,7 +372,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "needs_drop") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            C_bool(ccx, ty::type_needs_drop(ccx.tcx(), tp_ty))
+            C_bool(ccx, type_needs_drop(ccx.tcx(), tp_ty))
         }
         (_, "owns_managed") => {
             let tp_ty = *substs.types.get(FnSpace, 0);

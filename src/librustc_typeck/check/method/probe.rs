@@ -18,7 +18,7 @@ use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, Ty, ToPolyTraitRef};
 use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
@@ -61,7 +61,7 @@ enum CandidateKind<'tcx> {
     ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef<'tcx>>,
                            subst::Substs<'tcx>, MethodIndex),
     UnboxedClosureCandidate(/* Trait */ ast::DefId, MethodIndex),
-    WhereClauseCandidate(Rc<ty::PolyTraitRef<'tcx>>, MethodIndex),
+    WhereClauseCandidate(ty::PolyTraitRef<'tcx>, MethodIndex),
 }
 
 pub struct Pick<'tcx> {
@@ -76,7 +76,7 @@ pub enum PickKind<'tcx> {
     ObjectPick(/* Trait */ ast::DefId, /* method_num */ uint, /* real_index */ uint),
     ExtensionImplPick(/* Impl */ ast::DefId, MethodIndex),
     TraitPick(/* Trait */ ast::DefId, MethodIndex),
-    WhereClausePick(/* Trait */ Rc<ty::PolyTraitRef<'tcx>>, MethodIndex),
+    WhereClausePick(/* Trait */ ty::PolyTraitRef<'tcx>, MethodIndex),
 }
 
 pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError>;
@@ -235,7 +235,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         match self_ty.sty {
             ty::ty_trait(box ref data) => {
                 self.assemble_inherent_candidates_from_object(self_ty, data);
-                self.assemble_inherent_impl_candidates_for_type(data.principal.def_id());
+                self.assemble_inherent_impl_candidates_for_type(data.principal_def_id());
             }
             ty::ty_enum(did, _) |
             ty::ty_struct(did, _) |
@@ -308,7 +308,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let trait_ref = data.principal_trait_ref_with_self_ty(self.tcx(), self_ty);
         self.elaborate_bounds(&[trait_ref.clone()], false, |this, new_trait_ref, m, method_num| {
             let vtable_index =
-                get_method_index(tcx, &*new_trait_ref, trait_ref.clone(), method_num);
+                get_method_index(tcx, &new_trait_ref, trait_ref.clone(), method_num);
 
             let xform_self_ty = this.xform_self_ty(&m, new_trait_ref.substs());
 
@@ -330,13 +330,16 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             .iter()
             .filter_map(|predicate| {
                 match *predicate {
-                    ty::Predicate::Trait(ref trait_ref) => {
-                        match trait_ref.self_ty().sty {
-                            ty::ty_param(ref p) if *p == param_ty => Some(trait_ref.clone()),
+                    ty::Predicate::Trait(ref trait_predicate) => {
+                        match trait_predicate.0.trait_ref.self_ty().sty {
+                            ty::ty_param(ref p) if *p == param_ty => {
+                                Some(trait_predicate.to_poly_trait_ref())
+                            }
                             _ => None
                         }
                     }
                     ty::Predicate::Equate(..) |
+                    ty::Predicate::Projection(..) |
                     ty::Predicate::RegionOutlives(..) |
                     ty::Predicate::TypeOutlives(..) => {
                         None
@@ -381,10 +384,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     // create the candidates.
     fn elaborate_bounds(
         &mut self,
-        bounds: &[Rc<ty::PolyTraitRef<'tcx>>],
+        bounds: &[ty::PolyTraitRef<'tcx>],
         num_includes_types: bool,
         mk_cand: for<'b> |this: &mut ProbeContext<'b, 'tcx>,
-                          tr: Rc<ty::PolyTraitRef<'tcx>>,
+                          tr: ty::PolyTraitRef<'tcx>,
                           m: Rc<ty::Method<'tcx>>,
                           method_num: uint|)
     {
@@ -996,7 +999,7 @@ fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 // to a trait and its supertraits.
 fn get_method_index<'tcx>(tcx: &ty::ctxt<'tcx>,
                           trait_ref: &ty::PolyTraitRef<'tcx>,
-                          subtrait: Rc<ty::PolyTraitRef<'tcx>>,
+                          subtrait: ty::PolyTraitRef<'tcx>,
                           n_method: uint) -> uint {
     // We need to figure the "real index" of the method in a
     // listing of all the methods of an object. We do this by

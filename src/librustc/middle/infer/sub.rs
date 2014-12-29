@@ -146,7 +146,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
             }
 
             (&ty::ty_err, _) | (_, &ty::ty_err) => {
-                Ok(ty::mk_err())
+                Ok(self.tcx().types.err)
             }
 
             _ => {

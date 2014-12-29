@@ -84,6 +84,7 @@ pub struct LocalCrateContext<'tcx> {
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     item_vals: RefCell<NodeMap<ValueRef>>,
+    needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     tydescs: RefCell<FnvHashMap<Ty<'tcx>, Rc<tydesc_info<'tcx>>>>,
@@ -99,7 +100,7 @@ pub struct LocalCrateContext<'tcx> {
     monomorphized: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<uint>>,
     /// Cache generated vtables
-    vtables: RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::PolyTraitRef<'tcx>>), ValueRef>>,
+    vtables: RefCell<FnvHashMap<(Ty<'tcx>, ty::PolyTraitRef<'tcx>), ValueRef>>,
     /// Cache of constant strings,
     const_cstr_cache: RefCell<FnvHashMap<InternedString, ValueRef>>,
 
@@ -150,7 +151,7 @@ pub struct LocalCrateContext<'tcx> {
     /// contexts around the same size.
     n_llvm_insns: Cell<uint>,
 
-    trait_cache: RefCell<FnvHashMap<Rc<ty::PolyTraitRef<'tcx>>,
+    trait_cache: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>,
                                     traits::Vtable<'tcx, ()>>>,
 }
 
@@ -389,6 +390,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 tn: TypeNames::new(),
                 externs: RefCell::new(FnvHashMap::new()),
                 item_vals: RefCell::new(NodeMap::new()),
+                needs_unwind_cleanup_cache: RefCell::new(FnvHashMap::new()),
                 fn_pointer_shims: RefCell::new(FnvHashMap::new()),
                 drop_glues: RefCell::new(FnvHashMap::new()),
                 tydescs: RefCell::new(FnvHashMap::new()),
@@ -569,6 +571,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.link_meta
     }
 
+    pub fn needs_unwind_cleanup_cache(&self) -> &RefCell<FnvHashMap<Ty<'tcx>, bool>> {
+        &self.local.needs_unwind_cleanup_cache
+    }
+
     pub fn fn_pointer_shims(&self) -> &RefCell<FnvHashMap<Ty<'tcx>, ValueRef>> {
         &self.local.fn_pointer_shims
     }
@@ -601,7 +607,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.monomorphizing
     }
 
-    pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<(Ty<'tcx>, Rc<ty::PolyTraitRef<'tcx>>),
+    pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<(Ty<'tcx>, ty::PolyTraitRef<'tcx>),
                                                             ValueRef>> {
         &self.local.vtables
     }
@@ -699,7 +705,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.n_llvm_insns.set(self.local.n_llvm_insns.get() + 1);
     }
 
-    pub fn trait_cache(&self) -> &RefCell<FnvHashMap<Rc<ty::PolyTraitRef<'tcx>>,
+    pub fn trait_cache(&self) -> &RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>,
                                                      traits::Vtable<'tcx, ()>>> {
         &self.local.trait_cache
     }

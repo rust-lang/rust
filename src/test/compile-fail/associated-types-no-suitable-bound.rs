@@ -8,25 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we correctly infer that `E` must be `()` here.  This is
-// known because there is just one impl that could apply where
-// `Self=()`.
+#![feature(associated_types)]
 
-pub trait FromError<E> {
-    fn from_error(err: E) -> Self;
+trait Get {
+    type Value;
+    fn get(&self) -> <Self as Get>::Value;
 }
 
-impl<E> FromError<E> for E {
-    fn from_error(err: E) -> E {
-        err
-    }
+struct Struct {
+    x: int,
 }
 
-fn test() -> Result<(), ()> {
-    Err(FromError::from_error(()))
+impl Struct {
+    fn uhoh<T>(foo: <T as Get>::Value) {}
+    //~^ ERROR the trait `Get` is not implemented for the type `T`
 }
 
 fn main() {
-    let result = (|| Err(FromError::from_error(())))();
-    let foo: () = result.unwrap_or(());
 }
+

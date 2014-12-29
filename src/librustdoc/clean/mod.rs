@@ -34,8 +34,7 @@ use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::{DUMMY_SP, Pos, Spanned};
-use syntax::parse::token::InternedString;
-use syntax::parse::token;
+use syntax::parse::token::{mod, InternedString, special_idents};
 use syntax::ptr::P;
 
 use rustc_trans::back::link;
@@ -504,13 +503,16 @@ impl Clean<TyParamBound> for ast::TyParamBound {
     }
 }
 
-impl Clean<Vec<TyParamBound>> for ty::ExistentialBounds {
+impl<'tcx> Clean<Vec<TyParamBound>> for ty::ExistentialBounds<'tcx> {
     fn clean(&self, cx: &DocContext) -> Vec<TyParamBound> {
         let mut vec = vec![];
         self.region_bound.clean(cx).map(|b| vec.push(RegionBound(b)));
         for bb in self.builtin_bounds.iter() {
             vec.push(bb.clean(cx));
         }
+
+        // FIXME(#20299) -- should do something with projection bounds
+
         vec
     }
 }
@@ -1223,11 +1225,9 @@ pub enum Type {
     },
     // I have no idea how to usefully use this.
     TyParamBinder(ast::NodeId),
-    /// For parameterized types, so the consumer of the JSON don't go looking
-    /// for types which don't exist anywhere.
-    Generic(ast::DefId),
-    /// For references to self
-    Self(ast::DefId),
+    /// For parameterized types, so the consumer of the JSON don't go
+    /// looking for types which don't exist anywhere.
+    Generic(String),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
     Primitive(PrimitiveType),
     Closure(Box<ClosureDecl>),
@@ -1465,18 +1465,11 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 }
             }
             ty::ty_struct(did, substs) |
-            ty::ty_enum(did, substs) |
-            ty::ty_trait(box ty::TyTrait {
-                principal: ty::Binder(ty::TraitRef { def_id: did, substs }),
-                .. }) =>
-            {
+            ty::ty_enum(did, substs) => {
                 let fqn = csearch::get_item_path(cx.tcx(), did);
-                let fqn: Vec<String> = fqn.into_iter().map(|i| {
-                    i.to_string()
-                }).collect();
+                let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
                 let kind = match self.sty {
                     ty::ty_struct(..) => TypeStruct,
-                    ty::ty_trait(..) => TypeTrait,
                     _ => TypeEnum,
                 };
                 let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
@@ -1488,15 +1481,34 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     did: did,
                 }
             }
-            ty::ty_tup(ref t) => Tuple(t.clean(cx)),
-
-            ty::ty_param(ref p) => {
-                if p.space == subst::SelfSpace {
-                    Self(p.def_id)
-                } else {
-                    Generic(p.def_id)
+            ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
+                let did = principal.def_id();
+                let fqn = csearch::get_item_path(cx.tcx(), did);
+                let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
+                let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
+                                         Some(did), principal.substs());
+                cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, TypeTrait));
+                ResolvedPath {
+                    path: path,
+                    typarams: Some(bounds.clean(cx)),
+                    did: did,
                 }
             }
+            ty::ty_tup(ref t) => Tuple(t.clean(cx)),
+
+            ty::ty_projection(ref data) => {
+                let trait_ref = match data.trait_ref.clean(cx) {
+                    TyParamBound::TraitBound(t) => t.trait_,
+                    TyParamBound::RegionBound(_) => panic!("cleaning a trait got a region??"),
+                };
+                Type::QPath {
+                    name: data.item_name.clean(cx),
+                    self_type: box data.trait_ref.self_ty().clean(cx),
+                    trait_: box trait_ref,
+                }
+            }
+
+            ty::ty_param(ref p) => Generic(token::get_name(p.name).to_string()),
 
             ty::ty_unboxed_closure(..) => Tuple(vec![]), // FIXME(pcwalton)
 
@@ -2281,7 +2293,9 @@ fn resolve_type(cx: &DocContext,
     };
 
     match def {
-        def::DefSelfTy(i) => return Self(ast_util::local_def(i)),
+        def::DefSelfTy(..) => {
+            return Generic(token::get_name(special_idents::type_self.name).to_string());
+        }
         def::DefPrimTy(p) => match p {
             ast::TyStr => return Primitive(Str),
             ast::TyBool => return Primitive(Bool),
@@ -2299,7 +2313,7 @@ fn resolve_type(cx: &DocContext,
             ast::TyFloat(ast::TyF32) => return Primitive(F32),
             ast::TyFloat(ast::TyF64) => return Primitive(F64),
         },
-        def::DefTyParam(_, i, _) => return Generic(i),
+        def::DefTyParam(_, _, _, n) => return Generic(token::get_name(n).to_string()),
         def::DefTyParamBinder(i) => return TyParamBinder(i),
         _ => {}
     };

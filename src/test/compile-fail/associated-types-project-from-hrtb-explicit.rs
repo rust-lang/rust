@@ -8,23 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types. Check we get an error when an
-// equality constraint is used in a qualified path.
+// Test you can't use a higher-ranked trait bound inside of a qualified
+// path (just won't parse).
 
 #![feature(associated_types)]
 
-pub trait Foo {
+pub trait Foo<T> {
     type A;
-    fn boo(&self) -> <Self as Foo>::A;
+
+    fn get(&self, t: T) -> Self::A;
 }
 
-struct Bar;
-
-impl Foo for int {
-    type A = uint;
-    fn boo(&self) -> uint { 42 }
+fn foo2<I>(x: <I as for<'x> Foo<&'x int>>::A)
+    //~^ ERROR expected identifier, found keyword `for`
+    //~| ERROR expected one of `::` or `>`
+{
 }
-
-fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {} //~ERROR equality constraints are not allowed in this
 
 pub fn main() {}

@@ -41,14 +41,14 @@ enum Boo {
     Quux(Bar<uint>),
 }
 
-struct Badness<T> {
+struct Badness<U> {
 //~^ ERROR not implemented
-    b: Foo<T>,
+    b: Foo<U>,
 }
 
-enum MoreBadness<T> {
+enum MoreBadness<V> {
 //~^ ERROR not implemented
-    EvenMoreBadness(Bar<T>),
+    EvenMoreBadness(Bar<V>),
 }
 
 trait PolyTrait<T> {

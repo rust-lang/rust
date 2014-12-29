@@ -448,6 +448,12 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     bound_sep,
                     bound_str)
         }
+        ty::ty_projection(ref data) => {
+            format!("<{} as {}>::{}",
+                    data.trait_ref.self_ty().user_string(cx),
+                    data.trait_ref.user_string(cx),
+                    data.item_name.user_string(cx))
+        }
         ty_str => "str".to_string(),
         ty_unboxed_closure(ref did, _, substs) => {
             let unboxed_closures = cx.unboxed_closures.borrow();
@@ -695,10 +701,9 @@ impl<'tcx> Repr<'tcx> for subst::Substs<'tcx> {
 
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for subst::VecPerParamSpace<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("[{};{};{};{}]",
+        format!("[{};{};{}]",
                 self.get_slice(subst::TypeSpace).repr(tcx),
                 self.get_slice(subst::SelfSpace).repr(tcx),
-                self.get_slice(subst::AssocSpace).repr(tcx),
                 self.get_slice(subst::FnSpace).repr(tcx))
     }
 }
@@ -733,8 +738,8 @@ impl<'tcx> Repr<'tcx> for ty::BuiltinBounds {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::ExistentialBounds {
-    fn repr(&self, tcx: &ctxt) -> String {
+impl<'tcx> Repr<'tcx> for ty::ExistentialBounds<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         self.user_string(tcx)
     }
 }
@@ -929,9 +934,9 @@ impl<'tcx> Repr<'tcx> for ast::DefId {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::Polytype<'tcx> {
+impl<'tcx> Repr<'tcx> for ty::TypeScheme<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("Polytype {{generics: {}, ty: {}}}",
+        format!("TypeScheme {{generics: {}, ty: {}}}",
                 self.generics.repr(tcx),
                 self.ty.repr(tcx))
     }
@@ -1136,8 +1141,8 @@ impl<'tcx> UserString<'tcx> for ty::ParamBounds<'tcx> {
     }
 }
 
-impl<'tcx> UserString<'tcx> for ty::ExistentialBounds {
-    fn user_string(&self, tcx: &ctxt) -> String {
+impl<'tcx> UserString<'tcx> for ty::ExistentialBounds<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         if self.builtin_bounds.contains(&ty::BoundSend) &&
             self.region_bound == ty::ReStatic
         { // Region bound is implied by builtin bounds:
@@ -1322,17 +1327,8 @@ impl<'tcx> Repr<'tcx> for ty::ExplicitSelfCategory {
 }
 
 impl<'tcx> UserString<'tcx> for ParamTy {
-    fn user_string(&self, tcx: &ctxt) -> String {
-        let id = self.idx;
-        let did = self.def_id;
-        let ident = match tcx.ty_param_defs.borrow().get(&did.node) {
-            Some(def) => token::get_name(def.name).get().to_string(),
-
-            // This can only happen when a type mismatch error happens and
-            // the actual type has more type parameters than the expected one.
-            None => format!("<generic #{}>", id),
-        };
-        ident
+    fn user_string(&self, _tcx: &ctxt) -> String {
+        format!("{}", token::get_name(self.name))
     }
 }
 
@@ -1408,17 +1404,55 @@ impl<'tcx> UserString<'tcx> for ty::EquatePredicate<'tcx> {
     }
 }
 
+impl<'tcx> Repr<'tcx> for ty::TraitPredicate<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("TraitPredicate({})",
+                self.trait_ref.repr(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::TraitPredicate<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("{} : {}",
+                self.trait_ref.self_ty().user_string(tcx),
+                self.trait_ref.user_string(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::ProjectionPredicate<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("{} == {}",
+                self.projection_ty.user_string(tcx),
+                self.ty.user_string(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::ProjectionTy<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("<{} as {}>::{}",
+                self.trait_ref.self_ty().repr(tcx),
+                self.trait_ref.repr(tcx),
+                self.item_name.repr(tcx))
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::ProjectionTy<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("<{} as {}>::{}",
+                self.trait_ref.self_ty().user_string(tcx),
+                self.trait_ref.user_string(tcx),
+                self.item_name.user_string(tcx))
+    }
+}
+
 impl<'tcx> UserString<'tcx> for ty::Predicate<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
-            ty::Predicate::Trait(ref trait_ref) => {
-                format!("{} : {}",
-                        trait_ref.self_ty().user_string(tcx),
-                        trait_ref.user_string(tcx))
-            }
+            ty::Predicate::Trait(ref data) => data.user_string(tcx),
             ty::Predicate::Equate(ref predicate) => predicate.user_string(tcx),
             ty::Predicate::RegionOutlives(ref predicate) => predicate.user_string(tcx),
             ty::Predicate::TypeOutlives(ref predicate) => predicate.user_string(tcx),
+            ty::Predicate::Projection(ref predicate) => predicate.user_string(tcx),
         }
     }
 }

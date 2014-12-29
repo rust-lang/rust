@@ -31,7 +31,6 @@ use middle::infer;
 use middle::traits;
 use middle::mem_categorization as mc;
 use middle::expr_use_visitor as euv;
-use util::common::ErrorReported;
 use util::nodemap::NodeSet;
 
 use syntax::ast;
@@ -72,7 +71,7 @@ pub fn check_crate(tcx: &ty::ctxt) {
     };
     {
         let param_env = ty::empty_parameter_environment();
-        let visitor = euv::ExprUseVisitor::new(&mut checker, tcx, param_env);
+        let visitor = euv::ExprUseVisitor::new(&mut checker, tcx, &param_env);
         visit::walk_crate(&mut GlobalVisitor(visitor), tcx.map.krate());
     }
     visit::walk_crate(&mut CheckStaticVisitor {
@@ -120,19 +119,14 @@ impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
         let ty = ty::node_id_to_type(self.tcx, e.id);
         let infcx = infer::new_infer_ctxt(self.tcx);
         let mut fulfill_cx = traits::FulfillmentContext::new();
-        match traits::poly_trait_ref_for_builtin_bound(self.tcx, ty::BoundSync, ty) {
-            Ok(trait_ref) => {
-                let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
-                fulfill_cx.register_trait_ref(self.tcx, trait_ref, cause);
-                let env = ty::empty_parameter_environment();
-                match fulfill_cx.select_all_or_error(&infcx, &env, self.tcx) {
-                    Ok(()) => { },
-                    Err(ref errors) => {
-                      traits::report_fulfillment_errors(&infcx, errors);
-                    }
-                }
+        let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
+        fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
+        let env = ty::empty_parameter_environment();
+        match fulfill_cx.select_all_or_error(&infcx, &env, self.tcx) {
+            Ok(()) => { },
+            Err(ref errors) => {
+                traits::report_fulfillment_errors(&infcx, errors);
             }
-            Err(ErrorReported) => { }
         }
     }
 }
