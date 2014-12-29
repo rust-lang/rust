@@ -5400,7 +5400,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             span_err!(fcx.tcx().sess, data.bindings[0].span, E0182,
                       "unexpected binding of associated item in expression path \
                        (only allowed in type paths)");
-            substs.types.truncate(subst::ParamSpace::AssocSpace, 0);
         }
 
         {

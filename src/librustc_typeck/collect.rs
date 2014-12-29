@@ -905,7 +905,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // ...and also create the `Self` parameter.
         let self_ty = ty::mk_self_type(ccx.tcx);
 
-        subst::Substs::new_trait(types, regions, Vec::new(), self_ty)
+        subst::Substs::new_trait(types, regions, self_ty)
     }
 }
 

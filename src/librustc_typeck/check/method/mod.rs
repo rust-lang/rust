@@ -155,14 +155,11 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
         }
     };
 
-    let number_assoc_types = trait_def.generics.types.len(subst::AssocSpace);
-    let assoc_types = fcx.inh.infcx.next_ty_vars(number_assoc_types);
-
     assert_eq!(trait_def.generics.types.len(subst::FnSpace), 0);
     assert!(trait_def.generics.regions.is_empty());
 
     // Construct a trait-reference `self_ty : Trait<input_tys>`
-    let substs = subst::Substs::new_trait(input_types, Vec::new(), assoc_types, self_ty);
+    let substs = subst::Substs::new_trait(input_types, Vec::new(), self_ty);
     let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs)));
 
     // Construct an obligation

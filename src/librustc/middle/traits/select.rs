@@ -1674,8 +1674,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             });
         }
 
-        let obligations = VecPerParamSpace::new(obligations, Vec::new(),
-                                                Vec::new(), Vec::new());
+        let obligations = VecPerParamSpace::new(obligations, Vec::new(), Vec::new());
 
         debug!("vtable_builtin_data: obligations={}",
                obligations.repr(self.tcx()));
@@ -1769,7 +1768,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Substs::new_trait(
                 vec![arguments_tuple, output_type],
                 vec![],
-                vec![],
                 self_ty);
         let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
             def_id: obligation.predicate.def_id(),
@@ -1809,7 +1807,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Substs::new_trait(
                 vec![arguments_tuple.subst(self.tcx(), substs),
                      closure_sig.0.output.unwrap().subst(self.tcx(), substs)],
-                vec![],
                 vec![],
                 obligation.self_ty());
         let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
