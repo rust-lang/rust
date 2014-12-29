@@ -15,7 +15,7 @@ extern crate "issue-17718" as other;
 use std::sync::atomic;
 
 const C1: uint = 1;
-const C2: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+const C2: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
 const C3: fn() = foo;
 const C4: uint = C1 * C1 + C1 / C1;
 const C5: &'static uint = &C4;
@@ -25,7 +25,7 @@ const C6: uint = {
 };
 
 static S1: uint = 3;
-static S2: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+static S2: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
 
 mod test {
     static A: uint = 4;

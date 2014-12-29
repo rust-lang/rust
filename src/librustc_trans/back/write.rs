@@ -1009,7 +1009,7 @@ unsafe fn configure_llvm(sess: &Session) {
         }
     }
 
-    INIT.doit(|| {
+    INIT.call_once(|| {
         llvm::LLVMInitializePasses();
 
         // Only initialize the platforms supported by Rust here, because

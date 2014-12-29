@@ -1480,9 +1480,9 @@ data are being stored, or single-address and mutability properties are required.
 ```
 use std::sync::atomic;
 
-// Note that INIT_ATOMIC_UINT is a *const*, but it may be used to initialize a
+// Note that ATOMIC_UINT_INIT is a *const*, but it may be used to initialize a
 // static. This static can be modified, so it is not placed in read-only memory.
-static COUNTER: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+static COUNTER: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
 
 // This table is a candidate to be placed in read-only memory.
 static TABLE: &'static [uint] = &[1, 2, 3, /* ... */];

@@ -11,7 +11,7 @@
 //! Generic support for building blocking abstractions.
 
 use thread::Thread;
-use sync::atomic::{AtomicBool, INIT_ATOMIC_BOOL, Ordering};
+use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 use sync::Arc;
 use kinds::{Sync, Send};
 use kinds::marker::{NoSend, NoSync};
@@ -40,7 +40,7 @@ pub struct WaitToken {
 pub fn tokens() -> (WaitToken, SignalToken) {
     let inner = Arc::new(Inner {
         thread: Thread::current(),
-        woken: INIT_ATOMIC_BOOL,
+        woken: ATOMIC_BOOL_INIT,
     });
     let wait_token = WaitToken {
         inner: inner.clone(),

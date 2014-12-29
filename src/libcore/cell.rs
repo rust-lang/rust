@@ -155,6 +155,8 @@
 // FIXME: Can't be shared between threads. Dynamic borrows
 // FIXME: Relationship to Atomic types and RWLock
 
+#![stable]
+
 use clone::Clone;
 use cmp::PartialEq;
 use default::Default;

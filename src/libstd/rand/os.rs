@@ -84,10 +84,10 @@ mod imp {
     #[cfg(all(target_os = "linux",
               any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm")))]
     fn is_getrandom_available() -> bool {
-        use sync::atomic::{AtomicBool, INIT_ATOMIC_BOOL, Relaxed};
+        use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Relaxed};
 
-        static GETRANDOM_CHECKED: AtomicBool = INIT_ATOMIC_BOOL;
-        static GETRANDOM_AVAILABLE: AtomicBool = INIT_ATOMIC_BOOL;
+        static GETRANDOM_CHECKED: AtomicBool = ATOMIC_BOOL_INIT;
+        static GETRANDOM_AVAILABLE: AtomicBool = ATOMIC_BOOL_INIT;
 
         if !GETRANDOM_CHECKED.load(Relaxed) {
             let mut buf: [u8; 0] = [];

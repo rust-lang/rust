@@ -137,7 +137,7 @@ pub const INIT: StaticKey = StaticKey {
 ///
 /// This value allows specific configuration of the destructor for a TLS key.
 pub const INIT_INNER: StaticKeyInner = StaticKeyInner {
-    key: atomic::INIT_ATOMIC_UINT,
+    key: atomic::ATOMIC_UINT_INIT,
 };
 
 static INIT_KEYS: Once = ONCE_INIT;

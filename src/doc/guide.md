@@ -5312,6 +5312,7 @@ example, if you wish to compute some value in the background, `Future` is
 a useful thing to use:
 
 ```{rust}
+# #![allow(deprecated)]
 use std::sync::Future;
 
 let mut delayed_value = Future::spawn(move || {
