@@ -56,16 +56,15 @@ use middle::resolve_lifetime;
 use middle::infer;
 use middle::stability;
 use middle::subst::{mod, Subst, Substs, VecPerParamSpace};
-use middle::traits::ObligationCause;
 use middle::traits;
 use middle::ty;
 use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
 use util::ppaux::{trait_store_to_string, ty_to_string};
 use util::ppaux::{Repr, UserString};
-use util::common::{indenter, memoized, ErrorReported};
+use util::common::{memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
-use util::nodemap::{FnvHashMap, FnvHashSet};
+use util::nodemap::{FnvHashMap};
 
 use arena::TypedArena;
 use std::borrow::BorrowFrom;
@@ -80,13 +79,13 @@ use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, DUMMY_NODE_ID, Ident, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{CrateNum, DefId, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{Onceness, StmtExpr, StmtSemi, StructField, UnnamedField};
 use syntax::ast::{Visibility};
 use syntax::ast_util::{mod, is_local, lit_is_str, local_def, PostExpansionMethod};
 use syntax::attr::{mod, AttrMetaMethods};
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax::codemap::Span;
 use syntax::parse::token::{mod, InternedString};
 use syntax::{ast, ast_map};
 
@@ -591,16 +590,33 @@ pub enum vtable_origin<'tcx> {
 pub type ObjectCastMap<'tcx> = RefCell<NodeMap<Rc<ty::PolyTraitRef<'tcx>>>>;
 
 /// A restriction that certain types must be the same size. The use of
-/// `transmute` gives rise to these restrictions.
+/// `transmute` gives rise to these restrictions. These generally
+/// cannot be checked until trans; therefore, each call to `transmute`
+/// will push one or more such restriction into the
+/// `transmute_restrictions` vector during `intrinsicck`. They are
+/// then checked during `trans` by the fn `check_intrinsics`.
 #[deriving(Copy)]
 pub struct TransmuteRestriction<'tcx> {
-    /// The span from whence the restriction comes.
+    /// The span whence the restriction comes.
     pub span: Span,
+
     /// The type being transmuted from.
-    pub from: Ty<'tcx>,
+    pub original_from: Ty<'tcx>,
+
     /// The type being transmuted to.
-    pub to: Ty<'tcx>,
-    /// NodeIf of the transmute intrinsic.
+    pub original_to: Ty<'tcx>,
+
+    /// The type being transmuted from, with all type parameters
+    /// substituted for an arbitrary representative. Not to be shown
+    /// to the end user.
+    pub substituted_from: Ty<'tcx>,
+
+    /// The type being transmuted to, with all type parameters
+    /// substituted for an arbitrary representative. Not to be shown
+    /// to the end user.
+    pub substituted_to: Ty<'tcx>,
+
+    /// NodeId of the transmute intrinsic.
     pub id: ast::NodeId,
 }
 
@@ -658,7 +674,6 @@ pub struct ctxt<'tcx> {
     pub tcache: RefCell<DefIdMap<Polytype<'tcx>>>,
     pub rcache: RefCell<FnvHashMap<creader_cache_key, Ty<'tcx>>>,
     pub short_names_cache: RefCell<FnvHashMap<Ty<'tcx>, String>>,
-    pub needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<ast_ty_to_ty_cache_entry<'tcx>>>,
     pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo<'tcx>>>>>>,
@@ -757,8 +772,15 @@ pub struct ctxt<'tcx> {
     /// Caches the representation hints for struct definitions.
     pub repr_hint_cache: RefCell<DefIdMap<Rc<Vec<attr::ReprAttr>>>>,
 
-    /// Caches whether types move by default.
-    pub type_moves_by_default_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
+    /// Caches whether types are known to impl Copy. Note that type
+    /// parameters are never placed into this cache, because their
+    /// results are dependent on the parameter environment.
+    pub type_impls_copy_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
+
+    /// Caches whether types are known to impl Sized. Note that type
+    /// parameters are never placed into this cache, because their
+    /// results are dependent on the parameter environment.
+    pub type_impls_sized_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
 }
 
 // Flags that we track on types. These flags are propagated upwards
@@ -2006,7 +2028,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         tcache: RefCell::new(DefIdMap::new()),
         rcache: RefCell::new(FnvHashMap::new()),
         short_names_cache: RefCell::new(FnvHashMap::new()),
-        needs_unwind_cleanup_cache: RefCell::new(FnvHashMap::new()),
         tc_cache: RefCell::new(FnvHashMap::new()),
         ast_ty_to_ty_cache: RefCell::new(NodeMap::new()),
         enum_var_cache: RefCell::new(DefIdMap::new()),
@@ -2042,7 +2063,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
         associated_types: RefCell::new(DefIdMap::new()),
         selection_cache: traits::SelectionCache::new(),
         repr_hint_cache: RefCell::new(DefIdMap::new()),
-        type_moves_by_default_cache: RefCell::new(HashMap::new()),
+        type_impls_copy_cache: RefCell::new(HashMap::new()),
+        type_impls_sized_cache: RefCell::new(HashMap::new()),
    }
 }
 
@@ -2659,14 +2681,6 @@ pub fn type_is_unique(ty: Ty) -> bool {
     }
 }
 
-pub fn type_is_fat_ptr<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty_ptr(mt{ty, ..}) | ty_rptr(_, mt{ty, ..})
-        | ty_uniq(ty) if !type_is_sized(cx, ty) => true,
-        _ => false,
-    }
-}
-
 /*
  A scalar type is one that denotes an atomic datum, with no sub-components.
  (A ty_ptr is scalar because it represents a non-managed pointer, so its
@@ -2687,48 +2701,6 @@ pub fn type_is_floating_point(ty: Ty) -> bool {
     match ty.sty {
         ty_float(_) => true,
         _ => false,
-    }
-}
-
-pub fn type_needs_drop<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    type_contents(cx, ty).needs_drop(cx)
-}
-
-// Some things don't need cleanups during unwinding because the
-// task can free them all at once later. Currently only things
-// that only contain scalars and shared boxes can avoid unwind
-// cleanups.
-pub fn type_needs_unwind_cleanup<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    return memoized(&cx.needs_unwind_cleanup_cache, ty, |ty| {
-        type_needs_unwind_cleanup_(cx, ty, &mut FnvHashSet::new())
-    });
-
-    fn type_needs_unwind_cleanup_<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>,
-                                        tycache: &mut FnvHashSet<Ty<'tcx>>) -> bool {
-        // Prevent infinite recursion
-        if !tycache.insert(ty) {
-            return false;
-        }
-
-        let mut needs_unwind_cleanup = false;
-        maybe_walk_ty(ty, |ty| {
-            needs_unwind_cleanup |= match ty.sty {
-                ty_bool | ty_int(_) | ty_uint(_) |
-                ty_float(_) | ty_tup(_) | ty_ptr(_) => false,
-
-                ty_enum(did, ref substs) =>
-                    enum_variants(cx, did).iter().any(|v|
-                        v.args.iter().any(|aty| {
-                            let t = aty.subst(cx, substs);
-                            type_needs_unwind_cleanup_(cx, t, tycache)
-                        })
-                    ),
-
-                _ => true
-            };
-            !needs_unwind_cleanup
-        });
-        needs_unwind_cleanup
     }
 }
 
@@ -2767,6 +2739,7 @@ def_type_content_sets! {
         // Things that are interior to the value (first nibble):
         InteriorUnsized                     = 0b0000_0000__0000_0000__0001,
         InteriorUnsafe                      = 0b0000_0000__0000_0000__0010,
+        InteriorParam                       = 0b0000_0000__0000_0000__0100,
         // InteriorAll                         = 0b00000000__00000000__1111,
 
         // Things that are owned by the value (second and third nibbles):
@@ -2819,6 +2792,10 @@ impl TypeContents {
 
     pub fn is_sized(&self, _: &ctxt) -> bool {
         !self.intersects(TC::Nonsized)
+    }
+
+    pub fn interior_param(&self) -> bool {
+        self.intersects(TC::InteriorParam)
     }
 
     pub fn interior_unsafe(&self) -> bool {
@@ -2949,7 +2926,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             ty_closure(ref c) => {
-                closure_contents(cx, &**c) | TC::ReachesFfiUnsafe
+                closure_contents(&**c) | TC::ReachesFfiUnsafe
             }
 
             ty_uniq(typ) => {
@@ -2960,7 +2937,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             ty_trait(box TyTrait { bounds, .. }) => {
-                object_contents(cx, bounds) | TC::ReachesFfiUnsafe | TC::Nonsized
+                object_contents(bounds) | TC::ReachesFfiUnsafe | TC::Nonsized
             }
 
             ty_ptr(ref mt) => {
@@ -3069,26 +3046,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
-            ty_param(p) => {
-                // We only ever ask for the kind of types that are defined in
-                // the current crate; therefore, the only type parameters that
-                // could be in scope are those defined in the current crate.
-                // If this assertion fails, it is likely because of a
-                // failure of the cross-crate inlining code to translate a
-                // def-id.
-                assert_eq!(p.def_id.krate, ast::LOCAL_CRATE);
-
-                let ty_param_defs = cx.ty_param_defs.borrow();
-                let tp_def = &(*ty_param_defs)[p.def_id.node];
-                kind_bounds_to_contents(
-                    cx,
-                    tp_def.bounds.builtin_bounds,
-                    tp_def.bounds.trait_bounds[])
-            }
-
-            ty_infer(_) => {
-                // This occurs during coherence, but shouldn't occur at other
-                // times.
+            ty_param(_) => {
                 TC::All
             }
 
@@ -3098,6 +3056,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 result.unsafe_pointer() | TC::Nonsized
             }
 
+            ty_infer(_) |
             ty_err => {
                 cx.sess.bug("asked to compute contents of error type");
             }
@@ -3137,10 +3096,10 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         b | (TC::ReachesBorrowed).when(region != ty::ReStatic)
     }
 
-    fn closure_contents(cx: &ctxt, cty: &ClosureTy) -> TypeContents {
+    fn closure_contents(cty: &ClosureTy) -> TypeContents {
         // Closure contents are just like trait contents, but with potentially
         // even more stuff.
-        let st = object_contents(cx, cty.bounds);
+        let st = object_contents(cty.bounds);
 
         let st = match cty.store {
             UniqTraitStore => {
@@ -3154,61 +3113,37 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         st
     }
 
-    fn object_contents(cx: &ctxt,
-                       bounds: ExistentialBounds)
-                       -> TypeContents {
-        // These are the type contents of the (opaque) interior
-        kind_bounds_to_contents(cx, bounds.builtin_bounds, &[])
-    }
-
-    fn kind_bounds_to_contents<'tcx>(cx: &ctxt<'tcx>,
-                                     bounds: BuiltinBounds,
-                                     traits: &[Rc<PolyTraitRef<'tcx>>])
-                                     -> TypeContents {
-        let _i = indenter();
-        let mut tc = TC::All;
-        each_inherited_builtin_bound(cx, bounds, traits, |bound| {
+    fn object_contents(bounds: ExistentialBounds) -> TypeContents {
+        // These are the type contents of the (opaque) interior. We
+        // make no assumptions (other than that it cannot have an
+        // in-scope type parameter within, which makes no sense).
+        let mut tc = TC::All - TC::InteriorParam;
+        for bound in bounds.builtin_bounds.iter() {
             tc = tc - match bound {
                 BoundSync | BoundSend | BoundCopy => TC::None,
                 BoundSized => TC::Nonsized,
             };
-        });
-        return tc;
-
-        // Iterates over all builtin bounds on the type parameter def, including
-        // those inherited from traits with builtin-kind-supertraits.
-        fn each_inherited_builtin_bound<'tcx, F>(cx: &ctxt<'tcx>,
-                                                 bounds: BuiltinBounds,
-                                                 traits: &[Rc<PolyTraitRef<'tcx>>],
-                                                 mut f: F) where
-            F: FnMut(BuiltinBound),
-        {
-            for bound in bounds.iter() {
-                f(bound);
-            }
-
-            each_bound_trait_and_supertraits(cx, traits, |trait_ref| {
-                let trait_def = lookup_trait_def(cx, trait_ref.def_id());
-                for bound in trait_def.bounds.builtin_bounds.iter() {
-                    f(bound);
-                }
-                true
-            });
         }
+        return tc;
     }
 }
 
-pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>,
-                                   ty: Ty<'tcx>,
-                                   param_env: &ParameterEnvironment<'tcx>)
-                                   -> bool
+fn type_impls_bound<'tcx>(cx: &ctxt<'tcx>,
+                          cache: &RefCell<HashMap<Ty<'tcx>,bool>>,
+                          param_env: &ParameterEnvironment<'tcx>,
+                          ty: Ty<'tcx>,
+                          bound: ty::BuiltinBound)
+                          -> bool
 {
+    assert!(!ty::type_needs_infer(ty));
+
     if !type_has_params(ty) && !type_has_self(ty) {
-        match cx.type_moves_by_default_cache.borrow().get(&ty) {
+        match cache.borrow().get(&ty) {
             None => {}
             Some(&result) => {
-                debug!("determined whether {} moves by default (cached): {}",
+                debug!("type_impls_bound({}, {}) = {} (cached)",
                        ty_to_string(cx, ty),
+                       bound,
                        result);
                 return result
             }
@@ -3216,27 +3151,35 @@ pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>,
     }
 
     let infcx = infer::new_infer_ctxt(cx);
-    let mut fulfill_cx = traits::FulfillmentContext::new();
+    let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env, ty, bound);
 
-    // we can use dummy values here because we won't report any errors
-    // that result nor will we pay any mind to region obligations that arise
-    // (there shouldn't really be any anyhow)
-    let cause = ObligationCause::misc(DUMMY_SP, DUMMY_NODE_ID);
-
-    fulfill_cx.register_builtin_bound(cx, ty, ty::BoundCopy, cause);
-
-    // Note: we only assuming something is `Copy` if we can
-    // *definitively* show that it implements `Copy`. Otherwise,
-    // assume it is move; linear is always ok.
-    let is_copy = fulfill_cx.select_all_or_error(&infcx, param_env, cx).is_ok();
-    let is_move = !is_copy;
-
-    debug!("determined whether {} moves by default: {}",
+    debug!("type_impls_bound({}, {}) = {}",
            ty_to_string(cx, ty),
-           is_move);
+           bound,
+           is_impld);
 
-    cx.type_moves_by_default_cache.borrow_mut().insert(ty, is_move);
-    is_move
+    if !type_has_params(ty) && !type_has_self(ty) {
+        let old_value = cache.borrow_mut().insert(ty, is_impld);
+        assert!(old_value.is_none());
+    }
+
+    is_impld
+}
+
+pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>,
+                                   ty: Ty<'tcx>,
+                                   param_env: &ParameterEnvironment<'tcx>)
+                                   -> bool
+{
+    !type_impls_bound(cx, &cx.type_impls_copy_cache, param_env, ty, ty::BoundCopy)
+}
+
+pub fn type_is_sized<'tcx>(cx: &ctxt<'tcx>,
+                           ty: Ty<'tcx>,
+                           param_env: &ParameterEnvironment<'tcx>)
+                           -> bool
+{
+    type_impls_bound(cx, &cx.type_impls_sized_cache, param_env, ty, ty::BoundSized)
 }
 
 pub fn is_ffi_safe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -3605,40 +3548,6 @@ pub fn type_is_machine(ty: Ty) -> bool {
         ty_int(ast::TyI) | ty_uint(ast::TyU) => false,
         ty_int(..) | ty_uint(..) | ty_float(..) => true,
         _ => false
-    }
-}
-
-// Is the type's representation size known at compile time?
-pub fn type_is_sized<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    type_contents(cx, ty).is_sized(cx)
-}
-
-pub fn lltype_is_sized<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty_open(_) => true,
-        _ => type_contents(cx, ty).is_sized(cx)
-    }
-}
-
-// Return the smallest part of `ty` which is unsized. Fails if `ty` is sized.
-// 'Smallest' here means component of the static representation of the type; not
-// the size of an object at runtime.
-pub fn unsized_part_of_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    match ty.sty {
-        ty_str | ty_trait(..) | ty_vec(..) => ty,
-        ty_struct(def_id, ref substs) => {
-            let unsized_fields: Vec<_> = struct_fields(cx, def_id, substs).iter()
-                .map(|f| f.mt.ty).filter(|ty| !type_is_sized(cx, *ty)).collect();
-            // Exactly one of the fields must be unsized.
-            assert!(unsized_fields.len() == 1);
-
-            unsized_part_of_type(cx, unsized_fields[0])
-        }
-        _ => {
-            assert!(type_is_sized(cx, ty),
-                    "unsized_part_of_type failed even though ty is unsized");
-            panic!("called unsized_part_of_type with sized ty");
-        }
     }
 }
 

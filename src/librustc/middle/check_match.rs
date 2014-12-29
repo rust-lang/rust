@@ -1065,7 +1065,7 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
     };
     let mut visitor = ExprUseVisitor::new(&mut checker,
                                           checker.cx.tcx,
-                                          cx.param_env.clone());
+                                          &cx.param_env);
     visitor.walk_expr(guard);
 }
 

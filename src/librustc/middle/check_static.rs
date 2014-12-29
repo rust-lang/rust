@@ -72,7 +72,7 @@ pub fn check_crate(tcx: &ty::ctxt) {
     };
     {
         let param_env = ty::empty_parameter_environment();
-        let visitor = euv::ExprUseVisitor::new(&mut checker, tcx, param_env);
+        let visitor = euv::ExprUseVisitor::new(&mut checker, tcx, &param_env);
         visit::walk_crate(&mut GlobalVisitor(visitor), tcx.map.krate());
     }
     visit::walk_crate(&mut CheckStaticVisitor {

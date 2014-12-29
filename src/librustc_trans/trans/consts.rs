@@ -138,7 +138,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, v: ValueRef,
         Some(ref mt) => {
             match t.sty {
                 ty::ty_ptr(mt) | ty::ty_rptr(_, mt) => {
-                    if ty::type_is_sized(cx.tcx(), mt.ty) {
+                    if type_is_sized(cx.tcx(), mt.ty) {
                         (const_deref_ptr(cx, v), mt.ty)
                     } else {
                         // Derefing a fat pointer does not change the representation,
