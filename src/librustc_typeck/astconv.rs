@@ -925,7 +925,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         // super-traits. Probably by elaborating the bounds.
 
         suitable_bounds =
-            ty_param_def.bounds.trait_bounds // TODO trait_bounds, no good
+            ty_param_def.bounds.trait_bounds // FIXME(#20300) -- search where clauses, not bounds
             .iter()
             .cloned()
             .filter(|b| trait_defines_associated_type_named(this, b.def_id(), assoc_name))
