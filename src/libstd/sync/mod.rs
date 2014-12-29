@@ -17,16 +17,13 @@
 
 #![experimental]
 
-use sys_common::mutex as sys_mutex;
-
 pub use alloc::arc::{Arc, Weak};
 
-pub use self::mutex::{Mutex, MutexGuard, StaticMutex, StaticMutexGuard};
+pub use self::mutex::{Mutex, MutexGuard, StaticMutex};
 pub use self::mutex::MUTEX_INIT;
 pub use self::rwlock::{RWLock, StaticRWLock, RWLOCK_INIT};
 pub use self::rwlock::{RWLockReadGuard, RWLockWriteGuard};
-pub use self::rwlock::{StaticRWLockReadGuard, StaticRWLockWriteGuard};
-pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT, AsGuard};
+pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT};
 pub use self::once::{Once, ONCE_INIT};
 pub use self::semaphore::{Semaphore, SemaphoreGuard};
 pub use self::barrier::Barrier;
@@ -45,10 +42,3 @@ mod poison;
 mod rwlock;
 mod semaphore;
 mod task_pool;
-
-/// Structure returned by `AsGuard` to wait on a condition variable.
-// NB: defined here to all modules have access to these private fields.
-pub struct CondvarGuard<'a> {
-    lock: &'a sys_mutex::Mutex,
-    poisoned: &'a poison::Flag,
-}
