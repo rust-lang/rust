@@ -172,7 +172,9 @@ fn deduce_unboxed_closure_expectations_from_expected_type<'a,'tcx>(
 {
     match expected_ty.sty {
         ty::ty_trait(ref object_type) => {
-            let trait_ref = object_type.principal_trait_ref_with_self_ty(fcx.tcx().types.err);
+            let trait_ref =
+                object_type.principal_trait_ref_with_self_ty(fcx.tcx(),
+                                                             fcx.tcx().types.err);
             deduce_unboxed_closure_expectations_from_trait_ref(fcx, &trait_ref)
         }
         ty::ty_infer(ty::TyVar(vid)) => {

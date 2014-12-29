@@ -787,12 +787,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     trait_ref.def_id,
                     trait_def.generics.types.as_slice(),
                     trait_def.generics.regions.as_slice(),
-                    &trait_ref.substs,
+                    trait_ref.substs,
                     variance);
             }
 
             ty::ty_trait(ref data) => {
-                let trait_ref = data.principal_trait_ref_with_self_ty(self.tcx().types.err);
+                let trait_ref = data.principal_trait_ref_with_self_ty(self.tcx(),
+                                                                      self.tcx().types.err);
                 let trait_def = ty::lookup_trait_def(self.tcx(), trait_ref.def_id());
 
                 // Traits never declare region parameters in the self
@@ -815,7 +816,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ty_param(ref data) => {
-                let def_id = generics.types.get(data.space, data.idx).def_id;
+                let def_id = generics.types.get(data.space, data.idx as uint).def_id;
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
                 match self.terms_cx.inferred_map.get(&def_id.node) {
                     Some(&index) => {

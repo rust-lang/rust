@@ -428,7 +428,7 @@ impl<'tcx> TypeMap<'tcx> {
                 from_def_id_and_substs(self,
                                        cx,
                                        trait_data.principal_def_id(),
-                                       &trait_data.principal.0.substs,
+                                       trait_data.principal.0.substs,
                                        &mut unique_type_id);
             },
             ty::ty_bare_fn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
@@ -3819,7 +3819,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         ty::ty_trait(ref trait_data) => {
             push_item_name(cx, trait_data.principal_def_id(), false, output);
-            push_type_params(cx, &trait_data.principal.0.substs, output);
+            push_type_params(cx, trait_data.principal.0.substs, output);
         },
         ty::ty_bare_fn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == ast::Unsafety::Unsafe {
