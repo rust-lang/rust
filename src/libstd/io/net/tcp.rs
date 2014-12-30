@@ -979,7 +979,7 @@ mod test {
 
         rx.recv();
         let mut c = TcpStream::connect(addr).unwrap();
-        let mut b = [0, ..10];
+        let mut b = [0; 10];
         assert_eq!(c.read(&mut b), Ok(1));
         c.write(&[1]).unwrap();
         rx.recv();

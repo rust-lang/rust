@@ -123,7 +123,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
     // For an f64 the exponent is in the range of [-1022, 1023] for base 2, so
     // we may have up to that many digits. Give ourselves some extra wiggle room
     // otherwise as well.
-    let mut buf = [0u8, ..1536];
+    let mut buf = [0u8; 1536];
     let mut end = 0;
     let radix_gen: T = cast(radix as int).unwrap();
 

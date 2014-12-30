@@ -246,7 +246,7 @@ mod test {
     fn test_rng_true_values() {
         // Test vectors 1 and 2 from
         // http://tools.ietf.org/html/draft-nir-cfrg-chacha20-poly1305-04
-        let seed : &[_] = &[0u32, ..8];
+        let seed : &[_] = &[0u32; 8];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
 
         let v = Vec::from_fn(16, |_| ra.next_u32());

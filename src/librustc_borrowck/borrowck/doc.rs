@@ -1152,7 +1152,7 @@
 //! the following:
 //!
 //! ```rust
-//! fn foo(a: [D, ..10], i: uint) -> D {
+//! fn foo(a: [D; 10], i: uint) -> D {
 //!     a[i]
 //! }
 //! ```
@@ -1168,7 +1168,7 @@
 //! would arise is the following:
 //!
 //! ```rust
-//! fn foo(a: [D, ..10], b: [D, ..10], i: uint, t: bool) -> D {
+//! fn foo(a: [D; 10], b: [D; 10], i: uint, t: bool) -> D {
 //!     if t {
 //!         a[i]
 //!     } else {
@@ -1182,7 +1182,7 @@
 //! ```
 //!
 //! There are a number of ways that the trans backend could choose to
-//! compile this (e.g. a `[bool, ..10]` array for each such moved array;
+//! compile this (e.g. a `[bool; 10]` array for each such moved array;
 //! or an `Option<uint>` for each moved array).  From the viewpoint of the
 //! borrow-checker, the important thing is to record what kind of fragment
 //! is implied by the relevant moves.

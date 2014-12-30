@@ -113,7 +113,7 @@ pub fn error_string(errno: i32) -> String {
 }
 
 pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
-    let mut fds = [0, ..2];
+    let mut fds = [0; 2];
     if libc::pipe(fds.as_mut_ptr()) == 0 {
         Ok((FileDesc::new(fds[0], true), FileDesc::new(fds[1], true)))
     } else {

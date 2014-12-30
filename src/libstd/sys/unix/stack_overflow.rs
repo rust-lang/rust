@@ -184,12 +184,12 @@ mod imp {
         #[cfg(target_word_size = "32")]
         #[repr(C)]
         pub struct sigset_t {
-            __val: [libc::c_ulong, ..32],
+            __val: [libc::c_ulong; 32],
         }
         #[cfg(target_word_size = "64")]
         #[repr(C)]
         pub struct sigset_t {
-            __val: [libc::c_ulong, ..16],
+            __val: [libc::c_ulong; 16],
         }
 
         #[repr(C)]

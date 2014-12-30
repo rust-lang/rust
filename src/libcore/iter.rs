@@ -1037,7 +1037,7 @@ pub trait IteratorOrdExt<A> {
     /// ```rust
     /// use std::iter::{NoElements, OneElement, MinMax};
     ///
-    /// let v: [int, ..0] = [];
+    /// let v: [int; 0] = [];
     /// assert_eq!(v.iter().min_max(), NoElements);
     ///
     /// let v = [1i];

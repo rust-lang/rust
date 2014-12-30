@@ -129,7 +129,7 @@ mod test {
             rx.recv(); // don't close the pipe until the other read has finished
         });
 
-        let mut buf = [0, ..10];
+        let mut buf = [0; 10];
         input.read(&mut buf).unwrap();
         tx.send(());
     }

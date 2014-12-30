@@ -399,7 +399,7 @@ fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
 
 fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
     const LEN: uint = 16;
-    static BUF: [u8, ..LEN] = [b' ', ..LEN];
+    static BUF: [u8; LEN] = [b' '; LEN];
 
     while n >= LEN {
         try!(wr.write(&BUF));

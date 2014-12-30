@@ -134,7 +134,7 @@ pub fn abort(args: fmt::Arguments) -> ! {
     }
 
     // Convert the arguments into a stack-allocated string
-    let mut msg = [0u8, ..512];
+    let mut msg = [0u8; 512];
     let mut w = BufWriter { buf: &mut msg, pos: 0 };
     let _ = write!(&mut w, "{}", args);
     let msg = str::from_utf8(w.buf[mut ..w.pos]).unwrap_or("aborted");

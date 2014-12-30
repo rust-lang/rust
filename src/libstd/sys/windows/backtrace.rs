@@ -68,7 +68,7 @@ const IMAGE_FILE_MACHINE_AMD64: libc::DWORD = 0x8664;
 struct SYMBOL_INFO {
     SizeOfStruct: libc::c_ulong,
     TypeIndex: libc::c_ulong,
-    Reserved: [u64, ..2],
+    Reserved: [u64; 2],
     Index: libc::c_ulong,
     Size: libc::c_ulong,
     ModBase: u64,
@@ -108,10 +108,10 @@ struct STACKFRAME64 {
     AddrStack: ADDRESS64,
     AddrBStore: ADDRESS64,
     FuncTableEntry: *mut libc::c_void,
-    Params: [u64, ..4],
+    Params: [u64; 4],
     Far: libc::BOOL,
     Virtual: libc::BOOL,
-    Reserved: [u64, ..3],
+    Reserved: [u64; 3],
     KdHelp: KDHELP64,
 }
 
@@ -127,7 +127,7 @@ struct KDHELP64 {
     KiUserExceptionDispatcher: u64,
     StackBase: u64,
     StackLimit: u64,
-    Reserved: [u64, ..5],
+    Reserved: [u64; 5],
 }
 
 #[cfg(target_arch = "x86")]
@@ -174,7 +174,7 @@ mod arch {
         ErrorSelector: libc::DWORD,
         DataOffset: libc::DWORD,
         DataSelector: libc::DWORD,
-        RegisterArea: [u8, ..80],
+        RegisterArea: [u8; 80],
         Cr0NpxState: libc::DWORD,
     }
 
@@ -198,7 +198,7 @@ mod arch {
 
     #[repr(C)]
     pub struct CONTEXT {
-        _align_hack: [simd::u64x2, ..0], // FIXME align on 16-byte
+        _align_hack: [simd::u64x2; 0], // FIXME align on 16-byte
         P1Home: DWORDLONG,
         P2Home: DWORDLONG,
         P3Home: DWORDLONG,
@@ -257,15 +257,15 @@ mod arch {
 
     #[repr(C)]
     pub struct M128A {
-        _align_hack: [simd::u64x2, ..0], // FIXME align on 16-byte
+        _align_hack: [simd::u64x2; 0], // FIXME align on 16-byte
         Low:  c_ulonglong,
         High: c_longlong
     }
 
     #[repr(C)]
     pub struct FLOATING_SAVE_AREA {
-        _align_hack: [simd::u64x2, ..0], // FIXME align on 16-byte
-        _Dummy: [u8, ..512] // FIXME: Fill this out
+        _align_hack: [simd::u64x2; 0], // FIXME align on 16-byte
+        _Dummy: [u8; 512] // FIXME: Fill this out
     }
 
     pub fn init_frame(frame: &mut super::STACKFRAME64,

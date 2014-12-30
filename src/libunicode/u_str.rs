@@ -353,7 +353,7 @@ impl<'a> DoubleEndedIterator<&'a str> for Graphemes<'a> {
 }
 
 // https://tools.ietf.org/html/rfc3629
-static UTF8_CHAR_WIDTH: [u8, ..256] = [
+static UTF8_CHAR_WIDTH: [u8; 256] = [
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // 0x1F
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -519,7 +519,7 @@ impl<I> Iterator<u16> for Utf16Encoder<I> where I: Iterator<char> {
             return Some(tmp);
         }
 
-        let mut buf = [0u16, ..2];
+        let mut buf = [0u16; 2];
         self.chars.next().map(|ch| {
             let n = ch.encode_utf16(buf.as_mut_slice()).unwrap_or(0);
             if n == 2 { self.extra = buf[1]; }

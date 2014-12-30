@@ -54,7 +54,7 @@ fn main() {
     // and tuples
     assert_eq!(size_of::<(u8, Box<int>)>(), size_of::<Option<(u8, Box<int>)>>());
     // and fixed-size arrays
-    assert_eq!(size_of::<[Box<int>, ..1]>(), size_of::<Option<[Box<int>, ..1]>>());
+    assert_eq!(size_of::<[Box<int>; 1]>(), size_of::<Option<[Box<int>; 1]>>());
 
     // Should apply to NonZero
     assert_eq!(size_of::<NonZero<uint>>(), size_of::<Option<NonZero<uint>>>());

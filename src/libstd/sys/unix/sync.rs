@@ -187,7 +187,7 @@ mod os {
         writerThreadId: libc::c_int,
         pendingReaders: libc::c_int,
         pendingWriters: libc::c_int,
-        reserved: [*mut libc::c_void, ..4],
+        reserved: [*mut libc::c_void; 4],
     }
 
     pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
@@ -203,6 +203,6 @@ mod os {
         writerThreadId: 0,
         pendingReaders: 0,
         pendingWriters: 0,
-        reserved: [0 as *mut _, ..4],
+        reserved: [0 as *mut _; 4],
     };
 }

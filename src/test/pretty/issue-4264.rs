@@ -14,11 +14,11 @@
 
 // #4264 fixed-length vector types
 
-pub fn foo(_: [int, ..3]) {}
+pub fn foo(_: [int; 3]) {}
 
 pub fn bar() {
     const FOO: uint = 5u - 4u;
-    let _: [(), ..FOO] = [()];
+    let _: [(); FOO] = [()];
 
     let _ : [(), ..1u] = [()];
 

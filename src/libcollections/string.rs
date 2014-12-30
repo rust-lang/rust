@@ -675,7 +675,7 @@ impl String {
         assert!(idx <= len);
         assert!(self.is_char_boundary(idx));
         self.vec.reserve(4);
-        let mut bits = [0, ..4];
+        let mut bits = [0; 4];
         let amt = ch.encode_utf8(&mut bits).unwrap();
 
         unsafe {

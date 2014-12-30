@@ -120,7 +120,7 @@ impl Process {
 
                     let p = Process{ pid: pid };
                     drop(output);
-                    let mut bytes = [0, ..8];
+                    let mut bytes = [0; 8];
                     return match input.read(&mut bytes) {
                         Ok(8) => {
                             assert!(combine(CLOEXEC_MSG_FOOTER) == combine(bytes.slice(4, 8)),
@@ -348,7 +348,7 @@ impl Process {
         // handler we're going to start receiving signals.
         fn register_sigchld() -> (libc::c_int, c::sigaction) {
             unsafe {
-                let mut pipes = [0, ..2];
+                let mut pipes = [0; 2];
                 assert_eq!(libc::pipe(pipes.as_mut_ptr()), 0);
                 set_nonblocking(pipes[0], true).ok().unwrap();
                 set_nonblocking(pipes[1], true).ok().unwrap();
@@ -482,7 +482,7 @@ impl Process {
         fn drain(fd: libc::c_int) -> bool {
             let mut ret = false;
             loop {
-                let mut buf = [0u8, ..1];
+                let mut buf = [0u8; 1];
                 match unsafe {
                     libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void,
                                buf.len() as libc::size_t)

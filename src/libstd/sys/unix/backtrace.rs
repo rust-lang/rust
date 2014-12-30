@@ -123,7 +123,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     try!(writeln!(w, "stack backtrace:"));
     // 100 lines should be enough
     const SIZE: uint = 100;
-    let mut buf: [*mut libc::c_void, ..SIZE] = unsafe {mem::zeroed()};
+    let mut buf: [*mut libc::c_void; SIZE] = unsafe {mem::zeroed()};
     let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as uint};
 
     // skipping the first one as it is write itself
@@ -320,7 +320,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
     //        tested if this is required or not.
     unsafe fn init_state() -> *mut backtrace_state {
         static mut STATE: *mut backtrace_state = 0 as *mut backtrace_state;
-        static mut LAST_FILENAME: [libc::c_char, ..256] = [0, ..256];
+        static mut LAST_FILENAME: [libc::c_char; 256] = [0; 256];
         if !STATE.is_null() { return STATE }
         let selfname = if cfg!(target_os = "freebsd") ||
                           cfg!(target_os = "dragonfly") {
