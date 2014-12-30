@@ -350,11 +350,18 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
         }
     }
 
-    fn normalize_associated_types_in<T>(&self, span: Span, body_id: ast::NodeId, value: &T) -> T
-        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes
+    fn normalize_associated_types_in<T>(&self,
+                                        typer: &mc::Typer<'tcx>,
+                                        span: Span,
+                                        body_id: ast::NodeId,
+                                        value: &T)
+                                        -> T
+        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes + Repr<'tcx>
     {
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
         assoc::normalize_associated_types_in(&self.infcx,
+                                             &self.param_env,
+                                             typer,
                                              &mut *fulfillment_cx, span,
                                              body_id,
                                              value)
@@ -438,7 +445,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let fn_sig =
                 liberate_late_bound_regions(ccx.tcx, CodeExtent::from_node_id(body.id), &fn_sig);
             let fn_sig =
-                inh.normalize_associated_types_in(body.span, body.id, &fn_sig);
+                inh.normalize_associated_types_in(ccx.tcx, body.span, body.id, &fn_sig);
 
             let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_sig,
                                decl, id, body, &inh);
@@ -1190,6 +1197,8 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             impl_sig.subst(tcx, impl_to_skol_substs);
         let impl_sig =
             assoc::normalize_associated_types_in(&infcx,
+                                                 &impl_param_env,
+                                                 infcx.tcx,
                                                  &mut fulfillment_cx,
                                                  impl_m_span,
                                                  impl_m_body_id,
@@ -1209,6 +1218,8 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             trait_sig.subst(tcx, &trait_to_skol_substs);
         let trait_sig =
             assoc::normalize_associated_types_in(&infcx,
+                                                 &impl_param_env,
+                                                 infcx.tcx,
                                                  &mut fulfillment_cx,
                                                  impl_m_span,
                                                  impl_m_body_id,
@@ -1756,9 +1767,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
-        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes
+        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes + Repr<'tcx>
     {
-        self.inh.normalize_associated_types_in(span, self.body_id, value)
+        self.inh.normalize_associated_types_in(self, span, self.body_id, value)
     }
 
     fn normalize_associated_type(&self,
@@ -1773,6 +1784,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.inh.fulfillment_cx
             .borrow_mut()
             .normalize_projection_type(self.infcx(),
+                                       &self.inh.param_env,
+                                       self,
                                        ty::ProjectionTy {
                                            trait_ref: trait_ref,
                                            item_name: item_name,
@@ -1943,7 +1956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.inh.fulfillment_cx
             .borrow_mut()
-            .register_predicate(self.infcx(), obligation);
+            .register_predicate_obligation(self.infcx(), obligation);
     }
 
     pub fn to_ty(&self, ast_t: &ast::Ty) -> Ty<'tcx> {

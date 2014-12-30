@@ -25,11 +25,30 @@ pub fn f2<T: Foo>(a: T) -> T::A {
     panic!();
 }
 
-pub fn main() {
-    f1(2i, 4i); //~ ERROR expected uint, found int
-    f1(2i, 4u);
-    f1(2u, 4u); //~ ERROR the trait `Foo` is not implemented
-    f1(2u, 4i); //~ ERROR the trait `Foo` is not implemented
-
-    let _: int = f2(2i); //~ERROR expected `int`, found `uint`
+pub fn f1_int_int() {
+    f1(2i, 4i);
+    //~^ ERROR expected uint, found int
 }
+
+pub fn f1_int_uint() {
+    f1(2i, 4u);
+}
+
+pub fn f1_uint_uint() {
+    f1(2u, 4u);
+    //~^ ERROR the trait `Foo` is not implemented
+    //~| ERROR the trait `Foo` is not implemented
+}
+
+pub fn f1_uint_int() {
+    f1(2u, 4i);
+    //~^ ERROR the trait `Foo` is not implemented
+    //~| ERROR the trait `Foo` is not implemented
+}
+
+pub fn f2_int() {
+    let _: int = f2(2i);
+    //~^ ERROR expected `int`, found `uint`
+}
+
+pub fn main() { }

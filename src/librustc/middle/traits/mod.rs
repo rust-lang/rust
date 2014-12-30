@@ -27,8 +27,8 @@ use util::ppaux::Repr;
 pub use self::error_reporting::report_fulfillment_errors;
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
 pub use self::project::MismatchedProjectionTypes;
-pub use self::project::project_type;
-pub use self::project::ProjectionResult;
+pub use self::project::normalize;
+pub use self::project::Normalized;
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
@@ -317,6 +317,16 @@ impl<'tcx,O> Obligation<'tcx,O> {
     {
         Obligation { cause: cause,
                      recursion_depth: 0,
+                     predicate: trait_ref }
+    }
+
+    fn with_depth(cause: ObligationCause<'tcx>,
+                  recursion_depth: uint,
+                  trait_ref: O)
+                  -> Obligation<'tcx, O>
+    {
+        Obligation { cause: cause,
+                     recursion_depth: recursion_depth,
                      predicate: trait_ref }
     }
 
