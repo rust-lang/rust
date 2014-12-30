@@ -48,6 +48,9 @@ pub struct RingBuf<T> {
     ptr: *mut T
 }
 
+unsafe impl<T: Send> Send for RingBuf<T> { }
+unsafe impl<T: Sync> Sync for RingBuf<T> { }
+
 #[stable]
 impl<T: Clone> Clone for RingBuf<T> {
     fn clone(&self) -> RingBuf<T> {
