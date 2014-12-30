@@ -47,18 +47,18 @@ pub trait ItemDecorator {
               sp: Span,
               meta_item: &ast::MetaItem,
               item: &ast::Item,
-              push: |P<ast::Item>|);
+              push: Box<FnMut(P<ast::Item>)>);
 }
 
 impl<F> ItemDecorator for F
-    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, |P<ast::Item>|)
+    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, Box<FnMut(P<ast::Item>)>)
 {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               sp: Span,
               meta_item: &ast::MetaItem,
               item: &ast::Item,
-              push: |P<ast::Item>|) {
+              push: Box<FnMut(P<ast::Item>)>) {
         (*self)(ecx, sp, meta_item, item, push)
     }
 }
