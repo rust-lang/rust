@@ -6970,13 +6970,67 @@ pub trait HasProjectionTypes {
     fn has_projection_types(&self) -> bool;
 }
 
+impl<'tcx> HasProjectionTypes for ty::GenericBounds<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.predicates.iter().any(|p| p.has_projection_types())
+    }
+}
+
+impl<'tcx> HasProjectionTypes for Predicate<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        match *self {
+            Predicate::Trait(ref data) => data.has_projection_types(),
+            Predicate::Equate(ref data) => data.has_projection_types(),
+            Predicate::RegionOutlives(ref data) => data.has_projection_types(),
+            Predicate::TypeOutlives(ref data) => data.has_projection_types(),
+            Predicate::Projection(ref data) => data.has_projection_types(),
+        }
+    }
+}
+
+impl<'tcx> HasProjectionTypes for TraitPredicate<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.trait_ref.has_projection_types()
+    }
+}
+
+impl<'tcx> HasProjectionTypes for EquatePredicate<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.0.has_projection_types() || self.1.has_projection_types()
+    }
+}
+
+impl HasProjectionTypes for Region {
+    fn has_projection_types(&self) -> bool {
+        false
+    }
+}
+
+impl<T:HasProjectionTypes,U:HasProjectionTypes> HasProjectionTypes for OutlivesPredicate<T,U> {
+    fn has_projection_types(&self) -> bool {
+        self.0.has_projection_types() || self.1.has_projection_types()
+    }
+}
+
+impl<'tcx> HasProjectionTypes for ProjectionPredicate<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.projection_ty.has_projection_types() || self.ty.has_projection_types()
+    }
+}
+
+impl<'tcx> HasProjectionTypes for ProjectionTy<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.trait_ref.has_projection_types()
+    }
+}
+
 impl<'tcx> HasProjectionTypes for Ty<'tcx> {
     fn has_projection_types(&self) -> bool {
         ty::type_has_projection(*self)
     }
 }
 
-impl<'tcx> HasProjectionTypes for ty::TraitRef<'tcx> {
+impl<'tcx> HasProjectionTypes for TraitRef<'tcx> {
     fn has_projection_types(&self) -> bool {
         self.substs.has_projection_types()
     }
@@ -7012,7 +7066,7 @@ impl<'tcx,T> HasProjectionTypes for Box<T>
     }
 }
 
-impl<T> HasProjectionTypes for ty::Binder<T>
+impl<T> HasProjectionTypes for Binder<T>
     where T : HasProjectionTypes
 {
     fn has_projection_types(&self) -> bool {
@@ -7020,23 +7074,23 @@ impl<T> HasProjectionTypes for ty::Binder<T>
     }
 }
 
-impl<'tcx> HasProjectionTypes for ty::FnOutput<'tcx> {
+impl<'tcx> HasProjectionTypes for FnOutput<'tcx> {
     fn has_projection_types(&self) -> bool {
         match *self {
-            ty::FnConverging(t) => t.has_projection_types(),
-            ty::FnDiverging => false,
+            FnConverging(t) => t.has_projection_types(),
+            FnDiverging => false,
         }
     }
 }
 
-impl<'tcx> HasProjectionTypes for ty::FnSig<'tcx> {
+impl<'tcx> HasProjectionTypes for FnSig<'tcx> {
     fn has_projection_types(&self) -> bool {
         self.inputs.iter().any(|t| t.has_projection_types()) ||
             self.output.has_projection_types()
     }
 }
 
-impl<'tcx> HasProjectionTypes for ty::BareFnTy<'tcx> {
+impl<'tcx> HasProjectionTypes for BareFnTy<'tcx> {
     fn has_projection_types(&self) -> bool {
         self.sig.has_projection_types()
     }
@@ -7046,7 +7100,7 @@ pub trait ReferencesError {
     fn references_error(&self) -> bool;
 }
 
-impl<T:ReferencesError> ReferencesError for ty::Binder<T> {
+impl<T:ReferencesError> ReferencesError for Binder<T> {
     fn references_error(&self) -> bool {
         self.0.references_error()
     }
@@ -7058,43 +7112,43 @@ impl<T:ReferencesError> ReferencesError for Rc<T> {
     }
 }
 
-impl<'tcx> ReferencesError for ty::TraitPredicate<'tcx> {
+impl<'tcx> ReferencesError for TraitPredicate<'tcx> {
     fn references_error(&self) -> bool {
         self.trait_ref.references_error()
     }
 }
 
-impl<'tcx> ReferencesError for ty::ProjectionPredicate<'tcx> {
+impl<'tcx> ReferencesError for ProjectionPredicate<'tcx> {
     fn references_error(&self) -> bool {
         self.projection_ty.trait_ref.references_error() || self.ty.references_error()
     }
 }
 
-impl<'tcx> ReferencesError for ty::TraitRef<'tcx> {
+impl<'tcx> ReferencesError for TraitRef<'tcx> {
     fn references_error(&self) -> bool {
         self.input_types().iter().any(|t| t.references_error())
     }
 }
 
-impl<'tcx> ReferencesError for ty::Ty<'tcx> {
+impl<'tcx> ReferencesError for Ty<'tcx> {
     fn references_error(&self) -> bool {
-        ty::type_is_error(*self)
+        type_is_error(*self)
     }
 }
 
-impl<'tcx> ReferencesError for ty::Predicate<'tcx> {
+impl<'tcx> ReferencesError for Predicate<'tcx> {
     fn references_error(&self) -> bool {
         match *self {
-            ty::Predicate::Trait(ref data) => data.references_error(),
-            ty::Predicate::Equate(ref data) => data.references_error(),
-            ty::Predicate::RegionOutlives(ref data) => data.references_error(),
-            ty::Predicate::TypeOutlives(ref data) => data.references_error(),
-            ty::Predicate::Projection(ref data) => data.references_error(),
+            Predicate::Trait(ref data) => data.references_error(),
+            Predicate::Equate(ref data) => data.references_error(),
+            Predicate::RegionOutlives(ref data) => data.references_error(),
+            Predicate::TypeOutlives(ref data) => data.references_error(),
+            Predicate::Projection(ref data) => data.references_error(),
         }
     }
 }
 
-impl<A,B> ReferencesError for ty::OutlivesPredicate<A,B>
+impl<A,B> ReferencesError for OutlivesPredicate<A,B>
     where A : ReferencesError, B : ReferencesError
 {
     fn references_error(&self) -> bool {
@@ -7102,14 +7156,14 @@ impl<A,B> ReferencesError for ty::OutlivesPredicate<A,B>
     }
 }
 
-impl<'tcx> ReferencesError for ty::EquatePredicate<'tcx>
+impl<'tcx> ReferencesError for EquatePredicate<'tcx>
 {
     fn references_error(&self) -> bool {
         self.0.references_error() || self.1.references_error()
     }
 }
 
-impl ReferencesError for ty::Region
+impl ReferencesError for Region
 {
     fn references_error(&self) -> bool {
         false

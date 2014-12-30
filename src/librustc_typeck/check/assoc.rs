@@ -10,7 +10,7 @@
 
 use middle::infer::InferCtxt;
 use middle::traits::{ObligationCause, ObligationCauseCode, FulfillmentContext};
-use middle::ty::{mod, HasProjectionTypes, Ty};
+use middle::ty::{mod, RegionEscape, HasProjectionTypes, Ty};
 use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
 use syntax::ast;
 use syntax::codemap::Span;
@@ -32,8 +32,7 @@ pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     let mut normalizer = AssociatedTypeNormalizer { span: span,
                                                     body_id: body_id,
                                                     infcx: infcx,
-                                                    fulfillment_cx: fulfillment_cx,
-                                                    region_binders: 0 };
+                                                    fulfillment_cx: fulfillment_cx };
     value.fold_with(&mut normalizer)
 }
 
@@ -42,20 +41,11 @@ struct AssociatedTypeNormalizer<'a,'tcx:'a> {
     fulfillment_cx: &'a mut FulfillmentContext<'tcx>,
     span: Span,
     body_id: ast::NodeId,
-    region_binders: uint,
 }
 
 impl<'a,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.infcx.tcx
-    }
-
-    fn enter_region_binder(&mut self) {
-        self.region_binders += 1;
-    }
-
-    fn exit_region_binder(&mut self) {
-        self.region_binders -= 1;
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -69,10 +59,22 @@ impl<'a,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'tcx> {
         // Instead of normalizing `<T as Foo<&'a>>::A` here, we'll
         // normalize it when we instantiate those bound regions (which
         // should occur eventually).
-        let no_region_binders = self.region_binders == 0;
 
         match ty.sty {
-            ty::ty_projection(ref data) if no_region_binders => {
+            ty::ty_projection(ref data) if !data.has_escaping_regions() => { // (*)
+
+                // (*) This is kind of hacky -- we need to be able to
+                // handle normalization within binders because
+                // otherwise we wind up a need to normalize when doing
+                // trait matching (since you can have a trait
+                // obligation like `for<'a> T::B : Fn(&'a int)`), but
+                // we can't normalize with bound regions in scope. So
+                // far now we just ignore binders but only normalize
+                // if all bound regions are gone (and then we still
+                // have to renormalize whenever we instantiate a
+                // binder). It would be better to normalize in a
+                // binding-aware fashion.
+
                 let cause =
                     ObligationCause::new(
                         self.span,
