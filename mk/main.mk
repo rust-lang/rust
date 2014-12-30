@@ -15,6 +15,9 @@
 # The version number
 CFG_RELEASE_NUM=0.13.0
 
+# An optional number to put after the label, e.g. '2' -> '-beta2'
+CFG_BETA_CYCLE=1
+
 CFG_FILENAME_EXTRA=4e7c5e5c
 
 ifeq ($(CFG_RELEASE_CHANNEL),stable)
@@ -24,7 +27,7 @@ CFG_RELEASE=$(CFG_RELEASE_NUM)
 CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),beta)
-CFG_RELEASE=$(CFG_RELEASE_NUM)-beta
+CFG_RELEASE=$(CFG_RELEASE_NUM)-beta$(CFG_BETA_CYCLE)
 # When building beta/nightly distributables just reuse the same "beta"
 # name so when we upload we'll always override the previous
 # nighly. This doesn't actually impact the version reported by rustc -
