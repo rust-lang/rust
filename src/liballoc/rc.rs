@@ -154,7 +154,7 @@ use core::nonzero::NonZero;
 use core::ops::{Deref, Drop};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::{mod, RawPtr};
+use core::ptr::{mod, PtrExt};
 use core::result::Result;
 use core::result::Result::{Ok, Err};
 

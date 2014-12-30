@@ -96,7 +96,7 @@ use core::mem::size_of;
 use core::mem;
 use core::ops::FnMut;
 use core::prelude::{Clone, Greater, Iterator, IteratorExt, Less, None, Option};
-use core::prelude::{Ord, Ordering, RawPtr, Some, range};
+use core::prelude::{Ord, Ordering, PtrExt, Some, range};
 use core::ptr;
 use core::slice as core_slice;
 use self::Direction::*;

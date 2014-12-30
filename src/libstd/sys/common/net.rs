@@ -269,7 +269,7 @@ pub fn get_host_addresses(host: Option<&str>, servname: Option<&str>,
     // Collect all the results we found
     let mut addrs = Vec::new();
     let mut rp = res;
-    while rp.is_not_null() {
+    while !rp.is_null() {
         unsafe {
             let addr = try!(sockaddr_to_addr(mem::transmute((*rp).ai_addr),
                                              (*rp).ai_addrlen as uint));

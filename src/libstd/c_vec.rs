@@ -40,7 +40,7 @@ use mem;
 use ops::{Drop, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
-use ptr::RawPtr;
+use ptr::PtrExt;
 use ptr;
 use raw;
 use slice::AsSlice;

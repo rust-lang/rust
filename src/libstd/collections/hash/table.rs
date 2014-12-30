@@ -23,7 +23,7 @@ use num::{Int, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{Some, None};
-use ptr::{Unique, RawPtr, copy_nonoverlapping_memory, zero_memory};
+use ptr::{Unique, PtrExt, copy_nonoverlapping_memory, zero_memory};
 use ptr;
 use rt::heap::{allocate, deallocate};
 

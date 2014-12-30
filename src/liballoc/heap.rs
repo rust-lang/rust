@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::ptr::RawPtr;
+use core::ptr::PtrExt;
 
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
 
@@ -371,7 +371,7 @@ mod imp {
 mod test {
     extern crate test;
     use self::test::Bencher;
-    use core::ptr::RawPtr;
+    use core::ptr::PtrExt;
     use heap;
 
     #[test]

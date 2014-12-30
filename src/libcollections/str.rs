@@ -1768,19 +1768,12 @@ impl StrExt for str {}
 
 #[cfg(test)]
 mod tests {
-    use std::iter::AdditiveIterator;
-    use std::iter::range;
-    use std::default::Default;
-    use std::char::Char;
-    use std::clone::Clone;
-    use std::cmp::{Ord, PartialOrd, Equiv};
-    use std::cmp::Ordering::{Equal, Greater, Less};
-    use std::option::Option::{mod, Some, None};
-    use std::result::Result::{Ok, Err};
-    use std::ptr::RawPtr;
-    use std::iter::{Iterator, IteratorExt, DoubleEndedIteratorExt};
+    use prelude::*;
 
-    use super::*;
+    use core::default::Default;
+    use core::iter::AdditiveIterator;
+    use super::{eq_slice, from_utf8, is_utf8, is_utf16, raw};
+    use super::truncate_utf16_at_nul;
     use super::MaybeOwned::{Owned, Slice};
     use std::slice::{AsSlice, SliceExt};
     use string::{String, ToString};

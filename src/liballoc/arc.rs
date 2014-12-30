@@ -80,7 +80,7 @@ use core::nonzero::NonZero;
 use core::ops::{Drop, Deref};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::{mod, RawPtr};
+use core::ptr::{mod, PtrExt};
 use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
