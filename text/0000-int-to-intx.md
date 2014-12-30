@@ -4,7 +4,7 @@
 
 # Summary
 
-Rename the pointer-sized integer types `int/uint` to `intx/uintx`, and use new literal suffixes `ix/ux`, so as to avoid misconceptions and misuses.
+This RFC proposes that we rename the pointer-sized integer types `int/uint` to `intp/uintp`, `intm/uintm` or `imem/umem`, so as to avoid misconceptions and misuses.
 
 # Motivation
 
@@ -40,63 +40,72 @@ Not renaming `int/uint` violates the principle of least surprise, and is not new
 
 As stated in previous discussions, all suggested alternative names have some drawbacks that may be unbearable. (Please refer to [A tale of two's complement](http://discuss.rust-lang.org/t/a-tale-of-twos-complement/1062) and related discussions for details.)
 
-Therefore this RFC proposes a new pair of alternatives: `intx/uintx`, where the `x` suffix means "unknown size"/"variable size", or "platform-dependent size".
+Before the rejection, the community largely settled on two pairs of candidates: `imem/umem` and `iptr/uptr`.
 
-The pros:
+`iptr/uptr` were rejected because they may remind the programmers of C/C++ `intptr_t`/`uintptr_t`, which were typically *only* used for storing casted pointer values. However, favouring any one of the types' use cases in the names is undesirable.
 
-- The names are foreign to programmers from other languages, so they are less likely to make incorrect assumptions, or use them out of habit.
-- But not too foreign, they still look like integer type names. (Some believe that `imem/umem` fail here.)
-- They do not favour one of the types' use cases over the others in the names. (Alternatives `iptr/uptr`, `idiff/usize` and others fail here.)
-- They follow the same *signed-ness + size* naming pattern used by other integer types like `i32/u32`.
-- They somewhat look like `index/uindex`. This may or may not be an advantage.
+`imem/umem` were rejected because they may be "not integer-like" and reminded people of "int memory"/"unsigned int memory" which made no sense.
+
+But the problems can be dealt with, in one of the following ways:
+
+1. instead of stressing the `ptr`/`mem` part, stress the `i`/`u` part,
+2. or find and canonicalize a better interpretation for `imem/umem`.
 
 # Detailed Design
 
-Rename these two pointer-sized integer types, `int` to `intx`, and `uint` to `uintx`.
+## Approach 1.
 
-Use `ix` and `ux` as the literal suffix for `intx` and `uintx`, respectively.
+Rename `int/uint` to `intp/uintp` or `intm/uintm`.
+
+Introduce the respective literal suffixes `ip/up` or `im/um`.
 
 Update code and documentation to use pointer-sized integers more narrowly for their intended purposes. Provide a deprecation period to carry out these updates.
 
+## Approach 2.
+
+Rename `int/uint` to `imem/umem`, and use `imem/umem` as the new literal suffixes.
+
+Update code and documentation to use pointer-sized integers more narrowly for their intended purposes. Provide a deprecation period to carry out these updates.
+
+How to deal with the problems of `imem/umem`?
+
+Interpret them in the documentation as: **signed/unsigned _mem_ory-pointer-sized integers.**
+
+With this interpretation in mind, the RFC author (@CloudiDust) considers `imem`/`umem` to once again be his favourite among the three pairs of candidates. 
+
+## Advantages
+
+The advantages of both approaches over `int`/`uint`:
+
+- The names are foreign to programmers from other languages, so they are less likely to make incorrect assumptions, or use them out of habit.
+- But not too foreign, they still look like integers. (Depending on personal taste, Approach 1 is either better or worse than Approach 2 on this one.)
+- They follow the same *signed-ness + size* naming pattern used by other integer types like `i32/u32`. (Approach 2 is arguably better here.)
+
 # Drawbacks
 
-- Renaming `int`/`uint` requires changing much existing code. On the other hand, this is an ideal opportunity to fix integer portability bugs.
-- The new names are longer (but not much longer).
-- The `x` suffix may be too generic and doesn't carry enough meaning. In particular, it signifies the fact that the size is "unknown"/"variable" "in some way", but what is this "some way" after all?
+Renaming `int`/`uint` requires changing much existing code. On the other hand, this is an ideal opportunity to fix integer portability bugs.
+
+`intp/uintp` are supported by several community members, but they still may remind people of `intptr_t`/`uintptr_t`, although arguably to a lesser extent, as `p` can be interpreted as `platform-dependent` here.
+
+With different trade-offs considered, `intm/uintm` may or may not be a better name than `imem/umem` depending on personal tastes.
 
 # Alternatives
 
-**A. Keep the status quo.**
+## A. Keep the status quo.
 
 Which may hurt in the long run, especially when there is at least one (would-be?) high-profile language (which is Rust-inspired) taking the opposite stance of Rust.
 
-**B. Use `ix/ux` as the new type names, not just literal suffixes.**
+## B. Approach 1a: Use `intx/uintx` as the new type names, and `ix/ux` as the new suffixes.
 
-While `ix/ux` more closely follow the `i32/u32` pattern, they may be too short (and tempting) and may not look like integer types for some.
+`intx/uintx` were actually the names that got promoted in the previous revisions of this RFC, where `x` means "unknown", "variable" or "platform-dependent". However the `x` suffix was too vague as there were other integer types that have platform-dependent sizes, like register-sized ones, so `intx/uintx` lost their "promoted" status in this revision.
 
-**C. Use `intx/uintx` as the new literal suffixes, not just type names.**
+## C. Approach 1b: Use the proposed literal suffixes as the new type names, not just literal suffixes.
 
-For some, `42intx/42uintx` are too long and don't look pretty, but then again others may find this desirable.
+While that will make type names more closely follow the `i32/u32` pattern, they may be too short (and tempting) and may have unrelated meanings on their own (`ip`/`up`/`um` etc.)  
 
-**D. Use `intp/uintp` and/or `ip/up` instead.**
+## D. Approach 1c: Use the proposed type names as literal suffixes, not just type names.
 
-Here `p` means "pointer (sized)" or "platform (dependent)", thus making the semantics of `intp/uintp` clearer than that of `intx/uintx`.
-
-The drawback here is that some people may incorrectly assume that `intp/uintp` *only* have the same use case as C/C++'s `intptr_t/uintptr_t`, which are *only* for storing casted pointer values.
-
-Also, as literal suffixes or type names, `ip/up` may be more confusing than `ix/ux`, as `ip/up` have meanings that aren't related to integers.
-
-**E. Use `imem/umem` and/or `im/um` instead.**
-
-While `imem/umem` was rejected previously, it is still controversial whether they are truly "ugly" or "not integer-like". Also, they may have some advantages over `intx/uintx`:
-
-- They actually more closely follow the `i32/u32` pattern: `i/u` + **mem**ory pointer-sized.
-- So they also better describe what size they have, instead of just stating "unknown"/"variable", but the unfortunate implications of `intp/uintp` are avoided.
-- If one prefers `imem/umem` as type names, then they also make better suffixes than `intx`/`uintx` because `umem` is shorter than `uintx` and `imem/umem` are of the same length.
-
-`im/um` may also be more (or less) confusing than `ix/ux`.
-
-A related pair of variants `intm/uintm` may also be worth considering.
+`uintp`/`uintm`/`uintx` may or may not too long as literal suffixes.
 
 # Unresolved questions
 
