@@ -294,8 +294,8 @@ impl<'a> SpanUtils<'a> {
     }
 
     pub fn sub_span_after_keyword(&self,
-                              span: Span,
-                              keyword: keywords::Keyword) -> Option<Span> {
+                                  span: Span,
+                                  keyword: keywords::Keyword) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {
             let ts = toks.real_token();
