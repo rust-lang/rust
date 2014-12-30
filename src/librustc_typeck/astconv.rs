@@ -164,10 +164,16 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                             let mut m = String::new();
                             let len = v.len();
                             for (i, (name, n)) in v.into_iter().enumerate() {
-                                m.push_str(if n == 1 {
-                                    format!("`{}`", name)
+                                let help_name = if name.is_empty() {
+                                    format!("argument {}", i + 1)
                                 } else {
-                                    format!("one of `{}`'s {} elided lifetimes", name, n)
+                                    format!("`{}`", name)
+                                };
+
+                                m.push_str(if n == 1 {
+                                    help_name
+                                } else {
+                                    format!("one of {}'s {} elided lifetimes", help_name, n)
                                 }[]);
 
                                 if len == 2 && i == 0 {
