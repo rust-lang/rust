@@ -117,7 +117,10 @@ pub enum ObligationCauseCode<'tcx> {
 
 #[deriving(Clone)]
 pub struct DerivedObligationCause<'tcx> {
-    /// Resolving this trait led to the current obligation
+    /// The trait reference of the parent obligation that led to the
+    /// current obligation. Note that only trait obligations lead to
+    /// derived obligations, so we just store the trait reference here
+    /// directly.
     parent_trait_ref: ty::PolyTraitRef<'tcx>,
 
     /// The parent trait had this cause

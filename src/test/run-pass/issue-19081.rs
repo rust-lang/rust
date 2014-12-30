@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-pretty -- currently pretty prints as `Hash<<Self as Hasher...` which fails to parse
+// ignore-pretty -- FIXME(#17362) pretty prints as `Hash<<Self as Hasher...` which fails to parse
 
 #![feature(associated_types)]
 

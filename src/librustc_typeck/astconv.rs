@@ -244,7 +244,6 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 fn ast_path_substs_for_ty<'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
-    decl_def_id: ast::DefId,
     decl_generics: &ty::Generics<'tcx>,
     path: &ast::Path)
     -> Substs<'tcx>
@@ -280,7 +279,6 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
     create_substs_for_ast_path(this,
                                rscope,
                                path.span,
-                               decl_def_id,
                                decl_generics,
                                None,
                                types,
@@ -291,7 +289,6 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
     span: Span,
-    _decl_def_id: ast::DefId,
     decl_generics: &ty::Generics<'tcx>,
     self_ty: Option<Ty<'tcx>>,
     types: Vec<Ty<'tcx>>,
@@ -621,7 +618,6 @@ fn ast_path_to_trait_ref<'a,'tcx,AC,RS>(
     let substs = create_substs_for_ast_path(this,
                                             &shifted_rscope,
                                             path.span,
-                                            trait_def_id,
                                             &trait_def.generics,
                                             self_ty,
                                             types,
@@ -705,7 +701,6 @@ pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 
     let substs = ast_path_substs_for_ty(this,
                                         rscope,
-                                        did,
                                         &generics,
                                         path);
     let ty = decl_ty.subst(tcx, &substs);
@@ -747,7 +742,7 @@ pub fn ast_path_to_ty_relaxed<'tcx,AC,RS>(
         Substs::new(VecPerParamSpace::params_from_type(type_params),
                     VecPerParamSpace::params_from_type(region_params))
     } else {
-        ast_path_substs_for_ty(this, rscope, did, &generics, path)
+        ast_path_substs_for_ty(this, rscope, &generics, path)
     };
 
     let ty = decl_ty.subst(tcx, &substs);

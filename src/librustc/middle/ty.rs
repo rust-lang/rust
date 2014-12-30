@@ -1791,7 +1791,8 @@ pub enum Predicate<'tcx> {
     /// where T : 'a
     TypeOutlives(PolyTypeOutlivesPredicate<'tcx>),
 
-    ///
+    /// where <T as TraitRef>::Name == X, approximately.
+    /// See `ProjectionPredicate` struct for details.
     Projection(PolyProjectionPredicate<'tcx>),
 }
 
@@ -1857,9 +1858,14 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     }
 }
 
+/// Represents the projection of an associated type. In explicit UFCS
+/// form this would be written `<T as Trait<..>>::N`.
 #[deriving(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ProjectionTy<'tcx> {
+    /// The trait reference `T as Trait<..>`.
     pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+
+    /// The name `N` of the associated type.
     pub item_name: ast::Name,
 }
 
@@ -2179,6 +2185,12 @@ impl<'tcx> ParameterEnvironment<'tcx> {
 /// - `generics`: the set of type parameters and their bounds
 /// - `ty`: the base types, which may reference the parameters defined
 ///   in `generics`
+///
+/// Note that TypeSchemes are also sometimes called "polytypes" (and
+/// in fact this struct used to carry that name, so you may find some
+/// stray references in a comment or something). We try to reserve the
+/// "poly" prefix to refer to higher-ranked things, as in
+/// `PolyTraitRef`.
 #[deriving(Clone, Show)]
 pub struct TypeScheme<'tcx> {
     pub generics: Generics<'tcx>,
@@ -4677,6 +4689,12 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         }
         ty_err => "type error".to_string(),
         ty_open(_) => "opened DST".to_string(),
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ty::type_err<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        ty::type_err_to_str(tcx, self)
     }
 }
 

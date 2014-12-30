@@ -1758,9 +1758,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                  traits::ObligationCauseCode::MiscObligation);
         self.inh.fulfillment_cx
             .borrow_mut()
-            .normalize_associated_type(self.infcx(),
-                                       trait_ref,
-                                       item_name,
+            .normalize_projection_type(self.infcx(),
+                                       ty::ProjectionTy {
+                                           trait_ref: trait_ref,
+                                           item_name: item_name,
+                                       },
                                        cause)
     }
 

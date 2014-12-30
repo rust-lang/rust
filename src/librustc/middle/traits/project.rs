@@ -20,7 +20,6 @@ use super::VtableImplData;
 use middle::infer;
 use middle::subst::Subst;
 use middle::ty::{mod, AsPredicate, ToPolyTraitRef, Ty};
-use std::fmt;
 use util::ppaux::Repr;
 
 pub type PolyProjectionObligation<'tcx> =
@@ -34,10 +33,17 @@ pub type ProjectionTyObligation<'tcx> =
 
 /// When attempting to resolve `<T as TraitRef>::Name == U`...
 pub enum ProjectionError<'tcx> {
+    /// ...we could not find any helpful information on what `Name`
+    /// might be. This could occur, for example, if there is a where
+    /// clause `T : TraitRef` but not `T : TraitRef<Name=V>`. When
+    /// normalizing, this case is where we opt to normalize back to
+    /// the projection type `<T as TraitRef>::Name`.
     NoCandidate,
+
+    /// ...we found multiple sources of information and couldn't resolve the ambiguity.
     TooManyCandidates,
 
-    ///
+    /// ...`<T as TraitRef::Name>` ws resolved to some type `V` that failed to unify with `U`
     MismatchedTypes(MismatchedProjectionTypes<'tcx>),
 
     /// ...an error occurred matching `T : TraitRef`
@@ -380,12 +386,6 @@ fn confirm_candidate<'cx,'tcx>(
     Ok(projected_ty)
 }
 
-impl<'tcx> Repr<'tcx> for super::MismatchedProjectionTypes<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        self.err.repr(tcx)
-    }
-}
-
 impl<'tcx> Repr<'tcx> for ProjectionError<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
@@ -398,12 +398,6 @@ impl<'tcx> Repr<'tcx> for ProjectionError<'tcx> {
             ProjectionError::TraitSelectionError(ref e) =>
                 format!("TraitSelectionError({})", e.repr(tcx)),
         }
-    }
-}
-
-impl<'tcx> fmt::Show for super::MismatchedProjectionTypes<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "MismatchedProjectionTypes(..)")
     }
 }
 
