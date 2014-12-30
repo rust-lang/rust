@@ -13,7 +13,7 @@ pub use self::AnnNode::*;
 use abi;
 use ast::{mod, FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
-use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound};
+use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
 use ast::{UnboxedClosureKind};
 use ast_util;
@@ -958,20 +958,25 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose(item.span));
             }
-            ast::ItemTrait(unsafety, ref generics, ref unbound, ref bounds, ref methods) => {
+            ast::ItemTrait(unsafety, ref generics, ref bounds, ref methods) => {
                 try!(self.head(""));
                 try!(self.print_visibility(item.vis));
                 try!(self.print_unsafety(unsafety));
                 try!(self.word_nbsp("trait"));
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(generics));
-                if let &Some(ref tref) = unbound {
-                    try!(space(&mut self.s));
-                    try!(self.word_space("for"));
-                    try!(self.print_trait_ref(tref));
-                    try!(word(&mut self.s, "?"));
+                let bounds: Vec<_> = bounds.iter().map(|b| b.clone()).collect();
+                let mut real_bounds = Vec::with_capacity(bounds.len());
+                for b in bounds.into_iter() {
+                    if let TraitTyParamBound(ref ptr, ast::TraitBoundModifier::Maybe) = b {
+                        try!(space(&mut self.s));
+                        try!(self.word_space("for ?"));
+                        try!(self.print_trait_ref(&ptr.trait_ref));
+                    } else {
+                        real_bounds.push(b);
+                    }
                 }
-                try!(self.print_bounds(":", bounds[]));
+                try!(self.print_bounds(":", real_bounds[]));
                 try!(self.print_where_clause(generics));
                 try!(word(&mut self.s, " "));
                 try!(self.bopen());
@@ -2345,7 +2350,11 @@ impl<'a> State<'a> {
                 }
 
                 try!(match *bound {
-                    TraitTyParamBound(ref tref) => {
+                    TraitTyParamBound(ref tref, TraitBoundModifier::None) => {
+                        self.print_poly_trait_ref(tref)
+                    }
+                    TraitTyParamBound(ref tref, TraitBoundModifier::Maybe) => {
+                        try!(word(&mut self.s, "?"));
                         self.print_poly_trait_ref(tref)
                     }
                     RegionTyParamBound(ref lt) => {
@@ -2412,10 +2421,6 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ty_param(&mut self, param: &ast::TyParam) -> IoResult<()> {
-        if let Some(ref tref) = param.unbound {
-            try!(self.print_trait_ref(tref));
-            try!(self.word_space("?"));
-        }
         try!(self.print_ident(param.ident));
         try!(self.print_bounds(":", param.bounds[]));
         match param.default {

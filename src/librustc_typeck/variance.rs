@@ -353,7 +353,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
         match item.node {
             ast::ItemEnum(_, ref generics) |
             ast::ItemStruct(_, ref generics) |
-            ast::ItemTrait(_, ref generics, _, _, _) => {
+            ast::ItemTrait(_, ref generics, _, _) => {
                 for (i, p) in generics.lifetimes.iter().enumerate() {
                     let id = p.lifetime.id;
                     self.add_inferred(item.id, RegionParam, TypeSpace, i, id);

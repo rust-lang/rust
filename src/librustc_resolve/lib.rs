@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ItemImpl(_, _, Some(_), _, _) => parent,
 
-            ItemTrait(_, _, _, _, ref items) => {
+            ItemTrait(_, _, _, ref items) => {
                 let name_bindings =
                     self.add_child(name,
                                    parent.clone(),
@@ -4093,7 +4093,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             impl_items[]);
             }
 
-            ItemTrait(_, ref generics, ref unbound, ref bounds, ref trait_items) => {
+            ItemTrait(_, ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the self type.
                 let mut self_type_rib = Rib::new(ItemRibKind);
 
@@ -4113,13 +4113,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     this.resolve_type_parameter_bounds(item.id, bounds,
                                                        TraitDerivation);
-
-                    match *unbound {
-                        Some(ref tpb) => {
-                            this.resolve_trait_reference(item.id, tpb, TraitDerivation);
-                        }
-                        None => {}
-                    }
 
                     for trait_item in (*trait_items).iter() {
                         // Create a new rib for the trait_item-specific type
@@ -4368,12 +4361,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.resolve_type_parameter_bound(type_parameter.id, bound,
                                               TraitBoundingTypeParameter);
         }
-        match &type_parameter.unbound {
-            &Some(ref unbound) =>
-                self.resolve_trait_reference(
-                    type_parameter.id, unbound, TraitBoundingTypeParameter),
-            &None => {}
-        }
         match type_parameter.default {
             Some(ref ty) => self.resolve_type(&**ty),
             None => {}
@@ -4395,7 +4382,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     type_parameter_bound: &TyParamBound,
                                     reference_type: TraitReferenceType) {
         match *type_parameter_bound {
-            TraitTyParamBound(ref tref) => {
+            TraitTyParamBound(ref tref, _) => {
                 self.resolve_poly_trait_reference(id, tref, reference_type)
             }
             RegionTyParamBound(..) => {}

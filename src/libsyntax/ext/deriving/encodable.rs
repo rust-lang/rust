@@ -134,10 +134,10 @@ fn expand_deriving_encodable_imp<F>(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds {
             lifetimes: Vec::new(),
-            bounds: vec!(("__S", None, vec!(Path::new_(
+            bounds: vec!(("__S", vec!(Path::new_(
                             vec!(krate, "Encoder"), None,
                             vec!(box Literal(Path::new_local("__E"))), true))),
-                         ("__E", None, vec!()))
+                         ("__E", vec!()))
         },
         methods: vec!(
             MethodDef {

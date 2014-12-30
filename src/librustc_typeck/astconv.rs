@@ -1626,7 +1626,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     let mut trait_def_ids = DefIdMap::new();
     for ast_bound in ast_bounds.iter() {
         match *ast_bound {
-            ast::TraitTyParamBound(ref b) => {
+            ast::TraitTyParamBound(ref b, ast::TraitBoundModifier::None) => {
                 match ::lookup_def_tcx(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
                     def::DefTrait(trait_did) => {
                         match trait_def_ids.get(&trait_did) {
@@ -1664,6 +1664,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                 }
                 trait_bounds.push(b);
             }
+            ast::TraitTyParamBound(_, ast::TraitBoundModifier::Maybe) => {}
             ast::RegionTyParamBound(ref l) => {
                 region_bounds.push(l);
             }

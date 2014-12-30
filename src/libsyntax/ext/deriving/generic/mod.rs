@@ -417,7 +417,6 @@ impl<'a> TraitDef<'a> {
             cx.typaram(self.span,
                        ty_param.ident,
                        OwnedSlice::from_vec(bounds),
-                       ty_param.unbound.clone(),
                        None)
         }));
 

@@ -371,8 +371,16 @@ pub const DUMMY_NODE_ID: NodeId = -1;
 /// detects Copy, Send and Sync.
 #[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum TyParamBound {
-    TraitTyParamBound(PolyTraitRef),
+    TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
     RegionTyParamBound(Lifetime)
+}
+
+/// A modifier on a bound, currently this is only used for `?Sized`, where the
+/// modifier is `Maybe`. Negative bounds should also be handled here.
+#[deriving(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
+pub enum TraitBoundModifier {
+    None,
+    Maybe,
 }
 
 pub type TyParamBounds = OwnedSlice<TyParamBound>;
@@ -382,7 +390,6 @@ pub struct TyParam {
     pub ident: Ident,
     pub id: NodeId,
     pub bounds: TyParamBounds,
-    pub unbound: Option<TraitRef>,
     pub default: Option<P<Ty>>,
     pub span: Span
 }
@@ -1488,7 +1495,7 @@ pub struct PolyTraitRef {
     pub bound_lifetimes: Vec<LifetimeDef>,
 
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`
-    pub trait_ref: TraitRef
+    pub trait_ref: TraitRef,
 }
 
 #[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
@@ -1577,8 +1584,6 @@ pub enum Item_ {
     /// Represents a Trait Declaration
     ItemTrait(Unsafety,
               Generics,
-              Option<TraitRef>, // (optional) default bound not required for Self.
-                                // Currently, only Sized makes sense here.
               TyParamBounds,
               Vec<TraitItem>),
     ItemImpl(Unsafety,
