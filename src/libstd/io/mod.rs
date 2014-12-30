@@ -935,7 +935,7 @@ impl<'a> Reader for &'a mut (Reader+'a) {
 // API yet. If so, it should be a method on Vec.
 unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -> &'a mut [T] {
     use raw::Slice;
-    use ptr::RawPtr;
+    use ptr::PtrExt;
 
     assert!(start <= end);
     assert!(end <= v.capacity());
