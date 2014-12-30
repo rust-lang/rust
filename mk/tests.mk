@@ -289,6 +289,7 @@ tidy:
 		| grep '^$(S)src/doc' -v \
 		| grep '^$(S)src/compiler-rt' -v \
 		| grep '^$(S)src/libbacktrace' -v \
+		| grep '^$(S)src/rust-installer' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
 
 endif
