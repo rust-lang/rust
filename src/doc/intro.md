@@ -483,7 +483,7 @@ fn main() {
     for i in range(0u, 3u) {
         let number = numbers.clone();
         Thread::spawn(move || {
-            let mut array = number.lock();
+            let mut array = number.lock().unwrap();
 
             (*array)[i] += 1;
 
