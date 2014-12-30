@@ -183,7 +183,7 @@ pub trait Char {
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
     #[unstable = "pending trait organization"]
-    fn encode_utf8(&self, dst: &mut [u8]) -> Option<uint>;
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint>;
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
     /// and then returns the number of `u16`s written.
@@ -191,7 +191,7 @@ pub trait Char {
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
     #[unstable = "pending trait organization"]
-    fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint>;
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint>;
 }
 
 #[experimental = "trait is experimental"]
@@ -260,9 +260,9 @@ impl Char for char {
 
     #[inline]
     #[unstable = "pending error conventions, trait organization"]
-    fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> Option<uint> {
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
-        let code = *self as u32;
+        let code = self as u32;
         if code < MAX_ONE_B && dst.len() >= 1 {
             dst[0] = code as u8;
             Some(1)
@@ -288,9 +288,9 @@ impl Char for char {
 
     #[inline]
     #[unstable = "pending error conventions, trait organization"]
-    fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint> {
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
-        let mut ch = *self as u32;
+        let mut ch = self as u32;
         if (ch & 0xFFFF_u32) == ch  && dst.len() >= 1 {
             // The BMP falls through (assuming non-surrogate, as it should)
             dst[0] = ch as u16;
