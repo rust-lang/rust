@@ -19,6 +19,7 @@ pub use self::OutputType::*;
 pub use self::DebugInfoLevel::*;
 
 use session::{early_error, Session};
+use session::search_paths::SearchPaths;
 
 use rustc_back::target::Target;
 use lint;
@@ -35,7 +36,6 @@ use syntax::parse::token::InternedString;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use getopts;
-use std::cell::{RefCell};
 use std::fmt;
 
 use llvm;
@@ -86,7 +86,7 @@ pub struct Options {
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
-    pub addl_lib_search_paths: RefCell<Vec<Path>>,
+    pub search_paths: SearchPaths,
     pub libs: Vec<(String, cstore::NativeLibraryKind)>,
     pub maybe_sysroot: Option<Path>,
     pub target_triple: String,
@@ -198,7 +198,7 @@ pub fn basic_options() -> Options {
         lint_opts: Vec::new(),
         describe_lints: false,
         output_types: Vec::new(),
-        addl_lib_search_paths: RefCell::new(Vec::new()),
+        search_paths: SearchPaths::new(),
         maybe_sysroot: None,
         target_triple: host_triple().to_string(),
         cfg: Vec::new(),
@@ -1010,9 +1010,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
     };
 
-    let addl_lib_search_paths = matches.opt_strs("L").iter().map(|s| {
-        Path::new(s[])
-    }).collect();
+    let mut search_paths = SearchPaths::new();
+    for s in matches.opt_strs("L").iter() {
+        search_paths.add_path(s[]);
+    }
 
     let libs = matches.opt_strs("l").into_iter().map(|s| {
         let mut parts = s.rsplitn(1, ':');
@@ -1112,7 +1113,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         lint_opts: lint_opts,
         describe_lints: describe_lints,
         output_types: output_types,
-        addl_lib_search_paths: RefCell::new(addl_lib_search_paths),
+        search_paths: search_paths,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
         cfg: cfg,

@@ -9,9 +9,10 @@
 // except according to those terms.
 
 
+use lint;
 use metadata::cstore::CStore;
 use metadata::filesearch;
-use lint;
+use session::search_paths::PathKind;
 use util::nodemap::NodeMap;
 
 use syntax::ast::NodeId;
@@ -28,6 +29,7 @@ use std::os;
 use std::cell::{Cell, RefCell};
 
 pub mod config;
+pub mod search_paths;
 
 // Represents the data associated with a compilation
 // session for a single crate.
@@ -212,16 +214,18 @@ impl Session {
                         .expect("missing sysroot and default_sysroot in Session")
         }
     }
-    pub fn target_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
+    pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch {
         filesearch::FileSearch::new(self.sysroot(),
                                     self.opts.target_triple[],
-                                    &self.opts.addl_lib_search_paths)
+                                    &self.opts.search_paths,
+                                    kind)
     }
-    pub fn host_filesearch<'a>(&'a self) -> filesearch::FileSearch<'a> {
+    pub fn host_filesearch(&self, kind: PathKind) -> filesearch::FileSearch {
         filesearch::FileSearch::new(
             self.sysroot(),
             config::host_triple(),
-            &self.opts.addl_lib_search_paths)
+            &self.opts.search_paths,
+            kind)
     }
 }
 
