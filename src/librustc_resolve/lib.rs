@@ -4008,6 +4008,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
+    /// Searches the current set of local scopes and
+    /// applies translations for closures.
     fn search_ribs(&self,
                    ribs: &[Rib],
                    name: Name,
@@ -4026,6 +4028,27 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
+        None
+    }
+
+    /// Searches the current set of local scopes for labels.
+    /// Stops after meeting a closure.
+    fn search_label(&self, name: Name) -> Option<DefLike> {
+        for rib in self.label_ribs.iter().rev() {
+            match rib.kind {
+                NormalRibKind => {
+                    // Continue
+                }
+                _ => {
+                    // Do not resolve labels across function boundary
+                    return None
+                }
+            }
+            let result = rib.bindings.get(&name).cloned();
+            if result.is_some() {
+                return result
+            }
+        }
         None
     }
 
@@ -5835,8 +5858,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let renamed = mtwt::resolve(label);
-                match self.search_ribs(self.label_ribs[],
-                                       renamed, expr.span) {
+                match self.search_label(renamed) {
                     None => {
                         self.resolve_error(
                             expr.span,
