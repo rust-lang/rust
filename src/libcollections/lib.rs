@@ -103,7 +103,7 @@ mod std {
 mod prelude {
     // from core.
     pub use core::borrow::IntoCow;
-    pub use core::char::Char;
+    pub use core::char::CharExt;
     pub use core::clone::Clone;
     pub use core::cmp::{PartialEq, Eq, PartialOrd, Ord};
     pub use core::cmp::Ordering::{Less, Equal, Greater};
