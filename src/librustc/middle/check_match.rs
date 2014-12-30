@@ -25,7 +25,7 @@ use middle::ty::*;
 use middle::ty;
 use std::fmt;
 use std::iter::AdditiveIterator;
-use std::iter::range_inclusive;
+use std::iter::{range_inclusive, repeat};
 use std::num::Float;
 use std::slice;
 use syntax::ast::{mod, DUMMY_NODE_ID, NodeId, Pat};
@@ -76,7 +76,7 @@ impl<'a> fmt::Show for Matrix<'a> {
         }).collect();
 
         let total_width = column_widths.iter().map(|n| *n).sum() + column_count * 3 + 1;
-        let br = String::from_char(total_width, '+');
+        let br = repeat('+').take(total_width).collect::<String>();
         try!(write!(f, "{}\n", br));
         for row in pretty_printed_matrix.into_iter() {
             try!(write!(f, "+"));

@@ -89,8 +89,6 @@ pub use unicode::str::{Words, Graphemes, GraphemeIndices};
 pub use core::str::{Split, SplitTerminator};
 pub use core::str::{SplitN, RSplitN};
 
-// FIXME(conventions): ensure bit/char conventions are followed by str's API
-
 /*
 Section: Creating a string
 */

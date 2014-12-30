@@ -81,6 +81,7 @@
 use prelude::*;
 
 use str::Utf8Error;
+use string::{FromUtf8Error, FromUtf16Error};
 
 /// Base functionality for all errors in Rust.
 pub trait Error: Send {
@@ -116,4 +117,13 @@ impl Error for Utf8Error {
     }
 
     fn detail(&self) -> Option<String> { Some(self.to_string()) }
+}
+
+impl Error for FromUtf8Error {
+    fn description(&self) -> &str { "invalid utf-8" }
+    fn detail(&self) -> Option<String> { Some(self.to_string()) }
+}
+
+impl Error for FromUtf16Error {
+    fn description(&self) -> &str { "invalid utf-16" }
 }
