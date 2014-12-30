@@ -41,6 +41,8 @@ pub fn main() {
     let _ = 0u..4+4-3;
     let _ = 0..foo();
 
+    let _ = ..42u;
+
     // Test we can use two different types with a common supertype.
     let x = &42i;
     {
