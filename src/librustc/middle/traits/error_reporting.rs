@@ -77,13 +77,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     "overflow evaluating the requirement `{}`",
                     predicate.user_string(infcx.tcx)).as_slice());
 
-            let current_limit = infcx.tcx.sess.recursion_limit.get();
-            let suggested_limit = current_limit * 2;
-            infcx.tcx.sess.span_note(
-                obligation.cause.span,
-                format!(
-                    "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-                    suggested_limit)[]);
+            suggest_new_overflow_limit(infcx, obligation.cause.span);
 
             note_obligation_cause(infcx, obligation);
         }
@@ -165,73 +159,76 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     // ambiguous impls. The latter *ought* to be a
     // coherence violation, so we don't report it here.
 
-    let trait_ref = match obligation.predicate {
-        ty::Predicate::Trait(ref trait_predicate) => {
-            infcx.resolve_type_vars_if_possible(
-                &trait_predicate.to_poly_trait_ref())
-        }
-        _ => {
-            infcx.tcx.sess.span_bug(
-                obligation.cause.span,
-                format!("ambiguity from something other than a trait: {}",
-                        obligation.predicate.repr(infcx.tcx)).as_slice());
-        }
-    };
+    let predicate = infcx.resolve_type_vars_if_possible(&obligation.predicate);
 
-    let self_ty = trait_ref.self_ty();
-
-    debug!("maybe_report_ambiguity(trait_ref={}, self_ty={}, obligation={})",
-           trait_ref.repr(infcx.tcx),
-           self_ty.repr(infcx.tcx),
+    debug!("maybe_report_ambiguity(predicate={}, obligation={})",
+           predicate.repr(infcx.tcx),
            obligation.repr(infcx.tcx));
-    let all_types = &trait_ref.substs().types;
-    if all_types.iter().any(|&t| ty::type_is_error(t)) {
-    } else if all_types.iter().any(|&t| ty::type_needs_infer(t)) {
-        // This is kind of a hack: it frequently happens that some earlier
-        // error prevents types from being fully inferred, and then we get
-        // a bunch of uninteresting errors saying something like "<generic
-        // #0> doesn't implement Sized".  It may even be true that we
-        // could just skip over all checks where the self-ty is an
-        // inference variable, but I was afraid that there might be an
-        // inference variable created, registered as an obligation, and
-        // then never forced by writeback, and hence by skipping here we'd
-        // be ignoring the fact that we don't KNOW the type works
-        // out. Though even that would probably be harmless, given that
-        // we're only talking about builtin traits, which are known to be
-        // inhabited. But in any case I just threw in this check for
-        // has_errors() to be sure that compilation isn't happening
-        // anyway. In that case, why inundate the user.
-        if !infcx.tcx.sess.has_errors() {
-            if infcx.tcx.lang_items.sized_trait()
-                  .map_or(false, |sized_id| sized_id == trait_ref.def_id()) {
-                infcx.tcx.sess.span_err(
+
+    match predicate {
+        ty::Predicate::Trait(ref data) => {
+            let trait_ref = data.to_poly_trait_ref();
+            let self_ty = trait_ref.self_ty();
+            let all_types = &trait_ref.substs().types;
+            if all_types.iter().any(|&t| ty::type_is_error(t)) {
+            } else if all_types.iter().any(|&t| ty::type_needs_infer(t)) {
+                // This is kind of a hack: it frequently happens that some earlier
+                // error prevents types from being fully inferred, and then we get
+                // a bunch of uninteresting errors saying something like "<generic
+                // #0> doesn't implement Sized".  It may even be true that we
+                // could just skip over all checks where the self-ty is an
+                // inference variable, but I was afraid that there might be an
+                // inference variable created, registered as an obligation, and
+                // then never forced by writeback, and hence by skipping here we'd
+                // be ignoring the fact that we don't KNOW the type works
+                // out. Though even that would probably be harmless, given that
+                // we're only talking about builtin traits, which are known to be
+                // inhabited. But in any case I just threw in this check for
+                // has_errors() to be sure that compilation isn't happening
+                // anyway. In that case, why inundate the user.
+                if !infcx.tcx.sess.has_errors() {
+                    if
+                        infcx.tcx.lang_items.sized_trait()
+                        .map_or(false, |sized_id| sized_id == trait_ref.def_id())
+                    {
+                        infcx.tcx.sess.span_err(
+                            obligation.cause.span,
+                            format!(
+                                "unable to infer enough type information about `{}`; \
+                                 type annotations required",
+                                self_ty.user_string(infcx.tcx)).as_slice());
+                    } else {
+                        infcx.tcx.sess.span_err(
+                            obligation.cause.span,
+                            format!(
+                                "type annotations required: cannot resolve `{}`",
+                                predicate.user_string(infcx.tcx)).as_slice());
+                        note_obligation_cause(infcx, obligation);
+                    }
+                }
+            } else if !infcx.tcx.sess.has_errors() {
+                // Ambiguity. Coherence should have reported an error.
+                infcx.tcx.sess.span_bug(
                     obligation.cause.span,
                     format!(
-                        "unable to infer enough type information about `{}`; type annotations \
-                         required",
-                        self_ty.user_string(infcx.tcx)).as_slice());
-            } else {
-                infcx.tcx.sess.span_err(
-                    obligation.cause.span,
-                    format!(
-                        "unable to infer enough type information to \
-                         locate the impl of the trait `{}` for \
-                         the type `{}`; type annotations required",
+                        "coherence failed to report ambiguity: \
+                         cannot locate the impl of the trait `{}` for \
+                         the type `{}`",
                         trait_ref.user_string(infcx.tcx),
                         self_ty.user_string(infcx.tcx)).as_slice());
+            }
+        }
+
+        _ => {
+            if !infcx.tcx.sess.has_errors() {
+                infcx.tcx.sess.span_err(
+                    obligation.cause.span,
+                    format!(
+                        "type annotations required: cannot resolve `{}`",
+                        predicate.user_string(infcx.tcx)).as_slice());
                 note_obligation_cause(infcx, obligation);
             }
         }
-    } else if !infcx.tcx.sess.has_errors() {
-         // Ambiguity. Coherence should have reported an error.
-        infcx.tcx.sess.span_bug(
-            obligation.cause.span,
-            format!(
-                "coherence failed to report ambiguity: \
-                 cannot locate the impl of the trait `{}` for \
-                 the type `{}`",
-                trait_ref.user_string(infcx.tcx),
-                self_ty.user_string(infcx.tcx)).as_slice());
     }
 }
 
@@ -335,3 +332,12 @@ fn note_obligation_cause_code<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
+pub fn suggest_new_overflow_limit(infcx: &InferCtxt, span: Span) {
+    let current_limit = infcx.tcx.sess.recursion_limit.get();
+    let suggested_limit = current_limit * 2;
+    infcx.tcx.sess.span_note(
+        span,
+        format!(
+            "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
+            suggested_limit)[]);
+}

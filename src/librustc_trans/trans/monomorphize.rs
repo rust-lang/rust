@@ -16,7 +16,7 @@ use middle::infer;
 use middle::subst;
 use middle::subst::{Subst, Substs};
 use middle::traits;
-use middle::ty_fold::{mod, TypeFolder, TypeFoldable};
+use middle::ty_fold::{TypeFolder, TypeFoldable};
 use trans::base::{set_llvm_fn_attrs, set_inline_hint};
 use trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use trans::base::{trans_fn, decl_internal_rust_fn};
@@ -32,7 +32,6 @@ use syntax::ast_map;
 use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::attr;
 use std::hash::{sip, Hash};
-use std::rc::Rc;
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: ast::DefId,
@@ -310,13 +309,13 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
 /// monomorphization, we know that only concrete types are involved,
 /// and hence we can be sure that all associated types will be
 /// completely normalized away.
-pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, t: &T) -> T
+pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
 {
-    debug!("normalize_associated_type(t={})", t.repr(tcx));
+    debug!("normalize_associated_type(t={})", value.repr(tcx));
 
-    if !t.has_projection_types() {
-        return t.clone();
+    if !value.has_projection_types() {
+        return value.clone();
     }
 
     // FIXME(#20304) -- cache
@@ -324,52 +323,15 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, t: &T) -> T
     let infcx = infer::new_infer_ctxt(tcx);
     let param_env = ty::empty_parameter_environment();
     let mut selcx = traits::SelectionContext::new(&infcx, &param_env, tcx);
-    let mut normalizer = AssociatedTypeNormalizer { selcx: &mut selcx };
-    let result = t.fold_with(&mut normalizer);
+    let cause = traits::ObligationCause::dummy();
+    let traits::Normalized { value: result, obligations } =
+        traits::normalize(&mut selcx, cause, value);
 
-    debug!("normalize_associated_type: t={} result={}",
-           t.repr(tcx),
-           result.repr(tcx));
+    debug!("normalize_associated_type: result={} obligations={}",
+           result.repr(tcx),
+           obligations.repr(tcx));
+
+    assert_eq!(obligations.len(), 0); // TODO not good enough
 
     result
-}
-
-struct AssociatedTypeNormalizer<'a,'tcx:'a> {
-    selcx: &'a mut traits::SelectionContext<'a,'tcx>,
-}
-
-impl<'a,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> { self.selcx.tcx() }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        match ty.sty {
-            ty::ty_projection(ref data) => {
-                debug!("ty_projection({})", data.repr(self.tcx()));
-
-                let tcx = self.selcx.tcx();
-                let substs = data.trait_ref.substs.clone().erase_regions();
-                let substs = self.tcx().mk_substs(substs);
-                assert!(substs.types.iter().all(|&t| (!ty::type_has_params(t) &&
-                                                      !ty::type_has_self(t))));
-                let trait_ref = Rc::new(ty::TraitRef::new(data.trait_ref.def_id, substs));
-                let projection_ty = ty::ProjectionTy { trait_ref: trait_ref.clone(),
-                                                       item_name: data.item_name };
-                let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
-                                                         projection_ty);
-                match traits::project_type(self.selcx, &obligation) {
-                    Ok(ty) => ty,
-                    Err(errors) => {
-                        tcx.sess.bug(
-                            format!("Encountered error(s) `{}` selecting `{}` during trans",
-                                    errors.repr(tcx),
-                                    trait_ref.repr(tcx)).as_slice());
-                    }
-                }
-            }
-
-            _ => {
-                ty_fold::super_fold_ty(self, ty)
-            }
-        }
-    }
 }
