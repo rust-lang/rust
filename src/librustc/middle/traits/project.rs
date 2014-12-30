@@ -363,6 +363,8 @@ fn confirm_candidate<'cx,'tcx>(
                 break;
             }
 
+            // TODO we need the impl_vtable items here
+
             match impl_ty {
                 Some(ty) => ty,
                 None => {
