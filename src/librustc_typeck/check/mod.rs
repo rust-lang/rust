@@ -1933,7 +1933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn to_ty(&self, ast_t: &ast::Ty) -> Ty<'tcx> {
-        let t = ast_ty_to_ty(self, self.infcx(), ast_t);
+        let t = ast_ty_to_ty(self, self, ast_t);
 
         let mut bounds_checker = wf::BoundsChecker::new(self,
                                                         ast_t.span,
@@ -2123,18 +2123,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-//impl<'a, 'tcx> RegionScope for infer::InferCtxt<'a, 'tcx> {
-//    fn default_region_bound(&self, span: Span) -> Option<ty::Region> {
-//        Some(self.next_region_var(infer::MiscVariable(span)))
-//    }
-//
-//    fn anon_regions(&self, span: Span, count: uint)
-//                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
-//        Ok(Vec::from_fn(count, |_| {
-//            self.next_region_var(infer::MiscVariable(span))
-//        }))
-//    }
-//}
+impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
+    fn default_region_bound(&self, span: Span) -> Option<ty::Region> {
+        Some(self.infcx().next_region_var(infer::MiscVariable(span)))
+    }
+
+    fn anon_regions(&self, span: Span, count: uint)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
+        Ok(Vec::from_fn(count, |_| {
+            self.infcx().next_region_var(infer::MiscVariable(span))
+        }))
+    }
+}
 
 #[deriving(Copy, Show, PartialEq, Eq)]
 pub enum LvaluePreference {
@@ -2345,58 +2345,6 @@ fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
             None
         }
     }
-}
-
-/// Autoderefs `base_expr`, looking for a `Slice` impl. If it finds one, installs the relevant
-/// method info and returns the result type (else None).
-fn try_overloaded_slice<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                  method_call: MethodCall,
-                                  expr: &ast::Expr,
-                                  base_expr: &ast::Expr,
-                                  base_ty: Ty<'tcx>,
-                                  start_expr: &Option<P<ast::Expr>>,
-                                  end_expr: &Option<P<ast::Expr>>,
-                                  mutbl: ast::Mutability)
-                                  -> Option<Ty<'tcx>> // return type is result of slice
-{
-    let lvalue_pref = match mutbl {
-        ast::MutMutable => PreferMutLvalue,
-        ast::MutImmutable => NoPreference
-    };
-
-    let opt_method_ty =
-        autoderef_for_index(fcx, base_expr, base_ty, lvalue_pref, |adjusted_ty, autoderefref| {
-            try_overloaded_slice_step(fcx, method_call, expr, base_expr,
-                                      adjusted_ty, autoderefref, mutbl,
-                                      start_expr, end_expr)
-        });
-
-    // Regardless of whether the lookup succeeds, check the method arguments
-    // so that we have *some* type for each argument.
-    let method_ty_or_err = opt_method_ty.unwrap_or(fcx.tcx().types.err);
-
-    let mut args = vec![];
-    start_expr.as_ref().map(|x| args.push(x));
-    end_expr.as_ref().map(|x| args.push(x));
-
-    check_method_argument_types(fcx,
-                                expr.span,
-                                method_ty_or_err,
-                                expr,
-                                args.as_slice(),
-                                AutorefArgs::Yes,
-                                DontTupleArguments);
-
-    opt_method_ty.map(|method_ty| {
-        let result_ty = ty::ty_fn_ret(method_ty);
-        match result_ty {
-            ty::FnConverging(result_ty) => result_ty,
-            ty::FnDiverging => {
-                fcx.tcx().sess.span_bug(expr.span,
-                                        "slice trait does not define a `!` return")
-            }
-        }
-    })
 }
 
 /// Checks for a `Slice` (or `SliceMut`) impl at the relevant level of autoderef. If it finds one,
@@ -4327,7 +4275,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let actual_structure_type = fcx.expr_ty(&*expr);
         if !ty::type_is_error(actual_structure_type) {
             let type_and_substs = astconv::ast_path_to_ty_relaxed(fcx,
-                                                                  fcx.infcx(),
+                                                                  fcx,
                                                                   struct_id,
                                                                   path);
             match fcx.mk_subty(false,
@@ -4410,8 +4358,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                              },
                              base_t,
                              None);
-                          fcx.write_ty(idx.id, ty::mk_err());
-                          fcx.write_ty(id, ty::mk_err())
+                          fcx.write_ty(idx.id, fcx.tcx().types.err);
+                          fcx.write_ty(id, fcx.tcx().types.err);
                       }
                   }
                 }
@@ -4440,7 +4388,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                               fcx.write_ty(id, element_ty);
                           }
                           _ => {
-                              check_expr_has_type(fcx, &**idx, ty::mk_err());
+                              check_expr_has_type(fcx, &**idx, fcx.tcx().types.err);
                               fcx.type_error_message(
                                   expr.span,
                                   |actual| {
@@ -4449,7 +4397,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                   },
                                   base_t,
                                   None);
-                              fcx.write_ty(id, ty::mk_err())
+                              fcx.write_ty(id, fcx.tcx().types.err);
                           }
                       }
                   }
@@ -4468,19 +4416,21 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           });
 
           let idx_type = match (t_start, t_end) {
-            (Some(ty), None) | (None, Some(ty)) => Some(ty),
-            (Some(t_start), Some(t_end))
-              if ty::type_is_error(t_start) || ty::type_is_error(t_end) => {
-                Some(ty::mk_err())
-            }
-            (Some(t_start), Some(t_end)) => {
-                Some(infer::common_supertype(fcx.infcx(),
-                                             infer::RangeExpression(expr.span),
-                                             true,
-                                             t_start,
-                                             t_end))
-            }
-            _ => None
+              (Some(ty), None) | (None, Some(ty)) => {
+                  Some(ty)
+              }
+              (Some(t_start), Some(t_end)) if (ty::type_is_error(t_start) ||
+                                               ty::type_is_error(t_end)) => {
+                  Some(fcx.tcx().types.err)
+              }
+              (Some(t_start), Some(t_end)) => {
+                  Some(infer::common_supertype(fcx.infcx(),
+                                               infer::RangeExpression(expr.span),
+                                               true,
+                                               t_start,
+                                               t_end))
+              }
+              _ => None
           };
 
           // Note that we don't check the type of start/end satisfy any
@@ -4489,7 +4439,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
           let range_type = match idx_type {
             Some(idx_type) if ty::type_is_error(idx_type) => {
-                ty::mk_err()
+                fcx.tcx().types.err
             }
             Some(idx_type) => {
                 // Find the did from the appropriate lang item.
@@ -4515,7 +4465,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     ty::mk_struct(tcx, did, tcx.mk_substs(substs))
                 } else {
                     tcx.sess.span_err(expr.span, "No lang item for range syntax");
-                    ty::mk_err()
+                    fcx.tcx().types.err
                 }
             }
             None => {
@@ -4525,7 +4475,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     ty::mk_struct(tcx, did, tcx.mk_substs(substs))
                 } else {
                     tcx.sess.span_err(expr.span, "No lang item for range syntax");
-                    ty::mk_err()
+                    fcx.tcx().types.err
                 }
             }
           };

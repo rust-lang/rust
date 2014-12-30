@@ -1098,7 +1098,6 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let bounds = compute_bounds(ccx,
                                             assoc_ty,
                                             assoc_type_def.bounds.as_slice(),
-                                            &assoc_type_def.unbound,
                                             assoc_type_def.span);
 
                 ty::predicates(ccx.tcx, assoc_ty, &bounds).into_iter()

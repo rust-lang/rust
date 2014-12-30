@@ -48,7 +48,7 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             match expected_sig_and_kind {
                 None => { // doesn't look like an unboxed closure
                     let region = astconv::opt_ast_region_to_region(fcx,
-                                                                   fcx.infcx(),
+                                                                   fcx,
                                                                    expr.span,
                                                                    &None);
 
@@ -117,7 +117,7 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         abi::RustCall,
         expected_sig);
 
-    let region = match fcx.infcx().anon_regions(expr.span, 1) {
+    let region = match fcx.anon_regions(expr.span, 1) {
         Err(_) => {
             fcx.ccx.tcx.sess.span_bug(expr.span,
                                       "can't make anon regions here?!")
