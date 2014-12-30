@@ -332,7 +332,7 @@ impl<T, E> Result<T, E> {
 
     /// Convert from `Result<T, E>` to `Option<E>`
     ///
-    /// Converts `self` into an `Option<T>`, consuming `self`,
+    /// Converts `self` into an `Option<E>`, consuming `self`,
     /// and discarding the value, if any.
     ///
     /// # Example
