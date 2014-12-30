@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Helper for test issue-18048, which tests associated types in a
+// cross-crate scenario.
+
 #![crate_type="lib"]
 #![feature(associated_types)]
 

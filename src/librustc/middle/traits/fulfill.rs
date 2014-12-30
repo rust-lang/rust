@@ -14,7 +14,6 @@ use middle::ty::{mod, AsPredicate, RegionEscape, Ty, ToPolyTraitRef};
 use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::default::Default;
-use std::rc::Rc;
 use syntax::ast;
 use util::common::ErrorReported;
 use util::ppaux::Repr;
@@ -102,26 +101,30 @@ impl<'tcx> FulfillmentContext<'tcx> {
         }
     }
 
-    pub fn normalize_associated_type<'a>(&mut self,
+    /// "Normalize" a projection type `<SomeType as SomeTrait>::X` by
+    /// creating a fresh type variable `$0` as well as a projection
+    /// predicate `<SomeType as SomeTrait>::X == $0`. When the
+    /// inference engine runs, it will attempt to find an impl of
+    /// `SomeTrait` or a where clause that lets us unify `$0` with
+    /// something concrete. If this fails, we'll unify `$0` with
+    /// `projection_ty` again.
+    pub fn normalize_projection_type<'a>(&mut self,
                                          infcx: &InferCtxt<'a,'tcx>,
-                                         trait_ref: Rc<ty::TraitRef<'tcx>>,
-                                         item_name: ast::Name,
+                                         projection_ty: ty::ProjectionTy<'tcx>,
                                          cause: ObligationCause<'tcx>)
                                          -> Ty<'tcx>
     {
-        debug!("normalize_associated_type(trait_ref={}, item_name={})",
-               trait_ref.repr(infcx.tcx),
-               item_name.repr(infcx.tcx));
+        debug!("normalize_associated_type(projection_ty={})",
+               projection_ty.repr(infcx.tcx));
 
-        assert!(!trait_ref.has_escaping_regions());
+        assert!(!projection_ty.has_escaping_regions());
 
         // FIXME(#20304) -- cache
 
         let ty_var = infcx.next_ty_var();
         let projection =
             ty::Binder(ty::ProjectionPredicate {
-                projection_ty: ty::ProjectionTy { trait_ref: trait_ref,
-                                                  item_name: item_name },
+                projection_ty: projection_ty,
                 ty: ty_var
             });
         let obligation = Obligation::new(cause, projection.as_predicate());

@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-18048-lib.rs
+// aux-build:associated-types-cc-lib.rs
 
 // Test that we are able to reference cross-crate traits that employ
 // associated types.
 
 #![feature(associated_types)]
 
-extern crate "issue-18048-lib" as bar;
+extern crate "associated-types-cc-lib" as bar;
 
 use bar::Bar;
 

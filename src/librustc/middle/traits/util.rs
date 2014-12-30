@@ -385,9 +385,16 @@ impl<'tcx> fmt::Show for super::FulfillmentErrorCode<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::type_err<'tcx> {
+impl<'tcx> Repr<'tcx> for super::MismatchedProjectionTypes<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        ty::type_err_to_str(tcx, self)
+        self.err.repr(tcx)
     }
 }
+
+impl<'tcx> fmt::Show for super::MismatchedProjectionTypes<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "MismatchedProjectionTypes(..)")
+    }
+}
+
 

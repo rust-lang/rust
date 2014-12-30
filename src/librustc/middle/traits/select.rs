@@ -150,8 +150,15 @@ enum SelectionCandidate<'tcx> {
 }
 
 struct SelectionCandidateSet<'tcx> {
+    // a list of candidates that definitely apply to the current
+    // obligation (meaning: types unify).
     vec: Vec<SelectionCandidate<'tcx>>,
-    ambiguous: bool
+
+    // if this is true, then there were candidates that might or might
+    // not have applied, but we couldn't tell. This occurs when some
+    // of the input types are type variables, in which case there are
+    // various "builtin" rules that might or might not trigger.
+    ambiguous: bool,
 }
 
 enum BuiltinBoundConditions<'tcx> {
