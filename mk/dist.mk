@@ -24,6 +24,7 @@
 
 PKG_NAME := $(CFG_PACKAGE_NAME)
 DOC_PKG_NAME := rust-docs-$(CFG_PACKAGE_VERS)
+MINGW_PKG_NAME := rust-mingw-$(CFG_PACKAGE_VERS)
 
 # License suitable for displaying in a popup
 LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
@@ -238,6 +239,12 @@ dist-install-dir-$(1): prepare-base-dir-$(1) docs compiler-docs
 
 dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 	@$(call E, build: $$@)
+# Copy essential gcc components into installer
+ifdef CFG_WINDOWSY_$(1)
+	$$(Q)rm -Rf dist/win-rust-gcc-$(1)
+	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py tmp/dist/$$(PKG_NAME)-$(1)-image dist/win-rust-gcc-$(1) $(1)
+	$$(Q)cp -r $$(S)src/etc/third-party tmp/dist/$$(PKG_NAME)-$(1)-image/share/doc/
+endif
 	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
 		--product-name=Rust \
 		--verify-bin=rustc \
@@ -271,6 +278,25 @@ dist/$$(DOC_PKG_NAME)-$(1).tar.gz: dist-doc-install-dir-$(1)
 		--bulk-dirs=share/doc/rust/html
 	$$(Q)rm -R tmp/dist/$$(DOC_PKG_NAME)-$(1)-image
 
+dist-mingw-install-dir-$(1):
+	$$(Q)mkdir -p tmp/dist/rust-mingw-tmp-$(1)-image
+	$$(Q)rm -Rf tmp/dist/$$(MINGW_PKG_NAME)-$(1)-image
+	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py \
+		tmp/dist/rust-mingw-tmp-$(1)-image tmp/dist/$$(MINGW_PKG_NAME)-$(1)-image $(1)
+
+dist/$$(MINGW_PKG_NAME)-$(1).tar.gz: dist-mingw-install-dir-$(1)
+	@$(call E, build: $$@)
+	$$(Q)$$(S)src/rust-installer/gen-installer.sh \
+		--product-name=Rust-MinGW \
+		--rel-manifest-dir=rustlib \
+		--success-message=Rust-MinGW-is-installed. \
+		--image-dir=tmp/dist/$$(MINGW_PKG_NAME)-$(1)-image \
+		--work-dir=tmp/dist \
+		--output-dir=dist \
+		--package-name=$$(MINGW_PKG_NAME)-$(1) \
+		--component-name=rust-mingw \
+		--legacy-manifest-dirs=rustlib,cargo
+	$$(Q)rm -R tmp/dist/$$(MINGW_PKG_NAME)-$(1)-image
 
 endef
 
@@ -284,11 +310,16 @@ endif
 
 dist-install-dirs: $(foreach host,$(CFG_HOST),dist-install-dir-$(host))
 
+ifdef CFG_WINDOWSY_$(CFG_BUILD)
+MAYBE_MINGW_TARBALLS=$(foreach host,$(CFG_HOST),dist/$(MINGW_PKG_NAME)-$(host).tar.gz)
+endif
+
 ifneq ($(CFG_DISABLE_DOCS),)
-dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz)
+dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz) $(MAYBE_MINGW_TARBALLS)
 else
 dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz) \
-               $(foreach host,$(CFG_HOST),dist/$(DOC_PKG_NAME)-$(host).tar.gz)
+               $(foreach host,$(CFG_HOST),dist/$(DOC_PKG_NAME)-$(host).tar.gz) \
+               $(MAYBE_MINGW_TARBALLS)
 endif
 
 # Just try to run the compiler for the build host
