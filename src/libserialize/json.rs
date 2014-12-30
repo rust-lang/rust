@@ -29,7 +29,7 @@
 //! * `String`: equivalent to rust's `String`
 //! * `Array`: equivalent to rust's `Vec<T>`, but also allowing objects of different types in the
 //!   same array
-//! * `Object`: equivalent to rust's `Treemap<String, json::Json>`
+//! * `Object`: equivalent to rust's `BTreeMap<String, json::Json>`
 //! * `Null`
 //!
 //! An object is a series of string keys mapping to values, in `"key": value` format.
@@ -2517,7 +2517,7 @@ mod tests {
     #[test]
     fn test_from_str_trait() {
         let s = "null";
-        assert!(::std::str::from_str::<Json>(s).unwrap() == from_str(s).unwrap());
+        assert!(s.parse::<Json>().unwrap() == s.parse().unwrap());
     }
 
     #[test]
@@ -3729,8 +3729,8 @@ mod tests {
         let array3 = Array(vec!(U64(1), U64(2), U64(3)));
         let object = {
             let mut tree_map = BTreeMap::new();
-            tree_map.insert("a".into_string(), U64(1));
-            tree_map.insert("b".into_string(), U64(2));
+            tree_map.insert("a".to_string(), U64(1));
+            tree_map.insert("b".to_string(), U64(2));
             Object(tree_map)
         };
 
@@ -3762,8 +3762,8 @@ mod tests {
         assert_eq!((vec![1u, 2]).to_json(), array2);
         assert_eq!(vec!(1u, 2, 3).to_json(), array3);
         let mut tree_map = BTreeMap::new();
-        tree_map.insert("a".into_string(), 1u);
-        tree_map.insert("b".into_string(), 2);
+        tree_map.insert("a".to_string(), 1u);
+        tree_map.insert("b".to_string(), 2);
         assert_eq!(tree_map.to_json(), object);
         let mut hash_map = HashMap::new();
         hash_map.insert("a".to_string(), 1u);

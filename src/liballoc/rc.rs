@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Task-local reference-counted boxes (the `Rc<T>` type).
+//! Thread-local reference-counted boxes (the `Rc<T>` type).
 //!
 //! The `Rc<T>` type provides shared ownership of an immutable value. Destruction is deterministic,
 //! and will occur as soon as the last owner is gone. It is marked as non-sendable because it
@@ -154,7 +154,7 @@ use core::nonzero::NonZero;
 use core::ops::{Deref, Drop};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::{mod, RawPtr};
+use core::ptr::{mod, PtrExt};
 use core::result::Result;
 use core::result::Result::{Ok, Err};
 

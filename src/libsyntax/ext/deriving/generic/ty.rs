@@ -189,15 +189,19 @@ impl<'a> Ty<'a> {
 }
 
 
-fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str,
-               bounds: &[Path], unbound: Option<ast::TraitRef>,
-               self_ident: Ident, self_generics: &Generics) -> ast::TyParam {
+fn mk_ty_param(cx: &ExtCtxt,
+               span: Span,
+               name: &str,
+               bounds: &[Path],
+               self_ident: Ident,
+               self_generics: &Generics)
+               -> ast::TyParam {
     let bounds =
         bounds.iter().map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
         }).collect();
-    cx.typaram(span, cx.ident_of(name), bounds, unbound, None)
+    cx.typaram(span, cx.ident_of(name), bounds, None)
 }
 
 fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>)
@@ -216,7 +220,7 @@ fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>)
 #[deriving(Clone)]
 pub struct LifetimeBounds<'a> {
     pub lifetimes: Vec<(&'a str, Vec<&'a str>)>,
-    pub bounds: Vec<(&'a str, Option<ast::TraitRef>, Vec<Path<'a>>)>,
+    pub bounds: Vec<(&'a str, Vec<Path<'a>>)>,
 }
 
 impl<'a> LifetimeBounds<'a> {
@@ -239,12 +243,11 @@ impl<'a> LifetimeBounds<'a> {
         }).collect();
         let ty_params = self.bounds.iter().map(|t| {
             match t {
-                &(ref name, ref unbound, ref bounds) => {
+                &(ref name, ref bounds) => {
                     mk_ty_param(cx,
                                 span,
                                 *name,
                                 bounds.as_slice(),
-                                unbound.clone(),
                                 self_ty,
                                 self_generics)
                 }

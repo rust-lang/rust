@@ -68,9 +68,9 @@ impl Semaphore {
     /// This method will block until the internal count of the semaphore is at
     /// least 1.
     pub fn acquire(&self) {
-        let mut count = self.lock.lock();
+        let mut count = self.lock.lock().unwrap();
         while *count <= 0 {
-            self.cvar.wait(&count);
+            count = self.cvar.wait(count).unwrap();
         }
         *count -= 1;
     }
@@ -80,7 +80,7 @@ impl Semaphore {
     /// This will increment the number of resources in this semaphore by 1 and
     /// will notify any pending waiters in `acquire` or `access` if necessary.
     pub fn release(&self) {
-        *self.lock.lock() += 1;
+        *self.lock.lock().unwrap() += 1;
         self.cvar.notify_one();
     }
 

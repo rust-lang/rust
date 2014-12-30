@@ -23,7 +23,6 @@
 #![allow(unused_imports)]
 
 use std::io::*;
-use std::io::net::tcp::*;
 use std::io::test::*;
 use std::io;
 use std::time::Duration;

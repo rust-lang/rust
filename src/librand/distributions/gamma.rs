@@ -44,7 +44,7 @@ use super::{IndependentSample, Sample, Exp};
 /// use std::rand::distributions::{IndependentSample, Gamma};
 ///
 /// let gamma = Gamma::new(2.0, 5.0);
-/// let v = gamma.ind_sample(&mut rand::task_rng());
+/// let v = gamma.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from a Gamma(2, 5) distribution", v);
 /// ```
 ///
@@ -191,7 +191,7 @@ impl IndependentSample<f64> for GammaLargeShape {
 /// use std::rand::distributions::{ChiSquared, IndependentSample};
 ///
 /// let chi = ChiSquared::new(11.0);
-/// let v = chi.ind_sample(&mut rand::task_rng());
+/// let v = chi.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from a χ²(11) distribution", v)
 /// ```
 pub struct ChiSquared {
@@ -248,7 +248,7 @@ impl IndependentSample<f64> for ChiSquared {
 /// use std::rand::distributions::{FisherF, IndependentSample};
 ///
 /// let f = FisherF::new(2.0, 32.0);
-/// let v = f.ind_sample(&mut rand::task_rng());
+/// let v = f.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from an F(2, 32) distribution", v)
 /// ```
 pub struct FisherF {
@@ -292,7 +292,7 @@ impl IndependentSample<f64> for FisherF {
 /// use std::rand::distributions::{StudentT, IndependentSample};
 ///
 /// let t = StudentT::new(11.0);
-/// let v = t.ind_sample(&mut rand::task_rng());
+/// let v = t.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from a t(11) distribution", v)
 /// ```
 pub struct StudentT {

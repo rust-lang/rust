@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Abstraction of a task pool for basic parallelism.
+//! Abstraction of a thread pool for basic parallelism.
 
 use core::prelude::*;
 
@@ -45,9 +45,9 @@ impl<'a> Drop for Sentinel<'a> {
     }
 }
 
-/// A task pool used to execute functions in parallel.
+/// A thread pool used to execute functions in parallel.
 ///
-/// Spawns `n` worker tasks and replenishes the pool if any worker tasks
+/// Spawns `n` worker threads and replenishes the pool if any worker threads
 /// panic.
 ///
 /// # Example
@@ -69,34 +69,34 @@ impl<'a> Drop for Sentinel<'a> {
 /// assert_eq!(rx.iter().take(8u).sum(), 8u);
 /// ```
 pub struct TaskPool {
-    // How the taskpool communicates with subtasks.
+    // How the threadpool communicates with subthreads.
     //
-    // This is the only such Sender, so when it is dropped all subtasks will
+    // This is the only such Sender, so when it is dropped all subthreads will
     // quit.
     jobs: Sender<Thunk>
 }
 
 impl TaskPool {
-    /// Spawns a new task pool with `tasks` tasks.
+    /// Spawns a new thread pool with `threads` threads.
     ///
     /// # Panics
     ///
-    /// This function will panic if `tasks` is 0.
-    pub fn new(tasks: uint) -> TaskPool {
-        assert!(tasks >= 1);
+    /// This function will panic if `threads` is 0.
+    pub fn new(threads: uint) -> TaskPool {
+        assert!(threads >= 1);
 
         let (tx, rx) = channel::<Thunk>();
         let rx = Arc::new(Mutex::new(rx));
 
-        // Taskpool tasks.
-        for _ in range(0, tasks) {
+        // Threadpool threads
+        for _ in range(0, threads) {
             spawn_in_pool(rx.clone());
         }
 
         TaskPool { jobs: tx }
     }
 
-    /// Executes the function `job` on a task in the pool.
+    /// Executes the function `job` on a thread in the pool.
     pub fn execute<F>(&self, job: F)
         where F : FnOnce(), F : Send
     {
@@ -106,14 +106,14 @@ impl TaskPool {
 
 fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
     Thread::spawn(move |:| {
-        // Will spawn a new task on panic unless it is cancelled.
+        // Will spawn a new thread on panic unless it is cancelled.
         let sentinel = Sentinel::new(&jobs);
 
         loop {
             let message = {
                 // Only lock jobs for the time it takes
                 // to get a job, not run it.
-                let lock = jobs.lock();
+                let lock = jobs.lock().unwrap();
                 lock.recv_opt()
             };
 
@@ -165,12 +165,12 @@ mod test {
 
         let pool = TaskPool::new(TEST_TASKS);
 
-        // Panic all the existing tasks.
+        // Panic all the existing threads.
         for _ in range(0, TEST_TASKS) {
             pool.execute(move|| -> () { panic!() });
         }
 
-        // Ensure new tasks were spawned to compensate.
+        // Ensure new threads were spawned to compensate.
         let (tx, rx) = channel();
         for _ in range(0, TEST_TASKS) {
             let tx = tx.clone();
@@ -189,7 +189,7 @@ mod test {
         let pool = TaskPool::new(TEST_TASKS);
         let waiter = Arc::new(Barrier::new(TEST_TASKS + 1));
 
-        // Panic all the existing tasks in a bit.
+        // Panic all the existing threads in a bit.
         for _ in range(0, TEST_TASKS) {
             let waiter = waiter.clone();
             pool.execute(move|| {

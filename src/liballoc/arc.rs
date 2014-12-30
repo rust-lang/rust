@@ -58,7 +58,7 @@
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
-//!         let mut number = five.lock();
+//!         let mut number = five.lock().unwrap();
 //!
 //!         *number += 1;
 //!
@@ -80,7 +80,7 @@ use core::nonzero::NonZero;
 use core::ops::{Drop, Deref};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::{mod, RawPtr};
+use core::ptr::{mod, PtrExt};
 use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
@@ -722,7 +722,7 @@ mod tests {
 
         let a = Arc::new(Cycle { x: Mutex::new(None) });
         let b = a.clone().downgrade();
-        *a.x.lock() = Some(b);
+        *a.x.lock().unwrap() = Some(b);
 
         // hopefully we don't double-free (or leak)...
     }

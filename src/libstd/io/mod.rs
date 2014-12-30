@@ -935,7 +935,7 @@ impl<'a> Reader for &'a mut (Reader+'a) {
 // API yet. If so, it should be a method on Vec.
 unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -> &'a mut [T] {
     use raw::Slice;
-    use ptr::RawPtr;
+    use ptr::PtrExt;
 
     assert!(start <= end);
     assert!(end <= v.capacity());
@@ -1724,7 +1724,7 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
 /// A mode specifies how a file should be opened or created. These modes are
 /// passed to `File::open_mode` and are used to control where the file is
 /// positioned when it is initially opened.
-#[deriving(Copy)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum FileMode {
     /// Opens a file positioned at the beginning.
     Open,
@@ -1736,7 +1736,7 @@ pub enum FileMode {
 
 /// Access permissions with which the file should be opened. `File`s
 /// opened with `Read` will return an error if written to.
-#[deriving(Copy)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum FileAccess {
     /// Read-only access, requests to write will result in an error
     Read,
@@ -1959,8 +1959,8 @@ impl fmt::Show for FilePermission {
 #[cfg(test)]
 mod tests {
     use self::BadReaderBehavior::*;
-    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput};
-    use prelude::*;
+    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput, Writer};
+    use prelude::{Ok, Vec, Buffer, CloneSliceExt};
     use uint;
 
     #[deriving(Clone, PartialEq, Show)]

@@ -89,8 +89,6 @@ pub use unicode::str::{Words, Graphemes, GraphemeIndices};
 pub use core::str::{Split, SplitTerminator};
 pub use core::str::{SplitN, RSplitN};
 
-// FIXME(conventions): ensure bit/char conventions are followed by str's API
-
 /*
 Section: Creating a string
 */
@@ -1768,26 +1766,13 @@ impl StrExt for str {}
 
 #[cfg(test)]
 mod tests {
-    use std::iter::AdditiveIterator;
-    use std::iter::range;
-    use std::default::Default;
-    use std::char::Char;
-    use std::clone::Clone;
-    use std::cmp::{Ord, PartialOrd, Equiv};
-    use std::cmp::Ordering::{Equal, Greater, Less};
-    use std::option::Option::{mod, Some, None};
-    use std::result::Result::{Ok, Err};
-    use std::ptr::RawPtr;
-    use std::iter::{Iterator, IteratorExt, DoubleEndedIteratorExt};
+    use prelude::*;
 
-    use super::*;
+    use core::default::Default;
+    use core::iter::AdditiveIterator;
+    use super::{from_utf8, is_utf8, raw};
     use super::MaybeOwned::{Owned, Slice};
-    use std::slice::{AsSlice, SliceExt};
-    use string::{String, ToString};
-    use vec::Vec;
-    use slice::CloneSliceExt;
-
-    use unicode::char::UnicodeChar;
+    use super::Utf8Error;
 
     #[test]
     fn test_le() {
@@ -3354,7 +3339,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use super::*;
-    use prelude::*;
+    use prelude::{SliceExt, IteratorExt, DoubleEndedIteratorExt};
     use test::Bencher;
     use test::black_box;
 

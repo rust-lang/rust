@@ -99,8 +99,9 @@ pub fn error_string(errnum: i32) -> String {
 
         let msg = String::from_utf16(truncate_utf16_at_nul(&buf));
         match msg {
-            Some(msg) => format!("OS Error {}: {}", errnum, msg),
-            None => format!("OS Error {} (FormatMessageW() returned invalid UTF-16)", errnum),
+            Ok(msg) => format!("OS Error {}: {}", errnum, msg),
+            Err(..) => format!("OS Error {} (FormatMessageW() returned \
+                                invalid UTF-16)", errnum),
         }
     }
 }
@@ -147,7 +148,7 @@ pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD) -> Option<String
                 // We want to explicitly catch the case when the
                 // closure returned invalid UTF-16, rather than
                 // set `res` to None and continue.
-                let s = String::from_utf16(sub)
+                let s = String::from_utf16(sub).ok()
                     .expect("fill_utf16_buf_and_decode: closure created invalid UTF-16");
                 res = Some(s)
             }
@@ -169,8 +170,8 @@ pub fn getcwd() -> IoResult<Path> {
     }
 
     match String::from_utf16(truncate_utf16_at_nul(&buf)) {
-        Some(ref cwd) => Ok(Path::new(cwd)),
-        None => Err(IoError {
+        Ok(ref cwd) => Ok(Path::new(cwd)),
+        Err(..) => Err(IoError {
             kind: OtherIoError,
             desc: "GetCurrentDirectoryW returned invalid UTF-16",
             detail: None,

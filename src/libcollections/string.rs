@@ -12,6 +12,8 @@
 
 //! An owned, growable string that enforces that its contents are valid UTF-8.
 
+#![stable]
+
 use core::prelude::*;
 
 use core::borrow::{Cow, IntoCow};
@@ -35,6 +37,18 @@ use vec::{DerefVec, Vec, as_vec};
 pub struct String {
     vec: Vec<u8>,
 }
+
+/// A possible error value from the `String::from_utf8` function.
+#[stable]
+pub struct FromUtf8Error {
+    bytes: Vec<u8>,
+    error: Utf8Error,
+}
+
+/// A possible error value from the `String::from_utf16` function.
+#[stable]
+#[allow(missing_copy_implementations)]
+pub struct FromUtf16Error(());
 
 impl String {
     /// Creates a new string buffer initialized with the empty string.
@@ -98,19 +112,20 @@ impl String {
     /// use std::str::Utf8Error;
     ///
     /// let hello_vec = vec![104, 101, 108, 108, 111];
-    /// let s = String::from_utf8(hello_vec);
-    /// assert_eq!(s, Ok("hello".to_string()));
+    /// let s = String::from_utf8(hello_vec).unwrap();
+    /// assert_eq!(s, "hello");
     ///
     /// let invalid_vec = vec![240, 144, 128];
-    /// let s = String::from_utf8(invalid_vec);
-    /// assert_eq!(s, Err((vec![240, 144, 128], Utf8Error::TooShort)));
+    /// let s = String::from_utf8(invalid_vec).err().unwrap();
+    /// assert_eq!(s.utf8_error(), Utf8Error::TooShort);
+    /// assert_eq!(s.into_bytes(), vec![240, 144, 128]);
     /// ```
     #[inline]
-    #[unstable = "error type may change"]
-    pub fn from_utf8(vec: Vec<u8>) -> Result<String, (Vec<u8>, Utf8Error)> {
+    #[stable]
+    pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(vec.as_slice()) {
             Ok(..) => Ok(String { vec: vec }),
-            Err(e) => Err((vec, e))
+            Err(e) => Err(FromUtf8Error { bytes: vec, error: e })
         }
     }
 
@@ -124,7 +139,7 @@ impl String {
     /// let output = String::from_utf8_lossy(input);
     /// assert_eq!(output.as_slice(), "Hello \u{FFFD}World");
     /// ```
-    #[unstable = "return type may change"]
+    #[stable]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> CowString<'a> {
         match str::from_utf8(v) {
             Ok(s) => return Cow::Borrowed(s),
@@ -251,22 +266,23 @@ impl String {
     /// // 𝄞music
     /// let mut v = &mut [0xD834, 0xDD1E, 0x006d, 0x0075,
     ///                   0x0073, 0x0069, 0x0063];
-    /// assert_eq!(String::from_utf16(v), Some("𝄞music".to_string()));
+    /// assert_eq!(String::from_utf16(v).unwrap(),
+    ///            "𝄞music".to_string());
     ///
     /// // 𝄞mu<invalid>ic
     /// v[4] = 0xD800;
-    /// assert_eq!(String::from_utf16(v), None);
+    /// assert!(String::from_utf16(v).is_err());
     /// ```
-    #[unstable = "error value in return may change"]
-    pub fn from_utf16(v: &[u16]) -> Option<String> {
+    #[stable]
+    pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
         let mut s = String::with_capacity(v.len());
         for c in unicode_str::utf16_items(v) {
             match c {
                 Utf16Item::ScalarValue(c) => s.push(c),
-                Utf16Item::LoneSurrogate(_) => return None
+                Utf16Item::LoneSurrogate(_) => return Err(FromUtf16Error(())),
             }
         }
-        Some(s)
+        Ok(s)
     }
 
     /// Decode a UTF-16 encoded vector `v` into a string, replacing
@@ -293,12 +309,13 @@ impl String {
     /// # Examples
     ///
     /// ```rust
+    /// # #![allow(deprecated)]
     /// let chars = &['h', 'e', 'l', 'l', 'o'];
     /// let s = String::from_chars(chars);
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
     #[inline]
-    #[unstable = "may be removed in favor of .collect()"]
+    #[deprecated = "use .collect() instead"]
     pub fn from_chars(chs: &[char]) -> String {
         chs.iter().map(|c| *c).collect()
     }
@@ -309,7 +326,7 @@ impl String {
     /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`;
     /// * We assume that the `Vec` contains valid UTF-8.
     #[inline]
-    #[unstable = "function just moved from string::raw"]
+    #[stable]
     pub unsafe fn from_raw_parts(buf: *mut u8, length: uint, capacity: uint) -> String {
         String {
             vec: Vec::from_raw_parts(buf, length, capacity),
@@ -344,7 +361,7 @@ impl String {
     /// it contains valid UTF-8. This is unsafe because it assumes that
     /// the UTF-8-ness of the vector has already been validated.
     #[inline]
-    #[unstable = "awaiting stabilization"]
+    #[stable]
     pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {
         String { vec: bytes }
     }
@@ -369,12 +386,12 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let s = String::from_char(5, 'a');
     /// assert_eq!(s.as_slice(), "aaaaa");
     /// ```
     #[inline]
-    #[unstable = "may be replaced with iterators, questionable usability, and \
-                  the name may change"]
+    #[deprecated = "use repeat(ch).take(length).collect() instead"]
     pub fn from_char(length: uint, ch: char) -> String {
         if length == 0 {
             return String::new()
@@ -400,7 +417,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "foobar");
     /// ```
     #[inline]
-    #[unstable = "extra variants of `push`, could possibly be based on iterators"]
+    #[stable]
     pub fn push_str(&mut self, string: &str) {
         self.vec.push_all(string.as_bytes())
     }
@@ -410,19 +427,21 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// let mut s = String::from_str("foo");
     /// s.grow(5, 'Z');
     /// assert_eq!(s.as_slice(), "fooZZZZZ");
     /// ```
     #[inline]
-    #[unstable = "duplicate of iterator-based functionality"]
+    #[deprecated = "deprecated in favor of .extend(repeat(ch).take(count))"]
     pub fn grow(&mut self, count: uint, ch: char) {
         for _ in range(0, count) {
             self.push(ch)
         }
     }
 
-    /// Returns the number of bytes that this string buffer can hold without reallocating.
+    /// Returns the number of bytes that this string buffer can hold without
+    /// reallocating.
     ///
     /// # Examples
     ///
@@ -431,7 +450,7 @@ impl String {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn capacity(&self) -> uint {
         self.vec.capacity()
     }
@@ -442,8 +461,9 @@ impl String {
         self.vec.reserve(extra)
     }
 
-    /// Reserves capacity for at least `additional` more bytes to be inserted in the given
-    /// `String`. The collection may reserve more space to avoid frequent reallocations.
+    /// Reserves capacity for at least `additional` more bytes to be inserted
+    /// in the given `String`. The collection may reserve more space to avoid
+    /// frequent reallocations.
     ///
     /// # Panics
     ///
@@ -457,17 +477,18 @@ impl String {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn reserve(&mut self, additional: uint) {
         self.vec.reserve(additional)
     }
 
-    /// Reserves the minimum capacity for exactly `additional` more bytes to be inserted in the
-    /// given `String`. Does nothing if the capacity is already sufficient.
+    /// Reserves the minimum capacity for exactly `additional` more bytes to be
+    /// inserted in the given `String`. Does nothing if the capacity is already
+    /// sufficient.
     ///
-    /// Note that the allocator may give the collection more space than it requests. Therefore
-    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve` if future
-    /// insertions are expected.
+    /// Note that the allocator may give the collection more space than it
+    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// minimal. Prefer `reserve` if future insertions are expected.
     ///
     /// # Panics
     ///
@@ -481,7 +502,7 @@ impl String {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn reserve_exact(&mut self, additional: uint) {
         self.vec.reserve_exact(additional)
     }
@@ -498,7 +519,7 @@ impl String {
     /// assert_eq!(s.capacity(), 3);
     /// ```
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn shrink_to_fit(&mut self) {
         self.vec.shrink_to_fit()
     }
@@ -515,7 +536,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "abc123");
     /// ```
     #[inline]
-    #[stable = "function just renamed from push_char"]
+    #[stable]
     pub fn push(&mut self, ch: char) {
         if (ch as u32) < 0x80 {
             self.vec.push(ch as u8);
@@ -568,7 +589,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "he");
     /// ```
     #[inline]
-    #[unstable = "the panic conventions for strings are under development"]
+    #[stable]
     pub fn truncate(&mut self, new_len: uint) {
         assert!(self.is_char_boundary(new_len));
         self.vec.truncate(new_len)
@@ -587,7 +608,7 @@ impl String {
     /// assert_eq!(s.pop(), None);
     /// ```
     #[inline]
-    #[unstable = "this function was just renamed from pop_char"]
+    #[stable]
     pub fn pop(&mut self) -> Option<char> {
         let len = self.len();
         if len == 0 {
@@ -602,7 +623,7 @@ impl String {
     }
 
     /// Removes the character from the string buffer at byte position `idx` and
-    /// returns it. Returns `None` if `idx` is out of bounds.
+    /// returns it.
     ///
     /// # Warning
     ///
@@ -611,23 +632,21 @@ impl String {
     ///
     /// # Panics
     ///
-    /// If `idx` does not lie on a character boundary, then this function will
-    /// panic.
+    /// If `idx` does not lie on a character boundary, or if it is out of
+    /// bounds, then this function will panic.
     ///
     /// # Examples
     ///
     /// ```
     /// let mut s = String::from_str("foo");
-    /// assert_eq!(s.remove(0), Some('f'));
-    /// assert_eq!(s.remove(1), Some('o'));
-    /// assert_eq!(s.remove(0), Some('o'));
-    /// assert_eq!(s.remove(0), None);
+    /// assert_eq!(s.remove(0), 'f');
+    /// assert_eq!(s.remove(1), 'o');
+    /// assert_eq!(s.remove(0), 'o');
     /// ```
-    #[unstable = "the panic semantics of this function and return type \
-                  may change"]
-    pub fn remove(&mut self, idx: uint) -> Option<char> {
+    #[stable]
+    pub fn remove(&mut self, idx: uint) -> char {
         let len = self.len();
-        if idx >= len { return None }
+        assert!(idx <= len);
 
         let CharRange { ch, next } = self.char_range_at(idx);
         unsafe {
@@ -636,7 +655,7 @@ impl String {
                              len - next);
             self.vec.set_len(len - (next - idx));
         }
-        Some(ch)
+        ch
     }
 
     /// Insert a character into the string buffer at byte position `idx`.
@@ -650,7 +669,7 @@ impl String {
     ///
     /// If `idx` does not lie on a character boundary or is out of bounds, then
     /// this function will panic.
-    #[unstable = "the panic semantics of this function are uncertain"]
+    #[stable]
     pub fn insert(&mut self, idx: uint, ch: char) {
         let len = self.len();
         assert!(idx <= len);
@@ -686,7 +705,7 @@ impl String {
     /// }
     /// assert_eq!(s.as_slice(), "olleh");
     /// ```
-    #[unstable = "the name of this method may be changed"]
+    #[stable]
     pub unsafe fn as_mut_vec<'a>(&'a mut self) -> &'a mut Vec<u8> {
         &mut self.vec
     }
@@ -713,6 +732,7 @@ impl String {
     /// v.push('a');
     /// assert!(!v.is_empty());
     /// ```
+    #[stable]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Truncates the string, returning it to 0 length.
@@ -728,6 +748,29 @@ impl String {
     #[stable]
     pub fn clear(&mut self) {
         self.vec.clear()
+    }
+}
+
+impl FromUtf8Error {
+    /// Consume this error, returning the bytes that were attempted to make a
+    /// `String` with.
+    #[stable]
+    pub fn into_bytes(self) -> Vec<u8> { self.bytes }
+
+    /// Access the underlying UTF8-error that was the cause of this error.
+    #[stable]
+    pub fn utf8_error(&self) -> Utf8Error { self.error }
+}
+
+impl fmt::Show for FromUtf8Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.error.fmt(f)
+    }
+}
+
+impl fmt::Show for FromUtf16Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "invalid utf-16: lone surrogate found".fmt(f)
     }
 }
 
@@ -933,6 +976,7 @@ impl FromStr for String {
 }
 
 /// Trait for converting a type to a string, consuming it in the process.
+#[deprecated = "trait will be removed"]
 pub trait IntoString {
     /// Consume and convert to a string.
     fn into_string(self) -> String;
@@ -1038,7 +1082,7 @@ mod tests {
     use prelude::*;
     use test::Bencher;
 
-    use str::{StrExt, Utf8Error};
+    use str::Utf8Error;
     use str;
     use super::as_string;
 
@@ -1057,16 +1101,17 @@ mod tests {
     #[test]
     fn test_from_utf8() {
         let xs = b"hello".to_vec();
-        assert_eq!(String::from_utf8(xs),
-                   Ok(String::from_str("hello")));
+        assert_eq!(String::from_utf8(xs).unwrap(),
+                   String::from_str("hello"));
 
         let xs = "ศไทย中华Việt Nam".as_bytes().to_vec();
-        assert_eq!(String::from_utf8(xs),
-                   Ok(String::from_str("ศไทย中华Việt Nam")));
+        assert_eq!(String::from_utf8(xs).unwrap(),
+                   String::from_str("ศไทย中华Việt Nam"));
 
         let xs = b"hello\xFF".to_vec();
-        assert_eq!(String::from_utf8(xs),
-                   Err((b"hello\xFF".to_vec(), Utf8Error::TooShort)));
+        let err = String::from_utf8(xs).err().unwrap();
+        assert_eq!(err.utf8_error(), Utf8Error::TooShort);
+        assert_eq!(err.into_bytes(), b"hello\xff".to_vec());
     }
 
     #[test]
@@ -1171,15 +1216,15 @@ mod tests {
     fn test_utf16_invalid() {
         // completely positive cases tested above.
         // lead + eof
-        assert_eq!(String::from_utf16(&[0xD800]), None);
+        assert!(String::from_utf16(&[0xD800]).is_err());
         // lead + lead
-        assert_eq!(String::from_utf16(&[0xD800, 0xD800]), None);
+        assert!(String::from_utf16(&[0xD800, 0xD800]).is_err());
 
         // isolated trail
-        assert_eq!(String::from_utf16(&[0x0061, 0xDC00]), None);
+        assert!(String::from_utf16(&[0x0061, 0xDC00]).is_err());
 
         // general
-        assert_eq!(String::from_utf16(&[0xD800, 0xd801, 0xdc8b, 0xD800]), None);
+        assert!(String::from_utf16(&[0xD800, 0xd801, 0xdc8b, 0xD800]).is_err());
     }
 
     #[test]
@@ -1312,12 +1357,10 @@ mod tests {
     #[test]
     fn remove() {
         let mut s = "ศไทย中华Việt Nam; foobar".to_string();;
-        assert_eq!(s.remove(0), Some('ศ'));
+        assert_eq!(s.remove(0), 'ศ');
         assert_eq!(s.len(), 33);
         assert_eq!(s, "ไทย中华Việt Nam; foobar");
-        assert_eq!(s.remove(33), None);
-        assert_eq!(s.remove(300), None);
-        assert_eq!(s.remove(17), Some('ệ'));
+        assert_eq!(s.remove(17), 'ệ');
         assert_eq!(s, "ไทย中华Vit Nam; foobar");
     }
 

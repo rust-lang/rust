@@ -269,7 +269,7 @@ pub fn get_host_addresses(host: Option<&str>, servname: Option<&str>,
     // Collect all the results we found
     let mut addrs = Vec::new();
     let mut rp = res;
-    while rp.is_not_null() {
+    while !rp.is_null() {
         unsafe {
             let addr = try!(sockaddr_to_addr(mem::transmute((*rp).ai_addr),
                                              (*rp).ai_addrlen as uint));
@@ -669,7 +669,7 @@ impl TcpStream {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: self.inner.lock.lock(),
+            guard: self.inner.lock.lock().unwrap(),
         };
         assert!(set_nonblocking(self.fd(), true).is_ok());
         ret
@@ -808,7 +808,7 @@ impl UdpSocket {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: self.inner.lock.lock(),
+            guard: self.inner.lock.lock().unwrap(),
         };
         assert!(set_nonblocking(self.fd(), true).is_ok());
         ret

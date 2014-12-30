@@ -636,7 +636,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         item.id);
 
                     for field in struct_def.fields.iter() {
-                        self.process_struct_field_def(field, enum_name[], variant.node.id);
+                        self.process_struct_field_def(field, qualname[], variant.node.id);
                         self.visit_ty(&*field.node.ty);
                     }
                 }
@@ -710,7 +710,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         // super-traits
         for super_bound in trait_refs.iter() {
             let trait_ref = match *super_bound {
-                ast::TraitTyParamBound(ref trait_ref) => {
+                ast::TraitTyParamBound(ref trait_ref, _) => {
                     trait_ref
                 }
                 ast::RegionTyParamBound(..) => {
@@ -763,37 +763,38 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     }
 
     fn process_path(&mut self,
-                    ex: &ast::Expr,
-                    path: &ast::Path) {
+                    id: NodeId,
+                    span: Span,
+                    path: &ast::Path,
+                    ref_kind: Option<recorder::Row>) {
         if generated_code(path.span) {
             return
         }
 
         let def_map = self.analysis.ty_cx.def_map.borrow();
-        if !def_map.contains_key(&ex.id) {
-            self.sess.span_bug(ex.span,
-                               format!("def_map has no key for {} in visit_expr",
-                                       ex.id)[]);
+        if !def_map.contains_key(&id) {
+            self.sess.span_bug(span,
+                               format!("def_map has no key for {} in visit_expr", id)[]);
         }
-        let def = &(*def_map)[ex.id];
-        let sub_span = self.span.span_for_last_ident(ex.span);
+        let def = &(*def_map)[id];
+        let sub_span = self.span.span_for_last_ident(span);
         match *def {
             def::DefUpvar(..) |
             def::DefLocal(..) |
             def::DefStatic(..) |
             def::DefConst(..) |
-            def::DefVariant(..) => self.fmt.ref_str(recorder::VarRef,
-                                                    ex.span,
+            def::DefVariant(..) => self.fmt.ref_str(ref_kind.unwrap_or(recorder::VarRef),
+                                                    span,
                                                     sub_span,
                                                     def.def_id(),
                                                     self.cur_scope),
             def::DefStruct(def_id) => self.fmt.ref_str(recorder::StructRef,
-                                                       ex.span,
+                                                       span,
                                                        sub_span,
                                                        def_id,
-                                                        self.cur_scope),
+                                                       self.cur_scope),
             def::DefStaticMethod(declid, provenence) => {
-                let sub_span = self.span.sub_span_for_meth_name(ex.span);
+                let sub_span = self.span.sub_span_for_meth_name(span);
                 let defid = if declid.krate == ast::LOCAL_CRATE {
                     let ti = ty::impl_or_trait_item(&self.analysis.ty_cx,
                                                     declid);
@@ -828,34 +829,31 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 } else {
                     None
                 };
-                self.fmt.meth_call_str(ex.span,
+                self.fmt.meth_call_str(span,
                                        sub_span,
                                        defid,
                                        Some(declid),
                                        self.cur_scope);
             },
-            def::DefFn(def_id, _) => self.fmt.fn_call_str(ex.span,
-                                                             sub_span,
-                                                             def_id,
-                                                             self.cur_scope),
-            _ => self.sess.span_bug(ex.span,
+            def::DefFn(def_id, _) => self.fmt.fn_call_str(span,
+                                                          sub_span,
+                                                          def_id,
+                                                          self.cur_scope),
+            _ => self.sess.span_bug(span,
                                     format!("Unexpected def kind while looking up path in '{}'",
-                                            self.span.snippet(ex.span))[]),
+                                            self.span.snippet(span))[]),
         }
         // modules or types in the path prefix
         match *def {
-            def::DefStaticMethod(..) => {
-                self.write_sub_path_trait_truncated(path);
-            },
+            def::DefStaticMethod(..) => self.write_sub_path_trait_truncated(path),
             def::DefLocal(_) |
             def::DefStatic(_,_) |
             def::DefConst(..) |
             def::DefStruct(_) |
+            def::DefVariant(..) |
             def::DefFn(..) => self.write_sub_paths_truncated(path),
             _ => {},
         }
-
-        visit::walk_path(self, path);
     }
 
     fn process_struct_lit(&mut self,
@@ -982,18 +980,19 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     }
                 };
                 for &Spanned { node: ref field, span } in fields.iter() {
-                    self.visit_pat(&*field.pat);
+                    let sub_span = self.span.span_for_first_ident(span);
                     let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
                     for f in fields.iter() {
                         if f.name == field.ident.name {
                             self.fmt.ref_str(recorder::VarRef,
-                                             p.span,
-                                             Some(span),
+                                             span,
+                                             sub_span,
                                              f.id,
                                              self.cur_scope);
                             break;
                         }
                     }
+                    self.visit_pat(&*field.pat);
                 }
             }
             ast::PatEnum(ref path, _) => {
@@ -1052,7 +1051,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                   &**typ,
                                   impl_items)
             }
-            ast::ItemTrait(_, ref generics, _, ref trait_refs, ref methods) =>
+            ast::ItemTrait(_, ref generics, ref trait_refs, ref methods) =>
                 self.process_trait(item, generics, trait_refs, methods),
             ast::ItemMod(ref m) => self.process_mod(item, m),
             ast::ItemTy(ref ty, ref ty_params) => {
@@ -1076,7 +1075,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
     fn visit_generics(&mut self, generics: &ast::Generics) {
         for param in generics.ty_params.iter() {
             for bound in param.bounds.iter() {
-                if let ast::TraitTyParamBound(ref trait_ref) = *bound {
+                if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
                     self.process_trait_ref(&trait_ref.trait_ref, None);
                 }
             }
@@ -1162,8 +1161,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         }
 
         match i.node {
-            ast::ViewItemUse(ref path) => {
-                match path.node {
+            ast::ViewItemUse(ref item) => {
+                match item.node {
                     ast::ViewPathSimple(ident, ref path, id) => {
                         let sub_span = self.span.span_for_last_ident(path.span);
                         let mod_id = match self.lookup_type_ref(id) {
@@ -1184,7 +1183,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                         // 'use' always introduces an alias, if there is not an explicit
                         // one, there is an implicit one.
                         let sub_span =
-                            match self.span.sub_span_before_token(path.span, token::Eq) {
+                            match self.span.sub_span_after_keyword(item.span, keywords::As) {
                                 Some(sub_span) => Some(sub_span),
                                 None => sub_span,
                             };
@@ -1308,7 +1307,10 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 // because just walking the callee path does what we want.
                 visit::walk_expr(self, ex);
             },
-            ast::ExprPath(ref path) => self.process_path(ex, path),
+            ast::ExprPath(ref path) => {
+                self.process_path(ex.id, ex.span, path, None);
+                visit::walk_path(self, path);
+            }
             ast::ExprStruct(ref path, ref fields, ref base) =>
                 self.process_struct_lit(ex, path, fields, base),
             ast::ExprMethodCall(_, _, ref args) => self.process_method_call(ex, args),
@@ -1405,46 +1407,50 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
     fn visit_arm(&mut self, arm: &ast::Arm) {
         assert!(self.collected_paths.len() == 0 && !self.collecting);
         self.collecting = true;
-
         for pattern in arm.pats.iter() {
             // collect paths from the arm's patterns
             self.visit_pat(&**pattern);
         }
-        self.collecting = false;
+
+        // This is to get around borrow checking, because we need mut self to call process_path.
+        let mut paths_to_process = vec![];
         // process collected paths
         for &(id, ref p, ref immut, ref_kind) in self.collected_paths.iter() {
-            let value = if *immut {
-                self.span.snippet(p.span).to_string()
-            } else {
-                "<mutable>".to_string()
-            };
-            let sub_span = self.span.span_for_first_ident(p.span);
             let def_map = self.analysis.ty_cx.def_map.borrow();
             if !def_map.contains_key(&id) {
                 self.sess.span_bug(p.span,
-                                   format!("def_map has no key for {} in visit_arm",
-                                           id)[]);
+                                   format!("def_map has no key for {} in visit_arm", id)[]);
             }
             let def = &(*def_map)[id];
             match *def {
-                def::DefLocal(id)  => self.fmt.variable_str(p.span,
-                                                            sub_span,
-                                                            id,
-                                                            path_to_string(p)[],
-                                                            value[],
-                                                            ""),
-                def::DefVariant(_,id,_) => self.fmt.ref_str(ref_kind,
-                                                            p.span,
-                                                            sub_span,
-                                                            id,
-                                                            self.cur_scope),
-                // FIXME(nrc) what is this doing here?
+                def::DefLocal(id)  => {
+                    let value = if *immut {
+                        self.span.snippet(p.span).to_string()
+                    } else {
+                        "<mutable>".to_string()
+                    };
+
+                    assert!(p.segments.len() == 1, "qualified path for local variable def in arm");
+                    self.fmt.variable_str(p.span,
+                                          Some(p.span),
+                                          id,
+                                          path_to_string(p)[],
+                                          value[],
+                                          "")
+                }
+                def::DefVariant(..) => {
+                    paths_to_process.push((id, p.span, p.clone(), Some(ref_kind)))
+                }
+                // FIXME(nrc) what are these doing here?
                 def::DefStatic(_, _) => {}
                 def::DefConst(..) => {}
-                _ => error!("unexpected definition kind when processing collected paths: {}",
-                            *def)
+                _ => error!("unexpected definition kind when processing collected paths: {}", *def)
             }
         }
+        for &(id, span, ref path, ref_kind) in paths_to_process.iter() {
+            self.process_path(id, span, path, ref_kind);
+        }
+        self.collecting = false;
         self.collected_paths.clear();
         visit::walk_expr_opt(self, &arm.guard);
         self.visit_expr(&*arm.body);

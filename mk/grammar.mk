@@ -31,7 +31,7 @@ $(BG):
 	$(Q)mkdir -p $(BG)
 
 $(BG)RustLexer.class: $(BG) $(SG)RustLexer.g4
-	$(Q)$(CFG_ANTLR4) -o $(B)grammar $(SG)RustLexer.g4
+	$(Q)$(CFG_ANTLR4) -o $(BG) $(SG)RustLexer.g4
 	$(Q)$(CFG_JAVAC) -d $(BG) $(BG)RustLexer.java
 
 check-build-lexer-verifier: $(BG)verify

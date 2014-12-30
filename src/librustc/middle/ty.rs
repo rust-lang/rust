@@ -4740,7 +4740,7 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
         match cx.map.find(id.node) {
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    ItemTrait(_, _, _, _, ref ms) => {
+                    ItemTrait(_, _, _, ref ms) => {
                         let (_, p) =
                             ast_util::split_trait_methods(ms[]);
                         p.iter()

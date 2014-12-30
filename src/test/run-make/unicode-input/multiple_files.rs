@@ -10,7 +10,7 @@
 
 use std::{char, os};
 use std::io::{File, Command};
-use std::rand::{task_rng, Rng};
+use std::rand::{thread_rng, Rng};
 
 // creates unicode_input_multiple_files_{main,chars}.rs, where the
 // former imports the latter. `_chars` just contains an identifier
@@ -19,7 +19,7 @@ use std::rand::{task_rng, Rng};
 // this span used to upset the compiler).
 
 fn random_char() -> char {
-    let mut rng = task_rng();
+    let mut rng = thread_rng();
     // a subset of the XID_start Unicode table (ensuring that the
     // compiler doesn't fail with an "unrecognised token" error)
     let (lo, hi): (u32, u32) = match rng.gen_range(1u32, 4u32 + 1) {

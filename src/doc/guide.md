@@ -23,11 +23,16 @@ Linux or a Mac, all you need to do is this (note that you don't need to type
 in the `$`s, they just indicate the start of each command):
 
 ```bash
-$ curl -s https://static.rust-lang.org/rustup.sh | sudo sh
+curl -L https://static.rust-lang.org/rustup.sh | sudo sh
 ```
 
-(If you're concerned about `curl | sudo sh`, please keep reading. Disclaimer
-below.)
+If you're concerned about the [potential insecurity](http://curlpipesh.tumblr.com/) of using `curl | sudo sh`, 
+please keep reading and see our disclaimer below. And feel free to use a two-step version of the installation and examine our installation script:
+
+```bash
+curl -L https://static.rust-lang.org/rustup.sh -O
+sudo sh rustup.sh
+```
 
 If you're on Windows, please download either the [32-bit
 installer](https://static.rust-lang.org/dist/rust-nightly-i686-pc-windows-gnu.exe)
@@ -482,7 +487,7 @@ src/main.rs:2     let x;
 
 Giving it a type will compile, though:
 
-```{ignore}
+```{rust}
 let x: int;
 ```
 
@@ -1044,7 +1049,9 @@ struct Point(int, int, int);
 
 These two will not be equal, even if they have the same values:
 
-```{rust,ignore}
+```{rust}
+# struct Color(int, int, int);
+# struct Point(int, int, int);
 let black  = Color(0, 0, 0);
 let origin = Point(0, 0, 0);
 ```
@@ -1604,10 +1611,6 @@ let a = [1i, 2i, 3i];     // a: [int, ..3]
 let mut m = [1i, 2i, 3i]; // mut m: [int, ..3]
 ```
 
-You can create an array with a given number of elements, all initialized to the
-same value, with `[val, ..N]` syntax. The compiler ensures that arrays are
-always initialized.
-
 There's a shorthand for initializing each element of an array to the same
 value. In this example, each element of `a` will be initialized to `0i`:
 
@@ -1895,7 +1898,7 @@ authors = ["Your Name <you@example.com>"]
 Cargo gets this information from your environment. If it's not correct, go ahead
 and fix that.
 
-Finally, Cargo generated a hello, world for us. Check out `src/main.rs`:
+Finally, Cargo generated a "Hello, world!" for us. Check out `src/main.rs`:
 
 ```{rust}
 fn main() {
@@ -3036,7 +3039,7 @@ test foo ... FAILED
 failures:
 
 ---- foo stdout ----
-        task 'foo' failed at 'assertion failed: false', /home/you/projects/testing/tests/lib.rs:3
+        thread 'foo' failed at 'assertion failed: false', /home/you/projects/testing/tests/lib.rs:3
 
 
 
@@ -3045,7 +3048,7 @@ failures:
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 
-task '<main>' failed at 'Some tests failed', /home/you/src/rust/src/libtest/lib.rs:243
+thread '<main>' failed at 'Some tests failed', /home/you/src/rust/src/libtest/lib.rs:243
 ```
 
 Lots of output! Let's break this down:
@@ -3088,7 +3091,7 @@ failed, especially as we accumulate more tests.
 failures:
 
 ---- foo stdout ----
-        task 'foo' failed at 'assertion failed: false', /home/you/projects/testing/tests/lib.rs:3
+        thread 'foo' failed at 'assertion failed: false', /home/you/projects/testing/tests/lib.rs:3
 
 
 
@@ -3097,7 +3100,7 @@ failures:
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 
-task '<main>' failed at 'Some tests failed', /home/you/src/rust/src/libtest/lib.rs:243
+thread '<main>' failed at 'Some tests failed', /home/you/src/rust/src/libtest/lib.rs:243
 ```
 
 After all the tests run, Rust will show us any output from our failed tests.
@@ -4263,7 +4266,7 @@ is that a moving closure always takes ownership of all variables that
 it uses. Ordinary closures, in contrast, just create a reference into
 the enclosing stack frame. Moving closures are most useful with Rust's
 concurrency features, and so we'll just leave it at this for
-now. We'll talk about them more in the "Tasks" section of the guide.
+now. We'll talk about them more in the "Threads" section of the guide.
 
 ## Accepting closures as arguments
 
@@ -4290,7 +4293,9 @@ let square = |x: int| { x * x };
 We've seen this before. We make a closure that takes an integer, and returns
 its square.
 
-```{rust,ignore}
+```{rust}
+# fn twice(x: int, f: |int| -> int) -> int { f(x) + f(x) }
+# let square = |x: int| { x * x };
 twice(5i, square); // evaluates to 50
 ```
 
@@ -5213,9 +5218,7 @@ as you can see, there's no overhead of deciding which version to call here,
 hence 'statically dispatched'. The downside is that we have two copies of
 the same function, so our binary is a little bit larger.
 
-# Tasks
-
-**NOTE**: this section is currently out of date and will be rewritten soon.
+# Threads 
 
 Concurrency and parallelism are topics that are of increasing interest to a
 broad subsection of software developers. Modern computers are often multi-core,
@@ -5224,24 +5227,22 @@ processor. Rust's semantics lend themselves very nicely to solving a number of
 issues that programmers have with concurrency. Many concurrency errors that are
 runtime errors in other languages are compile-time errors in Rust.
 
-Rust's concurrency primitive is called a **task**. Tasks are similar to
-threads, and do not share memory in an unsafe manner, preferring message
-passing to communicate. It's worth noting that tasks are implemented as a
-library, and not part of the language. This means that in the future, other
-concurrency libraries can be written for Rust to help in specific scenarios.
-Here's an example of creating a task:
+Rust's concurrency primitive is called a **thread**. It's worth noting that
+threads are implemented as a library, and not part of the language. This means
+that in the future, other concurrency libraries can be written for Rust to help
+in specific scenarios. Here's an example of creating a thread:
 
 ```{rust,ignore}
 spawn(move || {
-    println!("Hello from a task!");
+    println!("Hello from a thread!");
 });
 ```
 
 The `spawn` function takes a closure as an argument, and runs that
-closure in a new task. Typically, you will want to use a moving
+closure in a new thread. Typically, you will want to use a moving
 closure, so that the closure takes ownership of any variables that it
 touches.  This implies that those variables are not usable from the
-parent task after the child task is spawned:
+parent thread after the child thread is spawned:
 
 ```{rust,ignore}
 let mut x = vec![1i, 2i, 3i];
@@ -5257,15 +5258,15 @@ println!("The value of x[0] is: {}", x[0]); // error: use of moved value: `x`
 other languages would let us do this, but it's not safe to do
 so. Rust's borrow checker catches the error.
 
-If tasks were only able to capture these values, they wouldn't be very useful.
-Luckily, tasks can communicate with each other through **channel**s. Channels
+If threads were only able to capture these values, they wouldn't be very useful.
+Luckily, threads can communicate with each other through **channel**s. Channels
 work like this:
 
 ```{rust,ignore}
 let (tx, rx) = channel();
 
 spawn(move || {
-    tx.send("Hello from a task!".to_string());
+    tx.send("Hello from a thread!".to_string());
 });
 
 let message = rx.recv();
@@ -5278,14 +5279,14 @@ receive the message on the `Receiver<T>` side with the `recv()` method.  This
 method blocks until it gets a message. There's a similar method, `.try_recv()`,
 which returns an `Result<T, TryRecvError>` and does not block.
 
-If you want to send messages to the task as well, create two channels!
+If you want to send messages to the thread as well, create two channels!
 
 ```{rust,ignore}
 let (tx1, rx1) = channel();
 let (tx2, rx2) = channel();
 
 spawn(move || {
-    tx1.send("Hello from a task!".to_string());
+    tx1.send("Hello from a thread!".to_string());
     let message = rx2.recv();
     println!("{}", message);
 });
@@ -5296,9 +5297,9 @@ println!("{}", message);
 tx2.send("Goodbye from main!".to_string());
 ```
 
-The closure has one sending end and one receiving end, and the main
-task has one of each as well. Now they can talk back and forth in
-whatever way they wish.
+The closure has one sending end and one receiving end, and the main thread has
+one of each as well. Now they can talk back and forth in whatever way they
+wish.
 
 Notice as well that because `Sender` and `Receiver` are generic, while you can
 pass any kind of information through the channel, the ends are strongly typed.
@@ -5337,7 +5338,7 @@ we'll just get the value immediately.
 
 ## Success and failure
 
-Tasks don't always succeed, they can also panic. A task that wishes to panic
+Threads don't always succeed, they can also panic. A thread that wishes to panic
 can call the `panic!` macro, passing a message:
 
 ```{rust,ignore}
@@ -5346,14 +5347,14 @@ spawn(move || {
 });
 ```
 
-If a task panics, it is not possible for it to recover. However, it can
-notify other tasks that it has panicked. We can do this with `task::try`:
+If a thread panics, it is not possible for it to recover. However, it can
+notify other thread that it has panicked. We can do this with `thread::try`:
 
 ```{rust,ignore}
-use std::task;
+use std::thread;
 use std::rand;
 
-let result = task::try(move || {
+let result = thread::try(move || {
     if rand::random() {
         println!("OK");
     } else {
@@ -5362,7 +5363,7 @@ let result = task::try(move || {
 });
 ```
 
-This task will randomly panic or succeed. `task::try` returns a `Result`
+This thread will randomly panic or succeed. `thread::try` returns a `Result`
 type, so we can handle the response like any other computation that may
 fail.
 
@@ -5410,7 +5411,7 @@ fn main() {
 }
 ```
 
-You can have the macros expanded like this: `rustc print.rs --pretty=expanded`, which will
+You can have the macros expanded like this: `rustc --pretty=expanded print.rs`, which will
 give us this huge result:
 
 ```{rust,ignore}

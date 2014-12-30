@@ -68,7 +68,6 @@ pub trait AstBuilder {
                span: Span,
                id: ast::Ident,
                bounds: OwnedSlice<ast::TyParamBound>,
-               unbound: Option<ast::TraitRef>,
                default: Option<P<ast::Ty>>) -> ast::TyParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
@@ -414,13 +413,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                span: Span,
                id: ast::Ident,
                bounds: OwnedSlice<ast::TyParamBound>,
-               unbound: Option<ast::TraitRef>,
                default: Option<P<ast::Ty>>) -> ast::TyParam {
         ast::TyParam {
             ident: id,
             id: ast::DUMMY_NODE_ID,
             bounds: bounds,
-            unbound: unbound,
             default: default,
             span: span
         }
@@ -455,7 +452,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound {
-        ast::TraitTyParamBound(self.poly_trait_ref(path))
+        ast::TraitTyParamBound(self.poly_trait_ref(path), ast::TraitBoundModifier::None)
     }
 
     fn lifetime(&self, span: Span, name: ast::Name) -> ast::Lifetime {

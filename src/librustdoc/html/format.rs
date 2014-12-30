@@ -97,9 +97,6 @@ impl fmt::Show for clean::Generics {
                 if i > 0 {
                     try!(f.write(", ".as_bytes()))
                 }
-                if let Some(ref unbound) = tp.default_unbound {
-                    try!(write!(f, "{}? ", unbound));
-                };
                 try!(f.write(tp.name.as_bytes()));
 
                 if tp.bounds.len() > 0 {
@@ -123,7 +120,7 @@ impl<'a> fmt::Show for WhereClause<'a> {
         if gens.where_predicates.len() == 0 {
             return Ok(());
         }
-        try!(f.write(" where ".as_bytes()));
+        try!(f.write(" <span class='where'>where ".as_bytes()));
         for (i, pred) in gens.where_predicates.iter().enumerate() {
             if i > 0 {
                 try!(f.write(", ".as_bytes()));
@@ -149,6 +146,7 @@ impl<'a> fmt::Show for WhereClause<'a> {
                 }
             }
         }
+        try!(f.write("</span>".as_bytes()));
         Ok(())
     }
 }
@@ -182,8 +180,12 @@ impl fmt::Show for clean::TyParamBound {
             clean::RegionBound(ref lt) => {
                 write!(f, "{}", *lt)
             }
-            clean::TraitBound(ref ty) => {
-                write!(f, "{}", *ty)
+            clean::TraitBound(ref ty, modifier) => {
+                let modifier_str = match modifier {
+                    ast::TraitBoundModifier::None => "",
+                    ast::TraitBoundModifier::Maybe => "?",
+                };
+                write!(f, "{}{}", modifier_str, *ty)
             }
         }
     }
@@ -458,11 +460,14 @@ impl fmt::Show for clean::Type {
                            for bound in decl.bounds.iter() {
                                 match *bound {
                                     clean::RegionBound(..) => {}
-                                    clean::TraitBound(ref t) => {
+                                    clean::TraitBound(ref t, modifier) => {
                                         if ret.len() == 0 {
                                             ret.push_str(": ");
                                         } else {
                                             ret.push_str(" + ");
+                                        }
+                                        if modifier == ast::TraitBoundModifier::Maybe {
+                                            ret.push_str("?");
                                         }
                                         ret.push_str(format!("{}",
                                                              *t).as_slice());

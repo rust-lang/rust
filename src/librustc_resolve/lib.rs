@@ -345,9 +345,6 @@ impl Rib {
 #[deriving(Show,PartialEq,Clone,Copy)]
 enum Shadowable {
     Always,
-    /// Means that the recorded import obeys the glob shadowing rules, i.e., can
-    /// only be shadowed by another glob import.
-    Glob,
     Never
 }
 
@@ -461,6 +458,22 @@ impl ImportResolution {
         }
 
         target.unwrap().shadowable
+    }
+
+    fn set_target_and_id(&mut self,
+                         namespace: Namespace,
+                         target: Option<Target>,
+                         id: NodeId) {
+        match namespace {
+            TypeNS  => {
+                self.type_target = target;
+                self.type_id = id;
+            }
+            ValueNS => {
+                self.value_target = target;
+                self.value_id = id;
+            }
+        }
     }
 }
 
@@ -1493,7 +1506,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ItemImpl(_, _, Some(_), _, _) => parent,
 
-            ItemTrait(_, _, _, _, ref items) => {
+            ItemTrait(_, _, _, ref items) => {
                 let name_bindings =
                     self.add_child(name,
                                    parent.clone(),
@@ -1719,11 +1732,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                     view_path.span,
                                                     id,
                                                     is_public,
-                                                    if shadowable == Shadowable::Never {
-                                                        Shadowable::Glob
-                                                    } else {
-                                                        shadowable
-                                                    });
+                                                    shadowable);
                     }
                 }
             }
@@ -2712,64 +2721,45 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // We've successfully resolved the import. Write the results in.
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
         let import_resolution = &mut (*import_resolutions)[target];
+        {
+            let check_and_write_import = |namespace, result: &_, used_public: &mut bool| {
+                let namespace_name = match namespace {
+                    TypeNS => "type",
+                    ValueNS => "value",
+                };
 
-        match value_result {
-            BoundResult(ref target_module, ref name_bindings) => {
-                debug!("(resolving single import) found value target: {}",
-                       { name_bindings.value_def.borrow().clone().unwrap().def });
-                self.check_for_conflicting_import(
-                    &import_resolution.value_target,
-                    directive.span,
-                    target,
-                    ValueNS);
+                match *result {
+                    BoundResult(ref target_module, ref name_bindings) => {
+                        debug!("(resolving single import) found {} target: {}",
+                               namespace_name,
+                               name_bindings.def_for_namespace(namespace));
+                        self.check_for_conflicting_import(
+                            &import_resolution.target_for_namespace(namespace),
+                            directive.span,
+                            target,
+                            namespace);
 
-                self.check_that_import_is_importable(
-                    &**name_bindings,
-                    directive.span,
-                    target,
-                    ValueNS);
+                        self.check_that_import_is_importable(
+                            &**name_bindings,
+                            directive.span,
+                            target,
+                            namespace);
 
-                import_resolution.value_target =
-                    Some(Target::new(target_module.clone(),
-                                     name_bindings.clone(),
-                                     directive.shadowable));
-                import_resolution.value_id = directive.id;
-                import_resolution.is_public = directive.is_public;
-                value_used_public = name_bindings.defined_in_public_namespace(ValueNS);
-            }
-            UnboundResult => { /* Continue. */ }
-            UnknownResult => {
-                panic!("value result should be known at this point");
-            }
-        }
-        match type_result {
-            BoundResult(ref target_module, ref name_bindings) => {
-                debug!("(resolving single import) found type target: {}",
-                       { name_bindings.type_def.borrow().clone().unwrap().type_def });
-                self.check_for_conflicting_import(
-                    &import_resolution.type_target,
-                    directive.span,
-                    target,
-                    TypeNS);
-
-                self.check_that_import_is_importable(
-                    &**name_bindings,
-                    directive.span,
-                    target,
-                    TypeNS);
-
-                import_resolution.type_target =
-                    Some(Target::new(target_module.clone(),
-                                     name_bindings.clone(),
-                                     directive.shadowable));
-                import_resolution.type_id = directive.id;
-                import_resolution.is_public = directive.is_public;
-                type_used_public = name_bindings.defined_in_public_namespace(TypeNS);
-            }
-            UnboundResult => { /* Continue. */ }
-            UnknownResult => {
-                panic!("type result should be known at this point");
-            }
+                        let target = Some(Target::new(target_module.clone(),
+                                                      name_bindings.clone(),
+                                                      directive.shadowable));
+                        import_resolution.set_target_and_id(namespace, target, directive.id);
+                        import_resolution.is_public = directive.is_public;
+                        *used_public = name_bindings.defined_in_public_namespace(namespace);
+                    }
+                    UnboundResult => { /* Continue. */ }
+                    UnknownResult => {
+                        panic!("{} result should be known at this point", namespace_name);
+                    }
+                }
+            };
+            check_and_write_import(ValueNS, &value_result, &mut value_used_public);
+            check_and_write_import(TypeNS, &type_result, &mut type_used_public);
         }
 
         self.check_for_conflicts_between_imports_and_items(
@@ -2825,7 +2815,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     // Resolves a glob import. Note that this function cannot fail; it either
     // succeeds or bails out (as importing * from an empty module or a module
-    // that exports nothing is valid).
+    // that exports nothing is valid). containing_module is the module we are
+    // actually importing, i.e., `foo` in `use foo::*`.
     fn resolve_glob_import(&mut self,
                            module_: &Module,
                            containing_module: Rc<Module>,
@@ -2851,12 +2842,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         assert_eq!(containing_module.glob_count.get(), 0);
 
         // Add all resolved imports from the containing module.
-        let import_resolutions = containing_module.import_resolutions
-                                                  .borrow();
+        let import_resolutions = containing_module.import_resolutions.borrow();
         for (ident, target_import_resolution) in import_resolutions.iter() {
             debug!("(resolving glob import) writing module resolution \
                     {} into `{}`",
-                   target_import_resolution.type_target.is_none(),
+                   token::get_name(*ident),
                    self.module_to_string(module_));
 
             if !target_import_resolution.is_public {
@@ -2876,8 +2866,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // Continue.
                         }
                         Some(ref value_target) => {
-                            dest_import_resolution.value_target =
-                                Some(value_target.clone());
+                            self.check_for_conflicting_import(&dest_import_resolution.value_target,
+                                                              import_directive.span,
+                                                              *ident,
+                                                              ValueNS);
+                            dest_import_resolution.value_target = Some(value_target.clone());
                         }
                     }
                     match target_import_resolution.type_target {
@@ -2885,8 +2878,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // Continue.
                         }
                         Some(ref type_target) => {
-                            dest_import_resolution.type_target =
-                                Some(type_target.clone());
+                            self.check_for_conflicting_import(&dest_import_resolution.type_target,
+                                                              import_directive.span,
+                                                              *ident,
+                                                              TypeNS);
+                            dest_import_resolution.type_target = Some(type_target.clone());
                         }
                     }
                     dest_import_resolution.is_public = is_public;
@@ -2908,8 +2904,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Add all children from the containing module.
         self.populate_module_if_necessary(&containing_module);
 
-        for (&name, name_bindings) in containing_module.children
-                                                       .borrow().iter() {
+        for (&name, name_bindings) in containing_module.children.borrow().iter() {
             self.merge_import_resolution(module_,
                                          containing_module.clone(),
                                          import_directive,
@@ -2919,8 +2914,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // Add external module children from the containing module.
-        for (&name, module) in containing_module.external_module_children
-                                                .borrow().iter() {
+        for (&name, module) in containing_module.external_module_children.borrow().iter() {
             let name_bindings =
                 Rc::new(Resolver::create_name_bindings_from_module(module.clone()));
             self.merge_import_resolution(module_,
@@ -2965,41 +2959,39 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         debug!("(resolving glob import) writing resolution `{}` in `{}` \
                to `{}`",
-               token::get_name(name).get().to_string(),
+               token::get_name(name).get(),
                self.module_to_string(&*containing_module),
                self.module_to_string(module_));
 
         // Merge the child item into the import resolution.
-        if name_bindings.defined_in_namespace_with(ValueNS, IMPORTABLE | PUBLIC) {
-            debug!("(resolving glob import) ... for value target");
-            if dest_import_resolution.shadowable(ValueNS) == Shadowable::Never {
-                let msg = format!("a value named `{}` has already been imported \
-                                   in this module",
-                                  token::get_name(name).get());
-                self.session.span_err(import_directive.span, msg.as_slice());
-            } else {
-                dest_import_resolution.value_target =
-                    Some(Target::new(containing_module.clone(),
-                                     name_bindings.clone(),
-                                     import_directive.shadowable));
-                dest_import_resolution.value_id = id;
-            }
+        {
+            let merge_child_item = |namespace| {
+                if name_bindings.defined_in_namespace_with(namespace, IMPORTABLE | PUBLIC) {
+                    let namespace_name = match namespace {
+                        TypeNS => "type",
+                        ValueNS => "value",
+                    };
+                    debug!("(resolving glob import) ... for {} target", namespace_name);
+                    if dest_import_resolution.shadowable(namespace) == Shadowable::Never {
+                        let msg = format!("a {} named `{}` has already been imported \
+                                           in this module",
+                                          namespace_name,
+                                          token::get_name(name).get());
+                        self.session.span_err(import_directive.span, msg.as_slice());
+                    } else {
+                        let target = Target::new(containing_module.clone(),
+                                                 name_bindings.clone(),
+                                                 import_directive.shadowable);
+                        dest_import_resolution.set_target_and_id(namespace,
+                                                                 Some(target),
+                                                                 id);
+                    }
+                }
+            };
+            merge_child_item(ValueNS);
+            merge_child_item(TypeNS);
         }
-        if name_bindings.defined_in_namespace_with(TypeNS, IMPORTABLE | PUBLIC) {
-            debug!("(resolving glob import) ... for type target");
-            if dest_import_resolution.shadowable(TypeNS) == Shadowable::Never {
-                let msg = format!("a type named `{}` has already been imported \
-                                   in this module",
-                                  token::get_name(name).get());
-                self.session.span_err(import_directive.span, msg.as_slice());
-            } else {
-                dest_import_resolution.type_target =
-                    Some(Target::new(containing_module,
-                                     name_bindings.clone(),
-                                     import_directive.shadowable));
-                dest_import_resolution.type_id = id;
-            }
-        }
+
         dest_import_resolution.is_public = is_public;
 
         self.check_for_conflicts_between_imports_and_items(
@@ -3018,6 +3010,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if self.session.features.borrow().import_shadowing {
             return
         }
+
+        debug!("check_for_conflicting_import: {}; target exists: {}",
+               token::get_name(name).get(),
+               target.is_some());
 
         match *target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
@@ -4008,6 +4004,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
+    /// Searches the current set of local scopes and
+    /// applies translations for closures.
     fn search_ribs(&self,
                    ribs: &[Rib],
                    name: Name,
@@ -4026,6 +4024,27 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
+        None
+    }
+
+    /// Searches the current set of local scopes for labels.
+    /// Stops after meeting a closure.
+    fn search_label(&self, name: Name) -> Option<DefLike> {
+        for rib in self.label_ribs.iter().rev() {
+            match rib.kind {
+                NormalRibKind => {
+                    // Continue
+                }
+                _ => {
+                    // Do not resolve labels across function boundary
+                    return None
+                }
+            }
+            let result = rib.bindings.get(&name).cloned();
+            if result.is_some() {
+                return result
+            }
+        }
         None
     }
 
@@ -4093,7 +4112,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             impl_items[]);
             }
 
-            ItemTrait(_, ref generics, ref unbound, ref bounds, ref trait_items) => {
+            ItemTrait(_, ref generics, ref bounds, ref trait_items) => {
                 // Create a new rib for the self type.
                 let mut self_type_rib = Rib::new(ItemRibKind);
 
@@ -4113,13 +4132,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     this.resolve_type_parameter_bounds(item.id, bounds,
                                                        TraitDerivation);
-
-                    match *unbound {
-                        Some(ref tpb) => {
-                            this.resolve_trait_reference(item.id, tpb, TraitDerivation);
-                        }
-                        None => {}
-                    }
 
                     for trait_item in (*trait_items).iter() {
                         // Create a new rib for the trait_item-specific type
@@ -4368,12 +4380,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.resolve_type_parameter_bound(type_parameter.id, bound,
                                               TraitBoundingTypeParameter);
         }
-        match &type_parameter.unbound {
-            &Some(ref unbound) =>
-                self.resolve_trait_reference(
-                    type_parameter.id, unbound, TraitBoundingTypeParameter),
-            &None => {}
-        }
         match type_parameter.default {
             Some(ref ty) => self.resolve_type(&**ty),
             None => {}
@@ -4395,7 +4401,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     type_parameter_bound: &TyParamBound,
                                     reference_type: TraitReferenceType) {
         match *type_parameter_bound {
-            TraitTyParamBound(ref tref) => {
+            TraitTyParamBound(ref tref, _) => {
                 self.resolve_poly_trait_reference(id, tref, reference_type)
             }
             RegionTyParamBound(..) => {}
@@ -5848,8 +5854,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let renamed = mtwt::resolve(label);
-                match self.search_ribs(self.label_ribs[],
-                                       renamed, expr.span) {
+                match self.search_label(renamed) {
                     None => {
                         self.resolve_error(
                             expr.span,

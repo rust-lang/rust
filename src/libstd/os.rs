@@ -46,7 +46,8 @@ use option::Option;
 use option::Option::{Some, None};
 use path::{Path, GenericPath, BytesContainer};
 use sys;
-use ptr::RawPtr;
+use sys::os as os_imp;
+use ptr::PtrExt;
 use ptr;
 use result::Result;
 use result::Result::{Err, Ok};
@@ -730,7 +731,7 @@ fn real_args() -> Vec<String> {
         let ptr = ptr as *const u16;
         let buf = slice::from_raw_buf(&ptr, len);
         let opt_s = String::from_utf16(sys::os::truncate_utf16_at_nul(buf));
-        opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
+        opt_s.ok().expect("CommandLineToArgvW returned invalid UTF-16")
     });
 
     unsafe {
@@ -1438,7 +1439,7 @@ mod tests {
     }
 
     fn make_rand_name() -> String {
-        let mut rng = rand::task_rng();
+        let mut rng = rand::thread_rng();
         let n = format!("TEST{}", rng.gen_ascii_chars().take(10u)
                                      .collect::<String>());
         assert!(getenv(n.as_slice()).is_none());
