@@ -241,7 +241,7 @@ into the language. More detail on these matters below.
 Some additional restrictions are enforced by the compiler as a sanity
 check that they are being used correctly.
 
-* The `deprecated` attribute *must*` be paired with a `stable`
+* The `deprecated` attribute *must* be paired with a `stable`
   attribute, enforcing that the progression of all features is from
   'unstable' to 'stable' to 'deprecated' and that the version in which
   the feature was promoted to stable is recorded and maintained as
