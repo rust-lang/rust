@@ -558,6 +558,7 @@ pub fn walk_dir(path: &Path) -> IoResult<Directories> {
 }
 
 /// An iterator that walks over a directory
+#[deriving(Clone)]
 pub struct Directories {
     stack: Vec<Path>,
 }

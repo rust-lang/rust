@@ -163,6 +163,7 @@ impl Writer for MultiWriter {
 
 /// A `Reader` which chains input from multiple `Reader`s, reading each to
 /// completion before moving onto the next.
+#[deriving(Clone)]
 pub struct ChainedReader<I, R> {
     readers: I,
     cur_reader: Option<R>,
@@ -246,6 +247,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
 }
 
 /// An adaptor converting an `Iterator<u8>` to a `Reader`.
+#[deriving(Clone)]
 pub struct IterReader<T> {
     iter: T,
 }
