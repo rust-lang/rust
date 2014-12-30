@@ -131,7 +131,6 @@ extern "system" {
 
 pub mod compat {
     use intrinsics::{atomic_store_relaxed, transmute};
-    use iter::IteratorExt;
     use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
     use prelude::*;
 

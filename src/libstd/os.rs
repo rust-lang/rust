@@ -731,7 +731,7 @@ fn real_args() -> Vec<String> {
         let ptr = ptr as *const u16;
         let buf = slice::from_raw_buf(&ptr, len);
         let opt_s = String::from_utf16(sys::os::truncate_utf16_at_nul(buf));
-        opt_s.expect("CommandLineToArgvW returned invalid UTF-16")
+        opt_s.ok().expect("CommandLineToArgvW returned invalid UTF-16")
     });
 
     unsafe {

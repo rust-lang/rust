@@ -60,19 +60,19 @@ mod test {
         t!("_ZN4$UP$E", "Box");
         t!("_ZN8$UP$testE", "Boxtest");
         t!("_ZN8$UP$test4foobE", "Boxtest::foob");
-        t!("_ZN8$x20test4foobE", " test::foob");
+        t!("_ZN10$u{20}test4foobE", " test::foob");
     }
 
     #[test]
     fn demangle_many_dollars() {
-        t!("_ZN12test$x20test4foobE", "test test::foob");
+        t!("_ZN14test$u{20}test4foobE", "test test::foob");
         t!("_ZN12test$UP$test4foobE", "testBoxtest::foob");
     }
 
     #[test]
     fn demangle_windows() {
         t!("ZN4testE", "test");
-        t!("ZN12test$x20test4foobE", "test test::foob");
+        t!("ZN14test$u{20}test4foobE", "test test::foob");
         t!("ZN12test$UP$test4foobE", "testBoxtest::foob");
     }
 }

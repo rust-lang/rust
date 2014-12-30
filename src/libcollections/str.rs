@@ -1770,15 +1770,9 @@ mod tests {
 
     use core::default::Default;
     use core::iter::AdditiveIterator;
-    use super::{eq_slice, from_utf8, is_utf8, is_utf16, raw};
-    use super::truncate_utf16_at_nul;
+    use super::{from_utf8, is_utf8, raw};
     use super::MaybeOwned::{Owned, Slice};
-    use std::slice::{AsSlice, SliceExt};
-    use string::{String, ToString};
-    use vec::Vec;
-    use slice::CloneSliceExt;
-
-    use unicode::char::UnicodeChar;
+    use super::Utf8Error;
 
     #[test]
     fn test_le() {

@@ -114,14 +114,14 @@ mod prelude {
     pub use core::ops::{Drop, Fn, FnMut, FnOnce};
     pub use core::option::Option;
     pub use core::option::Option::{Some, None};
-    pub use core::ptr::RawPtr;
+    pub use core::ptr::PtrExt;
     pub use core::result::Result;
     pub use core::result::Result::{Ok, Err};
 
     // in core and collections (may differ).
     pub use slice::{PartialEqSliceExt, OrdSliceExt};
     pub use slice::{AsSlice, SliceExt};
-    pub use str::{from_str, Str};
+    pub use str::{from_str, Str, StrExt};
 
     // from other crates.
     pub use alloc::boxed::Box;

@@ -669,7 +669,7 @@ impl TcpStream {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: self.inner.lock.lock(),
+            guard: self.inner.lock.lock().unwrap(),
         };
         assert!(set_nonblocking(self.fd(), true).is_ok());
         ret
@@ -808,7 +808,7 @@ impl UdpSocket {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: self.inner.lock.lock(),
+            guard: self.inner.lock.lock().unwrap(),
         };
         assert!(set_nonblocking(self.fd(), true).is_ok());
         ret

@@ -1082,7 +1082,7 @@ mod tests {
     use prelude::*;
     use test::Bencher;
 
-    use str::{StrExt, Utf8Error};
+    use str::Utf8Error;
     use str;
     use super::as_string;
 
