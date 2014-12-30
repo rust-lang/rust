@@ -8,17 +8,99 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unicode-intensive `char` methods.
+//! Unicode-intensive `char` methods along with the `core` methods.
 //!
 //! These methods implement functionality for `char` that requires knowledge of
 //! Unicode definitions, including normalization, categorization, and display information.
 
+use core::char;
+use core::char::CharExt as C;
 use core::option::Option;
 use tables::{derived_property, property, general_category, conversions, charwidth};
 
-/// Useful functions for Unicode characters.
+/// Functionality for manipulating `char`.
 #[experimental = "pending prelude organization"]
-pub trait UnicodeChar {
+pub trait CharExt {
+    /// Checks if a `char` parses as a numeric digit in the given radix.
+    ///
+    /// Compared to `is_numeric()`, this function only recognizes the characters
+    /// `0-9`, `a-z` and `A-Z`.
+    ///
+    /// # Return value
+    ///
+    /// Returns `true` if `c` is a valid digit under `radix`, and `false`
+    /// otherwise.
+    ///
+    /// # Panics
+    ///
+    /// Panics if given a radix > 36.
+    #[unstable = "pending integer conventions"]
+    fn is_digit(self, radix: uint) -> bool;
+
+    /// Converts a character to the corresponding digit.
+    ///
+    /// # Return value
+    ///
+    /// If `c` is between '0' and '9', the corresponding value between 0 and
+    /// 9. If `c` is 'a' or 'A', 10. If `c` is 'b' or 'B', 11, etc. Returns
+    /// none if the character does not refer to a digit in the given radix.
+    ///
+    /// # Panics
+    ///
+    /// Panics if given a radix outside the range [0..36].
+    #[unstable = "pending integer conventions"]
+    fn to_digit(self, radix: uint) -> Option<uint>;
+
+    /// Returns an iterator that yields the hexadecimal Unicode escape
+    /// of a character, as `char`s.
+    ///
+    /// All characters are escaped with Rust syntax of the form `\\u{NNNN}`
+    /// where `NNNN` is the shortest hexadecimal representation of the code
+    /// point.
+    #[stable]
+    fn escape_unicode(self) -> char::EscapeUnicode;
+
+    /// Returns an iterator that yields the 'default' ASCII and
+    /// C++11-like literal escape of a character, as `char`s.
+    ///
+    /// The default is chosen with a bias toward producing literals that are
+    /// legal in a variety of languages, including C++11 and similar C-family
+    /// languages. The exact rules are:
+    ///
+    /// * Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
+    /// * Single-quote, double-quote and backslash chars are backslash-
+    ///   escaped.
+    /// * Any other chars in the range [0x20,0x7e] are not escaped.
+    /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
+    #[stable]
+    fn escape_default(self) -> char::EscapeDefault;
+
+    /// Returns the amount of bytes this character would need if encoded in
+    /// UTF-8.
+    #[stable]
+    fn len_utf8(self) -> uint;
+
+    /// Returns the amount of bytes this character would need if encoded in
+    /// UTF-16.
+    #[stable]
+    fn len_utf16(self) -> uint;
+
+    /// Encodes this character as UTF-8 into the provided byte buffer,
+    /// and then returns the number of bytes written.
+    ///
+    /// If the buffer is not large enough, nothing will be written into it
+    /// and a `None` will be returned.
+    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint>;
+
+    /// Encodes this character as UTF-16 into the provided `u16` buffer,
+    /// and then returns the number of `u16`s written.
+    ///
+    /// If the buffer is not large enough, nothing will be written into it
+    /// and a `None` will be returned.
+    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint>;
+
     /// Returns whether the specified character is considered a Unicode
     /// alphabetic code point.
     fn is_alphabetic(self) -> bool;
@@ -118,7 +200,24 @@ pub trait UnicodeChar {
 }
 
 #[experimental = "pending prelude organization"]
-impl UnicodeChar for char {
+impl CharExt for char {
+    #[unstable = "pending integer conventions"]
+    fn is_digit(self, radix: uint) -> bool { C::is_digit(self, radix) }
+    #[unstable = "pending integer conventions"]
+    fn to_digit(self, radix: uint) -> Option<uint> { C::to_digit(self, radix) }
+    #[stable]
+    fn escape_unicode(self) -> char::EscapeUnicode { C::escape_unicode(self) }
+    #[stable]
+    fn escape_default(self) -> char::EscapeDefault { C::escape_default(self) }
+    #[stable]
+    fn len_utf8(self) -> uint { C::len_utf8(self) }
+    #[stable]
+    fn len_utf16(self) -> uint { C::len_utf16(self) }
+    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint> { C::encode_utf8(self, dst) }
+    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint> { C::encode_utf16(self, dst) }
+
     fn is_alphabetic(self) -> bool {
         match self {
             'a' ... 'z' | 'A' ... 'Z' => true,
