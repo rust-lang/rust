@@ -460,7 +460,7 @@ x = 10i;
 There is no single reason that bindings are immutable by default, but we can
 think about it through one of Rust's primary focuses: safety. If you forget to
 say `mut`, the compiler will catch it, and let you know that you have mutated
-something you may not have cared to mutate. If bindings were mutable by
+something you may not have intended to mutate. If bindings were mutable by
 default, the compiler would not be able to tell you this. If you _did_ intend
 mutation, then the solution is quite easy: add `mut`.
 
