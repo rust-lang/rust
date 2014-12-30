@@ -2146,14 +2146,14 @@ impl<'a> Parser<'a> {
             (&None, &Some(ref e)) => (e.span.lo, e.span.hi),
             (&None, &None) => (DUMMY_SP.lo, DUMMY_SP.hi),
         };
-        ExprIndex(expr, self.mk_expr(lo, hi, ExprRange(start, end)))
+        ExprIndex(expr, self.mk_expr(lo, hi, self.mk_range(start, end)))
     }
 
     pub fn mk_range(&mut self,
-                    start: P<Expr>,
+                    start: Option<P<Expr>>,
                     end: Option<P<Expr>>)
                     -> ast::Expr_ {
-        ExprRange(Some(start), end)
+        ExprRange(start, end)
     }
 
     pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::Expr_ {
@@ -2676,7 +2676,7 @@ impl<'a> Parser<'a> {
                 };
 
                 let hi = self.span.hi;
-                let range = self.mk_range(e, opt_end);
+                let range = self.mk_range(Some(e), opt_end);
                 return self.mk_expr(lo, hi, range);
               }
               _ => return e
@@ -2888,6 +2888,13 @@ impl<'a> Parser<'a> {
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             ex = self.mk_unary(UnUniq, e);
+          }
+          token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
+            // A range, closed above: `..expr`.
+            self.bump();
+            let e = self.parse_prefix_expr();
+            hi = e.span.hi;
+            ex = self.mk_range(None, Some(e));
           }
           token::Ident(_, _) => {
             if !self.token.is_keyword(keywords::Box) {
