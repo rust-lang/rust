@@ -10,7 +10,7 @@
 
 // As dst-struct.rs, but the unsized field is the only field in the struct.
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     ptr: T
 }
 

@@ -1308,7 +1308,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
         }
       }
-      ast::ItemTrait(_, _, _, _, ref ms) => {
+      ast::ItemTrait(_, _, _, ref ms) => {
         add_to_index(item, rbml_w, index);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);

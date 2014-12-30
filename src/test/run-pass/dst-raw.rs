@@ -23,7 +23,7 @@ impl Trait for A {
     }
 }
 
-struct Foo<Sized? T> {
+struct Foo<T: ?Sized> {
     f: T
 }
 
