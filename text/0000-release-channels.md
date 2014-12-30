@@ -282,7 +282,7 @@ recording the version in which the deprecation was performed with the
 `since` parameter.
 
 (Occassionally unstable APIs may be deprecated for the sake of easing
-user transitions, in which case they recieve both the `stable` and
+user transitions, in which case they receive both the `stable` and
 `deprecated` attributes at once.)
 
 ### Checking `#[feature]`
