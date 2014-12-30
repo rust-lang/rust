@@ -11,7 +11,7 @@ as well as 'feature staging', which enables the continued development
 of unstable language features and libraries APIs while providing
 strong stability guarantees in stable releases.
 
-It also redesigns and simplifies stability attributes to beter
+It also redesigns and simplifies stability attributes to better
 integrate with release channels and the other stability-moderating
 system in the language, 'feature gates'.
 
