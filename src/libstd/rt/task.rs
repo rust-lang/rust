@@ -174,7 +174,7 @@ impl Task {
     ///
     /// It is invalid to call this function with a thread that has been previously
     /// destroyed via a failed call to `run`.
-    pub fn run(mut self: Box<Task>, f: ||) -> Box<Task> {
+    pub fn run<F>(mut self: Box<Task>, f: F) -> Box<Task> where F: FnOnce() {
         assert!(!self.is_destroyed(), "cannot re-use a destroyed thread");
 
         // First, make sure that no one else is in TLS. This does not allow

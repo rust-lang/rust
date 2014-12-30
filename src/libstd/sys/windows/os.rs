@@ -124,7 +124,9 @@ pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
     }
 }
 
-pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD) -> Option<String> {
+pub fn fill_utf16_buf_and_decode<F>(mut f: F) -> Option<String> where
+    F: FnMut(*mut u16, DWORD) -> DWORD,
+{
     unsafe {
         let mut n = TMPBUF_SZ as DWORD;
         let mut res = None;
