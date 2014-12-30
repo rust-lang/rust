@@ -8,41 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types. Check we get type errors
-// where we should.
+// Test type checking of uses of associated types via sugary paths.
 
 #![feature(associated_types)]
 
 pub trait Foo {
     type A;
-    fn boo(&self) -> <Self as Foo>::A;
 }
-
-struct Bar;
 
 impl Foo for int {
     type A = uint;
-    fn boo(&self) -> uint {
-        42
-    }
 }
 
-fn foo1<I: Foo<A=Bar>>(x: I) {
-    let _: Bar = x.boo();
+pub fn f1<T: Foo>(a: T, x: T::A) {}
+pub fn f2<T: Foo>(a: T) -> T::A {
+    panic!();
 }
-
-fn foo2<I: Foo>(x: I) {
-    let _: Bar = x.boo(); //~ERROR mismatched types
-}
-
-
-pub fn baz(x: &Foo<A=Bar>) {
-    let _: Bar = x.boo();
-}
-
 
 pub fn main() {
-    let a = 42i;
-    foo1(a); //~ERROR the trait `Foo` is not implemented for the type `int`
-    baz(&a); //~ERROR the trait `Foo` is not implemented for the type `int`
+    f1(2i, 4i); //~ ERROR expected uint, found int
+    f1(2i, 4u);
+    f1(2u, 4u); //~ ERROR the trait `Foo` is not implemented
+    f1(2u, 4i); //~ ERROR the trait `Foo` is not implemented
+
+    let _: int = f2(2i); //~ERROR expected `int`, found `uint`
 }

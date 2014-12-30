@@ -17,5 +17,4 @@
 fn main() {
     (return)((),());
     //~^ ERROR the type of this value must be known
-    //~| ERROR this function takes 1 parameter
 }

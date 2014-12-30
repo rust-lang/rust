@@ -18,27 +18,31 @@ pub use self::ObligationCauseCode::*;
 use middle::subst;
 use middle::ty::{mod, Ty};
 use middle::infer::InferCtxt;
-use std::rc::Rc;
 use std::slice::Iter;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
+use util::ppaux::Repr;
 
 pub use self::error_reporting::report_fulfillment_errors;
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
+pub use self::project::MismatchedProjectionTypes;
+pub use self::project::project_type;
+pub use self::project::ProjectionResult;
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
 pub use self::util::elaborate_predicates;
+pub use self::util::trait_ref_for_builtin_bound;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
-pub use self::util::search_trait_and_supertraits_from_bound;
 pub use self::util::transitive_bounds;
-pub use self::util::poly_trait_ref_for_builtin_bound;
 
 mod coherence;
 mod error_reporting;
 mod fulfill;
+mod project;
 mod select;
 mod util;
 
@@ -52,11 +56,11 @@ mod util;
 pub struct Obligation<'tcx, T> {
     pub cause: ObligationCause<'tcx>,
     pub recursion_depth: uint,
-    pub trait_ref: T,
+    pub predicate: T,
 }
 
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
-pub type TraitObligation<'tcx> = Obligation<'tcx, Rc<ty::PolyTraitRef<'tcx>>>;
+pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 /// Why did we incur this obligation? Used for error reporting.
 #[deriving(Clone)]
@@ -106,9 +110,21 @@ pub enum ObligationCauseCode<'tcx> {
     // static items must have `Sync` type
     SharedStatic,
 
-    BuiltinDerivedObligation(Rc<ty::PolyTraitRef<'tcx>>, Rc<ObligationCauseCode<'tcx>>),
+    BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
-    ImplDerivedObligation(Rc<ty::PolyTraitRef<'tcx>>, Rc<ObligationCauseCode<'tcx>>),
+    ImplDerivedObligation(DerivedObligationCause<'tcx>),
+}
+
+#[deriving(Clone)]
+pub struct DerivedObligationCause<'tcx> {
+    /// The trait reference of the parent obligation that led to the
+    /// current obligation. Note that only trait obligations lead to
+    /// derived obligations, so we just store the trait reference here
+    /// directly.
+    parent_trait_ref: ty::PolyTraitRef<'tcx>,
+
+    /// The parent trait had this cause
+    parent_code: Rc<ObligationCauseCode<'tcx>>
 }
 
 pub type Obligations<'tcx, O> = subst::VecPerParamSpace<Obligation<'tcx, O>>;
@@ -121,8 +137,8 @@ pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 pub enum SelectionError<'tcx> {
     Unimplemented,
     Overflow,
-    OutputTypeParameterMismatch(Rc<ty::PolyTraitRef<'tcx>>,
-                                Rc<ty::PolyTraitRef<'tcx>>,
+    OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
+                                ty::PolyTraitRef<'tcx>,
                                 ty::type_err<'tcx>),
 }
 
@@ -134,6 +150,7 @@ pub struct FulfillmentError<'tcx> {
 #[deriving(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
+    CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeAmbiguity,
 }
 
@@ -174,10 +191,10 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 ///
 ///    // Case B: Vtable must be provided by caller. This applies when
 ///    // type is a type parameter.
-///    param.clone();    // VtableParam(Oblig_1)
+///    param.clone();    // VtableParam
 ///
 ///    // Case C: A mix of cases A and B.
-///    mixed.clone();    // Vtable(Impl_1, [VtableParam(Oblig_1)])
+///    mixed.clone();    // Vtable(Impl_1, [VtableParam])
 /// }
 /// ```
 ///
@@ -191,7 +208,7 @@ pub enum Vtable<'tcx, N> {
 
     /// Successful resolution to an obligation provided by the caller
     /// for some type parameter.
-    VtableParam(VtableParamData<'tcx>),
+    VtableParam,
 
     /// Successful resolution for a builtin trait.
     VtableBuiltin(VtableBuiltinData<N>),
@@ -228,15 +245,6 @@ pub struct VtableBuiltinData<N> {
     pub nested: subst::VecPerParamSpace<N>
 }
 
-/// A vtable provided as a parameter by the caller. For example, in a
-/// function like `fn foo<T:Eq>(...)`, if the `eq()` method is invoked
-/// on an instance of `T`, the vtable would be of type `VtableParam`.
-#[deriving(PartialEq,Eq,Clone)]
-pub struct VtableParamData<'tcx> {
-    // In the above example, this would `Eq`
-    pub bound: Rc<ty::PolyTraitRef<'tcx>>,
-}
-
 /// True if neither the trait nor self type is local. Note that `impl_def_id` must refer to an impl
 /// of a trait, not an inherent impl.
 pub fn is_orphan_impl(tcx: &ty::ctxt,
@@ -265,6 +273,43 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
     util::predicates_for_generics(tcx, cause, 0, generic_bounds)
 }
 
+/// Determines whether the type `ty` is known to meet `bound` and
+/// returns true if so. Returns false if `ty` either does not meet
+/// `bound` or is not known to meet bound (note that this is
+/// conservative towards *no impl*, which is the opposite of the
+/// `evaluate` methods).
+pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                                                 param_env: &ty::ParameterEnvironment<'tcx>,
+                                                 ty: Ty<'tcx>,
+                                                 bound: ty::BuiltinBound)
+                                                 -> bool
+{
+    debug!("type_known_to_meet_builtin_bound(ty={}, bound={})",
+           ty.repr(infcx.tcx),
+           bound);
+
+    let mut fulfill_cx = FulfillmentContext::new();
+
+    // We can use dummy values here because we won't report any errors
+    // that result nor will we pay any mind to region obligations that arise
+    // (there shouldn't really be any anyhow).
+    let cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
+
+    fulfill_cx.register_builtin_bound(infcx, ty, bound, cause);
+
+    // Note: we only assume something is `Copy` if we can
+    // *definitively* show that it implements `Copy`. Otherwise,
+    // assume it is move; linear is always ok.
+    let result = fulfill_cx.select_all_or_error(infcx, param_env, infcx.tcx).is_ok();
+
+    debug!("type_known_to_meet_builtin_bound: ty={} bound={} result={}",
+           ty.repr(infcx.tcx),
+           bound,
+           result);
+
+    result
+}
+
 impl<'tcx,O> Obligation<'tcx,O> {
     pub fn new(cause: ObligationCause<'tcx>,
                trait_ref: O)
@@ -272,7 +317,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
     {
         Obligation { cause: cause,
                      recursion_depth: 0,
-                     trait_ref: trait_ref }
+                     predicate: trait_ref }
     }
 
     pub fn misc(span: Span, body_id: ast::NodeId, trait_ref: O) -> Obligation<'tcx, O> {
@@ -282,13 +327,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
     pub fn with<P>(&self, value: P) -> Obligation<'tcx,P> {
         Obligation { cause: self.cause.clone(),
                      recursion_depth: self.recursion_depth,
-                     trait_ref: value }
-    }
-}
-
-impl<'tcx> TraitObligation<'tcx> {
-    pub fn self_ty(&self) -> Ty<'tcx> {
-        self.trait_ref.self_ty()
+                     predicate: value }
     }
 }
 
@@ -315,7 +354,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(ref i) => i.iter_nested(),
             VtableFnPointer(..) => (&[]).iter(),
             VtableUnboxedClosure(..) => (&[]).iter(),
-            VtableParam(_) => (&[]).iter(),
+            VtableParam => (&[]).iter(),
             VtableBuiltin(ref i) => i.iter_nested(),
         }
     }
@@ -325,7 +364,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(ref i) => VtableImpl(i.map_nested(op)),
             VtableFnPointer(ref sig) => VtableFnPointer((*sig).clone()),
             VtableUnboxedClosure(d, ref s) => VtableUnboxedClosure(d, s.clone()),
-            VtableParam(ref p) => VtableParam((*p).clone()),
+            VtableParam => VtableParam,
             VtableBuiltin(ref b) => VtableBuiltin(b.map_nested(op)),
         }
     }
@@ -337,7 +376,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(i) => VtableImpl(i.map_move_nested(op)),
             VtableFnPointer(sig) => VtableFnPointer(sig),
             VtableUnboxedClosure(d, s) => VtableUnboxedClosure(d, s),
-            VtableParam(p) => VtableParam(p),
+            VtableParam => VtableParam,
             VtableBuiltin(no) => VtableBuiltin(no.map_move_nested(op)),
         }
     }
@@ -403,6 +442,13 @@ impl<'tcx> FulfillmentError<'tcx> {
             CodeAmbiguity => false,
             CodeSelectionError(Overflow) => true,
             CodeSelectionError(_) => false,
+            CodeProjectionError(_) => false,
         }
+    }
+}
+
+impl<'tcx> TraitObligation<'tcx> {
+    fn self_ty(&self) -> Ty<'tcx> {
+        self.predicate.0.self_ty()
     }
 }

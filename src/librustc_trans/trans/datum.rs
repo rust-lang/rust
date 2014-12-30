@@ -218,7 +218,7 @@ impl KindOps for Lvalue {
                               val: ValueRef,
                               ty: Ty<'tcx>)
                               -> Block<'blk, 'tcx> {
-        if ty::type_needs_drop(bcx.tcx(), ty) {
+        if type_needs_drop(bcx.tcx(), ty) {
             // cancel cleanup of affine values by zeroing out
             let () = zero_mem(bcx, val, ty);
             bcx
@@ -398,7 +398,7 @@ impl<'tcx> Datum<'tcx, Expr> {
                                  -> DatumBlock<'blk, 'tcx, Lvalue> {
         debug!("to_lvalue_datum self: {}", self.to_string(bcx.ccx()));
 
-        assert!(ty::lltype_is_sized(bcx.tcx(), self.ty),
+        assert!(lltype_is_sized(bcx.tcx(), self.ty),
                 "Trying to convert unsized value to lval");
         self.match_kind(
             |l| DatumBlock::new(bcx, l),
@@ -456,7 +456,7 @@ impl<'tcx> Datum<'tcx, Lvalue> {
         F: FnOnce(ValueRef) -> ValueRef,
     {
         let val = match self.ty.sty {
-            _ if ty::type_is_sized(bcx.tcx(), self.ty) => gep(self.val),
+            _ if type_is_sized(bcx.tcx(), self.ty) => gep(self.val),
             ty::ty_open(_) => {
                 let base = Load(bcx, expr::get_dataptr(bcx, self.val));
                 gep(base)
@@ -567,7 +567,7 @@ impl<'tcx, K: KindOps + fmt::Show> Datum<'tcx, K> {
     /// scalar-ish (like an int or a pointer) which (1) does not require drop glue and (2) is
     /// naturally passed around by value, and not by reference.
     pub fn to_llscalarish<'blk>(self, bcx: Block<'blk, 'tcx>) -> ValueRef {
-        assert!(!ty::type_needs_drop(bcx.tcx(), self.ty));
+        assert!(!type_needs_drop(bcx.tcx(), self.ty));
         assert!(self.appropriate_rvalue_mode(bcx.ccx()) == ByValue);
         if self.kind.is_by_ref() {
             load_ty(bcx, self.val, self.ty)

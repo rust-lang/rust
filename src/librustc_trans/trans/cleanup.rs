@@ -279,10 +279,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                          cleanup_scope: ScopeId,
                          val: ValueRef,
                          ty: Ty<'tcx>) {
-        if !ty::type_needs_drop(self.ccx.tcx(), ty) { return; }
+        if !common::type_needs_drop(self.ccx.tcx(), ty) { return; }
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
+            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             zero: false
@@ -301,10 +301,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,
                                   ty: Ty<'tcx>) {
-        if !ty::type_needs_drop(self.ccx.tcx(), ty) { return; }
+        if !common::type_needs_drop(self.ccx.tcx(), ty) { return; }
         let drop = box DropValue {
             is_immediate: false,
-            must_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
+            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             zero: true
@@ -325,10 +325,10 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                val: ValueRef,
                                ty: Ty<'tcx>) {
 
-        if !ty::type_needs_drop(self.ccx.tcx(), ty) { return; }
+        if !common::type_needs_drop(self.ccx.tcx(), ty) { return; }
         let drop = box DropValue {
             is_immediate: true,
-            must_unwind: ty::type_needs_unwind_cleanup(self.ccx.tcx(), ty),
+            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             zero: false
@@ -736,7 +736,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                         let f = base::decl_cdecl_fn(self.ccx,
                                                     "rust_eh_personality",
                                                     fty,
-                                                    ty::mk_i32());
+                                                    self.ccx.tcx().types.i32);
                         *personality = Some(f);
                         f
                     }

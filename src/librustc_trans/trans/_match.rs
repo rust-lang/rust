@@ -1122,7 +1122,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     let t = if kind == Compare {
                         left_ty
                     } else {
-                        ty::mk_uint() // vector length
+                        tcx.types.uint // vector length
                     };
                     let Result { bcx: after_cx, val: matches } = {
                         match opt.trans(bcx) {
@@ -1263,7 +1263,7 @@ fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool 
     };
     {
         let param_env = ty::empty_parameter_environment();
-        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx, param_env);
+        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx, &param_env);
         visitor.walk_expr(body);
     }
     rc.reassigned

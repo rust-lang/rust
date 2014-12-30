@@ -11,7 +11,7 @@
 use middle::def;
 use middle::infer;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
-use middle::subst::{Subst, Substs};
+use middle::subst::{Substs};
 use middle::ty::{mod, Ty};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
@@ -79,9 +79,9 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
         ast::PatEnum(..) | ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
             let const_did = tcx.def_map.borrow()[pat.id].clone().def_id();
-            let const_pty = ty::lookup_item_type(tcx, const_did);
-            fcx.write_ty(pat.id, const_pty.ty);
-            demand::suptype(fcx, pat.span, expected, const_pty.ty);
+            let const_scheme = ty::lookup_item_type(tcx, const_did);
+            fcx.write_ty(pat.id, const_scheme.ty);
+            demand::suptype(fcx, pat.span, expected, const_scheme.ty);
         }
         ast::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
             let typ = fcx.local_ty(pat.span, pat.id);
@@ -142,7 +142,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**inner, inner_ty);
             } else {
                 fcx.write_error(pat.id);
-                check_pat(pcx, &**inner, ty::mk_err());
+                check_pat(pcx, &**inner, tcx.types.err);
             }
         }
         ast::PatRegion(ref inner) => {
@@ -162,7 +162,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**inner, inner_ty);
             } else {
                 fcx.write_error(pat.id);
-                check_pat(pcx, &**inner, ty::mk_err());
+                check_pat(pcx, &**inner, tcx.types.err);
             }
         }
         ast::PatVec(ref before, ref slice, ref after) => {
@@ -285,11 +285,11 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         if let Some(ref e) = arm.guard {
-            check_expr_has_type(fcx, &**e, ty::mk_bool());
+            check_expr_has_type(fcx, &**e, tcx.types.bool);
         }
 
         if ty::type_is_error(result_ty) || ty::type_is_error(bty) {
-            ty::mk_err()
+            tcx.types.err
         } else {
             let (origin, expected, found) = match match_src {
                 /* if-let construct without an else block */
@@ -339,7 +339,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
             fcx.write_error(pat.id);
 
             for field in fields.iter() {
-                check_pat(pcx, &*field.node.pat, ty::mk_err());
+                check_pat(pcx, &*field.node.pat, tcx.types.err);
             }
             return;
         },
@@ -358,7 +358,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
                     fcx.write_error(pat.id);
 
                     for field in fields.iter() {
-                        check_pat(pcx, &*field.node.pat, ty::mk_err());
+                        check_pat(pcx, &*field.node.pat, tcx.types.err);
                     }
                     return;
                 }
@@ -395,32 +395,39 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
     let enum_def = def.variant_def_ids()
         .map_or_else(|| def.def_id(), |(enum_def, _)| enum_def);
 
-    let ctor_pty = ty::lookup_item_type(tcx, enum_def);
-    let path_ty = if ty::is_fn_ty(ctor_pty.ty) {
-        ty::Polytype {
-            ty: ty::ty_fn_ret(ctor_pty.ty).unwrap(),
-            ..ctor_pty
+    let ctor_scheme = ty::lookup_item_type(tcx, enum_def);
+    let path_scheme = if ty::is_fn_ty(ctor_scheme.ty) {
+        ty::TypeScheme {
+            ty: ty::ty_fn_ret(ctor_scheme.ty).unwrap(),
+            ..ctor_scheme
         }
     } else {
-        ctor_pty
+        ctor_scheme
     };
-    instantiate_path(pcx.fcx, path, path_ty, def, pat.span, pat.id);
+    instantiate_path(pcx.fcx, path, path_scheme, def, pat.span, pat.id);
 
     let pat_ty = fcx.node_ty(pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);
 
     let real_path_ty = fcx.node_ty(pat.id);
-    let (arg_tys, kind_name) = match real_path_ty.sty {
+    let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
         ty::ty_enum(enum_def_id, expected_substs)
-            if def == def::DefVariant(enum_def_id, def.def_id(), false) => {
+            if def == def::DefVariant(enum_def_id, def.def_id(), false) =>
+        {
             let variant = ty::enum_variant_with_id(tcx, enum_def_id, def.def_id());
-            (variant.args.iter().map(|t| t.subst(tcx, expected_substs)).collect::<Vec<_>>(),
-                "variant")
+            (variant.args.iter()
+                         .map(|t| fcx.instantiate_type_scheme(pat.span, expected_substs, t))
+                         .collect(),
+             "variant")
         }
         ty::ty_struct(struct_def_id, expected_substs) => {
             let struct_fields = ty::struct_fields(tcx, struct_def_id, expected_substs);
-            (struct_fields.iter().map(|field| field.mt.ty).collect::<Vec<_>>(),
-                "struct")
+            (struct_fields.iter()
+                          .map(|field| fcx.instantiate_type_scheme(pat.span,
+                                                                   expected_substs,
+                                                                   &field.mt.ty))
+                          .collect(),
+             "struct")
         }
         _ => {
             let name = pprust::path_to_string(path);
@@ -430,7 +437,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
 
             if let Some(ref subpats) = *subpats {
                 for pat in subpats.iter() {
-                    check_pat(pcx, &**pat, ty::mk_err());
+                    check_pat(pcx, &**pat, tcx.types.err);
                 }
             }
             return;
@@ -448,7 +455,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
                       subpats.len(), if subpats.len() == 1 {""} else {"s"}, kind_name);
 
             for pat in subpats.iter() {
-                check_pat(pcx, &**pat, ty::mk_err());
+                check_pat(pcx, &**pat, tcx.types.err);
             }
         } else {
             span_err!(tcx.sess, pat.span, E0023,
@@ -458,7 +465,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
                       arg_tys.len(), if arg_tys.len() == 1 {""} else {"s"});
 
             for pat in subpats.iter() {
-                check_pat(pcx, &**pat, ty::mk_err());
+                check_pat(pcx, &**pat, tcx.types.err);
             }
         }
     }
@@ -496,7 +503,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 span_note!(tcx.sess, *occupied.get(),
                     "field `{}` previously bound here",
                     token::get_ident(field.ident));
-                ty::mk_err()
+                tcx.types.err
             }
             Vacant(vacant) => {
                 vacant.set(span);
@@ -506,7 +513,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                             "struct `{}` does not have a field named `{}`",
                             ty::item_path_str(tcx, struct_id),
                             token::get_ident(field.ident));
-                        ty::mk_err()
+                        tcx.types.err
                     })
             }
         };

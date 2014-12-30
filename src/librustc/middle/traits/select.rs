@@ -13,23 +13,24 @@
 
 pub use self::MethodMatchResult::*;
 pub use self::MethodMatchedData::*;
-use self::Candidate::*;
+use self::SelectionCandidate::*;
 use self::BuiltinBoundConditions::*;
 use self::EvaluationResult::*;
 
+use super::{DerivedObligationCause};
 use super::{PredicateObligation, Obligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation};
 use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch};
 use super::{Selection};
 use super::{SelectionResult};
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableUnboxedClosure, VtableFnPointer};
-use super::{VtableImplData, VtableParamData, VtableBuiltinData};
+use super::{VtableImplData, VtableBuiltinData};
 use super::{util};
 
 use middle::fast_reject;
 use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, VecPerParamSpace};
-use middle::ty::{mod, AsPredicate, RegionEscape, Ty};
+use middle::ty::{mod, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
@@ -75,15 +76,15 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 
     /// Trait ref from `obligation` but skolemized with the
     /// selection-context's freshener. Used to check for recursion.
-    fresh_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
+    fresh_trait_ref: ty::PolyTraitRef<'tcx>,
 
     previous: Option<&'prev TraitObligationStack<'prev, 'tcx>>
 }
 
 #[deriving(Clone)]
 pub struct SelectionCache<'tcx> {
-    hashmap: RefCell<HashMap<Rc<ty::PolyTraitRef<'tcx>>,
-                             SelectionResult<'tcx, Candidate<'tcx>>>>,
+    hashmap: RefCell<HashMap<Rc<ty::TraitRef<'tcx>>,
+                             SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
 }
 
 pub enum MethodMatchResult {
@@ -128,10 +129,14 @@ pub enum MethodMatchedData {
 /// clauses can give additional information (like, the types of output
 /// parameters) that would have to be inferred from the impl.
 #[deriving(PartialEq,Eq,Show,Clone)]
-enum Candidate<'tcx> {
+enum SelectionCandidate<'tcx> {
     BuiltinCandidate(ty::BuiltinBound),
-    ParamCandidate(VtableParamData<'tcx>),
+    ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(ast::DefId),
+
+    /// This is a trait matching with a projected type as `Self`, and
+    /// we found an applicable bound in the trait definition.
+    ProjectionCandidate,
 
     /// Implementation of a `Fn`-family trait by one of the
     /// anonymous types generated for a `||` expression.
@@ -144,9 +149,16 @@ enum Candidate<'tcx> {
     ErrorCandidate,
 }
 
-struct CandidateSet<'tcx> {
-    vec: Vec<Candidate<'tcx>>,
-    ambiguous: bool
+struct SelectionCandidateSet<'tcx> {
+    // a list of candidates that definitely apply to the current
+    // obligation (meaning: types unify).
+    vec: Vec<SelectionCandidate<'tcx>>,
+
+    // if this is true, then there were candidates that might or might
+    // not have applied, but we couldn't tell. This occurs when some
+    // of the input types are type variables, in which case there are
+    // various "builtin" rules that might or might not trigger.
+    ambiguous: bool,
 }
 
 enum BuiltinBoundConditions<'tcx> {
@@ -193,6 +205,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx
     }
 
+    pub fn param_env(&self) -> &'cx ty::ParameterEnvironment<'tcx> {
+        self.param_env
+    }
+
     pub fn tcx(&self) -> &'cx ty::ctxt<'tcx> {
         self.infcx.tcx
     }
@@ -218,7 +234,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn select(&mut self, obligation: &TraitObligation<'tcx>)
                   -> SelectionResult<'tcx, Selection<'tcx>> {
         debug!("select({})", obligation.repr(self.tcx()));
-        assert!(!obligation.trait_ref.has_escaping_regions());
+        assert!(!obligation.predicate.has_escaping_regions());
 
         let stack = self.push_stack(None, obligation);
         match try!(self.candidate_from_obligation(&stack)) {
@@ -280,7 +296,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("evaluate_predicate_recursively({})",
                obligation.repr(self.tcx()));
 
-        match obligation.trait_ref {
+        match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
                 assert!(!t.has_escaping_regions());
                 let obligation = obligation.with(t.clone());
@@ -301,6 +317,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // we do not consider region relationships when
                 // evaluating trait matches
                 EvaluatedToOk
+            }
+
+            ty::Predicate::Projection(..) => {
+                // FIXME(#20296) -- we should be able to give a more precise answer here
+                EvaluatedToAmbig
             }
         }
     }
@@ -411,9 +432,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         self.infcx.probe(|snapshot| {
             let (skol_obligation_trait_ref, skol_map) =
-                self.infcx().skolemize_late_bound_regions(&*obligation.trait_ref, snapshot);
+                self.infcx().skolemize_late_bound_regions(&obligation.predicate, snapshot);
             match self.match_impl(impl_def_id, obligation, snapshot,
-                                  &skol_map, Rc::new(skol_obligation_trait_ref)) {
+                                  &skol_map, skol_obligation_trait_ref.trait_ref.clone()) {
                 Ok(substs) => {
                     let vtable_impl = self.vtable_impl(impl_def_id,
                                                        substs,
@@ -439,7 +460,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn candidate_from_obligation<'o>(&mut self,
                                      stack: &TraitObligationStack<'o, 'tcx>)
-                                     -> SelectionResult<'tcx, Candidate<'tcx>>
+                                     -> SelectionResult<'tcx, SelectionCandidate<'tcx>>
     {
         // Watch out for overflow. This intentionally bypasses (and does
         // not update) the cache.
@@ -455,17 +476,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // separately rather than using `stack.fresh_trait_ref` -- this
         // is because we want the unbound variables to be replaced
         // with fresh skolemized types starting from index 0.
-        let cache_fresh_trait_ref =
-            self.infcx.freshen(stack.obligation.trait_ref.clone());
-        debug!("candidate_from_obligation(cache_fresh_trait_ref={}, obligation={})",
-               cache_fresh_trait_ref.repr(self.tcx()),
+        let cache_fresh_trait_pred =
+            self.infcx.freshen(stack.obligation.predicate.clone());
+        debug!("candidate_from_obligation(cache_fresh_trait_pred={}, obligation={})",
+               cache_fresh_trait_pred.repr(self.tcx()),
                stack.repr(self.tcx()));
-        assert!(!stack.obligation.trait_ref.has_escaping_regions());
+        assert!(!stack.obligation.predicate.has_escaping_regions());
 
-        match self.check_candidate_cache(cache_fresh_trait_ref.clone()) {
+        match self.check_candidate_cache(&cache_fresh_trait_pred) {
             Some(c) => {
-                debug!("CACHE HIT: cache_fresh_trait_ref={}, candidate={}",
-                       cache_fresh_trait_ref.repr(self.tcx()),
+                debug!("CACHE HIT: cache_fresh_trait_pred={}, candidate={}",
+                       cache_fresh_trait_pred.repr(self.tcx()),
                        c.repr(self.tcx()));
                 return c;
             }
@@ -474,17 +495,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // If no match, compute result and insert into cache.
         let candidate = self.candidate_from_obligation_no_cache(stack);
-        debug!("CACHE MISS: cache_fresh_trait_ref={}, candidate={}",
-               cache_fresh_trait_ref.repr(self.tcx()), candidate.repr(self.tcx()));
-        self.insert_candidate_cache(cache_fresh_trait_ref, candidate.clone());
+        debug!("CACHE MISS: cache_fresh_trait_pred={}, candidate={}",
+               cache_fresh_trait_pred.repr(self.tcx()), candidate.repr(self.tcx()));
+        self.insert_candidate_cache(cache_fresh_trait_pred, candidate.clone());
         candidate
     }
 
     fn candidate_from_obligation_no_cache<'o>(&mut self,
                                               stack: &TraitObligationStack<'o, 'tcx>)
-                                              -> SelectionResult<'tcx, Candidate<'tcx>>
+                                              -> SelectionResult<'tcx, SelectionCandidate<'tcx>>
     {
-        if ty::type_is_error(stack.obligation.self_ty()) {
+        if ty::type_is_error(stack.obligation.predicate.0.self_ty()) {
             return Ok(Some(ErrorCandidate));
         }
 
@@ -497,8 +518,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let mut candidates = candidate_set.vec;
 
-        debug!("assembled {} candidates for {}",
-               candidates.len(), stack.repr(self.tcx()));
+        debug!("assembled {} candidates for {}: {}",
+               candidates.len(),
+               stack.repr(self.tcx()),
+               candidates.repr(self.tcx()));
 
         // At this point, we know that each of the entries in the
         // candidate set is *individually* applicable. Now we have to
@@ -576,7 +599,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn pick_candidate_cache(&self,
-                            cache_fresh_trait_ref: &Rc<ty::PolyTraitRef<'tcx>>)
+                            cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>)
                             -> &SelectionCache<'tcx>
     {
         // High-level idea: we have to decide whether to consult the
@@ -598,7 +621,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // If the trait refers to any parameters in scope, then use
         // the cache of the param-environment.
         if
-            cache_fresh_trait_ref.0.input_types().iter().any(
+            cache_fresh_trait_pred.0.input_types().iter().any(
                 |&t| ty::type_has_self(t) || ty::type_has_params(t))
         {
             return &self.param_env.selection_cache;
@@ -611,7 +634,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // See the discussion in doc.rs for more details.
         if
             !self.param_env.caller_bounds.is_empty() &&
-            cache_fresh_trait_ref.0.input_types().iter().any(
+            cache_fresh_trait_pred.0.input_types().iter().any(
                 |&t| ty::type_has_ty_infer(t))
         {
             return &self.param_env.selection_cache;
@@ -622,32 +645,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn check_candidate_cache(&mut self,
-                             cache_fresh_trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
-                             -> Option<SelectionResult<'tcx, Candidate<'tcx>>>
+                             cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>)
+                             -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>>
     {
-        let cache = self.pick_candidate_cache(&cache_fresh_trait_ref);
+        let cache = self.pick_candidate_cache(cache_fresh_trait_pred);
         let hashmap = cache.hashmap.borrow();
-        hashmap.get(&cache_fresh_trait_ref).map(|c| (*c).clone())
+        hashmap.get(&cache_fresh_trait_pred.0.trait_ref).map(|c| (*c).clone())
     }
 
     fn insert_candidate_cache(&mut self,
-                              cache_fresh_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
-                              candidate: SelectionResult<'tcx, Candidate<'tcx>>)
+                              cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
+                              candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>)
     {
-        let cache = self.pick_candidate_cache(&cache_fresh_trait_ref);
+        let cache = self.pick_candidate_cache(&cache_fresh_trait_pred);
         let mut hashmap = cache.hashmap.borrow_mut();
-        hashmap.insert(cache_fresh_trait_ref, candidate);
+        hashmap.insert(cache_fresh_trait_pred.0.trait_ref.clone(), candidate);
     }
 
     fn assemble_candidates<'o>(&mut self,
                                stack: &TraitObligationStack<'o, 'tcx>)
-                               -> Result<CandidateSet<'tcx>, SelectionError<'tcx>>
+                               -> Result<SelectionCandidateSet<'tcx>, SelectionError<'tcx>>
     {
         // Check for overflow.
 
         let TraitObligationStack { obligation, .. } = *stack;
 
-        let mut candidates = CandidateSet {
+        let mut candidates = SelectionCandidateSet {
             vec: Vec::new(),
             ambiguous: false
         };
@@ -655,10 +678,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Other bounds. Consider both in-scope bounds from fn decl
         // and applicable impls. There is a certain set of precedence rules here.
 
-        match self.tcx().lang_items.to_builtin_kind(obligation.trait_ref.def_id()) {
+        match self.tcx().lang_items.to_builtin_kind(obligation.predicate.def_id()) {
             Some(ty::BoundCopy) => {
                 debug!("obligation self ty is {}",
-                       obligation.self_ty().repr(self.tcx()));
+                       obligation.predicate.0.self_ty().repr(self.tcx()));
 
                 // If the user has asked for the older, compatibility
                 // behavior, ignore user-defined impls here. This will
@@ -696,9 +719,138 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
+        self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
         try!(self.assemble_candidates_from_caller_bounds(obligation, &mut candidates));
         debug!("candidate list size: {}", candidates.vec.len());
         Ok(candidates)
+    }
+
+    fn assemble_candidates_from_projected_tys(&mut self,
+                                              obligation: &TraitObligation<'tcx>,
+                                              candidates: &mut SelectionCandidateSet<'tcx>)
+    {
+        let poly_trait_predicate =
+            self.infcx().resolve_type_vars_if_possible(&obligation.predicate);
+
+        debug!("assemble_candidates_for_projected_tys({},{})",
+               obligation.repr(self.tcx()),
+               poly_trait_predicate.repr(self.tcx()));
+
+        // FIXME(#20297) -- just examining the self-type is very simplistic
+
+        // before we go into the whole skolemization thing, just
+        // quickly check if the self-type is a projection at all.
+        let trait_def_id = match poly_trait_predicate.0.trait_ref.self_ty().sty {
+            ty::ty_projection(ref data) => data.trait_ref.def_id,
+            ty::ty_infer(ty::TyVar(_)) => {
+                // If the self-type is an inference variable, then it MAY wind up
+                // being a projected type, so induce an ambiguity.
+                //
+                // FIXME(#20297) -- being strict about this can cause
+                // inference failures with BorrowFrom, which is
+                // unfortunate. Can we do better here?
+                candidates.ambiguous = true;
+                return;
+            }
+            _ => { return; }
+        };
+
+        debug!("assemble_candidates_for_projected_tys: trait_def_id={}",
+               trait_def_id.repr(self.tcx()));
+
+        let result = self.infcx.probe(|snapshot| {
+            self.match_projection_obligation_against_bounds_from_trait(obligation,
+                                                                       snapshot)
+        });
+
+        if result {
+            candidates.vec.push(ProjectionCandidate);
+        }
+    }
+
+    fn match_projection_obligation_against_bounds_from_trait(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        snapshot: &infer::CombinedSnapshot)
+        -> bool
+    {
+        let poly_trait_predicate =
+            self.infcx().resolve_type_vars_if_possible(&obligation.predicate);
+        let (skol_trait_predicate, skol_map) =
+            self.infcx().skolemize_late_bound_regions(&poly_trait_predicate, snapshot);
+        debug!("match_projection_obligation_against_bounds_from_trait: \
+                skol_trait_predicate={} skol_map={}",
+               skol_trait_predicate.repr(self.tcx()),
+               skol_map.repr(self.tcx()));
+
+        let projection_trait_ref = match skol_trait_predicate.trait_ref.self_ty().sty {
+            ty::ty_projection(ref data) => &data.trait_ref,
+            _ => {
+                self.tcx().sess.span_bug(
+                    obligation.cause.span,
+                    format!("match_projection_obligation_against_bounds_from_trait() called \
+                             but self-ty not a projection: {}",
+                            skol_trait_predicate.trait_ref.self_ty().repr(self.tcx())).as_slice());
+            }
+        };
+        debug!("match_projection_obligation_against_bounds_from_trait: \
+                projection_trait_ref={}",
+               projection_trait_ref.repr(self.tcx()));
+
+        let trait_def = ty::lookup_trait_def(self.tcx(), projection_trait_ref.def_id);
+        let bounds = trait_def.generics.to_bounds(self.tcx(), projection_trait_ref.substs);
+        debug!("match_projection_obligation_against_bounds_from_trait: \
+                bounds={}",
+               bounds.repr(self.tcx()));
+
+        let matching_bound =
+            util::elaborate_predicates(self.tcx(), bounds.predicates.to_vec())
+            .filter_to_traits()
+            .find(
+                |bound| self.infcx.probe(
+                    |_| self.match_projection(obligation,
+                                              bound.clone(),
+                                              skol_trait_predicate.trait_ref.clone(),
+                                              &skol_map,
+                                              snapshot)));
+
+        debug!("match_projection_obligation_against_bounds_from_trait: \
+                matching_bound={}",
+               matching_bound.repr(self.tcx()));
+        match matching_bound {
+            None => false,
+            Some(bound) => {
+                // Repeat the successful match, if any, this time outside of a probe.
+                let result = self.match_projection(obligation,
+                                                   bound,
+                                                   skol_trait_predicate.trait_ref.clone(),
+                                                   &skol_map,
+                                                   snapshot);
+                assert!(result);
+                true
+            }
+        }
+    }
+
+    fn match_projection(&mut self,
+                        obligation: &TraitObligation<'tcx>,
+                        trait_bound: ty::PolyTraitRef<'tcx>,
+                        skol_trait_ref: Rc<ty::TraitRef<'tcx>>,
+                        skol_map: &infer::SkolemizationMap,
+                        snapshot: &infer::CombinedSnapshot)
+                        -> bool
+    {
+        assert!(!skol_trait_ref.has_escaping_regions());
+        let origin = infer::RelateOutputImplTypes(obligation.cause.span);
+        match self.infcx.sub_poly_trait_refs(false,
+                                             origin,
+                                             trait_bound.clone(),
+                                             ty::Binder(skol_trait_ref.clone())) {
+            Ok(()) => { }
+            Err(_) => { return false; }
+        }
+
+        self.infcx.leak_check(skol_map, snapshot).is_ok()
     }
 
     /// Given an obligation like `<SomeTrait for T>`, search the obligations that the caller
@@ -707,7 +859,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Never affects inference environment.
     fn assemble_candidates_from_caller_bounds(&mut self,
                                               obligation: &TraitObligation<'tcx>,
-                                              candidates: &mut CandidateSet<'tcx>)
+                                              candidates: &mut SelectionCandidateSet<'tcx>)
                                               -> Result<(),SelectionError<'tcx>>
     {
         debug!("assemble_candidates_from_caller_bounds({})",
@@ -715,7 +867,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let caller_trait_refs: Vec<_> =
             self.param_env.caller_bounds.predicates.iter()
-            .filter_map(|o| o.to_trait())
+            .filter_map(|o| o.to_opt_poly_trait_ref())
             .collect();
 
         let all_bounds =
@@ -728,8 +880,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     |_| self.match_where_clause(obligation, bound.clone())).is_ok());
 
         let param_candidates =
-            matching_bounds.map(
-                |bound| ParamCandidate(VtableParamData { bound: bound }));
+            matching_bounds.map(|bound| ParamCandidate(bound));
 
         candidates.vec.extend(param_candidates);
 
@@ -744,10 +895,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// unified during the confirmation step.
     fn assemble_unboxed_closure_candidates(&mut self,
                                            obligation: &TraitObligation<'tcx>,
-                                           candidates: &mut CandidateSet<'tcx>)
+                                           candidates: &mut SelectionCandidateSet<'tcx>)
                                            -> Result<(),SelectionError<'tcx>>
     {
-        let kind = match self.fn_family_trait_kind(obligation.trait_ref.def_id()) {
+        let kind = match self.fn_family_trait_kind(obligation.predicate.0.def_id()) {
             Some(k) => k,
             None => { return Ok(()); }
         };
@@ -789,13 +940,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Implement one of the `Fn()` family for a fn pointer.
     fn assemble_fn_pointer_candidates(&mut self,
                                       obligation: &TraitObligation<'tcx>,
-                                      candidates: &mut CandidateSet<'tcx>)
+                                      candidates: &mut SelectionCandidateSet<'tcx>)
                                       -> Result<(),SelectionError<'tcx>>
     {
         // We provide a `Fn` impl for fn pointers. There is no need to provide
         // the other traits (e.g. `FnMut`) since those are provided by blanket
         // impls.
-        if Some(obligation.trait_ref.def_id()) != self.tcx().lang_items.fn_trait() {
+        if Some(obligation.predicate.def_id()) != self.tcx().lang_items.fn_trait() {
             return Ok(());
         }
 
@@ -827,16 +978,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Search for impls that might apply to `obligation`.
     fn assemble_candidates_from_impls(&mut self,
                                       obligation: &TraitObligation<'tcx>,
-                                      candidate_vec: &mut Vec<Candidate<'tcx>>)
+                                      candidate_vec: &mut Vec<SelectionCandidate<'tcx>>)
                                       -> Result<(), SelectionError<'tcx>>
     {
-        let all_impls = self.all_impls(obligation.trait_ref.def_id());
+        let all_impls = self.all_impls(obligation.predicate.def_id());
         for &impl_def_id in all_impls.iter() {
             self.infcx.probe(|snapshot| {
-                let (skol_obligation_trait_ref, skol_map) =
-                    self.infcx().skolemize_late_bound_regions(&*obligation.trait_ref, snapshot);
+                let (skol_obligation_trait_pred, skol_map) =
+                    self.infcx().skolemize_late_bound_regions(&obligation.predicate, snapshot);
                 match self.match_impl(impl_def_id, obligation, snapshot,
-                                      &skol_map, Rc::new(skol_obligation_trait_ref)) {
+                                      &skol_map, skol_obligation_trait_pred.trait_ref.clone()) {
                     Ok(_) => {
                         candidate_vec.push(ImplCandidate(impl_def_id));
                     }
@@ -861,7 +1012,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// scrutiny.
     fn winnow_candidate<'o>(&mut self,
                             stack: &TraitObligationStack<'o, 'tcx>,
-                            candidate: &Candidate<'tcx>)
+                            candidate: &SelectionCandidate<'tcx>)
                             -> EvaluationResult<'tcx>
     {
         debug!("winnow_candidate: candidate={}", candidate.repr(self.tcx()));
@@ -918,12 +1069,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// a case where doing the opposite caused us harm.
     fn candidate_should_be_dropped_in_favor_of<'o>(&mut self,
                                                    stack: &TraitObligationStack<'o, 'tcx>,
-                                                   candidate_i: &Candidate<'tcx>,
-                                                   candidate_j: &Candidate<'tcx>)
+                                                   candidate_i: &SelectionCandidate<'tcx>,
+                                                   candidate_j: &SelectionCandidate<'tcx>)
                                                    -> bool
     {
         match (candidate_i, candidate_j) {
-            (&ImplCandidate(impl_def_id), &ParamCandidate(ref vt)) => {
+            (&ImplCandidate(impl_def_id), &ParamCandidate(ref bound)) => {
                 debug!("Considering whether to drop param {} in favor of impl {}",
                        candidate_i.repr(self.tcx()),
                        candidate_j.repr(self.tcx()));
@@ -931,22 +1082,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.infcx.probe(|snapshot| {
                     let (skol_obligation_trait_ref, skol_map) =
                         self.infcx().skolemize_late_bound_regions(
-                            &*stack.obligation.trait_ref, snapshot);
+                            &stack.obligation.predicate, snapshot);
                     let impl_substs =
                         self.rematch_impl(impl_def_id, stack.obligation, snapshot,
-                                          &skol_map, Rc::new(skol_obligation_trait_ref));
+                                          &skol_map, skol_obligation_trait_ref.trait_ref.clone());
                     let impl_trait_ref =
                         ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap();
                     let impl_trait_ref =
                         impl_trait_ref.subst(self.tcx(), &impl_substs);
                     let poly_impl_trait_ref =
-                        Rc::new(ty::Binder((*impl_trait_ref).clone()));
+                        ty::Binder(impl_trait_ref);
                     let origin =
                         infer::RelateOutputImplTypes(stack.obligation.cause.span);
                     self.infcx
-                        .sub_poly_trait_refs(false, origin, poly_impl_trait_ref, vt.bound.clone())
+                        .sub_poly_trait_refs(false, origin, poly_impl_trait_ref, bound.clone())
                         .is_ok()
                 })
+            }
+            (&ProjectionCandidate, &ParamCandidate(_)) => {
+                // FIXME(#20297) -- this gives where clauses precedent
+                // over projections. Really these are just two means
+                // of deducing information (one based on the where
+                // clauses on the trait definition; one based on those
+                // on the enclosing scope), and it'd be better to
+                // integrate them more intelligently. But for now this
+                // seems ok. If we DON'T give where clauses
+                // precedence, we run into trouble in default methods,
+                // where both the projection bounds for `Self::A` and
+                // the where clauses are in scope.
+                true
             }
             _ => {
                 *candidate_i == *candidate_j
@@ -966,7 +1130,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn assemble_builtin_bound_candidates<'o>(&mut self,
                                              bound: ty::BuiltinBound,
                                              stack: &TraitObligationStack<'o, 'tcx>,
-                                             candidates: &mut CandidateSet<'tcx>)
+                                             candidates: &mut SelectionCandidateSet<'tcx>)
                                              -> Result<(),SelectionError<'tcx>>
     {
         match self.builtin_bound(bound, stack.obligation) {
@@ -987,7 +1151,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                      obligation: &TraitObligation<'tcx>)
                      -> Result<BuiltinBoundConditions<'tcx>,SelectionError<'tcx>>
     {
-        let self_ty = self.infcx.shallow_resolve(obligation.trait_ref.self_ty());
+        // Note: these tests operate on types that may contain bound
+        // regions. To be proper, we ought to skolemize here, but we
+        // forego the skolemization and defer it until the
+        // confirmation step.
+
+        let self_ty = self.infcx.shallow_resolve(obligation.predicate.0.self_ty());
         return match self_ty.sty {
             ty::ty_infer(ty::IntVar(_)) |
             ty::ty_infer(ty::FloatVar(_)) |
@@ -1100,11 +1269,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         } else {
                             // Recursively check all supertraits to find out if any further
                             // bounds are required and thus we must fulfill.
-                            let tmp_tr = data.principal_trait_ref_with_self_ty(self.tcx(),
-                                                                               ty::mk_err());
-                            for tr in util::supertraits(self.tcx(), tmp_tr) {
+                            let principal =
+                                data.principal_trait_ref_with_self_ty(self.tcx(),
+                                                                      self.tcx().types.err);
+                            for tr in util::supertraits(self.tcx(), principal) {
                                 let td = ty::lookup_trait_def(self.tcx(), tr.def_id());
-
                                 if td.bounds.builtin_bounds.contains(&bound) {
                                     return Ok(If(Vec::new()))
                                 }
@@ -1268,6 +1437,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nominal(self, bound, def_id, types)
             }
 
+            ty::ty_projection(_) |
             ty::ty_param(_) => {
                 // Note: A type parameter is only considered to meet a
                 // particular bound if there is a where clause telling
@@ -1359,7 +1529,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn confirm_candidate(&mut self,
                          obligation: &TraitObligation<'tcx>,
-                         candidate: Candidate<'tcx>)
+                         candidate: SelectionCandidate<'tcx>)
                          -> Result<Selection<'tcx>,SelectionError<'tcx>>
     {
         debug!("confirm_candidate({}, {})",
@@ -1377,8 +1547,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ParamCandidate(param) => {
-                Ok(VtableParam(
-                    try!(self.confirm_param_candidate(obligation, param))))
+                self.confirm_param_candidate(obligation, param);
+                Ok(VtableParam)
             }
 
             ImplCandidate(impl_def_id) => {
@@ -1397,14 +1567,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     try!(self.confirm_fn_pointer_candidate(obligation));
                 Ok(VtableFnPointer(fn_type))
             }
+
+            ProjectionCandidate => {
+                self.confirm_projection_candidate(obligation);
+                Ok(VtableParam)
+            }
         }
+    }
+
+    fn confirm_projection_candidate(&mut self,
+                                    obligation: &TraitObligation<'tcx>)
+    {
+        let _: Result<(),()> =
+            self.infcx.try(|snapshot| {
+                let result =
+                    self.match_projection_obligation_against_bounds_from_trait(obligation,
+                                                                               snapshot);
+                assert!(result);
+                Ok(())
+            });
     }
 
     fn confirm_param_candidate(&mut self,
                                obligation: &TraitObligation<'tcx>,
-                               param: VtableParamData<'tcx>)
-                               -> Result<VtableParamData<'tcx>,
-                                         SelectionError<'tcx>>
+                               param: ty::PolyTraitRef<'tcx>)
     {
         debug!("confirm_param_candidate({},{})",
                obligation.repr(self.tcx()),
@@ -1415,13 +1601,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // trait-ref. Repeat that unification now without any
         // transactional boundary; it should not fail.
         match self.confirm_poly_trait_refs(obligation.cause.clone(),
-                                           obligation.trait_ref.clone(),
-                                           param.bound.clone()) {
-            Ok(()) => Ok(param),
+                                           obligation.predicate.to_poly_trait_ref(),
+                                           param.clone()) {
+            Ok(()) => { }
             Err(_) => {
                 self.tcx().sess.bug(
                     format!("Where clause `{}` was applicable to `{}` but now is not",
-                            param.bound.repr(self.tcx()),
+                            param.repr(self.tcx()),
                             obligation.repr(self.tcx())).as_slice());
             }
         }
@@ -1454,13 +1640,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            -> VtableBuiltinData<PredicateObligation<'tcx>>
     {
         let derived_cause = self.derived_cause(obligation, BuiltinDerivedObligation);
-        let obligations = nested.iter().map(|&t| {
-            util::predicate_for_builtin_bound(
-                self.tcx(),
-                derived_cause.clone(),
-                bound,
-                obligation.recursion_depth + 1,
-                t)
+        let obligations = nested.iter().map(|&bound_ty| {
+            // the obligation might be higher-ranked, e.g. for<'a> &'a
+            // int : Copy. In that case, we will wind up with
+            // late-bound regions in the `nested` vector. So for each
+            // one we instantiate to a skolemized region, do our work
+            // to produce something like `&'0 int : Copy`, and then
+            // re-bind it. This is a bit of busy-work but preserves
+            // the invariant that we only manipulate free regions, not
+            // bound ones.
+            self.infcx.try(|snapshot| {
+                let (skol_ty, skol_map) =
+                    self.infcx().skolemize_late_bound_regions(&ty::Binder(bound_ty), snapshot);
+                let skol_predicate =
+                    util::predicate_for_builtin_bound(
+                        self.tcx(),
+                        derived_cause.clone(),
+                        bound,
+                        obligation.recursion_depth + 1,
+                        skol_ty);
+                match skol_predicate {
+                    Ok(skol_predicate) => Ok(self.infcx().plug_leaks(skol_map, snapshot,
+                                                                     &skol_predicate)),
+                    Err(ErrorReported) => Err(ErrorReported)
+                }
+            })
         }).collect::<Result<_, _>>();
         let mut obligations = match obligations {
             Ok(o) => o,
@@ -1472,13 +1676,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.push(Obligation {
                 cause: obligation.cause.clone(),
                 recursion_depth: obligation.recursion_depth+1,
-                trait_ref: ty::Binder(ty::OutlivesPredicate(obligation.self_ty(),
+                predicate: ty::Binder(ty::OutlivesPredicate(obligation.self_ty(),
                                                             ty::ReStatic)).as_predicate(),
             });
         }
 
-        let obligations = VecPerParamSpace::new(obligations, Vec::new(),
-                                                Vec::new(), Vec::new());
+        let obligations = VecPerParamSpace::new(obligations, Vec::new(), Vec::new());
 
         debug!("vtable_builtin_data: obligations={}",
                obligations.repr(self.tcx()));
@@ -1500,9 +1703,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // this time not in a probe.
         self.infcx.try(|snapshot| {
             let (skol_obligation_trait_ref, skol_map) =
-                self.infcx().skolemize_late_bound_regions(&*obligation.trait_ref, snapshot);
-            let substs = self.rematch_impl(impl_def_id, obligation,
-                                           snapshot, &skol_map, Rc::new(skol_obligation_trait_ref));
+                self.infcx().skolemize_late_bound_regions(&obligation.predicate, snapshot);
+            let substs =
+                self.rematch_impl(impl_def_id, obligation,
+                                  snapshot, &skol_map, skol_obligation_trait_ref.trait_ref);
             debug!("confirm_impl_candidate substs={}", substs);
             Ok(self.vtable_impl(impl_def_id, substs, obligation.cause.clone(),
                                 obligation.recursion_depth + 1, skol_map, snapshot))
@@ -1571,15 +1775,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Substs::new_trait(
                 vec![arguments_tuple, output_type],
                 vec![],
-                vec![],
                 self_ty);
-        let trait_ref = Rc::new(ty::Binder(ty::TraitRef {
-            def_id: obligation.trait_ref.def_id(),
+        let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
+            def_id: obligation.predicate.def_id(),
             substs: self.tcx().mk_substs(substs),
         }));
 
         try!(self.confirm_poly_trait_refs(obligation.cause.clone(),
-                                          obligation.trait_ref.clone(),
+                                          obligation.predicate.to_poly_trait_ref(),
                                           trait_ref));
         Ok(self_ty)
     }
@@ -1612,10 +1815,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 vec![arguments_tuple.subst(self.tcx(), substs),
                      closure_sig.0.output.unwrap().subst(self.tcx(), substs)],
                 vec![],
-                vec![],
                 obligation.self_ty());
-        let trait_ref = Rc::new(ty::Binder(ty::TraitRef {
-            def_id: obligation.trait_ref.def_id(),
+        let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
+            def_id: obligation.predicate.def_id(),
             substs: self.tcx().mk_substs(substs),
         }));
 
@@ -1624,7 +1826,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                trait_ref.repr(self.tcx()));
 
         self.confirm_poly_trait_refs(obligation.cause.clone(),
-                                     obligation.trait_ref.clone(),
+                                     obligation.predicate.to_poly_trait_ref(),
                                      trait_ref)
     }
 
@@ -1655,8 +1857,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// report an error to the user.
     fn confirm_poly_trait_refs(&mut self,
                                obligation_cause: ObligationCause,
-                               obligation_trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
-                               expected_trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
+                               obligation_trait_ref: ty::PolyTraitRef<'tcx>,
+                               expected_trait_ref: ty::PolyTraitRef<'tcx>)
                                -> Result<(), SelectionError<'tcx>>
     {
         let origin = infer::RelateOutputImplTypes(obligation_cause.span);
@@ -1769,7 +1971,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // substitution if we find that any of the input types, when
         // simplified, do not match.
 
-        obligation.trait_ref.input_types().iter()
+        obligation.predicate.0.input_types().iter()
             .zip(impl_trait_ref.input_types().iter())
             .any(|(&obligation_ty, &impl_ty)| {
                 let simplified_obligation_ty =
@@ -1785,7 +1987,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn match_where_clause(&mut self,
                           obligation: &TraitObligation<'tcx>,
-                          where_clause_trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
+                          where_clause_trait_ref: ty::PolyTraitRef<'tcx>)
                         -> Result<(),()>
     {
         debug!("match_where_clause: obligation={} where_clause_trait_ref={}",
@@ -1796,7 +1998,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.infcx.sub_poly_trait_refs(false,
                                              origin,
                                              where_clause_trait_ref,
-                                             obligation.trait_ref.clone()) {
+                                             obligation.predicate.to_poly_trait_ref()) {
             Ok(()) => Ok(()),
             Err(_) => Err(()),
         }
@@ -1878,7 +2080,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             obligation: &'o TraitObligation<'tcx>)
                             -> TraitObligationStack<'o, 'tcx>
     {
-        let fresh_trait_ref = obligation.trait_ref.fold_with(&mut self.freshener);
+        let fresh_trait_ref =
+            obligation.predicate.to_poly_trait_ref().fold_with(&mut self.freshener);
 
         TraitObligationStack {
             obligation: obligation,
@@ -1931,9 +2134,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[allow(unused_comparisons)]
     fn derived_cause(&self,
                      obligation: &TraitObligation<'tcx>,
-                     variant: fn(Rc<ty::Binder<ty::TraitRef<'tcx>>>,
-                                 Rc<ObligationCauseCode<'tcx>>)
-                                 -> ObligationCauseCode<'tcx>)
+                     variant: fn(DerivedObligationCause<'tcx>) -> ObligationCauseCode<'tcx>)
                      -> ObligationCause<'tcx>
     {
         /*!
@@ -1950,29 +2151,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose or just a CLI argument.
         if obligation.recursion_depth >= 0 {
+            let derived_cause = DerivedObligationCause {
+                parent_trait_ref: obligation.predicate.to_poly_trait_ref(),
+                parent_code: Rc::new(obligation.cause.code.clone()),
+            };
             ObligationCause::new(obligation.cause.span,
-                                 obligation.trait_ref.def_id().node,
-                                 variant(obligation.trait_ref.clone(),
-                                         Rc::new(obligation.cause.code.clone())))
+                                 obligation.cause.body_id,
+                                 variant(derived_cause))
         } else {
             obligation.cause.clone()
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for Candidate<'tcx> {
+impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             ErrorCandidate => format!("ErrorCandidate"),
             BuiltinCandidate(b) => format!("BuiltinCandidate({})", b),
+            ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
+            ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
+            ProjectionCandidate => format!("ProjectionCandidate"),
+            FnPointerCandidate => format!("FnPointerCandidate"),
             UnboxedClosureCandidate(c, ref s) => {
                 format!("UnboxedClosureCandidate({},{})", c, s.repr(tcx))
             }
-            FnPointerCandidate => {
-                format!("FnPointerCandidate")
-            }
-            ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
-            ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
         }
     }
 }

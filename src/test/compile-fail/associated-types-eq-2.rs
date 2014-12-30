@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types.
+// Test equality constraints on associated types. Check we get an error when an
+// equality constraint is used in a qualified path.
 
 #![feature(associated_types)]
 
@@ -23,33 +24,8 @@ impl Foo for int {
     type A = uint;
     fn boo(&self) -> uint { 42 }
 }
-impl Foo for Bar {
-    type A = int;
-    fn boo(&self) -> int { 43 }
-}
-impl Foo for char {
-    type A = Bar;
-    fn boo(&self) -> Bar { Bar }
-}
 
-fn foo1<I: Foo<A=Bar>>(x: I) -> Bar {
-    x.boo()
-}
-fn foo2<I: Foo>(x: I) -> <I as Foo>::A {
-    x.boo()
-}
-fn baz(x: &Foo<A=Bar>) -> Bar {
-    x.boo()
-}
+fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}
+//~^ ERROR associated type bindings are not allowed here
 
-pub fn main() {
-    let a = 42i;
-    assert!(foo2(a) == 42u);
-
-    let a = Bar;
-    assert!(foo2(a) == 43i);
-
-    let a = 'a';
-    foo1(a);
-    baz(&a);
-}
+pub fn main() {}

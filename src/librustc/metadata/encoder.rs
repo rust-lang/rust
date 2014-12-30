@@ -142,7 +142,7 @@ fn encode_item_variances(rbml_w: &mut Encoder,
 
 fn encode_bounds_and_type<'a, 'tcx>(rbml_w: &mut Encoder,
                                     ecx: &EncodeContext<'a, 'tcx>,
-                                    pty: &ty::Polytype<'tcx>) {
+                                    pty: &ty::TypeScheme<'tcx>) {
     encode_generics(rbml_w, ecx, &pty.generics, tag_item_generics);
     encode_type(ecx, rbml_w, pty.ty);
 }
@@ -898,7 +898,10 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
     encode_visibility(rbml_w, associated_type.vis);
     encode_family(rbml_w, 'y');
     encode_parent_item(rbml_w, local_def(parent_id));
-    encode_item_sort(rbml_w, 'r');
+    encode_item_sort(rbml_w, 't');
+
+    let type_scheme = ty::lookup_item_type(ecx.tcx, associated_type.def_id);
+    encode_bounds_and_type(rbml_w, ecx, &type_scheme);
 
     let stab = stability::lookup(ecx.tcx, associated_type.def_id);
     encode_stability(rbml_w, stab);
@@ -1316,6 +1319,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_item_variances(rbml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
         encode_unsafety(rbml_w, trait_def.unsafety);
+        encode_associated_type_names(rbml_w, trait_def.associated_type_names.as_slice());
         encode_generics(rbml_w, ecx, &trait_def.generics, tag_item_generics);
         encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(rbml_w, item.ident.name);
@@ -1397,10 +1401,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
                         ty::StaticExplicitSelfCategory;
                 }
                 ty::TypeTraitItem(associated_type) => {
+                    encode_name(rbml_w, associated_type.name);
+
                     let elem = ast_map::PathName(associated_type.name);
                     encode_path(rbml_w,
                                 path.clone().chain(Some(elem).into_iter()));
 
+                    encode_item_sort(rbml_w, 't');
                     encode_family(rbml_w, 'y');
 
                     is_nonstatic_method = false;
@@ -1687,6 +1694,14 @@ fn encode_unsafety(rbml_w: &mut Encoder, unsafety: ast::Unsafety) {
         ast::Unsafety::Unsafe => 1,
     };
     rbml_w.wr_tagged_u8(tag_unsafety, byte);
+}
+
+fn encode_associated_type_names(rbml_w: &mut Encoder, names: &[ast::Name]) {
+    rbml_w.start_tag(tag_associated_type_names);
+    for &name in names.iter() {
+        rbml_w.wr_tagged_str(tag_associated_type_name, token::get_name(name).get());
+    }
+    rbml_w.end_tag();
 }
 
 fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {

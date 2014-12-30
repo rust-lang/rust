@@ -53,7 +53,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     {
         let mut euv = euv::ExprUseVisitor::new(&mut glcx,
                                                bccx.tcx,
-                                               param_env);
+                                               &param_env);
         euv.walk_fn(decl, body);
     }
 
