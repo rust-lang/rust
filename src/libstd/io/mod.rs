@@ -248,7 +248,6 @@ use str;
 use string::String;
 use uint;
 use unicode;
-use unicode::char::UnicodeChar;
 use vec::Vec;
 
 // Reexports

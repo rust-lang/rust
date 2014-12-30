@@ -16,7 +16,7 @@ use self::ExponentFormat::*;
 use self::SignificantDigits::*;
 use self::SignFormat::*;
 
-use char::{self, Char};
+use char::{self, CharExt};
 use num::{self, Int, Float, ToPrimitive};
 use num::FpCategory as Fp;
 use ops::FnMut;
