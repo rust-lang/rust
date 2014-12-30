@@ -16,7 +16,7 @@
 CFG_RELEASE_NUM=0.13.0
 
 # An optional number to put after the label, e.g. '2' -> '-beta2'
-CFG_BETA_CYCLE=1
+CFG_BETA_CYCLE=
 
 CFG_FILENAME_EXTRA=4e7c5e5c
 
