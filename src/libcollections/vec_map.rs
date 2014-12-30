@@ -537,14 +537,18 @@ impl<V:Clone> VecMap<V> {
     }
 }
 
+
+#[stable]
 impl<V: PartialEq> PartialEq for VecMap<V> {
     fn eq(&self, other: &VecMap<V>) -> bool {
         iter::order::eq(self.iter(), other.iter())
     }
 }
 
+#[stable]
 impl<V: Eq> Eq for VecMap<V> {}
 
+#[stable]
 impl<V: PartialOrd> PartialOrd for VecMap<V> {
     #[inline]
     fn partial_cmp(&self, other: &VecMap<V>) -> Option<Ordering> {
@@ -552,6 +556,7 @@ impl<V: PartialOrd> PartialOrd for VecMap<V> {
     }
 }
 
+#[stable]
 impl<V: Ord> Ord for VecMap<V> {
     #[inline]
     fn cmp(&self, other: &VecMap<V>) -> Ordering {

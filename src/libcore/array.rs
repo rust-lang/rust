@@ -39,7 +39,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable = "waiting for PartialEq to stabilize"]
+            #[stable]
             impl<A, B> PartialEq<[B, ..$N]> for [A, ..$N] where A: PartialEq<B> {
                 #[inline]
                 fn eq(&self, other: &[B, ..$N]) -> bool {
@@ -51,6 +51,7 @@ macro_rules! array_impls {
                 }
             }
 
+            #[stable]
             impl<'a, A, B, Rhs> PartialEq<Rhs> for [A, ..$N] where
                 A: PartialEq<B>,
                 Rhs: Deref<[B]>,
@@ -61,6 +62,7 @@ macro_rules! array_impls {
                 fn ne(&self, other: &Rhs) -> bool { PartialEq::ne(self[], &**other) }
             }
 
+            #[stable]
             impl<'a, A, B, Lhs> PartialEq<[B, ..$N]> for Lhs where
                 A: PartialEq<B>,
                 Lhs: Deref<[A]>
@@ -71,10 +73,10 @@ macro_rules! array_impls {
                 fn ne(&self, other: &[B, ..$N]) -> bool { PartialEq::ne(&**self, other[]) }
             }
 
-            #[unstable = "waiting for Eq to stabilize"]
+            #[stable]
             impl<T:Eq> Eq for [T, ..$N] { }
 
-            #[unstable = "waiting for PartialOrd to stabilize"]
+            #[stable]
             impl<T:PartialOrd> PartialOrd for [T, ..$N] {
                 #[inline]
                 fn partial_cmp(&self, other: &[T, ..$N]) -> Option<Ordering> {
@@ -98,7 +100,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable = "waiting for Ord to stabilize"]
+            #[stable]
             impl<T:Ord> Ord for [T, ..$N] {
                 #[inline]
                 fn cmp(&self, other: &[T, ..$N]) -> Ordering {
