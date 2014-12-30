@@ -1,6 +1,6 @@
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- Start Date: 2014-12-30
+- RFC PR: https://github.com/rust-lang/rfcs/pull/526
+- Rust Issue: https://github.com/rust-lang/rust/issues/20352
 
 # Summary
 
@@ -102,4 +102,3 @@ concrete plans today to develop these connections.
 * It is unclear to what degree a `fmt::Writer` needs to interact with
   `io::Writer` and the various adaptors/buffers. For example one would have to
   implement their own `BufferedWriter` for a `fmt::Writer`.
-
