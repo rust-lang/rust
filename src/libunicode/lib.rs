@@ -58,9 +58,7 @@ mod u_str;
 /// however the converse is not always true due to the above range limits
 /// and, as such, should be performed via the `from_u32` function..
 pub mod char {
-    pub use core::char::{MAX, from_u32};
-    pub use core::char::{from_digit};
-    pub use core::char::Char;
+    pub use core::char::{MAX, from_u32, from_digit, Char};
 
     pub use normalize::{decompose_canonical, decompose_compatible, compose};
 
