@@ -55,7 +55,7 @@ use self::RecompositionState::*;
 use self::DecompositionType::*;
 
 use core::borrow::{BorrowFrom, ToOwned};
-use core::char::Char;
+use core::char::CharExt;
 use core::clone::Clone;
 use core::iter::AdditiveIterator;
 use core::iter::{range, Iterator, IteratorExt};

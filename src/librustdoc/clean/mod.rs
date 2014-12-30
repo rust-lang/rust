@@ -50,7 +50,6 @@ use rustc::session::config;
 use std::rc::Rc;
 use std::u32;
 use std::str::Str as StrTrait; // Conflicts with Str variant
-use std::char::Char as CharTrait; // Conflicts with Char variant
 use std::path::Path as FsPath; // Conflicts with Path struct
 
 use core::DocContext;

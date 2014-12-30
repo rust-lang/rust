@@ -15,7 +15,7 @@
 #![stable]
 #![allow(missing_docs)]
 
-use char::Char;
+use char::CharExt;
 use clone::Clone;
 use cmp::{PartialEq, Eq};
 use cmp::{PartialOrd, Ord};

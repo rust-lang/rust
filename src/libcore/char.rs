@@ -112,7 +112,7 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 
 /// Basic `char` manipulations.
 #[stable]
-pub trait Char {
+pub trait CharExt {
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
     /// Compared to `is_numeric()`, this function only recognizes the characters
