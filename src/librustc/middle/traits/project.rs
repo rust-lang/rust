@@ -125,21 +125,14 @@ pub fn project_type<'cx,'tcx>(
         ambiguous: false,
     };
 
-    let () = assemble_candidates_from_param_env(selcx,
-                                                obligation,
-                                                &mut candidates);
-
     let () = assemble_candidates_from_object_type(selcx,
                                                   obligation,
                                                   &mut candidates);
 
     if candidates.vec.is_empty() {
-        // FIXME(#20297) -- In `select.rs` there is similar logic that
-        // gives precedence to where-clauses, but it's a bit more
-        // fine-grained. I was lazy here and just always give
-        // precedence to where-clauses or other such sources over
-        // actually dredging through impls. This logic probably should
-        // be tightened up.
+        let () = assemble_candidates_from_param_env(selcx,
+                                                    obligation,
+                                                    &mut candidates);
 
         let () = try!(assemble_candidates_from_impls(selcx,
                                                      obligation,
