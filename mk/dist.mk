@@ -314,13 +314,12 @@ ifdef CFG_WINDOWSY_$(CFG_BUILD)
 MAYBE_MINGW_TARBALLS=$(foreach host,$(CFG_HOST),dist/$(MINGW_PKG_NAME)-$(host).tar.gz)
 endif
 
-ifneq ($(CFG_DISABLE_DOCS),)
-dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz) $(MAYBE_MINGW_TARBALLS)
-else
-dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz) \
-               $(foreach host,$(CFG_HOST),dist/$(DOC_PKG_NAME)-$(host).tar.gz) \
-               $(MAYBE_MINGW_TARBALLS)
+ifeq ($(CFG_DISABLE_DOCS),)
+MAYBE_DOC_TARBALLS=$(foreach host,$(CFG_HOST),dist/$(DOC_PKG_NAME)-$(host).tar.gz)
 endif
+
+dist-tar-bins: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).tar.gz) \
+	$(MAYBE_DOC_TARBALLS) $(MAYBE_MINGW_TARBALLS)
 
 # Just try to run the compiler for the build host
 distcheck-tar-bins: dist-tar-bins
