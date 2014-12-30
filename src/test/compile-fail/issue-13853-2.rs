@@ -8,14 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use std::cell::RefCell;
-
-// Regresion test for issue 7364
-static boxed: Box<RefCell<int>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-
-fn main() { }
+trait FromStructReader<'a> { }
+trait ResponseHook {
+     fn get<'a, T: FromStructReader<'a>>(&'a self);
+}
+fn foo(res : Box<ResponseHook>) { res.get } //~ ERROR attempted to take value of method
+fn main() {}

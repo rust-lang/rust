@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct AutoBuilder<'a> {
+    context: &'a int
+}
 
-use std::cell::RefCell;
+impl<'a> Drop for AutoBuilder<'a> {
+    //~^ ERROR cannot implement a destructor on a structure with type parameters
+    fn drop(&mut self) {
+    }
+}
 
-// Regresion test for issue 7364
-static boxed: Box<RefCell<int>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-
-fn main() { }
+fn main() {}

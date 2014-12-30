@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+trait Deserializer<'a> { }
 
-use std::cell::RefCell;
+trait Deserializable {
+    fn deserialize_token<'a, D: Deserializer<'a>>(D, &'a str) -> Self;
+}
 
-// Regresion test for issue 7364
-static boxed: Box<RefCell<int>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
+impl<'a, T: Deserializable> Deserializable for &'a str {
+    //~^ ERROR unable to infer enough type information
+    fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a str {
+    }
+}
 
-fn main() { }
+fn main() {}
