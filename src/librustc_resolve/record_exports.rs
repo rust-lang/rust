@@ -21,6 +21,8 @@
 use {Module, NameBindings, Resolver};
 use Namespace::{mod, TypeNS, ValueNS};
 
+use build_reduced_graph;
+
 use rustc::middle::def::Export;
 use syntax::ast;
 use syntax::parse::token;
@@ -73,7 +75,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         }
 
         self.record_exports_for_module(&*module_);
-        self.populate_module_if_necessary(&module_);
+        build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
 
         for (_, child_name_bindings) in module_.children.borrow().iter() {
             match child_name_bindings.get_module_if_available() {
