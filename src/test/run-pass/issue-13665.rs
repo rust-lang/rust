@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn foo<'r>() {
+  let maybe_value_ref: Option<&'r u8> = None;
 
-use std::cell::RefCell;
+  let _ = maybe_value_ref.map(|& ref v| v);
+  let _ = maybe_value_ref.map(|& ref v| -> &'r u8 {v});
+  let _ = maybe_value_ref.map(|& ref v: &'r u8| -> &'r u8 {v});
+  let _ = maybe_value_ref.map(|& ref v: &'r u8| {v});
+}
 
-// Regresion test for issue 7364
-static boxed: Box<RefCell<int>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-
-fn main() { }
+fn main() {
+  foo();
+}

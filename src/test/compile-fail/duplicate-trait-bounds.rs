@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+trait Foo {}
 
-use std::cell::RefCell;
+fn foo<T: Foo + Foo>() {} //~ ERROR `Foo` already appears in the list of bounds
 
-// Regresion test for issue 7364
-static boxed: Box<RefCell<int>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-
-fn main() { }
+fn main() {}

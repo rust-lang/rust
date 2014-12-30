@@ -8,14 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+use std::ops::Fn;
 
-use std::cell::RefCell;
+struct Foo<T>(T);
 
-// Regresion test for issue 7364
-static boxed: Box<RefCell<int>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
+impl<T: Copy> Fn<(), T> for Foo<T> {
+    extern "rust-call" fn call(&self, _: ()) -> T {
+      match *self {
+        Foo(t) => t
+      }
+    }
+}
 
-fn main() { }
+fn main() {
+  let t: u8 = 1;
+  println!("{}", Foo(t)());
+}

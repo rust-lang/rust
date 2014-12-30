@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Foo<'a> {
+    listener: ||: 'a
+}
 
-use std::cell::RefCell;
+impl<'a> Foo<'a> {
+    fn new(listener: ||: 'a) -> Foo<'a> {
+        Foo { listener: listener }
+    }
+}
 
-// Regresion test for issue 7364
-static boxed: Box<RefCell<int>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-
-fn main() { }
+fn main() {
+    let a = Foo::new(|| {});
+}

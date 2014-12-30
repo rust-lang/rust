@@ -8,14 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub struct Lexer<'a> {
+    input: &'a str,
+}
 
-use std::cell::RefCell;
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Lexer<'a> {
+        Lexer { input: input }
+    }
+}
 
-// Regresion test for issue 7364
-static boxed: Box<RefCell<int>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
+struct Parser<'a> {
+    lexer: &'a mut Lexer<'a>,
+}
 
-fn main() { }
+impl<'a> Parser<'a> {
+    pub fn new(lexer: &'a mut Lexer) -> Parser<'a> {
+        Parser { lexer: lexer }
+        //~^ ERROR cannot infer an appropriate lifetime for lifetime parameter
+    }
+}
+
+fn main() {}

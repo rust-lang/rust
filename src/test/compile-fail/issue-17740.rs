@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Foo<'a> {
+    data: &'a[u8],
+}
 
-use std::cell::RefCell;
+impl <'a> Foo<'a>{
+    fn bar(self: &mut Foo) {
+    //~^ mismatched types: expected `Foo<'a>`, found `Foo<'_>` (lifetime mismatch)
+    //~| mismatched types: expected `Foo<'a>`, found `Foo<'_>` (lifetime mismatch)
+    }
+}
 
-// Regresion test for issue 7364
-static boxed: Box<RefCell<int>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-
-fn main() { }
+fn main() {}
