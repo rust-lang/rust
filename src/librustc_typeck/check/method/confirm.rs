@@ -488,7 +488,6 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 ast::ExprParen(ref expr) |
                 ast::ExprField(ref expr, _) |
                 ast::ExprTupField(ref expr, _) |
-                ast::ExprSlice(ref expr, _, _, _) |
                 ast::ExprIndex(ref expr, _) |
                 ast::ExprUnary(ast::UnDeref, ref expr) => exprs.push(&**expr),
                 _ => break,

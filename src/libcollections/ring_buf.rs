@@ -453,7 +453,7 @@ impl<T> RingBuf<T> {
 
             if contiguous {
                 let (empty, buf) = buf.split_at_mut(0);
-                (buf[mut tail..head], empty)
+                (buf.slice_mut(tail, head), empty)
             } else {
                 let (mid, right) = buf.split_at_mut(tail);
                 let (left, _) = mid.split_at_mut(head);
