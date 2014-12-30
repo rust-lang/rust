@@ -21,6 +21,7 @@ use std::thread::Thread;
 use std::collections::{HashSet, HashMap};
 use testing;
 use rustc::session::{mod, config};
+use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_driver::driver;
 use syntax::ast;
 use syntax::codemap::{CodeMap, dummy_spanned};
@@ -38,7 +39,7 @@ use visit_ast::RustdocVisitor;
 
 pub fn run(input: &str,
            cfgs: Vec<String>,
-           libs: Vec<Path>,
+           libs: SearchPaths,
            externs: core::Externs,
            mut test_args: Vec<String>,
            crate_name: Option<String>)
@@ -48,7 +49,7 @@ pub fn run(input: &str,
 
     let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
-        addl_lib_search_paths: RefCell::new(libs.clone()),
+        search_paths: libs.clone(),
         crate_types: vec!(config::CrateTypeDylib),
         externs: externs.clone(),
         ..config::basic_options().clone()
@@ -107,7 +108,8 @@ pub fn run(input: &str,
     0
 }
 
-fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
+fn runtest(test: &str, cratename: &str, libs: SearchPaths,
+           externs: core::Externs,
            should_fail: bool, no_run: bool, as_test_harness: bool) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
@@ -116,7 +118,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
 
     let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_path().unwrap().dir_path()),
-        addl_lib_search_paths: RefCell::new(libs),
+        search_paths: libs,
         crate_types: vec!(config::CrateTypeExecutable),
         output_types: vec!(config::OutputTypeExe),
         no_trans: no_run,
@@ -171,7 +173,7 @@ fn runtest(test: &str, cratename: &str, libs: Vec<Path>, externs: core::Externs,
     let outdir = TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir");
     let out = Some(outdir.path().clone());
     let cfg = config::build_configuration(&sess);
-    let libdir = sess.target_filesearch().get_lib_path();
+    let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
     driver::compile_input(sess, cfg, &input, &out, &None, None);
 
     if no_run { return }
@@ -242,7 +244,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main:
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
     names: Vec<String>,
-    libs: Vec<Path>,
+    libs: SearchPaths,
     externs: core::Externs,
     cnt: uint,
     use_headers: bool,
@@ -251,7 +253,7 @@ pub struct Collector {
 }
 
 impl Collector {
-    pub fn new(cratename: String, libs: Vec<Path>, externs: core::Externs,
+    pub fn new(cratename: String, libs: SearchPaths, externs: core::Externs,
                use_headers: bool) -> Collector {
         Collector {
             tests: Vec::new(),

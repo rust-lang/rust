@@ -14,6 +14,7 @@
 
 use back::svh::Svh;
 use session::{config, Session};
+use session::search_paths::PathKind;
 use metadata::cstore;
 use metadata::cstore::{CStore, CrateSource};
 use metadata::decoder;
@@ -134,7 +135,8 @@ fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
                                              info.ident[],
                                              info.name[],
                                              None,
-                                             i.span);
+                                             i.span,
+                                             PathKind::Crate);
             e.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
         }
         None => ()
@@ -388,12 +390,13 @@ fn register_crate<'a>(e: &mut Env,
     (cnum, cmeta, source)
 }
 
-fn resolve_crate<'a>(e: &mut Env,
+fn resolve_crate(e: &mut Env,
                  root: &Option<CratePaths>,
                  ident: &str,
                  name: &str,
                  hash: Option<&Svh>,
-                 span: Span)
+                 span: Span,
+                 kind: PathKind)
                      -> (ast::CrateNum, Rc<cstore::crate_metadata>,
                          cstore::CrateSource) {
     match existing_match(e, name, hash) {
@@ -404,7 +407,7 @@ fn resolve_crate<'a>(e: &mut Env,
                 ident: ident,
                 crate_name: name,
                 hash: hash.map(|a| &*a),
-                filesearch: e.sess.target_filesearch(),
+                filesearch: e.sess.target_filesearch(kind),
                 triple: e.sess.opts.target_triple[],
                 root: root,
                 rejected_via_hash: vec!(),
@@ -434,7 +437,8 @@ fn resolve_crate_deps(e: &mut Env,
                                                dep.name[],
                                                dep.name[],
                                                Some(&dep.hash),
-                                               span);
+                                               span,
+                                               PathKind::Dependency);
         (dep.cnum, local_cnum)
     }).collect()
 }
@@ -453,7 +457,8 @@ impl<'a> PluginMetadataReader<'a> {
         }
     }
 
-    pub fn read_plugin_metadata(&mut self, krate: &ast::ViewItem) -> PluginMetadata {
+    pub fn read_plugin_metadata(&mut self,
+                                krate: &ast::ViewItem) -> PluginMetadata {
         let info = extract_crate_info(&self.env, krate).unwrap();
         let target_triple = self.env.sess.opts.target_triple[];
         let is_cross = target_triple != config::host_triple();
@@ -464,7 +469,7 @@ impl<'a> PluginMetadataReader<'a> {
             ident: info.ident[],
             crate_name: info.name[],
             hash: None,
-            filesearch: self.env.sess.host_filesearch(),
+            filesearch: self.env.sess.host_filesearch(PathKind::Crate),
             triple: config::host_triple(),
             root: &None,
             rejected_via_hash: vec!(),
@@ -477,7 +482,7 @@ impl<'a> PluginMetadataReader<'a> {
                 // try loading from target crates (only valid if there are
                 // no syntax extensions)
                 load_ctxt.triple = target_triple;
-                load_ctxt.filesearch = self.env.sess.target_filesearch();
+                load_ctxt.filesearch = self.env.sess.target_filesearch(PathKind::Crate);
                 let lib = load_ctxt.load_library_crate();
                 if decoder::get_plugin_registrar_fn(lib.metadata.as_slice()).is_some() {
                     let message = format!("crate `{}` contains a plugin_registrar fn but \
