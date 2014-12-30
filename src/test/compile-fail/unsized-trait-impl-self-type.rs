@@ -8,18 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
+// Test sized-ness checking in substitution in impls.
 
-pub trait Hasher{
-    type State;
-
-    fn hash<T: Hash<
-        <Self as Hasher>::State //~ ERROR no suitable bound on `Self`
-    >>(&self, value: &T) -> u64;
+// impl - struct
+trait T3<Sized? Z> {
 }
 
-trait Hash<S> {
-    fn hash(&self, state: &mut S);
+struct S5<Y>;
+
+impl<Sized? X> T3<X> for S5<X> { //~ ERROR not implemented
 }
 
-fn main() {}
+fn main() { }

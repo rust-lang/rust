@@ -10,9 +10,10 @@
 
 use metadata::csearch;
 use middle::def::DefFn;
-use middle::subst::Subst;
+use middle::subst::{Subst, Substs, EnumeratedItems};
 use middle::ty::{TransmuteRestriction, ctxt, ty_bare_fn};
 use middle::ty::{mod, Ty};
+use util::ppaux::Repr;
 
 use syntax::abi::RustIntrinsic;
 use syntax::ast::DefId;
@@ -23,52 +24,31 @@ use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-fn type_size_is_affected_by_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>, typ: Ty<'tcx>)
-                                                  -> bool {
-    let mut result = false;
-    ty::maybe_walk_ty(typ, |typ| {
-        match typ.sty {
-            ty::ty_uniq(_) | ty::ty_ptr(_) | ty::ty_rptr(..) |
-            ty::ty_bare_fn(..) | ty::ty_closure(..) => {
-                false
-            }
-            ty::ty_param(_) => {
-                result = true;
-                // No need to continue; we now know the result.
-                false
-            }
-            ty::ty_enum(did, substs) => {
-                for enum_variant in (*ty::enum_variants(tcx, did)).iter() {
-                    for argument_type in enum_variant.args.iter() {
-                        let argument_type = argument_type.subst(tcx, substs);
-                        result = result ||
-                            type_size_is_affected_by_type_parameters(
-                                tcx,
-                                argument_type);
-                    }
-                }
-
-                // Don't traverse substitutions.
-                false
-            }
-            ty::ty_struct(did, substs) => {
-                for field in ty::struct_fields(tcx, did, substs).iter() {
-                    result = result ||
-                        type_size_is_affected_by_type_parameters(tcx,
-                                                                 field.mt.ty);
-                }
-
-                // Don't traverse substitutions.
-                false
-            }
-            _ => true,
-        }
-    });
-    result
+pub fn check_crate(tcx: &ctxt) {
+    let mut visitor = IntrinsicCheckingVisitor {
+        tcx: tcx,
+        param_envs: Vec::new(),
+        dummy_sized_ty: tcx.types.int,
+        dummy_unsized_ty: ty::mk_vec(tcx, tcx.types.int, None),
+    };
+    visit::walk_crate(&mut visitor, tcx.map.krate());
 }
 
 struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {
     tcx: &'a ctxt<'tcx>,
+
+    // As we traverse the AST, we keep a stack of the parameter
+    // environments for each function we encounter. When we find a
+    // call to `transmute`, we can check it in the context of the top
+    // of the stack (which ought not to be empty).
+    param_envs: Vec<ty::ParameterEnvironment<'tcx>>,
+
+    // Dummy sized/unsized types that use to substitute for type
+    // parameters in order to estimate how big a type will be for any
+    // possible instantiation of the type parameters in scope.  See
+    // `check_transmute` for more details.
+    dummy_sized_ty: Ty<'tcx>,
+    dummy_unsized_ty: Ty<'tcx>,
 }
 
 impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
@@ -97,26 +77,175 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 
     fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>, id: ast::NodeId) {
-        if type_size_is_affected_by_type_parameters(self.tcx, from) {
-            span_err!(self.tcx.sess, span, E0139,
-                      "cannot transmute from a type that contains type parameters");
-        }
-        if type_size_is_affected_by_type_parameters(self.tcx, to) {
-            span_err!(self.tcx.sess, span, E0140,
-                      "cannot transmute to a type that contains type parameters");
+        // Find the parameter environment for the most recent function that
+        // we entered.
+
+        let param_env = match self.param_envs.last() {
+            Some(p) => p,
+            None => {
+                self.tcx.sess.span_bug(
+                    span,
+                    "transmute encountered outside of any fn");
+            }
+        };
+
+        // Simple case: no type parameters involved.
+        if
+            !ty::type_has_params(from) && !ty::type_has_self(from) &&
+            !ty::type_has_params(to) && !ty::type_has_self(to)
+        {
+            let restriction = TransmuteRestriction {
+                span: span,
+                original_from: from,
+                original_to: to,
+                substituted_from: from,
+                substituted_to: to,
+                id: id,
+            };
+            self.push_transmute_restriction(restriction);
+            return;
         }
 
-        let restriction = TransmuteRestriction {
-            span: span,
-            from: from,
-            to: to,
-            id: id,
-        };
+        // The rules around type parameters are a bit subtle. We are
+        // checking these rules before monomorphization, so there may
+        // be unsubstituted type parameters present in the
+        // types. Obviously we cannot create LLVM types for those.
+        // However, if a type parameter appears only indirectly (i.e.,
+        // through a pointer), it does not necessarily affect the
+        // size, so that should be allowed. The only catch is that we
+        // DO want to be careful around unsized type parameters, since
+        // fat pointers have a different size than a thin pointer, and
+        // hence `&T` and `&U` have different sizes if `T : Sized` but
+        // `U : Sized` does not hold.
+        //
+        // However, it's not as simple as checking whether `T :
+        // Sized`, because even if `T : Sized` does not hold, that
+        // just means that `T` *may* not be sized.  After all, even a
+        // type parameter `Sized? T` could be bound to a sized
+        // type. (Issue #20116)
+        //
+        // To handle this, we first check for "interior" type
+        // parameters, which are always illegal. If there are none of
+        // those, then we know that the only way that all type
+        // parameters `T` are referenced indirectly, e.g. via a
+        // pointer type like `&T`. In that case, we only care whether
+        // `T` is sized or not, because that influences whether `&T`
+        // is a thin or fat pointer.
+        //
+        // One could imagine establishing a sophisticated constraint
+        // system to ensure that the transmute is legal, but instead
+        // we do something brutally dumb. We just substitute dummy
+        // sized or unsized types for every type parameter in scope,
+        // exhaustively checking all possible combinations. Here are some examples:
+        //
+        // ```
+        // fn foo<T,U>() {
+        //     // T=int, U=int
+        // }
+        //
+        // fn bar<Sized? T,U>() {
+        //     // T=int, U=int
+        //     // T=[int], U=int
+        // }
+        //
+        // fn baz<Sized? T, Sized?U>() {
+        //     // T=int, U=int
+        //     // T=[int], U=int
+        //     // T=int, U=[int]
+        //     // T=[int], U=[int]
+        // }
+        // ```
+        //
+        // In all cases, we keep the original unsubstituted types
+        // around for error reporting.
+
+        let from_tc = ty::type_contents(self.tcx, from);
+        let to_tc = ty::type_contents(self.tcx, to);
+        if from_tc.interior_param() || to_tc.interior_param() {
+            span_err!(self.tcx.sess, span, E0139,
+                      "cannot transmute to or from a type that contains \
+                       type parameters in its interior");
+            return;
+        }
+
+        let mut substs = param_env.free_substs.clone();
+        self.with_each_combination(
+            param_env,
+            param_env.free_substs.types.iter_enumerated(),
+            &mut substs,
+            &mut |substs| {
+                let restriction = TransmuteRestriction {
+                    span: span,
+                    original_from: from,
+                    original_to: to,
+                    substituted_from: from.subst(self.tcx, substs),
+                    substituted_to: to.subst(self.tcx, substs),
+                    id: id,
+                };
+                self.push_transmute_restriction(restriction);
+            });
+    }
+
+    fn with_each_combination(&self,
+                             param_env: &ty::ParameterEnvironment<'tcx>,
+                             mut types_in_scope: EnumeratedItems<Ty<'tcx>>,
+                             substs: &mut Substs<'tcx>,
+                             callback: &mut FnMut(&Substs<'tcx>))
+    {
+        // This parameter invokes `callback` many times with different
+        // substitutions that replace all the parameters in scope with
+        // either `int` or `[int]`, depending on whether the type
+        // parameter is known to be sized. See big comment above for
+        // an explanation of why this is a reasonable thing to do.
+
+        match types_in_scope.next() {
+            None => {
+                debug!("with_each_combination(substs={})",
+                       substs.repr(self.tcx));
+
+                callback.call_mut((substs,));
+            }
+
+            Some((space, index, &param_ty)) => {
+                debug!("with_each_combination: space={}, index={}, param_ty={}",
+                       space, index, param_ty.repr(self.tcx));
+
+                if !ty::type_is_sized(self.tcx, param_ty, param_env) {
+                    debug!("with_each_combination: param_ty is not known to be sized");
+
+                    substs.types.get_mut_slice(space)[index] = self.dummy_unsized_ty;
+                    self.with_each_combination(param_env, types_in_scope.clone(), substs, callback);
+                }
+
+                substs.types.get_mut_slice(space)[index] = self.dummy_sized_ty;
+                self.with_each_combination(param_env, types_in_scope, substs, callback);
+            }
+        }
+    }
+
+    fn push_transmute_restriction(&self, restriction: TransmuteRestriction<'tcx>) {
+        debug!("Pushing transmute restriction: {}", restriction.repr(self.tcx));
         self.tcx.transmute_restrictions.borrow_mut().push(restriction);
     }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
+    fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+                b: &'v ast::Block, s: Span, id: ast::NodeId) {
+        match fk {
+            visit::FkItemFn(..) | visit::FkMethod(..) => {
+                let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
+                self.param_envs.push(param_env);
+                visit::walk_fn(self, fk, fd, b, s);
+                self.param_envs.pop();
+            }
+            visit::FkFnBlock(..) => {
+                visit::walk_fn(self, fk, fd, b, s);
+            }
+        }
+
+    }
+
     fn visit_expr(&mut self, expr: &ast::Expr) {
         if let ast::ExprPath(..) = expr.node {
             match ty::resolve_expr(self.tcx, expr) {
@@ -144,7 +273,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &ctxt) {
-    visit::walk_crate(&mut IntrinsicCheckingVisitor { tcx: tcx },
-                      tcx.map.krate());
+impl<'tcx> Repr<'tcx> for TransmuteRestriction<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        format!("TransmuteRestriction(id={}, original=({},{}), substituted=({},{}))",
+                self.id,
+                self.original_from.repr(tcx),
+                self.original_to.repr(tcx),
+                self.substituted_from.repr(tcx),
+                self.substituted_to.repr(tcx))
+    }
 }

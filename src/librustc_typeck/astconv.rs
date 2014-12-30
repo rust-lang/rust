@@ -16,11 +16,11 @@
 //! somewhat differently during the collect and check phases,
 //! particularly with respect to looking up the types of top-level
 //! items.  In the collect phase, the crate context is used as the
-//! `AstConv` instance; in this phase, the `get_item_ty()` function
+//! `AstConv` instance; in this phase, the `get_item_type_scheme()` function
 //! triggers a recursive call to `ty_of_item()`  (note that
 //! `ast_ty_to_ty()` will detect recursive types and report an error).
 //! In the check phase, when the FnCtxt is used as the `AstConv`,
-//! `get_item_ty()` just looks up the item type in `tcx.tcache`.
+//! `get_item_type_scheme()` just looks up the item type in `tcx.tcache`.
 //!
 //! The `RegionScope` trait controls what happens when the user does
 //! not specify a region in some location where a region is required
@@ -51,7 +51,7 @@ use middle::astconv_util::{ast_ty_to_prim_ty, check_path_args, NO_TPS, NO_REGION
 use middle::const_eval;
 use middle::def;
 use middle::resolve_lifetime as rl;
-use middle::subst::{FnSpace, TypeSpace, AssocSpace, SelfSpace, Subst, Substs};
+use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
 use middle::ty::{mod, RegionEscape, Ty};
 use rscope::{mod, UnelidableRscope, RegionScope, SpecificRscope,
@@ -70,7 +70,7 @@ use syntax::print::pprust;
 
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
-    fn get_item_ty(&self, id: ast::DefId) -> ty::Polytype<'tcx>;
+    fn get_item_type_scheme(&self, id: ast::DefId) -> ty::TypeScheme<'tcx>;
     fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>>;
 
     /// Return an (optional) substitution to convert bound type parameters that
@@ -84,25 +84,45 @@ pub trait AstConv<'tcx> {
     /// What type should we use when a type is omitted?
     fn ty_infer(&self, span: Span) -> Ty<'tcx>;
 
-    /// Returns true if associated types from the given trait and type are
-    /// allowed to be used here and false otherwise.
-    fn associated_types_of_trait_are_valid(&self,
-                                           ty: Ty<'tcx>,
-                                           trait_id: ast::DefId)
-                                           -> bool;
+    /// Projecting an associated type from a (potentially)
+    /// higher-ranked trait reference is more complicated, because of
+    /// the possibility of late-bound regions appearing in the
+    /// associated type binding. This is not legal in function
+    /// signatures for that reason. In a function body, we can always
+    /// handle it because we can use inference variables to remove the
+    /// late-bound regions.
+    fn projected_ty_from_poly_trait_ref(&self,
+                                        span: Span,
+                                        poly_trait_ref: ty::PolyTraitRef<'tcx>,
+                                        item_name: ast::Name)
+                                        -> Ty<'tcx>
+    {
+        if ty::binds_late_bound_regions(self.tcx(), &poly_trait_ref) {
+            self.tcx().sess.span_err(
+                span,
+                "cannot extract an associated type from a higher-ranked trait bound \
+                 in this context");
+            self.tcx().types.err
+        } else {
+            // no late-bound regions, we can just ignore the binder
+            self.projected_ty(span, poly_trait_ref.0.clone(), item_name)
+        }
+    }
 
-    /// Returns the concrete type bound to the given associated type (indicated
-    /// by associated_type_id) in the current context. For example,
-    /// in `trait Foo { type A; }` looking up `A` will give a type variable;
-    /// in `impl Foo for ... { type A = int; ... }` looking up `A` will give `int`.
-    fn associated_type_binding(&self,
-                               span: Span,
-                               self_ty: Option<Ty<'tcx>>,
-                               // DefId for the declaration of the trait
-                               // in which the associated type is declared.
-                               trait_id: ast::DefId,
-                               associated_type_id: ast::DefId)
-                               -> Option<Ty<'tcx>>;
+    /// Project an associated type from a non-higher-ranked trait reference.
+    /// This is fairly straightforward and can be accommodated in any context.
+    fn projected_ty(&self,
+                    span: Span,
+                    _trait_ref: Rc<ty::TraitRef<'tcx>>,
+                    _item_name: ast::Name)
+                    -> Ty<'tcx>
+    {
+        self.tcx().sess.span_err(
+            span,
+            "associated types are not accepted in this context");
+
+        self.tcx().types.err
+    }
 }
 
 pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
@@ -224,7 +244,6 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
 fn ast_path_substs_for_ty<'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
-    decl_def_id: ast::DefId,
     decl_generics: &ty::Generics<'tcx>,
     path: &ast::Path)
     -> Substs<'tcx>
@@ -255,28 +274,26 @@ fn ast_path_substs_for_ty<'tcx,AC,RS>(
         }
     };
 
+    prohibit_projections(this.tcx(), assoc_bindings.as_slice());
+
     create_substs_for_ast_path(this,
                                rscope,
                                path.span,
-                               decl_def_id,
                                decl_generics,
                                None,
                                types,
-                               regions,
-                               assoc_bindings)
+                               regions)
 }
 
 fn create_substs_for_ast_path<'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
     span: Span,
-    decl_def_id: ast::DefId,
     decl_generics: &ty::Generics<'tcx>,
     self_ty: Option<Ty<'tcx>>,
     types: Vec<Ty<'tcx>>,
-    regions: Vec<ty::Region>,
-    assoc_bindings: Vec<(ast::Ident, Ty<'tcx>)>)
-    -> Substs<'tcx>
+    regions: Vec<ty::Region>)
+ -> Substs<'tcx>
     where AC: AstConv<'tcx>, RS: RegionScope
 {
     let tcx = this.tcx();
@@ -382,44 +399,13 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
         }
     }
 
-    for formal_assoc in decl_generics.types.get_slice(AssocSpace).iter() {
-        let mut found = false;
-        for &(ident, ty) in assoc_bindings.iter() {
-            if formal_assoc.name.ident() == ident {
-                substs.types.push(AssocSpace, ty);
-                found = true;
-                break;
-            }
-        }
-        if !found {
-            match this.associated_type_binding(span,
-                                               self_ty,
-                                               decl_def_id,
-                                               formal_assoc.def_id) {
-                Some(ty) => {
-                    substs.types.push(AssocSpace, ty);
-                }
-                None => {
-                    substs.types.push(AssocSpace, ty::mk_err());
-                    span_err!(this.tcx().sess, span, E0171,
-                              "missing type for associated type `{}`",
-                              token::get_ident(formal_assoc.name.ident()));
-                }
-            }
-        }
-    }
-
-    for &(ident, _) in assoc_bindings.iter() {
-        let mut formal_idents = decl_generics.types.get_slice(AssocSpace)
-                                .iter().map(|t| t.name.ident());
-        if !formal_idents.any(|i| i == ident) {
-            span_err!(this.tcx().sess, span, E0177,
-                      "associated type `{}` does not exist",
-                      token::get_ident(ident));
-        }
-    }
-
     return substs;
+}
+
+struct ConvertedBinding<'tcx> {
+    item_name: ast::Name,
+    ty: Ty<'tcx>,
+    span: Span,
 }
 
 fn convert_angle_bracketed_parameters<'tcx, AC, RS>(this: &AC,
@@ -427,7 +413,7 @@ fn convert_angle_bracketed_parameters<'tcx, AC, RS>(this: &AC,
                                                     data: &ast::AngleBracketedParameterData)
                                                     -> (Vec<ty::Region>,
                                                         Vec<Ty<'tcx>>,
-                                                        Vec<(ast::Ident, Ty<'tcx>)>)
+                                                        Vec<ConvertedBinding<'tcx>>)
     where AC: AstConv<'tcx>, RS: RegionScope
 {
     let regions: Vec<_> =
@@ -442,7 +428,9 @@ fn convert_angle_bracketed_parameters<'tcx, AC, RS>(this: &AC,
 
     let assoc_bindings: Vec<_> =
         data.bindings.iter()
-        .map(|b| (b.ident, ast_ty_to_ty(this, rscope, &*b.ty)))
+        .map(|b| ConvertedBinding { item_name: b.ident.name,
+                                    ty: ast_ty_to_ty(this, rscope, &*b.ty),
+                                    span: b.span })
         .collect();
 
     (regions, types, assoc_bindings)
@@ -534,38 +522,47 @@ pub fn instantiate_poly_trait_ref<'tcx,AC,RS>(
     rscope: &RS,
     ast_trait_ref: &ast::PolyTraitRef,
     self_ty: Option<Ty<'tcx>>,
-    allow_eq: AllowEqConstraints)
-    -> Rc<ty::PolyTraitRef<'tcx>>
+    poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
+    -> ty::PolyTraitRef<'tcx>
     where AC: AstConv<'tcx>, RS: RegionScope
 {
+    let mut projections = Vec::new();
+
     let trait_ref =
-        instantiate_trait_ref(this, rscope, &ast_trait_ref.trait_ref, self_ty, allow_eq);
-    let trait_ref = (*trait_ref).clone();
-    Rc::new(ty::Binder(trait_ref)) // Ugh.
+        instantiate_trait_ref(this, rscope, &ast_trait_ref.trait_ref,
+                              self_ty, Some(&mut projections));
+
+    for projection in projections.into_iter() {
+        poly_projections.push(ty::Binder(projection));
+    }
+
+    ty::Binder(trait_ref)
 }
 
 /// Instantiates the path for the given trait reference, assuming that it's
 /// bound to a valid trait type. Returns the def_id for the defining trait.
 /// Fails if the type is a type other than a trait type.
-pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
-                                         rscope: &RS,
-                                         ast_trait_ref: &ast::TraitRef,
-                                         self_ty: Option<Ty<'tcx>>,
-                                         allow_eq: AllowEqConstraints)
-                                         -> Rc<ty::TraitRef<'tcx>>
-                                         where AC: AstConv<'tcx>,
-                                               RS: RegionScope
+///
+/// If the `projections` argument is `None`, then assoc type bindings like `Foo<T=X>`
+/// are disallowed. Otherwise, they are pushed onto the vector given.
+pub fn instantiate_trait_ref<'tcx,AC,RS>(
+    this: &AC,
+    rscope: &RS,
+    ast_trait_ref: &ast::TraitRef,
+    self_ty: Option<Ty<'tcx>>,
+    projections: Option<&mut Vec<ty::ProjectionPredicate<'tcx>>>)
+    -> Rc<ty::TraitRef<'tcx>>
+    where AC: AstConv<'tcx>, RS: RegionScope
 {
     match ::lookup_def_tcx(this.tcx(), ast_trait_ref.path.span, ast_trait_ref.ref_id) {
         def::DefTrait(trait_def_id) => {
-            let trait_ref = Rc::new(ast_path_to_trait_ref(this,
-                                                          rscope,
-                                                          trait_def_id,
-                                                          self_ty,
-                                                          &ast_trait_ref.path,
-                                                          allow_eq));
-            this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id,
-                                                      trait_ref.clone());
+            let trait_ref = ast_path_to_trait_ref(this,
+                                                  rscope,
+                                                  trait_def_id,
+                                                  self_ty,
+                                                  &ast_trait_ref.path,
+                                                  projections);
+            this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id, trait_ref.clone());
             trait_ref
         }
         _ => {
@@ -576,20 +573,14 @@ pub fn instantiate_trait_ref<'tcx,AC,RS>(this: &AC,
     }
 }
 
-#[deriving(PartialEq,Show)]
-pub enum AllowEqConstraints {
-    Allow,
-    DontAllow
-}
-
-fn ast_path_to_trait_ref<'tcx,AC,RS>(
+fn ast_path_to_trait_ref<'a,'tcx,AC,RS>(
     this: &AC,
     rscope: &RS,
     trait_def_id: ast::DefId,
     self_ty: Option<Ty<'tcx>>,
     path: &ast::Path,
-    allow_eq: AllowEqConstraints)
-    -> ty::TraitRef<'tcx>
+    mut projections: Option<&mut Vec<ty::ProjectionPredicate<'tcx>>>)
+    -> Rc<ty::TraitRef<'tcx>>
     where AC: AstConv<'tcx>, RS: RegionScope
 {
     debug!("ast_path_to_trait_ref {}", path);
@@ -624,22 +615,75 @@ fn ast_path_to_trait_ref<'tcx,AC,RS>(
         }
     };
 
-    if allow_eq == AllowEqConstraints::DontAllow && assoc_bindings.len() > 0 {
-        span_err!(this.tcx().sess, path.span, E0173,
-                  "equality constraints are not allowed in this position");
-    }
-
     let substs = create_substs_for_ast_path(this,
                                             &shifted_rscope,
                                             path.span,
-                                            trait_def_id,
                                             &trait_def.generics,
                                             self_ty,
                                             types,
-                                            regions,
-                                            assoc_bindings);
+                                            regions);
+    let substs = this.tcx().mk_substs(substs);
 
-    ty::TraitRef::new(trait_def_id, this.tcx().mk_substs(substs))
+    let trait_ref = Rc::new(ty::TraitRef::new(trait_def_id, substs));
+
+    match projections {
+        None => {
+            prohibit_projections(this.tcx(), assoc_bindings.as_slice());
+        }
+        Some(ref mut v) => {
+            for binding in assoc_bindings.iter() {
+                match ast_type_binding_to_projection_predicate(this, trait_ref.clone(), binding) {
+                    Ok(pp) => { v.push(pp); }
+                    Err(ErrorReported) => { }
+                }
+            }
+        }
+    }
+
+    trait_ref
+}
+
+pub fn ast_type_binding_to_projection_predicate<'tcx,AC>(
+    this: &AC,
+    trait_ref: Rc<ty::TraitRef<'tcx>>,
+    binding: &ConvertedBinding<'tcx>)
+    -> Result<ty::ProjectionPredicate<'tcx>, ErrorReported>
+    where AC : AstConv<'tcx>
+{
+    // Given something like `U : SomeTrait<T=X>`, we want to produce a
+    // predicate like `<U as SomeTrait>::T = X`. This is somewhat
+    // subtle in the event that `T` is defined in a supertrait of
+    // `SomeTrait`, because in that case we need to upcast.
+    //
+    // That is, consider this case:
+    //
+    // ```
+    // trait SubTrait : SuperTrait<int> { }
+    // trait SuperTrait<A> { type T; }
+    //
+    // ... B : SubTrait<T=foo> ...
+    // ```
+    //
+    // We want to produce `<B as SuperTrait<int>>::T == foo`.
+
+    // FIXME(#19541): supertrait upcasting not actually impl'd :)
+
+    if !trait_defines_associated_type_named(this, trait_ref.def_id, binding.item_name) {
+        this.tcx().sess.span_err(
+            binding.span,
+            format!("no associated type `{}` defined in `{}`",
+                    token::get_name(binding.item_name),
+                    trait_ref.user_string(this.tcx())).as_slice());
+        return Err(ErrorReported);
+    }
+
+    Ok(ty::ProjectionPredicate {
+        projection_ty: ty::ProjectionTy {
+            trait_ref: trait_ref,
+            item_name: binding.item_name,
+        },
+        ty: binding.ty,
+    })
 }
 
 pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
@@ -650,14 +694,13 @@ pub fn ast_path_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     -> TypeAndSubsts<'tcx>
 {
     let tcx = this.tcx();
-    let ty::Polytype {
+    let ty::TypeScheme {
         generics,
         ty: decl_ty
-    } = this.get_item_ty(did);
+    } = this.get_item_type_scheme(did);
 
     let substs = ast_path_substs_for_ty(this,
                                         rscope,
-                                        did,
                                         &generics,
                                         path);
     let ty = decl_ty.subst(tcx, &substs);
@@ -678,10 +721,10 @@ pub fn ast_path_to_ty_relaxed<'tcx,AC,RS>(
     where AC : AstConv<'tcx>, RS : RegionScope
 {
     let tcx = this.tcx();
-    let ty::Polytype {
+    let ty::TypeScheme {
         generics,
         ty: decl_ty
-    } = this.get_item_ty(did);
+    } = this.get_item_type_scheme(did);
 
     let wants_params =
         generics.has_type_params(TypeSpace) || generics.has_region_params(TypeSpace);
@@ -699,7 +742,7 @@ pub fn ast_path_to_ty_relaxed<'tcx,AC,RS>(
         Substs::new(VecPerParamSpace::params_from_type(type_params),
                     VecPerParamSpace::params_from_type(region_params))
     } else {
-        ast_path_substs_for_ty(this, rscope, did, &generics, path)
+        ast_path_substs_for_ty(this, rscope, &generics, path)
     };
 
     let ty = decl_ty.subst(tcx, &substs);
@@ -762,11 +805,13 @@ pub fn ast_ty_to_builtin_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
     }
 }
 
+type TraitAndProjections<'tcx> = (ty::PolyTraitRef<'tcx>, Vec<ty::PolyProjectionPredicate<'tcx>>);
+
 fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
                                    rscope: &RS,
                                    ty: &ast::Ty,
                                    bounds: &[ast::TyParamBound])
-                                   -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
+                                   -> Result<TraitAndProjections<'tcx>, ErrorReported>
     where AC : AstConv<'tcx>, RS : RegionScope
 {
     /*!
@@ -784,12 +829,17 @@ fn ast_ty_to_trait_ref<'tcx,AC,RS>(this: &AC,
         ast::TyPath(ref path, id) => {
             match this.tcx().def_map.borrow().get(&id) {
                 Some(&def::DefTrait(trait_def_id)) => {
-                    return Ok(ty::Binder(ast_path_to_trait_ref(this,
-                                                               rscope,
-                                                               trait_def_id,
-                                                               None,
-                                                               path,
-                                                               AllowEqConstraints::Allow)));
+                    let mut projection_bounds = Vec::new();
+                    let trait_ref = ty::Binder(ast_path_to_trait_ref(this,
+                                                                     rscope,
+                                                                     trait_def_id,
+                                                                     None,
+                                                                     path,
+                                                                     Some(&mut projection_bounds)));
+                    let projection_bounds = projection_bounds.into_iter()
+                                                             .map(ty::Binder)
+                                                             .collect();
+                    Ok((trait_ref, projection_bounds))
                 }
                 _ => {
                     span_err!(this.tcx().sess, ty.span, E0172, "expected a reference to a trait");
@@ -832,6 +882,7 @@ fn trait_ref_to_object_type<'tcx,AC,RS>(this: &AC,
                                         rscope: &RS,
                                         span: Span,
                                         trait_ref: ty::PolyTraitRef<'tcx>,
+                                        projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
                                         bounds: &[ast::TyParamBound])
                                         -> Ty<'tcx>
     where AC : AstConv<'tcx>, RS : RegionScope
@@ -839,7 +890,8 @@ fn trait_ref_to_object_type<'tcx,AC,RS>(this: &AC,
     let existential_bounds = conv_existential_bounds(this,
                                                      rscope,
                                                      span,
-                                                     Some(&trait_ref),
+                                                     Some(trait_ref.clone()),
+                                                     projection_bounds,
                                                      bounds);
 
     let result = ty::mk_trait(this.tcx(), trait_ref, existential_bounds);
@@ -847,6 +899,68 @@ fn trait_ref_to_object_type<'tcx,AC,RS>(this: &AC,
            result.repr(this.tcx()));
 
     result
+}
+
+fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
+                                   ast_ty: &ast::Ty,
+                                   provenance: def::TyParamProvenance,
+                                   assoc_name: ast::Name)
+                                   -> Ty<'tcx>
+{
+    let tcx = this.tcx();
+    let ty_param_def_id = provenance.def_id();
+    let mut suitable_bounds: Vec<_>;
+    let ty_param_name: ast::Name;
+    { // contain scope of refcell:
+        let ty_param_defs = tcx.ty_param_defs.borrow();
+        let ty_param_def = &ty_param_defs[ty_param_def_id.node];
+        ty_param_name = ty_param_def.name;
+
+        // FIXME(#19541): we should consider associated types in
+        // super-traits. Probably by elaborating the bounds.
+
+        suitable_bounds =
+            ty_param_def.bounds.trait_bounds // FIXME(#20300) -- search where clauses, not bounds
+            .iter()
+            .cloned()
+            .filter(|b| trait_defines_associated_type_named(this, b.def_id(), assoc_name))
+            .collect();
+    }
+
+    if suitable_bounds.len() == 0 {
+        tcx.sess.span_err(ast_ty.span,
+                          format!("associated type `{}` not found for type parameter `{}`",
+                                  token::get_name(assoc_name),
+                                  token::get_name(ty_param_name)).as_slice());
+        return this.tcx().types.err;
+    }
+
+    if suitable_bounds.len() > 1 {
+        tcx.sess.span_err(ast_ty.span,
+                          format!("ambiguous associated type `{}` in bounds of `{}`",
+                                  token::get_name(assoc_name),
+                                  token::get_name(ty_param_name)).as_slice());
+
+        for suitable_bound in suitable_bounds.iter() {
+            span_note!(this.tcx().sess, ast_ty.span,
+                       "associated type `{}` could derive from `{}`",
+                       token::get_name(ty_param_name),
+                       suitable_bound.user_string(this.tcx()));
+        }
+    }
+
+    let suitable_bound = suitable_bounds.pop().unwrap().clone();
+    return this.projected_ty_from_poly_trait_ref(ast_ty.span, suitable_bound, assoc_name);
+}
+
+fn trait_defines_associated_type_named(this: &AstConv,
+                                       trait_def_id: ast::DefId,
+                                       assoc_name: ast::Name)
+                                       -> bool
+{
+    let tcx = this.tcx();
+    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
+    trait_def.associated_type_names.contains(&assoc_name)
 }
 
 fn qpath_to_ty<'tcx,AC,RS>(this: &AC,
@@ -867,33 +981,13 @@ fn qpath_to_ty<'tcx,AC,RS>(this: &AC,
                                           rscope,
                                           &*qpath.trait_ref,
                                           Some(self_type),
-                                          AllowEqConstraints::DontAllow);
+                                          None);
 
     debug!("qpath_to_ty: trait_ref={}", trait_ref.repr(this.tcx()));
 
-    if let Some(ty) = find_assoc_ty(this, &*trait_ref, qpath.item_name) {
-        return ty;
-    }
-
-    this.tcx().sess.span_bug(ast_ty.span,
-                             "this associated type didn't get added \
-                              as a parameter for some reason")
-}
-
-fn find_assoc_ty<'tcx, AC>(this: &AC,
-                           trait_ref: &ty::TraitRef<'tcx>,
-                           type_name: ast::Ident)
-                           -> Option<Ty<'tcx>>
-where AC: AstConv<'tcx> {
-    let trait_def = this.get_trait_def(trait_ref.def_id);
-
-    for ty_param_def in trait_def.generics.types.get_slice(AssocSpace).iter() {
-        if ty_param_def.name == type_name.name {
-            return Some(trait_ref.substs.type_for_def(ty_param_def));
-        }
-    }
-
-    None
+    return this.projected_ty(ast_ty.span,
+                             trait_ref,
+                             qpath.item_name.name);
 }
 
 // Parses the programmer's textual representation of a type into our
@@ -927,12 +1021,12 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
             }
             ast::TyObjectSum(ref ty, ref bounds) => {
                 match ast_ty_to_trait_ref(this, rscope, &**ty, bounds[]) {
-                    Ok(trait_ref) => {
+                    Ok((trait_ref, projection_bounds)) => {
                         trait_ref_to_object_type(this, rscope, ast_ty.span,
-                                                 trait_ref, bounds[])
+                                                 trait_ref, projection_bounds, bounds[])
                     }
                     Err(ErrorReported) => {
-                        ty::mk_err()
+                        this.tcx().types.err
                     }
                 }
             }
@@ -970,13 +1064,15 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                      rscope,
                                                      ast_ty.span,
                                                      None,
+                                                     Vec::new(),
                                                      f.bounds.as_slice());
+                let region_bound = bounds.region_bound;
                 let fn_decl = ty_of_closure(this,
                                             f.unsafety,
                                             f.onceness,
                                             bounds,
                                             ty::RegionTraitStore(
-                                                bounds.region_bound,
+                                                region_bound,
                                                 ast::MutMutable),
                                             &*f.decl,
                                             abi::Rust,
@@ -1000,28 +1096,33 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                     def::DefTrait(trait_def_id) => {
                         // N.B. this case overlaps somewhat with
                         // TyObjectSum, see that fn for details
-                        let result = ty::Binder(ast_path_to_trait_ref(this,
-                                                                      rscope,
-                                                                      trait_def_id,
-                                                                      None,
-                                                                      path,
-                                                                      AllowEqConstraints::Allow));
-                        trait_ref_to_object_type(this, rscope, path.span, result, &[])
+                        let mut projection_bounds = Vec::new();
+                        let trait_ref = ast_path_to_trait_ref(this,
+                                                              rscope,
+                                                              trait_def_id,
+                                                              None,
+                                                              path,
+                                                              Some(&mut projection_bounds));
+                        let trait_ref = ty::Binder(trait_ref);
+                        let projection_bounds = projection_bounds.into_iter()
+                                                                 .map(ty::Binder)
+                                                                 .collect();
+                        trait_ref_to_object_type(this, rscope, path.span,
+                                                 trait_ref, projection_bounds, &[])
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
                         ast_path_to_ty(this, rscope, did, path).ty
                     }
-                    def::DefTyParam(space, id, n) => {
+                    def::DefTyParam(space, index, _, name) => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                        ty::mk_param(tcx, space, n, id)
+                        ty::mk_param(tcx, space, index, name)
                     }
-                    def::DefSelfTy(id) => {
+                    def::DefSelfTy(_) => {
                         // n.b.: resolve guarantees that the this type only appears in a
                         // trait, which we rely upon in various places when creating
                         // substs
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                        let did = ast_util::local_def(id);
-                        ty::mk_self_type(tcx, did)
+                        ty::mk_self_type(tcx)
                     }
                     def::DefMod(id) => {
                         tcx.sess.span_fatal(ast_ty.span,
@@ -1046,46 +1147,10 @@ pub fn ast_ty_to_ty<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                                                           .unwrap()
                                                           .identifier)
                                                   .get())[]);
-                        ty::mk_err()
+                        this.tcx().types.err
                     }
-                    def::DefAssociatedPath(typ, assoc_ident) => {
-                        // FIXME(#19541): in both branches we should consider
-                        // associated types in super-traits.
-                        let (assoc_tys, tp_name): (Vec<_>, _) = match typ {
-                            def::TyParamProvenance::FromParam(did) |
-                            def::TyParamProvenance::FromSelf(did) => {
-                                let ty_param_defs = tcx.ty_param_defs.borrow();
-                                let tp_def = &(*ty_param_defs)[did.node];
-                                let assoc_tys = tp_def.bounds.trait_bounds.iter()
-                                    .filter_map(|b| find_assoc_ty(this, &b.0, assoc_ident))
-                                    .collect();
-                                (assoc_tys, token::get_name(tp_def.name).to_string())
-                            }
-                        };
-
-                        if assoc_tys.len() == 0 {
-                            tcx.sess.span_err(ast_ty.span,
-                                              format!("associated type `{}` not \
-                                                       found for type parameter `{}`",
-                                                      token::get_ident(assoc_ident),
-                                                      tp_name).as_slice());
-                            return ty::mk_err()
-                        }
-
-                        if assoc_tys.len() > 1 {
-                            tcx.sess.span_err(ast_ty.span,
-                                              format!("ambiguous associated type \
-                                                       `{}` in bounds of `{}`",
-                                                      token::get_ident(assoc_ident),
-                                                      tp_name).as_slice());
-                        }
-
-                        let mut result_ty = assoc_tys[0];
-                        if let Some(substs) = this.get_free_substs() {
-                            result_ty = result_ty.subst(tcx, substs);
-                        }
-
-                        result_ty
+                    def::DefAssociatedPath(provenance, assoc_ident) => {
+                        associated_path_def_to_ty(this, ast_ty, provenance, assoc_ident.name)
                     }
                     _ => {
                         tcx.sess.span_fatal(ast_ty.span,
@@ -1378,7 +1443,7 @@ pub fn ty_of_closure<'tcx, AC: AstConv<'tcx>>(
     this: &AC,
     unsafety: ast::Unsafety,
     onceness: ast::Onceness,
-    bounds: ty::ExistentialBounds,
+    bounds: ty::ExistentialBounds<'tcx>,
     store: ty::TraitStore,
     decl: &ast::FnDecl,
     abi: abi::Abi,
@@ -1440,15 +1505,16 @@ pub fn conv_existential_bounds<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     this: &AC,
     rscope: &RS,
     span: Span,
-    principal_trait_ref: Option<&ty::PolyTraitRef<'tcx>>, // None for boxed closures
+    principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>, // None for boxed closures
+    projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
     ast_bounds: &[ast::TyParamBound])
-    -> ty::ExistentialBounds
+    -> ty::ExistentialBounds<'tcx>
 {
     let partitioned_bounds =
         partition_bounds(this.tcx(), span, ast_bounds);
 
     conv_existential_bounds_from_partitioned_bounds(
-        this, rscope, span, principal_trait_ref, partitioned_bounds)
+        this, rscope, span, principal_trait_ref, projection_bounds, partitioned_bounds)
 }
 
 fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
@@ -1461,13 +1527,15 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
 {
     let mut partitioned_bounds = partition_bounds(this.tcx(), span, ast_bounds[]);
 
+    let mut projection_bounds = Vec::new();
     let main_trait_bound = match partitioned_bounds.trait_bounds.remove(0) {
         Some(trait_bound) => {
-            Some(instantiate_poly_trait_ref(this,
-                                            rscope,
-                                            trait_bound,
-                                            None,
-                                            AllowEqConstraints::Allow))
+            let ptr = instantiate_poly_trait_ref(this,
+                                                 rscope,
+                                                 trait_bound,
+                                                 None,
+                                                 &mut projection_bounds);
+            Some(ptr)
         }
         None => {
             this.tcx().sess.span_err(
@@ -1481,12 +1549,13 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
         conv_existential_bounds_from_partitioned_bounds(this,
                                                         rscope,
                                                         span,
-                                                        main_trait_bound.as_ref().map(|tr| &**tr),
+                                                        main_trait_bound.clone(),
+                                                        projection_bounds,
                                                         partitioned_bounds);
 
     match main_trait_bound {
-        None => ty::mk_err(),
-        Some(principal) => ty::mk_trait(this.tcx(), (*principal).clone(), bounds)
+        None => this.tcx().types.err,
+        Some(principal) => ty::mk_trait(this.tcx(), principal, bounds)
     }
 }
 
@@ -1494,9 +1563,10 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
     this: &AC,
     rscope: &RS,
     span: Span,
-    principal_trait_ref: Option<&ty::PolyTraitRef<'tcx>>, // None for boxed closures
+    principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>, // None for boxed closures
+    mut projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>, // Empty for boxed closures
     partitioned_bounds: PartitionedBounds)
-    -> ty::ExistentialBounds
+    -> ty::ExistentialBounds<'tcx>
     where AC: AstConv<'tcx>, RS:RegionScope
 {
     let PartitionedBounds { builtin_bounds,
@@ -1519,9 +1589,12 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
                                             principal_trait_ref,
                                             builtin_bounds);
 
+    ty::sort_bounds_list(projection_bounds.as_mut_slice());
+
     ty::ExistentialBounds {
         region_bound: region_bound,
         builtin_bounds: builtin_bounds,
+        projection_bounds: projection_bounds,
     }
 }
 
@@ -1532,7 +1605,7 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx, AC, RS>(
 fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   span: Span,
                                   explicit_region_bounds: &[&ast::Lifetime],
-                                  principal_trait_ref: Option<&ty::PolyTraitRef<'tcx>>,
+                                  principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>,
                                   builtin_bounds: ty::BuiltinBounds)
                                   -> Option<ty::Region>
 {
@@ -1557,7 +1630,7 @@ fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
     // No explicit region bound specified. Therefore, examine trait
     // bounds and see if we can derive region bounds from those.
     let derived_region_bounds =
-        ty::object_region_bounds(tcx, principal_trait_ref, builtin_bounds);
+        ty::object_region_bounds(tcx, principal_trait_ref.as_ref(), builtin_bounds);
 
     // If there are no derived region bounds, then report back that we
     // can find no region bound.
@@ -1592,7 +1665,7 @@ fn compute_region_bound<'tcx, AC: AstConv<'tcx>, RS:RegionScope>(
     rscope: &RS,
     span: Span,
     region_bounds: &[&ast::Lifetime],
-    principal_trait_ref: Option<&ty::PolyTraitRef<'tcx>>, // None for closures
+    principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>, // None for closures
     builtin_bounds: ty::BuiltinBounds)
     -> ty::Region
 {
@@ -1660,6 +1733,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                         if ty::try_add_builtin_trait(tcx,
                                                      trait_did,
                                                      &mut builtin_bounds) {
+                            // FIXME(#20302) -- we should check for things like Copy<T>
                             continue; // success
                         }
                     }
@@ -1681,5 +1755,15 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
         builtin_bounds: builtin_bounds,
         trait_bounds: trait_bounds,
         region_bounds: region_bounds,
+    }
+}
+
+fn prohibit_projections<'tcx>(tcx: &ty::ctxt<'tcx>,
+                              bindings: &[ConvertedBinding<'tcx>])
+{
+    for binding in bindings.iter().take(1) {
+        tcx.sess.span_err(
+            binding.span,
+            "associated type bindings are not allowed here");
     }
 }

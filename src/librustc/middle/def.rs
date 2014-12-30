@@ -36,10 +36,11 @@ pub enum Def {
     // A partially resolved path to an associated type `T::U` where `T` is a concrete
     // type (indicated by the DefId) which implements a trait which has an associated
     // type `U` (indicated by the Ident).
+    // FIXME(#20301) -- should use Name
     DefAssociatedPath(TyParamProvenance, ast::Ident),
     DefTrait(ast::DefId),
     DefPrimTy(ast::PrimTy),
-    DefTyParam(ParamSpace, ast::DefId, u32),
+    DefTyParam(ParamSpace, u32, ast::DefId, ast::Name),
     DefUse(ast::DefId),
     DefUpvar(ast::NodeId,  // id of closed over local
              ast::NodeId,  // expr node that creates the closure
@@ -130,7 +131,7 @@ impl Def {
             DefFn(id, _) | DefStaticMethod(id, _) | DefMod(id) |
             DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(id) |
-            DefTyParam(_, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
+            DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
             DefMethod(id, _, _) | DefConst(id) |
             DefAssociatedPath(TyParamProvenance::FromSelf(id), _) |
             DefAssociatedPath(TyParamProvenance::FromParam(id), _) => {

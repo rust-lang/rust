@@ -104,7 +104,8 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 
             ty::ty_enum(def_id, substs) |
             ty::ty_struct(def_id, substs) => {
-                self.accumulate_from_adt(ty, def_id, substs)
+                let item_scheme = ty::lookup_item_type(self.tcx, def_id);
+                self.accumulate_from_adt(ty, def_id, &item_scheme.generics, substs)
             }
 
             ty::ty_vec(t, _) |
@@ -119,6 +120,18 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 
             ty::ty_param(p) => {
                 self.push_param_constraint_from_top(p);
+            }
+
+            ty::ty_projection(ref data) => {
+                // `<T as TraitRef<..>>::Name`
+
+                // FIXME(#20303) -- gain ability to require that ty_projection : in-scope region,
+                // like a type parameter
+
+                // this seems like a minimal requirement:
+                let trait_def = ty::lookup_trait_def(self.tcx, data.trait_ref.def_id);
+                self.accumulate_from_adt(ty, data.trait_ref.def_id,
+                                         &trait_def.generics, data.trait_ref.substs)
             }
 
             ty::ty_tup(ref tuptys) => {
@@ -213,14 +226,12 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
     fn accumulate_from_adt(&mut self,
                            ty: Ty<'tcx>,
                            def_id: ast::DefId,
+                           generics: &ty::Generics<'tcx>,
                            substs: &Substs<'tcx>)
     {
         // The generic declarations from the type, appropriately
         // substituted for the actual substitutions.
-        let generics =
-            ty::lookup_item_type(self.tcx, def_id)
-            .generics
-            .subst(self.tcx, substs);
+        let generics = generics.subst(self.tcx, substs);
 
         // Variance of each type/region parameter.
         let variances = ty::item_variances(self.tcx, def_id);

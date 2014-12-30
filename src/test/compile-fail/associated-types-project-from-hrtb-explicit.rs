@@ -8,25 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test you can't use a higher-ranked trait bound inside of a qualified
+// path (just won't parse).
+
 #![feature(associated_types)]
 
-trait Get {
-    type Value;
-    fn get(&self) -> <Self as Get>::Value;
+pub trait Foo<T> {
+    type A;
+
+    fn get(&self, t: T) -> Self::A;
 }
 
-fn get(x: int) -> <int as Get>::Value {}
-//~^ ERROR unsupported
-
-struct Struct {
-    x: int,
+fn foo2<I>(x: <I as for<'x> Foo<&'x int>>::A)
+    //~^ ERROR expected identifier, found keyword `for`
+    //~| ERROR expected one of `::` or `>`
+{
 }
 
-impl Struct {
-    fn uhoh<T>(foo: <T as Get>::Value) {}
-    //~^ ERROR no suitable bound on `T`
-}
-
-fn main() {
-}
-
+pub fn main() {}

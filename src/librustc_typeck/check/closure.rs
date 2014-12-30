@@ -14,8 +14,9 @@ use super::{check_fn, Expectation, FnCtxt};
 
 use astconv;
 use middle::infer;
+use middle::region::CodeExtent;
 use middle::subst;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, ToPolyTraitRef, Ty};
 use rscope::RegionScope;
 use syntax::abi;
 use syntax::ast;
@@ -47,7 +48,7 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             match expected_sig_and_kind {
                 None => { // doesn't look like an unboxed closure
                     let region = astconv::opt_ast_region_to_region(fcx,
-                                                                   fcx.infcx(),
+                                                                   fcx,
                                                                    expr.span,
                                                                    &None);
 
@@ -116,7 +117,7 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         abi::RustCall,
         expected_sig);
 
-    let region = match fcx.infcx().anon_regions(expr.span, 1) {
+    let region = match fcx.anon_regions(expr.span, 1) {
         Err(_) => {
             fcx.ccx.tcx.sess.span_bug(expr.span,
                                       "can't make anon regions here?!")
@@ -132,10 +133,13 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     fcx.write_ty(expr.id, closure_type);
 
+    let fn_sig =
+        ty::liberate_late_bound_regions(fcx.tcx(), CodeExtent::from_node_id(body.id), &fn_ty.sig);
+
     check_fn(fcx.ccx,
              ast::Unsafety::Normal,
              expr.id,
-             &fn_ty.sig,
+             &fn_sig,
              decl,
              expr.id,
              &*body,
@@ -168,7 +172,10 @@ fn deduce_unboxed_closure_expectations_from_expected_type<'a,'tcx>(
 {
     match expected_ty.sty {
         ty::ty_trait(ref object_type) => {
-            deduce_unboxed_closure_expectations_from_trait_ref(fcx, &object_type.principal)
+            let trait_ref =
+                object_type.principal_trait_ref_with_self_ty(fcx.tcx(),
+                                                             fcx.tcx().types.err);
+            deduce_unboxed_closure_expectations_from_trait_ref(fcx, &trait_ref)
         }
         ty::ty_infer(ty::TyVar(vid)) => {
             deduce_unboxed_closure_expectations_from_obligations(fcx, vid)
@@ -227,23 +234,21 @@ fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
 {
     // Here `expected_ty` is known to be a type inference variable.
     for obligation in fcx.inh.fulfillment_cx.borrow().pending_obligations().iter() {
-        match obligation.trait_ref {
-            ty::Predicate::Trait(ref trait_ref) => {
+        match obligation.predicate {
+            ty::Predicate::Trait(ref trait_predicate) => {
+                let trait_ref = trait_predicate.to_poly_trait_ref();
                 let self_ty = fcx.infcx().shallow_resolve(trait_ref.self_ty());
                 match self_ty.sty {
                     ty::ty_infer(ty::TyVar(v)) if expected_vid == v => { }
                     _ => { continue; }
                 }
 
-                match deduce_unboxed_closure_expectations_from_trait_ref(fcx, &**trait_ref) {
+                match deduce_unboxed_closure_expectations_from_trait_ref(fcx, &trait_ref) {
                     Some(e) => { return Some(e); }
                     None => { }
                 }
             }
-            ty::Predicate::Equate(..) |
-            ty::Predicate::RegionOutlives(..) |
-            ty::Predicate::TypeOutlives(..) => {
-            }
+            _ => { }
         }
     }
 
@@ -290,7 +295,7 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                 (&ty::UniqTraitStore, _) => ast::Once,
                 (&ty::RegionTraitStore(..), _) => ast::Many,
             };
-            (Some(sig), onceness, cenv.bounds)
+            (Some(sig), onceness, cenv.bounds.clone())
         }
         _ => {
             // Not an error! Means we're inferring the closure type
@@ -311,7 +316,7 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                        decl,
                                        abi::Rust,
                                        expected_sig);
-    let fty_sig = fn_ty.sig.clone();
+    let fn_sig = fn_ty.sig.clone();
     let fty = ty::mk_closure(tcx, fn_ty);
     debug!("check_expr_fn fty={}", fcx.infcx().ty_to_string(fty));
 
@@ -326,10 +331,13 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         ty::UniqTraitStore => (ast::Unsafety::Normal, expr.id)
     };
 
+    let fn_sig =
+        ty::liberate_late_bound_regions(tcx, CodeExtent::from_node_id(body.id), &fn_sig);
+
     check_fn(fcx.ccx,
              inherited_style,
              inherited_style_id,
-             &fty_sig,
+             &fn_sig,
              &*decl,
              expr.id,
              &*body,

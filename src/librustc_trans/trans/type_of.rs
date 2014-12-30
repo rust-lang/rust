@@ -187,7 +187,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     }
 
     let llsizingty = match t.sty {
-        _ if !ty::lltype_is_sized(cx.tcx(), t) => {
+        _ if !lltype_is_sized(cx.tcx(), t) => {
             cx.sess().bug(format!("trying to take the sizing type of {}, an unsized type",
                                   ppaux::ty_to_string(cx.tcx(), t))[])
         }
@@ -199,7 +199,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         ty::ty_float(t) => Type::float_from_ty(cx, t),
 
         ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
-            if ty::type_is_sized(cx.tcx(), ty) {
+            if type_is_sized(cx.tcx(), ty) {
                 Type::i8p(cx)
             } else {
                 Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
@@ -241,7 +241,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
         }
 
-        ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
+        ty::ty_projection(..) | ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
             cx.sess().bug(format!("fictitious type {} in sizing_type_of()",
                                   ppaux::ty_to_string(cx.tcx(), t))[])
         }
@@ -267,11 +267,11 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         // struct which might be unsized, but is monomorphised to a sized type.
         // In this case we'll fake a fat pointer with no unsize info (we use 0).
         // However, its still a fat pointer, so we need some type use.
-        if ty::type_is_sized(cx.tcx(), t) {
+        if type_is_sized(cx.tcx(), t) {
             return Type::i8p(cx);
         }
 
-        match ty::unsized_part_of_type(cx.tcx(), t).sty {
+        match unsized_part_of_type(cx.tcx(), t).sty {
             ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyU),
             ty::ty_trait(_) => Type::vtable_ptr(cx),
             _ => panic!("Unexpected type returned from unsized_part_of_type : {}",
@@ -342,7 +342,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
                   cx.tn().find_type("str_slice").unwrap()
               }
               ty::ty_trait(..) => Type::opaque_trait(cx),
-              _ if !ty::type_is_sized(cx.tcx(), ty) => {
+              _ if !type_is_sized(cx.tcx(), ty) => {
                   let p_ty = type_of(cx, ty).ptr_to();
                   Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, ty)], false)
               }
@@ -414,6 +414,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
       },
 
       ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),
+      ty::ty_projection(..) => cx.sess().bug("type_of with ty_projection"),
       ty::ty_param(..) => cx.sess().bug("type_of with ty_param"),
       ty::ty_err(..) => cx.sess().bug("type_of with ty_err"),
     };

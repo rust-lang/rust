@@ -13,7 +13,7 @@ use back::abi;
 use llvm;
 use llvm::ValueRef;
 use metadata::csearch;
-use middle::subst::{Subst,Substs};
+use middle::subst::{Substs};
 use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
@@ -132,8 +132,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             ref trait_ref,
             method_num
         }) => {
-            let trait_ref =
-                Rc::new(ty::Binder((**trait_ref).subst(bcx.tcx(), bcx.fcx.param_substs)));
+            let trait_ref = ty::Binder(bcx.monomorphize(trait_ref));
             let span = bcx.tcx().map.span(method_call.expr_id);
             debug!("method_call={} trait_ref={}",
                    method_call,
@@ -142,8 +141,11 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                             span,
                                             trait_ref.clone());
             debug!("origin = {}", origin.repr(bcx.tcx()));
-            trans_monomorphized_callee(bcx, method_call, trait_ref.def_id(),
-                                       method_num, origin)
+            trans_monomorphized_callee(bcx,
+                                       method_call,
+                                       trait_ref.def_id(),
+                                       method_num,
+                                       origin)
         }
 
         ty::MethodTraitObject(ref mt) => {
@@ -207,7 +209,6 @@ pub fn trans_static_method_callee(bcx: Block,
     let subst::SeparateVecsPerParamSpace {
         types: rcvr_type,
         selfs: rcvr_self,
-        assocs: rcvr_assoc,
         fns: rcvr_method
     } = rcvr_substs.types.split();
 
@@ -236,11 +237,11 @@ pub fn trans_static_method_callee(bcx: Block,
     let trait_substs =
         Substs::erased(VecPerParamSpace::new(rcvr_type,
                                              rcvr_self,
-                                             rcvr_assoc,
                                              Vec::new()));
+    let trait_substs = bcx.tcx().mk_substs(trait_substs);
     debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
-    let trait_ref = Rc::new(ty::Binder(ty::TraitRef { def_id: trait_id,
-                                                      substs: bcx.tcx().mk_substs(trait_substs) }));
+    let trait_ref = ty::Binder(Rc::new(ty::TraitRef { def_id: trait_id,
+                                                      substs: trait_substs }));
     let vtbl = fulfill_obligation(bcx.ccx(),
                                   DUMMY_SP,
                                   trait_ref);
@@ -273,13 +274,11 @@ pub fn trans_static_method_callee(bcx: Block,
             let subst::SeparateVecsPerParamSpace {
                 types: impl_type,
                 selfs: impl_self,
-                assocs: impl_assoc,
                 fns: _
             } = impl_substs.types.split();
             let callee_substs =
                 Substs::erased(VecPerParamSpace::new(impl_type,
                                                      impl_self,
-                                                     impl_assoc,
                                                      rcvr_method));
 
             let mth_id = method_with_name(ccx, impl_did, mname);
@@ -408,13 +407,12 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let subst::SeparateVecsPerParamSpace {
         types: rcvr_type,
         selfs: rcvr_self,
-        assocs: rcvr_assoc,
         fns: rcvr_method
     } = rcvr_substs.types.clone().split();
     assert!(rcvr_method.is_empty());
     subst::Substs {
         regions: subst::ErasedRegions,
-        types: subst::VecPerParamSpace::new(rcvr_type, rcvr_self, rcvr_assoc, node_method)
+        types: subst::VecPerParamSpace::new(rcvr_type, rcvr_self, node_method)
     }
 }
 
@@ -436,7 +434,7 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let self_datum = unpack_datum!(
         bcx, expr::trans(bcx, self_expr));
 
-    let llval = if ty::type_needs_drop(bcx.tcx(), self_datum.ty) {
+    let llval = if type_needs_drop(bcx.tcx(), self_datum.ty) {
         let self_datum = unpack_datum!(
             bcx, self_datum.to_rvalue_datum(bcx, "trait_callee"));
 
@@ -515,7 +513,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// This will hopefully change now that DST is underway.
 pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               box_ty: Ty<'tcx>,
-                              trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
+                              trait_ref: ty::PolyTraitRef<'tcx>)
                               -> ValueRef
 {
     debug!("get_vtable(box_ty={}, trait_ref={})",
@@ -562,7 +560,7 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let llfn = vec![trans_fn_pointer_shim(bcx.ccx(), bare_fn_ty)];
                 llfn.into_iter()
             }
-            traits::VtableParam(..) => {
+            traits::VtableParam => {
                 bcx.sess().bug(
                     format!("resolved vtable for {} to bad vtable {} in trans",
                             trait_ref.repr(bcx.tcx()),
@@ -671,7 +669,7 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     datum: Datum<'tcx, Expr>,
                                     id: ast::NodeId,
-                                    trait_ref: Rc<ty::PolyTraitRef<'tcx>>,
+                                    trait_ref: ty::PolyTraitRef<'tcx>,
                                     dest: expr::Dest)
                                     -> Block<'blk, 'tcx> {
     let mut bcx = bcx;

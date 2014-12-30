@@ -8,15 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that a partially specified trait object with unspecified associated
-// type does not ICE.
-
 #![feature(associated_types)]
 
-trait Foo {
-    type A;
+trait Get {
+    type Value;
+    fn get(&self) -> <Self as Get>::Value;
 }
 
-fn bar(x: &Foo) {} //~ERROR missing type for associated type `A`
+trait Other {
+    fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
+    //~^ ERROR the trait `Get` is not implemented for the type `Self`
+}
 
-pub fn main() {}
+fn main() {
+}
+

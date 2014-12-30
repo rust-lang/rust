@@ -19,7 +19,7 @@ use std::mem;
 trait T { fn foo(); }
 
 #[rustc_variance]
-struct TOption<'a> { //~ ERROR regions=[[-];[];[];[]]
+struct TOption<'a> { //~ ERROR regions=[[-];[];[]]
     v: Option<Box<T + 'a>>,
 }
 

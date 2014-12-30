@@ -133,8 +133,8 @@ pub fn mk_closure_tys<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn tuplify_box_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
-    let ptr = ty::mk_imm_ptr(tcx, ty::mk_i8());
-    ty::mk_tup(tcx, vec!(ty::mk_uint(), ty::mk_nil_ptr(tcx), ptr, ptr, t))
+    let ptr = ty::mk_imm_ptr(tcx, tcx.types.i8);
+    ty::mk_tup(tcx, vec!(tcx.types.uint, ty::mk_nil_ptr(tcx), ptr, ptr, t))
 }
 
 fn allocate_cbox<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,

@@ -19,11 +19,12 @@ use trans::build::*;
 use trans::cabi;
 use trans::common::*;
 use trans::machine;
+use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of::*;
 use trans::type_of;
 use middle::ty::{mod, Ty};
-use middle::subst::{Subst, Substs};
+use middle::subst::{Substs};
 use std::cmp;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
@@ -525,7 +526,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let _icx = push_ctxt("foreign::build_foreign_fn");
 
     let fnty = ty::node_id_to_type(ccx.tcx(), id);
-    let mty = fnty.subst(ccx.tcx(), param_substs);
+    let mty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fnty);
     let tys = foreign_types_for_fn_ty(ccx, mty);
 
     unsafe { // unsafe because we call LLVM operations
@@ -543,10 +544,12 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                attrs: &[ast::Attribute],
                                id: ast::NodeId,
                                hash: Option<&str>)
-                               -> ValueRef {
+                               -> ValueRef
+    {
         let _icx = push_ctxt("foreign::foreign::build_rust_fn");
         let tcx = ccx.tcx();
-        let t = ty::node_id_to_type(tcx, id).subst(ccx.tcx(), param_substs);
+        let t = ty::node_id_to_type(tcx, id);
+        let t = monomorphize::apply_param_substs(tcx, param_substs, &t);
 
         let ps = ccx.tcx().map.with_path(id, |path| {
             let abi = Some(ast_map::PathName(special_idents::clownshoe_abi.name));

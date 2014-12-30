@@ -12,15 +12,18 @@ use back::link::exported_name;
 use session;
 use llvm::ValueRef;
 use llvm;
+use middle::infer;
 use middle::subst;
-use middle::subst::Subst;
+use middle::subst::{Subst, Substs};
+use middle::traits;
+use middle::ty_fold::{mod, TypeFolder, TypeFoldable};
 use trans::base::{set_llvm_fn_attrs, set_inline_hint};
 use trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use trans::base::{trans_fn, decl_internal_rust_fn};
 use trans::base;
 use trans::common::*;
 use trans::foreign;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, HasProjectionTypes, Ty};
 use util::ppaux::Repr;
 
 use syntax::abi;
@@ -29,6 +32,7 @@ use syntax::ast_map;
 use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::attr;
 use std::hash::{sip, Hash};
+use std::rc::Rc;
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: ast::DefId,
@@ -92,7 +96,12 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
+
     let mono_ty = llitem_ty.subst(ccx.tcx(), psubsts);
+    debug!("mono_ty = {} (post-substitution)", mono_ty.repr(ccx.tcx()));
+
+    let mono_ty = normalize_associated_type(ccx.tcx(), &mono_ty);
+    debug!("mono_ty = {} (post-normalization)", mono_ty.repr(ccx.tcx()));
 
     ccx.stats().n_monos.set(ccx.stats().n_monos.get() + 1);
 
@@ -281,4 +290,86 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 pub struct MonoId<'tcx> {
     pub def: ast::DefId,
     pub params: subst::VecPerParamSpace<Ty<'tcx>>
+}
+
+/// Monomorphizes a type from the AST by first applying the in-scope
+/// substitutions and then normalizing any associated types.
+pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
+                                  param_substs: &Substs<'tcx>,
+                                  value: &T)
+                                  -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
+{
+    assert!(param_substs.regions.is_erased());
+
+    let substituted = value.subst(tcx, param_substs);
+    normalize_associated_type(tcx, &substituted)
+}
+
+/// Removes associated types, if any. Since this during
+/// monomorphization, we know that only concrete types are involved,
+/// and hence we can be sure that all associated types will be
+/// completely normalized away.
+pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, t: &T) -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
+{
+    debug!("normalize_associated_type(t={})", t.repr(tcx));
+
+    if !t.has_projection_types() {
+        return t.clone();
+    }
+
+    // FIXME(#20304) -- cache
+
+    let infcx = infer::new_infer_ctxt(tcx);
+    let param_env = ty::empty_parameter_environment();
+    let mut selcx = traits::SelectionContext::new(&infcx, &param_env, tcx);
+    let mut normalizer = AssociatedTypeNormalizer { selcx: &mut selcx };
+    let result = t.fold_with(&mut normalizer);
+
+    debug!("normalize_associated_type: t={} result={}",
+           t.repr(tcx),
+           result.repr(tcx));
+
+    result
+}
+
+struct AssociatedTypeNormalizer<'a,'tcx:'a> {
+    selcx: &'a mut traits::SelectionContext<'a,'tcx>,
+}
+
+impl<'a,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> { self.selcx.tcx() }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.sty {
+            ty::ty_projection(ref data) => {
+                debug!("ty_projection({})", data.repr(self.tcx()));
+
+                let tcx = self.selcx.tcx();
+                let substs = data.trait_ref.substs.clone().erase_regions();
+                let substs = self.tcx().mk_substs(substs);
+                assert!(substs.types.iter().all(|&t| (!ty::type_has_params(t) &&
+                                                      !ty::type_has_self(t))));
+                let trait_ref = Rc::new(ty::TraitRef::new(data.trait_ref.def_id, substs));
+                let projection_ty = ty::ProjectionTy { trait_ref: trait_ref.clone(),
+                                                       item_name: data.item_name };
+                let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
+                                                         projection_ty);
+                match traits::project_type(self.selcx, &obligation) {
+                    Ok(ty) => ty,
+                    Err(errors) => {
+                        tcx.sess.bug(
+                            format!("Encountered error(s) `{}` selecting `{}` during trans",
+                                    errors.repr(tcx),
+                                    trait_ref.repr(tcx)).as_slice());
+                    }
+                }
+            }
+
+            _ => {
+                ty_fold::super_fold_ty(self, ty)
+            }
+        }
+    }
 }

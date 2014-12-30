@@ -24,20 +24,20 @@ use middle::infer;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::region;
-use middle::subst;
-use middle::subst::{Subst, Substs};
+use middle::subst::{mod, Subst, Substs};
 use trans::base;
 use trans::build;
 use trans::cleanup;
 use trans::datum;
 use trans::debuginfo;
 use trans::machine;
+use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::traits;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, HasProjectionTypes, Ty};
 use middle::ty_fold;
-use middle::ty_fold::TypeFoldable;
+use middle::ty_fold::{TypeFolder, TypeFoldable};
 use util::ppaux::Repr;
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
@@ -45,7 +45,6 @@ use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
-use std::rc::Rc;
 use std::vec::Vec;
 use syntax::ast::Ident;
 use syntax::ast;
@@ -53,8 +52,109 @@ use syntax::ast_map::{PathElem, PathName};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
+use util::common::memoized;
+use util::nodemap::FnvHashSet;
 
 pub use trans::context::CrateContext;
+
+// Is the type's representation size known at compile time?
+pub fn type_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty::type_contents(cx, ty).is_sized(cx)
+}
+
+pub fn lltype_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.sty {
+        ty::ty_open(_) => true,
+        _ => type_is_sized(cx, ty),
+    }
+}
+
+pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.sty {
+        ty::ty_ptr(ty::mt{ty, ..}) |
+        ty::ty_rptr(_, ty::mt{ty, ..}) |
+        ty::ty_uniq(ty) => {
+            !type_is_sized(cx, ty)
+        }
+        _ => {
+            false
+        }
+    }
+}
+
+// Return the smallest part of `ty` which is unsized. Fails if `ty` is sized.
+// 'Smallest' here means component of the static representation of the type; not
+// the size of an object at runtime.
+pub fn unsized_part_of_type<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    match ty.sty {
+        ty::ty_str | ty::ty_trait(..) | ty::ty_vec(..) => ty,
+        ty::ty_struct(def_id, substs) => {
+            let unsized_fields: Vec<_> =
+                ty::struct_fields(cx, def_id, substs)
+                .iter()
+                .map(|f| f.mt.ty)
+                .filter(|ty| !type_is_sized(cx, *ty))
+                .collect();
+
+            // Exactly one of the fields must be unsized.
+            assert!(unsized_fields.len() == 1);
+
+            unsized_part_of_type(cx, unsized_fields[0])
+        }
+        _ => {
+            assert!(type_is_sized(cx, ty),
+                    "unsized_part_of_type failed even though ty is unsized");
+            panic!("called unsized_part_of_type with sized ty");
+        }
+    }
+}
+
+// Some things don't need cleanups during unwinding because the
+// task can free them all at once later. Currently only things
+// that only contain scalars and shared boxes can avoid unwind
+// cleanups.
+pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
+    return memoized(ccx.needs_unwind_cleanup_cache(), ty, |ty| {
+        type_needs_unwind_cleanup_(ccx.tcx(), ty, &mut FnvHashSet::new())
+    });
+
+    fn type_needs_unwind_cleanup_<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                        ty: Ty<'tcx>,
+                                        tycache: &mut FnvHashSet<Ty<'tcx>>)
+                                        -> bool
+    {
+        // Prevent infinite recursion
+        if !tycache.insert(ty) {
+            return false;
+        }
+
+        let mut needs_unwind_cleanup = false;
+        ty::maybe_walk_ty(ty, |ty| {
+            needs_unwind_cleanup |= match ty.sty {
+                ty::ty_bool | ty::ty_int(_) | ty::ty_uint(_) |
+                ty::ty_float(_) | ty::ty_tup(_) | ty::ty_ptr(_) => false,
+
+                ty::ty_enum(did, substs) =>
+                    ty::enum_variants(tcx, did).iter().any(|v|
+                        v.args.iter().any(|&aty| {
+                            let t = aty.subst(tcx, substs);
+                            type_needs_unwind_cleanup_(tcx, t, tycache)
+                        })
+                    ),
+
+                _ => true
+            };
+            !needs_unwind_cleanup
+        });
+        needs_unwind_cleanup
+    }
+}
+
+pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>,
+                             ty: Ty<'tcx>)
+                             -> bool {
+    ty::type_contents(cx, ty).needs_drop(cx)
+}
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                        ty: Ty<'tcx>) -> bool {
@@ -79,10 +179,10 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
         ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
         type_is_newtype_immediate(ccx, ty) ||
         ty::type_is_simd(tcx, ty);
-    if simple && !ty::type_is_fat_ptr(tcx, ty) {
+    if simple && !type_is_fat_ptr(tcx, ty) {
         return true;
     }
-    if !ty::type_is_sized(tcx, ty) {
+    if !type_is_sized(tcx, ty) {
         return false;
     }
     match ty.sty {
@@ -364,6 +464,14 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
         return out;
     }
+
+    pub fn monomorphize<T>(&self, value: &T) -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
+    {
+        monomorphize::apply_param_substs(self.ccx.tcx(),
+                                         self.param_substs,
+                                         value)
+    }
 }
 
 // Basic block context.  We create a block context for each basic block
@@ -455,6 +563,14 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
 
     pub fn to_str(&self) -> String {
         format!("[block {:p}]", self)
+    }
+
+    pub fn monomorphize<T>(&self, value: &T) -> T
+        where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
+    {
+        monomorphize::apply_param_substs(self.tcx(),
+                                         self.fcx.param_substs,
+                                         value)
     }
 }
 
@@ -758,7 +874,7 @@ pub fn is_null(val: ValueRef) -> bool {
 }
 
 pub fn monomorphize_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
-    t.subst(bcx.tcx(), bcx.fcx.param_substs)
+    bcx.fcx.monomorphize(&t)
 }
 
 pub fn node_id_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, id: ast::NodeId) -> Ty<'tcx> {
@@ -780,7 +896,7 @@ pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &ast::Expr) ->
 /// guarantee to us that all nested obligations *could be* resolved if we wanted to.
 pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     span: Span,
-                                    trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
+                                    trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> traits::Vtable<'tcx, ()>
 {
     let tcx = ccx.tcx();
@@ -810,7 +926,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // shallow result we are looking for -- that is, what specific impl.
     let mut selcx = traits::SelectionContext::new(&infcx, &param_env, tcx);
     let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
-                                             trait_ref.clone());
+                                             trait_ref.to_poly_trait_predicate());
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
         Ok(None) => {
@@ -844,7 +960,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // iterating early.
     let mut fulfill_cx = traits::FulfillmentContext::new();
     let vtable = selection.map_move_nested(|predicate| {
-        fulfill_cx.register_predicate(infcx.tcx, predicate);
+        fulfill_cx.register_predicate(&infcx, predicate);
     });
     match fulfill_cx.select_all_or_error(&infcx, &param_env, tcx) {
         Ok(()) => { }
@@ -890,7 +1006,8 @@ pub enum ExprOrMethodCall {
 
 pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   node: ExprOrMethodCall)
-                                  -> subst::Substs<'tcx> {
+                                  -> subst::Substs<'tcx>
+{
     let tcx = bcx.tcx();
 
     let substs = match node {
@@ -911,7 +1028,7 @@ pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let substs = substs.erase_regions();
-    substs.subst(tcx, bcx.fcx.param_substs)
+    bcx.monomorphize(&substs)
 }
 
 pub fn langcall(bcx: Block,

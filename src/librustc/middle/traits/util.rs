@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::subst::{Subst, Substs, VecPerParamSpace};
+use middle::subst::{Substs, VecPerParamSpace};
 use middle::infer::InferCtxt;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, Ty, AsPredicate, ToPolyTraitRef};
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
@@ -20,7 +20,7 @@ use util::common::ErrorReported;
 use util::ppaux::Repr;
 
 use super::{Obligation, ObligationCause, PredicateObligation,
-            VtableImpl, VtableParam, VtableParamData, VtableImplData};
+            VtableImpl, VtableParam, VtableImplData};
 
 ///////////////////////////////////////////////////////////////////////////
 // `Elaboration` iterator
@@ -46,19 +46,19 @@ struct StackEntry<'tcx> {
 
 pub fn elaborate_trait_ref<'cx, 'tcx>(
     tcx: &'cx ty::ctxt<'tcx>,
-    trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
+    trait_ref: ty::PolyTraitRef<'tcx>)
     -> Elaborator<'cx, 'tcx>
 {
-    elaborate_predicates(tcx, vec![ty::Predicate::Trait(trait_ref)])
+    elaborate_predicates(tcx, vec![trait_ref.as_predicate()])
 }
 
 pub fn elaborate_trait_refs<'cx, 'tcx>(
     tcx: &'cx ty::ctxt<'tcx>,
-    trait_refs: &[Rc<ty::PolyTraitRef<'tcx>>])
+    trait_refs: &[ty::PolyTraitRef<'tcx>])
     -> Elaborator<'cx, 'tcx>
 {
     let predicates = trait_refs.iter()
-                               .map(|trait_ref| ty::Predicate::Trait((*trait_ref).clone()))
+                               .map(|trait_ref| trait_ref.as_predicate())
                                .collect();
     elaborate_predicates(tcx, predicates)
 }
@@ -78,23 +78,34 @@ pub fn elaborate_predicates<'cx, 'tcx>(
 }
 
 impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
+    pub fn filter_to_traits(self) -> Supertraits<'cx, 'tcx> {
+        Supertraits { elaborator: self }
+    }
+
     fn push(&mut self, predicate: &ty::Predicate<'tcx>) {
         match *predicate {
-            ty::Predicate::Trait(ref trait_ref) => {
+            ty::Predicate::Trait(ref data) => {
                 let mut predicates =
-                    ty::predicates_for_trait_ref(self.tcx, &**trait_ref);
+                    ty::predicates_for_trait_ref(self.tcx,
+                                                 &data.to_poly_trait_ref());
 
                 // Only keep those bounds that we haven't already
                 // seen.  This is necessary to prevent infinite
                 // recursion in some cases.  One common case is when
                 // people define `trait Sized { }` rather than `trait
                 // Sized for Sized? { }`.
-                predicates.retain(|r| self.visited.insert((*r).clone()));
+                predicates.retain(|r| self.visited.insert(r.clone()));
 
                 self.stack.push(StackEntry { position: 0,
                                              predicates: predicates });
             }
             ty::Predicate::Equate(..) => {
+                // Currently, we do not "elaborate" predicates like
+                // `X == Y`, though conceivably we might. For example,
+                // `&X == &Y` implies that `X == Y`.
+            }
+            ty::Predicate::Projection(..) => {
+                // Nothing to elaborate in a projection predicate.
             }
             ty::Predicate::RegionOutlives(..) |
             ty::Predicate::TypeOutlives(..) => {
@@ -173,34 +184,30 @@ pub struct Supertraits<'cx, 'tcx:'cx> {
 }
 
 pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
-                              trait_ref: Rc<ty::PolyTraitRef<'tcx>>)
+                              trait_ref: ty::PolyTraitRef<'tcx>)
                               -> Supertraits<'cx, 'tcx>
 {
-    let elaborator = elaborate_trait_ref(tcx, trait_ref);
-    Supertraits { elaborator: elaborator }
+    elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
 }
 
 pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
-                                    bounds: &[Rc<ty::PolyTraitRef<'tcx>>])
+                                    bounds: &[ty::PolyTraitRef<'tcx>])
                                     -> Supertraits<'cx, 'tcx>
 {
-    let elaborator = elaborate_trait_refs(tcx, bounds);
-    Supertraits { elaborator: elaborator }
+    elaborate_trait_refs(tcx, bounds).filter_to_traits()
 }
 
-impl<'cx, 'tcx> Iterator<Rc<ty::PolyTraitRef<'tcx>>> for Supertraits<'cx, 'tcx> {
-    fn next(&mut self) -> Option<Rc<ty::PolyTraitRef<'tcx>>> {
+impl<'cx, 'tcx> Iterator<ty::PolyTraitRef<'tcx>> for Supertraits<'cx, 'tcx> {
+    fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         loop {
             match self.elaborator.next() {
                 None => {
                     return None;
                 }
-                Some(ty::Predicate::Trait(trait_ref)) => {
-                    return Some(trait_ref);
+                Some(ty::Predicate::Trait(data)) => {
+                    return Some(data.to_poly_trait_ref());
                 }
-                Some(ty::Predicate::Equate(..)) |
-                Some(ty::Predicate::RegionOutlives(..)) |
-                Some(ty::Predicate::TypeOutlives(..)) => {
+                Some(_) => {
                 }
             }
         }
@@ -222,29 +229,12 @@ pub fn fresh_substs_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 {
     let tcx = infcx.tcx;
     let impl_generics = ty::lookup_item_type(tcx, impl_def_id).generics;
-    let input_substs = infcx.fresh_substs_for_generics(span, &impl_generics);
-
-    // Add substs for the associated types bound in the impl.
-    let ref items = tcx.impl_items.borrow()[impl_def_id];
-    let mut assoc_tys = Vec::new();
-    for item in items.iter() {
-        if let &ty::ImplOrTraitItemId::TypeTraitItemId(id) = item {
-            assoc_tys.push(tcx.tcache.borrow()[id].ty.subst(tcx, &input_substs));
-        }
-    }
-
-    input_substs.with_assoc_tys(assoc_tys)
+    infcx.fresh_substs_for_generics(span, &impl_generics)
 }
 
 impl<'tcx, N> fmt::Show for VtableImplData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "VtableImpl({})", self.impl_def_id)
-    }
-}
-
-impl<'tcx> fmt::Show for VtableParamData<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableParam(...)")
     }
 }
 
@@ -261,22 +251,22 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
     generic_bounds.predicates.map(|predicate| {
         Obligation { cause: cause.clone(),
                      recursion_depth: recursion_depth,
-                     trait_ref: predicate.clone() }
+                     predicate: predicate.clone() }
     })
 }
 
-pub fn poly_trait_ref_for_builtin_bound<'tcx>(
+pub fn trait_ref_for_builtin_bound<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     builtin_bound: ty::BuiltinBound,
     param_ty: Ty<'tcx>)
-    -> Result<Rc<ty::PolyTraitRef<'tcx>>, ErrorReported>
+    -> Result<Rc<ty::TraitRef<'tcx>>, ErrorReported>
 {
     match tcx.lang_items.from_builtin_kind(builtin_bound) {
         Ok(def_id) => {
-            Ok(Rc::new(ty::Binder(ty::TraitRef {
+            Ok(Rc::new(ty::TraitRef {
                 def_id: def_id,
                 substs: tcx.mk_substs(Substs::empty().with_self_ty(param_ty))
-            })))
+            }))
         }
         Err(e) => {
             tcx.sess.err(e.as_slice());
@@ -293,38 +283,18 @@ pub fn predicate_for_builtin_bound<'tcx>(
     param_ty: Ty<'tcx>)
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
-    let trait_ref = try!(poly_trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty));
+    let trait_ref = try!(trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty));
     Ok(Obligation {
         cause: cause,
         recursion_depth: recursion_depth,
-        trait_ref: ty::Predicate::Trait(trait_ref),
+        predicate: trait_ref.as_predicate(),
     })
-}
-
-/// Starting from a caller obligation `caller_bound` (which has coordinates `space`/`i` in the list
-/// of caller obligations), search through the trait and supertraits to find one where `test(d)` is
-/// true, where `d` is the def-id of the trait/supertrait. If any is found, return `Some(p)` where
-/// `p` is the path to that trait/supertrait. Else `None`.
-pub fn search_trait_and_supertraits_from_bound<'tcx,F>(tcx: &ty::ctxt<'tcx>,
-                                                       caller_bound: Rc<ty::PolyTraitRef<'tcx>>,
-                                                       mut test: F)
-                                                       -> Option<VtableParamData<'tcx>>
-    where F: FnMut(ast::DefId) -> bool,
-{
-    for bound in transitive_bounds(tcx, &[caller_bound]) {
-        if test(bound.def_id()) {
-            let vtable_param = VtableParamData { bound: bound };
-            return Some(vtable_param);
-        }
-    }
-
-    return None;
 }
 
 impl<'tcx,O:Repr<'tcx>> Repr<'tcx> for super::Obligation<'tcx, O> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("Obligation(trait_ref={},depth={})",
-                self.trait_ref.repr(tcx),
+        format!("Obligation(predicate={},depth={})",
+                self.predicate.repr(tcx),
                 self.recursion_depth)
     }
 }
@@ -344,8 +314,8 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
                 format!("VtableFnPointer({})",
                         d.repr(tcx)),
 
-            super::VtableParam(ref v) =>
-                format!("VtableParam({})", v.repr(tcx)),
+            super::VtableParam =>
+                format!("VtableParam"),
 
             super::VtableBuiltin(ref d) =>
                 d.repr(tcx)
@@ -366,13 +336,6 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableBuiltinData<N> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("VtableBuiltin(nested={})",
                 self.nested.repr(tcx))
-    }
-}
-
-impl<'tcx> Repr<'tcx> for super::VtableParamData<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("VtableParam(bound={})",
-                self.bound.repr(tcx))
     }
 }
 
@@ -406,6 +369,7 @@ impl<'tcx> Repr<'tcx> for super::FulfillmentErrorCode<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             super::CodeSelectionError(ref o) => o.repr(tcx),
+            super::CodeProjectionError(ref o) => o.repr(tcx),
             super::CodeAmbiguity => format!("Ambiguity")
         }
     }
@@ -415,13 +379,22 @@ impl<'tcx> fmt::Show for super::FulfillmentErrorCode<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             super::CodeSelectionError(ref e) => write!(f, "{}", e),
+            super::CodeProjectionError(ref e) => write!(f, "{}", e),
             super::CodeAmbiguity => write!(f, "Ambiguity")
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::type_err<'tcx> {
+impl<'tcx> Repr<'tcx> for super::MismatchedProjectionTypes<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        ty::type_err_to_str(tcx, self)
+        self.err.repr(tcx)
     }
 }
+
+impl<'tcx> fmt::Show for super::MismatchedProjectionTypes<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "MismatchedProjectionTypes(..)")
+    }
+}
+
+

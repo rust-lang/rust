@@ -8,23 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types. Check we get an error when an
-// equality constraint is used in a qualified path.
+// Helper for test issue-18048, which tests associated types in a
+// cross-crate scenario.
 
+#![crate_type="lib"]
 #![feature(associated_types)]
 
-pub trait Foo {
-    type A;
-    fn boo(&self) -> <Self as Foo>::A;
+pub trait Bar {
+    type T;
+
+    fn get(x: Option<Self>) -> <Self as Bar>::T;
 }
 
-struct Bar;
+impl Bar for int {
+    type T = uint;
 
-impl Foo for int {
-    type A = uint;
-    fn boo(&self) -> uint { 42 }
+    fn get(_: Option<int>) -> uint { 22 }
 }
-
-fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {} //~ERROR equality constraints are not allowed in this
-
-pub fn main() {}
