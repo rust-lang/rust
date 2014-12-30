@@ -104,6 +104,10 @@
 /// - `empty`: an empty set of flags
 /// - `all`: the set of all flags
 /// - `bits`: the raw value of the flags currently stored
+/// - `from_bits`: convert from underlying bit representation, unless that
+///                representation contains bits that do not correspond to a flag
+/// - `from_bits_truncate`: convert from underlying bit representation, dropping
+///                         any bits that do not correspond to flags
 /// - `is_empty`: `true` if no flags are currently stored
 /// - `is_all`: `true` if all flags are currently set
 /// - `intersects`: `true` if there are flags common to both `self` and `other`
