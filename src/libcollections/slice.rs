@@ -155,6 +155,7 @@ impl<'a, T: Clone, V: AsSlice<T>> VectorVector<T> for [V] {
 ///
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
+#[deriving(Clone)]
 pub struct ElementSwaps {
     sdir: Vec<SizeDirection>,
     /// If `true`, emit the last swap that returns the sequence to initial
@@ -177,11 +178,11 @@ impl ElementSwaps {
     }
 }
 
-#[deriving(Copy)]
+#[deriving(Copy, Clone)]
 enum Direction { Pos, Neg }
 
 /// An `Index` and `Direction` together.
-#[deriving(Copy)]
+#[deriving(Copy, Clone)]
 struct SizeDirection {
     size: uint,
     dir: Direction,
@@ -247,6 +248,7 @@ impl Iterator<(uint, uint)> for ElementSwaps {
 /// swap applied.
 ///
 /// Generates even and odd permutations alternately.
+#[deriving(Clone)]
 pub struct Permutations<T> {
     swaps: ElementSwaps,
     v: Vec<T>,

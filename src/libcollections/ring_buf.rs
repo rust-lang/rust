@@ -1129,6 +1129,17 @@ pub struct Iter<'a, T:'a> {
     head: uint
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, T> Clone for Iter<'a, T> {
+    fn clone(&self) -> Iter<'a, T> {
+        Iter {
+            ring: self.ring,
+            tail: self.tail,
+            head: self.head
+        }
+    }
+}
+
 impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
