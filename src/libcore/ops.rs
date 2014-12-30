@@ -300,58 +300,6 @@ rem_float_impl! { f64, fmod }
 /// `neg`, and therefore, `main` prints `Negating!`.
 ///
 /// ```
-/// #[deriving(Copy)]
-/// struct Foo;
-///
-/// impl Neg<Foo> for Foo {
-///     fn neg(&self) -> Foo {
-///         println!("Negating!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     -Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove trait after a snapshot
-#[cfg(stage0)]
-#[lang="neg"]
-pub trait Neg<Result> for Sized? {
-    /// The method for the unary `-` operator
-    fn neg(&self) -> Result;
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! neg_impl {
-    ($($t:ty)*) => ($(
-        impl Neg<$t> for $t {
-            #[inline]
-            fn neg(&self) -> $t { -*self }
-        }
-    )*)
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! neg_uint_impl {
-    ($t:ty, $t_signed:ty) => {
-        impl Neg<$t> for $t {
-            #[inline]
-            fn neg(&self) -> $t { -(*self as $t_signed) as $t }
-        }
-    }
-}
-
-/// The `Neg` trait is used to specify the functionality of unary `-`.
-///
-/// # Example
-///
-/// A trivial implementation of `Neg`. When `-Foo` happens, it ends up calling
-/// `neg`, and therefore, `main` prints `Negating!`.
-///
-/// ```
 /// struct Foo;
 ///
 /// impl Copy for Foo {}
@@ -367,14 +315,12 @@ macro_rules! neg_uint_impl {
 ///     -Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="neg"]
 pub trait Neg<Result> {
     /// The method for the unary `-` operator
     fn neg(self) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! neg_impl {
     ($($t:ty)*) => ($(
         impl Neg<$t> for $t {
@@ -384,7 +330,6 @@ macro_rules! neg_impl {
     )*)
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! neg_uint_impl {
     ($t:ty, $t_signed:ty) => {
         impl Neg<$t> for $t {
@@ -411,48 +356,6 @@ neg_uint_impl! { u64, i64 }
 /// `not`, and therefore, `main` prints `Not-ing!`.
 ///
 /// ```
-/// #[deriving(Copy)]
-/// struct Foo;
-///
-/// impl Not<Foo> for Foo {
-///     fn not(&self) -> Foo {
-///         println!("Not-ing!");
-///         *self
-///     }
-/// }
-///
-/// fn main() {
-///     !Foo;
-/// }
-/// ```
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-#[lang="not"]
-pub trait Not<Result> for Sized? {
-    /// The method for the unary `!` operator
-    fn not(&self) -> Result;
-}
-
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! not_impl {
-    ($($t:ty)*) => ($(
-        impl Not<$t> for $t {
-            #[inline]
-            fn not(&self) -> $t { !*self }
-        }
-    )*)
-}
-
-/// The `Not` trait is used to specify the functionality of unary `!`.
-///
-/// # Example
-///
-/// A trivial implementation of `Not`. When `!Foo` happens, it ends up calling
-/// `not`, and therefore, `main` prints `Not-ing!`.
-///
-/// ```
 /// struct Foo;
 ///
 /// impl Copy for Foo {}
@@ -468,14 +371,12 @@ macro_rules! not_impl {
 ///     !Foo;
 /// }
 /// ```
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 #[lang="not"]
 pub trait Not<Result> {
     /// The method for the unary `!` operator
     fn not(self) -> Result;
 }
 
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 macro_rules! not_impl {
     ($($t:ty)*) => ($(
         impl Not<$t> for $t {

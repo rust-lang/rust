@@ -989,18 +989,9 @@ pub trait ToString {
 }
 
 impl<T: fmt::Show> ToString for T {
-    // NOTE(stage0): Remove cfg after a snapshot
-    #[cfg(not(stage0))]
     fn to_string(&self) -> String {
         let mut buf = Vec::<u8>::new();
         let _ = fmt::write(&mut buf, format_args!("{}", *self));
-        String::from_utf8(buf).unwrap()
-    }
-    // NOTE(stage0): Remove method after a snapshot
-    #[cfg(stage0)]
-    fn to_string(&self) -> String {
-        let mut buf = Vec::<u8>::new();
-        let _ = format_args!(|args| fmt::write(&mut buf, args), "{}", self);
         String::from_utf8(buf).unwrap()
     }
 }
