@@ -21,7 +21,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a0:0:64-n32".to_string()
+                -a:0:64-n32".to_string()
           }
 
           abi::OsiOS => {
@@ -29,7 +29,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a0:0:64-n32".to_string()
+                -a:0:64-n32".to_string()
           }
 
           abi::OsWindows => {
@@ -37,7 +37,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a0:0:64-n32".to_string()
+                -a:0:64-n32".to_string()
           }
 
           abi::OsLinux => {
@@ -45,7 +45,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a0:0:64-n32".to_string()
+                -a:0:64-n32".to_string()
           }
 
           abi::OsAndroid => {
@@ -53,7 +53,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a0:0:64-n32".to_string()
+                -a:0:64-n32".to_string()
           }
 
           abi::OsFreebsd | abi::OsDragonfly => {
@@ -61,7 +61,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os) -> target_strs
                 -i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64\
                 -f32:32:32-f64:64:64\
                 -v64:64:64-v128:64:128\
-                -a0:0:64-n32".to_string()
+                -a:0:64-n32".to_string()
           }
         },
 
