@@ -431,26 +431,33 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
 
             ast::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
-                if !self.walk_overloaded_operator(expr, &**lhs, vec![&**rhs], PassArgs::ByRef) {
-                    self.select_from_expr(&**lhs);
-                    self.consume_expr(&**rhs);
+                match rhs.node {
+                    ast::ExprRange(ref start, ref end) => {
+                        // Hacked slicing syntax (KILLME).
+                        let args = match (start, end) {
+                            (&Some(ref e1), &Some(ref e2)) => vec![&**e1, &**e2],
+                            (&Some(ref e), &None) => vec![&**e],
+                            (&None, &Some(ref e)) => vec![&**e],
+                            (&None, &None) => Vec::new()
+                        };
+                        let overloaded =
+                            self.walk_overloaded_operator(expr, &**lhs, args, PassArgs::ByRef);
+                        assert!(overloaded);
+                    }
+                    _ => {
+                        if !self.walk_overloaded_operator(expr,
+                                                          &**lhs,
+                                                          vec![&**rhs],
+                                                          PassArgs::ByRef) {
+                            self.select_from_expr(&**lhs);
+                            self.consume_expr(&**rhs);
+                        }
+                    }
                 }
             }
 
-            ast::ExprSlice(ref base, ref start, ref end, _) => {    // base[start..end]
-                let args = match (start, end) {
-                    (&Some(ref e1), &Some(ref e2)) => vec![&**e1, &**e2],
-                    (&Some(ref e), &None) => vec![&**e],
-                    (&None, &Some(ref e)) => vec![&**e],
-                    (&None, &None) => Vec::new()
-                };
-                let overloaded =
-                    self.walk_overloaded_operator(expr, &**base, args, PassArgs::ByRef);
-                assert!(overloaded);
-            }
-
             ast::ExprRange(ref start, ref end) => {
-                self.consume_expr(&**start);
+                start.as_ref().map(|e| self.consume_expr(&**e));
                 end.as_ref().map(|e| self.consume_expr(&**e));
             }
 

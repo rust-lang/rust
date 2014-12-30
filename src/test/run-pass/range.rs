@@ -10,6 +10,8 @@
 
 // Test range syntax.
 
+#![feature(slicing_syntax)]
+
 fn foo() -> int { 42 }
 
 pub fn main() {

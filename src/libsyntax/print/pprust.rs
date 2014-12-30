@@ -1739,29 +1739,13 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&**index));
                 try!(word(&mut self.s, "]"));
             }
-            ast::ExprSlice(ref e, ref start, ref end, ref mutbl) => {
-                try!(self.print_expr(&**e));
-                try!(word(&mut self.s, "["));
-                if mutbl == &ast::MutMutable {
-                    try!(word(&mut self.s, "mut"));
-                    if start.is_some() || end.is_some() {
-                        try!(space(&mut self.s));
-                    }
-                }
+            ast::ExprRange(ref start, ref end) => {
                 if let &Some(ref e) = start {
                     try!(self.print_expr(&**e));
                 }
                 if start.is_some() || end.is_some() {
                     try!(word(&mut self.s, ".."));
                 }
-                if let &Some(ref e) = end {
-                    try!(self.print_expr(&**e));
-                }
-                try!(word(&mut self.s, "]"));
-            }
-            ast::ExprRange(ref start, ref end) => {
-                try!(self.print_expr(&**start));
-                try!(word(&mut self.s, ".."));
                 if let &Some(ref e) = end {
                     try!(self.print_expr(&**e));
                 }

@@ -908,6 +908,14 @@ impl<Idx: Clone + Step> Iterator<Idx> for RangeFrom<Idx> {
     }
 }
 
+/// A range which is only bounded above.
+#[deriving(Copy)]
+#[lang="range_to"]
+pub struct RangeTo<Idx> {
+    /// The upper bound of the range (exclusive).
+    pub end: Idx,
+}
+
 
 /// The `Deref` trait is used to specify the functionality of dereferencing
 /// operations like `*v`.

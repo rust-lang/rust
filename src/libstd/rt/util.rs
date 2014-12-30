@@ -139,7 +139,7 @@ fn abort_(args: &fmt::Arguments) -> ! {
     }
     impl<'a> FormatWriter for BufWriter<'a> {
         fn write(&mut self, bytes: &[u8]) -> fmt::Result {
-            let left = self.buf[mut self.pos..];
+            let left = self.buf.slice_from_mut(self.pos);
             let to_write = bytes[..cmp::min(bytes.len(), left.len())];
             slice::bytes::copy_memory(left, to_write);
             self.pos += to_write.len();
