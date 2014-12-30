@@ -158,7 +158,7 @@
 use clone::Clone;
 use cmp::PartialEq;
 use default::Default;
-use kinds::{marker, Copy};
+use kinds::{Copy, Send};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{None, Some};
@@ -167,7 +167,6 @@ use option::Option::{None, Some};
 #[stable]
 pub struct Cell<T> {
     value: UnsafeCell<T>,
-    noshare: marker::NoSync,
 }
 
 impl<T:Copy> Cell<T> {
@@ -176,7 +175,6 @@ impl<T:Copy> Cell<T> {
     pub fn new(value: T) -> Cell<T> {
         Cell {
             value: UnsafeCell::new(value),
-            noshare: marker::NoSync,
         }
     }
 
@@ -209,6 +207,9 @@ impl<T:Copy> Cell<T> {
 }
 
 #[stable]
+unsafe impl<T> Send for Cell<T> where T: Send {}
+
+#[stable]
 impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
@@ -235,7 +236,6 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 pub struct RefCell<T> {
     value: UnsafeCell<T>,
     borrow: Cell<BorrowFlag>,
-    noshare: marker::NoSync,
 }
 
 // Values [1, MAX-1] represent the number of `Ref` active
@@ -251,7 +251,6 @@ impl<T> RefCell<T> {
         RefCell {
             value: UnsafeCell::new(value),
             borrow: Cell::new(UNUSED),
-            noshare: marker::NoSync,
         }
     }
 
@@ -340,6 +339,9 @@ impl<T> RefCell<T> {
         &self.value
     }
 }
+
+#[stable]
+unsafe impl<T> Send for RefCell<T> where T: Send {}
 
 #[stable]
 impl<T: Clone> Clone for RefCell<T> {
