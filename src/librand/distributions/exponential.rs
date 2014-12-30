@@ -64,7 +64,7 @@ impl Rand for Exp1 {
 /// use std::rand::distributions::{Exp, IndependentSample};
 ///
 /// let exp = Exp::new(2.0);
-/// let v = exp.ind_sample(&mut rand::task_rng());
+/// let v = exp.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from a Exp(2) distribution", v);
 /// ```
 #[deriving(Copy)]

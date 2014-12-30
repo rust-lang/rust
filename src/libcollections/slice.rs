@@ -1347,7 +1347,7 @@ mod tests {
     use core::cell::Cell;
     use core::default::Default;
     use core::mem;
-    use std::rand::{Rng, task_rng};
+    use std::rand::{Rng, thread_rng};
     use std::rc::Rc;
     use super::ElementSwaps;
 
@@ -1963,7 +1963,7 @@ mod tests {
     fn test_sort() {
         for len in range(4u, 25) {
             for _ in range(0i, 100) {
-                let mut v = task_rng().gen_iter::<uint>().take(len)
+                let mut v = thread_rng().gen_iter::<uint>().take(len)
                                       .collect::<Vec<uint>>();
                 let mut v1 = v.clone();
 
@@ -1999,7 +1999,7 @@ mod tests {
                 // number this element is, i.e. the second elements
                 // will occur in sorted order.
                 let mut v = range(0, len).map(|_| {
-                        let n = task_rng().gen::<uint>() % 10;
+                        let n = thread_rng().gen::<uint>() % 10;
                         counts[n] += 1;
                         (n, counts[n])
                     }).collect::<Vec<(uint, int)>>();
