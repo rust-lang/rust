@@ -29,7 +29,6 @@ use self::Namespace::*;
 use self::NamespaceResult::*;
 use self::NameDefinition::*;
 use self::ImportDirectiveSubclass::*;
-use self::ReducedGraphParent::*;
 use self::ResolveResult::*;
 use self::FallbackSuggestion::*;
 use self::TypeParameters::*;
@@ -183,22 +182,6 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
 enum ImportDirectiveSubclass {
     SingleImport(Name /* target */, Name /* source */),
     GlobImport
-}
-
-/// The context that we thread through while building the reduced graph.
-#[deriving(Clone)]
-enum ReducedGraphParent {
-    ModuleReducedGraphParent(Rc<Module>)
-}
-
-impl ReducedGraphParent {
-    fn module(&self) -> Rc<Module> {
-        match *self {
-            ModuleReducedGraphParent(ref m) => {
-                m.clone()
-            }
-        }
-    }
 }
 
 type ErrorMessage = Option<(Span, String)>;
