@@ -965,6 +965,7 @@ impl Clone for Bitv {
     }
 }
 
+#[stable]
 impl PartialOrd for Bitv {
     #[inline]
     fn partial_cmp(&self, other: &Bitv) -> Option<Ordering> {
@@ -972,6 +973,7 @@ impl PartialOrd for Bitv {
     }
 }
 
+#[stable]
 impl Ord for Bitv {
     #[inline]
     fn cmp(&self, other: &Bitv) -> Ordering {
@@ -997,6 +999,7 @@ impl<S: hash::Writer> hash::Hash<S> for Bitv {
     }
 }
 
+#[stable]
 impl cmp::PartialEq for Bitv {
     #[inline]
     fn eq(&self, other: &Bitv) -> bool {
@@ -1007,6 +1010,7 @@ impl cmp::PartialEq for Bitv {
     }
 }
 
+#[stable]
 impl cmp::Eq for Bitv {}
 
 /// An iterator for `Bitv`.
@@ -1129,6 +1133,7 @@ impl Extend<uint> for BitvSet {
     }
 }
 
+#[stable]
 impl PartialOrd for BitvSet {
     #[inline]
     fn partial_cmp(&self, other: &BitvSet) -> Option<Ordering> {
@@ -1137,6 +1142,7 @@ impl PartialOrd for BitvSet {
     }
 }
 
+#[stable]
 impl Ord for BitvSet {
     #[inline]
     fn cmp(&self, other: &BitvSet) -> Ordering {
@@ -1145,6 +1151,7 @@ impl Ord for BitvSet {
     }
 }
 
+#[stable]
 impl cmp::PartialEq for BitvSet {
     #[inline]
     fn eq(&self, other: &BitvSet) -> bool {
@@ -1153,6 +1160,7 @@ impl cmp::PartialEq for BitvSet {
     }
 }
 
+#[stable]
 impl cmp::Eq for BitvSet {}
 
 impl BitvSet {

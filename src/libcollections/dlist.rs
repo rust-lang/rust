@@ -770,6 +770,7 @@ impl<A> Extend<A> for DList<A> {
     }
 }
 
+#[stable]
 impl<A: PartialEq> PartialEq for DList<A> {
     fn eq(&self, other: &DList<A>) -> bool {
         self.len() == other.len() &&
@@ -782,14 +783,17 @@ impl<A: PartialEq> PartialEq for DList<A> {
     }
 }
 
+#[stable]
 impl<A: Eq> Eq for DList<A> {}
 
+#[stable]
 impl<A: PartialOrd> PartialOrd for DList<A> {
     fn partial_cmp(&self, other: &DList<A>) -> Option<Ordering> {
         iter::order::partial_cmp(self.iter(), other.iter())
     }
 }
 
+#[stable]
 impl<A: Ord> Ord for DList<A> {
     #[inline]
     fn cmp(&self, other: &DList<A>) -> Ordering {

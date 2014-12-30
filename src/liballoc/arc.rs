@@ -458,7 +458,7 @@ impl<T: Sync + Send> Drop for Weak<T> {
     }
 }
 
-#[unstable = "waiting on PartialEq"]
+#[stable]
 impl<T: PartialEq> PartialEq for Arc<T> {
     /// Equality for two `Arc<T>`s.
     ///
@@ -490,7 +490,7 @@ impl<T: PartialEq> PartialEq for Arc<T> {
     /// ```
     fn ne(&self, other: &Arc<T>) -> bool { *(*self) != *(*other) }
 }
-#[unstable = "waiting on PartialOrd"]
+#[stable]
 impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// Partial comparison for two `Arc<T>`s.
     ///
@@ -569,11 +569,11 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     fn ge(&self, other: &Arc<T>) -> bool { *(*self) >= *(*other) }
 }
-#[unstable = "waiting on Ord"]
+#[stable]
 impl<T: Ord> Ord for Arc<T> {
     fn cmp(&self, other: &Arc<T>) -> Ordering { (**self).cmp(&**other) }
 }
-#[unstable = "waiting on Eq"]
+#[stable]
 impl<T: Eq> Eq for Arc<T> {}
 
 impl<T: fmt::Show> fmt::Show for Arc<T> {

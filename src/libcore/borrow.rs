@@ -200,8 +200,10 @@ impl<'a, T, Sized? B> Deref<B> for Cow<'a, T, B> where B: ToOwned<T>  {
     }
 }
 
+#[stable]
 impl<'a, T, Sized? B> Eq for Cow<'a, T, B> where B: Eq + ToOwned<T> {}
 
+#[stable]
 impl<'a, T, Sized? B> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
     #[inline]
     fn cmp(&self, other: &Cow<'a, T, B>) -> Ordering {
@@ -209,6 +211,7 @@ impl<'a, T, Sized? B> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
     }
 }
 
+#[stable]
 impl<'a, 'b, T, U, Sized? B, Sized? C> PartialEq<Cow<'b, U, C>> for Cow<'a, T, B> where
     B: PartialEq<C> + ToOwned<T>,
     C: ToOwned<U>,
@@ -219,6 +222,7 @@ impl<'a, 'b, T, U, Sized? B, Sized? C> PartialEq<Cow<'b, U, C>> for Cow<'a, T, B
     }
 }
 
+#[stable]
 impl<'a, T, Sized? B> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwned<T> {
     #[inline]
     fn partial_cmp(&self, other: &Cow<'a, T, B>) -> Option<Ordering> {
