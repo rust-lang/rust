@@ -1239,7 +1239,7 @@ mod bench {
     extern crate test;
     use self::test::Bencher;
     use super::*;
-    use prelude::*;
+    use prelude::{Clone, GenericPath};
 
     #[bench]
     fn join_home_dir(b: &mut Bencher) {

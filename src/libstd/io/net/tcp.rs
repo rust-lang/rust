@@ -484,9 +484,12 @@ impl sys_common::AsInner<TcpAcceptorImp> for TcpAcceptor {
 mod test {
     use io::net::tcp::*;
     use io::net::ip::*;
-    use io::*;
+    use io::{EndOfFile, TimedOut, IoError, ShortWrite, OtherIoError, ConnectionAborted};
+    use io::{ConnectionRefused, ConnectionReset, BrokenPipe, NotConnected};
+    use io::{PermissionDenied, Listener, Acceptor};
     use io::test::*;
-    use prelude::*;
+    use prelude::{Ok, Err, spawn, range, drop, Some, None, channel, Clone};
+    use prelude::{Reader, Writer, IteratorExt};
 
     // FIXME #11530 this fails on android because tests are run as root
     #[cfg_attr(any(windows, target_os = "android"), ignore)]
