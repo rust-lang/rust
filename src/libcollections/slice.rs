@@ -1343,7 +1343,10 @@ pub mod raw {
 #[cfg(test)]
 mod tests {
     use std::boxed::Box;
-    use prelude::*;
+    use prelude::{Some, None, range, Vec, ToString, Clone, Greater, Less, Equal};
+    use prelude::{SliceExt, Iterator, IteratorExt, DoubleEndedIteratorExt};
+    use prelude::{OrdSliceExt, CloneSliceExt, PartialEqSliceExt, AsSlice};
+    use prelude::{RandomAccessIterator, Ord, VectorVector};
     use core::cell::Cell;
     use core::default::Default;
     use core::mem;

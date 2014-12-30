@@ -3347,7 +3347,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use super::*;
-    use prelude::*;
+    use prelude::{SliceExt, IteratorExt, DoubleEndedIteratorExt};
     use test::Bencher;
     use test::black_box;
 
