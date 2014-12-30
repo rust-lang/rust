@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that object-safe methods are identified as such.
+// Check that static methods are not object-safe.
 
 trait Tr {
-    fn foo(&self);
+    fn foo();
 }
 
 struct St;
 
 impl Tr for St {
-    fn foo(&self) {}
+    fn foo() {}
 }
 
 fn main() {
-    let s: &Tr = &St;
-    s.foo();
+    let _: &Tr = &St; //~ ERROR cannot convert to a trait object because trait `Tr` is not
+    //~^ NOTE cannot call a static method (`foo`) through a trait object
 }
