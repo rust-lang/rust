@@ -1071,7 +1071,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     debug!("ty_generics_for_trait: assoc_predicates={}", assoc_predicates.repr(ccx.tcx));
 
     for assoc_predicate in assoc_predicates.into_iter() {
-        generics.predicates.push(subst::SelfSpace, assoc_predicate);
+        generics.predicates.push(subst::TypeSpace, assoc_predicate);
     }
 
     return generics;
