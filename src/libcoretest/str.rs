@@ -9,6 +9,13 @@
 // except according to those terms.
 
 #[test]
+fn test_empty_match_indices() {
+    let data = "aä中!";
+    let vec: Vec<_> = data.match_indices("").collect();
+    assert_eq!(vec, vec![(0, 0), (1, 1), (3, 3), (6, 6), (7, 7)]);
+}
+
+#[test]
 fn test_bool_from_str() {
     assert_eq!("true".parse().ok(), Some(true));
     assert_eq!("false".parse().ok(), Some(false));
