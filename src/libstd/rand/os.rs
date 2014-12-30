@@ -170,6 +170,7 @@ mod imp {
     extern crate libc;
 
     use io::{IoResult};
+    use kinds::Sync;
     use mem;
     use os;
     use rand::Rng;
@@ -195,6 +196,8 @@ mod imp {
 
     #[repr(C)]
     struct SecRandom;
+
+    unsafe impl Sync for *const SecRandom {}
 
     #[allow(non_upper_case_globals)]
     static kSecRandomDefault: *const SecRandom = 0 as *const SecRandom;
