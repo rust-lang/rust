@@ -18,7 +18,7 @@
 //! See the `distributions` submodule for sampling random numbers from
 //! distributions like normal and exponential.
 //!
-//! # Task-local RNG
+//! # Thread-local RNG
 //!
 //! There is built-in support for a RNG associated with each task stored
 //! in task-local storage. This RNG can be accessed via `task_rng`, or

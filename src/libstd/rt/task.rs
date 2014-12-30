@@ -36,7 +36,7 @@ use sys_common::stack;
 use rt::unwind;
 use rt::unwind::Unwinder;
 
-/// State associated with Rust tasks.
+/// State associated with Rust threads
 ///
 /// This structure is currently undergoing major changes, and is
 /// likely to be move/be merged with a `Thread` structure.
@@ -50,14 +50,14 @@ pub struct Task {
     awoken: bool,            // used to prevent spurious wakeups
 
     // This field holds the known bounds of the stack in (lo, hi) form. Not all
-    // native tasks necessarily know their precise bounds, hence this is
+    // native threads necessarily know their precise bounds, hence this is
     // optional.
     stack_bounds: (uint, uint),
 
     stack_guard: uint
 }
 
-// Once a task has entered the `Armed` state it must be destroyed via `drop`,
+// Once a thread has entered the `Armed` state it must be destroyed via `drop`,
 // and no other method. This state is used to track this transition.
 #[deriving(PartialEq)]
 enum TaskState {
@@ -67,31 +67,31 @@ enum TaskState {
 }
 
 pub struct TaskOpts {
-    /// Invoke this procedure with the result of the task when it finishes.
+    /// Invoke this procedure with the result of the thread when it finishes.
     pub on_exit: Option<Thunk<Result>>,
-    /// A name for the task-to-be, for identification in panic messages
+    /// A name for the thread-to-be, for identification in panic messages
     pub name: Option<SendStr>,
-    /// The size of the stack for the spawned task
+    /// The size of the stack for the spawned thread
     pub stack_size: Option<uint>,
 }
 
-/// Indicates the manner in which a task exited.
+/// Indicates the manner in which a thread exited.
 ///
-/// A task that completes without panicking is considered to exit successfully.
+/// A thread that completes without panicking is considered to exit successfully.
 ///
 /// If you wish for this result's delivery to block until all
-/// children tasks complete, recommend using a result future.
+/// children threads complete, recommend using a result future.
 pub type Result = ::core::result::Result<(), Box<Any + Send>>;
 
-/// A handle to a blocked task. Usually this means having the Box<Task>
-/// pointer by ownership, but if the task is killable, a killer can steal it
+/// A handle to a blocked thread. Usually this means having the Box<Task>
+/// pointer by ownership, but if the thread is killable, a killer can steal it
 /// at any time.
 pub enum BlockedTask {
     Owned(Box<Task>),
     Shared(Arc<AtomicUint>),
 }
 
-/// Per-task state related to task death, killing, panic, etc.
+/// Per-thread state related to thread death, killing, panic, etc.
 pub struct Death {
     pub on_exit: Option<Thunk<Result>>,
 }
@@ -101,7 +101,7 @@ pub struct BlockedTasks {
 }
 
 impl Task {
-    /// Creates a new uninitialized task.
+    /// Creates a new uninitialized thread.
     pub fn new(stack_bounds: Option<(uint, uint)>, stack_guard: Option<uint>) -> Task {
         Task {
             unwinder: Unwinder::new(),
@@ -153,17 +153,17 @@ impl Task {
         })
     }
 
-    /// Consumes ownership of a task, runs some code, and returns the task back.
+    /// Consumes ownership of a thread, runs some code, and returns the thread back.
     ///
     /// This function can be used as an emulated "try/catch" to interoperate
     /// with the rust runtime at the outermost boundary. It is not possible to
     /// use this function in a nested fashion (a try/catch inside of another
     /// try/catch). Invoking this function is quite cheap.
     ///
-    /// If the closure `f` succeeds, then the returned task can be used again
+    /// If the closure `f` succeeds, then the returned thread can be used again
     /// for another invocation of `run`. If the closure `f` panics then `self`
     /// will be internally destroyed along with all of the other associated
-    /// resources of this task. The `on_exit` callback is invoked with the
+    /// resources of this thread. The `on_exit` callback is invoked with the
     /// cause of panic (not returned here). This can be discovered by querying
     /// `is_destroyed()`.
     ///
@@ -172,30 +172,30 @@ impl Task {
     /// guaranteed to return if it panicks. Care should be taken to ensure that
     /// stack references made by `f` are handled appropriately.
     ///
-    /// It is invalid to call this function with a task that has been previously
+    /// It is invalid to call this function with a thread that has been previously
     /// destroyed via a failed call to `run`.
     pub fn run(mut self: Box<Task>, f: ||) -> Box<Task> {
-        assert!(!self.is_destroyed(), "cannot re-use a destroyed task");
+        assert!(!self.is_destroyed(), "cannot re-use a destroyed thread");
 
         // First, make sure that no one else is in TLS. This does not allow
         // recursive invocations of run(). If there's no one else, then
         // relinquish ownership of ourselves back into TLS.
         if Local::exists(None::<Task>) {
-            panic!("cannot run a task recursively inside another");
+            panic!("cannot run a thread recursively inside another");
         }
         self.state = Armed;
         Local::put(self);
 
         // There are two primary reasons that general try/catch is unsafe. The
         // first is that we do not support nested try/catch. The above check for
-        // an existing task in TLS is sufficient for this invariant to be
+        // an existing thread in TLS is sufficient for this invariant to be
         // upheld. The second is that unwinding while unwinding is not defined.
-        // We take care of that by having an 'unwinding' flag in the task
+        // We take care of that by having an 'unwinding' flag in the thread
         // itself. For these reasons, this unsafety should be ok.
         let result = unsafe { unwind::try(f) };
 
-        // After running the closure given return the task back out if it ran
-        // successfully, or clean up the task if it panicked.
+        // After running the closure given return the thread back out if it ran
+        // successfully, or clean up the thread if it panicked.
         let task: Box<Task> = Local::take();
         match result {
             Ok(()) => task,
@@ -203,13 +203,13 @@ impl Task {
         }
     }
 
-    /// Destroy all associated resources of this task.
+    /// Destroy all associated resources of this thread.
     ///
-    /// This function will perform any necessary clean up to prepare the task
+    /// This function will perform any necessary clean up to prepare the thread
     /// for destruction. It is required that this is called before a `Task`
     /// falls out of scope.
     ///
-    /// The returned task cannot be used for running any more code, but it may
+    /// The returned thread cannot be used for running any more code, but it may
     /// be used to extract the runtime as necessary.
     pub fn destroy(self: Box<Task>) -> Box<Task> {
         if self.is_destroyed() {
@@ -219,14 +219,14 @@ impl Task {
         }
     }
 
-    /// Cleans up a task, processing the result of the task as appropriate.
+    /// Cleans up a thread, processing the result of the thread as appropriate.
     ///
-    /// This function consumes ownership of the task, deallocating it once it's
+    /// This function consumes ownership of the thread, deallocating it once it's
     /// done being processed. It is assumed that TLD and the local heap have
     /// already been destroyed and/or annihilated.
     fn cleanup(mut self: Box<Task>, result: Result) -> Box<Task> {
         // After taking care of the data above, we need to transmit the result
-        // of this task.
+        // of this thread.
         let what_to_do = self.death.on_exit.take();
         Local::put(self);
 
@@ -235,15 +235,15 @@ impl Task {
         //        if this panics, this will also likely abort the runtime.
         //
         //        This closure is currently limited to a channel send via the
-        //        standard library's task interface, but this needs
+        //        standard library's thread interface, but this needs
         //        reconsideration to whether it's a reasonable thing to let a
-        //        task to do or not.
+        //        thread to do or not.
         match what_to_do {
             Some(f) => { f.invoke(result) }
             None => { drop(result) }
         }
 
-        // Now that we're done, we remove the task from TLS and flag it for
+        // Now that we're done, we remove the thread from TLS and flag it for
         // destruction.
         let mut task: Box<Task> = Local::take();
         task.state = Destroyed;
@@ -253,7 +253,7 @@ impl Task {
     /// Queries whether this can be destroyed or not.
     pub fn is_destroyed(&self) -> bool { self.state == Destroyed }
 
-    /// Deschedules the current task, invoking `f` `amt` times. It is not
+    /// Deschedules the current thread, invoking `f` `amt` times. It is not
     /// recommended to use this function directly, but rather communication
     /// primitives in `std::comm` should be used.
     //
@@ -262,31 +262,31 @@ impl Task {
     // shared state. Additionally, all of the violations are protected with a
     // mutex, so in theory there are no races.
     //
-    // The first thing we need to do is to get a pointer to the task's internal
-    // mutex. This address will not be changing (because the task is allocated
-    // on the heap). We must have this handle separately because the task will
+    // The first thing we need to do is to get a pointer to the thread's internal
+    // mutex. This address will not be changing (because the thread is allocated
+    // on the heap). We must have this handle separately because the thread will
     // have its ownership transferred to the given closure. We're guaranteed,
     // however, that this memory will remain valid because *this* is the current
-    // task's execution thread.
+    // thread's execution thread.
     //
-    // The next weird part is where ownership of the task actually goes. We
+    // The next weird part is where ownership of the thread actually goes. We
     // relinquish it to the `f` blocking function, but upon returning this
-    // function needs to replace the task back in TLS. There is no communication
-    // from the wakeup thread back to this thread about the task pointer, and
-    // there's really no need to. In order to get around this, we cast the task
+    // function needs to replace the thread back in TLS. There is no communication
+    // from the wakeup thread back to this thread about the thread pointer, and
+    // there's really no need to. In order to get around this, we cast the thread
     // to a `uint` which is then used at the end of this function to cast back
     // to a `Box<Task>` object. Naturally, this looks like it violates
     // ownership semantics in that there may be two `Box<Task>` objects.
     //
     // The fun part is that the wakeup half of this implementation knows to
-    // "forget" the task on the other end. This means that the awakening half of
+    // "forget" the thread on the other end. This means that the awakening half of
     // things silently relinquishes ownership back to this thread, but not in a
-    // way that the compiler can understand. The task's memory is always valid
-    // for both tasks because these operations are all done inside of a mutex.
+    // way that the compiler can understand. The thread's memory is always valid
+    // for both threads because these operations are all done inside of a mutex.
     //
     // You'll also find that if blocking fails (the `f` function hands the
     // BlockedTask back to us), we will `mem::forget` the handles. The
-    // reasoning for this is the same logic as above in that the task silently
+    // reasoning for this is the same logic as above in that the thread silently
     // transfers ownership via the `uint`, not through normal compiler
     // semantics.
     //
@@ -319,11 +319,11 @@ impl Task {
                 let guard = (*me).lock.lock();
                 (*me).awoken = false;
 
-                // Apply the given closure to all of the "selectable tasks",
+                // Apply the given closure to all of the "selectable threads",
                 // bailing on the first one that produces an error. Note that
                 // care must be taken such that when an error is occurred, we
-                // may not own the task, so we may still have to wait for the
-                // task to become available. In other words, if task.wake()
+                // may not own the thread, so we may still have to wait for the
+                // thread to become available. In other words, if thread.wake()
                 // returns `None`, then someone else has ownership and we must
                 // wait for their signal.
                 match iter.map(f).filter_map(|a| a.err()).next() {
@@ -342,15 +342,15 @@ impl Task {
                     guard.wait();
                 }
             }
-            // put the task back in TLS, and everything is as it once was.
+            // put the thread back in TLS, and everything is as it once was.
             Local::put(mem::transmute(me));
         }
     }
 
-    /// Wakes up a previously blocked task. This function can only be
-    /// called on tasks that were previously blocked in `deschedule`.
+    /// Wakes up a previously blocked thread. This function can only be
+    /// called on threads that were previously blocked in `deschedule`.
     //
-    // See the comments on `deschedule` for why the task is forgotten here, and
+    // See the comments on `deschedule` for why the thread is forgotten here, and
     // why it's valid to do so.
     pub fn reawaken(mut self: Box<Task>) {
         unsafe {
@@ -362,21 +362,21 @@ impl Task {
         }
     }
 
-    /// Yields control of this task to another task. This function will
+    /// Yields control of this thread to another thread. This function will
     /// eventually return, but possibly not immediately. This is used as an
-    /// opportunity to allow other tasks a chance to run.
+    /// opportunity to allow other threads a chance to run.
     pub fn yield_now() {
         Thread::yield_now();
     }
 
-    /// Returns the stack bounds for this task in (lo, hi) format. The stack
-    /// bounds may not be known for all tasks, so the return value may be
+    /// Returns the stack bounds for this thread in (lo, hi) format. The stack
+    /// bounds may not be known for all threads, so the return value may be
     /// `None`.
     pub fn stack_bounds(&self) -> (uint, uint) {
         self.stack_bounds
     }
 
-    /// Returns the stack guard for this task, if known.
+    /// Returns the stack guard for this thread, if known.
     pub fn stack_guard(&self) -> Option<uint> {
         if self.stack_guard != 0 {
             Some(self.stack_guard)
@@ -385,9 +385,9 @@ impl Task {
         }
     }
 
-    /// Consume this task, flagging it as a candidate for destruction.
+    /// Consume this thread, flagging it as a candidate for destruction.
     ///
-    /// This function is required to be invoked to destroy a task. A task
+    /// This function is required to be invoked to destroy a thread. A thread
     /// destroyed through a normal drop will abort.
     pub fn drop(mut self) {
         self.state = Destroyed;
@@ -396,7 +396,7 @@ impl Task {
 
 impl Drop for Task {
     fn drop(&mut self) {
-        rtdebug!("called drop for a task: {}", self as *mut Task as uint);
+        rtdebug!("called drop for a thread: {}", self as *mut Task as uint);
         rtassert!(self.state != Armed);
     }
 }
@@ -414,7 +414,7 @@ impl Iterator<BlockedTask> for BlockedTasks {
 }
 
 impl BlockedTask {
-    /// Returns Some if the task was successfully woken; None if already killed.
+    /// Returns Some if the thread was successfully woken; None if already killed.
     pub fn wake(self) -> Option<Box<Task>> {
         match self {
             Owned(task) => Some(task),
@@ -427,7 +427,7 @@ impl BlockedTask {
         }
     }
 
-    /// Reawakens this task if ownership is acquired. If finer-grained control
+    /// Reawakens this thread if ownership is acquired. If finer-grained control
     /// is desired, use `wake` instead.
     pub fn reawaken(self) {
         self.wake().map(|t| t.reawaken());
@@ -438,12 +438,12 @@ impl BlockedTask {
     #[cfg(not(test))] pub fn trash(self) { }
     #[cfg(test)]      pub fn trash(self) { assert!(self.wake().is_none()); }
 
-    /// Create a blocked task, unless the task was already killed.
+    /// Create a blocked thread, unless the thread was already killed.
     pub fn block(task: Box<Task>) -> BlockedTask {
         Owned(task)
     }
 
-    /// Converts one blocked task handle to a list of many handles to the same.
+    /// Converts one blocked thread handle to a list of many handles to the same.
     pub fn make_selectable(self, num_handles: uint) -> Take<BlockedTasks> {
         let arc = match self {
             Owned(task) => {
@@ -543,7 +543,7 @@ mod test {
         drop(Task::new(None, None));
     }
 
-    // Task blocking tests
+    // Thread blocking tests
 
     #[test]
     fn block_and_wake() {
