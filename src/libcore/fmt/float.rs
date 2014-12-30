@@ -325,17 +325,8 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
 
             let mut filler = Filler { buf: &mut buf, end: &mut end };
             match sign {
-                // NOTE(stage0): Remove cfg after a snapshot
-                #[cfg(not(stage0))]
                 SignNeg => {
                     let _ = fmt::write(&mut filler, format_args!("{:-}", exp));
-                }
-                // NOTE(stage0): Remove match arm after a snapshot
-                #[cfg(stage0)]
-                SignNeg => {
-                    let _ = format_args!(|args| {
-                        fmt::write(&mut filler, args)
-                    }, "{:-}", exp);
                 }
             }
         }

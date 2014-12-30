@@ -378,35 +378,15 @@ pub fn println(s: &str) {
     })
 }
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// Similar to `print`, but takes a `fmt::Arguments` structure to be compatible
 /// with the `format_args!` macro.
 pub fn print_args(fmt: fmt::Arguments) {
     with_task_stdout(|io| write!(io, "{}", fmt))
 }
 
-// NOTE(stage0): Remove function after a snapshot
-#[cfg(stage0)]
-/// Similar to `print`, but takes a `fmt::Arguments` structure to be compatible
-/// with the `format_args!` macro.
-pub fn print_args(fmt: &fmt::Arguments) {
-    with_task_stdout(|io| write!(io, "{}", fmt))
-}
-
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// Similar to `println`, but takes a `fmt::Arguments` structure to be
 /// compatible with the `format_args!` macro.
 pub fn println_args(fmt: fmt::Arguments) {
-    with_task_stdout(|io| writeln!(io, "{}", fmt))
-}
-
-// NOTE(stage0): Remove function after a snapshot
-#[cfg(stage0)]
-/// Similar to `println`, but takes a `fmt::Arguments` structure to be
-/// compatible with the `format_args!` macro.
-pub fn println_args(fmt: &fmt::Arguments) {
     with_task_stdout(|io| writeln!(io, "{}", fmt))
 }
 

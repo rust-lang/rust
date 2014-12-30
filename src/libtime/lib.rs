@@ -24,8 +24,6 @@
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
-#[cfg(stage0)]
-extern crate serialize;
 extern crate "serialize" as rustc_serialize;
 extern crate libc;
 
