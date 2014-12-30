@@ -234,7 +234,9 @@ impl<T: Send> Drop for Mutex<T> {
     }
 }
 
-static DUMMY: UnsafeCell<()> = UnsafeCell { value: () };
+struct Dummy(UnsafeCell<()>);
+unsafe impl Sync for Dummy {}
+static DUMMY: Dummy = Dummy(UnsafeCell { value: () });
 
 impl StaticMutex {
     /// Acquires this lock, see `Mutex::lock`
@@ -242,7 +244,7 @@ impl StaticMutex {
     #[unstable = "may be merged with Mutex in the future"]
     pub fn lock(&'static self) -> LockResult<MutexGuard<()>> {
         unsafe { self.lock.lock() }
-        MutexGuard::new(self, &DUMMY)
+        MutexGuard::new(self, &DUMMY.0)
     }
 
     /// Attempts to grab this lock, see `Mutex::try_lock`
@@ -250,7 +252,7 @@ impl StaticMutex {
     #[unstable = "may be merged with Mutex in the future"]
     pub fn try_lock(&'static self) -> TryLockResult<MutexGuard<()>> {
         if unsafe { self.lock.try_lock() } {
-            Ok(try!(MutexGuard::new(self, &DUMMY)))
+            Ok(try!(MutexGuard::new(self, &DUMMY.0)))
         } else {
             Err(TryLockError::WouldBlock)
         }

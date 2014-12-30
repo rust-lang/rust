@@ -233,7 +233,9 @@ impl<T> Drop for RWLock<T> {
     }
 }
 
-static DUMMY: UnsafeCell<()> = UnsafeCell { value: () };
+struct Dummy(UnsafeCell<()>);
+unsafe impl Sync for Dummy {}
+static DUMMY: Dummy = Dummy(UnsafeCell { value: () });
 
 impl StaticRWLock {
     /// Locks this rwlock with shared read access, blocking the current thread
@@ -244,7 +246,7 @@ impl StaticRWLock {
     #[unstable = "may be merged with RWLock in the future"]
     pub fn read(&'static self) -> LockResult<RWLockReadGuard<'static, ()>> {
         unsafe { self.lock.read() }
-        RWLockReadGuard::new(self, &DUMMY)
+        RWLockReadGuard::new(self, &DUMMY.0)
     }
 
     /// Attempt to acquire this lock with shared read access.
@@ -255,7 +257,7 @@ impl StaticRWLock {
     pub fn try_read(&'static self)
                     -> TryLockResult<RWLockReadGuard<'static, ()>> {
         if unsafe { self.lock.try_read() } {
-            Ok(try!(RWLockReadGuard::new(self, &DUMMY)))
+            Ok(try!(RWLockReadGuard::new(self, &DUMMY.0)))
         } else {
             Err(TryLockError::WouldBlock)
         }
@@ -269,7 +271,7 @@ impl StaticRWLock {
     #[unstable = "may be merged with RWLock in the future"]
     pub fn write(&'static self) -> LockResult<RWLockWriteGuard<'static, ()>> {
         unsafe { self.lock.write() }
-        RWLockWriteGuard::new(self, &DUMMY)
+        RWLockWriteGuard::new(self, &DUMMY.0)
     }
 
     /// Attempt to lock this rwlock with exclusive write access.
@@ -280,7 +282,7 @@ impl StaticRWLock {
     pub fn try_write(&'static self)
                      -> TryLockResult<RWLockWriteGuard<'static, ()>> {
         if unsafe { self.lock.try_write() } {
-            Ok(try!(RWLockWriteGuard::new(self, &DUMMY)))
+            Ok(try!(RWLockWriteGuard::new(self, &DUMMY.0)))
         } else {
             Err(TryLockError::WouldBlock)
         }

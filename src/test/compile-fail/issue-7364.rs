@@ -16,6 +16,5 @@ static boxed: Box<RefCell<int>> = box RefCell::new(0);
 //~^ ERROR statics are not allowed to have custom pointers
 //~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
 //~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
-//~| ERROR: the trait `core::kinds::Sync` is not implemented for the type
 
 fn main() { }

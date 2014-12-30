@@ -265,8 +265,8 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
                 {
                     let filename = os::truncate_utf16_at_nul(&wfd.cFileName);
                     match String::from_utf16(filename) {
-                        Some(filename) => paths.push(Path::new(filename)),
-                        None => {
+                        Ok(filename) => paths.push(Path::new(filename)),
+                        Err(..) => {
                             assert!(libc::FindClose(find_handle) != 0);
                             return Err(IoError {
                                 kind: io::InvalidInput,

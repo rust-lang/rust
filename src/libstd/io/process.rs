@@ -1207,6 +1207,7 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn env_map_keys_ci() {
+        use c_str::ToCStr;
         use super::EnvKey;
         let mut cmd = Command::new("");
         cmd.env("path", "foo");

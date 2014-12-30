@@ -17,5 +17,4 @@ fn main() {
     f(x);
     //~^ ERROR `core::kinds::Sync` is not implemented
     //~^^ ERROR `core::kinds::Sync` is not implemented
-    //~^^^ ERROR `core::kinds::Sync` is not implemented
 }
