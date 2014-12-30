@@ -11,6 +11,7 @@
 //! Functions for computing canonical and compatible decompositions for Unicode characters.
 
 use core::cmp::Ordering::{Equal, Less, Greater};
+use core::ops::FnMut;
 use core::option::Option;
 use core::option::Option::{Some, None};
 use core::slice::SliceExt;
@@ -32,14 +33,15 @@ fn bsearch_table<T>(c: char, r: &'static [(char, &'static [T])]) -> Option<&'sta
 }
 
 /// Compute canonical Unicode decomposition for character
-pub fn decompose_canonical(c: char, i: |char|) { d(c, i, false); }
+pub fn decompose_canonical<F>(c: char, mut i: F) where F: FnMut(char) { d(c, &mut i, false); }
 
 /// Compute canonical or compatible Unicode decomposition for character
-pub fn decompose_compatible(c: char, i: |char|) { d(c, i, true); }
+pub fn decompose_compatible<F>(c: char, mut i: F) where F: FnMut(char) { d(c, &mut i, true); }
 
-fn d(c: char, i: |char|, k: bool) {
+// FIXME(#19596) This is a workaround, we should use `F` instead of `&mut F`
+fn d<F>(c: char, i: &mut F, k: bool) where F: FnMut(char) {
     // 7-bit ASCII never decomposes
-    if c <= '\x7f' { i(c); return; }
+    if c <= '\x7f' { (*i)(c); return; }
 
     // Perform decomposition for Hangul
     if (c as u32) >= S_BASE && (c as u32) < (S_BASE + S_COUNT) {
@@ -51,7 +53,7 @@ fn d(c: char, i: |char|, k: bool) {
     match bsearch_table(c, canonical_table) {
         Some(canon) => {
             for x in canon.iter() {
-                d(*x, |b| i(b), k);
+                d(*x, i, k);
             }
             return;
         }
@@ -59,13 +61,13 @@ fn d(c: char, i: |char|, k: bool) {
     }
 
     // Bottom out if we're not doing compat.
-    if !k { i(c); return; }
+    if !k { (*i)(c); return; }
 
     // Then check the compatibility decompositions
     match bsearch_table(c, compatibility_table) {
         Some(compat) => {
             for x in compat.iter() {
-                d(*x, |b| i(b), k);
+                d(*x, i, k);
             }
             return;
         }
@@ -73,7 +75,7 @@ fn d(c: char, i: |char|, k: bool) {
     }
 
     // Finally bottom out.
-    i(c);
+    (*i)(c);
 }
 
 pub fn compose(a: char, b: char) -> Option<char> {
@@ -108,23 +110,24 @@ const T_COUNT: u32 = 28;
 const N_COUNT: u32 = (V_COUNT * T_COUNT);
 const S_COUNT: u32 = (L_COUNT * N_COUNT);
 
+// FIXME(#19596) This is a workaround, we should use `F` instead of `&mut F`
 // Decompose a precomposed Hangul syllable
 #[inline(always)]
-fn decompose_hangul(s: char, f: |char|) {
+fn decompose_hangul<F>(s: char, f: &mut F) where F: FnMut(char) {
     use core::mem::transmute;
 
     let si = s as u32 - S_BASE;
 
     let li = si / N_COUNT;
     unsafe {
-        f(transmute(L_BASE + li));
+        (*f)(transmute(L_BASE + li));
 
         let vi = (si % N_COUNT) / T_COUNT;
-        f(transmute(V_BASE + vi));
+        (*f)(transmute(V_BASE + vi));
 
         let ti = si % T_COUNT;
         if ti > 0 {
-            f(transmute(T_BASE + ti));
+            (*f)(transmute(T_BASE + ti));
         }
     }
 }
