@@ -22,6 +22,7 @@ use syntax::ast;
 use std::c_str::ToCStr;
 use std::mem;
 use std::cell::RefCell;
+use std::iter::repeat;
 
 use libc::c_uint;
 
@@ -282,7 +283,7 @@ impl Type {
             if n_elts == 0 {
                 return Vec::new();
             }
-            let mut elts = Vec::from_elem(n_elts, Type { rf: 0 as TypeRef });
+            let mut elts: Vec<_> = repeat(Type { rf: 0 as TypeRef }).take(n_elts).collect();
             llvm::LLVMGetStructElementTypes(self.to_ref(),
                                             elts.as_mut_ptr() as *mut TypeRef);
             elts
@@ -296,7 +297,7 @@ impl Type {
     pub fn func_params(&self) -> Vec<Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as uint;
-            let mut args = Vec::from_elem(n_args, Type { rf: 0 as TypeRef });
+            let mut args: Vec<_> = repeat(Type { rf: 0 as TypeRef }).take(n_args).collect();
             llvm::LLVMGetParamTypes(self.to_ref(),
                                     args.as_mut_ptr() as *mut TypeRef);
             args

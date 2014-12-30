@@ -18,7 +18,6 @@ use std::cmp;
 use std::fmt;
 use std::iter;
 use std::num;
-use std::slice::BinarySearchResult;
 
 /// Static data containing Unicode ranges for general categories and scripts.
 use unicode::regex::{UNICODE_CLASSES, PERLD, PERLS, PERLW};
@@ -1028,9 +1027,9 @@ fn is_valid_cap(c: char) -> bool {
 }
 
 fn find_class(classes: NamedClasses, name: &str) -> Option<Vec<(char, char)>> {
-    match classes.binary_search(|&(s, _)| s.cmp(name)) {
-        BinarySearchResult::Found(i) => Some(classes[i].1.to_vec()),
-        BinarySearchResult::NotFound(_) => None,
+    match classes.binary_search_by(|&(s, _)| s.cmp(name)) {
+        Ok(i) => Some(classes[i].1.to_vec()),
+        Err(_) => None,
     }
 }
 

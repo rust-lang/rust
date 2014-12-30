@@ -4828,9 +4828,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             Some(def) => {
                                 debug!("(resolving type) resolved `{}` to \
                                         type {}",
-                                       token::get_ident(path.segments
-                                                            .last().unwrap()
-                                                            .identifier),
+                                       token::get_ident(path.segments.last().unwrap() .identifier),
                                        def);
                                 result_def = Some(def);
                             }
@@ -5021,19 +5019,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             self.resolve_error(path.span,
                                 format!("`{}` is not an enum variant, struct or const",
                                     token::get_ident(
-                                        path.segments
-                                            .last()
-                                            .unwrap()
-                                            .identifier))[]);
+                                        path.segments.last().unwrap().identifier))[]);
                         }
                         None => {
                             self.resolve_error(path.span,
                                 format!("unresolved enum variant, struct or const `{}`",
                                     token::get_ident(
-                                        path.segments
-                                            .last()
-                                            .unwrap()
-                                            .identifier))[]);
+                                        path.segments.last().unwrap().identifier))[]);
                         }
                     }
 
@@ -5187,9 +5179,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Try to find a path to an item in a module.
         let unqualified_def =
-                self.resolve_identifier(path.segments
-                                            .last().unwrap()
-                                            .identifier,
+                self.resolve_identifier(path.segments.last().unwrap().identifier,
                                         namespace,
                                         check_ribs,
                                         path.span);

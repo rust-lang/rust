@@ -96,19 +96,25 @@ use core::mem::size_of;
 use core::mem;
 use core::ops::{FnMut,SliceMut};
 use core::prelude::{Clone, Greater, Iterator, IteratorExt, Less, None, Option};
-use core::prelude::{Ord, Ordering, RawPtr, Some, range, IteratorCloneExt, Result};
+use core::prelude::{Ord, Ordering, PtrExt, Some, range, IteratorCloneExt, Result};
 use core::ptr;
 use core::slice as core_slice;
 use self::Direction::*;
 
 use vec::Vec;
 
-pub use core::slice::{Chunks, AsSlice, SplitN, Windows};
+pub use core::slice::{Chunks, AsSlice, Windows};
 pub use core::slice::{Iter, IterMut, PartialEqSliceExt};
 pub use core::slice::{IntSliceExt, SplitMut, ChunksMut, Split};
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
 pub use core::slice::{bytes, mut_ref_slice, ref_slice};
 pub use core::slice::{from_raw_buf, from_raw_mut_buf};
+
+#[deprecated = "use Iter instead"]
+pub type Items<'a, T:'a> = Iter<'a, T>;
+
+#[deprecated = "use IterMut instead"]
+pub type MutItems<'a, T:'a> = IterMut<'a, T>;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
@@ -1412,7 +1418,7 @@ mod tests {
     use prelude::{Some, None, range, Vec, ToString, Clone, Greater, Less, Equal};
     use prelude::{SliceExt, Iterator, IteratorExt, DoubleEndedIteratorExt};
     use prelude::{OrdSliceExt, CloneSliceExt, PartialEqSliceExt, AsSlice};
-    use prelude::{RandomAccessIterator, Ord, VectorVector};
+    use prelude::{RandomAccessIterator, Ord, SliceConcatExt};
     use core::cell::Cell;
     use core::default::Default;
     use core::mem;
@@ -1678,15 +1684,19 @@ mod tests {
     fn test_swap_remove() {
         let mut v = vec![1i, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
-        assert_eq!(e, Some(1));
+        assert_eq!(e, 1);
         assert_eq!(v, vec![5i, 2, 3, 4]);
         e = v.swap_remove(3);
-        assert_eq!(e, Some(4));
+        assert_eq!(e, 4);
         assert_eq!(v, vec![5i, 2, 3]);
+    }
 
-        e = v.swap_remove(3);
-        assert_eq!(e, None);
-        assert_eq!(v, vec![5i, 2, 3]);
+    #[test]
+    #[should_fail]
+    fn test_swap_remove_fail() {
+        let mut v = vec![1i];
+        let _ = v.swap_remove(0);
+        let _ = v.swap_remove(0);
     }
 
     #[test]
@@ -1970,48 +1980,48 @@ mod tests {
     }
 
     #[test]
-    fn test_binary_search_elem() {
-        assert_eq!([1i,2,3,4,5].binary_search_elem(&5).found(), Some(4));
-        assert_eq!([1i,2,3,4,5].binary_search_elem(&4).found(), Some(3));
-        assert_eq!([1i,2,3,4,5].binary_search_elem(&3).found(), Some(2));
-        assert_eq!([1i,2,3,4,5].binary_search_elem(&2).found(), Some(1));
-        assert_eq!([1i,2,3,4,5].binary_search_elem(&1).found(), Some(0));
+    fn test_binary_search() {
+        assert_eq!([1i,2,3,4,5].binary_search(&5).ok(), Some(4));
+        assert_eq!([1i,2,3,4,5].binary_search(&4).ok(), Some(3));
+        assert_eq!([1i,2,3,4,5].binary_search(&3).ok(), Some(2));
+        assert_eq!([1i,2,3,4,5].binary_search(&2).ok(), Some(1));
+        assert_eq!([1i,2,3,4,5].binary_search(&1).ok(), Some(0));
 
-        assert_eq!([2i,4,6,8,10].binary_search_elem(&1).found(), None);
-        assert_eq!([2i,4,6,8,10].binary_search_elem(&5).found(), None);
-        assert_eq!([2i,4,6,8,10].binary_search_elem(&4).found(), Some(1));
-        assert_eq!([2i,4,6,8,10].binary_search_elem(&10).found(), Some(4));
+        assert_eq!([2i,4,6,8,10].binary_search(&1).ok(), None);
+        assert_eq!([2i,4,6,8,10].binary_search(&5).ok(), None);
+        assert_eq!([2i,4,6,8,10].binary_search(&4).ok(), Some(1));
+        assert_eq!([2i,4,6,8,10].binary_search(&10).ok(), Some(4));
 
-        assert_eq!([2i,4,6,8].binary_search_elem(&1).found(), None);
-        assert_eq!([2i,4,6,8].binary_search_elem(&5).found(), None);
-        assert_eq!([2i,4,6,8].binary_search_elem(&4).found(), Some(1));
-        assert_eq!([2i,4,6,8].binary_search_elem(&8).found(), Some(3));
+        assert_eq!([2i,4,6,8].binary_search(&1).ok(), None);
+        assert_eq!([2i,4,6,8].binary_search(&5).ok(), None);
+        assert_eq!([2i,4,6,8].binary_search(&4).ok(), Some(1));
+        assert_eq!([2i,4,6,8].binary_search(&8).ok(), Some(3));
 
-        assert_eq!([2i,4,6].binary_search_elem(&1).found(), None);
-        assert_eq!([2i,4,6].binary_search_elem(&5).found(), None);
-        assert_eq!([2i,4,6].binary_search_elem(&4).found(), Some(1));
-        assert_eq!([2i,4,6].binary_search_elem(&6).found(), Some(2));
+        assert_eq!([2i,4,6].binary_search(&1).ok(), None);
+        assert_eq!([2i,4,6].binary_search(&5).ok(), None);
+        assert_eq!([2i,4,6].binary_search(&4).ok(), Some(1));
+        assert_eq!([2i,4,6].binary_search(&6).ok(), Some(2));
 
-        assert_eq!([2i,4].binary_search_elem(&1).found(), None);
-        assert_eq!([2i,4].binary_search_elem(&5).found(), None);
-        assert_eq!([2i,4].binary_search_elem(&2).found(), Some(0));
-        assert_eq!([2i,4].binary_search_elem(&4).found(), Some(1));
+        assert_eq!([2i,4].binary_search(&1).ok(), None);
+        assert_eq!([2i,4].binary_search(&5).ok(), None);
+        assert_eq!([2i,4].binary_search(&2).ok(), Some(0));
+        assert_eq!([2i,4].binary_search(&4).ok(), Some(1));
 
-        assert_eq!([2i].binary_search_elem(&1).found(), None);
-        assert_eq!([2i].binary_search_elem(&5).found(), None);
-        assert_eq!([2i].binary_search_elem(&2).found(), Some(0));
+        assert_eq!([2i].binary_search(&1).ok(), None);
+        assert_eq!([2i].binary_search(&5).ok(), None);
+        assert_eq!([2i].binary_search(&2).ok(), Some(0));
 
-        assert_eq!([].binary_search_elem(&1i).found(), None);
-        assert_eq!([].binary_search_elem(&5i).found(), None);
+        assert_eq!([].binary_search(&1i).ok(), None);
+        assert_eq!([].binary_search(&5i).ok(), None);
 
-        assert!([1i,1,1,1,1].binary_search_elem(&1).found() != None);
-        assert!([1i,1,1,1,2].binary_search_elem(&1).found() != None);
-        assert!([1i,1,1,2,2].binary_search_elem(&1).found() != None);
-        assert!([1i,1,2,2,2].binary_search_elem(&1).found() != None);
-        assert_eq!([1i,2,2,2,2].binary_search_elem(&1).found(), Some(0));
+        assert!([1i,1,1,1,1].binary_search(&1).ok() != None);
+        assert!([1i,1,1,1,2].binary_search(&1).ok() != None);
+        assert!([1i,1,1,2,2].binary_search(&1).ok() != None);
+        assert!([1i,1,2,2,2].binary_search(&1).ok() != None);
+        assert_eq!([1i,2,2,2,2].binary_search(&1).ok(), Some(0));
 
-        assert_eq!([1i,2,3,4,5].binary_search_elem(&6).found(), None);
-        assert_eq!([1i,2,3,4,5].binary_search_elem(&0).found(), None);
+        assert_eq!([1i,2,3,4,5].binary_search(&6).ok(), None);
+        assert_eq!([1i,2,3,4,5].binary_search(&0).ok(), None);
     }
 
     #[test]
@@ -2106,13 +2116,15 @@ mod tests {
     #[test]
     fn test_concat() {
         let v: [Vec<int>, ..0] = [];
-        assert_eq!(v.concat_vec(), vec![]);
-        assert_eq!([vec![1i], vec![2i,3i]].concat_vec(), vec![1, 2, 3]);
+        let c: Vec<int> = v.concat();
+        assert_eq!(c, []);
+        let d: Vec<int> = [vec![1i], vec![2i,3i]].concat();
+        assert_eq!(d, vec![1i, 2, 3]);
 
         let v: [&[int], ..2] = [&[1], &[2, 3]];
-        assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 3]);
-        let v: [&[int], ..3] = [&[1], &[2], &[3]];
-        assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 0, 3]);
+        assert_eq!(v.connect(&0), vec![1i, 0, 2, 3]);
+        let v: [&[int], ..3] = [&[1i], &[2], &[3]];
+        assert_eq!(v.connect(&0), vec![1i, 0, 2, 0, 3]);
     }
 
     #[test]
@@ -2158,23 +2170,25 @@ mod tests {
     fn test_remove() {
         let mut a = vec![1i,2,3,4];
 
-        assert_eq!(a.remove(2), Some(3));
+        assert_eq!(a.remove(2), 3);
         assert_eq!(a, vec![1i,2,4]);
 
-        assert_eq!(a.remove(2), Some(4));
+        assert_eq!(a.remove(2), 4);
         assert_eq!(a, vec![1i,2]);
 
-        assert_eq!(a.remove(2), None);
-        assert_eq!(a, vec![1i,2]);
-
-        assert_eq!(a.remove(0), Some(1));
+        assert_eq!(a.remove(0), 1);
         assert_eq!(a, vec![2i]);
 
-        assert_eq!(a.remove(0), Some(2));
+        assert_eq!(a.remove(0), 2);
         assert_eq!(a, vec![]);
+    }
 
-        assert_eq!(a.remove(0), None);
-        assert_eq!(a.remove(10), None);
+    #[test]
+    #[should_fail]
+    fn test_remove_fail() {
+        let mut a = vec![1i];
+        let _ = a.remove(0);
+        let _ = a.remove(0);
     }
 
     #[test]
@@ -2870,7 +2884,7 @@ mod bench {
         let xss: Vec<Vec<uint>> =
             Vec::from_fn(100, |i| range(0u, i).collect());
         b.iter(|| {
-            xss.as_slice().concat_vec()
+            xss.as_slice().concat();
         });
     }
 

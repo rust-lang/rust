@@ -611,9 +611,9 @@ fn is_useful(cx: &MatchCheckCtxt,
                             let arity = constructor_arity(cx, &c, left_ty);
                             let mut result = {
                                 let pat_slice = pats[];
-                                let subpats = Vec::from_fn(arity, |i| {
+                                let subpats: Vec<_> = range(0, arity).map(|i| {
                                     pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
-                                });
+                                }).collect();
                                 vec![construct_witness(cx, &c, subpats, left_ty)]
                             };
                             result.extend(pats.into_iter().skip(arity));
@@ -635,7 +635,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                 match is_useful(cx, &matrix, v.tail(), witness) {
                     UsefulWithWitness(pats) => {
                         let arity = constructor_arity(cx, &constructor, left_ty);
-                        let wild_pats = Vec::from_elem(arity, DUMMY_WILD_PAT);
+                        let wild_pats: Vec<_> = repeat(DUMMY_WILD_PAT).take(arity).collect();
                         let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
                         let mut new_pats = vec![enum_pat];
                         new_pats.extend(pats.into_iter());
@@ -788,7 +788,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
     } = raw_pat(r[col]);
     let head: Option<Vec<&Pat>> = match *node {
         ast::PatWild(_) =>
-            Some(Vec::from_elem(arity, DUMMY_WILD_PAT)),
+            Some(repeat(DUMMY_WILD_PAT).take(arity).collect()),
 
         ast::PatIdent(_, _, _) => {
             let opt_def = cx.tcx.def_map.borrow().get(&pat_id).cloned();
@@ -801,7 +801,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 } else {
                     None
                 },
-                _ => Some(Vec::from_elem(arity, DUMMY_WILD_PAT))
+                _ => Some(repeat(DUMMY_WILD_PAT).take(arity).collect())
             }
         }
 
@@ -815,7 +815,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 DefVariant(..) | DefStruct(..) => {
                     Some(match args {
                         &Some(ref args) => args.iter().map(|p| &**p).collect(),
-                        &None => Vec::from_elem(arity, DUMMY_WILD_PAT)
+                        &None => repeat(DUMMY_WILD_PAT).take(arity).collect(),
                     })
                 }
                 _ => None
@@ -894,13 +894,13 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 // Fixed-length vectors.
                 Single => {
                     let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
-                    pats.grow_fn(arity - before.len() - after.len(), |_| DUMMY_WILD_PAT);
+                    pats.extend(repeat(DUMMY_WILD_PAT).take(arity - before.len() - after.len()));
                     pats.extend(after.iter().map(|p| &**p));
                     Some(pats)
                 },
                 Slice(length) if before.len() + after.len() <= length && slice.is_some() => {
                     let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
-                    pats.grow_fn(arity - before.len() - after.len(), |_| DUMMY_WILD_PAT);
+                    pats.extend(repeat(DUMMY_WILD_PAT).take(arity - before.len() - after.len()));
                     pats.extend(after.iter().map(|p| &**p));
                     Some(pats)
                 },
