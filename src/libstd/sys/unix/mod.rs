@@ -109,6 +109,8 @@ pub fn decode_error(errno: i32) -> IoError {
              "file descriptor is not a TTY"),
         libc::ETIMEDOUT => (io::TimedOut, "operation timed out"),
         libc::ECANCELED => (io::TimedOut, "operation aborted"),
+        libc::consts::os::posix88::EEXIST =>
+            (io::PathAlreadyExists, "path already exists"),
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
