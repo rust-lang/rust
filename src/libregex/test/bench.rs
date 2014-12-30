@@ -9,7 +9,7 @@
 // except according to those terms.
 #![allow(non_snake_case)]
 
-use std::rand::{Rng, task_rng};
+use std::rand::{Rng, thread_rng};
 use stdtest::Bencher;
 
 use regex::{Regex, NoExpand};
@@ -154,7 +154,7 @@ fn medium() -> Regex { regex!("[XYZ]ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 fn hard() -> Regex { regex!("[ -~]*ABCDEFGHIJKLMNOPQRSTUVWXYZ$") }
 
 fn gen_text(n: uint) -> String {
-    let mut rng = task_rng();
+    let mut rng = thread_rng();
     let mut bytes = rng.gen_ascii_chars().map(|n| n as u8).take(n)
                        .collect::<Vec<u8>>();
     for (i, b) in bytes.iter_mut().enumerate() {
