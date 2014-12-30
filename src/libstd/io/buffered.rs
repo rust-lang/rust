@@ -39,7 +39,7 @@ use kinds::{Send,Sync};
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut reader = BufferedReader::new(file);
 ///
-/// let mut buf = [0, ..100];
+/// let mut buf = [0; 100];
 /// match reader.read(&mut buf) {
 ///     Ok(nread) => println!("Read {} bytes", nread),
 ///     Err(e) => println!("error reading: {}", e)
@@ -326,7 +326,7 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 /// stream.write("hello, world".as_bytes());
 /// stream.flush();
 ///
-/// let mut buf = [0, ..100];
+/// let mut buf = [0; 100];
 /// match stream.read(&mut buf) {
 ///     Ok(nread) => println!("Read {} bytes", nread),
 ///     Err(e) => println!("error reading: {}", e)

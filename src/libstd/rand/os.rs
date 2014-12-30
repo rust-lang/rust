@@ -70,15 +70,15 @@ mod imp {
     }
 
     fn getrandom_next_u32() -> u32 {
-        let mut buf: [u8, ..4] = [0u8, ..4];
+        let mut buf: [u8; 4] = [0u8; 4];
         getrandom_fill_bytes(&mut buf);
-        unsafe { mem::transmute::<[u8, ..4], u32>(buf) }
+        unsafe { mem::transmute::<[u8; 4], u32>(buf) }
     }
 
     fn getrandom_next_u64() -> u64 {
-        let mut buf: [u8, ..8] = [0u8, ..8];
+        let mut buf: [u8; 8] = [0u8; 8];
         getrandom_fill_bytes(&mut buf);
-        unsafe { mem::transmute::<[u8, ..8], u64>(buf) }
+        unsafe { mem::transmute::<[u8; 8], u64>(buf) }
     }
 
     #[cfg(all(target_os = "linux",
@@ -90,7 +90,7 @@ mod imp {
         static GETRANDOM_AVAILABLE: AtomicBool = INIT_ATOMIC_BOOL;
 
         if !GETRANDOM_CHECKED.load(Relaxed) {
-            let mut buf: [u8, ..0] = [];
+            let mut buf: [u8; 0] = [];
             let result = getrandom(&mut buf);
             let available = if result == -1 {
                 let err = errno() as libc::c_int;

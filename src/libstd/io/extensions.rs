@@ -86,9 +86,9 @@ pub fn u64_to_le_bytes<T, F>(n: u64, size: uint, f: F) -> T where
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(unsafe { & transmute::<_, [u8, ..2]>((n as u16).to_le()) }),
-      4u => f(unsafe { & transmute::<_, [u8, ..4]>((n as u32).to_le()) }),
-      8u => f(unsafe { & transmute::<_, [u8, ..8]>(n.to_le()) }),
+      2u => f(unsafe { & transmute::<_, [u8; 2]>((n as u16).to_le()) }),
+      4u => f(unsafe { & transmute::<_, [u8; 4]>((n as u32).to_le()) }),
+      8u => f(unsafe { & transmute::<_, [u8; 8]>(n.to_le()) }),
       _ => {
 
         let mut bytes = vec!();
@@ -127,9 +127,9 @@ pub fn u64_to_be_bytes<T, F>(n: u64, size: uint, f: F) -> T where
     assert!(size <= 8u);
     match size {
       1u => f(&[n as u8]),
-      2u => f(unsafe { & transmute::<_, [u8, ..2]>((n as u16).to_be()) }),
-      4u => f(unsafe { & transmute::<_, [u8, ..4]>((n as u32).to_be()) }),
-      8u => f(unsafe { & transmute::<_, [u8, ..8]>(n.to_be()) }),
+      2u => f(unsafe { & transmute::<_, [u8; 2]>((n as u16).to_be()) }),
+      4u => f(unsafe { & transmute::<_, [u8; 4]>((n as u32).to_be()) }),
+      8u => f(unsafe { & transmute::<_, [u8; 8]>(n.to_be()) }),
       _ => {
         let mut bytes = vec!();
         let mut i = size;
@@ -164,7 +164,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
         panic!("index out of bounds");
     }
 
-    let mut buf = [0u8, ..8];
+    let mut buf = [0u8; 8];
     unsafe {
         let ptr = data.as_ptr().offset(start as int);
         let out = buf.as_mut_ptr();

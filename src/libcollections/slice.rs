@@ -861,6 +861,7 @@ pub trait CloneSliceExt<T> for Sized? {
     fn clone_from_slice(&mut self, &[T]) -> uint;
 }
 
+
 #[unstable = "trait is unstable"]
 impl<T: Clone> CloneSliceExt<T> for [T] {
     /// Returns a copy of `v`.
@@ -1482,14 +1483,14 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let xs: [int, ..0] = [];
+        let xs: [int; 0] = [];
         assert!(xs.is_empty());
         assert!(![0i].is_empty());
     }
 
     #[test]
     fn test_len_divzero() {
-        type Z = [i8, ..0];
+        type Z = [i8; 0];
         let v0 : &[Z] = &[];
         let v1 : &[Z] = &[[]];
         let v2 : &[Z] = &[[], []];
@@ -1856,7 +1857,7 @@ mod tests {
     #[test]
     fn test_permutations() {
         {
-            let v: [int, ..0] = [];
+            let v: [int; 0] = [];
             let mut it = v.permutations();
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);
@@ -2116,28 +2117,28 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        let v: [Vec<int>, ..0] = [];
+        let v: [Vec<int>; 0] = [];
         let c: Vec<int> = v.concat();
         assert_eq!(c, []);
         let d: Vec<int> = [vec![1i], vec![2i,3i]].concat();
         assert_eq!(d, vec![1i, 2, 3]);
 
-        let v: [&[int], ..2] = [&[1], &[2, 3]];
+        let v: [&[int]; 2] = [&[1], &[2, 3]];
         assert_eq!(v.connect(&0), vec![1i, 0, 2, 3]);
-        let v: [&[int], ..3] = [&[1i], &[2], &[3]];
+        let v: [&[int]; 3] = [&[1i], &[2], &[3]];
         assert_eq!(v.connect(&0), vec![1i, 0, 2, 0, 3]);
     }
 
     #[test]
     fn test_connect() {
-        let v: [Vec<int>, ..0] = [];
+        let v: [Vec<int>; 0] = [];
         assert_eq!(v.connect_vec(&0), vec![]);
         assert_eq!([vec![1i], vec![2i, 3]].connect_vec(&0), vec![1, 0, 2, 3]);
         assert_eq!([vec![1i], vec![2i], vec![3i]].connect_vec(&0), vec![1, 0, 2, 0, 3]);
 
-        let v: [&[int], ..2] = [&[1], &[2, 3]];
+        let v: [&[int]; 2] = [&[1], &[2, 3]];
         assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 3]);
-        let v: [&[int], ..3] = [&[1], &[2], &[3]];
+        let v: [&[int]; 3] = [&[1], &[2], &[3]];
         assert_eq!(v.connect_vec(&0), vec![1, 0, 2, 0, 3]);
     }
 
@@ -2710,7 +2711,7 @@ mod tests {
         }
         assert_eq!(cnt, 11);
 
-        let xs: [Foo, ..3] = [Foo, Foo, Foo];
+        let xs: [Foo; 3] = [Foo, Foo, Foo];
         cnt = 0;
         for f in xs.iter() {
             assert!(*f == Foo);

@@ -292,7 +292,7 @@ pub struct Parser<'a> {
     pub cfg: CrateConfig,
     /// the previous token or None (only stashed sometimes).
     pub last_token: Option<Box<token::Token>>,
-    pub buffer: [TokenAndSpan, ..4],
+    pub buffer: [TokenAndSpan; 4],
     pub buffer_start: int,
     pub buffer_end: int,
     pub tokens_consumed: uint,
@@ -2146,7 +2146,7 @@ impl<'a> Parser<'a> {
             (&None, &Some(ref e)) => (e.span.lo, e.span.hi),
             (&None, &None) => (DUMMY_SP.lo, DUMMY_SP.hi),
         };
-        ExprIndex(expr, self.mk_expr(lo, hi, self.mk_range(start, end)))
+        ExprIndex(expr, self.mk_expr(lo, hi, ExprRange(start, end)))
     }
 
     pub fn mk_range(&mut self,

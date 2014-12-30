@@ -1546,7 +1546,7 @@ mod test {
     fn binary_file() {
         use rand::{StdRng, Rng};
 
-        let mut bytes = [0, ..1024];
+        let mut bytes = [0; 1024];
         StdRng::new().ok().unwrap().fill_bytes(&mut bytes);
 
         let tmpdir = tmpdir();

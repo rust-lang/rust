@@ -1387,7 +1387,7 @@ impl Bencher {
         if n == 0 { n = 1; }
 
         let mut total_run = Duration::nanoseconds(0);
-        let samples : &mut [f64] = &mut [0.0_f64, ..50];
+        let samples : &mut [f64] = &mut [0.0_f64; 50];
         loop {
             let mut summ = None;
             let mut summ5 = None;

@@ -168,13 +168,13 @@ mod signal {
     #[repr(C)]
     #[cfg(target_word_size = "32")]
     pub struct sigset_t {
-        __val: [libc::c_ulong, ..32],
+        __val: [libc::c_ulong; 32],
     }
 
     #[repr(C)]
     #[cfg(target_word_size = "64")]
     pub struct sigset_t {
-        __val: [libc::c_ulong, ..16],
+        __val: [libc::c_ulong; 16],
     }
 }
 
@@ -211,7 +211,7 @@ mod signal {
         pub sa_handler: extern fn(libc::c_int),
         pub sa_mask: sigset_t,
         sa_restorer: *mut libc::c_void,
-        sa_resv: [libc::c_int, ..1],
+        sa_resv: [libc::c_int; 1],
     }
 
     unsafe impl ::kinds::Send for sigaction { }
@@ -219,7 +219,7 @@ mod signal {
 
     #[repr(C)]
     pub struct sigset_t {
-        __val: [libc::c_ulong, ..32],
+        __val: [libc::c_ulong; 32],
     }
 }
 
@@ -244,7 +244,7 @@ mod signal {
     #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
     #[repr(C)]
     pub struct sigset_t {
-        bits: [u32, ..4],
+        bits: [u32; 4],
     }
 
     // This structure has more fields, but we're not all that interested in

@@ -130,7 +130,7 @@ mod darwin_fd_limit {
         use os::last_os_error;
 
         // Fetch the kern.maxfilesperproc value
-        let mut mib: [libc::c_int, ..2] = [CTL_KERN, KERN_MAXFILESPERPROC];
+        let mut mib: [libc::c_int; 2] = [CTL_KERN, KERN_MAXFILESPERPROC];
         let mut maxfiles: libc::c_int = 0;
         let mut size: libc::size_t = size_of_val(&maxfiles) as libc::size_t;
         if sysctl(&mut mib[0], 2, &mut maxfiles as *mut libc::c_int as *mut libc::c_void, &mut size,

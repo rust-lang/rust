@@ -26,7 +26,7 @@ enum e2 {
 }
 
 enum e3 {
-    a([u16, ..0], u8), b
+    a([u16; 0], u8), b
 }
 
 pub fn main() {

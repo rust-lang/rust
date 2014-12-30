@@ -45,7 +45,7 @@ use sys_common;
 ///         Err(e) => panic!("couldn't bind socket: {}", e),
 ///     };
 ///
-///     let mut buf = [0, ..10];
+///     let mut buf = [0; 10];
 ///     match socket.recv_from(&mut buf) {
 ///         Ok((amt, src)) => {
 ///             // Send a reply to the socket we received data from

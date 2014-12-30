@@ -112,7 +112,7 @@ pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
     // fully understand. Here we explicitly make the pipe non-inheritable,
     // which means to pass it to a subprocess they need to be duplicated
     // first, as in std::run.
-    let mut fds = [0, ..2];
+    let mut fds = [0; 2];
     match libc::pipe(fds.as_mut_ptr(), 1024 as ::libc::c_uint,
                      (libc::O_BINARY | libc::O_NOINHERIT) as c_int) {
         0 => {

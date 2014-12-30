@@ -1438,11 +1438,11 @@ the `static` lifetime, fixed-size arrays, tuples, enum variants, and structs.
 const BIT1: uint = 1 << 0;
 const BIT2: uint = 1 << 1;
 
-const BITS: [uint, ..2] = [BIT1, BIT2];
+const BITS: [uint; 2] = [BIT1, BIT2];
 const STRING: &'static str = "bitstring";
 
 struct BitsNStrings<'a> {
-    mybits: [uint, ..2],
+    mybits: [uint; 2],
     mystring: &'a str
 }
 
@@ -2923,7 +2923,7 @@ constant expression that can be evaluated at compile time, such as a
 ```
 [1i, 2, 3, 4];
 ["a", "b", "c", "d"];
-[0i, ..128];             // array with 128 zeros
+[0i; 128];             // array with 128 zeros
 [0u8, 0u8, 0u8, 0u8];
 ```
 
@@ -3691,7 +3691,7 @@ An example of each kind:
 
 ```{rust}
 let vec: Vec<int>  = vec![1, 2, 3];
-let arr: [int, ..3] = [1, 2, 3];
+let arr: [int; 3] = [1, 2, 3];
 let s: &[int]      = vec.as_slice();
 ```
 

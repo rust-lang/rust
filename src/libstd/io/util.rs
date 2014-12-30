@@ -103,7 +103,7 @@ impl Reader for ZeroReader {
 
 impl Buffer for ZeroReader {
     fn fill_buf<'a>(&'a mut self) -> io::IoResult<&'a [u8]> {
-        static DATA: [u8, ..64] = [0, ..64];
+        static DATA: [u8; 64] = [0; 64];
         Ok(DATA.as_slice())
     }
 

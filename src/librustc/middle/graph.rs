@@ -42,12 +42,12 @@ pub struct Graph<N,E> {
 }
 
 pub struct Node<N> {
-    first_edge: [EdgeIndex, ..2], // see module comment
+    first_edge: [EdgeIndex; 2], // see module comment
     pub data: N,
 }
 
 pub struct Edge<E> {
-    next_edge: [EdgeIndex, ..2], // see module comment
+    next_edge: [EdgeIndex; 2], // see module comment
     source: NodeIndex,
     target: NodeIndex,
     pub data: E,
