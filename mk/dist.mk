@@ -321,27 +321,20 @@ distcheck-docs: dist-docs
 # Primary targets (dist, distcheck)
 ######################################################################
 
-ifdef CFG_WINDOWSY_$(CFG_BUILD)
-
-dist: dist-win dist-tar-bins
-
-distcheck: distcheck-win
-	$(Q)rm -Rf tmp/distcheck
-	@echo
-	@echo -----------------------------------------------
-	@echo "Rust ready for distribution (see ./dist)"
-	@echo -----------------------------------------------
-
-else
+MAYBE_DIST_TAR_SRC=dist-tar-src
+MAYBE_DISTCHECK_TAR_SRC=distcheck-tar-src
 
 # FIXME #13224: On OS X don't produce tarballs simply because --exclude-vcs don't work.
 # This is a huge hack because I just don't have time to figure out another solution.
 ifeq ($(CFG_OSTYPE), apple-darwin)
 MAYBE_DIST_TAR_SRC=
 MAYBE_DISTCHECK_TAR_SRC=
-else
-MAYBE_DIST_TAR_SRC=dist-tar-src
-MAYBE_DISTCHECK_TAR_SRC=distcheck-tar-src
+endif
+
+# Don't bother with source tarballs on windows just because we historically haven't.
+ifeq ($(CFG_OSTYPE), pc-windows-gnu)
+MAYBE_DIST_TAR_SRC=
+MAYBE_DISTCHECK_TAR_SRC=
 endif
 
 ifneq ($(CFG_DISABLE_DOCS),)
@@ -352,15 +345,13 @@ MAYBE_DIST_DOCS=dist-docs
 MAYBE_DISTCHECK_DOCS=distcheck-docs
 endif
 
-dist: $(MAYBE_DIST_TAR_SRC) dist-osx dist-tar-bins $(MAYBE_DIST_DOCS)
+dist: $(MAYBE_DIST_TAR_SRC) dist-osx dist-win dist-tar-bins $(MAYBE_DIST_DOCS)
 
-distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-osx distcheck-tar-bins $(MAYBE_DISTCHECK_DOCS)
+distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-osx distcheck-win distcheck-tar-bins $(MAYBE_DISTCHECK_DOCS)
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------
 	@echo "Rust ready for distribution (see ./dist)"
 	@echo -----------------------------------------------
-
-endif
 
 .PHONY: dist distcheck
