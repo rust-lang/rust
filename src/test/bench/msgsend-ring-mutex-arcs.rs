@@ -28,15 +28,15 @@ type pipe = Arc<(Mutex<Vec<uint>>, Condvar)>;
 
 fn send(p: &pipe, msg: uint) {
     let &(ref lock, ref cond) = &**p;
-    let mut arr = lock.lock();
+    let mut arr = lock.lock().unwrap();
     arr.push(msg);
     cond.notify_one();
 }
 fn recv(p: &pipe) -> uint {
     let &(ref lock, ref cond) = &**p;
-    let mut arr = lock.lock();
+    let mut arr = lock.lock().unwrap();
     while arr.is_empty() {
-        cond.wait(&arr);
+        arr = cond.wait(arr).unwrap();
     }
     arr.pop().unwrap()
 }
