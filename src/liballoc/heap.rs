@@ -115,13 +115,17 @@ unsafe fn exchange_free(ptr: *mut u8, old_size: uint, align: uint) {
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values. In practice, the alignment is a
 // constant at the call site and the branch will be optimized out.
-#[cfg(any(target_arch = "arm",
-          target_arch = "mips",
-          target_arch = "mipsel"))]
+#[cfg(all(not(feature = "external_funcs"),
+          not(feature = "external_crate"),
+          any(target_arch = "arm",
+              target_arch = "mips",
+              target_arch = "mipsel")))]
 const MIN_ALIGN: uint = 8;
-#[cfg(any(target_arch = "x86",
-          target_arch = "x86_64",
-          target_arch = "aarch64"))]
+#[cfg(all(not(feature = "external_funcs"),
+          not(feature = "external_crate"),
+          any(target_arch = "x86",
+              target_arch = "x86_64",
+              target_arch = "aarch64"))]
 const MIN_ALIGN: uint = 16;
 
 #[cfg(feature = "external_funcs")]
