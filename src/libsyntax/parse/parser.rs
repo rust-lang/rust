@@ -1716,12 +1716,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn maybe_parse_fixed_length_of_vec(&mut self) -> Option<P<ast::Expr>> {
-        if self.check(&token::Comma) &&
-                self.look_ahead(1, |t| *t == token::DotDot) {
-            self.bump();
-            self.bump();
-            Some(self.parse_expr_res(RESTRICTION_NO_DOTS))
-        } else if self.check(&token::Semi) {
+        if self.check(&token::Semi) {
             self.bump();
             Some(self.parse_expr())
         } else {
@@ -2277,15 +2272,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // Nonempty vector.
                     let first_expr = self.parse_expr();
-                    if self.check(&token::Comma) &&
-                        self.look_ahead(1, |t| *t == token::DotDot) {
-                        // Repeating vector syntax: [ 0, ..512 ]
-                        self.bump();
-                        self.bump();
-                        let count = self.parse_expr();
-                        self.expect(&token::CloseDelim(token::Bracket));
-                        ex = ExprRepeat(first_expr, count);
-                    } else if self.check(&token::Semi) {
+                    if self.check(&token::Semi) {
                         // Repeating vector syntax: [ 0; 512 ]
                         self.bump();
                         let count = self.parse_expr();
