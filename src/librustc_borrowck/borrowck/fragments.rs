@@ -25,7 +25,6 @@ use rustc::middle::mem_categorization as mc;
 use rustc::util::ppaux::{Repr, UserString};
 use std::mem;
 use std::rc::Rc;
-use std::slice;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
@@ -268,9 +267,9 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
     return;
 
     fn non_member(elem: MovePathIndex, set: &[MovePathIndex]) -> bool {
-        match set.binary_search_elem(&elem) {
-            slice::BinarySearchResult::Found(_) => false,
-            slice::BinarySearchResult::NotFound(_) => true,
+        match set.binary_search(&elem) {
+            Ok(_) => false,
+            Err(_) => true,
         }
     }
 }

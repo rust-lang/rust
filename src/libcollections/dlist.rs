@@ -1290,8 +1290,10 @@ mod tests {
                     v.pop();
                 }
                 1 => {
-                    m.pop_front();
-                    v.remove(0);
+                    if !v.is_empty() {
+                        m.pop_front();
+                        v.remove(0);
+                    }
                 }
                 2 | 4 =>  {
                     m.push_front(-i);

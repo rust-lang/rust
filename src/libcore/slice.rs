@@ -46,6 +46,8 @@ use num::Int;
 use ops::{FnMut, mod};
 use option::Option;
 use option::Option::{None, Some};
+use result::Result;
+use result::Result::{Ok, Err};
 use ptr;
 use ptr::PtrExt;
 use mem;
@@ -237,7 +239,7 @@ impl<T> SliceExt<T> for [T] {
     }
 
     #[unstable]
-    fn binary_search_by<F>(&self, mut f: F) -> Result where
+    fn binary_search_by<F>(&self, mut f: F) -> Result<uint, uint> where
         F: FnMut(&T) -> Ordering
     {
         let mut base : uint = 0;
@@ -255,7 +257,7 @@ impl<T> SliceExt<T> for [T] {
             }
             lim >>= 1;
         }
-        Err(base);
+        Err(base)
     }
 
     #[inline]

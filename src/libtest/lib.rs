@@ -990,8 +990,8 @@ fn run_tests<F>(opts: &TestOpts,
 
     try!(callback(TeFiltered(filtered_descs)));
 
-    let (filtered_tests, filtered_benchs_and_metrics) =
-        filtered_tests.partition(|e| {
+    let (filtered_tests, filtered_benchs_and_metrics): (Vec<_>, _) =
+        filtered_tests.into_iter().partition(|e| {
             match e.testfn {
                 StaticTestFn(_) | DynTestFn(_) => true,
                 _ => false

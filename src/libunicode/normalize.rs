@@ -13,21 +13,21 @@
 use core::cmp::Ordering::{Equal, Less, Greater};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::slice;
 use core::slice::SliceExt;
+use core::result::Result::{Ok, Err};
 use tables::normalization::{canonical_table, compatibility_table, composition_table};
 
 fn bsearch_table<T>(c: char, r: &'static [(char, &'static [T])]) -> Option<&'static [T]> {
-    match r.binary_search(|&(val, _)| {
+    match r.binary_search_by(|&(val, _)| {
         if c == val { Equal }
         else if val < c { Less }
         else { Greater }
     }) {
-        slice::BinarySearchResult::Found(idx) => {
+        Ok(idx) => {
             let (_, result) = r[idx];
             Some(result)
         }
-        slice::BinarySearchResult::NotFound(_) => None
+        Err(_) => None
     }
 }
 
@@ -81,16 +81,16 @@ pub fn compose(a: char, b: char) -> Option<char> {
         match bsearch_table(a, composition_table) {
             None => None,
             Some(candidates) => {
-                match candidates.binary_search(|&(val, _)| {
+                match candidates.binary_search_by(|&(val, _)| {
                     if b == val { Equal }
                     else if val < b { Less }
                     else { Greater }
                 }) {
-                    slice::BinarySearchResult::Found(idx) => {
+                    Ok(idx) => {
                         let (_, result) = candidates[idx];
                         Some(result)
                     }
-                    slice::BinarySearchResult::NotFound(_) => None
+                    Err(_) => None
                 }
             }
         }
