@@ -49,7 +49,7 @@ use sys_common;
 ///     match socket.recv_from(&mut buf) {
 ///         Ok((amt, src)) => {
 ///             // Send a reply to the socket we received data from
-///             let buf = buf[mut ..amt];
+///             let buf = buf.slice_to_mut(amt);
 ///             buf.reverse();
 ///             socket.send_to(buf, src);
 ///         }

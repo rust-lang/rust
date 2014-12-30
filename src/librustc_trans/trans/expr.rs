@@ -585,36 +585,40 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans_rec_tup_field(bcx, &**base, idx.node)
         }
         ast::ExprIndex(ref base, ref idx) => {
-            trans_index(bcx, expr, &**base, &**idx, MethodCall::expr(expr.id))
-        }
-        ast::ExprSlice(ref base, ref start, ref end, _) => {
-            let _icx = push_ctxt("trans_slice");
-            let ccx = bcx.ccx();
+            match idx.node {
+                ast::ExprRange(ref start, ref end) => {
+                    // Special case for slicing syntax (KILLME).
+                    let _icx = push_ctxt("trans_slice");
+                    let ccx = bcx.ccx();
 
-            let method_call = MethodCall::expr(expr.id);
-            let method_ty = ccx.tcx()
-                               .method_map
-                               .borrow()
-                               .get(&method_call)
-                               .map(|method| method.ty);
-            let base_datum = unpack_datum!(bcx, trans(bcx, &**base));
+                    let method_call = MethodCall::expr(expr.id);
+                    let method_ty = ccx.tcx()
+                                       .method_map
+                                       .borrow()
+                                       .get(&method_call)
+                                       .map(|method| method.ty);
+                    let base_datum = unpack_datum!(bcx, trans(bcx, &**base));
 
-            let mut args = vec![];
-            start.as_ref().map(|e| args.push((unpack_datum!(bcx, trans(bcx, &**e)), e.id)));
-            end.as_ref().map(|e| args.push((unpack_datum!(bcx, trans(bcx, &**e)), e.id)));
+                    let mut args = vec![];
+                    start.as_ref().map(|e| args.push((unpack_datum!(bcx, trans(bcx, &**e)), e.id)));
+                    end.as_ref().map(|e| args.push((unpack_datum!(bcx, trans(bcx, &**e)), e.id)));
 
-            let result_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty.unwrap())).unwrap();
-            let scratch = rvalue_scratch_datum(bcx, result_ty, "trans_slice");
+                    let result_ty = ty::ty_fn_ret(monomorphize_type(bcx,
+                                                                    method_ty.unwrap())).unwrap();
+                    let scratch = rvalue_scratch_datum(bcx, result_ty, "trans_slice");
 
-            unpack_result!(bcx,
-                           trans_overloaded_op(bcx,
-                                               expr,
-                                               method_call,
-                                               base_datum,
-                                               args,
-                                               Some(SaveIn(scratch.val)),
-                                               true));
-            DatumBlock::new(bcx, scratch.to_expr_datum())
+                    unpack_result!(bcx,
+                                   trans_overloaded_op(bcx,
+                                                       expr,
+                                                       method_call,
+                                                       base_datum,
+                                                       args,
+                                                       Some(SaveIn(scratch.val)),
+                                                       true));
+                    DatumBlock::new(bcx, scratch.to_expr_datum())
+                }
+                _ => trans_index(bcx, expr, &**base, &**idx, MethodCall::expr(expr.id))
+            }
         }
         ast::ExprBox(_, ref contents) => {
             // Special case for `Box<T>`
@@ -1064,22 +1068,34 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
 
             // A range just desugars into a struct.
-            let (did, fields) = match end {
-                &Some(ref end) => {
+            // Note that the type of the start and end may not be the same, but
+            // they should only differ in their lifetime, which should not matter
+            // in trans.
+            let (did, fields, ty_params) = match (start, end) {
+                (&Some(ref start), &Some(ref end)) => {
                     // Desugar to Range
-                    let fields = vec!(make_field("start", start.clone()),
-                                      make_field("end", end.clone()));
-                    (tcx.lang_items.range_struct(), fields)
+                    let fields = vec![make_field("start", start.clone()),
+                                      make_field("end", end.clone())];
+                    (tcx.lang_items.range_struct(), fields, vec![node_id_type(bcx, start.id)])
                 }
-                &None => {
+                (&Some(ref start), &None) => {
                     // Desugar to RangeFrom
-                    let fields = vec!(make_field("start", start.clone()));
-                    (tcx.lang_items.range_from_struct(), fields)
+                    let fields = vec![make_field("start", start.clone())];
+                    (tcx.lang_items.range_from_struct(), fields, vec![node_id_type(bcx, start.id)])
+                }
+                (&None, &Some(ref end)) => {
+                    // Desugar to RangeTo
+                    let fields = vec![make_field("end", end.clone())];
+                    (tcx.lang_items.range_to_struct(), fields, vec![node_id_type(bcx, end.id)])
+                }
+                _ => {
+                    // Desugar to FullRange
+                    (tcx.lang_items.full_range_struct(), vec![], vec![])
                 }
             };
 
             if let Some(did) = did {
-                let substs = Substs::new_type(vec![node_id_type(bcx, start.id)], vec![]);
+                let substs = Substs::new_type(ty_params, vec![]);
                 trans_struct(bcx,
                              fields.as_slice(),
                              None,

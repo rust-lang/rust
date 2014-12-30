@@ -55,7 +55,7 @@ mod imp {
         let mut read = 0;
         let len = v.len();
         while read < len {
-            let result = getrandom(v[mut read..]);
+            let result = getrandom(v.slice_from_mut(read));
             if result == -1 {
                 let err = errno() as libc::c_int;
                 if err == libc::EINTR {

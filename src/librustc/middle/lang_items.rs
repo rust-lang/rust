@@ -269,6 +269,7 @@ lets_do_this! {
     SliceMutTraitLangItem,           "slice_mut",               slice_mut_trait;
     RangeStructLangItem,             "range",                   range_struct;
     RangeFromStructLangItem,         "range_from",              range_from_struct;
+    RangeToStructLangItem,           "range_to",                range_to_struct;
     FullRangeStructLangItem,         "full_range",              full_range_struct;
 
     UnsafeTypeLangItem,              "unsafe",                  unsafe_type;

@@ -485,6 +485,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
 
     let prev_cx = visitor.cx;
     visitor.cx.parent = Some(expr.id);
+
     {
         let region_maps = &mut visitor.region_maps;
         let terminating = |id| {

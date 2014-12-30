@@ -3533,20 +3533,14 @@ fn create_scope_map(cx: &CrateContext,
             }
 
             ast::ExprAssignOp(_, ref lhs, ref rhs) |
-            ast::ExprIndex(ref lhs, ref rhs)        |
+            ast::ExprIndex(ref lhs, ref rhs) |
             ast::ExprBinary(_, ref lhs, ref rhs)    => {
                 walk_expr(cx, &**lhs, scope_stack, scope_map);
                 walk_expr(cx, &**rhs, scope_stack, scope_map);
             }
 
-            ast::ExprSlice(ref base, ref start, ref end, _) => {
-                walk_expr(cx, &**base, scope_stack, scope_map);
-                start.as_ref().map(|x| walk_expr(cx, &**x, scope_stack, scope_map));
-                end.as_ref().map(|x| walk_expr(cx, &**x, scope_stack, scope_map));
-            }
-
             ast::ExprRange(ref start, ref end) => {
-                walk_expr(cx, &**start, scope_stack, scope_map);
+                start.as_ref().map(|e| walk_expr(cx, &**e, scope_stack, scope_map));
                 end.as_ref().map(|e| walk_expr(cx, &**e, scope_stack, scope_map));
             }
 

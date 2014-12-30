@@ -866,13 +866,8 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(&**main_expression);
             visitor.visit_expr(&**index_expression)
         }
-        ExprSlice(ref main_expression, ref start, ref end, _) => {
-            visitor.visit_expr(&**main_expression);
-            walk_expr_opt(visitor, start);
-            walk_expr_opt(visitor, end)
-        }
         ExprRange(ref start, ref end) => {
-            visitor.visit_expr(&**start);
+            walk_expr_opt(visitor, start);
             walk_expr_opt(visitor, end)
         }
         ExprPath(ref path) => {

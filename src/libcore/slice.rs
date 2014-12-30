@@ -264,24 +264,26 @@ impl<T> SliceExt<T> for [T] {
     fn as_mut_slice(&mut self) -> &mut [T] { self }
 
     fn slice_mut(&mut self, start: uint, end: uint) -> &mut [T] {
-        self[mut start..end]
+        ops::SliceMut::slice_or_fail_mut(self, &start, &end)
     }
 
     #[inline]
     fn slice_from_mut(&mut self, start: uint) -> &mut [T] {
-        self[mut start..]
+        ops::SliceMut::slice_from_or_fail_mut(self, &start)
     }
 
     #[inline]
     fn slice_to_mut(&mut self, end: uint) -> &mut [T] {
-        self[mut ..end]
+        ops::SliceMut::slice_to_or_fail_mut(self, &end)
     }
 
     #[inline]
     fn split_at_mut(&mut self, mid: uint) -> (&mut [T], &mut [T]) {
         unsafe {
             let self2: &mut [T] = mem::transmute_copy(&self);
-            (self[mut ..mid], self2[mut mid..])
+
+            (ops::SliceMut::slice_to_or_fail_mut(self, &mid),
+             ops::SliceMut::slice_from_or_fail_mut(self2, &mid))
         }
     }
 
@@ -315,14 +317,13 @@ impl<T> SliceExt<T> for [T] {
 
     #[inline]
     fn tail_mut(&mut self) -> &mut [T] {
-        let len = self.len();
-        self[mut 1..len]
+        self.slice_from_mut(1)
     }
 
     #[inline]
     fn init_mut(&mut self) -> &mut [T] {
         let len = self.len();
-        self[mut 0..len - 1]
+        self.slice_to_mut(len-1)
     }
 
     #[inline]
@@ -560,7 +561,7 @@ impl<T: Ord> OrdSliceExt<T> for [T] {
         self.swap(j, i-1);
 
         // Step 4: Reverse the (previously) weakly decreasing part
-        self[mut i..].reverse();
+        self.slice_from_mut(i).reverse();
 
         true
     }
@@ -582,7 +583,7 @@ impl<T: Ord> OrdSliceExt<T> for [T] {
         }
 
         // Step 2: Reverse the weakly increasing part
-        self[mut i..].reverse();
+        self.slice_from_mut(i).reverse();
 
         // Step 3: Find the rightmost element equal to or bigger than the pivot (i-1)
         let mut j = self.len() - 1;
@@ -990,7 +991,7 @@ impl<'a, T, P> Iterator<&'a mut [T]> for MutSplits<'a, T, P> where P: FnMut(&T) 
             Some(idx) => {
                 let tmp = mem::replace(&mut self.v, &mut []);
                 let (head, tail) = tmp.split_at_mut(idx);
-                self.v = tail[mut 1..];
+                self.v = tail.slice_from_mut(1);
                 Some(head)
             }
         }
@@ -1026,7 +1027,7 @@ impl<'a, T, P> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T, P> where
                 let tmp = mem::replace(&mut self.v, &mut []);
                 let (head, tail) = tmp.split_at_mut(idx);
                 self.v = head;
-                Some(tail[mut 1..])
+                Some(tail.slice_from_mut(1))
             }
         }
     }

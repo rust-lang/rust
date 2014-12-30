@@ -735,7 +735,7 @@ mod tests {
     fn test_input(g: LabelledGraph) -> IoResult<String> {
         let mut writer = Vec::new();
         render(&g, &mut writer).unwrap();
-        (&mut writer[]).read_to_string()
+        (&mut writer.as_slice()).read_to_string()
     }
 
     // All of the tests use raw-strings as the format for the expected outputs,
@@ -847,7 +847,7 @@ r#"digraph hasse_diagram {
                  edge(1, 3, ";"),    edge(2, 3, ";"   )));
 
         render(&g, &mut writer).unwrap();
-        let r = (&mut writer[]).read_to_string();
+        let r = (&mut writer.as_slice()).read_to_string();
 
         assert_eq!(r.unwrap(),
 r#"digraph syntax_tree {
