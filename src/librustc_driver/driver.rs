@@ -611,9 +611,6 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     // passes are timed inside typeck
     typeck::check_crate(&ty_cx, trait_map);
 
-    time(time_passes, "check static items", (), |_|
-         middle::check_static::check_crate(&ty_cx));
-
     time(time_passes, "const checking", (), |_|
          middle::check_const::check_crate(&ty_cx));
 

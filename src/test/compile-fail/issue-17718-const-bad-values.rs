@@ -9,12 +9,12 @@
 // except according to those terms.
 
 const C1: &'static mut [usize] = &mut [];
-//~^ ERROR: constants are not allowed to have mutable references
+//~^ ERROR: references in constants may only refer to immutable values
 
 static mut S: usize = 3;
 const C2: &'static mut usize = &mut S;
 //~^ ERROR: constants cannot refer to other statics
-//~^^ ERROR: are not allowed to have mutable references
+//~^^ ERROR: references in constants may only refer to immutable values
 
 fn main() {}
 
