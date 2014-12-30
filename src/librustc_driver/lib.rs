@@ -540,7 +540,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
     match cfg.spawn(move || { std::io::stdio::set_stderr(box w); f() }).join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
-            // Task panicked without emitting a fatal diagnostic
+            // Thread panicked without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
                 let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
 
