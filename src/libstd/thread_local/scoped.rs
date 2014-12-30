@@ -62,10 +62,10 @@ pub struct Key<T> { #[doc(hidden)] pub inner: KeyInner<T> }
 #[macro_export]
 macro_rules! scoped_thread_local {
     (static $name:ident: $t:ty) => (
-        __scoped_thread_local_inner!(static $name: $t)
+        __scoped_thread_local_inner!(static $name: $t);
     );
     (pub static $name:ident: $t:ty) => (
-        __scoped_thread_local_inner!(pub static $name: $t)
+        __scoped_thread_local_inner!(pub static $name: $t);
     );
 }
 
@@ -240,6 +240,8 @@ mod tests {
     use cell::Cell;
     use prelude::*;
 
+    scoped_thread_local!(static FOO: uint);
+
     #[test]
     fn smoke() {
         scoped_thread_local!(static BAR: uint);
@@ -263,5 +265,17 @@ mod tests {
                 assert_eq!(slot.get(), 1);
             });
         });
+    }
+
+    #[test]
+    fn scope_item_allowed() {
+        assert!(!FOO.is_set());
+        FOO.set(&1, || {
+            assert!(FOO.is_set());
+            FOO.with(|slot| {
+                assert_eq!(*slot, 1);
+            });
+        });
+        assert!(!FOO.is_set());
     }
 }
