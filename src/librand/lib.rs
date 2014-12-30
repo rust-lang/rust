@@ -138,10 +138,10 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut v = [0u8, .. 13579];
-    /// task_rng().fill_bytes(&mut v);
+    /// thread_rng().fill_bytes(&mut v);
     /// println!("{}", v.as_slice());
     /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) {
@@ -173,9 +173,9 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use std::rand::{thread_rng, Rng};
     ///
-    /// let mut rng = task_rng();
+    /// let mut rng = thread_rng();
     /// let x: uint = rng.gen();
     /// println!("{}", x);
     /// println!("{}", rng.gen::<(f64, bool)>());
@@ -191,9 +191,9 @@ pub trait Rng {
     /// # Example
     ///
     /// ```
-    /// use std::rand::{task_rng, Rng};
+    /// use std::rand::{thread_rng, Rng};
     ///
-    /// let mut rng = task_rng();
+    /// let mut rng = thread_rng();
     /// let x = rng.gen_iter::<uint>().take(10).collect::<Vec<uint>>();
     /// println!("{}", x);
     /// println!("{}", rng.gen_iter::<(f64, bool)>().take(5)
@@ -218,9 +218,9 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use std::rand::{thread_rng, Rng};
     ///
-    /// let mut rng = task_rng();
+    /// let mut rng = thread_rng();
     /// let n: uint = rng.gen_range(0u, 10);
     /// println!("{}", n);
     /// let m: f64 = rng.gen_range(-40.0f64, 1.3e5f64);
@@ -236,9 +236,9 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use std::rand::{thread_rng, Rng};
     ///
-    /// let mut rng = task_rng();
+    /// let mut rng = thread_rng();
     /// println!("{}", rng.gen_weighted_bool(3));
     /// ```
     fn gen_weighted_bool(&mut self, n: uint) -> bool {
@@ -250,9 +250,9 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use std::rand::{thread_rng, Rng};
     ///
-    /// let s: String = task_rng().gen_ascii_chars().take(10).collect();
+    /// let s: String = thread_rng().gen_ascii_chars().take(10).collect();
     /// println!("{}", s);
     /// ```
     fn gen_ascii_chars<'a>(&'a mut self) -> AsciiGenerator<'a, Self> {
@@ -266,10 +266,10 @@ pub trait Rng {
     /// # Example
     ///
     /// ```
-    /// use std::rand::{task_rng, Rng};
+    /// use std::rand::{thread_rng, Rng};
     ///
     /// let choices = [1i, 2, 4, 8, 16, 32];
-    /// let mut rng = task_rng();
+    /// let mut rng = thread_rng();
     /// println!("{}", rng.choose(&choices));
     /// assert_eq!(rng.choose(choices[..0]), None);
     /// ```
@@ -286,9 +286,9 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand::{task_rng, Rng};
+    /// use std::rand::{thread_rng, Rng};
     ///
-    /// let mut rng = task_rng();
+    /// let mut rng = thread_rng();
     /// let mut y = [1i, 2, 3];
     /// rng.shuffle(&mut y);
     /// println!("{}", y.as_slice());
@@ -520,8 +520,8 @@ mod test {
         }
     }
 
-    pub fn rng() -> MyRng<rand::TaskRng> {
-        MyRng { inner: rand::task_rng() }
+    pub fn rng() -> MyRng<rand::ThreadRng> {
+        MyRng { inner: rand::thread_rng() }
     }
 
     pub fn weak_rng() -> MyRng<rand::XorShiftRng> {

@@ -85,16 +85,6 @@ macro_rules! assert {
     );
 }
 
-/// Runtime assertion, only without `--cfg ndebug`
-#[macro_export]
-macro_rules! debug_assert {
-    ($(a:tt)*) => ({
-        if cfg!(not(ndebug)) {
-            assert!($($a)*);
-        }
-    })
-}
-
 /// Runtime assertion for equality, for details see std::macros
 #[macro_export]
 macro_rules! assert_eq {
@@ -117,7 +107,7 @@ macro_rules! debug_assert_eq {
     })
 }
 
-/// Runtime assertion, disableable at compile time
+/// Runtime assertion, disableable at compile time with `--cfg ndebug`
 #[macro_export]
 macro_rules! debug_assert {
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert!($($arg)*); })

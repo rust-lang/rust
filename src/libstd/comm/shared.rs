@@ -86,7 +86,7 @@ impl<T: Send> Packet<T> {
     // and that could cause problems on platforms where it is
     // represented by opaque data structure
     pub fn postinit_lock(&self) -> MutexGuard<()> {
-        self.select_lock.lock()
+        self.select_lock.lock().unwrap()
     }
 
     // This function is used at the creation of a shared packet to inherit a
@@ -435,7 +435,7 @@ impl<T: Send> Packet<T> {
         // about looking at and dealing with to_wake. Once we have acquired the
         // lock, we are guaranteed that inherit_blocker is done.
         {
-            let _guard = self.select_lock.lock();
+            let _guard = self.select_lock.lock().unwrap();
         }
 
         // Like the stream implementation, we want to make sure that the count

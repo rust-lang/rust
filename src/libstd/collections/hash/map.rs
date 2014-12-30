@@ -264,27 +264,35 @@ fn test_resize_policy() {
 /// }
 /// ```
 ///
-/// The easiest way to use `HashMap` with a custom type is to derive `Eq` and `Hash`.
+/// The easiest way to use `HashMap` with a custom type as key is to derive `Eq` and `Hash`.
 /// We must also derive `PartialEq`.
 ///
 /// ```
 /// use std::collections::HashMap;
 ///
 /// #[deriving(Hash, Eq, PartialEq, Show)]
-/// struct Viking<'a> {
-///     name: &'a str,
-///     power: uint,
+/// struct Viking {
+///     name: String,
+///     country: String,
 /// }
 ///
+/// impl Viking {
+///     /// Create a new Viking.
+///     fn new(name: &str, country: &str) -> Viking {
+///         Viking { name: name.to_string(), country: country.to_string() }
+///     }
+/// }
+///
+/// // Use a HashMap to store the vikings' health points.
 /// let mut vikings = HashMap::new();
 ///
-/// vikings.insert("Norway", Viking { name: "Einar", power: 9u });
-/// vikings.insert("Denmark", Viking { name: "Olaf", power: 4u });
-/// vikings.insert("Iceland", Viking { name: "Harald", power: 8u });
+/// vikings.insert(Viking::new("Einar", "Norway"), 25u);
+/// vikings.insert(Viking::new("Olaf", "Denmark"), 24u);
+/// vikings.insert(Viking::new("Harald", "Iceland"), 12u);
 ///
-/// // Use derived implementation to print the vikings.
-/// for (land, viking) in vikings.iter() {
-///     println!("{} at {}", viking, land);
+/// // Use derived implementation to print the status of the vikings.
+/// for (viking, health) in vikings.iter() {
+///     println!("{} has {} hp", viking, health);
 /// }
 /// ```
 #[deriving(Clone)]
@@ -888,8 +896,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// }
     /// ```
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn iter(&self) -> Entries<K, V> {
-        Entries { inner: self.table.iter() }
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter { inner: self.table.iter() }
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order,
@@ -1305,8 +1313,8 @@ impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> IndexMut<Q, V> for HashMap<K
 }
 
 /// HashMap iterator
-pub struct Entries<'a, K: 'a, V: 'a> {
-    inner: table::Entries<'a, K, V>
+pub struct Iter<'a, K: 'a, V: 'a> {
+    inner: table::Iter<'a, K, V>
 }
 
 /// HashMap mutable values iterator
@@ -1326,12 +1334,12 @@ pub struct IntoIter<K, V> {
 
 /// HashMap keys iterator
 pub struct Keys<'a, K: 'a, V: 'a> {
-    inner: Map<(&'a K, &'a V), &'a K, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
+    inner: Map<(&'a K, &'a V), &'a K, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
 }
 
 /// HashMap values iterator
 pub struct Values<'a, K: 'a, V: 'a> {
-    inner: Map<(&'a K, &'a V), &'a V, Entries<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+    inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
 }
 
 /// HashMap drain iterator
@@ -1373,7 +1381,7 @@ enum VacantEntryState<K, V, M> {
     NoElem(EmptyBucket<K, V, M>),
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a V)> for Iter<'a, K, V> {
     #[inline] fn next(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }

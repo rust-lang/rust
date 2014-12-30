@@ -16,7 +16,7 @@
 use std::kinds::Sized;
 
 // Note: this must be generic for the problem to show up
-trait Foo<A> for Sized? {
+trait Foo<A> for ?Sized {
     fn foo(&self);
 }
 

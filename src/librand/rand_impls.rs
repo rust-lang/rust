@@ -215,7 +215,7 @@ impl<T:Rand> Rand for Option<T> {
 #[cfg(test)]
 mod tests {
     use std::prelude::*;
-    use std::rand::{Rng, task_rng, Open01, Closed01};
+    use std::rand::{Rng, thread_rng, Open01, Closed01};
 
     struct ConstantRng(u64);
     impl Rng for ConstantRng {
@@ -240,7 +240,7 @@ mod tests {
     fn rand_open() {
         // this is unlikely to catch an incorrect implementation that
         // generates exactly 0 or 1, but it keeps it sane.
-        let mut rng = task_rng();
+        let mut rng = thread_rng();
         for _ in range(0u, 1_000) {
             // strict inequalities
             let Open01(f) = rng.gen::<Open01<f64>>();
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn rand_closed() {
-        let mut rng = task_rng();
+        let mut rng = thread_rng();
         for _ in range(0u, 1_000) {
             // strict inequalities
             let Closed01(f) = rng.gen::<Closed01<f64>>();

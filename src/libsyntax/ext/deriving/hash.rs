@@ -30,7 +30,7 @@ pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
                     vec!(box Literal(Path::new_local("__S"))), true),
          LifetimeBounds {
              lifetimes: Vec::new(),
-             bounds: vec!(("__S", None,
+             bounds: vec!(("__S",
                            vec!(Path::new(vec!("std", "hash", "Writer"))))),
          },
          Path::new_local("__S"))

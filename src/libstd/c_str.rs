@@ -537,7 +537,8 @@ pub unsafe fn from_c_multistring<F>(buf: *const libc::c_char,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prelude::*;
+    use prelude::{spawn, Some, None, Option, FnOnce, ToString, CloneSliceExt};
+    use prelude::{Clone, PtrExt, Iterator, SliceExt, StrExt};
     use ptr;
     use thread::Thread;
     use libc;

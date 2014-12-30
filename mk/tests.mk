@@ -74,14 +74,6 @@ endif
 TEST_LOG_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
 TEST_OK_FILE=tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).ok
 
-# If we're sharding the testsuite between parallel testers,
-# pass this argument along to the compiletest and crate test
-# invocations.
-ifdef TEST_SHARD
-  CTEST_TESTARGS += --test-shard=$(TEST_SHARD)
-  CRATE_TEST_EXTRA_ARGS += --test-shard=$(TEST_SHARD)
-endif
-
 define DEF_TARGET_COMMANDS
 
 ifdef CFG_UNIXY_$(1)
@@ -297,6 +289,7 @@ tidy:
 		| grep '^$(S)src/doc' -v \
 		| grep '^$(S)src/compiler-rt' -v \
 		| grep '^$(S)src/libbacktrace' -v \
+		| grep '^$(S)src/rust-installer' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
 
 endif

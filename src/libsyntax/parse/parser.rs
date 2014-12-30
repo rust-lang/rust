@@ -15,7 +15,7 @@ use self::ItemOrViewItem::*;
 
 use abi;
 use ast::{AssociatedType, BareFnTy, ClosureTy};
-use ast::{RegionTyParamBound, TraitTyParamBound};
+use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{ProvidedMethod, Public, Unsafety};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, Block};
@@ -115,6 +115,13 @@ pub enum PathParsingMode {
     /// A path with a lifetime and type parameters with double colons before
     /// the type parameters; e.g. `foo::bar::<'a>::Baz::<T>`
     LifetimeAndTypesWithColons,
+}
+
+/// How to parse a bound, whether to allow bound modifiers such as `?`.
+#[deriving(Copy, PartialEq)]
+pub enum BoundParsingMode {
+    Bare,
+    Modified,
 }
 
 enum ItemOrViewItem {
@@ -1087,12 +1094,12 @@ impl<'a> Parser<'a> {
             let poly_trait_ref = ast::PolyTraitRef { bound_lifetimes: lifetime_defs,
                                                      trait_ref: trait_ref };
             let other_bounds = if self.eat(&token::BinOp(token::Plus)) {
-                self.parse_ty_param_bounds()
+                self.parse_ty_param_bounds(BoundParsingMode::Bare)
             } else {
                 OwnedSlice::empty()
             };
             let all_bounds =
-                Some(TraitTyParamBound(poly_trait_ref)).into_iter()
+                Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
                 .chain(other_bounds.into_vec().into_iter())
                 .collect();
             ast::TyPolyTraitRef(all_bounds)
@@ -1165,7 +1172,7 @@ impl<'a> Parser<'a> {
         // To be helpful, parse the proc as ever
         let _ = self.parse_legacy_lifetime_defs(lifetime_defs);
         let _ = self.parse_fn_args(false, false);
-        let _ = self.parse_colon_then_ty_param_bounds();
+        let _ = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
         let _ = self.parse_ret_ty();
 
         self.obsolete(proc_span, ObsoleteProcType);
@@ -1255,7 +1262,7 @@ impl<'a> Parser<'a> {
             inputs
         };
 
-        let bounds = self.parse_colon_then_ty_param_bounds();
+        let bounds = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
 
         let output = self.parse_ret_ty();
         let decl = P(FnDecl {
@@ -1481,7 +1488,7 @@ impl<'a> Parser<'a> {
             return lhs;
         }
 
-        let bounds = self.parse_ty_param_bounds();
+        let bounds = self.parse_ty_param_bounds(BoundParsingMode::Bare);
 
         // In type grammar, `+` is treated like a binary operator,
         // and hence both L and R side are required.
@@ -4029,13 +4036,14 @@ impl<'a> Parser<'a> {
 
     // Parses a sequence of bounds if a `:` is found,
     // otherwise returns empty list.
-    fn parse_colon_then_ty_param_bounds(&mut self)
+    fn parse_colon_then_ty_param_bounds(&mut self,
+                                        mode: BoundParsingMode)
                                         -> OwnedSlice<TyParamBound>
     {
         if !self.eat(&token::Colon) {
             OwnedSlice::empty()
         } else {
-            self.parse_ty_param_bounds()
+            self.parse_ty_param_bounds(mode)
         }
     }
 
@@ -4043,14 +4051,20 @@ impl<'a> Parser<'a> {
     // where   boundseq  = ( polybound + boundseq ) | polybound
     // and     polybound = ( 'for' '<' 'region '>' )? bound
     // and     bound     = 'region | trait_ref
-    // NB: The None/Some distinction is important for issue #7264.
-    fn parse_ty_param_bounds(&mut self)
+    fn parse_ty_param_bounds(&mut self,
+                             mode: BoundParsingMode)
                              -> OwnedSlice<TyParamBound>
     {
         let mut result = vec!();
         loop {
+            let question_span = self.span;
+            let ate_question = self.eat(&token::Question);
             match self.token {
                 token::Lifetime(lifetime) => {
+                    if ate_question {
+                        self.span_err(question_span,
+                                      "`?` may only modify trait bounds, not lifetime bounds");
+                    }
                     result.push(RegionTyParamBound(ast::Lifetime {
                         id: ast::DUMMY_NODE_ID,
                         span: self.span,
@@ -4060,7 +4074,18 @@ impl<'a> Parser<'a> {
                 }
                 token::ModSep | token::Ident(..) => {
                     let poly_trait_ref = self.parse_poly_trait_ref();
-                    result.push(TraitTyParamBound(poly_trait_ref))
+                    let modifier = if ate_question {
+                        if mode == BoundParsingMode::Modified {
+                            TraitBoundModifier::Maybe
+                        } else {
+                            self.span_err(question_span,
+                                          "unexpected `?`");
+                            TraitBoundModifier::None
+                        }
+                    } else {
+                        TraitBoundModifier::None
+                    };
+                    result.push(TraitTyParamBound(poly_trait_ref, modifier))
                 }
                 _ => break,
             }
@@ -4089,13 +4114,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Matches typaram = (unbound`?`)? IDENT optbounds ( EQ ty )?
+    /// Matches typaram = (unbound `?`)? IDENT (`?` unbound)? optbounds ( EQ ty )?
     fn parse_ty_param(&mut self) -> TyParam {
         // This is a bit hacky. Currently we are only interested in a single
         // unbound, and it may only be `Sized`. To avoid backtracking and other
         // complications, we parse an ident, then check for `?`. If we find it,
         // we use the ident as the unbound, otherwise, we use it as the name of
-        // type param.
+        // type param. Even worse, for now, we need to check for `?` before or
+        // after the bound.
         let mut span = self.span;
         let mut ident = self.parse_ident();
         let mut unbound = None;
@@ -4106,7 +4132,14 @@ impl<'a> Parser<'a> {
             ident = self.parse_ident();
         }
 
-        let bounds = self.parse_colon_then_ty_param_bounds();
+        let mut bounds = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Modified);
+        if let Some(unbound) = unbound {
+            let mut bounds_as_vec = bounds.into_vec();
+            bounds_as_vec.push(TraitTyParamBound(PolyTraitRef { bound_lifetimes: vec![],
+                                                                trait_ref: unbound },
+                                                 TraitBoundModifier::Maybe));
+            bounds = OwnedSlice::from_vec(bounds_as_vec);
+        };
 
         let default = if self.check(&token::Eq) {
             self.bump();
@@ -4118,7 +4151,6 @@ impl<'a> Parser<'a> {
             ident: ident,
             id: ast::DUMMY_NODE_ID,
             bounds: bounds,
-            unbound: unbound,
             default: default,
             span: span,
         }
@@ -4260,7 +4292,7 @@ impl<'a> Parser<'a> {
                     let bounded_ty = self.parse_ty();
 
                     if self.eat(&token::Colon) {
-                        let bounds = self.parse_ty_param_bounds();
+                        let bounds = self.parse_ty_param_bounds(BoundParsingMode::Bare);
                         let hi = self.span.hi;
                         let span = mk_sp(lo, hi);
 
@@ -4747,15 +4779,23 @@ impl<'a> Parser<'a> {
     fn parse_item_trait(&mut self, unsafety: Unsafety) -> ItemInfo {
         let ident = self.parse_ident();
         let mut tps = self.parse_generics();
-        let sized = self.parse_for_sized();
+        let unbound = self.parse_for_sized();
 
         // Parse supertrait bounds.
-        let bounds = self.parse_colon_then_ty_param_bounds();
+        let mut bounds = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
+
+        if let Some(unbound) = unbound {
+            let mut bounds_as_vec = bounds.into_vec();
+            bounds_as_vec.push(TraitTyParamBound(PolyTraitRef { bound_lifetimes: vec![],
+                                                                trait_ref: unbound },
+                                                 TraitBoundModifier::Maybe));
+            bounds = OwnedSlice::from_vec(bounds_as_vec);
+        };
 
         self.parse_where_clause(&mut tps);
 
         let meths = self.parse_trait_items();
-        (ident, ItemTrait(unsafety, tps, sized, bounds, meths), None)
+        (ident, ItemTrait(unsafety, tps, bounds, meths), None)
     }
 
     fn parse_impl_items(&mut self) -> (Vec<ImplItem>, Vec<Attribute>) {
@@ -4974,12 +5014,25 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_for_sized(&mut self) -> Option<ast::TraitRef> {
+        // FIXME, this should really use TraitBoundModifier, but it will get
+        // re-jigged shortly in any case, so leaving the hacky version for now.
         if self.eat_keyword(keywords::For) {
             let span = self.span;
+            let mut ate_question = false;
+            if self.eat(&token::Question) {
+                ate_question = true;
+            }
             let ident = self.parse_ident();
-            if !self.eat(&token::Question) {
+            if self.eat(&token::Question) {
+                if ate_question {
+                    self.span_err(span,
+                        "unexpected `?`");
+                }
+                ate_question = true;
+            }
+            if !ate_question {
                 self.span_err(span,
-                    "expected 'Sized?' after `for` in trait item");
+                    "expected `?Sized` after `for` in trait item");
                 return None;
             }
             let tref = Parser::trait_ref_from_ident(ident, span);
@@ -5924,7 +5977,7 @@ impl<'a> Parser<'a> {
     }
 
 
-    /// Matches view_path : MOD? IDENT EQ non_global_path
+    /// Matches view_path : MOD? non_global_path as IDENT
     /// | MOD? non_global_path MOD_SEP LBRACE RBRACE
     /// | MOD? non_global_path MOD_SEP LBRACE ident_seq RBRACE
     /// | MOD? non_global_path MOD_SEP STAR
@@ -6036,7 +6089,7 @@ impl<'a> Parser<'a> {
         }
         let mut rename_to = path[path.len() - 1u];
         let path = ast::Path {
-            span: mk_sp(lo, self.span.hi),
+            span: mk_sp(lo, self.last_span.hi),
             global: false,
             segments: path.into_iter().map(|identifier| {
                 ast::PathSegment {
@@ -6048,7 +6101,8 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(keywords::As) {
             rename_to = self.parse_ident()
         }
-        P(spanned(lo, self.last_span.hi,
+        P(spanned(lo,
+                  self.last_span.hi,
                   ViewPathSimple(rename_to, path, ast::DUMMY_NODE_ID)))
     }
 

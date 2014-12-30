@@ -1149,6 +1149,19 @@ mod test {
     }
 
     #[test]
+    fn mkdir_path_already_exists_error() {
+        use io::{IoError, PathAlreadyExists};
+
+        let tmpdir = tmpdir();
+        let dir = &tmpdir.join("mkdir_error_twice");
+        check!(mkdir(dir, io::USER_RWX));
+        match mkdir(dir, io::USER_RWX) {
+            Err(IoError{kind:PathAlreadyExists,..}) => (),
+            _ => assert!(false)
+        };
+    }
+
+    #[test]
     fn recursive_mkdir() {
         let tmpdir = tmpdir();
         let dir = tmpdir.join("d1/d2");

@@ -28,7 +28,7 @@ use mem;
 use num::Int;
 use ops::{Fn, FnMut};
 use option::Option::{mod, None, Some};
-use ptr::RawPtr;
+use ptr::PtrExt;
 use raw::{Repr, Slice};
 use result::Result::{mod, Ok, Err};
 use slice::{mod, SliceExt};
@@ -1073,7 +1073,7 @@ const TAG_CONT_U8: u8 = 0b1000_0000u8;
 /// Unsafe operations
 #[deprecated]
 pub mod raw {
-    use ptr::RawPtr;
+    use ptr::PtrExt;
     use raw::Slice;
     use slice::SliceExt;
     use str::StrExt;

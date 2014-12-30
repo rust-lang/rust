@@ -53,7 +53,7 @@ pub mod args;
 mod at_exit_imp;
 mod libunwind;
 
-/// The default error code of the rust runtime if the main task panics instead
+/// The default error code of the rust runtime if the main thread panics instead
 /// of exiting cleanly.
 pub const DEFAULT_ERROR_CODE: int = 101;
 
@@ -137,9 +137,9 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
 ///
 /// The procedure passed to this function will be executed as part of the
 /// runtime cleanup phase. For normal rust programs, this means that it will run
-/// after all other tasks have exited.
+/// after all other threads have exited.
 ///
-/// The procedure is *not* executed with a local `Task` available to it, so
+/// The procedure is *not* executed with a local `Thread` available to it, so
 /// primitives like logging, I/O, channels, spawning, etc, are *not* available.
 /// This is meant for "bare bones" usage to clean up runtime details, this is
 /// not meant as a general-purpose "let's clean everything up" function.

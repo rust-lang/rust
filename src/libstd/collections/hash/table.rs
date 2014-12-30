@@ -23,7 +23,7 @@ use num::{Int, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{Some, None};
-use ptr::{Unique, RawPtr, copy_nonoverlapping_memory, zero_memory};
+use ptr::{Unique, PtrExt, copy_nonoverlapping_memory, zero_memory};
 use ptr;
 use rt::heap::{allocate, deallocate};
 
@@ -657,8 +657,8 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
-    pub fn iter(&self) -> Entries<K, V> {
-        Entries {
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter {
             iter: self.raw_buckets(),
             elems_left: self.size(),
         }
@@ -770,7 +770,7 @@ impl<'a, K, V> Iterator<(K, V)> for RevMoveBuckets<'a, K, V> {
 }
 
 /// Iterator over shared references to entries in a table.
-pub struct Entries<'a, K: 'a, V: 'a> {
+pub struct Iter<'a, K: 'a, V: 'a> {
     iter: RawBuckets<'a, K, V>,
     elems_left: uint,
 }
@@ -793,7 +793,7 @@ pub struct Drain<'a, K: 'a, V: 'a> {
     iter: RawBuckets<'static, K, V>,
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a V)> for Iter<'a, K, V> {
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
         self.iter.next().map(|bucket| {
             self.elems_left -= 1;

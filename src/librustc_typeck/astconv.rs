@@ -164,10 +164,16 @@ pub fn opt_ast_region_to_region<'tcx, AC: AstConv<'tcx>, RS: RegionScope>(
                             let mut m = String::new();
                             let len = v.len();
                             for (i, (name, n)) in v.into_iter().enumerate() {
-                                m.push_str(if n == 1 {
-                                    format!("`{}`", name)
+                                let help_name = if name.is_empty() {
+                                    format!("argument {}", i + 1)
                                 } else {
-                                    format!("one of `{}`'s {} elided lifetimes", name, n)
+                                    format!("`{}`", name)
+                                };
+
+                                m.push_str(if n == 1 {
+                                    help_name
+                                } else {
+                                    format!("one of {}'s {} elided lifetimes", help_name, n)
                                 }[]);
 
                                 if len == 2 && i == 0 {
@@ -1626,7 +1632,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     let mut trait_def_ids = DefIdMap::new();
     for ast_bound in ast_bounds.iter() {
         match *ast_bound {
-            ast::TraitTyParamBound(ref b) => {
+            ast::TraitTyParamBound(ref b, ast::TraitBoundModifier::None) => {
                 match ::lookup_def_tcx(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
                     def::DefTrait(trait_did) => {
                         match trait_def_ids.get(&trait_did) {
@@ -1664,6 +1670,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                 }
                 trait_bounds.push(b);
             }
+            ast::TraitTyParamBound(_, ast::TraitBoundModifier::Maybe) => {}
             ast::RegionTyParamBound(ref l) => {
                 region_bounds.push(l);
             }

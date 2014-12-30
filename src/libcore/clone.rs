@@ -36,7 +36,7 @@ pub trait Clone {
     /// but can be overridden to reuse the resources of `a` to avoid unnecessary
     /// allocations.
     #[inline(always)]
-    #[unstable = "this function rarely unused"]
+    #[unstable = "this function is rarely used"]
     fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
     }

@@ -47,7 +47,7 @@ use ops::{FnMut, mod};
 use option::Option;
 use option::Option::{None, Some};
 use ptr;
-use ptr::RawPtr;
+use ptr::PtrExt;
 use mem;
 use mem::size_of;
 use kinds::{Sized, marker};
@@ -1335,7 +1335,7 @@ pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
 #[deprecated]
 pub mod raw {
     use mem::transmute;
-    use ptr::RawPtr;
+    use ptr::PtrExt;
     use raw::Slice;
     use ops::FnOnce;
     use option::Option;

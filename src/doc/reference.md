@@ -194,11 +194,11 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 | else     | enum     | extern   | false    | final   |
 | fn       | for      | if       | impl     | in      |
 | let      | loop     | match    | mod      | move    |
-| mut      | offsetof | once     | override | priv    |
-| pub      | pure     | ref      | return   | sizeof  |
-| static   | self     | struct   | super    | true    |
-| trait    | type     | typeof   | unsafe   | unsized |
-| use      | virtual  | where    | while    | yield   |
+| mut      | offsetof | override | priv     | pub     |
+| pure     | ref      | return   | sizeof   | static  |
+| self     | struct   | super    | true     | trait   |
+| type     | typeof   | unsafe   | unsized  | use     |
+| virtual  | where    | while    | yield    |
 
 
 Each of these keywords has special meaning in its grammar, and all of them are
@@ -899,8 +899,8 @@ mirrors the module hierarchy.
 // Load the `vec` module from `vec.rs`
 mod vec;
 
-mod task {
-    // Load the `local_data` module from `task/local_data.rs`
+mod thread {
+    // Load the `local_data` module from `thread/local_data.rs`
     mod local_data;
 }
 ```
@@ -909,9 +909,9 @@ The directories and files used for loading external file modules can be
 influenced with the `path` attribute.
 
 ```{.ignore}
-#[path = "task_files"]
-mod task {
-    // Load the `local_data` module from `task_files/tls.rs`
+#[path = "thread_files"]
+mod thread {
+    // Load the `local_data` module from `thread_files/tls.rs`
     #[path = "tls.rs"]
     mod local_data;
 }
@@ -1188,7 +1188,7 @@ code safe, in the surrounding context.
 Unsafe blocks are used to wrap foreign libraries, make direct use of hardware
 or implement features not directly present in the language. For example, Rust
 provides the language features necessary to implement memory-safe concurrency
-in the language but the implementation of tasks and message passing is in the
+in the language but the implementation of threads and message passing is in the
 standard library.
 
 Rust's type system is a conservative approximation of the dynamic safety
@@ -1500,7 +1500,7 @@ be modified by the program. One of Rust's goals is to make concurrency bugs
 hard to run into, and this is obviously a very large source of race conditions
 or other bugs. For this reason, an `unsafe` block is required when either
 reading or writing a mutable static variable. Care should be taken to ensure
-that modifications to a mutable static are safe with respect to other tasks
+that modifications to a mutable static are safe with respect to other threads
 running in the same process.
 
 Mutable statics are still very useful, however. They can be used with C
@@ -2253,11 +2253,11 @@ A complete list of the built-in language items follows:
 * `drop`
   : Have destructors.
 * `send`
-  : Able to be sent across task boundaries.
+  : Able to be sent across thread boundaries.
 * `sized`
   : Has a size known at compile time.
 * `sync`
-  : Able to be safely shared between tasks when aliased.
+  : Able to be safely shared between threads when aliased.
 
 #### Operators
 
@@ -2621,7 +2621,7 @@ The currently implemented features of the reference compiler are:
                    LLVM's implementation which works in concert with the kernel
                    loader and dynamic linker. This is not necessarily available
                    on all platforms, and usage of it is discouraged (rust
-                   focuses more on task-local data instead of thread-local
+                   focuses more on thread-local data instead of thread-local
                    data).
 
 * `trace_macros` - Allows use of the `trace_macros` macro, which is a nasty
@@ -2939,7 +2939,7 @@ array is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can
 be assigned to.
 
 Indices are zero-based, and may be of any integral type. Vector access is
-bounds-checked at run-time. When the check fails, it will put the task in a
+bounds-checked at run-time. When the check fails, it will put the thread in a
 _panicked state_.
 
 ```{should-fail}
@@ -3950,7 +3950,7 @@ Types in Rust are categorized into kinds, based on various properties of the
 components of the type. The kinds are:
 
 * `Send`
-  : Types of this kind can be safely sent between tasks.
+  : Types of this kind can be safely sent between threads.
     This kind includes scalars, boxes, procs, and
     structural types containing only other owned types.
     All `Send` types are `'static`.
@@ -3998,21 +3998,21 @@ to sendable.
 
 # Memory and concurrency models
 
-Rust has a memory model centered around concurrently-executing _tasks_. Thus
+Rust has a memory model centered around concurrently-executing _threads_. Thus
 its memory model and its concurrency model are best discussed simultaneously,
 as parts of each only make sense when considered from the perspective of the
 other.
 
 When reading about the memory model, keep in mind that it is partitioned in
-order to support tasks; and when reading about tasks, keep in mind that their
+order to support threads; and when reading about threads, keep in mind that their
 isolation and communication mechanisms are only possible due to the ownership
 and lifetime semantics of the memory model.
 
 ## Memory model
 
 A Rust program's memory consists of a static set of *items*, a set of
-[tasks](#tasks) each with its own *stack*, and a *heap*. Immutable portions of
-the heap may be shared between tasks, mutable portions may not.
+[threads](#threads) each with its own *stack*, and a *heap*. Immutable portions of
+the heap may be shared between threads, mutable portions may not.
 
 Allocations in the stack consist of *slots*, and allocations in the heap
 consist of *boxes*.
@@ -4023,8 +4023,8 @@ The _items_ of a program are those functions, modules and types that have their
 value calculated at compile-time and stored uniquely in the memory image of the
 rust process. Items are neither dynamically allocated nor freed.
 
-A task's _stack_ consists of activation frames automatically allocated on entry
-to each function as the task executes. A stack allocation is reclaimed when
+A thread's _stack_ consists of activation frames automatically allocated on entry
+to each function as the thread executes. A stack allocation is reclaimed when
 control leaves the frame containing it.
 
 The _heap_ is a general term that describes boxes.  The lifetime of an
@@ -4034,10 +4034,10 @@ in the heap, heap allocations may outlive the frame they are allocated within.
 
 ### Memory ownership
 
-A task owns all memory it can *safely* reach through local variables, as well
+A thread owns all memory it can *safely* reach through local variables, as well
 as boxes and references.
 
-When a task sends a value that has the `Send` trait to another task, it loses
+When a thread sends a value that has the `Send` trait to another thread, it loses
 ownership of the value sent and can no longer refer to it. This is statically
 guaranteed by the combined use of "move semantics", and the compiler-checked
 _meaning_ of the `Send` trait: it is only instantiated for (transitively)
@@ -4046,12 +4046,12 @@ sendable kinds of data constructor and pointers, never including references.
 When a stack frame is exited, its local allocations are all released, and its
 references to boxes are dropped.
 
-When a task finishes, its stack is necessarily empty and it therefore has no
+When a thread finishes, its stack is necessarily empty and it therefore has no
 references to any boxes; the remainder of its heap is immediately freed.
 
 ### Memory slots
 
-A task's stack contains slots.
+A thread's stack contains slots.
 
 A _slot_ is a component of a stack frame, either a function parameter, a
 [temporary](#lvalues,-rvalues-and-temporaries), or a local variable.
@@ -4105,72 +4105,69 @@ let y = x;
 // attempting to use `x` will result in an error here
 ```
 
-## Tasks
+## Threads
 
-An executing Rust program consists of a tree of tasks. A Rust _task_ consists
-of an entry function, a stack, a set of outgoing communication channels and
-incoming communication ports, and ownership of some portion of the heap of a
-single operating-system process.
+Rust's primary concurrency mechanism is called a **thread**.
 
-### Communication between tasks
+### Communication between threads
 
-Rust tasks are isolated and generally unable to interfere with one another's
+Rust threads are isolated and generally unable to interfere with one another's
 memory directly, except through [`unsafe` code](#unsafe-functions).  All
-contact between tasks is mediated by safe forms of ownership transfer, and data
+contact between threads is mediated by safe forms of ownership transfer, and data
 races on memory are prohibited by the type system.
 
-When you wish to send data between tasks, the values are restricted to the
+When you wish to send data between threads, the values are restricted to the
 [`Send` type-kind](#type-kinds). Restricting communication interfaces to this
-kind ensures that no references move between tasks. Thus access to an entire
+kind ensures that no references move between threads. Thus access to an entire
 data structure can be mediated through its owning "root" value; no further
 locking or copying is required to avoid data races within the substructure of
 such a value.
 
-### Task lifecycle
+### Thread
 
-The _lifecycle_ of a task consists of a finite set of states and events that
-cause transitions between the states. The lifecycle states of a task are:
+The _lifecycle_ of a threads consists of a finite set of states and events that
+cause transitions between the states. The lifecycle states of a thread are:
 
 * running
 * blocked
 * panicked
 * dead
 
-A task begins its lifecycle &mdash; once it has been spawned &mdash; in the
+A thread begins its lifecycle &mdash; once it has been spawned &mdash; in the
 *running* state. In this state it executes the statements of its entry
 function, and any functions called by the entry function.
 
-A task may transition from the *running* state to the *blocked* state any time
+A thread may transition from the *running* state to the *blocked* state any time
 it makes a blocking communication call. When the call can be completed &mdash;
 when a message arrives at a sender, or a buffer opens to receive a message
-&mdash; then the blocked task will unblock and transition back to *running*.
+&mdash; then the blocked thread will unblock and transition back to *running*.
 
-A task may transition to the *panicked* state at any time, due being killed by
+A thread may transition to the *panicked* state at any time, due being killed by
 some external event or internally, from the evaluation of a `panic!()` macro.
-Once *panicking*, a task unwinds its stack and transitions to the *dead* state.
-Unwinding the stack of a task is done by the task itself, on its own control
+Once *panicking*, a thread unwinds its stack and transitions to the *dead* state.
+Unwinding the stack of a thread is done by the thread itself, on its own control
 stack. If a value with a destructor is freed during unwinding, the code for the
-destructor is run, also on the task's control stack. Running the destructor
+destructor is run, also on the thread's control stack. Running the destructor
 code causes a temporary transition to a *running* state, and allows the
-destructor code to cause any subsequent state transitions. The original task
+destructor code to cause any subsequent state transitions. The original thread 
 of unwinding and panicking thereby may suspend temporarily, and may involve
 (recursive) unwinding of the stack of a failed destructor. Nonetheless, the
 outermost unwinding activity will continue until the stack is unwound and the
-task transitions to the *dead* state. There is no way to "recover" from task
-panics. Once a task has temporarily suspended its unwinding in the *panicking*
+thread transitions to the *dead* state. There is no way to "recover" from thread 
+panics. Once a thread has temporarily suspended its unwinding in the *panicking*
 state, a panic occurring from within this destructor results in *hard* panic.
 A hard panic currently results in the process aborting.
 
-A task in the *dead* state cannot transition to other states; it exists only to
-have its termination status inspected by other tasks, and/or to await
+A thread in the *dead* state cannot transition to other states; it exists only to
+have its termination status inspected by other threads, and/or to await
 reclamation when the last reference to it drops.
 
 # Runtime services, linkage and debugging
 
 The Rust _runtime_ is a relatively compact collection of Rust code that
-provides fundamental services and datatypes to all Rust tasks at run-time. It
+provides fundamental services and datatypes to all Rust threads at run-time. It
 is smaller and simpler than many modern language runtimes. It is tightly
-integrated into the language's execution model of memory, tasks, communication
+integrated into the language's execution model of memory, threads, communication
 and logging.
 
 ### Memory allocation
@@ -4181,7 +4178,7 @@ environment and releases them back to its environment when they are no longer
 needed. The default implementation of the service-provider interface consists
 of the C runtime functions `malloc` and `free`.
 
-The runtime memory-management system, in turn, supplies Rust tasks with
+The runtime memory-management system, in turn, supplies Rust threads with
 facilities for allocating releasing stacks, as well as allocating and freeing
 heap data.
 
@@ -4189,15 +4186,15 @@ heap data.
 
 The runtime provides C and Rust code to assist with various built-in types,
 such as arrays, strings, and the low level communication system (ports,
-channels, tasks).
+channels, threads).
 
 Support for other built-in types such as simple types, tuples and enums is
 open-coded by the Rust compiler.
 
-### Task scheduling and communication
+### Thread scheduling and communication
 
-The runtime provides code to manage inter-task communication. This includes
-the system of task-lifecycle state transitions depending on the contents of
+The runtime provides code to manage inter-thread communication. This includes
+the system of thread-lifecycle state transitions depending on the contents of
 queues, as well as code to copy values between queues and their recipients and
 to serialize values for transmission over operating-system inter-process
 communication facilities.

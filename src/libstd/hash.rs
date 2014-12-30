@@ -79,7 +79,7 @@ impl RandomSipHasher {
     /// Construct a new `RandomSipHasher` that is initialized with random keys.
     #[inline]
     pub fn new() -> RandomSipHasher {
-        let mut r = rand::task_rng();
+        let mut r = rand::thread_rng();
         let r0 = r.gen();
         let r1 = r.gen();
         RandomSipHasher {

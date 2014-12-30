@@ -673,7 +673,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         }
 
       }
-      ast::ItemTrait(_, _, _, _, ref trait_methods) => {
+      ast::ItemTrait(_, _, _, ref trait_methods) => {
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_method in trait_methods.iter() {
             match *trait_method {

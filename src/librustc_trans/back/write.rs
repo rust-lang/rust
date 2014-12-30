@@ -98,7 +98,7 @@ impl SharedEmitter {
     }
 
     fn dump(&mut self, handler: &Handler) {
-        let mut buffer = self.buffer.lock();
+        let mut buffer = self.buffer.lock().unwrap();
         for diag in buffer.iter() {
             match diag.code {
                 Some(ref code) => {
@@ -123,7 +123,7 @@ impl Emitter for SharedEmitter {
             msg: &str, code: Option<&str>, lvl: Level) {
         assert!(cmsp.is_none(), "SharedEmitter doesn't support spans");
 
-        self.buffer.lock().push(Diagnostic {
+        self.buffer.lock().unwrap().push(Diagnostic {
             msg: msg.to_string(),
             code: code.map(|s| s.to_string()),
             lvl: lvl,
@@ -915,7 +915,7 @@ fn run_work_multithreaded(sess: &Session,
 
             loop {
                 // Avoid holding the lock for the entire duration of the match.
-                let maybe_work = work_items_arc.lock().pop();
+                let maybe_work = work_items_arc.lock().unwrap().pop();
                 match maybe_work {
                     Some(work) => {
                         execute_work_item(&cgcx, work);

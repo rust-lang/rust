@@ -15,13 +15,11 @@ struct Point {x: int, y: int, z: int}
 fn f(p: &mut Point) { p.z = 13; }
 
 pub fn main() {
-    unsafe {
-        let x = Some(Mutex::new(true));
-        match x {
-            Some(ref z) if *z.lock() => {
-                assert!(*z.lock());
-            },
-            _ => panic!()
-        }
+    let x = Some(Mutex::new(true));
+    match x {
+        Some(ref z) if *z.lock().unwrap() => {
+            assert!(*z.lock().unwrap());
+        },
+        _ => panic!()
     }
 }
