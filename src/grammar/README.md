@@ -1,7 +1,7 @@
 Reference grammar.
 
 Uses [antlr4](http://www.antlr.org/) and a custom Rust tool to compare
-ASTs/token streams generated. You can use the `check-syntax` make target to
+ASTs/token streams generated. You can use the `check-lexer` make target to
 run all of the available tests.
 
 To use manually:
@@ -12,7 +12,7 @@ javac *.java
 rustc -O verify.rs
 for file in ../*/**.rs; do
     echo $file;
-    grun RustLexer tokens -tokens < $file | ./verify $file || break
+    grun RustLexer tokens -tokens < $file | ./verify $file RustLexer.tokens || break
 done
 ```
 
