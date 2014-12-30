@@ -116,7 +116,8 @@ pub fn opts() -> Vec<getopts::OptGroup> {
     use getopts::*;
     vec!(
         optflag("h", "help", "show this help message"),
-        optflagopt("", "version", "print rustdoc's version", "verbose"),
+        optflag("V", "version", "print rustdoc's version"),
+        optflag("v", "verbose", "use verbose output"),
         optopt("r", "input-format", "the input type of the specified file",
                "[rust|json]"),
         optopt("w", "output-format", "the output type to write",
