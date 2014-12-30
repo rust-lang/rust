@@ -11,7 +11,7 @@
 #![feature(box_syntax)]
 
 static mut a: Box<isize> = box 3;
-//~^ ERROR statics are not allowed to have custom pointers
+//~^ ERROR allocations are not allowed in statics
 //~^^ ERROR mutable statics are not allowed to have owned pointers
 
 fn main() {}
