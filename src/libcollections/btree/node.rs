@@ -554,10 +554,10 @@ impl <K, V> Node<K, V> {
         let node = mem::replace(left_and_out, unsafe { Node::new_internal(capacity_from_b(b)) });
         left_and_out._len = 1;
         unsafe {
-            ptr::write(left_and_out.keys_mut().unsafe_mut(0), key);
-            ptr::write(left_and_out.vals_mut().unsafe_mut(0), value);
-            ptr::write(left_and_out.edges_mut().unsafe_mut(0), node);
-            ptr::write(left_and_out.edges_mut().unsafe_mut(1), right);
+            ptr::write(left_and_out.keys_mut().get_unchecked_mut(0), key);
+            ptr::write(left_and_out.vals_mut().get_unchecked_mut(0), value);
+            ptr::write(left_and_out.edges_mut().get_unchecked_mut(0), node);
+            ptr::write(left_and_out.edges_mut().get_unchecked_mut(1), right);
         }
     }
 
@@ -636,7 +636,7 @@ impl<'a, K: 'a, V: 'a> Handle<&'a Node<K, V>, handle::Edge, handle::Internal> {
     /// making it more suitable for moving down a chain of nodes.
     pub fn into_edge(self) -> &'a Node<K, V> {
         unsafe {
-            self.node.edges().unsafe_get(self.index)
+            self.node.edges().get_unchecked(self.index)
         }
     }
 }
@@ -647,7 +647,7 @@ impl<'a, K: 'a, V: 'a> Handle<&'a mut Node<K, V>, handle::Edge, handle::Internal
     /// `edge_mut`, making it more suitable for moving down a chain of nodes.
     pub fn into_edge_mut(self) -> &'a mut Node<K, V> {
         unsafe {
-            self.node.edges_mut().unsafe_mut(self.index)
+            self.node.edges_mut().get_unchecked_mut(self.index)
         }
     }
 }
@@ -721,7 +721,7 @@ impl<K, V, NodeRef: DerefMut<Node<K, V>>> Handle<NodeRef, handle::Edge, handle::
     /// confused with `node`, which references the parent node of what is returned here.
     pub fn edge_mut(&mut self) -> &mut Node<K, V> {
         unsafe {
-            self.node.edges_mut().unsafe_mut(self.index)
+            self.node.edges_mut().get_unchecked_mut(self.index)
         }
     }
 
@@ -829,8 +829,8 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a Node<K, V>, handle::KV, NodeType> {
         let (keys, vals) = self.node.as_slices();
         unsafe {
             (
-                keys.unsafe_get(self.index),
-                vals.unsafe_get(self.index)
+                keys.get_unchecked(self.index),
+                vals.get_unchecked(self.index)
             )
         }
     }
@@ -844,8 +844,8 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a mut Node<K, V>, handle::KV, NodeType
         let (keys, vals) = self.node.as_slices_mut();
         unsafe {
             (
-                keys.unsafe_mut(self.index),
-                vals.unsafe_mut(self.index)
+                keys.get_unchecked_mut(self.index),
+                vals.get_unchecked_mut(self.index)
             )
         }
     }
@@ -869,14 +869,14 @@ impl<'a, K: 'a, V: 'a, NodeRef: Deref<Node<K, V>> + 'a, NodeType> Handle<NodeRef
     // /// reference with a lifetime as large as `into_kv_mut`, but it also does not consume the
     // /// handle.
     // pub fn key(&'a self) -> &'a K {
-    //     unsafe { self.node.keys().unsafe_get(self.index) }
+    //     unsafe { self.node.keys().get_unchecked(self.index) }
     // }
     //
     // /// Returns a reference to the value pointed-to by this handle. This doesn't return a
     // /// reference with a lifetime as large as `into_kv_mut`, but it also does not consume the
     // /// handle.
     // pub fn val(&'a self) -> &'a V {
-    //     unsafe { self.node.vals().unsafe_get(self.index) }
+    //     unsafe { self.node.vals().get_unchecked(self.index) }
     // }
 }
 
@@ -886,14 +886,14 @@ impl<'a, K: 'a, V: 'a, NodeRef: DerefMut<Node<K, V>> + 'a, NodeType> Handle<Node
     /// reference with a lifetime as large as `into_kv_mut`, but it also does not consume the
     /// handle.
     pub fn key_mut(&'a mut self) -> &'a mut K {
-        unsafe { self.node.keys_mut().unsafe_mut(self.index) }
+        unsafe { self.node.keys_mut().get_unchecked_mut(self.index) }
     }
 
     /// Returns a mutable reference to the value pointed-to by this handle. This doesn't return a
     /// reference with a lifetime as large as `into_kv_mut`, but it also does not consume the
     /// handle.
     pub fn val_mut(&'a mut self) -> &'a mut V {
-        unsafe { self.node.vals_mut().unsafe_mut(self.index) }
+        unsafe { self.node.vals_mut().get_unchecked_mut(self.index) }
     }
 }
 
@@ -1077,7 +1077,7 @@ impl<K, V> Node<K, V> {
         debug_assert!(!self.is_leaf());
 
         unsafe {
-            let ret = ptr::read(self.edges().unsafe_get(0));
+            let ret = ptr::read(self.edges().get_unchecked(0));
             self.destroy();
             ptr::write(self, ret);
         }
@@ -1091,8 +1091,8 @@ impl<K, V> Node<K, V> {
     unsafe fn push_kv(&mut self, key: K, val: V) {
         let len = self.len();
 
-        ptr::write(self.keys_mut().unsafe_mut(len), key);
-        ptr::write(self.vals_mut().unsafe_mut(len), val);
+        ptr::write(self.keys_mut().get_unchecked_mut(len), key);
+        ptr::write(self.vals_mut().get_unchecked_mut(len), val);
 
         self._len += 1;
     }
@@ -1102,7 +1102,7 @@ impl<K, V> Node<K, V> {
     unsafe fn push_edge(&mut self, edge: Node<K, V>) {
         let len = self.len();
 
-        ptr::write(self.edges_mut().unsafe_mut(len), edge);
+        ptr::write(self.edges_mut().get_unchecked_mut(len), edge);
     }
 
     // This must be followed by insert_edge on an internal node.
@@ -1119,12 +1119,12 @@ impl<K, V> Node<K, V> {
             self.len() - index
         );
 
-        ptr::write(self.keys_mut().unsafe_mut(index), key);
-        ptr::write(self.vals_mut().unsafe_mut(index), val);
+        ptr::write(self.keys_mut().get_unchecked_mut(index), key);
+        ptr::write(self.vals_mut().get_unchecked_mut(index), val);
 
         self._len += 1;
 
-        self.vals_mut().unsafe_mut(index)
+        self.vals_mut().get_unchecked_mut(index)
     }
 
     // This can only be called immediately after a call to insert_kv.
@@ -1135,14 +1135,14 @@ impl<K, V> Node<K, V> {
             self.edges().as_ptr().offset(index as int),
             self.len() - index
         );
-        ptr::write(self.edges_mut().unsafe_mut(index), edge);
+        ptr::write(self.edges_mut().get_unchecked_mut(index), edge);
     }
 
     // This must be followed by pop_edge on an internal node.
     #[inline]
     unsafe fn pop_kv(&mut self) -> (K, V) {
-        let key = ptr::read(self.keys().unsafe_get(self.len() - 1));
-        let val = ptr::read(self.vals().unsafe_get(self.len() - 1));
+        let key = ptr::read(self.keys().get_unchecked(self.len() - 1));
+        let val = ptr::read(self.vals().get_unchecked(self.len() - 1));
 
         self._len -= 1;
 
@@ -1152,7 +1152,7 @@ impl<K, V> Node<K, V> {
     // This can only be called immediately after a call to pop_kv.
     #[inline]
     unsafe fn pop_edge(&mut self) -> Node<K, V> {
-        let edge = ptr::read(self.edges().unsafe_get(self.len() + 1));
+        let edge = ptr::read(self.edges().get_unchecked(self.len() + 1));
 
         edge
     }
@@ -1160,8 +1160,8 @@ impl<K, V> Node<K, V> {
     // This must be followed by remove_edge on an internal node.
     #[inline]
     unsafe fn remove_kv(&mut self, index: uint) -> (K, V) {
-        let key = ptr::read(self.keys().unsafe_get(index));
-        let val = ptr::read(self.vals().unsafe_get(index));
+        let key = ptr::read(self.keys().get_unchecked(index));
+        let val = ptr::read(self.vals().get_unchecked(index));
 
         ptr::copy_memory(
             self.keys_mut().as_mut_ptr().offset(index as int),
@@ -1182,7 +1182,7 @@ impl<K, V> Node<K, V> {
     // This can only be called immediately after a call to remove_kv.
     #[inline]
     unsafe fn remove_edge(&mut self, index: uint) -> Node<K, V> {
-        let edge = ptr::read(self.edges().unsafe_get(index));
+        let edge = ptr::read(self.edges().get_unchecked(index));
 
         ptr::copy_memory(
             self.edges_mut().as_mut_ptr().offset(index as int),
@@ -1229,8 +1229,8 @@ impl<K, V> Node<K, V> {
                 );
             }
 
-            let key = ptr::read(self.keys().unsafe_get(right_offset - 1));
-            let val = ptr::read(self.vals().unsafe_get(right_offset - 1));
+            let key = ptr::read(self.keys().get_unchecked(right_offset - 1));
+            let val = ptr::read(self.vals().get_unchecked(right_offset - 1));
 
             self._len = right_offset - 1;
 
@@ -1249,8 +1249,8 @@ impl<K, V> Node<K, V> {
             let old_len = self.len();
             self._len += right.len() + 1;
 
-            ptr::write(self.keys_mut().unsafe_mut(old_len), key);
-            ptr::write(self.vals_mut().unsafe_mut(old_len), val);
+            ptr::write(self.keys_mut().get_unchecked_mut(old_len), key);
+            ptr::write(self.vals_mut().get_unchecked_mut(old_len), val);
 
             ptr::copy_nonoverlapping_memory(
                 self.keys_mut().as_mut_ptr().offset(old_len as int + 1),

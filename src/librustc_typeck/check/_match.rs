@@ -124,7 +124,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             check_pat_struct(pcx, pat, path, fields.as_slice(), etc, expected);
         }
         ast::PatTup(ref elements) => {
-            let element_tys = Vec::from_fn(elements.len(), |_| fcx.infcx().next_ty_var());
+            let element_tys: Vec<_> = range(0, elements.len()).map(|_| fcx.infcx()
+                .next_ty_var()).collect();
             let pat_ty = ty::mk_tup(tcx, element_tys.clone());
             fcx.write_ty(pat.id, pat_ty);
             demand::eqtype(fcx, pat.span, expected, pat_ty);

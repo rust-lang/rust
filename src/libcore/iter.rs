@@ -478,7 +478,7 @@ pub trait IteratorExt<A>: Iterator<A> {
     ///
     /// ```
     /// let vec = vec![1i, 2i, 3i, 4i];
-    /// let (even, odd): (Vec<int>, Vec<Int>) = vec.into_iter().partition(|&n| n % 2 == 0);
+    /// let (even, odd): (Vec<int>, Vec<int>) = vec.into_iter().partition(|&n| n % 2 == 0);
     /// assert_eq!(even, vec![2, 4]);
     /// assert_eq!(odd, vec![1, 3]);
     /// ```

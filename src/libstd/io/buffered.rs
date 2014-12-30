@@ -439,9 +439,10 @@ mod test {
 
     impl Reader for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
-            match self.lengths.remove(0) {
-                Some(i) => Ok(i),
-                None => Err(io::standard_error(io::EndOfFile))
+            if self.lengths.is_empty() {
+                Err(io::standard_error(io::EndOfFile))
+            } else {
+                Ok(self.lengths.remove(0))
             }
         }
     }

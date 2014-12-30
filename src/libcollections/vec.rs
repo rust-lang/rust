@@ -173,8 +173,7 @@ impl<T> Vec<T> {
     ///
     /// It is important to note that this function does not specify the *length* of the returned
     /// vector, but only the *capacity*. (For an explanation of the difference between length and
-    /// capacity, see the main `Vec<T>` docs above, 'Capacity and reallocation'.) To create a
-    /// vector of a given length, use `Vec::from_elem` or `Vec::from_fn`.
+    /// capacity, see the main `Vec<T>` docs above, 'Capacity and reallocation'.)
     ///
     /// # Examples
     ///
@@ -272,7 +271,7 @@ impl<T> Vec<T> {
     /// Deprecated: use `into_iter().partition(f)` instead.
     #[inline]
     #[deprecated = "use into_iter().partition(f) instead"]
-    pub fn partition<F>(self, mut f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
+    pub fn partition<F>(self, f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
         self.into_iter().partition(f)
     }
 
@@ -298,7 +297,7 @@ impl<T> Vec<T> {
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
-    /// `Vec`. The collection may reserve more space to avoid frequent reallocations.
+    /// `Vec<T>`. The collection may reserve more space to avoid frequent reallocations.
     ///
     /// # Panics
     ///
@@ -322,7 +321,7 @@ impl<T> Vec<T> {
     }
 
     /// Reserves the minimum capacity for exactly `additional` more elements to
-    /// be inserted in the given `Vec`. Does nothing if the capacity is already
+    /// be inserted in the given `Vec<T>`. Does nothing if the capacity is already
     /// sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
@@ -350,9 +349,10 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Shrinks the capacity of the vector as much as possible. It will drop
-    /// down as close as possible to the length but the allocator may still
-    /// inform the vector that there is space for a few more elements.
+    /// Shrinks the capacity of the vector as much as possible.
+    ///
+    /// It will drop down as close as possible to the length but the allocator
+    /// may still inform the vector that there is space for a few more elements.
     ///
     /// # Examples
     ///
@@ -370,7 +370,7 @@ impl<T> Vec<T> {
         if self.len == 0 {
             if self.cap != 0 {
                 unsafe {
-                    dealloc(self.ptr, self.cap)
+                    dealloc(*self.ptr, self.cap)
                 }
                 self.cap = 0;
             }
@@ -378,11 +378,12 @@ impl<T> Vec<T> {
             unsafe {
                 // Overflow check is unnecessary as the vector is already at
                 // least this large.
-                self.ptr = reallocate(self.ptr as *mut u8,
-                                      self.cap * mem::size_of::<T>(),
-                                      self.len * mem::size_of::<T>(),
-                                      mem::min_align_of::<T>()) as *mut T;
-                if self.ptr.is_null() { ::alloc::oom() }
+                let ptr = reallocate(*self.ptr as *mut u8,
+                                     self.cap * mem::size_of::<T>(),
+                                     self.len * mem::size_of::<T>(),
+                                     mem::min_align_of::<T>()) as *mut T;
+                if ptr.is_null() { ::alloc::oom() }
+                self.ptr = NonZero::new(ptr);
             }
             self.cap = self.len;
         }
@@ -443,15 +444,15 @@ impl<T> Vec<T> {
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
             mem::transmute(RawSlice {
-                data: self.ptr as *const T,
+                data: *self.ptr as *const T,
                 len: self.len,
             })
         }
     }
 
-    /// Creates a consuming iterator, that is, one that moves each
-    /// value out of the vector (from start to end). The vector cannot
-    /// be used after calling this.
+    /// Creates a consuming iterator, that is, one that moves each value out of
+    /// the vector (from start to end). The vector cannot be used after calling
+    /// this.
     ///
     /// # Examples
     ///
@@ -466,9 +467,9 @@ impl<T> Vec<T> {
     #[stable]
     pub fn into_iter(self) -> IntoIter<T> {
         unsafe {
-            let ptr = self.ptr;
+            let ptr = *self.ptr;
             let cap = self.cap;
-            let begin = self.ptr as *const T;
+            let begin = ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
                 (ptr as uint + self.len()) as *const T
             } else {
@@ -512,13 +513,11 @@ impl<T> Vec<T> {
     /// ```
     /// let mut v = vec!["foo", "bar", "baz", "qux"];
     ///
-    /// assert_eq!(v.swap_remove(1), Some("bar"));
+    /// assert_eq!(v.swap_remove(1), "bar");
     /// assert_eq!(v, vec!["foo", "qux", "baz"]);
     ///
-    /// assert_eq!(v.swap_remove(0), Some("foo"));
+    /// assert_eq!(v.swap_remove(0), "foo");
     /// assert_eq!(v, vec!["baz", "qux"]);
-    ///
-    /// assert_eq!(v.swap_remove(2), None);
     /// ```
     #[inline]
     #[stable]
@@ -577,11 +576,7 @@ impl<T> Vec<T> {
     ///
     /// ```
     /// let mut v = vec![1i, 2, 3];
-    /// assert_eq!(v.remove(1), Some(2));
-    /// assert_eq!(v, vec![1, 3]);
-    ///
-    /// assert_eq!(v.remove(4), None);
-    /// // v is unchanged:
+    /// assert_eq!(v.remove(1), 2);
     /// assert_eq!(v, vec![1, 3]);
     /// ```
     #[stable]
@@ -1185,8 +1180,9 @@ impl<T> Vec<T> {
             let size = capacity.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
             unsafe {
-                self.ptr = alloc_or_realloc(self.ptr, self.cap * mem::size_of::<T>(), size);
-                if self.ptr.is_null() { ::alloc::oom() }
+                let ptr = alloc_or_realloc(*self.ptr, self.cap * mem::size_of::<T>(), size);
+                if ptr.is_null() { ::alloc::oom() }
+                self.ptr = NonZero::new(ptr);
             }
             self.cap = capacity;
         }
@@ -2207,9 +2203,10 @@ mod tests {
     }
 
     #[test]
+    #[should_fail]
     fn test_swap_remove_empty() {
         let mut vec: Vec<uint> = vec!();
-        assert_eq!(vec.swap_remove(0), None);
+        vec.swap_remove(0);
     }
 
     #[test]

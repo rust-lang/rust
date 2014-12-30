@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use std::slice::Chunks;
-use std::slice::MutChunks;
+use std::slice::ChunksMut;
 
-fn dft_iter<'a, T>(arg1: Chunks<'a,T>, arg2: MutChunks<'a,T>)
+fn dft_iter<'a, T>(arg1: Chunks<'a,T>, arg2: ChunksMut<'a,T>)
 {
     for
     &something

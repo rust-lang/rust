@@ -26,7 +26,7 @@ use arena::TypedArena;
 use std::cell::RefCell;
 use std::fmt;
 use std::io::IoResult;
-use std::iter;
+use std::iter::{mod, repeat};
 use std::mem;
 use std::slice;
 
@@ -726,7 +726,7 @@ impl<'ast> NodeCollector<'ast> {
         debug!("ast_map: {} => {}", id, entry);
         let len = self.map.len();
         if id as uint >= len {
-            self.map.grow(id as uint - len + 1, NotPresent);
+            self.map.extend(repeat(NotPresent).take(id as uint - len + 1));
         }
         self.map[id as uint] = entry;
     }

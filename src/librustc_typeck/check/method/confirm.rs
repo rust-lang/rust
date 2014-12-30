@@ -24,6 +24,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use std::rc::Rc;
 use std::mem;
+use std::iter::repeat;
 use util::ppaux::Repr;
 
 struct ConfirmContext<'a, 'tcx:'a> {
@@ -339,7 +340,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             } else if num_supplied_types != num_method_types {
                 span_err!(self.tcx().sess, self.span, E0036,
                     "incorrect number of type parameters given for this method");
-                Vec::from_elem(num_method_types, self.tcx().types.err)
+                repeat(self.tcx().types.err).take(num_method_types).collect()
             } else {
                 supplied_method_types
             }

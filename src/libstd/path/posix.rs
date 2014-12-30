@@ -29,7 +29,7 @@ use vec::Vec;
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]
-pub type Components<'a> = Splits<'a, u8, fn(&u8) -> bool>;
+pub type Components<'a> = Split<'a, u8, fn(&u8) -> bool>;
 
 /// Iterator that yields successive components of a Path as Option<&str>
 pub type StrComponents<'a> =

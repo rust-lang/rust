@@ -37,4 +37,3 @@ pub use borrowck::FnPartsWithCFG;
 mod borrowck;
 
 pub mod graphviz;
-
