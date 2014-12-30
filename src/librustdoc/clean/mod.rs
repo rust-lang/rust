@@ -1474,7 +1474,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
 
             ty::ty_projection(ref data) => {
                 let trait_ref = match data.trait_ref.clean(cx) {
-                    TyParamBound::TraitBound(t) => t.trait_,
+                    TyParamBound::TraitBound(t, _) => t.trait_,
                     TyParamBound::RegionBound(_) => panic!("cleaning a trait got a region??"),
                 };
                 Type::QPath {
