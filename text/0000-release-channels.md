@@ -295,7 +295,7 @@ Instead, the compiler will perform the following steps when inspecting
 1. The compiler will discover all `#![feature]` directives
    enabled for the crate and calculate a list of all enabled features.
 2. While compiling, all unstable language features used will be
-   removed from this list. If a used feature is note enabled, then an
+   removed from this list. If a used feature is not enabled, then an
    error is generated.
 3. A new pass, the stability pass, will be extracted from the current
    stability lint pass to detect usage of all unstable APIs. If an
