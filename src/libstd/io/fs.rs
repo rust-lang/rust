@@ -931,11 +931,11 @@ mod test {
         {
             let mut read_stream = File::open_mode(filename, Open, Read);
             {
-                let read_buf = read_mem[mut 0..4];
+                let read_buf = read_mem.slice_mut(0, 4);
                 check!(read_stream.read(read_buf));
             }
             {
-                let read_buf = read_mem[mut 4..8];
+                let read_buf = read_mem.slice_mut(4, 8);
                 check!(read_stream.read(read_buf));
             }
         }

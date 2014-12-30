@@ -20,8 +20,4 @@ fn main() {
     x[Foo..]; //~ ERROR cannot take a slice of a value with type `Foo`
     x[..Foo]; //~ ERROR cannot take a slice of a value with type `Foo`
     x[Foo..Foo]; //~ ERROR cannot take a slice of a value with type `Foo`
-    x[mut]; //~ ERROR cannot take a mutable slice of a value with type `Foo`
-    x[mut Foo..]; //~ ERROR cannot take a mutable slice of a value with type `Foo`
-    x[mut ..Foo]; //~ ERROR cannot take a mutable slice of a value with type `Foo`
-    x[mut Foo..Foo]; //~ ERROR cannot take a mutable slice of a value with type `Foo`
 }
