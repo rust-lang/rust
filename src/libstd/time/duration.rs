@@ -262,7 +262,9 @@ impl Duration {
     }
 }
 
-impl Neg<Duration> for Duration {
+impl Neg for Duration {
+    type Output = Duration;
+
     #[inline]
     fn neg(self) -> Duration {
         if self.nanos == 0 {

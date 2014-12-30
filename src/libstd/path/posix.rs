@@ -22,8 +22,7 @@ use option::Option::{None, Some};
 use kinds::Sized;
 use str::{FromStr, Str};
 use str;
-use slice::{CloneSliceExt, Split, AsSlice, SliceConcatExt,
-            PartialEqSliceExt, SliceExt};
+use slice::{Split, AsSlice, SliceConcatExt, SliceExt};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
@@ -449,7 +448,7 @@ static dot_dot_static: &'static [u8] = b"..";
 mod tests {
     use super::*;
     use prelude::Option::{mod, Some, None};
-    use prelude::{Vec, Clone, AsSlice, SliceExt, CloneSliceExt, IteratorExt};
+    use prelude::{Vec, Clone, AsSlice, SliceExt, IteratorExt};
     use prelude::{DoubleEndedIteratorExt, Str, StrExt, ToString, GenericPath};
     use str;
 
