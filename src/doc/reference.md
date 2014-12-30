@@ -194,11 +194,11 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 | else     | enum     | extern   | false    | final   |
 | fn       | for      | if       | impl     | in      |
 | let      | loop     | match    | mod      | move    |
-| mut      | offsetof | once     | override | priv    |
-| pub      | pure     | ref      | return   | sizeof  |
-| static   | self     | struct   | super    | true    |
-| trait    | type     | typeof   | unsafe   | unsized |
-| use      | virtual  | where    | while    | yield   |
+| mut      | offsetof | override | priv     | pub     |
+| pure     | ref      | return   | sizeof   | static  |
+| self     | struct   | super    | true     | trait   |
+| type     | typeof   | unsafe   | unsized  | use     |
+| virtual  | where    | while    | yield    |
 
 
 Each of these keywords has special meaning in its grammar, and all of them are
