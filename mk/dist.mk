@@ -35,7 +35,7 @@ LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
 # Source tarball
 ######################################################################
 
-PKG_TAR = dist/$(PKG_NAME).tar.gz
+PKG_TAR = dist/$(PKG_NAME)-src.tar.gz
 
 PKG_GITMODULES := $(S)src/llvm $(S)src/compiler-rt \
 		  $(S)src/rt/hoedown $(S)src/jemalloc
