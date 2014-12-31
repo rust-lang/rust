@@ -13,7 +13,7 @@
 macro_rules! define_vec (
     () => (
         mod foo {
-            #[deriving(PartialEq)]
+            #[derive(PartialEq)]
             pub struct bar;
         }
     )

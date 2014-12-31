@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[deriving(Show)]
+#[derive(Show)]
 enum Token {
     Text(String),
     ETag(Vec<String>, String),

@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Show)]
+#[derive(Show)]
 enum foo {
   a(uint),
   b(String),
   c,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 enum bar {
   d, e, f
 }

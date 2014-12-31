@@ -46,7 +46,7 @@ fn foo3(x: &Fat<Fat<[int]>>) {
 }
 
 
-#[deriving(PartialEq,Eq)]
+#[derive(PartialEq,Eq)]
 struct Bar;
 
 impl Copy for Bar {}

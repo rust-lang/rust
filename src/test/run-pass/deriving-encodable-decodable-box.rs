@@ -13,7 +13,7 @@ extern crate serialize;
 use serialize::{Encodable, Decodable};
 use serialize::json;
 
-#[deriving(Encodable, Decodable)]
+#[derive(Encodable, Decodable)]
 struct A {
     foo: Box<[bool]>,
 }

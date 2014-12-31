@@ -23,7 +23,7 @@ impl<T> MyTrait for T
     }
 }
 
-#[deriving(Clone,Show,PartialEq)]
+#[derive(Clone,Show,PartialEq)]
 struct MyType {
     dummy: uint
 }

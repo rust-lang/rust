@@ -14,7 +14,7 @@ use std::os;
 use std::task;
 use std::time::Duration;
 
-#[deriving(Clone)]
+#[derive(Clone)]
 enum List<T> {
     Nil, Cons(T, Box<List<T>>)
 }

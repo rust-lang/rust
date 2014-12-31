@@ -13,7 +13,7 @@
 
 use std::ops;
 
-#[deriving(Show,PartialEq,Eq)]
+#[derive(Show,PartialEq,Eq)]
 struct Point {
     x: int,
     y: int

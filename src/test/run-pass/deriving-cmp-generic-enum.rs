@@ -10,7 +10,7 @@
 
 // no-pretty-expanded FIXME #15189
 
-#[deriving(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum E<T> {
     E0,
     E1(T),

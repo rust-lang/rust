@@ -24,20 +24,20 @@ use rbml::writer::Encoder;
 use rbml::reader::Decoder;
 use serialize::{Encodable, Decodable};
 
-#[deriving(Encodable, Decodable, Eq, Rand)]
+#[derive(Encodable, Decodable, Eq, Rand)]
 struct A;
-#[deriving(Encodable, Decodable, Eq, Rand)]
+#[derive(Encodable, Decodable, Eq, Rand)]
 struct B(int);
-#[deriving(Encodable, Decodable, Eq, Rand)]
+#[derive(Encodable, Decodable, Eq, Rand)]
 struct C(int, int, uint);
 
-#[deriving(Encodable, Decodable, Eq, Rand)]
+#[derive(Encodable, Decodable, Eq, Rand)]
 struct D {
     a: int,
     b: uint,
 }
 
-#[deriving(Encodable, Decodable, Eq, Rand)]
+#[derive(Encodable, Decodable, Eq, Rand)]
 enum E {
     E1,
     E2(uint),
@@ -45,10 +45,10 @@ enum E {
     E4{ x: uint },
 }
 
-#[deriving(Encodable, Decodable, Eq, Rand)]
+#[derive(Encodable, Decodable, Eq, Rand)]
 enum F { F1 }
 
-#[deriving(Encodable, Decodable, Eq, Rand)]
+#[derive(Encodable, Decodable, Eq, Rand)]
 struct G<T> {
     t: T
 }

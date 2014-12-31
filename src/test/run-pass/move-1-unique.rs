@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Triple {
     x: int,
     y: int,

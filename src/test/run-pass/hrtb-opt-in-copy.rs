@@ -20,7 +20,7 @@
 
 use std::kinds::marker;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct Foo<T> { x: T }
 
 type Ty<'tcx> = &'tcx TyS<'tcx>;

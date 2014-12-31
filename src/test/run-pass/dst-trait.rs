@@ -14,12 +14,12 @@ struct Fat<T: ?Sized> {
     ptr: T
 }
 
-#[deriving(PartialEq,Eq)]
+#[derive(PartialEq,Eq)]
 struct Bar;
 
 impl Copy for Bar {}
 
-#[deriving(PartialEq,Eq)]
+#[derive(PartialEq,Eq)]
 struct Bar1 {
     f: int
 }

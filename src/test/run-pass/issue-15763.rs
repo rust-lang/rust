@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct Bar {
     x: int
 }
@@ -19,7 +19,7 @@ impl Drop for Bar {
     }
 }
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct Foo {
     x: Bar,
     a: int

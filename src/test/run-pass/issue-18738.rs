@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Eq, PartialEq, PartialOrd, Ord)]
 enum Test<'a> {
     Int(&'a int),
     Slice(&'a [u8]),
 }
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Eq, PartialEq, PartialOrd, Ord)]
 struct Version {
     vendor_info: &'static str
 }
 
-#[deriving(Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Eq, PartialEq, PartialOrd, Ord)]
 struct Foo(&'static str);
 
 fn main() {}

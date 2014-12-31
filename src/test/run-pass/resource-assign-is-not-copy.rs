@@ -12,7 +12,7 @@
 
 use std::cell::Cell;
 
-#[deriving(Show)]
+#[derive(Show)]
 struct r<'a> {
     i: &'a Cell<int>,
 }

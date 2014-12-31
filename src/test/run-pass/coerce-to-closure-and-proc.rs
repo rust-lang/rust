@@ -14,10 +14,10 @@ fn id<T>(x: T) -> T {
     x
 }
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct Foo<T>(T);
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 enum Bar<T> {
     Baz(T)
 }

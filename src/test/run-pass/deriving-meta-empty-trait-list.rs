@@ -11,10 +11,10 @@
 // except according to those terms.
 
 
-#[deriving]   //~ WARNING empty trait list in `deriving`
+#[derive]   //~ WARNING empty trait list in `derive`
 struct Foo;
 
-#[deriving()] //~ WARNING empty trait list in `deriving`
+#[derive()] //~ WARNING empty trait list in `derive`
 struct Bar;
 
 pub fn main() {}

@@ -24,7 +24,7 @@ impl<T> MyTrait<T> for T { //~ ERROR E0119
     }
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct MyType {
     dummy: uint
 }

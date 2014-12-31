@@ -10,7 +10,7 @@
 
 #![feature(unboxed_closures)]
 
-#[deriving(Show)]
+#[derive(Show)]
 struct LifetimeStruct<'a>;
 
 fn main() {

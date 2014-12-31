@@ -9,13 +9,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Hash)]
+#[derive(Hash)]
 enum Foo {
     Bar(int, char),
     Baz(char, int)
 }
 
-#[deriving(Hash)]
+#[derive(Hash)]
 enum A {
     B,
     C,

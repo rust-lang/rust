@@ -21,12 +21,12 @@ use serialize::json;
 use rbml::writer;
 use rbml::io::SeekableMemWriter;
 
-#[deriving(Encodable)]
+#[derive(Encodable)]
 struct Foo {
     baz: bool,
 }
 
-#[deriving(Encodable)]
+#[derive(Encodable)]
 struct Bar {
     froboz: uint,
 }

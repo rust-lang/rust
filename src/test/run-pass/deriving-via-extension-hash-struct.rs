@@ -9,7 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Hash)]
+#[derive(Hash)]
 struct Foo {
     x: int,
     y: int,

@@ -12,7 +12,7 @@
 
 use std::mem;
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Foo;
 
 pub fn main() {

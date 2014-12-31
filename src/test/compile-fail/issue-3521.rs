@@ -11,7 +11,7 @@
 fn main() {
     let foo = 100;
 
-    #[deriving(Show)]
+    #[derive(Show)]
     enum Stuff {
         Bar = foo //~ ERROR attempt to use a non-constant value in a constant
     }

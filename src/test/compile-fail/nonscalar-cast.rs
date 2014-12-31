@@ -10,7 +10,7 @@
 
 // error-pattern:non-scalar cast
 
-#[deriving(Show)]
+#[derive(Show)]
 struct foo {
     x: int
 }
