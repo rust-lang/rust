@@ -410,15 +410,15 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }).collect()
 }
 
-type EnterPatterns<'a, 'p> = |&[&'p ast::Pat]|: 'a -> Option<Vec<&'p ast::Pat>>;
-
-fn enter_match<'a, 'b, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                       dm: &DefMap,
-                                       m: &[Match<'a, 'p, 'blk, 'tcx>],
-                                       col: uint,
-                                       val: ValueRef,
-                                       e: EnterPatterns<'b, 'p>)
-                                       -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
+fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+                                          dm: &DefMap,
+                                          m: &[Match<'a, 'p, 'blk, 'tcx>],
+                                          col: uint,
+                                          val: ValueRef,
+                                          mut e: F)
+                                          -> Vec<Match<'a, 'p, 'blk, 'tcx>> where
+    F: FnMut(&[&'p ast::Pat]) -> Option<Vec<&'p ast::Pat>>,
+{
     debug!("enter_match(bcx={}, m={}, col={}, val={})",
            bcx.to_str(),
            m.repr(bcx.tcx()),
