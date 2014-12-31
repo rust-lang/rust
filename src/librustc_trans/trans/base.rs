@@ -554,7 +554,7 @@ pub fn compare_scalar_types<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                         t: Ty<'tcx>,
                                         op: ast::BinOp)
                                         -> Result<'blk, 'tcx> {
-    let f = |a| Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op));
+    let f = |&: a| Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op));
 
     match t.sty {
         ty::ty_tup(ref tys) if tys.is_empty() => f(nil_type),
@@ -2749,7 +2749,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     let val = match item {
         ast_map::NodeItem(i) => {
             let ty = ty::node_id_to_type(ccx.tcx(), i.id);
-            let sym = || exported_name(ccx, id, ty, i.attrs[]);
+            let sym = |&:| exported_name(ccx, id, ty, i.attrs[]);
 
             let v = match i.node {
                 ast::ItemStatic(_, _, ref expr) => {
@@ -3013,14 +3013,14 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
     unsafe {
         let mut declared = HashSet::new();
 
-        let iter_globals = |llmod| {
+        let iter_globals = |&: llmod| {
             ValueIter {
                 cur: llvm::LLVMGetFirstGlobal(llmod),
                 step: llvm::LLVMGetNextGlobal,
             }
         };
 
-        let iter_functions = |llmod| {
+        let iter_functions = |&: llmod| {
             ValueIter {
                 cur: llvm::LLVMGetFirstFunction(llmod),
                 step: llvm::LLVMGetNextFunction,
