@@ -30,10 +30,6 @@ pub enum FileMatch {
 // FIXME (#2658): I'm not happy how this module turned out. Should
 // probably just be folded into cstore.
 
-/// Functions with type `pick` take a parent directory as well as
-/// a file found in that directory.
-pub type pick<'a> = |path: &Path|: 'a -> FileMatch;
-
 pub struct FileSearch<'a> {
     pub sysroot: &'a Path,
     pub search_paths: &'a SearchPaths,
@@ -95,7 +91,7 @@ impl<'a> FileSearch<'a> {
         make_target_lib_path(self.sysroot, self.triple)
     }
 
-    pub fn search(&self, pick: pick) {
+    pub fn search<F>(&self, mut pick: F) where F: FnMut(&Path) -> FileMatch {
         self.for_each_lib_search_path(|lib_search_path| {
             debug!("searching {}", lib_search_path.display());
             match fs::readdir(lib_search_path) {
