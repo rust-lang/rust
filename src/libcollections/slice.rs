@@ -1102,11 +1102,11 @@ impl<T: Clone> ToOwned<Vec<T>> for [T] {
 // Iterators
 ////////////////////////////////////////////////////////////////////////////////
 
-#[deriving(Copy)]
+#[deriving(Copy, Clone)]
 enum Direction { Pos, Neg }
 
 /// An `Index` and `Direction` together.
-#[deriving(Copy)]
+#[deriving(Copy, Clone)]
 struct SizeDirection {
     size: uint,
     dir: Direction,

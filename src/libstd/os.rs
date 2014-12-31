@@ -716,6 +716,7 @@ fn real_args() -> Vec<String> {
 #[cfg(windows)]
 fn real_args() -> Vec<String> {
     use slice;
+    use iter::range;
 
     let mut nArgs: c_int = 0;
     let lpArgCount: *mut c_int = &mut nArgs;

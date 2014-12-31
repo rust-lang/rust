@@ -600,6 +600,7 @@ mod tests {
     use std::option::Option::{Some, None};
     use std::str::Str;
     use std::sync::atomic;
+    use std::sync::atomic::Ordering::{Acquire, SeqCst};
     use std::task;
     use std::kinds::Send;
     use std::vec::Vec;

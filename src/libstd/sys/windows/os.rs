@@ -129,7 +129,7 @@ pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD) -> Option<String
         let mut res = None;
         let mut done = false;
         while !done {
-            let mut buf: Vec<u16> = repeat(0u16).take(n).collect();
+            let mut buf: Vec<u16> = repeat(0u16).take(n as uint).collect();
             let k = f(buf.as_mut_ptr(), n);
             if k == (0 as DWORD) {
                 done = true;
