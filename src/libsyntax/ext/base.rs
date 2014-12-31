@@ -28,19 +28,6 @@ use fold::Folder;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-// new-style macro! tt code:
-//
-//    MacResult, NormalTT, IdentTT
-//
-// also note that ast::Mac used to have a bunch of extraneous cases and
-// is now probably a redundant AST node, can be merged with
-// ast::MacInvocTT.
-
-pub struct MacroDef {
-    pub name: String,
-    pub ext: SyntaxExtension
-}
-
 pub trait ItemDecorator {
     fn expand(&self,
               ecx: &mut ExtCtxt,
@@ -140,13 +127,6 @@ impl<F> IdentMacroExpander for F
 /// methods are spliced into the AST at the callsite of the macro (or
 /// just into the compiler's internal macro table, for `make_def`).
 pub trait MacResult {
-    /// Attempt to define a new macro.
-    // this should go away; the idea that a macro might expand into
-    // either a macro definition or an expression, depending on what
-    // the context wants, is kind of silly.
-    fn make_def(&mut self) -> Option<MacroDef> {
-        None
-    }
     /// Create an expression.
     fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
         None
@@ -469,7 +449,7 @@ pub struct ExtCtxt<'a> {
 
     pub mod_path: Vec<ast::Ident> ,
     pub trace_mac: bool,
-    pub exported_macros: Vec<P<ast::Item>>,
+    pub exported_macros: Vec<ast::MacroDef>,
 
     pub syntax_env: SyntaxEnv,
     pub recursion_count: uint,

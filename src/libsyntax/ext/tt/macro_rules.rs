@@ -11,7 +11,7 @@
 use ast::{Ident, TtDelimited, TtSequence, TtToken};
 use ast;
 use codemap::{Span, DUMMY_SP};
-use ext::base::{ExtCtxt, MacResult, MacroDef};
+use ext::base::{ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
@@ -208,15 +208,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 //
 // Holy self-referential!
 
-/// This procedure performs the expansion of the
-/// macro_rules! macro. It parses the RHS and adds
-/// an extension to the current context.
-pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
-                              sp: Span,
-                              name: Ident,
-                              imported_from: Option<Ident>,
-                              arg: Vec<ast::TokenTree> )
-                              -> MacroDef {
+/// Converts a `macro_rules!` invocation into a syntax extension.
+pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
+                    def: &ast::MacroDef) -> SyntaxExtension {
 
     let lhs_nm =  gensym_ident("lhs");
     let rhs_nm =  gensym_ident("rhs");
@@ -254,7 +248,7 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
     let arg_reader = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                    None,
                                    None,
-                                   arg.clone());
+                                   def.body.clone());
     let argument_map = parse_or_else(cx.parse_sess(),
                                      cx.cfg(),
                                      arg_reader,
@@ -263,23 +257,20 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
     // Extract the arguments:
     let lhses = match *argument_map[lhs_nm] {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
-        _ => cx.span_bug(sp, "wrong-structured lhs")
+        _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
 
     let rhses = match *argument_map[rhs_nm] {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
-        _ => cx.span_bug(sp, "wrong-structured rhs")
+        _ => cx.span_bug(def.span, "wrong-structured rhs")
     };
 
     let exp = box MacroRulesMacroExpander {
-        name: name,
-        imported_from: imported_from,
+        name: def.ident,
+        imported_from: def.imported_from,
         lhses: lhses,
         rhses: rhses,
     };
 
-    MacroDef {
-        name: token::get_ident(name).to_string(),
-        ext: NormalTT(exp, Some(sp))
-    }
+    NormalTT(exp, Some(def.span))
 }

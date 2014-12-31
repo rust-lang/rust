@@ -169,6 +169,8 @@ pub fn parse_stmt_from_source_str(name: String,
 
 // Note: keep in sync with `with_hygiene::parse_tts_from_source_str`
 // until #16472 is resolved.
+//
+// Warning: This parses with quote_depth > 0, which is not the default.
 pub fn parse_tts_from_source_str(name: String,
                                  source: String,
                                  cfg: ast::CrateConfig,
@@ -310,6 +312,8 @@ pub mod with_hygiene {
 
     // Note: keep this in sync with `super::parse_tts_from_source_str` until
     // #16472 is resolved.
+    //
+    // Warning: This parses with quote_depth > 0, which is not the default.
     pub fn parse_tts_from_source_str(name: String,
                                      source: String,
                                      cfg: ast::CrateConfig,

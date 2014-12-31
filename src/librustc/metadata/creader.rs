@@ -29,8 +29,9 @@ use syntax::ast;
 use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{Span};
+use syntax::codemap::{Span, mk_sp};
 use syntax::diagnostic::SpanHandler;
+use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::visit;
@@ -491,7 +492,36 @@ impl<'a> CrateReader<'a> {
             }
             None => { load_ctxt.report_load_errs(); unreachable!() },
         };
-        let macros = decoder::get_exported_macros(library.metadata.as_slice());
+
+        // Read exported macros
+        let imported_from = Some(token::intern(info.ident[]).ident());
+        let source_name = format!("<{} macros>", info.ident[]);
+        let mut macros = vec![];
+        decoder::each_exported_macro(library.metadata.as_slice(), &*self.sess.cstore.intr,
+            |name, attrs, body| {
+                // NB: Don't use parse::parse_tts_from_source_str because it parses with
+                // quote_depth > 0.
+                let mut p = parse::new_parser_from_source_str(&self.sess.parse_sess,
+                                                              self.sess.opts.cfg.clone(),
+                                                              source_name.clone(),
+                                                              body);
+                let lo = p.span.lo;
+                let body = p.parse_all_token_trees();
+                let span = mk_sp(lo, p.last_span.hi);
+                p.abort_if_errors();
+                macros.push(ast::MacroDef {
+                    ident: name.ident(),
+                    attrs: attrs,
+                    id: ast::DUMMY_NODE_ID,
+                    span: span,
+                    imported_from: imported_from,
+                    body: body,
+                });
+                true
+            }
+        );
+
+        // Look for a plugin registrar
         let registrar = decoder::get_plugin_registrar_fn(library.metadata.as_slice()).map(|id| {
             decoder::get_symbol(library.metadata.as_slice(), id)
         });
@@ -504,9 +534,11 @@ impl<'a> CrateReader<'a> {
             // empty dylib.
         }
         let pc = PluginMetadata {
-            lib: library.dylib.clone(),
             macros: macros,
-            registrar_symbol: registrar,
+            registrar: match (library.dylib.as_ref(), registrar) {
+                (Some(dylib), Some(reg)) => Some((dylib.clone(), reg)),
+                _ => None,
+            },
         };
         if should_link && self.existing_match(info.name[], None).is_none() {
             // register crate now to avoid double-reading metadata
