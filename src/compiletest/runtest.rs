@@ -32,6 +32,7 @@ use std::io::process;
 use std::io::timer;
 use std::io;
 use std::os;
+use std::iter::repeat;
 use std::str;
 use std::string::String;
 use std::thread::Thread;
@@ -976,8 +977,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
                          proc_res: &ProcRes) {
 
     // true if we found the error in question
-    let mut found_flags = Vec::from_elem(
-        expected_errors.len(), false);
+    let mut found_flags: Vec<_> = repeat(false).take(expected_errors.len()).collect();
 
     if proc_res.status.success() {
         fatal("process did not return an error status");
@@ -1337,7 +1337,7 @@ fn make_run_args(config: &Config, props: &TestProps, testfile: &Path) ->
     // Add the arguments in the run_flags directive
     args.extend(split_maybe_args(&props.run_flags).into_iter());
 
-    let prog = args.remove(0).unwrap();
+    let prog = args.remove(0);
     return ProcArgs {
         prog: prog,
         args: args,

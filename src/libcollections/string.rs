@@ -151,7 +151,7 @@ impl String {
         let mut i = 0;
         let total = v.len();
         fn unsafe_get(xs: &[u8], i: uint) -> u8 {
-            unsafe { *xs.unsafe_get(i) }
+            unsafe { *xs.get_unchecked(i) }
         }
         fn safe_get(xs: &[u8], i: uint, total: uint) -> u8 {
             if i >= total {

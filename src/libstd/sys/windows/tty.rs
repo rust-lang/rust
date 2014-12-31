@@ -34,6 +34,7 @@ use libc::{c_int, HANDLE, LPDWORD, DWORD, LPVOID};
 use libc::{get_osfhandle, CloseHandle};
 use libc::types::os::arch::extra::LPCVOID;
 use io::{mod, IoError, IoResult, MemReader};
+use iter::repeat;
 use prelude::*;
 use ptr;
 use str::from_utf8;
@@ -89,7 +90,7 @@ impl TTY {
     pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         // Read more if the buffer is empty
         if self.utf8.eof() {
-            let mut utf16 = Vec::from_elem(0x1000, 0u16);
+            let mut utf16: Vec<u16> = repeat(0u16).take(0x1000).collect();
             let mut num: DWORD = 0;
             match unsafe { ReadConsoleW(self.handle,
                                          utf16.as_mut_ptr() as LPVOID,

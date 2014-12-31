@@ -21,6 +21,7 @@ use middle::cfg::CFGIndex;
 use middle::ty;
 use std::io;
 use std::uint;
+use std::iter::repeat;
 use syntax::ast;
 use syntax::ast_util::IdRange;
 use syntax::visit;
@@ -203,9 +204,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
         let entry = if oper.initial_value() { uint::MAX } else {0};
 
-        let gens = Vec::from_elem(num_nodes * words_per_id, 0);
-        let kills = Vec::from_elem(num_nodes * words_per_id, 0);
-        let on_entry = Vec::from_elem(num_nodes * words_per_id, entry);
+        let gens: Vec<_> = repeat(0).take(num_nodes * words_per_id).collect();
+        let kills: Vec<_> = repeat(0).take(num_nodes * words_per_id).collect();
+        let on_entry: Vec<_> = repeat(entry).take(num_nodes * words_per_id).collect();
 
         let nodeid_to_index = build_nodeid_to_index(decl, cfg);
 
@@ -446,7 +447,7 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
                 changed: true
             };
 
-            let mut temp = Vec::from_elem(words_per_id, 0u);
+            let mut temp: Vec<_> = repeat(0u).take(words_per_id).collect();
             while propcx.changed {
                 propcx.changed = false;
                 propcx.reset(temp.as_mut_slice());

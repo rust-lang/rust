@@ -22,6 +22,7 @@ use parse::token;
 use ptr::P;
 
 use std::collections::HashMap;
+use std::iter::repeat;
 
 #[deriving(PartialEq)]
 enum ArgumentType {
@@ -477,7 +478,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// to
     fn into_expr(mut self) -> P<ast::Expr> {
         let mut locals = Vec::new();
-        let mut names = Vec::from_fn(self.name_positions.len(), |_| None);
+        let mut names: Vec<_> = repeat(None).take(self.name_positions.len()).collect();
         let mut pats = Vec::new();
         let mut heads = Vec::new();
 
@@ -664,7 +665,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     name_ordering: Vec<String>,
                                     names: HashMap<String, P<ast::Expr>>)
                                     -> P<ast::Expr> {
-    let arg_types = Vec::from_fn(args.len(), |_| None);
+    let arg_types: Vec<_> = range(0, args.len()).map(|_| None).collect();
     let mut cx = Context {
         ecx: ecx,
         args: args,
@@ -707,13 +708,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
             None => break
         }
     }
-    match parser.errors.remove(0) {
-        Some(error) => {
-            cx.ecx.span_err(cx.fmtsp,
-                            format!("invalid format string: {}", error)[]);
-            return DummyResult::raw_expr(sp);
-        }
-        None => {}
+    if !parser.errors.is_empty() {
+        cx.ecx.span_err(cx.fmtsp, format!("invalid format string: {}",
+                                          parser.errors.remove(0))[]);
+        return DummyResult::raw_expr(sp);
     }
     if !cx.literal.is_empty() {
         let s = cx.trans_literal_string();
