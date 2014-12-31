@@ -162,7 +162,7 @@ impl Process {
             // Similarly to unix, we don't actually leave holes for the stdio file
             // descriptors, but rather open up /dev/null equivalents. These
             // equivalents are drawn from libuv's windows process spawning.
-            let set_fd = |fd: &Option<P>, slot: &mut HANDLE,
+            let set_fd = |&: fd: &Option<P>, slot: &mut HANDLE,
                           is_stdin: bool| {
                 match *fd {
                     None => {
