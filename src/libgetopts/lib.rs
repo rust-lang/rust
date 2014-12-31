@@ -875,7 +875,7 @@ fn each_split_within<F>(ss: &str, lim: uint, mut it: F) -> bool where
         lim = fake_i;
     }
 
-    let machine: |&mut bool, (uint, char)| -> bool = |cont, (i, c)| {
+    let mut machine = |&mut: cont: &mut bool, (i, c): (uint, char)| -> bool {
         let whitespace = if c.is_whitespace() { Ws }       else { Cr };
         let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
 
