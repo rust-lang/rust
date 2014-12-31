@@ -137,26 +137,6 @@ fn tuplify_box_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> Ty<'tcx> {
     ty::mk_tup(tcx, vec!(tcx.types.uint, ty::mk_nil_ptr(tcx), ptr, ptr, t))
 }
 
-fn allocate_cbox<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             store: ty::TraitStore,
-                             cdata_ty: Ty<'tcx>)
-                             -> Result<'blk, 'tcx> {
-    let _icx = push_ctxt("closure::allocate_cbox");
-    let tcx = bcx.tcx();
-
-    // Allocate and initialize the box:
-    let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-    match store {
-        ty::UniqTraitStore => {
-            malloc_raw_dyn_proc(bcx, cbox_ty)
-        }
-        ty::RegionTraitStore(..) => {
-            let llbox = alloc_ty(bcx, cbox_ty, "__closure");
-            Result::new(bcx, llbox)
-        }
-    }
-}
-
 pub struct ClosureResult<'blk, 'tcx: 'blk> {
     llbox: ValueRef,        // llvalue of ptr to closure
     cdata_ty: Ty<'tcx>,     // type of the closure data
@@ -168,8 +148,7 @@ pub struct ClosureResult<'blk, 'tcx: 'blk> {
 // heap allocated closure that copies the upvars into environment.
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                     bound_values: Vec<EnvValue<'tcx>> ,
-                                     store: ty::TraitStore)
+                                     bound_values: Vec<EnvValue<'tcx>>)
                                      -> ClosureResult<'blk, 'tcx> {
     let _icx = push_ctxt("closure::store_environment");
     let ccx = bcx.ccx();
@@ -193,7 +172,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     // allocate closure in the heap
-    let Result {bcx, val: llbox} = allocate_cbox(bcx, store, cdata_ty);
+    let llbox = alloc_ty(bcx, cbox_ty, "__closure");
 
     let llbox = PointerCast(bcx, llbox, llboxptr_ty);
     debug!("tuplify_box_ty = {}", ty_to_string(tcx, cbox_ty));
@@ -227,8 +206,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // collects the upvars and packages them up for store_environment.
 fn build_closure<'blk, 'tcx>(bcx0: Block<'blk, 'tcx>,
                              freevar_mode: ast::CaptureClause,
-                             freevars: &Vec<ty::Freevar>,
-                             store: ty::TraitStore)
+                             freevars: &Vec<ty::Freevar>)
                              -> ClosureResult<'blk, 'tcx> {
     let _icx = push_ctxt("closure::build_closure");
 
@@ -242,7 +220,7 @@ fn build_closure<'blk, 'tcx>(bcx0: Block<'blk, 'tcx>,
         env_vals.push(EnvValue {action: freevar_mode, datum: datum});
     }
 
-    store_environment(bcx, env_vals, store)
+    store_environment(bcx, env_vals)
 }
 
 // Given an enclosing block context, a new function context, a closure type,
@@ -456,7 +434,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         llbox,
         cdata_ty,
         bcx
-    } = build_closure(bcx, freevar_mode, &freevars, store);
+    } = build_closure(bcx, freevar_mode, &freevars);
 
     trans_closure(ccx,
                   decl,
