@@ -10,8 +10,8 @@
 
 //! Synchronous DNS Resolution
 //!
-//! Contains the functionality to perform DNS resolution in a style related to
-//! `getaddrinfo()`
+//! Contains the functionality to perform DNS resolution or reverse lookup,
+//! in a style related to `getaddrinfo()` and `getnameinfo()`, respectively.
 
 #![allow(missing_docs)]
 
@@ -24,6 +24,7 @@ use io::{IoResult};
 use io::net::ip::{SocketAddr, IpAddr};
 use option::Option;
 use option::Option::{Some, None};
+use string::String;
 use sys;
 use vec::Vec;
 
@@ -81,6 +82,12 @@ pub struct Info {
 /// that hostname.
 pub fn get_host_addresses(host: &str) -> IoResult<Vec<IpAddr>> {
     lookup(Some(host), None, None).map(|a| a.into_iter().map(|i| i.address.ip).collect())
+}
+
+/// Reverse name resolution. Given an address, returns the corresponding
+/// hostname.
+pub fn get_address_name(addr: IpAddr) -> IoResult<String> {
+    sys::addrinfo::get_address_name(addr)
 }
 
 /// Full-fledged resolution. This function will perform a synchronous call to
