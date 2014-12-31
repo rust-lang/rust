@@ -110,6 +110,7 @@ use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use std::cell::{Cell, Ref, RefCell};
 use std::mem::replace;
 use std::rc::Rc;
+use std::iter::repeat;
 use syntax::{mod, abi, attr};
 use syntax::ast::{mod, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
 use syntax::ast_util::{mod, local_def, PostExpansionMethod};
@@ -2130,9 +2131,9 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
 
     fn anon_regions(&self, span: Span, count: uint)
                     -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
-        Ok(Vec::from_fn(count, |_| {
+        Ok(range(0, count).map(|_| {
             self.infcx().next_region_var(infer::MiscVariable(span))
-        }))
+        }).collect())
     }
 }
 
@@ -2810,7 +2811,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 // FIXME(#17596) Ty<'tcx> is incorrectly invariant w.r.t 'tcx.
 fn err_args<'tcx>(tcx: &ty::ctxt<'tcx>, len: uint) -> Vec<Ty<'tcx>> {
-    Vec::from_fn(len, |_| tcx.types.err)
+    range(0, len).map(|_| tcx.types.err).collect()
 }
 
 fn write_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -5166,7 +5167,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // The first step then is to categorize the segments appropriately.
 
     assert!(path.segments.len() >= 1);
-    let mut segment_spaces;
+    let mut segment_spaces: Vec<_>;
     match def {
         // Case 1 and 1b. Reference to a *type* or *enum variant*.
         def::DefSelfTy(..) |
@@ -5181,7 +5182,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefTyParam(..) => {
             // Everything but the final segment should have no
             // parameters at all.
-            segment_spaces = Vec::from_elem(path.segments.len() - 1, None);
+            segment_spaces = repeat(None).take(path.segments.len() - 1).collect();
             segment_spaces.push(Some(subst::TypeSpace));
         }
 
@@ -5189,7 +5190,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefFn(..) |
         def::DefConst(..) |
         def::DefStatic(..) => {
-            segment_spaces = Vec::from_elem(path.segments.len() - 1, None);
+            segment_spaces = repeat(None).take(path.segments.len() - 1).collect();
             segment_spaces.push(Some(subst::FnSpace));
         }
 
@@ -5205,7 +5206,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 def::FromImpl(_) => {}
             }
 
-            segment_spaces = Vec::from_elem(path.segments.len() - 2, None);
+            segment_spaces = repeat(None).take(path.segments.len() - 2).collect();
             segment_spaces.push(Some(subst::TypeSpace));
             segment_spaces.push(Some(subst::FnSpace));
         }
@@ -5220,7 +5221,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefRegion(..) |
         def::DefLabel(..) |
         def::DefUpvar(..) => {
-            segment_spaces = Vec::from_elem(path.segments.len(), None);
+            segment_spaces = repeat(None).take(path.segments.len()).collect();
         }
     }
     assert_eq!(segment_spaces.len(), path.segments.len());
@@ -5489,8 +5490,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 "too few type parameters provided: expected {}{} parameter(s) \
                 , found {} parameter(s)",
                 qualifier, required_len, provided_len);
-            substs.types.replace(space,
-                                 Vec::from_elem(desired.len(), fcx.tcx().types.err));
+            substs.types.replace(space, repeat(fcx.tcx().types.err).take(desired.len()).collect());
             return;
         }
 
@@ -5614,7 +5614,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // make a vector of booleans initially false, set to true when used
     if tps.len() == 0u { return; }
-    let mut tps_used = Vec::from_elem(tps.len(), false);
+    let mut tps_used: Vec<_> = repeat(false).take(tps.len()).collect();
 
     ty::walk_ty(ty, |t| {
             match t.sty {

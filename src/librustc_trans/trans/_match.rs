@@ -606,9 +606,9 @@ fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     val: ValueRef)
                                     -> ExtractedBlock<'blk, 'tcx> {
     let _icx = push_ctxt("match::extract_variant_args");
-    let args = Vec::from_fn(adt::num_args(repr, disr_val), |i| {
+    let args = range(0, adt::num_args(repr, disr_val)).map(|i| {
         adt::trans_field_ptr(bcx, repr, val, disr_val, i)
-    });
+    }).collect();
 
     ExtractedBlock { vals: args, bcx: bcx }
 }

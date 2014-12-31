@@ -1799,7 +1799,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     try!(write!(w, r#"<script type="text/javascript" async
                               src="{root_path}/implementors/{path}/{ty}.{name}.js">
                       </script>"#,
-                root_path = Vec::from_elem(cx.current.len(), "..").connect("/"),
+                root_path = repeat("..").take(cx.current.len()).collect::<Vec<_>>().connect("/"),
                 path = if ast_util::is_local(it.def_id) {
                     cx.current.connect("/")
                 } else {
@@ -2055,7 +2055,8 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     match cache().impls.get(&it.def_id) {
         Some(v) => {
-            let (non_trait, traits) = v.partitioned(|i| i.impl_.trait_.is_none());
+            let (non_trait, traits): (Vec<_>, _) = v.iter().cloned()
+                .partition(|i| i.impl_.trait_.is_none());
             if non_trait.len() > 0 {
                 try!(write!(w, "<h2 id='methods'>Methods</h2>"));
                 for i in non_trait.iter() {
@@ -2065,7 +2066,8 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
             if traits.len() > 0 {
                 try!(write!(w, "<h2 id='implementations'>Trait \
                                   Implementations</h2>"));
-                let (derived, manual) = traits.partition(|i| i.impl_.derived);
+                let (derived, manual): (Vec<_>, _) = traits.into_iter()
+                    .partition(|i| i.impl_.derived);
                 for i in manual.iter() {
                     try!(render_impl(w, i));
                 }

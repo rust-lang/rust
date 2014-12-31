@@ -25,6 +25,7 @@ use middle::ty::{mod, Ty};
 use util::ppaux::{Repr, ty_to_string};
 
 use std::c_str::ToCStr;
+use std::iter::repeat;
 use libc::c_uint;
 use syntax::{ast, ast_util};
 use syntax::ptr::P;
@@ -608,7 +609,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                 const_eval::const_uint(i) => i as uint,
                 _ => cx.sess().span_bug(count.span, "count must be integral const expression.")
             };
-            let vs = Vec::from_elem(n, const_expr(cx, &**elem).0);
+            let vs: Vec<_> = repeat(const_expr(cx, &**elem).0).take(n).collect();
             if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
                 C_struct(cx, vs[], false)
             } else {

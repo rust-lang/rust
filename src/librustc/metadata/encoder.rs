@@ -1599,7 +1599,7 @@ fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: 
     F: FnMut(&mut SeekableMemWriter, &T),
     T: Hash,
 {
-    let mut buckets: Vec<Vec<entry<T>>> = Vec::from_fn(256, |_| Vec::new());
+    let mut buckets: Vec<Vec<entry<T>>> = range(0, 256u16).map(|_| Vec::new()).collect();
     for elt in index.into_iter() {
         let h = hash::hash(&elt.val) as uint;
         buckets[h % 256].push(elt);

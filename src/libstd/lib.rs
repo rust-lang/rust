@@ -158,6 +158,7 @@ pub use alloc::rc;
 pub use core_collections::slice;
 pub use core_collections::str;
 pub use core_collections::string;
+#[stable]
 pub use core_collections::vec;
 
 pub use unicode::char;

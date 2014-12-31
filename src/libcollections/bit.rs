@@ -85,7 +85,7 @@ use core::prelude::*;
 use core::cmp;
 use core::default::Default;
 use core::fmt;
-use core::iter::{Cloned, Chain, Enumerate, Repeat, Skip, Take};
+use core::iter::{Cloned, Chain, Enumerate, Repeat, Skip, Take, repeat};
 use core::iter;
 use core::num::Int;
 use core::slice::{Iter, IterMut};
@@ -267,7 +267,7 @@ impl Bitv {
     pub fn from_elem(nbits: uint, bit: bool) -> Bitv {
         let nblocks = blocks_for_bits(nbits);
         let mut bitv = Bitv {
-            storage: Vec::from_elem(nblocks, if bit { !0u32 } else { 0u32 }),
+            storage: repeat(if bit { !0u32 } else { 0u32 }).take(nblocks).collect(),
             nbits: nbits
         };
         bitv.fix_last_block();
@@ -651,7 +651,7 @@ impl Bitv {
 
         let len = self.nbits/8 +
                   if self.nbits % 8 == 0 { 0 } else { 1 };
-        Vec::from_fn(len, |i|
+        range(0, len).map(|i|
             bit(self, i, 0) |
             bit(self, i, 1) |
             bit(self, i, 2) |
@@ -660,7 +660,7 @@ impl Bitv {
             bit(self, i, 5) |
             bit(self, i, 6) |
             bit(self, i, 7)
-        )
+        ).collect()
     }
 
     /// Deprecated: Use `iter().collect()`.
@@ -834,7 +834,7 @@ impl Bitv {
         // Allocate new words, if needed
         if new_nblocks > self.storage.len() {
             let to_add = new_nblocks - self.storage.len();
-            self.storage.grow(to_add, full_value);
+            self.storage.extend(repeat(full_value).take(to_add));
         }
 
         // Adjust internal bit count

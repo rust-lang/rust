@@ -66,7 +66,7 @@
 #[doc(no_inline)] pub use iter::{FromIterator, Extend, ExactSizeIterator};
 #[doc(no_inline)] pub use iter::{Iterator, IteratorExt, DoubleEndedIterator};
 #[doc(no_inline)] pub use iter::{DoubleEndedIteratorExt, CloneIteratorExt};
-#[doc(no_inline)] pub use iter::{RandomAccessIterator, IteratorCloneExt};
+#[doc(no_inline)] pub use iter::{RandomAccessIterator, IteratorCloneExt, IteratorPairExt};
 #[doc(no_inline)] pub use iter::{IteratorOrdExt, MutableDoubleEndedIterator};
 #[doc(no_inline)] pub use num::{ToPrimitive, FromPrimitive};
 #[doc(no_inline)] pub use boxed::Box;
@@ -80,10 +80,9 @@
 #[doc(no_inline)] pub use core::prelude::{Tuple1, Tuple2, Tuple3, Tuple4};
 #[doc(no_inline)] pub use core::prelude::{Tuple5, Tuple6, Tuple7, Tuple8};
 #[doc(no_inline)] pub use core::prelude::{Tuple9, Tuple10, Tuple11, Tuple12};
-#[doc(no_inline)] pub use str::{Str, StrVector};
-#[doc(no_inline)] pub use str::StrExt;
+#[doc(no_inline)] pub use str::{Str, StrExt};
 #[doc(no_inline)] pub use slice::AsSlice;
-#[doc(no_inline)] pub use slice::{VectorVector, PartialEqSliceExt};
+#[doc(no_inline)] pub use slice::{SliceConcatExt, PartialEqSliceExt};
 #[doc(no_inline)] pub use slice::{CloneSliceExt, OrdSliceExt, SliceExt};
 #[doc(no_inline)] pub use slice::{BoxedSliceExt};
 #[doc(no_inline)] pub use string::{IntoString, String, ToString};

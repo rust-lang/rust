@@ -751,10 +751,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         let orig_def = self.tcx.def_map.borrow()[path_id].clone();
         let ck = |tyname: &str| {
             let ck_public = |def: ast::DefId| {
-                let name = token::get_ident(path.segments
-                                                .last()
-                                                .unwrap()
-                                                .identifier);
+                let name = token::get_ident(path.segments.last().unwrap().identifier);
                 let origdid = orig_def.def_id();
                 self.ensure_public(span,
                                    def,

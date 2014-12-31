@@ -323,7 +323,11 @@ impl<T> VecPerParamSpace<T> {
                 SelfSpace => { self.self_limit -= 1; }
                 FnSpace => {}
             }
-            self.content.remove(limit - 1)
+            if self.content.is_empty() {
+                None
+            } else {
+                Some(self.content.remove(limit - 1))
+            }
         }
     }
 

@@ -96,7 +96,7 @@ use heap::deallocate;
 /// use std::thread::Thread;
 ///
 /// fn main() {
-///     let numbers = Vec::from_fn(100, |i| i as f32);
+///     let numbers: Vec<_> = range(0, 100u32).map(|i| i as f32).collect();
 ///     let shared_numbers = Arc::new(numbers);
 ///
 ///     for _ in range(0u, 10) {
