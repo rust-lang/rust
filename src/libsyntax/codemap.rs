@@ -53,13 +53,17 @@ impl Pos for BytePos {
     fn to_uint(&self) -> uint { let BytePos(n) = *self; n as uint }
 }
 
-impl Add<BytePos, BytePos> for BytePos {
+impl Add for BytePos {
+    type Output = BytePos;
+
     fn add(self, rhs: BytePos) -> BytePos {
         BytePos((self.to_uint() + rhs.to_uint()) as u32)
     }
 }
 
-impl Sub<BytePos, BytePos> for BytePos {
+impl Sub for BytePos {
+    type Output = BytePos;
+
     fn sub(self, rhs: BytePos) -> BytePos {
         BytePos((self.to_uint() - rhs.to_uint()) as u32)
     }
@@ -70,13 +74,17 @@ impl Pos for CharPos {
     fn to_uint(&self) -> uint { let CharPos(n) = *self; n }
 }
 
-impl Add<CharPos, CharPos> for CharPos {
+impl Add for CharPos {
+    type Output = CharPos;
+
     fn add(self, rhs: CharPos) -> CharPos {
         CharPos(self.to_uint() + rhs.to_uint())
     }
 }
 
-impl Sub<CharPos, CharPos> for CharPos {
+impl Sub for CharPos {
+    type Output = CharPos;
+
     fn sub(self, rhs: CharPos) -> CharPos {
         CharPos(self.to_uint() - rhs.to_uint())
     }

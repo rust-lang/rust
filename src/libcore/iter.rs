@@ -2355,7 +2355,7 @@ pub fn count<A>(start: A, step: A) -> Counter<A> {
 }
 
 #[unstable = "trait is unstable"]
-impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
+impl<A: Add<Output=A> + Clone> Iterator<A> for Counter<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let result = self.state.clone();

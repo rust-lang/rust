@@ -3240,19 +3240,25 @@ impl TypeContents {
     }
 }
 
-impl ops::BitOr<TypeContents,TypeContents> for TypeContents {
+impl ops::BitOr for TypeContents {
+    type Output = TypeContents;
+
     fn bitor(self, other: TypeContents) -> TypeContents {
         TypeContents {bits: self.bits | other.bits}
     }
 }
 
-impl ops::BitAnd<TypeContents, TypeContents> for TypeContents {
+impl ops::BitAnd for TypeContents {
+    type Output = TypeContents;
+
     fn bitand(self, other: TypeContents) -> TypeContents {
         TypeContents {bits: self.bits & other.bits}
     }
 }
 
-impl ops::Sub<TypeContents, TypeContents> for TypeContents {
+impl ops::Sub for TypeContents {
+    type Output = TypeContents;
+
     fn sub(self, other: TypeContents) -> TypeContents {
         TypeContents {bits: self.bits & !other.bits}
     }

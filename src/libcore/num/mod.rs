@@ -35,7 +35,7 @@ use str::{FromStr, from_str, StrExt};
 /// Simultaneous division and remainder
 #[inline]
 #[deprecated = "use division and remainder directly"]
-pub fn div_rem<T: Clone + Div<T, T> + Rem<T, T>>(x: T, y: T) -> (T, T) {
+pub fn div_rem<T: Clone + Div<Output=T> + Rem<Output=T>>(x: T, y: T) -> (T, T) {
     (x.clone() / y.clone(), x % y)
 }
 
@@ -53,17 +53,17 @@ pub trait Int
     + NumCast
     + PartialOrd + Ord
     + PartialEq + Eq
-    + Add<Self,Self>
-    + Sub<Self,Self>
-    + Mul<Self,Self>
-    + Div<Self,Self>
-    + Rem<Self,Self>
+    + Add<Output=Self>
+    + Sub<Output=Self>
+    + Mul<Output=Self>
+    + Div<Output=Self>
+    + Rem<Output=Self>
     + Not<Self>
-    + BitAnd<Self,Self>
-    + BitOr<Self,Self>
-    + BitXor<Self,Self>
-    + Shl<uint,Self>
-    + Shr<uint,Self>
+    + BitAnd<Output=Self>
+    + BitOr<Output=Self>
+    + BitXor<Output=Self>
+    + Shl<uint, Output=Self>
+    + Shr<uint, Output=Self>
 {
     /// Returns the `0` value of this integer type.
     // FIXME (#5527): Should be an associated constant
@@ -1246,11 +1246,11 @@ pub trait Float
     + PartialOrd
     + PartialEq
     + Neg<Self>
-    + Add<Self,Self>
-    + Sub<Self,Self>
-    + Mul<Self,Self>
-    + Div<Self,Self>
-    + Rem<Self,Self>
+    + Add<Output=Self>
+    + Sub<Output=Self>
+    + Mul<Output=Self>
+    + Div<Output=Self>
+    + Rem<Output=Self>
 {
     /// Returns the NaN value.
     fn nan() -> Self;
@@ -1719,11 +1719,11 @@ macro_rules! trait_impl {
 #[allow(deprecated)]
 pub trait Num: PartialEq + Zero + One
              + Neg<Self>
-             + Add<Self,Self>
-             + Sub<Self,Self>
-             + Mul<Self,Self>
-             + Div<Self,Self>
-             + Rem<Self,Self> {}
+             + Add<Output=Self>
+             + Sub<Output=Self>
+             + Mul<Output=Self>
+             + Div<Output=Self>
+             + Rem<Output=Self> {}
 trait_impl! { Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 #[deprecated = "Generalised unsigned numbers are no longer supported"]
@@ -1737,7 +1737,7 @@ pub trait Primitive: Copy + Clone + Num + NumCast + PartialOrd {}
 trait_impl! { Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 
 #[deprecated = "The generic `Zero` trait will be removed soon."]
-pub trait Zero: Add<Self, Self> {
+pub trait Zero: Add<Output=Self> {
     #[deprecated = "Use `Int::zero()` or `Float::zero()`."]
     fn zero() -> Self;
     #[deprecated = "Use `x == Int::zero()` or `x == Float::zero()`."]
@@ -1768,7 +1768,7 @@ zero_impl! { f32, 0.0f32 }
 zero_impl! { f64, 0.0f64 }
 
 #[deprecated = "The generic `One` trait will be removed soon."]
-pub trait One: Mul<Self, Self> {
+pub trait One: Mul<Output=Self> {
     #[deprecated = "Use `Int::one()` or `Float::one()`."]
     fn one() -> Self;
 }

@@ -10,7 +10,7 @@
 
 // If `Mul` used an associated type for its output, this test would
 // work more smoothly.
-#![feature(old_orphan_check)]
+#![feature(associated_types, default_type_params, old_orphan_check)]
 
 use std::ops::Mul;
 
@@ -33,7 +33,9 @@ impl Vec2 {
 trait RhsOfVec2Mul<Result> { fn mul_vec2_by(&self, lhs: &Vec2) -> Result; }
 
 // Vec2's implementation of Mul "from the other side" using the above trait
-impl<Res, Rhs: RhsOfVec2Mul<Res>> Mul<Rhs,Res> for Vec2 {
+impl<Res, Rhs: RhsOfVec2Mul<Res>> Mul<Rhs> for Vec2 {
+    type Output = Res;
+
     fn mul(self, rhs: Rhs) -> Res { rhs.mul_vec2_by(&self) }
 }
 

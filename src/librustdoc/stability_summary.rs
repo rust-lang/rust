@@ -41,7 +41,9 @@ pub struct Counts {
     pub unmarked: uint,
 }
 
-impl Add<Counts, Counts> for Counts {
+impl Add for Counts {
+    type Output = Counts;
+
     fn add(self, other: Counts) -> Counts {
         Counts {
             deprecated:   self.deprecated   + other.deprecated,

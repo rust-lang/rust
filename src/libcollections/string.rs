@@ -911,7 +911,9 @@ impl<'a, S: Str> Equiv<S> for String {
 }
 
 #[experimental = "waiting on Add stabilization"]
-impl<'a> Add<&'a str, String> for String {
+impl<'a> Add<&'a str> for String {
+    type Output = String;
+
     fn add(mut self, other: &str) -> String {
         self.push_str(other);
         self

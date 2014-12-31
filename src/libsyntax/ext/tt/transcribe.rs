@@ -106,7 +106,9 @@ enum LockstepIterSize {
     LisContradiction(String),
 }
 
-impl Add<LockstepIterSize, LockstepIterSize> for LockstepIterSize {
+impl Add for LockstepIterSize {
+    type Output = LockstepIterSize;
+
     fn add(self, other: LockstepIterSize) -> LockstepIterSize {
         match self {
             LisUnconstrained => other,
