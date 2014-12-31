@@ -13,7 +13,7 @@ extern crate collections;
 extern crate serialize;
 
 use std::collections::HashMap;
-use serialize::json::{mod, Json};
+use serialize::json::{self, Json};
 use std::option;
 
 enum object {

@@ -9,18 +9,18 @@
 // except according to those terms.
 
 use foo::bar::{
-    mod,
-//~^ ERROR `mod` import can only appear once in the list
+    self,
+//~^ ERROR `self` import can only appear once in the list
     Bar,
-    mod
-//~^ NOTE another `mod` import appears here
+    self
+//~^ NOTE another `self` import appears here
 };
 
-use {mod};
-//~^ ERROR `mod` import can only appear in an import list with a non-empty prefix
+use {self};
+//~^ ERROR `self` import can only appear in an import list with a non-empty prefix
 
-use foo::mod;
-//~^ ERROR `mod` imports are only allowed within a { } list
+use foo::self;
+//~^ ERROR `self` imports are only allowed within a { } list
 
 mod foo {
     pub mod bar {
