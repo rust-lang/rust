@@ -70,6 +70,9 @@
 // lldb-check:[...]$5 = false
 // lldb-command:continue
 
+
+#![omit_gdb_pretty_printer_section]
+
 fn main() {
 
     let x = false;

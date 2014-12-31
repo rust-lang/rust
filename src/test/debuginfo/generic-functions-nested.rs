@@ -70,6 +70,9 @@
 // lldb-check:[...]$7 = 2.5
 // lldb-command:continue
 
+
+#![omit_gdb_pretty_printer_section]
+
 fn outer<TA: Clone>(a: TA) {
     inner(a.clone(), 1i);
     inner(a.clone(), 2.5f64);

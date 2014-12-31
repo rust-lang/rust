@@ -41,6 +41,9 @@
 // lldb-command:print float_int_float
 // lldb-check:[...]$3 = AGenericStruct<f64, generic-struct::AGenericStruct<int, f64>> { key: 6.5, value: AGenericStruct<int, f64> { key: 7, value: 8.5 } }
 
+
+#![omit_gdb_pretty_printer_section]
+
 struct AGenericStruct<TKey, TValue> {
     key: TKey,
     value: TValue

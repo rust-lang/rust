@@ -70,6 +70,7 @@
 // lldb-check:[...]$8 = ((5, Struct { a: 6, b: 7.5 }), (Struct { a: 6, b: 7.5 }, 5))
 // lldb-command:continue
 
+#![omit_gdb_pretty_printer_section]
 
 #[deriving(Clone)]
 struct Struct {

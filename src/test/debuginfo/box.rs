@@ -32,6 +32,7 @@
 // lldb-check:[...]$1 = (2, 3.5)
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 fn main() {
     let a = box 1i;

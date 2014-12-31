@@ -64,6 +64,7 @@ clean-generic-$(2)-$(1):
          -name '*.dll' -o \
          -name '*.def' -o \
          -name '*.py' -o \
+         -name '*.pyc' -o \
          -name '*.bc' \
          \) \
          | xargs rm -f
@@ -79,7 +80,7 @@ define CLEAN_HOST_STAGE_N
 
 clean$(1)_H_$(2): \
 	    $$(foreach crate,$$(CRATES),clean$(1)_H_$(2)-lib-$$(crate)) \
-	    $$(foreach tool,$$(TOOLS) $$(DEBUGGER_BIN_SCRIPTS),clean$(1)_H_$(2)-tool-$$(tool))
+	    $$(foreach tool,$$(TOOLS) $$(DEBUGGER_BIN_SCRIPTS_ALL),clean$(1)_H_$(2)-tool-$$(tool))
 	$$(Q)rm -fr $(2)/rt/libbacktrace
 
 clean$(1)_H_$(2)-tool-%:
@@ -99,7 +100,7 @@ define CLEAN_TARGET_STAGE_N
 
 clean$(1)_T_$(2)_H_$(3): \
 	    $$(foreach crate,$$(CRATES),clean$(1)_T_$(2)_H_$(3)-lib-$$(crate)) \
-	    $$(foreach tool,$$(TOOLS) $$(DEBUGGER_BIN_SCRIPTS),clean$(1)_T_$(2)_H_$(3)-tool-$$(tool))
+	    $$(foreach tool,$$(TOOLS) $$(DEBUGGER_BIN_SCRIPTS_ALL),clean$(1)_T_$(2)_H_$(3)-tool-$$(tool))
 	$$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a
 	$$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/libcompiler-rt.a
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/librun_pass_stage* # For unix
