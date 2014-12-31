@@ -818,25 +818,31 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
-impl ops::Slice<uint, str> for String {
+impl<T> ops::Index<ops::Range<uint>, str> for String {
     #[inline]
-    fn as_slice_<'a>(&'a self) -> &'a str {
+    fn index(&self, &index: &ops::Range<uint>) -> &str {
+        self[][*index]
+    }
+}
+
+impl<T> ops::Index<ops::RangeTo<uint>, str> for String {
+    #[inline]
+    fn index(&self, &index: &ops::RangeTo<uint>) -> &str {
+        self[][*index]
+    }
+}
+
+impl<T> ops::Index<ops::RangeFrom<uint>, str> for String {
+    #[inline]
+    fn index(&self, &index: &ops::RangeFrom<uint>) -> &str {
+        self[][*index]
+    }
+}
+
+impl<T> ops::Index<ops::FullRange<uint>, str> for String {
+    #[inline]
+    fn index(&self, &index: &ops::FullRange<uint>) -> &str {
         unsafe { mem::transmute(self.vec.as_slice()) }
-    }
-
-    #[inline]
-    fn slice_from_or_fail<'a>(&'a self, from: &uint) -> &'a str {
-        self[][*from..]
-    }
-
-    #[inline]
-    fn slice_to_or_fail<'a>(&'a self, to: &uint) -> &'a str {
-        self[][..*to]
-    }
-
-    #[inline]
-    fn slice_or_fail<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
-        self[][*from..*to]
     }
 }
 

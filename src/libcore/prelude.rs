@@ -30,7 +30,7 @@
 
 // Reexported core operators
 pub use kinds::{Copy, Send, Sized, Sync};
-pub use ops::{Drop, Fn, FnMut, FnOnce};
+pub use ops::{Drop, Fn, FnMut, FnOnce, FullRange};
 
 // Reexported functions
 pub use iter::range;
