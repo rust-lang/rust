@@ -749,7 +749,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     fn check_path(&mut self, span: Span, path_id: ast::NodeId, path: &ast::Path) {
         debug!("privacy - path {}", self.nodestr(path_id));
         let orig_def = self.tcx.def_map.borrow()[path_id].clone();
-        let ck = |tyname: &str| {
+        let ck = |&: tyname: &str| {
             let ck_public = |def: ast::DefId| {
                 let name = token::get_ident(path.segments.last().unwrap().identifier);
                 let origdid = orig_def.def_id();
@@ -921,7 +921,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 }
             }
             ast::ExprPath(..) => {
-                let guard = |did: ast::DefId| {
+                let guard = |&: did: ast::DefId| {
                     let fields = ty::lookup_struct_fields(self.tcx, did);
                     let any_priv = fields.iter().any(|f| {
                         f.vis != ast::Public && (
@@ -1126,7 +1126,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
     /// later on down the road...
     fn check_sane_privacy(&self, item: &ast::Item) {
         let tcx = self.tcx;
-        let check_inherited = |sp: Span, vis: ast::Visibility, note: &str| {
+        let check_inherited = |&: sp: Span, vis: ast::Visibility, note: &str| {
             if vis != ast::Inherited {
                 tcx.sess.span_err(sp, "unnecessary visibility qualifier");
                 if note.len() > 0 {
@@ -1206,7 +1206,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 tcx.sess.span_err(sp, "visibility has no effect inside functions");
             }
         }
-        let check_struct = |def: &ast::StructDef| {
+        let check_struct = |&: def: &ast::StructDef| {
             for f in def.fields.iter() {
                match f.node.kind {
                     ast::NamedField(_, p) => check_inherited(tcx, f.span, p),
