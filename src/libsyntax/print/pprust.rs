@@ -2540,7 +2540,7 @@ impl<'a> State<'a> {
                             s.print_ident(name)
                         },
                         ast::PathListMod { .. } => {
-                            word(&mut s.s, "mod")
+                            word(&mut s.s, "self")
                         }
                     }
                 }));
