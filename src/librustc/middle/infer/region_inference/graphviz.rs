@@ -136,7 +136,7 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
         let mut i = 0;
         let mut node_ids = FnvHashMap::new();
         {
-            let add_node = |node| {
+            let mut add_node = |&mut : node| {
                 if let Vacant(e) = node_ids.entry(node) {
                     e.set(i);
                     i += 1;
