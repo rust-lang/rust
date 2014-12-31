@@ -9,10 +9,10 @@
 // except according to those terms.
 
 mod foo {
-    use self::{mod};
+    use self::{self};
     //~^ ERROR unresolved import `self`. There is no `self` in `???`
 
-    use super::{mod};
+    use super::{self};
     //~^ ERROR unresolved import `super`. There is no `super` in `???`
 }
 

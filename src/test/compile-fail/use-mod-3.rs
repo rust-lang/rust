@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use foo::bar::{
-    mod //~ ERROR module `bar` is private
+    self //~ ERROR module `bar` is private
 };
 use foo::bar::{
     Bar //~ ERROR type `Bar` is inaccessible
