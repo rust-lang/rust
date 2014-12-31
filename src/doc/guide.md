@@ -889,9 +889,8 @@ fn hello(name: &str) {
 When writing doc comments, adding sections for any arguments, return values,
 and providing some examples of usage is very, very helpful.
 
-You can use the `rustdoc` tool to generate HTML documentation from these doc
-comments. We will talk more about `rustdoc` when we get to modules, as
-generally, you want to export documentation for a full module.
+You can use the [`rustdoc`](rustdoc.html) tool to generate HTML documentation
+from these doc comments.
 
 # Compound Data Types
 
