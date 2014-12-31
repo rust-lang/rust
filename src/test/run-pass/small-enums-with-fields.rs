@@ -12,7 +12,7 @@
 
 use std::mem::size_of;
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 enum Either<T, U> { Left(T), Right(U) }
 
 macro_rules! check {

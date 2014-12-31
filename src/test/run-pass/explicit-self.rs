@@ -40,12 +40,12 @@ fn select_based_on_unit_circle<'r, T>(
     shape.select(threshold, a, b)
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct thing {
     x: A
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct A {
     a: int
 }

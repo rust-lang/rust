@@ -15,7 +15,7 @@ extern crate rand;
 
 struct Error;
 
-#[deriving(Default)]
+#[derive(Default)]
 struct Struct {
     x: Error //~ ERROR `core::default::Default` is not implemented
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct foo(Box<uint>);
 
 impl Add<foo, foo> for foo {

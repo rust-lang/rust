@@ -12,29 +12,29 @@
 
 struct S;
 
-#[deriving(PartialEq)] //~ ERROR: `deriving` may only be applied to structs and enums
+#[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 trait T { }
 
-#[deriving(PartialEq)] //~ ERROR: `deriving` may only be applied to structs and enums
+#[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 impl S { }
 
-#[deriving(PartialEq)] //~ ERROR: `deriving` may only be applied to structs and enums
+#[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 impl T for S { }
 
-#[deriving(PartialEq)] //~ ERROR: `deriving` may only be applied to structs and enums
+#[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 static s: uint = 0u;
 
-#[deriving(PartialEq)] //~ ERROR: `deriving` may only be applied to structs and enums
+#[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 const c: uint = 0u;
 
-#[deriving(PartialEq)] //~ ERROR: `deriving` may only be applied to structs and enums
+#[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 mod m { }
 
-#[deriving(PartialEq)] //~ ERROR: `deriving` may only be applied to structs and enums
+#[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 extern "C" { }
 
-#[deriving(PartialEq)] //~ ERROR: `deriving` may only be applied to structs and enums
+#[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 type A = uint;
 
-#[deriving(PartialEq)] //~ ERROR: `deriving` may only be applied to structs and enums
+#[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 fn main() { }

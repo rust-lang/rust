@@ -13,7 +13,7 @@ use std::cmp::PartialEq;
 pub trait MyNum : Add<Self,Self> + Sub<Self,Self> + Mul<Self,Self> + PartialEq + Clone {
 }
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct MyInt {
     pub val: int
 }

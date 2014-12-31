@@ -10,7 +10,7 @@
 
 pub type task_id = int;
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub enum Task {
     TaskHandle(task_id)
 }

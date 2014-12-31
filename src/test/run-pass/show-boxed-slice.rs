@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Foo(Box<[u8]>);
 
 pub fn main() {

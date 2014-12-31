@@ -14,9 +14,9 @@
 
 extern crate serialize;
 
-#[deriving(Encodable)] pub struct A;
-#[deriving(Encodable)] pub struct B(int);
-#[deriving(Encodable)] pub struct C { x: int }
-#[deriving(Encodable)] pub enum D {}
-#[deriving(Encodable)] pub enum E { y }
-#[deriving(Encodable)] pub enum F { z(int) }
+#[derive(Encodable)] pub struct A;
+#[derive(Encodable)] pub struct B(int);
+#[derive(Encodable)] pub struct C { x: int }
+#[derive(Encodable)] pub enum D {}
+#[derive(Encodable)] pub enum E { y }
+#[derive(Encodable)] pub enum F { z(int) }

@@ -10,7 +10,7 @@
 
 #![feature(default_type_params)]
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 struct Bar;
 struct Baz;
 struct Foo;

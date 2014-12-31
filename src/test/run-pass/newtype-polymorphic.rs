@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct myvec<X>(Vec<X> );
 
 fn myvec_deref<X:Clone>(mv: myvec<X>) -> Vec<X> {

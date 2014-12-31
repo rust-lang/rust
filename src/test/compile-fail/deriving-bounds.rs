@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Copy(Bad))]
+#[derive(Copy(Bad))]
 //~^ ERROR unexpected value in deriving, expected a trait
 struct Test;
 
-#[deriving(Sync)]
+#[derive(Sync)]
 //~^ ERROR Sync is an unsafe trait and it should be implemented explicitly
 struct Test1;
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Show)]
+#[derive(Show)]
 enum Foo<'s> {
     V(&'s str)
 }

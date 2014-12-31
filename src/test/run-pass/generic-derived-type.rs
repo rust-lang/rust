@@ -10,7 +10,7 @@
 
 fn g<X>(x: X) -> X { return x; }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Pair<T> {
     a: T,
     b: T

@@ -10,7 +10,7 @@
 
 use std::default::Default;
 
-#[deriving(Default)]
+#[derive(Default)]
 struct A {
     foo: Box<[bool]>,
 }

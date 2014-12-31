@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Eqr)] //~ ERROR unknown `deriving` trait: `Eqr`
+#[derive(Eqr)] //~ ERROR unknown `derive` trait: `Eqr`
 struct Foo;
 
 pub fn main() {}

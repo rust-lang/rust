@@ -10,7 +10,7 @@
 
 use std::cmp;
 
-#[deriving(Show)]
+#[derive(Show)]
 struct foo { a: int, b: int, c: int }
 
 impl cmp::PartialEq for foo {
