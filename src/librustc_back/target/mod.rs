@@ -217,7 +217,7 @@ impl Target {
 
         let handler = diagnostic::default_handler(diagnostic::Auto, None);
 
-        let get_req_field = |name: &str| {
+        let get_req_field = |&: name: &str| {
             match obj.find(name)
                      .map(|s| s.as_string())
                      .and_then(|os| os.map(|s| s.to_string())) {
