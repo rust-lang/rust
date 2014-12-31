@@ -1290,6 +1290,7 @@ impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
 
 impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
 
+#[stable]
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
         self.len() == other.len() &&
@@ -1297,14 +1298,17 @@ impl<A: PartialEq> PartialEq for RingBuf<A> {
     }
 }
 
+#[stable]
 impl<A: Eq> Eq for RingBuf<A> {}
 
+#[stable]
 impl<A: PartialOrd> PartialOrd for RingBuf<A> {
     fn partial_cmp(&self, other: &RingBuf<A>) -> Option<Ordering> {
         iter::order::partial_cmp(self.iter(), other.iter())
     }
 }
 
+#[stable]
 impl<A: Ord> Ord for RingBuf<A> {
     #[inline]
     fn cmp(&self, other: &RingBuf<A>) -> Ordering {

@@ -1437,7 +1437,7 @@ pub mod bytes {
 // Boilerplate traits
 //
 
-#[unstable = "waiting for DST"]
+#[stable]
 impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
     fn eq(&self, other: &[B]) -> bool {
         self.len() == other.len() &&
@@ -1449,7 +1449,7 @@ impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
     }
 }
 
-#[unstable = "waiting for DST"]
+#[stable]
 impl<T: Eq> Eq for [T] {}
 
 #[allow(deprecated)]
@@ -1466,14 +1466,14 @@ impl<'a,T:PartialEq, Sized? V: AsSlice<T>> Equiv<V> for &'a mut [T] {
     fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
 }
 
-#[unstable = "waiting for DST"]
+#[stable]
 impl<T: Ord> Ord for [T] {
     fn cmp(&self, other: &[T]) -> Ordering {
         order::cmp(self.iter(), other.iter())
     }
 }
 
-#[unstable = "waiting for DST"]
+#[stable]
 impl<T: PartialOrd> PartialOrd for [T] {
     #[inline]
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
