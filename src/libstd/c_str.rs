@@ -74,7 +74,7 @@ use fmt;
 use hash;
 use mem;
 use ptr;
-use slice::{mod, ImmutableIntSlice};
+use slice::{mod, IntSliceExt};
 use str;
 use string::String;
 use core::kinds::marker;
@@ -486,6 +486,8 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
 /// External iterator for a CString's bytes.
 ///
 /// Use with the `std::iter` module.
+#[allow(raw_pointer_deriving)]
+#[deriving(Clone)]
 pub struct CChars<'a> {
     ptr: *const libc::c_char,
     marker: marker::ContravariantLifetime<'a>,

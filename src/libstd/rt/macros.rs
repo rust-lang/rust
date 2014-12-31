@@ -15,19 +15,9 @@
 
 #![macro_escape]
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 macro_rules! rterrln {
     ($fmt:expr $($arg:tt)*) => ( {
         ::rt::util::dumb_print(format_args!(concat!($fmt, "\n") $($arg)*))
-    } )
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! rterrln {
-    ($fmt:expr $($arg:tt)*) => ( {
-        format_args!(::rt::util::dumb_print, concat!($fmt, "\n") $($arg)*)
     } )
 }
 
@@ -50,14 +40,6 @@ macro_rules! rtassert {
     } )
 }
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 macro_rules! rtabort {
     ($($arg:tt)*) => (::rt::util::abort(format_args!($($arg)*)))
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-macro_rules! rtabort {
-    ($($arg:tt)*) => (format_args!(::rt::util::abort, $($arg)*))
 }

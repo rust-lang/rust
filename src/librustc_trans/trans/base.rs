@@ -55,7 +55,7 @@ use trans::cleanup::CleanupMethods;
 use trans::cleanup;
 use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_integral};
-use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_uint, C_undef};
+use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use trans::common::{CrateContext, ExternMap, FunctionContext};
 use trans::common::{NodeInfo, Result};
 use trans::common::{node_id_type, return_type_is_void};
@@ -73,7 +73,7 @@ use trans::glue;
 use trans::inline;
 use trans::intrinsic;
 use trans::machine;
-use trans::machine::{llsize_of, llsize_of_real, llalign_of_min};
+use trans::machine::{llsize_of, llsize_of_real};
 use trans::meth;
 use trans::monomorphize;
 use trans::tvec;
@@ -394,30 +394,6 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         None);
 
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
-}
-
-pub fn malloc_raw_dyn_proc<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>)
-                                       -> Result<'blk, 'tcx> {
-    let _icx = push_ctxt("malloc_raw_dyn_proc");
-    let ccx = bcx.ccx();
-
-    // Grab the TypeRef type of ptr_ty.
-    let ptr_ty = ty::mk_uniq(bcx.tcx(), t);
-    let ptr_llty = type_of(ccx, ptr_ty);
-
-    let llty = type_of(bcx.ccx(), t);
-    let size = llsize_of(bcx.ccx(), llty);
-    let llalign = C_uint(ccx, llalign_of_min(bcx.ccx(), llty));
-
-    // Allocate space and store the destructor pointer:
-    let Result {bcx, val: llbox} = malloc_raw_dyn(bcx, ptr_llty, t, size, llalign);
-    let dtor_ptr = GEPi(bcx, llbox, &[0u, abi::BOX_FIELD_DROP_GLUE]);
-    let drop_glue_field_ty = type_of(ccx, ty::mk_nil_ptr(bcx.tcx()));
-    let drop_glue = PointerCast(bcx, glue::get_drop_glue(ccx, ty::mk_uniq(bcx.tcx(), t)),
-                                drop_glue_field_ty);
-    Store(bcx, drop_glue, dtor_ptr);
-
-    Result::new(bcx, llbox)
 }
 
 // Type descriptor and type glue stuff
@@ -2675,6 +2651,8 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
         let bld = ccx.raw_builder();
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
+
+            debuginfo::insert_reference_to_gdb_debug_scripts_section_global(ccx);
 
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx().lang_items.require(StartFnLangItem) {

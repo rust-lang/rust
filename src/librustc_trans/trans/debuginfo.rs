@@ -213,7 +213,7 @@ use std::ptr;
 use std::rc::{Rc, Weak};
 use syntax::util::interner::Interner;
 use syntax::codemap::{Span, Pos};
-use syntax::{ast, codemap, ast_util, ast_map};
+use syntax::{ast, codemap, ast_util, ast_map, attr};
 use syntax::ast_util::PostExpansionMethod;
 use syntax::parse::token::{mod, special_idents};
 
@@ -741,7 +741,16 @@ pub fn finalize(cx: &CrateContext) {
     }
 
     debug!("finalize");
-    compile_unit_metadata(cx);
+    let _ = compile_unit_metadata(cx);
+
+    if needs_gdb_debug_scripts_section(cx) {
+        // Add a .debug_gdb_scripts section to this compile-unit. This will
+        // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
+        // which activates the Rust pretty printers for binary this section is
+        // contained in.
+        get_or_insert_gdb_debug_scripts_section_global(cx);
+    }
+
     unsafe {
         llvm::LLVMDIBuilderFinalize(DIB(cx));
         llvm::LLVMDIBuilderDispose(DIB(cx));
@@ -1586,7 +1595,7 @@ fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     };
 }
 
-fn compile_unit_metadata(cx: &CrateContext) {
+fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
     let work_dir = &cx.sess().working_dir;
     let compile_unit_name = match cx.sess().local_crate_source_file {
         None => fallback_path(cx),
@@ -1621,7 +1630,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
     let compile_unit_name = compile_unit_name.as_ptr();
-    work_dir.as_vec().with_c_str(|work_dir| {
+    return work_dir.as_vec().with_c_str(|work_dir| {
         producer.with_c_str(|producer| {
             "".with_c_str(|flags| {
                 "".with_c_str(|split_name| {
@@ -1635,7 +1644,7 @@ fn compile_unit_metadata(cx: &CrateContext) {
                             cx.sess().opts.optimize != config::No,
                             flags,
                             0,
-                            split_name);
+                            split_name)
                     }
                 })
             })
@@ -3396,10 +3405,7 @@ fn create_scope_map(cx: &CrateContext,
                     if need_new_scope {
                         // Create a new lexical scope and push it onto the stack
                         let loc = cx.sess().codemap().lookup_char_pos(pat.span.lo);
-                        let file_metadata = file_metadata(cx,
-                                                          loc.file
-                                                             .name
-                                                             []);
+                        let file_metadata = file_metadata(cx, loc.file.name[]);
                         let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
                         let scope_metadata = unsafe {
@@ -4112,3 +4118,76 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
         }
     })
 }
+
+
+//=-----------------------------------------------------------------------------
+// .debug_gdb_scripts binary section
+//=-----------------------------------------------------------------------------
+
+/// Inserts a side-effect free instruction sequence that makes sure that the
+/// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
+pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext) {
+    if needs_gdb_debug_scripts_section(ccx) {
+        let empty = b"".to_c_str();
+        let gdb_debug_scripts_section_global =
+            get_or_insert_gdb_debug_scripts_section_global(ccx);
+        unsafe {
+            let volative_load_instruction =
+                llvm::LLVMBuildLoad(ccx.raw_builder(),
+                                    gdb_debug_scripts_section_global,
+                                    empty.as_ptr());
+            llvm::LLVMSetVolatile(volative_load_instruction, llvm::True);
+        }
+    }
+}
+
+/// Allocates the global variable responsible for the .debug_gdb_scripts binary
+/// section.
+fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
+                                                  -> llvm::ValueRef {
+    let section_var_name = b"__rustc_debug_gdb_scripts_section__".to_c_str();
+
+    let section_var = unsafe {
+        llvm::LLVMGetNamedGlobal(ccx.llmod(), section_var_name.as_ptr())
+    };
+
+    if section_var == ptr::null_mut() {
+        let section_name = b".debug_gdb_scripts".to_c_str();
+        let section_contents = b"\x01gdb_load_rust_pretty_printers.py\0";
+
+        unsafe {
+            let llvm_type = Type::array(&Type::i8(ccx),
+                                        section_contents.len() as u64);
+            let section_var = llvm::LLVMAddGlobal(ccx.llmod(),
+                                                  llvm_type.to_ref(),
+                                                  section_var_name.as_ptr());
+            llvm::LLVMSetSection(section_var, section_name.as_ptr());
+            llvm::LLVMSetInitializer(section_var, C_bytes(ccx, section_contents));
+            llvm::LLVMSetGlobalConstant(section_var, llvm::True);
+            llvm::LLVMSetUnnamedAddr(section_var, llvm::True);
+            llvm::SetLinkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
+            // This should make sure that the whole section is not larger than
+            // the string it contains. Otherwise we get a warning from GDB.
+            llvm::LLVMSetAlignment(section_var, 1);
+            section_var
+        }
+    } else {
+        section_var
+    }
+}
+
+fn needs_gdb_debug_scripts_section(ccx: &CrateContext) -> bool {
+    let omit_gdb_pretty_printer_section =
+        attr::contains_name(ccx.tcx()
+                               .map
+                               .krate()
+                               .attrs
+                               .as_slice(),
+                            "omit_gdb_pretty_printer_section");
+
+    !omit_gdb_pretty_printer_section &&
+    !ccx.sess().target.target.options.is_like_osx &&
+    !ccx.sess().target.target.options.is_like_windows &&
+    ccx.sess().opts.debuginfo != NoDebugInfo
+}
+

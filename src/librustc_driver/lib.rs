@@ -265,11 +265,13 @@ Available lint options:
         lints
     }
 
-    let (plugin, builtin) = lint_store.get_lints().partitioned(|&(_, p)| p);
+    let (plugin, builtin): (Vec<_>, _) = lint_store.get_lints()
+        .iter().cloned().partition(|&(_, p)| p);
     let plugin = sort_lints(plugin);
     let builtin = sort_lints(builtin);
 
-    let (plugin_groups, builtin_groups) = lint_store.get_lint_groups().partitioned(|&(_, _, p)| p);
+    let (plugin_groups, builtin_groups): (Vec<_>, _) = lint_store.get_lint_groups()
+        .iter().cloned().partition(|&(_, _, p)| p);
     let plugin_groups = sort_lint_groups(plugin_groups);
     let builtin_groups = sort_lint_groups(builtin_groups);
 
@@ -377,7 +379,7 @@ fn describe_codegen_flags() {
 /// returns None.
 pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
-    let _binary = args.remove(0).unwrap();
+    let _binary = args.remove(0);
 
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not

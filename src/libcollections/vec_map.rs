@@ -448,7 +448,7 @@ impl<V> VecMap<V> {
     pub fn insert(&mut self, key: uint, value: V) -> Option<V> {
         let len = self.v.len();
         if len <= key {
-            self.v.grow_fn(key - len + 1, |_| None);
+            self.v.extend(range(0, key - len + 1).map(|_| None));
         }
         replace(&mut self.v[key], Some(value))
     }
@@ -537,14 +537,18 @@ impl<V:Clone> VecMap<V> {
     }
 }
 
+
+#[stable]
 impl<V: PartialEq> PartialEq for VecMap<V> {
     fn eq(&self, other: &VecMap<V>) -> bool {
         iter::order::eq(self.iter(), other.iter())
     }
 }
 
+#[stable]
 impl<V: Eq> Eq for VecMap<V> {}
 
+#[stable]
 impl<V: PartialOrd> PartialOrd for VecMap<V> {
     #[inline]
     fn partial_cmp(&self, other: &VecMap<V>) -> Option<Ordering> {
@@ -552,6 +556,7 @@ impl<V: PartialOrd> PartialOrd for VecMap<V> {
     }
 }
 
+#[stable]
 impl<V: Ord> Ord for VecMap<V> {
     #[inline]
     fn cmp(&self, other: &VecMap<V>) -> Ordering {
@@ -667,6 +672,17 @@ pub struct Iter<'a, V:'a> {
     iter: slice::Iter<'a, Option<V>>
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, V> Clone for Iter<'a, V> {
+    fn clone(&self) -> Iter<'a, V> {
+        Iter {
+            front: self.front,
+            back: self.back,
+            iter: self.iter.clone()
+        }
+    }
+}
+
 iterator! { impl Iter -> (uint, &'a V), as_ref }
 double_ended_iterator! { impl Iter -> (uint, &'a V), as_ref }
 
@@ -686,9 +702,27 @@ pub struct Keys<'a, V: 'a> {
     iter: Map<(uint, &'a V), uint, Iter<'a, V>, fn((uint, &'a V)) -> uint>
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, V> Clone for Keys<'a, V> {
+    fn clone(&self) -> Keys<'a, V> {
+        Keys {
+            iter: self.iter.clone()
+        }
+    }
+}
+
 /// An iterator over the values of a map.
 pub struct Values<'a, V: 'a> {
     iter: Map<(uint, &'a V), &'a V, Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
+}
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, V> Clone for Values<'a, V> {
+    fn clone(&self) -> Values<'a, V> {
+        Values {
+            iter: self.iter.clone()
+        }
+    }
 }
 
 /// A consuming iterator over the key-value pairs of a map.

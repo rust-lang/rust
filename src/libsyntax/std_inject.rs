@@ -163,7 +163,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
                 }),
         };
 
-        let (crates, uses) = view_items.partitioned(|x| {
+        let (crates, uses): (Vec<_>, _) = view_items.iter().cloned().partition(|x| {
             match x.node {
                 ast::ViewItemExternCrate(..) => true,
                 _ => false,

@@ -49,6 +49,12 @@ pub struct RingBuf<T> {
 }
 
 #[stable]
+unsafe impl<T: Send> Send for RingBuf<T> {}
+
+#[stable]
+unsafe impl<T: Sync> Sync for RingBuf<T> {}
+
+#[stable]
 impl<T: Clone> Clone for RingBuf<T> {
     fn clone(&self) -> RingBuf<T> {
         self.iter().map(|t| t.clone()).collect()
@@ -1129,6 +1135,17 @@ pub struct Iter<'a, T:'a> {
     head: uint
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, T> Clone for Iter<'a, T> {
+    fn clone(&self) -> Iter<'a, T> {
+        Iter {
+            ring: self.ring,
+            tail: self.tail,
+            head: self.head
+        }
+    }
+}
+
 impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
@@ -1137,7 +1154,7 @@ impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
         }
         let tail = self.tail;
         self.tail = wrap_index(self.tail + 1, self.ring.len());
-        unsafe { Some(self.ring.unsafe_get(tail)) }
+        unsafe { Some(self.ring.get_unchecked(tail)) }
     }
 
     #[inline]
@@ -1154,7 +1171,7 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
             return None;
         }
         self.head = wrap_index(self.head - 1, self.ring.len());
-        unsafe { Some(self.ring.unsafe_get(self.head)) }
+        unsafe { Some(self.ring.get_unchecked(self.head)) }
     }
 }
 
@@ -1173,7 +1190,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Iter<'a, T> {
             None
         } else {
             let idx = wrap_index(self.tail + j, self.ring.len());
-            unsafe { Some(self.ring.unsafe_get(idx)) }
+            unsafe { Some(self.ring.get_unchecked(idx)) }
         }
     }
 }
@@ -1290,6 +1307,7 @@ impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
 
 impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
 
+#[stable]
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
         self.len() == other.len() &&
@@ -1297,14 +1315,17 @@ impl<A: PartialEq> PartialEq for RingBuf<A> {
     }
 }
 
+#[stable]
 impl<A: Eq> Eq for RingBuf<A> {}
 
+#[stable]
 impl<A: PartialOrd> PartialOrd for RingBuf<A> {
     fn partial_cmp(&self, other: &RingBuf<A>) -> Option<Ordering> {
         iter::order::partial_cmp(self.iter(), other.iter())
     }
 }
 
+#[stable]
 impl<A: Ord> Ord for RingBuf<A> {
     #[inline]
     fn cmp(&self, other: &RingBuf<A>) -> Ordering {

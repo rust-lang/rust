@@ -296,7 +296,7 @@ impl<'a> LifetimeContext<'a> {
         debug!("visit_early_late: referenced_idents={}",
                referenced_idents);
 
-        let (early, late) = generics.lifetimes.clone().partition(
+        let (early, late): (Vec<_>, _) = generics.lifetimes.iter().cloned().partition(
             |l| referenced_idents.iter().any(|&i| i == l.lifetime.name));
 
         self.with(EarlyScope(early_space, &early, self.scope), move |old_scope, this| {

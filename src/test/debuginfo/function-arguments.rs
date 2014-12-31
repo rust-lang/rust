@@ -45,6 +45,9 @@
 // lldb-check:[...]$3 = 3000
 // lldb-command:continue
 
+
+#![omit_gdb_pretty_printer_section]
+
 fn main() {
 
     fun(111102, true);

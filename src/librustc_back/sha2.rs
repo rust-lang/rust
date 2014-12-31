@@ -14,7 +14,7 @@
 
 #![allow(deprecated)] // to_be32
 
-use std::iter::range_step;
+use std::iter::{range_step, repeat};
 use std::num::Int;
 use std::slice::bytes::{MutableByteVector, copy_memory};
 use serialize::hex::ToHex;
@@ -258,7 +258,7 @@ pub trait Digest {
     /// Convenience function that retrieves the result of a digest as a
     /// newly allocated vec of bytes.
     fn result_bytes(&mut self) -> Vec<u8> {
-        let mut buf = Vec::from_elem((self.output_bits()+7)/8, 0u8);
+        let mut buf: Vec<u8> = repeat(0u8).take((self.output_bits()+7)/8).collect();
         self.result(buf.as_mut_slice());
         buf
     }
@@ -530,11 +530,12 @@ static H256: [u32, ..8] = [
 mod tests {
     extern crate rand;
 
-    use super::{Digest, Sha256, FixedBuffer};
-    use self::rand::isaac::IsaacRng;
     use self::rand::Rng;
+    use self::rand::isaac::IsaacRng;
     use serialize::hex::FromHex;
+    use std::iter::repeat;
     use std::num::Int;
+    use super::{Digest, Sha256, FixedBuffer};
 
     // A normal addition - no overflow occurs
     #[test]
@@ -612,7 +613,7 @@ mod tests {
     /// correct.
     fn test_digest_1million_random<D: Digest>(digest: &mut D, blocksize: uint, expected: &str) {
         let total_size = 1000000;
-        let buffer = Vec::from_elem(blocksize * 2, 'a' as u8);
+        let buffer: Vec<u8> = repeat('a' as u8).take(blocksize * 2).collect();
         let mut rng = IsaacRng::new_unseeded();
         let mut count = 0;
 

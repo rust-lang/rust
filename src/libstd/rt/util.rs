@@ -112,25 +112,11 @@ impl fmt::FormatWriter for Stdio {
     }
 }
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 pub fn dumb_print(args: fmt::Arguments) {
     let _ = Stderr.write_fmt(args);
 }
 
-// NOTE(stage0): Remove function after a snapshot
-#[cfg(stage0)]
-pub fn dumb_print(args: &fmt::Arguments) {
-    let mut w = Stderr;
-    let _ = write!(&mut w, "{}", args);
-}
-
-// NOTE(stage0): Remove wrappers after a snapshot
-#[cfg(not(stage0))] pub fn abort(args: fmt::Arguments) -> ! { abort_(&args) }
-#[cfg(stage0)] pub fn abort(args: &fmt::Arguments) -> ! { abort_(args) }
-
-// NOTE(stage0): Change to `pub fn abort(args: fmt::Arguments) -> !` after a snapshot
-fn abort_(args: &fmt::Arguments) -> ! {
+pub fn abort(args: fmt::Arguments) -> ! {
     use fmt::FormatWriter;
 
     struct BufWriter<'a> {

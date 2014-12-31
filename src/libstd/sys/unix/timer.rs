@@ -120,9 +120,9 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
     // signals the first requests in the queue, possible re-enqueueing it.
     fn signal(active: &mut Vec<Box<Inner>>,
               dead: &mut Vec<(uint, Box<Inner>)>) {
-        let mut timer = match active.remove(0) {
-            Some(timer) => timer, None => return
-        };
+        if active.is_empty() { return }
+
+        let mut timer = active.remove(0);
         let mut cb = timer.cb.take().unwrap();
         cb.call();
         if timer.repeat {
@@ -178,7 +178,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                         Ok(RemoveTimer(id, ack)) => {
                             match dead.iter().position(|&(i, _)| id == i) {
                                 Some(i) => {
-                                    let (_, i) = dead.remove(i).unwrap();
+                                    let (_, i) = dead.remove(i);
                                     ack.send(i);
                                     continue
                                 }
@@ -186,7 +186,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                             }
                             let i = active.iter().position(|i| i.id == id);
                             let i = i.expect("no timer found");
-                            let t = active.remove(i).unwrap();
+                            let t = active.remove(i);
                             ack.send(t);
                         }
                         Err(..) => break

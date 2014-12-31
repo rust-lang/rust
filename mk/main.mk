@@ -15,6 +15,9 @@
 # The version number
 CFG_RELEASE_NUM=0.13.0
 
+# An optional number to put after the label, e.g. '2' -> '-beta2'
+CFG_BETA_CYCLE=
+
 CFG_FILENAME_EXTRA=4e7c5e5c
 
 ifeq ($(CFG_RELEASE_CHANNEL),stable)
@@ -24,12 +27,13 @@ CFG_RELEASE=$(CFG_RELEASE_NUM)
 CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),beta)
-CFG_RELEASE=$(CFG_RELEASE_NUM)-beta
+# The beta channel is temporarily called 'alpha'
+CFG_RELEASE=$(CFG_RELEASE_NUM)-alpha$(CFG_BETA_CYCLE)
 # When building beta/nightly distributables just reuse the same "beta"
 # name so when we upload we'll always override the previous
 # nighly. This doesn't actually impact the version reported by rustc -
 # it's just for file naming.
-CFG_PACKAGE_VERS=beta
+CFG_PACKAGE_VERS=alpha
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),nightly)
 CFG_RELEASE=$(CFG_RELEASE_NUM)-nightly
@@ -325,6 +329,12 @@ export CFG_DISABLE_INJECT_STD_VERSION
 # Per-stage targets and runner
 ######################################################################
 
+# Valid setting-strings are 'all', 'none', 'gdb', 'lldb'
+# This 'function' will determine which debugger scripts to copy based on a
+# target triple. See debuggers.mk for more information.
+TRIPLE_TO_DEBUGGER_SCRIPT_SETTING=\
+ $(if $(findstring windows,$(1)),none,$(if $(findstring darwin,$(1)),lldb,gdb))
+
 STAGES = 0 1 2 3
 
 define SREQ
@@ -357,7 +367,7 @@ else
 HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 	$$(MKFILE_DEPS) \
-	tmp/install-debugger-scripts$(1)_H_$(3).done
+	tmp/install-debugger-scripts$(1)_H_$(3)-$$(call TRIPLE_TO_DEBUGGER_SCRIPT_SETTING,$(3)).done
 endif
 
 # Prerequisites for using the stageN compiler to build target artifacts
@@ -372,7 +382,7 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(foreach dep,$$(TARGET_CRATES), \
 	    $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(dep)) \
-	tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3).done
+	tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-$$(call TRIPLE_TO_DEBUGGER_SCRIPT_SETTING,$(2)).done
 
 # Prerequisites for a working stageN compiler and complete set of target
 # libraries

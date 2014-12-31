@@ -85,7 +85,7 @@ use core::prelude::*;
 use core::cmp;
 use core::default::Default;
 use core::fmt;
-use core::iter::{Cloned, Chain, Enumerate, Repeat, Skip, Take};
+use core::iter::{Cloned, Chain, Enumerate, Repeat, Skip, Take, repeat};
 use core::iter;
 use core::num::Int;
 use core::slice::{Iter, IterMut};
@@ -267,7 +267,7 @@ impl Bitv {
     pub fn from_elem(nbits: uint, bit: bool) -> Bitv {
         let nblocks = blocks_for_bits(nbits);
         let mut bitv = Bitv {
-            storage: Vec::from_elem(nblocks, if bit { !0u32 } else { 0u32 }),
+            storage: repeat(if bit { !0u32 } else { 0u32 }).take(nblocks).collect(),
             nbits: nbits
         };
         bitv.fix_last_block();
@@ -651,7 +651,7 @@ impl Bitv {
 
         let len = self.nbits/8 +
                   if self.nbits % 8 == 0 { 0 } else { 1 };
-        Vec::from_fn(len, |i|
+        range(0, len).map(|i|
             bit(self, i, 0) |
             bit(self, i, 1) |
             bit(self, i, 2) |
@@ -660,7 +660,7 @@ impl Bitv {
             bit(self, i, 5) |
             bit(self, i, 6) |
             bit(self, i, 7)
-        )
+        ).collect()
     }
 
     /// Deprecated: Use `iter().collect()`.
@@ -834,7 +834,7 @@ impl Bitv {
         // Allocate new words, if needed
         if new_nblocks > self.storage.len() {
             let to_add = new_nblocks - self.storage.len();
-            self.storage.grow(to_add, full_value);
+            self.storage.extend(repeat(full_value).take(to_add));
         }
 
         // Adjust internal bit count
@@ -965,6 +965,7 @@ impl Clone for Bitv {
     }
 }
 
+#[stable]
 impl PartialOrd for Bitv {
     #[inline]
     fn partial_cmp(&self, other: &Bitv) -> Option<Ordering> {
@@ -972,6 +973,7 @@ impl PartialOrd for Bitv {
     }
 }
 
+#[stable]
 impl Ord for Bitv {
     #[inline]
     fn cmp(&self, other: &Bitv) -> Ordering {
@@ -997,6 +999,7 @@ impl<S: hash::Writer> hash::Hash<S> for Bitv {
     }
 }
 
+#[stable]
 impl cmp::PartialEq for Bitv {
     #[inline]
     fn eq(&self, other: &Bitv) -> bool {
@@ -1007,9 +1010,11 @@ impl cmp::PartialEq for Bitv {
     }
 }
 
+#[stable]
 impl cmp::Eq for Bitv {}
 
 /// An iterator for `Bitv`.
+#[deriving(Clone)]
 pub struct Bits<'a> {
     bitv: &'a Bitv,
     next_idx: uint,
@@ -1129,6 +1134,7 @@ impl Extend<uint> for BitvSet {
     }
 }
 
+#[stable]
 impl PartialOrd for BitvSet {
     #[inline]
     fn partial_cmp(&self, other: &BitvSet) -> Option<Ordering> {
@@ -1137,6 +1143,7 @@ impl PartialOrd for BitvSet {
     }
 }
 
+#[stable]
 impl Ord for BitvSet {
     #[inline]
     fn cmp(&self, other: &BitvSet) -> Ordering {
@@ -1145,6 +1152,7 @@ impl Ord for BitvSet {
     }
 }
 
+#[stable]
 impl cmp::PartialEq for BitvSet {
     #[inline]
     fn eq(&self, other: &BitvSet) -> bool {
@@ -1153,6 +1161,7 @@ impl cmp::PartialEq for BitvSet {
     }
 }
 
+#[stable]
 impl cmp::Eq for BitvSet {}
 
 impl BitvSet {
@@ -1739,12 +1748,14 @@ impl<S: hash::Writer> hash::Hash<S> for BitvSet {
 }
 
 /// An iterator for `BitvSet`.
+#[deriving(Clone)]
 pub struct BitPositions<'a> {
     set: &'a BitvSet,
     next_idx: uint
 }
 
 /// An iterator combining two `BitvSet` iterators.
+#[deriving(Clone)]
 pub struct TwoBitPositions<'a> {
     set: &'a BitvSet,
     other: &'a BitvSet,

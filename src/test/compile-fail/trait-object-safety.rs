@@ -8,10 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice::Iter;
-//~^ ERROR import `Iter` conflicts with type in this module
+// Check that static methods are not object-safe.
 
-struct Iter;
+trait Tr {
+    fn foo();
+}
+
+struct St;
+
+impl Tr for St {
+    fn foo() {}
+}
 
 fn main() {
+    let _: &Tr = &St; //~ ERROR cannot convert to a trait object because trait `Tr` is not
 }

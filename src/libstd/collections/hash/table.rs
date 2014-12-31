@@ -718,6 +718,18 @@ struct RawBuckets<'a, K, V> {
     marker: marker::ContravariantLifetime<'a>,
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, K, V> Clone for RawBuckets<'a, K, V> {
+    fn clone(&self) -> RawBuckets<'a, K, V> {
+        RawBuckets {
+            raw: self.raw,
+            hashes_end: self.hashes_end,
+            marker: marker::ContravariantLifetime,
+        }
+    }
+}
+
+
 impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
     fn next(&mut self) -> Option<RawBucket<K, V>> {
         while self.raw.hash != self.hashes_end {
@@ -774,6 +786,17 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     iter: RawBuckets<'a, K, V>,
     elems_left: uint,
 }
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, K, V> Clone for Iter<'a, K, V> {
+    fn clone(&self) -> Iter<'a, K, V> {
+        Iter {
+            iter: self.iter.clone(),
+            elems_left: self.elems_left
+        }
+    }
+}
+
 
 /// Iterator over mutable references to entries in a table.
 pub struct IterMut<'a, K: 'a, V: 'a> {

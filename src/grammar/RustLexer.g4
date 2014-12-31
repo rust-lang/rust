@@ -112,8 +112,64 @@ LIT_INTEGER
   ;
 
 LIT_FLOAT
-  : [0-9][0-9_]* ( '.' {_input.LA(1) != '.'}?
-                 | ('.' [0-9][0-9_]*)? ([eE] [-+]? [0-9][0-9_]*)? SUFFIX?)
+  : [0-9][0-9_]* ('.' {
+        /* dot followed by another dot is a range, no float */
+        _input.LA(1) != '.' &&
+        /* dot followed by an identifier is an integer with a function call, no float */
+        _input.LA(1) != '_' &&
+        _input.LA(1) != 'a' &&
+        _input.LA(1) != 'b' &&
+        _input.LA(1) != 'c' &&
+        _input.LA(1) != 'd' &&
+        _input.LA(1) != 'e' &&
+        _input.LA(1) != 'f' &&
+        _input.LA(1) != 'g' &&
+        _input.LA(1) != 'h' &&
+        _input.LA(1) != 'i' &&
+        _input.LA(1) != 'j' &&
+        _input.LA(1) != 'k' &&
+        _input.LA(1) != 'l' &&
+        _input.LA(1) != 'm' &&
+        _input.LA(1) != 'n' &&
+        _input.LA(1) != 'o' &&
+        _input.LA(1) != 'p' &&
+        _input.LA(1) != 'q' &&
+        _input.LA(1) != 'r' &&
+        _input.LA(1) != 's' &&
+        _input.LA(1) != 't' &&
+        _input.LA(1) != 'u' &&
+        _input.LA(1) != 'v' &&
+        _input.LA(1) != 'w' &&
+        _input.LA(1) != 'x' &&
+        _input.LA(1) != 'y' &&
+        _input.LA(1) != 'z' &&
+        _input.LA(1) != 'A' &&
+        _input.LA(1) != 'B' &&
+        _input.LA(1) != 'C' &&
+        _input.LA(1) != 'D' &&
+        _input.LA(1) != 'E' &&
+        _input.LA(1) != 'F' &&
+        _input.LA(1) != 'G' &&
+        _input.LA(1) != 'H' &&
+        _input.LA(1) != 'I' &&
+        _input.LA(1) != 'J' &&
+        _input.LA(1) != 'K' &&
+        _input.LA(1) != 'L' &&
+        _input.LA(1) != 'M' &&
+        _input.LA(1) != 'N' &&
+        _input.LA(1) != 'O' &&
+        _input.LA(1) != 'P' &&
+        _input.LA(1) != 'Q' &&
+        _input.LA(1) != 'R' &&
+        _input.LA(1) != 'S' &&
+        _input.LA(1) != 'T' &&
+        _input.LA(1) != 'U' &&
+        _input.LA(1) != 'V' &&
+        _input.LA(1) != 'W' &&
+        _input.LA(1) != 'X' &&
+        _input.LA(1) != 'Y' &&
+        _input.LA(1) != 'Z'
+  }? | ('.' [0-9][0-9_]*)? ([eE] [-+]? [0-9][0-9_]*)? SUFFIX?)
   ;
 
 LIT_STR

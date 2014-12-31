@@ -62,6 +62,9 @@
 // to all fields having the name "<unnamed_field>"). Otherwise they are handled the same a normal
 // structs.
 
+
+#![omit_gdb_pretty_printer_section]
+
 struct NoPadding16(u16, i16);
 struct NoPadding32(i32, f32, u32);
 struct NoPadding64(f64, i64, u64);

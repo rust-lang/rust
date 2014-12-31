@@ -25,6 +25,7 @@
 // gdb-check:$4 = {3.5, {4, 5, 6}}
 // gdb-command:continue
 
+#![omit_gdb_pretty_printer_section]
 
 struct Struct {
     x: int

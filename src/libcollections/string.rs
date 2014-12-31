@@ -151,7 +151,7 @@ impl String {
         let mut i = 0;
         let total = v.len();
         fn unsafe_get(xs: &[u8], i: uint) -> u8 {
-            unsafe { *xs.unsafe_get(i) }
+            unsafe { *xs.get_unchecked(i) }
         }
         fn safe_get(xs: &[u8], i: uint, total: uint) -> u8 {
             if i >= total {
@@ -815,6 +815,7 @@ impl<'a> Extend<&'a str> for String {
     }
 }
 
+#[stable]
 impl PartialEq for String {
     #[inline]
     fn eq(&self, other: &String) -> bool { PartialEq::eq(&**self, &**other) }
@@ -824,6 +825,7 @@ impl PartialEq for String {
 
 macro_rules! impl_eq {
     ($lhs:ty, $rhs: ty) => {
+        #[stable]
         impl<'a> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
@@ -831,6 +833,7 @@ macro_rules! impl_eq {
             fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
         }
 
+        #[stable]
         impl<'a> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&**self, &**other) }
@@ -844,6 +847,7 @@ macro_rules! impl_eq {
 impl_eq! { String, &'a str }
 impl_eq! { CowString<'a>, String }
 
+#[stable]
 impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
     #[inline]
     fn eq(&self, other: &&'b str) -> bool { PartialEq::eq(&**self, &**other) }
@@ -851,6 +855,7 @@ impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
     fn ne(&self, other: &&'b str) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
+#[stable]
 impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
     #[inline]
     fn eq(&self, other: &CowString<'a>) -> bool { PartialEq::eq(&**self, &**other) }
@@ -989,18 +994,9 @@ pub trait ToString {
 }
 
 impl<T: fmt::Show> ToString for T {
-    // NOTE(stage0): Remove cfg after a snapshot
-    #[cfg(not(stage0))]
     fn to_string(&self) -> String {
         let mut buf = Vec::<u8>::new();
         let _ = fmt::write(&mut buf, format_args!("{}", *self));
-        String::from_utf8(buf).unwrap()
-    }
-    // NOTE(stage0): Remove method after a snapshot
-    #[cfg(stage0)]
-    fn to_string(&self) -> String {
-        let mut buf = Vec::<u8>::new();
-        let _ = format_args!(|args| fmt::write(&mut buf, args), "{}", self);
         String::from_utf8(buf).unwrap()
     }
 }

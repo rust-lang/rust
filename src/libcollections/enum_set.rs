@@ -213,6 +213,16 @@ pub struct Iter<E> {
     bits: uint,
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<E> Clone for Iter<E> {
+    fn clone(&self) -> Iter<E> {
+        Iter {
+            index: self.index,
+            bits: self.bits,
+        }
+    }
+}
+
 impl<E:CLike> Iter<E> {
     fn new(bits: uint) -> Iter<E> {
         Iter { index: 0, bits: bits }

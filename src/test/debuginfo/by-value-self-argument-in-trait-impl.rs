@@ -46,6 +46,8 @@
 // lldb-check:[...]$2 = (4444.5, 5555, 6666, 7777.5)
 // lldb-command:continue
 
+#![omit_gdb_pretty_printer_section]
+
 trait Trait {
     fn method(self) -> Self;
 }

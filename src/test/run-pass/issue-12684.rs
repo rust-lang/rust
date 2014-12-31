@@ -9,9 +9,10 @@
 // except according to those terms.
 
 use std::time::Duration;
+use std::thread::Thread;
 
 fn main() {
-    std::task::spawn(move|| customtask());
+    Thread::spawn(move|| customtask()).join().ok().unwrap();
 }
 
 fn customtask() {

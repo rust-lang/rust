@@ -17,7 +17,6 @@
 // ignore-lldb
 // ignore-android: FIXME(#10381)
 // compile-flags:-g
-// gdb-use-pretty-printer
 
 // gdb-command: run
 

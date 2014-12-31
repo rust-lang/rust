@@ -58,6 +58,8 @@
 // lldb-check:[...]$5 = 20
 // lldb-command:continue
 
+#![omit_gdb_pretty_printer_section]
+
 fn main() {
     let x = false;
     let y = true;

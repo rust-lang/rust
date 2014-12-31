@@ -57,6 +57,7 @@ pub mod udp;
 
 pub mod addrinfo {
     pub use sys_common::net::get_host_addresses;
+    pub use sys_common::net::get_address_name;
 }
 
 // FIXME: move these to c module

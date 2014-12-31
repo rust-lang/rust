@@ -799,7 +799,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn next_ty_vars(&self, n: uint) -> Vec<Ty<'tcx>> {
-        Vec::from_fn(n, |_i| self.next_ty_var())
+        range(0, n).map(|_i| self.next_ty_var()).collect()
     }
 
     pub fn next_int_var_id(&self) -> IntVid {

@@ -262,20 +262,6 @@ impl Duration {
     }
 }
 
-// NOTE(stage0): Remove impl after a snapshot
-#[cfg(stage0)]
-impl Neg<Duration> for Duration {
-    #[inline]
-    fn neg(&self) -> Duration {
-        if self.nanos == 0 {
-            Duration { secs: -self.secs, nanos: 0 }
-        } else {
-            Duration { secs: -self.secs - 1, nanos: NANOS_PER_SEC - self.nanos }
-        }
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
 impl Neg<Duration> for Duration {
     #[inline]
     fn neg(self) -> Duration {

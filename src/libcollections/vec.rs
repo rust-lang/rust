@@ -142,26 +142,9 @@ pub struct Vec<T> {
 unsafe impl<T: Send> Send for Vec<T> { }
 unsafe impl<T: Sync> Sync for Vec<T> { }
 
-/// A clone-on-write vector
-pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
-
-impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
-    fn from_iter<I: Iterator<T>>(it: I) -> CowVec<'a, T> {
-        Cow::Owned(FromIterator::from_iter(it))
-    }
-}
-
-impl<'a, T: 'a> IntoCow<'a, Vec<T>, [T]> for Vec<T> where T: Clone {
-    fn into_cow(self) -> CowVec<'a, T> {
-        Cow::Owned(self)
-    }
-}
-
-impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
-    fn into_cow(self) -> CowVec<'a, T> {
-        Cow::Borrowed(self)
-    }
-}
+////////////////////////////////////////////////////////////////////////////////
+// Inherent methods
+////////////////////////////////////////////////////////////////////////////////
 
 impl<T> Vec<T> {
     /// Constructs a new, empty `Vec<T>`.
@@ -190,8 +173,7 @@ impl<T> Vec<T> {
     ///
     /// It is important to note that this function does not specify the *length* of the returned
     /// vector, but only the *capacity*. (For an explanation of the difference between length and
-    /// capacity, see the main `Vec<T>` docs above, 'Capacity and reallocation'.) To create a
-    /// vector of a given length, use `Vec::from_elem` or `Vec::from_fn`.
+    /// capacity, see the main `Vec<T>` docs above, 'Capacity and reallocation'.)
     ///
     /// # Examples
     ///
@@ -225,30 +207,11 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Creates and initializes a `Vec<T>`.
-    ///
-    /// Creates a `Vec<T>` of size `length` and initializes the elements to the value returned by
-    /// the closure `op`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let vec = Vec::from_fn(3, |idx| idx * 2);
-    /// assert_eq!(vec, vec![0, 2, 4]);
-    /// ```
+    /// Deprecated: use `iter::range(0, length).map(op).collect()` instead
     #[inline]
-    #[unstable = "the naming is uncertain as well as this migrating to unboxed \
-                  closures in the future"]
-    pub fn from_fn<F>(length: uint, mut op: F) -> Vec<T> where F: FnMut(uint) -> T {
-        unsafe {
-            let mut xs = Vec::with_capacity(length);
-            while xs.len < length {
-                let len = xs.len;
-                ptr::write(xs.unsafe_mut(len), op(len));
-                xs.len += 1;
-            }
-            xs
-        }
+    #[deprecated = "use iter::range(0, length).map(op).collect() instead"]
+    pub fn from_fn<F>(length: uint, op: F) -> Vec<T> where F: FnMut(uint) -> T {
+        range(0, length).map(op).collect()
     }
 
     /// Creates a `Vec<T>` directly from the raw components of another vector.
@@ -285,7 +248,7 @@ impl<T> Vec<T> {
     ///     }
     /// }
     /// ```
-    #[unstable = "needs finalization"]
+    #[stable]
     pub unsafe fn from_raw_parts(ptr: *mut T, length: uint,
                                  capacity: uint) -> Vec<T> {
         Vec { ptr: NonZero::new(ptr), len: length, cap: capacity }
@@ -297,7 +260,7 @@ impl<T> Vec<T> {
     /// owned by the returned `Vec<T>`. The elements of the buffer are copied into the vector
     /// without cloning, as if `ptr::read()` were called on them.
     #[inline]
-    #[unstable = "just renamed from raw::from_buf"]
+    #[unstable = "may be better expressed via composition"]
     pub unsafe fn from_raw_buf(ptr: *const T, elts: uint) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
@@ -305,115 +268,722 @@ impl<T> Vec<T> {
         dst
     }
 
-    /// Consumes the `Vec<T>`, partitioning it based on a predicate.
-    ///
-    /// Partitions the `Vec<T>` into two `Vec<T>`s `(A,B)`, where all elements of `A` satisfy `f`
-    /// and all elements of `B` do not. The order of elements is preserved.
+    /// Deprecated: use `into_iter().partition(f)` instead.
+    #[inline]
+    #[deprecated = "use into_iter().partition(f) instead"]
+    pub fn partition<F>(self, f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
+        self.into_iter().partition(f)
+    }
+
+    /// Returns the number of elements the vector can hold without
+    /// reallocating.
     ///
     /// # Examples
     ///
     /// ```
-    /// let vec = vec![1i, 2i, 3i, 4i];
-    /// let (even, odd) = vec.partition(|&n| n % 2 == 0);
-    /// assert_eq!(even, vec![2, 4]);
-    /// assert_eq!(odd, vec![1, 3]);
+    /// let vec: Vec<int> = Vec::with_capacity(10);
+    /// assert_eq!(vec.capacity(), 10);
     /// ```
     #[inline]
-    #[experimental]
-    pub fn partition<F>(self, mut f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
-        let mut lefts  = Vec::new();
-        let mut rights = Vec::new();
+    #[stable]
+    pub fn capacity(&self) -> uint {
+        self.cap
+    }
 
-        for elt in self.into_iter() {
-            if f(&elt) {
-                lefts.push(elt);
-            } else {
-                rights.push(elt);
+    /// Deprecated: Renamed to `reserve`.
+    #[deprecated = "Renamed to `reserve`"]
+    pub fn reserve_additional(&mut self, extra: uint) {
+        self.reserve(extra)
+    }
+
+    /// Reserves capacity for at least `additional` more elements to be inserted in the given
+    /// `Vec<T>`. The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec: Vec<int> = vec![1];
+    /// vec.reserve(10);
+    /// assert!(vec.capacity() >= 11);
+    /// ```
+    #[stable]
+    pub fn reserve(&mut self, additional: uint) {
+        if self.cap - self.len < additional {
+            let err_msg = "Vec::reserve: `uint` overflow";
+            let new_cap = self.len.checked_add(additional).expect(err_msg)
+                .checked_next_power_of_two().expect(err_msg);
+            self.grow_capacity(new_cap);
+        }
+    }
+
+    /// Reserves the minimum capacity for exactly `additional` more elements to
+    /// be inserted in the given `Vec<T>`. Does nothing if the capacity is already
+    /// sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it
+    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// minimal. Prefer `reserve` if future insertions are expected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `uint`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec: Vec<int> = vec![1];
+    /// vec.reserve_exact(10);
+    /// assert!(vec.capacity() >= 11);
+    /// ```
+    #[stable]
+    pub fn reserve_exact(&mut self, additional: uint) {
+        if self.cap - self.len < additional {
+            match self.len.checked_add(additional) {
+                None => panic!("Vec::reserve: `uint` overflow"),
+                Some(new_cap) => self.grow_capacity(new_cap)
             }
         }
-
-        (lefts, rights)
     }
-}
 
-impl<T: Clone> Vec<T> {
-    /// Constructs a `Vec<T>` with copies of a value.
+    /// Shrinks the capacity of the vector as much as possible.
     ///
-    /// Creates a `Vec<T>` with `length` copies of `value`.
+    /// It will drop down as close as possible to the length but the allocator
+    /// may still inform the vector that there is space for a few more elements.
     ///
     /// # Examples
     ///
     /// ```
-    /// let vec = Vec::from_elem(3, "hi");
-    /// println!("{}", vec); // prints [hi, hi, hi]
+    /// let mut vec: Vec<int> = Vec::with_capacity(10);
+    /// vec.push_all(&[1, 2, 3]);
+    /// assert_eq!(vec.capacity(), 10);
+    /// vec.shrink_to_fit();
+    /// assert!(vec.capacity() >= 3);
     /// ```
-    #[inline]
-    #[unstable = "this functionality may become more generic over all collections"]
-    pub fn from_elem(length: uint, value: T) -> Vec<T> {
-        unsafe {
-            let mut xs = Vec::with_capacity(length);
-            while xs.len < length {
-                let len = xs.len;
-                ptr::write(xs.unsafe_mut(len),
-                           value.clone());
-                xs.len += 1;
+    #[stable]
+    pub fn shrink_to_fit(&mut self) {
+        if mem::size_of::<T>() == 0 { return }
+
+        if self.len == 0 {
+            if self.cap != 0 {
+                unsafe {
+                    dealloc(*self.ptr, self.cap)
+                }
+                self.cap = 0;
             }
+        } else {
+            unsafe {
+                // Overflow check is unnecessary as the vector is already at
+                // least this large.
+                let ptr = reallocate(*self.ptr as *mut u8,
+                                     self.cap * mem::size_of::<T>(),
+                                     self.len * mem::size_of::<T>(),
+                                     mem::min_align_of::<T>()) as *mut T;
+                if ptr.is_null() { ::alloc::oom() }
+                self.ptr = NonZero::new(ptr);
+            }
+            self.cap = self.len;
+        }
+    }
+
+    /// Convert the vector into Box<[T]>.
+    ///
+    /// Note that this will drop any excess capacity. Calling this and
+    /// converting back to a vector with `into_vec()` is equivalent to calling
+    /// `shrink_to_fit()`.
+    #[experimental]
+    pub fn into_boxed_slice(mut self) -> Box<[T]> {
+        self.shrink_to_fit();
+        unsafe {
+            let xs: Box<[T]> = mem::transmute(self.as_mut_slice());
+            mem::forget(self);
             xs
         }
     }
 
-    /// Appends all elements in a slice to the `Vec<T>`.
+    /// Shorten a vector, dropping excess elements.
     ///
-    /// Iterates over the slice `other`, clones each element, and then appends
-    /// it to this `Vec<T>`. The `other` vector is traversed in-order.
+    /// If `len` is greater than the vector's current length, this has no
+    /// effect.
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1i];
-    /// vec.push_all(&[2i, 3, 4]);
-    /// assert_eq!(vec, vec![1, 2, 3, 4]);
+    /// let mut vec = vec![1i, 2, 3, 4];
+    /// vec.truncate(2);
+    /// assert_eq!(vec, vec![1, 2]);
     /// ```
-    #[inline]
-    #[experimental]
-    pub fn push_all(&mut self, other: &[T]) {
-        self.reserve(other.len());
-
-        for i in range(0, other.len()) {
-            let len = self.len();
-
-            // Unsafe code so this can be optimised to a memcpy (or something similarly
-            // fast) when T is Copy. LLVM is easily confused, so any extra operations
-            // during the loop can prevent this optimisation.
-            unsafe {
-                ptr::write(
-                    self.unsafe_mut(len),
-                    other.unsafe_get(i).clone());
-                self.set_len(len + 1);
+    #[stable]
+    pub fn truncate(&mut self, len: uint) {
+        unsafe {
+            // drop any extra elements
+            while len < self.len {
+                // decrement len before the read(), so a panic on Drop doesn't
+                // re-drop the just-failed value.
+                self.len -= 1;
+                ptr::read(self.get_unchecked(self.len));
             }
         }
     }
 
-    /// Grows the `Vec<T>` in-place.
-    ///
-    /// Adds `n` copies of `value` to the `Vec<T>`.
+    /// Returns a mutable slice of the elements of `self`.
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec!["hello"];
-    /// vec.grow(2, "world");
-    /// assert_eq!(vec, vec!["hello", "world", "world"]);
+    /// fn foo(slice: &mut [int]) {}
+    ///
+    /// let mut vec = vec![1i, 2];
+    /// foo(vec.as_mut_slice());
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
+        unsafe {
+            mem::transmute(RawSlice {
+                data: *self.ptr as *const T,
+                len: self.len,
+            })
+        }
+    }
+
+    /// Creates a consuming iterator, that is, one that moves each value out of
+    /// the vector (from start to end). The vector cannot be used after calling
+    /// this.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = vec!["a".to_string(), "b".to_string()];
+    /// for s in v.into_iter() {
+    ///     // s has type String, not &String
+    ///     println!("{}", s);
+    /// }
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn into_iter(self) -> IntoIter<T> {
+        unsafe {
+            let ptr = *self.ptr;
+            let cap = self.cap;
+            let begin = ptr as *const T;
+            let end = if mem::size_of::<T>() == 0 {
+                (ptr as uint + self.len()) as *const T
+            } else {
+                ptr.offset(self.len() as int) as *const T
+            };
+            mem::forget(self);
+            IntoIter { allocation: ptr, cap: cap, ptr: begin, end: end }
+        }
+    }
+
+    /// Sets the length of a vector.
+    ///
+    /// This will explicitly set the size of the vector, without actually
+    /// modifying its buffers, so it is up to the caller to ensure that the
+    /// vector is actually the specified size.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = vec![1u, 2, 3, 4];
+    /// unsafe {
+    ///     v.set_len(1);
+    /// }
+    /// ```
+    #[inline]
+    #[stable]
+    pub unsafe fn set_len(&mut self, len: uint) {
+        self.len = len;
+    }
+
+    /// Removes an element from anywhere in the vector and return it, replacing
+    /// it with the last element.
+    ///
+    /// This does not preserve ordering, but is O(1).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = vec!["foo", "bar", "baz", "qux"];
+    ///
+    /// assert_eq!(v.swap_remove(1), "bar");
+    /// assert_eq!(v, vec!["foo", "qux", "baz"]);
+    ///
+    /// assert_eq!(v.swap_remove(0), "foo");
+    /// assert_eq!(v, vec!["baz", "qux"]);
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn swap_remove(&mut self, index: uint) -> T {
+        let length = self.len();
+        self.swap(index, length - 1);
+        self.pop().unwrap()
+    }
+
+    /// Inserts an element at position `index` within the vector, shifting all
+    /// elements after position `i` one position to the right.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is not between `0` and the vector's length (both
+    /// bounds inclusive).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = vec![1i, 2, 3];
+    /// vec.insert(1, 4);
+    /// assert_eq!(vec, vec![1, 4, 2, 3]);
+    /// vec.insert(4, 5);
+    /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
     /// ```
     #[stable]
-    pub fn grow(&mut self, n: uint, value: T) {
-        self.reserve(n);
-        let mut i: uint = 0u;
+    pub fn insert(&mut self, index: uint, element: T) {
+        let len = self.len();
+        assert!(index <= len);
+        // space for the new element
+        self.reserve(1);
 
-        while i < n {
-            self.push(value.clone());
-            i += 1u;
+        unsafe { // infallible
+            // The spot to put the new value
+            {
+                let p = self.as_mut_ptr().offset(index as int);
+                // Shift everything over to make space. (Duplicating the
+                // `index`th element into two consecutive places.)
+                ptr::copy_memory(p.offset(1), &*p, len - index);
+                // Write it in, overwriting the first copy of the `index`th
+                // element.
+                ptr::write(&mut *p, element);
+            }
+            self.set_len(len + 1);
         }
+    }
+
+    /// Removes and returns the element at position `index` within the vector,
+    /// shifting all elements after position `index` one position to the left.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `i` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = vec![1i, 2, 3];
+    /// assert_eq!(v.remove(1), 2);
+    /// assert_eq!(v, vec![1, 3]);
+    /// ```
+    #[stable]
+    pub fn remove(&mut self, index: uint) -> T {
+        let len = self.len();
+        assert!(index < len);
+        unsafe { // infallible
+            let ret;
+            {
+                // the place we are taking from.
+                let ptr = self.as_mut_ptr().offset(index as int);
+                // copy it out, unsafely having a copy of the value on
+                // the stack and in the vector at the same time.
+                ret = ptr::read(ptr as *const T);
+
+                // Shift everything down to fill in that spot.
+                ptr::copy_memory(ptr, &*ptr.offset(1), len - index - 1);
+            }
+            self.set_len(len - 1);
+            ret
+        }
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns false.
+    /// This method operates in place and preserves the order of the retained
+    /// elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = vec![1i, 2, 3, 4];
+    /// vec.retain(|&x| x%2 == 0);
+    /// assert_eq!(vec, vec![2, 4]);
+    /// ```
+    #[stable]
+    pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
+        let len = self.len();
+        let mut del = 0u;
+        {
+            let v = self.as_mut_slice();
+
+            for i in range(0u, len) {
+                if !f(&v[i]) {
+                    del += 1;
+                } else if del > 0 {
+                    v.swap(i-del, i);
+                }
+            }
+        }
+        if del > 0 {
+            self.truncate(len - del);
+        }
+    }
+
+    /// Deprecated: use `extend(range(0, n).map(f))` instead.
+    #[deprecated = "use extend(range(0, n).map(f)) instead"]
+    pub fn grow_fn<F>(&mut self, n: uint, f: F) where F: FnMut(uint) -> T {
+        self.extend(range(0, n).map(f));
+    }
+
+    /// Appends an element to the back of a collection.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of elements in the vector overflows a `uint`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut vec = vec!(1i, 2);
+    /// vec.push(3);
+    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn push(&mut self, value: T) {
+        if mem::size_of::<T>() == 0 {
+            // zero-size types consume no memory, so we can't rely on the
+            // address space running out
+            self.len = self.len.checked_add(1).expect("length overflow");
+            unsafe { mem::forget(value); }
+            return
+        }
+        if self.len == self.cap {
+            let old_size = self.cap * mem::size_of::<T>();
+            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
+            if old_size > size { panic!("capacity overflow") }
+            unsafe {
+                let ptr = alloc_or_realloc(*self.ptr, old_size, size);
+                if ptr.is_null() { ::alloc::oom() }
+                self.ptr = NonZero::new(ptr);
+            }
+            self.cap = max(self.cap, 2) * 2;
+        }
+
+        unsafe {
+            let end = (*self.ptr).offset(self.len as int);
+            ptr::write(&mut *end, value);
+            self.len += 1;
+        }
+    }
+
+    /// Removes the last element from a vector and returns it, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut vec = vec![1i, 2, 3];
+    /// assert_eq!(vec.pop(), Some(3));
+    /// assert_eq!(vec, vec![1, 2]);
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn pop(&mut self) -> Option<T> {
+        if self.len == 0 {
+            None
+        } else {
+            unsafe {
+                self.len -= 1;
+                Some(ptr::read(self.get_unchecked(self.len())))
+            }
+        }
+    }
+
+    /// Creates a draining iterator that clears the `Vec` and iterates over
+    /// the removed items from start to end.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = vec!["a".to_string(), "b".to_string()];
+    /// for s in v.drain() {
+    ///     // s has type String, not &String
+    ///     println!("{}", s);
+    /// }
+    /// assert!(v.is_empty());
+    /// ```
+    #[inline]
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
+        unsafe {
+            let begin = *self.ptr as *const T;
+            let end = if mem::size_of::<T>() == 0 {
+                (*self.ptr as uint + self.len()) as *const T
+            } else {
+                (*self.ptr).offset(self.len() as int) as *const T
+            };
+            self.set_len(0);
+            Drain {
+                ptr: begin,
+                end: end,
+                marker: ContravariantLifetime,
+            }
+        }
+    }
+
+    /// Clears the vector, removing all values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = vec![1i, 2, 3];
+    ///
+    /// v.clear();
+    ///
+    /// assert!(v.is_empty());
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn clear(&mut self) {
+        self.truncate(0)
+    }
+
+    /// Returns the number of elements in the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a = vec![1i, 2, 3];
+    /// assert_eq!(a.len(), 3);
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn len(&self) -> uint { self.len }
+
+    /// Returns `true` if the vector contains no elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = Vec::new();
+    /// assert!(v.is_empty());
+    ///
+    /// v.push(1i);
+    /// assert!(!v.is_empty());
+    /// ```
+    #[stable]
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    /// Converts a `Vec<T>` to a `Vec<U>` where `T` and `U` have the same
+    /// size and in case they are not zero-sized the same minimal alignment.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `T` and `U` have differing sizes or are not zero-sized and
+    /// have differing minimal alignments.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = vec![0u, 1, 2];
+    /// let w = v.map_in_place(|i| i + 3);
+    /// assert_eq!(w.as_slice(), [3, 4, 5].as_slice());
+    ///
+    /// #[deriving(PartialEq, Show)]
+    /// struct Newtype(u8);
+    /// let bytes = vec![0x11, 0x22];
+    /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
+    /// assert_eq!(newtyped_bytes.as_slice(), [Newtype(0x11), Newtype(0x22)].as_slice());
+    /// ```
+    #[experimental = "API may change to provide stronger guarantees"]
+    pub fn map_in_place<U, F>(self, mut f: F) -> Vec<U> where F: FnMut(T) -> U {
+        // FIXME: Assert statically that the types `T` and `U` have the same
+        // size.
+        assert!(mem::size_of::<T>() == mem::size_of::<U>());
+
+        let mut vec = self;
+
+        if mem::size_of::<T>() != 0 {
+            // FIXME: Assert statically that the types `T` and `U` have the
+            // same minimal alignment in case they are not zero-sized.
+
+            // These asserts are necessary because the `min_align_of` of the
+            // types are passed to the allocator by `Vec`.
+            assert!(mem::min_align_of::<T>() == mem::min_align_of::<U>());
+
+            // This `as int` cast is safe, because the size of the elements of the
+            // vector is not 0, and:
+            //
+            // 1) If the size of the elements in the vector is 1, the `int` may
+            //    overflow, but it has the correct bit pattern so that the
+            //    `.offset()` function will work.
+            //
+            //    Example:
+            //        Address space 0x0-0xF.
+            //        `u8` array at: 0x1.
+            //        Size of `u8` array: 0x8.
+            //        Calculated `offset`: -0x8.
+            //        After `array.offset(offset)`: 0x9.
+            //        (0x1 + 0x8 = 0x1 - 0x8)
+            //
+            // 2) If the size of the elements in the vector is >1, the `uint` ->
+            //    `int` conversion can't overflow.
+            let offset = vec.len() as int;
+            let start = vec.as_mut_ptr();
+
+            let mut pv = PartialVecNonZeroSized {
+                vec: vec,
+
+                start_t: start,
+                // This points inside the vector, as the vector has length
+                // `offset`.
+                end_t: unsafe { start.offset(offset) },
+                start_u: start as *mut U,
+                end_u: start as *mut U,
+            };
+            //  start_t
+            //  start_u
+            //  |
+            // +-+-+-+-+-+-+
+            // |T|T|T|...|T|
+            // +-+-+-+-+-+-+
+            //  |           |
+            //  end_u       end_t
+
+            while pv.end_u as *mut T != pv.end_t {
+                unsafe {
+                    //  start_u start_t
+                    //  |       |
+                    // +-+-+-+-+-+-+-+-+-+
+                    // |U|...|U|T|T|...|T|
+                    // +-+-+-+-+-+-+-+-+-+
+                    //          |         |
+                    //          end_u     end_t
+
+                    let t = ptr::read(pv.start_t as *const T);
+                    //  start_u start_t
+                    //  |       |
+                    // +-+-+-+-+-+-+-+-+-+
+                    // |U|...|U|X|T|...|T|
+                    // +-+-+-+-+-+-+-+-+-+
+                    //          |         |
+                    //          end_u     end_t
+                    // We must not panic here, one cell is marked as `T`
+                    // although it is not `T`.
+
+                    pv.start_t = pv.start_t.offset(1);
+                    //  start_u   start_t
+                    //  |         |
+                    // +-+-+-+-+-+-+-+-+-+
+                    // |U|...|U|X|T|...|T|
+                    // +-+-+-+-+-+-+-+-+-+
+                    //          |         |
+                    //          end_u     end_t
+                    // We may panic again.
+
+                    // The function given by the user might panic.
+                    let u = f(t);
+
+                    ptr::write(pv.end_u, u);
+                    //  start_u   start_t
+                    //  |         |
+                    // +-+-+-+-+-+-+-+-+-+
+                    // |U|...|U|U|T|...|T|
+                    // +-+-+-+-+-+-+-+-+-+
+                    //          |         |
+                    //          end_u     end_t
+                    // We should not panic here, because that would leak the `U`
+                    // pointed to by `end_u`.
+
+                    pv.end_u = pv.end_u.offset(1);
+                    //  start_u   start_t
+                    //  |         |
+                    // +-+-+-+-+-+-+-+-+-+
+                    // |U|...|U|U|T|...|T|
+                    // +-+-+-+-+-+-+-+-+-+
+                    //            |       |
+                    //            end_u   end_t
+                    // We may panic again.
+                }
+            }
+
+            //  start_u     start_t
+            //  |           |
+            // +-+-+-+-+-+-+
+            // |U|...|U|U|U|
+            // +-+-+-+-+-+-+
+            //              |
+            //              end_t
+            //              end_u
+            // Extract `vec` and prevent the destructor of
+            // `PartialVecNonZeroSized` from running. Note that none of the
+            // function calls can panic, thus no resources can be leaked (as the
+            // `vec` member of `PartialVec` is the only one which holds
+            // allocations -- and it is returned from this function. None of
+            // this can panic.
+            unsafe {
+                let vec_len = pv.vec.len();
+                let vec_cap = pv.vec.capacity();
+                let vec_ptr = pv.vec.as_mut_ptr() as *mut U;
+                mem::forget(pv);
+                Vec::from_raw_parts(vec_ptr, vec_len, vec_cap)
+            }
+        } else {
+            // Put the `Vec` into the `PartialVecZeroSized` structure and
+            // prevent the destructor of the `Vec` from running. Since the
+            // `Vec` contained zero-sized objects, it did not allocate, so we
+            // are not leaking memory here.
+            let mut pv = PartialVecZeroSized::<T,U> {
+                num_t: vec.len(),
+                num_u: 0,
+                marker_t: InvariantType,
+                marker_u: InvariantType,
+            };
+            unsafe { mem::forget(vec); }
+
+            while pv.num_t != 0 {
+                unsafe {
+                    // Create a `T` out of thin air and decrement `num_t`. This
+                    // must not panic between these steps, as otherwise a
+                    // destructor of `T` which doesn't exist runs.
+                    let t = mem::uninitialized();
+                    pv.num_t -= 1;
+
+                    // The function given by the user might panic.
+                    let u = f(t);
+
+                    // Forget the `U` and increment `num_u`. This increment
+                    // cannot overflow the `uint` as we only do this for a
+                    // number of times that fits into a `uint` (and start with
+                    // `0`). Again, we should not panic between these steps.
+                    mem::forget(u);
+                    pv.num_u += 1;
+                }
+            }
+            // Create a `Vec` from our `PartialVecZeroSized` and make sure the
+            // destructor of the latter will not run. None of this can panic.
+            let mut result = Vec::new();
+            unsafe {
+                result.set_len(pv.num_u);
+                mem::forget(pv);
+            }
+            result
+        }
+    }
+}
+
+impl<T: Clone> Vec<T> {
+    /// Deprecated: use `repeat(value).take(length).collect()` instead.
+    #[inline]
+    #[deprecated = "use repeat(value).take(length).collect() instead"]
+    pub fn from_elem(length: uint, value: T) -> Vec<T> {
+        repeat(value).take(length).collect()
     }
 
     /// Resizes the `Vec` in-place so that `len()` is equal to `new_len`.
@@ -443,38 +1013,210 @@ impl<T: Clone> Vec<T> {
         }
     }
 
-    /// Partitions a vector based on a predicate.
+    /// Appends all elements in a slice to the `Vec`.
     ///
-    /// Clones the elements of the vector, partitioning them into two `Vec<T>`s
-    /// `(a, b)`, where all elements of `a` satisfy `f` and all elements of `b`
-    /// do not. The order of elements is preserved.
+    /// Iterates over the slice `other`, clones each element, and then appends
+    /// it to this `Vec`. The `other` vector is traversed in-order.
     ///
     /// # Examples
     ///
     /// ```
-    /// let vec = vec![1i, 2, 3, 4];
-    /// let (even, odd) = vec.partitioned(|&n| n % 2 == 0);
-    /// assert_eq!(even, vec![2i, 4]);
-    /// assert_eq!(odd, vec![1i, 3]);
+    /// let mut vec = vec![1i];
+    /// vec.push_all(&[2i, 3, 4]);
+    /// assert_eq!(vec, vec![1, 2, 3, 4]);
     /// ```
-    #[experimental]
-    pub fn partitioned<F>(&self, mut f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
-        let mut lefts = Vec::new();
-        let mut rights = Vec::new();
+    #[inline]
+    #[experimental = "likely to be replaced by a more optimized extend"]
+    pub fn push_all(&mut self, other: &[T]) {
+        self.reserve(other.len());
 
-        for elt in self.iter() {
-            if f(elt) {
-                lefts.push(elt.clone());
-            } else {
-                rights.push(elt.clone());
+        for i in range(0, other.len()) {
+            let len = self.len();
+
+            // Unsafe code so this can be optimised to a memcpy (or something similarly
+            // fast) when T is Copy. LLVM is easily confused, so any extra operations
+            // during the loop can prevent this optimisation.
+            unsafe {
+                ptr::write(
+                    self.get_unchecked_mut(len),
+                    other.get_unchecked(i).clone());
+                self.set_len(len + 1);
             }
         }
+    }
 
-        (lefts, rights)
+    /// Deprecated: use `extend(repeat(value).take(n))` instead
+    #[deprecated = "use extend(repeat(value).take(n)) instead"]
+    pub fn grow(&mut self, n: uint, value: T) {
+        self.extend(repeat(value).take(n))
+    }
+
+    /// Deprecated: use `iter().cloned().partition(f)` instead.
+    #[deprecated = "use iter().cloned().partition(f) instead"]
+    pub fn partitioned<F>(&self, f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
+        self.iter().cloned().partition(f)
     }
 }
 
-#[stable]
+impl<T: PartialEq> Vec<T> {
+    /// Removes consecutive repeated elements in the vector.
+    ///
+    /// If the vector is sorted, this removes all duplicates.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut vec = vec![1i, 2, 2, 3, 2];
+    ///
+    /// vec.dedup();
+    ///
+    /// assert_eq!(vec, vec![1i, 2, 3, 2]);
+    /// ```
+    #[stable]
+    pub fn dedup(&mut self) {
+        unsafe {
+            // Although we have a mutable reference to `self`, we cannot make
+            // *arbitrary* changes. The `PartialEq` comparisons could panic, so we
+            // must ensure that the vector is in a valid state at all time.
+            //
+            // The way that we handle this is by using swaps; we iterate
+            // over all the elements, swapping as we go so that at the end
+            // the elements we wish to keep are in the front, and those we
+            // wish to reject are at the back. We can then truncate the
+            // vector. This operation is still O(n).
+            //
+            // Example: We start in this state, where `r` represents "next
+            // read" and `w` represents "next_write`.
+            //
+            //           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //           w
+            //
+            // Comparing self[r] against self[w-1], this is not a duplicate, so
+            // we swap self[r] and self[w] (no effect as r==w) and then increment both
+            // r and w, leaving us with:
+            //
+            //               r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this value is a duplicate,
+            // so we increment `r` but leave everything else unchanged:
+            //
+            //                   r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 1 | 2 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //               w
+            //
+            // Comparing self[r] against self[w-1], this is not a duplicate,
+            // so swap self[r] and self[w] and advance r and w:
+            //
+            //                       r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 1 | 3 | 3 |
+            //     +---+---+---+---+---+---+
+            //                   w
+            //
+            // Not a duplicate, repeat:
+            //
+            //                           r
+            //     +---+---+---+---+---+---+
+            //     | 0 | 1 | 2 | 3 | 1 | 3 |
+            //     +---+---+---+---+---+---+
+            //                       w
+            //
+            // Duplicate, advance r. End of vec. Truncate to w.
+
+            let ln = self.len();
+            if ln < 1 { return; }
+
+            // Avoid bounds checks by using unsafe pointers.
+            let p = self.as_mut_ptr();
+            let mut r = 1;
+            let mut w = 1;
+
+            while r < ln {
+                let p_r = p.offset(r as int);
+                let p_wm1 = p.offset((w - 1) as int);
+                if *p_r != *p_wm1 {
+                    if r != w {
+                        let p_w = p_wm1.offset(1);
+                        mem::swap(&mut *p_r, &mut *p_w);
+                    }
+                    w += 1;
+                }
+                r += 1;
+            }
+
+            self.truncate(w);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Public free fns
+////////////////////////////////////////////////////////////////////////////////
+
+/// Deprecated: use `unzip` directly on the iterator instead.
+#[deprecated = "use unzip directly on the iterator instead"]
+pub fn unzip<T, U, V: Iterator<(T, U)>>(iter: V) -> (Vec<T>, Vec<U>) {
+    iter.unzip()
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Internal methods and functions
+////////////////////////////////////////////////////////////////////////////////
+
+impl<T> Vec<T> {
+    /// Reserves capacity for exactly `capacity` elements in the given vector.
+    ///
+    /// If the capacity for `self` is already equal to or greater than the
+    /// requested capacity, then no action is taken.
+    fn grow_capacity(&mut self, capacity: uint) {
+        if mem::size_of::<T>() == 0 { return }
+
+        if capacity > self.cap {
+            let size = capacity.checked_mul(mem::size_of::<T>())
+                               .expect("capacity overflow");
+            unsafe {
+                let ptr = alloc_or_realloc(*self.ptr, self.cap * mem::size_of::<T>(), size);
+                if ptr.is_null() { ::alloc::oom() }
+                self.ptr = NonZero::new(ptr);
+            }
+            self.cap = capacity;
+        }
+    }
+}
+
+// FIXME: #13996: need a way to mark the return value as `noalias`
+#[inline(never)]
+unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: uint, size: uint) -> *mut T {
+    if old_size == 0 {
+        allocate(size, mem::min_align_of::<T>()) as *mut T
+    } else {
+        reallocate(ptr as *mut u8, old_size, size, mem::min_align_of::<T>()) as *mut T
+    }
+}
+
+#[inline]
+unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
+    if mem::size_of::<T>() != 0 {
+        deallocate(ptr as *mut u8,
+                   len * mem::size_of::<T>(),
+                   mem::min_align_of::<T>())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Common trait implementations for Vec
+////////////////////////////////////////////////////////////////////////////////
+
+#[unstable]
 impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> { self.as_slice().to_vec() }
 
@@ -493,6 +1235,13 @@ impl<T:Clone> Clone for Vec<T> {
         // slice here is always in-bounds.
         let slice = other[self.len()..];
         self.push_all(slice);
+    }
+}
+
+impl<S: hash::Writer, T: Hash<S>> Hash<S> for Vec<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.as_slice().hash(state);
     }
 }
 
@@ -677,675 +1426,6 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
-impl<S: hash::Writer, T: Hash<S>> Hash<S> for Vec<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        self.as_slice().hash(state);
-    }
-}
-
-// FIXME: #13996: need a way to mark the return value as `noalias`
-#[inline(never)]
-unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: uint, size: uint) -> *mut T {
-    if old_size == 0 {
-        allocate(size, mem::min_align_of::<T>()) as *mut T
-    } else {
-        reallocate(ptr as *mut u8, old_size, size, mem::min_align_of::<T>()) as *mut T
-    }
-}
-
-#[inline]
-unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
-    if mem::size_of::<T>() != 0 {
-        deallocate(ptr as *mut u8,
-                   len * mem::size_of::<T>(),
-                   mem::min_align_of::<T>())
-    }
-}
-
-impl<T> Vec<T> {
-    /// Returns the number of elements the vector can hold without reallocating.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let vec: Vec<int> = Vec::with_capacity(10);
-    /// assert_eq!(vec.capacity(), 10);
-    /// ```
-    #[inline]
-    #[stable]
-    pub fn capacity(&self) -> uint {
-        self.cap
-    }
-
-    /// Deprecated: Renamed to `reserve`.
-    #[deprecated = "Renamed to `reserve`"]
-    pub fn reserve_additional(&mut self, extra: uint) {
-        self.reserve(extra)
-    }
-
-    /// Reserves capacity for at least `additional` more elements to be inserted in the given
-    /// `Vec<T>`. The collection may reserve more space to avoid frequent reallocations.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the new capacity overflows `uint`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec: Vec<int> = vec![1];
-    /// vec.reserve(10);
-    /// assert!(vec.capacity() >= 11);
-    /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn reserve(&mut self, additional: uint) {
-        if self.cap - self.len < additional {
-            let err_msg = "Vec::reserve: `uint` overflow";
-            let new_cap = self.len.checked_add(additional).expect(err_msg)
-                                  .checked_next_power_of_two().expect(err_msg);
-            self.grow_capacity(new_cap);
-        }
-    }
-
-    /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
-    /// given `Vec<T>`. Does nothing if the capacity is already sufficient.
-    ///
-    /// Note that the allocator may give the collection more space than it requests. Therefore
-    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve` if future
-    /// insertions are expected.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the new capacity overflows `uint`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec: Vec<int> = vec![1];
-    /// vec.reserve_exact(10);
-    /// assert!(vec.capacity() >= 11);
-    /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn reserve_exact(&mut self, additional: uint) {
-        if self.cap - self.len < additional {
-            match self.len.checked_add(additional) {
-                None => panic!("Vec::reserve: `uint` overflow"),
-                Some(new_cap) => self.grow_capacity(new_cap)
-            }
-        }
-    }
-
-    /// Shrinks the capacity of the vector as much as possible.
-    ///
-    /// It will drop down as close as possible to the length but the allocator may still inform the
-    /// vector that there is space for a few more elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec: Vec<int> = Vec::with_capacity(10);
-    ///
-    /// vec.push_all(&[1, 2, 3]);
-    /// assert_eq!(vec.capacity(), 10);
-    ///
-    /// vec.shrink_to_fit();
-    /// assert!(vec.capacity() >= 3);
-    /// ```
-    #[stable]
-    pub fn shrink_to_fit(&mut self) {
-        if mem::size_of::<T>() == 0 { return }
-
-        if self.len == 0 {
-            if self.cap != 0 {
-                unsafe {
-                    dealloc(*self.ptr, self.cap)
-                }
-                self.cap = 0;
-            }
-        } else {
-            unsafe {
-                // Overflow check is unnecessary as the vector is already at
-                // least this large.
-                let ptr = reallocate(*self.ptr as *mut u8,
-                                     self.cap * mem::size_of::<T>(),
-                                     self.len * mem::size_of::<T>(),
-                                     mem::min_align_of::<T>()) as *mut T;
-                if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr);
-            }
-            self.cap = self.len;
-        }
-    }
-
-    /// Convert the vector into Box<[T]>.
-    ///
-    /// Note that this will drop any excess capacity. Calling this and converting back to a vector
-    /// with `into_vec()` is equivalent to calling `shrink_to_fit()`.
-    #[experimental]
-    pub fn into_boxed_slice(mut self) -> Box<[T]> {
-        self.shrink_to_fit();
-        unsafe {
-            let xs: Box<[T]> = mem::transmute(self.as_mut_slice());
-            mem::forget(self);
-            xs
-        }
-    }
-
-    /// Shorten a vector, dropping excess elements.
-    ///
-    /// If `len` is greater than the vector's current length, this has no
-    /// effect.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3, 4];
-    /// vec.truncate(2);
-    /// assert_eq!(vec, vec![1, 2]);
-    /// ```
-    #[unstable = "matches collection reform specification; waiting on panic semantics"]
-    pub fn truncate(&mut self, len: uint) {
-        unsafe {
-            // drop any extra elements
-            while len < self.len {
-                // decrement len before the read(), so a panic on Drop doesn't
-                // re-drop the just-failed value.
-                self.len -= 1;
-                ptr::read(self.unsafe_get(self.len));
-            }
-        }
-    }
-
-    /// Returns a mutable slice of the elements of `self`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// fn foo(slice: &mut [int]) {}
-    ///
-    /// let mut vec = vec![1i, 2];
-    /// foo(vec.as_mut_slice());
-    /// ```
-    #[inline]
-    #[stable]
-    pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
-        unsafe {
-            mem::transmute(RawSlice {
-                data: *self.ptr as *const T,
-                len: self.len,
-            })
-        }
-    }
-
-    /// Creates a consuming iterator, that is, one that moves each value out of the vector (from
-    /// start to end). The vector cannot be used after calling this.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let v = vec!["a".to_string(), "b".to_string()];
-    ///
-    /// for s in v.into_iter() {
-    ///     // s has type String, not &String
-    ///     println!("{}", s);
-    /// }
-    /// ```
-    #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn into_iter(self) -> IntoIter<T> {
-        unsafe {
-            let ptr = *self.ptr;
-            let cap = self.cap;
-            let begin = ptr as *const T;
-            let end = if mem::size_of::<T>() == 0 {
-                (ptr as uint + self.len()) as *const T
-            } else {
-                ptr.offset(self.len() as int) as *const T
-            };
-            mem::forget(self);
-            IntoIter { allocation: ptr, cap: cap, ptr: begin, end: end }
-        }
-    }
-
-    /// Sets the length of a vector.
-    ///
-    /// This will explicitly set the size of the vector, without actually modifying its buffers, so
-    /// it is up to the caller to ensure that the vector is actually the specified size.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut v = vec![1u, 2, 3, 4];
-    /// unsafe {
-    ///     v.set_len(1);
-    /// }
-    /// ```
-    #[inline]
-    #[stable]
-    pub unsafe fn set_len(&mut self, len: uint) {
-        self.len = len;
-    }
-
-    /// Removes an element from anywhere in the vector and return it, replacing it with the last
-    /// element.
-    ///
-    /// This does not preserve ordering, but is O(1).
-    ///
-    /// Returns `None` if `index` is out of bounds.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut v = vec!["foo", "bar", "baz", "qux"];
-    ///
-    /// assert_eq!(v.swap_remove(1), Some("bar"));
-    /// assert_eq!(v, vec!["foo", "qux", "baz"]);
-    ///
-    /// assert_eq!(v.swap_remove(0), Some("foo"));
-    /// assert_eq!(v, vec!["baz", "qux"]);
-    ///
-    /// assert_eq!(v.swap_remove(2), None);
-    /// ```
-    #[inline]
-    #[unstable = "the naming of this function may be altered"]
-    pub fn swap_remove(&mut self, index: uint) -> Option<T> {
-        let length = self.len();
-        if length > 0 && index < length - 1 {
-            self.swap(index, length - 1);
-        } else if index >= length {
-            return None
-        }
-        self.pop()
-    }
-
-    /// Inserts an element at position `index` within the vector, shifting all elements after
-    /// position `i` one position to the right.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `index` is not between `0` and the vector's length (both bounds inclusive).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3];
-    /// vec.insert(1, 4);
-    /// assert_eq!(vec, vec![1, 4, 2, 3]);
-    /// vec.insert(4, 5);
-    /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
-    /// ```
-    #[unstable = "panic semantics need settling"]
-    pub fn insert(&mut self, index: uint, element: T) {
-        let len = self.len();
-        assert!(index <= len);
-        // space for the new element
-        self.reserve(1);
-
-        unsafe { // infallible
-            // The spot to put the new value
-            {
-                let p = self.as_mut_ptr().offset(index as int);
-                // Shift everything over to make space. (Duplicating the
-                // `index`th element into two consecutive places.)
-                ptr::copy_memory(p.offset(1), &*p, len - index);
-                // Write it in, overwriting the first copy of the `index`th
-                // element.
-                ptr::write(&mut *p, element);
-            }
-            self.set_len(len + 1);
-        }
-    }
-
-    /// Removes and returns the element at position `index` within the vector, shifting all
-    /// elements after position `index` one position to the left. Returns `None` if `i` is out of
-    /// bounds.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut v = vec![1i, 2, 3];
-    /// assert_eq!(v.remove(1), Some(2));
-    /// assert_eq!(v, vec![1, 3]);
-    ///
-    /// assert_eq!(v.remove(4), None);
-    /// // v is unchanged:
-    /// assert_eq!(v, vec![1, 3]);
-    /// ```
-    #[unstable = "panic semantics need settling"]
-    pub fn remove(&mut self, index: uint) -> Option<T> {
-        let len = self.len();
-        if index < len {
-            unsafe { // infallible
-                let ret;
-                {
-                    // the place we are taking from.
-                    let ptr = self.as_mut_ptr().offset(index as int);
-                    // copy it out, unsafely having a copy of the value on
-                    // the stack and in the vector at the same time.
-                    ret = Some(ptr::read(ptr as *const T));
-
-                    // Shift everything down to fill in that spot.
-                    ptr::copy_memory(ptr, &*ptr.offset(1), len - index - 1);
-                }
-                self.set_len(len - 1);
-                ret
-            }
-        } else {
-            None
-        }
-    }
-
-    /// Retains only the elements specified by the predicate.
-    ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns false. This method
-    /// operates in place and preserves the order of the retained elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 3, 4];
-    /// vec.retain(|&x| x%2 == 0);
-    /// assert_eq!(vec, vec![2, 4]);
-    /// ```
-    #[unstable = "the closure argument may become an unboxed closure"]
-    pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
-        let len = self.len();
-        let mut del = 0u;
-        {
-            let v = self.as_mut_slice();
-
-            for i in range(0u, len) {
-                if !f(&v[i]) {
-                    del += 1;
-                } else if del > 0 {
-                    v.swap(i-del, i);
-                }
-            }
-        }
-        if del > 0 {
-            self.truncate(len - del);
-        }
-    }
-
-    /// Expands a vector in place, initializing the new elements to the result of a function.
-    ///
-    /// The vector is grown by `n` elements. The i-th new element are initialized to the value
-    /// returned by `f(i)` where `i` is in the range [0, n).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec = vec![0u, 1];
-    /// vec.grow_fn(3, |i| i);
-    /// assert_eq!(vec, vec![0, 1, 0, 1, 2]);
-    /// ```
-    #[unstable = "this function may be renamed or change to unboxed closures"]
-    pub fn grow_fn<F>(&mut self, n: uint, mut f: F) where F: FnMut(uint) -> T {
-        self.reserve(n);
-        for i in range(0u, n) {
-            self.push(f(i));
-        }
-    }
-
-    /// Appends an element to the back of a collection.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the number of elements in the vector overflows a `uint`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let mut vec = vec!(1i, 2);
-    /// vec.push(3);
-    /// assert_eq!(vec, vec!(1, 2, 3));
-    /// ```
-    #[inline]
-    #[stable]
-    pub fn push(&mut self, value: T) {
-        if mem::size_of::<T>() == 0 {
-            // zero-size types consume no memory, so we can't rely on the address space running out
-            self.len = self.len.checked_add(1).expect("length overflow");
-            unsafe { mem::forget(value); }
-            return
-        }
-        if self.len == self.cap {
-            let old_size = self.cap * mem::size_of::<T>();
-            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
-            if old_size > size { panic!("capacity overflow") }
-            unsafe {
-                let ptr = alloc_or_realloc(*self.ptr, old_size, size);
-                if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr);
-            }
-            self.cap = max(self.cap, 2) * 2;
-        }
-
-        unsafe {
-            let end = (*self.ptr).offset(self.len as int);
-            ptr::write(&mut *end, value);
-            self.len += 1;
-        }
-    }
-
-    /// Removes the last element from a vector and returns it, or `None` if it is empty.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let mut vec = vec![1i, 2, 3];
-    /// assert_eq!(vec.pop(), Some(3));
-    /// assert_eq!(vec, vec![1, 2]);
-    /// ```
-    #[inline]
-    #[stable]
-    pub fn pop(&mut self) -> Option<T> {
-        if self.len == 0 {
-            None
-        } else {
-            unsafe {
-                self.len -= 1;
-                Some(ptr::read(self.unsafe_get(self.len())))
-            }
-        }
-    }
-
-    /// Creates a draining iterator that clears the `Vec` and iterates over
-    /// the removed items from start to end.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut v = vec!["a".to_string(), "b".to_string()];
-    /// for s in v.drain() {
-    ///     // s has type String, not &String
-    ///     println!("{}", s);
-    /// }
-    /// assert!(v.is_empty());
-    /// ```
-    #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
-        unsafe {
-            let begin = *self.ptr as *const T;
-            let end = if mem::size_of::<T>() == 0 {
-                (*self.ptr as uint + self.len()) as *const T
-            } else {
-                (*self.ptr).offset(self.len() as int) as *const T
-            };
-            self.set_len(0);
-            Drain {
-                ptr: begin,
-                end: end,
-                marker: ContravariantLifetime,
-            }
-        }
-    }
-
-    /// Clears the vector, removing all values.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut v = vec![1i, 2, 3];
-    ///
-    /// v.clear();
-    ///
-    /// assert!(v.is_empty());
-    /// ```
-    #[inline]
-    #[stable]
-    pub fn clear(&mut self) {
-        self.truncate(0)
-    }
-
-    /// Returns the number of elements in the vector.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let a = vec![1i, 2, 3];
-    /// assert_eq!(a.len(), 3);
-    /// ```
-    #[inline]
-    #[stable]
-    pub fn len(&self) -> uint { self.len }
-
-    /// Returns `true` if the vector contains no elements.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut v = Vec::new();
-    /// assert!(v.is_empty());
-    ///
-    /// v.push(1i);
-    /// assert!(!v.is_empty());
-    /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
-
-    /// Reserves capacity for exactly `capacity` elements in the given vector.
-    ///
-    /// If the capacity for `self` is already equal to or greater than the
-    /// requested capacity, then no action is taken.
-    fn grow_capacity(&mut self, capacity: uint) {
-        if mem::size_of::<T>() == 0 { return }
-
-        if capacity > self.cap {
-            let size = capacity.checked_mul(mem::size_of::<T>())
-                               .expect("capacity overflow");
-            unsafe {
-                let ptr = alloc_or_realloc(*self.ptr, self.cap * mem::size_of::<T>(), size);
-                if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr);
-            }
-            self.cap = capacity;
-        }
-    }
-}
-
-impl<T: PartialEq> Vec<T> {
-    /// Removes consecutive repeated elements in the vector.
-    ///
-    /// If the vector is sorted, this removes all duplicates.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut vec = vec![1i, 2, 2, 3, 2];
-    ///
-    /// vec.dedup();
-    ///
-    /// assert_eq!(vec, vec![1i, 2, 3, 2]);
-    /// ```
-    #[unstable = "this function may be renamed"]
-    pub fn dedup(&mut self) {
-        unsafe {
-            // Although we have a mutable reference to `self`, we cannot make
-            // *arbitrary* changes. The `PartialEq` comparisons could panic, so we
-            // must ensure that the vector is in a valid state at all time.
-            //
-            // The way that we handle this is by using swaps; we iterate
-            // over all the elements, swapping as we go so that at the end
-            // the elements we wish to keep are in the front, and those we
-            // wish to reject are at the back. We can then truncate the
-            // vector. This operation is still O(n).
-            //
-            // Example: We start in this state, where `r` represents "next
-            // read" and `w` represents "next_write`.
-            //
-            //           r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 1 | 2 | 3 | 3 |
-            //     +---+---+---+---+---+---+
-            //           w
-            //
-            // Comparing self[r] against self[w-1], this is not a duplicate, so
-            // we swap self[r] and self[w] (no effect as r==w) and then increment both
-            // r and w, leaving us with:
-            //
-            //               r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 1 | 2 | 3 | 3 |
-            //     +---+---+---+---+---+---+
-            //               w
-            //
-            // Comparing self[r] against self[w-1], this value is a duplicate,
-            // so we increment `r` but leave everything else unchanged:
-            //
-            //                   r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 1 | 2 | 3 | 3 |
-            //     +---+---+---+---+---+---+
-            //               w
-            //
-            // Comparing self[r] against self[w-1], this is not a duplicate,
-            // so swap self[r] and self[w] and advance r and w:
-            //
-            //                       r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 2 | 1 | 3 | 3 |
-            //     +---+---+---+---+---+---+
-            //                   w
-            //
-            // Not a duplicate, repeat:
-            //
-            //                           r
-            //     +---+---+---+---+---+---+
-            //     | 0 | 1 | 2 | 3 | 1 | 3 |
-            //     +---+---+---+---+---+---+
-            //                       w
-            //
-            // Duplicate, advance r. End of vec. Truncate to w.
-
-            let ln = self.len();
-            if ln < 1 { return; }
-
-            // Avoid bounds checks by using unsafe pointers.
-            let p = self.as_mut_ptr();
-            let mut r = 1;
-            let mut w = 1;
-
-            while r < ln {
-                let p_r = p.offset(r as int);
-                let p_wm1 = p.offset((w - 1) as int);
-                if *p_r != *p_wm1 {
-                    if r != w {
-                        let p_w = p_wm1.offset(1);
-                        mem::swap(&mut *p_r, &mut *p_w);
-                    }
-                    w += 1;
-                }
-                r += 1;
-            }
-
-            self.truncate(w);
-        }
-    }
-}
-
 impl<T> AsSlice<T> for Vec<T> {
     /// Returns a slice into `self`.
     ///
@@ -1408,7 +1488,45 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
     }
 }
 
+impl<'a> fmt::FormatWriter for Vec<u8> {
+    fn write(&mut self, buf: &[u8]) -> fmt::Result {
+        self.push_all(buf);
+        Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Clone-on-write
+////////////////////////////////////////////////////////////////////////////////
+
+#[experimental = "unclear how valuable this alias is"]
+/// A clone-on-write vector
+pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
+
+impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
+    fn from_iter<I: Iterator<T>>(it: I) -> CowVec<'a, T> {
+        Cow::Owned(FromIterator::from_iter(it))
+    }
+}
+
+impl<'a, T: 'a> IntoCow<'a, Vec<T>, [T]> for Vec<T> where T: Clone {
+    fn into_cow(self) -> CowVec<'a, T> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
+    fn into_cow(self) -> CowVec<'a, T> {
+        Cow::Borrowed(self)
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Iterators
+////////////////////////////////////////////////////////////////////////////////
+
 /// An iterator that moves out of a vector.
+#[stable]
 pub struct IntoIter<T> {
     allocation: *mut T, // the block of memory allocated for the vector
     cap: uint, // the capacity of the vector
@@ -1416,9 +1534,12 @@ pub struct IntoIter<T> {
     end: *const T
 }
 
+#[deprecated = "use IntoIter instead"]
+pub type MoveItems<T> = IntoIter<T>;
+
 impl<T> IntoIter<T> {
-    /// Drops all items that have not yet been moved and returns the empty vector.
     #[inline]
+    /// Drops all items that have not yet been moved and returns the empty vector.
     #[unstable]
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
@@ -1508,6 +1629,7 @@ impl<T> Drop for IntoIter<T> {
 
 /// An iterator that drains a vector.
 #[unsafe_no_drop_flag]
+#[unstable = "recently added as part of collections reform 2"]
 pub struct Drain<'a, T> {
     ptr: *const T,
     end: *const T,
@@ -1584,22 +1706,9 @@ impl<'a, T> Drop for Drain<'a, T> {
     }
 }
 
-/// Converts an iterator of pairs into a pair of vectors.
-///
-/// Returns a tuple containing two vectors where the i-th element of the first vector contains the
-/// first element of the i-th tuple of the input iterator, and the i-th element of the second
-/// vector contains the second element of the i-th tuple of the input iterator.
-#[unstable = "this functionality may become more generic over time"]
-pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (Vec<T>, Vec<U>) {
-    let (lo, _) = iter.size_hint();
-    let mut ts = Vec::with_capacity(lo);
-    let mut us = Vec::with_capacity(lo);
-    for (t, u) in iter {
-        ts.push(t);
-        us.push(u);
-    }
-    (ts, us)
-}
+////////////////////////////////////////////////////////////////////////////////
+// Conversion from &[T] to &Vec<T>
+////////////////////////////////////////////////////////////////////////////////
 
 /// Wrapper type providing a `&Vec<T>` reference via `Deref`.
 #[experimental]
@@ -1608,6 +1717,7 @@ pub struct DerefVec<'a, T> {
     l: ContravariantLifetime<'a>
 }
 
+#[experimental]
 impl<'a, T> Deref<Vec<T>> for DerefVec<'a, T> {
     fn deref<'b>(&'b self) -> &'b Vec<T> {
         &self.x
@@ -1616,6 +1726,7 @@ impl<'a, T> Deref<Vec<T>> for DerefVec<'a, T> {
 
 // Prevent the inner `Vec<T>` from attempting to deallocate memory.
 #[unsafe_destructor]
+#[experimental]
 impl<'a, T> Drop for DerefVec<'a, T> {
     fn drop(&mut self) {
         self.x.len = 0;
@@ -1634,6 +1745,10 @@ pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Raw module (deprecated)
+////////////////////////////////////////////////////////////////////////////////
+
 /// Unsafe vector operations.
 #[deprecated]
 pub mod raw {
@@ -1649,6 +1764,10 @@ pub mod raw {
         Vec::from_raw_buf(ptr, elts)
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Partial vec, used for map_in_place
+////////////////////////////////////////////////////////////////////////////////
 
 /// An owned, partially type-converted vector of elements with non-zero size.
 ///
@@ -1718,211 +1837,6 @@ impl<T,U> Drop for PartialVecZeroSized<T,U> {
                 self.num_u -= 1;
             }
         }
-    }
-}
-
-impl<T> Vec<T> {
-    /// Converts a `Vec<T>` to a `Vec<U>` where `T` and `U` have the same
-    /// size and in case they are not zero-sized the same minimal alignment.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `T` and `U` have differing sizes or are not zero-sized and
-    /// have differing minimal alignments.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let v = vec![0u, 1, 2];
-    /// let w = v.map_in_place(|i| i + 3);
-    /// assert_eq!(w.as_slice(), [3, 4, 5].as_slice());
-    ///
-    /// #[deriving(PartialEq, Show)]
-    /// struct Newtype(u8);
-    /// let bytes = vec![0x11, 0x22];
-    /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
-    /// assert_eq!(newtyped_bytes.as_slice(), [Newtype(0x11), Newtype(0x22)].as_slice());
-    /// ```
-    pub fn map_in_place<U, F>(self, mut f: F) -> Vec<U> where F: FnMut(T) -> U {
-        // FIXME: Assert statically that the types `T` and `U` have the same
-        // size.
-        assert!(mem::size_of::<T>() == mem::size_of::<U>());
-
-        let mut vec = self;
-
-        if mem::size_of::<T>() != 0 {
-            // FIXME: Assert statically that the types `T` and `U` have the
-            // same minimal alignment in case they are not zero-sized.
-
-            // These asserts are necessary because the `min_align_of` of the
-            // types are passed to the allocator by `Vec`.
-            assert!(mem::min_align_of::<T>() == mem::min_align_of::<U>());
-
-            // This `as int` cast is safe, because the size of the elements of the
-            // vector is not 0, and:
-            //
-            // 1) If the size of the elements in the vector is 1, the `int` may
-            //    overflow, but it has the correct bit pattern so that the
-            //    `.offset()` function will work.
-            //
-            //    Example:
-            //        Address space 0x0-0xF.
-            //        `u8` array at: 0x1.
-            //        Size of `u8` array: 0x8.
-            //        Calculated `offset`: -0x8.
-            //        After `array.offset(offset)`: 0x9.
-            //        (0x1 + 0x8 = 0x1 - 0x8)
-            //
-            // 2) If the size of the elements in the vector is >1, the `uint` ->
-            //    `int` conversion can't overflow.
-            let offset = vec.len() as int;
-            let start = vec.as_mut_ptr();
-
-            let mut pv = PartialVecNonZeroSized {
-                vec: vec,
-
-                start_t: start,
-                // This points inside the vector, as the vector has length
-                // `offset`.
-                end_t: unsafe { start.offset(offset) },
-                start_u: start as *mut U,
-                end_u: start as *mut U,
-            };
-            //  start_t
-            //  start_u
-            //  |
-            // +-+-+-+-+-+-+
-            // |T|T|T|...|T|
-            // +-+-+-+-+-+-+
-            //  |           |
-            //  end_u       end_t
-
-            while pv.end_u as *mut T != pv.end_t {
-                unsafe {
-                    //  start_u start_t
-                    //  |       |
-                    // +-+-+-+-+-+-+-+-+-+
-                    // |U|...|U|T|T|...|T|
-                    // +-+-+-+-+-+-+-+-+-+
-                    //          |         |
-                    //          end_u     end_t
-
-                    let t = ptr::read(pv.start_t as *const T);
-                    //  start_u start_t
-                    //  |       |
-                    // +-+-+-+-+-+-+-+-+-+
-                    // |U|...|U|X|T|...|T|
-                    // +-+-+-+-+-+-+-+-+-+
-                    //          |         |
-                    //          end_u     end_t
-                    // We must not panic here, one cell is marked as `T`
-                    // although it is not `T`.
-
-                    pv.start_t = pv.start_t.offset(1);
-                    //  start_u   start_t
-                    //  |         |
-                    // +-+-+-+-+-+-+-+-+-+
-                    // |U|...|U|X|T|...|T|
-                    // +-+-+-+-+-+-+-+-+-+
-                    //          |         |
-                    //          end_u     end_t
-                    // We may panic again.
-
-                    // The function given by the user might panic.
-                    let u = f(t);
-
-                    ptr::write(pv.end_u, u);
-                    //  start_u   start_t
-                    //  |         |
-                    // +-+-+-+-+-+-+-+-+-+
-                    // |U|...|U|U|T|...|T|
-                    // +-+-+-+-+-+-+-+-+-+
-                    //          |         |
-                    //          end_u     end_t
-                    // We should not panic here, because that would leak the `U`
-                    // pointed to by `end_u`.
-
-                    pv.end_u = pv.end_u.offset(1);
-                    //  start_u   start_t
-                    //  |         |
-                    // +-+-+-+-+-+-+-+-+-+
-                    // |U|...|U|U|T|...|T|
-                    // +-+-+-+-+-+-+-+-+-+
-                    //            |       |
-                    //            end_u   end_t
-                    // We may panic again.
-                }
-            }
-
-            //  start_u     start_t
-            //  |           |
-            // +-+-+-+-+-+-+
-            // |U|...|U|U|U|
-            // +-+-+-+-+-+-+
-            //              |
-            //              end_t
-            //              end_u
-            // Extract `vec` and prevent the destructor of
-            // `PartialVecNonZeroSized` from running. Note that none of the
-            // function calls can panic, thus no resources can be leaked (as the
-            // `vec` member of `PartialVec` is the only one which holds
-            // allocations -- and it is returned from this function. None of
-            // this can panic.
-            unsafe {
-                let vec_len = pv.vec.len();
-                let vec_cap = pv.vec.capacity();
-                let vec_ptr = pv.vec.as_mut_ptr() as *mut U;
-                mem::forget(pv);
-                Vec::from_raw_parts(vec_ptr, vec_len, vec_cap)
-            }
-        } else {
-            // Put the `Vec` into the `PartialVecZeroSized` structure and
-            // prevent the destructor of the `Vec` from running. Since the
-            // `Vec` contained zero-sized objects, it did not allocate, so we
-            // are not leaking memory here.
-            let mut pv = PartialVecZeroSized::<T,U> {
-                num_t: vec.len(),
-                num_u: 0,
-                marker_t: InvariantType,
-                marker_u: InvariantType,
-            };
-            unsafe { mem::forget(vec); }
-
-            while pv.num_t != 0 {
-                unsafe {
-                    // Create a `T` out of thin air and decrement `num_t`. This
-                    // must not panic between these steps, as otherwise a
-                    // destructor of `T` which doesn't exist runs.
-                    let t = mem::uninitialized();
-                    pv.num_t -= 1;
-
-                    // The function given by the user might panic.
-                    let u = f(t);
-
-                    // Forget the `U` and increment `num_u`. This increment
-                    // cannot overflow the `uint` as we only do this for a
-                    // number of times that fits into a `uint` (and start with
-                    // `0`). Again, we should not panic between these steps.
-                    mem::forget(u);
-                    pv.num_u += 1;
-                }
-            }
-            // Create a `Vec` from our `PartialVecZeroSized` and make sure the
-            // destructor of the latter will not run. None of this can panic.
-            let mut result = Vec::new();
-            unsafe {
-                result.set_len(pv.num_u);
-                mem::forget(pv);
-            }
-            result
-        }
-    }
-}
-
-impl<'a> fmt::FormatWriter for Vec<u8> {
-    fn write(&mut self, buf: &[u8]) -> fmt::Result {
-        self.push_all(buf);
-        Ok(())
     }
 }
 
@@ -2293,9 +2207,10 @@ mod tests {
     }
 
     #[test]
+    #[should_fail]
     fn test_swap_remove_empty() {
         let mut vec: Vec<uint> = vec!();
-        assert_eq!(vec.swap_remove(0), None);
+        vec.swap_remove(0);
     }
 
     #[test]

@@ -72,12 +72,14 @@ impl<T: Clone> Clone for Box<T> {
     }
 }
 
+#[stable]
 impl<Sized? T: PartialEq> PartialEq for Box<T> {
     #[inline]
     fn eq(&self, other: &Box<T>) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
     fn ne(&self, other: &Box<T>) -> bool { PartialEq::ne(&**self, &**other) }
 }
+#[stable]
 impl<Sized? T: PartialOrd> PartialOrd for Box<T> {
     #[inline]
     fn partial_cmp(&self, other: &Box<T>) -> Option<Ordering> {
@@ -92,12 +94,14 @@ impl<Sized? T: PartialOrd> PartialOrd for Box<T> {
     #[inline]
     fn gt(&self, other: &Box<T>) -> bool { PartialOrd::gt(&**self, &**other) }
 }
+#[stable]
 impl<Sized? T: Ord> Ord for Box<T> {
     #[inline]
     fn cmp(&self, other: &Box<T>) -> Ordering {
         Ord::cmp(&**self, &**other)
     }
-}
+
+#[stable]}
 impl<Sized? T: Eq> Eq for Box<T> {}
 
 impl<S: hash::Writer, Sized? T: Hash<S>> Hash<S> for Box<T> {

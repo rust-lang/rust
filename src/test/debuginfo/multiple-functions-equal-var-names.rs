@@ -45,6 +45,7 @@
 // lldb-check:[...]$2 = 30303
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 fn function_one() {
     let abc = 10101i;

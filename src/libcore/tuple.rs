@@ -132,7 +132,7 @@ macro_rules! tuple_impls {
                 }
             }
 
-            #[unstable = "waiting for PartialEq to stabilize"]
+            #[stable]
             impl<$($T:PartialEq),+> PartialEq for ($($T,)+) {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
@@ -144,10 +144,10 @@ macro_rules! tuple_impls {
                 }
             }
 
-            #[unstable = "waiting for Eq to stabilize"]
+            #[stable]
             impl<$($T:Eq),+> Eq for ($($T,)+) {}
 
-            #[unstable = "waiting for PartialOrd to stabilize"]
+            #[stable]
             impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+) {
                 #[inline]
                 fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
@@ -171,7 +171,7 @@ macro_rules! tuple_impls {
                 }
             }
 
-            #[unstable = "waiting for Ord to stabilize"]
+            #[stable]
             impl<$($T:Ord),+> Ord for ($($T,)+) {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {
