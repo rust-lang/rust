@@ -22,5 +22,4 @@ impl Tr for St {
 
 fn main() {
     let _: &Tr = &St; //~ ERROR cannot convert to a trait object because trait `Tr` is not
-    //~^ NOTE cannot call a static method (`foo`) through a trait object
 }

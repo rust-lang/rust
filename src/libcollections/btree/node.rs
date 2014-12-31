@@ -304,9 +304,9 @@ impl<K, V> Node<K, V> {
         let (vals_offset, _) = calculate_offsets_generic::<K, V>(capacity, true);
 
         Node {
-            keys: Unique(buffer as *mut K).
+            keys: Unique(buffer as *mut K),
             vals: Unique(unsafe { buffer.offset(vals_offset as int) as *mut V }),
-            edges: Unique(ptr::null_mut::<u8>()),
+            edges: Unique(ptr::null_mut()),
             _len: 0,
             _capacity: capacity,
         }
@@ -574,7 +574,7 @@ impl <K, V> Node<K, V> {
 
     /// If the node has any children
     pub fn is_leaf(&self) -> bool {
-        self.edges.is_null()
+        self.edges.0.is_null()
     }
 
     /// if the node has too few elements
@@ -1058,7 +1058,7 @@ impl<K, V> Node<K, V> {
                     vals: RawItems::from_slice(self.vals()),
                     edges: RawItems::from_slice(self.edges()),
 
-                    ptr: self.keys as *mut u8,
+                    ptr: self.keys.0 as *mut u8,
                     capacity: self.capacity(),
                     is_leaf: self.is_leaf()
                 },

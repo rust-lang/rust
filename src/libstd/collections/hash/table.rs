@@ -788,9 +788,9 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 }
 
 // FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
-impl<'a, K, V> Clone for Entries<'a, K, V> {
-    fn clone(&self) -> Entries<'a, K, V> {
-        Entries {
+impl<'a, K, V> Clone for Iter<'a, K, V> {
+    fn clone(&self) -> Iter<'a, K, V> {
+        Iter {
             iter: self.iter.clone(),
             elems_left: self.elems_left
         }
