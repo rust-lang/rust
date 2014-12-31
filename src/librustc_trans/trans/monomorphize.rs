@@ -31,6 +31,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, PostExpansionMethod};
 use syntax::attr;
+use syntax::codemap::DUMMY_SP;
 use std::hash::{sip, Hash};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -331,7 +332,11 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
            result.repr(tcx),
            obligations.repr(tcx));
 
-    assert_eq!(obligations.len(), 0); // TODO not good enough
+    let mut fulfill_cx = traits::FulfillmentContext::new();
+    for obligation in obligations.into_iter() {
+        fulfill_cx.register_predicate_obligation(&infcx, obligation);
+    }
+    let result = drain_fulfillment_cx(DUMMY_SP, &infcx, &param_env, &mut fulfill_cx, &result);
 
     result
 }
