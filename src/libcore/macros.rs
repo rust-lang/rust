@@ -10,8 +10,6 @@
 
 #![macro_escape]
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// Entry point of task panic, for details, see std::macros
 #[macro_export]
 macro_rules! panic {
@@ -29,44 +27,6 @@ macro_rules! panic {
         // `#[forbid(dead_code)]` and which cannot be overridden.
         static _FILE_LINE: (&'static str, uint) = (file!(), line!());
         ::core::panicking::panic_fmt(format_args!($fmt, $($arg)*), &_FILE_LINE)
-    });
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-/// Entry point of task panic, for details, see std::macros
-#[macro_export]
-macro_rules! panic {
-    () => (
-        panic!("{}", "explicit panic")
-    );
-    ($msg:expr) => ({
-        static _MSG_FILE_LINE: (&'static str, &'static str, uint) = ($msg, file!(), line!());
-        ::core::panicking::panic(&_MSG_FILE_LINE)
-    });
-    ($fmt:expr, $($arg:tt)*) => ({
-        // a closure can't have return type !, so we need a full
-        // function to pass to format_args!, *and* we need the
-        // file and line numbers right here; so an inner bare fn
-        // is our only choice.
-        //
-        // LLVM doesn't tend to inline this, presumably because begin_unwind_fmt
-        // is #[cold] and #[inline(never)] and because this is flagged as cold
-        // as returning !. We really do want this to be inlined, however,
-        // because it's just a tiny wrapper. Small wins (156K to 149K in size)
-        // were seen when forcing this to be inlined, and that number just goes
-        // up with the number of calls to panic!()
-        //
-        // The leading _'s are to avoid dead code warnings if this is
-        // used inside a dead function. Just `#[allow(dead_code)]` is
-        // insufficient, since the user may have
-        // `#[forbid(dead_code)]` and which cannot be overridden.
-        #[inline(always)]
-        fn _run_fmt(fmt: &::std::fmt::Arguments) -> ! {
-            static _FILE_LINE: (&'static str, uint) = (file!(), line!());
-            ::core::panicking::panic_fmt(fmt, &_FILE_LINE)
-        }
-        format_args!(_run_fmt, $fmt, $($arg)*)
     });
 }
 
@@ -119,23 +79,10 @@ macro_rules! try {
     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 }
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// Writing a formatted string into a writer
 #[macro_export]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ((&mut *$dst).write_fmt(format_args!($($arg)*)))
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-/// Writing a formatted string into a writer
-#[macro_export]
-macro_rules! write {
-    ($dst:expr, $($arg:tt)*) => ({
-        let dst = &mut *$dst;
-        format_args!(|args| { dst.write_fmt(args) }, $($arg)*)
-    })
 }
 
 /// Writing a formatted string plus a newline into a writer

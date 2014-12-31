@@ -241,17 +241,6 @@ macro_rules! bitflags {
             }
         }
 
-        // NOTE(stage0): Remove impl after a snapshot
-        #[cfg(stage0)]
-        impl Not<$BitFlags> for $BitFlags {
-            /// Returns the complement of this set of flags.
-            #[inline]
-            fn not(&self) -> $BitFlags {
-                $BitFlags { bits: !self.bits } & $BitFlags::all()
-            }
-        }
-
-        #[cfg(not(stage0))]  // NOTE(stage0): Remove cfg after a snapshot
         impl Not<$BitFlags> for $BitFlags {
             /// Returns the complement of this set of flags.
             #[inline]
