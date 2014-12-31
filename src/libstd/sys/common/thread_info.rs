@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)] // stack_guard isn't used right now on all platforms
+
 use core::prelude::*;
 
 use thread::Thread;
@@ -15,10 +17,6 @@ use cell::RefCell;
 use string::String;
 
 struct ThreadInfo {
-    // This field holds the known bounds of the stack in (lo, hi)
-    // form. Not all threads necessarily know their precise bounds,
-    // hence this is optional.
-    stack_bounds: (uint, uint),
     stack_guard: uint,
     thread: Thread,
 }
@@ -35,7 +33,6 @@ impl ThreadInfo {
         THREAD_INFO.with(|c| {
             if c.borrow().is_none() {
                 *c.borrow_mut() = Some(ThreadInfo {
-                    stack_bounds: (0, 0),
                     stack_guard: 0,
                     thread: NewThread::new(None),
                 })
@@ -53,10 +50,9 @@ pub fn stack_guard() -> uint {
     ThreadInfo::with(|info| info.stack_guard)
 }
 
-pub fn set(stack_bounds: (uint, uint), stack_guard: uint, thread: Thread) {
+pub fn set(stack_guard: uint, thread: Thread) {
     THREAD_INFO.with(|c| assert!(c.borrow().is_none()));
     THREAD_INFO.with(move |c| *c.borrow_mut() = Some(ThreadInfo{
-        stack_bounds: stack_bounds,
         stack_guard: stack_guard,
         thread: thread,
     }));

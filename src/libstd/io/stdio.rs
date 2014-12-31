@@ -26,29 +26,19 @@
 //! ```
 
 use self::StdSource::*;
+use prelude::*;
 
-use boxed::Box;
 use cell::RefCell;
-use clone::Clone;
 use failure::LOCAL_STDERR;
 use fmt;
-use io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
-         standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
-use kinds::{Sync, Send};
+use io::{IoResult, IoError, OtherIoError};
+use io::{standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
 use libc;
 use mem;
-use option::Option;
-use option::Option::{Some, None};
-use ops::{Deref, DerefMut, FnOnce};
-use result::Result::{Ok, Err};
 use rt;
-use slice::SliceExt;
-use str::StrExt;
-use string::String;
 use sys::{fs, tty};
-use sync::{Arc, Mutex, MutexGuard, Once, ONCE_INIT};
+use sync::{Arc, Mutex, MutexGuard, StaticMutex, MUTEX_INIT};
 use uint;
-use vec::Vec;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -215,14 +205,15 @@ impl Reader for StdinReader {
 pub fn stdin() -> StdinReader {
     // We're following the same strategy as kimundi's lazy_static library
     static mut STDIN: *const StdinReader = 0 as *const StdinReader;
-    static ONCE: Once = ONCE_INIT;
+    static LOCK: StaticMutex = MUTEX_INIT;
 
     unsafe {
-        ONCE.doit(|| {
-            // The default buffer capacity is 64k, but apparently windows doesn't like
-            // 64k reads on stdin. See #13304 for details, but the idea is that on
-            // windows we use a slightly smaller buffer that's been seen to be
-            // acceptable.
+        let _g = LOCK.lock();
+        if STDIN as uint == 0 {
+            // The default buffer capacity is 64k, but apparently windows
+            // doesn't like 64k reads on stdin. See #13304 for details, but the
+            // idea is that on windows we use a slightly smaller buffer that's
+            // been seen to be acceptable.
             let stdin = if cfg!(windows) {
                 BufferedReader::with_capacity(8 * 1024, stdin_raw())
             } else {
@@ -235,11 +226,15 @@ pub fn stdin() -> StdinReader {
 
             // Make sure to free it at exit
             rt::at_exit(|| {
-                mem::transmute::<_, Box<StdinReader>>(STDIN);
-                STDIN = 0 as *const _;
+                let g = LOCK.lock();
+                let stdin = STDIN;
+                STDIN = 1 as *const _;
+                drop(g);
+                mem::transmute::<_, Box<StdinReader>>(stdin);
             });
-        });
-
+        } else if STDIN as uint == 1 {
+            panic!("accessing stdin after the main thread has exited")
+        }
         (*STDIN).clone()
     }
 }

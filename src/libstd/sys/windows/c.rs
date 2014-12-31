@@ -15,7 +15,6 @@
 #![allow(non_camel_case_types)]
 
 use libc;
-use prelude::*;
 
 pub const WSADESCRIPTION_LEN: uint = 256;
 pub const WSASYS_STATUS_LEN: uint = 128;

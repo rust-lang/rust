@@ -14,11 +14,10 @@ use libc;
 use mem;
 use ptr;
 use prelude::*;
-use super::{last_error, last_net_error, retry, sock_t};
+use super::{last_error, last_net_error, sock_t};
 use sync::{Arc, atomic};
-use sys::fs::FileDesc;
 use sys::{mod, c, set_nonblocking, wouldblock, timer};
-use sys_common::{mod, timeout, eof, net};
+use sys_common::{timeout, eof, net};
 
 pub use sys_common::net::TcpStream;
 
@@ -203,10 +202,6 @@ impl TcpAcceptor {
         }
 
         Err(eof())
-    }
-
-    pub fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        net::sockname(self.socket(), libc::getsockname)
     }
 
     pub fn set_timeout(&mut self, timeout: Option<u64>) {

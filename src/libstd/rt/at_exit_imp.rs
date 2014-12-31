@@ -29,6 +29,8 @@ type Queue = Vec<Thunk>;
 static LOCK: Mutex = MUTEX_INIT;
 static mut QUEUE: *mut Queue = 0 as *mut Queue;
 
+const DTOR_RUN_ITERS: uint = 10;
+
 unsafe fn init() {
     if QUEUE.is_null() {
         let state: Box<Queue> = box Vec::new();
@@ -49,7 +51,7 @@ pub fn cleanup() {
     unsafe {
         LOCK.lock();
         let queue = QUEUE;
-        QUEUE = 1 as *mut _;
+        QUEUE = 1u as *mut _;
         LOCK.unlock();
 
         // make sure we're not recursively cleaning up

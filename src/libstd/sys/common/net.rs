@@ -22,7 +22,9 @@ use io::{IoResult, IoError};
 use sys::{mod, retry, c, sock_t, last_error, last_net_error, last_gai_error, close_sock,
           wrlen, msglen_t, os, wouldblock, set_nonblocking, timer, ms_to_timeval,
           decode_error_detailed};
-use sync::{Mutex, MutexGuard};
+use sync::Mutex;
+#[cfg(not(target_os = "linux"))]
+use sync::MutexGuard;
 use sys_common::{mod, keep_going, short_write, timeout};
 use prelude::*;
 use cmp;
@@ -573,11 +575,13 @@ impl Drop for Inner {
     fn drop(&mut self) { unsafe { close_sock(self.fd); } }
 }
 
+#[cfg(not(target_os = "linux"))]
 pub struct Guard<'a> {
     pub fd: sock_t,
     pub guard: MutexGuard<'a, ()>,
 }
 
+#[cfg(not(target_os = "linux"))]
 #[unsafe_destructor]
 impl<'a> Drop for Guard<'a> {
     fn drop(&mut self) {

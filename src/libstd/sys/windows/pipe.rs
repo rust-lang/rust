@@ -365,7 +365,7 @@ impl UnixStream {
         // acquire the lock.
         //
         // See comments in close_read() about why this lock is necessary.
-        let guard = unsafe { self.inner.lock.lock() };
+        let guard = self.inner.lock.lock();
         if self.read_closed() {
             return Err(eof())
         }
@@ -441,7 +441,7 @@ impl UnixStream {
             // going after we woke up.
             //
             // See comments in close_read() about why this lock is necessary.
-            let guard = unsafe { self.inner.lock.lock() };
+            let guard = self.inner.lock.lock();
             if self.write_closed() {
                 return Err(epipe())
             }
@@ -516,14 +516,14 @@ impl UnixStream {
         // close_read() between steps 1 and 2. By atomically executing steps 1
         // and 2 with a lock with respect to close_read(), we're guaranteed that
         // no thread will erroneously sit in a read forever.
-        let _guard = unsafe { self.inner.lock.lock() };
+        let _guard = self.inner.lock.lock();
         self.inner.read_closed.store(true, atomic::SeqCst);
         self.cancel_io()
     }
 
     pub fn close_write(&mut self) -> IoResult<()> {
         // see comments in close_read() for why this lock is necessary
-        let _guard = unsafe { self.inner.lock.lock() };
+        let _guard = self.inner.lock.lock();
         self.inner.write_closed.store(true, atomic::SeqCst);
         self.cancel_io()
     }
