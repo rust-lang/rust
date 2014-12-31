@@ -28,7 +28,11 @@ endif
 # Remove tmp files because it's a decent amount of disk space
 	$(Q)rm -R tmp/dist
 
+ifeq ($(CFG_DISABLE_DOCS),)
+prepare_install: dist/$(PKG_NAME)-$(CFG_BUILD).tar.gz dist/$(DOC_PKG_NAME)-$(CFG_BUILD).tar.gz | tmp/empty_dir
+else
 prepare_install: dist/$(PKG_NAME)-$(CFG_BUILD).tar.gz | tmp/empty_dir
+endif
 
 uninstall:
 ifeq (root user, $(USER) $(patsubst %,user,$(SUDO_USER)))
