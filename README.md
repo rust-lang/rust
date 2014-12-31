@@ -63,6 +63,7 @@ the direction the language is evolving in.
 * [0509-collections-reform-part-2.md](text/0509-collections-reform-part-2.md)
 * [0520-new-array-repeat-syntax.md](text/0520-new-array-repeat-syntax.md)
 * [0522-self-impl.md](text/0522-self-impl.md)
+* [0532-self-in-use.md](text/0532-self-in-use.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
