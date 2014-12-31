@@ -406,8 +406,6 @@ pub use core::fmt::{Argument, Arguments, write, radix, Radix, RadixFmt};
 #[doc(hidden)]
 pub use core::fmt::{argument, argumentuint};
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// The format function takes a precompiled format string and a list of
 /// arguments, to return the resulting formatted string.
 ///
@@ -426,31 +424,6 @@ pub use core::fmt::{argument, argumentuint};
 #[experimental = "this is an implementation detail of format! and should not \
                   be called directly"]
 pub fn format(args: Arguments) -> string::String {
-    let mut output = Vec::new();
-    let _ = write!(&mut output as &mut Writer, "{}", args);
-    string::String::from_utf8(output).unwrap()
-}
-
-// NOTE(stage0): Remove function after a snapshot
-#[cfg(stage0)]
-/// The format function takes a precompiled format string and a list of
-/// arguments, to return the resulting formatted string.
-///
-/// # Arguments
-///
-///   * args - a structure of arguments generated via the `format_args!` macro.
-///
-/// # Example
-///
-/// ```rust
-/// use std::fmt;
-///
-/// let s = format_args!(fmt::format, "Hello, {}!", "world");
-/// assert_eq!(s, "Hello, world!".to_string());
-/// ```
-#[experimental = "this is an implementation detail of format! and should not \
-                  be called directly"]
-pub fn format(args: &Arguments) -> string::String {
     let mut output = Vec::new();
     let _ = write!(&mut output as &mut Writer, "{}", args);
     string::String::from_utf8(output).unwrap()
