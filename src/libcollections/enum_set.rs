@@ -185,25 +185,33 @@ impl<E:CLike> EnumSet<E> {
     }
 }
 
-impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> Sub for EnumSet<E> {
+    type Output = EnumSet<E>;
+
     fn sub(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & !e.bits}
     }
 }
 
-impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> BitOr for EnumSet<E> {
+    type Output = EnumSet<E>;
+
     fn bitor(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits | e.bits}
     }
 }
 
-impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> BitAnd for EnumSet<E> {
+    type Output = EnumSet<E>;
+
     fn bitand(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }
 }
 
-impl<E:CLike> BitXor<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> BitXor for EnumSet<E> {
+    type Output = EnumSet<E>;
+
     fn bitxor(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits ^ e.bits}
     }

@@ -2453,7 +2453,7 @@ pub fn count<A>(start: A, step: A) -> Counter<A> {
 }
 
 #[unstable = "trait is unstable"]
-impl<A: Add<A, A> + Clone> Iterator for Counter<A> {
+impl<A: Add<Output=A> + Clone> Iterator for Counter<A> {
     type Item = A;
 
     #[inline]
