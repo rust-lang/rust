@@ -971,6 +971,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
+
     // Import resolution
     //
     // This is a fixed-point algorithm. We resolve imports until our efforts

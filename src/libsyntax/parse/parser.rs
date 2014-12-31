@@ -546,6 +546,10 @@ impl<'a> Parser<'a> {
     pub fn parse_path_list_item(&mut self) -> ast::PathListItem {
         let lo = self.span.lo;
         let node = if self.eat_keyword(keywords::Mod) {
+            let span = self.last_span;
+            self.span_warn(span, "deprecated syntax; use the `self` keyword now");
+            ast::PathListMod { id: ast::DUMMY_NODE_ID }
+        } else if self.eat_keyword(keywords::Self) {
             ast::PathListMod { id: ast::DUMMY_NODE_ID }
         } else {
             let ident = self.parse_ident();
