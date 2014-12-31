@@ -269,14 +269,8 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
         let trait_def = ty::lookup_trait_def(self.fcx.tcx(), trait_ref.def_id);
 
-        // TODO uncommented this line causes failures because the impl
-        // obligations are not registered when we do a projection, and
-        // in this case it's those obligations that make the link
-        // between the normalized type ($1) and the result
-        //
-        // let bounds = self.fcx.instantiate_bounds(self.span, trait_ref.substs, &trait_def.generics);
+        let bounds = self.fcx.instantiate_bounds(self.span, trait_ref.substs, &trait_def.generics);
 
-        let bounds = trait_def.generics.to_bounds(self.fcx.tcx(), trait_ref.substs);
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 self.span,
