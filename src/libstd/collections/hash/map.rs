@@ -1319,6 +1319,15 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     inner: table::Iter<'a, K, V>
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, K, V> Clone for Entries<'a, K, V> {
+    fn clone(&self) -> Entries<'a, K, V> {
+        Entries {
+            inner: self.inner.clone()
+        }
+    }
+}
+
 /// HashMap mutable values iterator
 pub struct IterMut<'a, K: 'a, V: 'a> {
     inner: table::IterMut<'a, K, V>
@@ -1339,9 +1348,27 @@ pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a K, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, K, V> Clone for Keys<'a, K, V> {
+    fn clone(&self) -> Keys<'a, K, V> {
+        Keys {
+            inner: self.inner.clone()
+        }
+    }
+}
+
 /// HashMap values iterator
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+}
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, K, V> Clone for Values<'a, K, V> {
+    fn clone(&self) -> Values<'a, K, V> {
+        Values {
+            inner: self.inner.clone()
+        }
+    }
 }
 
 /// HashMap drain iterator

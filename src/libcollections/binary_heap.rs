@@ -563,6 +563,13 @@ pub struct Iter <'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, T> Clone for Iter<'a, T> {
+    fn clone(&self) -> Iter<'a, T> {
+        Iter { iter: self.iter.clone() }
+    }
+}
+
 impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }

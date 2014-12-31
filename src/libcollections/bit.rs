@@ -1014,6 +1014,7 @@ impl cmp::PartialEq for Bitv {
 impl cmp::Eq for Bitv {}
 
 /// An iterator for `Bitv`.
+#[deriving(Clone)]
 pub struct Bits<'a> {
     bitv: &'a Bitv,
     next_idx: uint,
@@ -1747,12 +1748,14 @@ impl<S: hash::Writer> hash::Hash<S> for BitvSet {
 }
 
 /// An iterator for `BitvSet`.
+#[deriving(Clone)]
 pub struct BitPositions<'a> {
     set: &'a BitvSet,
     next_idx: uint
 }
 
 /// An iterator combining two `BitvSet` iterators.
+#[deriving(Clone)]
 pub struct TwoBitPositions<'a> {
     set: &'a BitvSet,
     other: &'a BitvSet,
