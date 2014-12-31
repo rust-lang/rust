@@ -521,21 +521,29 @@ impl<'tcx> MoveData<'tcx> {
         return true;
     }
 
-    // FIXME(#19596) unbox `f`
-    fn each_extending_path(&self, index: MovePathIndex, f: |MovePathIndex| -> bool) -> bool {
-        if !f(index) {
+    // FIXME(#19596) This is a workaround, but there should be better way to do this
+    fn each_extending_path_<F>(&self, index: MovePathIndex, f: &mut F) -> bool where
+        F: FnMut(MovePathIndex) -> bool,
+    {
+        if !(*f)(index) {
             return false;
         }
 
         let mut p = self.path_first_child(index);
         while p != InvalidMovePathIndex {
-            if !self.each_extending_path(p, |x| f(x)) {
+            if !self.each_extending_path_(p, f) {
                 return false;
             }
             p = self.path_next_sibling(p);
         }
 
         return true;
+    }
+
+    fn each_extending_path<F>(&self, index: MovePathIndex, mut f: F) -> bool where
+        F: FnMut(MovePathIndex) -> bool,
+    {
+        self.each_extending_path_(index, &mut f)
     }
 
     fn each_applicable_move<F>(&self, index0: MovePathIndex, mut f: F) -> bool where
