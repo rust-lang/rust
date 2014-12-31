@@ -42,6 +42,7 @@
 
 #![allow(unused_variables)]
 #![feature(unboxed_closures)]
+#![omit_gdb_pretty_printer_section]
 
 struct Struct {
     a: int,

@@ -29,6 +29,7 @@
 // lldb-check:[...]$0 = [1, 2, 3]
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 static mut VECT: [i32; 3] = [1, 2, 3];
 

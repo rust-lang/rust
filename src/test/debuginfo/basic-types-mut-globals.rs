@@ -83,6 +83,7 @@
 // gdb-check:$28 = 9.25
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 static mut B: bool = false;
 static mut I: int = -1;

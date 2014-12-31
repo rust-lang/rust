@@ -126,6 +126,7 @@
 // lldb-check:[...]$17 = 232
 // lldb-command:continue
 
+#![omit_gdb_pretty_printer_section]
 
 struct Struct {
     x: int,

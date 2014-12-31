@@ -57,6 +57,7 @@
 // lldb-check:[...]$6 = ((21, 22), 23)
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 fn main() {
     let no_padding1: ((u32, u32), u32, u32) = ((0, 1), 2, 3);

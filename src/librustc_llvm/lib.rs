@@ -1743,7 +1743,8 @@ extern {
                                           isOptimized: bool,
                                           Flags: *const c_char,
                                           RuntimeVer: c_uint,
-                                          SplitName: *const c_char);
+                                          SplitName: *const c_char)
+                                          -> DIDescriptor;
 
     pub fn LLVMDIBuilderCreateFile(Builder: DIBuilderRef,
                                    Filename: *const c_char,
