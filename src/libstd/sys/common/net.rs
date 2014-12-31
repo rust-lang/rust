@@ -56,10 +56,10 @@ pub enum InAddr {
 pub fn ip_to_inaddr(ip: IpAddr) -> InAddr {
     match ip {
         Ipv4Addr(a, b, c, d) => {
-            let ip = (a as u32 << 24) |
-                     (b as u32 << 16) |
-                     (c as u32 <<  8) |
-                     (d as u32 <<  0);
+            let ip = ((a as u32) << 24) |
+                     ((b as u32) << 16) |
+                     ((c as u32) <<  8) |
+                     ((d as u32) <<  0);
             In4Addr(libc::in_addr {
                 s_addr: Int::from_be(ip)
             })

@@ -458,7 +458,7 @@ impl<'a> Iterator<Utf16Item> for Utf16Items<'a> {
             }
 
             // all ok, so lets decode it.
-            let c = ((u - 0xD800) as u32 << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
+            let c = (((u - 0xD800) as u32) << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
             Some(Utf16Item::ScalarValue(unsafe {mem::transmute(c)}))
         }
     }

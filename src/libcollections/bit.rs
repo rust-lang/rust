@@ -314,17 +314,17 @@ impl Bitv {
 
         for i in range(0, complete_words) {
             bitv.storage.push(
-                (reverse_bits(bytes[i * 4 + 0]) as u32 << 0) |
-                (reverse_bits(bytes[i * 4 + 1]) as u32 << 8) |
-                (reverse_bits(bytes[i * 4 + 2]) as u32 << 16) |
-                (reverse_bits(bytes[i * 4 + 3]) as u32 << 24)
+                ((reverse_bits(bytes[i * 4 + 0]) as u32) << 0) |
+                ((reverse_bits(bytes[i * 4 + 1]) as u32) << 8) |
+                ((reverse_bits(bytes[i * 4 + 2]) as u32) << 16) |
+                ((reverse_bits(bytes[i * 4 + 3]) as u32) << 24)
             );
         }
 
         if extra_bytes > 0 {
             let mut last_word = 0u32;
             for (i, &byte) in bytes[complete_words*4..].iter().enumerate() {
-                last_word |= reverse_bits(byte) as u32 << (i * 8);
+                last_word |= (reverse_bits(byte) as u32) << (i * 8);
             }
             bitv.storage.push(last_word);
         }
@@ -645,7 +645,7 @@ impl Bitv {
             if offset >= bitv.nbits {
                 0
             } else {
-                bitv[offset] as u8 << (7 - bit)
+                (bitv[offset] as u8) << (7 - bit)
             }
         }
 
