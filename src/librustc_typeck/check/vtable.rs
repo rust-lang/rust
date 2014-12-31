@@ -190,11 +190,13 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
     }
 
-    /// Returns a vec of error messages. If hte vec is empty - no errors!
+    /// Returns a vec of error messages. If the vec is empty - no errors!
     ///
     /// There are some limitations to calling functions through an object, because (a) the self
     /// type is not known (that's the whole point of a trait instance, after all, to obscure the
-    /// self type) and (b) the call must go through a vtable and hence cannot be monomorphized.
+    /// self type), (b) the call must go through a vtable and hence cannot be monomorphized and
+    /// (c) the trait contains static methods which can't be called because we don't know the
+    /// concrete type.
     fn check_object_safety_of_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                            object_trait: &ty::PolyTraitRef<'tcx>,
                                            method: &ty::Method<'tcx>)
@@ -210,9 +212,11 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
 
             ty::StaticExplicitSelfCategory => {
-                // Static methods are always object-safe since they
-                // can't be called through a trait object
-                return msgs
+                // Static methods are never object safe (reason (c)).
+                msgs.push(format!("cannot call a static method (`{}`) \
+                                   through a trait object",
+                                  method_name));
+                return msgs;
             }
             ty::ByReferenceExplicitSelfCategory(..) |
             ty::ByBoxExplicitSelfCategory => {}
