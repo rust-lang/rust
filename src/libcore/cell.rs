@@ -224,7 +224,7 @@ impl<T:Default + Copy> Default for Cell<T> {
     }
 }
 
-#[unstable = "waiting for `PartialEq` trait to become stable"]
+#[stable]
 impl<T:PartialEq + Copy> PartialEq for Cell<T> {
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
@@ -358,7 +358,7 @@ impl<T:Default> Default for RefCell<T> {
     }
 }
 
-#[unstable = "waiting for `PartialEq` to become stable"]
+#[stable]
 impl<T: PartialEq> PartialEq for RefCell<T> {
     fn eq(&self, other: &RefCell<T>) -> bool {
         *self.borrow() == *other.borrow()

@@ -815,6 +815,7 @@ impl<'a> Extend<&'a str> for String {
     }
 }
 
+#[stable]
 impl PartialEq for String {
     #[inline]
     fn eq(&self, other: &String) -> bool { PartialEq::eq(&**self, &**other) }
@@ -824,6 +825,7 @@ impl PartialEq for String {
 
 macro_rules! impl_eq {
     ($lhs:ty, $rhs: ty) => {
+        #[stable]
         impl<'a> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
@@ -831,6 +833,7 @@ macro_rules! impl_eq {
             fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
         }
 
+        #[stable]
         impl<'a> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&**self, &**other) }
@@ -844,6 +847,7 @@ macro_rules! impl_eq {
 impl_eq! { String, &'a str }
 impl_eq! { CowString<'a>, String }
 
+#[stable]
 impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
     #[inline]
     fn eq(&self, other: &&'b str) -> bool { PartialEq::eq(&**self, &**other) }
@@ -851,6 +855,7 @@ impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
     fn ne(&self, other: &&'b str) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
+#[stable]
 impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
     #[inline]
     fn eq(&self, other: &CowString<'a>) -> bool { PartialEq::eq(&**self, &**other) }
