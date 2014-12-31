@@ -21,6 +21,7 @@ use core::prelude::*;
 use core::{slice, mem, ptr, cmp, num, raw};
 use core::iter::Zip;
 use core::borrow::BorrowFrom;
+use core::ptr::Unique;
 use alloc::heap;
 
 /// Represents the result of an Insertion: either the item fit, or the node had to split
@@ -51,11 +52,11 @@ pub struct Node<K, V> {
     // These will never be null during normal usage of a `Node`. However, to avoid the need for a
     // drop flag, `Node::drop` zeroes `keys`, signaling that the `Node` has already been cleaned
     // up.
-    keys: *mut K,
-    vals: *mut V,
+    keys: Unique<K>,
+    vals: Unique<V>,
 
     // In leaf nodes, this will be null, and no space will be allocated for edges.
-    edges: *mut Node<K, V>,
+    edges: Unique<Node<K, V>>,
 
     // At any given time, there will be `_len` keys, `_len` values, and (in an internal node)
     // `_len + 1` edges. In a leaf node, there will never be any edges.
@@ -255,7 +256,7 @@ impl<T> Drop for RawItems<T> {
 #[unsafe_destructor]
 impl<K, V> Drop for Node<K, V> {
     fn drop(&mut self) {
-        if self.keys.is_null() {
+        if self.keys.0.is_null() {
             // We have already cleaned up this node.
             return;
         }
@@ -269,7 +270,7 @@ impl<K, V> Drop for Node<K, V> {
             self.destroy();
         }
 
-        self.keys = ptr::null_mut();
+        self.keys.0 = ptr::null_mut();
     }
 }
 
@@ -285,9 +286,9 @@ impl<K, V> Node<K, V> {
         let (vals_offset, edges_offset) = calculate_offsets_generic::<K, V>(capacity, false);
 
         Node {
-            keys: buffer as *mut K,
-            vals: buffer.offset(vals_offset as int) as *mut V,
-            edges: buffer.offset(edges_offset as int) as *mut Node<K, V>,
+            keys: Unique(buffer as *mut K),
+            vals: Unique(buffer.offset(vals_offset as int) as *mut V),
+            edges: Unique(buffer.offset(edges_offset as int) as *mut Node<K, V>),
             _len: 0,
             _capacity: capacity,
         }
@@ -303,9 +304,9 @@ impl<K, V> Node<K, V> {
         let (vals_offset, _) = calculate_offsets_generic::<K, V>(capacity, true);
 
         Node {
-            keys: buffer as *mut K,
-            vals: unsafe { buffer.offset(vals_offset as int) as *mut V },
-            edges: ptr::null_mut(),
+            keys: Unique(buffer as *mut K).
+            vals: Unique(unsafe { buffer.offset(vals_offset as int) as *mut V }),
+            edges: Unique(ptr::null_mut::<u8>()),
             _len: 0,
             _capacity: capacity,
         }
@@ -314,18 +315,18 @@ impl<K, V> Node<K, V> {
     unsafe fn destroy(&mut self) {
         let (alignment, size) =
                 calculate_allocation_generic::<K, V>(self.capacity(), self.is_leaf());
-        heap::deallocate(self.keys as *mut u8, size, alignment);
+        heap::deallocate(self.keys.0 as *mut u8, size, alignment);
     }
 
     #[inline]
     pub fn as_slices<'a>(&'a self) -> (&'a [K], &'a [V]) {
         unsafe {(
             mem::transmute(raw::Slice {
-                data: self.keys as *const K,
+                data: self.keys.0 as *const K,
                 len: self.len()
             }),
             mem::transmute(raw::Slice {
-                data: self.vals as *const V,
+                data: self.vals.0 as *const V,
                 len: self.len()
             })
         )}
@@ -344,7 +345,7 @@ impl<K, V> Node<K, V> {
         } else {
             unsafe {
                 mem::transmute(raw::Slice {
-                    data: self.edges as *const Node<K, V>,
+                    data: self.edges.0 as *const Node<K, V>,
                     len: self.len() + 1
                 })
             }
