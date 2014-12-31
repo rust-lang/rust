@@ -1122,11 +1122,15 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         })
     }
 
-    // FIXME(#19596) unbox `op`
-    pub fn cat_pattern(&self,
-                       cmt: cmt<'tcx>,
-                       pat: &ast::Pat,
-                       op: |&MemCategorizationContext<'t, TYPER>, cmt<'tcx>, &ast::Pat|)
+    pub fn cat_pattern<F>(&self, cmt: cmt<'tcx>, pat: &ast::Pat, mut op: F) where
+        F: FnMut(&MemCategorizationContext<'t, TYPER>, cmt<'tcx>, &ast::Pat),
+    {
+        self.cat_pattern_(cmt, pat, &mut op)
+    }
+
+    // FIXME(#19596) This is a workaround, but there should be a better way to do this
+    fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &ast::Pat, op: &mut F) where
+        F: FnMut(&MemCategorizationContext<'t, TYPER>, cmt<'tcx>, &ast::Pat),
     {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
@@ -1177,7 +1181,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                pat.id, pprust::pat_to_string(pat),
                cmt.repr(self.tcx()));
 
-        op(self, cmt.clone(), pat);
+        (*op)(self, cmt.clone(), pat);
 
         let def_map = self.tcx().def_map.borrow();
         let opt_def = def_map.get(&pat.id);
@@ -1214,7 +1218,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                 pat, cmt.clone(), subpat_ty,
                                 InteriorField(PositionalField(i)));
 
-                        self.cat_pattern(subcmt, &**subpat, |x,y,z| op(x,y,z));
+                        self.cat_pattern_(subcmt, &**subpat, op);
                     }
                 }
                 Some(&def::DefStruct(..)) => {
@@ -1224,13 +1228,12 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                             self.cat_imm_interior(
                                 pat, cmt.clone(), subpat_ty,
                                 InteriorField(PositionalField(i)));
-                        self.cat_pattern(cmt_field, &**subpat,
-                                         |x,y,z| op(x,y,z));
+                        self.cat_pattern_(cmt_field, &**subpat, op);
                     }
                 }
                 Some(&def::DefConst(..)) => {
                     for subpat in subpats.iter() {
-                        self.cat_pattern(cmt.clone(), &**subpat, |x,y,z| op(x,y,z));
+                        self.cat_pattern_(cmt.clone(), &**subpat, op);
                     }
                 }
                 _ => {
@@ -1242,7 +1245,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           }
 
           ast::PatIdent(_, _, Some(ref subpat)) => {
-              self.cat_pattern(cmt, &**subpat, op);
+              self.cat_pattern_(cmt, &**subpat, op);
           }
 
           ast::PatIdent(_, _, None) => {
@@ -1254,7 +1257,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             for fp in field_pats.iter() {
                 let field_ty = self.pat_ty(&*fp.node.pat); // see (*2)
                 let cmt_field = self.cat_field(pat, cmt.clone(), fp.node.ident.name, field_ty);
-                self.cat_pattern(cmt_field, &*fp.node.pat, |x,y,z| op(x,y,z));
+                self.cat_pattern_(cmt_field, &*fp.node.pat, op);
             }
           }
 
@@ -1266,29 +1269,28 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     self.cat_imm_interior(
                         pat, cmt.clone(), subpat_ty,
                         InteriorField(PositionalField(i)));
-                self.cat_pattern(subcmt, &**subpat, |x,y,z| op(x,y,z));
+                self.cat_pattern_(subcmt, &**subpat, op);
             }
           }
 
           ast::PatBox(ref subpat) | ast::PatRegion(ref subpat) => {
             // @p1, ~p1, ref p1
             let subcmt = self.cat_deref(pat, cmt, 0, false);
-            self.cat_pattern(subcmt, &**subpat, op);
+            self.cat_pattern_(subcmt, &**subpat, op);
           }
 
           ast::PatVec(ref before, ref slice, ref after) => {
               let elt_cmt = self.cat_index(pat, self.deref_vec(pat, cmt));
               for before_pat in before.iter() {
-                  self.cat_pattern(elt_cmt.clone(), &**before_pat,
-                                   |x,y,z| op(x,y,z));
+                  self.cat_pattern_(elt_cmt.clone(), &**before_pat, op);
               }
               for slice_pat in slice.iter() {
                   let slice_ty = self.pat_ty(&**slice_pat);
                   let slice_cmt = self.cat_rvalue_node(pat.id(), pat.span(), slice_ty);
-                  self.cat_pattern(slice_cmt, &**slice_pat, |x,y,z| op(x,y,z));
+                  self.cat_pattern_(slice_cmt, &**slice_pat, op);
               }
               for after_pat in after.iter() {
-                  self.cat_pattern(elt_cmt.clone(), &**after_pat, |x,y,z| op(x,y,z));
+                  self.cat_pattern_(elt_cmt.clone(), &**after_pat, op);
               }
           }
 
