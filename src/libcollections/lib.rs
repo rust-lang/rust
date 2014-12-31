@@ -25,6 +25,7 @@
 #![feature(macro_rules, default_type_params, phase, globs)]
 #![feature(unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
+#![feature(associated_types)]
 #![no_std]
 
 #[phase(plugin, link)] extern crate core;

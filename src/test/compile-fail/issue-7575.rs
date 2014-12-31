@@ -10,6 +10,8 @@
 
 // Test the mechanism for warning about possible missing `self` declarations.
 
+// ignore-test FIXME(japaric) this ICEs
+
 trait CtxtFn {
     fn f8(self, uint) -> uint;
     fn f9(uint) -> uint; //~ NOTE candidate

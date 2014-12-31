@@ -25,19 +25,25 @@
 //! demonstrates adding and subtracting two `Point`s.
 //!
 //! ```rust
+//! #![feature(associated_types)]
+//!
 //! #[deriving(Show)]
 //! struct Point {
 //!     x: int,
 //!     y: int
 //! }
 //!
-//! impl Add<Point, Point> for Point {
+//! impl Add for Point {
+//!     type Output = Point;
+//!
 //!     fn add(self, other: Point) -> Point {
 //!         Point {x: self.x + other.x, y: self.y + other.y}
 //!     }
 //! }
 //!
-//! impl Sub<Point, Point> for Point {
+//! impl Sub for Point {
+//!     type Output = Point;
+//!
 //!     fn sub(self, other: Point) -> Point {
 //!         Point {x: self.x - other.x, y: self.y - other.y}
 //!     }
@@ -91,10 +97,13 @@ pub trait Drop {
 /// calling `add`, and therefore, `main` prints `Adding!`.
 ///
 /// ```rust
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl Add<Foo, Foo> for Foo {
+/// impl Add for Foo {
+///     type Output = Foo;
+///
 ///     fn add(self, _rhs: Foo) -> Foo {
 ///       println!("Adding!");
 ///       self
@@ -106,14 +115,18 @@ pub trait Drop {
 /// }
 /// ```
 #[lang="add"]
-pub trait Add<RHS, Result> {
+pub trait Add<RHS=Self> {
+    type Output;
+
     /// The method for the `+` operator
-    fn add(self, rhs: RHS) -> Result;
+    fn add(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! add_impl {
     ($($t:ty)*) => ($(
-        impl Add<$t, $t> for $t {
+        impl Add for $t {
+            type Output = $t;
+
             #[inline]
             fn add(self, other: $t) -> $t { self + other }
         }
@@ -130,10 +143,13 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `sub`, and therefore, `main` prints `Subtracting!`.
 ///
 /// ```rust
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl Sub<Foo, Foo> for Foo {
+/// impl Sub for Foo {
+///     type Output = Foo;
+///
 ///     fn sub(self, _rhs: Foo) -> Foo {
 ///         println!("Subtracting!");
 ///         self
@@ -145,14 +161,18 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="sub"]
-pub trait Sub<RHS, Result> {
+pub trait Sub<RHS=Self> {
+    type Output;
+
     /// The method for the `-` operator
-    fn sub(self, rhs: RHS) -> Result;
+    fn sub(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! sub_impl {
     ($($t:ty)*) => ($(
-        impl Sub<$t, $t> for $t {
+        impl Sub for $t {
+            type Output = $t;
+
             #[inline]
             fn sub(self, other: $t) -> $t { self - other }
         }
@@ -169,10 +189,13 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `mul`, and therefore, `main` prints `Multiplying!`.
 ///
 /// ```rust
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl Mul<Foo, Foo> for Foo {
+/// impl Mul for Foo {
+///     type Output = Foo;
+///
 ///     fn mul(self, _rhs: Foo) -> Foo {
 ///         println!("Multiplying!");
 ///         self
@@ -184,14 +207,18 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="mul"]
-pub trait Mul<RHS, Result> {
+pub trait Mul<RHS=Self> {
+    type Output;
+
     /// The method for the `*` operator
-    fn mul(self, rhs: RHS) -> Result;
+    fn mul(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! mul_impl {
     ($($t:ty)*) => ($(
-        impl Mul<$t, $t> for $t {
+        impl Mul for $t {
+            type Output = $t;
+
             #[inline]
             fn mul(self, other: $t) -> $t { self * other }
         }
@@ -208,10 +235,13 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `div`, and therefore, `main` prints `Dividing!`.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl Div<Foo, Foo> for Foo {
+/// impl Div for Foo {
+///     type Output = Foo;
+///
 ///     fn div(self, _rhs: Foo) -> Foo {
 ///         println!("Dividing!");
 ///         self
@@ -223,14 +253,18 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="div"]
-pub trait Div<RHS, Result> {
+pub trait Div<RHS=Self> {
+    type Output;
+
     /// The method for the `/` operator
-    fn div(self, rhs: RHS) -> Result;
+    fn div(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! div_impl {
     ($($t:ty)*) => ($(
-        impl Div<$t, $t> for $t {
+        impl Div for $t {
+            type Output = $t;
+
             #[inline]
             fn div(self, other: $t) -> $t { self / other }
         }
@@ -247,10 +281,13 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl Rem<Foo, Foo> for Foo {
+/// impl Rem for Foo {
+///     type Output = Foo;
+///
 ///     fn rem(self, _rhs: Foo) -> Foo {
 ///         println!("Remainder-ing!");
 ///         self
@@ -262,14 +299,18 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="rem"]
-pub trait Rem<RHS, Result> {
+pub trait Rem<RHS=Self> {
+    type Output = Self;
+
     /// The method for the `%` operator
-    fn rem(self, rhs: RHS) -> Result;
+    fn rem(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! rem_impl {
     ($($t:ty)*) => ($(
-        impl Rem<$t, $t> for $t {
+        impl Rem for $t {
+            type Output = $t;
+
             #[inline]
             fn rem(self, other: $t) -> $t { self % other }
         }
@@ -278,7 +319,9 @@ macro_rules! rem_impl {
 
 macro_rules! rem_float_impl {
     ($t:ty, $fmod:ident) => {
-        impl Rem<$t, $t> for $t {
+        impl Rem for $t {
+            type Output = $t;
+
             #[inline]
             fn rem(self, other: $t) -> $t {
                 extern { fn $fmod(a: $t, b: $t) -> $t; }
@@ -396,10 +439,13 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl BitAnd<Foo, Foo> for Foo {
+/// impl BitAnd for Foo {
+///     type Output = Foo;
+///
 ///     fn bitand(self, _rhs: Foo) -> Foo {
 ///         println!("Bitwise And-ing!");
 ///         self
@@ -411,14 +457,18 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitand"]
-pub trait BitAnd<RHS, Result> {
+pub trait BitAnd<RHS=Self> {
+    type Output;
+
     /// The method for the `&` operator
-    fn bitand(self, rhs: RHS) -> Result;
+    fn bitand(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitand_impl {
     ($($t:ty)*) => ($(
-        impl BitAnd<$t, $t> for $t {
+        impl BitAnd for $t {
+            type Output = $t;
+
             #[inline]
             fn bitand(self, rhs: $t) -> $t { self & rhs }
         }
@@ -435,10 +485,13 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitor`, and therefore, `main` prints `Bitwise Or-ing!`.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl BitOr<Foo, Foo> for Foo {
+/// impl BitOr for Foo {
+///     type Output = Foo;
+///
 ///     fn bitor(self, _rhs: Foo) -> Foo {
 ///         println!("Bitwise Or-ing!");
 ///         self
@@ -450,14 +503,18 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitor"]
-pub trait BitOr<RHS, Result> {
+pub trait BitOr<RHS=Self> {
+    type Output;
+
     /// The method for the `|` operator
-    fn bitor(self, rhs: RHS) -> Result;
+    fn bitor(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitor_impl {
     ($($t:ty)*) => ($(
-        impl BitOr<$t,$t> for $t {
+        impl BitOr for $t {
+            type Output = $t;
+
             #[inline]
             fn bitor(self, rhs: $t) -> $t { self | rhs }
         }
@@ -474,10 +531,13 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitxor`, and therefore, `main` prints `Bitwise Xor-ing!`.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl BitXor<Foo, Foo> for Foo {
+/// impl BitXor for Foo {
+///     type Output = Foo;
+///
 ///     fn bitxor(self, _rhs: Foo) -> Foo {
 ///         println!("Bitwise Xor-ing!");
 ///         self
@@ -489,14 +549,18 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitxor"]
-pub trait BitXor<RHS, Result> {
+pub trait BitXor<RHS=Self> {
+    type Output;
+
     /// The method for the `^` operator
-    fn bitxor(self, rhs: RHS) -> Result;
+    fn bitxor(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitxor_impl {
     ($($t:ty)*) => ($(
-        impl BitXor<$t, $t> for $t {
+        impl BitXor for $t {
+            type Output = $t;
+
             #[inline]
             fn bitxor(self, other: $t) -> $t { self ^ other }
         }
@@ -513,10 +577,13 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shl`, and therefore, `main` prints `Shifting left!`.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl Shl<Foo, Foo> for Foo {
+/// impl Shl<Foo> for Foo {
+///     type Output = Foo;
+///
 ///     fn shl(self, _rhs: Foo) -> Foo {
 ///         println!("Shifting left!");
 ///         self
@@ -528,14 +595,18 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="shl"]
-pub trait Shl<RHS, Result> {
+pub trait Shl<RHS> {
+    type Output;
+
     /// The method for the `<<` operator
-    fn shl(self, rhs: RHS) -> Result;
+    fn shl(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! shl_impl {
     ($($t:ty)*) => ($(
-        impl Shl<uint, $t> for $t {
+        impl Shl<uint> for $t {
+            type Output = $t;
+
             #[inline]
             fn shl(self, other: uint) -> $t {
                 self << other
@@ -554,10 +625,13 @@ shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shr`, and therefore, `main` prints `Shifting right!`.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl Shr<Foo, Foo> for Foo {
+/// impl Shr<Foo> for Foo {
+///     type Output = Foo;
+///
 ///     fn shr(self, _rhs: Foo) -> Foo {
 ///         println!("Shifting right!");
 ///         self
@@ -569,14 +643,18 @@ shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="shr"]
-pub trait Shr<RHS, Result> {
+pub trait Shr<RHS> {
+    type Output;
+
     /// The method for the `>>` operator
-    fn shr(self, rhs: RHS) -> Result;
+    fn shr(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! shr_impl {
     ($($t:ty)*) => ($(
-        impl Shr<uint, $t> for $t {
+        impl Shr<uint> for $t {
+            type Output = $t;
+
             #[inline]
             fn shr(self, other: uint) -> $t { self >> other }
         }

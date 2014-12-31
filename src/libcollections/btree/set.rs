@@ -449,7 +449,9 @@ impl<T: Ord> Default for BTreeSet<T> {
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
-impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
+impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>> for &'a BTreeSet<T> {
+    type Output = BTreeSet<T>;
+
     /// Returns the difference of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
     /// # Examples
@@ -470,7 +472,9 @@ impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
-impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
+impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>> for &'a BTreeSet<T> {
+    type Output = BTreeSet<T>;
+
     /// Returns the symmetric difference of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
     /// # Examples
@@ -491,7 +495,9 @@ impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeS
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
-impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
+impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>> for &'a BTreeSet<T> {
+    type Output = BTreeSet<T>;
+
     /// Returns the intersection of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
     /// # Examples
@@ -512,7 +518,9 @@ impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeS
 }
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
-impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
+impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
+    type Output = BTreeSet<T>;
+
     /// Returns the union of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
     /// # Examples

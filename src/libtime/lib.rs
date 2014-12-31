@@ -21,6 +21,8 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(phase, globs)]
+#![feature(associated_types)]
+#![feature(default_type_params)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
@@ -98,7 +100,9 @@ impl Timespec {
     }
 }
 
-impl Add<Duration, Timespec> for Timespec {
+impl Add<Duration> for Timespec {
+    type Output = Timespec;
+
     fn add(self, other: Duration) -> Timespec {
         let d_sec = other.num_seconds();
         // It is safe to unwrap the nanoseconds, because there cannot be
@@ -118,7 +122,9 @@ impl Add<Duration, Timespec> for Timespec {
     }
 }
 
-impl Sub<Timespec, Duration> for Timespec {
+impl Sub for Timespec {
+    type Output = Duration;
+
     fn sub(self, other: Timespec) -> Duration {
         let sec = self.sec - other.sec;
         let nsec = self.nsec - other.nsec;
