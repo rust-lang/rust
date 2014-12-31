@@ -13,9 +13,12 @@ strong stability guarantees in stable releases.
 
 It also redesigns and simplifies stability attributes to better
 integrate with release channels and the other stability-moderating
-system in the language, 'feature gates'.
+system in the language, 'feature gates'. While this version of
+stability attributes is only suitable for use by the standard
+distribution, we leave open the possibility of adding a redesigned
+system for the greater cargo ecosystem to annotate feature stability.
 
-Finally, it discusses how Cargo will leverage feature gates to
+Finally, it discusses how Cargo may leverage feature gates to
 determine compatibility of Rust crates with specific revisions of the
 Rust language.
 
@@ -193,27 +196,31 @@ unmarked functions (which are in most cases considered unstable).
 As a simplifying measure stability attributes are unified with feature
 gates, and thus tied to release channels and Rust language versions.
 
-* The unused `#[frozen]` and `#[locked]` levels are removed.
-* The `#[experimental]` level is removed in favor of simply
-  `#[unstable]`.
-* Alter the syntax of the remaining `unstable`, `stable` and
-  `deprecated` to require a `feature` parameter,
-  e.g. `#[unstable(feature = "chicken_dinner")]`. This signals
-  that the item tagged by the attribute is part of the named
-  feature.
-* The `stable` and `deprecated` attributes require an additional
-  parameter `since`, whose value is equal to a *version of the
-  language* (where currently the language version is equal to the
+* All existing stability attributes are removed of any semantic
+  meaning by the compiler. Existing code that uses these attributes
+  will continue to compile, but neither rustc nor rustdoc will
+  interpret them in any way.
+* New `#[staged_unstable(...)]`, `#[staged_stable(...)]`,
+  and `#[staged_deprecated(...)]` attributes are added.
+* All three require a `feature` parameter,
+  e.g. `#[staged_unstable(feature = "chicken_dinner")]`. This signals
+  that the item tagged by the attribute is part of the named feature.
+* The `staged_stable` and `staged_deprecated` attributes require an
+  additional parameter `since`, whose value is equal to a *version of
+  the language* (where currently the language version is equal to the
   compiler version), e.g. `#[stable(feature = "chicken_dinner", since
   = "1.6")]`.
 
 All stability attributes continue to support an optional `description`
 parameter.
 
+The intent of adding the 'staged_' prefix to the stability attributes
+is to leave the more desirable attribute names open for future use.
+
 With these modifications, new API surface area becomes a new "language
 feature" which is controlled via the `#[feature]` attribute just like
 other normal language features. The compiler will disallow all usage
-of `#[unstable(feature = "foo")]` APIs unless the current crate
+of `#[staged_unstable(feature = "foo")]` APIs unless the current crate
 declares `#![feature(foo)]`. This enables crates to declare what API
 features of the standard library they rely on without opting in to all
 unstable API features.
@@ -221,14 +228,14 @@ unstable API features.
 Examples of APIs tagged with stability attributes:
 
 ```
-#[unstable(feature = "a")]
+#[staged_unstable(feature = "a")]
 fn foo() { }
 
-#[stable(feature = "b", since = "1.6")]
+#[staged_stable(feature = "b", since = "1.6")]
 fn bar() { }
 
-#[stable(feature = "c", since = "1.6")]
-#[deprecated(feature = "c", since = "1.7")]
+#[staged_stable(feature = "c", since = "1.6")]
+#[staged_deprecated(feature = "c", since = "1.7")]
 fn baz() { }
 ```
 
@@ -241,54 +248,56 @@ into the language. More detail on these matters below.
 Some additional restrictions are enforced by the compiler as a sanity
 check that they are being used correctly.
 
-* The `deprecated` attribute *must* be paired with a `stable`
-  attribute, enforcing that the progression of all features is from
-  'unstable' to 'stable' to 'deprecated' and that the version in which
-  the feature was promoted to stable is recorded and maintained as
-  well as the version in which a feature was deprecated.
+* The `staged_deprecated` attribute *must* be paired with a
+  `staged_stable` attribute, enforcing that the progression of all
+  features is from 'staged_unstable' to 'staged_stable' to
+  'staged_deprecated' and that the version in which the feature was
+  promoted to stable is recorded and maintained as well as the version
+  in which a feature was deprecated.
 * Within a crate, the compiler enforces that for all APIs with the
-  same feature name where any are marked `stable`, all are either
-  `stable` or `deprecated`. In other words, no single feature may be
-  partially promoted from `unstable` to `stable`, but features may be
-  partially deprecated. This ensures that no APIs are accidentally
-  excluded from stabilization and that entire features may be
-  considered either 'unstable' or 'stable'.
+  same feature name where any are marked `staged_stable`, all are
+  either `staged_stable` or `staged_deprecated`. In other words, no
+  single feature may be partially promoted from `unstable` to
+  `stable`, but features may be partially deprecated. This ensures
+  that no APIs are accidentally excluded from stabilization and that
+  entire features may be considered either 'unstable' or 'stable'.
 
-It's important to note that *the role of stability attributes outside
-of the standard distribution is not clear*, moreso once they are
-explicitly tied to release channels and language versions, and
-*stability attributes should not be used outside of the standard
-distribution*. If such features become desirable generally they
-will be solved in Cargo.
+It's important to note that these stability attributes are *only known
+to be useful to the standard distribution*, because of the explicit
+linkage to language versions and release channels. There is though no
+mechanism to explicitly forbid their use outside of the standard
+distribution. A general mechanism for indicating API stability
+will be reconsidered in the future.
 
 ### API lifecycle
 
 These attributes alter the process of how new APIs are added to the
 standard library slightly. First an API will be proposed via the RFC
-process, and a name for the API feature being added will be assigned at
-that time. When the RFC is accepted, the API will be added to the
-standard library with an `#[unstable(feature = "...")]`attribute
-indicating what feature the API was assigned to.
+process, and a name for the API feature being added will be assigned
+at that time. When the RFC is accepted, the API will be added to the
+standard library with an `#[staged_unstable(feature =
+"...")]`attribute indicating what feature the API was assigned to.
 
 After receiving test coverage from nightly users (who have opted into
-the feature) or thorough review, all APIs with a given feature
-will be changed from `unstable` to `stable`, adding `since = "..."`
-to mark the version in which the promotion occurred, and the feature
-is considered stable and may be used on the stable release channel.
+the feature) or thorough review, all APIs with a given feature will be
+changed from `staged_unstable` to `staged_stable`, adding `since =
+"..."` to mark the version in which the promotion occurred, and the
+feature is considered stable and may be used on the stable release
+channel.
 
-When a stable API becomes deprecated the `deprecated` attribute is
-added in addition to the existing `stable` attribute, as well
-recording the version in which the deprecation was performed with the
-`since` parameter.
+When a stable API becomes deprecated the `staged_deprecated` attribute
+is added in addition to the existing `staged_stable` attribute, as
+well recording the version in which the deprecation was performed with
+the `since` parameter.
 
 (Occassionally unstable APIs may be deprecated for the sake of easing
-user transitions, in which case they receive both the `stable` and
-`deprecated` attributes at once.)
+user transitions, in which case they receive both the `staged_stable`
+and `staged_deprecated` attributes at once.)
 
 ### Checking `#[feature]`
 
 The names of features will no longer be a hardcoded list in the compiler
-due to the free-form nature of the `#[unstable]` feature names.
+due to the free-form nature of the `#[staged_unstable]` feature names.
 Instead, the compiler will perform the following steps when inspecting
 `#[feature]` attributes lists:
 
@@ -331,32 +340,33 @@ rust they indicate they can be compiled with. Some specific use cases are:
 To solve this problem, Cargo and crates.io will grow the knowledge of
 the minimum required Rust language version required to compile a
 crate. Currently the Rust language version coincides with the version
-of the `rustc` compiler. Crucially, *on the stable release channel,
-analysis of feature usage is nearly sufficient to determine
-compatibility of a crate with both past and future revisions of the
-Rust language within a single major release series*: by knowing in
-which version each feature of the language and each feature of the
-library was stabilized, and by detecting every feature used by a
-crate, rustc can determine the minimum version required; and rustc may
-assume that the crate will be compatible with future stable
-releases. There are two caveats: first, conditional compilation makes
-it not possible in some cases to detect all features in use, which may
-result in Cargo detecting a minumum version less than that required on
-all platforms. For this and other reasons Cargo will allow the minimum
+of the `rustc` compiler.
+
+In the absense of user-supplied information about minimum language
+version requirements, *Cargo will attempt to use feature information
+to determine version compatibility*: by knowing in which version each
+feature of the language and each feature of the library was
+stabilized, and by detecting every feature used by a crate, rustc can
+determine the minimum version required; and rustc may assume that the
+crate will be compatible with future stable releases. There are two
+caveats: first, conditional compilation makes it not possible in some
+cases to detect all features in use, which may result in Cargo
+detecting a minumum version less than that required on all
+platforms. For this and other reasons Cargo will allow the minimum
 version to be specified manually. Second, rustc can not make any
 assumptions about compatibility across major revisions of the
 language.
 
 To calculate this information, Cargo will compile crates just before
 publishing. In this process, the Rust compiler will record all used
-language features as well as all used `#[stable]` APIs. Each compiler
-will contain archival knowledge of what stable version of the compiler
-language features were added to, and each `#[stable]` API has the
-`since` metadata to tell which version of the compiler it was released
-in. The compiler will calculate the maximum of all these versions
-(language plus library features) to pass to Cargo. If any `#[feature]`
-directive is detected, however, the required Rust language version is
-"nightly".
+language features as well as all used `#[staged_stable]` APIs. Each
+compiler will contain archival knowledge of what stable version of the
+compiler language features were added to, and each `#[staged_stable]`
+API has the `since` metadata to tell which version of the compiler it
+was released in. The compiler will calculate the maximum of all these
+versions (language plus library features) to pass to Cargo. If any
+`#[feature]` directive is detected, however, the required Rust
+language version is "nightly".
 
 Cargo will then pass this required language version to crates.io which
 will both store it in the index as well as present it as part of the UI.
@@ -418,6 +428,9 @@ This is done as a judgement call that in each context the given syntax
 looks best, and accepting that since this is a feature that is not
 intended for general use the discrepancy is not a major problem.
 
+Having Cargo do version detection through feature analysis is known
+not to be foolproof, and may present further unknown obstacles.
+
 # Alternatives
 
 Leave feature gates and unstable APIs exposed to the stable
@@ -443,6 +456,9 @@ be possible to just stop running lints in rustdoc.
 If stability attributes are only for std, that takes away the
 `#[deprecated]` attribute from Cargo libs, which is more clearly
 applicable.
+
+What mechanism ensures that all API's have stability coverage? Probably
+the will just default to unstable with some 'default' feature name.
 
 # See Also
 
