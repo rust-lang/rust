@@ -35,6 +35,7 @@ static MINIMUM_CAPACITY: uint = 2u;
 // be scrapped anyway. Defer to rewrite?
 
 /// `RingBuf` is a circular buffer, which can be used as a double-ended queue efficiently.
+#[stable]
 pub struct RingBuf<T> {
     // tail and head are pointers into the buffer. Tail always points
     // to the first element that could be read, Head always points
@@ -62,6 +63,7 @@ impl<T: Clone> Clone for RingBuf<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T> Drop for RingBuf<T> {
     fn drop(&mut self) {
         self.clear();
@@ -77,7 +79,6 @@ impl<T> Drop for RingBuf<T> {
 
 #[stable]
 impl<T> Default for RingBuf<T> {
-    #[stable]
     #[inline]
     fn default() -> RingBuf<T> { RingBuf::new() }
 }
@@ -85,13 +86,13 @@ impl<T> Default for RingBuf<T> {
 impl<T> RingBuf<T> {
     /// Turn ptr into a slice
     #[inline]
-    unsafe fn buffer_as_slice<'a>(&'a self) -> &'a [T] {
+    unsafe fn buffer_as_slice(&self) -> &[T] {
         mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap })
     }
 
     /// Turn ptr into a mut slice
     #[inline]
-    unsafe fn buffer_as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
+    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
         mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap })
     }
 
@@ -131,13 +132,13 @@ impl<T> RingBuf<T> {
 
 impl<T> RingBuf<T> {
     /// Creates an empty `RingBuf`.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn new() -> RingBuf<T> {
         RingBuf::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Creates an empty `RingBuf` with space for at least `n` elements.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         // +1 since the ringbuffer always leaves one space empty
         let cap = cmp::max(n + 1, MINIMUM_CAPACITY).next_power_of_two();
@@ -175,7 +176,7 @@ impl<T> RingBuf<T> {
     /// buf.push_back(5);
     /// assert_eq!(buf.get(1).unwrap(), &4);
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn get(&self, i: uint) -> Option<&T> {
         if i < self.len() {
             let idx = self.wrap_index(self.tail + i);
@@ -205,7 +206,7 @@ impl<T> RingBuf<T> {
     ///
     /// assert_eq!(buf[1], 7);
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn get_mut(&mut self, i: uint) -> Option<&mut T> {
         if i < self.len() {
             let idx = self.wrap_index(self.tail + i);
@@ -257,7 +258,7 @@ impl<T> RingBuf<T> {
     /// assert!(buf.capacity() >= 10);
     /// ```
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn capacity(&self) -> uint { self.cap - 1 }
 
     /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
@@ -280,7 +281,7 @@ impl<T> RingBuf<T> {
     /// buf.reserve_exact(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn reserve_exact(&mut self, additional: uint) {
         self.reserve(additional);
     }
@@ -301,7 +302,7 @@ impl<T> RingBuf<T> {
     /// buf.reserve(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn reserve(&mut self, additional: uint) {
         let new_len = self.len() + additional;
         assert!(new_len + 1 > self.len(), "capacity overflow");
@@ -382,7 +383,7 @@ impl<T> RingBuf<T> {
     /// let b: &[_] = &[&5, &3, &4];
     /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), b);
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn iter(&self) -> Iter<T> {
         Iter {
             tail: self.tail,
@@ -408,7 +409,7 @@ impl<T> RingBuf<T> {
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
     /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
         IterMut {
             tail: self.tail,
@@ -420,7 +421,7 @@ impl<T> RingBuf<T> {
     }
 
     /// Consumes the list into an iterator yielding elements by value.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn into_iter(self) -> IntoIter<T> {
         IntoIter {
             inner: self,
@@ -481,7 +482,7 @@ impl<T> RingBuf<T> {
     /// v.push_back(1i);
     /// assert_eq!(v.len(), 1);
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn len(&self) -> uint { count(self.tail, self.head, self.cap) }
 
     /// Returns true if the buffer contains no elements
@@ -496,7 +497,7 @@ impl<T> RingBuf<T> {
     /// v.push_front(1i);
     /// assert!(!v.is_empty());
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Creates a draining iterator that clears the `RingBuf` and iterates over
@@ -514,7 +515,7 @@ impl<T> RingBuf<T> {
     /// ```
     #[inline]
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
-    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
+    pub fn drain(&mut self) -> Drain<T> {
         Drain {
             inner: self,
         }
@@ -532,7 +533,7 @@ impl<T> RingBuf<T> {
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     #[inline]
     pub fn clear(&mut self) {
         self.drain();
@@ -643,7 +644,7 @@ impl<T> RingBuf<T> {
     /// assert_eq!(d.pop_front(), Some(2i));
     /// assert_eq!(d.pop_front(), None);
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn pop_front(&mut self) -> Option<T> {
         if self.is_empty() {
             None
@@ -666,7 +667,7 @@ impl<T> RingBuf<T> {
     /// d.push_front(2i);
     /// assert_eq!(d.front(), Some(&2i));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn push_front(&mut self, t: T) {
         if self.is_full() {
             self.reserve(1);
@@ -696,7 +697,7 @@ impl<T> RingBuf<T> {
     /// buf.push_back(3);
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn push_back(&mut self, t: T) {
         if self.is_full() {
             self.reserve(1);
@@ -728,7 +729,7 @@ impl<T> RingBuf<T> {
     /// buf.push_back(3);
     /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[stable]
     pub fn pop_back(&mut self) -> Option<T> {
         if self.is_empty() {
             None
@@ -966,7 +967,7 @@ impl<T> RingBuf<T> {
     /// buf.remove(2);
     /// assert_eq!(Some(&15), buf.get(2));
     /// ```
-    #[unstable = "matches collection reform specification; waiting on panic semantics"]
+    #[stable]
     pub fn remove(&mut self, i: uint) -> Option<T> {
         if self.is_empty() || self.len() <= i {
             return None;
@@ -1129,6 +1130,7 @@ fn count(tail: uint, head: uint, size: uint) -> uint {
 }
 
 /// `RingBuf` iterator.
+#[stable]
 pub struct Iter<'a, T:'a> {
     ring: &'a [T],
     tail: uint,
@@ -1146,6 +1148,7 @@ impl<'a, T> Clone for Iter<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
@@ -1164,6 +1167,7 @@ impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
@@ -1175,8 +1179,10 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
 
+#[stable]
 impl<'a, T> RandomAccessIterator<&'a T> for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1199,6 +1205,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Iter<'a, T> {
 //       with returning the mutable reference. I couldn't find a way to
 //       make the lifetime checker happy so, but there should be a way.
 /// `RingBuf` mutable iterator.
+#[stable]
 pub struct IterMut<'a, T:'a> {
     ptr: *mut T,
     tail: uint,
@@ -1207,6 +1214,7 @@ pub struct IterMut<'a, T:'a> {
     marker: marker::ContravariantLifetime<'a>,
 }
 
+#[stable]
 impl<'a, T> Iterator<&'a mut T> for IterMut<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
@@ -1228,6 +1236,7 @@ impl<'a, T> Iterator<&'a mut T> for IterMut<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T> DoubleEndedIterator<&'a mut T> for IterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
@@ -1242,13 +1251,16 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for IterMut<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T> ExactSizeIterator<&'a mut T> for IterMut<'a, T> {}
 
-// A by-value RingBuf iterator
+/// A by-value RingBuf iterator
+#[stable]
 pub struct IntoIter<T> {
     inner: RingBuf<T>,
 }
 
+#[stable]
 impl<T> Iterator<T> for IntoIter<T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
@@ -1262,6 +1274,7 @@ impl<T> Iterator<T> for IntoIter<T> {
     }
 }
 
+#[stable]
 impl<T> DoubleEndedIterator<T> for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1269,14 +1282,17 @@ impl<T> DoubleEndedIterator<T> for IntoIter<T> {
     }
 }
 
+#[stable]
 impl<T> ExactSizeIterator<T> for IntoIter<T> {}
 
 /// A draining RingBuf iterator
+#[unstable = "matches collection reform specification, waiting for dust to settle"]
 pub struct Drain<'a, T: 'a> {
     inner: &'a mut RingBuf<T>,
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         for _ in *self {}
@@ -1285,6 +1301,7 @@ impl<'a, T: 'a> Drop for Drain<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
@@ -1298,6 +1315,7 @@ impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1305,6 +1323,7 @@ impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
 
 #[stable]
@@ -1333,6 +1352,7 @@ impl<A: Ord> Ord for RingBuf<A> {
     }
 }
 
+#[stable]
 impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
     fn hash(&self, state: &mut S) {
         self.len().hash(state);
@@ -1342,6 +1362,7 @@ impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
     }
 }
 
+#[stable]
 impl<A> Index<uint, A> for RingBuf<A> {
     #[inline]
     fn index<'a>(&'a self, i: &uint) -> &'a A {
@@ -1349,6 +1370,7 @@ impl<A> Index<uint, A> for RingBuf<A> {
     }
 }
 
+#[stable]
 impl<A> IndexMut<uint, A> for RingBuf<A> {
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut A {
@@ -1356,6 +1378,7 @@ impl<A> IndexMut<uint, A> for RingBuf<A> {
     }
 }
 
+#[stable]
 impl<A> FromIterator<A> for RingBuf<A> {
     fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
         let (lower, _) = iterator.size_hint();
@@ -1365,6 +1388,7 @@ impl<A> FromIterator<A> for RingBuf<A> {
     }
 }
 
+#[stable]
 impl<A> Extend<A> for RingBuf<A> {
     fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
         for elt in iterator {
@@ -1373,6 +1397,7 @@ impl<A> Extend<A> for RingBuf<A> {
     }
 }
 
+#[stable]
 impl<T: fmt::Show> fmt::Show for RingBuf<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "["));
