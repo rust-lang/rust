@@ -64,6 +64,7 @@ the direction the language is evolving in.
 * [0520-new-array-repeat-syntax.md](text/0520-new-array-repeat-syntax.md)
 * [0522-self-impl.md](text/0522-self-impl.md)
 * [0532-self-in-use.md](text/0532-self-in-use.md)
+* [0534-deriving2derive.md](text/0534-deriving2derive.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
