@@ -127,7 +127,7 @@ pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: uint =
 pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
-    let validate = |s: String, span: Option<Span>| {
+    let validate = |&: s: String, span: Option<Span>| {
         creader::validate_crate_name(sess, s[], span);
         s
     };

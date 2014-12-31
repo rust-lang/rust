@@ -748,7 +748,7 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<uint> {
         }
     }
 
-    let column_score: |&[Match], uint| -> uint = |m, col| {
+    let column_score = |&: m: &[Match], col: uint| -> uint {
         let total_score = m.iter()
             .map(|row| row.pats[col])
             .map(|pat| pat_score(def_map, pat))
