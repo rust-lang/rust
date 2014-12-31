@@ -177,7 +177,7 @@ use std::mem;
 use std::os;
 use std::rt;
 use std::slice;
-use std::sync::{Once, ONCE_INIT, StaticMutex, MUTEX_INIT};
+use std::sync::{Once, ONCE_INIT};
 
 use regex::Regex;
 
@@ -192,8 +192,6 @@ pub const MAX_LOG_LEVEL: u32 = 255;
 
 /// The default logging level of a crate if no other is specified.
 const DEFAULT_LOG_LEVEL: u32 = 1;
-
-static LOCK: StaticMutex = MUTEX_INIT;
 
 /// An unsafe constant that is the maximum logging level of any module
 /// specified. This is the first line of defense to determining whether a
@@ -281,18 +279,9 @@ impl Drop for DefaultLogger {
 pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     // Test the literal string from args against the current filter, if there
     // is one.
-    unsafe {
-        let _g = LOCK.lock();
-        match FILTER as uint {
-            0 => {}
-            1 => panic!("cannot log after main thread has exited"),
-            n => {
-                let filter = mem::transmute::<_, &Regex>(n);
-                if !filter.is_match(args.to_string().as_slice()) {
-                    return
-                }
-            }
-        }
+    match unsafe { FILTER.as_ref() } {
+        Some(filter) if !filter.is_match(args.to_string()[]) => return,
+        _ => {}
     }
 
     // Completely remove the local logger from TLS in case anyone attempts to
@@ -374,15 +363,9 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
 
     // This assertion should never get tripped unless we're in an at_exit
     // handler after logging has been torn down and a logging attempt was made.
+    assert!(unsafe { !DIRECTIVES.is_null() });
 
-    let _g = LOCK.lock();
-    unsafe {
-        assert!(DIRECTIVES as uint != 0);
-        assert!(DIRECTIVES as uint != 1,
-                "cannot log after the main thread has exited");
-
-        enabled(level, module, (*DIRECTIVES).iter())
-    }
+    enabled(level, module, unsafe { (*DIRECTIVES).iter() })
 }
 
 fn enabled(level: u32,
@@ -438,15 +421,14 @@ fn init() {
 
         // Schedule the cleanup for the globals for when the runtime exits.
         rt::at_exit(move |:| {
-            let _g = LOCK.lock();
             assert!(!DIRECTIVES.is_null());
             let _directives: Box<Vec<directive::LogDirective>> =
                 mem::transmute(DIRECTIVES);
-            DIRECTIVES = 1 as *const Vec<directive::LogDirective>;
+            DIRECTIVES = 0 as *const Vec<directive::LogDirective>;
 
             if !FILTER.is_null() {
                 let _filter: Box<Regex> = mem::transmute(FILTER);
-                FILTER = 1 as *const _;
+                FILTER = 0 as *const _;
             }
         });
     }

@@ -11,13 +11,29 @@
 #![allow(missing_docs)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
+#![allow(unused_unsafe)]
+#![allow(unused_mut)]
 
 extern crate libc;
 
+use num;
 use mem;
 use prelude::*;
 use io::{mod, IoResult, IoError};
 use sync::{Once, ONCE_INIT};
+
+macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
+    static $name: Helper<$m> = Helper {
+        lock: ::sync::MUTEX_INIT,
+        cond: ::sync::CONDVAR_INIT,
+        chan: ::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
+        signal: ::cell::UnsafeCell { value: 0 },
+        initialized: ::cell::UnsafeCell { value: false },
+        shutdown: ::cell::UnsafeCell { value: false },
+    };
+) }
 
 pub mod backtrace;
 pub mod c;
@@ -161,6 +177,14 @@ pub fn init_net() {
                                     &mut data);
             assert_eq!(ret, 0);
         });
+    }
+}
+
+pub fn unimpl() -> IoError {
+    IoError {
+        kind: io::IoUnavailable,
+        desc: "operation is not implemented",
+        detail: None,
     }
 }
 

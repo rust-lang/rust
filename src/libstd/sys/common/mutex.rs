@@ -29,7 +29,6 @@ impl Mutex {
     /// Behavior is undefined if the mutex is moved after the first method is
     /// called on the mutex.
     #[inline]
-    #[allow(dead_code)] // sys is not exported yet
     pub unsafe fn new() -> Mutex { Mutex(imp::Mutex::new()) }
 
     /// Lock the mutex blocking the current thread until it is available.

@@ -34,6 +34,7 @@ impl Drop for Handler {
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 mod imp {
+    use core::prelude::*;
     use sys_common::stack;
 
     use super::Handler;
