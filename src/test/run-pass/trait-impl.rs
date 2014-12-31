@@ -10,6 +10,10 @@
 
 // Test calling methods on an impl for a bare trait.
 
+// aux-build:traitimpl.rs
+extern crate traitimpl;
+use traitimpl::Bar;
+
 static mut COUNT: uint = 1;
 
 trait T {}
@@ -25,6 +29,9 @@ impl<'a> T+'a {
 
 impl T for int {}
 
+struct Foo;
+impl<'a> Bar<'a> for Foo {}
+
 fn main() {
     let x: &T = &42i;
 
@@ -33,4 +40,8 @@ fn main() {
     T::bar();
 
     unsafe { assert!(COUNT == 12); }
+
+    // Cross-crait case
+    let x: &Bar = &Foo;
+    x.bar();
 }

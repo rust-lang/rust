@@ -128,7 +128,7 @@ impl ImplOrTraitItemContainer {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum ImplOrTraitItem<'tcx> {
     MethodTraitItem(Rc<Method<'tcx>>),
     TypeTraitItem(Rc<AssociatedType>),
@@ -173,7 +173,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
     }
 }
 
-#[deriving(Clone, Copy)]
+#[deriving(Clone, Copy, Show)]
 pub enum ImplOrTraitItemId {
     MethodTraitItemId(ast::DefId),
     TypeTraitItemId(ast::DefId),
@@ -232,7 +232,7 @@ impl<'tcx> Method<'tcx> {
     }
 }
 
-#[deriving(Clone, Copy)]
+#[deriving(Clone, Copy, Show)]
 pub struct AssociatedType {
     pub name: ast::Name,
     pub vis: ast::Visibility,
@@ -4931,10 +4931,11 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
     }
 }
 
-/// Helper for looking things up in the various maps that are populated during typeck::collect
-/// (e.g., `cx.impl_or_trait_items`, `cx.tcache`, etc).  All of these share the pattern that if the
-/// id is local, it should have been loaded into the map by the `typeck::collect` phase.  If the
-/// def-id is external, then we have to go consult the crate loading code (and cache the result for
+/// Helper for looking things up in the various maps that are populated during
+/// typeck::collect (e.g., `cx.impl_or_trait_items`, `cx.tcache`, etc).  All of
+/// these share the pattern that if the id is local, it should have been loaded
+/// into the map by the `typeck::collect` phase.  If the def-id is external,
+/// then we have to go consult the crate loading code (and cache the result for
 /// the future).
 fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
                                           def_id: ast::DefId,
@@ -5973,11 +5974,12 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         return
     }
 
+    debug!("populate_implementations_for_type_if_necessary: searching for {}", type_id);
+
     let mut inherent_impls = Vec::new();
     csearch::each_implementation_for_type(&tcx.sess.cstore, type_id,
             |impl_def_id| {
-        let impl_items = csearch::get_impl_items(&tcx.sess.cstore,
-                                                 impl_def_id);
+        let impl_items = csearch::get_impl_items(&tcx.sess.cstore, impl_def_id);
 
         // Record the trait->implementation mappings, if applicable.
         let associated_traits = csearch::get_impl_trait(tcx, impl_def_id);
