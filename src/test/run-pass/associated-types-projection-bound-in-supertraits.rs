@@ -26,7 +26,7 @@ trait Int: Not<Result=Self> {
     fn count_zeros(self) -> uint {
         // neither works
         let x: Self = self.not();
-	    0
+        0
     }
 }
 
