@@ -5449,8 +5449,15 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
         .map(|poly_trait_ref| ty::Binder(poly_trait_ref.0.subst(tcx, trait_ref.substs())))
         .collect();
 
-    debug!("bounds_for_trait_ref: trait_bounds={}",
-           trait_bounds.repr(tcx));
+    let projection_bounds: Vec<_> =
+        trait_def.bounds.projection_bounds
+        .iter()
+        .map(|poly_proj| ty::Binder(poly_proj.0.subst(tcx, trait_ref.substs())))
+        .collect();
+
+    debug!("bounds_for_trait_ref: trait_bounds={} projection_bounds={}",
+           trait_bounds.repr(tcx),
+           projection_bounds.repr(tcx));
 
     // The region bounds and builtin bounds do not currently introduce
     // binders so we can just substitute in a straightforward way here.
@@ -5463,11 +5470,7 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
         trait_bounds: trait_bounds,
         region_bounds: region_bounds,
         builtin_bounds: builtin_bounds,
-
-        // FIXME(#19451) -- if a trait has a bound like `trait Foo :
-        // Bar<T=X>`, we should probably be returning that, but this
-        // code here will just ignore it.
-        projection_bounds: Vec::new(),
+        projection_bounds: projection_bounds,
     };
 
     predicates(tcx, trait_ref.self_ty(), &bounds)
