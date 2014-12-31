@@ -145,7 +145,7 @@ impl UnixStream {
     fn lock_nonblocking<'a>(&'a self) -> Guard<'a> {
         let ret = Guard {
             fd: self.fd(),
-            guard: unsafe { self.inner.lock.lock().unwrap() },
+            guard: self.inner.lock.lock().unwrap(),
         };
         assert!(set_nonblocking(self.fd(), true).is_ok());
         ret

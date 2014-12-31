@@ -17,6 +17,7 @@ pub const RWLOCK_INIT: RWLock = RWLock {
     inner: UnsafeCell { value: ffi::PTHREAD_RWLOCK_INITIALIZER },
 };
 
+#[allow(dead_code)] // sys isn't exported yet
 impl RWLock {
     #[inline]
     pub unsafe fn new() -> RWLock {

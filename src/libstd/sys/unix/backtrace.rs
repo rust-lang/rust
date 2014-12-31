@@ -83,12 +83,12 @@
 /// to symbols. This is a bit of a hokey implementation as-is, but it works for
 /// all unix platforms we support right now, so it at least gets the job done.
 
+use prelude::*;
+
 use c_str::CString;
-use io::{IoResult, Writer};
+use io::IoResult;
 use libc;
 use mem;
-use option::Option::{mod, Some, None};
-use result::Result::{Ok, Err};
 use sync::{StaticMutex, MUTEX_INIT};
 
 use sys_common::backtrace::*;
@@ -151,7 +151,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     // I/O done here is blocking I/O, not green I/O, so we don't have to
     // worry about this being a native vs green mutex.
     static LOCK: StaticMutex = MUTEX_INIT;
-    let _g = unsafe { LOCK.lock() };
+    let _g = LOCK.lock();
 
     try!(writeln!(w, "stack backtrace:"));
 
@@ -241,12 +241,8 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
-    use iter::{Iterator, IteratorExt};
     use os;
-    use path::GenericPath;
-    use ptr::PtrExt;
     use ptr;
-    use slice::SliceExt;
 
     ////////////////////////////////////////////////////////////////////////
     // libbacktrace.h API
