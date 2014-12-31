@@ -55,7 +55,7 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructur
         cx.ident_of("Default"),
         cx.ident_of("default")
     );
-    let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
+    let default_call = |&: span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {

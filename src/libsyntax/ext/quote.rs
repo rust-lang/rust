@@ -800,11 +800,11 @@ fn expand_parse_call(cx: &ExtCtxt,
                      tts: &[ast::TokenTree]) -> P<ast::Expr> {
     let (cx_expr, tts_expr) = expand_tts(cx, sp, tts);
 
-    let cfg_call = || cx.expr_method_call(
+    let cfg_call = |&:| cx.expr_method_call(
         sp, cx.expr_ident(sp, id_ext("ext_cx")),
         id_ext("cfg"), Vec::new());
 
-    let parse_sess_call = || cx.expr_method_call(
+    let parse_sess_call = |&:| cx.expr_method_call(
         sp, cx.expr_ident(sp, id_ext("ext_cx")),
         id_ext("parse_sess"), Vec::new());
 
