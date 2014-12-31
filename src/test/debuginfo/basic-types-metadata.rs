@@ -48,6 +48,7 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 fn main() {
     let unit: () = ();

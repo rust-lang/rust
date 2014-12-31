@@ -470,7 +470,7 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
 fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
                          -> P<ast::Item> {
     // partition the attributes into ItemModifiers and others
-    let (modifiers, other_attrs) = it.attrs.partitioned(|attr| {
+    let (modifiers, other_attrs): (Vec<_>, _) = it.attrs.iter().cloned().partition(|attr| {
         match fld.cx.syntax_env.find(&intern(attr.name().get())) {
             Some(rc) => match *rc { Modifier(_) => true, _ => false },
             _ => false

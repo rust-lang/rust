@@ -12,8 +12,6 @@
 
 #![macro_escape]
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// The standard logging macro
 ///
 /// This macro will generically log over a provided level (of type u32) with a
@@ -63,61 +61,6 @@ macro_rules! log {
         let lvl = $lvl;
         if log_enabled!(lvl) {
             ::log::log(lvl, &LOC, format_args!($($arg)+))
-        }
-    })
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-/// The standard logging macro
-///
-/// This macro will generically log over a provided level (of type u32) with a
-/// format!-based argument list. See documentation in `std::fmt` for details on
-/// how to use the syntax.
-///
-/// # Example
-///
-/// ```
-/// #![feature(phase)]
-/// #[phase(plugin, link)] extern crate log;
-///
-/// fn main() {
-///     log!(log::WARN, "this is a warning {}", "message");
-///     log!(log::DEBUG, "this is a debug message");
-///     log!(6, "this is a custom logging level: {level}", level=6u);
-/// }
-/// ```
-///
-/// Assumes the binary is `main`:
-///
-/// ```{.bash}
-/// $ RUST_LOG=warn ./main
-/// WARN:main: this is a warning message
-/// ```
-///
-/// ```{.bash}
-/// $ RUST_LOG=debug ./main
-/// DEBUG:main: this is a debug message
-/// WARN:main: this is a warning message
-/// ```
-///
-/// ```{.bash}
-/// $ RUST_LOG=6 ./main
-/// DEBUG:main: this is a debug message
-/// WARN:main: this is a warning message
-/// 6:main: this is a custom logging level: 6
-/// ```
-#[macro_export]
-macro_rules! log {
-    ($lvl:expr, $($arg:tt)+) => ({
-        static LOC: ::log::LogLocation = ::log::LogLocation {
-            line: line!(),
-            file: file!(),
-            module_path: module_path!(),
-        };
-        let lvl = $lvl;
-        if log_enabled!(lvl) {
-            format_args!(|args| { ::log::log(lvl, &LOC, args) }, $($arg)+)
         }
     })
 }

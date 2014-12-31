@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::atomic::*;
+use core::atomic::Ordering::SeqCst;
 
 #[test]
 fn bool_() {

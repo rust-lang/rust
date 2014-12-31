@@ -62,7 +62,7 @@ use util::nodemap::DefIdMap;
 use util::ppaux::{mod, Repr, UserString};
 
 use std::rc::Rc;
-use std::iter::AdditiveIterator;
+use std::iter::{repeat, AdditiveIterator};
 use syntax::{abi, ast, ast_util};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -317,8 +317,8 @@ fn create_substs_for_ast_path<'tcx,AC,RS>(
 
         match anon_regions {
             Ok(v) => v.into_iter().collect(),
-            Err(_) => Vec::from_fn(expected_num_region_params,
-                                   |_| ty::ReStatic) // hokey
+            Err(_) => range(0, expected_num_region_params)
+                          .map(|_| ty::ReStatic).collect() // hokey
         }
     };
 
@@ -500,7 +500,7 @@ fn convert_parenthesized_parameters<'tcx,AC>(this: &AC,
                             .map(|a_t| ast_ty_to_ty(this, &binding_rscope, &**a_t))
                             .collect::<Vec<Ty<'tcx>>>();
 
-    let input_params = Vec::from_elem(inputs.len(), String::new());
+    let input_params: Vec<_> = repeat(String::new()).take(inputs.len()).collect();
     let (implied_output_region,
          params_lifetimes) = find_implied_output_region(&*inputs, input_params);
 
@@ -734,8 +734,8 @@ pub fn ast_path_to_ty_relaxed<'tcx,AC,RS>(
         path.segments.iter().all(|s| s.parameters.is_empty());
 
     let substs = if needs_defaults {
-        let type_params = Vec::from_fn(generics.types.len(TypeSpace),
-                                       |_| this.ty_infer(path.span));
+        let type_params: Vec<_> = range(0, generics.types.len(TypeSpace))
+                                      .map(|_| this.ty_infer(path.span)).collect();
         let region_params =
             rscope.anon_regions(path.span, generics.regions.len(TypeSpace))
                   .unwrap();
@@ -1528,21 +1528,18 @@ fn conv_ty_poly_trait_ref<'tcx, AC, RS>(
     let mut partitioned_bounds = partition_bounds(this.tcx(), span, ast_bounds[]);
 
     let mut projection_bounds = Vec::new();
-    let main_trait_bound = match partitioned_bounds.trait_bounds.remove(0) {
-        Some(trait_bound) => {
-            let ptr = instantiate_poly_trait_ref(this,
-                                                 rscope,
-                                                 trait_bound,
-                                                 None,
-                                                 &mut projection_bounds);
-            Some(ptr)
-        }
-        None => {
-            this.tcx().sess.span_err(
-                span,
-                "at least one non-builtin trait is required for an object type");
-            None
-        }
+    let main_trait_bound = if !partitioned_bounds.trait_bounds.is_empty() {
+        let trait_bound = partitioned_bounds.trait_bounds.remove(0);
+        Some(instantiate_poly_trait_ref(this,
+                                        rscope,
+                                        trait_bound,
+                                        None,
+                                        &mut projection_bounds))
+    } else {
+        this.tcx().sess.span_err(
+            span,
+            "at least one non-builtin trait is required for an object type");
+        None
     };
 
     let bounds =

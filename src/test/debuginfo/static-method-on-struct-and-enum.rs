@@ -54,6 +54,8 @@
 // lldb-check:[...]$4 = 5
 // lldb-command:continue
 
+#![omit_gdb_pretty_printer_section]
+
 struct Struct {
     x: int
 }

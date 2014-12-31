@@ -128,8 +128,8 @@ mod prelude {
     pub use unicode::char::UnicodeChar;
 
     // from collections.
-    pub use slice::{CloneSliceExt, VectorVector};
-    pub use str::{IntoMaybeOwned, StrVector};
+    pub use slice::{CloneSliceExt, SliceConcatExt};
+    pub use str::IntoMaybeOwned;
     pub use string::{String, ToString};
     pub use vec::Vec;
 }

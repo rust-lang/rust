@@ -199,6 +199,7 @@ use middle::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace}
 use middle::ty::{mod, Ty};
 use std::fmt;
 use std::rc::Rc;
+use std::iter::repeat;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util;
@@ -971,7 +972,7 @@ struct SolveContext<'a, 'tcx: 'a> {
 
 fn solve_constraints(constraints_cx: ConstraintContext) {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
-    let solutions = Vec::from_elem(terms_cx.num_inferred(), ty::Bivariant);
+    let solutions: Vec<_> = repeat(ty::Bivariant).take(terms_cx.num_inferred()).collect();
     let mut solutions_cx = SolveContext {
         terms_cx: terms_cx,
         constraints: constraints,

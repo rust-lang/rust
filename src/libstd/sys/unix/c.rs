@@ -214,8 +214,8 @@ mod signal {
         sa_resv: [libc::c_int, ..1],
     }
 
-    impl ::kinds::Send for sigaction { }
-    impl ::kinds::Sync for sigaction { }
+    unsafe impl ::kinds::Send for sigaction { }
+    unsafe impl ::kinds::Sync for sigaction { }
 
     #[repr(C)]
     pub struct sigset_t {

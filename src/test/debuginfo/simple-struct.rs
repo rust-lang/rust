@@ -95,8 +95,9 @@
 // lldb-command:print padding_at_end
 // lldb-check:[...]$5 = PaddingAtEnd { x: -10014, y: 10015 }
 
-#![allow(unused_variables)];
-#![allow(dead_code)];
+#![allow(unused_variables)]
+#![allow(dead_code)]
+#![omit_gdb_pretty_printer_section]
 
 struct NoPadding16 {
     x: u16,

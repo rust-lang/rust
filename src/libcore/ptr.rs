@@ -379,6 +379,7 @@ impl<T> MutPtrExt<T> for *mut T {
 }
 
 // Equality for pointers
+#[stable]
 impl<T> PartialEq for *const T {
     #[inline]
     fn eq(&self, other: &*const T) -> bool {
@@ -388,8 +389,10 @@ impl<T> PartialEq for *const T {
     fn ne(&self, other: &*const T) -> bool { !self.eq(other) }
 }
 
+#[stable]
 impl<T> Eq for *const T {}
 
+#[stable]
 impl<T> PartialEq for *mut T {
     #[inline]
     fn eq(&self, other: &*mut T) -> bool {
@@ -399,6 +402,7 @@ impl<T> PartialEq for *mut T {
     fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
 }
 
+#[stable]
 impl<T> Eq for *mut T {}
 
 // Equivalence for pointers
@@ -439,6 +443,7 @@ mod externfnpointers {
     use mem;
     use cmp::PartialEq;
 
+    #[stable]
     impl<_R> PartialEq for extern "C" fn() -> _R {
         #[inline]
         fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
@@ -449,6 +454,7 @@ mod externfnpointers {
     }
     macro_rules! fnptreq {
         ($($p:ident),*) => {
+            #[stable]
             impl<_R,$($p),*> PartialEq for extern "C" fn($($p),*) -> _R {
                 #[inline]
                 fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
@@ -468,6 +474,7 @@ mod externfnpointers {
 }
 
 // Comparison for pointers
+#[stable]
 impl<T> Ord for *const T {
     #[inline]
     fn cmp(&self, other: &*const T) -> Ordering {
@@ -481,6 +488,7 @@ impl<T> Ord for *const T {
     }
 }
 
+#[stable]
 impl<T> PartialOrd for *const T {
     #[inline]
     fn partial_cmp(&self, other: &*const T) -> Option<Ordering> {
@@ -500,6 +508,7 @@ impl<T> PartialOrd for *const T {
     fn ge(&self, other: &*const T) -> bool { *self >= *other }
 }
 
+#[stable]
 impl<T> Ord for *mut T {
     #[inline]
     fn cmp(&self, other: &*mut T) -> Ordering {
@@ -513,6 +522,7 @@ impl<T> Ord for *mut T {
     }
 }
 
+#[stable]
 impl<T> PartialOrd for *mut T {
     #[inline]
     fn partial_cmp(&self, other: &*mut T) -> Option<Ordering> {

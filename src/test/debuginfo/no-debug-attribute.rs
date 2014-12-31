@@ -24,6 +24,7 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 fn function_with_debuginfo() {
     let abc = 10u;

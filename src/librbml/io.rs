@@ -11,6 +11,7 @@
 use std::io::{IoError, IoResult, SeekStyle};
 use std::io;
 use std::slice;
+use std::iter::repeat;
 
 static BUF_CAPACITY: uint = 128;
 
@@ -87,7 +88,7 @@ impl Writer for SeekableMemWriter {
             // currently are
             let difference = self.pos as i64 - self.buf.len() as i64;
             if difference > 0 {
-                self.buf.grow(difference as uint, 0);
+                self.buf.extend(repeat(0).take(difference as uint));
             }
 
             // Figure out what bytes will be used to overwrite what's currently

@@ -66,7 +66,7 @@
 //! // for a simpler implementation.
 //! fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: uint, goal: uint) -> uint {
 //!     // dist[node] = current shortest distance from `start` to `node`
-//!     let mut dist = Vec::from_elem(adj_list.len(), uint::MAX);
+//!     let mut dist: Vec<_> = range(0, adj_list.len()).map(|_| uint::MAX).collect();
 //!
 //!     let mut heap = BinaryHeap::new();
 //!
@@ -561,6 +561,13 @@ impl<T: Ord> BinaryHeap<T> {
 /// `BinaryHeap` iterator.
 pub struct Iter <'a, T: 'a> {
     iter: slice::Iter<'a, T>,
+}
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, T> Clone for Iter<'a, T> {
+    fn clone(&self) -> Iter<'a, T> {
+        Iter { iter: self.iter.clone() }
+    }
 }
 
 impl<'a, T> Iterator<&'a T> for Iter<'a, T> {

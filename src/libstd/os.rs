@@ -620,10 +620,11 @@ pub fn get_exit_status() -> int {
 unsafe fn load_argc_and_argv(argc: int,
                              argv: *const *const c_char) -> Vec<Vec<u8>> {
     use c_str::CString;
+    use iter::range;
 
-    Vec::from_fn(argc as uint, |i| {
+    range(0, argc as uint).map(|i| {
         CString::new(*argv.offset(i as int), false).as_bytes_no_nul().to_vec()
-    })
+    }).collect()
 }
 
 /// Returns the command line arguments
@@ -715,13 +716,14 @@ fn real_args() -> Vec<String> {
 #[cfg(windows)]
 fn real_args() -> Vec<String> {
     use slice;
+    use iter::range;
 
     let mut nArgs: c_int = 0;
     let lpArgCount: *mut c_int = &mut nArgs;
     let lpCmdLine = unsafe { GetCommandLineW() };
     let szArgList = unsafe { CommandLineToArgvW(lpCmdLine, lpArgCount) };
 
-    let args = Vec::from_fn(nArgs as uint, |i| unsafe {
+    let args: Vec<_> = range(0, nArgs as uint).map(|i| unsafe {
         // Determine the length of this argument.
         let ptr = *szArgList.offset(i as int);
         let mut len = 0;
@@ -732,7 +734,7 @@ fn real_args() -> Vec<String> {
         let buf = slice::from_raw_buf(&ptr, len);
         let opt_s = String::from_utf16(sys::os::truncate_utf16_at_nul(buf));
         opt_s.ok().expect("CommandLineToArgvW returned invalid UTF-16")
-    });
+    }).collect();
 
     unsafe {
         LocalFree(szArgList as *mut c_void);

@@ -460,7 +460,7 @@ x = 10i;
 There is no single reason that bindings are immutable by default, but we can
 think about it through one of Rust's primary focuses: safety. If you forget to
 say `mut`, the compiler will catch it, and let you know that you have mutated
-something you may not have cared to mutate. If bindings were mutable by
+something you may not have intended to mutate. If bindings were mutable by
 default, the compiler would not be able to tell you this. If you _did_ intend
 mutation, then the solution is quite easy: add `mut`.
 
@@ -889,9 +889,8 @@ fn hello(name: &str) {
 When writing doc comments, adding sections for any arguments, return values,
 and providing some examples of usage is very, very helpful.
 
-You can use the `rustdoc` tool to generate HTML documentation from these doc
-comments. We will talk more about `rustdoc` when we get to modules, as
-generally, you want to export documentation for a full module.
+You can use the [`rustdoc`](rustdoc.html) tool to generate HTML documentation
+from these doc comments.
 
 # Compound Data Types
 

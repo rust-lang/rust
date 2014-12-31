@@ -1261,6 +1261,7 @@ impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
+#[stable]
 impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V, H> {
     fn eq(&self, other: &HashMap<K, V, H>) -> bool {
         if self.len() != other.len() { return false; }
@@ -1271,6 +1272,7 @@ impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V,
     }
 }
 
+#[stable]
 impl<K: Eq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {}
 
 impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H> {
@@ -1317,6 +1319,15 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     inner: table::Iter<'a, K, V>
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, K, V> Clone for Iter<'a, K, V> {
+    fn clone(&self) -> Iter<'a, K, V> {
+        Iter {
+            inner: self.inner.clone()
+        }
+    }
+}
+
 /// HashMap mutable values iterator
 pub struct IterMut<'a, K: 'a, V: 'a> {
     inner: table::IterMut<'a, K, V>
@@ -1337,9 +1348,27 @@ pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a K, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
 }
 
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, K, V> Clone for Keys<'a, K, V> {
+    fn clone(&self) -> Keys<'a, K, V> {
+        Keys {
+            inner: self.inner.clone()
+        }
+    }
+}
+
 /// HashMap values iterator
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+}
+
+// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+impl<'a, K, V> Clone for Values<'a, K, V> {
+    fn clone(&self) -> Values<'a, K, V> {
+        Values {
+            inner: self.inner.clone()
+        }
+    }
 }
 
 /// HashMap drain iterator

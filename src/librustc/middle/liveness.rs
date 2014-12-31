@@ -117,6 +117,7 @@ use util::nodemap::NodeMap;
 
 use std::{fmt, io, uint};
 use std::rc::Rc;
+use std::iter::repeat;
 use syntax::ast::{mod, NodeId, Expr};
 use syntax::codemap::{BytePos, original_sp, Span};
 use syntax::parse::token::{mod, special_idents};
@@ -575,8 +576,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         Liveness {
             ir: ir,
             s: specials,
-            successors: Vec::from_elem(num_live_nodes, invalid_node()),
-            users: Vec::from_elem(num_live_nodes * num_vars, invalid_users()),
+            successors: repeat(invalid_node()).take(num_live_nodes).collect(),
+            users: repeat(invalid_users()).take(num_live_nodes * num_vars).collect(),
             loop_scope: Vec::new(),
             break_ln: NodeMap::new(),
             cont_ln: NodeMap::new(),
@@ -1068,7 +1069,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // the same bindings, and we also consider the first pattern to be
                 // the "authoritative" set of ids
                 let arm_succ =
-                    self.define_bindings_in_arm_pats(arm.pats.head().map(|p| &**p),
+                    self.define_bindings_in_arm_pats(arm.pats.first().map(|p| &**p),
                                                      guard_succ);
                 self.merge_from_succ(ln, arm_succ, first_merge);
                 first_merge = false;
@@ -1436,7 +1437,7 @@ fn check_arm(this: &mut Liveness, arm: &ast::Arm) {
     // only consider the first pattern; any later patterns must have
     // the same bindings, and we also consider the first pattern to be
     // the "authoritative" set of ids
-    this.arm_pats_bindings(arm.pats.head().map(|p| &**p), |this, ln, var, sp, id| {
+    this.arm_pats_bindings(arm.pats.first().map(|p| &**p), |this, ln, var, sp, id| {
         this.warn_about_unused(sp, id, ln, var);
     });
     visit::walk_arm(this, arm);
@@ -1542,7 +1543,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 } else {
                     let ends_with_stmt = match body.expr {
                         None if body.stmts.len() > 0 =>
-                            match body.stmts.last().unwrap().node {
+                            match body.stmts.first().unwrap().node {
                                 ast::StmtSemi(ref e, _) => {
                                     ty::expr_ty(self.ir.tcx, &**e) == t_ret
                                 },
@@ -1553,7 +1554,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     self.ir.tcx.sess.span_err(
                         sp, "not all control paths return a value");
                     if ends_with_stmt {
-                        let last_stmt = body.stmts.last().unwrap();
+                        let last_stmt = body.stmts.first().unwrap();
                         let original_span = original_sp(self.ir.tcx.sess.codemap(),
                                                         last_stmt.span, sp);
                         let span_semicolon = Span {

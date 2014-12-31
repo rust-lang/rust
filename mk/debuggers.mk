@@ -12,26 +12,77 @@
 # Copy debugger related scripts
 ######################################################################
 
-DEBUGGER_RUSTLIB_ETC_SCRIPTS=lldb_rust_formatters.py
-DEBUGGER_BIN_SCRIPTS=rust-lldb
 
-DEBUGGER_RUSTLIB_ETC_SCRIPTS_ABS=$(foreach script,$(DEBUGGER_RUSTLIB_ETC_SCRIPTS), \
-                                     $(CFG_SRC_DIR)src/etc/$(script))
-DEBUGGER_BIN_SCRIPTS_ABS=$(foreach script,$(DEBUGGER_BIN_SCRIPTS), \
-                             $(CFG_SRC_DIR)src/etc/$(script))
+## GDB ##
+DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB=gdb_load_rust_pretty_printers.py \
+                                 gdb_rust_pretty_printing.py
+DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS=\
+    $(foreach script,$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB), \
+        $(CFG_SRC_DIR)src/etc/$(script))
 
-DEBUGGER_SCRIPTS_ALL=$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ABS) $(DEBUGGER_BIN_SCRIPTS_ABS)
+DEBUGGER_BIN_SCRIPTS_GDB=rust-gdb
+DEBUGGER_BIN_SCRIPTS_GDB_ABS=\
+    $(foreach script,$(DEBUGGER_BIN_SCRIPTS_GDB), \
+        $(CFG_SRC_DIR)src/etc/$(script))
+
+
+## LLDB ##
+DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB=lldb_rust_formatters.py
+DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS=\
+    $(foreach script,$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB), \
+        $(CFG_SRC_DIR)src/etc/$(script))
+
+DEBUGGER_BIN_SCRIPTS_LLDB=rust-lldb
+DEBUGGER_BIN_SCRIPTS_LLDB_ABS=\
+    $(foreach script,$(DEBUGGER_BIN_SCRIPTS_LLDB), \
+        $(CFG_SRC_DIR)src/etc/$(script))
+
+
+## ALL ##
+DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL=$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB) \
+                                 $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB)
+DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS=$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) \
+                                     $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS)
+DEBUGGER_BIN_SCRIPTS_ALL=$(DEBUGGER_BIN_SCRIPTS_GDB) \
+                         $(DEBUGGER_BIN_SCRIPTS_LLDB)
+DEBUGGER_BIN_SCRIPTS_ALL_ABS=$(DEBUGGER_BIN_SCRIPTS_GDB_ABS) \
+                             $(DEBUGGER_BIN_SCRIPTS_LLDB_ABS)
+
 
 # $(1) - the stage to copy to
 # $(2) - the host triple
 define DEF_INSTALL_DEBUGGER_SCRIPTS_HOST
 
-tmp/install-debugger-scripts$(1)_H_$(2).done: $$(DEBUGGER_SCRIPTS_ALL)
+tmp/install-debugger-scripts$(1)_H_$(2)-gdb.done: \
+  $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) \
+  $$(DEBUGGER_BIN_SCRIPTS_GDB_ABS)
 	$(Q)mkdir -p $$(HBIN$(1)_H_$(2))
 	$(Q)mkdir -p $$(HLIB$(1)_H_$(2))/rustlib/etc
-	$(Q)install $(DEBUGGER_BIN_SCRIPTS_ABS) $$(HBIN$(1)_H_$(2))
-	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ABS) $$(HLIB$(1)_H_$(2))/rustlib/etc
+	$(Q)install $$(DEBUGGER_BIN_SCRIPTS_GDB_ABS) $$(HBIN$(1)_H_$(2))
+	$(Q)install $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) $$(HLIB$(1)_H_$(2))/rustlib/etc
 	$(Q)touch $$@
+
+tmp/install-debugger-scripts$(1)_H_$(2)-lldb.done: \
+  $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS) \
+  $$(DEBUGGER_BIN_SCRIPTS_LLDB_ABS)
+	$(Q)mkdir -p $$(HBIN$(1)_H_$(2))
+	$(Q)mkdir -p $$(HLIB$(1)_H_$(2))/rustlib/etc
+	$(Q)install $$(DEBUGGER_BIN_SCRIPTS_LLDB_ABS) $$(HBIN$(1)_H_$(2))
+	$(Q)install $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS) $$(HLIB$(1)_H_$(2))/rustlib/etc
+	$(Q)touch $$@
+
+tmp/install-debugger-scripts$(1)_H_$(2)-all.done: \
+  $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS) \
+  $$(DEBUGGER_BIN_SCRIPTS_ALL_ABS)
+	$(Q)mkdir -p $$(HBIN$(1)_H_$(2))
+	$(Q)mkdir -p $$(HLIB$(1)_H_$(2))/rustlib/etc
+	$(Q)install $$(DEBUGGER_BIN_SCRIPTS_ALL_ABS) $$(HBIN$(1)_H_$(2))
+	$(Q)install $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS) $$(HLIB$(1)_H_$(2))/rustlib/etc
+	$(Q)touch $$@
+
+tmp/install-debugger-scripts$(1)_H_$(2)-none.done:
+	$(Q)touch $$@
+
 endef
 
 # Expand host make-targets for all stages
@@ -44,12 +95,36 @@ $(foreach stage,$(STAGES), \
 # $(3) is the host triple
 define DEF_INSTALL_DEBUGGER_SCRIPTS_TARGET
 
-tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3).done: $$(DEBUGGER_SCRIPTS_ALL)
+tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-gdb.done: \
+  $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) \
+  $$(DEBUGGER_BIN_SCRIPTS_GDB_ABS)
 	$(Q)mkdir -p $$(TBIN$(1)_T_$(2)_H_$(3))
 	$(Q)mkdir -p $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
-	$(Q)install $(DEBUGGER_BIN_SCRIPTS_ABS) $$(TBIN$(1)_T_$(2)_H_$(3))
-	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ABS) $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
+	$(Q)install $(DEBUGGER_BIN_SCRIPTS_GDB_ABS) $$(TBIN$(1)_T_$(2)_H_$(3))
+	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
 	$(Q)touch $$@
+
+tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-lldb.done: \
+  $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS) \
+  $$(DEBUGGER_BIN_SCRIPTS_LLDB_ABS)
+	$(Q)mkdir -p $$(TBIN$(1)_T_$(2)_H_$(3))
+	$(Q)mkdir -p $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
+	$(Q)install $(DEBUGGER_BIN_SCRIPTS_LLDB_ABS) $$(TBIN$(1)_T_$(2)_H_$(3))
+	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS) $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
+	$(Q)touch $$@
+
+tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-all.done: \
+  $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS) \
+  $$(DEBUGGER_BIN_SCRIPTS_ALL_ABS)
+	$(Q)mkdir -p $$(TBIN$(1)_T_$(2)_H_$(3))
+	$(Q)mkdir -p $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
+	$(Q)install $(DEBUGGER_BIN_SCRIPTS_ALL_ABS) $$(TBIN$(1)_T_$(2)_H_$(3))
+	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS) $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
+	$(Q)touch $$@
+
+tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-none.done:
+	$(Q)touch $$@
+
 endef
 
 # Expand target make-targets for all stages

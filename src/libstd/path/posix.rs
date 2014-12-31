@@ -22,14 +22,14 @@ use option::Option::{None, Some};
 use kinds::Sized;
 use str::{FromStr, Str};
 use str;
-use slice::{CloneSliceExt, Splits, AsSlice, VectorVector,
+use slice::{CloneSliceExt, Split, AsSlice, SliceConcatExt,
             PartialEqSliceExt, SliceExt};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]
-pub type Components<'a> = Splits<'a, u8, fn(&u8) -> bool>;
+pub type Components<'a> = Split<'a, u8, fn(&u8) -> bool>;
 
 /// Iterator that yields successive components of a Path as Option<&str>
 pub type StrComponents<'a> =
@@ -306,7 +306,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.connect_vec(&SEP_BYTE)))
+            Some(Path::new(comps.as_slice().connect(&SEP_BYTE)))
         }
     }
 

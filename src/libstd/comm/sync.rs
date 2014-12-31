@@ -148,7 +148,7 @@ impl<T: Send> Packet<T> {
                     tail: 0 as *mut Node,
                 },
                 buf: Buffer {
-                    buf: Vec::from_fn(cap + if cap == 0 {1} else {0}, |_| None),
+                    buf: range(0, cap + if cap == 0 {1} else {0}).map(|_| None).collect(),
                     start: 0,
                     size: 0,
                 },

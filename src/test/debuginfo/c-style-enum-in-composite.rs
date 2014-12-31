@@ -65,6 +65,7 @@
 // lldb-check:[...]$6 = (StructWithDrop { a: OneHundred, b: Vienna }, 9)
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 use self::AnEnum::{OneHundred, OneThousand, OneMillion};
 use self::AnotherEnum::{MountainView, Toronto, Vienna};

@@ -17,8 +17,6 @@
 #![experimental]
 #![macro_escape]
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// The entry point for panic of Rust tasks.
 ///
 /// This macro is used to inject panic into a Rust task, causing the task to
@@ -56,63 +54,6 @@ macro_rules! panic {
         static _FILE_LINE: (&'static str, uint) = (file!(), line!());
         ::std::rt::begin_unwind_fmt(format_args!($fmt, $($arg)*), &_FILE_LINE)
 
-    });
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-/// The entry point for panic of Rust tasks.
-///
-/// This macro is used to inject panic into a Rust task, causing the task to
-/// unwind and panic entirely. Each task's panic can be reaped as the
-/// `Box<Any>` type, and the single-argument form of the `panic!` macro will be
-/// the value which is transmitted.
-///
-/// The multi-argument form of this macro panics with a string and has the
-/// `format!` syntax for building a string.
-///
-/// # Example
-///
-/// ```should_fail
-/// # #![allow(unreachable_code)]
-/// panic!();
-/// panic!("this is a terrible mistake!");
-/// panic!(4i); // panic with the value of 4 to be collected elsewhere
-/// panic!("this is a {} {message}", "fancy", message = "message");
-/// ```
-#[macro_export]
-macro_rules! panic {
-    () => ({
-        panic!("explicit panic")
-    });
-    ($msg:expr) => ({
-        // static requires less code at runtime, more constant data
-        static _FILE_LINE: (&'static str, uint) = (file!(), line!());
-        ::std::rt::begin_unwind($msg, &_FILE_LINE)
-    });
-    ($fmt:expr, $($arg:tt)*) => ({
-        // a closure can't have return type !, so we need a full
-        // function to pass to format_args!, *and* we need the
-        // file and line numbers right here; so an inner bare fn
-        // is our only choice.
-        //
-        // LLVM doesn't tend to inline this, presumably because begin_unwind_fmt
-        // is #[cold] and #[inline(never)] and because this is flagged as cold
-        // as returning !. We really do want this to be inlined, however,
-        // because it's just a tiny wrapper. Small wins (156K to 149K in size)
-        // were seen when forcing this to be inlined, and that number just goes
-        // up with the number of calls to panic!()
-        //
-        // The leading _'s are to avoid dead code warnings if this is
-        // used inside a dead function. Just `#[allow(dead_code)]` is
-        // insufficient, since the user may have
-        // `#[forbid(dead_code)]` and which cannot be overridden.
-        #[inline(always)]
-        fn _run_fmt(fmt: &::std::fmt::Arguments) -> ! {
-            static _FILE_LINE: (&'static str, uint) = (file!(), line!());
-            ::std::rt::begin_unwind_fmt(fmt, &_FILE_LINE)
-        }
-        format_args!(_run_fmt, $fmt, $($arg)*)
     });
 }
 
@@ -289,8 +230,6 @@ macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
 }
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// Use the syntax described in `std::fmt` to create a value of type `String`.
 /// See `std::fmt` for more information.
 ///
@@ -307,28 +246,6 @@ macro_rules! format {
     ($($arg:tt)*) => (::std::fmt::format(format_args!($($arg)*)))
 }
 
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-/// Use the syntax described in `std::fmt` to create a value of type `String`.
-/// See `std::fmt` for more information.
-///
-/// # Example
-///
-/// ```
-/// format!("test");
-/// format!("hello {}", "world!");
-/// format!("x = {}, y = {y}", 10i, y = 30i);
-/// ```
-#[macro_export]
-#[stable]
-macro_rules! format {
-    ($($arg:tt)*) => (
-        format_args!(::std::fmt::format, $($arg)*)
-    )
-}
-
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// Use the `format!` syntax to write data into a buffer of type `&mut Writer`.
 /// See `std::fmt` for more information.
 ///
@@ -347,29 +264,6 @@ macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ((&mut *$dst).write_fmt(format_args!($($arg)*)))
 }
 
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-/// Use the `format!` syntax to write data into a buffer of type `&mut Writer`.
-/// See `std::fmt` for more information.
-///
-/// # Example
-///
-/// ```
-/// # #![allow(unused_must_use)]
-///
-/// let mut w = Vec::new();
-/// write!(&mut w, "test");
-/// write!(&mut w, "formatted {}", "arguments");
-/// ```
-#[macro_export]
-#[stable]
-macro_rules! write {
-    ($dst:expr, $($arg:tt)*) => ({
-        let dst = &mut *$dst;
-        format_args!(|args| { dst.write_fmt(args) }, $($arg)*)
-    })
-}
-
 /// Equivalent to the `write!` macro, except that a newline is appended after
 /// the message is written.
 #[macro_export]
@@ -380,8 +274,6 @@ macro_rules! writeln {
     )
 }
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
 #[macro_export]
@@ -390,18 +282,6 @@ macro_rules! print {
     ($($arg:tt)*) => (::std::io::stdio::print_args(format_args!($($arg)*)))
 }
 
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-/// Equivalent to the `println!` macro except that a newline is not printed at
-/// the end of the message.
-#[macro_export]
-#[stable]
-macro_rules! print {
-    ($($arg:tt)*) => (format_args!(::std::io::stdio::print_args, $($arg)*))
-}
-
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// Macro for printing to a task's stdout handle.
 ///
 /// Each task can override its stdout handle via `std::io::stdio::set_stdout`.
@@ -418,26 +298,6 @@ macro_rules! print {
 #[stable]
 macro_rules! println {
     ($($arg:tt)*) => (::std::io::stdio::println_args(format_args!($($arg)*)))
-}
-
-// NOTE(stage0): Remove macro after a snapshot
-#[cfg(stage0)]
-/// Macro for printing to a task's stdout handle.
-///
-/// Each task can override its stdout handle via `std::io::stdio::set_stdout`.
-/// The syntax of this macro is the same as that used for `format!`. For more
-/// information, see `std::fmt` and `std::io::stdio`.
-///
-/// # Example
-///
-/// ```
-/// println!("hello there!");
-/// println!("format {} arguments", "some");
-/// ```
-#[macro_export]
-#[stable]
-macro_rules! println {
-    ($($arg:tt)*) => (format_args!(::std::io::stdio::println_args, $($arg)*))
 }
 
 /// Helper macro for unwrapping `Result` values while returning early with an

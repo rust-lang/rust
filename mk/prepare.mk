@@ -144,6 +144,27 @@ prepare-target-$(2)-host-$(3)-$(1)-$(4): prepare-maybe-clean-$(4) \
           $$(call PREPARE_LIB,libcompiler-rt.a),),),)
 endef
 
+define INSTALL_GDB_DEBUGGER_SCRIPTS_COMMANDS
+	$(Q)$(PREPARE_BIN_CMD) $(DEBUGGER_BIN_SCRIPTS_GDB_ABS) $(PREPARE_DEST_BIN_DIR)
+	$(Q)$(PREPARE_LIB_CMD) $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) $(PREPARE_DEST_LIB_DIR)/rustlib/etc
+endef
+
+define INSTALL_LLDB_DEBUGGER_SCRIPTS_COMMANDS
+	$(Q)$(PREPARE_BIN_CMD) $(DEBUGGER_BIN_SCRIPTS_LLDB_ABS) $(PREPARE_DEST_BIN_DIR)
+	$(Q)$(PREPARE_LIB_CMD) $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS) $(PREPARE_DEST_LIB_DIR)/rustlib/etc
+endef
+
+define INSTALL_NO_DEBUGGER_SCRIPTS_COMMANDS
+	$(Q)echo "No debugger scripts will be installed for host $(PREPARE_HOST)"
+endef
+
+# $(1) is PREPARE_HOST
+INSTALL_DEBUGGER_SCRIPT_COMMANDS=$(if $(findstring windows,$(1)),\
+                                   $(INSTALL_NO_DEBUGGER_SCRIPTS_COMMANDS),\
+                                   $(if $(findstring darwin,$(1)),\
+                                     $(INSTALL_LLDB_DEBUGGER_SCRIPTS_COMMANDS),\
+                                     $(INSTALL_GDB_DEBUGGER_SCRIPTS_COMMANDS)))
+
 define DEF_PREPARE
 
 prepare-base-$(1): PREPARE_SOURCE_DIR=$$(PREPARE_HOST)/stage$$(PREPARE_STAGE)
@@ -170,9 +191,10 @@ prepare-host-dirs-$(1): prepare-maybe-clean-$(1)
 	$$(call PREPARE_DIR,$$(PREPARE_DEST_LIB_DIR)/rustlib/etc)
 	$$(call PREPARE_DIR,$$(PREPARE_DEST_MAN_DIR))
 
-prepare-debugger-scripts-$(1): prepare-host-dirs-$(1) $(DEBUGGER_SCRIPTS_ALL)
-	$$(Q)$$(PREPARE_BIN_CMD) $(DEBUGGER_BIN_SCRIPTS_ABS) $$(PREPARE_DEST_BIN_DIR)
-	$$(Q)$$(PREPARE_LIB_CMD) $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ABS) $$(PREPARE_DEST_LIB_DIR)/rustlib/etc
+prepare-debugger-scripts-$(1): prepare-host-dirs-$(1) \
+                               $$(DEBUGGER_BIN_SCRIPTS_ALL_ABS) \
+                               $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS)
+	$$(call INSTALL_DEBUGGER_SCRIPT_COMMANDS,$$(PREPARE_HOST))
 
 $$(foreach tool,$$(PREPARE_TOOLS), \
   $$(foreach host,$$(CFG_HOST), \

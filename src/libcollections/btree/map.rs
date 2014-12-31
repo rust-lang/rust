@@ -843,6 +843,7 @@ impl<K: Ord, V> Default for BTreeMap<K, V> {
     }
 }
 
+#[stable]
 impl<K: PartialEq, V: PartialEq> PartialEq for BTreeMap<K, V> {
     fn eq(&self, other: &BTreeMap<K, V>) -> bool {
         self.len() == other.len() &&
@@ -850,8 +851,10 @@ impl<K: PartialEq, V: PartialEq> PartialEq for BTreeMap<K, V> {
     }
 }
 
+#[stable]
 impl<K: Eq, V: Eq> Eq for BTreeMap<K, V> {}
 
+#[stable]
 impl<K: PartialOrd, V: PartialOrd> PartialOrd for BTreeMap<K, V> {
     #[inline]
     fn partial_cmp(&self, other: &BTreeMap<K, V>) -> Option<Ordering> {
@@ -859,6 +862,7 @@ impl<K: PartialOrd, V: PartialOrd> PartialOrd for BTreeMap<K, V> {
     }
 }
 
+#[stable]
 impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
     #[inline]
     fn cmp(&self, other: &BTreeMap<K, V>) -> Ordering {

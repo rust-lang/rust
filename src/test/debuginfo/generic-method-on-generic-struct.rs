@@ -112,6 +112,7 @@
 // lldb-check:[...]$14 = -10.5
 // lldb-command:continue
 
+#![omit_gdb_pretty_printer_section]
 
 struct Struct<T> {
     x: T

@@ -572,6 +572,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     }
 }
 
+#[stable]
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
     fn eq(&self, other: &HashSet<T, H>) -> bool {
         if self.len() != other.len() { return false; }
@@ -580,6 +581,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
     }
 }
 
+#[stable]
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
 
 impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {

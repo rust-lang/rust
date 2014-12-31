@@ -13,7 +13,6 @@
 // ignore-lldb
 // ignore-android: FIXME(#10381)
 // compile-flags:-g
-// gdb-use-pretty-printer
 
 // This test uses some GDB Python API features (e.g. accessing anonymous fields)
 // which are only available in newer GDB version. The following directive will

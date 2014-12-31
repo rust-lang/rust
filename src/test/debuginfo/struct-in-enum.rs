@@ -42,6 +42,7 @@
 // lldb-check:[...]$2 = TheOnlyCase(Struct { x: 123, y: 456, z: 789 })
 
 #![allow(unused_variables)]
+#![omit_gdb_pretty_printer_section]
 
 use self::Regular::{Case1, Case2};
 use self::Univariant::TheOnlyCase;

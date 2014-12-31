@@ -35,7 +35,7 @@ LICENSE.txt: $(S)COPYRIGHT $(S)LICENSE-APACHE $(S)LICENSE-MIT
 # Source tarball
 ######################################################################
 
-PKG_TAR = dist/$(PKG_NAME).tar.gz
+PKG_TAR = dist/$(PKG_NAME)-src.tar.gz
 
 PKG_GITMODULES := $(S)src/llvm $(S)src/compiler-rt \
 		  $(S)src/rt/hoedown $(S)src/jemalloc
@@ -241,8 +241,8 @@ dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 	@$(call E, build: $$@)
 # Copy essential gcc components into installer
 ifdef CFG_WINDOWSY_$(1)
-	$$(Q)rm -Rf dist/win-rust-gcc-$(1)
-	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py tmp/dist/$$(PKG_NAME)-$(1)-image dist/win-rust-gcc-$(1) $(1)
+	$$(Q)rm -Rf tmp/dist/win-rust-gcc-$(1)
+	$$(Q)$$(CFG_PYTHON) $$(S)src/etc/make-win-dist.py tmp/dist/$$(PKG_NAME)-$(1)-image tmp/dist/win-rust-gcc-$(1) $(1)
 	$$(Q)cp -r $$(S)src/etc/third-party tmp/dist/$$(PKG_NAME)-$(1)-image/share/doc/
 endif
 	$$(Q)$$(S)src/rust-installer/gen-installer.sh \

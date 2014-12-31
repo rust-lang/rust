@@ -166,7 +166,7 @@ pub fn count_names(ms: &[TokenTree]) -> uint {
 pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: BytePos)
                            -> Box<MatcherPos> {
     let match_idx_hi = count_names(ms[]);
-    let matches = Vec::from_fn(match_idx_hi, |_i| Vec::new());
+    let matches: Vec<_> = range(0, match_idx_hi).map(|_| Vec::new()).collect();
     box MatcherPos {
         stack: vec![],
         top_elts: TtSeq(ms),
@@ -392,7 +392,8 @@ pub fn parse(sess: &ParseSess,
                             cur_eis.push(new_ei);
                         }
 
-                        let matches = Vec::from_elem(ei.matches.len(), Vec::new());
+                        let matches: Vec<_> = range(0, ei.matches.len())
+                            .map(|_| Vec::new()).collect();
                         let ei_t = ei;
                         cur_eis.push(box MatcherPos {
                             stack: vec![],

@@ -12,7 +12,7 @@
 
 #![stable]
 
-pub use self::Ordering::*;
+use self::Ordering::*;
 
 use kinds::Sync;
 

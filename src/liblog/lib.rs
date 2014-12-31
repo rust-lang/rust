@@ -268,8 +268,6 @@ impl Drop for DefaultLogger {
     }
 }
 
-// NOTE(stage0): Remove cfg after a snapshot
-#[cfg(not(stage0))]
 /// This function is called directly by the compiler when using the logging
 /// macros. This function does not take into account whether the log level
 /// specified is active or not, it will always log something if this method is
@@ -297,42 +295,6 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     logger.log(&LogRecord {
         level: LogLevel(level),
         args: args,
-        file: loc.file,
-        module_path: loc.module_path,
-        line: loc.line,
-    });
-    set_logger(logger);
-}
-
-// NOTE(stage0): Remove function after a snapshot
-#[cfg(stage0)]
-/// This function is called directly by the compiler when using the logging
-/// macros. This function does not take into account whether the log level
-/// specified is active or not, it will always log something if this method is
-/// called.
-///
-/// It is not recommended to call this function directly, rather it should be
-/// invoked through the logging family of macros.
-#[doc(hidden)]
-pub fn log(level: u32, loc: &'static LogLocation, args: &fmt::Arguments) {
-    // Test the literal string from args against the current filter, if there
-    // is one.
-    match unsafe { FILTER.as_ref() } {
-        Some(filter) if !filter.is_match(args.to_string().as_slice()) => return,
-        _ => {}
-    }
-
-    // Completely remove the local logger from TLS in case anyone attempts to
-    // frob the slot while we're doing the logging. This will destroy any logger
-    // set during logging.
-    let mut logger = LOCAL_LOGGER.with(|s| {
-        s.borrow_mut().take()
-    }).unwrap_or_else(|| {
-        box DefaultLogger { handle: io::stderr() } as Box<Logger + Send>
-    });
-    logger.log(&LogRecord {
-        level: LogLevel(level),
-        args: *args,
         file: loc.file,
         module_path: loc.module_path,
         line: loc.line,

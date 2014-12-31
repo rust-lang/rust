@@ -65,7 +65,7 @@ fn shift_push() {
     let mut v2 = Vec::new();
 
     while v1.len() > 0 {
-        v2.push(v1.remove(0).unwrap());
+        v2.push(v1.remove(0));
     }
 }
 

@@ -95,14 +95,14 @@ mod imp {
     }
 
     unsafe fn load_argc_and_argv(argc: int, argv: *const *const u8) -> Vec<Vec<u8>> {
-        Vec::from_fn(argc as uint, |i| {
+        range(0, argc as uint).map(|i| {
             let arg = *argv.offset(i as int);
             let mut len = 0u;
             while *arg.offset(len as int) != 0 {
                 len += 1u;
             }
             slice::from_raw_buf(&arg, len).to_vec()
-        })
+        }).collect()
     }
 
     #[cfg(test)]

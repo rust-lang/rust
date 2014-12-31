@@ -78,6 +78,7 @@
 
 #![allow(unused_variables)]
 #![feature(slicing_syntax)]
+#![omit_gdb_pretty_printer_section]
 
 struct AStruct {
     x: i16,

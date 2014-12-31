@@ -361,7 +361,7 @@ impl Isaac64Rng {
         const MP_VEC: [(uint, uint), .. 2] = [(0,MIDPOINT), (MIDPOINT, 0)];
         macro_rules! ind (
             ($x:expr) => {
-                *self.mem.unsafe_get(($x as uint >> 3) & (RAND_SIZE_64 - 1))
+                *self.mem.get_unchecked(($x as uint >> 3) & (RAND_SIZE_64 - 1))
             }
         );
 
@@ -375,13 +375,13 @@ impl Isaac64Rng {
                             let mix = if $j == 0 {!mix} else {mix};
 
                             unsafe {
-                                let x = *self.mem.unsafe_get(base + mr_offset);
-                                a = mix + *self.mem.unsafe_get(base + m2_offset);
+                                let x = *self.mem.get_unchecked(base + mr_offset);
+                                a = mix + *self.mem.get_unchecked(base + m2_offset);
                                 let y = ind!(x) + a + b;
-                                *self.mem.unsafe_mut(base + mr_offset) = y;
+                                *self.mem.get_unchecked_mut(base + mr_offset) = y;
 
                                 b = ind!(y >> RAND_SIZE_64_LEN) + x;
-                                *self.rsl.unsafe_mut(base + mr_offset) = b;
+                                *self.rsl.get_unchecked_mut(base + mr_offset) = b;
                             }
                         }}
                     );
@@ -392,13 +392,13 @@ impl Isaac64Rng {
                             let mix = if $j == 0 {!mix} else {mix};
 
                             unsafe {
-                                let x = *self.mem.unsafe_get(base + mr_offset);
-                                a = mix + *self.mem.unsafe_get(base + m2_offset);
+                                let x = *self.mem.get_unchecked(base + mr_offset);
+                                a = mix + *self.mem.get_unchecked(base + m2_offset);
                                 let y = ind!(x) + a + b;
-                                *self.mem.unsafe_mut(base + mr_offset) = y;
+                                *self.mem.get_unchecked_mut(base + mr_offset) = y;
 
                                 b = ind!(y >> RAND_SIZE_64_LEN) + x;
-                                *self.rsl.unsafe_mut(base + mr_offset) = b;
+                                *self.rsl.get_unchecked_mut(base + mr_offset) = b;
                             }
                         }}
                     );
