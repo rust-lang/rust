@@ -1187,7 +1187,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
         let mut new_ty = P(ty.clone());
         let mut ty_queue = vec!(ty);
         while !ty_queue.is_empty() {
-            let cur_ty = ty_queue.remove(0).unwrap();
+            let cur_ty = ty_queue.remove(0);
             match cur_ty.node {
                 ast::TyRptr(lt_opt, ref mut_ty) => {
                     let rebuild = match lt_opt {

@@ -19,11 +19,11 @@ pub const UNICODE_VERSION: (uint, uint, uint) = (7, 0, 0);
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
     use core::cmp::Ordering::{Equal, Less, Greater};
     use core::slice::SliceExt;
-    r.binary_search(|&(lo,hi)| {
+    r.binary_search_by(|&(lo,hi)| {
         if lo <= c && c <= hi { Equal }
         else if hi < c { Less }
         else { Greater }
-    }).found().is_some()
+    }).is_ok()
 }
 
 pub mod general_category {
@@ -6826,17 +6826,17 @@ pub mod normalization {
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
         use core::cmp::Ordering::{Equal, Less, Greater};
         use core::slice::SliceExt;
-        use core::slice;
-        match r.binary_search(|&(lo, hi, _)| {
+        use core::result::Result::{Ok, Err};
+        match r.binary_search_by(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::BinarySearchResult::Found(idx) => {
+            Ok(idx) => {
                 let (_, _, result) = r[idx];
                 result
             }
-            slice::BinarySearchResult::NotFound(_) => 0
+            Err(_) => 0
         }
     }
 
@@ -6961,7 +6961,7 @@ pub mod conversions {
     use core::slice::SliceExt;
     use core::option::Option;
     use core::option::Option::{Some, None};
-    use core::slice;
+    use core::result::Result::{Ok, Err};
 
     pub fn to_lower(c: char) -> char {
         match bsearch_case_table(c, LuLl_table) {
@@ -6978,13 +6978,13 @@ pub mod conversions {
     }
 
     fn bsearch_case_table(c: char, table: &'static [(char, char)]) -> Option<uint> {
-        match table.binary_search(|&(key, _)| {
+        match table.binary_search_by(|&(key, _)| {
             if c == key { Equal }
             else if key < c { Less }
             else { Greater }
         }) {
-            slice::BinarySearchResult::Found(i) => Some(i),
-            slice::BinarySearchResult::NotFound(_) => None,
+            Ok(i) => Some(i),
+            Err(_) => None,
         }
     }
 
@@ -7596,20 +7596,20 @@ pub mod charwidth {
     use core::option::Option;
     use core::option::Option::{Some, None};
     use core::slice::SliceExt;
-    use core::slice;
+    use core::result::Result::{Ok, Err};
 
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
         use core::cmp::Ordering::{Equal, Less, Greater};
-        match r.binary_search(|&(lo, hi, _, _)| {
+        match r.binary_search_by(|&(lo, hi, _, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::BinarySearchResult::Found(idx) => {
+            Ok(idx) => {
                 let (_, _, r_ncjk, r_cjk) = r[idx];
                 if is_cjk { r_cjk } else { r_ncjk }
             }
-            slice::BinarySearchResult::NotFound(_) => 1
+            Err(_) => 1
         }
     }
 
@@ -7804,7 +7804,7 @@ pub mod grapheme {
     use core::kinds::Copy;
     use core::slice::SliceExt;
     pub use self::GraphemeCat::*;
-    use core::slice;
+    use core::result::Result::{Ok, Err};
 
     #[allow(non_camel_case_types)]
     #[deriving(Clone)]
@@ -7825,16 +7825,16 @@ pub mod grapheme {
 
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, GraphemeCat)]) -> GraphemeCat {
         use core::cmp::Ordering::{Equal, Less, Greater};
-        match r.binary_search(|&(lo, hi, _)| {
+        match r.binary_search_by(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::BinarySearchResult::Found(idx) => {
+            Ok(idx) => {
                 let (_, _, cat) = r[idx];
                 cat
             }
-            slice::BinarySearchResult::NotFound(_) => GC_Any
+            Err(_) => GC_Any
         }
     }
 

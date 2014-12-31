@@ -59,6 +59,7 @@ pub use self::MinMaxResult::*;
 use clone::Clone;
 use cmp;
 use cmp::Ord;
+use default::Default;
 use mem;
 use num::{ToPrimitive, Int};
 use ops::{Add, Deref, FnMut};
@@ -67,20 +68,6 @@ use option::Option::{Some, None};
 use uint;
 
 #[deprecated = "renamed to Extend"] pub use self::Extend as Extendable;
-
-/// Conversion from an `Iterator`
-#[unstable = "may be replaced by a more general conversion trait"]
-pub trait FromIterator<A> {
-    /// Build a container with elements from an external iterator.
-    fn from_iter<T: Iterator<A>>(iterator: T) -> Self;
-}
-
-/// A type growable from an `Iterator` implementation
-#[unstable = "just renamed as part of collections reform"]
-pub trait Extend<A> {
-    /// Extend a container with the elements yielded by an arbitrary iterator
-    fn extend<T: Iterator<A>>(&mut self, iterator: T);
-}
 
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
@@ -104,6 +91,20 @@ pub trait Iterator<A> {
     /// does not fit within a `uint`.
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
+}
+
+/// Conversion from an `Iterator`
+#[unstable = "may be replaced by a more general conversion trait"]
+pub trait FromIterator<A> {
+    /// Build a container with elements from an external iterator.
+    fn from_iter<T: Iterator<A>>(iterator: T) -> Self;
+}
+
+/// A type growable from an `Iterator` implementation
+#[unstable = "just renamed as part of collections reform"]
+pub trait Extend<A> {
+    /// Extend a container with the elements yielded by an arbitrary iterator
+    fn extend<T: Iterator<A>>(&mut self, iterator: T);
 }
 
 #[unstable = "new convention for extension traits"]
@@ -222,7 +223,6 @@ pub trait IteratorExt<A>: Iterator<A> {
     fn enumerate(self) -> Enumerate<Self> {
         Enumerate{iter: self, count: 0}
     }
-
 
     /// Creates an iterator that has a `.peek()` method
     /// that returns an optional reference to the next element.
@@ -471,6 +471,35 @@ pub trait IteratorExt<A>: Iterator<A> {
         FromIterator::from_iter(self)
     }
 
+    /// Loops through the entire iterator, collecting all of the elements into
+    /// one of two containers, depending on a predicate. The elements of the
+    /// first container satisfy the predicate, while the elements of the second
+    /// do not.
+    ///
+    /// ```
+    /// let vec = vec![1i, 2i, 3i, 4i];
+    /// let (even, odd): (Vec<int>, Vec<int>) = vec.into_iter().partition(|&n| n % 2 == 0);
+    /// assert_eq!(even, vec![2, 4]);
+    /// assert_eq!(odd, vec![1, 3]);
+    /// ```
+    #[unstable = "recently added as part of collections reform"]
+    fn partition<B, F>(mut self, mut f: F) -> (B, B) where
+        B: Default + Extend<A>, F: FnMut(&A) -> bool
+    {
+        let mut left: B = Default::default();
+        let mut right: B = Default::default();
+
+        for x in self {
+            if f(&x) {
+                left.extend(Some(x).into_iter())
+            } else {
+                right.extend(Some(x).into_iter())
+            }
+        }
+
+        (left, right)
+    }
+
     /// Loops through `n` iterations, returning the `n`th element of the
     /// iterator.
     ///
@@ -660,6 +689,42 @@ pub trait IteratorExt<A>: Iterator<A> {
 
 #[unstable = "trait is unstable"]
 impl<A, I> IteratorExt<A> for I where I: Iterator<A> {}
+
+/// Extention trait for iterators of pairs.
+#[unstable = "newly added trait, likely to be merged with IteratorExt"]
+pub trait IteratorPairExt<A, B>: Iterator<(A, B)> {
+    /// Converts an iterator of pairs into a pair of containers.
+    ///
+    /// Loops through the entire iterator, collecting the first component of
+    /// each item into one new container, and the second component into another.
+    fn unzip<FromA, FromB>(mut self) -> (FromA, FromB) where
+        FromA: Default + Extend<A>, FromB: Default + Extend<B>
+    {
+        struct SizeHint<A>(uint, Option<uint>);
+        impl<A> Iterator<A> for SizeHint<A> {
+            fn next(&mut self) -> Option<A> { None }
+            fn size_hint(&self) -> (uint, Option<uint>) {
+                (self.0, self.1)
+            }
+        }
+
+        let (lo, hi) = self.size_hint();
+        let mut ts: FromA = Default::default();
+        let mut us: FromB = Default::default();
+
+        ts.extend(SizeHint(lo, hi));
+        us.extend(SizeHint(lo, hi));
+
+        for (t, u) in self {
+            ts.extend(Some(t).into_iter());
+            us.extend(Some(u).into_iter());
+        }
+
+        (ts, us)
+    }
+}
+
+impl<A, B, I> IteratorPairExt<A, B> for I where I: Iterator<(A, B)> {}
 
 /// A range iterator able to yield elements from both ends
 ///

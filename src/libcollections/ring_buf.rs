@@ -1154,7 +1154,7 @@ impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
         }
         let tail = self.tail;
         self.tail = wrap_index(self.tail + 1, self.ring.len());
-        unsafe { Some(self.ring.unsafe_get(tail)) }
+        unsafe { Some(self.ring.get_unchecked(tail)) }
     }
 
     #[inline]
@@ -1171,7 +1171,7 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
             return None;
         }
         self.head = wrap_index(self.head - 1, self.ring.len());
-        unsafe { Some(self.ring.unsafe_get(self.head)) }
+        unsafe { Some(self.ring.get_unchecked(self.head)) }
     }
 }
 
@@ -1190,7 +1190,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Iter<'a, T> {
             None
         } else {
             let idx = wrap_index(self.tail + j, self.ring.len());
-            unsafe { Some(self.ring.unsafe_get(idx)) }
+            unsafe { Some(self.ring.get_unchecked(idx)) }
         }
     }
 }

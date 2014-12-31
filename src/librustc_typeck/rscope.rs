@@ -13,6 +13,7 @@ use middle::ty;
 use middle::ty_fold;
 
 use std::cell::Cell;
+use std::iter::repeat;
 use syntax::codemap::Span;
 
 /// Defines strategies for handling regions that are omitted.  For
@@ -99,7 +100,7 @@ impl RegionScope for SpecificRscope {
                     count: uint)
                     -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
     {
-        Ok(Vec::from_elem(count, self.default))
+        Ok(repeat(self.default).take(count).collect())
     }
 }
 
@@ -134,7 +135,7 @@ impl RegionScope for BindingRscope {
                     count: uint)
                     -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
     {
-        Ok(Vec::from_fn(count, |_| self.next_region()))
+        Ok(range(0, count).map(|_| self.next_region()).collect())
     }
 }
 

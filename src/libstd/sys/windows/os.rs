@@ -16,13 +16,14 @@
 use prelude::*;
 
 use io::{IoResult, IoError};
+use iter::repeat;
 use libc::{c_int, c_void};
 use libc;
 use os;
 use path::BytesContainer;
 use ptr;
-use sys::fs::FileDesc;
 use slice;
+use sys::fs::FileDesc;
 
 use os::TMPBUF_SZ;
 use libc::types::os::arch::extra::DWORD;
@@ -128,7 +129,7 @@ pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD) -> Option<String
         let mut res = None;
         let mut done = false;
         while !done {
-            let mut buf = Vec::from_elem(n as uint, 0u16);
+            let mut buf: Vec<u16> = repeat(0u16).take(n).collect();
             let k = f(buf.as_mut_ptr(), n);
             if k == (0 as DWORD) {
                 done = true;

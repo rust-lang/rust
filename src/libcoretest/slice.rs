@@ -8,30 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice::BinarySearchResult::{Found, NotFound};
+use core::result::Result::{Ok, Err};
 
 #[test]
 fn binary_search_not_found() {
     let b = [1i, 2, 4, 6, 8, 9];
-    assert!(b.binary_search(|v| v.cmp(&6)) == Found(3));
+    assert!(b.binary_search_by(|v| v.cmp(&6)) == Ok(3));
     let b = [1i, 2, 4, 6, 8, 9];
-    assert!(b.binary_search(|v| v.cmp(&5)) == NotFound(3));
+    assert!(b.binary_search_by(|v| v.cmp(&5)) == Err(3));
     let b = [1i, 2, 4, 6, 7, 8, 9];
-    assert!(b.binary_search(|v| v.cmp(&6)) == Found(3));
+    assert!(b.binary_search_by(|v| v.cmp(&6)) == Ok(3));
     let b = [1i, 2, 4, 6, 7, 8, 9];
-    assert!(b.binary_search(|v| v.cmp(&5)) == NotFound(3));
+    assert!(b.binary_search_by(|v| v.cmp(&5)) == Err(3));
     let b = [1i, 2, 4, 6, 8, 9];
-    assert!(b.binary_search(|v| v.cmp(&8)) == Found(4));
+    assert!(b.binary_search_by(|v| v.cmp(&8)) == Ok(4));
     let b = [1i, 2, 4, 6, 8, 9];
-    assert!(b.binary_search(|v| v.cmp(&7)) == NotFound(4));
+    assert!(b.binary_search_by(|v| v.cmp(&7)) == Err(4));
     let b = [1i, 2, 4, 6, 7, 8, 9];
-    assert!(b.binary_search(|v| v.cmp(&8)) == Found(5));
+    assert!(b.binary_search_by(|v| v.cmp(&8)) == Ok(5));
     let b = [1i, 2, 4, 5, 6, 8, 9];
-    assert!(b.binary_search(|v| v.cmp(&7)) == NotFound(5));
+    assert!(b.binary_search_by(|v| v.cmp(&7)) == Err(5));
     let b = [1i, 2, 4, 5, 6, 8, 9];
-    assert!(b.binary_search(|v| v.cmp(&0)) == NotFound(0));
+    assert!(b.binary_search_by(|v| v.cmp(&0)) == Err(0));
     let b = [1i, 2, 4, 5, 6, 8];
-    assert!(b.binary_search(|v| v.cmp(&9)) == NotFound(6));
+    assert!(b.binary_search_by(|v| v.cmp(&9)) == Err(6));
 }
 
 #[test]

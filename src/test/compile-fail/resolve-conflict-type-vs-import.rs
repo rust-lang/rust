@@ -15,4 +15,3 @@ struct Iter;
 
 fn main() {
 }
-

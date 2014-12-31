@@ -34,6 +34,7 @@ use util::ppaux::Repr;
 
 use std::cell::{Cell, RefCell};
 use std::u32;
+use std::iter::repeat;
 use syntax::ast;
 
 mod doc;
@@ -975,7 +976,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn construct_var_data(&self) -> Vec<VarData> {
-        Vec::from_fn(self.num_vars() as uint, |_| {
+        range(0, self.num_vars() as uint).map(|_| {
             VarData {
                 // All nodes are initially classified as contracting; during
                 // the expansion phase, we will shift the classification for
@@ -984,7 +985,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 classification: Contracting,
                 value: NoValue,
             }
-        })
+        }).collect()
     }
 
     fn dump_constraints(&self) {
@@ -1247,7 +1248,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec = Vec::from_elem(self.num_vars() as uint, u32::MAX);
+        let mut dup_vec: Vec<_> = repeat(u32::MAX).take(self.num_vars() as uint).collect();
 
         let mut opt_graph = None;
 
@@ -1308,7 +1309,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
         }
 
-        Vec::from_fn(self.num_vars() as uint, |idx| var_data[idx].value)
+        range(0, self.num_vars() as uint).map(|idx| var_data[idx].value).collect()
     }
 
     fn construct_graph(&self) -> RegionGraph {

@@ -77,6 +77,7 @@ use slice::SliceExt;
 use string::String;
 use unicode;
 use vec::Vec;
+use slice::SliceConcatExt;
 
 pub use core::str::{from_utf8, CharEq, Chars, CharIndices};
 pub use core::str::{Bytes, CharSplits, is_utf8};
@@ -93,71 +94,45 @@ pub use core::str::{SplitN, RSplitN};
 Section: Creating a string
 */
 
-/// Methods for vectors of strings.
-#[unstable = "functionality may be replaced with iterators"]
-pub trait StrVector for Sized? {
-    /// Concatenates a vector of strings.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let first = "Restaurant at the End of the".to_string();
-    /// let second = " Universe".to_string();
-    /// let string_vec = vec![first, second];
-    /// assert_eq!(string_vec.concat(), "Restaurant at the End of the Universe".to_string());
-    /// ```
-    fn concat(&self) -> String;
-
-    /// Concatenates a vector of strings, placing a given separator between each.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let first = "Roast".to_string();
-    /// let second = "Sirloin Steak".to_string();
-    /// let string_vec = vec![first, second];
-    /// assert_eq!(string_vec.connect(", "), "Roast, Sirloin Steak".to_string());
-    /// ```
-    fn connect(&self, sep: &str) -> String;
-}
-
-#[allow(deprecated)]
-impl<S: Str> StrVector for [S] {
+impl<S: Str> SliceConcatExt<str, String> for [S] {
     fn concat(&self) -> String {
-        if self.is_empty() {
+        let s = self.as_slice();
+
+        if s.is_empty() {
             return String::new();
         }
 
         // `len` calculation may overflow but push_str will check boundaries
-        let len = self.iter().map(|s| s.as_slice().len()).sum();
-
+        let len = s.iter().map(|s| s.as_slice().len()).sum();
         let mut result = String::with_capacity(len);
 
-        for s in self.iter() {
-            result.push_str(s.as_slice());
+        for s in s.iter() {
+            result.push_str(s.as_slice())
         }
 
         result
     }
 
     fn connect(&self, sep: &str) -> String {
-        if self.is_empty() {
+        let s = self.as_slice();
+
+        if s.is_empty() {
             return String::new();
         }
 
         // concat is faster
         if sep.is_empty() {
-            return self.concat();
+            return s.concat();
         }
 
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
-        let len = sep.len() * (self.len() - 1)
-            + self.iter().map(|s| s.as_slice().len()).sum();
+        let len = sep.len() * (s.len() - 1)
+            + s.iter().map(|s| s.as_slice().len()).sum();
         let mut result = String::with_capacity(len);
         let mut first = true;
 
-        for s in self.iter() {
+        for s in s.iter() {
             if first {
                 first = false;
             } else {
@@ -166,18 +141,6 @@ impl<S: Str> StrVector for [S] {
             result.push_str(s.as_slice());
         }
         result
-    }
-}
-
-impl<S: Str, T: AsSlice<S>> StrVector for T {
-    #[inline]
-    fn concat(&self) -> String {
-        self.as_slice().concat()
-    }
-
-    #[inline]
-    fn connect(&self, sep: &str) -> String {
-        self.as_slice().connect(sep)
     }
 }
 
@@ -221,7 +184,7 @@ pub struct Decompositions<'a> {
 impl<'a> Iterator<char> for Decompositions<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
-        match self.buffer.head() {
+        match self.buffer.first() {
             Some(&(c, 0)) => {
                 self.sorted = false;
                 self.buffer.remove(0);
@@ -268,13 +231,16 @@ impl<'a> Iterator<char> for Decompositions<'a> {
             self.sorted = true;
         }
 
-        match self.buffer.remove(0) {
-            Some((c, 0)) => {
-                self.sorted = false;
-                Some(c)
+        if self.buffer.is_empty() {
+            None
+        } else {
+            match self.buffer.remove(0) {
+                (c, 0) => {
+                    self.sorted = false;
+                    Some(c)
+                }
+                (c, _) => Some(c),
             }
-            Some((c, _)) => Some(c),
-            None => None
         }
     }
 
@@ -747,7 +713,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
         if me.is_empty() { return t.chars().count(); }
         if t.is_empty() { return me.chars().count(); }
 
-        let mut dcol = Vec::from_fn(t.len() + 1, |x| x);
+        let mut dcol: Vec<_> = range(0, t.len() + 1).collect();
         let mut t_last = 0;
 
         for (i, sc) in me.chars().enumerate() {
@@ -1892,22 +1858,12 @@ mod tests {
         assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".slice_chars(2, 8));
     }
 
-    struct S {
-        x: [String, .. 2]
-    }
-
-    impl AsSlice<String> for S {
-        fn as_slice<'a> (&'a self) -> &'a [String] {
-            &self.x
-        }
-    }
-
     fn s(x: &str) -> String { x.into_string() }
 
     macro_rules! test_concat {
         ($expected: expr, $string: expr) => {
             {
-                let s = $string.concat();
+                let s: String = $string.concat();
                 assert_eq!($expected, s);
             }
         }
@@ -1915,22 +1871,10 @@ mod tests {
 
     #[test]
     fn test_concat_for_different_types() {
-        test_concat!("ab", ["a", "b"]);
-        test_concat!("ab", [s("a"), s("b")]);
+        test_concat!("ab", vec![s("a"), s("b")]);
         test_concat!("ab", vec!["a", "b"]);
         test_concat!("ab", vec!["a", "b"].as_slice());
         test_concat!("ab", vec![s("a"), s("b")]);
-
-        let mut v0 = ["a", "b"];
-        let mut v1 = [s("a"), s("b")];
-        unsafe {
-            use std::c_vec::CVec;
-
-            test_concat!("ab", CVec::new(v0.as_mut_ptr(), v0.len()));
-            test_concat!("ab", CVec::new(v1.as_mut_ptr(), v1.len()));
-        }
-
-        test_concat!("ab", S { x: [s("a"), s("b")] });
     }
 
     #[test]
@@ -1959,17 +1903,6 @@ mod tests {
         test_connect!("a-b", vec!["a", "b"], hyphen.as_slice());
         test_connect!("a-b", vec!["a", "b"].as_slice(), "-");
         test_connect!("a-b", vec![s("a"), s("b")], "-");
-
-        let mut v0 = ["a", "b"];
-        let mut v1 = [s("a"), s("b")];
-        unsafe {
-            use std::c_vec::CVec;
-
-            test_connect!("a-b", CVec::new(v0.as_mut_ptr(), v0.len()), "-");
-            test_connect!("a-b", CVec::new(v1.as_mut_ptr(), v1.len()), hyphen.as_slice());
-        }
-
-        test_connect!("a-b", S { x: [s("a"), s("b")] }, "-");
     }
 
     #[test]
@@ -3339,7 +3272,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use super::*;
-    use prelude::{SliceExt, IteratorExt, DoubleEndedIteratorExt};
+    use prelude::{SliceExt, IteratorExt, DoubleEndedIteratorExt, SliceConcatExt};
     use test::Bencher;
     use test::black_box;
 
@@ -3502,7 +3435,7 @@ mod bench {
     fn bench_connect(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let sep = "→";
-        let v = [s, s, s, s, s, s, s, s, s, s];
+        let v = vec![s, s, s, s, s, s, s, s, s, s];
         b.iter(|| {
             assert_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
         })
