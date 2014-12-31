@@ -1272,9 +1272,9 @@ pub fn each_impl<F>(cdata: Cmd, mut callback: F) where
 }
 
 pub fn each_implementation_for_type<F>(cdata: Cmd,
-                                    id: ast::NodeId,
-                                    mut callback: F) where
-    F: FnMut(ast::DefId),
+                                       id: ast::NodeId,
+                                       mut callback: F)
+    where F: FnMut(ast::DefId),
 {
     let item_doc = lookup_item(id, cdata.data());
     reader::tagged_docs(item_doc,
