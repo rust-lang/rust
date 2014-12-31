@@ -545,11 +545,11 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     let test_id = ecx.ident_of("test");
 
     // creates self::test::$name
-    let test_path = |name| {
+    let test_path = |&: name| {
         ecx.path(span, vec![self_id, test_id, ecx.ident_of(name)])
     };
     // creates $name: $expr
-    let field = |name, expr| ecx.field_imm(span, ecx.ident_of(name), expr);
+    let field = |&: name, expr| ecx.field_imm(span, ecx.ident_of(name), expr);
 
     debug!("encoding {}", ast_util::path_name_i(path[]));
 
@@ -563,7 +563,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
                                   vec![name_expr]);
 
     let ignore_expr = ecx.expr_bool(span, test.ignore);
-    let should_fail_path = |name| {
+    let should_fail_path = |&: name| {
         ecx.path(span, vec![self_id, test_id, ecx.ident_of("ShouldFail"), ecx.ident_of(name)])
     };
     let fail_expr = match test.should_fail {

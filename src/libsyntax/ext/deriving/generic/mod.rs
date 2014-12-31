@@ -935,7 +935,7 @@ impl<'a> MethodDef<'a> {
         // where each tuple has length = self_args.len()
         let mut match_arms: Vec<ast::Arm> = variants.iter().enumerate()
             .map(|(index, variant)| {
-                let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &str| {
+                let mk_self_pat = |&: cx: &mut ExtCtxt, self_arg_name: &str| {
                     let (p, idents) = trait_.create_enum_variant_pattern(cx, type_ident,
                                                                          &**variant,
                                                                          self_arg_name,
