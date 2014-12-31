@@ -49,6 +49,12 @@ pub struct RingBuf<T> {
 }
 
 #[stable]
+unsafe impl<T: Send> Send for RingBuf<T> {}
+
+#[stable]
+unsafe impl<T: Sync> Sync for RingBuf<T> {}
+
+#[stable]
 impl<T: Clone> Clone for RingBuf<T> {
     fn clone(&self) -> RingBuf<T> {
         self.iter().map(|t| t.clone()).collect()
