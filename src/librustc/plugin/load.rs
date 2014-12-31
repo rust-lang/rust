@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Used by `rustc` when loading a plugin.
+//! Used by `rustc` when loading a plugin, or a crate with exported macros.
 
 use session::Session;
 use metadata::creader::CrateReader;
@@ -21,17 +21,14 @@ use syntax::ast;
 use syntax::attr;
 use syntax::visit;
 use syntax::visit::Visitor;
-use syntax::ext::expand::ExportedMacros;
 use syntax::attr::AttrMetaMethods;
 
-/// Plugin-related crate metadata.
+/// Metadata for a single plugin crate.
 pub struct PluginMetadata {
-    /// Source code of macros exported by the crate.
-    pub macros: Vec<String>,
-    /// Path to the shared library file.
-    pub lib: Option<Path>,
-    /// Symbol name of the plugin registrar function.
-    pub registrar_symbol: Option<String>,
+    /// Macros exported by the crate.
+    pub macros: Vec<ast::MacroDef>,
+    /// Path to the shared library file, and registrar function symbol.
+    pub registrar: Option<(Path, String)>,
 }
 
 /// Pointer to a registrar function.
@@ -40,8 +37,8 @@ pub type PluginRegistrarFun =
 
 /// Information about loaded plugins.
 pub struct Plugins {
-    /// Source code of exported macros.
-    pub macros: Vec<ExportedMacros>,
+    /// Imported macros.
+    pub macros: Vec<ast::MacroDef>,
     /// Registrars, as function pointers.
     pub registrars: Vec<PluginRegistrarFun>,
 }
@@ -90,7 +87,7 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
     fn visit_view_item(&mut self, vi: &ast::ViewItem) {
         match vi.node {
-            ast::ViewItemExternCrate(name, _, _) => {
+            ast::ViewItemExternCrate(_, _, _) => {
                 let mut plugin_phase = false;
 
                 for attr in vi.attrs.iter().filter(|a| a.check_name("phase")) {
@@ -107,17 +104,13 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
 
                 if !plugin_phase { return; }
 
-                let PluginMetadata { macros, lib, registrar_symbol } =
+                let PluginMetadata { macros, registrar } =
                     self.reader.read_plugin_metadata(vi);
 
-                self.plugins.macros.push(ExportedMacros {
-                    crate_name: name,
-                    macros: macros,
-                });
+                self.plugins.macros.extend(macros.into_iter());
 
-                match (lib, registrar_symbol) {
-                    (Some(lib), Some(symbol))
-                        => self.dylink_registrar(vi, lib, symbol),
+                match registrar {
+                    Some((lib, symbol)) => self.dylink_registrar(vi, lib, symbol),
                     _ => (),
                 }
             }

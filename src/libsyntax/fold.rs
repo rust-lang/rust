@@ -1115,7 +1115,7 @@ pub fn noop_fold_mod<T: Folder>(Mod {inner, view_items, items}: Mod, folder: &mu
     }
 }
 
-pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, exported_macros, span}: Crate,
+pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_macros, span}: Crate,
                                   folder: &mut T) -> Crate {
     let config = folder.fold_meta_items(config);
 
@@ -1145,6 +1145,10 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, exported_macros,
             items: Vec::new(),
         }, Vec::new(), span)
     };
+
+    for def in exported_macros.iter_mut() {
+        def.id = folder.new_id(def.id);
+    }
 
     Crate {
         module: module,

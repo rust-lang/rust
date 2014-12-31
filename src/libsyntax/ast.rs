@@ -476,7 +476,7 @@ pub struct Crate {
     pub attrs: Vec<Attribute>,
     pub config: CrateConfig,
     pub span: Span,
-    pub exported_macros: Vec<P<Item>>
+    pub exported_macros: Vec<MacroDef>,
 }
 
 pub type MetaItem = Spanned<MetaItem_>;
@@ -1696,6 +1696,19 @@ pub enum InlinedItem {
     IITraitItem(DefId /* impl id */, TraitItem),
     IIImplItem(DefId /* impl id */, ImplItem),
     IIForeign(P<ForeignItem>),
+}
+
+/// A macro definition, in this crate or imported from another.
+///
+/// Not parsed directly, but created on macro import or `macro_rules!` expansion.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
+pub struct MacroDef {
+    pub ident: Ident,
+    pub attrs: Vec<Attribute>,
+    pub id: NodeId,
+    pub span: Span,
+    pub imported_from: Option<Ident>,
+    pub body: Vec<TokenTree>,
 }
 
 #[cfg(test)]

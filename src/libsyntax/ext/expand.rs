@@ -432,7 +432,7 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
     }
 
     let mut new_items = match it.node {
-        ast::ItemMac(..) => expand_item_mac(it, None, fld),
+        ast::ItemMac(..) => expand_item_mac(it, fld),
         ast::ItemMod(_) | ast::ItemForeignMod(_) => {
             let valid_ident =
                 it.ident.name != parse::token::special_idents::invalid.name;
@@ -549,7 +549,6 @@ fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
 pub fn expand_item_mac(it: P<ast::Item>,
-                       imported_from: Option<ast::Ident>,
                        fld: &mut MacroExpander) -> SmallVector<P<ast::Item>> {
     let (extname, path_span, tts) = match it.node {
         ItemMac(codemap::Spanned {
@@ -630,18 +629,20 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         }
                     });
                     // DON'T mark before expansion.
-                    let MacroDef { name, ext }
-                        = macro_rules::add_new_extension(fld.cx, it.span, it.ident,
-                                                         imported_from, tts);
 
-                    fld.cx.syntax_env.insert(intern(name.as_slice()), ext);
+                    let def = ast::MacroDef {
+                        ident: it.ident,
+                        attrs: it.attrs.clone(),
+                        id: ast::DUMMY_NODE_ID,
+                        span: it.span,
+                        imported_from: None,
+                        body: tts,
+                    };
+                    let ext = macro_rules::compile(fld.cx, &def);
+                    fld.cx.syntax_env.insert(def.ident.name, ext);
 
-                    if match imported_from {
-                        None => attr::contains_name(it.attrs.as_slice(), "macro_export"),
-                        Some(_) => fld.cx.ecfg.reexported_macros.iter()
-                                       .any(|e| e.as_slice() == name.as_slice()),
-                    } {
-                        fld.cx.exported_macros.push(it);
+                    if attr::contains_name(def.attrs.as_slice(), "macro_export") {
+                        fld.cx.exported_macros.push(def);
                     }
 
                     // macro_rules! has a side effect but expands to nothing.
@@ -680,9 +681,6 @@ pub fn expand_item_mac(it: P<ast::Item>,
 }
 
 /// Expand a stmt
-//
-// I don't understand why this returns a vector... it looks like we're
-// half done adding machinery to allow macros to expand into multiple statements.
 fn expand_stmt(s: Stmt, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
     let (mac, style) = match s.node {
         StmtMac(mac, style) => (mac, style),
@@ -1195,30 +1193,23 @@ impl ExpansionConfig {
     }
 }
 
-pub struct ExportedMacros {
-    pub crate_name: Ident,
-    pub macros: Vec<String>,
-}
-
 pub fn expand_crate(parse_sess: &parse::ParseSess,
                     cfg: ExpansionConfig,
                     // these are the macros being imported to this crate:
-                    imported_macros: Vec<ExportedMacros>,
+                    imported_macros: Vec<ast::MacroDef>,
                     user_exts: Vec<NamedSyntaxExtension>,
                     c: Crate) -> Crate {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
     let mut expander = MacroExpander::new(&mut cx);
 
-    for ExportedMacros { crate_name, macros } in imported_macros.into_iter() {
-        let name = format!("<{} macros>", token::get_ident(crate_name));
+    for def in imported_macros.iter() {
+        let ext = macro_rules::compile(expander.cx, def);
+        expander.cx.syntax_env.insert(def.ident.name, ext);
 
-        for source in macros.into_iter() {
-            let item = parse::parse_item_from_source_str(name.clone(),
-                                                         source,
-                                                         expander.cx.cfg(),
-                                                         expander.cx.parse_sess())
-                    .expect("expected a serialized item");
-            expand_item_mac(item, Some(crate_name), &mut expander);
+        if expander.cx.ecfg.reexported_macros.iter()
+            .any(|e| e[] == token::get_ident(def.ident).get()) {
+
+            expander.cx.exported_macros.push(def.clone());
         }
     }
 
