@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[no_link]
+extern crate libc;
 
-#![feature(phase)]
-
-#[phase(plugin)]
-use std::mem;
-
-fn main() {}
-
+fn main() {
+    unsafe {
+        libc::abs(0);  //~ ERROR Use of undeclared type or module `libc`
+                      //~^ ERROR unresolved name `libc::abs`
+    }
+}

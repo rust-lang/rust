@@ -11,9 +11,7 @@
 // ignore-android (FIXME #11419)
 // exec-env:RUST_LOG=info
 
-#![feature(phase)]
-
-#[phase(plugin, link)]
+#[macro_use]
 extern crate log;
 
 use log::{set_logger, Logger, LogRecord};

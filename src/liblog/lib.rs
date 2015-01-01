@@ -13,8 +13,7 @@
 //! # Examples
 //!
 //! ```
-//! #![feature(phase)]
-//! #[phase(plugin, link)] extern crate log;
+//! #[macro_use] extern crate log;
 //!
 //! fn main() {
 //!     debug!("this is a debug {}", "message");

@@ -10,8 +10,7 @@
 
 // exec-env:RUST_LOG=rust-log-filter/f.o
 
-#![feature(phase)]
-#[phase(plugin,link)]
+#[macro_use]
 extern crate log;
 
 use std::sync::mpsc::{channel, Sender, Receiver};

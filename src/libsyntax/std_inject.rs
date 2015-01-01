@@ -65,12 +65,8 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
                                            Some((actual_crate_name, ast::CookedStr)),
                                            ast::DUMMY_NODE_ID),
             attrs: vec!(
-                attr::mk_attr_outer(attr::mk_attr_id(), attr::mk_list_item(
-                        InternedString::new("phase"),
-                        vec!(
-                            attr::mk_word_item(InternedString::new("plugin")),
-                            attr::mk_word_item(InternedString::new("link")
-                        ))))),
+                attr::mk_attr_outer(attr::mk_attr_id(), attr::mk_word_item(
+                        InternedString::new("macro_use")))),
             vis: ast::Inherited,
             span: DUMMY_SP
         });
@@ -81,16 +77,6 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
 
         // don't add #![no_std] here, that will block the prelude injection later.
         // Add it during the prelude injection instead.
-
-        // Add #![feature(phase)] here, because we use #[phase] on extern crate std.
-        let feat_phase_attr = attr::mk_attr_inner(attr::mk_attr_id(),
-                                                  attr::mk_list_item(
-                                  InternedString::new("feature"),
-                                  vec![attr::mk_word_item(InternedString::new("phase"))],
-                              ));
-        // std_inject runs after feature checking so manually mark this attr
-        attr::mark_used(&feat_phase_attr);
-        krate.attrs.push(feat_phase_attr);
 
         krate
     }

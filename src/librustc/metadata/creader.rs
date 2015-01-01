@@ -89,12 +89,7 @@ fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
 }
 
 fn should_link(i: &ast::ViewItem) -> bool {
-    i.attrs.iter().all(|attr| {
-        attr.name().get() != "phase" ||
-            attr.meta_item_list().map_or(false, |phases| {
-                attr::contains_name(phases[], "link")
-            })
-    })
+    !attr::contains_name(i.attrs[], "no_link")
 }
 
 struct CrateInfo {

@@ -13,7 +13,7 @@
 // aux-build:stability_cfg1.rs
 // aux-build:stability_cfg2.rs
 
-#![feature(globs, phase)]
+#![feature(globs)]
 #![deny(unstable)]
 #![deny(deprecated)]
 #![deny(experimental)]
@@ -23,7 +23,7 @@ mod cross_crate {
     extern crate stability_cfg1;
     extern crate stability_cfg2; //~ ERROR: use of experimental item
 
-    #[phase(plugin, link)]
+    #[macro_use]
     extern crate lint_stability; //~ ERROR: use of unmarked item
     use self::lint_stability::*;
 

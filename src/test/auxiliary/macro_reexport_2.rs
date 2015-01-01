@@ -9,9 +9,8 @@
 // except according to those terms.
 
 #![crate_type = "dylib"]
-#![feature(phase)]
 
 #![macro_reexport(reexported)]
 
-#[phase(plugin)]
+#[macro_use] #[no_link]
 extern crate macro_reexport_1;

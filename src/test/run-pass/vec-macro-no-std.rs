@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase, lang_items)]
+#![feature(lang_items)]
 #![no_std]
 
-#[phase(plugin, link)]
+#[macro_use]
 extern crate core;
 extern crate libc;
 
-#[phase(plugin, link)]
+#[macro_use]
 extern crate collections;
 
 use core::option::Option::Some;

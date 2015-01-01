@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs, phase, macro_rules)]
+#![feature(globs, plugin, macro_rules)]
 
 extern crate syntax;
 extern crate rustc;
 
-#[phase(link)]
 extern crate regex;
 
-#[phase(link, plugin)]
+#[macro_use]
 extern crate log;
 
 use std::collections::HashMap;

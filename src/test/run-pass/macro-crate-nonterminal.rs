@@ -11,9 +11,7 @@
 // aux-build:macro_crate_nonterminal.rs
 // ignore-stage1
 
-#![feature(phase)]
-
-#[phase(plugin, link)]
+#[macro_use]
 extern crate macro_crate_nonterminal;
 
 pub fn main() {

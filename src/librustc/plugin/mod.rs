@@ -43,14 +43,14 @@
 //! To use a plugin while compiling another crate:
 //!
 //! ```rust
-//! #![feature(phase)]
+//! #![feature(plugin)]
 //!
-//! #[phase(plugin)]
+//! #[plugin]
 //! extern crate myplugin;
 //! ```
 //!
-//! If you also need the plugin crate available at runtime, use
-//! `phase(plugin, link)`.
+//! If you don't need the plugin crate available at runtime, use
+//! `#[no_link]` as well.
 //!
 //! See [the compiler plugin guide](../../guide-plugin.html)
 //! for more examples.

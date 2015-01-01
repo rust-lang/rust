@@ -41,7 +41,7 @@
 // ignore-stage1
 // ignore-cross-compile #12102
 
-#![feature(macro_rules, phase, slicing_syntax)]
+#![feature(macro_rules, plugin, slicing_syntax)]
 
 extern crate regex;
 
