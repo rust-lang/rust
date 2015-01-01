@@ -10,6 +10,8 @@
 
 //! Implementation of `std::os` functionality for unix systems
 
+#![allow(unused_imports)] // lots of cfg code here
+
 use prelude::v1::*;
 
 use error::{FromError, Error};
@@ -19,7 +21,7 @@ use io::{IoError, IoResult};
 use libc::{self, c_int, c_char, c_void};
 use os::TMPBUF_SZ;
 use os;
-use path::{BytesContainer};
+use path::BytesContainer;
 use ptr;
 use str;
 use sys::fs::FileDesc;

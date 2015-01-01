@@ -10,24 +10,20 @@
 
 //! Blocking Windows-based file I/O
 
-use alloc::arc::Arc;
-use libc::{self, c_int};
-
-use mem;
-use sys::os::fill_utf16_buf_and_decode;
-use path;
-use ptr;
-use str;
-use io;
-
 use prelude::v1::*;
-use sys;
-use sys::os;
-use sys_common::{keep_going, eof, mkerr_libc};
 
+use alloc::arc::Arc;
+use io;
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
 use io::{IoResult, IoError, FileStat, SeekStyle};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
+use libc::{self, c_int};
+use mem;
+use ptr;
+use sys::os::fill_utf16_buf_and_decode;
+use sys::os;
+use sys;
+use sys_common::{unimpl, mkerr_libc};
 
 pub type fd_t = libc::c_int;
 
@@ -444,7 +440,7 @@ pub fn stat(p: &Path) -> IoResult<FileStat> {
 // FIXME: move this to platform-specific modules (for now)?
 pub fn lstat(_p: &Path) -> IoResult<FileStat> {
     // FIXME: implementation is missing
-    Err(super::unimpl())
+    Err(unimpl())
 }
 
 pub fn utime(p: &Path, atime: u64, mtime: u64) -> IoResult<()> {

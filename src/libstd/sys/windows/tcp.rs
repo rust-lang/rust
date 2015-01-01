@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::net::ip;
+use prelude::v1::*;
+
 use io::IoResult;
+use io::net::ip;
 use libc;
 use mem;
 use ptr;
-use prelude::v1::*;
-use super::{last_error, last_net_error, retry, sock_t};
+use super::{last_error, last_net_error, sock_t};
 use sync::Arc;
 use sync::atomic::{AtomicBool, Ordering};
-use sys::fs::FileDesc;
 use sys::{self, c, set_nonblocking, wouldblock, timer};
-use sys_common::{self, timeout, eof, net};
+use sys_common::{timeout, eof, net};
 
 pub use sys_common::net::TcpStream;
 
@@ -204,10 +204,6 @@ impl TcpAcceptor {
         }
 
         Err(eof())
-    }
-
-    pub fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        net::sockname(self.socket(), libc::getsockname)
     }
 
     pub fn set_timeout(&mut self, timeout: Option<u64>) {
