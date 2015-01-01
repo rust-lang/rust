@@ -18,6 +18,7 @@ use self::BuiltinBoundConditions::*;
 use self::EvaluationResult::*;
 
 use super::{DerivedObligationCause};
+use super::{project};
 use super::{PredicateObligation, Obligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation};
 use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch};
@@ -29,7 +30,7 @@ use super::{util};
 
 use middle::fast_reject;
 use middle::mem_categorization::Typer;
-use middle::subst::{Subst, Substs, VecPerParamSpace};
+use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
 use middle::ty::{mod, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
@@ -2100,7 +2101,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn impl_predicates(&self,
+    fn impl_predicates(&mut self,
                        cause: ObligationCause<'tcx>,
                        recursion_depth: uint,
                        impl_def_id: ast::DefId,
@@ -2111,8 +2112,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         let impl_generics = ty::lookup_item_type(self.tcx(), impl_def_id).generics;
         let bounds = impl_generics.to_bounds(self.tcx(), impl_substs);
-        let bounds = self.infcx().plug_leaks(skol_map, snapshot, &bounds);
-        util::predicates_for_generics(self.tcx(), cause, recursion_depth, &bounds)
+        let normalized_bounds =
+            project::normalize_with_depth(self, cause.clone(), recursion_depth, &bounds);
+        let normalized_bounds =
+            self.infcx().plug_leaks(skol_map, snapshot, &normalized_bounds);
+        let mut impl_obligations =
+            util::predicates_for_generics(self.tcx(),
+                                          cause,
+                                          recursion_depth,
+                                          &normalized_bounds.value);
+        for obligation in normalized_bounds.obligations.into_iter() {
+            impl_obligations.push(TypeSpace, obligation);
+        }
+        impl_obligations
     }
 
     fn fn_family_trait_kind(&self,
