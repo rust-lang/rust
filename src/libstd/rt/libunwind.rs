@@ -82,7 +82,7 @@ pub const unwinder_private_data_size: uint = 2;
 pub struct _Unwind_Exception {
     pub exception_class: _Unwind_Exception_Class,
     pub exception_cleanup: _Unwind_Exception_Cleanup_Fn,
-    pub private: [_Unwind_Word, ..unwinder_private_data_size],
+    pub private: [_Unwind_Word; unwinder_private_data_size],
 }
 
 pub enum _Unwind_Context {}

@@ -169,7 +169,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
         chars: CharReader::new(input),
     }.run(start, end);
 
-    type Captures = [Option<uint>, ..$num_cap_locs];
+    type Captures = [Option<uint>; $num_cap_locs];
 
     struct Nfa<'t> {
         which: MatchKind,
@@ -250,8 +250,8 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
 
     struct Threads {
         which: MatchKind,
-        queue: [Thread, ..$num_insts],
-        sparse: [uint, ..$num_insts],
+        queue: [Thread; $num_insts],
+        sparse: [uint; $num_insts],
         size: uint,
     }
 

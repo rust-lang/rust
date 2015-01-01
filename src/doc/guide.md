@@ -1617,7 +1617,7 @@ value. In this example, each element of `a` will be initialized to `0i`:
 let a = [0i; 20]; // a: [int; 20]
 ```
 
-Arrays have type `[T,..N]`. We'll talk about this `T` notation later, when we
+Arrays have type `[T; N]`. We'll talk about this `T` notation later, when we
 cover generics.
 
 You can get the number of elements in an array `a` with `a.len()`, and use

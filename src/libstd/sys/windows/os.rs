@@ -80,7 +80,7 @@ pub fn error_string(errnum: i32) -> String {
     // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
     let langId = 0x0800 as DWORD;
 
-    let mut buf = [0 as WCHAR, ..TMPBUF_SZ];
+    let mut buf = [0 as WCHAR; TMPBUF_SZ];
 
     unsafe {
         let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
@@ -164,7 +164,7 @@ pub fn getcwd() -> IoResult<Path> {
     use libc::GetCurrentDirectoryW;
     use io::OtherIoError;
 
-    let mut buf = [0 as u16, ..BUF_BYTES];
+    let mut buf = [0 as u16; BUF_BYTES];
     unsafe {
         if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
             return Err(IoError::last_error());

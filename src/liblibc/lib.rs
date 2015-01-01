@@ -1632,7 +1632,7 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct WSAPROTOCOLCHAIN {
                     pub ChainLen: c_int,
-                    pub ChainEntries: [DWORD, ..MAX_PROTOCOL_CHAIN as uint],
+                    pub ChainEntries: [DWORD; MAX_PROTOCOL_CHAIN as uint],
                 }
 
                 pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
@@ -1658,7 +1658,7 @@ pub mod types {
                     pub iSecurityScheme: c_int,
                     pub dwMessageSize: DWORD,
                     pub dwProviderReserved: DWORD,
-                    pub szProtocol: [u8, ..(WSAPROTOCOL_LEN as uint) + 1u],
+                    pub szProtocol: [u8; (WSAPROTOCOL_LEN as uint) + 1u],
                 }
 
                 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;

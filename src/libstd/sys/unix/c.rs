@@ -94,7 +94,7 @@ mod select {
 
     #[repr(C)]
     pub struct fd_set {
-        fds_bits: [i32, ..(FD_SETSIZE / 32)]
+        fds_bits: [i32; (FD_SETSIZE / 32)]
     }
 
     pub fn fd_set(set: &mut fd_set, fd: i32) {
@@ -115,7 +115,7 @@ mod select {
     #[repr(C)]
     pub struct fd_set {
         // FIXME: shouldn't this be a c_ulong?
-        fds_bits: [libc::uintptr_t, ..(FD_SETSIZE / uint::BITS)]
+        fds_bits: [libc::uintptr_t; (FD_SETSIZE / uint::BITS)]
     }
 
     pub fn fd_set(set: &mut fd_set, fd: i32) {

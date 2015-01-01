@@ -669,7 +669,7 @@ mod bench {
     #[bench]
     fn rand_shuffle_100(b: &mut Bencher) {
         let mut rng = weak_rng();
-        let x : &mut[uint] = &mut [1,..100];
+        let x : &mut[uint] = &mut [1; 100];
         b.iter(|| {
             rng.shuffle(x);
         })

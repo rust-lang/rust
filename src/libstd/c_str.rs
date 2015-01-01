@@ -454,7 +454,7 @@ unsafe fn with_c_str<T, F>(v: &[u8], checked: bool, f: F) -> T where
     F: FnOnce(*const libc::c_char) -> T,
 {
     let c_str = if v.len() < BUF_LEN {
-        let mut buf: [u8, .. BUF_LEN] = mem::uninitialized();
+        let mut buf: [u8; BUF_LEN] = mem::uninitialized();
         slice::bytes::copy_memory(&mut buf, v);
         buf[v.len()] = 0;
 

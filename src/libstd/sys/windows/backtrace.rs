@@ -83,7 +83,7 @@ struct SYMBOL_INFO {
     // note that windows has this as 1, but it basically just means that
     // the name is inline at the end of the struct. For us, we just bump
     // the struct size up to MAX_SYM_NAME.
-    Name: [libc::c_char, ..MAX_SYM_NAME],
+    Name: [libc::c_char; MAX_SYM_NAME],
 }
 
 
@@ -162,7 +162,7 @@ mod arch {
         EFlags: libc::DWORD,
         Esp: libc::DWORD,
         SegSs: libc::DWORD,
-        ExtendedRegisters: [u8, ..MAXIMUM_SUPPORTED_EXTENSION],
+        ExtendedRegisters: [u8; MAXIMUM_SUPPORTED_EXTENSION],
     }
 
     #[repr(C)]
@@ -245,7 +245,7 @@ mod arch {
 
         FltSave: FLOATING_SAVE_AREA,
 
-        VectorRegister: [M128A, .. 26],
+        VectorRegister: [M128A; 26],
         VectorControl: DWORDLONG,
 
         DebugControl: DWORDLONG,
