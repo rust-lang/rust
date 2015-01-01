@@ -76,7 +76,8 @@
 //! Create a struct called `TestStruct` and serialize and deserialize it to and from JSON using the
 //! serialization API, using the derived serialization code.
 //!
-//! ```rust
+//! ```notrust
+//! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
 //! use serialize::json;
 //!
@@ -110,7 +111,8 @@
 //!
 //! ### Simple example of `ToJson` usage
 //!
-//! ```rust
+//! ```notrust
+//! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
 //! use serialize::json::{mod, ToJson, Json};
 //!
@@ -149,7 +151,8 @@
 //!
 //! ### Verbose example of `ToJson` usage
 //!
-//! ```rust
+//! ```notrust
+//! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
 //! use std::collections::BTreeMap;
 //! use serialize::json::{mod, Json, ToJson};
