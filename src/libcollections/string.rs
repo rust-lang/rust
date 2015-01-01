@@ -141,14 +141,18 @@ impl String {
     /// ```
     #[stable]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> CowString<'a> {
+        let mut i = 0;
         match str::from_utf8(v) {
             Ok(s) => return Cow::Borrowed(s),
-            Err(..) => {}
+            Err(e) => {
+                if let Utf8Error::InvalidByte(firstbad) = e {
+                    i = firstbad;
+                }
+            }
         }
 
         static TAG_CONT_U8: u8 = 128u8;
         static REPLACEMENT: &'static [u8] = b"\xEF\xBF\xBD"; // U+FFFD in UTF-8
-        let mut i = 0;
         let total = v.len();
         fn unsafe_get(xs: &[u8], i: uint) -> u8 {
             unsafe { *xs.get_unchecked(i) }
@@ -172,7 +176,7 @@ impl String {
         // subseqidx is the index of the first byte of the subsequence we're looking at.
         // It's used to copy a bunch of contiguous good codepoints at once instead of copying
         // them one by one.
-        let mut subseqidx = 0;
+        let mut subseqidx = i;
 
         while i < total {
             let i_ = i;
