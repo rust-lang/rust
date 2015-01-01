@@ -66,7 +66,7 @@ Each pair of candidates make different trade-offs, and choosing one would be a q
 - But not too foreign, they still look like integers. (`intp/uintp` and `intm/uintm` may be a bit better here.)
 - They follow the same *signed-ness + size* naming pattern used by other integer types like `i32/u32`. (`iptr/uptr` and `imem/umem` are better here as they follow the pattern more faithfully. Please see the following discussion for why `imem/umem` also have the *size* part.)
 
-### The advantages and disadvantages of suffixes `ptr/p` and `mem/m`:
+### The advantages and disadvantages of suffixes `ptr`/`p` and `mem`/`m`:
 
 #### `iptr/uptr` and `intp/uintp`:
 
@@ -79,12 +79,16 @@ Also, there are talks about parametrizing data structures over their indexing/si
 
 #### `imem/umem` and `intm/uintm`:
 
-When originally proposed, `mem`/`m` are interpreted as "for memory related things like offsets, indices, sizes, pointer values". However this interpretation seems vague and not quite convincing. But actually, they can be interpreted as **_mem_ory-pointer-sized**, and be a *precise* size specifier just like `ptr`.
+When originally proposed, `mem`/`m` are interpreted as "memory numbers" (See @1fish2's comment in[RFC PR 464](https://github.com/rust-lang/rfcs/pull/464)):
+
+> `imem`/`umem` are "memory numbers." They're good for indexes, counts, offsets, sizes, etc. As memory numbers, it makes sense that they're sized by the address space.
+
+However this interpretation seems vague and not quite convincing, especially when all other integer types in Rust are named precisely in the "`i`/`u` + `size`" pattern, with no "indirection" involved. What is "memory-sized" anyway? But actually, they can be interpreted as **_mem_ory-pointer-sized**, and be a *precise* size specifier just like `ptr`.
 
 - Pros: Types with similar names do not exist in mainstream languages, so people will not make incorrect assumptions.
-- Cons: `mem` -> `memory-pointer-sized` is not obvious.
+- Cons: `mem` -> *memory-pointer-sized* is not as obvious as `ptr` -> *pointer-sized*.
 
-However, people will be tempted to read the documentation anyway when they encounter `imem/umem` or `intm/uintm`. And this RFC author expects the interpretation to be quite easy to internalize.
+However, people will be tempted to read the documentation anyway when they encounter `imem/umem` or `intm/uintm`. And this RFC author expects the "memory-pointer-sized" interpretation to be quite easy to internalize once the documentation gets consulted.
 
 ### Note:
 
