@@ -853,7 +853,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 /// local in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
-    if fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
         return;
     }
 
@@ -897,7 +897,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                 env_index: uint,
                                                 captured_by_ref: bool,
                                                 span: Span) {
-    if fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
         return;
     }
 
@@ -980,7 +980,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                  variable_ident: ast::Ident,
                                                  binding: BindingInfo<'tcx>) {
-    if fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
         return;
     }
 
@@ -1020,7 +1020,7 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// argument in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
-    if fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
         return;
     }
 
@@ -1074,7 +1074,7 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
 /// loop variable in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_for_loop_var_metadata(bcx: Block, pat: &ast::Pat) {
-    if fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
         return;
     }
 
