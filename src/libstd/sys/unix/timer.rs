@@ -168,8 +168,15 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
             1 => {
                 loop {
                     match messages.try_recv() {
+                        // Once we've been disconnected it means the main thread
+                        // is exiting (at_exit has run). We could still have
+                        // active timers for other threads, so we're just going
+                        // to drop them all on the floor. This is all we can
+                        // really do, however, to prevent resource leakage. The
+                        // remaining timers will likely start panicking quickly
+                        // as they attempt to re-use this thread but are
+                        // disallowed to do so.
                         Err(TryRecvError::Disconnected) => {
-                            assert!(active.len() == 0);
                             break 'outer;
                         }
 
