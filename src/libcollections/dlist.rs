@@ -221,9 +221,12 @@ impl<T> DList<T> {
         DList{list_head: None, list_tail: Rawlink::none(), length: 0}
     }
 
-    /// Adds all elements from `other` to the end of the list.
+    /// Moves all elements from `other` to the end of the list.
     ///
-    /// This operation should compute in O(1) time.
+    /// This reuses all the nodes from `other` and moves them into `self`. After
+    /// this operation, `other` becomes empty.
+    ///
+    /// This operation should compute in O(1) time and O(1) memory.
     ///
     /// # Examples
     ///
@@ -237,16 +240,20 @@ impl<T> DList<T> {
     /// b.push_back(3i);
     /// b.push_back(4);
     ///
-    /// a.append(b);
+    /// a.append(&mut b);
     ///
     /// for e in a.iter() {
     ///     println!("{}", e); // prints 1, then 2, then 3, then 4
     /// }
+    /// println!("{}", b.len()); // prints 0
     /// ```
-    #[unstable = "append should be by-mutable-reference"]
-    pub fn append(&mut self, mut other: DList<T>) {
+    pub fn append(&mut self, other: &mut DList<T>) {
         match self.list_tail.resolve() {
-            None => *self = other,
+            None => {
+                self.length = other.length;
+                self.list_head = other.list_head.take();
+                self.list_tail = other.list_tail.take();
+            },
             Some(tail) => {
                 // Carefully empty `other`.
                 let o_tail = other.list_tail.take();
@@ -261,6 +268,7 @@ impl<T> DList<T> {
                 }
             }
         }
+        other.length = 0;
     }
 
     /// Provides a forward iterator.
@@ -403,6 +411,51 @@ impl<T> DList<T> {
     #[stable]
     pub fn pop_back(&mut self) -> Option<T> {
         self.pop_back_node().map(|box Node{value, ..}| value)
+    }
+
+    /// Splits the list into two at the given index. Returns everything after the given index,
+    /// including the index.
+    ///
+    /// This operation should compute in O(n) time.
+    #[stable]
+    pub fn split_off(&mut self, at: uint) -> DList<T> {
+        let len = self.len();
+        assert!(at < len, "Cannot split off at a nonexistent index");
+        if at == 0 {
+            return mem::replace(self, DList::new());
+        }
+
+        // Below, we iterate towards the `i-1`th node, either from the start or the end,
+        // depending on which would be faster.
+        let mut split_node = if at - 1 <= len - 1 - (at - 1) {
+            let mut iter = self.iter_mut();
+            // instead of skipping using .skip() (which creates a new struct),
+            // we skip manually so we can access the head field without
+            // depending on implementation details of Skip
+            for _ in range(0, at - 1) {
+                iter.next();
+            }
+            iter.head
+        }  else {
+            // better off starting from the end
+            let mut iter = self.iter_mut();
+            for _ in range(0, len - 1 - (at - 1)) {
+                iter.next_back();
+            }
+            iter.tail
+        };
+
+        let mut splitted_list = DList {
+            list_head: None,
+            list_tail: self.list_tail,
+            length: len - at
+        };
+
+        mem::swap(&mut split_node.resolve().unwrap().next, &mut splitted_list.list_head);
+        self.list_tail = split_node;
+        self.length = at;
+
+        splitted_list
     }
 }
 
@@ -778,6 +831,108 @@ mod tests {
     }
 
     #[test]
+    fn test_append() {
+        // Empty to empty
+        {
+            let mut m: DList<int> = DList::new();
+            let mut n = DList::new();
+            m.append(&mut n);
+            check_links(&m);
+            assert_eq!(m.len(), 0);
+            assert_eq!(n.len(), 0);
+        }
+        // Non-empty to empty
+        {
+            let mut m = DList::new();
+            let mut n = DList::new();
+            n.push_back(2i);
+            m.append(&mut n);
+            check_links(&m);
+            assert_eq!(m.len(), 1);
+            assert_eq!(m.pop_back(), Some(2));
+            assert_eq!(n.len(), 0);
+            check_links(&m);
+        }
+        // Empty to non-empty
+        {
+            let mut m = DList::new();
+            let mut n = DList::new();
+            m.push_back(2i);
+            m.append(&mut n);
+            check_links(&m);
+            assert_eq!(m.len(), 1);
+            assert_eq!(m.pop_back(), Some(2));
+            check_links(&m);
+        }
+
+        // Non-empty to non-empty
+        let v = vec![1i,2,3,4,5];
+        let u = vec![9i,8,1,2,3,4,5];
+        let mut m = list_from(v.as_slice());
+        let mut n = list_from(u.as_slice());
+        m.append(&mut n);
+        check_links(&m);
+        let mut sum = v;
+        sum.push_all(u.as_slice());
+        assert_eq!(sum.len(), m.len());
+        for elt in sum.into_iter() {
+            assert_eq!(m.pop_front(), Some(elt))
+        }
+        assert_eq!(n.len(), 0);
+        // let's make sure it's working properly, since we
+        // did some direct changes to private members
+        n.push_back(3);
+        assert_eq!(n.len(), 1);
+        assert_eq!(n.pop_front(), Some(3));
+        check_links(&n);
+    }
+
+    #[test]
+    fn test_split_off() {
+        // singleton
+        {
+            let mut m = DList::new();
+            m.push_back(1i);
+
+            let p = m.split_off(0);
+            assert_eq!(m.len(), 0);
+            assert_eq!(p.len(), 1);
+            assert_eq!(p.back(), Some(&1));
+            assert_eq!(p.front(), Some(&1));
+        }
+
+        // not singleton, forwards
+        {
+            let u = vec![1i,2,3,4,5];
+            let mut m = list_from(u.as_slice());
+            let mut n = m.split_off(2);
+            assert_eq!(m.len(), 2);
+            assert_eq!(n.len(), 3);
+            for elt in range(1i, 3) {
+                assert_eq!(m.pop_front(), Some(elt));
+            }
+            for elt in range(3i, 6) {
+                assert_eq!(n.pop_front(), Some(elt));
+            }
+        }
+        // not singleton, backwards
+        {
+            let u = vec![1i,2,3,4,5];
+            let mut m = list_from(u.as_slice());
+            let mut n = m.split_off(4);
+            assert_eq!(m.len(), 4);
+            assert_eq!(n.len(), 1);
+            for elt in range(1i, 5) {
+                assert_eq!(m.pop_front(), Some(elt));
+            }
+            for elt in range(5i, 6) {
+                assert_eq!(n.pop_front(), Some(elt));
+            }
+        }
+
+    }
+
+    #[test]
     fn test_iterator() {
         let m = generate_test();
         for (i, elt) in m.iter().enumerate() {
@@ -1063,41 +1218,6 @@ mod tests {
             assert_eq!(a, b);
         }
         assert_eq!(i, v.len());
-    }
-
-    #[allow(deprecated)]
-    #[test]
-    fn test_append() {
-        {
-            let mut m = DList::new();
-            let mut n = DList::new();
-            n.push_back(2i);
-            m.append(n);
-            assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
-            check_links(&m);
-        }
-        {
-            let mut m = DList::new();
-            let n = DList::new();
-            m.push_back(2i);
-            m.append(n);
-            assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
-            check_links(&m);
-        }
-
-        let v = vec![1i,2,3,4,5];
-        let u = vec![9i,8,1,2,3,4,5];
-        let mut m = list_from(v.as_slice());
-        m.append(list_from(u.as_slice()));
-        check_links(&m);
-        let mut sum = v;
-        sum.push_all(u.as_slice());
-        assert_eq!(sum.len(), m.len());
-        for elt in sum.into_iter() {
-            assert_eq!(m.pop_front(), Some(elt))
-        }
     }
 
     #[bench]
