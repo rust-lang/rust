@@ -29,7 +29,7 @@ const CHACHA_ROUNDS: uint = 20; // Cryptographically secure from 8 upwards as of
 /// [1]: D. J. Bernstein, [*ChaCha, a variant of
 /// Salsa20*](http://cr.yp.to/chacha.html)
 
-#[deriving(Copy)]
+#[allow(missing_copy_implementations)]
 pub struct ChaChaRng {
     buffer:  [u32, ..STATE_WORDS], // Internal buffer of output
     state:   [u32, ..STATE_WORDS], // Initial state
@@ -85,7 +85,7 @@ impl ChaChaRng {
     /// Create an ChaCha random number generator using the default
     /// fixed key of 8 zero words.
     pub fn new_unseeded() -> ChaChaRng {
-        let mut rng = EMPTY;
+        let mut rng = EMPTY.clone();
         rng.init(&[0, ..KEY_WORDS]);
         rng
     }
@@ -157,6 +157,16 @@ impl ChaChaRng {
     }
 }
 
+impl Clone for ChaChaRng {
+    fn clone(&self) -> ChaChaRng {
+        ChaChaRng {
+            buffer:  self.buffer,
+            state:   self.state,
+            index:   self.index
+        }
+    }
+}
+
 impl Rng for ChaChaRng {
     #[inline]
     fn next_u32(&mut self) -> u32 {
@@ -187,7 +197,7 @@ impl<'a> SeedableRng<&'a [u32]> for ChaChaRng {
     /// Only up to 8 words are used; if less than 8
     /// words are used, the remaining are set to zero.
     fn from_seed(seed: &'a [u32]) -> ChaChaRng {
-        let mut rng = EMPTY;
+        let mut rng = EMPTY.clone();
         rng.reseed(seed);
         rng
     }
@@ -202,7 +212,6 @@ impl Rand for ChaChaRng {
         SeedableRng::from_seed(key.as_slice())
     }
 }
-
 
 #[cfg(test)]
 mod test {
