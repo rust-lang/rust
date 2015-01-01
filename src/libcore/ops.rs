@@ -300,11 +300,14 @@ rem_float_impl! { f64, fmod }
 /// `neg`, and therefore, `main` prints `Negating!`.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// struct Foo;
 ///
 /// impl Copy for Foo {}
 ///
-/// impl Neg<Foo> for Foo {
+/// impl Neg for Foo {
+///     type Output = Foo;
+///
 ///     fn neg(self) -> Foo {
 ///         println!("Negating!");
 ///         self
@@ -316,14 +319,18 @@ rem_float_impl! { f64, fmod }
 /// }
 /// ```
 #[lang="neg"]
-pub trait Neg<Result> {
+pub trait Neg {
+    type Output;
+
     /// The method for the unary `-` operator
-    fn neg(self) -> Result;
+    fn neg(self) -> Self::Output;
 }
 
 macro_rules! neg_impl {
     ($($t:ty)*) => ($(
-        impl Neg<$t> for $t {
+        impl Neg for $t {
+            type Output = $t;
+
             #[inline]
             fn neg(self) -> $t { -self }
         }
@@ -332,7 +339,9 @@ macro_rules! neg_impl {
 
 macro_rules! neg_uint_impl {
     ($t:ty, $t_signed:ty) => {
-        impl Neg<$t> for $t {
+        impl Neg for $t {
+            type Output = $t;
+
             #[inline]
             fn neg(self) -> $t { -(self as $t_signed) as $t }
         }
@@ -356,11 +365,14 @@ neg_uint_impl! { u64, i64 }
 /// `not`, and therefore, `main` prints `Not-ing!`.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// struct Foo;
 ///
 /// impl Copy for Foo {}
 ///
-/// impl Not<Foo> for Foo {
+/// impl Not for Foo {
+///     type Output = Foo;
+///
 ///     fn not(self) -> Foo {
 ///         println!("Not-ing!");
 ///         self
@@ -372,14 +384,18 @@ neg_uint_impl! { u64, i64 }
 /// }
 /// ```
 #[lang="not"]
-pub trait Not<Result> {
+pub trait Not {
+    type Output;
+
     /// The method for the unary `!` operator
-    fn not(self) -> Result;
+    fn not(self) -> Self::Output;
 }
 
 macro_rules! not_impl {
     ($($t:ty)*) => ($(
-        impl Not<$t> for $t {
+        impl Not for $t {
+            type Output = $t;
+
             #[inline]
             fn not(self) -> $t { !self }
         }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
 
 use std::cmp;
 use std::ops;
@@ -30,13 +31,17 @@ impl ops::Sub<Point,Point> for Point {
     }
 }
 
-impl ops::Neg<Point> for Point {
+impl ops::Neg for Point {
+    type Output = Point;
+
     fn neg(self) -> Point {
         Point {x: -self.x, y: -self.y}
     }
 }
 
-impl ops::Not<Point> for Point {
+impl ops::Not for Point {
+    type Output = Point;
+
     fn not(self) -> Point {
         Point {x: !self.x, y: !self.y }
     }
