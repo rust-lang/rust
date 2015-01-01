@@ -102,7 +102,7 @@ pub fn poly_project_and_unify_type<'cx,'tcx>(
 
 /// Compute result of projecting an associated type and unify it with
 /// `obligation.predicate.ty` (if we can).
-pub fn project_and_unify_type<'cx,'tcx>(
+fn project_and_unify_type<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionObligation<'tcx>)
     -> Result<Option<Vec<PredicateObligation<'tcx>>>, MismatchedProjectionTypes<'tcx>>
@@ -135,9 +135,19 @@ pub fn normalize<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
                                cause: ObligationCause<'tcx>,
                                value: &T)
                                -> Normalized<'tcx, T>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone
+    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr<'tcx>
 {
-    let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, 0);
+    normalize_with_depth(selcx, cause, 0, value)
+}
+
+pub fn normalize_with_depth<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
+                                          cause: ObligationCause<'tcx>,
+                                          depth: uint,
+                                          value: &T)
+                                          -> Normalized<'tcx, T>
+    where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr<'tcx>
+{
+    let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth);
     let result = normalizer.fold(value);
     Normalized {
         value: result,
@@ -278,9 +288,10 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
             // an impl, where-clause etc) and hence we must
             // re-normalize it
 
-            debug!("normalize_projection_type: projected_ty={} depth={}",
+            debug!("normalize_projection_type: projected_ty={} depth={} obligations={}",
                    projected_ty.repr(selcx.tcx()),
-                   depth);
+                   depth,
+                   obligations.repr(selcx.tcx()));
 
             if ty::type_has_projection(projected_ty) {
                 let tcx = selcx.tcx();
@@ -642,5 +653,22 @@ impl<'tcx> Repr<'tcx> for ProjectionTyCandidate<'tcx> {
             ProjectionTyCandidate::Impl(ref data) =>
                 format!("Impl({})", data.repr(tcx))
         }
+    }
+}
+
+impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Normalized<'tcx, T> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Normalized<'tcx, T> {
+        Normalized {
+            value: self.value.fold_with(folder),
+            obligations: self.obligations.fold_with(folder),
+        }
+    }
+}
+
+impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Normalized<'tcx, T> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        format!("Normalized({},{})",
+                self.value.repr(tcx),
+                self.obligations.repr(tcx))
     }
 }
