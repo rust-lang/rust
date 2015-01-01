@@ -82,7 +82,7 @@ Also, there are talks about parametrizing data structures over their indexing/si
 When originally proposed, `mem`/`m` are interpreted as "for memory related things like offsets, indices, sizes, pointer values". However this interpretation seems vague and not quite convincing. But actually, they can be interpreted as **_mem_ory-pointer-sized**, and be a *precise* size specifier just like `ptr`.
 
 - Pros: Types with similar names do not exist in mainstream languages, so people will not make incorrect assumptions.
-- Cons: `mem` -> `memory-integer-sized` is not obvious.
+- Cons: `mem` -> `memory-pointer-sized` is not obvious.
 
 However, people will be tempted to read the documentation anyway when they encounter `imem/umem` or `intm/uintm`. And this RFC author expects the interpretation to be quite easy to internalize.
 
