@@ -2016,7 +2016,7 @@ impl Clean<Vec<Item>> for ast::ViewItem {
                 None => false,
             }
         });
-        let convert = |node: &ast::ViewItem_| {
+        let convert = |&: node: &ast::ViewItem_| {
             Item {
                 name: None,
                 attrs: self.attrs.clean(cx),

@@ -2812,49 +2812,53 @@ pub fn walk_ty<'tcx, F>(ty: Ty<'tcx>, mut f: F) where
     maybe_walk_ty(ty, |ty| { f(ty); true });
 }
 
-// FIXME(#19596) unbox `f`
-pub fn maybe_walk_ty<'tcx>(ty: Ty<'tcx>, f: |Ty<'tcx>| -> bool) {
-    if !f(ty) {
-        return;
+pub fn maybe_walk_ty<'tcx, F>(ty: Ty<'tcx>, mut f: F) where F: FnMut(Ty<'tcx>) -> bool {
+    // FIXME(#19596) This is a workaround, but there should be a better way to do this
+    fn maybe_walk_ty_<'tcx, F>(ty: Ty<'tcx>, f: &mut F) where F: FnMut(Ty<'tcx>) -> bool {
+        if !(*f)(ty) {
+            return;
+        }
+        match ty.sty {
+            ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
+            ty_str | ty_infer(_) | ty_param(_) | ty_err => {}
+            ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty_(ty, f),
+            ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
+                maybe_walk_ty_(tm.ty, f);
+            }
+            ty_trait(box TyTrait { ref principal, .. }) => {
+                for subty in principal.0.substs.types.iter() {
+                    maybe_walk_ty_(*subty, f);
+                }
+            }
+            ty_projection(ProjectionTy { ref trait_ref, .. }) => {
+                for subty in trait_ref.substs.types.iter() {
+                    maybe_walk_ty_(*subty, f);
+                }
+            }
+            ty_enum(_, ref substs) |
+            ty_struct(_, ref substs) |
+            ty_unboxed_closure(_, _, ref substs) => {
+                for subty in substs.types.iter() {
+                    maybe_walk_ty_(*subty, f);
+                }
+            }
+            ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty_(*tt, f); } }
+            ty_bare_fn(_, ref ft) => {
+                for a in ft.sig.0.inputs.iter() { maybe_walk_ty_(*a, f); }
+                if let ty::FnConverging(output) = ft.sig.0.output {
+                    maybe_walk_ty_(output, f);
+                }
+            }
+            ty_closure(ref ft) => {
+                for a in ft.sig.0.inputs.iter() { maybe_walk_ty_(*a, f); }
+                if let ty::FnConverging(output) = ft.sig.0.output {
+                    maybe_walk_ty_(output, f);
+                }
+            }
+        }
     }
-    match ty.sty {
-        ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-        ty_str | ty_infer(_) | ty_param(_) | ty_err => {}
-        ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty(ty, f),
-        ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
-            maybe_walk_ty(tm.ty, f);
-        }
-        ty_trait(box TyTrait { ref principal, .. }) => {
-            for subty in principal.0.substs.types.iter() {
-                maybe_walk_ty(*subty, |x| f(x));
-            }
-        }
-        ty_projection(ProjectionTy { ref trait_ref, .. }) => {
-            for subty in trait_ref.substs.types.iter() {
-                maybe_walk_ty(*subty, |x| f(x));
-            }
-        }
-        ty_enum(_, ref substs) |
-        ty_struct(_, ref substs) |
-        ty_unboxed_closure(_, _, ref substs) => {
-            for subty in substs.types.iter() {
-                maybe_walk_ty(*subty, |x| f(x));
-            }
-        }
-        ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
-        ty_bare_fn(_, ref ft) => {
-            for a in ft.sig.0.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-            if let ty::FnConverging(output) = ft.sig.0.output {
-                maybe_walk_ty(output, f);
-            }
-        }
-        ty_closure(ref ft) => {
-            for a in ft.sig.0.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-            if let ty::FnConverging(output) = ft.sig.0.output {
-                maybe_walk_ty(output, f);
-            }
-        }
-    }
+
+    maybe_walk_ty_(ty, &mut f);
 }
 
 // Folds types from the bottom up.
@@ -6155,7 +6159,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
         macro_rules! byte( ($b:expr) => { ($b as u8).hash(state) } );
         macro_rules! hash( ($e:expr) => { $e.hash(state) } );
 
-        let region = |state: &mut sip::SipState, r: Region| {
+        let region = |&: state: &mut sip::SipState, r: Region| {
             match r {
                 ReStatic => {}
                 ReLateBound(db, BrAnon(i)) => {
@@ -6172,7 +6176,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 }
             }
         };
-        let did = |state: &mut sip::SipState, did: DefId| {
+        let did = |&: state: &mut sip::SipState, did: DefId| {
             let h = if ast_util::is_local(did) {
                 svh.clone()
             } else {
@@ -6181,10 +6185,10 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
             h.as_str().hash(state);
             did.node.hash(state);
         };
-        let mt = |state: &mut sip::SipState, mt: mt| {
+        let mt = |&: state: &mut sip::SipState, mt: mt| {
             mt.mutbl.hash(state);
         };
-        let fn_sig = |state: &mut sip::SipState, sig: &Binder<FnSig<'tcx>>| {
+        let fn_sig = |&: state: &mut sip::SipState, sig: &Binder<FnSig<'tcx>>| {
             let sig = anonymize_late_bound_regions(tcx, sig);
             for a in sig.inputs.iter() { helper(tcx, *a, svh, state); }
             if let ty::FnConverging(output) = sig.output {

@@ -487,14 +487,13 @@ pub fn each_lang_item<F>(cdata: Cmd, mut f: F) -> bool where
     })
 }
 
-pub type GetCrateDataCb<'a> = |ast::CrateNum|: 'a -> Rc<crate_metadata>;
-
-fn each_child_of_item_or_crate<F>(intr: Rc<IdentInterner>,
-                                  cdata: Cmd,
-                                  item_doc: rbml::Doc,
-                                  get_crate_data: GetCrateDataCb,
-                                  mut callback: F) where
+fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
+                                     cdata: Cmd,
+                                     item_doc: rbml::Doc,
+                                     mut get_crate_data: G,
+                                     mut callback: F) where
     F: FnMut(DefLike, ast::Name, ast::Visibility),
+    G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
 {
     // Iterate over all children.
     let _ = reader::tagged_docs(item_doc, tag_mod_child, |child_info_doc| {
@@ -608,12 +607,13 @@ fn each_child_of_item_or_crate<F>(intr: Rc<IdentInterner>,
 }
 
 /// Iterates over each child of the given item.
-pub fn each_child_of_item<F>(intr: Rc<IdentInterner>,
-                             cdata: Cmd,
-                             id: ast::NodeId,
-                             get_crate_data: GetCrateDataCb,
-                             callback: F) where
+pub fn each_child_of_item<F, G>(intr: Rc<IdentInterner>,
+                               cdata: Cmd,
+                               id: ast::NodeId,
+                               get_crate_data: G,
+                               callback: F) where
     F: FnMut(DefLike, ast::Name, ast::Visibility),
+    G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
 {
     // Find the item.
     let root_doc = rbml::Doc::new(cdata.data());
@@ -631,11 +631,12 @@ pub fn each_child_of_item<F>(intr: Rc<IdentInterner>,
 }
 
 /// Iterates over all the top-level crate items.
-pub fn each_top_level_item_of_crate<F>(intr: Rc<IdentInterner>,
-                                       cdata: Cmd,
-                                       get_crate_data: GetCrateDataCb,
-                                       callback: F) where
+pub fn each_top_level_item_of_crate<F, G>(intr: Rc<IdentInterner>,
+                                          cdata: Cmd,
+                                          get_crate_data: G,
+                                          callback: F) where
     F: FnMut(DefLike, ast::Name, ast::Visibility),
+    G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
 {
     let root_doc = rbml::Doc::new(cdata.data());
     let misc_info_doc = reader::get_doc(root_doc, tag_misc_info);

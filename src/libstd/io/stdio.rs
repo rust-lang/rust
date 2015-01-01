@@ -334,7 +334,7 @@ pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 //          // io1 aliases io2
 //      })
 //  })
-fn with_task_stdout(f: |&mut Writer| -> IoResult<()>) {
+fn with_task_stdout<F>(f: F) where F: FnOnce(&mut Writer) -> IoResult<()> {
     let mut my_stdout = LOCAL_STDOUT.with(|slot| {
         slot.borrow_mut().take()
     }).unwrap_or_else(|| {

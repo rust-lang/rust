@@ -301,7 +301,7 @@ fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
     let print_moves   = config::FLOWGRAPH_PRINT_MOVES;
     let print_assigns = config::FLOWGRAPH_PRINT_ASSIGNS;
     let print_all     = config::FLOWGRAPH_PRINT_ALL;
-    let opt = |print_which| sess.debugging_opt(print_which);
+    let opt = |&: print_which| sess.debugging_opt(print_which);
     let mut variants = Vec::new();
     if opt(print_all) || opt(print_loans) {
         variants.push(borrowck_dot::Loans);
@@ -365,7 +365,7 @@ impl UserIdentifiedItem {
     }
 
     fn to_one_node_id(self, user_option: &str, sess: &Session, map: &ast_map::Map) -> ast::NodeId {
-        let fail_because = |is_wrong_because| -> ast::NodeId {
+        let fail_because = |&: is_wrong_because| -> ast::NodeId {
             let message =
                 format!("{} needs NodeId (int) or unique \
                          path suffix (b::c::d); got {}, which {}",

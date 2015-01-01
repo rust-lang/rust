@@ -618,34 +618,38 @@ pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
     id_visitor.operation.result
 }
 
-// FIXME(#19596) unbox `it`
-pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
-    if !it(pat) {
-        return false;
+pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
+    // FIXME(#19596) this is a workaround, but there should be a better way
+    fn walk_pat_<G>(pat: &Pat, it: &mut G) -> bool where G: FnMut(&Pat) -> bool {
+        if !(*it)(pat) {
+            return false;
+        }
+
+        match pat.node {
+            PatIdent(_, _, Some(ref p)) => walk_pat_(&**p, it),
+            PatStruct(_, ref fields, _) => {
+                fields.iter().all(|field| walk_pat_(&*field.node.pat, it))
+            }
+            PatEnum(_, Some(ref s)) | PatTup(ref s) => {
+                s.iter().all(|p| walk_pat_(&**p, it))
+            }
+            PatBox(ref s) | PatRegion(ref s) => {
+                walk_pat_(&**s, it)
+            }
+            PatVec(ref before, ref slice, ref after) => {
+                before.iter().all(|p| walk_pat_(&**p, it)) &&
+                slice.iter().all(|p| walk_pat_(&**p, it)) &&
+                after.iter().all(|p| walk_pat_(&**p, it))
+            }
+            PatMac(_) => panic!("attempted to analyze unexpanded pattern"),
+            PatWild(_) | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
+            PatEnum(_, _) => {
+                true
+            }
+        }
     }
 
-    match pat.node {
-        PatIdent(_, _, Some(ref p)) => walk_pat(&**p, it),
-        PatStruct(_, ref fields, _) => {
-            fields.iter().all(|field| walk_pat(&*field.node.pat, |p| it(p)))
-        }
-        PatEnum(_, Some(ref s)) | PatTup(ref s) => {
-            s.iter().all(|p| walk_pat(&**p, |p| it(p)))
-        }
-        PatBox(ref s) | PatRegion(ref s) => {
-            walk_pat(&**s, it)
-        }
-        PatVec(ref before, ref slice, ref after) => {
-            before.iter().all(|p| walk_pat(&**p, |p| it(p))) &&
-            slice.iter().all(|p| walk_pat(&**p, |p| it(p))) &&
-            after.iter().all(|p| walk_pat(&**p, |p| it(p)))
-        }
-        PatMac(_) => panic!("attempted to analyze unexpanded pattern"),
-        PatWild(_) | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
-        PatEnum(_, _) => {
-            true
-        }
-    }
+    walk_pat_(pat, &mut it)
 }
 
 pub trait EachViewItem {

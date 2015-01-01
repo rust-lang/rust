@@ -181,7 +181,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 // This should be caught by the intrinsicck pass
                 assert_eq!(in_type_size, out_type_size);
 
-                let nonpointer_nonaggregate = |llkind: TypeKind| -> bool {
+                let nonpointer_nonaggregate = |&: llkind: TypeKind| -> bool {
                     use llvm::TypeKind::*;
                     match llkind {
                         Half | Float | Double | X86_FP80 | FP128 |
