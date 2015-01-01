@@ -14,7 +14,7 @@ use ptr;
 use mem;
 use libc;
 use libc::types::os::arch::extra::{LPVOID, DWORD, LONG, BOOL};
-use sys_common::{stack, thread_info};
+use sys_common::stack;
 
 pub struct Handler {
     _data: *mut libc::c_void
@@ -28,14 +28,6 @@ impl Handler {
 
 impl Drop for Handler {
     fn drop(&mut self) {}
-}
-
-// get_task_info is called from an exception / signal handler.
-// It returns the guard page of the current task or 0 if that
-// guard page doesn't exist. None is returned if there's currently
-// no local task.
-unsafe fn get_task_guard_page() -> uint {
-    thread_info::stack_guard()
 }
 
 // This is initialized in init() and only read from after
