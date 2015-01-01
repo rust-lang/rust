@@ -4,7 +4,7 @@
 
 # Summary
 
-This RFC proposes that we rename the pointer-sized integer types `int/uint` to `intp/uintp`, `intm/uintm` or `imem/umem`, so as to avoid misconceptions and misuses.
+This RFC proposes that we rename the pointer-sized integer types `int/uint` to stress the fact that they are pointer-sized, so as to avoid misconceptions and misuses.
 
 # Motivation
 
@@ -38,56 +38,61 @@ Thus, it is very likely that newcomers will come to Rust, expecting `int/uint` t
 
 Not renaming `int/uint` violates the principle of least surprise, and is not newcomer friendly.
 
-As stated in previous discussions, all suggested alternative names have some drawbacks that may be unbearable. (Please refer to [A tale of two's complement](http://discuss.rust-lang.org/t/a-tale-of-twos-complement/1062) and related discussions for details.)
+Before the rejection of [RFC PR 464](https://github.com/rust-lang/rfcs/pull/464), the community largely settled on two pairs of candidates: `imem/umem` and `iptr/uptr`. As stated in previous discussions, the names have some drawbacks that may be unbearable. (Please refer to [A tale of two's complement](http://discuss.rust-lang.org/t/a-tale-of-twos-complement/1062) and related discussions for details.)
 
-Before the rejection, the community largely settled on two pairs of candidates: `imem/umem` and `iptr/uptr`.
+This RFC originally proposed a new pair of alternatives `intx/uintx`.
 
-`iptr/uptr` were rejected because they may remind the programmers of C/C++ `intptr_t`/`uintptr_t`, which were typically *only* used for storing casted pointer values. However, favouring any one of the types' use cases in the names is undesirable.
+However, given the discussions about the previous revisions of this RFC, and the discussions in [Restarting the `int/uint` Discussion]( http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), this RFC author (@CloudiDust) now believes that `iptr/uptr` and `imem/umem` can still be viable candidates.
 
-`imem/umem` were rejected because they may be "not integer-like" and reminded people of "int memory"/"unsigned int memory" which made no sense.
-
-But the problems can be dealt with, in one of the following ways:
-
-1. instead of stressing the `ptr`/`mem` part, stress the `i`/`u` part,
-2. or find and canonicalize a better interpretation for `imem/umem`.
+This RFC also proposes two more pairs of candidates: `intp/uintp` and `intm/uintm`, which are actually variants of the above, but stress the `int` part instead of the `ptr`/`mem` part, which may make them subjectively better (or worse), as some would think `iptr/uptr` and `imem/umem` stress the wrong part of the name, and don't look like integer types.
 
 # Detailed Design
 
-## Approach 1.
-
-Rename `int/uint` to `intp/uintp` or `intm/uintm`.
-
-Introduce the respective literal suffixes `ip/up` or `im/um`.
+Rename `int/uint` to one of the above pairs of candidates.
 
 Update code and documentation to use pointer-sized integers more narrowly for their intended purposes. Provide a deprecation period to carry out these updates.
 
-## Approach 2.
+Also, a decision should be made about whether to introduce the respective literal suffixes `ip/up` or `im/um`, or use the type names as literal suffixes.
 
-Rename `int/uint` to `imem/umem`, and use `imem/umem` as the new literal suffixes.
-
-Update code and documentation to use pointer-sized integers more narrowly for their intended purposes. Provide a deprecation period to carry out these updates.
-
-How to deal with the problems of `imem/umem`?
-
-Interpret them in the documentation as: **signed/unsigned _mem_ory-pointer-sized integers.**
-
-With this interpretation in mind, the RFC author (@CloudiDust) considers `imem`/`umem` to once again be his favourite among the three pairs of candidates. 
+This author believes that, if `iptr/uptr` or `imem/umem` are chosen, they should be used directly as suffixes, but if `intp/uintp` or `intm/uintm` are chosen, then `ip/up` or `im/um` should be used, as `uintp`/`uintm` may be too long as suffixes. `ip/up` and `im/um` don't make good *type names* though, as they are too short and have meanings unrelated to integers.
 
 ## Advantages
 
-The advantages of both approaches over `int`/`uint`:
+Each pair of candidates make different trade-offs, and choosing one would be a quite subjective matter. But they are all better than `int/uint`.
+
+### The advantages of all candidates over `int/uint`:
 
 - The names are foreign to programmers from other languages, so they are less likely to make incorrect assumptions, or use them out of habit.
-- But not too foreign, they still look like integers. (Depending on personal taste, Approach 1 is either better or worse than Approach 2 on this one.)
-- They follow the same *signed-ness + size* naming pattern used by other integer types like `i32/u32`. (Approach 2 is arguably better here.)
+- But not too foreign, they still look like integers. (`intp/uintp` and `intm/uintm` may be a bit better here.)
+- They follow the same *signed-ness + size* naming pattern used by other integer types like `i32/u32`. (`iptr/uptr` and `imem/umem` are better here as they follow the pattern more faithfully. Please see the following discussion for why `imem/umem` also have the *size* part.)
+
+### The advantages and disadvantages of suffixes `ptr/p` and `mem/m`:
+
+#### `iptr/uptr` and `intp/uintp`:
+
+- Pros: "Pointer-sized integer", exactly what they are.
+- Cons: C/C++ have `intptr_t/uintptr_t`, which are typically *only* used for storing casted pointer values. We don't want people to confuse the Rust types with the C/C++ ones, as the Rust ones have more typical use cases.
+
+However, note that Rust (barring FFI) don't have `size_t`/`ptrdiff_t` etc like C/C++ do, so the disadvantage may not actually matter much.
+
+Also, there are talks about parametrizing data structures over their indexing/size types, if this lands, then in a sense the pointer-sized integers would no longer be the "privileged types for sizes/indexes", and `iptr/uptr` or `intp/uintp` would be quite fine names.  
+
+#### `imem/umem` and `intm/uintm`:
+
+When originally proposed, `mem`/`m` are interpreted as "for memory related things like offsets, indices, sizes, pointer values". However this interpretation seems vague and not quite convincing. But actually, they can be interpreted as **_mem_ory-pointer-sized**, and be a *precise* size specifier just like `ptr`.
+
+- Pros: Types with similar names do not exist in mainstream languages, so people will not make incorrect assumptions.
+- Cons: `mem` -> `memory-integer-sized` is not obvious.
+
+However, people will be tempted to read the documentation anyway when they encounter `imem/umem` or `intm/uintm`. And this RFC author expects the interpretation to be quite easy to internalize.
+
+### Note:
+
+This RFC author personally prefers `imem/umem` now, but `intp/uintp` and `iptr/uptr` also have plenty of community support. No one else seem to care about `intm/uintm`, and they are only in for symmetry and completeness.
 
 # Drawbacks
 
 Renaming `int`/`uint` requires changing much existing code. On the other hand, this is an ideal opportunity to fix integer portability bugs.
-
-`intp/uintp` are supported by several community members, but they still may remind people of `intptr_t`/`uintptr_t`, although arguably to a lesser extent, as `p` can be interpreted as `platform-dependent` here.
-
-With different trade-offs considered, `intm/uintm` may or may not be a better name than `imem/umem` depending on personal tastes.
 
 # Alternatives
 
@@ -95,18 +100,10 @@ With different trade-offs considered, `intm/uintm` may or may not be a better na
 
 Which may hurt in the long run, especially when there is at least one (would-be?) high-profile language (which is Rust-inspired) taking the opposite stance of Rust.
 
-## B. Approach 1a: Use `intx/uintx` as the new type names, and `ix/ux` as the new suffixes.
+## B. Use `intx/uintx` as the new type names.
 
 `intx/uintx` were actually the names that got promoted in the previous revisions of this RFC, where `x` means "unknown", "variable" or "platform-dependent". However the `x` suffix was too vague as there were other integer types that have platform-dependent sizes, like register-sized ones, so `intx/uintx` lost their "promoted" status in this revision.
 
-## C. Approach 1b: Use the proposed literal suffixes as the new type names, not just literal suffixes.
-
-While that will make type names more closely follow the `i32/u32` pattern, they may be too short (and tempting) and may have unrelated meanings on their own (`ip`/`up`/`um` etc.)  
-
-## D. Approach 1c: Use the proposed type names as literal suffixes, not just type names.
-
-`uintp`/`uintm`/`uintx` may or may not too long as literal suffixes.
-
 # Unresolved questions
 
-None.
+This RFC author believes that we should nail down our general integer types/coercions/data structure indexing policies, as discussed in [Restarting the `int/uint` Discussion](http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), before deciding which names to rename `int/uint` to.
