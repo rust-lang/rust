@@ -312,7 +312,7 @@ pub enum SubstructureFields<'a> {
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
 pub type CombineSubstructureFunc<'a> =
-    |&mut ExtCtxt, Span, &Substructure|: 'a -> P<Expr>;
+    Box<FnMut(&mut ExtCtxt, Span, &Substructure) -> P<Expr> + 'a>;
 
 /// Deal with non-matching enum variants.  The tuple is a list of
 /// identifiers (one for each `Self` argument, which could be any of the
@@ -320,11 +320,7 @@ pub type CombineSubstructureFunc<'a> =
 /// holding the variant index value for each of the `Self` arguments.  The
 /// last argument is all the non-`Self` args of the method being derived.
 pub type EnumNonMatchCollapsedFunc<'a> =
-    |&mut ExtCtxt,
-     Span,
-     (&[Ident], &[Ident]),
-     &[P<Expr>]|: 'a
-     -> P<Expr>;
+    Box<FnMut(&mut ExtCtxt, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
 
 pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
     -> RefCell<CombineSubstructureFunc<'a>> {
@@ -606,7 +602,7 @@ impl<'a> MethodDef<'a> {
         };
         let mut f = self.combine_substructure.borrow_mut();
         let f: &mut CombineSubstructureFunc = &mut *f;
-        (*f)(cx, trait_.span, &substructure)
+        f.call_mut((cx, trait_.span, &substructure))
     }
 
     fn get_ret_ty(&self,
@@ -1341,7 +1337,7 @@ impl<'a> TraitDef<'a> {
 pub fn cs_fold<F>(use_foldl: bool,
                   mut f: F,
                   base: P<Expr>,
-                  enum_nonmatch_f: EnumNonMatchCollapsedFunc,
+                  mut enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                   cx: &mut ExtCtxt,
                   trait_span: Span,
                   substructure: &Substructure)
@@ -1369,8 +1365,8 @@ pub fn cs_fold<F>(use_foldl: bool,
             }
         },
         EnumNonMatchingCollapsed(ref all_args, _, tuple) =>
-            enum_nonmatch_f(cx, trait_span, (all_args[], tuple),
-                            substructure.nonself_args),
+            enum_nonmatch_f.call_mut((cx, trait_span, (all_args[], tuple),
+                                      substructure.nonself_args)),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "static function in `derive`")
         }
@@ -1387,7 +1383,7 @@ pub fn cs_fold<F>(use_foldl: bool,
 /// ```
 #[inline]
 pub fn cs_same_method<F>(f: F,
-                         enum_nonmatch_f: EnumNonMatchCollapsedFunc,
+                         mut enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                          cx: &mut ExtCtxt,
                          trait_span: Span,
                          substructure: &Substructure)
@@ -1409,8 +1405,8 @@ pub fn cs_same_method<F>(f: F,
             f(cx, trait_span, called)
         },
         EnumNonMatchingCollapsed(ref all_self_args, _, tuple) =>
-            enum_nonmatch_f(cx, trait_span, (all_self_args[], tuple),
-                            substructure.nonself_args),
+            enum_nonmatch_f.call_mut((cx, trait_span, (all_self_args[], tuple),
+                                     substructure.nonself_args)),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "static function in `derive`")
         }

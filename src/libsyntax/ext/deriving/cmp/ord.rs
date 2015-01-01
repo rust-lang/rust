@@ -38,7 +38,7 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("bool"))),
                 attributes: attrs,
-                combine_substructure: combine_substructure(|cx, span, substr| {
+                combine_substructure: combine_substructure(box |cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
                 })
             }
@@ -61,7 +61,7 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
         args: vec![borrowed_self()],
         ret_ty: ret_ty,
         attributes: attrs,
-        combine_substructure: combine_substructure(|cx, span, substr| {
+        combine_substructure: combine_substructure(box |cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
         })
     };
@@ -174,7 +174,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
             cx.expr_block(cx.block(span, vec!(assign), Some(if_)))
         },
         equals_expr.clone(),
-        |cx, span, (self_args, tag_tuple), _non_self_args| {
+        box |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`")
             } else {
@@ -222,7 +222,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
             cx.expr_binary(span, ast::BiOr, cmp, and)
         },
         cx.expr_bool(span, equal),
-        |cx, span, (self_args, tag_tuple), _non_self_args| {
+        box |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`")
             } else {
