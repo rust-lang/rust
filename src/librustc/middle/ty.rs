@@ -5665,7 +5665,7 @@ pub fn tup_fields<'tcx>(v: &[Ty<'tcx>]) -> Vec<field<'tcx>> {
     }).collect()
 }
 
-#[deriving(Copy)]
+#[deriving(Copy, Clone)]
 pub struct UnboxedClosureUpvar<'tcx> {
     pub def: def::Def,
     pub span: Span,
@@ -7099,9 +7099,27 @@ pub trait HasProjectionTypes {
     fn has_projection_types(&self) -> bool;
 }
 
+impl<'tcx,T:HasProjectionTypes> HasProjectionTypes for Vec<T> {
+    fn has_projection_types(&self) -> bool {
+        self.iter().any(|p| p.has_projection_types())
+    }
+}
+
 impl<'tcx,T:HasProjectionTypes> HasProjectionTypes for VecPerParamSpace<T> {
     fn has_projection_types(&self) -> bool {
         self.iter().any(|p| p.has_projection_types())
+    }
+}
+
+impl<'tcx> HasProjectionTypes for ClosureTy<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.sig.has_projection_types()
+    }
+}
+
+impl<'tcx> HasProjectionTypes for UnboxedClosureUpvar<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.ty.has_projection_types()
     }
 }
 
@@ -7302,5 +7320,25 @@ impl ReferencesError for Region
 {
     fn references_error(&self) -> bool {
         false
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ClosureTy<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("ClosureTy({},{},{},{},{},{})",
+                self.unsafety,
+                self.onceness,
+                self.store,
+                self.bounds.repr(tcx),
+                self.sig.repr(tcx),
+                self.abi)
+    }
+}
+
+impl<'tcx> Repr<'tcx> for UnboxedClosureUpvar<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("UnboxedClosureUpvar({},{})",
+                self.def.repr(tcx),
+                self.ty.repr(tcx))
     }
 }

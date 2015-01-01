@@ -194,13 +194,13 @@ use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::*;
 use metadata::csearch;
-use middle::subst::{mod, Subst, Substs};
+use middle::subst::{mod, Substs};
 use trans::{mod, adt, machine, type_of};
 use trans::common::*;
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::monomorphize;
 use trans::type_::Type;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, Ty, UnboxedClosureTyper};
 use middle::pat_util;
 use session::config::{mod, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
@@ -470,9 +470,9 @@ impl<'tcx> TypeMap<'tcx> {
                                                         closure_ty.clone(),
                                                         &mut unique_type_id);
             },
-            ty::ty_unboxed_closure(ref def_id, _, substs) => {
-                let closure_ty = cx.tcx().unboxed_closures.borrow()
-                                   .get(def_id).unwrap().closure_type.subst(cx.tcx(), substs);
+            ty::ty_unboxed_closure(def_id, _, substs) => {
+                let typer = NormalizingUnboxedClosureTyper::new(cx.tcx());
+                let closure_ty = typer.unboxed_closure_type(def_id, substs);
                 self.get_unique_type_id_of_closure_type(cx,
                                                         closure_ty,
                                                         &mut unique_type_id);
@@ -3020,9 +3020,9 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_closure(ref closurety) => {
             subroutine_type_metadata(cx, unique_type_id, &closurety.sig, usage_site_span)
         }
-        ty::ty_unboxed_closure(ref def_id, _, substs) => {
-            let sig = cx.tcx().unboxed_closures.borrow()
-                        .get(def_id).unwrap().closure_type.sig.subst(cx.tcx(), substs);
+        ty::ty_unboxed_closure(def_id, _, substs) => {
+            let typer = NormalizingUnboxedClosureTyper::new(cx.tcx());
+            let sig = typer.unboxed_closure_type(def_id, substs).sig;
             subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
         }
         ty::ty_struct(def_id, substs) => {

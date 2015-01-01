@@ -532,6 +532,16 @@ impl<'tcx,T,U> TypeFoldable<'tcx> for ty::OutlivesPredicate<T,U>
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ty::UnboxedClosureUpvar<'tcx> {
+    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::UnboxedClosureUpvar<'tcx> {
+        ty::UnboxedClosureUpvar {
+            def: self.def,
+            span: self.span,
+            ty: self.ty.fold_with(folder),
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // "super" routines: these are the default implementations for TypeFolder.
 //
