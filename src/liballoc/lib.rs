@@ -65,6 +65,7 @@
 
 #![no_std]
 #![feature(lang_items, phase, unsafe_destructor, default_type_params)]
+#![feature(associated_types)]
 
 #[phase(plugin, link)]
 extern crate core;

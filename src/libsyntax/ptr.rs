@@ -75,7 +75,9 @@ impl<T: 'static> P<T> {
     }
 }
 
-impl<T> Deref<T> for P<T> {
+impl<T> Deref for P<T> {
+    type Target = T;
+
     fn deref<'a>(&'a self) -> &'a T {
         &*self.ptr
     }

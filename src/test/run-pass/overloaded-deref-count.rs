@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};
 use std::vec::Vec;
@@ -32,14 +34,16 @@ impl<T> DerefCounter<T> {
     }
 }
 
-impl<T> Deref<T> for DerefCounter<T> {
+impl<T> Deref for DerefCounter<T> {
+    type Target = T;
+
     fn deref(&self) -> &T {
         self.count_imm.set(self.count_imm.get() + 1);
         &self.value
     }
 }
 
-impl<T> DerefMut<T> for DerefCounter<T> {
+impl<T> DerefMut for DerefCounter<T> {
     fn deref_mut(&mut self) -> &mut T {
         self.count_mut += 1;
         &mut self.value

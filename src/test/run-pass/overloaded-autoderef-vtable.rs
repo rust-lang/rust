@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 use std::ops::Deref;
 
 struct DerefWithHelper<H, T> {
@@ -24,7 +26,9 @@ impl<T> Helper<T> for Option<T> {
     }
 }
 
-impl<T, H: Helper<T>> Deref<T> for DerefWithHelper<H, T> {
+impl<T, H: Helper<T>> Deref for DerefWithHelper<H, T> {
+    type Target = T;
+
     fn deref(&self) -> &T {
         self.helper.helper_borrow()
     }

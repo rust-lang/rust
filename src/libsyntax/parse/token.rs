@@ -606,7 +606,9 @@ impl InternedString {
     }
 }
 
-impl Deref<str> for InternedString {
+impl Deref for InternedString {
+    type Target = str;
+
     fn deref(&self) -> &str { &*self.string }
 }
 

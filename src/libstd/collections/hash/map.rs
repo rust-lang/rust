@@ -311,7 +311,7 @@ fn search_hashed<K, V, M, F>(table: M,
                              hash: SafeHash,
                              mut is_match: F)
                              -> SearchResult<K, V, M> where
-    M: Deref<RawTable<K, V>>,
+    M: Deref<Target=RawTable<K, V>>,
     F: FnMut(&K) -> bool,
 {
     let size = table.size();

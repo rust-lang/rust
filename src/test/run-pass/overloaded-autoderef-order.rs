@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 use std::rc::Rc;
 
 struct DerefWrapper<X, Y> {
@@ -23,7 +25,9 @@ impl<X, Y> DerefWrapper<X, Y> {
     }
 }
 
-impl<X, Y> Deref<Y> for DerefWrapper<X, Y> {
+impl<X, Y> Deref for DerefWrapper<X, Y> {
+    type Target = Y;
+
     fn deref(&self) -> &Y {
         &self.y
     }
@@ -46,7 +50,9 @@ mod priv_test {
         }
     }
 
-    impl<X, Y> Deref<Y> for DerefWrapperHideX<X, Y> {
+    impl<X, Y> Deref for DerefWrapperHideX<X, Y> {
+        type Target = Y;
+
         fn deref(&self) -> &Y {
             &self.y
         }
