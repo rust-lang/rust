@@ -23,14 +23,6 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::attr::AttrMetaMethods;
 
-/// Metadata for a single plugin crate.
-pub struct PluginMetadata {
-    /// Macros exported by the crate.
-    pub macros: Vec<ast::MacroDef>,
-    /// Path to the shared library file, and registrar function symbol.
-    pub registrar: Option<(Path, String)>,
-}
-
 /// Pointer to a registrar function.
 pub type PluginRegistrarFun =
     fn(&mut Registry);
@@ -86,37 +78,40 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 // note that macros aren't expanded yet, and therefore macros can't add plugins.
 impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
     fn visit_view_item(&mut self, vi: &ast::ViewItem) {
+        // We're only interested in `extern crate`.
         match vi.node {
-            ast::ViewItemExternCrate(_, _, _) => {
-                let mut plugin_phase = false;
+            ast::ViewItemExternCrate(..) => (),
+            _ => return,
+        }
 
-                for attr in vi.attrs.iter().filter(|a| a.check_name("phase")) {
-                    let phases = attr.meta_item_list().unwrap_or(&[]);
-                    if attr::contains_name(phases, "plugin") {
-                        plugin_phase = true;
-                    }
-                    if attr::contains_name(phases, "syntax") {
-                        plugin_phase = true;
-                        self.sess.span_warn(attr.span,
-                            "phase(syntax) is a deprecated synonym for phase(plugin)");
-                    }
-                }
-
-                if !plugin_phase { return; }
-
-                let PluginMetadata { macros, registrar } =
-                    self.reader.read_plugin_metadata(vi);
-
-                self.plugins.macros.extend(macros.into_iter());
-
-                match registrar {
-                    Some((lib, symbol)) => self.dylink_registrar(vi, lib, symbol),
-                    _ => (),
-                }
+        let mut plugin_phase = false;
+        for attr in vi.attrs.iter().filter(|a| a.check_name("phase")) {
+            let phases = attr.meta_item_list().unwrap_or(&[]);
+            if attr::contains_name(phases, "plugin") {
+                plugin_phase = true;
             }
-            _ => (),
+            if attr::contains_name(phases, "syntax") {
+                plugin_phase = true;
+                self.sess.span_warn(attr.span,
+                    "phase(syntax) is a deprecated synonym for phase(plugin)");
+            }
+        }
+
+        let mut macros = vec![];
+        let mut registrar = None;
+
+        if plugin_phase {
+            let pmd = self.reader.read_plugin_metadata(vi);
+            macros = pmd.exported_macros();
+            registrar = pmd.plugin_registrar();
+        }
+
+        self.plugins.macros.extend(macros.into_iter());
+        if let Some((lib, symbol)) = registrar {
+            self.dylink_registrar(vi, lib, symbol);
         }
     }
+
     fn visit_mac(&mut self, _: &ast::Mac) {
         // bummer... can't see plugins inside macros.
         // do nothing.

@@ -16,11 +16,10 @@ use back::svh::Svh;
 use session::{config, Session};
 use session::search_paths::PathKind;
 use metadata::cstore;
-use metadata::cstore::{CStore, CrateSource};
+use metadata::cstore::{CStore, CrateSource, MetadataBlob};
 use metadata::decoder;
 use metadata::loader;
 use metadata::loader::CratePaths;
-use plugin::load::PluginMetadata;
 use util::nodemap::FnvHashMap;
 
 use std::rc::Rc;
@@ -152,6 +151,29 @@ fn register_native_lib(sess: &Session,
         }
     }
     sess.cstore.add_used_library(name, kind);
+}
+
+pub struct PluginMetadata<'a> {
+    sess: &'a Session,
+    metadata: PMDSource,
+    dylib: Option<Path>,
+    info: CrateInfo,
+    vi_span: Span,
+    target_only: bool,
+}
+
+enum PMDSource {
+    Registered(Rc<cstore::crate_metadata>),
+    Owned(MetadataBlob),
+}
+
+impl PMDSource {
+    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
+        match *self {
+            PMDSource::Registered(ref cmd) => cmd.data(),
+            PMDSource::Owned(ref mdb) => mdb.as_slice(),
+        }
+    }
 }
 
 impl<'a> CrateReader<'a> {
@@ -450,17 +472,20 @@ impl<'a> CrateReader<'a> {
         }).collect()
     }
 
-    pub fn read_plugin_metadata(&mut self,
-                                krate: &ast::ViewItem) -> PluginMetadata {
-        let info = self.extract_crate_info(krate).unwrap();
+    pub fn read_plugin_metadata<'b>(&'b mut self,
+                                    vi: &'b ast::ViewItem) -> PluginMetadata<'b> {
+        let info = self.extract_crate_info(vi).unwrap();
         let target_triple = self.sess.opts.target_triple[];
         let is_cross = target_triple != config::host_triple();
         let mut should_link = info.should_link && !is_cross;
+        let mut target_only = false;
+        let ident = info.ident.clone();
+        let name = info.name.clone();
         let mut load_ctxt = loader::Context {
             sess: self.sess,
-            span: krate.span,
-            ident: info.ident[],
-            crate_name: info.name[],
+            span: vi.span,
+            ident: ident[],
+            crate_name: name[],
             hash: None,
             filesearch: self.sess.host_filesearch(PathKind::Crate),
             triple: config::host_triple(),
@@ -472,32 +497,49 @@ impl<'a> CrateReader<'a> {
         let library = match load_ctxt.maybe_load_library_crate() {
             Some(l) => l,
             None if is_cross => {
-                // try loading from target crates (only valid if there are
-                // no syntax extensions)
+                // Try loading from target crates. This will abort later if we try to
+                // load a plugin registrar function,
+                target_only = true;
+                should_link = info.should_link;
+
                 load_ctxt.triple = target_triple;
                 load_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
-                let lib = load_ctxt.load_library_crate();
-                if decoder::get_plugin_registrar_fn(lib.metadata.as_slice()).is_some() {
-                    let message = format!("crate `{}` contains a plugin_registrar fn but \
-                                           only a version for triple `{}` could be found (need {})",
-                                           info.ident, target_triple, config::host_triple());
-                    self.sess.span_err(krate.span, message[]);
-                    // need to abort now because the syntax expansion
-                    // code will shortly attempt to load and execute
-                    // code from the found library.
-                    self.sess.abort_if_errors();
-                }
-                should_link = info.should_link;
-                lib
+                load_ctxt.load_library_crate()
             }
             None => { load_ctxt.report_load_errs(); unreachable!() },
         };
 
-        // Read exported macros
-        let imported_from = Some(token::intern(info.ident[]).ident());
-        let source_name = format!("<{} macros>", info.ident[]);
+        let dylib = library.dylib.clone();
+        let register = should_link && self.existing_match(info.name[], None).is_none();
+        let metadata = if register {
+            // Register crate now to avoid double-reading metadata
+            let (_, cmd, _) = self.register_crate(&None, info.ident[],
+                                info.name[], vi.span, library);
+            PMDSource::Registered(cmd)
+        } else {
+            // Not registering the crate; just hold on to the metadata
+            PMDSource::Owned(library.metadata)
+        };
+
+        PluginMetadata {
+            sess: self.sess,
+            metadata: metadata,
+            dylib: dylib,
+            info: info,
+            vi_span: vi.span,
+            target_only: target_only,
+        }
+    }
+}
+
+impl<'a> PluginMetadata<'a> {
+    /// Read exported macros
+    pub fn exported_macros(&self) -> Vec<ast::MacroDef> {
+        let imported_from = Some(token::intern(self.info.ident[]).ident());
+        let source_name = format!("<{} macros>", self.info.ident[]);
         let mut macros = vec![];
-        decoder::each_exported_macro(library.metadata.as_slice(), &*self.sess.cstore.intr,
+        decoder::each_exported_macro(self.metadata.as_slice(),
+                                     &*self.sess.cstore.intr,
             |name, attrs, body| {
                 // NB: Don't use parse::parse_tts_from_source_str because it parses with
                 // quote_depth > 0.
@@ -520,31 +562,37 @@ impl<'a> CrateReader<'a> {
                 true
             }
         );
+        macros
+    }
 
-        // Look for a plugin registrar
-        let registrar = decoder::get_plugin_registrar_fn(library.metadata.as_slice()).map(|id| {
-            decoder::get_symbol(library.metadata.as_slice(), id)
-        });
-        if library.dylib.is_none() && registrar.is_some() {
-            let message = format!("plugin crate `{}` only found in rlib format, \
-                                   but must be available in dylib format",
-                                   info.ident);
-            self.sess.span_err(krate.span, message[]);
-            // No need to abort because the loading code will just ignore this
-            // empty dylib.
+    /// Look for a plugin registrar. Returns library path and symbol name.
+    pub fn plugin_registrar(&self) -> Option<(Path, String)> {
+        if self.target_only {
+            // Need to abort before syntax expansion.
+            let message = format!("plugin crate `{}` is not available for triple `{}` \
+                                   (only found {})",
+                                  self.info.ident,
+                                  config::host_triple(),
+                                  self.sess.opts.target_triple);
+            self.sess.span_err(self.vi_span, message[]);
+            self.sess.abort_if_errors();
         }
-        let pc = PluginMetadata {
-            macros: macros,
-            registrar: match (library.dylib.as_ref(), registrar) {
-                (Some(dylib), Some(reg)) => Some((dylib.clone(), reg)),
-                _ => None,
-            },
-        };
-        if should_link && self.existing_match(info.name[], None).is_none() {
-            // register crate now to avoid double-reading metadata
-            self.register_crate(&None, info.ident[],
-                                info.name[], krate.span, library);
+
+        let registrar = decoder::get_plugin_registrar_fn(self.metadata.as_slice())
+            .map(|id| decoder::get_symbol(self.metadata.as_slice(), id));
+
+        match (self.dylib.as_ref(), registrar) {
+            (Some(dylib), Some(reg)) => Some((dylib.clone(), reg)),
+            (None, Some(_)) => {
+                let message = format!("plugin crate `{}` only found in rlib format, \
+                                       but must be available in dylib format",
+                                       self.info.ident);
+                self.sess.span_err(self.vi_span, message[]);
+                // No need to abort because the loading code will just ignore this
+                // empty dylib.
+                None
+            }
+            _ => None,
         }
-        pc
     }
 }
