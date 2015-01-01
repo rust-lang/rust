@@ -12,15 +12,16 @@ extern crate serialize;
 
 use std::io;
 use serialize::{Encodable, Encoder};
+use serialize::json;
 
 pub fn buffer_encode<'a,
-                     T:Encodable<serialize::json::Encoder<'a>,io::IoError>>(
+                     T:Encodable<json::Encoder<'a>,json::EncoderError>>(
                      to_encode_object: &T)
                      -> Vec<u8> {
     let mut m = Vec::new();
     {
         let mut encoder =
-            serialize::json::Encoder::new(&mut m as &mut io::Writer);
+            serialize::json::Encoder::new_compact(&mut m as &mut io::Writer);
         //~^ ERROR `m` does not live long enough
         to_encode_object.encode(&mut encoder);
     }

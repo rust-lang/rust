@@ -39,9 +39,9 @@ enum WireProtocol {
 
 fn encode_json<'a,
                T: Encodable<json::Encoder<'a>,
-                            std::io::IoError>>(val: &T,
-                                               wr: &'a mut SeekableMemWriter) {
-    let mut encoder = json::Encoder::new(wr);
+                            json::EncoderError>>(val: &T,
+                                                 wr: &'a mut SeekableMemWriter) {
+    let mut encoder = json::Encoder::new_compact(wr);
     val.encode(&mut encoder);
 }
 fn encode_rbml<'a,

@@ -21,7 +21,7 @@ struct Foo<T> {
 }
 
 #[unsafe_destructor]
-impl<'a, T: Encodable<json::Encoder<'a>, IoError>> Drop for Foo<T> {
+impl<'a, T: Encodable<json::Encoder<'a>, json::EncoderError>> Drop for Foo<T> {
     fn drop(&mut self) {
         json::encode(&self.v);
     }

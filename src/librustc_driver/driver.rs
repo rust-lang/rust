@@ -144,7 +144,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
 
     if sess.opts.debugging_opts & config::AST_JSON_NOEXPAND != 0 {
         let mut stdout = io::BufferedWriter::new(io::stdout());
-        let mut json = json::PrettyEncoder::new(&mut stdout);
+        let mut json = json::Encoder::new_pretty(&mut stdout);
         // unwrapping so IoError isn't ignored
         krate.encode(&mut json).unwrap();
     }
@@ -339,7 +339,7 @@ pub fn assign_node_ids_and_map<'ast>(sess: &Session,
 
     if sess.opts.debugging_opts & config::AST_JSON != 0 {
         let mut stdout = io::BufferedWriter::new(io::stdout());
-        let mut json = json::PrettyEncoder::new(&mut stdout);
+        let mut json = json::Encoder::new_pretty(&mut stdout);
         // unwrapping so IoError isn't ignored
         map.krate().encode(&mut json).unwrap();
     }

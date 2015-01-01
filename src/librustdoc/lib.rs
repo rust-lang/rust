@@ -473,7 +473,7 @@ fn json_input(input: &str) -> Result<Output, String> {
 /// Outputs the crate/plugin json as a giant json blob at the specified
 /// destination.
 fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
-               dst: Path) -> io::IoResult<()> {
+               dst: Path) -> json::EncodeResult {
     // {
     //   "schema": version,
     //   "crate": { parsed crate ... },
@@ -496,7 +496,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     let crate_json_str = {
         let mut w = Vec::new();
         {
-            let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
+            let mut encoder = json::Encoder::new_compact(&mut w as &mut io::Writer);
             krate.encode(&mut encoder).unwrap();
         }
         String::from_utf8(w).unwrap()

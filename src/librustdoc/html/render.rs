@@ -253,7 +253,7 @@ thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            dst: Path,
-           passes: HashSet<String>) -> io::IoResult<()> {
+           passes: HashSet<String>) -> json::EncodeResult {
     let mut cx = Context {
         dst: dst,
         src_root: krate.src.dir_path(),
@@ -1084,7 +1084,7 @@ impl Context {
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
     fn krate(mut self, mut krate: clean::Crate,
-             stability: stability_summary::ModuleSummary) -> io::IoResult<()> {
+             stability: stability_summary::ModuleSummary) -> json::EncodeResult {
         let mut item = match krate.module.take() {
             Some(i) => i,
             None => return Ok(())
@@ -1095,7 +1095,7 @@ impl Context {
         try!(self.recurse(stability.name.clone(), |this| {
             let json_dst = &this.dst.join("stability.json");
             let mut json_out = BufferedWriter::new(try!(File::create(json_dst)));
-            try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
+            try!(stability.encode(&mut json::Encoder::new_compact(&mut json_out)));
 
             let mut title = stability.name.clone();
             title.push_str(" - Stability dashboard");
@@ -1110,9 +1110,10 @@ impl Context {
             };
             let html_dst = &this.dst.join("stability.html");
             let mut html_out = BufferedWriter::new(try!(File::create(html_dst)));
-            layout::render(&mut html_out, &this.layout, &page,
+            try!(layout::render(&mut html_out, &this.layout, &page,
                            &Sidebar{ cx: this, item: &item },
-                           &stability)
+                           &stability));
+            Ok(())
         }));
 
         // render the crate documentation

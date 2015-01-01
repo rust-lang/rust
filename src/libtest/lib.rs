@@ -850,7 +850,8 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
 }
 
 // A simple console test runner
-pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoResult<bool> {
+pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> )
+                         -> Result<bool, json::EncoderError> {
 
     fn callback<T: Writer>(event: &TestEvent, st: &mut ConsoleTestState<T>) -> io::IoResult<()> {
         match (*event).clone() {
@@ -914,7 +915,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
                                           pth.display()).as_slice()));
         }
     }
-    return st.write_run_finish(&opts.ratchet_metrics, opts.ratchet_noise_percent);
+    return Ok(try!(st.write_run_finish(&opts.ratchet_metrics, opts.ratchet_noise_percent)));
 }
 
 #[test]
@@ -1209,10 +1210,10 @@ impl MetricMap {
     }
 
     /// Write MetricDiff to a file.
-    pub fn save(&self, p: &Path) -> io::IoResult<()> {
+    pub fn save(&self, p: &Path) -> json::EncodeResult {
         let mut file = try!(File::create(p));
         let MetricMap(ref map) = *self;
-        let mut enc = json::PrettyEncoder::new(&mut file);
+        let mut enc = json::Encoder::new_pretty(&mut file);
         map.encode(&mut enc)
     }
 
