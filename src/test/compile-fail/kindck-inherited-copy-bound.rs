@@ -11,7 +11,6 @@
 // Test that Copy bounds inherited by trait are checked.
 
 use std::any::Any;
-use std::any::AnyRefExt;
 
 trait Foo : Copy {
 }
