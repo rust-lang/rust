@@ -69,7 +69,7 @@ use intrinsics;
 use libc::c_void;
 use mem;
 use sync::atomic::{self, Ordering};
-use sync::{Once, ONCE_INIT};
+use sys_common::mutex::{Mutex, MUTEX_INIT};
 
 use rt::libunwind as uw;
 
@@ -534,11 +534,22 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, uint)) -> 
 /// Doing this split took the LLVM IR line counts of `fn main() { panic!()
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
-fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) -> ! {
-    // Make sure the default panic handler is registered before we look at the
-    // callbacks.
-    static INIT: Once = ONCE_INIT;
-    INIT.call_once(|| unsafe { register(panicking::on_panic); });
+fn begin_unwind_inner(msg: Box<Any + Send>,
+                      file_line: &(&'static str, uint)) -> ! {
+    // Make sure the default failure handler is registered before we look at the
+    // callbacks. We also use a raw sys-based mutex here instead of a
+    // `std::sync` one as accessing TLS can cause weird recursive problems (and
+    // we don't need poison checking).
+    unsafe {
+        static LOCK: Mutex = MUTEX_INIT;
+        static mut INIT: bool = false;
+        LOCK.lock();
+        if !INIT {
+            register(panicking::on_panic);
+            INIT = true;
+        }
+        LOCK.unlock();
+    }
 
     // First, invoke call the user-defined callbacks triggered on thread panic.
     //

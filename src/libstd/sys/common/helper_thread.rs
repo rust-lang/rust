@@ -24,7 +24,6 @@ use prelude::v1::*;
 
 use boxed;
 use cell::UnsafeCell;
-use ptr;
 use rt;
 use sync::{StaticMutex, StaticCondvar};
 use sync::mpsc::{channel, Sender, Receiver};
@@ -97,7 +96,7 @@ impl<M: Send> Helper<M> {
     {
         unsafe {
             let _guard = self.lock.lock().unwrap();
-            if !*self.initialized.get() {
+            if *self.chan.get() as uint == 0 {
                 let (tx, rx) = channel();
                 *self.chan.get() = boxed::into_raw(box tx);
                 let (receive, send) = helper_signal::new();
@@ -113,8 +112,10 @@ impl<M: Send> Helper<M> {
                     self.cond.notify_one()
                 });
 
-                rt::at_exit(move|| { self.shutdown() });
+                rt::at_exit(move || { self.shutdown() });
                 *self.initialized.get() = true;
+            } else if *self.chan.get() as uint == 1 {
+                panic!("cannot continue usage after shutdown");
             }
         }
     }
@@ -129,7 +130,9 @@ impl<M: Send> Helper<M> {
             // Must send and *then* signal to ensure that the child receives the
             // message. Otherwise it could wake up and go to sleep before we
             // send the message.
-            assert!(!self.chan.get().is_null());
+            assert!(*self.chan.get() as uint != 0);
+            assert!(*self.chan.get() as uint != 1,
+                    "cannot continue usage after shutdown");
             (**self.chan.get()).send(msg).unwrap();
             helper_signal::signal(*self.signal.get() as helper_signal::signal);
         }
@@ -142,9 +145,13 @@ impl<M: Send> Helper<M> {
             // returns.
             let mut guard = self.lock.lock().unwrap();
 
+            let ptr = *self.chan.get();
+            if ptr as uint == 1 {
+                panic!("cannot continue usage after shutdown");
+            }
             // Close the channel by destroying it
-            let chan: Box<Sender<M>> = Box::from_raw(*self.chan.get());
-            *self.chan.get() = ptr::null_mut();
+            let chan = Box::from_raw(*self.chan.get());
+            *self.chan.get() = 1 as *mut Sender<M>;
             drop(chan);
             helper_signal::signal(*self.signal.get() as helper_signal::signal);
 

@@ -25,7 +25,7 @@ pub fn main() {
     let _t = (0..n).map(|i| {
         expected += i;
         let tx = tx.clone();
-        thread::spawn(move|| {
+        thread::scoped(move|| {
             child(&tx, i)
         })
     }).collect::<Vec<_>>();

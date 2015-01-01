@@ -147,20 +147,14 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     }
 }
 
-/// Enqueues a procedure to run when the runtime is cleaned up
-///
-/// The procedure passed to this function will be executed as part of the
-/// runtime cleanup phase. For normal rust programs, this means that it will run
-/// after all other threads have exited.
-///
-/// The procedure is *not* executed with a local `Thread` available to it, so
-/// primitives like logging, I/O, channels, spawning, etc, are *not* available.
-/// This is meant for "bare bones" usage to clean up runtime details, this is
-/// not meant as a general-purpose "let's clean everything up" function.
+/// Enqueues a procedure to run when the main thread exits.
 ///
 /// It is forbidden for procedures to register more `at_exit` handlers when they
 /// are running, and doing so will lead to a process abort.
-pub fn at_exit<F:FnOnce()+Send+'static>(f: F) {
+///
+/// Note that other threads may still be running when `at_exit` routines start
+/// running.
+pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) {
     at_exit_imp::push(Thunk::new(f));
 }
 
@@ -176,8 +170,5 @@ pub fn at_exit<F:FnOnce()+Send+'static>(f: F) {
 pub unsafe fn cleanup() {
     args::cleanup();
     sys::stack_overflow::cleanup();
-    // FIXME: (#20012): the resources being cleaned up by at_exit
-    // currently are not prepared for cleanup to happen asynchronously
-    // with detached threads using the resources; for now, we leak.
-    // at_exit_imp::cleanup();
+    at_exit_imp::cleanup();
 }
