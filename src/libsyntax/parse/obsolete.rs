@@ -34,6 +34,7 @@ pub enum ObsoleteSyntax {
     ObsoleteExternCrateRenaming,
     ObsoleteProcType,
     ObsoleteProcExpr,
+    ObsoleteClosureType,
 }
 
 pub trait ParserObsoleteMethods {
@@ -94,6 +95,10 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteExternCrateRenaming => (
                 "`extern crate foo = bar` syntax",
                 "write `extern crate bar as foo` instead"
+            ),
+            ObsoleteClosureType => (
+                "`|uint| -> bool` closure type syntax",
+                "use unboxed closures instead, no type annotation needed"
             )
         };
 
