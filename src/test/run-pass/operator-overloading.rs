@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
 
 use std::cmp;
 use std::ops;
@@ -18,13 +19,17 @@ struct Point {
     y: int
 }
 
-impl ops::Add<Point,Point> for Point {
+impl ops::Add for Point {
+    type Output = Point;
+
     fn add(self, other: Point) -> Point {
         Point {x: self.x + other.x, y: self.y + other.y}
     }
 }
 
-impl ops::Sub<Point,Point> for Point {
+impl ops::Sub for Point {
+    type Output = Point;
+
     fn sub(self, other: Point) -> Point {
         Point {x: self.x - other.x, y: self.y - other.y}
     }

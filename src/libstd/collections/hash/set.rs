@@ -624,7 +624,9 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
-BitOr<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+BitOr<&'b HashSet<T, H>> for &'a HashSet<T, H> {
+    type Output = HashSet<T, H>;
+
     /// Returns the union of `self` and `rhs` as a new `HashSet<T, H>`.
     ///
     /// # Examples
@@ -652,7 +654,9 @@ BitOr<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
-BitAnd<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+BitAnd<&'b HashSet<T, H>> for &'a HashSet<T, H> {
+    type Output = HashSet<T, H>;
+
     /// Returns the intersection of `self` and `rhs` as a new `HashSet<T, H>`.
     ///
     /// # Examples
@@ -680,7 +684,9 @@ BitAnd<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
-BitXor<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+BitXor<&'b HashSet<T, H>> for &'a HashSet<T, H> {
+    type Output = HashSet<T, H>;
+
     /// Returns the symmetric difference of `self` and `rhs` as a new `HashSet<T, H>`.
     ///
     /// # Examples
@@ -708,7 +714,9 @@ BitXor<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
 
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
-Sub<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+Sub<&'b HashSet<T, H>> for &'a HashSet<T, H> {
+    type Output = HashSet<T, H>;
+
     /// Returns the difference of `self` and `rhs` as a new `HashSet<T, H>`.
     ///
     /// # Examples

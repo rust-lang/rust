@@ -10,13 +10,13 @@
 
 // Tests that nested vtables work with overloaded calls.
 
-#![feature(unboxed_closures)]
+#![feature(default_type_params, unboxed_closures)]
 
 use std::ops::Fn;
 
 struct G;
 
-impl<'a, A: Add<int, int>> Fn<(A,), int> for G {
+impl<'a, A: Add<int, Output=int>> Fn<(A,), int> for G {
     extern "rust-call" fn call(&self, (arg,): (A,)) -> int {
         arg.add(1)
     }

@@ -26,6 +26,7 @@
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(unboxed_closures)]
+#![feature(associated_types)]
 
 extern crate arena;
 extern crate flate;

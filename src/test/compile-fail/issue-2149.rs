@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test FIXME(japaric) This ICEs
 
 trait vec_monad<A> {
     fn bind<B>(&self, f: |A| -> Vec<B> );

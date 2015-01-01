@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types, default_type_params)]
+
 struct Vec2 {
     x: f64,
     y: f64
@@ -27,7 +29,9 @@ impl Vec2 {
 trait RhsOfVec2Mul<Result> { fn mul_vec2_by(&self, lhs: &Vec2) -> Result; }
 
 // Vec2's implementation of Mul "from the other side" using the above trait
-impl<Res, Rhs: RhsOfVec2Mul<Res>> Mul<Rhs,Res> for Vec2 {
+impl<Res, Rhs: RhsOfVec2Mul<Res>> Mul<Rhs> for Vec2 {
+    type Output = Res;
+
     fn mul(self, rhs: Rhs) -> Res { rhs.mul_vec2_by(&self) }
 }
 

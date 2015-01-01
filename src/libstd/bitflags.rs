@@ -209,7 +209,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl BitOr<$BitFlags, $BitFlags> for $BitFlags {
+        impl BitOr for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the union of the two sets of flags.
             #[inline]
             fn bitor(self, other: $BitFlags) -> $BitFlags {
@@ -217,7 +219,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl BitXor<$BitFlags, $BitFlags> for $BitFlags {
+        impl BitXor for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the left flags, but with all the right flags toggled.
             #[inline]
             fn bitxor(self, other: $BitFlags) -> $BitFlags {
@@ -225,7 +229,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl BitAnd<$BitFlags, $BitFlags> for $BitFlags {
+        impl BitAnd for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the intersection between the two sets of flags.
             #[inline]
             fn bitand(self, other: $BitFlags) -> $BitFlags {
@@ -233,7 +239,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl Sub<$BitFlags, $BitFlags> for $BitFlags {
+        impl Sub for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the set difference of the two sets of flags.
             #[inline]
             fn sub(self, other: $BitFlags) -> $BitFlags {

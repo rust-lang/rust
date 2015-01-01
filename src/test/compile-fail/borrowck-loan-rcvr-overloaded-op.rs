@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types, default_type_params)]
+
 #[deriving(Copy)]
 struct Point {
     x: int,
     y: int,
 }
 
-impl Add<int, int> for Point {
+impl Add<int> for Point {
+    type Output = int;
+
     fn add(self, z: int) -> int {
         self.x + self.y + z
     }
