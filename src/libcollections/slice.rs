@@ -382,7 +382,7 @@ pub trait SliceExt<T> for Sized? {
     fn get_mut(&mut self, index: uint) -> Option<&mut T>;
 
     /// Work with `self` as a mut slice.
-    /// Primarily intended for getting a &mut [T] from a [T, ..N].
+    /// Primarily intended for getting a &mut [T] from a [T; N].
     #[stable]
     fn as_mut_slice(&mut self) -> &mut [T];
 
@@ -2060,7 +2060,7 @@ mod tests {
         }
 
         // shouldn't panic
-        let mut v: [uint, .. 0] = [];
+        let mut v: [uint; 0] = [];
         v.sort();
 
         let mut v = [0xDEADBEEFu];
@@ -2072,7 +2072,7 @@ mod tests {
     fn test_sort_stability() {
         for len in range(4i, 25) {
             for _ in range(0u, 10) {
-                let mut counts = [0i, .. 10];
+                let mut counts = [0i; 10];
 
                 // create a vector like [(6, 1), (5, 1), (6, 2), ...],
                 // where the first item of each tuple is random, but

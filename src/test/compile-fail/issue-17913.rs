@@ -13,13 +13,13 @@
 #[cfg(target_word_size = "64")]
 fn main() {
     let n = 0u;
-    let a = box [&n,..0xF000000000000000u];
+    let a = box [&n; 0xF000000000000000u];
     println!("{}", a[0xFFFFFFu]);
 }
 
 #[cfg(target_word_size = "32")]
 fn main() {
     let n = 0u;
-    let a = box [&n,..0xFFFFFFFFu];
+    let a = box [&n; 0xFFFFFFFFu];
     println!("{}", a[0xFFFFFFu]);
 }

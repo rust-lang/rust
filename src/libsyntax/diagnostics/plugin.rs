@@ -119,6 +119,6 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         });
 
     MacItems::new(vec![quote_item!(ecx,
-        pub static $name: [(&'static str, &'static str), ..$count] = $expr;
+        pub static $name: [(&'static str, &'static str); $count] = $expr;
     ).unwrap()].into_iter())
 }

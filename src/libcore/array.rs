@@ -26,33 +26,33 @@ macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
             #[stable]
-            impl<T:Copy> Clone for [T, ..$N] {
-                fn clone(&self) -> [T, ..$N] {
+            impl<T:Copy> Clone for [T; $N] {
+                fn clone(&self) -> [T; $N] {
                     *self
                 }
             }
 
             #[unstable = "waiting for Show to stabilize"]
-            impl<T:fmt::Show> fmt::Show for [T, ..$N] {
+            impl<T:fmt::Show> fmt::Show for [T; $N] {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     fmt::Show::fmt(&self[], f)
                 }
             }
 
             #[stable]
-            impl<A, B> PartialEq<[B, ..$N]> for [A, ..$N] where A: PartialEq<B> {
+            impl<A, B> PartialEq<[B; $N]> for [A; $N] where A: PartialEq<B> {
                 #[inline]
-                fn eq(&self, other: &[B, ..$N]) -> bool {
+                fn eq(&self, other: &[B; $N]) -> bool {
                     self[] == other[]
                 }
                 #[inline]
-                fn ne(&self, other: &[B, ..$N]) -> bool {
+                fn ne(&self, other: &[B; $N]) -> bool {
                     self[] != other[]
                 }
             }
 
             #[stable]
-            impl<'a, A, B, Rhs> PartialEq<Rhs> for [A, ..$N] where
+            impl<'a, A, B, Rhs> PartialEq<Rhs> for [A; $N] where
                 A: PartialEq<B>,
                 Rhs: Deref<[B]>,
             {
@@ -63,47 +63,47 @@ macro_rules! array_impls {
             }
 
             #[stable]
-            impl<'a, A, B, Lhs> PartialEq<[B, ..$N]> for Lhs where
+            impl<'a, A, B, Lhs> PartialEq<[B; $N]> for Lhs where
                 A: PartialEq<B>,
                 Lhs: Deref<[A]>
             {
                 #[inline(always)]
-                fn eq(&self, other: &[B, ..$N]) -> bool { PartialEq::eq(&**self, other[]) }
+                fn eq(&self, other: &[B; $N]) -> bool { PartialEq::eq(&**self, other[]) }
                 #[inline(always)]
-                fn ne(&self, other: &[B, ..$N]) -> bool { PartialEq::ne(&**self, other[]) }
+                fn ne(&self, other: &[B; $N]) -> bool { PartialEq::ne(&**self, other[]) }
             }
 
             #[stable]
-            impl<T:Eq> Eq for [T, ..$N] { }
+            impl<T:Eq> Eq for [T; $N] { }
 
             #[stable]
-            impl<T:PartialOrd> PartialOrd for [T, ..$N] {
+            impl<T:PartialOrd> PartialOrd for [T; $N] {
                 #[inline]
-                fn partial_cmp(&self, other: &[T, ..$N]) -> Option<Ordering> {
+                fn partial_cmp(&self, other: &[T; $N]) -> Option<Ordering> {
                     PartialOrd::partial_cmp(&self[], &other[])
                 }
                 #[inline]
-                fn lt(&self, other: &[T, ..$N]) -> bool {
+                fn lt(&self, other: &[T; $N]) -> bool {
                     PartialOrd::lt(&self[], &other[])
                 }
                 #[inline]
-                fn le(&self, other: &[T, ..$N]) -> bool {
+                fn le(&self, other: &[T; $N]) -> bool {
                     PartialOrd::le(&self[], &other[])
                 }
                 #[inline]
-                fn ge(&self, other: &[T, ..$N]) -> bool {
+                fn ge(&self, other: &[T; $N]) -> bool {
                     PartialOrd::ge(&self[], &other[])
                 }
                 #[inline]
-                fn gt(&self, other: &[T, ..$N]) -> bool {
+                fn gt(&self, other: &[T; $N]) -> bool {
                     PartialOrd::gt(&self[], &other[])
                 }
             }
 
             #[stable]
-            impl<T:Ord> Ord for [T, ..$N] {
+            impl<T:Ord> Ord for [T; $N] {
                 #[inline]
-                fn cmp(&self, other: &[T, ..$N]) -> Ordering {
+                fn cmp(&self, other: &[T; $N]) -> Ordering {
                     Ord::cmp(&self[], &other[])
                 }
             }

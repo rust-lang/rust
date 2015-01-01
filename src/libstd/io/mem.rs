@@ -725,9 +725,9 @@ mod test {
             {
                 let mut rdr = MemReader::new(buf);
                 for _i in range(0u, 10) {
-                    let mut buf = [0 as u8, .. 10];
+                    let mut buf = [0 as u8; 10];
                     rdr.read(&mut buf).unwrap();
-                    assert_eq!(buf.as_slice(), [5, .. 10].as_slice());
+                    assert_eq!(buf.as_slice(), [5; 10].as_slice());
                 }
             }
         });
@@ -740,10 +740,10 @@ mod test {
             {
                 let mut wr = BufWriter::new(&mut buf);
                 for _i in range(0u, 10) {
-                    wr.write(&[5, .. 10]).unwrap();
+                    wr.write(&[5; 10]).unwrap();
                 }
             }
-            assert_eq!(buf.as_slice(), [5, .. 100].as_slice());
+            assert_eq!(buf.as_slice(), [5; 100].as_slice());
         });
     }
 
@@ -754,9 +754,9 @@ mod test {
             {
                 let mut rdr = BufReader::new(&buf);
                 for _i in range(0u, 10) {
-                    let mut buf = [0 as u8, .. 10];
+                    let mut buf = [0 as u8; 10];
                     rdr.read(&mut buf).unwrap();
-                    assert_eq!(buf, [5, .. 10]);
+                    assert_eq!(buf, [5; 10]);
                 }
             }
         });

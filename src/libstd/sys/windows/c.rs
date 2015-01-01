@@ -43,8 +43,8 @@ pub const WSA_WAIT_FAILED: libc::DWORD = libc::consts::os::extra::WAIT_FAILED;
 pub struct WSADATA {
     pub wVersion: libc::WORD,
     pub wHighVersion: libc::WORD,
-    pub szDescription: [u8, ..WSADESCRIPTION_LEN + 1],
-    pub szSystemStatus: [u8, ..WSASYS_STATUS_LEN + 1],
+    pub szDescription: [u8; WSADESCRIPTION_LEN + 1],
+    pub szSystemStatus: [u8; WSASYS_STATUS_LEN + 1],
     pub iMaxSockets: u16,
     pub iMaxUdpDg: u16,
     pub lpVendorInfo: *mut u8,
@@ -57,8 +57,8 @@ pub struct WSADATA {
     pub iMaxSockets: u16,
     pub iMaxUdpDg: u16,
     pub lpVendorInfo: *mut u8,
-    pub szDescription: [u8, ..WSADESCRIPTION_LEN + 1],
-    pub szSystemStatus: [u8, ..WSASYS_STATUS_LEN + 1],
+    pub szDescription: [u8; WSADESCRIPTION_LEN + 1],
+    pub szSystemStatus: [u8; WSASYS_STATUS_LEN + 1],
 }
 
 pub type LPWSADATA = *mut WSADATA;
@@ -66,7 +66,7 @@ pub type LPWSADATA = *mut WSADATA;
 #[repr(C)]
 pub struct WSANETWORKEVENTS {
     pub lNetworkEvents: libc::c_long,
-    pub iErrorCode: [libc::c_int, ..FD_MAX_EVENTS],
+    pub iErrorCode: [libc::c_int; FD_MAX_EVENTS],
 }
 
 pub type LPWSANETWORKEVENTS = *mut WSANETWORKEVENTS;
@@ -76,7 +76,7 @@ pub type WSAEVENT = libc::HANDLE;
 #[repr(C)]
 pub struct fd_set {
     fd_count: libc::c_uint,
-    fd_array: [libc::SOCKET, ..FD_SETSIZE],
+    fd_array: [libc::SOCKET; FD_SETSIZE],
 }
 
 pub fn fd_set(set: &mut fd_set, s: libc::SOCKET) {

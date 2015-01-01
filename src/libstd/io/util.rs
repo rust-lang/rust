@@ -235,7 +235,7 @@ impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
 
 /// Copies all data from a `Reader` to a `Writer`.
 pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
-    let mut buf = [0, ..super::DEFAULT_BUF_SIZE];
+    let mut buf = [0; super::DEFAULT_BUF_SIZE];
     loop {
         let len = match r.read(&mut buf) {
             Ok(len) => len,

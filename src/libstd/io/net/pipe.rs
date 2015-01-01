@@ -672,7 +672,7 @@ mod tests {
 
         s.set_timeout(Some(20));
         for i in range(0u, 1001) {
-            match s.write(&[0, .. 128 * 1024]) {
+            match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
                 Err(e) => panic!("{}", e),
@@ -701,7 +701,7 @@ mod tests {
             rx.recv();
             let mut amt = 0;
             while amt < 100 * 128 * 1024 {
-                match s.read(&mut [0, ..128 * 1024]) {
+                match s.read(&mut [0;128 * 1024]) {
                     Ok(n) => { amt += n; }
                     Err(e) => panic!("{}", e),
                 }
@@ -716,7 +716,7 @@ mod tests {
 
         tx.send(());
         for _ in range(0u, 100) {
-            assert!(s.write(&[0, ..128 * 1024]).is_ok());
+            assert!(s.write(&[0;128 * 1024]).is_ok());
         }
     }
 
@@ -735,7 +735,7 @@ mod tests {
         let mut s = a.accept().unwrap();
         s.set_write_timeout(Some(20));
         for i in range(0u, 1001) {
-            match s.write(&[0, .. 128 * 1024]) {
+            match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
                 Err(e) => panic!("{}", e),
