@@ -29,9 +29,10 @@ fn bar<'a, 'b, I : for<'x> Foo<&'x int>>(
     x: <I as Foo<&'a int>>::A,
     y: <I as Foo<&'b int>>::A,
     cond: bool)
-{ //~ ERROR cannot infer
+{
     // x and y here have two distinct lifetimes:
     let z: I::A = if cond { x } else { y };
+    //~^ ERROR cannot infer
 }
 
 pub fn main() {}

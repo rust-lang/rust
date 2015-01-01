@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::infer::{mod, InferCtxt};
+use middle::infer::{InferCtxt};
 use middle::mem_categorization::Typer;
-use middle::ty::{mod, AsPredicate, RegionEscape, Ty, ToPolyTraitRef};
+use middle::ty::{mod, RegionEscape, Ty};
 use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::default::Default;
@@ -23,7 +23,6 @@ use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
 use super::FulfillmentError;
-use super::Obligation;
 use super::ObligationCause;
 use super::PredicateObligation;
 use super::project;
@@ -110,6 +109,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
     /// `projection_ty` again.
     pub fn normalize_projection_type<'a>(&mut self,
                                          infcx: &InferCtxt<'a,'tcx>,
+                                         param_env: &ty::ParameterEnvironment<'tcx>,
+                                         typer: &Typer<'tcx>,
                                          projection_ty: ty::ProjectionTy<'tcx>,
                                          cause: ObligationCause<'tcx>)
                                          -> Ty<'tcx>
@@ -121,18 +122,16 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
         // FIXME(#20304) -- cache
 
-        let ty_var = infcx.next_ty_var();
-        let projection =
-            ty::Binder(ty::ProjectionPredicate {
-                projection_ty: projection_ty,
-                ty: ty_var
-            });
-        let obligation = Obligation::new(cause, projection.as_predicate());
-        self.register_predicate(infcx, obligation);
+        let mut selcx = SelectionContext::new(infcx, param_env, typer);
+        let normalized = project::normalize_projection_type(&mut selcx, projection_ty, cause, 0);
 
-        debug!("normalize_associated_type: result={}", ty_var.repr(infcx.tcx));
+        for obligation in normalized.obligations.into_iter() {
+            self.register_predicate_obligation(infcx, obligation);
+        }
 
-        ty_var
+        debug!("normalize_associated_type: result={}", normalized.value.repr(infcx.tcx));
+
+        normalized.value
     }
 
     pub fn register_builtin_bound<'a>(&mut self,
@@ -143,7 +142,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     {
         match predicate_for_builtin_bound(infcx.tcx, cause, builtin_bound, 0, ty) {
             Ok(predicate) => {
-                self.register_predicate(infcx, predicate);
+                self.register_predicate_obligation(infcx, predicate);
             }
             Err(ErrorReported) => { }
         }
@@ -158,10 +157,14 @@ impl<'tcx> FulfillmentContext<'tcx> {
         register_region_obligation(infcx.tcx, t_a, r_b, cause, &mut self.region_obligations);
     }
 
-    pub fn register_predicate<'a>(&mut self,
-                                  infcx: &InferCtxt<'a,'tcx>,
-                                  obligation: PredicateObligation<'tcx>)
+    pub fn register_predicate_obligation<'a>(&mut self,
+                                             infcx: &InferCtxt<'a,'tcx>,
+                                             obligation: PredicateObligation<'tcx>)
     {
+        // this helps to reduce duplicate errors, as well as making
+        // debug output much nicer to read and so on.
+        let obligation = infcx.resolve_type_vars_if_possible(&obligation);
+
         if !self.duplicate_set.insert(obligation.predicate.clone()) {
             debug!("register_predicate({}) -- already seen, skip", obligation.repr(infcx.tcx));
             return;
@@ -290,7 +293,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             // Now go through all the successful ones,
             // registering any nested obligations for the future.
             for new_obligation in new_obligations.into_iter() {
-                self.register_predicate(selcx.infcx(), new_obligation);
+                self.register_predicate_obligation(selcx.infcx(), new_obligation);
             }
         }
 
@@ -398,104 +401,18 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                    project_obligation.repr(tcx),
                    result.repr(tcx));
             match result {
-                Ok(()) => {
+                Ok(Some(obligations)) => {
+                    new_obligations.extend(obligations.into_iter());
                     true
                 }
-                Err(project::ProjectionError::TooManyCandidates) => {
-                    // Without more type information, we can't say much.
+                Ok(None) => {
                     false
                 }
-                Err(project::ProjectionError::NoCandidate) => {
-                    // This means that we have a type like `<T as
-                    // Trait>::name = U` but we couldn't find any more
-                    // information. This could just be that we're in a
-                    // function like:
-                    //
-                    //     fn foo<T:Trait>(...)
-                    //
-                    // in which case this is not an error. But it
-                    // might also mean we're in a situation where we
-                    // don't actually know that `T : Trait` holds,
-                    // which would be weird (e.g., if `T` was not a
-                    // parameter type but a normal type, like `int`).
-                    //
-                    // So what we do is to (1) add a requirement that
-                    // `T : Trait` (just in case) and (2) try to unify
-                    // `U` with `<T as Trait>::name`.
-
-                    if !ty::binds_late_bound_regions(selcx.tcx(), data) {
-                        // Check that `T : Trait` holds.
-                        let trait_ref = data.to_poly_trait_ref();
-                        new_obligations.push(obligation.with(trait_ref.as_predicate()));
-
-                        // Fallback to `<T as Trait>::name`. If this
-                        // fails, then the output must be at least
-                        // somewhat constrained, and we cannot verify
-                        // that constraint, so yield an error.
-                        let ty_projection = ty::mk_projection(tcx,
-                                                              trait_ref.0.clone(),
-                                                              data.0.projection_ty.item_name);
-
-                        debug!("process_predicate: falling back to projection {}",
-                               ty_projection.repr(selcx.tcx()));
-
-                        match infer::mk_eqty(selcx.infcx(),
-                                             true,
-                                             infer::EquatePredicate(obligation.cause.span),
-                                             ty_projection,
-                                             data.0.ty) {
-                            Ok(()) => { }
-                            Err(_) => {
-                                debug!("process_predicate: fallback failed to unify; error");
-                                errors.push(
-                                    FulfillmentError::new(
-                                        obligation.clone(),
-                                        CodeSelectionError(Unimplemented)));
-                            }
-                        }
-
-                        true
-                    } else {
-                        // If we have something like
-                        //
-                        //     for<'a> <T<'a> as Trait>::name == &'a int
-                        //
-                        // there is no "canonical form" for us to
-                        // make, so just report the lack of candidates
-                        // as an error.
-
-                        debug!("process_predicate: can't fallback, higher-ranked");
-                        errors.push(
-                            FulfillmentError::new(
-                                obligation.clone(),
-                                CodeSelectionError(Unimplemented)));
-
-                        true
-                    }
-                }
-                Err(project::ProjectionError::MismatchedTypes(e)) => {
+                Err(err) => {
                     errors.push(
                         FulfillmentError::new(
                             obligation.clone(),
-                            CodeProjectionError(e)));
-                    true
-                }
-                Err(project::ProjectionError::TraitSelectionError(_)) => {
-                    // There was an error matching `T : Trait` (which
-                    // is a pre-requisite for `<T as Trait>::Name`
-                    // being valid).  We could just report the error
-                    // now, but that tends to lead to double error
-                    // reports for the user (one for the obligation `T
-                    // : Trait`, typically incurred somewhere else,
-                    // and one from here). Instead, we'll create the
-                    // `T : Trait` obligation and add THAT as a
-                    // requirement. This will (eventually) trigger the
-                    // same error, but it will also wind up flagged as
-                    // a duplicate if another requirement that `T :
-                    // Trait` arises from somewhere else.
-                    let trait_predicate = data.to_poly_trait_ref();
-                    let trait_obligation = obligation.with(trait_predicate.as_predicate());
-                    new_obligations.push(trait_obligation);
+                            CodeProjectionError(err)));
                     true
                 }
             }

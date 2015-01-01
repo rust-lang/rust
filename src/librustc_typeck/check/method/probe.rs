@@ -768,6 +768,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_generics = ty::lookup_item_type(self.tcx(), impl_def_id).generics;
                     let impl_bounds = impl_generics.to_bounds(self.tcx(), substs);
+                    // FIXME(#20378) assoc type normalization here?
 
                     // Erase any late-bound regions bound in the impl
                     // which appear in the bounds.

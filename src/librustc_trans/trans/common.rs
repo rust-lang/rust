@@ -954,28 +954,47 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Currently, we use a fulfillment context to completely resolve
     // all nested obligations. This is because they can inform the
-    // inference of the impl's type parameters. However, in principle,
-    // we only need to do this until the impl's type parameters are
-    // fully bound. It could be a slight optimization to stop
-    // iterating early.
+    // inference of the impl's type parameters.
     let mut fulfill_cx = traits::FulfillmentContext::new();
     let vtable = selection.map_move_nested(|predicate| {
-        fulfill_cx.register_predicate(&infcx, predicate);
+        fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
-    match fulfill_cx.select_all_or_error(&infcx, &param_env, tcx) {
+    let vtable = drain_fulfillment_cx(span, &infcx, &param_env, &mut fulfill_cx, &vtable);
+
+    info!("Cache miss: {}", trait_ref.repr(ccx.tcx()));
+    ccx.trait_cache().borrow_mut().insert(trait_ref,
+                                          vtable.clone());
+
+    vtable
+}
+
+pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
+                                       infcx: &infer::InferCtxt<'a,'tcx>,
+                                       param_env: &ty::ParameterEnvironment<'tcx>,
+                                       fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                       result: &T)
+                                       -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx>
+{
+    debug!("drain_fulfillment_cx(result={})",
+           result.repr(infcx.tcx));
+
+    // In principle, we only need to do this so long as `result`
+    // contains unbound type parameters. It could be a slight
+    // optimization to stop iterating early.
+    match fulfill_cx.select_all_or_error(infcx, param_env, infcx.tcx) {
         Ok(()) => { }
         Err(errors) => {
             if errors.iter().all(|e| e.is_overflow()) {
                 // See Ok(None) case above.
-                ccx.sess().span_fatal(
+                infcx.tcx.sess.span_fatal(
                     span,
                     "reached the recursion limit during monomorphization");
             } else {
-                tcx.sess.span_bug(
+                infcx.tcx.sess.span_bug(
                     span,
-                    format!("Encountered errors `{}` fulfilling `{}` during trans",
-                            errors.repr(tcx),
-                            trait_ref.repr(tcx))[]);
+                    format!("Encountered errors `{}` fulfilling during trans",
+                            errors.repr(infcx.tcx))[]);
             }
         }
     }
@@ -985,13 +1004,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // sort of overkill because we do not expect there to be any
     // unbound type variables, hence no `TyFresh` types should ever be
     // inserted.
-    let vtable = vtable.fold_with(&mut infcx.freshener());
-
-    info!("Cache miss: {}", trait_ref.repr(ccx.tcx()));
-    ccx.trait_cache().borrow_mut().insert(trait_ref,
-                                          vtable.clone());
-
-    vtable
+    result.fold_with(&mut infcx.freshener())
 }
 
 // Key used to lookup values supplied for type parameters in an expr.

@@ -1402,6 +1402,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 }
                 ty::TypeTraitItem(associated_type) => {
                     encode_name(rbml_w, associated_type.name);
+                    encode_def_id(rbml_w, associated_type.def_id);
 
                     let elem = ast_map::PathName(associated_type.name);
                     encode_path(rbml_w,

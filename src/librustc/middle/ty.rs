@@ -5449,8 +5449,15 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
         .map(|poly_trait_ref| ty::Binder(poly_trait_ref.0.subst(tcx, trait_ref.substs())))
         .collect();
 
-    debug!("bounds_for_trait_ref: trait_bounds={}",
-           trait_bounds.repr(tcx));
+    let projection_bounds: Vec<_> =
+        trait_def.bounds.projection_bounds
+        .iter()
+        .map(|poly_proj| ty::Binder(poly_proj.0.subst(tcx, trait_ref.substs())))
+        .collect();
+
+    debug!("bounds_for_trait_ref: trait_bounds={} projection_bounds={}",
+           trait_bounds.repr(tcx),
+           projection_bounds.repr(tcx));
 
     // The region bounds and builtin bounds do not currently introduce
     // binders so we can just substitute in a straightforward way here.
@@ -5463,11 +5470,7 @@ pub fn predicates_for_trait_ref<'tcx>(tcx: &ctxt<'tcx>,
         trait_bounds: trait_bounds,
         region_bounds: region_bounds,
         builtin_bounds: builtin_bounds,
-
-        // FIXME(#19451) -- if a trait has a bound like `trait Foo :
-        // Bar<T=X>`, we should probably be returning that, but this
-        // code here will just ignore it.
-        projection_bounds: Vec::new(),
+        projection_bounds: projection_bounds,
     };
 
     predicates(tcx, trait_ref.self_ty(), &bounds)
@@ -6385,7 +6388,7 @@ pub fn construct_parameter_environment<'tcx>(
     }
 
     fn push_types_from_defs<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                  types: &mut subst::VecPerParamSpace<Ty<'tcx>>,
+                                  types: &mut VecPerParamSpace<Ty<'tcx>>,
                                   defs: &[TypeParameterDef<'tcx>]) {
         for def in defs.iter() {
             debug!("construct_parameter_environment(): push_types_from_defs: def={}",
@@ -6915,9 +6918,46 @@ impl<'tcx> RegionEscape for Ty<'tcx> {
     }
 }
 
+impl<'tcx,T:RegionEscape> RegionEscape for VecPerParamSpace<T> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.iter_enumerated().any(|(space, _, t)| {
+            if space == subst::FnSpace {
+                t.has_regions_escaping_depth(depth+1)
+            } else {
+                t.has_regions_escaping_depth(depth)
+            }
+        })
+    }
+}
+
+impl<'tcx> RegionEscape for TypeScheme<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.ty.has_regions_escaping_depth(depth) ||
+            self.generics.has_regions_escaping_depth(depth)
+    }
+}
+
 impl RegionEscape for Region {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.escapes_depth(depth)
+    }
+}
+
+impl<'tcx> RegionEscape for Generics<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.predicates.has_regions_escaping_depth(depth)
+    }
+}
+
+impl<'tcx> RegionEscape for Predicate<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        match *self {
+            Predicate::Trait(ref data) => data.has_regions_escaping_depth(depth),
+            Predicate::Equate(ref data) => data.has_regions_escaping_depth(depth),
+            Predicate::RegionOutlives(ref data) => data.has_regions_escaping_depth(depth),
+            Predicate::TypeOutlives(ref data) => data.has_regions_escaping_depth(depth),
+            Predicate::Projection(ref data) => data.has_regions_escaping_depth(depth),
+        }
     }
 }
 
@@ -6988,9 +7028,15 @@ pub trait HasProjectionTypes {
     fn has_projection_types(&self) -> bool;
 }
 
+impl<'tcx,T:HasProjectionTypes> HasProjectionTypes for VecPerParamSpace<T> {
+    fn has_projection_types(&self) -> bool {
+        self.iter().any(|p| p.has_projection_types())
+    }
+}
+
 impl<'tcx> HasProjectionTypes for ty::GenericBounds<'tcx> {
     fn has_projection_types(&self) -> bool {
-        self.predicates.iter().any(|p| p.has_projection_types())
+        self.predicates.has_projection_types()
     }
 }
 
