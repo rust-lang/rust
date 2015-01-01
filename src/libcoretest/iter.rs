@@ -10,6 +10,7 @@
 
 use core::iter::*;
 use core::iter::order::*;
+use core::iter::MinMaxResult::*;
 use core::num::SignedInt;
 use core::uint;
 use core::cmp;
