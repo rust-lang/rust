@@ -8,32 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that we get an error in a multidisptach scenario where the
-// set of impls is ambiguous.
+// Check that an associated type cannot be bound in an expression path.
 
-trait Convert<Target> {
-    fn convert(&self) -> Target;
+#![feature(associated_types)]
+
+trait Foo {
+    type A;
+    fn bar() -> int;
 }
 
-impl Convert<i8> for i32 {
-    fn convert(&self) -> i8 {
-        *self as i8
-    }
+impl Foo for int {
+    type A = uint;
+    fn bar() -> int { 42 }
 }
 
-impl Convert<i16> for i32 {
-    fn convert(&self) -> i16 {
-        *self as i16
-    }
+pub fn main() {
+    let x: int = Foo::bar();
+    //~^ ERROR type annotations required
 }
-
-fn test<T,U>(_: T, _: U)
-where T : Convert<U>
-{
-}
-
-fn a() {
-    test(22_i32, 44); //~ ERROR type annotations required
-}
-
-fn main() {}

@@ -269,7 +269,8 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
     pub fn check_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
         let trait_def = ty::lookup_trait_def(self.fcx.tcx(), trait_ref.def_id);
 
-        let bounds = trait_def.generics.to_bounds(self.tcx(), trait_ref.substs);
+        let bounds = self.fcx.instantiate_bounds(self.span, trait_ref.substs, &trait_def.generics);
+
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 self.span,
@@ -319,13 +320,14 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
             ty::ty_struct(type_id, substs) |
             ty::ty_enum(type_id, substs) => {
                 let type_scheme = ty::lookup_item_type(self.fcx.tcx(), type_id);
+                let bounds = self.fcx.instantiate_bounds(self.span, substs, &type_scheme.generics);
 
                 if self.binding_count == 0 {
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,
                                                      self.fcx.body_id,
                                                      traits::ItemObligation(type_id)),
-                        &type_scheme.generics.to_bounds(self.tcx(), substs));
+                        &bounds);
                 } else {
                     // There are two circumstances in which we ignore
                     // region obligations.
@@ -349,7 +351,6 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                     //
                     // (I believe we should do the same for traits, but
                     // that will require an RFC. -nmatsakis)
-                    let bounds = type_scheme.generics.to_bounds(self.tcx(), substs);
                     let bounds = filter_to_trait_obligations(bounds);
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,

@@ -93,7 +93,7 @@ use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits;
 use middle::ty::{FnSig, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
-use middle::ty::{mod, HasProjectionTypes, Ty};
+use middle::ty::{mod, HasProjectionTypes, RegionEscape, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
@@ -351,11 +351,18 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
         }
     }
 
-    fn normalize_associated_types_in<T>(&self, span: Span, body_id: ast::NodeId, value: &T) -> T
-        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes
+    fn normalize_associated_types_in<T>(&self,
+                                        typer: &mc::Typer<'tcx>,
+                                        span: Span,
+                                        body_id: ast::NodeId,
+                                        value: &T)
+                                        -> T
+        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes + Repr<'tcx>
     {
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
         assoc::normalize_associated_types_in(&self.infcx,
+                                             &self.param_env,
+                                             typer,
                                              &mut *fulfillment_cx, span,
                                              body_id,
                                              value)
@@ -439,7 +446,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let fn_sig =
                 liberate_late_bound_regions(ccx.tcx, CodeExtent::from_node_id(body.id), &fn_sig);
             let fn_sig =
-                inh.normalize_associated_types_in(body.span, body.id, &fn_sig);
+                inh.normalize_associated_types_in(ccx.tcx, body.span, body.id, &fn_sig);
 
             let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_sig,
                                decl, id, body, &inh);
@@ -1191,6 +1198,8 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             impl_sig.subst(tcx, impl_to_skol_substs);
         let impl_sig =
             assoc::normalize_associated_types_in(&infcx,
+                                                 &impl_param_env,
+                                                 infcx.tcx,
                                                  &mut fulfillment_cx,
                                                  impl_m_span,
                                                  impl_m_body_id,
@@ -1210,6 +1219,8 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             trait_sig.subst(tcx, &trait_to_skol_substs);
         let trait_sig =
             assoc::normalize_associated_types_in(&infcx,
+                                                 &impl_param_env,
+                                                 infcx.tcx,
                                                  &mut fulfillment_cx,
                                                  impl_m_span,
                                                  impl_m_body_id,
@@ -1742,10 +1753,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         result
     }
 
-    fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
-        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes
+    /// As `instantiate_type_scheme`, but for the bounds found in a
+    /// generic type scheme.
+    fn instantiate_bounds(&self,
+                          span: Span,
+                          substs: &Substs<'tcx>,
+                          generics: &ty::Generics<'tcx>)
+                          -> ty::GenericBounds<'tcx>
     {
-        self.inh.normalize_associated_types_in(span, self.body_id, value)
+        ty::GenericBounds {
+            predicates: self.instantiate_type_scheme(span, substs, &generics.predicates)
+        }
+    }
+
+
+    fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
+        where T : TypeFoldable<'tcx> + Clone + HasProjectionTypes + Repr<'tcx>
+    {
+        self.inh.normalize_associated_types_in(self, span, self.body_id, value)
     }
 
     fn normalize_associated_type(&self,
@@ -1760,6 +1785,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.inh.fulfillment_cx
             .borrow_mut()
             .normalize_projection_type(self.infcx(),
+                                       &self.inh.param_env,
+                                       self,
                                        ty::ProjectionTy {
                                            trait_ref: trait_ref,
                                            item_name: item_name,
@@ -1853,7 +1880,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 &type_scheme.generics);
         let bounds =
-            type_scheme.generics.to_bounds(self.tcx(), &substs);
+            self.instantiate_bounds(span, &substs, &type_scheme.generics);
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 span,
@@ -1930,7 +1957,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.inh.fulfillment_cx
             .borrow_mut()
-            .register_predicate(self.infcx(), obligation);
+            .register_predicate_obligation(self.infcx(), obligation);
     }
 
     pub fn to_ty(&self, ast_t: &ast::Ty) -> Ty<'tcx> {
@@ -4456,7 +4483,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 if let Some(did) = did {
                     let polytype = ty::lookup_item_type(tcx, did);
                     let substs = Substs::new_type(vec![idx_type], vec![]);
-                    let bounds = polytype.generics.to_bounds(tcx, &substs);
+                    let bounds = fcx.instantiate_bounds(expr.span, &substs, &polytype.generics);
                     fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(expr.span,
                                                      fcx.body_id,
@@ -5271,31 +5298,20 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     // The things we are substituting into the type should not contain
-    // escaping late-bound regions.
+    // escaping late-bound regions, and nor should the base type scheme.
     assert!(!substs.has_regions_escaping_depth(0));
+    assert!(!type_scheme.has_escaping_regions());
 
-    // In the case of static items taken from impls, there may be
-    // late-bound regions associated with the impl (not declared on
-    // the fn itself). Those should be replaced with fresh variables
-    // now. These can appear either on the type being referenced, or
-    // on the associated bounds.
-    let bounds = type_scheme.generics.to_bounds(fcx.tcx(), &substs);
-    let (ty_late_bound, bounds) =
-        fcx.infcx().replace_late_bound_regions_with_fresh_var(
-            span,
-            infer::FnCall,
-            &ty::Binder((type_scheme.ty, bounds))).0;
-
-    debug!("after late-bounds have been replaced: ty_late_bound={}", ty_late_bound.repr(fcx.tcx()));
-    debug!("after late-bounds have been replaced: bounds={}", bounds.repr(fcx.tcx()));
-
+    // Add all the obligations that are required, substituting and
+    // normalized appropriately.
+    let bounds = fcx.instantiate_bounds(span, &substs, &type_scheme.generics);
     fcx.add_obligations_for_parameters(
         traits::ObligationCause::new(span, fcx.body_id, traits::ItemObligation(def.def_id())),
         &bounds);
 
     // Substitute the values for the type parameters into the type of
     // the referenced item.
-    let ty_substituted = fcx.instantiate_type_scheme(span, &substs, &ty_late_bound);
+    let ty_substituted = fcx.instantiate_type_scheme(span, &substs, &type_scheme.ty);
 
     fcx.write_ty(node_id, ty_substituted);
     fcx.write_substs(node_id, ty::ItemSubsts { substs: substs });

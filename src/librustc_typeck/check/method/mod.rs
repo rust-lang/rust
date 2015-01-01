@@ -216,7 +216,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
     //
     // Note that as the method comes from a trait, it should not have
     // any late-bound regions appearing in its bounds.
-    let method_bounds = method_ty.generics.to_bounds(fcx.tcx(), trait_ref.substs);
+    let method_bounds = fcx.instantiate_bounds(span, trait_ref.substs, &method_ty.generics);
     assert!(!method_bounds.has_escaping_regions());
     fcx.add_obligations_for_parameters(
         traits::ObligationCause::misc(span, fcx.body_id),
