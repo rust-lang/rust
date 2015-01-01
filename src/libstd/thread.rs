@@ -232,13 +232,10 @@ impl Builder {
             let my_stack_top = addr as uint;
             let my_stack_bottom = my_stack_top - stack_size + 1024;
             unsafe {
-                stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
+                stack::record_os_managed_stack_bounds(my_stack_bottom,
+                                                      my_stack_top);
+                thread_info::set(imp::guard::current(), their_thread);
             }
-            thread_info::set(
-                (my_stack_bottom, my_stack_top),
-                unsafe { imp::guard::current() },
-                their_thread
-            );
 
             let mut output = None;
             let f: Thunk<(), T> = if stdout.is_some() || stderr.is_some() {

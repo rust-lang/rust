@@ -12,10 +12,10 @@ use prelude::v1::*;
 use self::Req::*;
 
 use c_str::{CString, ToCStr};
-use collections;
+use collections::HashMap;
 use hash::Hash;
 use io::process::{ProcessExit, ExitStatus, ExitSignal};
-use io::{mod, IoResult, IoError, EndOfFile};
+use io::{IoResult, EndOfFile};
 use libc::{mod, pid_t, c_void, c_int};
 use mem;
 use os;
@@ -328,7 +328,7 @@ impl Process {
         // The actual communication between the helper thread and this thread is
         // quite simple, just a channel moving data around.
 
-        unsafe { HELPER.boot(register_sigchld, waitpid_helper) }
+        HELPER.boot(register_sigchld, waitpid_helper);
 
         match self.try_wait() {
             Some(ret) => return Ok(ret),
@@ -336,7 +336,7 @@ impl Process {
         }
 
         let (tx, rx) = channel();
-        unsafe { HELPER.send(NewChild(self.pid, tx, deadline)); }
+        HELPER.send(NewChild(self.pid, tx, deadline));
         return match rx.recv() {
             Ok(e) => Ok(e),
             Err(..) => Err(timeout("wait timed out")),
@@ -420,8 +420,15 @@ impl Process {
                             Ok(NewChild(pid, tx, deadline)) => {
                                 active.push((pid, tx, deadline));
                             }
+                            // Once we've been disconnected it means the main
+                            // thread is exiting (at_exit has run). We could
+                            // still have active waiter for other threads, so
+                            // we're just going to drop them all on the floor.
+                            // This means that they won't receive a "you're
+                            // done" message in which case they'll be considered
+                            // as timed out, but more generally errors will
+                            // start propagating.
                             Err(TryRecvError::Disconnected) => {
-                                assert!(active.len() == 0);
                                 break 'outer;
                             }
                             Err(TryRecvError::Empty) => break,
@@ -553,7 +560,7 @@ fn with_argv<T,F>(prog: &CString, args: &[CString],
     cb(ptrs.as_ptr())
 }
 
-fn with_envp<K,V,T,F>(env: Option<&collections::HashMap<K, V>>,
+fn with_envp<K,V,T,F>(env: Option<&HashMap<K, V>>,
                       cb: F)
                       -> T
     where F : FnOnce(*const c_void) -> T,

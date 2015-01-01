@@ -11,7 +11,6 @@
 use cell::UnsafeCell;
 use kinds::Sync;
 use sys::sync as ffi;
-use sys_common::mutex;
 
 pub struct Mutex { inner: UnsafeCell<ffi::pthread_mutex_t> }
 
@@ -26,6 +25,7 @@ pub const MUTEX_INIT: Mutex = Mutex {
 
 unsafe impl Sync for Mutex {}
 
+#[allow(dead_code)] // sys isn't exported yet
 impl Mutex {
     #[inline]
     pub unsafe fn new() -> Mutex {
