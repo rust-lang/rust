@@ -12,8 +12,7 @@
 // ignore-android needs extra network permissions
 // exec-env:RUST_LOG=debug
 
-#![feature(phase)]
-#[phase(plugin, link)]
+#[macro_use]
 extern crate log;
 extern crate libc;
 

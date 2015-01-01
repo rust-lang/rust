@@ -12,9 +12,7 @@
 // aux-build:macro_reexport_2.rs
 // ignore-stage1
 
-#![feature(phase)]
-
-#[phase(plugin)]
+#[macro_use] #[no_link]
 extern crate macro_reexport_2;
 
 fn main() {

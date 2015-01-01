@@ -19,8 +19,7 @@
 /// # Example
 ///
 /// ```
-/// #![feature(phase)]
-/// #[phase(plugin, link)] extern crate log;
+/// #[macro_use] extern crate log;
 ///
 /// fn main() {
 ///     log!(log::WARN, "this is a warning {}", "message");
@@ -68,8 +67,7 @@ macro_rules! log {
 /// # Example
 ///
 /// ```
-/// #![feature(phase)]
-/// #[phase(plugin, link)] extern crate log;
+/// #[macro_use] extern crate log;
 ///
 /// fn main() {
 ///     let error = 3u;
@@ -94,8 +92,7 @@ macro_rules! error {
 /// # Example
 ///
 /// ```
-/// #![feature(phase)]
-/// #[phase(plugin, link)] extern crate log;
+/// #[macro_use] extern crate log;
 ///
 /// fn main() {
 ///     let code = 3u;
@@ -119,8 +116,7 @@ macro_rules! warn {
 /// # Example
 ///
 /// ```
-/// #![feature(phase)]
-/// #[phase(plugin, link)] extern crate log;
+/// #[macro_use] extern crate log;
 ///
 /// fn main() {
 ///     let ret = 3i;
@@ -146,8 +142,7 @@ macro_rules! info {
 /// # Example
 ///
 /// ```
-/// #![feature(phase)]
-/// #[phase(plugin, link)] extern crate log;
+/// #[macro_use] extern crate log;
 ///
 /// fn main() {
 ///     debug!("x = {x}, y = {y}", x=10i, y=20i);
@@ -170,8 +165,7 @@ macro_rules! debug {
 /// # Example
 ///
 /// ```
-/// #![feature(phase)]
-/// #[phase(plugin, link)] extern crate log;
+/// #[macro_use] extern crate log;
 ///
 /// struct Point { x: int, y: int }
 /// fn some_expensive_computation() -> Point { Point { x: 1, y: 2 } }

@@ -10,9 +10,7 @@
 
 // aux-build:macro_crate_def_only.rs
 
-#![feature(phase)]
-
-#[phase(plugin)]
+#[macro_use] #[no_link]
 extern crate macro_crate_def_only;
 
 pub fn main() {

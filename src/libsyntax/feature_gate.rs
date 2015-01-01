@@ -44,7 +44,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("non_ascii_idents", Active),
     ("thread_local", Active),
     ("link_args", Active),
-    ("phase", Active),
+    ("phase", Active),  // NOTE(stage0): switch to Removed after next snapshot
     ("plugin_registrar", Active),
     ("log_syntax", Active),
     ("trace_macros", Active),
@@ -73,6 +73,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
 
     ("if_let", Accepted),
     ("while_let", Accepted),
+
+    ("plugin", Active),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
@@ -163,22 +165,6 @@ struct MacroVisitor<'a> {
 }
 
 impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
-    fn visit_view_item(&mut self, i: &ast::ViewItem) {
-        match i.node {
-            ast::ViewItemExternCrate(..) => {
-                for attr in i.attrs.iter() {
-                    if attr.name().get() == "phase"{
-                        self.context.gate_feature("phase", attr.span,
-                                          "compile time crate loading is \
-                                           experimental and possibly buggy");
-                    }
-                }
-            },
-            _ => { }
-        }
-        visit::walk_view_item(self, i)
-    }
-
     fn visit_mac(&mut self, macro: &ast::Mac) {
         let ast::MacInvocTT(ref path, _, _) = macro.node;
         let id = path.segments.last().unwrap().identifier;
@@ -241,10 +227,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             }
             ast::ViewItemExternCrate(..) => {
                 for attr in i.attrs.iter() {
-                    if attr.name().get() == "phase"{
-                        self.gate_feature("phase", attr.span,
-                                          "compile time crate loading is \
-                                           experimental and possibly buggy");
+                    if attr.check_name("plugin") {
+                        self.gate_feature("plugin", attr.span,
+                                          "compiler plugins are experimental \
+                                           and possibly buggy");
                     }
                 }
             }

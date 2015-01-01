@@ -32,7 +32,14 @@ extern crate rustc_driver;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;
-#[phase(plugin, link)] extern crate log;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate log;
 
 extern crate "serialize" as rustc_serialize; // used by deriving
 

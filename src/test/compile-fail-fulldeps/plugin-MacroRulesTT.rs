@@ -13,9 +13,9 @@
 // ignore-android
 // error-pattern: plugin tried to register a new MacroRulesTT
 
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
+#[plugin] #[no_link]
 extern crate macro_crate_MacroRulesTT;
 
 fn main() { }

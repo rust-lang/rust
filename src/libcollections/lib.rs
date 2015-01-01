@@ -29,15 +29,34 @@
 #![feature(associated_types)]
 #![no_std]
 
-#[phase(plugin, link)] extern crate core;
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate core;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate core;
+
 extern crate unicode;
 extern crate alloc;
 
 #[cfg(test)] extern crate test;
 
-#[cfg(test)] #[phase(plugin, link)] extern crate std;
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate std;
 
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate std;
+
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate log;
 
 pub use binary_heap::BinaryHeap;
 pub use bitv::Bitv;

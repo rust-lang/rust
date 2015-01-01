@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,9 +10,17 @@
 
 // aux-build:macro_crate_test.rs
 // ignore-stage1
+// ignore-cross-compile
+//
+// macro_crate_test will not compile on a cross-compiled target because
+// libsyntax is not compiled for it.
 
-#[phase(plugin)]
-//~^ ERROR compile time crate loading is experimental and possibly buggy
+#![feature(plugin)]
+
+#[plugin]
 extern crate macro_crate_test;
 
-fn main() {}
+fn main() {
+    assert_eq!(1, make_a_1!());
+    macro_crate_test::foo();
+}

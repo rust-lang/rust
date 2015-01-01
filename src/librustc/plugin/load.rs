@@ -84,26 +84,36 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             _ => return,
         }
 
-        let mut plugin_phase = false;
-        for attr in vi.attrs.iter().filter(|a| a.check_name("phase")) {
-            let phases = attr.meta_item_list().unwrap_or(&[]);
-            if attr::contains_name(phases, "plugin") {
-                plugin_phase = true;
+        // Parse the attributes relating to macro / plugin loading.
+        let mut load_macros = false;
+        let mut load_registrar = false;
+        for attr in vi.attrs.iter() {
+            let mut used = true;
+            match attr.name().get() {
+                "phase" => {
+                    self.sess.span_err(attr.span, "#[phase] is deprecated; use \
+                                       #[macro_use], #[plugin], and/or #[no_link]");
+                }
+                "plugin" => load_registrar = true,
+                "macro_use" => load_macros = true,
+                _ => used = false,
             }
-            if attr::contains_name(phases, "syntax") {
-                plugin_phase = true;
-                self.sess.span_warn(attr.span,
-                    "phase(syntax) is a deprecated synonym for phase(plugin)");
+            if used {
+                attr::mark_used(attr);
             }
         }
 
         let mut macros = vec![];
         let mut registrar = None;
 
-        if plugin_phase {
+        if load_macros || load_registrar {
             let pmd = self.reader.read_plugin_metadata(vi);
-            macros = pmd.exported_macros();
-            registrar = pmd.plugin_registrar();
+            if load_macros {
+                macros = pmd.exported_macros();
+            }
+            if load_registrar {
+                registrar = pmd.plugin_registrar();
+            }
         }
 
         self.plugins.macros.extend(macros.into_iter());

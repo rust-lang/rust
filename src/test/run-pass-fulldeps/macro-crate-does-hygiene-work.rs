@@ -14,9 +14,9 @@
 // Issue #15750: a macro that internally parses its input and then
 // uses `quote_expr!` to rearrange it should be hygiene-preserving.
 
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
+#[plugin] #[no_link]
 extern crate macro_crate_test;
 
 fn main() {

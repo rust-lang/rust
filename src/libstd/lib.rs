@@ -120,12 +120,30 @@
 #![macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
     unreachable, unimplemented, write, writeln, vec)]
 
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate log;
 
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate log;
+
+#[cfg(stage0)]
 #[phase(plugin, link)]
 extern crate core;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate core;
+
+#[cfg(stage0)]
 #[phase(plugin, link)]
 extern crate "collections" as core_collections;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate "collections" as core_collections;
+
 extern crate "rand" as core_rand;
 extern crate alloc;
 extern crate unicode;

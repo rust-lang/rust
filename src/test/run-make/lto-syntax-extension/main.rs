@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase)]
-
 extern crate lib;
-#[phase(plugin, link)] extern crate log;
+#[macro_use] extern crate log;
 
 fn main() {}

@@ -10,8 +10,7 @@
 
 // error-pattern:whatever
 
-#![feature(phase)]
-#[phase(plugin, link)] extern crate log;
+#[macro_use] extern crate log;
 use std::os;
 
 fn main() {
