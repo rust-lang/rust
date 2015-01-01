@@ -1229,7 +1229,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             // inferred by regionbk
             let upvar_id = ty::UpvarId { var_id: id_var,
                                          closure_expr_id: closure_expr.id };
-            let upvar_borrow = self.typer.upvar_borrow(upvar_id);
+            let upvar_borrow = self.typer.upvar_borrow(upvar_id).unwrap();
 
             self.delegate.borrow(closure_expr.id,
                                  closure_expr.span,

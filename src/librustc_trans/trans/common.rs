@@ -39,7 +39,7 @@ use middle::ty::{mod, HasProjectionTypes, Ty};
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use util::ppaux::Repr;
-use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
+use util::nodemap::{FnvHashMap, NodeMap};
 
 use arena::TypedArena;
 use libc::{c_uint, c_char};
@@ -617,18 +617,42 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
         self.tcx().region_maps.temporary_scope(rvalue_id)
     }
 
-    fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure<'tcx>>> {
-        &self.tcx().unboxed_closures
-    }
-
-    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.tcx().upvar_borrow_map.borrow()[upvar_id].clone()
+    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarBorrow> {
+        Some(self.tcx().upvar_borrow_map.borrow()[upvar_id].clone())
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause {
         self.tcx().capture_modes.borrow()[closure_expr_id].clone()
+    }
+}
+
+impl<'blk, 'tcx> ty::UnboxedClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
+    fn unboxed_closure_kind(&self,
+                            def_id: ast::DefId)
+                            -> ty::UnboxedClosureKind
+    {
+        self.tcx().unboxed_closure_kind(def_id)
+    }
+
+    fn unboxed_closure_type(&self,
+                            def_id: ast::DefId,
+                            substs: &subst::Substs<'tcx>)
+                            -> ty::ClosureTy<'tcx>
+    {
+        // the substitutions in `substs` are already monomorphized, so we can
+        // ignore `param_substs`
+        self.tcx().unboxed_closure_type(def_id, substs)
+    }
+
+    fn unboxed_closure_upvars(&self,
+                              def_id: ast::DefId,
+                              substs: &Substs<'tcx>)
+                              -> Option<Vec<ty::UnboxedClosureUpvar<'tcx>>>
+    {
+        // the substitutions in `substs` are already monomorphized, so we can
+        // ignore `param_substs`
+        ty::unboxed_closure_upvars(self.tcx(), def_id, substs)
     }
 }
 

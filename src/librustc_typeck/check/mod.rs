@@ -319,15 +319,37 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
         self.tcx().temporary_scope(rvalue_id)
     }
-    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.inh.upvar_borrow_map.borrow()[upvar_id].clone()
+    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarBorrow> {
+        self.inh.upvar_borrow_map.borrow().get(&upvar_id).cloned()
     }
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause {
         self.ccx.tcx.capture_mode(closure_expr_id)
     }
-    fn unboxed_closures(&self) -> &RefCell<DefIdMap<ty::UnboxedClosure<'tcx>>> {
-        &self.inh.unboxed_closures
+}
+
+impl<'a, 'tcx> ty::UnboxedClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
+    fn unboxed_closure_kind(&self,
+                            def_id: ast::DefId)
+                            -> ty::UnboxedClosureKind
+    {
+        self.inh.unboxed_closures.borrow()[def_id].kind
+    }
+
+    fn unboxed_closure_type(&self,
+                            def_id: ast::DefId,
+                            substs: &subst::Substs<'tcx>)
+                            -> ty::ClosureTy<'tcx>
+    {
+        self.inh.unboxed_closures.borrow()[def_id].closure_type.subst(self.tcx(), substs)
+    }
+
+    fn unboxed_closure_upvars(&self,
+                              def_id: ast::DefId,
+                              substs: &Substs<'tcx>)
+                              -> Option<Vec<ty::UnboxedClosureUpvar<'tcx>>>
+    {
+        ty::unboxed_closure_upvars(self, def_id, substs)
     }
 }
 
@@ -352,7 +374,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
     }
 
     fn normalize_associated_types_in<T>(&self,
-                                        typer: &mc::Typer<'tcx>,
+                                        typer: &ty::UnboxedClosureTyper<'tcx>,
                                         span: Span,
                                         body_id: ast::NodeId,
                                         value: &T)
