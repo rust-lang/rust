@@ -1227,32 +1227,29 @@ impl<'a> Parser<'a> {
 
         */
 
-        let unsafety = self.parse_unsafety();
+        let ty_closure_span = self.last_span;
 
-        let lifetime_defs = self.parse_legacy_lifetime_defs(lifetime_defs);
+        // To be helpful, parse the closure type as ever
+        let _ = self.parse_unsafety();
 
-        let inputs = if self.eat(&token::OrOr) {
-            Vec::new()
-        } else {
+        let _ = self.parse_legacy_lifetime_defs(lifetime_defs);
+
+        if !self.eat(&token::OrOr) {
             self.expect_or();
 
-            let inputs = self.parse_seq_to_before_or(
+            let _ = self.parse_seq_to_before_or(
                 &token::Comma,
                 |p| p.parse_arg_general(false));
             self.expect_or();
-            inputs
-        };
+        }
 
-        let bounds = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
+        let _ = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
 
-        let output = self.parse_ret_ty();
-        let decl = P(FnDecl {
-            inputs: inputs,
-            output: output,
-            variadic: false
-        });
+        let _ = self.parse_ret_ty();
 
-        panic!("stub");
+        self.obsolete(ty_closure_span, ObsoleteClosureType);
+
+        TyInfer
     }
 
     pub fn parse_unsafety(&mut self) -> Unsafety {
