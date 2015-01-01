@@ -74,10 +74,12 @@ impl<'a, T: Send> ExclusiveGuard<'a, T> {
     }
 }
 
-impl<'a, T: Send> Deref<T> for ExclusiveGuard<'a, T> {
+impl<'a, T: Send> Deref for ExclusiveGuard<'a, T> {
+    type Target = T;
+
     fn deref(&self) -> &T { &*self._data }
 }
-impl<'a, T: Send> DerefMut<T> for ExclusiveGuard<'a, T> {
+impl<'a, T: Send> DerefMut for ExclusiveGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut T { &mut *self._data }
 }
 

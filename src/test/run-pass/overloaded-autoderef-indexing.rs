@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 struct DerefArray<'a, T:'a> {
     inner: &'a [T]
 }
 
-impl<'a, T> Deref<&'a [T]> for DerefArray<'a, T> {
+impl<'a, T> Deref for DerefArray<'a, T> {
+    type Target = &'a [T];
+
     fn deref<'b>(&'b self) -> &'b &'a [T] {
         &self.inner
     }

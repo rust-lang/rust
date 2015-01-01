@@ -54,7 +54,9 @@ impl<T> OwnedSlice<T> {
     }
 }
 
-impl<T> Deref<[T]> for OwnedSlice<T> {
+impl<T> Deref for OwnedSlice<T> {
+    type Target = [T];
+
     fn deref(&self) -> &[T] {
         self.as_slice()
     }

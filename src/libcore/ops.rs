@@ -827,11 +827,14 @@ pub struct RangeTo<Idx> {
 /// struct.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// struct DerefExample<T> {
 ///     value: T
 /// }
 ///
-/// impl<T> Deref<T> for DerefExample<T> {
+/// impl<T> Deref for DerefExample<T> {
+///     type Target = T;
+///
 ///     fn deref<'a>(&'a self) -> &'a T {
 ///         &self.value
 ///     }
@@ -843,16 +846,22 @@ pub struct RangeTo<Idx> {
 /// }
 /// ```
 #[lang="deref"]
-pub trait Deref<Sized? Result> for Sized? {
+pub trait Deref for Sized? {
+    type Sized? Target;
+
     /// The method called to dereference a value
-    fn deref<'a>(&'a self) -> &'a Result;
+    fn deref<'a>(&'a self) -> &'a Self::Target;
 }
 
-impl<'a, Sized? T> Deref<T> for &'a T {
+impl<'a, Sized? T> Deref for &'a T {
+    type Target = T;
+
     fn deref(&self) -> &T { *self }
 }
 
-impl<'a, Sized? T> Deref<T> for &'a mut T {
+impl<'a, Sized? T> Deref for &'a mut T {
+    type Target = T;
+
     fn deref(&self) -> &T { *self }
 }
 
@@ -865,17 +874,20 @@ impl<'a, Sized? T> Deref<T> for &'a mut T {
 /// struct.
 ///
 /// ```
+/// #![feature(associated_types)]
 /// struct DerefMutExample<T> {
 ///     value: T
 /// }
 ///
-/// impl<T> Deref<T> for DerefMutExample<T> {
+/// impl<T> Deref for DerefMutExample<T> {
+///     type Target = T;
+///
 ///     fn deref<'a>(&'a self) -> &'a T {
 ///         &self.value
 ///     }
 /// }
 ///
-/// impl<T> DerefMut<T> for DerefMutExample<T> {
+/// impl<T> DerefMut for DerefMutExample<T> {
 ///     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
 ///         &mut self.value
 ///     }
@@ -888,12 +900,12 @@ impl<'a, Sized? T> Deref<T> for &'a mut T {
 /// }
 /// ```
 #[lang="deref_mut"]
-pub trait DerefMut<Sized? Result> for Sized? : Deref<Result> {
+pub trait DerefMut for Sized? : Deref {
     /// The method called to mutably dereference a value
-    fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
+    fn deref_mut<'a>(&'a mut self) -> &'a mut <Self as Deref>::Target;
 }
 
-impl<'a, Sized? T> DerefMut<T> for &'a mut T {
+impl<'a, Sized? T> DerefMut for &'a mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }
 

@@ -935,7 +935,9 @@ impl ops::Slice<uint, str> for String {
 }
 
 #[experimental = "waiting on Deref stabilization"]
-impl ops::Deref<str> for String {
+impl ops::Deref for String {
+    type Target = str;
+
     fn deref<'a>(&'a self) -> &'a str {
         unsafe { mem::transmute(self.vec[]) }
     }
@@ -947,7 +949,9 @@ pub struct DerefString<'a> {
     x: DerefVec<'a, u8>
 }
 
-impl<'a> Deref<String> for DerefString<'a> {
+impl<'a> Deref for DerefString<'a> {
+    type Target = String;
+
     fn deref<'b>(&'b self) -> &'b String {
         unsafe { mem::transmute(&*self.x) }
     }

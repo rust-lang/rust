@@ -422,7 +422,9 @@ pub struct Ref<'b, T:'b> {
 }
 
 #[unstable = "waiting for `Deref` to become stable"]
-impl<'b, T> Deref<T> for Ref<'b, T> {
+impl<'b, T> Deref for Ref<'b, T> {
+    type Target = T;
+
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
         self._value
@@ -478,7 +480,9 @@ pub struct RefMut<'b, T:'b> {
 }
 
 #[unstable = "waiting for `Deref` to become stable"]
-impl<'b, T> Deref<T> for RefMut<'b, T> {
+impl<'b, T> Deref for RefMut<'b, T> {
+    type Target = T;
+
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
         self._value
@@ -486,7 +490,7 @@ impl<'b, T> Deref<T> for RefMut<'b, T> {
 }
 
 #[unstable = "waiting for `DerefMut` to become stable"]
-impl<'b, T> DerefMut<T> for RefMut<'b, T> {
+impl<'b, T> DerefMut for RefMut<'b, T> {
     #[inline]
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         self._value

@@ -288,12 +288,14 @@ impl<'mutex, T> MutexGuard<'mutex, T> {
     }
 }
 
-impl<'mutex, T> Deref<T> for MutexGuard<'mutex, T> {
+impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
+    type Target = T;
+
     fn deref<'a>(&'a self) -> &'a T {
         unsafe { &*self.__data.get() }
     }
 }
-impl<'mutex, T> DerefMut<T> for MutexGuard<'mutex, T> {
+impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut *self.__data.get() }
     }

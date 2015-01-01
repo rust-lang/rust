@@ -10,11 +10,15 @@
 
 // error-pattern: reached the recursion limit while auto-dereferencing
 
+#![feature(associated_types)]
+
 use std::ops::Deref;
 
 struct Foo;
 
-impl Deref<Foo> for Foo {
+impl Deref for Foo {
+    type Target = Foo;
+
     fn deref(&self) -> &Foo {
         self
     }

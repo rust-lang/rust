@@ -117,13 +117,15 @@ pub struct StdinReaderGuard<'a> {
     inner: MutexGuard<'a, RaceBox>,
 }
 
-impl<'a> Deref<BufferedReader<StdReader>> for StdinReaderGuard<'a> {
+impl<'a> Deref for StdinReaderGuard<'a> {
+    type Target = BufferedReader<StdReader>;
+
     fn deref(&self) -> &BufferedReader<StdReader> {
         &self.inner.0
     }
 }
 
-impl<'a> DerefMut<BufferedReader<StdReader>> for StdinReaderGuard<'a> {
+impl<'a> DerefMut for StdinReaderGuard<'a> {
     fn deref_mut(&mut self) -> &mut BufferedReader<StdReader> {
         &mut self.inner.0
     }
