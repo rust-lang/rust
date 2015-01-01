@@ -729,7 +729,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
       }
       ty::ty_unboxed_closure(def_id, _, substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id, substs);
+          let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id, substs).unwrap();
           for (i, upvar) in upvars.iter().enumerate() {
               let llupvar = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
               cx = f(cx, llupvar, upvar.ty);
