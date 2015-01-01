@@ -71,7 +71,7 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         cx.ident_of("Zero"),
         cx.ident_of("zero")
     );
-    let zero_call = |span| cx.expr_call_global(span, zero_ident.clone(), Vec::new());
+    let zero_call = |&: span| cx.expr_call_global(span, zero_ident.clone(), Vec::new());
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {

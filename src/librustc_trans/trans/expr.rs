@@ -299,12 +299,16 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // into a type to be destructed. If we want to end up with a Box pointer,
     // then mk_ty should make a Box pointer (T -> Box<T>), if we want a
     // borrowed reference then it should be T -> &T.
-    // FIXME(#19596) unbox `mk_ty`
-    fn unsized_info<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                kind: &ty::UnsizeKind<'tcx>,
-                                id: ast::NodeId,
-                                unadjusted_ty: Ty<'tcx>,
-                                mk_ty: |Ty<'tcx>| -> Ty<'tcx>) -> ValueRef {
+    fn unsized_info<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+                                   kind: &ty::UnsizeKind<'tcx>,
+                                   id: ast::NodeId,
+                                   unadjusted_ty: Ty<'tcx>,
+                                   mk_ty: F) -> ValueRef where
+        F: FnOnce(Ty<'tcx>) -> Ty<'tcx>,
+    {
+        // FIXME(#19596) workaround: `|t| t` causes monomorphization recursion
+        fn identity<T>(t: T) -> T { t }
+
         debug!("unsized_info(kind={}, id={}, unadjusted_ty={})",
                kind, id, unadjusted_ty.repr(bcx.tcx()));
         match kind {
@@ -314,7 +318,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     let ty_substs = substs.types.get_slice(subst::TypeSpace);
                     // The dtor for a field treats it like a value, so mk_ty
                     // should just be the identity function.
-                    unsized_info(bcx, k, id, ty_substs[tp_index], |t| t)
+                    unsized_info(bcx, k, id, ty_substs[tp_index], identity)
                 }
                 _ => bcx.sess().bug(format!("UnsizeStruct with bad sty: {}",
                                           bcx.ty_to_string(unadjusted_ty))[])

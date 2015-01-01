@@ -615,7 +615,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Array for the arguments we will pass to the rust function.
         let mut llrust_args = Vec::new();
         let mut next_foreign_arg_counter: c_uint = 0;
-        let next_foreign_arg: |pad: bool| -> c_uint = |pad: bool| {
+        let mut next_foreign_arg = |&mut : pad: bool| -> c_uint {
             next_foreign_arg_counter += if pad {
                 2
             } else {

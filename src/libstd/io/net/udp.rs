@@ -344,7 +344,7 @@ mod test {
         let (tx2, rx2) = channel();
 
         spawn(move|| {
-            let send_as = |ip, val: &[u8]| {
+            let send_as = |&: ip, val: &[u8]| {
                 match UdpSocket::bind(ip) {
                     Ok(client) => {
                         let client = box client;

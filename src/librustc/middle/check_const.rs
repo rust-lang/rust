@@ -185,7 +185,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) -> bool {
         ast::ExprBlock(ref block) => {
             // Check all statements in the block
             for stmt in block.stmts.iter() {
-                let block_span_err = |span|
+                let block_span_err = |&: span|
                     span_err!(v.tcx.sess, span, E0016,
                               "blocks in constants are limited to items and \
                                tail expressions");

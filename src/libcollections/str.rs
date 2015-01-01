@@ -202,7 +202,7 @@ impl<'a> Iterator<char> for Decompositions<'a> {
                 let buffer = &mut self.buffer;
                 let sorted = &mut self.sorted;
                 {
-                    let callback = |d| {
+                    let callback = |&mut: d| {
                         let class =
                             unicode::char::canonical_combining_class(d);
                         if class == 0 && !*sorted {

@@ -223,7 +223,7 @@ fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
 
         // reason (a) above
-        let check_for_self_ty = |ty| {
+        let check_for_self_ty = |&: ty| {
             if contains_illegal_self_type_reference(tcx, object_trait.def_id(), ty) {
                 Some(format!(
                     "cannot call a method (`{}`) whose type contains \

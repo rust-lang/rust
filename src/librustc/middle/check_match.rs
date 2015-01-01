@@ -1012,7 +1012,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         })
     }
 
-    let check_move: |&Pat, Option<&Pat>| = |p, sub| {
+    let check_move = |&: p: &Pat, sub: Option<&Pat>| {
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.

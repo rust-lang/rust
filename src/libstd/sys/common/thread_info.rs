@@ -26,13 +26,13 @@ struct ThreadInfo {
 thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None) }
 
 impl ThreadInfo {
-    fn with<R>(f: |&mut ThreadInfo| -> R) -> R {
+    fn with<R, F>(f: F) -> R where F: FnOnce(&mut ThreadInfo) -> R {
         if THREAD_INFO.destroyed() {
             panic!("Use of std::thread::Thread::current() is not possible after \
                     the thread's local data has been destroyed");
         }
 
-        THREAD_INFO.with(|c| {
+        THREAD_INFO.with(move |c| {
             if c.borrow().is_none() {
                 *c.borrow_mut() = Some(ThreadInfo {
                     stack_bounds: (0, 0),
