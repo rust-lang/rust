@@ -152,7 +152,7 @@ fn expand_deriving_encodable_imp<F>(cx: &mut ExtCtxt,
                     true
                 )),
                 attributes: Vec::new(),
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(box |a, b, c| {
                     encodable_substructure(a, b, c)
                 }),
             })
