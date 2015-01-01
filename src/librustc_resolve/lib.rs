@@ -88,6 +88,7 @@ use syntax::visit::{mod, Visitor};
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cell::{Cell, RefCell};
+use std::fmt;
 use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
@@ -178,7 +179,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
 }
 
 /// Contains data for specific types of import directives.
-#[deriving(Copy)]
+#[deriving(Copy,Show)]
 enum ImportDirectiveSubclass {
     SingleImport(Name /* target */, Name /* source */),
     GlobImport
@@ -309,6 +310,7 @@ enum Shadowable {
 }
 
 /// One import directive.
+#[deriving(Show)]
 struct ImportDirective {
     module_path: Vec<Name>,
     subclass: ImportDirectiveSubclass,
@@ -338,7 +340,7 @@ impl ImportDirective {
 }
 
 /// The item that an import resolves to.
-#[deriving(Clone)]
+#[deriving(Clone,Show)]
 struct Target {
     target_module: Rc<Module>,
     bindings: Rc<NameBindings>,
@@ -359,6 +361,7 @@ impl Target {
 }
 
 /// An ImportResolution represents a particular `use` directive.
+#[deriving(Show)]
 struct ImportResolution {
     /// Whether this resolution came from a `use` or a `pub use`. Note that this
     /// should *not* be used whenever resolution is being performed, this is
@@ -438,7 +441,7 @@ impl ImportResolution {
 }
 
 /// The link from a module up to its nearest parent node.
-#[deriving(Clone)]
+#[deriving(Clone,Show)]
 enum ParentLink {
     NoParentLink,
     ModuleParentLink(Weak<Module>, Name),
@@ -446,7 +449,7 @@ enum ParentLink {
 }
 
 /// The type of module this is.
-#[deriving(Copy, PartialEq)]
+#[deriving(Copy, PartialEq, Show)]
 enum ModuleKind {
     NormalModuleKind,
     TraitModuleKind,
@@ -528,6 +531,15 @@ impl Module {
     }
 }
 
+impl fmt::Show for Module {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}, kind: {}, {}",
+               self.def_id,
+               self.kind,
+               if self.is_public { "public" } else { "private" } )
+    }
+}
+
 bitflags! {
     #[deriving(Show)]
     flags DefModifiers: u8 {
@@ -537,7 +549,7 @@ bitflags! {
 }
 
 // Records a possibly-private type definition.
-#[deriving(Clone)]
+#[deriving(Clone,Show)]
 struct TypeNsDef {
     modifiers: DefModifiers, // see note in ImportResolution about how to use this
     module_def: Option<Rc<Module>>,
@@ -555,6 +567,7 @@ struct ValueNsDef {
 
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
+#[deriving(Show)]
 struct NameBindings {
     type_def: RefCell<Option<TypeNsDef>>,   //< Meaning in type namespace.
     value_def: RefCell<Option<ValueNsDef>>, //< Meaning in value namespace.
