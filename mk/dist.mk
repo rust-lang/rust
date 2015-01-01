@@ -212,7 +212,7 @@ distcheck-osx: dist-osx
 # Unix binary installer tarballs
 ######################################################################
 
-NON_INSTALLED_PREFIXES=COPYRIGHT,LICENSE-APACHE,LICENSE-MIT,README.md,doc
+NON_INSTALLED_PREFIXES=COPYRIGHT,LICENSE-APACHE,LICENSE-MIT,README.md
 
 define DEF_INSTALLER
 
