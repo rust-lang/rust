@@ -1781,6 +1781,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                substs.repr(self.tcx()));
 
         let closure_type = self.closure_typer.unboxed_closure_type(closure_def_id, substs);
+
+        debug!("confirm_unboxed_closure_candidate: closure_def_id={} closure_type={}",
+               closure_def_id.repr(self.tcx()),
+               closure_type.repr(self.tcx()));
+
         let closure_sig = &closure_type.sig;
         let arguments_tuple = closure_sig.0.inputs[0];
         let trait_substs =

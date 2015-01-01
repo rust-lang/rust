@@ -22,11 +22,11 @@ use trans::common::*;
 use trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
 use trans::debuginfo;
 use trans::expr;
-use trans::monomorphize::MonoId;
+use trans::monomorphize::{mod, MonoId};
 use trans::type_of::*;
 use trans::type_::Type;
-use middle::ty::{mod, Ty};
-use middle::subst::{Subst, Substs};
+use middle::ty::{mod, Ty, UnboxedClosureTyper};
+use middle::subst::{Substs};
 use session::config::FullDebugInfo;
 use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
@@ -464,7 +464,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk,
     }
 
     let function_type = ty::node_id_to_type(bcx.tcx(), closure_id.node);
-    let function_type = function_type.subst(bcx.tcx(), substs);
+    let function_type = monomorphize::apply_param_substs(bcx.tcx(), substs, &function_type);
 
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
@@ -511,7 +511,8 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                              body: &ast::Block,
                              id: ast::NodeId,
                              dest: expr::Dest)
-                             -> Block<'blk, 'tcx> {
+                             -> Block<'blk, 'tcx>
+{
     let _icx = push_ctxt("closure::trans_unboxed_closure");
 
     debug!("trans_unboxed_closure()");
@@ -522,9 +523,13 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
         closure_id,
         bcx.fcx.param_substs).unwrap();
 
-    let function_type = (*bcx.tcx().unboxed_closures.borrow())[closure_id]
-                                                              .closure_type
-                                                              .clone();
+    // Get the type of this closure. Use the current `param_substs` as
+    // the closure substitutions. This makes sense because the closure
+    // takes the same set of type arguments as the enclosing fn, and
+    // this function (`trans_unboxed_closure`) is invoked at the point
+    // of the closure expression.
+    let typer = NormalizingUnboxedClosureTyper::new(bcx.tcx());
+    let function_type = typer.unboxed_closure_type(closure_id, bcx.fcx.param_substs);
     let function_type = ty::mk_closure(bcx.tcx(), function_type);
 
     let freevars: Vec<ty::Freevar> =
