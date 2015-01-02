@@ -561,7 +561,9 @@ fn test_rposition_panic() {
 
 
 #[cfg(test)]
-fn check_randacc_iter<A: PartialEq, T: Clone + RandomAccessIterator<A>>(a: T, len: uint)
+fn check_randacc_iter<A, T>(a: T, len: uint) where
+    A: PartialEq,
+    T: Clone + RandomAccessIterator + Iterator<Item=A>,
 {
     let mut b = a.clone();
     assert_eq!(len, b.indexable());
