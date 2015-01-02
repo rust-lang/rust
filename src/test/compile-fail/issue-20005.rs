@@ -17,8 +17,12 @@ trait From<Src> {
 }
 
 trait To {
-    fn to<Dst>(self) -> <Dst as From<Self>>::Result where Dst: From<Self> {
-        From::from(self)  //~error: type annotations required
+    fn to<Dst>(
+        self //~ error: the trait `core::kinds::Sized` is not implemented
+    ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
+        From::from( //~ error: the trait `core::kinds::Sized` is not implemented
+            self
+        )
     }
 }
 
