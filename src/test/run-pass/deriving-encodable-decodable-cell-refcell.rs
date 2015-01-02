@@ -11,6 +11,8 @@
 // This briefly tests the capability of `Cell` and `RefCell` to implement the
 // `Encodable` and `Decodable` traits via `#[deriving(Encodable, Decodable)]`
 
+#![feature(old_orphan_check)]
+
 extern crate serialize;
 
 use std::cell::{Cell, RefCell};

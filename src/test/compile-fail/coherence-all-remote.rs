@@ -8,21 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(old_orphan_check)]
+// aux-build:coherence-lib.rs
 
-extern crate serialize;
+extern crate "coherence-lib" as lib;
+use lib::Remote;
 
-use serialize::{Encodable, Decodable};
-use serialize::json;
+impl<T> Remote for int { }
+//~^ ERROR cannot provide an extension implementation
 
-#[deriving(Encodable, Decodable)]
-struct A {
-    foo: Box<[bool]>,
-}
-
-fn main() {
-    let obj = A { foo: box [true, false] };
-    let s = json::encode(&obj);
-    let obj2: A = json::decode(s.as_slice()).unwrap();
-    assert!(obj.foo == obj2.foo);
-}
+fn main() { }
