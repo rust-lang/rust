@@ -92,7 +92,7 @@ use mem;
 use clone::Clone;
 use intrinsics;
 use option::Option::{mod, Some, None};
-use kinds::{Send, Sync};
+use kinds::{Send, Sized, Sync};
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd, Equiv};
 use cmp::Ordering::{mod, Less, Equal, Greater};
@@ -243,7 +243,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 
 /// Methods on raw pointers
 #[stable]
-pub trait PtrExt<T> {
+pub trait PtrExt<T> : Sized {
     /// Returns the null pointer.
     #[deprecated = "call ptr::null instead"]
     fn null() -> Self;

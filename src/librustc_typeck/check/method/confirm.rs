@@ -633,17 +633,16 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
               target_trait_def_id: ast::DefId)
               -> ty::PolyTraitRef<'tcx>
     {
-        for super_trait_ref in traits::supertraits(self.tcx(), source_trait_ref.clone()) {
-            if super_trait_ref.def_id() == target_trait_def_id {
-                return super_trait_ref;
+        match traits::upcast(self.tcx(), source_trait_ref.clone(), target_trait_def_id) {
+            Some(super_trait_ref) => super_trait_ref,
+            None => {
+                self.tcx().sess.span_bug(
+                    self.span,
+                    format!("cannot upcast `{}` to `{}`",
+                            source_trait_ref.repr(self.tcx()),
+                            target_trait_def_id.repr(self.tcx()))[]);
             }
         }
-
-        self.tcx().sess.span_bug(
-            self.span,
-            format!("cannot upcast `{}` to `{}`",
-                    source_trait_ref.repr(self.tcx()),
-                    target_trait_def_id.repr(self.tcx()))[]);
     }
 
     fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &ty::Binder<T>) -> T

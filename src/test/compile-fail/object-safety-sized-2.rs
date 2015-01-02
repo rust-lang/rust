@@ -8,25 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test static calls to make sure that we align the Self and input
-// type parameters on a trait correctly.
+// Check that we correctly prevent users from making trait objects
+// from traits where `Self : Sized`.
 
-trait Tr<T> : Sized {
-    fn op(T) -> Self;
+trait Bar
+    where Self : Sized
+{
+    fn bar<T>(&self, t: T);
 }
 
-trait A:    Tr<Self> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
-    }
+fn make_bar<T:Bar>(t: &T) -> &Bar {
+    t
+        //~^ ERROR `Bar` is not object-safe
+        //~| NOTE the trait cannot require that `Self : Sized`
 }
 
-trait B<T>: Tr<T> {
-    fn test<U>(u: U) -> Self {
-        Tr::op(u)   //~ ERROR not implemented
-    }
+fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
+    t as &Bar
+        //~^ ERROR `Bar` is not object-safe
+        //~| NOTE the trait cannot require that `Self : Sized`
 }
 
 fn main() {
 }
-

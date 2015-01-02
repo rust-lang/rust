@@ -154,7 +154,7 @@ trait PrinterSupport<'ast>: pprust::PpAnn {
     ///
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self as &pprust::PpAnn }
+    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn;
 }
 
 struct NoAnn<'ast> {
@@ -168,6 +168,8 @@ impl<'ast> PrinterSupport<'ast> for NoAnn<'ast> {
     fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>> {
         self.ast_map.as_ref()
     }
+
+    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
 }
 
 impl<'ast> pprust::PpAnn for NoAnn<'ast> {}
@@ -183,6 +185,8 @@ impl<'ast> PrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
     fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>> {
         self.ast_map.as_ref()
     }
+
+    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
 }
 
 impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
@@ -232,6 +236,8 @@ impl<'ast> PrinterSupport<'ast> for HygieneAnnotation<'ast> {
     fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>> {
         self.ast_map.as_ref()
     }
+
+    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
 }
 
 impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
@@ -265,6 +271,8 @@ impl<'tcx> PrinterSupport<'tcx> for TypedAnnotation<'tcx> {
     fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'tcx>> {
         Some(&self.analysis.ty_cx.map)
     }
+
+    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
 }
 
 impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {

@@ -13,7 +13,7 @@
 
 use std::sync::mpsc::{Sender, channel};
 
-trait Foo : Send {
+trait Foo : Send + Sized {
     fn foo(self, tx: Sender<Self>) {
         tx.send(self).unwrap();
     }

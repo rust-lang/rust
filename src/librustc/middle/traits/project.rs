@@ -377,20 +377,14 @@ fn project_type<'cx,'tcx>(
         ambiguous: false,
     };
 
-    assemble_candidates_from_object_type(selcx,
-                                         obligation,
-                                         &mut candidates);
+    assemble_candidates_from_param_env(selcx,
+                                       obligation,
+                                       &mut candidates);
 
-    if candidates.vec.is_empty() {
-        assemble_candidates_from_param_env(selcx,
-                                           obligation,
-                                           &mut candidates);
-
-        if let Err(e) = assemble_candidates_from_impls(selcx,
-                                                       obligation,
-                                                       &mut candidates) {
-            return Err(ProjectionTyError::TraitSelectionError(e));
-        }
+    if let Err(e) = assemble_candidates_from_impls(selcx,
+                                                   obligation,
+                                                   &mut candidates) {
+        return Err(ProjectionTyError::TraitSelectionError(e));
     }
 
     debug!("{} candidates, ambiguous={}",
@@ -467,18 +461,22 @@ fn assemble_candidates_from_predicates<'cx,'tcx>(
 fn assemble_candidates_from_object_type<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation:  &ProjectionTyObligation<'tcx>,
-    candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
+    candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
+    object_ty: Ty<'tcx>)
 {
     let infcx = selcx.infcx();
-    let trait_ref = infcx.resolve_type_vars_if_possible(&obligation.predicate.trait_ref);
-    debug!("assemble_candidates_from_object_type(trait_ref={})",
-           trait_ref.repr(infcx.tcx));
-    let self_ty = trait_ref.self_ty();
-    let data = match self_ty.sty {
+    debug!("assemble_candidates_from_object_type(object_ty={})",
+           object_ty.repr(infcx.tcx));
+    let data = match object_ty.sty {
         ty::ty_trait(ref data) => data,
-        _ => { return; }
+        _ => {
+            selcx.tcx().sess.span_bug(
+                obligation.cause.span,
+                format!("assemble_candidates_from_object_type called with non-object: {}",
+                        object_ty.repr(selcx.tcx()))[]);
+        }
     };
-    let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), self_ty);
+    let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
     let env_predicates = projection_bounds.iter()
                                           .map(|p| p.as_predicate())
                                           .collect();
@@ -514,6 +512,10 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
         super::VtableImpl(data) => {
             candidate_set.vec.push(
                 ProjectionTyCandidate::Impl(data));
+        }
+        super::VtableObject(data) => {
+            assemble_candidates_from_object_type(
+                selcx, obligation, candidate_set, data.object_ty);
         }
         super::VtableParam(..) => {
             // This case tell us nothing about the value of an
