@@ -936,7 +936,9 @@ impl<T: Send> select::Packet for Receiver<T> {
 }
 
 #[unstable]
-impl<'a, T: Send> Iterator<T> for Iter<'a, T> {
+impl<'a, T: Send> Iterator for Iter<'a, T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> { self.rx.recv().ok() }
 }
 

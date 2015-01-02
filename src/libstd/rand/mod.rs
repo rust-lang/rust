@@ -404,7 +404,7 @@ pub fn random<T: Rand>() -> T {
 /// let sample = sample(&mut rng, range(1i, 100), 5);
 /// println!("{}", sample);
 /// ```
-pub fn sample<T, I: Iterator<T>, R: Rng>(rng: &mut R,
+pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
                                          mut iter: I,
                                          amount: uint) -> Vec<T> {
     let mut reservoir: Vec<T> = iter.by_ref().take(amount).collect();
