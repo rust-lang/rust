@@ -14,8 +14,6 @@
 
 macro_rules! uint_module { ($T:ty) => (
 
-// String conversion functions and impl num -> str
-
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;

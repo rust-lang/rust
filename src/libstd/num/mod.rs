@@ -112,8 +112,6 @@ pub trait FloatMath: Float {
     fn atanh(self) -> Self;
 }
 
-// DEPRECATED
-
 /// Helper function for testing numeric operations
 #[cfg(test)]
 pub fn test_num<T>(ten: T, two: T) where
