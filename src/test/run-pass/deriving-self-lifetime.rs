@@ -10,7 +10,7 @@
 
 // ignore-test FIXME #11820: & is unreliable in deriving
 
-#[deriving(Eq,Ord)]
+#[derive(Eq,Ord)]
 struct A<'a> {
     x: &'a int
 }

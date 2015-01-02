@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 struct thing(uint);
 impl PartialOrd for thing { //~ ERROR not all trait items implemented, missing: `partial_cmp`
     fn le(&self, other: &thing) -> bool { true }

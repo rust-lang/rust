@@ -28,12 +28,12 @@ impl<T> S<T> {
     }
 }
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct A((u32, u32));
 
 impl Copy for A {}
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct B(u64);
 
 impl Copy for B {}

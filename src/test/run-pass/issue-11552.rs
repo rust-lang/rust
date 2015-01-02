@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[deriving(Clone)]
+#[derive(Clone)]
 enum Noun
 {
     Atom(int),

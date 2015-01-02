@@ -30,7 +30,7 @@ trait TraversesWorld {
 }
 
 
-#[deriving(Show, Eq, PartialEq, Hash)]
+#[derive(Show, Eq, PartialEq, Hash)]
 enum RoomDirection {
     West,
     East,

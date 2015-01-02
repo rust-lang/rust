@@ -16,10 +16,10 @@ struct Fat<Sized? T> {
     ptr: T
 }
 
-#[deriving(PartialEq,Eq)]
+#[derive(PartialEq,Eq)]
 struct Bar;
 
-#[deriving(PartialEq,Eq)]
+#[derive(PartialEq,Eq)]
 struct Bar1 {
     f: int
 }

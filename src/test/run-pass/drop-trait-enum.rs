@@ -10,7 +10,7 @@
 
 use std::task;
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 enum Message {
     Dropped,
     DestructorRan

@@ -11,7 +11,7 @@
 
 use std::num::Zero;
 
-#[deriving(Zero)]
+#[derive(Zero)]
 struct Vector2<T>(T, T);
 
 impl<T: Add<T, T>> Add<Vector2<T>, Vector2<T>> for Vector2<T> {
@@ -24,7 +24,7 @@ impl<T: Add<T, T>> Add<Vector2<T>, Vector2<T>> for Vector2<T> {
     }
 }
 
-#[deriving(Zero)]
+#[derive(Zero)]
 struct Vector3<T> {
     x: T, y: T, z: T,
 }
@@ -39,7 +39,7 @@ impl<T: Add<T, T>> Add<Vector3<T>, Vector3<T>> for Vector3<T> {
     }
 }
 
-#[deriving(Zero)]
+#[derive(Zero)]
 struct Matrix3x2<T> {
     x: Vector2<T>,
     y: Vector2<T>,

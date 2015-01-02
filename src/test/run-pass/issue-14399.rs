@@ -13,7 +13,7 @@
 // value was coerced to a trait object. (v.clone() returns Box<B1>
 // which is coerced to Box<A>).
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct B1;
 
 trait A {}

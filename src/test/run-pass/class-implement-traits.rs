@@ -13,7 +13,7 @@ trait noisy {
     fn speak(&mut self);
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct cat {
     meows : uint,
 

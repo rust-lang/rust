@@ -15,7 +15,7 @@ extern crate rand;
 
 struct Error;
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 struct Struct(
     Error //~ ERROR
 //~^ ERROR

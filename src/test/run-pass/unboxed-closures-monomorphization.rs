@@ -28,7 +28,7 @@ fn main(){
     let mut f = bar(&x);
     assert_eq!(f.call_mut(()), &x);
 
-    #[deriving(Clone, Show, PartialEq)]
+    #[derive(Clone, Show, PartialEq)]
     struct Foo(uint, &'static str);
 
     impl Copy for Foo {}

@@ -47,7 +47,7 @@ fn dog() -> dog {
     }
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct cat {
   meows: uint,
 

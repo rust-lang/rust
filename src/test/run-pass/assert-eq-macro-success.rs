@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct Point { x : int }
 
 pub fn main() {

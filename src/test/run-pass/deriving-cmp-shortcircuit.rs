@@ -27,7 +27,7 @@ impl Ord for FailCmp {
     fn cmp(&self, _: &FailCmp) -> Ordering { panic!("cmp") }
 }
 
-#[deriving(PartialEq,PartialOrd,Eq,Ord)]
+#[derive(PartialEq,PartialOrd,Eq,Ord)]
 struct ShortCircuit {
     x: int,
     y: FailCmp

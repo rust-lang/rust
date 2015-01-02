@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The compiler code necessary to implement the `#[deriving]` extensions.
+//! The compiler code necessary to implement the `#[derive]` extensions.
 //!
 //! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
 //! the standard library, and "std" is the core library.
@@ -45,16 +45,26 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             _span: Span,
                             mitem: &MetaItem,
                             item: &Item,
-                            mut push: Box<FnMut(P<Item>)>) {
+                            push: Box<FnMut(P<Item>)>) {
+    cx.span_warn(mitem.span, "`deriving` is deprecated; use `derive`");
+
+    expand_meta_derive(cx, _span, mitem, item, push)
+}
+
+pub fn expand_meta_derive(cx: &mut ExtCtxt,
+                          _span: Span,
+                          mitem: &MetaItem,
+                          item: &Item,
+                          mut push: Box<FnMut(P<Item>)>) {
     match mitem.node {
         MetaNameValue(_, ref l) => {
-            cx.span_err(l.span, "unexpected value in `deriving`");
+            cx.span_err(l.span, "unexpected value in `derive`");
         }
         MetaWord(_) => {
-            cx.span_warn(mitem.span, "empty trait list in `deriving`");
+            cx.span_warn(mitem.span, "empty trait list in `derive`");
         }
         MetaList(_, ref titems) if titems.len() == 0 => {
-            cx.span_warn(mitem.span, "empty trait list in `deriving`");
+            cx.span_warn(mitem.span, "empty trait list in `derive`");
         }
         MetaList(_, ref titems) => {
             for titem in titems.iter().rev() {
@@ -78,15 +88,15 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
                             }
                             "Encodable" => {
                                 cx.span_warn(titem.span,
-                                             "deriving(Encodable) is deprecated \
-                                              in favor of deriving(RustcEncodable)");
+                                             "derive(Encodable) is deprecated \
+                                              in favor of derive(RustcEncodable)");
 
                                 expand!(encodable::expand_deriving_encodable)
                             }
                             "Decodable" => {
                                 cx.span_warn(titem.span,
-                                             "deriving(Decodable) is deprecated \
-                                              in favor of deriving(RustcDecodable)");
+                                             "derive(Decodable) is deprecated \
+                                              in favor of derive(RustcDecodable)");
 
                                 expand!(decodable::expand_deriving_decodable)
                             }
@@ -111,7 +121,7 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
 
                             ref tname => {
                                 cx.span_err(titem.span,
-                                            format!("unknown `deriving` \
+                                            format!("unknown `derive` \
                                                      trait: `{}`",
                                                     *tname)[]);
                             }

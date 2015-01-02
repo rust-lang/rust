@@ -15,7 +15,7 @@ extern crate rand;
 
 struct Error;
 
-#[deriving(Default)]
+#[derive(Default)]
 struct Struct(
     Error //~ ERROR
 );

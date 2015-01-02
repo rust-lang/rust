@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! Some code that abstracts away much of the boilerplate of writing
-//! `deriving` instances for traits. Among other things it manages getting
+//! `derive` instances for traits. Among other things it manages getting
 //! access to the fields of the 4 different sorts of structs and enum
 //! variants, as well as creating the method and impl ast instances.
 //!
@@ -26,7 +26,7 @@
 //!   moment. (`TraitDef.additional_bounds`)
 //!
 //! Unsupported: FIXME #6257: calling methods on reference fields,
-//! e.g. deriving Eq/Ord/Clone don't work on `struct A(&int)`,
+//! e.g. derive Eq/Ord/Clone don't work on `struct A(&int)`,
 //! because of how the auto-dereferencing happens.
 //!
 //! The most important thing for implementers is the `Substructure` and
@@ -209,7 +209,7 @@ use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self, Ty};
 pub mod ty;
 
 pub struct TraitDef<'a> {
-    /// The span for the current #[deriving(Foo)] header.
+    /// The span for the current #[derive(Foo)] header.
     pub span: Span,
 
     pub attributes: Vec<ast::Attribute>,
@@ -354,7 +354,7 @@ impl<'a> TraitDef<'a> {
                                      generics)
             }
             _ => {
-                cx.span_err(mitem.span, "`deriving` may only be applied to structs and enums");
+                cx.span_err(mitem.span, "`derive` may only be applied to structs and enums");
                 return;
             }
         };
@@ -718,7 +718,7 @@ impl<'a> MethodDef<'a> {
     }
 
     /// ```
-    /// #[deriving(PartialEq)]
+    /// #[derive(PartialEq)]
     /// struct A { x: int, y: int }
     ///
     /// // equivalent to:
@@ -782,7 +782,7 @@ impl<'a> MethodDef<'a> {
         } else {
             cx.span_bug(trait_.span,
                         "no self arguments to non-static method in generic \
-                         `deriving`")
+                         `derive`")
         };
 
         // body of the inner most destructuring match
@@ -822,7 +822,7 @@ impl<'a> MethodDef<'a> {
     }
 
     /// ```
-    /// #[deriving(PartialEq)]
+    /// #[derive(PartialEq)]
     /// enum A {
     ///     A1,
     ///     A2(int)
@@ -1185,7 +1185,7 @@ impl<'a> TraitDef<'a> {
                      cx: &mut ExtCtxt,
                      mut to_set: Span) -> Span {
         let trait_name = match self.path.path.last() {
-            None => cx.span_bug(self.span, "trait with empty path in generic `deriving`"),
+            None => cx.span_bug(self.span, "trait with empty path in generic `derive`"),
             Some(name) => *name
         };
         to_set.expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
@@ -1215,7 +1215,7 @@ impl<'a> TraitDef<'a> {
         match (just_spans.is_empty(), named_idents.is_empty()) {
             (false, false) => cx.span_bug(self.span,
                                           "a struct with named and unnamed \
-                                          fields in generic `deriving`"),
+                                          fields in generic `derive`"),
             // named fields
             (_, false) => Named(named_idents),
             // tuple structs (includes empty structs)
@@ -1263,7 +1263,7 @@ impl<'a> TraitDef<'a> {
                     None
                 }
                 _ => {
-                    cx.span_bug(sp, "a struct with named and unnamed fields in `deriving`");
+                    cx.span_bug(sp, "a struct with named and unnamed fields in `derive`");
                 }
             };
             let ident = cx.ident_of(format!("{}_{}", prefix, i)[]);
@@ -1371,7 +1371,7 @@ pub fn cs_fold<F>(use_foldl: bool,
             enum_nonmatch_f(cx, trait_span, (all_args[], tuple),
                             substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
-            cx.span_bug(trait_span, "static function in `deriving`")
+            cx.span_bug(trait_span, "static function in `derive`")
         }
     }
 }
@@ -1411,7 +1411,7 @@ pub fn cs_same_method<F>(f: F,
             enum_nonmatch_f(cx, trait_span, (all_self_args[], tuple),
                             substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
-            cx.span_bug(trait_span, "static function in `deriving`")
+            cx.span_bug(trait_span, "static function in `derive`")
         }
     }
 }

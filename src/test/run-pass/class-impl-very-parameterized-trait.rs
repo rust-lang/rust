@@ -11,7 +11,7 @@
 
 use std::cmp;
 
-#[deriving(Show)]
+#[derive(Show)]
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
 impl Copy for cat_type {}

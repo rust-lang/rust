@@ -12,7 +12,7 @@ trait T {
     fn print(&self);
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct S {
     s: int,
 }

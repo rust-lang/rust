@@ -12,7 +12,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::string::String;
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct Point {
     x: int,
     y: int

@@ -10,7 +10,7 @@
 
 use std::mem::swap;
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Ints {sum: Box<int>, values: Vec<int> }
 
 fn add_int(x: &mut Ints, v: int) {

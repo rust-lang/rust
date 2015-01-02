@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Show)]
+#[derive(Show)]
 enum a_tag {
     a_tag_var(u64)
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct t_rec {
     c8: u8,
     t: a_tag

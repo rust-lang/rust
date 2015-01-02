@@ -11,22 +11,22 @@
 use std::num::FromPrimitive;
 use std::int;
 
-#[deriving(FromPrimitive)]
+#[derive(FromPrimitive)]
 struct A { x: int }
 //~^^ ERROR `FromPrimitive` cannot be derived for structs
 //~^^^ ERROR `FromPrimitive` cannot be derived for structs
 
-#[deriving(FromPrimitive)]
+#[derive(FromPrimitive)]
 struct B(int);
 //~^^ ERROR `FromPrimitive` cannot be derived for structs
 //~^^^ ERROR `FromPrimitive` cannot be derived for structs
 
-#[deriving(FromPrimitive)]
+#[derive(FromPrimitive)]
 enum C { Foo(int), Bar(uint) }
 //~^^ ERROR `FromPrimitive` cannot be derived for enum variants with arguments
 //~^^^ ERROR `FromPrimitive` cannot be derived for enum variants with arguments
 
-#[deriving(FromPrimitive)]
+#[derive(FromPrimitive)]
 enum D { Baz { x: int } }
 //~^^ ERROR `FromPrimitive` cannot be derived for enums with struct variants
 //~^^^ ERROR `FromPrimitive` cannot be derived for enums with struct variants

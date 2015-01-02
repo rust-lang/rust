@@ -22,7 +22,7 @@ fn test_rec() {
     assert_eq!(rs.i, 100);
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 enum mood { happy, sad, }
 
 impl Copy for mood {}

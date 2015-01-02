@@ -60,7 +60,7 @@ static OCCURRENCES: [&'static str;5] = [
 
 // Code implementation
 
-#[deriving(PartialEq, PartialOrd, Ord, Eq)]
+#[derive(PartialEq, PartialOrd, Ord, Eq)]
 struct Code(u64);
 
 impl Copy for Code {}
