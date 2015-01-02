@@ -302,6 +302,9 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // section of the executable we're generating.
     pub llfn: ValueRef,
 
+    // always an empty parameter-environment
+    pub param_env: ty::ParameterEnvironment<'a, 'tcx>,
+
     // The environment argument in a closure.
     pub llenv: Option<ValueRef>,
 
@@ -579,12 +582,12 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
         self.tcx()
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
-        node_id_type(self, id)
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
+        Ok(node_id_type(self, id))
     }
 
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
-        expr_ty_adjusted(self, expr)
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> mc::McResult<Ty<'tcx>> {
+        Ok(expr_ty_adjusted(self, expr))
     }
 
     fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
@@ -627,11 +630,15 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {
-        self.param_env().type_moves_by_default(span, ty)
+        self.fcx.param_env.type_moves_by_default(span, ty)
     }
 }
 
 impl<'blk, 'tcx> ty::UnboxedClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
+    fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx> {
+        &self.fcx.param_env
+    }
+
     fn unboxed_closure_kind(&self,
                             def_id: ast::DefId)
                             -> ty::UnboxedClosureKind
@@ -945,14 +952,10 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id());
     let infcx = infer::new_infer_ctxt(tcx);
 
-    // Parameter environment is used to give details about type parameters,
-    // but since we are in trans, everything is fully monomorphized.
-    let param_env = ty::empty_parameter_environment();
-
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    let typer = NormalizingUnboxedClosureTyper::new(infcx.tcx);
-    let mut selcx = traits::SelectionContext::new(&infcx, &param_env, &typer);
+    let typer = NormalizingUnboxedClosureTyper::new(tcx);
+    let mut selcx = traits::SelectionContext::new(&infcx, &typer);
     let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
                                              trait_ref.to_poly_trait_predicate());
     let selection = match selcx.select(&obligation) {
@@ -987,7 +990,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let vtable = selection.map_move_nested(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
-    let vtable = drain_fulfillment_cx(span, &infcx, &param_env, &mut fulfill_cx, &vtable);
+    let vtable = drain_fulfillment_cx(span, &infcx, &mut fulfill_cx, &vtable);
 
     info!("Cache miss: {}", trait_ref.repr(ccx.tcx()));
     ccx.trait_cache().borrow_mut().insert(trait_ref,
@@ -997,21 +1000,27 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub struct NormalizingUnboxedClosureTyper<'a,'tcx:'a> {
-    tcx: &'a ty::ctxt<'tcx>
+    param_env: ty::ParameterEnvironment<'a, 'tcx>
 }
 
 impl<'a,'tcx> NormalizingUnboxedClosureTyper<'a,'tcx> {
     pub fn new(tcx: &'a ty::ctxt<'tcx>) -> NormalizingUnboxedClosureTyper<'a,'tcx> {
-        NormalizingUnboxedClosureTyper { tcx: tcx }
+        // Parameter environment is used to give details about type parameters,
+        // but since we are in trans, everything is fully monomorphized.
+        NormalizingUnboxedClosureTyper { param_env: ty::empty_parameter_environment(tcx) }
     }
 }
 
 impl<'a,'tcx> ty::UnboxedClosureTyper<'tcx> for NormalizingUnboxedClosureTyper<'a,'tcx> {
+    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
+        &self.param_env
+    }
+
     fn unboxed_closure_kind(&self,
                             def_id: ast::DefId)
                             -> ty::UnboxedClosureKind
     {
-        self.tcx.unboxed_closure_kind(def_id)
+        self.param_env.tcx.unboxed_closure_kind(def_id)
     }
 
     fn unboxed_closure_type(&self,
@@ -1021,8 +1030,8 @@ impl<'a,'tcx> ty::UnboxedClosureTyper<'tcx> for NormalizingUnboxedClosureTyper<'
     {
         // the substitutions in `substs` are already monomorphized,
         // but we still must normalize associated types
-        let closure_ty = self.tcx.unboxed_closure_type(def_id, substs);
-        monomorphize::normalize_associated_type(self.tcx, &closure_ty)
+        let closure_ty = self.param_env.tcx.unboxed_closure_type(def_id, substs);
+        monomorphize::normalize_associated_type(self.param_env.tcx, &closure_ty)
     }
 
     fn unboxed_closure_upvars(&self,
@@ -1032,14 +1041,13 @@ impl<'a,'tcx> ty::UnboxedClosureTyper<'tcx> for NormalizingUnboxedClosureTyper<'
     {
         // the substitutions in `substs` are already monomorphized,
         // but we still must normalize associated types
-        let result = ty::unboxed_closure_upvars(self.tcx, def_id, substs);
-        monomorphize::normalize_associated_type(self.tcx, &result)
+        let result = ty::unboxed_closure_upvars(&self.param_env, def_id, substs);
+        monomorphize::normalize_associated_type(self.param_env.tcx, &result)
     }
 }
 
 pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
                                        infcx: &infer::InferCtxt<'a,'tcx>,
-                                       param_env: &ty::ParameterEnvironment<'tcx>,
                                        fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
                                        result: &T)
                                        -> T
@@ -1052,7 +1060,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
     let typer = NormalizingUnboxedClosureTyper::new(infcx.tcx);
-    match fulfill_cx.select_all_or_error(infcx, param_env, &typer) {
+    match fulfill_cx.select_all_or_error(infcx, &typer) {
         Ok(()) => { }
         Err(errors) => {
             if errors.iter().all(|e| e.is_overflow()) {

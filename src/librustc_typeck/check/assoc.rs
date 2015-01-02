@@ -18,7 +18,6 @@ use syntax::codemap::Span;
 use util::ppaux::Repr;
 
 pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                                                param_env: &ty::ParameterEnvironment<'tcx>,
                                                 typer: &(ty::UnboxedClosureTyper<'tcx>+'a),
                                                 fulfillment_cx: &mut FulfillmentContext<'tcx>,
                                                 span: Span,
@@ -28,7 +27,7 @@ pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     where T : TypeFoldable<'tcx> + HasProjectionTypes + Clone + Repr<'tcx>
 {
     debug!("normalize_associated_types_in(value={})", value.repr(infcx.tcx));
-    let mut selcx = SelectionContext::new(infcx, param_env, typer);
+    let mut selcx = SelectionContext::new(infcx, typer);
     let cause = ObligationCause::new(span, body_id, MiscObligation);
     let Normalized { value: result, obligations } = traits::normalize(&mut selcx, cause, value);
     debug!("normalize_associated_types_in: result={} predicates={}",

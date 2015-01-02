@@ -23,7 +23,7 @@ use self::OverloadedCallType::*;
 use middle::{def, region, pat_util};
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Typer;
-use middle::ty::{mod, ParameterEnvironment, Ty};
+use middle::ty::{mod};
 use middle::ty::{MethodCall, MethodObject, MethodTraitObject};
 use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::ty::{MethodStatic, MethodStaticUnboxedClosure};
@@ -299,7 +299,8 @@ pub struct ExprUseVisitor<'d,'t,'tcx:'t,TYPER:'t> {
     typer: &'t TYPER,
     mc: mc::MemCategorizationContext<'t,TYPER>,
     delegate: &'d mut (Delegate<'tcx>+'d),
-    param_env: &'t ParameterEnvironment<'tcx>,
+}
+
 // If the TYPER results in an error, it's because the type check
 // failed (or will fail, when the error is uncovered and reported
 // during writeback). In this case, we just ignore this part of the
@@ -324,14 +325,12 @@ enum PassArgs {
 
 impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     pub fn new(delegate: &'d mut Delegate<'tcx>,
-               typer: &'t TYPER,
-               param_env: &'t ParameterEnvironment<'tcx>)
+               typer: &'t TYPER)
                -> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         ExprUseVisitor {
             typer: typer,
             mc: mc::MemCategorizationContext::new(typer),
             delegate: delegate,
-            param_env: param_env,
         }
     }
 

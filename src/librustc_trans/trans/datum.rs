@@ -28,6 +28,7 @@ use util::ppaux::{ty_to_string};
 
 use std::fmt;
 use syntax::ast;
+use syntax::codemap::DUMMY_SP;
 
 /// A `Datum` encapsulates the result of evaluating an expression.  It
 /// describes where the value is stored, what Rust type the value has,

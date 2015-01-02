@@ -87,6 +87,7 @@ use middle::{const_eval, def};
 use middle::infer;
 use middle::lang_items::IteratorItem;
 use middle::mem_categorization as mc;
+use middle::mem_categorization::McResult;
 use middle::pat_util::{mod, pat_id_map};
 use middle::region::CodeExtent;
 use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
@@ -146,7 +147,7 @@ mod callee;
 pub struct Inherited<'a, 'tcx: 'a> {
     infcx: infer::InferCtxt<'a, 'tcx>,
     locals: RefCell<NodeMap<Ty<'tcx>>>,
-    param_env: ty::ParameterEnvironment<'tcx>,
+    param_env: ty::ParameterEnvironment<'a, 'tcx>,
 
     // Temporary tables:
     node_types: RefCell<NodeMap<Ty<'tcx>>>,
@@ -288,7 +289,6 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.ccx.tcx
     }
-    fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
         let ty = self.node_ty(id);
         self.resolve_type_vars_or_error(&ty)
@@ -322,7 +322,7 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
         self.inh.method_map.borrow().contains_key(&ty::MethodCall::expr(id))
     }
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
-        self.tcx().temporary_scope(rvalue_id)
+        self.param_env().temporary_scope(rvalue_id)
     }
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarBorrow> {
         self.inh.upvar_borrow_map.borrow().get(&upvar_id).cloned()
@@ -334,6 +334,10 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ty::UnboxedClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
+    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
+        &self.inh.param_env
+    }
+
     fn unboxed_closure_kind(&self,
                             def_id: ast::DefId)
                             -> ty::UnboxedClosureKind
@@ -360,7 +364,7 @@ impl<'a, 'tcx> ty::UnboxedClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
 
 impl<'a, 'tcx> Inherited<'a, 'tcx> {
     fn new(tcx: &'a ty::ctxt<'tcx>,
-           param_env: ty::ParameterEnvironment<'tcx>)
+           param_env: ty::ParameterEnvironment<'a, 'tcx>)
            -> Inherited<'a, 'tcx> {
         Inherited {
             infcx: infer::new_infer_ctxt(tcx),
@@ -388,7 +392,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
     {
         let mut fulfillment_cx = self.fulfillment_cx.borrow_mut();
         assoc::normalize_associated_types_in(&self.infcx,
-                                             &self.param_env,
                                              typer,
                                              &mut *fulfillment_cx, span,
                                              body_id,
@@ -418,7 +421,7 @@ fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>)
                                     -> Inherited<'a, 'tcx> {
     // It's kind of a kludge to manufacture a fake function context
     // and statement context, but we might as well do write the code only once
-    let param_env = ty::empty_parameter_environment();
+    let param_env = ty::empty_parameter_environment(ccx.tcx);
     Inherited::new(ccx.tcx, param_env)
 }
 
@@ -462,7 +465,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            body: &ast::Block,
                            id: ast::NodeId,
                            raw_fty: Ty<'tcx>,
-                           param_env: ty::ParameterEnvironment<'tcx>) {
+                           param_env: ty::ParameterEnvironment<'a, 'tcx>) {
     match raw_fty.sty {
         ty::ty_bare_fn(_, ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
@@ -473,7 +476,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let fn_sig =
                 liberate_late_bound_regions(ccx.tcx, CodeExtent::from_node_id(body.id), &fn_sig);
             let fn_sig =
-                inh.normalize_associated_types_in(ccx.tcx, body.span, body.id, &fn_sig);
+                inh.normalize_associated_types_in(&inh.param_env, body.span, body.id, &fn_sig);
 
             let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_sig,
                                decl, id, body, &inh);
@@ -1225,7 +1228,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         let impl_sig =
             assoc::normalize_associated_types_in(&infcx,
                                                  &impl_param_env,
-                                                 infcx.tcx,
                                                  &mut fulfillment_cx,
                                                  impl_m_span,
                                                  impl_m_body_id,
@@ -1246,7 +1248,6 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         let trait_sig =
             assoc::normalize_associated_types_in(&infcx,
                                                  &impl_param_env,
-                                                 infcx.tcx,
                                                  &mut fulfillment_cx,
                                                  impl_m_span,
                                                  impl_m_body_id,
@@ -1282,7 +1283,7 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // Run the fulfillment context to completion to accommodate any
     // associated type normalizations that may have occurred.
-    match fulfillment_cx.select_all_or_error(&infcx, &impl_param_env, tcx) {
+    match fulfillment_cx.select_all_or_error(&infcx, &impl_param_env) {
         Ok(()) => { }
         Err(errors) => {
             traits::report_fulfillment_errors(&infcx, &errors);
@@ -1660,11 +1661,11 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.ccx.tcx }
 
-    pub fn infcx(&self) -> &infer::InferCtxt<'a, 'tcx> {
+    pub fn infcx(&self) -> &infer::InferCtxt<'a,'tcx> {
         &self.inh.infcx
     }
 
-    pub fn param_env(&self) -> &ty::ParameterEnvironment<'tcx> {
+    pub fn param_env(&self) -> &ty::ParameterEnvironment<'a,'tcx> {
         &self.inh.param_env
     }
 
@@ -1835,7 +1836,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.inh.fulfillment_cx
             .borrow_mut()
             .normalize_projection_type(self.infcx(),
-                                       &self.inh.param_env,
                                        self,
                                        ty::ProjectionTy {
                                            trait_ref: trait_ref,

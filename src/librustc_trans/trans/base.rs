@@ -731,7 +731,8 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
       }
       ty::ty_unboxed_closure(def_id, _, substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id, substs).unwrap();
+          let typer = common::NormalizingUnboxedClosureTyper::new(cx.tcx());
+          let upvars = typer.unboxed_closure_upvars(def_id, substs).unwrap();
           for (i, upvar) in upvars.iter().enumerate() {
               let llupvar = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
               cx = f(cx, llupvar, upvar.ty);
@@ -1451,6 +1452,7 @@ pub fn new_fn_ctxt<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
           llfn: llfndecl,
           llenv: None,
           llretslotptr: Cell::new(None),
+          param_env: ty::empty_parameter_environment(ccx.tcx()),
           alloca_insert_pt: Cell::new(None),
           llreturn: Cell::new(None),
           needs_ret_allocas: nested_returns,

@@ -511,14 +511,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.region_maps.is_subregion_of(r_sub, r_sup)
     }
 
-    pub fn mc(&self) -> mc::MemCategorizationContext<'a, ty::ctxt<'tcx>> {
-        mc::MemCategorizationContext::new(self.tcx)
-    }
-
-    pub fn cat_expr(&self, expr: &ast::Expr) -> mc::cmt<'tcx> {
-        self.mc().cat_expr(expr)
-    }
-
     pub fn report(&self, err: BckError<'tcx>) {
         self.span_err(
             err.span,
@@ -526,13 +518,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.note_and_explain_bckerr(err);
     }
 
-    pub fn report_use_of_moved_value(&self,
-                                     use_span: Span,
-                                     use_kind: MovedValueUseKind,
-                                     lp: &LoanPath<'tcx>,
-                                     the_move: &move_data::Move,
-                                     moved_lp: &LoanPath<'tcx>,
-                                     param_env: &ty::ParameterEnvironment<'tcx>) {
+    pub fn report_use_of_moved_value<'b>(&self,
+                                         use_span: Span,
+                                         use_kind: MovedValueUseKind,
+                                         lp: &LoanPath<'tcx>,
+                                         the_move: &move_data::Move,
+                                         moved_lp: &LoanPath<'tcx>,
+                                         param_env: &ty::ParameterEnvironment<'b,'tcx>) {
         let verb = match use_kind {
             MovedInUse => "use",
             MovedInCapture => "capture",
@@ -608,8 +600,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                   r)[])
                     }
                 };
-                let (suggestion, _) = move_suggestion(self.tcx, param_env, expr_ty,
-                        ("moved by default", ""));
+                let (suggestion, _) =
+                    move_suggestion(param_env, expr_span, expr_ty, ("moved by default", ""));
                 self.tcx.sess.span_note(
                     expr_span,
                     format!("`{}` moved here{} because it has type `{}`, which is {}",
@@ -646,11 +638,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                   r)[])
                     }
                 };
-                let (suggestion, help) = move_suggestion(self.tcx,
-                                                         param_env,
-                                                         expr_ty,
-                        ("moved by default", "make a copy and \
-                         capture that instead to override"));
+                let (suggestion, help) =
+                    move_suggestion(param_env,
+                                    expr_span,
+                                    expr_ty,
+                                    ("moved by default",
+                                     "make a copy and capture that instead to override"));
                 self.tcx.sess.span_note(
                     expr_span,
                     format!("`{}` moved into closure environment here{} because it \
@@ -663,22 +656,27 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        fn move_suggestion<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 param_env: &ty::ParameterEnvironment<'tcx>,
-                                 ty: Ty<'tcx>,
-                                 default_msgs: (&'static str, &'static str))
-                                 -> (&'static str, &'static str) {
+        fn move_suggestion<'a,'tcx>(param_env: &ty::ParameterEnvironment<'a,'tcx>,
+                                    span: Span,
+                                    ty: Ty<'tcx>,
+                                    default_msgs: (&'static str, &'static str))
+                                    -> (&'static str, &'static str) {
             match ty.sty {
                 ty::ty_closure(box ty::ClosureTy {
-                        store: ty::RegionTraitStore(..),
-                        ..
-                    }) =>
+                    store: ty::RegionTraitStore(..),
+                    ..
+                }) => {
                     ("a non-copyable stack closure",
-                     "capture it in a new closure, e.g. `|x| f(x)`, to override"),
-                _ if ty::type_moves_by_default(tcx, ty, param_env) =>
-                    ("non-copyable",
-                     "perhaps you meant to use `clone()`?"),
-                _ => default_msgs,
+                     "capture it in a new closure, e.g. `|x| f(x)`, to override")
+                }
+                _ => {
+                    if ty::type_moves_by_default(param_env, span, ty) {
+                        ("non-copyable",
+                         "perhaps you meant to use `clone()`?")
+                    } else {
+                        default_msgs
+                    }
+                }
             }
         }
     }
@@ -991,7 +989,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub fn cmt_to_string(&self, cmt: &mc::cmt_<'tcx>) -> String {
-        self.mc().cmt_to_string(cmt)
+        cmt.descriptive_string(self.tcx)
     }
 }
 

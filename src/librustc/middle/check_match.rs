@@ -99,7 +99,7 @@ impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
 
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub param_env: ParameterEnvironment<'tcx>,
+    pub param_env: ParameterEnvironment<'a, 'tcx>,
 }
 
 #[deriving(Clone, PartialEq)]
@@ -148,7 +148,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
 pub fn check_crate(tcx: &ty::ctxt) {
     visit::walk_crate(&mut MatchCheckCtxt {
         tcx: tcx,
-        param_env: ty::empty_parameter_environment(),
+        param_env: ty::empty_parameter_environment(tcx),
     }, tcx.map.krate());
     tcx.sess.abort_if_errors();
 }
@@ -1061,8 +1061,7 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
         cx: cx,
     };
     let mut visitor = ExprUseVisitor::new(&mut checker,
-                                          checker.cx.tcx,
-                                          &cx.param_env);
+                                          &checker.cx.param_env);
     visitor.walk_expr(guard);
 }
 

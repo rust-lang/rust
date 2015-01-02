@@ -542,7 +542,7 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
             check_match::Constructor::Variant(def_id)
     };
 
-    let param_env = ty::empty_parameter_environment();
+    let param_env = ty::empty_parameter_environment(bcx.tcx());
     let mcx = check_match::MatchCheckCtxt {
         tcx: bcx.tcx(),
         param_env: param_env,
@@ -1008,7 +1008,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let mcx = check_match::MatchCheckCtxt {
         tcx: bcx.tcx(),
-        param_env: ty::empty_parameter_environment(),
+        param_env: ty::empty_parameter_environment(bcx.tcx()),
     };
     let adt_vals = if any_irrefutable_adt_pat(bcx.tcx(), m, col) {
         let repr = adt::represent_type(bcx.ccx(), left_ty);
@@ -1262,8 +1262,7 @@ fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool 
         reassigned: false
     };
     {
-        let param_env = ty::empty_parameter_environment();
-        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx, &param_env);
+        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx);
         visitor.walk_expr(body);
     }
     rc.reassigned
@@ -1321,7 +1320,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
         let tcx = bcx.tcx();
-        let param_env = ty::empty_parameter_environment();
+        let param_env = ty::empty_parameter_environment(tcx);
 
         let llmatch;
         let trmode;
