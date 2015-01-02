@@ -305,7 +305,9 @@ pub struct DepthFirstTraversal<'g, N:'g, E:'g> {
     visited: BitvSet
 }
 
-impl<'g, N, E> Iterator<&'g N> for DepthFirstTraversal<'g, N, E> {
+impl<'g, N, E> Iterator for DepthFirstTraversal<'g, N, E> {
+    type Item = &'g N;
+
     fn next(&mut self) -> Option<&'g N> {
         while let Some(idx) = self.stack.pop() {
             if !self.visited.insert(idx.node_id()) {

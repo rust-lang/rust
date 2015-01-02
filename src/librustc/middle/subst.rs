@@ -494,7 +494,9 @@ impl<'a,T> EnumeratedItems<'a,T> {
     }
 }
 
-impl<'a,T> Iterator<(ParamSpace, uint, &'a T)> for EnumeratedItems<'a,T> {
+impl<'a,T> Iterator for EnumeratedItems<'a,T> {
+    type Item = (ParamSpace, uint, &'a T);
+
     fn next(&mut self) -> Option<(ParamSpace, uint, &'a T)> {
         let spaces = ParamSpace::all();
         if self.space_index < spaces.len() {

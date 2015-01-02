@@ -3716,10 +3716,10 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                                    -> Representability {
 
     // Iterate until something non-representable is found
-    fn find_nonrepresentable<'tcx, It: Iterator<Ty<'tcx>>>(cx: &ctxt<'tcx>, sp: Span,
-                                                           seen: &mut Vec<Ty<'tcx>>,
-                                                           iter: It)
-                                                           -> Representability {
+    fn find_nonrepresentable<'tcx, It: Iterator<Item=Ty<'tcx>>>(cx: &ctxt<'tcx>, sp: Span,
+                                                                seen: &mut Vec<Ty<'tcx>>,
+                                                                iter: It)
+                                                                -> Representability {
         iter.fold(Representable,
                   |r, ty| cmp::max(r, is_type_structurally_recursive(cx, sp, seen, ty)))
     }

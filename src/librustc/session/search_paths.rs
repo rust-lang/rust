@@ -53,7 +53,9 @@ impl SearchPaths {
     }
 }
 
-impl<'a> Iterator<&'a Path> for Iter<'a> {
+impl<'a> Iterator for Iter<'a> {
+    type Item = &'a Path;
+
     fn next(&mut self) -> Option<&'a Path> {
         loop {
             match self.iter.next() {

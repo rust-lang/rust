@@ -133,7 +133,9 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> Iterator<ty::Predicate<'tcx>> for Elaborator<'cx, 'tcx> {
+impl<'cx, 'tcx> Iterator for Elaborator<'cx, 'tcx> {
+    type Item = ty::Predicate<'tcx>;
+
     fn next(&mut self) -> Option<ty::Predicate<'tcx>> {
         loop {
             // Extract next item from top-most stack frame, if any.
@@ -197,7 +199,9 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
 }
 
-impl<'cx, 'tcx> Iterator<ty::PolyTraitRef<'tcx>> for Supertraits<'cx, 'tcx> {
+impl<'cx, 'tcx> Iterator for Supertraits<'cx, 'tcx> {
+    type Item = ty::PolyTraitRef<'tcx>;
+
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         loop {
             match self.elaborator.next() {
