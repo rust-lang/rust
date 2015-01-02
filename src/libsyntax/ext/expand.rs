@@ -636,6 +636,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         span: it.span,
                         imported_from: None,
                         export: attr::contains_name(it.attrs.as_slice(), "macro_export"),
+                        use_locally: true,
                         body: tts,
                     };
                     fld.cx.insert_macro(def);
