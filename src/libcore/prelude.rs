@@ -49,5 +49,4 @@ pub use option::Option::{mod, Some, None};
 pub use ptr::{PtrExt, MutPtrExt};
 pub use result::Result::{mod, Ok, Err};
 pub use slice::{AsSlice, SliceExt};
-pub use slice::{PartialEqSliceExt, OrdSliceExt};
 pub use str::{Str, StrExt};

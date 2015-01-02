@@ -12,7 +12,7 @@
 
 use std::ops::Deref;
 
-fn deref<U:Copy,T:Deref<U>>(t: T) -> U {
+fn deref<U:Copy,T:Deref<Target=U>>(t: T) -> U {
     *t
 }
 

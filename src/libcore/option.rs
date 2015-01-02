@@ -699,7 +699,7 @@ impl<T> Option<T> {
     }
 }
 
-impl<'a, T: Clone, D: Deref<T>> Option<D> {
+impl<'a, T: Clone, D: Deref<Target=T>> Option<D> {
     /// Maps an Option<D> to an Option<T> by dereffing and cloning the contents of the Option.
     /// Useful for converting an Option<&T> to an Option<T>.
     #[unstable = "recently added as part of collections reform"]

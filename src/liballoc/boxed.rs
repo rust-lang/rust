@@ -155,11 +155,13 @@ impl fmt::Show for Box<Any> {
     }
 }
 
-impl<Sized? T> Deref<T> for Box<T> {
+impl<Sized? T> Deref for Box<T> {
+    type Target = T;
+
     fn deref(&self) -> &T { &**self }
 }
 
-impl<Sized? T> DerefMut<T> for Box<T> {
+impl<Sized? T> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
 }
 
@@ -212,7 +214,7 @@ mod test {
 
     #[test]
     fn deref() {
-        fn homura<T: Deref<i32>>(_: T) { }
+        fn homura<T: Deref<Target=i32>>(_: T) { }
         homura(box 765i32);
     }
 }

@@ -1127,7 +1127,7 @@ mod tests {
     use iter::{IteratorExt, DoubleEndedIteratorExt};
     use option::Option::{mod, Some, None};
     use path::GenericPath;
-    use slice::{AsSlice, SliceExt, CloneSliceExt};
+    use slice::{AsSlice, SliceExt};
     use str::Str;
     use string::ToString;
     use vec::Vec;

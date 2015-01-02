@@ -402,8 +402,8 @@ mod test {
     use prelude::v1::*;
 
     use super::*;
-    use io;
     use io::{SeekSet, SeekCur, SeekEnd};
+    use io;
     use self::test_crate::Bencher;
 
     #[test]

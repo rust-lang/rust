@@ -65,8 +65,6 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
 
-use slice::CloneSliceExt;
-
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
 /// # Examples
@@ -1220,7 +1218,7 @@ unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
 
 #[unstable]
 impl<T:Clone> Clone for Vec<T> {
-    fn clone(&self) -> Vec<T> { self.as_slice().to_vec() }
+    fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(self.as_slice()) }
 
     fn clone_from(&mut self, other: &Vec<T>) {
         // drop anything in self that will not be overwritten
@@ -1305,12 +1303,14 @@ impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
 }
 
 #[experimental = "waiting on Deref stability"]
-impl<T> ops::Deref<[T]> for Vec<T> {
+impl<T> ops::Deref for Vec<T> {
+    type Target = [T];
+
     fn deref<'a>(&'a self) -> &'a [T] { self.as_slice() }
 }
 
 #[experimental = "waiting on DerefMut stability"]
-impl<T> ops::DerefMut<[T]> for Vec<T> {
+impl<T> ops::DerefMut for Vec<T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut [T] { self.as_mut_slice() }
 }
 
@@ -1720,7 +1720,9 @@ pub struct DerefVec<'a, T> {
 }
 
 #[experimental]
-impl<'a, T> Deref<Vec<T>> for DerefVec<'a, T> {
+impl<'a, T> Deref for DerefVec<'a, T> {
+    type Target = Vec<T>;
+
     fn deref<'b>(&'b self) -> &'b Vec<T> {
         &self.x
     }

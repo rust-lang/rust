@@ -11,13 +11,17 @@
 // Test how overloaded deref interacts with borrows when only
 // Deref and not DerefMut is implemented.
 
+#![feature(associated_types)]
+
 use std::ops::Deref;
 
 struct Rc<T> {
     value: *const T
 }
 
-impl<T> Deref<T> for Rc<T> {
+impl<T> Deref for Rc<T> {
+    type Target = T;
+
     fn deref(&self) -> &T {
         unsafe { &*self.value }
     }

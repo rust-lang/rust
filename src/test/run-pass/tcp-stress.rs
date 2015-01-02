@@ -49,7 +49,7 @@ fn main() {
             stream.write(&[2]);
         }
     }).detach();
-    let addr = rx.recv().unwarp();
+    let addr = rx.recv().unwrap();
 
     let (tx, rx) = channel();
     for _ in range(0u, 1000) {

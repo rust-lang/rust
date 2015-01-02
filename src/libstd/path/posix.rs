@@ -22,8 +22,7 @@ use option::Option::{None, Some};
 use kinds::Sized;
 use str::{FromStr, Str};
 use str;
-use slice::{CloneSliceExt, Split, AsSlice, SliceConcatExt,
-            PartialEqSliceExt, SliceExt};
+use slice::{Split, AsSlice, SliceConcatExt, SliceExt};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
@@ -453,7 +452,7 @@ mod tests {
     use iter::{IteratorExt, DoubleEndedIteratorExt};
     use option::Option::{mod, Some, None};
     use path::GenericPath;
-    use slice::{AsSlice, SliceExt, CloneSliceExt};
+    use slice::{AsSlice, SliceExt};
     use str::{mod, Str, StrExt};
     use string::ToString;
     use vec::Vec;

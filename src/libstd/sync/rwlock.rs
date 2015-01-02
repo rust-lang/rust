@@ -327,13 +327,17 @@ impl<'rwlock, T> RWLockWriteGuard<'rwlock, T> {
     }
 }
 
-impl<'rwlock, T> Deref<T> for RWLockReadGuard<'rwlock, T> {
+impl<'rwlock, T> Deref for RWLockReadGuard<'rwlock, T> {
+    type Target = T;
+
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-impl<'rwlock, T> Deref<T> for RWLockWriteGuard<'rwlock, T> {
+impl<'rwlock, T> Deref for RWLockWriteGuard<'rwlock, T> {
+    type Target = T;
+
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-impl<'rwlock, T> DerefMut<T> for RWLockWriteGuard<'rwlock, T> {
+impl<'rwlock, T> DerefMut for RWLockWriteGuard<'rwlock, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.__data.get() }
     }

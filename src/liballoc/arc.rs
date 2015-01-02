@@ -247,7 +247,9 @@ impl<T> BorrowFrom<Arc<T>> for T {
 }
 
 #[experimental = "Deref is experimental."]
-impl<T> Deref<T> for Arc<T> {
+impl<T> Deref for Arc<T> {
+    type Target = T;
+
     #[inline]
     fn deref(&self) -> &T {
         &self.inner().data

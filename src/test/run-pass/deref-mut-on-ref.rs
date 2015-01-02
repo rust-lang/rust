@@ -10,9 +10,9 @@
 
 // Test that `&mut T` implements `DerefMut<T>`
 
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 
-fn inc<T:DerefMut<int>>(mut t: T) {
+fn inc<T: Deref<Target=int> + DerefMut>(mut t: T) {
     *t += 1;
 }
 
