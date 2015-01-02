@@ -27,6 +27,7 @@
 #![feature(quote, unsafe_destructor)]
 #![feature(unboxed_closures)]
 #![feature(old_orphan_check)]
+#![feature(associated_types)]
 
 extern crate arena;
 extern crate fmt_macros;

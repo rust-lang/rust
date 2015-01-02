@@ -52,7 +52,6 @@ use ptr;
 use result::Result;
 use result::Result::{Err, Ok};
 use slice::{AsSlice, SliceExt};
-use slice::CloneSliceExt;
 use str::{Str, StrExt};
 use string::{String, ToString};
 use sync::atomic::{AtomicInt, ATOMIC_INT_INIT, SeqCst};

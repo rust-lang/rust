@@ -36,9 +36,7 @@
 #[stable] #[doc(no_inline)] pub use ptr::{PtrExt, MutPtrExt};
 #[stable] #[doc(no_inline)] pub use result::Result::{mod, Ok, Err};
 #[stable] #[doc(no_inline)] pub use slice::AsSlice;
-#[stable] #[doc(no_inline)] pub use slice::{BoxedSliceExt, SliceExt};
-#[stable] #[doc(no_inline)] pub use slice::{CloneSliceExt, OrdSliceExt};
-#[stable] #[doc(no_inline)] pub use slice::{PartialEqSliceExt, SliceConcatExt};
+#[stable] #[doc(no_inline)] pub use slice::{SliceExt, SliceConcatExt};
 #[stable] #[doc(no_inline)] pub use str::{Str, StrExt};
 #[stable] #[doc(no_inline)] pub use string::{String, ToString};
 #[stable] #[doc(no_inline)] pub use vec::Vec;

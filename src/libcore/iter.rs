@@ -1175,7 +1175,7 @@ pub trait IteratorCloneExt<A> {
 }
 
 #[unstable = "trait is unstable"]
-impl<A: Clone, D: Deref<A>, I: Iterator<D>> IteratorCloneExt<A> for I {
+impl<A: Clone, D: Deref<Target=A>, I: Iterator<D>> IteratorCloneExt<A> for I {
     fn cloned(self) -> Cloned<I> {
         Cloned { it: self }
     }
@@ -1186,7 +1186,7 @@ pub struct Cloned<I> {
     it: I,
 }
 
-impl<A: Clone, D: Deref<A>, I: Iterator<D>> Iterator<A> for Cloned<I> {
+impl<A: Clone, D: Deref<Target=A>, I: Iterator<D>> Iterator<A> for Cloned<I> {
     fn next(&mut self) -> Option<A> {
         self.it.next().cloned()
     }
@@ -1196,7 +1196,7 @@ impl<A: Clone, D: Deref<A>, I: Iterator<D>> Iterator<A> for Cloned<I> {
     }
 }
 
-impl<A: Clone, D: Deref<A>, I: DoubleEndedIterator<D>>
+impl<A: Clone, D: Deref<Target=A>, I: DoubleEndedIterator<D>>
         DoubleEndedIterator<A> for Cloned<I> {
     fn next_back(&mut self) -> Option<A> {
         self.it.next_back().cloned()
@@ -1204,7 +1204,7 @@ impl<A: Clone, D: Deref<A>, I: DoubleEndedIterator<D>>
 }
 
 #[unstable = "trait is unstable"]
-impl<A: Clone, D: Deref<A>, I: ExactSizeIterator<D>> ExactSizeIterator<A> for Cloned<I> {}
+impl<A: Clone, D: Deref<Target=A>, I: ExactSizeIterator<D>> ExactSizeIterator<A> for Cloned<I> {}
 
 #[unstable = "recently renamed for extension trait conventions"]
 /// An extension trait for cloneable iterators.

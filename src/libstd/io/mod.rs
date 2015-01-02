@@ -1941,8 +1941,8 @@ impl fmt::Show for FilePermission {
 #[cfg(test)]
 mod tests {
     use self::BadReaderBehavior::*;
-    use super::{IoResult, MemReader, NoProgress, InvalidInput};
-    use prelude::v1::*;
+    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput, Writer};
+    use prelude::v1::{Ok, Vec, Buffer, SliceExt};
     use uint;
 
     #[deriving(Clone, PartialEq, Show)]

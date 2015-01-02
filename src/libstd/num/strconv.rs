@@ -20,7 +20,7 @@ use char::{mod, Char};
 use num::{mod, Int, Float, ToPrimitive};
 use num::FpCategory as Fp;
 use ops::FnMut;
-use slice::{SliceExt, CloneSliceExt};
+use slice::SliceExt;
 use str::StrExt;
 use string::String;
 use vec::Vec;

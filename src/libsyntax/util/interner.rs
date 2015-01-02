@@ -126,7 +126,9 @@ impl BorrowFrom<RcStr> for str {
     }
 }
 
-impl Deref<str> for RcStr {
+impl Deref for RcStr {
+    type Target = str;
+
     fn deref(&self) -> &str { self.string[] }
 }
 

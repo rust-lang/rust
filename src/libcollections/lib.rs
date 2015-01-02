@@ -26,6 +26,7 @@
 #![feature(unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
 #![feature(old_orphan_check)]
+#![feature(associated_types)]
 #![no_std]
 
 #[phase(plugin, link)] extern crate core;
@@ -121,7 +122,6 @@ mod prelude {
     pub use core::result::Result::{Ok, Err};
 
     // in core and collections (may differ).
-    pub use slice::{PartialEqSliceExt, OrdSliceExt};
     pub use slice::{AsSlice, SliceExt};
     pub use str::{from_str, Str, StrExt};
 
@@ -130,7 +130,7 @@ mod prelude {
     pub use unicode::char::UnicodeChar;
 
     // from collections.
-    pub use slice::{CloneSliceExt, SliceConcatExt};
+    pub use slice::SliceConcatExt;
     pub use str::IntoMaybeOwned;
     pub use string::{String, ToString};
     pub use vec::Vec;
