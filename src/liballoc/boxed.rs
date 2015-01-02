@@ -10,6 +10,8 @@
 
 //! A unique pointer type.
 
+#![stable]
+
 use core::any::{Any, AnyRefExt};
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
@@ -44,7 +46,7 @@ pub static HEAP: () = ();
 
 /// A type that represents a uniquely-owned value.
 #[lang = "owned_box"]
-#[unstable = "custom allocators will add an additional type parameter (with default)"]
+#[stable]
 pub struct Box<T>(Unique<T>);
 
 #[stable]
@@ -111,18 +113,37 @@ impl<S: hash::Writer, Sized? T: Hash<S>> Hash<S> for Box<T> {
     }
 }
 
+#[cfg(not(stage0))]
+impl Box<Any> {
+    pub fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
+        if self.is::<T>() {
+            unsafe {
+                // Get the raw representation of the trait object
+                let to: TraitObject =
+                    mem::transmute::<Box<Any>, TraitObject>(self);
+
+                // Extract the data pointer
+                Ok(mem::transmute(to.data))
+            }
+        } else {
+            Err(self)
+        }
+    }
+}
 
 /// Extension methods for an owning `Any` trait object.
 #[unstable = "post-DST and coherence changes, this will not be a trait but \
               rather a direct `impl` on `Box<Any>`"]
+#[cfg(stage0)]
 pub trait BoxAny {
     /// Returns the boxed value if it is of type `T`, or
     /// `Err(Self)` if it isn't.
-    #[unstable = "naming conventions around accessing innards may change"]
+    #[stable]
     fn downcast<T: 'static>(self) -> Result<Box<T>, Self>;
 }
 
 #[stable]
+#[cfg(stage0)]
 impl BoxAny for Box<Any> {
     #[inline]
     fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
@@ -147,7 +168,7 @@ impl<Sized? T: fmt::Show> fmt::Show for Box<T> {
     }
 }
 
-impl fmt::Show for Box<Any+'static> {
+impl fmt::Show for Box<Any> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
     }
