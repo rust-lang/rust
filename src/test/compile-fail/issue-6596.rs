@@ -12,11 +12,11 @@
 
 // error-pattern: unexpected token
 
-macro_rules! e(
+macro_rules! e {
     ($inp:ident) => (
         $nonexistent
     );
-);
+}
 
 fn main() {
     e!(foo);

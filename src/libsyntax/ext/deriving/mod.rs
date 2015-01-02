@@ -71,9 +71,11 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
                     MetaNameValue(ref tname, _) |
                     MetaList(ref tname, _) |
                     MetaWord(ref tname) => {
-                        macro_rules! expand(($func:path) => ($func(cx, titem.span,
-                                                                   &**titem, item,
-                                                                   |i| push.call_mut((i,)))));
+                        macro_rules! expand {
+                            ($func:path) => ($func(cx, titem.span, &**titem, item,
+                                                   |i| push.call_mut((i,))))
+                        }
+
                         match tname.get() {
                             "Clone" => expand!(clone::expand_deriving_clone),
 

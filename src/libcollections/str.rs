@@ -1838,7 +1838,9 @@ mod tests {
     #[test]
     fn test_is_utf16() {
         use unicode::str::is_utf16;
-        macro_rules! pos ( ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } });
+        macro_rules! pos {
+            ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } }
+        }
 
         // non-surrogates
         pos!(&[0x0000],
@@ -1858,7 +1860,9 @@ mod tests {
              &[0x0067, 0xd8ff, 0xddb7, 0x000f, 0xd900, 0xdc80]);
 
         // negative tests
-        macro_rules! neg ( ($($e:expr),*) => { { $(assert!(!is_utf16($e));)* } });
+        macro_rules! neg {
+            ($($e:expr),*) => { { $(assert!(!is_utf16($e));)* } }
+        }
 
         neg!(
             // surrogate + regular unit

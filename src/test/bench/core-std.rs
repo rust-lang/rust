@@ -28,11 +28,12 @@ fn main() {
     let argv = os::args();
     let _tests = argv.slice(1, argv.len());
 
-    macro_rules! bench (
+    macro_rules! bench {
         ($id:ident) =>
             (maybe_run_test(argv.as_slice(),
                             stringify!($id).to_string(),
-                            $id)));
+                            $id))
+    }
 
     bench!(shift_push);
     bench!(read_line);

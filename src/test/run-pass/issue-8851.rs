@@ -20,7 +20,7 @@ enum T {
     B(uint)
 }
 
-macro_rules! test(
+macro_rules! test {
     ($id:ident, $e:expr) => (
         fn foo(t: T) -> int {
             match t {
@@ -29,7 +29,7 @@ macro_rules! test(
             }
         }
     )
-);
+}
 
 test!(y, 10 + (y as int));
 

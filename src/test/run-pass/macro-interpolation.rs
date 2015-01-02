@@ -10,7 +10,7 @@
 
 #![feature(macro_rules)]
 
-macro_rules! overly_complicated (
+macro_rules! overly_complicated {
     ($fnname:ident, $arg:ident, $ty:ty, $body:block, $val:expr, $pat:pat, $res:path) =>
     ({
         fn $fnname($arg: $ty) -> Option<$ty> $body
@@ -22,7 +22,7 @@ macro_rules! overly_complicated (
         }
     })
 
-);
+}
 
 pub fn main() {
     assert!(overly_complicated!(f, x, Option<uint>, { return Some(x); },

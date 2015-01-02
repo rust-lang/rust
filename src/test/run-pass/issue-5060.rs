@@ -10,7 +10,7 @@
 
 #![feature(macro_rules)]
 
-macro_rules! print_hd_tl (
+macro_rules! print_hd_tl {
     ($field_hd:ident, $($field_tl:ident),+) => ({
         print!("{}", stringify!($field_hd));
         print!("::[");
@@ -21,7 +21,7 @@ macro_rules! print_hd_tl (
         // FIXME: #9970
         print!("{}", "]\n");
     })
-);
+}
 
 pub fn main() {
     print_hd_tl!(x, y, z, w)

@@ -1149,7 +1149,7 @@ mod tests {
 
     #[test]
     fn test_parse_prefix() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $exp:expr) => (
                 {
                     let path = $path;
@@ -1159,7 +1159,7 @@ mod tests {
                             "parse_prefix(\"{}\"): expected {}, found {}", path, exp, res);
                 }
             )
-        );
+        }
 
         t!("\\\\SERVER\\share\\foo", Some(UNCPrefix(6,5)));
         t!("\\\\", None);
@@ -1348,7 +1348,7 @@ mod tests {
 
     #[test]
     fn test_display() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $exp:expr, $expf:expr) => (
                 {
                     let path = Path::new($path);
@@ -1358,7 +1358,7 @@ mod tests {
                     assert_eq!(f, $expf);
                 }
             )
-        );
+        }
 
         t!("foo", "foo", "foo");
         t!("foo\\bar", "foo\\bar", "bar");
@@ -1367,7 +1367,7 @@ mod tests {
 
     #[test]
     fn test_components() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
                     let path = $path;
@@ -1390,7 +1390,7 @@ mod tests {
                     assert!(path.$op() == $exp);
                 }
             )
-        );
+        }
 
         t!(v: b"a\\b\\c", filename, Some(b"c"));
         t!(s: "a\\b\\c", filename_str, "c");
@@ -1490,7 +1490,7 @@ mod tests {
 
     #[test]
     fn test_push() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $join:expr) => (
                 {
                     let path = $path;
@@ -1501,7 +1501,7 @@ mod tests {
                     assert!(p1 == p2.join(join));
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "..");
         t!(s: "\\a\\b\\c", "d");
@@ -1525,7 +1525,7 @@ mod tests {
 
     #[test]
     fn test_push_path() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = Path::new($path);
@@ -1534,7 +1534,7 @@ mod tests {
                     assert_eq!(p.as_str(), Some($exp));
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "d", "a\\b\\c\\d");
         t!(s: "\\a\\b\\c", "d", "\\a\\b\\c\\d");
@@ -1577,7 +1577,7 @@ mod tests {
 
     #[test]
     fn test_push_many() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = Path::new($path);
@@ -1592,7 +1592,7 @@ mod tests {
                     assert_eq!(p.as_vec(), $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["d", "\\e"], "\\e");
@@ -1606,7 +1606,7 @@ mod tests {
 
     #[test]
     fn test_pop() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $left:expr, $right:expr) => (
                 {
                     let pstr = $path;
@@ -1627,7 +1627,7 @@ mod tests {
                     assert!(result == $right);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "a\\b", true);
         t!(s: "a", ".", true);
@@ -1695,7 +1695,7 @@ mod tests {
 
     #[test]
     fn test_join_path() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -1704,7 +1704,7 @@ mod tests {
                     assert_eq!(res.as_str(), Some($exp));
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "..", "a\\b");
         t!(s: "\\a\\b\\c", "d", "\\a\\b\\c\\d");
@@ -1718,7 +1718,7 @@ mod tests {
 
     #[test]
     fn test_join_many() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -1733,7 +1733,7 @@ mod tests {
                     assert_eq!(res.as_vec(), $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["..", "d"], "a\\b\\d");
@@ -1746,7 +1746,7 @@ mod tests {
 
     #[test]
     fn test_with_helpers() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $op:ident, $arg:expr, $res:expr) => (
                 {
                     let pstr = $path;
@@ -1759,7 +1759,7 @@ mod tests {
                             pstr, stringify!($op), arg, exp, res.as_str().unwrap());
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", with_filename, "d", "a\\b\\d");
         t!(s: ".", with_filename, "foo", "foo");
@@ -1831,7 +1831,7 @@ mod tests {
 
     #[test]
     fn test_setters() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $set:ident, $with:ident, $arg:expr) => (
                 {
                     let path = $path;
@@ -1852,7 +1852,7 @@ mod tests {
                     assert!(p1 == p2.$with(arg));
                 }
             )
-        );
+        }
 
         t!(v: b"a\\b\\c", set_filename, with_filename, b"d");
         t!(v: b"\\", set_filename, with_filename, b"foo");
@@ -1876,7 +1876,7 @@ mod tests {
 
     #[test]
     fn test_getters() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
                     let path = $path;
@@ -1907,7 +1907,7 @@ mod tests {
                     assert!(path.extension() == $ext);
                 }
             )
-        );
+        }
 
         t!(v: Path::new(b"a\\b\\c"), Some(b"c"), b"a\\b", Some(b"c"), None);
         t!(s: Path::new("a\\b\\c"), Some("c"), Some("a\\b"), Some("c"), None);
@@ -1942,7 +1942,7 @@ mod tests {
 
     #[test]
     fn test_is_absolute() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $abs:expr, $vol:expr, $cwd:expr, $rel:expr) => (
                 {
                     let path = Path::new($path);
@@ -1961,7 +1961,7 @@ mod tests {
                             path.as_str().unwrap(), rel, b);
                 }
             )
-        );
+        }
         t!("a\\b\\c", false, false, false, true);
         t!("\\a\\b\\c", false, true, false, false);
         t!("a", false, false, false, true);
@@ -1982,7 +1982,7 @@ mod tests {
 
     #[test]
     fn test_is_ancestor_of() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $dest:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -1994,7 +1994,7 @@ mod tests {
                             path.as_str().unwrap(), dest.as_str().unwrap(), exp, res);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "a\\b\\c\\d", true);
         t!(s: "a\\b\\c", "a\\b\\c", true);
@@ -2085,7 +2085,7 @@ mod tests {
 
     #[test]
     fn test_ends_with_path() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $child:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -2093,7 +2093,7 @@ mod tests {
                     assert_eq!(path.ends_with_path(&child), $exp);
                 }
             );
-        );
+        }
 
         t!(s: "a\\b\\c", "c", true);
         t!(s: "a\\b\\c", "d", false);
@@ -2117,7 +2117,7 @@ mod tests {
 
     #[test]
     fn test_path_relative_from() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $other:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -2130,7 +2130,7 @@ mod tests {
                             res.as_ref().and_then(|x| x.as_str()));
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "a\\b", Some("c"));
         t!(s: "a\\b\\c", "a\\b\\d", Some("..\\c"));
@@ -2251,7 +2251,7 @@ mod tests {
 
     #[test]
     fn test_str_components() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -2265,7 +2265,7 @@ mod tests {
                     assert_eq!(comps, exp);
                 }
             );
-        );
+        }
 
         t!(s: b"a\\b\\c", ["a", "b", "c"]);
         t!(s: "a\\b\\c", ["a", "b", "c"]);
@@ -2309,7 +2309,7 @@ mod tests {
 
     #[test]
     fn test_components_iter() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -2321,7 +2321,7 @@ mod tests {
                     assert_eq!(comps, exp);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", [b"a", b"b", b"c"]);
         t!(s: ".", [b"."]);
@@ -2330,7 +2330,7 @@ mod tests {
 
     #[test]
     fn test_make_non_verbatim() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -2339,7 +2339,7 @@ mod tests {
                     assert!(make_non_verbatim(&path) == exp);
                 }
             )
-        );
+        }
 
         t!(r"\a\b\c", Some(r"\a\b\c"));
         t!(r"a\b\c", Some(r"a\b\c"));

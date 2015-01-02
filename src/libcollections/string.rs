@@ -182,7 +182,7 @@ impl String {
             let byte = unsafe_get(v, i);
             i += 1;
 
-            macro_rules! error(() => ({
+            macro_rules! error { () => ({
                 unsafe {
                     if subseqidx != i_ {
                         res.as_mut_vec().push_all(v[subseqidx..i_]);
@@ -190,7 +190,7 @@ impl String {
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
                 }
-            }));
+            })}
 
             if byte < 128u8 {
                 // subseqidx handles this

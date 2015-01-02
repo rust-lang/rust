@@ -346,12 +346,12 @@ impl Engine256State {
 
         // Sha-512 and Sha-256 use basically the same calculations which are implemented
         // by these macros. Inlining the calculations seems to result in better generated code.
-        macro_rules! schedule_round( ($t:expr) => (
+        macro_rules! schedule_round { ($t:expr) => (
                 w[$t] = sigma1(w[$t - 2]) + w[$t - 7] + sigma0(w[$t - 15]) + w[$t - 16];
                 )
-        );
+        }
 
-        macro_rules! sha2_round(
+        macro_rules! sha2_round {
             ($A:ident, $B:ident, $C:ident, $D:ident,
              $E:ident, $F:ident, $G:ident, $H:ident, $K:ident, $t:expr) => (
                 {
@@ -360,7 +360,7 @@ impl Engine256State {
                     $H += sum0($A) + maj($A, $B, $C);
                 }
              )
-        );
+        }
 
         read_u32v_be(w.slice_mut(0, 16), data);
 

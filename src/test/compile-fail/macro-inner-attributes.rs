@@ -10,9 +10,9 @@
 
 #![feature(macro_rules)]
 
-macro_rules! test ( ($nm:ident,
+macro_rules! test { ($nm:ident,
                      #[$a:meta],
-                     $i:item) => (mod $nm { #![$a] $i }); );
+                     $i:item) => (mod $nm { #![$a] $i }); }
 
 test!(a,
       #[cfg(qux)],

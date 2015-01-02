@@ -61,7 +61,7 @@ impl Drop for AddFlags {
     }
 }
 
-macro_rules! end_of_block(
+macro_rules! end_of_block {
     ($pat:pat, $expr:expr) => (
         {
             println!("end_of_block({})", stringify!({let $pat = $expr;}));
@@ -74,9 +74,9 @@ macro_rules! end_of_block(
             check_flags(1);
         }
     )
-);
+}
 
-macro_rules! end_of_stmt(
+macro_rules! end_of_stmt {
     ($pat:pat, $expr:expr) => (
         {
             println!("end_of_stmt({})", stringify!($expr));
@@ -91,7 +91,7 @@ macro_rules! end_of_stmt(
             check_flags(0);
         }
     )
-);
+}
 
 pub fn main() {
 
