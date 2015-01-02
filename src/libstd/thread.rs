@@ -291,7 +291,7 @@ struct Inner {
 
 unsafe impl Sync for Inner {}
 
-#[deriving(Clone)]
+#[derive(Clone)]
 /// A handle to a thread.
 pub struct Thread {
     inner: Arc<Inner>,

@@ -20,7 +20,7 @@ use syntax::ast_util::local_def;
 
 use std::cell::RefCell;
 
-#[deriving(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum Def {
     DefFn(ast::DefId, bool /* is_ctor */),
     DefStaticMethod(/* method */ ast::DefId, MethodProvenance),
@@ -68,19 +68,19 @@ pub type DefMap = RefCell<NodeMap<Def>>;
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Export {
     pub name: ast::Name,    // The name of the target.
     pub def_id: ast::DefId, // The definition of the target.
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum MethodProvenance {
     FromTrait(ast::DefId),
     FromImpl(ast::DefId),
 }
 
-#[deriving(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum TyParamProvenance {
     FromSelf(ast::DefId),
     FromParam(ast::DefId),
@@ -106,7 +106,7 @@ impl TyParamProvenance {
     }
 }
 
-#[deriving(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum TraitItemKind {
     NonstaticMethodTraitItemKind,
     StaticMethodTraitItemKind,

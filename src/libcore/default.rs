@@ -26,7 +26,7 @@
 //! ```
 //! use std::default::Default;
 //!
-//! #[deriving(Default)]
+//! #[derive(Default)]
 //! struct SomeOptions {
 //!     foo: int,
 //!     bar: f32,
@@ -54,7 +54,7 @@
 //!     fn default() -> Kind { Kind::A }
 //! }
 //!
-//! #[deriving(Default)]
+//! #[derive(Default)]
 //! struct SomeOptions {
 //!     foo: int,
 //!     bar: f32,
@@ -71,7 +71,7 @@
 //!
 //! ```
 //! # use std::default::Default;
-//! # #[deriving(Default)]
+//! # #[derive(Default)]
 //! # struct SomeOptions {
 //! #     foo: int,
 //! #     bar: f32,
@@ -86,12 +86,12 @@
 /// A trait that types which have a useful default value should implement.
 ///
 /// A struct can derive default implementations of `Default` for basic types using
-/// `#[deriving(Default)]`.
+/// `#[derive(Default)]`.
 ///
 /// # Examples
 ///
 /// ```
-/// #[deriving(Default)]
+/// #[derive(Default)]
 /// struct SomeOptions {
 ///     foo: int,
 ///     bar: f32,

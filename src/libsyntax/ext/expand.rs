@@ -802,7 +802,7 @@ fn expand_arm(arm: ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
 /// A visitor that extracts the PatIdent (binding) paths
 /// from a given thingy and puts them in a mutable
 /// array
-#[deriving(Clone)]
+#[derive(Clone)]
 struct PatIdentFinder {
     ident_accumulator: Vec<ast::Ident>
 }
@@ -1320,7 +1320,7 @@ mod test {
     // a visitor that extracts the paths
     // from a given thingy and puts them in a mutable
     // array (passed in to the traversal)
-    #[deriving(Clone)]
+    #[derive(Clone)]
     struct PathExprFinderContext {
         path_accumulator: Vec<ast::Path> ,
     }

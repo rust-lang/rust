@@ -44,7 +44,7 @@ pub type Result = result::Result<(), Error>;
 /// occurred. Any extra information must be arranged to be transmitted through
 /// some other means.
 #[experimental = "core and I/O reconciliation may alter this definition"]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Error;
 
 /// A collection of methods that are required to format a message into a stream.
@@ -103,7 +103,7 @@ enum Void {}
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
 #[experimental = "implementation detail of the `format_args!` macro"]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Argument<'a> {
     value: &'a Void,
     formatter: fn(&Void, &mut Formatter) -> Result,
@@ -180,7 +180,7 @@ impl<'a> Arguments<'a> {
 /// macro validates the format string at compile-time so usage of the `write`
 /// and `format` functions can be safely performed.
 #[stable]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
     pieces: &'a [&'a str],

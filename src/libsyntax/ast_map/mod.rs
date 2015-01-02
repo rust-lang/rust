@@ -32,7 +32,7 @@ use std::slice;
 
 pub mod blocks;
 
-#[deriving(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum PathElem {
     PathMod(Name),
     PathName(Name)
@@ -53,7 +53,7 @@ impl fmt::Show for PathElem {
     }
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct LinkedPathNode<'a> {
     node: PathElem,
     next: LinkedPath<'a>,
@@ -74,7 +74,7 @@ impl<'a> Iterator<PathElem> for LinkedPath<'a> {
 }
 
 // HACK(eddyb) move this into libstd (value wrapper for slice::Iter).
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Values<'a, T:'a>(pub slice::Iter<'a, T>);
 
 impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
@@ -100,7 +100,7 @@ pub fn path_to_string<PI: Iterator<PathElem>>(path: PI) -> String {
     }).to_string()
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum Node<'ast> {
     NodeItem(&'ast Item),
     NodeForeignItem(&'ast ForeignItem),
@@ -122,7 +122,7 @@ pub enum Node<'ast> {
 
 /// Represents an entry and its parent Node ID
 /// The odd layout is to bring down the total size.
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 enum MapEntry<'ast> {
     /// Placeholder for holes in the map.
     NotPresent,
@@ -153,7 +153,7 @@ impl<'ast> Clone for MapEntry<'ast> {
     }
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct InlinedParent {
     path: Vec<PathElem>,
     ii: InlinedItem

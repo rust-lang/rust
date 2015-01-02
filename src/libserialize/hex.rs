@@ -61,7 +61,7 @@ pub trait FromHex for Sized? {
 }
 
 /// Errors that can occur when decoding a hex encoded string
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum FromHexError {
     /// The input contained a character not part of the hex format
     InvalidHexCharacter(char, uint),

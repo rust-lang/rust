@@ -46,7 +46,7 @@ use std::rt::heap::{allocate, deallocate};
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
 // will always stay at 0.
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Chunk {
     data: Rc<RefCell<Vec<u8>>>,
     fill: Cell<uint>,

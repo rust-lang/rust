@@ -23,7 +23,7 @@ use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 enum UnsafeContext {
     SafeContext,
     UnsafeFn,

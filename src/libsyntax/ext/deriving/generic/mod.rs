@@ -1174,7 +1174,7 @@ impl<'a> MethodDef<'a> {
     }
 }
 
-#[deriving(PartialEq)] // dogfooding!
+#[derive(PartialEq)] // dogfooding!
 enum StructType {
     Unknown, Record, Tuple
 }

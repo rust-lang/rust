@@ -49,7 +49,7 @@ pub type PublicItems = NodeSet;
 // FIXME: dox
 pub type LastPrivateMap = NodeMap<LastPrivate>;
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum LastPrivate {
     LastMod(PrivateDep),
     // `use` directives (imports) can refer to two separate definitions in the
@@ -63,14 +63,14 @@ pub enum LastPrivate {
                type_used: ImportUse},
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum PrivateDep {
     AllPublic,
     DependsOn(ast::DefId),
 }
 
 // How an import is used.
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum ImportUse {
     Unused,       // The import is not used.
     Used,         // The import is used.

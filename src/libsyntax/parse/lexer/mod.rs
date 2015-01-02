@@ -50,7 +50,7 @@ pub trait Reader {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Show)]
 pub struct TokenAndSpan {
     pub tok: token::Token,
     pub sp: Span,

@@ -78,7 +78,7 @@ pub mod str {
     pub use u_str::{utf16_items, Utf16Encoder};
 }
 
-// this lets us use #[deriving(..)]
+// this lets us use #[derive(..)]
 mod std {
     pub use core::clone;
     pub use core::cmp;

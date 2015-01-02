@@ -24,7 +24,7 @@ use self::parm::{expand, Number, Variables};
 
 
 /// A parsed terminfo database entry.
-#[deriving(Show)]
+#[derive(Show)]
 pub struct TermInfo {
     /// Names for the terminal
     pub names: Vec<String> ,

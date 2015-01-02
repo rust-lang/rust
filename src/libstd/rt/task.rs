@@ -59,7 +59,7 @@ pub struct Task {
 
 // Once a thread has entered the `Armed` state it must be destroyed via `drop`,
 // and no other method. This state is used to track this transition.
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum TaskState {
     New,
     Armed,

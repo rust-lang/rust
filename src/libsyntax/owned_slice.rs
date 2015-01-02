@@ -15,7 +15,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A non-growable owned slice. This is a separate type to allow the
 /// representation to change.
-#[deriving(Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OwnedSlice<T> {
     data: Box<[T]>
 }

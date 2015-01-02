@@ -33,7 +33,7 @@ use syntax::ast;
 /// describes where the value is stored, what Rust type the value has,
 /// whether it is addressed by reference, and so forth. Please refer
 /// the section on datums in `doc.rs` for more details.
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Datum<'tcx, K> {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `kind` below.
@@ -51,7 +51,7 @@ pub struct DatumBlock<'blk, 'tcx: 'blk, K> {
     pub datum: Datum<'tcx, K>,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum Expr {
     /// a fresh value that was produced and which has no cleanup yet
     /// because it has not yet "landed" into its permanent home
@@ -63,10 +63,10 @@ pub enum Expr {
     LvalueExpr,
 }
 
-#[deriving(Clone, Copy, Show)]
+#[derive(Clone, Copy, Show)]
 pub struct Lvalue;
 
-#[deriving(Show)]
+#[derive(Show)]
 pub struct Rvalue {
     pub mode: RvalueMode
 }
@@ -82,7 +82,7 @@ impl Drop for Rvalue {
     fn drop(&mut self) { }
 }
 
-#[deriving(Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Hash, Show)]
 pub enum RvalueMode {
     /// `val` is a pointer to the actual value (and thus has type *T)
     ByRef,

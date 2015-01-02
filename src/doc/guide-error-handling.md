@@ -147,10 +147,10 @@ for all but the most trivial of situations.
 Here's an example of using `Result`:
 
 ```rust
-#[deriving(Show)]
+#[derive(Show)]
 enum Version { Version1, Version2 }
 
-#[deriving(Show)]
+#[derive(Show)]
 enum ParseError { InvalidHeaderLength, InvalidVersion }
 
 fn parse_version(header: &[u8]) -> Result<Version, ParseError> {

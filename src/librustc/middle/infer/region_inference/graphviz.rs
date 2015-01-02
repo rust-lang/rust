@@ -121,7 +121,7 @@ struct ConstraintGraph<'a, 'tcx: 'a> {
     node_ids: FnvHashMap<Node, uint>,
 }
 
-#[deriving(Clone, Hash, PartialEq, Eq, Show)]
+#[derive(Clone, Hash, PartialEq, Eq, Show)]
 enum Node {
     RegionVid(ty::RegionVid),
     Region(ty::Region),

@@ -25,7 +25,7 @@
 //! demonstrates adding and subtracting two `Point`s.
 //!
 //! ```rust
-//! #[deriving(Show)]
+//! #[derive(Show)]
 //! struct Point {
 //!     x: int,
 //!     y: int
@@ -91,7 +91,7 @@ pub trait Drop {
 /// calling `add`, and therefore, `main` prints `Adding!`.
 ///
 /// ```rust
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Add<Foo, Foo> for Foo {
@@ -130,7 +130,7 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `sub`, and therefore, `main` prints `Subtracting!`.
 ///
 /// ```rust
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Sub<Foo, Foo> for Foo {
@@ -169,7 +169,7 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `mul`, and therefore, `main` prints `Multiplying!`.
 ///
 /// ```rust
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Mul<Foo, Foo> for Foo {
@@ -208,7 +208,7 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `div`, and therefore, `main` prints `Dividing!`.
 ///
 /// ```
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Div<Foo, Foo> for Foo {
@@ -247,7 +247,7 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
 ///
 /// ```
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Rem<Foo, Foo> for Foo {
@@ -396,7 +396,7 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
 ///
 /// ```
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl BitAnd<Foo, Foo> for Foo {
@@ -435,7 +435,7 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitor`, and therefore, `main` prints `Bitwise Or-ing!`.
 ///
 /// ```
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl BitOr<Foo, Foo> for Foo {
@@ -474,7 +474,7 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitxor`, and therefore, `main` prints `Bitwise Xor-ing!`.
 ///
 /// ```
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl BitXor<Foo, Foo> for Foo {
@@ -513,7 +513,7 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shl`, and therefore, `main` prints `Shifting left!`.
 ///
 /// ```
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Shl<Foo, Foo> for Foo {
@@ -554,7 +554,7 @@ shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shr`, and therefore, `main` prints `Shifting right!`.
 ///
 /// ```
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Shr<Foo, Foo> for Foo {
@@ -594,7 +594,7 @@ shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `index`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Index<Foo, Foo> for Foo {
@@ -623,7 +623,7 @@ pub trait Index<Sized? Index, Sized? Result> for Sized? {
 /// calling `index_mut`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl IndexMut<Foo, Foo> for Foo {
@@ -652,7 +652,7 @@ pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
 /// calling `slice_to`, and therefore, `main` prints `Slicing!`.
 ///
 /// ```ignore
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Slice<Foo, Foo> for Foo {
@@ -699,7 +699,7 @@ pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
 /// calling `slice_from_mut`, and therefore, `main` prints `Slicing!`.
 ///
 /// ```ignore
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl SliceMut<Foo, Foo> for Foo {
@@ -739,12 +739,12 @@ pub trait SliceMut<Sized? Idx, Sized? Result> for Sized? {
 
 
 /// An unbounded range.
-#[deriving(Copy)]
+#[derive(Copy)]
 #[lang="full_range"]
 pub struct FullRange;
 
 /// A (half-open) range which is bounded at both ends.
-#[deriving(Copy)]
+#[derive(Copy)]
 #[lang="range"]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -792,7 +792,7 @@ impl<Idx: Clone + Step> DoubleEndedIterator<Idx> for Range<Idx> {
 impl<Idx: Clone + Step> ExactSizeIterator<Idx> for Range<Idx> {}
 
 /// A range which is only bounded below.
-#[deriving(Copy)]
+#[derive(Copy)]
 #[lang="range_from"]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -810,7 +810,7 @@ impl<Idx: Clone + Step> Iterator<Idx> for RangeFrom<Idx> {
 }
 
 /// A range which is only bounded above.
-#[deriving(Copy)]
+#[derive(Copy)]
 #[lang="range_to"]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).

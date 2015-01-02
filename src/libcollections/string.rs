@@ -32,7 +32,7 @@ use str::{mod, CharRange, FromStr, Utf8Error};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
-#[deriving(Clone, PartialOrd, Eq, Ord)]
+#[derive(Clone, PartialOrd, Eq, Ord)]
 #[stable]
 pub struct String {
     vec: Vec<u8>,

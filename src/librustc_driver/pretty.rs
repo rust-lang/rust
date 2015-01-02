@@ -41,7 +41,7 @@ use std::io::{mod, MemReader};
 use std::option;
 use std::str::FromStr;
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum PpSourceMode {
     PpmNormal,
     PpmEveryBodyLoops,
@@ -52,7 +52,7 @@ pub enum PpSourceMode {
     PpmExpandedHygiene,
 }
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum PpMode {
     PpmSource(PpSourceMode),
     PpmFlowGraph,
@@ -315,7 +315,7 @@ fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
     variants
 }
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub enum UserIdentifiedItem {
     ItemViaNode(ast::NodeId),
     ItemViaPath(Vec<String>),

@@ -26,7 +26,7 @@ struct CFGBuilder<'a, 'tcx: 'a> {
     loop_scopes: Vec<LoopScope>,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct LoopScope {
     loop_id: ast::NodeId,     // id of loop/while node
     continue_index: CFGIndex, // where to go on a `loop`

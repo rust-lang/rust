@@ -36,7 +36,7 @@ pub type StrComponents<'a> =
     Map<&'a [u8], Option<&'a str>, Components<'a>, fn(&[u8]) -> Option<&str>>;
 
 /// Represents a POSIX file path
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Path {
     repr: Vec<u8>, // assumed to never be empty or contain NULs
     sepidx: Option<uint> // index of the final separator in repr

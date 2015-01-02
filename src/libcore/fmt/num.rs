@@ -65,23 +65,23 @@ trait GenericRadix {
 }
 
 /// A binary (base 2) radix
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Binary;
 
 /// An octal (base 8) radix
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Octal;
 
 /// A decimal (base 10) radix
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Decimal;
 
 /// A hexadecimal (base 16) radix, formatted with lower-case characters
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct LowerHex;
 
 /// A hexadecimal (base 16) radix, formatted with upper-case characters
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct UpperHex;
 
 macro_rules! radix {
@@ -108,7 +108,7 @@ radix! { UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
                              x @ 10 ... 15 => b'A' + (x - 10) }
 
 /// A radix with in the range of `2..36`.
-#[deriving(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[unstable = "may be renamed or move to a different module"]
 pub struct Radix {
     base: u8,
@@ -134,7 +134,7 @@ impl GenericRadix for Radix {
 
 /// A helper type for formatting radixes.
 #[unstable = "may be renamed or move to a different module"]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct RadixFmt<T, R>(T, R);
 
 /// Constructs a radix formatter in the range of `2..36`.

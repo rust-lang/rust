@@ -75,7 +75,7 @@ use std::iter::repeat;
 // These are passed around by the code generating functions to track the
 // destination of a computation's value.
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum Dest {
     SaveIn(ValueRef),
     Ignore,
@@ -1978,7 +1978,7 @@ fn float_cast(bcx: Block,
     } else { llsrc };
 }
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum cast_kind {
     cast_pointer,
     cast_integral,

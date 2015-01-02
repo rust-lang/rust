@@ -41,7 +41,7 @@ use std::str;
 pub mod io;
 
 /// Common data structures
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Doc<'a> {
     pub data: &'a [u8],
     pub start: uint,
@@ -71,7 +71,7 @@ pub struct TaggedDoc<'a> {
     pub doc: Doc<'a>,
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum EbmlEncoderTag {
     EsUint,     // 0
     EsU64,      // 1
@@ -105,7 +105,7 @@ pub enum EbmlEncoderTag {
     EsLabel, // Used only when debugging
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum Error {
     IntTooBig(uint),
     Expected(String),
@@ -147,7 +147,7 @@ pub mod reader {
         )
     }
 
-    #[deriving(Copy)]
+    #[derive(Copy)]
     pub struct Res {
         pub val: uint,
         pub next: uint

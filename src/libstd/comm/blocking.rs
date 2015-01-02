@@ -26,7 +26,7 @@ struct Inner {
 unsafe impl Send for Inner {}
 unsafe impl Sync for Inner {}
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct SignalToken {
     inner: Arc<Inner>,
 }

@@ -103,7 +103,7 @@ pub fn is_match(regex: &str, text: &str) -> Result<bool, parse::Error> {
 /// makes it much faster when searching text.
 /// More details about the `regex!` macro can be found in the `regex` crate
 /// documentation.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum Regex {
     // The representation of `Regex` is exported to support the `regex!`
     // syntax extension. Do not rely on it.
@@ -116,7 +116,7 @@ pub enum Regex {
     Native(ExNative),
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 #[doc(hidden)]
 pub struct ExDynamic {
     original: String,
@@ -126,7 +126,7 @@ pub struct ExDynamic {
 }
 
 #[doc(hidden)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct ExNative {
     #[doc(hidden)]
     pub original: &'static str,
@@ -539,7 +539,7 @@ impl Regex {
 
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum NamesIter<'a> {
     NamesIterNative(::std::slice::Iter<'a, Option<&'static str>>),
     NamesIterDynamic(::std::slice::Iter<'a, Option<String>>)
@@ -596,7 +596,7 @@ impl<F> Replacer for F where F: FnMut(&Captures) -> String {
 ///
 /// `'r` is the lifetime of the compiled expression and `'t` is the lifetime
 /// of the string being split.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct RegexSplits<'r, 't> {
     finder: FindMatches<'r, 't>,
     last: uint,
@@ -630,7 +630,7 @@ impl<'r, 't> Iterator<&'t str> for RegexSplits<'r, 't> {
 ///
 /// `'r` is the lifetime of the compiled expression and `'t` is the lifetime
 /// of the string being split.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct RegexSplitsN<'r, 't> {
     splits: RegexSplits<'r, 't>,
     cur: uint,
@@ -794,7 +794,7 @@ impl<'t> Captures<'t> {
 /// expression.
 ///
 /// `'t` is the lifetime of the matched text.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct SubCaptures<'t> {
     idx: uint,
     caps: &'t Captures<'t>,
@@ -817,7 +817,7 @@ impl<'t> Iterator<&'t str> for SubCaptures<'t> {
 /// Positions are byte indices in terms of the original string matched.
 ///
 /// `'t` is the lifetime of the matched text.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct SubCapturesPos<'t> {
     idx: uint,
     caps: &'t Captures<'t>,
@@ -841,7 +841,7 @@ impl<'t> Iterator<Option<(uint, uint)>> for SubCapturesPos<'t> {
 ///
 /// `'r` is the lifetime of the compiled expression and `'t` is the lifetime
 /// of the matched string.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct FindCaptures<'r, 't> {
     re: &'r Regex,
     search: &'t str,
@@ -884,7 +884,7 @@ impl<'r, 't> Iterator<Captures<'t>> for FindCaptures<'r, 't> {
 ///
 /// `'r` is the lifetime of the compiled expression and `'t` is the lifetime
 /// of the matched string.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct FindMatches<'r, 't> {
     re: &'r Regex,
     search: &'t str,

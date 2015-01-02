@@ -12,7 +12,7 @@ use regex::Regex;
 use std::ascii::AsciiExt;
 use std::cmp;
 
-#[deriving(Show, Clone)]
+#[derive(Show, Clone)]
 pub struct LogDirective {
     pub name: Option<String>,
     pub level: u32,

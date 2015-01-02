@@ -25,7 +25,7 @@ use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use rustc::middle::dataflow;
 use std::rc::Rc;
 
-#[deriving(Show, Copy)]
+#[derive(Show, Copy)]
 pub enum Variant {
     Loans,
     Moves,

@@ -2411,7 +2411,7 @@ for data structures. For example, the following will create an `impl` for the
 the `PartialEq` or `Clone` constraints for the appropriate `impl`:
 
 ```
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 struct Foo<T> {
     a: int,
     b: T

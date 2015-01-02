@@ -101,7 +101,7 @@ use syntax::ast_util;
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct EnvValue<'tcx> {
     action: ast::CaptureClause,
     datum: Datum<'tcx, Lvalue>
@@ -348,7 +348,7 @@ fn fill_fn_pair(bcx: Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef) 
     Store(bcx, llenvptr, GEPi(bcx, pair, &[0u, abi::FAT_PTR_EXTRA]));
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub enum ClosureKind<'tcx> {
     NotClosure,
     // See load_environment.

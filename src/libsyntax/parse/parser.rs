@@ -105,7 +105,7 @@ type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
 
 /// How to parse a path. There are four different kinds of paths, all of which
 /// are parsed somewhat differently.
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum PathParsingMode {
     /// A path with no type parameters; e.g. `foo::bar::Baz`
     NoTypesAllowed,
@@ -118,7 +118,7 @@ pub enum PathParsingMode {
 }
 
 /// How to parse a bound, whether to allow bound modifiers such as `?`.
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum BoundParsingMode {
     Bare,
     Modified,
@@ -317,7 +317,7 @@ pub struct Parser<'a> {
     pub expected_tokens: Vec<TokenType>,
 }
 
-#[deriving(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum TokenType {
     Token(token::Token),
     Operator,

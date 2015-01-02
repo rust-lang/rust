@@ -24,7 +24,7 @@ use ptr::P;
 use std::collections::HashMap;
 use std::iter::repeat;
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum ArgumentType {
     Known(String),
     Unsigned

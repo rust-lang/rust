@@ -62,7 +62,7 @@ pub trait UnifyValue<'tcx> : Clone + Repr<'tcx> + PartialEq {
 /// to keep the DAG relatively balanced, which helps keep the running
 /// time of the algorithm under control. For more information, see
 /// <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>.
-#[deriving(PartialEq,Clone)]
+#[derive(PartialEq,Clone)]
 pub enum VarValue<K,V> {
     Redirect(K),
     Root(V, uint),
@@ -90,7 +90,7 @@ pub struct Node<K,V> {
     pub rank: uint,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Delegate;
 
 // We can't use V:LatticeValue, much as I would like to,
