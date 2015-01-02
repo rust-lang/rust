@@ -8,19 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Foo for Sized? { fn foo<T>(&self, ext_thing: &T); }
-pub trait Bar for Sized?: Foo { }
-impl<T: Foo> Bar for T { }
+// Check that we correctly prevent users from making trait objects
+// from traits with static methods.
 
-pub struct Thing;
-impl Foo for Thing {
-    fn foo<T>(&self, _: &T) {}
+trait Foo {
+    fn foo();
 }
 
-#[inline(never)] fn foo(b: &Bar) { b.foo(&0u) }
+fn foo_implicit<T:Foo+'static>(b: Box<T>) -> Box<Foo+'static> {
+    b
+        //~^ ERROR cannot convert to a trait object
+        //~| NOTE method `foo` has no receiver
+}
+
+fn foo_explicit<T:Foo+'static>(b: Box<T>) -> Box<Foo+'static> {
+    b as Box<Foo>
+        //~^ ERROR cannot convert to a trait object
+        //~| NOTE method `foo` has no receiver
+}
 
 fn main() {
-    let mut thing = Thing;
-    let test: &Bar = &mut thing; //~ ERROR cannot convert to a trait object
-    foo(test);
 }

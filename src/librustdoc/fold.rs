@@ -12,7 +12,7 @@ use clean::*;
 use std::iter::Extend;
 use std::mem::{replace, swap};
 
-pub trait DocFolder {
+pub trait DocFolder : Sized {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         self.fold_item_recur(item)
     }

@@ -57,7 +57,7 @@ use syntax::ast;
 use syntax::abi;
 use syntax::codemap::Span;
 
-pub trait Combine<'tcx> {
+pub trait Combine<'tcx> : Sized {
     fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx>;
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.infcx().tcx }
     fn tag(&self) -> String;

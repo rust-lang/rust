@@ -8,19 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Foo for Sized? { fn foo<T>(&self, ext_thing: &T); }
-pub trait Bar for Sized?: Foo { }
-impl<T: Foo> Bar for T { }
+// Check that we correctly prevent users from making trait objects
+// from traits where `Self : Sized`.
 
-pub struct Thing;
-impl Foo for Thing {
-    fn foo<T>(&self, _: &T) {}
+trait Bar : Sized {
+    fn bar<T>(&self, t: T);
 }
 
-#[inline(never)] fn foo(b: &Bar) { b.foo(&0u) }
+fn make_bar<T:Bar>(t: &T) -> &Bar {
+    t
+        //~^ ERROR `Bar` is not object-safe
+        //~| NOTE the trait cannot require that `Self : Sized`
+}
+
+fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
+    t as &Bar
+        //~^ ERROR `Bar` is not object-safe
+        //~| NOTE the trait cannot require that `Self : Sized`
+}
 
 fn main() {
-    let mut thing = Thing;
-    let test: &Bar = &mut thing; //~ ERROR cannot convert to a trait object
-    foo(test);
 }

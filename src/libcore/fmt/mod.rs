@@ -74,7 +74,26 @@ pub trait Writer {
     ///
     /// This method should generally not be invoked manually, but rather through
     /// the `write!` macro itself.
-    fn write_fmt(&mut self, args: Arguments) -> Result { write(self, args) }
+    fn write_fmt(&mut self, args: Arguments) -> Result {
+        // This Adapter is needed to allow `self` (of type `&mut
+        // Self`) to be cast to a FormatWriter (below) without
+        // requiring a `Sized` bound.
+        struct Adapter<'a,Sized? T:'a>(&'a mut T);
+
+        impl<'a, Sized? T> Writer for Adapter<'a, T>
+            where T: Writer
+        {
+            fn write_str(&mut self, s: &str) -> Result {
+                self.0.write_str(s)
+            }
+
+            fn write_fmt(&mut self, args: Arguments) -> Result {
+                self.0.write_fmt(args)
+            }
+        }
+
+        write(&mut Adapter(self), args)
+    }
 }
 
 /// A struct to represent both where to emit formatting strings to and how they
@@ -578,9 +597,6 @@ impl<'a, Sized? T: Show> Show for &'a T {
 }
 impl<'a, Sized? T: Show> Show for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { (**self).fmt(f) }
-}
-impl<'a> Show for &'a (Show+'a) {
-    fn fmt(&self, f: &mut Formatter) -> Result { (*self).fmt(f) }
 }
 
 impl Show for bool {

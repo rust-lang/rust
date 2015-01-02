@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that object-safe methods are identified as such.
+#![feature(unboxed_closures)]
 
-trait Tr {
-    fn foo(&self);
+use std::ops::FnMut;
+
+fn make_adder(x: int) -> Box<FnMut(int)->int + 'static> {
+    box move |y| { x + y }
 }
 
-struct St;
-
-impl Tr for St {
-    fn foo(&self) {}
+pub fn main() {
+    let mut adder = make_adder(3);
+    let z = (*adder)(2);
+    println!("{}", z);
+    assert_eq!(z, 5);
 }
 
-fn main() {
-    let s: &Tr = &St;
-    s.foo();
-}

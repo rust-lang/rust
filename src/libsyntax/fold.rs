@@ -53,7 +53,7 @@ impl<T> MoveMap<T> for OwnedSlice<T> {
     }
 }
 
-pub trait Folder {
+pub trait Folder : Sized {
     // Any additions to this trait should happen in form
     // of a call to a public `noop_*` function that only calls
     // out to the folder again, not other `noop_*` functions.
