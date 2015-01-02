@@ -359,7 +359,7 @@ pub enum StabilityLevel {
 
 pub fn find_stability_generic<'a,
                               AM: AttrMetaMethods,
-                              I: Iterator<&'a AM>>
+                              I: Iterator<Item=&'a AM>>
                              (mut attrs: I)
                              -> Option<(Stability, &'a AM)> {
     for attr in attrs {
