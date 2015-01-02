@@ -546,7 +546,9 @@ pub enum NamesIter<'a> {
     NamesIterDynamic(::std::slice::Iter<'a, Option<String>>)
 }
 
-impl<'a> Iterator<Option<String>> for NamesIter<'a> {
+impl<'a> Iterator for NamesIter<'a> {
+    type Item = Option<String>;
+
     fn next(&mut self) -> Option<Option<String>> {
         match *self {
             NamesIterNative(ref mut i) => i.next().map(|x| x.map(|s| s.to_string())),
@@ -603,7 +605,9 @@ pub struct RegexSplits<'r, 't> {
     last: uint,
 }
 
-impl<'r, 't> Iterator<&'t str> for RegexSplits<'r, 't> {
+impl<'r, 't> Iterator for RegexSplits<'r, 't> {
+    type Item = &'t str;
+
     fn next(&mut self) -> Option<&'t str> {
         let text = self.finder.search;
         match self.finder.next() {
@@ -638,7 +642,9 @@ pub struct RegexSplitsN<'r, 't> {
     limit: uint,
 }
 
-impl<'r, 't> Iterator<&'t str> for RegexSplitsN<'r, 't> {
+impl<'r, 't> Iterator for RegexSplitsN<'r, 't> {
+    type Item = &'t str;
+
     fn next(&mut self) -> Option<&'t str> {
         let text = self.splits.finder.search;
         if self.cur >= self.limit {
@@ -801,7 +807,9 @@ pub struct SubCaptures<'t> {
     caps: &'t Captures<'t>,
 }
 
-impl<'t> Iterator<&'t str> for SubCaptures<'t> {
+impl<'t> Iterator for SubCaptures<'t> {
+    type Item = &'t str;
+
     fn next(&mut self) -> Option<&'t str> {
         if self.idx < self.caps.len() {
             self.idx += 1;
@@ -824,7 +832,9 @@ pub struct SubCapturesPos<'t> {
     caps: &'t Captures<'t>,
 }
 
-impl<'t> Iterator<Option<(uint, uint)>> for SubCapturesPos<'t> {
+impl<'t> Iterator for SubCapturesPos<'t> {
+    type Item = Option<(uint, uint)>;
+
     fn next(&mut self) -> Option<Option<(uint, uint)>> {
         if self.idx < self.caps.len() {
             self.idx += 1;
@@ -850,7 +860,9 @@ pub struct FindCaptures<'r, 't> {
     last_end: uint,
 }
 
-impl<'r, 't> Iterator<Captures<'t>> for FindCaptures<'r, 't> {
+impl<'r, 't> Iterator for FindCaptures<'r, 't> {
+    type Item = Captures<'t>;
+
     fn next(&mut self) -> Option<Captures<'t>> {
         if self.last_end > self.search.len() {
             return None
@@ -893,7 +905,9 @@ pub struct FindMatches<'r, 't> {
     last_end: uint,
 }
 
-impl<'r, 't> Iterator<(uint, uint)> for FindMatches<'r, 't> {
+impl<'r, 't> Iterator for FindMatches<'r, 't> {
+    type Item = (uint, uint);
+
     fn next(&mut self) -> Option<(uint, uint)> {
         if self.last_end > self.search.len() {
             return None
