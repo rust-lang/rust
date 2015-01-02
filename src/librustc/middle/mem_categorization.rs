@@ -594,7 +594,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           span,
                           format!("Upvar of non-closure {} - {}",
                                   fn_node_id,
-                                  ty.repr(self.tcx()))[]);
+                                  ty.repr(self.tcx())).index(&FullRange));
                   }
               }
           }
@@ -1505,7 +1505,7 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
                 token::get_name(fld).get().to_string()
             }
             InteriorField(PositionalField(i)) => format!("#{}", i),
-            InteriorElement(_) => "[]".to_string(),
+            InteriorElement(_) => ".index(&FullRange)".to_string(),
         }
     }
 }

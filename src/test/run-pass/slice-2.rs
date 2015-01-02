@@ -15,23 +15,23 @@
 fn main() {
     let x: &[int] = &[1, 2, 3, 4, 5];
     let cmp: &[int] = &[1, 2, 3, 4, 5];
-    assert!(x[] == cmp);
+    assert!(x.index(&FullRange) == cmp);
     let cmp: &[int] = &[3, 4, 5];
-    assert!(x[2..] == cmp);
+    assert!(x.index(&(2..)) == cmp);
     let cmp: &[int] = &[1, 2, 3];
-    assert!(x[..3] == cmp);
+    assert!(x.index(&(0..3)) == cmp);
     let cmp: &[int] = &[2, 3, 4];
-    assert!(x[1..4] == cmp);
+    assert!(x.index(&(1..4)) == cmp);
 
     let x: Vec<int> = vec![1, 2, 3, 4, 5];
     let cmp: &[int] = &[1, 2, 3, 4, 5];
-    assert!(x[] == cmp);
+    assert!(x.index(&FullRange) == cmp);
     let cmp: &[int] = &[3, 4, 5];
-    assert!(x[2..] == cmp);
+    assert!(x.index(&(2..)) == cmp);
     let cmp: &[int] = &[1, 2, 3];
-    assert!(x[..3] == cmp);
+    assert!(x.index(&(0..3)) == cmp);
     let cmp: &[int] = &[2, 3, 4];
-    assert!(x[1..4] == cmp);
+    assert!(x.index(&(1..4)) == cmp);
 
     let x: &mut [int] = &mut [1, 2, 3, 4, 5];
     {

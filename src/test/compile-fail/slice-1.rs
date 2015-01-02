@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test slicing expr[..] is an error and gives a helpful error message.
+// Test slicing expr.index(&(..)) is an error and gives a helpful error message.
 
 struct Foo;
 
 fn main() {
     let x = Foo;
-    x[..]; //~ ERROR incorrect slicing expression: `[..]`
-    //~^ NOTE use `expr[]` to construct a slice of the whole of expr
+    x.index(&(..)); //~ ERROR incorrect slicing expression: `[..]`
+    //~^ NOTE use `expr.index(&FullRange)` to construct a slice of the whole of expr
 }

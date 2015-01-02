@@ -19,5 +19,5 @@ pub fn main() {
         print!("{}, ", (*xi)[]);
     }
     println!("]");
-    println!("{}", y[]);
+    println!("{}", y.index(&FullRange));
 }

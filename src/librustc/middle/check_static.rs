@@ -112,7 +112,7 @@ impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
         };
 
         self.tcx.sess.span_err(e.span, format!("mutable statics are not allowed \
-                                                to have {}", suffix)[]);
+                                                to have {}", suffix).index(&FullRange));
     }
 
     fn check_static_type(&self, e: &ast::Expr) {
@@ -170,7 +170,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
             ty::ty_enum(did, _) if ty::has_dtor(self.tcx, did) => {
                 self.tcx.sess.span_err(e.span,
                                        format!("{} are not allowed to have \
-                                                destructors", self.msg())[])
+                                                destructors", self.msg()).index(&FullRange))
             }
             _ => {}
         }
@@ -234,7 +234,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
                         let msg = "constants cannot refer to other statics, \
                                    insert an intermediate constant \
                                    instead";
-                        self.tcx.sess.span_err(e.span, msg[]);
+                        self.tcx.sess.span_err(e.span, msg.index(&FullRange));
                     }
                     _ => {}
                 }

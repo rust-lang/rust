@@ -52,7 +52,7 @@ impl<'a> ParserAnyMacro<'a> {
                                following",
                               token_str);
             let span = parser.span;
-            parser.span_err(span, msg[]);
+            parser.span_err(span, msg.index(&FullRange));
         }
     }
 }
@@ -126,8 +126,8 @@ impl TTMacroExpander for MacroRulesMacroExpander {
                           self.name,
                           self.imported_from,
                           arg,
-                          self.lhses[],
-                          self.rhses[])
+                          self.lhses.index(&FullRange),
+                          self.rhses.index(&FullRange))
     }
 }
 
@@ -154,7 +154,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
         match **lhs {
           MatchedNonterminal(NtTT(ref lhs_tt)) => {
             let lhs_tt = match **lhs_tt {
-                TtDelimited(_, ref delim) => delim.tts[],
+                TtDelimited(_, ref delim) => delim.tts.index(&FullRange),
                 _ => cx.span_fatal(sp, "malformed macro lhs")
             };
             // `None` is because we're not interpolating
@@ -194,13 +194,13 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 best_fail_spot = sp;
                 best_fail_msg = (*msg).clone();
               },
-              Error(sp, ref msg) => cx.span_fatal(sp, msg[])
+              Error(sp, ref msg) => cx.span_fatal(sp, msg.index(&FullRange))
             }
           }
           _ => cx.bug("non-matcher found in parsed lhses")
         }
     }
-    cx.span_fatal(best_fail_spot, best_fail_msg[]);
+    cx.span_fatal(best_fail_spot, best_fail_msg.index(&FullRange));
 }
 
 // Note that macro-by-example's input is also matched against a token tree:

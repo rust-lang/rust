@@ -58,10 +58,10 @@ impl SliceMut<Foo, Foo> for Foo {
 }
 fn main() {
     let mut x = Foo;
-    x[];
-    x[Foo..];
-    x[..Foo];
-    x[Foo..Foo];
+    x.index(&FullRange);
+    x.index(&(Foo..));
+    x.index(&(0..Foo));
+    x.index(&(Foo..Foo));
     x[mut];
     x[mut Foo..];
     x[mut ..Foo];

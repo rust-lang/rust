@@ -40,7 +40,7 @@ pub fn maybe_inject_prelude(krate: ast::Crate) -> ast::Crate {
 }
 
 fn use_std(krate: &ast::Crate) -> bool {
-    !attr::contains_name(krate.attrs[], "no_std")
+    !attr::contains_name(krate.attrs.index(&FullRange), "no_std")
 }
 
 fn no_prelude(attrs: &[ast::Attribute]) -> bool {
@@ -56,7 +56,7 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
 
         // The name to use in `extern crate "name" as std;`
         let actual_crate_name = match self.alt_std_name {
-            Some(ref s) => token::intern_and_get_ident(s[]),
+            Some(ref s) => token::intern_and_get_ident(s.index(&FullRange)),
             None => token::intern_and_get_ident("std"),
         };
 
@@ -104,7 +104,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
         attr::mark_used(&no_std_attr);
         krate.attrs.push(no_std_attr);
 
-        if !no_prelude(krate.attrs[]) {
+        if !no_prelude(krate.attrs.index(&FullRange)) {
             // only add `use std::prelude::*;` if there wasn't a
             // `#![no_implicit_prelude]` at the crate level.
             // fold_mod() will insert glob path.
@@ -124,7 +124,7 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
     }
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        if !no_prelude(item.attrs[]) {
+        if !no_prelude(item.attrs.index(&FullRange)) {
             // only recur if there wasn't `#![no_implicit_prelude]`
             // on this item, i.e. this means that the prelude is not
             // implicitly imported though the whole subtree

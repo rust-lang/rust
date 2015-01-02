@@ -154,7 +154,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     // compute the type of the closure
-    let cdata_ty = mk_closure_tys(tcx, bound_values[]);
+    let cdata_ty = mk_closure_tys(tcx, bound_values.index(&FullRange));
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
     // tuple.  This could be a ptr in uniq or a box or on stack,
@@ -183,7 +183,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         if ccx.sess().asm_comments() {
             add_comment(bcx, format!("Copy {} into closure",
-                                     bv.to_string(ccx))[]);
+                                     bv.to_string(ccx)).index(&FullRange));
         }
 
         let bound_data = GEPi(bcx, llbox, &[0u, abi::BOX_FIELD_BODY, i]);
@@ -420,7 +420,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let s = tcx.map.with_path(id, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
-    let llfn = decl_internal_rust_fn(ccx, fty, s[]);
+    let llfn = decl_internal_rust_fn(ccx, fty, s.index(&FullRange));
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -444,7 +444,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   &[],
                   ty::ty_fn_ret(fty),
                   ty::ty_fn_abi(fty),
-                  ClosureEnv::new(freevars[],
+                  ClosureEnv::new(freevars.index(&FullRange),
                                   BoxedClosure(cdata_ty, store)));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
     bcx
@@ -489,7 +489,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
 
-    let llfn = decl_internal_rust_fn(ccx, function_type, symbol[]);
+    let llfn = decl_internal_rust_fn(ccx, function_type, symbol.index(&FullRange));
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -542,7 +542,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   &[],
                   function_type.sig.0.output,
                   function_type.abi,
-                  ClosureEnv::new(freevars[],
+                  ClosureEnv::new(freevars.index(&FullRange),
                                   UnboxedClosure(freevar_mode)));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
@@ -579,3 +579,4 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
 
     bcx
 }
+

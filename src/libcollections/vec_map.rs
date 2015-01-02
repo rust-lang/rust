@@ -455,7 +455,8 @@ impl<V> VecMap<V> {
         if *key >= self.v.len() {
             return None;
         }
-        self.v[*key].take()
+        let result = &mut self.v[*key];
+        result.take()
     }
 }
 

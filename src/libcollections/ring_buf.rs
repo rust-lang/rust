@@ -556,7 +556,7 @@ impl<T> RingBuf<T> {
             let buf = self.buffer_as_slice();
             if contiguous {
                 let (empty, buf) = buf.split_at(0);
-                (buf[self.tail..self.head], empty)
+                (buf.index(&(self.tail..self.head)), empty)
             } else {
                 let (mid, right) = buf.split_at(self.tail);
                 let (left, _) = mid.split_at(self.head);
