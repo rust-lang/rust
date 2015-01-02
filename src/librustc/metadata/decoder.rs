@@ -441,9 +441,15 @@ pub fn get_impl_trait<'tcx>(cdata: Cmd,
                             -> Option<Rc<ty::TraitRef<'tcx>>>
 {
     let item_doc = lookup_item(id, cdata.data());
-    reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
-        doc_trait_ref(tp, tcx, cdata)
-    })
+    let fam = item_family(item_doc);
+    match fam {
+        Family::Impl => {
+            reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
+                doc_trait_ref(tp, tcx, cdata)
+            })
+        }
+        _ => None
+    }
 }
 
 pub fn get_impl_vtables<'tcx>(cdata: Cmd,

@@ -2862,8 +2862,6 @@ pub fn maybe_walk_ty<'tcx,F>(ty_root: Ty<'tcx>, mut f: F)
             walker.skip_current_subtree();
         }
     }
-
-    maybe_walk_ty_(ty, &mut f);
 }
 
 // Folds types from the bottom up.
@@ -6071,22 +6069,9 @@ pub fn populate_implementations_for_trait_if_necessary(
 /// Given the def_id of an impl, return the def_id of the trait it implements.
 /// If it implements no trait, return `None`.
 pub fn trait_id_of_impl(tcx: &ctxt,
-                        def_id: ast::DefId) -> Option<ast::DefId> {
-    let node = match tcx.map.find(def_id.node) {
-        Some(node) => node,
-        None => return None
-    };
-    match node {
-        ast_map::NodeItem(item) => {
-            match item.node {
-                ast::ItemImpl(_, _, Some(ref trait_ref), _, _) => {
-                    Some(node_id_to_trait_ref(tcx, trait_ref.ref_id).def_id)
-                }
-                _ => None
-            }
-        }
-        _ => None
-    }
+                        def_id: ast::DefId)
+                        -> Option<ast::DefId> {
+    ty::impl_trait_ref(tcx, def_id).map(|tr| tr.def_id)
 }
 
 /// If the given def ID describes a method belonging to an impl, return the
