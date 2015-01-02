@@ -392,14 +392,14 @@ fn escape_str(writer: &mut io::Writer, v: &str) -> Result<(), io::IoError> {
 }
 
 fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
-    let mut buf = [0, .. 4];
+    let mut buf = [0; 4];
     let len = v.encode_utf8(&mut buf).unwrap();
     escape_bytes(writer, buf[mut ..len])
 }
 
 fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
     const LEN: uint = 16;
-    static BUF: [u8, ..LEN] = [b' ', ..LEN];
+    static BUF: [u8; LEN] = [b' '; LEN];
 
     while n >= LEN {
         try!(wr.write(&BUF));

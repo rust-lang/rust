@@ -9,8 +9,8 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = [1i,..100];
-    let y = [2i,..100];
+    let x = [1i; 100];
+    let y = [2i; 100];
     let mut p = 0i;
     let mut q = 0i;
     for i in x.iter() {

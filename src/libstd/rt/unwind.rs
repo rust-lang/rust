@@ -83,7 +83,7 @@ pub type Callback = fn(msg: &(Any + Send), file: &'static str, line: uint);
 //
 // For more information, see below.
 const MAX_CALLBACKS: uint = 16;
-static CALLBACKS: [atomic::AtomicUint, ..MAX_CALLBACKS] =
+static CALLBACKS: [atomic::AtomicUint; MAX_CALLBACKS] =
         [atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
          atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
@@ -168,7 +168,7 @@ fn rust_panic(cause: Box<Any + Send>) -> ! {
             uwe: uw::_Unwind_Exception {
                 exception_class: rust_exception_class(),
                 exception_cleanup: exception_cleanup,
-                private: [0, ..uw::unwinder_private_data_size],
+                private: [0; uw::unwinder_private_data_size],
             },
             cause: Some(cause),
         };

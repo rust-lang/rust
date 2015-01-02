@@ -105,7 +105,7 @@ mod test {
     #[test]
     fn test_reader_rng_fill_bytes() {
         let v = [1u8, 2, 3, 4, 5, 6, 7, 8];
-        let mut w = [0u8, .. 8];
+        let mut w = [0u8; 8];
 
         let mut rng = ReaderRng::new(MemReader::new(v.as_slice().to_vec()));
         rng.fill_bytes(&mut w);
@@ -117,7 +117,7 @@ mod test {
     #[should_fail]
     fn test_reader_rng_insufficient_bytes() {
         let mut rng = ReaderRng::new(MemReader::new(vec!()));
-        let mut v = [0u8, .. 3];
+        let mut v = [0u8; 3];
         rng.fill_bytes(&mut v);
     }
 }

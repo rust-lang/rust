@@ -310,7 +310,7 @@ pub fn get_address_name(addr: IpAddr) -> Result<String, IoError> {
     let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
     let len = addr_to_sockaddr(addr, &mut storage);
 
-    let mut hostbuf = [0 as c_char, ..NI_MAXHOST];
+    let mut hostbuf = [0 as c_char; NI_MAXHOST];
 
     let res = unsafe {
         getnameinfo(&storage as *const _ as *const libc::sockaddr, len,

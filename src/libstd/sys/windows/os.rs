@@ -80,7 +80,7 @@ pub fn error_string(errnum: i32) -> String {
     // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
     let langId = 0x0800 as DWORD;
 
-    let mut buf = [0 as WCHAR, ..TMPBUF_SZ];
+    let mut buf = [0 as WCHAR; TMPBUF_SZ];
 
     unsafe {
         let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
@@ -112,7 +112,7 @@ pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
     // fully understand. Here we explicitly make the pipe non-inheritable,
     // which means to pass it to a subprocess they need to be duplicated
     // first, as in std::run.
-    let mut fds = [0, ..2];
+    let mut fds = [0; 2];
     match libc::pipe(fds.as_mut_ptr(), 1024 as ::libc::c_uint,
                      (libc::O_BINARY | libc::O_NOINHERIT) as c_int) {
         0 => {
@@ -164,7 +164,7 @@ pub fn getcwd() -> IoResult<Path> {
     use libc::GetCurrentDirectoryW;
     use io::OtherIoError;
 
-    let mut buf = [0 as u16, ..BUF_BYTES];
+    let mut buf = [0 as u16; BUF_BYTES];
     unsafe {
         if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
             return Err(IoError::last_error());

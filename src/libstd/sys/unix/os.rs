@@ -100,7 +100,7 @@ pub fn error_string(errno: i32) -> String {
         }
     }
 
-    let mut buf = [0 as c_char, ..TMPBUF_SZ];
+    let mut buf = [0 as c_char; TMPBUF_SZ];
 
     let p = buf.as_mut_ptr();
     unsafe {
@@ -113,7 +113,7 @@ pub fn error_string(errno: i32) -> String {
 }
 
 pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
-    let mut fds = [0, ..2];
+    let mut fds = [0; 2];
     if libc::pipe(fds.as_mut_ptr()) == 0 {
         Ok((FileDesc::new(fds[0], true), FileDesc::new(fds[1], true)))
     } else {
@@ -124,7 +124,7 @@ pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
 pub fn getcwd() -> IoResult<Path> {
     use c_str::CString;
 
-    let mut buf = [0 as c_char, ..BUF_BYTES];
+    let mut buf = [0 as c_char; BUF_BYTES];
     unsafe {
         if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
             Err(IoError::last_error())

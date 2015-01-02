@@ -86,30 +86,30 @@ mod os {
     #[repr(C)]
     pub struct pthread_mutex_t {
         __sig: libc::c_long,
-        __opaque: [u8, ..__PTHREAD_MUTEX_SIZE__],
+        __opaque: [u8; __PTHREAD_MUTEX_SIZE__],
     }
     #[repr(C)]
     pub struct pthread_cond_t {
         __sig: libc::c_long,
-        __opaque: [u8, ..__PTHREAD_COND_SIZE__],
+        __opaque: [u8; __PTHREAD_COND_SIZE__],
     }
     #[repr(C)]
     pub struct pthread_rwlock_t {
         __sig: libc::c_long,
-        __opaque: [u8, ..__PTHREAD_RWLOCK_SIZE__],
+        __opaque: [u8; __PTHREAD_RWLOCK_SIZE__],
     }
 
     pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
         __sig: _PTHREAD_MUTEX_SIG_INIT,
-        __opaque: [0, ..__PTHREAD_MUTEX_SIZE__],
+        __opaque: [0; __PTHREAD_MUTEX_SIZE__],
     };
     pub const PTHREAD_COND_INITIALIZER: pthread_cond_t = pthread_cond_t {
         __sig: _PTHREAD_COND_SIG_INIT,
-        __opaque: [0, ..__PTHREAD_COND_SIZE__],
+        __opaque: [0; __PTHREAD_COND_SIZE__],
     };
     pub const PTHREAD_RWLOCK_INITIALIZER: pthread_rwlock_t = pthread_rwlock_t {
         __sig: _PTHREAD_RWLOCK_SIG_INIT,
-        __opaque: [0, ..__PTHREAD_RWLOCK_SIZE__],
+        __opaque: [0; __PTHREAD_RWLOCK_SIZE__],
     };
 }
 
@@ -145,30 +145,30 @@ mod os {
     #[repr(C)]
     pub struct pthread_mutex_t {
         __align: libc::c_longlong,
-        size: [u8, ..__SIZEOF_PTHREAD_MUTEX_T],
+        size: [u8; __SIZEOF_PTHREAD_MUTEX_T],
     }
     #[repr(C)]
     pub struct pthread_cond_t {
         __align: libc::c_longlong,
-        size: [u8, ..__SIZEOF_PTHREAD_COND_T],
+        size: [u8; __SIZEOF_PTHREAD_COND_T],
     }
     #[repr(C)]
     pub struct pthread_rwlock_t {
         __align: libc::c_longlong,
-        size: [u8, ..__SIZEOF_PTHREAD_RWLOCK_T],
+        size: [u8; __SIZEOF_PTHREAD_RWLOCK_T],
     }
 
     pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
         __align: 0,
-        size: [0, ..__SIZEOF_PTHREAD_MUTEX_T],
+        size: [0; __SIZEOF_PTHREAD_MUTEX_T],
     };
     pub const PTHREAD_COND_INITIALIZER: pthread_cond_t = pthread_cond_t {
         __align: 0,
-        size: [0, ..__SIZEOF_PTHREAD_COND_T],
+        size: [0; __SIZEOF_PTHREAD_COND_T],
     };
     pub const PTHREAD_RWLOCK_INITIALIZER: pthread_rwlock_t = pthread_rwlock_t {
         __align: 0,
-        size: [0, ..__SIZEOF_PTHREAD_RWLOCK_T],
+        size: [0; __SIZEOF_PTHREAD_RWLOCK_T],
     };
 }
 #[cfg(target_os = "android")]
@@ -187,7 +187,7 @@ mod os {
         writerThreadId: libc::c_int,
         pendingReaders: libc::c_int,
         pendingWriters: libc::c_int,
-        reserved: [*mut libc::c_void, ..4],
+        reserved: [*mut libc::c_void; 4],
     }
 
     pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
@@ -203,6 +203,6 @@ mod os {
         writerThreadId: 0,
         pendingReaders: 0,
         pendingWriters: 0,
-        reserved: [0 as *mut _, ..4],
+        reserved: [0 as *mut _; 4],
     };
 }

@@ -2517,7 +2517,7 @@ mod tests {
 
     #[test]
     fn test_chars_decoding() {
-        let mut bytes = [0u8, ..4];
+        let mut bytes = [0u8; 4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(bytes[..len]).unwrap();
@@ -2529,7 +2529,7 @@ mod tests {
 
     #[test]
     fn test_chars_rev_decoding() {
-        let mut bytes = [0u8, ..4];
+        let mut bytes = [0u8; 4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(bytes[..len]).unwrap();
@@ -2743,7 +2743,7 @@ mod tests {
         use core::iter::order;
         // official Unicode test data
         // from http://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt
-        let test_same: [(_, &[_]), .. 325] = [
+        let test_same: [(_, &[_]); 325] = [
             ("\u{20}\u{20}", &["\u{20}", "\u{20}"]),
             ("\u{20}\u{308}\u{20}", &["\u{20}\u{308}", "\u{20}"]),
             ("\u{20}\u{D}", &["\u{20}", "\u{D}"]),
@@ -3075,7 +3075,7 @@ mod tests {
             ("\u{646}\u{200D}\u{20}", &["\u{646}\u{200D}", "\u{20}"]),
         ];
 
-        let test_diff: [(_, &[_], &[_]), .. 23] = [
+        let test_diff: [(_, &[_], &[_]); 23] = [
             ("\u{20}\u{903}", &["\u{20}\u{903}"], &["\u{20}", "\u{903}"]), ("\u{20}\u{308}\u{903}",
             &["\u{20}\u{308}\u{903}"], &["\u{20}\u{308}", "\u{903}"]), ("\u{D}\u{308}\u{903}",
             &["\u{D}", "\u{308}\u{903}"], &["\u{D}", "\u{308}", "\u{903}"]), ("\u{A}\u{308}\u{903}",

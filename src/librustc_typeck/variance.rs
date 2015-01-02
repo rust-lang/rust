@@ -407,9 +407,9 @@ struct ConstraintContext<'a, 'tcx: 'a> {
     // are indexed by the `ParamKind` (type, lifetime, self). Note
     // that there are no marker types for self, so the entries for
     // self are always None.
-    invariant_lang_items: [Option<ast::DefId>, ..2],
-    covariant_lang_items: [Option<ast::DefId>, ..2],
-    contravariant_lang_items: [Option<ast::DefId>, ..2],
+    invariant_lang_items: [Option<ast::DefId>; 2],
+    covariant_lang_items: [Option<ast::DefId>; 2],
+    contravariant_lang_items: [Option<ast::DefId>; 2],
     unsafe_lang_item: Option<ast::DefId>,
 
     // These are pointers to common `ConstantTerm` instances
@@ -432,9 +432,9 @@ struct Constraint<'a> {
 fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
                                         krate: &ast::Crate)
                                         -> ConstraintContext<'a, 'tcx> {
-    let mut invariant_lang_items = [None, ..2];
-    let mut covariant_lang_items = [None, ..2];
-    let mut contravariant_lang_items = [None, ..2];
+    let mut invariant_lang_items = [None; 2];
+    let mut covariant_lang_items = [None; 2];
+    let mut contravariant_lang_items = [None; 2];
 
     covariant_lang_items[TypeParam as uint] =
         terms_cx.tcx.lang_items.covariant_type();

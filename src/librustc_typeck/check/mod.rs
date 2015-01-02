@@ -4544,7 +4544,7 @@ impl<'tcx> Expectation<'tcx> {
     /// In this case, the expected type for the `&[1, 2, 3]` expression is
     /// `&[int]`. If however we were to say that `[1, 2, 3]` has the
     /// expectation `ExpectHasType([int])`, that would be too strong --
-    /// `[1, 2, 3]` does not have the type `[int]` but rather `[int, ..3]`.
+    /// `[1, 2, 3]` does not have the type `[int]` but rather `[int; 3]`.
     /// It is only the `&[1, 2, 3]` expression as a whole that can be coerced
     /// to the type `&[int]`. Therefore, we propagate this more limited hint,
     /// which still is useful, because it informs integer literals and the like.

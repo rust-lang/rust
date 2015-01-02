@@ -38,7 +38,7 @@ pub fn to_str_bytes<U, F>(n: $T, radix: uint, f: F) -> U where
     use io::{Writer, Seek};
     // The radix can be as low as 2, so we need at least 64 characters for a
     // base 2 number, and then we need another for a possible '-' character.
-    let mut buf = [0u8, ..65];
+    let mut buf = [0u8; 65];
     let amt = {
         let mut wr = ::io::BufWriter::new(&mut buf);
         (write!(&mut wr, "{}", ::fmt::radix(n, radix as u8))).unwrap();

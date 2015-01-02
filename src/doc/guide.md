@@ -1606,18 +1606,18 @@ things. The most basic is the **array**, a fixed-size list of elements of the
 same type. By default, arrays are immutable.
 
 ```{rust}
-let a = [1i, 2i, 3i];     // a: [int, ..3]
-let mut m = [1i, 2i, 3i]; // mut m: [int, ..3]
+let a = [1i, 2i, 3i];     // a: [int; 3]
+let mut m = [1i, 2i, 3i]; // mut m: [int; 3]
 ```
 
 There's a shorthand for initializing each element of an array to the same
 value. In this example, each element of `a` will be initialized to `0i`:
 
 ```{rust}
-let a = [0i, ..20]; // a: [int, ..20]
+let a = [0i; 20]; // a: [int; 20]
 ```
 
-Arrays have type `[T,..N]`. We'll talk about this `T` notation later, when we
+Arrays have type `[T; N]`. We'll talk about this `T` notation later, when we
 cover generics.
 
 You can get the number of elements in an array `a` with `a.len()`, and use

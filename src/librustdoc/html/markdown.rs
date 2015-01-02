@@ -80,7 +80,7 @@ struct hoedown_renderer {
     blockhtml: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                     *mut libc::c_void)>,
     header: Option<headerfn>,
-    other: [libc::size_t, ..28],
+    other: [libc::size_t; 28],
 }
 
 #[repr(C)]

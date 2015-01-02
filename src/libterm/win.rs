@@ -32,11 +32,11 @@ pub struct WinConsole<T> {
 #[allow(non_snake_case)]
 #[repr(C)]
 struct CONSOLE_SCREEN_BUFFER_INFO {
-    dwSize: [libc::c_short, ..2],
-    dwCursorPosition: [libc::c_short, ..2],
+    dwSize: [libc::c_short; 2],
+    dwCursorPosition: [libc::c_short; 2],
     wAttributes: libc::WORD,
-    srWindow: [libc::c_short, ..4],
-    dwMaximumWindowSize: [libc::c_short, ..2],
+    srWindow: [libc::c_short; 4],
+    dwMaximumWindowSize: [libc::c_short; 2],
 }
 
 #[allow(non_snake_case)]

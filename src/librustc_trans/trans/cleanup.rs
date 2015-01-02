@@ -63,7 +63,7 @@ pub const EXIT_MAX: uint = 2;
 pub enum CleanupScopeKind<'blk, 'tcx: 'blk> {
     CustomScopeKind,
     AstScopeKind(ast::NodeId),
-    LoopScopeKind(ast::NodeId, [Block<'blk, 'tcx>, ..EXIT_MAX])
+    LoopScopeKind(ast::NodeId, [Block<'blk, 'tcx>; EXIT_MAX])
 }
 
 impl<'blk, 'tcx: 'blk> fmt::Show for CleanupScopeKind<'blk, 'tcx> {
@@ -146,7 +146,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
 
     fn push_loop_cleanup_scope(&self,
                                id: ast::NodeId,
-                               exits: [Block<'blk, 'tcx>, ..EXIT_MAX]) {
+                               exits: [Block<'blk, 'tcx>; EXIT_MAX]) {
         debug!("push_loop_cleanup_scope({})",
                self.ccx.tcx().map.node_to_string(id));
         assert_eq!(Some(id), self.top_ast_scope());
@@ -1058,7 +1058,7 @@ pub trait CleanupMethods<'blk, 'tcx> {
     fn push_ast_cleanup_scope(&self, id: NodeInfo);
     fn push_loop_cleanup_scope(&self,
                                id: ast::NodeId,
-                               exits: [Block<'blk, 'tcx>, ..EXIT_MAX]);
+                               exits: [Block<'blk, 'tcx>; EXIT_MAX]);
     fn push_custom_cleanup_scope(&self) -> CustomScopeIndex;
     fn push_custom_cleanup_scope_with_debug_loc(&self,
                                                 debug_loc: NodeInfo)

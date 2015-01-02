@@ -372,7 +372,7 @@ mod tests {
         let mut writer = FileDesc::new(writer, true);
 
         writer.write(b"test").ok().unwrap();
-        let mut buf = [0u8, ..4];
+        let mut buf = [0u8; 4];
         match reader.read(&mut buf) {
             Ok(4) => {
                 assert_eq!(buf[0], 't' as u8);
