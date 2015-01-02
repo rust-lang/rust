@@ -33,6 +33,8 @@ pub use self::future::Future;
 pub use self::task_pool::TaskPool;
 
 pub mod atomic;
+pub mod mpsc;
+
 mod barrier;
 mod condvar;
 mod future;

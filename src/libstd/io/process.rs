@@ -20,7 +20,6 @@ use prelude::v1::*;
 
 use c_str::{CString, ToCStr};
 use collections::HashMap;
-use comm::{channel, Receiver};
 use fmt;
 use hash::Hash;
 use io::pipe::{PipeStream, PipePair};
@@ -29,6 +28,7 @@ use io;
 use libc;
 use os;
 use path::BytesContainer;
+use sync::mpsc::{channel, Receiver};
 use sys::fs::FileDesc;
 use sys::process::Process as ProcessImp;
 use sys;
@@ -693,10 +693,10 @@ impl Process {
                 Some(stream) => {
                     Thread::spawn(move |:| {
                         let mut stream = stream;
-                        tx.send(stream.read_to_end())
+                        tx.send(stream.read_to_end()).unwrap();
                     }).detach();
                 }
-                None => tx.send(Ok(Vec::new()))
+                None => tx.send(Ok(Vec::new())).unwrap()
             }
             rx
         }
@@ -707,8 +707,8 @@ impl Process {
 
         Ok(ProcessOutput {
             status: status,
-            output: stdout.recv().ok().unwrap_or(Vec::new()),
-            error:  stderr.recv().ok().unwrap_or(Vec::new()),
+            output: stdout.recv().unwrap().unwrap_or(Vec::new()),
+            error:  stderr.recv().unwrap().unwrap_or(Vec::new()),
         })
     }
 
@@ -743,13 +743,15 @@ impl Drop for Process {
 mod tests {
     use prelude::v1::*;
 
-    use comm::channel;
     use io::fs::PathExtensions;
+    use io::process;
     use io::timer::*;
-    use io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
+    use io::{Truncate, Write, TimedOut, timer, FileNotFound};
     use rt::running_on_valgrind;
     use str;
-    use super::*;
+    use super::{CreatePipe};
+    use super::{InheritFd, Process, PleaseExitSignal, Command, ProcessOutput};
+    use sync::mpsc::channel;
     use thread::Thread;
     use time::Duration;
 
@@ -1160,17 +1162,17 @@ mod tests {
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
             p.signal_kill().unwrap();
-            tx.send(());
+            tx.send(()).unwrap();
         });
         let _t = Thread::spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
             p.signal_kill().unwrap();
-            tx2.send(());
+            tx2.send(()).unwrap();
         });
-        rx.recv();
-        rx.recv();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
     }
 
     #[test]

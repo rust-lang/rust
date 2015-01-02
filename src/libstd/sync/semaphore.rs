@@ -108,7 +108,7 @@ mod tests {
 
     use sync::Arc;
     use super::Semaphore;
-    use comm::channel;
+    use sync::mpsc::channel;
     use thread::Thread;
 
     #[test]
@@ -143,7 +143,7 @@ mod tests {
         let s2 = s.clone();
         let _t = Thread::spawn(move|| {
             s2.acquire();
-            tx.send(());
+            tx.send(()).unwrap();
         });
         s.release();
         let _ = rx.recv();
@@ -157,7 +157,7 @@ mod tests {
             let _ = rx.recv();
         });
         s.acquire();
-        tx.send(());
+        tx.send(()).unwrap();
     }
 
     #[test]
@@ -171,11 +171,11 @@ mod tests {
         let _t = Thread::spawn(move|| {
             let _g = s2.access();
             let _ = rx2.recv();
-            tx1.send(());
+            tx1.send(()).unwrap();
         });
         let _g = s.access();
-        tx2.send(());
-        let _ = rx1.recv();
+        tx2.send(()).unwrap();
+        rx1.recv().unwrap();
     }
 
     #[test]
@@ -186,12 +186,12 @@ mod tests {
         {
             let _g = s.access();
             Thread::spawn(move|| {
-                tx.send(());
+                tx.send(()).unwrap();
                 drop(s2.access());
-                tx.send(());
+                tx.send(()).unwrap();
             }).detach();
-            rx.recv(); // wait for child to come alive
+            rx.recv().unwrap(); // wait for child to come alive
         }
-        rx.recv(); // wait for child to be done
+        rx.recv().unwrap(); // wait for child to be done
     }
 }

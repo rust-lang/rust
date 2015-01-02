@@ -39,8 +39,8 @@ use self::MyUpgrade::*;
 
 use core::prelude::*;
 
-use comm::Receiver;
-use comm::blocking::{mod, SignalToken};
+use sync::mpsc::Receiver;
+use sync::mpsc::blocking::{mod, SignalToken};
 use core::mem;
 use sync::atomic;
 

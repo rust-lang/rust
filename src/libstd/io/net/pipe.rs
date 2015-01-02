@@ -267,13 +267,13 @@ impl sys_common::AsInner<UnixAcceptorImp> for UnixAcceptor {
 mod tests {
     use prelude::v1::*;
 
-    use comm::channel;
     use io::fs::PathExtensions;
     use io::{EndOfFile, TimedOut, ShortWrite, IoError, ConnectionReset};
-    use io::{NotConnected, BrokenPipe, OtherIoError, FileNotFound, InvalidInput};
+    use io::{NotConnected, BrokenPipe, FileNotFound, InvalidInput, OtherIoError};
     use io::{PermissionDenied, Acceptor, Listener};
     use io::test::*;
     use super::*;
+    use sync::mpsc::channel;
     use thread::Thread;
     use time::Duration;
 
@@ -433,18 +433,18 @@ mod tests {
         let (tx2, rx2) = channel();
         let _t = Thread::spawn(move|| {
             let mut s2 = s2;
-            rx1.recv();
+            rx1.recv().unwrap();
             debug!("writer writing");
             s2.write(&[1]).unwrap();
             debug!("writer done");
-            tx2.send(());
+            tx2.send(()).unwrap();
         });
-        tx1.send(());
+        tx1.send(()).unwrap();
         let mut buf = [0, 0];
         debug!("reader reading");
         assert_eq!(s1.read(&mut buf), Ok(1));
         debug!("reader done");
-        rx2.recv();
+        rx2.recv().unwrap();
     }
 
     #[test]
@@ -457,9 +457,9 @@ mod tests {
         let _t = Thread::spawn(move|| {
             let mut s = UnixStream::connect(&addr);
             s.write(&[1]).unwrap();
-            rx.recv();
+            rx.recv().unwrap();
             s.write(&[2]).unwrap();
-            rx.recv();
+            rx.recv().unwrap();
         });
 
         let mut s1 = acceptor.accept().unwrap();
@@ -470,14 +470,14 @@ mod tests {
             let mut s2 = s2;
             let mut buf = [0, 0];
             s2.read(&mut buf).unwrap();
-            tx2.send(());
-            done.send(());
+            tx2.send(()).unwrap();
+            done.send(()).unwrap();
         });
         let mut buf = [0, 0];
         s1.read(&mut buf).unwrap();
-        tx1.send(());
+        tx1.send(()).unwrap();
 
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[test]
@@ -499,11 +499,11 @@ mod tests {
         let _t = Thread::spawn(move|| {
             let mut s2 = s2;
             s2.write(&[1]).unwrap();
-            tx.send(());
+            tx.send(()).unwrap();
         });
         s1.write(&[2]).unwrap();
 
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[cfg(not(windows))]
@@ -544,9 +544,9 @@ mod tests {
         let (tx, rx) = channel();
         let addr2 = addr.clone();
         let _t = Thread::spawn(move|| {
-            tx.send(UnixStream::connect(&addr2).unwrap());
+            tx.send(UnixStream::connect(&addr2).unwrap()).unwrap();
         });
-        let l = rx.recv();
+        let l = rx.recv().unwrap();
         for i in range(0u, 1001) {
             match a.accept() {
                 Ok(..) => break,
@@ -602,7 +602,7 @@ mod tests {
         Thread::spawn(move|| {
             let mut a = a;
             let _s = a.accept().unwrap();
-            let _ = rx.recv_opt();
+            let _ = rx.recv();
         }).detach();
 
         let mut b = [0];
@@ -639,7 +639,7 @@ mod tests {
         Thread::spawn(move|| {
             let mut a = a;
             let _s = a.accept().unwrap();
-            let _ = rx.recv_opt();
+            let _ = rx.recv();
         }).detach();
 
         let mut s = UnixStream::connect(&addr).unwrap();
@@ -648,13 +648,13 @@ mod tests {
         let _t = Thread::spawn(move|| {
             let mut s2 = s2;
             assert!(s2.read(&mut [0]).is_err());
-            tx.send(());
+            tx.send(()).unwrap();
         });
         // this should wake up the child task
         s.close_read().unwrap();
 
         // this test will never finish if the child doesn't wake up
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[test]
@@ -664,9 +664,9 @@ mod tests {
         let (tx, rx) = channel::<()>();
         Thread::spawn(move|| {
             let mut s = UnixStream::connect(&addr).unwrap();
-            rx.recv();
+            rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
-            let _ = rx.recv_opt();
+            let _ = rx.recv();
         }).detach();
 
         let mut s = a.accept().unwrap();
@@ -690,7 +690,7 @@ mod tests {
             assert_eq!(s.write(&[0]).err().unwrap().kind, TimedOut);
         }
 
-        tx.send(());
+        tx.send(()).unwrap();
         s.set_timeout(None);
         assert_eq!(s.read(&mut [0, 0]), Ok(1));
     }
@@ -702,7 +702,7 @@ mod tests {
         let (tx, rx) = channel::<()>();
         Thread::spawn(move|| {
             let mut s = UnixStream::connect(&addr).unwrap();
-            rx.recv();
+            rx.recv().unwrap();
             let mut amt = 0;
             while amt < 100 * 128 * 1024 {
                 match s.read(&mut [0;128 * 1024]) {
@@ -710,7 +710,7 @@ mod tests {
                     Err(e) => panic!("{}", e),
                 }
             }
-            let _ = rx.recv_opt();
+            let _ = rx.recv();
         }).detach();
 
         let mut s = a.accept().unwrap();
@@ -718,7 +718,7 @@ mod tests {
         assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
         assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
 
-        tx.send(());
+        tx.send(()).unwrap();
         for _ in range(0u, 100) {
             assert!(s.write(&[0;128 * 1024]).is_ok());
         }
@@ -731,9 +731,9 @@ mod tests {
         let (tx, rx) = channel::<()>();
         Thread::spawn(move|| {
             let mut s = UnixStream::connect(&addr).unwrap();
-            rx.recv();
+            rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
-            let _ = rx.recv_opt();
+            let _ = rx.recv();
         }).detach();
 
         let mut s = a.accept().unwrap();
@@ -747,7 +747,7 @@ mod tests {
            if i == 1000 { panic!("should have filled up?!"); }
         }
 
-        tx.send(());
+        tx.send(()).unwrap();
         assert!(s.read(&mut [0]).is_ok());
     }
 
@@ -758,9 +758,9 @@ mod tests {
         let (tx, rx) = channel::<()>();
         Thread::spawn(move|| {
             let mut s = UnixStream::connect(&addr).unwrap();
-            rx.recv();
+            rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
-            let _ = rx.recv_opt();
+            let _ = rx.recv();
         }).detach();
 
         let mut s = a.accept().unwrap();
@@ -769,14 +769,14 @@ mod tests {
         let _t = Thread::spawn(move|| {
             let mut s2 = s2;
             assert!(s2.read(&mut [0]).is_ok());
-            tx2.send(());
+            tx2.send(()).unwrap();
         });
 
         s.set_read_timeout(Some(20));
         assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
-        tx.send(());
+        tx.send(()).unwrap();
 
-        rx2.recv();
+        rx2.recv().unwrap();
     }
 
     #[cfg(not(windows))]
@@ -811,8 +811,14 @@ mod tests {
         let (tx, rx) = channel();
         let tx2 = tx.clone();
 
-        let _t = Thread::spawn(move|| { let mut a = a; tx.send(a.accept()) });
-        let _t = Thread::spawn(move|| { let mut a = a2; tx2.send(a.accept()) });
+        let _t = Thread::spawn(move|| {
+            let mut a = a;
+            tx.send(a.accept()).unwrap()
+        });
+        let _t = Thread::spawn(move|| {
+            let mut a = a2;
+            tx2.send(a.accept()).unwrap()
+        });
 
         let addr2 = addr.clone();
         let _t = Thread::spawn(move|| {
@@ -822,8 +828,8 @@ mod tests {
             let _ = UnixStream::connect(&addr);
         });
 
-        assert!(rx.recv().is_ok());
-        assert!(rx.recv().is_ok());
+        assert!(rx.recv().unwrap().is_ok());
+        assert!(rx.recv().unwrap().is_ok());
     }
 
     #[test]
@@ -846,10 +852,10 @@ mod tests {
         let (tx, rx) = channel();
         let _t = Thread::spawn(move|| {
             let mut a = a;
-            tx.send(a.accept());
+            tx.send(a.accept()).unwrap();
         });
         a2.close_accept().unwrap();
 
-        assert_eq!(rx.recv().err().unwrap().kind, EndOfFile);
+        assert_eq!(rx.recv().unwrap().err().unwrap().kind, EndOfFile);
     }
 }

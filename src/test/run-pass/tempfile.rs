@@ -23,7 +23,7 @@ use std::io::{fs, TempDir};
 use std::io;
 use std::os;
 use std::task;
-use std::comm::channel;
+use std::sync::mpsc::channel;
 
 fn test_tempdir() {
     let path = {
@@ -39,11 +39,11 @@ fn test_rm_tempdir() {
     let (tx, rx) = channel();
     let f = move|:| -> () {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
-        tx.send(tmp.path().clone());
+        tx.send(tmp.path().clone()).unwrap();
         panic!("panic to unwind past `tmp`");
     };
     task::try(f);
-    let path = rx.recv();
+    let path = rx.recv().unwrap();
     assert!(!path.exists());
 
     let tmp = TempDir::new("test_rm_tempdir").unwrap();
@@ -80,12 +80,12 @@ fn test_rm_tempdir_close() {
     let (tx, rx) = channel();
     let f = move|:| -> () {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
-        tx.send(tmp.path().clone());
+        tx.send(tmp.path().clone()).unwrap();
         tmp.close();
         panic!("panic when unwinding past `tmp`");
     };
     task::try(f);
-    let path = rx.recv();
+    let path = rx.recv().unwrap();
     assert!(!path.exists());
 
     let tmp = TempDir::new("test_rm_tempdir").unwrap();

@@ -534,7 +534,7 @@ mod test {
         w.write(&[0, 1]).unwrap();
         let a: &[_] = &[];
         assert_eq!(a, w.get_ref()[]);
-        let w = w.unwrap();
+        let w = w.into_inner();
         let a: &[_] = &[0, 1];
         assert_eq!(a, w[]);
     }

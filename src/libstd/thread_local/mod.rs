@@ -455,7 +455,7 @@ mod imp {
 mod tests {
     use prelude::v1::*;
 
-    use comm::{channel, Sender};
+    use sync::mpsc::{channel, Sender};
     use cell::UnsafeCell;
     use thread::Thread;
 
@@ -464,7 +464,7 @@ mod tests {
     impl Drop for Foo {
         fn drop(&mut self) {
             let Foo(ref s) = *self;
-            s.send(());
+            s.send(()).unwrap();
         }
     }
 
@@ -481,9 +481,9 @@ mod tests {
             FOO.with(|f| unsafe {
                 assert_eq!(*f.get(), 1);
             });
-            tx.send(());
+            tx.send(()).unwrap();
         });
-        rx.recv();
+        rx.recv().unwrap();
 
         FOO.with(|f| unsafe {
             assert_eq!(*f.get(), 2);
@@ -503,7 +503,7 @@ mod tests {
                 *f.get() = Some(Foo(tx.take().unwrap()));
             });
         });
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[test]
@@ -594,7 +594,7 @@ mod tests {
             let mut tx = Some(tx);
             K1.with(|s| *s.get() = Some(S1(tx.take().unwrap())));
         });
-        rx.recv();
+        rx.recv().unwrap();
     }
 }
 

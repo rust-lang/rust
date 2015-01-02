@@ -28,7 +28,7 @@ use core::prelude::*;
 use core::mem::replace;
 
 use self::FutureState::*;
-use comm::{Receiver, channel};
+use sync::mpsc::{Receiver, channel};
 use thunk::{Thunk};
 use thread::Thread;
 
@@ -122,8 +122,8 @@ impl<A:Send> Future<A> {
          * waiting for the result to be received on the port.
          */
 
-        Future::from_fn(move|:| {
-            rx.recv()
+        Future::from_fn(move |:| {
+            rx.recv().unwrap()
         })
     }
 
@@ -141,7 +141,7 @@ impl<A:Send> Future<A> {
 
         Thread::spawn(move |:| {
             // Don't panic if the other end has hung up
-            let _ = tx.send_opt(blk());
+            let _ = tx.send(blk());
         }).detach();
 
         Future::from_receiver(rx)
@@ -151,7 +151,7 @@ impl<A:Send> Future<A> {
 #[cfg(test)]
 mod test {
     use prelude::v1::*;
-    use comm::channel;
+    use sync::mpsc::channel;
     use sync::Future;
     use thread::Thread;
 
@@ -164,7 +164,7 @@ mod test {
     #[test]
     fn test_from_receiver() {
         let (tx, rx) = channel();
-        tx.send("whale".to_string());
+        tx.send("whale".to_string()).unwrap();
         let mut f = Future::from_receiver(rx);
         assert_eq!(f.get(), "whale");
     }
@@ -184,7 +184,7 @@ mod test {
     #[test]
     fn test_interface_unwrap() {
         let f = Future::from_value("fail".to_string());
-        assert_eq!(f.unwrap(), "fail");
+        assert_eq!(f.into_inner(), "fail");
     }
 
     #[test]
@@ -213,8 +213,8 @@ mod test {
         let f = Future::spawn(move|| { expected });
         let _t = Thread::spawn(move|| {
             let mut f = f;
-            tx.send(f.get());
+            tx.send(f.get()).unwrap();
         });
-        assert_eq!(rx.recv(), expected);
+        assert_eq!(rx.recv().unwrap(), expected);
     }
 }

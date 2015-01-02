@@ -623,7 +623,7 @@ mod tests {
     #[test]
     fn test_unwrap() {
         let c_str = "hello".to_c_str();
-        unsafe { libc::free(c_str.unwrap() as *mut libc::c_void) }
+        unsafe { libc::free(c_str.into_inner() as *mut libc::c_void) }
     }
 
     #[test]

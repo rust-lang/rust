@@ -27,6 +27,7 @@ use comm::{channel, Sender, Receiver};
 use mem;
 use rt;
 use sync::{StaticMutex, StaticCondvar};
+use sync::mpsc::{channel, Sender, Receiver};
 use sys::helper_signal;
 
 use thread::Thread;
@@ -118,7 +119,7 @@ impl<M: Send> Helper<M> {
             // message. Otherwise it could wake up and go to sleep before we
             // send the message.
             assert!(!self.chan.get().is_null());
-            (**self.chan.get()).send(msg);
+            (**self.chan.get()).send(msg).unwrap();
             helper_signal::signal(*self.signal.get() as helper_signal::signal);
         }
     }
