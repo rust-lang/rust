@@ -986,8 +986,8 @@ impl<'a> Folder for IdentRenamer<'a> {
             ctxt: mtwt::apply_renames(self.renames, id.ctxt),
         }
     }
-    fn fold_mac(&mut self, macro: ast::Mac) -> ast::Mac {
-        fold::noop_fold_mac(macro, self)
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+        fold::noop_fold_mac(mac, self)
     }
 }
 
@@ -1023,8 +1023,8 @@ impl<'a> Folder for PatIdentRenamer<'a> {
             _ => unreachable!()
         })
     }
-    fn fold_mac(&mut self, macro: ast::Mac) -> ast::Mac {
-        fold::noop_fold_mac(macro, self)
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+        fold::noop_fold_mac(mac, self)
     }
 }
 
@@ -1286,8 +1286,8 @@ struct MacroExterminator<'a>{
 }
 
 impl<'a, 'v> Visitor<'v> for MacroExterminator<'a> {
-    fn visit_mac(&mut self, macro: &ast::Mac) {
-        self.sess.span_diagnostic.span_bug(macro.span,
+    fn visit_mac(&mut self, mac: &ast::Mac) {
+        self.sess.span_diagnostic.span_bug(mac.span,
                                            "macro exterminator: expected AST \
                                            with no macro invocations");
     }

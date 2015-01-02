@@ -28,8 +28,8 @@ impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
         visit::walk_expr(self, e);
     }
 
-    fn visit_mac(&mut self, macro: &ast::Mac) {
-        visit::walk_mac(self, macro);
+    fn visit_mac(&mut self, mac: &ast::Mac) {
+        visit::walk_mac(self, mac);
     }
 }
 

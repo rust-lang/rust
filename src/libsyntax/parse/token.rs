@@ -574,6 +574,7 @@ declare_special_idents_and_keywords! {
         (56,                         Abstract,   "abstract");
         (57,                         Final,      "final");
         (58,                         Override,   "override");
+        (59,                         Macro,      "macro");
     }
 }
 

@@ -3881,13 +3881,13 @@ impl<'a> Parser<'a> {
                                                                   &mut stmts,
                                                                   &mut expr);
                         }
-                        StmtMac(macro, MacStmtWithoutBraces) => {
+                        StmtMac(mac, MacStmtWithoutBraces) => {
                             // statement macro without braces; might be an
                             // expr depending on whether a semicolon follows
                             match self.token {
                                 token::Semi => {
                                     stmts.push(P(Spanned {
-                                        node: StmtMac(macro,
+                                        node: StmtMac(mac,
                                                       MacStmtWithSemicolon),
                                         span: span,
                                     }));
@@ -3896,7 +3896,7 @@ impl<'a> Parser<'a> {
                                 _ => {
                                     let e = self.mk_mac_expr(span.lo,
                                                              span.hi,
-                                                             macro.and_then(|m| m.node));
+                                                             mac.and_then(|m| m.node));
                                     let e =
                                         self.parse_dot_or_call_expr_with(e);
                                     self.handle_expression_like_statement(
