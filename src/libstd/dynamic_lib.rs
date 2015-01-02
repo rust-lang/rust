@@ -15,7 +15,9 @@
 #![experimental]
 #![allow(missing_docs)]
 
-use prelude::*;
+use prelude::v1::*;
+
+use c_str::ToCStr;
 use mem;
 use os;
 use str;
@@ -146,7 +148,7 @@ impl DynamicLibrary {
 #[cfg(all(test, not(target_os = "ios")))]
 mod test {
     use super::*;
-    use prelude::*;
+    use prelude::v1::*;
     use libc;
     use mem;
 
@@ -202,8 +204,8 @@ mod test {
 pub mod dl {
     use self::Rtld::*;
 
-    use prelude::*;
-    use c_str::CString;
+    use prelude::v1::*;
+    use c_str::{CString, ToCStr};
     use libc;
     use ptr;
 

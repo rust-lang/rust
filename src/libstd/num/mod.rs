@@ -147,10 +147,8 @@ pub fn test_num<T>(ten: T, two: T) where
 
 #[cfg(test)]
 mod tests {
-    use prelude::{range, Some, None, Option, IteratorExt};
-    use super::{from_int, from_uint, from_i32, from_i64, from_u64, from_u32};
-    use super::{from_f64, from_f32, from_u16, from_i16, from_u8, from_i8, Int};
-    use super::{cast, NumCast, ToPrimitive, FromPrimitive, UnsignedInt};
+    use prelude::v1::*;
+    use super::*;
     use i8;
     use i16;
     use i32;
@@ -802,7 +800,7 @@ mod bench {
     extern crate test;
     use self::test::Bencher;
     use num::Int;
-    use prelude::*;
+    use prelude::v1::*;
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {

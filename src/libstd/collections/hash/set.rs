@@ -866,7 +866,7 @@ impl<'a, T, S, H> Iterator<&'a T> for Union<'a, T, H>
 
 #[cfg(test)]
 mod test_set {
-    use prelude::*;
+    use prelude::v1::*;
 
     use super::HashSet;
 

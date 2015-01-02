@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Useful for checking syscall usage of baseline scheduler usage
-fn main() {
-    spawn(move|| {});
-}
+// aux-build:coherence-lib.rs
+
+extern crate "coherence-lib" as lib;
+use lib::Remote;
+
+struct Local<T>(T);
+
+impl<T> Remote for Vec<Local<T>> { }
+
+fn main() { }

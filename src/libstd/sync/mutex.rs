@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
+use prelude::v1::*;
 
 use cell::UnsafeCell;
 use kinds::marker;
+use ops::{Deref, DerefMut};
 use sync::poison::{mod, TryLockError, TryLockResult, LockResult};
 use sys_common::mutex as sys;
 
@@ -47,6 +48,8 @@ use sys_common::mutex as sys;
 /// ```rust
 /// use std::sync::{Arc, Mutex};
 /// use std::thread::Thread;
+/// use std::sync::mpsc::channel;
+///
 /// const N: uint = 10;
 ///
 /// // Spawn a few threads to increment a shared variable (non-atomically), and
@@ -69,13 +72,13 @@ use sys_common::mutex as sys;
 ///         let mut data = data.lock().unwrap();
 ///         *data += 1;
 ///         if *data == N {
-///             tx.send(());
+///             tx.send(()).unwrap();
 ///         }
 ///         // the lock is unlocked here when `data` goes out of scope.
 ///     }).detach();
 /// }
 ///
-/// rx.recv();
+/// rx.recv().unwrap();
 /// ```
 ///
 /// To recover from a poisoned mutex:
@@ -288,12 +291,14 @@ impl<'mutex, T> MutexGuard<'mutex, T> {
     }
 }
 
-impl<'mutex, T> Deref<T> for MutexGuard<'mutex, T> {
+impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
+    type Target = T;
+
     fn deref<'a>(&'a self) -> &'a T {
         unsafe { &*self.__data.get() }
     }
 }
-impl<'mutex, T> DerefMut<T> for MutexGuard<'mutex, T> {
+impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut *self.__data.get() }
     }
@@ -320,10 +325,11 @@ pub fn guard_poison<'a, T>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
 
-    use thread::Thread;
+    use sync::mpsc::channel;
     use sync::{Arc, Mutex, StaticMutex, MUTEX_INIT, Condvar};
+    use thread::Thread;
 
     struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
 
@@ -366,14 +372,14 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0, K) {
             let tx2 = tx.clone();
-            spawn(move|| { inc(); tx2.send(()); });
+            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); }).detach();
             let tx2 = tx.clone();
-            spawn(move|| { inc(); tx2.send(()); });
+            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); }).detach();
         }
 
         drop(tx);
         for _ in range(0, 2 * K) {
-            rx.recv();
+            rx.recv().unwrap();
         }
         assert_eq!(unsafe {CNT}, J * K * 2);
         unsafe {
@@ -392,9 +398,9 @@ mod test {
         let packet = Packet(Arc::new((Mutex::new(false), Condvar::new())));
         let packet2 = Packet(packet.0.clone());
         let (tx, rx) = channel();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             // wait until parent gets in
-            rx.recv();
+            rx.recv().unwrap();
             let &(ref lock, ref cvar) = &*packet2.0;
             let mut lock = lock.lock().unwrap();
             *lock = true;
@@ -403,7 +409,7 @@ mod test {
 
         let &(ref lock, ref cvar) = &*packet.0;
         let mut lock = lock.lock().unwrap();
-        tx.send(());
+        tx.send(()).unwrap();
         assert!(!*lock);
         while !*lock {
             lock = cvar.wait(lock).unwrap();
@@ -416,8 +422,8 @@ mod test {
         let packet2 = Packet(packet.0.clone());
         let (tx, rx) = channel();
 
-        spawn(move|| {
-            rx.recv();
+        let _t = Thread::spawn(move || -> () {
+            rx.recv().unwrap();
             let &(ref lock, ref cvar) = &*packet2.0;
             let _g = lock.lock().unwrap();
             cvar.notify_one();
@@ -427,7 +433,7 @@ mod test {
 
         let &(ref lock, ref cvar) = &*packet.0;
         let mut lock = lock.lock().unwrap();
-        tx.send(());
+        tx.send(()).unwrap();
         while *lock == 1 {
             match cvar.wait(lock) {
                 Ok(l) => {
@@ -443,7 +449,7 @@ mod test {
     fn test_mutex_arc_poison() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        Thread::spawn(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.lock().unwrap();
             assert_eq!(*lock, 2);
         }).join();
@@ -457,13 +463,13 @@ mod test {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = Arc::new(Mutex::new(arc));
         let (tx, rx) = channel();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let lock = arc2.lock().unwrap();
-            let lock2 = lock.deref().lock().unwrap();
+            let lock2 = lock.lock().unwrap();
             assert_eq!(*lock2, 1);
-            tx.send(());
+            tx.send(()).unwrap();
         });
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[test]

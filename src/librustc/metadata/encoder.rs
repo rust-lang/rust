@@ -1222,8 +1222,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_attributes(rbml_w, item.attrs[]);
         encode_unsafety(rbml_w, unsafety);
         match ty.node {
-            ast::TyPath(ref path, _) if path.segments
-                                                        .len() == 1 => {
+            ast::TyPath(ref path, _) if path.segments.len() == 1 => {
                 let ident = path.segments.last().unwrap().identifier;
                 encode_impl_type_basename(rbml_w, ident);
             }
@@ -1351,6 +1350,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Encode the implementations of this trait.
         encode_extension_implementations(ecx, rbml_w, def_id);
 
+        // Encode inherent implementations for this trait.
+        encode_inherent_implementations(ecx, rbml_w, def_id);
+
         rbml_w.end_tag();
 
         // Now output the trait item info for each trait item.
@@ -1453,9 +1455,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             rbml_w.end_tag();
         }
-
-        // Encode inherent implementations for this trait.
-        encode_inherent_implementations(ecx, rbml_w, def_id);
       }
       ast::ItemMac(..) => {
         // macros are encoded separately

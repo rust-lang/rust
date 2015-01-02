@@ -76,12 +76,13 @@
 //! Create a struct called `TestStruct` and serialize and deserialize it to and from JSON using the
 //! serialization API, using the derived serialization code.
 //!
-//! ```rust
+//! ```notrust
+//! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
 //! use serialize::json;
 //!
 //! // Automatically generate `Decodable` and `Encodable` trait implementations
-//! #[deriving(Decodable, Encodable)]
+//! #[deriving(RustcDecodable, RustcEncodable)]
 //! pub struct TestStruct  {
 //!     data_int: u8,
 //!     data_str: String,
@@ -110,7 +111,8 @@
 //!
 //! ### Simple example of `ToJson` usage
 //!
-//! ```rust
+//! ```notrust
+//! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
 //! use serialize::json::{mod, ToJson, Json};
 //!
@@ -149,7 +151,8 @@
 //!
 //! ### Verbose example of `ToJson` usage
 //!
-//! ```rust
+//! ```notrust
+//! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
 //! use std::collections::BTreeMap;
 //! use serialize::json::{mod, Json, ToJson};
@@ -227,6 +230,11 @@ pub enum Json {
 pub type Array = Vec<Json>;
 pub type Object = BTreeMap<string::String, Json>;
 
+pub struct PrettyJson<'a> { inner: &'a Json }
+
+pub struct AsJson<'a, T: 'a> { inner: &'a T }
+pub struct AsPrettyJson<'a, T: 'a> { inner: &'a T, indent: Option<uint> }
+
 /// The errors that can arise while parsing a JSON stream.
 #[deriving(Clone, Copy, PartialEq)]
 pub enum ErrorCode {
@@ -303,9 +311,15 @@ pub fn decode<T: ::Decodable<Decoder, DecoderError>>(s: &str) -> DecodeResult<T>
 }
 
 /// Shortcut function to encode a `T` into a JSON `String`
-pub fn encode<'a, T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> string::String {
-    let buff = Encoder::buffer_encode(object);
-    string::String::from_utf8(buff).unwrap()
+pub fn encode<T>(object: &T) -> string::String
+                 where T: for<'a> Encodable<Encoder<'a>, fmt::Error>
+{
+    let mut s = String::new();
+    {
+        let mut encoder = Encoder::new(&mut s);
+        let _ = object.encode(&mut encoder);
+    }
+    s
 }
 
 impl fmt::Show for ErrorCode {
@@ -323,16 +337,16 @@ impl std::error::Error for DecoderError {
     fn detail(&self) -> Option<std::string::String> { Some(self.to_string()) }
 }
 
-pub type EncodeResult = io::IoResult<()>;
+pub type EncodeResult = fmt::Result;
 pub type DecodeResult<T> = Result<T, DecoderError>;
 
-pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError> {
+fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
     try!(wr.write_str("\""));
 
     let mut start = 0;
 
-    for (i, byte) in bytes.iter().enumerate() {
-        let escaped = match *byte {
+    for (i, byte) in v.bytes().enumerate() {
+        let escaped = match byte {
             b'"' => "\\\"",
             b'\\' => "\\\\",
             b'\x00' => "\\u0000",
@@ -372,7 +386,7 @@ pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError
         };
 
         if start < i {
-            try!(wr.write(bytes[start..i]));
+            try!(wr.write_str(v[start..i]));
         }
 
         try!(wr.write_str(escaped));
@@ -380,34 +394,30 @@ pub fn escape_bytes(wr: &mut io::Writer, bytes: &[u8]) -> Result<(), io::IoError
         start = i + 1;
     }
 
-    if start != bytes.len() {
-        try!(wr.write(bytes[start..]));
+    if start != v.len() {
+        try!(wr.write_str(v[start..]));
     }
 
     wr.write_str("\"")
 }
 
-fn escape_str(writer: &mut io::Writer, v: &str) -> Result<(), io::IoError> {
-    escape_bytes(writer, v.as_bytes())
-}
-
-fn escape_char(writer: &mut io::Writer, v: char) -> Result<(), io::IoError> {
+fn escape_char(writer: &mut fmt::Writer, v: char) -> fmt::Result {
     let mut buf = [0; 4];
-    let len = v.encode_utf8(&mut buf).unwrap();
-    escape_bytes(writer, buf[mut ..len])
+    let n = v.encode_utf8(&mut buf).unwrap();
+    let buf = unsafe { str::from_utf8_unchecked(buf[0..n]) };
+    escape_str(writer, buf)
 }
 
-fn spaces(wr: &mut io::Writer, mut n: uint) -> Result<(), io::IoError> {
-    const LEN: uint = 16;
-    static BUF: [u8; LEN] = [b' '; LEN];
+fn spaces(wr: &mut fmt::Writer, mut n: uint) -> fmt::Result {
+    const BUF: &'static str = "                ";
 
-    while n >= LEN {
-        try!(wr.write(&BUF));
-        n -= LEN;
+    while n >= BUF.len() {
+        try!(wr.write_str(BUF));
+        n -= BUF.len();
     }
 
     if n > 0 {
-        wr.write(BUF[..n])
+        wr.write_str(BUF[..n])
     } else {
         Ok(())
     }
@@ -423,31 +433,18 @@ fn fmt_number_or_null(v: f64) -> string::String {
 
 /// A structure for implementing serialization to JSON.
 pub struct Encoder<'a> {
-    writer: &'a mut (io::Writer+'a),
+    writer: &'a mut (fmt::Writer+'a),
 }
 
 impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
-    pub fn new(writer: &'a mut io::Writer) -> Encoder<'a> {
+    pub fn new(writer: &'a mut fmt::Writer) -> Encoder<'a> {
         Encoder { writer: writer }
-    }
-
-    /// Encode the specified struct into a json [u8]
-    pub fn buffer_encode<T: Encodable<Encoder<'a>, io::IoError>>(object: &T) -> Vec<u8>  {
-        //Serialize the object in a string using a writer
-        let mut m = Vec::new();
-        // FIXME(14302) remove the transmute and unsafe block.
-        unsafe {
-            let mut encoder = Encoder::new(&mut m as &mut io::Writer);
-            // Vec<u8> never Errs
-            let _ = object.encode(transmute(&mut encoder));
-        }
-        m
     }
 }
 
-impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
+impl<'a> ::Encoder<fmt::Error> for Encoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
@@ -646,14 +643,14 @@ impl<'a> ::Encoder<io::IoError> for Encoder<'a> {
 /// Another encoder for JSON, but prints out human-readable JSON instead of
 /// compact data
 pub struct PrettyEncoder<'a> {
-    writer: &'a mut (io::Writer+'a),
+    writer: &'a mut (fmt::Writer+'a),
     curr_indent: uint,
     indent: uint,
 }
 
 impl<'a> PrettyEncoder<'a> {
     /// Creates a new encoder whose output will be written to the specified writer
-    pub fn new(writer: &'a mut io::Writer) -> PrettyEncoder<'a> {
+    pub fn new(writer: &'a mut fmt::Writer) -> PrettyEncoder<'a> {
         PrettyEncoder { writer: writer, curr_indent: 0, indent: 2, }
     }
 
@@ -667,7 +664,7 @@ impl<'a> PrettyEncoder<'a> {
     }
 }
 
-impl<'a> ::Encoder<io::IoError> for PrettyEncoder<'a> {
+impl<'a> ::Encoder<fmt::Error> for PrettyEncoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
@@ -927,25 +924,23 @@ impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
     }
 }
 
+/// Create an `AsJson` wrapper which can be used to print a value as JSON
+/// on-the-fly via `write!`
+pub fn as_json<T>(t: &T) -> AsJson<T> {
+    AsJson { inner: t }
+}
+
+/// Create an `AsPrettyJson` wrapper which can be used to print a value as JSON
+/// on-the-fly via `write!`
+pub fn as_pretty_json<T>(t: &T) -> AsPrettyJson<T> {
+    AsPrettyJson { inner: t, indent: None }
+}
+
 impl Json {
-    /// Encodes a json value into an io::writer. Uses a single line.
-    pub fn to_writer(&self, writer: &mut io::Writer) -> EncodeResult {
-        let mut encoder = Encoder::new(writer);
-        self.encode(&mut encoder)
-    }
-
-    /// Encodes a json value into an io::writer.
-    /// Pretty-prints in a more readable format.
-    pub fn to_pretty_writer(&self, writer: &mut io::Writer) -> EncodeResult {
-        let mut encoder = PrettyEncoder::new(writer);
-        self.encode(&mut encoder)
-    }
-
-    /// Encodes a json value into a string
-    pub fn to_pretty_str(&self) -> string::String {
-        let mut s = Vec::new();
-        self.to_pretty_writer(&mut s as &mut io::Writer).unwrap();
-        string::String::from_utf8(s).unwrap()
+    /// Borrow this json object as a pretty object to generate a pretty
+    /// representation for it via `Show`.
+    pub fn pretty(&self) -> PrettyJson {
+        PrettyJson { inner: self }
     }
 
      /// If the Json value is an Object, returns the value associated with the provided key.
@@ -2424,10 +2419,65 @@ impl<A:ToJson> ToJson for Option<A> {
     }
 }
 
+struct FormatShim<'a, 'b: 'a> {
+    inner: &'a mut fmt::Formatter<'b>,
+}
+
+impl<'a, 'b> fmt::Writer for FormatShim<'a, 'b> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.inner.write_str(s)
+    }
+}
+
 impl fmt::Show for Json {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.to_writer(f).map_err(|_| fmt::Error)
+        let mut shim = FormatShim { inner: f };
+        let mut encoder = Encoder::new(&mut shim);
+        self.encode(&mut encoder)
+    }
+}
+
+impl<'a> fmt::Show for PrettyJson<'a> {
+    /// Encodes a json value into a string
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut shim = FormatShim { inner: f };
+        let mut encoder = PrettyEncoder::new(&mut shim);
+        self.inner.encode(&mut encoder)
+    }
+}
+
+impl<'a, T> fmt::Show for AsJson<'a, T>
+    where T: for<'b> Encodable<Encoder<'b>, fmt::Error>
+{
+    /// Encodes a json value into a string
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut shim = FormatShim { inner: f };
+        let mut encoder = Encoder::new(&mut shim);
+        self.inner.encode(&mut encoder)
+    }
+}
+
+impl<'a, T> AsPrettyJson<'a, T> {
+    /// Set the indentation level for the emitted JSON
+    pub fn indent(mut self, indent: uint) -> AsPrettyJson<'a, T> {
+        self.indent = Some(indent);
+        self
+    }
+}
+
+impl<'a, T> fmt::Show for AsPrettyJson<'a, T>
+    where T: for<'b> Encodable<PrettyEncoder<'b>, fmt::Error>
+{
+    /// Encodes a json value into a string
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut shim = FormatShim { inner: f };
+        let mut encoder = PrettyEncoder::new(&mut shim);
+        match self.indent {
+            Some(n) => encoder.set_indent(n),
+            None => {}
+        }
+        self.inner.encode(&mut encoder)
     }
 }
 
@@ -2450,9 +2500,9 @@ mod tests {
     use super::DecoderError::*;
     use super::JsonEvent::*;
     use super::StackElement::*;
-    use super::{PrettyEncoder, Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
-                StackElement, Stack, Encoder, Decoder};
-    use std::{i64, u64, f32, f64, io};
+    use super::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
+                StackElement, Stack, Decoder};
+    use std::{i64, u64, f32, f64};
     use std::collections::BTreeMap;
     use std::num::Float;
     use std::string;
@@ -2523,74 +2573,74 @@ mod tests {
     #[test]
     fn test_write_null() {
         assert_eq!(Null.to_string(), "null");
-        assert_eq!(Null.to_pretty_str(), "null");
+        assert_eq!(Null.pretty().to_string(), "null");
     }
 
     #[test]
     fn test_write_i64() {
         assert_eq!(U64(0).to_string(), "0");
-        assert_eq!(U64(0).to_pretty_str(), "0");
+        assert_eq!(U64(0).pretty().to_string(), "0");
 
         assert_eq!(U64(1234).to_string(), "1234");
-        assert_eq!(U64(1234).to_pretty_str(), "1234");
+        assert_eq!(U64(1234).pretty().to_string(), "1234");
 
         assert_eq!(I64(-5678).to_string(), "-5678");
-        assert_eq!(I64(-5678).to_pretty_str(), "-5678");
+        assert_eq!(I64(-5678).pretty().to_string(), "-5678");
 
         assert_eq!(U64(7650007200025252000).to_string(), "7650007200025252000");
-        assert_eq!(U64(7650007200025252000).to_pretty_str(), "7650007200025252000");
+        assert_eq!(U64(7650007200025252000).pretty().to_string(), "7650007200025252000");
     }
 
     #[test]
     fn test_write_f64() {
         assert_eq!(F64(3.0).to_string(), "3.0");
-        assert_eq!(F64(3.0).to_pretty_str(), "3.0");
+        assert_eq!(F64(3.0).pretty().to_string(), "3.0");
 
         assert_eq!(F64(3.1).to_string(), "3.1");
-        assert_eq!(F64(3.1).to_pretty_str(), "3.1");
+        assert_eq!(F64(3.1).pretty().to_string(), "3.1");
 
         assert_eq!(F64(-1.5).to_string(), "-1.5");
-        assert_eq!(F64(-1.5).to_pretty_str(), "-1.5");
+        assert_eq!(F64(-1.5).pretty().to_string(), "-1.5");
 
         assert_eq!(F64(0.5).to_string(), "0.5");
-        assert_eq!(F64(0.5).to_pretty_str(), "0.5");
+        assert_eq!(F64(0.5).pretty().to_string(), "0.5");
 
         assert_eq!(F64(f64::NAN).to_string(), "null");
-        assert_eq!(F64(f64::NAN).to_pretty_str(), "null");
+        assert_eq!(F64(f64::NAN).pretty().to_string(), "null");
 
         assert_eq!(F64(f64::INFINITY).to_string(), "null");
-        assert_eq!(F64(f64::INFINITY).to_pretty_str(), "null");
+        assert_eq!(F64(f64::INFINITY).pretty().to_string(), "null");
 
         assert_eq!(F64(f64::NEG_INFINITY).to_string(), "null");
-        assert_eq!(F64(f64::NEG_INFINITY).to_pretty_str(), "null");
+        assert_eq!(F64(f64::NEG_INFINITY).pretty().to_string(), "null");
     }
 
     #[test]
     fn test_write_str() {
         assert_eq!(String("".to_string()).to_string(), "\"\"");
-        assert_eq!(String("".to_string()).to_pretty_str(), "\"\"");
+        assert_eq!(String("".to_string()).pretty().to_string(), "\"\"");
 
         assert_eq!(String("homura".to_string()).to_string(), "\"homura\"");
-        assert_eq!(String("madoka".to_string()).to_pretty_str(), "\"madoka\"");
+        assert_eq!(String("madoka".to_string()).pretty().to_string(), "\"madoka\"");
     }
 
     #[test]
     fn test_write_bool() {
         assert_eq!(Boolean(true).to_string(), "true");
-        assert_eq!(Boolean(true).to_pretty_str(), "true");
+        assert_eq!(Boolean(true).pretty().to_string(), "true");
 
         assert_eq!(Boolean(false).to_string(), "false");
-        assert_eq!(Boolean(false).to_pretty_str(), "false");
+        assert_eq!(Boolean(false).pretty().to_string(), "false");
     }
 
     #[test]
     fn test_write_array() {
         assert_eq!(Array(vec![]).to_string(), "[]");
-        assert_eq!(Array(vec![]).to_pretty_str(), "[]");
+        assert_eq!(Array(vec![]).pretty().to_string(), "[]");
 
         assert_eq!(Array(vec![Boolean(true)]).to_string(), "[true]");
         assert_eq!(
-            Array(vec![Boolean(true)]).to_pretty_str(),
+            Array(vec![Boolean(true)]).pretty().to_string(),
             "\
             [\n  \
                 true\n\
@@ -2605,7 +2655,7 @@ mod tests {
         assert_eq!(long_test_array.to_string(),
             "[false,null,[\"foo\\nbar\",3.5]]");
         assert_eq!(
-            long_test_array.to_pretty_str(),
+            long_test_array.pretty().to_string(),
             "\
             [\n  \
                 false,\n  \
@@ -2621,7 +2671,7 @@ mod tests {
     #[test]
     fn test_write_object() {
         assert_eq!(mk_object(&[]).to_string(), "{}");
-        assert_eq!(mk_object(&[]).to_pretty_str(), "{}");
+        assert_eq!(mk_object(&[]).pretty().to_string(), "{}");
 
         assert_eq!(
             mk_object(&[
@@ -2630,7 +2680,7 @@ mod tests {
             "{\"a\":true}"
         );
         assert_eq!(
-            mk_object(&[("a".to_string(), Boolean(true))]).to_pretty_str(),
+            mk_object(&[("a".to_string(), Boolean(true))]).pretty().to_string(),
             "\
             {\n  \
                 \"a\": true\n\
@@ -2654,7 +2704,7 @@ mod tests {
             }"
         );
         assert_eq!(
-            complex_obj.to_pretty_str(),
+            complex_obj.pretty().to_string(),
             "\
             {\n  \
                 \"b\": [\n    \
@@ -2678,48 +2728,29 @@ mod tests {
 
         // We can't compare the strings directly because the object fields be
         // printed in a different order.
-        assert_eq!(a.clone(), from_str(a.to_string().as_slice()).unwrap());
-        assert_eq!(a.clone(),
-                   from_str(a.to_pretty_str().as_slice()).unwrap());
-    }
-
-    fn with_str_writer<F>(f: F) -> string::String where F: FnOnce(&mut io::Writer){
-        let mut m = Vec::new();
-        f(&mut m as &mut io::Writer);
-        string::String::from_utf8(m).unwrap()
+        assert_eq!(a.clone(), a.to_string().parse().unwrap());
+        assert_eq!(a.clone(), a.pretty().to_string().parse().unwrap());
     }
 
     #[test]
     fn test_write_enum() {
         let animal = Dog;
         assert_eq!(
-            with_str_writer(|writer| {
-                let mut encoder = Encoder::new(writer);
-                animal.encode(&mut encoder).unwrap();
-            }),
+            format!("{}", super::as_json(&animal)),
             "\"Dog\""
         );
         assert_eq!(
-            with_str_writer(|writer| {
-                let mut encoder = PrettyEncoder::new(writer);
-                animal.encode(&mut encoder).unwrap();
-            }),
+            format!("{}", super::as_pretty_json(&animal)),
             "\"Dog\""
         );
 
         let animal = Frog("Henry".to_string(), 349);
         assert_eq!(
-            with_str_writer(|writer| {
-                let mut encoder = Encoder::new(writer);
-                animal.encode(&mut encoder).unwrap();
-            }),
+            format!("{}", super::as_json(&animal)),
             "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}"
         );
         assert_eq!(
-            with_str_writer(|writer| {
-                let mut encoder = PrettyEncoder::new(writer);
-                animal.encode(&mut encoder).unwrap();
-            }),
+            format!("{}", super::as_pretty_json(&animal)),
             "{\n  \
                \"variant\": \"Frog\",\n  \
                \"fields\": [\n    \
@@ -2732,16 +2763,10 @@ mod tests {
 
     macro_rules! check_encoder_for_simple {
         ($value:expr, $expected:expr) => ({
-            let s = with_str_writer(|writer| {
-                let mut encoder = Encoder::new(writer);
-                $value.encode(&mut encoder).unwrap();
-            });
+            let s = format!("{}", super::as_json(&$value));
             assert_eq!(s, $expected);
 
-            let s = with_str_writer(|writer| {
-                let mut encoder = PrettyEncoder::new(writer);
-                $value.encode(&mut encoder).unwrap();
-            });
+            let s = format!("{}", super::as_pretty_json(&$value));
             assert_eq!(s, $expected);
         })
     }
@@ -3320,10 +3345,7 @@ mod tests {
         let mut hm: HashMap<uint, bool> = HashMap::new();
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
-        {
-            let mut encoder = Encoder::new(&mut mem_buf as &mut io::Writer);
-            hm.encode(&mut encoder).unwrap();
-        }
+        write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
         let json_str = from_utf8(mem_buf[]).unwrap();
         match from_str(json_str) {
             Err(_) => panic!("Unable to parse json_str: {}", json_str),
@@ -3339,10 +3361,7 @@ mod tests {
         let mut hm: HashMap<uint, bool> = HashMap::new();
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
-        {
-            let mut encoder = PrettyEncoder::new(&mut mem_buf as &mut io::Writer);
-            hm.encode(&mut encoder).unwrap()
-        }
+        write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
         let json_str = from_utf8(mem_buf[]).unwrap();
         match from_str(json_str) {
             Err(_) => panic!("Unable to parse json_str: {}", json_str),
@@ -3373,18 +3392,15 @@ mod tests {
 
         // Helper function for counting indents
         fn indents(source: &str) -> uint {
-            let trimmed = source.trim_left_chars(' ');
+            let trimmed = source.trim_left_matches(' ');
             source.len() - trimmed.len()
         }
 
         // Test up to 4 spaces of indents (more?)
         for i in range(0, 4u) {
             let mut writer = Vec::new();
-            {
-                let ref mut encoder = PrettyEncoder::new(&mut writer);
-                encoder.set_indent(i);
-                json.encode(encoder).unwrap();
-            }
+            write!(&mut writer, "{}",
+                   super::as_pretty_json(&json).indent(i)).unwrap();
 
             let printed = from_utf8(writer[]).unwrap();
 

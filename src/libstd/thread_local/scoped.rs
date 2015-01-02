@@ -39,12 +39,17 @@
 //! ```
 
 #![macro_escape]
+#![unstable = "scoped TLS has yet to have wide enough use to fully consider \
+               stabilizing its interface"]
 
-use prelude::*;
+use prelude::v1::*;
 
 // macro hygiene sure would be nice, wouldn't it?
-#[doc(hidden)] pub use self::imp::KeyInner;
-#[doc(hidden)] pub use sys_common::thread_local::INIT as OS_INIT;
+#[doc(hidden)]
+pub mod __impl {
+    pub use super::imp::KeyInner;
+    pub use sys_common::thread_local::INIT as OS_INIT;
+}
 
 /// Type representing a thread local storage key corresponding to a reference
 /// to the type parameter `T`.
@@ -53,7 +58,7 @@ use prelude::*;
 /// type `T` scoped to a particular lifetime. Keys provides two methods, `set`
 /// and `with`, both of which currently use closures to control the scope of
 /// their contents.
-pub struct Key<T> { #[doc(hidden)] pub inner: KeyInner<T> }
+pub struct Key<T> { #[doc(hidden)] pub inner: __impl::KeyInner<T> }
 
 /// Declare a new scoped thread local storage key.
 ///
@@ -88,21 +93,21 @@ macro_rules! __scoped_thread_local_inner {
         use std::thread_local::scoped::Key as __Key;
 
         #[cfg(not(any(windows, target_os = "android", target_os = "ios")))]
-        const INIT: __Key<$t> = __Key {
-            inner: ::std::thread_local::scoped::KeyInner {
+        const _INIT: __Key<$t> = __Key {
+            inner: ::std::thread_local::scoped::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: 0 as *mut _ },
             }
         };
 
         #[cfg(any(windows, target_os = "android", target_os = "ios"))]
-        const INIT: __Key<$t> = __Key {
-            inner: ::std::thread_local::scoped::KeyInner {
-                inner: ::std::thread_local::scoped::OS_INIT,
+        const _INIT: __Key<$t> = __Key {
+            inner: ::std::thread_local::scoped::__impl::KeyInner {
+                inner: ::std::thread_local::scoped::__impl::OS_INIT,
                 marker: ::std::kinds::marker::InvariantType,
             }
         };
 
-        INIT
+        _INIT
     })
 }
 
@@ -139,7 +144,7 @@ impl<T> Key<T> {
         F: FnOnce() -> R,
     {
         struct Reset<'a, T: 'a> {
-            key: &'a KeyInner<T>,
+            key: &'a __impl::KeyInner<T>,
             val: *mut T,
         }
         #[unsafe_destructor]
@@ -238,7 +243,7 @@ mod imp {
 #[cfg(test)]
 mod tests {
     use cell::Cell;
-    use prelude::*;
+    use prelude::v1::*;
 
     scoped_thread_local!(static FOO: uint);
 

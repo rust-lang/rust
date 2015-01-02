@@ -18,6 +18,7 @@
 
 #![feature(globs, phase, slicing_syntax)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(associated_types)]
 
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;
@@ -3402,7 +3403,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_local(&mut self, local: &Local) {
         // Resolve the type.
-        self.resolve_type(&*local.ty);
+        if let Some(ref ty) = local.ty {
+            self.resolve_type(&**ty);
+        }
 
         // Resolve the initializer, if necessary.
         match local.init {

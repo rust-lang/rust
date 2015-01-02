@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![allow(dead_assignment)]
 
+use std::sync::mpsc::{channel, Sender};
 use std::task;
 
 pub fn main() { test00(); }
@@ -18,7 +18,7 @@ pub fn main() { test00(); }
 fn test00_start(c: &Sender<int>, start: int,
                 number_of_messages: int) {
     let mut i: int = 0;
-    while i < number_of_messages { c.send(start + i); i += 1; }
+    while i < number_of_messages { c.send(start + i).unwrap(); i += 1; }
 }
 
 fn test00() {
@@ -46,13 +46,13 @@ fn test00() {
 
     let mut i: int = 0;
     while i < number_of_messages {
-        r = rx.recv();
+        r = rx.recv().unwrap();
         sum += r;
-        r = rx.recv();
+        r = rx.recv().unwrap();
         sum += r;
-        r = rx.recv();
+        r = rx.recv().unwrap();
         sum += r;
-        r = rx.recv();
+        r = rx.recv().unwrap();
         sum += r;
         i += 1;
     }

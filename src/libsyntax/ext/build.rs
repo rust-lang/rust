@@ -482,8 +482,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             self.pat_ident(sp, ident)
         };
         let local = P(ast::Local {
-            ty: self.ty_infer(sp),
             pat: pat,
+            ty: None,
             init: Some(ex),
             id: ast::DUMMY_NODE_ID,
             span: sp,
@@ -506,8 +506,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             self.pat_ident(sp, ident)
         };
         let local = P(ast::Local {
-            ty: typ,
             pat: pat,
+            ty: Some(typ),
             init: Some(ex),
             id: ast::DUMMY_NODE_ID,
             span: sp,

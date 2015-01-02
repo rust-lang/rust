@@ -394,6 +394,7 @@ macro_rules! cgoptions {
 
     mod cgsetters {
         use super::{CodegenOptions, Passes, SomePasses, AllPasses};
+        use std::str::from_str;
 
         $(
             pub fn $opt(cg: &mut CodegenOptions, v: Option<&str>) -> bool {
@@ -743,7 +744,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::multi("l", "",   "Link the generated crate(s) to the specified native
                              library NAME. The optional KIND can be one of,
                              static, dylib, or framework. If omitted, dylib is
-                             assumed.", "NAME[:KIND]"),
+                             assumed.", "[KIND=]NAME"),
         opt::multi("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
                    "[bin|lib|rlib|dylib|staticlib]"),
@@ -1016,6 +1017,24 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 
     let libs = matches.opt_strs("l").into_iter().map(|s| {
+        let mut parts = s.splitn(1, '=');
+        let kind = parts.next().unwrap();
+        if let Some(name) = parts.next() {
+            let kind = match kind {
+                "dylib" => cstore::NativeUnknown,
+                "framework" => cstore::NativeFramework,
+                "static" => cstore::NativeStatic,
+                s => {
+                    early_error(format!("unknown library kind `{}`, expected \
+                                         one of dylib, framework, or static",
+                                        s)[]);
+                }
+            };
+            return (name.to_string(), kind)
+        }
+
+        // FIXME(acrichto) remove this once crates have stopped using it, this
+        //                 is deprecated behavior now.
         let mut parts = s.rsplitn(1, ':');
         let kind = parts.next().unwrap();
         let (name, kind) = match (parts.next(), kind) {

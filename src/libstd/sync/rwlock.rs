@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
+use prelude::v1::*;
 
 use cell::UnsafeCell;
 use kinds::marker;
+use ops::{Deref, DerefMut};
 use sync::poison::{mod, LockResult, TryLockError, TryLockResult};
 use sys_common::rwlock as sys;
 
@@ -326,13 +327,17 @@ impl<'rwlock, T> RWLockWriteGuard<'rwlock, T> {
     }
 }
 
-impl<'rwlock, T> Deref<T> for RWLockReadGuard<'rwlock, T> {
+impl<'rwlock, T> Deref for RWLockReadGuard<'rwlock, T> {
+    type Target = T;
+
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-impl<'rwlock, T> Deref<T> for RWLockWriteGuard<'rwlock, T> {
+impl<'rwlock, T> Deref for RWLockWriteGuard<'rwlock, T> {
+    type Target = T;
+
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-impl<'rwlock, T> DerefMut<T> for RWLockWriteGuard<'rwlock, T> {
+impl<'rwlock, T> DerefMut for RWLockWriteGuard<'rwlock, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.__data.get() }
     }
@@ -355,9 +360,10 @@ impl<'a, T> Drop for RWLockWriteGuard<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
     use rand::{mod, Rng};
+    use sync::mpsc::channel;
     use thread::Thread;
     use sync::{Arc, RWLock, StaticRWLock, RWLOCK_INIT};
 
@@ -389,7 +395,7 @@ mod tests {
         let (tx, rx) = channel::<()>();
         for _ in range(0, N) {
             let tx = tx.clone();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 let mut rng = rand::thread_rng();
                 for _ in range(0, M) {
                     if rng.gen_weighted_bool(N) {
@@ -399,10 +405,10 @@ mod tests {
                     }
                 }
                 drop(tx);
-            });
+            }).detach();
         }
         drop(tx);
-        let _ = rx.recv_opt();
+        let _ = rx.recv();
         unsafe { R.destroy(); }
     }
 
@@ -465,7 +471,7 @@ mod tests {
                 Thread::yield_now();
                 *lock = tmp + 1;
             }
-            tx.send(());
+            tx.send(()).unwrap();
         }).detach();
 
         // Readers try to catch the writer in the act
@@ -484,7 +490,7 @@ mod tests {
         }
 
         // Wait for writer to finish
-        rx.recv();
+        rx.recv().unwrap();
         let lock = arc.read().unwrap();
         assert_eq!(*lock, 10);
     }

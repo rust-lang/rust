@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::uint;
+use std::str::from_str;
 
 pub fn main() {
     // sometimes we have had trouble finding

@@ -843,6 +843,7 @@ pub fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let bounds = compute_bounds(ccx,
                                 self_param_ty.to_ty(ccx.tcx),
                                 bounds.as_slice(),
+                                SizedByDefault::No,
                                 it.span);
 
     let associated_type_names: Vec<_> =
@@ -1098,6 +1099,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let bounds = compute_bounds(ccx,
                                             assoc_ty,
                                             assoc_type_def.bounds.as_slice(),
+                                            SizedByDefault::Yes,
                                             assoc_type_def.span);
 
                 ty::predicates(ccx.tcx, assoc_ty, &bounds).into_iter()
@@ -1306,6 +1308,7 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
     let bounds = compute_bounds(this,
                                 param_ty.to_ty(this.tcx()),
                                 param.bounds[],
+                                SizedByDefault::Yes,
                                 param.span);
     let default = match param.default {
         None => None,
@@ -1342,29 +1345,35 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
     def
 }
 
+enum SizedByDefault { Yes, No }
+
 /// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
 fn compute_bounds<'tcx,AC>(this: &AC,
                            param_ty: ty::Ty<'tcx>,
                            ast_bounds: &[ast::TyParamBound],
+                           sized_by_default: SizedByDefault,
                            span: Span)
                            -> ty::ParamBounds<'tcx>
-                           where AC: AstConv<'tcx> {
+                           where AC: AstConv<'tcx>
+{
     let mut param_bounds = conv_param_bounds(this,
                                              span,
                                              param_ty,
                                              ast_bounds);
 
-    add_unsized_bound(this,
-                      &mut param_bounds.builtin_bounds,
-                      ast_bounds,
-                      span);
+    if let SizedByDefault::Yes = sized_by_default {
+        add_unsized_bound(this,
+                          &mut param_bounds.builtin_bounds,
+                          ast_bounds,
+                          span);
 
-    check_bounds_compatible(this.tcx(),
-                            param_ty,
-                            &param_bounds,
-                            span);
+        check_bounds_compatible(this.tcx(),
+                                param_ty,
+                                &param_bounds,
+                                span);
+    }
 
     param_bounds.trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
 

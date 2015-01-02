@@ -16,25 +16,25 @@
 pub use self::StdioContainer::*;
 pub use self::ProcessExit::*;
 
-use prelude::*;
+use prelude::v1::*;
 
+use c_str::{CString, ToCStr};
+use collections::HashMap;
 use fmt;
-use os;
+use hash::Hash;
+use io::pipe::{PipeStream, PipePair};
 use io::{IoResult, IoError};
 use io;
 use libc;
-use c_str::CString;
-use collections::HashMap;
-use hash::Hash;
-#[cfg(windows)]
-use std::hash::sip::SipState;
-use io::pipe::{PipeStream, PipePair};
+use os;
 use path::BytesContainer;
-use thread::Thread;
-
-use sys;
+use sync::mpsc::{channel, Receiver};
 use sys::fs::FileDesc;
 use sys::process::Process as ProcessImp;
+use sys;
+use thread::Thread;
+
+#[cfg(windows)] use std::hash::sip::SipState;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
@@ -693,10 +693,10 @@ impl Process {
                 Some(stream) => {
                     Thread::spawn(move |:| {
                         let mut stream = stream;
-                        tx.send(stream.read_to_end())
+                        tx.send(stream.read_to_end()).unwrap();
                     }).detach();
                 }
-                None => tx.send(Ok(Vec::new()))
+                None => tx.send(Ok(Vec::new())).unwrap()
             }
             rx
         }
@@ -707,8 +707,8 @@ impl Process {
 
         Ok(ProcessOutput {
             status: status,
-            output: stdout.recv().ok().unwrap_or(Vec::new()),
-            error:  stderr.recv().ok().unwrap_or(Vec::new()),
+            output: stdout.recv().unwrap().unwrap_or(Vec::new()),
+            error:  stderr.recv().unwrap().unwrap_or(Vec::new()),
         })
     }
 
@@ -741,18 +741,19 @@ impl Drop for Process {
 
 #[cfg(test)]
 mod tests {
-    #![allow(unused_imports)]
+    use prelude::v1::*;
 
-    use super::*;
-    use io::timer::*;
-    use io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
-    use prelude::{Ok, Err, spawn, range, drop, Box, Some, None, Option, Vec, Buffer};
-    use prelude::{from_str, Path, String, channel, Reader, Writer, Clone, Slice};
-    use prelude::{SliceExt, Str, StrExt, AsSlice, ToString, GenericPath};
     use io::fs::PathExtensions;
-    use time::Duration;
-    use str;
+    use io::process;
+    use io::timer::*;
+    use io::{Truncate, Write, TimedOut, timer, FileNotFound};
     use rt::running_on_valgrind;
+    use str;
+    use super::{CreatePipe};
+    use super::{InheritFd, Process, PleaseExitSignal, Command, ProcessOutput};
+    use sync::mpsc::channel;
+    use thread::Thread;
+    use time::Duration;
 
     // FIXME(#10380) these tests should not all be ignored on android.
 
@@ -1156,22 +1157,22 @@ mod tests {
     fn wait_timeout2() {
         let (tx, rx) = channel();
         let tx2 = tx.clone();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
             p.signal_kill().unwrap();
-            tx.send(());
+            tx.send(()).unwrap();
         });
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
             p.signal_kill().unwrap();
-            tx2.send(());
+            tx2.send(()).unwrap();
         });
-        rx.recv();
-        rx.recv();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
     }
 
     #[test]

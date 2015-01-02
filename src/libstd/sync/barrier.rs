@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use kinds::{Send, Sync};
 use sync::{Mutex, Condvar};
 
 /// A barrier enables multiple tasks to synchronize the beginning
@@ -30,14 +29,12 @@ use sync::{Mutex, Condvar};
 ///     }).detach();
 /// }
 /// ```
+#[stable]
 pub struct Barrier {
     lock: Mutex<BarrierState>,
     cvar: Condvar,
     num_threads: uint,
 }
-
-unsafe impl Send for Barrier {}
-unsafe impl Sync for Barrier {}
 
 // The inner state of a double barrier
 struct BarrierState {
@@ -45,14 +42,19 @@ struct BarrierState {
     generation_id: uint,
 }
 
-unsafe impl Send for BarrierState {}
-unsafe impl Sync for BarrierState {}
+/// A result returned from wait.
+///
+/// Currently this opaque structure only has one method, `.is_leader()`. Only
+/// one thread will receive a result that will return `true` from this function.
+#[allow(missing_copy_implementations)]
+pub struct BarrierWaitResult(bool);
 
 impl Barrier {
     /// Create a new barrier that can block a given number of threads.
     ///
     /// A barrier will block `n`-1 threads which call `wait` and then wake up
     /// all threads at once when the `n`th thread calls `wait`.
+    #[stable]
     pub fn new(n: uint) -> Barrier {
         Barrier {
             lock: Mutex::new(BarrierState {
@@ -68,7 +70,13 @@ impl Barrier {
     ///
     /// Barriers are re-usable after all threads have rendezvoused once, and can
     /// be used continuously.
-    pub fn wait(&self) {
+    ///
+    /// A single (arbitrary) thread will receive a `BarrierWaitResult` that
+    /// returns `true` from `is_leader` when returning from this function, and
+    /// all other threads will receive a result that will return `false` from
+    /// `is_leader`
+    #[stable]
+    pub fn wait(&self) -> BarrierWaitResult {
         let mut lock = self.lock.lock().unwrap();
         let local_gen = lock.generation_id;
         lock.count += 1;
@@ -79,46 +87,64 @@ impl Barrier {
                   lock.count < self.num_threads {
                 lock = self.cvar.wait(lock).unwrap();
             }
+            BarrierWaitResult(false)
         } else {
             lock.count = 0;
             lock.generation_id += 1;
             self.cvar.notify_all();
+            BarrierWaitResult(true)
         }
     }
 }
 
+impl BarrierWaitResult {
+    /// Return whether this thread from `wait` is the "leader thread".
+    ///
+    /// Only one thread will have `true` returned from their result, all other
+    /// threads will have `false` returned.
+    #[stable]
+    pub fn is_leader(&self) -> bool { self.0 }
+}
+
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
     use sync::{Arc, Barrier};
-    use comm::Empty;
+    use sync::mpsc::{channel, TryRecvError};
+    use thread::Thread;
 
     #[test]
     fn test_barrier() {
-        let barrier = Arc::new(Barrier::new(10));
+        const N: uint = 10;
+
+        let barrier = Arc::new(Barrier::new(N));
         let (tx, rx) = channel();
 
-        for _ in range(0u, 9) {
+        for _ in range(0u, N - 1) {
             let c = barrier.clone();
             let tx = tx.clone();
-            spawn(move|| {
-                c.wait();
-                tx.send(true);
-            });
+            Thread::spawn(move|| {
+                tx.send(c.wait().is_leader()).unwrap();
+            }).detach();
         }
 
         // At this point, all spawned tasks should be blocked,
         // so we shouldn't get anything from the port
         assert!(match rx.try_recv() {
-            Err(Empty) => true,
+            Err(TryRecvError::Empty) => true,
             _ => false,
         });
 
-        barrier.wait();
+        let mut leader_found = barrier.wait().is_leader();
+
         // Now, the barrier is cleared and we should get data.
-        for _ in range(0u, 9) {
-            rx.recv();
+        for _ in range(0u, N - 1) {
+            if rx.recv().unwrap() {
+                assert!(!leader_found);
+                leader_found = true;
+            }
         }
+        assert!(leader_found);
     }
 }

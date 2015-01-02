@@ -50,20 +50,20 @@ use alloc::boxed::Box;
 use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
 use core::borrow::{Cow, IntoCow};
 use core::cmp::max;
+use core::cmp::{Equiv, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{mod, Hash};
-use core::iter::repeat;
+use core::iter::{repeat, FromIterator};
 use core::kinds::marker::{ContravariantLifetime, InvariantType};
 use core::mem;
 use core::nonzero::NonZero;
 use core::num::{Int, UnsignedInt};
+use core::ops::{Index, IndexMut, Deref, Add};
 use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
-
-use slice::CloneSliceExt;
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
@@ -1218,7 +1218,7 @@ unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
 
 #[unstable]
 impl<T:Clone> Clone for Vec<T> {
-    fn clone(&self) -> Vec<T> { self.as_slice().to_vec() }
+    fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(self.as_slice()) }
 
     fn clone_from(&mut self, other: &Vec<T>) {
         // drop anything in self that will not be overwritten
@@ -1303,12 +1303,14 @@ impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
 }
 
 #[experimental = "waiting on Deref stability"]
-impl<T> ops::Deref<[T]> for Vec<T> {
+impl<T> ops::Deref for Vec<T> {
+    type Target = [T];
+
     fn deref<'a>(&'a self) -> &'a [T] { self.as_slice() }
 }
 
 #[experimental = "waiting on DerefMut stability"]
-impl<T> ops::DerefMut<[T]> for Vec<T> {
+impl<T> ops::DerefMut for Vec<T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut [T] { self.as_mut_slice() }
 }
 
@@ -1488,9 +1490,9 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
     }
 }
 
-impl<'a> fmt::FormatWriter for Vec<u8> {
-    fn write(&mut self, buf: &[u8]) -> fmt::Result {
-        self.push_all(buf);
+impl<'a> fmt::Writer for Vec<u8> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.push_all(s.as_bytes());
         Ok(())
     }
 }
@@ -1718,7 +1720,9 @@ pub struct DerefVec<'a, T> {
 }
 
 #[experimental]
-impl<'a, T> Deref<Vec<T>> for DerefVec<'a, T> {
+impl<'a, T> Deref for DerefVec<'a, T> {
+    type Target = Vec<T>;
+
     fn deref<'b>(&'b self) -> &'b Vec<T> {
         &self.x
     }
@@ -2263,7 +2267,7 @@ mod tests {
             }
         }
         const NUM_ELEMENTS: uint = 2;
-        static DROP_COUNTER: AtomicUint = atomic::INIT_ATOMIC_UINT;
+        static DROP_COUNTER: AtomicUint = atomic::ATOMIC_UINT_INIT;
 
         let v = Vec::from_elem(NUM_ELEMENTS, Nothing);
 

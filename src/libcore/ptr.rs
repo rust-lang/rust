@@ -92,7 +92,7 @@ use mem;
 use clone::Clone;
 use intrinsics;
 use option::Option::{mod, Some, None};
-use kinds::{Send, Sync};
+use kinds::{Send, Sized, Sync};
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd, Equiv};
 use cmp::Ordering::{mod, Less, Equal, Greater};
@@ -243,7 +243,9 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 
 /// Methods on raw pointers
 #[stable]
-pub trait PtrExt<T> {
+pub trait PtrExt: Sized {
+    type Target;
+
     /// Returns the null pointer.
     #[deprecated = "call ptr::null instead"]
     fn null() -> Self;
@@ -271,7 +273,7 @@ pub trait PtrExt<T> {
     /// memory.
     #[unstable = "Option is not clearly the right return type, and we may want \
                   to tie the return lifetime to a borrow of the raw pointer"]
-    unsafe fn as_ref<'a>(&self) -> Option<&'a T>;
+    unsafe fn as_ref<'a>(&self) -> Option<&'a Self::Target>;
 
     /// Calculates the offset from a pointer. `count` is in units of T; e.g. a
     /// `count` of 3 represents a pointer offset of `3 * sizeof::<T>()` bytes.
@@ -287,7 +289,9 @@ pub trait PtrExt<T> {
 
 /// Methods on mutable raw pointers
 #[stable]
-pub trait MutPtrExt<T>{
+pub trait MutPtrExt {
+    type Target;
+
     /// Returns `None` if the pointer is null, or else returns a mutable
     /// reference to the value wrapped in `Some`.
     ///
@@ -297,11 +301,13 @@ pub trait MutPtrExt<T>{
     /// of the returned pointer.
     #[unstable = "Option is not clearly the right return type, and we may want \
                   to tie the return lifetime to a borrow of the raw pointer"]
-    unsafe fn as_mut<'a>(&self) -> Option<&'a mut T>;
+    unsafe fn as_mut<'a>(&self) -> Option<&'a mut Self::Target>;
 }
 
 #[stable]
-impl<T> PtrExt<T> for *const T {
+impl<T> PtrExt for *const T {
+    type Target = T;
+
     #[inline]
     #[deprecated = "call ptr::null instead"]
     fn null() -> *const T { null() }
@@ -333,7 +339,9 @@ impl<T> PtrExt<T> for *const T {
 }
 
 #[stable]
-impl<T> PtrExt<T> for *mut T {
+impl<T> PtrExt for *mut T {
+    type Target = T;
+
     #[inline]
     #[deprecated = "call ptr::null instead"]
     fn null() -> *mut T { null_mut() }
@@ -365,7 +373,9 @@ impl<T> PtrExt<T> for *mut T {
 }
 
 #[stable]
-impl<T> MutPtrExt<T> for *mut T {
+impl<T> MutPtrExt for *mut T {
+    type Target = T;
+
     #[inline]
     #[unstable = "return value does not necessarily convey all possible \
                   information"]

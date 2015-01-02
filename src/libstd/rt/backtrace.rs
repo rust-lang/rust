@@ -12,7 +12,7 @@
 
 #![allow(non_camel_case_types)]
 
-use prelude::*;
+use prelude::v1::*;
 
 use os;
 use sync::atomic;
@@ -22,7 +22,7 @@ pub use sys::backtrace::write;
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
 pub fn log_enabled() -> bool {
-    static ENABLED: atomic::AtomicInt = atomic::INIT_ATOMIC_INT;
+    static ENABLED: atomic::AtomicInt = atomic::ATOMIC_INT_INIT;
     match ENABLED.load(atomic::SeqCst) {
         1 => return false,
         2 => return true,
@@ -39,7 +39,7 @@ pub fn log_enabled() -> bool {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use sys_common;
     macro_rules! t { ($a:expr, $b:expr) => ({
         let mut m = Vec::new();

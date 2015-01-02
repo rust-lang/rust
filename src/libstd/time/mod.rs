@@ -45,7 +45,7 @@ fn precise_time_ns() -> u64 {
                                                                                    denom: 0 };
         static ONCE: sync::Once = sync::ONCE_INIT;
         unsafe {
-            ONCE.doit(|| {
+            ONCE.call_once(|| {
                 imp::mach_timebase_info(&mut TIMEBASE);
             });
             let time = imp::mach_absolute_time();

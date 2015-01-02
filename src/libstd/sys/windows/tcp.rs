@@ -13,7 +13,7 @@ use io::IoResult;
 use libc;
 use mem;
 use ptr;
-use prelude::*;
+use prelude::v1::*;
 use super::{last_error, last_net_error, retry, sock_t};
 use sync::{Arc, atomic};
 use sys::fs::FileDesc;

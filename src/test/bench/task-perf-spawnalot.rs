@@ -11,6 +11,7 @@
 use std::os;
 use std::task;
 use std::uint;
+use std::str::from_str;
 
 fn f(n: uint) {
     let mut i = 0u;

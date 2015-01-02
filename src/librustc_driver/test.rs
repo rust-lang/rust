@@ -34,8 +34,6 @@ use syntax::codemap::{Span, CodeMap, DUMMY_SP};
 use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note, Help};
 use syntax::parse::token;
 
-use arena::TypedArena;
-
 struct Env<'a, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'tcx>,
 }
@@ -829,5 +827,59 @@ fn subst_region_renumber_region() {
                t_expected.repr(env.infcx.tcx));
 
         assert_eq!(t_substituted, t_expected);
+    })
+}
+
+#[test]
+fn walk_ty() {
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        let tcx = env.infcx.tcx;
+        let int_ty = tcx.types.int;
+        let uint_ty = tcx.types.uint;
+        let tup1_ty = ty::mk_tup(tcx, vec!(int_ty, uint_ty, int_ty, uint_ty));
+        let tup2_ty = ty::mk_tup(tcx, vec!(tup1_ty, tup1_ty, uint_ty));
+        let uniq_ty = ty::mk_uniq(tcx, tup2_ty);
+        let walked: Vec<_> = uniq_ty.walk().collect();
+        assert_eq!(vec!(uniq_ty,
+                        tup2_ty,
+                        tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
+                        tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
+                        uint_ty),
+                   walked);
+    })
+}
+
+#[test]
+fn walk_ty_skip_subtree() {
+    test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        let tcx = env.infcx.tcx;
+        let int_ty = tcx.types.int;
+        let uint_ty = tcx.types.uint;
+        let tup1_ty = ty::mk_tup(tcx, vec!(int_ty, uint_ty, int_ty, uint_ty));
+        let tup2_ty = ty::mk_tup(tcx, vec!(tup1_ty, tup1_ty, uint_ty));
+        let uniq_ty = ty::mk_uniq(tcx, tup2_ty);
+
+        // types we expect to see (in order), plus a boolean saying
+        // whether to skip the subtree.
+        let mut expected = vec!((uniq_ty, false),
+                                (tup2_ty, false),
+                                (tup1_ty, false),
+                                (int_ty, false),
+                                (uint_ty, false),
+                                (int_ty, false),
+                                (uint_ty, false),
+                                (tup1_ty, true), // skip the int/uint/int/uint
+                                (uint_ty, false));
+        expected.reverse();
+
+        let mut walker = uniq_ty.walk();
+        while let Some(t) = walker.next() {
+            debug!("walked to {}", t);
+            let (expected_ty, skip) = expected.pop().unwrap();
+            assert_eq!(t, expected_ty);
+            if skip { walker.skip_current_subtree(); }
+        }
+
+        assert!(expected.is_empty());
     })
 }

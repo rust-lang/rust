@@ -29,11 +29,12 @@
 
 use libc;
 use std::ascii::AsciiExt;
+use std::c_str::ToCStr;
 use std::cell::{RefCell, Cell};
+use std::collections::HashMap;
 use std::fmt;
 use std::slice;
 use std::str;
-use std::collections::HashMap;
 
 use html::toc::TocBuilder;
 use html::highlight;
@@ -302,7 +303,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         if ret.is_ok() {
             let buf = slice::from_raw_buf(&(*ob).data, (*ob).size as uint);
-            ret = w.write(buf);
+            ret = w.write_str(str::from_utf8(buf).unwrap());
         }
         hoedown_buffer_free(ob);
         ret

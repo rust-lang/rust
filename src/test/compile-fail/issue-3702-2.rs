@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::num::ToPrimitive;
+
 trait Add {
     fn to_int(&self) -> int;
     fn add_dynamic(&self, other: &Add) -> int;

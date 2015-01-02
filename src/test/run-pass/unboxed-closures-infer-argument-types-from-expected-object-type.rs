@@ -13,6 +13,8 @@
 
 #![feature(unboxed_closures)]
 
+use std::num::ToPrimitive;
+
 fn doit<T>(val: T, f: &Fn(T)) { f.call((val,)) }
 
 pub fn main() {

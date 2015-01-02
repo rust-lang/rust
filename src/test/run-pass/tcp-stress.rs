@@ -17,24 +17,25 @@
 extern crate log;
 extern crate libc;
 
+use std::sync::mpsc::channel;
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
-use std::thread::Builder;
+use std::thread::{Builder, Thread};
 use std::time::Duration;
 
 fn main() {
     // This test has a chance to time out, try to not let it time out
-    spawn(move|| {
+    Thread::spawn(move|| -> () {
         use std::io::timer;
         timer::sleep(Duration::milliseconds(30 * 1000));
         println!("timed out!");
         unsafe { libc::exit(1) }
-    });
+    }).detach();
 
     let (tx, rx) = channel();
-    spawn(move|| {
+    Thread::spawn(move || -> () {
         let mut listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        tx.send(listener.socket_name().unwrap());
+        tx.send(listener.socket_name().unwrap()).unwrap();
         let mut acceptor = listener.listen();
         loop {
             let mut stream = match acceptor.accept() {
@@ -47,8 +48,8 @@ fn main() {
             stream.read_byte();
             stream.write(&[2]);
         }
-    });
-    let addr = rx.recv();
+    }).detach();
+    let addr = rx.recv().unwrap();
 
     let (tx, rx) = channel();
     for _ in range(0u, 1000) {
@@ -63,7 +64,7 @@ fn main() {
                 },
                 Err(e) => debug!("{}", e)
             }
-            tx.send(());
+            tx.send(()).unwrap();
         }).detach();
     }
 
@@ -71,7 +72,7 @@ fn main() {
     // server just runs infinitely.
     drop(tx);
     for _ in range(0u, 1000) {
-        rx.recv();
+        rx.recv().unwrap();
     }
     unsafe { libc::exit(0) }
 }

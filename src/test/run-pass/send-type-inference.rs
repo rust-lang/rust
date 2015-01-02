@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sync::mpsc::{channel, Sender};
+
 // tests that ctrl's type gets inferred properly
 struct Command<K, V> {
     key: K,

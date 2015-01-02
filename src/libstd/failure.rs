@@ -10,11 +10,10 @@
 
 #![experimental]
 
-use prelude::*;
+use prelude::v1::*;
 
 use any::{Any, AnyRefExt};
 use cell::RefCell;
-use fmt;
 use io::IoResult;
 use rt::{backtrace, unwind};
 use rt::util::{Stderr, Stdio};
@@ -29,10 +28,7 @@ thread_local! {
 
 impl Writer for Stdio {
     fn write(&mut self, bytes: &[u8]) -> IoResult<()> {
-        fn fmt_write<F: fmt::FormatWriter>(f: &mut F, bytes: &[u8]) {
-            let _ = f.write(bytes);
-        }
-        fmt_write(self, bytes);
+        let _ = self.write_bytes(bytes);
         Ok(())
     }
 }

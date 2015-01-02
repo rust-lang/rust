@@ -8,28 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use std::task;
+use std::sync::mpsc::{channel, Sender};
 
 pub fn main() { test05(); }
 
 fn test05_start(tx : &Sender<int>) {
-    tx.send(10);
+    tx.send(10).unwrap();
     println!("sent 10");
-    tx.send(20);
+    tx.send(20).unwrap();
     println!("sent 20");
-    tx.send(30);
+    tx.send(30).unwrap();
     println!("sent 30");
 }
 
 fn test05() {
     let (tx, rx) = channel();
     task::spawn(move|| { test05_start(&tx) });
-    let mut value: int = rx.recv();
+    let mut value: int = rx.recv().unwrap();
     println!("{}", value);
-    value = rx.recv();
+    value = rx.recv().unwrap();
     println!("{}", value);
-    value = rx.recv();
+    value = rx.recv().unwrap();
     println!("{}", value);
     assert_eq!(value, 30);
 }

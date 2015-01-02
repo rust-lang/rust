@@ -107,6 +107,8 @@
 #![feature(macro_rules, globs, linkage, thread_local, asm)]
 #![feature(default_type_params, phase, lang_items, unsafe_destructor)]
 #![feature(slicing_syntax, unboxed_closures)]
+#![feature(old_orphan_check)]
+#![feature(associated_types)]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -227,7 +229,6 @@ pub mod hash;
 pub mod task;
 pub mod thread;
 pub mod sync;
-pub mod comm;
 
 #[cfg(unix)]
 #[path = "sys/unix/mod.rs"] mod sys;
@@ -255,7 +256,7 @@ mod std {
     pub use cmp;
     pub use hash;
 
-    pub use comm; // used for select!()
+    pub use sync; // used for select!()
     pub use error; // used for try!()
     pub use fmt; // used for any formatting strings
     pub use io; // used for println!()
@@ -265,6 +266,7 @@ mod std {
     pub use cell; // used for tls!
     pub use thread_local; // used for thread_local!
     pub use kinds; // used for tls!
+    pub use ops; // used for bitflags!
 
     // The test runner calls ::std::os::args() but really wants realstd
     #[cfg(test)] pub use realstd::os as os;

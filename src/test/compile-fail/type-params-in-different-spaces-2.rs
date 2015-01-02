@@ -11,7 +11,7 @@
 // Test static calls to make sure that we align the Self and input
 // type parameters on a trait correctly.
 
-trait Tr<T> {
+trait Tr<T> : Sized {
     fn op(T) -> Self;
 }
 

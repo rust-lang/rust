@@ -71,8 +71,7 @@ use option::Option::{None, Some};
 use str;
 use str::{CowString, MaybeOwned, Str, StrExt};
 use string::String;
-use slice::{AsSlice, CloneSliceExt};
-use slice::{PartialEqSliceExt, SliceExt};
+use slice::{AsSlice, SliceExt};
 use vec::Vec;
 
 /// Typedef for POSIX file paths.
@@ -931,7 +930,9 @@ fn contains_nul<T: BytesContainer>(v: &T) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
+    use c_str::ToCStr;
+    use path::{WindowsPath, PosixPath};
 
     #[test]
     fn test_cstring() {

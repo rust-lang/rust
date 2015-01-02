@@ -8,19 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that object-safe methods are identified as such.
+// aux-build:coherence-lib.rs
 
-trait Tr {
-    fn foo(&self);
-}
+extern crate "coherence-lib" as lib;
+use lib::{Remote, Pair};
 
-struct St;
+struct Local<T>(T);
 
-impl Tr for St {
-    fn foo(&self) {}
-}
+impl<T,U> Remote for Pair<T,Local<U>> { }
+//~^ ERROR type parameter `T` must also appear
 
-fn main() {
-    let s: &Tr = &St;
-    s.foo();
-}
+fn main() { }

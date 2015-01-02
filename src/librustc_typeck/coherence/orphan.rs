@@ -18,7 +18,7 @@ use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::visit;
-use util::ppaux::Repr;
+use util::ppaux::{Repr, UserString};
 
 pub fn check(tcx: &ty::ctxt) {
     let mut orphan = OrphanChecker { tcx: tcx };
@@ -57,6 +57,11 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                     ty::ty_trait(ref data) => {
                         self.check_def_id(item.span, data.principal_def_id());
                     }
+                    ty::ty_uniq(..) => {
+                        self.check_def_id(item.span,
+                                          self.tcx.lang_items.owned_box()
+                                              .unwrap());
+                    }
                     _ => {
                         span_err!(self.tcx.sess, item.span, E0118,
                                   "no base type found for inherent implementation; \
@@ -67,10 +72,27 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
             ast::ItemImpl(_, _, Some(_), _, _) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}", item.repr(self.tcx));
-                if traits::is_orphan_impl(self.tcx, def_id) {
-                    span_err!(self.tcx.sess, item.span, E0117,
-                              "cannot provide an extension implementation \
-                               where both trait and type are not defined in this crate");
+                match traits::orphan_check(self.tcx, def_id) {
+                    Ok(()) => { }
+                    Err(traits::OrphanCheckErr::NoLocalInputType) => {
+                        span_err!(self.tcx.sess, item.span, E0117,
+                                  "cannot provide an extension implementation \
+                                   where both trait and type are not defined in this crate");
+                    }
+                    Err(traits::OrphanCheckErr::UncoveredTypeParameter(param_ty)) => {
+                        if !self.tcx.sess.features.borrow().old_orphan_check {
+                            self.tcx.sess.span_err(
+                                item.span,
+                                format!("type parameter `{}` must also appear as a type parameter \
+                                         of some type defined within this crate",
+                                        param_ty.user_string(self.tcx)).as_slice());
+                            self.tcx.sess.span_note(
+                                item.span,
+                                format!("for a limited time, you can add \
+                                         `#![feature(old_orphan_check)]` to your crate \
+                                         to disable this rule").as_slice());
+                        }
+                    }
                 }
             }
             _ => {

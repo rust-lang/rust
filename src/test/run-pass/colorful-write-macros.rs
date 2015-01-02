@@ -15,7 +15,6 @@
 
 use std::io::MemWriter;
 use std::fmt;
-use std::fmt::FormatWriter;
 
 struct Foo<'a> {
     writer: &'a mut (Writer+'a),
@@ -24,8 +23,8 @@ struct Foo<'a> {
 
 struct Bar;
 
-impl fmt::FormatWriter for Bar {
-    fn write(&mut self, _: &[u8]) -> fmt::Result {
+impl fmt::Writer for Bar {
+    fn write_str(&mut self, _: &str) -> fmt::Result {
         Ok(())
     }
 }
@@ -41,5 +40,8 @@ fn main() {
     println!("ok");
 
     let mut s = Bar;
-    write!(&mut s, "test");
+    {
+        use std::fmt::Writer;
+        write!(&mut s, "test");
+    }
 }

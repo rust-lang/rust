@@ -8,18 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
+use std::ops::{Deref, DerefMut};
+
 // Generic unique/owned smaht pointer.
 struct Own<T> {
     value: *mut T
 }
 
-impl<T> Deref<T> for Own<T> {
+impl<T> Deref for Own<T> {
+    type Target = T;
+
     fn deref<'a>(&'a self) -> &'a T {
         unsafe { &*self.value }
     }
 }
 
-impl<T> DerefMut<T> for Own<T> {
+impl<T> DerefMut for Own<T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut *self.value }
     }

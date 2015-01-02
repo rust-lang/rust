@@ -10,11 +10,16 @@
 
 //! Abstraction of a thread pool for basic parallelism.
 
+#![unstable = "the semantics of a failing task and whether a thread is \
+               re-attached to a thread pool are somewhat unclear, and the \
+               utility of this type in `std::sync` is questionable with \
+               respect to the jobs of other primitives"]
+
 use core::prelude::*;
 
-use thread::Thread;
-use comm::{channel, Sender, Receiver};
 use sync::{Arc, Mutex};
+use sync::mpsc::{channel, Sender, Receiver};
+use thread::Thread;
 use thunk::Thunk;
 
 struct Sentinel<'a> {
@@ -53,8 +58,9 @@ impl<'a> Drop for Sentinel<'a> {
 /// # Example
 ///
 /// ```rust
-/// # use std::sync::TaskPool;
-/// # use std::iter::AdditiveIterator;
+/// use std::sync::TaskPool;
+/// use std::iter::AdditiveIterator;
+/// use std::sync::mpsc::channel;
 ///
 /// let pool = TaskPool::new(4u);
 ///
@@ -62,7 +68,7 @@ impl<'a> Drop for Sentinel<'a> {
 /// for _ in range(0, 8u) {
 ///     let tx = tx.clone();
 ///     pool.execute(move|| {
-///         tx.send(1u);
+///         tx.send(1u).unwrap();
 ///     });
 /// }
 ///
@@ -100,7 +106,7 @@ impl TaskPool {
     pub fn execute<F>(&self, job: F)
         where F : FnOnce(), F : Send
     {
-        self.jobs.send(Thunk::new(job));
+        self.jobs.send(Thunk::new(job)).unwrap();
     }
 }
 
@@ -114,7 +120,7 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
                 // Only lock jobs for the time it takes
                 // to get a job, not run it.
                 let lock = jobs.lock().unwrap();
-                lock.recv_opt()
+                lock.recv()
             };
 
             match message {
@@ -131,8 +137,9 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use super::*;
+    use sync::mpsc::channel;
 
     const TEST_TASKS: uint = 4u;
 
@@ -146,7 +153,7 @@ mod test {
         for _ in range(0, TEST_TASKS) {
             let tx = tx.clone();
             pool.execute(move|| {
-                tx.send(1u);
+                tx.send(1u).unwrap();
             });
         }
 
@@ -175,7 +182,7 @@ mod test {
         for _ in range(0, TEST_TASKS) {
             let tx = tx.clone();
             pool.execute(move|| {
-                tx.send(1u);
+                tx.send(1u).unwrap();
             });
         }
 

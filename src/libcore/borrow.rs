@@ -191,7 +191,9 @@ impl<'a, T, Sized? B> Cow<'a, T, B> where B: ToOwned<T> {
     }
 }
 
-impl<'a, T, Sized? B> Deref<B> for Cow<'a, T, B> where B: ToOwned<T>  {
+impl<'a, T, Sized? B> Deref for Cow<'a, T, B> where B: ToOwned<T>  {
+    type Target = B;
+
     fn deref(&self) -> &B {
         match *self {
             Borrowed(borrowed) => borrowed,

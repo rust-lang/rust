@@ -11,19 +11,23 @@
 // Test how overloaded deref interacts with borrows when DerefMut
 // is implemented.
 
+#![feature(associated_types)]
+
 use std::ops::{Deref, DerefMut};
 
 struct Own<T> {
     value: *mut T
 }
 
-impl<T> Deref<T> for Own<T> {
+impl<T> Deref for Own<T> {
+    type Target = T;
+
     fn deref(&self) -> &T {
         unsafe { &*self.value }
     }
 }
 
-impl<T> DerefMut<T> for Own<T> {
+impl<T> DerefMut for Own<T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.value }
     }

@@ -54,8 +54,7 @@ pub enum FnKind<'a> {
 /// explicitly, you need to override each method.  (And you also need
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
-pub trait Visitor<'v> {
-
+pub trait Visitor<'v> : Sized {
     fn visit_name(&mut self, _span: Span, _name: Name) {
         // Nothing to do.
     }
@@ -211,7 +210,7 @@ pub fn walk_view_item<'v, V: Visitor<'v>>(visitor: &mut V, vi: &'v ViewItem) {
 
 pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
     visitor.visit_pat(&*local.pat);
-    visitor.visit_ty(&*local.ty);
+    walk_ty_opt(visitor, &local.ty);
     walk_expr_opt(visitor, &local.init);
 }
 
@@ -379,6 +378,13 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn skip_ty<'v, V: Visitor<'v>>(_: &mut V, _: &'v Ty) {
     // Empty!
+}
+
+pub fn walk_ty_opt<'v, V: Visitor<'v>>(visitor: &mut V, optional_type: &'v Option<P<Ty>>) {
+    match *optional_type {
+        Some(ref ty) => visitor.visit_ty(&**ty),
+        None => ()
+    }
 }
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
@@ -583,10 +589,7 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_ty_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v TyParam) {
     visitor.visit_ident(param.span, param.ident);
     walk_ty_param_bounds_helper(visitor, &param.bounds);
-    match param.default {
-        Some(ref ty) => visitor.visit_ty(&**ty),
-        None => {}
-    }
+    walk_ty_opt(visitor, &param.default);
 }
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics) {

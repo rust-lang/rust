@@ -13,8 +13,10 @@
 //              quite quickly and it takes a few seconds for the sockets to get
 //              recycled.
 
+use std::sync::mpsc::channel;
 use std::io::{TcpListener, Listener, Acceptor, EndOfFile, TcpStream};
 use std::sync::{atomic, Arc};
+use std::thread::Thread;
 
 static N: uint = 8;
 static M: uint = 20;
@@ -35,7 +37,7 @@ fn test() {
         let a = a.clone();
         let cnt = cnt.clone();
         let srv_tx = srv_tx.clone();
-        spawn(move|| {
+        Thread::spawn(move|| {
             let mut a = a;
             loop {
                 match a.accept() {
@@ -49,17 +51,17 @@ fn test() {
                 }
             }
             srv_tx.send(());
-        });
+        }).detach();
     }
 
     for _ in range(0, N) {
         let cli_tx = cli_tx.clone();
-        spawn(move|| {
+        Thread::spawn(move|| {
             for _ in range(0, M) {
                 let _s = TcpStream::connect(addr).unwrap();
             }
             cli_tx.send(());
-        });
+        }).detach();
     }
     drop((cli_tx, srv_tx));
 

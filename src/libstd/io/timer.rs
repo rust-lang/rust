@@ -15,7 +15,7 @@
 
 // FIXME: These functions take Durations but only pass ms to the backend impls.
 
-use comm::{Receiver, Sender, channel};
+use sync::mpsc::{Receiver, Sender, channel};
 use time::Duration;
 use io::IoResult;
 use sys::timer::Callback;
@@ -40,11 +40,11 @@ use sys::timer::Timer as TimerImp;
 ///
 /// let timeout = timer.oneshot(Duration::milliseconds(10));
 /// // do some work
-/// timeout.recv(); // wait for the timeout to expire
+/// timeout.recv().unwrap(); // wait for the timeout to expire
 ///
 /// let periodic = timer.periodic(Duration::milliseconds(10));
 /// loop {
-///     periodic.recv();
+///     periodic.recv().unwrap();
 ///     // this loop is only executed once every 10ms
 /// }
 /// # }
@@ -126,7 +126,7 @@ impl Timer {
     /// for _ in range(0u, 100) { /* do work */ }
     ///
     /// // blocks until 10 ms after the `oneshot` call
-    /// ten_milliseconds.recv();
+    /// ten_milliseconds.recv().unwrap();
     /// ```
     ///
     /// ```rust
@@ -136,7 +136,7 @@ impl Timer {
     /// // Incorrect, method chaining-style:
     /// let mut five_ms = Timer::new().unwrap().oneshot(Duration::milliseconds(5));
     /// // The timer object was destroyed, so this will always fail:
-    /// // five_ms.recv()
+    /// // five_ms.recv().unwrap()
     /// ```
     ///
     /// When provided a zero or negative `duration`, the message will
@@ -147,7 +147,7 @@ impl Timer {
         if in_ms_u64(duration) != 0 {
             self.inner.oneshot(in_ms_u64(duration), box TimerCallback { tx: tx });
         } else {
-            tx.send(());
+            tx.send(()).unwrap();
         }
         return rx
     }
@@ -178,13 +178,13 @@ impl Timer {
     /// for _ in range(0u, 100) { /* do work */ }
     ///
     /// // blocks until 10 ms after the `periodic` call
-    /// ten_milliseconds.recv();
+    /// ten_milliseconds.recv().unwrap();
     ///
     /// for _ in range(0u, 100) { /* do work */ }
     ///
     /// // blocks until 20 ms after the `periodic` call (*not* 10ms after the
     /// // previous `recv`)
-    /// ten_milliseconds.recv();
+    /// ten_milliseconds.recv().unwrap();
     /// ```
     ///
     /// ```rust
@@ -194,7 +194,7 @@ impl Timer {
     /// // Incorrect, method chaining-style.
     /// let mut five_ms = Timer::new().unwrap().periodic(Duration::milliseconds(5));
     /// // The timer object was destroyed, so this will always fail:
-    /// // five_ms.recv()
+    /// // five_ms.recv().unwrap()
     /// ```
     ///
     /// When provided a zero or negative `duration`, the messages will
@@ -213,7 +213,7 @@ impl Timer {
 
 impl Callback for TimerCallback {
     fn call(&mut self) {
-        let _ = self.tx.send_opt(());
+        let _ = self.tx.send(());
     }
 }
 
@@ -225,9 +225,8 @@ fn in_ms_u64(d: Duration) -> u64 {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
-
     use super::Timer;
+    use thread::Thread;
     use time::Duration;
 
     #[test]
@@ -239,7 +238,7 @@ mod test {
     #[test]
     fn test_io_timer_sleep_oneshot() {
         let mut timer = Timer::new().unwrap();
-        timer.oneshot(Duration::milliseconds(1)).recv();
+        timer.oneshot(Duration::milliseconds(1)).recv().unwrap();
     }
 
     #[test]
@@ -253,8 +252,8 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let rx1 = timer.oneshot(Duration::milliseconds(10000));
         let rx = timer.oneshot(Duration::milliseconds(1));
-        rx.recv();
-        assert_eq!(rx1.recv_opt(), Err(()));
+        rx.recv().unwrap();
+        assert!(rx1.recv().is_err());
     }
 
     #[test]
@@ -263,16 +262,16 @@ mod test {
         let rx = timer.oneshot(Duration::milliseconds(100000000));
         timer.sleep(Duration::milliseconds(1)); // this should invalidate rx
 
-        assert_eq!(rx.recv_opt(), Err(()));
+        assert!(rx.recv().is_err());
     }
 
     #[test]
     fn test_io_timer_sleep_periodic() {
         let mut timer = Timer::new().unwrap();
         let rx = timer.periodic(Duration::milliseconds(1));
-        rx.recv();
-        rx.recv();
-        rx.recv();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
     }
 
     #[test]
@@ -291,12 +290,12 @@ mod test {
         let mut timer = Timer::new().unwrap();
 
         let rx = timer.oneshot(Duration::milliseconds(1));
-        rx.recv();
-        assert!(rx.recv_opt().is_err());
+        rx.recv().unwrap();
+        assert!(rx.recv().is_err());
 
         let rx = timer.oneshot(Duration::milliseconds(1));
-        rx.recv();
-        assert!(rx.recv_opt().is_err());
+        rx.recv().unwrap();
+        assert!(rx.recv().is_err());
     }
 
     #[test]
@@ -305,20 +304,20 @@ mod test {
         let orx = timer.oneshot(Duration::milliseconds(100));
         let prx = timer.periodic(Duration::milliseconds(100));
         timer.sleep(Duration::milliseconds(1));
-        assert_eq!(orx.recv_opt(), Err(()));
-        assert_eq!(prx.recv_opt(), Err(()));
-        timer.oneshot(Duration::milliseconds(1)).recv();
+        assert!(orx.recv().is_err());
+        assert!(prx.recv().is_err());
+        timer.oneshot(Duration::milliseconds(1)).recv().unwrap();
     }
 
     #[test]
     fn period() {
         let mut timer = Timer::new().unwrap();
         let rx = timer.periodic(Duration::milliseconds(1));
-        rx.recv();
-        rx.recv();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
         let rx2 = timer.periodic(Duration::milliseconds(1));
-        rx2.recv();
-        rx2.recv();
+        rx2.recv().unwrap();
+        rx2.recv().unwrap();
     }
 
     #[test]
@@ -357,9 +356,9 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(move|| {
-            let _ = timer_rx.recv_opt();
-        });
+        Thread::spawn(move|| {
+            let _ = timer_rx.recv();
+        }).detach();
 
         // when we drop the TimerWatcher we're going to destroy the channel,
         // which must wake up the task on the other end
@@ -371,9 +370,9 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(move|| {
-            let _ = timer_rx.recv_opt();
-        });
+        Thread::spawn(move|| {
+            let _ = timer_rx.recv();
+        }).detach();
 
         timer.oneshot(Duration::milliseconds(1));
     }
@@ -384,9 +383,9 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        spawn(move|| {
-            let _ = timer_rx.recv_opt();
-        });
+        Thread::spawn(move|| {
+            let _ = timer_rx.recv();
+        }).detach();
 
         timer.sleep(Duration::milliseconds(1));
     }
@@ -397,7 +396,7 @@ mod test {
             let mut timer = Timer::new().unwrap();
             timer.oneshot(Duration::milliseconds(1000))
         };
-        assert_eq!(rx.recv_opt(), Err(()));
+        assert!(rx.recv().is_err());
     }
 
     #[test]
@@ -406,7 +405,7 @@ mod test {
             let mut timer = Timer::new().unwrap();
             timer.periodic(Duration::milliseconds(1000))
         };
-        assert_eq!(rx.recv_opt(), Err(()));
+        assert!(rx.recv().is_err());
     }
 
     #[test]
@@ -445,34 +444,34 @@ mod test {
     fn oneshot_zero() {
         let mut timer = Timer::new().unwrap();
         let rx = timer.oneshot(Duration::milliseconds(0));
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[test]
     fn oneshot_negative() {
         let mut timer = Timer::new().unwrap();
         let rx = timer.oneshot(Duration::milliseconds(-1000000));
-        rx.recv();
+        rx.recv().unwrap();
     }
 
     #[test]
     fn periodic_zero() {
         let mut timer = Timer::new().unwrap();
         let rx = timer.periodic(Duration::milliseconds(0));
-        rx.recv();
-        rx.recv();
-        rx.recv();
-        rx.recv();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
     }
 
     #[test]
     fn periodic_negative() {
         let mut timer = Timer::new().unwrap();
         let rx = timer.periodic(Duration::milliseconds(-1000000));
-        rx.recv();
-        rx.recv();
-        rx.recv();
-        rx.recv();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
+        rx.recv().unwrap();
     }
 
 }

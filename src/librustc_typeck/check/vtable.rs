@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use check::{FnCtxt, structurally_resolved_type};
-use middle::subst::{FnSpace, SelfSpace};
-use middle::traits;
+use middle::traits::{mod, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
 use middle::ty::{mod, Ty, AsPredicate};
@@ -133,217 +132,56 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
                                  object_trait: &ty::TyTrait<'tcx>,
                                  span: Span)
 {
-    // Also check that the type `object_trait` specifies all
-    // associated types for all supertraits.
-    let mut associated_types: FnvHashSet<(ast::DefId, ast::Name)> = FnvHashSet::new();
-
     let object_trait_ref =
         object_trait.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
-    for tr in traits::supertraits(tcx, object_trait_ref.clone()) {
-        check_object_safety_inner(tcx, &tr, span);
 
-        let trait_def = ty::lookup_trait_def(tcx, object_trait_ref.def_id());
-        for &associated_type_name in trait_def.associated_type_names.iter() {
-            associated_types.insert((object_trait_ref.def_id(), associated_type_name));
-        }
+    if traits::is_object_safe(tcx, object_trait_ref.clone()) {
+        return;
     }
 
-    for projection_bound in object_trait.bounds.projection_bounds.iter() {
-        let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
-                    projection_bound.0.projection_ty.item_name);
-        associated_types.remove(&pair);
-    }
+    span_err!(tcx.sess, span, E0038,
+              "cannot convert to a trait object because trait `{}` is not object-safe",
+              ty::item_path_str(tcx, object_trait_ref.def_id()));
 
-    for (trait_def_id, name) in associated_types.into_iter() {
-        tcx.sess.span_err(
-            span,
-            format!("the value of the associated type `{}` (from the trait `{}`) must be specified",
-                    name.user_string(tcx),
-                    ty::item_path_str(tcx, trait_def_id)).as_slice());
-    }
-}
-
-fn check_object_safety_inner<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                   object_trait: &ty::PolyTraitRef<'tcx>,
-                                   span: Span) {
-    let trait_items = ty::trait_items(tcx, object_trait.def_id());
-
-    let mut errors = Vec::new();
-    for item in trait_items.iter() {
-        match *item {
-            ty::MethodTraitItem(ref m) => {
-                errors.push(check_object_safety_of_method(tcx, object_trait, &**m))
-            }
-            ty::TypeTraitItem(_) => {}
-        }
-    }
-
-    let mut errors = errors.iter().flat_map(|x| x.iter()).peekable();
-    if errors.peek().is_some() {
-        let trait_name = ty::item_path_str(tcx, object_trait.def_id());
-        span_err!(tcx.sess, span, E0038,
-            "cannot convert to a trait object because trait `{}` is not object-safe",
-            trait_name);
-
-        for msg in errors {
-            tcx.sess.note(msg[]);
-        }
-    }
-
-    /// Returns a vec of error messages. If the vec is empty - no errors!
-    ///
-    /// There are some limitations to calling functions through an object, because (a) the self
-    /// type is not known (that's the whole point of a trait instance, after all, to obscure the
-    /// self type), (b) the call must go through a vtable and hence cannot be monomorphized and
-    /// (c) the trait contains static methods which can't be called because we don't know the
-    /// concrete type.
-    fn check_object_safety_of_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                           object_trait: &ty::PolyTraitRef<'tcx>,
-                                           method: &ty::Method<'tcx>)
-                                           -> Vec<String> {
-        let mut msgs = Vec::new();
-
-        let method_name = method.name.repr(tcx);
-
-        match method.explicit_self {
-            ty::ByValueExplicitSelfCategory => { // reason (a) above
-                msgs.push(format!("cannot call a method (`{}`) with a by-value \
-                                   receiver through a trait object", method_name))
+    let violations = traits::object_safety_violations(tcx, object_trait_ref.clone());
+    for violation in violations.into_iter() {
+        match violation {
+            ObjectSafetyViolation::SizedSelf => {
+                tcx.sess.span_note(
+                    span,
+                    "the trait cannot require that `Self : Sized`");
             }
 
-            ty::StaticExplicitSelfCategory => {
-                // Static methods are never object safe (reason (c)).
-                msgs.push(format!("cannot call a static method (`{}`) \
-                                   through a trait object",
-                                  method_name));
-                return msgs;
+            ObjectSafetyViolation::Method(method, MethodViolationCode::ByValueSelf) => {
+                tcx.sess.span_note(
+                    span,
+                    format!("method `{}` has a receiver type of `Self`, \
+                             which cannot be used with a trait object",
+                            method.name.user_string(tcx)).as_slice());
             }
-            ty::ByReferenceExplicitSelfCategory(..) |
-            ty::ByBoxExplicitSelfCategory => {}
-        }
 
-        // reason (a) above
-        let check_for_self_ty = |&: ty| {
-            if contains_illegal_self_type_reference(tcx, object_trait.def_id(), ty) {
-                Some(format!(
-                    "cannot call a method (`{}`) whose type contains \
-                     a self-type (`{}`) through a trait object",
-                    method_name, ty.user_string(tcx)))
-            } else {
-                None
+            ObjectSafetyViolation::Method(method, MethodViolationCode::StaticMethod) => {
+                tcx.sess.span_note(
+                    span,
+                    format!("method `{}` has no receiver",
+                            method.name.user_string(tcx)).as_slice());
             }
-        };
-        let ref sig = method.fty.sig;
-        for &input_ty in sig.0.inputs[1..].iter() {
-            if let Some(msg) = check_for_self_ty(input_ty) {
-                msgs.push(msg);
+
+            ObjectSafetyViolation::Method(method, MethodViolationCode::ReferencesSelf) => {
+                tcx.sess.span_note(
+                    span,
+                    format!("method `{}` references the `Self` type \
+                             in its arguments or return type",
+                            method.name.user_string(tcx)).as_slice());
+            }
+
+            ObjectSafetyViolation::Method(method, MethodViolationCode::Generic) => {
+                tcx.sess.span_note(
+                    span,
+                    format!("method `{}` has generic type parameters",
+                            method.name.user_string(tcx)).as_slice());
             }
         }
-        if let ty::FnConverging(result_type) = sig.0.output {
-            if let Some(msg) = check_for_self_ty(result_type) {
-                msgs.push(msg);
-            }
-        }
-
-        if method.generics.has_type_params(FnSpace) {
-            // reason (b) above
-            msgs.push(format!("cannot call a generic method (`{}`) through a trait object",
-                              method_name));
-        }
-
-        msgs
-    }
-
-    fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                                  trait_def_id: ast::DefId,
-                                                  ty: Ty<'tcx>)
-                                                  -> bool
-    {
-        // This is somewhat subtle. In general, we want to forbid
-        // references to `Self` in the argument and return types,
-        // since the value of `Self` is erased. However, there is one
-        // exception: it is ok to reference `Self` in order to access
-        // an associated type of the current trait, since we retain
-        // the value of those associated types in the object type
-        // itself.
-        //
-        // ```rust
-        // trait SuperTrait {
-        //     type X;
-        // }
-        //
-        // trait Trait : SuperTrait {
-        //     type Y;
-        //     fn foo(&self, x: Self) // bad
-        //     fn foo(&self) -> Self // bad
-        //     fn foo(&self) -> Option<Self> // bad
-        //     fn foo(&self) -> Self::Y // OK, desugars to next example
-        //     fn foo(&self) -> <Self as Trait>::Y // OK
-        //     fn foo(&self) -> Self::X // OK, desugars to next example
-        //     fn foo(&self) -> <Self as SuperTrait>::X // OK
-        // }
-        // ```
-        //
-        // However, it is not as simple as allowing `Self` in a projected
-        // type, because there are illegal ways to use `Self` as well:
-        //
-        // ```rust
-        // trait Trait : SuperTrait {
-        //     ...
-        //     fn foo(&self) -> <Self as SomeOtherTrait>::X;
-        // }
-        // ```
-        //
-        // Here we will not have the type of `X` recorded in the
-        // object type, and we cannot resolve `Self as SomeOtherTrait`
-        // without knowing what `Self` is.
-
-        let mut supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>> = None;
-        let mut error = false;
-        ty::maybe_walk_ty(ty, |ty| {
-            match ty.sty {
-                ty::ty_param(ref param_ty) => {
-                    if param_ty.space == SelfSpace {
-                        error = true;
-                    }
-
-                    false // no contained types to walk
-                }
-
-                ty::ty_projection(ref data) => {
-                    // This is a projected type `<Foo as SomeTrait>::X`.
-
-                    // Compute supertraits of current trait lazilly.
-                    if supertraits.is_none() {
-                        let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
-                        let trait_ref = ty::Binder(trait_def.trait_ref.clone());
-                        supertraits = Some(traits::supertraits(tcx, trait_ref).collect());
-                    }
-
-                    // Determine whether the trait reference `Foo as
-                    // SomeTrait` is in fact a supertrait of the
-                    // current trait. In that case, this type is
-                    // legal, because the type `X` will be specified
-                    // in the object type.  Note that we can just use
-                    // direct equality here because all of these types
-                    // are part of the formal parameter listing, and
-                    // hence there should be no inference variables.
-                    let projection_trait_ref = ty::Binder(data.trait_ref.clone());
-                    let is_supertrait_of_current_trait =
-                        supertraits.as_ref().unwrap().contains(&projection_trait_ref);
-
-                    if is_supertrait_of_current_trait {
-                        false // do not walk contained types, do not report error, do collect $200
-                    } else {
-                        true // DO walk contained types, POSSIBLY reporting an error
-                    }
-                }
-
-                _ => true, // walk contained types, if any
-            }
-        });
-
-        error
     }
 }
 
@@ -392,7 +230,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             cause.clone());
     }
 
-    // Finally, create obligations for the projection predicates.
+    // Create obligations for the projection predicates.
     let projection_bounds =
         object_trait.projection_bounds_with_self_ty(fcx.tcx(), referent_ty);
     for projection_bound in projection_bounds.iter() {
@@ -401,7 +239,45 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.register_predicate(projection_obligation);
     }
 
+    // Finally, check that there IS a projection predicate for every associated type.
+    check_object_type_binds_all_associated_types(fcx.tcx(),
+                                                 span,
+                                                 object_trait);
+
     object_trait_ref
+}
+
+fn check_object_type_binds_all_associated_types<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                                      span: Span,
+                                                      object_trait: &ty::TyTrait<'tcx>)
+{
+    let object_trait_ref =
+        object_trait.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
+
+    let mut associated_types: FnvHashSet<(ast::DefId, ast::Name)> =
+        traits::supertraits(tcx, object_trait_ref.clone())
+        .flat_map(|tr| {
+            let trait_def = ty::lookup_trait_def(tcx, tr.def_id());
+            trait_def.associated_type_names
+                .clone()
+                .into_iter()
+                .map(move |associated_type_name| (tr.def_id(), associated_type_name))
+        })
+        .collect();
+
+    for projection_bound in object_trait.bounds.projection_bounds.iter() {
+        let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
+                    projection_bound.0.projection_ty.item_name);
+        associated_types.remove(&pair);
+    }
+
+    for (trait_def_id, name) in associated_types.into_iter() {
+        tcx.sess.span_err(
+            span,
+            format!("the value of the associated type `{}` (from the trait `{}`) must be specified",
+                    name.user_string(tcx),
+                    ty::item_path_str(tcx, trait_def_id)).as_slice());
+    }
 }
 
 pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {

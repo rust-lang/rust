@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::task;
+use std::sync::mpsc::channel;
 
 pub fn main() {
     let (tx, rx) = channel::<uint>();
@@ -18,9 +19,9 @@ pub fn main() {
 
     task::spawn(move || {
         let x_in_child = &(*x) as *const int as uint;
-        tx.send(x_in_child);
+        tx.send(x_in_child).unwrap();
     });
 
-    let x_in_child = rx.recv();
+    let x_in_child = rx.recv().unwrap();
     assert_eq!(x_in_parent, x_in_child);
 }

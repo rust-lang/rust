@@ -649,7 +649,10 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
         Some(ref expr) => {
             record_rvalue_scope_if_borrow_expr(visitor, &**expr, blk_scope);
 
-            if is_binding_pat(&*local.pat) || is_borrowed_ty(&*local.ty) {
+            let is_borrow =
+                if let Some(ref ty) = local.ty { is_borrowed_ty(&**ty) } else { false };
+
+            if is_binding_pat(&*local.pat) || is_borrow {
                 record_rvalue_scope(visitor, &**expr, blk_scope);
             }
         }

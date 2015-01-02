@@ -10,6 +10,8 @@
 
 #![feature(unboxed_closures)]
 
+use std::ops::Add;
+
 #[inline]
 pub fn has_closures() -> uint {
     let x = 1u;

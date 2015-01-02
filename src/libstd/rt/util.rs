@@ -10,13 +10,12 @@
 //
 // ignore-lexer-test FIXME #15677
 
-use prelude::*;
+use prelude::v1::*;
 
 use cmp;
 use fmt;
 use intrinsics;
-use libc::uintptr_t;
-use libc;
+use libc::{mod, uintptr_t};
 use os;
 use slice;
 use str;
@@ -47,7 +46,7 @@ pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
 }
 
 pub fn min_stack() -> uint {
-    static MIN: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+    static MIN: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
     match MIN.load(atomic::SeqCst) {
         0 => {}
         n => return n - 1,
@@ -96,8 +95,8 @@ pub const Stdout: Stdio = Stdio(libc::STDOUT_FILENO);
 #[allow(non_upper_case_globals)]
 pub const Stderr: Stdio = Stdio(libc::STDERR_FILENO);
 
-impl fmt::FormatWriter for Stdio {
-    fn write(&mut self, data: &[u8]) -> fmt::Result {
+impl Stdio {
+    pub fn write_bytes(&mut self, data: &[u8]) {
         #[cfg(unix)]
         type WriteLen = libc::size_t;
         #[cfg(windows)]
@@ -108,6 +107,12 @@ impl fmt::FormatWriter for Stdio {
                         data.as_ptr() as *const libc::c_void,
                         data.len() as WriteLen);
         }
+    }
+}
+
+impl fmt::Writer for Stdio {
+    fn write_str(&mut self, data: &str) -> fmt::Result {
+        self.write_bytes(data.as_bytes());
         Ok(()) // yes, we're lying
     }
 }
@@ -117,16 +122,16 @@ pub fn dumb_print(args: fmt::Arguments) {
 }
 
 pub fn abort(args: fmt::Arguments) -> ! {
-    use fmt::FormatWriter;
+    use fmt::Writer;
 
     struct BufWriter<'a> {
         buf: &'a mut [u8],
         pos: uint,
     }
-    impl<'a> FormatWriter for BufWriter<'a> {
-        fn write(&mut self, bytes: &[u8]) -> fmt::Result {
+    impl<'a> fmt::Writer for BufWriter<'a> {
+        fn write_str(&mut self, bytes: &str) -> fmt::Result {
             let left = self.buf.slice_from_mut(self.pos);
-            let to_write = bytes[..cmp::min(bytes.len(), left.len())];
+            let to_write = bytes.as_bytes()[..cmp::min(bytes.len(), left.len())];
             slice::bytes::copy_memory(left, to_write);
             self.pos += to_write.len();
             Ok(())

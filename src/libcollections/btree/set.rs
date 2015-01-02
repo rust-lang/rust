@@ -13,13 +13,16 @@
 
 use core::prelude::*;
 
-use btree_map::{BTreeMap, Keys};
-use std::hash::Hash;
 use core::borrow::BorrowFrom;
+use core::cmp::Ordering::{mod, Less, Greater, Equal};
 use core::default::Default;
-use core::fmt;
-use core::iter::{Peekable, Map};
 use core::fmt::Show;
+use core::fmt;
+use core::hash::Hash;
+use core::iter::{Peekable, Map, FromIterator};
+use core::ops::{BitOr, BitAnd, BitXor, Sub};
+
+use btree_map::{BTreeMap, Keys};
 
 // FIXME(conventions): implement bounded iterators
 

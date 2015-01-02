@@ -13,8 +13,9 @@
 use libc;
 use ArchiveRef;
 
-use std::raw;
+use std::c_str::ToCStr;
 use std::mem;
+use std::raw;
 
 pub struct ArchiveRO {
     ptr: ArchiveRef,

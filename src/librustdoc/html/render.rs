@@ -35,6 +35,7 @@
 pub use self::ExternalLocation::*;
 
 use std::cell::RefCell;
+use std::cmp::Ordering::{mod, Less, Greater, Equal};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
@@ -49,7 +50,6 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json;
-use serialize::Encodable;
 use serialize::json::ToJson;
 use syntax::ast;
 use syntax::ast_util;
@@ -1095,7 +1095,7 @@ impl Context {
         try!(self.recurse(stability.name.clone(), |this| {
             let json_dst = &this.dst.join("stability.json");
             let mut json_out = BufferedWriter::new(try!(File::create(json_dst)));
-            try!(stability.encode(&mut json::Encoder::new(&mut json_out)));
+            try!(write!(&mut json_out, "{}", json::as_json(&stability)));
 
             let mut title = stability.name.clone();
             title.push_str(" - Stability dashboard");
@@ -1311,7 +1311,8 @@ impl<'a> Item<'a> {
         // has anchors for the line numbers that we're linking to.
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
-            clean_srcpath(&cx.src_root, self.item.source.filename.as_bytes(), |component| {
+            clean_srcpath(&cx.src_root, self.item.source.filename.as_bytes(),
+                          |component| {
                 path.push(component.to_string());
             });
             let href = if self.item.source.loline == self.item.source.hiline {
@@ -1713,7 +1714,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             try!(write!(w, ";\n"));
         }
         if types.len() > 0 && required.len() > 0 {
-            try!(w.write("\n".as_bytes()));
+            try!(w.write_str("\n"));
         }
         for m in required.iter() {
             try!(write!(w, "    "));
@@ -1721,7 +1722,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             try!(write!(w, ";\n"));
         }
         if required.len() > 0 && provided.len() > 0 {
-            try!(w.write("\n".as_bytes()));
+            try!(w.write_str("\n"));
         }
         for m in provided.iter() {
             try!(write!(w, "    "));
@@ -1811,6 +1812,18 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
+fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
+              typ: &clean::TyParam) -> fmt::Result {
+    try!(write!(w, "type {}", it.name.as_ref().unwrap()));
+    if typ.bounds.len() > 0 {
+        try!(write!(w, ": {}", TyParamBounds(&*typ.bounds)))
+    }
+    if let Some(ref default) = typ.default {
+        try!(write!(w, " = {}", default));
+    }
+    Ok(())
+}
+
 fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
     fn method(w: &mut fmt::Formatter, it: &clean::Item, unsafety: ast::Unsafety,
            g: &clean::Generics, selfty: &clean::SelfTy,
@@ -1826,17 +1839,6 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
                generics = *g,
                decl = Method(selfty, d),
                where_clause = WhereClause(g))
-    }
-    fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
-                  typ: &clean::TyParam) -> fmt::Result {
-        try!(write!(w, "type {}", it.name.as_ref().unwrap()));
-        if typ.bounds.len() > 0 {
-            try!(write!(w, ": {}", TyParamBounds(&*typ.bounds)))
-        }
-        if let Some(ref default) = typ.default {
-            try!(write!(w, " = {}", default));
-        }
-        Ok(())
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
@@ -2122,6 +2124,15 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                 try!(write!(w, "type {} = {}", name, tydef.type_));
                 try!(write!(w, "</code></h4>\n"));
             }
+            clean::AssociatedTypeItem(ref typaram) => {
+                let name = item.name.as_ref().unwrap();
+                try!(write!(w, "<h4 id='assoc_type.{}' class='{}'>{}<code>",
+                            *name,
+                            shortty(item),
+                            ConciseStability(&item.stability)));
+                try!(assoc_type(w, item, typaram));
+                try!(write!(w, "</code></h4>\n"));
+            }
             _ => panic!("can't make docs for trait item with name {}", item.name)
         }
         match item.doc_value() {
@@ -2260,8 +2271,9 @@ impl<'a> fmt::Show for Source<'a> {
 
 fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
-    try!(w.write(highlight::highlight(t.source.as_slice(), Some("macro"),
-                                      None).as_bytes()));
+    try!(w.write_str(highlight::highlight(t.source.as_slice(),
+                                          Some("macro"),
+                                          None)[]));
     document(w, it)
 }
 

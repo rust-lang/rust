@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
+use prelude::v1::*;
 
 use sync::atomic::{mod, AtomicUint};
 use sync::poison::{mod, LockResult};
@@ -88,7 +88,7 @@ unsafe impl Sync for StaticCondvar {}
 #[unstable = "may be merged with Condvar in the future"]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
     inner: sys::CONDVAR_INIT,
-    mutex: atomic::INIT_ATOMIC_UINT,
+    mutex: atomic::ATOMIC_UINT_INIT,
 };
 
 impl Condvar {
@@ -279,11 +279,13 @@ impl StaticCondvar {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
-    use time::Duration;
     use super::{StaticCondvar, CONDVAR_INIT};
+    use sync::mpsc::channel;
     use sync::{StaticMutex, MUTEX_INIT, Condvar, Mutex, Arc};
+    use thread::Thread;
+    use time::Duration;
 
     #[test]
     fn smoke() {
@@ -306,7 +308,7 @@ mod tests {
         static M: StaticMutex = MUTEX_INIT;
 
         let g = M.lock().unwrap();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let _g = M.lock().unwrap();
             C.notify_one();
         });
@@ -324,30 +326,30 @@ mod tests {
         for _ in range(0, N) {
             let data = data.clone();
             let tx = tx.clone();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 let &(ref lock, ref cond) = &*data;
                 let mut cnt = lock.lock().unwrap();
                 *cnt += 1;
                 if *cnt == N {
-                    tx.send(());
+                    tx.send(()).unwrap();
                 }
                 while *cnt != 0 {
                     cnt = cond.wait(cnt).unwrap();
                 }
-                tx.send(());
-            });
+                tx.send(()).unwrap();
+            }).detach();
         }
         drop(tx);
 
         let &(ref lock, ref cond) = &*data;
-        rx.recv();
+        rx.recv().unwrap();
         let mut cnt = lock.lock().unwrap();
         *cnt = 0;
         cond.notify_all();
         drop(cnt);
 
         for _ in range(0, N) {
-            rx.recv();
+            rx.recv().unwrap();
         }
     }
 
@@ -359,7 +361,7 @@ mod tests {
         let g = M.lock().unwrap();
         let (g, success) = C.wait_timeout(g, Duration::nanoseconds(1000)).unwrap();
         assert!(!success);
-        spawn(move|| {
+        let _t = Thread::spawn(move || {
             let _g = M.lock().unwrap();
             C.notify_one();
         });
@@ -377,14 +379,13 @@ mod tests {
         static C: StaticCondvar = CONDVAR_INIT;
 
         let mut g = M1.lock().unwrap();
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let _g = M1.lock().unwrap();
             C.notify_one();
         });
         g = C.wait(g).unwrap();
         drop(g);
 
-        C.wait(M2.lock().unwrap()).unwrap();
-
+        let _ = C.wait(M2.lock().unwrap()).unwrap();
     }
 }

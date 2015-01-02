@@ -56,7 +56,7 @@
 
 #![allow(non_camel_case_types)]
 
-use prelude::*;
+use prelude::v1::*;
 
 use sync::atomic::{mod, AtomicUint};
 use sync::{Mutex, Once, ONCE_INIT};
@@ -137,7 +137,7 @@ pub const INIT: StaticKey = StaticKey {
 ///
 /// This value allows specific configuration of the destructor for a TLS key.
 pub const INIT_INNER: StaticKeyInner = StaticKeyInner {
-    key: atomic::INIT_ATOMIC_UINT,
+    key: atomic::ATOMIC_UINT_INIT,
 };
 
 static INIT_KEYS: Once = ONCE_INIT;
@@ -246,7 +246,7 @@ impl Drop for Key {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
     use super::{Key, StaticKey, INIT_INNER};
 
     fn assert_sync<T: Sync>() {}

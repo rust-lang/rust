@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sync::mpsc::channel;
 use std::os;
+use std::thread::Thread;
 use std::uint;
 
 // A simple implementation of parfib. One subtree is found in a new
@@ -21,11 +23,11 @@ fn parfib(n: uint) -> uint {
     }
 
     let (tx, rx) = channel();
-    spawn(move|| {
+    Thread::spawn(move|| {
         tx.send(parfib(n-1));
-    });
+    }).detach();
     let m2 = parfib(n-2);
-    return (rx.recv() + m2);
+    return (rx.recv().unwrap() + m2);
 }
 
 fn main() {
@@ -33,7 +35,7 @@ fn main() {
     let args = os::args();
     let args = args.as_slice();
     let n = if args.len() == 2 {
-        from_str::<uint>(args[1].as_slice()).unwrap()
+        args[1].parse::<uint>().unwrap()
     } else {
         10
     };
