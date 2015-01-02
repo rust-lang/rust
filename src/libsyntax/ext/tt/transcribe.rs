@@ -53,13 +53,28 @@ pub struct TtReader<'a> {
 }
 
 /// This can do Macro-By-Example transcription. On the other hand, if
-/// `src` contains no `TtSequence`s and `TtNonterminal`s, `interp` can (and
-/// should) be none.
+/// `src` contains no `TtSequence`s, `MatchNt`s or `SubstNt`s, `interp` can
+/// (and should) be None.
 pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
                          interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                          imported_from: Option<Ident>,
-                         src: Vec<ast::TokenTree> )
+                         src: Vec<ast::TokenTree>)
                          -> TtReader<'a> {
+    new_tt_reader_with_doc_flag(sp_diag, interp, imported_from, src, false)
+}
+
+/// The extra `desugar_doc_comments` flag enables reading doc comments
+/// like any other attribute which consists of `meta` and surrounding #[ ] tokens.
+///
+/// This can do Macro-By-Example transcription. On the other hand, if
+/// `src` contains no `TtSequence`s, `MatchNt`s or `SubstNt`s, `interp` can
+/// (and should) be None.
+pub fn new_tt_reader_with_doc_flag<'a>(sp_diag: &'a SpanHandler,
+                                       interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
+                                       imported_from: Option<Ident>,
+                                       src: Vec<ast::TokenTree>,
+                                       desugar_doc_comments: bool)
+                                       -> TtReader<'a> {
     let mut r = TtReader {
         sp_diag: sp_diag,
         stack: vec!(TtFrame {
@@ -80,7 +95,7 @@ pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
         crate_name_next: None,
         repeat_idx: Vec::new(),
         repeat_len: Vec::new(),
-        desugar_doc_comments: false,
+        desugar_doc_comments: desugar_doc_comments,
         /* dummy values, never read: */
         cur_tok: token::Eof,
         cur_span: DUMMY_SP,
@@ -266,18 +281,15 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
             // FIXME #2887: think about span stuff here
             TtToken(sp, SubstNt(ident, namep)) => {
+                r.stack.last_mut().unwrap().idx += 1;
                 match lookup_cur_matched(r, ident) {
                     None => {
-                        r.stack.push(TtFrame {
-                            forest: TtToken(sp, SubstNt(ident, namep)),
-                            idx: 0,
-                            dotdotdoted: false,
-                            sep: None
-                        });
+                        r.cur_span = sp;
+                        r.cur_tok = SubstNt(ident, namep);
+                        return ret_val;
                         // this can't be 0 length, just like TtDelimited
                     }
                     Some(cur_matched) => {
-                        r.stack.last_mut().unwrap().idx += 1;
                         match *cur_matched {
                             // sidestep the interpolation tricks for ident because
                             // (a) idents can be in lots of places, so it'd be a pain

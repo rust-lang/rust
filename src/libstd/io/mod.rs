@@ -1780,9 +1780,11 @@ pub struct UnstableFileStat {
     pub gen: u64,
 }
 
+
+// NOTE(stage0): change this one last #[doc=..] to /// after the next snapshot
 bitflags! {
-    #[doc = "A set of permissions for a file or directory is represented"]
-    #[doc = "by a set of flags which are or'd together."]
+    #[doc = "A set of permissions for a file or directory is represented by a set of"]
+    /// flags which are or'd together.
     flags FilePermission: u32 {
         const USER_READ     = 0o400,
         const USER_WRITE    = 0o200,
@@ -1798,20 +1800,20 @@ bitflags! {
         const GROUP_RWX = GROUP_READ.bits | GROUP_WRITE.bits | GROUP_EXECUTE.bits,
         const OTHER_RWX = OTHER_READ.bits | OTHER_WRITE.bits | OTHER_EXECUTE.bits,
 
-        #[doc = "Permissions for user owned files, equivalent to 0644 on"]
-        #[doc = "unix-like systems."]
+        /// Permissions for user owned files, equivalent to 0644 on unix-like
+        /// systems.
         const USER_FILE = USER_READ.bits | USER_WRITE.bits | GROUP_READ.bits | OTHER_READ.bits,
 
-        #[doc = "Permissions for user owned directories, equivalent to 0755 on"]
-        #[doc = "unix-like systems."]
+        /// Permissions for user owned directories, equivalent to 0755 on
+        /// unix-like systems.
         const USER_DIR  = USER_RWX.bits | GROUP_READ.bits | GROUP_EXECUTE.bits |
                    OTHER_READ.bits | OTHER_EXECUTE.bits,
 
-        #[doc = "Permissions for user owned executables, equivalent to 0755"]
-        #[doc = "on unix-like systems."]
+        /// Permissions for user owned executables, equivalent to 0755
+        /// on unix-like systems.
         const USER_EXEC = USER_DIR.bits,
 
-        #[doc = "All possible permissions enabled."]
+        /// All possible permissions enabled.
         const ALL_PERMISSIONS = USER_RWX.bits | GROUP_RWX.bits | OTHER_RWX.bits,
     }
 }
