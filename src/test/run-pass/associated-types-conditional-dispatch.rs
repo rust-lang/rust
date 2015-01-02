@@ -11,7 +11,7 @@
 // Test that we evaluate projection predicates to winnow out
 // candidates during trait selection and method resolution (#20296).
 // If we don't properly winnow out candidates based on the output type
-// `Output=[A]`, then the impl marked with `(*)` is seen to conflict
+// `Target=[A]`, then the impl marked with `(*)` is seen to conflict
 // with all the others.
 
 #![feature(associated_types, default_type_params)]
@@ -32,10 +32,10 @@ impl<A, B> MyEq<[B]> for [A]
     }
 }
 
-// (*) This impl conflicts with everything unless the `Output=[A]`
+// (*) This impl conflicts with everything unless the `Target=[A]`
 // constraint is considered.
 impl<'a, A, B, Lhs> MyEq<[B; 0]> for Lhs
-    where A: MyEq<B>, Lhs: Deref<Output=[A]>
+    where A: MyEq<B>, Lhs: Deref<Target=[A]>
 {
     fn eq(&self, other: &[B; 0]) -> bool {
         MyEq::eq(&**self, other.as_slice())
@@ -57,7 +57,7 @@ impl<T> Helper<T> for Option<T> {
 }
 
 impl<T, H: Helper<T>> Deref for DerefWithHelper<H, T> {
-    type Output = T;
+    type Target = T;
 
     fn deref(&self) -> &T {
         self.helper.helper_borrow()
