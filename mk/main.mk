@@ -45,7 +45,7 @@ CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)-dev
 endif
 
 # The name of the package to use for creating tarballs, installers etc.
-CFG_PACKAGE_NAME=rust-$(CFG_PACKAGE_VERS)
+CFG_PACKAGE_NAME=rustc-$(CFG_PACKAGE_VERS)
 
 # The version string plus commit information - this is what rustc reports
 CFG_VERSION = $(CFG_RELEASE)
