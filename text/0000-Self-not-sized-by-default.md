@@ -48,10 +48,10 @@ trait Foo : ?Sized { ... }
 
 However, placing `?Sized` in the supertrait listing raises awkward
 questions regarding inheritance. Certainly, when experimenting with
-this syntax early on, the author found it very surprising that the
-`?Sized` bound was "inherited" by subtraits. At the same time, it
-makes no sense to inherit, since all that the `?Sized` notation is
-saying is "do not add `Sized`", and you can't inherit the absence of a
+this syntax early on, we found it very surprising that the `?Sized`
+bound was "inherited" by subtraits. At the same time, it makes no
+sense to inherit, since all that the `?Sized` notation is saying is
+"do not add `Sized`", and you can't inherit the absence of a
 thing. Having traits simply not inherit from `Sized` by default
 sidesteps this problem altogether and avoids the need for a special
 syntax to supress the (now absent) default.
@@ -81,7 +81,7 @@ object `Foo` implements the trait `Foo`.
 # Drawbacks
 
 The `Self` parameter is inconsistent with other type parameters if we
-adopt this RFC. The author believes this is acceptable since it is
+adopt this RFC. We believe this is acceptable since it is
 syntactically distinguished in other ways (for example, it is not
 declared), and the benefits are substantial.
 
@@ -96,10 +96,10 @@ declared), and the benefits are substantial.
   objects implement their respective traits ([RFC 255]).
   
 - Remove the `Sized` defaults altogether. This approach is purer, but
-  the annotation burden is substantial. The author continues to
-  experiment in the hopes of finding an alternative to current blanket
-  default, but without success thus far (beyond the idea of doing
-  global inference).
+  the annotation burden is substantial. We continue to experiment in
+  the hopes of finding an alternative to current blanket default, but
+  without success thus far (beyond the idea of doing global
+  inference).
 
 # Unresolved questions
 
