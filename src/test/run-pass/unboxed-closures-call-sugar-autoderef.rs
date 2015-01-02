@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Homura;
+// Test that the call operator autoderefs when calling a bounded type parameter.
 
-fn akemi(homura: Homura) {
-    let Some(ref madoka) = Some(homura.kaname()); //~ ERROR does not implement any method
-    madoka.clone();
+#![feature(unboxed_closures)]
+
+use std::ops::FnMut;
+
+fn call_with_2<F>(x: &mut F) -> int
+    where F : FnMut(int) -> int
+{
+    x(2) // look ma, no `*`
 }
 
-fn main() { }
+pub fn main() {
+    let z = call_with_2(&mut |x| x - 22);
+    assert_eq!(z, -20);
+}
