@@ -625,6 +625,10 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
                     -> ast::CaptureClause {
         self.tcx().capture_modes.borrow()[closure_expr_id].clone()
     }
+
+    fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {
+        self.param_env().type_moves_by_default(span, ty)
+    }
 }
 
 impl<'blk, 'tcx> ty::UnboxedClosureTyper<'tcx> for BlockS<'blk, 'tcx> {

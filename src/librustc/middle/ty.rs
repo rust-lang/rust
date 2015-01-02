@@ -3548,11 +3548,12 @@ fn type_impls_bound<'tcx>(cx: &ctxt<'tcx>,
         }
     }
 
-    let infcx = infer::new_infer_ctxt(cx);
-    let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env, ty, bound);
+    let infcx = infer::new_infer_ctxt(param_env.tcx);
+
+    let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env, ty, bound, span);
 
     debug!("type_impls_bound({}, {}) = {}",
-           ty_to_string(cx, ty),
+           ty.repr(param_env.tcx),
            bound,
            is_impld);
 
@@ -3564,20 +3565,22 @@ fn type_impls_bound<'tcx>(cx: &ctxt<'tcx>,
     is_impld
 }
 
-pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>,
-                                   ty: Ty<'tcx>,
-                                   param_env: &ParameterEnvironment<'tcx>)
-                                   -> bool
+pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
+                                      span: Span,
+                                      ty: Ty<'tcx>)
+                                      -> bool
 {
-    !type_impls_bound(cx, &cx.type_impls_copy_cache, param_env, ty, ty::BoundCopy)
+    let tcx = param_env.tcx;
+    !type_impls_bound(param_env, &tcx.type_impls_copy_cache, ty, ty::BoundCopy, span)
 }
 
-pub fn type_is_sized<'tcx>(cx: &ctxt<'tcx>,
-                           ty: Ty<'tcx>,
-                           param_env: &ParameterEnvironment<'tcx>)
-                           -> bool
+pub fn type_is_sized<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
+                              span: Span,
+                              ty: Ty<'tcx>)
+                              -> bool
 {
-    type_impls_bound(cx, &cx.type_impls_sized_cache, param_env, ty, ty::BoundSized)
+    let tcx = param_env.tcx;
+    type_impls_bound(param_env, &tcx.type_impls_sized_cache, ty, ty::BoundSized, span)
 }
 
 pub fn is_ffi_safe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -6562,6 +6565,10 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
                     -> ast::CaptureClause {
         self.capture_modes.borrow()[closure_expr_id].clone()
     }
+
+    fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {
+        type_moves_by_default(self, span, ty)
+    }
 }
 
 impl<'tcx> UnboxedClosureTyper<'tcx> for ty::ctxt<'tcx> {
@@ -6944,15 +6951,18 @@ pub enum CopyImplementationError {
     TypeIsStructural,
 }
 
-pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
-                                     self_type: Ty<'tcx>,
-                                     param_env: &ParameterEnvironment<'tcx>)
-                                     -> Result<(),CopyImplementationError> {
+pub fn can_type_implement_copy<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tcx>,
+                                        span: Span,
+                                        self_type: Ty<'tcx>)
+                                        -> Result<(),CopyImplementationError>
+{
+    let tcx = param_env.tcx;
+
     match self_type.sty {
         ty::ty_struct(struct_did, substs) => {
             let fields = ty::struct_fields(tcx, struct_did, substs);
             for field in fields.iter() {
-                if type_moves_by_default(tcx, field.mt.ty, param_env) {
+                if type_moves_by_default(param_env, span, field.mt.ty) {
                     return Err(FieldDoesNotImplementCopy(field.name))
                 }
             }
@@ -6963,9 +6973,7 @@ pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
                 for variant_arg_type in variant.args.iter() {
                     let substd_arg_type =
                         variant_arg_type.subst(tcx, substs);
-                    if type_moves_by_default(tcx,
-                                             substd_arg_type,
-                                             param_env) {
+                    if type_moves_by_default(param_env, span, substd_arg_type) {
                         return Err(VariantDoesNotImplementCopy(variant.name))
                     }
                 }

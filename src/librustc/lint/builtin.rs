@@ -1612,15 +1612,11 @@ impl LintPass for MissingCopyImplementations {
             }
             _ => return,
         };
-        let parameter_environment = ty::empty_parameter_environment();
-        if !ty::type_moves_by_default(cx.tcx,
-                                      ty,
-                                      &parameter_environment) {
+        let parameter_environment = ty::empty_parameter_environment(cx.tcx);
+        if !ty::type_moves_by_default(&parameter_environment, item.span, ty) {
             return
         }
-        if ty::can_type_implement_copy(cx.tcx,
-                                       ty,
-                                       &parameter_environment).is_ok() {
+        if ty::can_type_implement_copy(&parameter_environment, item.span, ty).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
                          item.span,
                          "type could implement `Copy`; consider adding `impl \

@@ -1032,9 +1032,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 match p.node {
                     ast::PatIdent(ast::BindByValue(_), _, ref sub) => {
                         let pat_ty = ty::node_id_to_type(tcx, p.id);
-                        if ty::type_moves_by_default(tcx,
-                                                      pat_ty,
-                                                      &cx.param_env) {
+                        if ty::type_moves_by_default(&cx.param_env, pat.span, pat_ty) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
                     }

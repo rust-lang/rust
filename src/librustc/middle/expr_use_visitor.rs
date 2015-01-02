@@ -367,10 +367,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         consume_id: ast::NodeId,
                         consume_span: Span,
                         cmt: mc::cmt<'tcx>) {
-        let mode = copy_or_move(self.tcx(),
-                                cmt.ty,
-                                self.param_env,
-                                DirectRefMove);
+        let mode = copy_or_move(self.typer, &cmt, DirectRefMove);
         self.delegate.consume(consume_id, consume_span, cmt, mode);
     }
 
@@ -1020,10 +1017,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     ast::PatIdent(ast::BindByRef(_), _, _) =>
                         mode.lub(BorrowingMatch),
                     ast::PatIdent(ast::BindByValue(_), _, _) => {
-                        match copy_or_move(tcx,
-                                           cmt_pat.ty,
-                                           self.param_env,
-                                           PatBindingMove) {
+                        match copy_or_move(self.typer, &cmt_pat, PatBindingMove) {
                             Copy => mode.lub(CopyingMatch),
                             Move(_) => mode.lub(MovingMatch),
                         }
@@ -1085,10 +1079,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                              r, bk, RefBinding);
                     }
                     ast::PatIdent(ast::BindByValue(_), _, _) => {
-                        let mode = copy_or_move(typer.tcx(),
-                                                cmt_pat.ty,
-                                                param_env,
-                                                PatBindingMove);
+                        let mode = copy_or_move(typer, &cmt_pat, PatBindingMove);
                         debug!("walk_pat binding consuming pat");
                         delegate.consume_pat(pat, cmt_pat, mode);
                     }
@@ -1303,12 +1294,12 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     }
 }
 
-fn copy_or_move<'tcx>(tcx: &ty::ctxt<'tcx>,
-                      ty: Ty<'tcx>,
-                      param_env: &ParameterEnvironment<'tcx>,
+fn copy_or_move<'tcx>(typer: &mc::Typer<'tcx>,
+                      cmt: &mc::cmt<'tcx>,
                       move_reason: MoveReason)
-                      -> ConsumeMode {
-    if ty::type_moves_by_default(tcx, ty, param_env) {
+                      -> ConsumeMode
+{
+    if typer.type_moves_by_default(cmt.span, cmt.ty) {
         Move(move_reason)
     } else {
         Copy
