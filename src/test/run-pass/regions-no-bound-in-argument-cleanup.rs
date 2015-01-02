@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_destructor)]
+#![feature(associated_types, unsafe_destructor)]
 
 pub struct Foo<T>;
 
-impl<T> Iterator<T> for Foo<T> {
+impl<T> Iterator for Foo<T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         None
     }

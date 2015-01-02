@@ -10,7 +10,7 @@
 
 use std::iter::{Range,range};
 
-trait Itble<'r, T, I: Iterator<T>> { fn iter(&'r self) -> I; }
+trait Itble<'r, T, I: Iterator<Item=T>> { fn iter(&'r self) -> I; }
 
 impl<'r> Itble<'r, uint, Range<uint>> for (uint, uint) {
     fn iter(&'r self) -> Range<uint> {
@@ -19,8 +19,8 @@ impl<'r> Itble<'r, uint, Range<uint>> for (uint, uint) {
     }
 }
 
-fn check<'r, I: Iterator<uint>, T: Itble<'r, uint, I>>(cont: &T) -> bool
-//~^ HELP as shown: fn check<'r, I: Iterator<uint>, T: Itble<'r, uint, I>>(cont: &'r T) -> bool
+fn check<'r, I: Iterator<Item=uint>, T: Itble<'r, uint, I>>(cont: &T) -> bool
+//~^ HELP as shown: fn check<'r, I: Iterator<Item = uint>, T: Itble<'r, uint, I>>(cont: &'r T)
 {
     let cont_iter = cont.iter();
 //~^ ERROR cannot infer an appropriate lifetime for autoref due to conflicting requirements

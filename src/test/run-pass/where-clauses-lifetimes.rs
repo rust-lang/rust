@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo<'a, I>(mut it: I) where I: Iterator<&'a int> {}
+fn foo<'a, I>(mut it: I) where I: Iterator<Item=&'a int> {}
 
 fn main() {
     foo([1i, 2].iter());

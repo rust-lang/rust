@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![crate_type = "lib"]
+#![feature(associated_types)]
 
 pub struct TreeBuilder<H>;
 
@@ -20,7 +21,9 @@ impl<H> TreeBuilder<H> {
     }
 }
 
-impl<H> Iterator<H> for TreeBuilder<H> {
+impl<H> Iterator for TreeBuilder<H> {
+    type Item = H;
+
     fn next(&mut self) -> Option<H> {
         None
     }
