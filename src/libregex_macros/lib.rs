@@ -603,7 +603,7 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
     // Converts `xs` to a `[x1, x2, .., xN]` expression by calling `to_expr`
     // on each element in `xs`.
     fn vec_expr<T, It, F>(&self, xs: It, mut to_expr: F) -> P<ast::Expr> where
-        It: Iterator<T>,
+        It: Iterator<Item=T>,
         F: FnMut(&ExtCtxt, T) -> P<ast::Expr>,
     {
         let exprs = xs.map(|x| to_expr(self.cx, x)).collect();
