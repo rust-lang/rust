@@ -25,13 +25,13 @@
 //! ```
 //! let ys: Vec<i32> = vec![];
 //!
-//! let zs = vec![1i32, 2, 3, 4, 5];
+//! let zs = vec![1, 2, 3, 4, 5];
 //! ```
 //!
 //! Push:
 //!
 //! ```
-//! let mut xs = vec![1i32, 2];
+//! let mut xs = vec![1, 2];
 //!
 //! xs.push(3);
 //! ```
@@ -39,7 +39,7 @@
 //! And pop:
 //!
 //! ```
-//! let mut xs = vec![1i32, 2];
+//! let mut xs = vec![1, 2];
 //!
 //! let two = xs.pop();
 //! ```
@@ -71,8 +71,8 @@ use core::uint;
 ///
 /// ```
 /// let mut vec = Vec::new();
-/// vec.push(1i);
-/// vec.push(2i);
+/// vec.push(1);
+/// vec.push(2);
 ///
 /// assert_eq!(vec.len(), 2);
 /// assert_eq!(vec[0], 1);
@@ -80,7 +80,7 @@ use core::uint;
 /// assert_eq!(vec.pop(), Some(2));
 /// assert_eq!(vec.len(), 1);
 ///
-/// vec[0] = 7i;
+/// vec[0] = 7;
 /// assert_eq!(vec[0], 7);
 ///
 /// vec.push_all(&[1, 2, 3]);
@@ -88,13 +88,13 @@ use core::uint;
 /// for x in vec.iter() {
 ///     println!("{}", x);
 /// }
-/// assert_eq!(vec, vec![7i, 1, 2, 3]);
+/// assert_eq!(vec, vec![7, 1, 2, 3]);
 /// ```
 ///
 /// The `vec!` macro is provided to make initialization more convenient:
 ///
 /// ```
-/// let mut vec = vec![1i, 2i, 3i];
+/// let mut vec = vec![1, 2, 3];
 /// vec.push(4);
 /// assert_eq!(vec, vec![1, 2, 3, 4]);
 /// ```
@@ -104,9 +104,9 @@ use core::uint;
 /// ```
 /// let mut stack = Vec::new();
 ///
-/// stack.push(1i);
-/// stack.push(2i);
-/// stack.push(3i);
+/// stack.push(1);
+/// stack.push(2);
+/// stack.push(3);
 ///
 /// loop {
 ///     let top = match stack.pop() {
@@ -218,7 +218,7 @@ impl<T> Vec<T> {
     /// use std::mem;
     ///
     /// fn main() {
-    ///     let mut v = vec![1i, 2, 3];
+    ///     let mut v = vec![1, 2, 3];
     ///
     ///     // Pull out the various important pieces of information about `v`
     ///     let p = v.as_mut_ptr();
@@ -237,7 +237,7 @@ impl<T> Vec<T> {
     ///
     ///         // Put everything back together into a Vec
     ///         let rebuilt = Vec::from_raw_parts(p, len, cap);
-    ///         assert_eq!(rebuilt, vec![4i, 5i, 6i]);
+    ///         assert_eq!(rebuilt, vec![4, 5, 6]);
     ///     }
     /// }
     /// ```
@@ -392,7 +392,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1i, 2, 3, 4];
+    /// let mut vec = vec![1, 2, 3, 4];
     /// vec.truncate(2);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
@@ -416,7 +416,7 @@ impl<T> Vec<T> {
     /// ```
     /// fn foo(slice: &mut [int]) {}
     ///
-    /// let mut vec = vec![1i, 2];
+    /// let mut vec = vec![1, 2];
     /// foo(vec.as_mut_slice());
     /// ```
     #[inline]
@@ -519,7 +519,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1i, 2, 3];
+    /// let mut vec = vec![1, 2, 3];
     /// vec.insert(1, 4);
     /// assert_eq!(vec, vec![1, 4, 2, 3]);
     /// vec.insert(4, 5);
@@ -557,7 +557,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut v = vec![1i, 2, 3];
+    /// let mut v = vec![1, 2, 3];
     /// assert_eq!(v.remove(1), 2);
     /// assert_eq!(v, vec![1, 3]);
     /// ```
@@ -591,7 +591,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1i, 2, 3, 4];
+    /// let mut vec = vec![1, 2, 3, 4];
     /// vec.retain(|&x| x%2 == 0);
     /// assert_eq!(vec, vec![2, 4]);
     /// ```
@@ -624,7 +624,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```rust
-    /// let mut vec = vec!(1i, 2);
+    /// let mut vec = vec!(1, 2);
     /// vec.push(3);
     /// assert_eq!(vec, vec!(1, 2, 3));
     /// ```
@@ -662,7 +662,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```rust
-    /// let mut vec = vec![1i, 2, 3];
+    /// let mut vec = vec![1, 2, 3];
     /// assert_eq!(vec.pop(), Some(3));
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
@@ -716,7 +716,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut v = vec![1i, 2, 3];
+    /// let mut v = vec![1, 2, 3];
     ///
     /// v.clear();
     ///
@@ -733,7 +733,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let a = vec![1i, 2, 3];
+    /// let a = vec![1, 2, 3];
     /// assert_eq!(a.len(), 3);
     /// ```
     #[inline]
@@ -748,7 +748,7 @@ impl<T> Vec<T> {
     /// let mut v = Vec::new();
     /// assert!(v.is_empty());
     ///
-    /// v.push(1i);
+    /// v.push(1);
     /// assert!(!v.is_empty());
     /// ```
     #[stable]
@@ -965,7 +965,7 @@ impl<T: Clone> Vec<T> {
     /// vec.resize(3, "world");
     /// assert_eq!(vec, vec!["hello", "world", "world"]);
     ///
-    /// let mut vec = vec![1i, 2, 3, 4];
+    /// let mut vec = vec![1, 2, 3, 4];
     /// vec.resize(2, 0);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
@@ -988,8 +988,8 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1i];
-    /// vec.push_all(&[2i, 3, 4]);
+    /// let mut vec = vec![1];
+    /// vec.push_all(&[2, 3, 4]);
     /// assert_eq!(vec, vec![1, 2, 3, 4]);
     /// ```
     #[inline]
@@ -1021,11 +1021,11 @@ impl<T: PartialEq> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1i, 2, 2, 3, 2];
+    /// let mut vec = vec![1, 2, 2, 3, 2];
     ///
     /// vec.dedup();
     ///
-    /// assert_eq!(vec, vec![1i, 2, 3, 2]);
+    /// assert_eq!(vec, vec![1, 2, 3, 2]);
     /// ```
     #[stable]
     pub fn dedup(&mut self) {
@@ -1399,7 +1399,7 @@ impl<T> AsSlice<T> for Vec<T> {
     /// ```
     /// fn foo(slice: &[int]) {}
     ///
-    /// let vec = vec![1i, 2];
+    /// let vec = vec![1, 2];
     /// foo(vec.as_slice());
     /// ```
     #[inline]

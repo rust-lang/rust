@@ -41,7 +41,7 @@ use sys_common::rwlock as sys;
 /// ```
 /// use std::sync::RWLock;
 ///
-/// let lock = RWLock::new(5i);
+/// let lock = RWLock::new(5);
 ///
 /// // many reader locks can be held at once
 /// {

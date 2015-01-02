@@ -35,7 +35,7 @@
 //! use std::sync::Arc;
 //! use std::thread::Thread;
 //!
-//! let five = Arc::new(5i);
+//! let five = Arc::new(5);
 //!
 //! for i in range(0u, 10) {
 //!     let five = five.clone();
@@ -52,7 +52,7 @@
 //! use std::sync::{Arc, Mutex};
 //! use std::thread::Thread;
 //!
-//! let five = Arc::new(Mutex::new(5i));
+//! let five = Arc::new(Mutex::new(5));
 //!
 //! for _ in range(0u, 10) {
 //!     let five = five.clone();
@@ -154,7 +154,7 @@ impl<T> Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     /// ```
     #[inline]
     #[stable]
@@ -176,7 +176,7 @@ impl<T> Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
     /// let weak_five = five.downgrade();
     /// ```
@@ -220,7 +220,7 @@ impl<T> Clone for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
     /// five.clone();
     /// ```
@@ -267,7 +267,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let mut five = Arc::new(5i);
+    /// let mut five = Arc::new(5);
     ///
     /// let mut_five = five.make_unique();
     /// ```
@@ -303,14 +303,14 @@ impl<T: Sync + Send> Drop for Arc<T> {
     /// use std::sync::Arc;
     ///
     /// {
-    ///     let five = Arc::new(5i);
+    ///     let five = Arc::new(5);
     ///
     ///     // stuff
     ///
     ///     drop(five); // explict drop
     /// }
     /// {
-    ///     let five = Arc::new(5i);
+    ///     let five = Arc::new(5);
     ///
     ///     // stuff
     ///
@@ -369,7 +369,7 @@ impl<T: Sync + Send> Weak<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
     /// let weak_five = five.downgrade();
     ///
@@ -405,7 +405,7 @@ impl<T: Sync + Send> Clone for Weak<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let weak_five = Arc::new(5i).downgrade();
+    /// let weak_five = Arc::new(5).downgrade();
     ///
     /// weak_five.clone();
     /// ```
@@ -430,7 +430,7 @@ impl<T: Sync + Send> Drop for Weak<T> {
     /// use std::sync::Arc;
     ///
     /// {
-    ///     let five = Arc::new(5i);
+    ///     let five = Arc::new(5);
     ///     let weak_five = five.downgrade();
     ///
     ///     // stuff
@@ -438,7 +438,7 @@ impl<T: Sync + Send> Drop for Weak<T> {
     ///     drop(weak_five); // explict drop
     /// }
     /// {
-    ///     let five = Arc::new(5i);
+    ///     let five = Arc::new(5);
     ///     let weak_five = five.downgrade();
     ///
     ///     // stuff
@@ -472,9 +472,9 @@ impl<T: PartialEq> PartialEq for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five == Arc::new(5i);
+    /// five == Arc::new(5);
     /// ```
     fn eq(&self, other: &Arc<T>) -> bool { *(*self) == *(*other) }
 
@@ -487,9 +487,9 @@ impl<T: PartialEq> PartialEq for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five != Arc::new(5i);
+    /// five != Arc::new(5);
     /// ```
     fn ne(&self, other: &Arc<T>) -> bool { *(*self) != *(*other) }
 }
@@ -504,9 +504,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five.partial_cmp(&Arc::new(5i));
+    /// five.partial_cmp(&Arc::new(5));
     /// ```
     fn partial_cmp(&self, other: &Arc<T>) -> Option<Ordering> {
         (**self).partial_cmp(&**other)
@@ -521,9 +521,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five < Arc::new(5i);
+    /// five < Arc::new(5);
     /// ```
     fn lt(&self, other: &Arc<T>) -> bool { *(*self) < *(*other) }
 
@@ -536,9 +536,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five <= Arc::new(5i);
+    /// five <= Arc::new(5);
     /// ```
     fn le(&self, other: &Arc<T>) -> bool { *(*self) <= *(*other) }
 
@@ -551,9 +551,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five > Arc::new(5i);
+    /// five > Arc::new(5);
     /// ```
     fn gt(&self, other: &Arc<T>) -> bool { *(*self) > *(*other) }
 
@@ -566,9 +566,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five >= Arc::new(5i);
+    /// five >= Arc::new(5);
     /// ```
     fn ge(&self, other: &Arc<T>) -> bool { *(*self) >= *(*other) }
 }

@@ -211,7 +211,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from_vec(vec![9i, 1, 2, 7, 3, 2]);
+    /// let heap = BinaryHeap::from_vec(vec![9, 1, 2, 7, 3, 2]);
     /// ```
     pub fn from_vec(vec: Vec<T>) -> BinaryHeap<T> {
         let mut heap = BinaryHeap { data: vec };
@@ -230,7 +230,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from_vec(vec![1i, 2, 3, 4]);
+    /// let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4]);
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order
     /// for x in heap.iter() {
@@ -250,7 +250,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from_vec(vec![1i, 2, 3, 4]);
+    /// let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4]);
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order
     /// for x in heap.into_iter() {
@@ -272,7 +272,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// let mut heap = BinaryHeap::new();
     /// assert_eq!(heap.peek(), None);
     ///
-    /// heap.push(1i);
+    /// heap.push(1);
     /// heap.push(5);
     /// heap.push(2);
     /// assert_eq!(heap.peek(), Some(&5));
@@ -355,7 +355,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::from_vec(vec![1i, 3]);
+    /// let mut heap = BinaryHeap::from_vec(vec![1, 3]);
     ///
     /// assert_eq!(heap.pop(), Some(3));
     /// assert_eq!(heap.pop(), Some(1));
@@ -379,7 +379,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
-    /// heap.push(3i);
+    /// heap.push(3);
     /// heap.push(5);
     /// heap.push(1);
     ///
@@ -401,7 +401,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
-    /// heap.push(1i);
+    /// heap.push(1);
     /// heap.push(5);
     ///
     /// assert_eq!(heap.push_pop(3), 5);
@@ -433,7 +433,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
     ///
-    /// assert_eq!(heap.replace(1i), None);
+    /// assert_eq!(heap.replace(1), None);
     /// assert_eq!(heap.replace(3), Some(1));
     /// assert_eq!(heap.len(), 1);
     /// assert_eq!(heap.peek(), Some(&3));
@@ -456,7 +456,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// ```
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from_vec(vec![1i, 2, 3, 4, 5, 6, 7]);
+    /// let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4, 5, 6, 7]);
     /// let vec = heap.into_vec();
     ///
     /// // Will print in some order
@@ -474,12 +474,12 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     ///
-    /// let mut heap = BinaryHeap::from_vec(vec![1i, 2, 4, 5, 7]);
+    /// let mut heap = BinaryHeap::from_vec(vec![1, 2, 4, 5, 7]);
     /// heap.push(6);
     /// heap.push(3);
     ///
     /// let vec = heap.into_sorted_vec();
-    /// assert_eq!(vec, vec![1i, 2, 3, 4, 5, 6, 7]);
+    /// assert_eq!(vec, vec![1, 2, 3, 4, 5, 6, 7]);
     /// ```
     pub fn into_sorted_vec(mut self) -> Vec<T> {
         let mut end = self.len();
