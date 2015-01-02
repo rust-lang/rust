@@ -390,6 +390,8 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("log_syntax"),
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
+    syntax_expanders.insert(intern("derive"),
+                            Decorator(box ext::deriving::expand_meta_derive));
     syntax_expanders.insert(intern("deriving"),
                             Decorator(box ext::deriving::expand_meta_deriving));
 

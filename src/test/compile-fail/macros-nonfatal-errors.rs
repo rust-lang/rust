@@ -14,7 +14,7 @@
 #![feature(asm)]
 #![feature(trace_macros, concat_idents)]
 
-#[deriving(Default, //~ ERROR
+#[derive(Default, //~ ERROR
            Rand, //~ ERROR
            Zero)] //~ ERROR
 enum CantDeriveThose {}

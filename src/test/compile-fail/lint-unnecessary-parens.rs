@@ -10,7 +10,7 @@
 
 #![deny(unused_parens)]
 
-#[deriving(Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 struct X { y: bool }
 impl X {
     fn foo(&self) -> bool { self.y }

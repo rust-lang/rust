@@ -10,16 +10,16 @@
 
 #![crate_name="foo"]
 
-/// The '# ' lines should be removed from the output, but the #[deriving] should be
+/// The '# ' lines should be removed from the output, but the #[derive] should be
 /// retained.
 ///
 /// ```rust
 /// mod to_make_deriving_work { // FIXME #4913
 ///
-/// # #[deriving(PartialEq)] // invisible
+/// # #[derive(PartialEq)] // invisible
 /// # struct Foo; // invisible
 ///
-/// #[deriving(PartialEq)] // Bar
+/// #[derive(PartialEq)] // Bar
 /// struct Bar(Foo);
 ///
 /// fn test() {

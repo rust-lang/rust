@@ -15,7 +15,7 @@ extern crate rand;
 
 struct Error;
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Struct(
     Error //~ ERROR
 );

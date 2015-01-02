@@ -11,24 +11,24 @@
 #![allow(dead_code)]
 #![deny(raw_pointer_deriving)]
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Foo {
-    x: *const int //~ ERROR use of `#[deriving]` with a raw pointer
+    x: *const int //~ ERROR use of `#[derive]` with a raw pointer
 }
 
-#[deriving(Clone)]
-struct Bar(*mut int); //~ ERROR use of `#[deriving]` with a raw pointer
+#[derive(Clone)]
+struct Bar(*mut int); //~ ERROR use of `#[derive]` with a raw pointer
 
-#[deriving(Clone)]
+#[derive(Clone)]
 enum Baz {
-    A(*const int), //~ ERROR use of `#[deriving]` with a raw pointer
-    B { x: *mut int } //~ ERROR use of `#[deriving]` with a raw pointer
+    A(*const int), //~ ERROR use of `#[derive]` with a raw pointer
+    B { x: *mut int } //~ ERROR use of `#[derive]` with a raw pointer
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Buzz {
-    x: (*const int, //~ ERROR use of `#[deriving]` with a raw pointer
-        *const uint) //~ ERROR use of `#[deriving]` with a raw pointer
+    x: (*const int, //~ ERROR use of `#[derive]` with a raw pointer
+        *const uint) //~ ERROR use of `#[derive]` with a raw pointer
 }
 
 fn main() {}

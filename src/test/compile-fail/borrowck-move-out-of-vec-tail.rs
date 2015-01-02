@@ -10,7 +10,7 @@
 
 // Test that we do not permit moves from &[] matched by a vec pattern.
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 struct Foo {
     string: String
 }

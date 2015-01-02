@@ -73,13 +73,13 @@
 
 #![omit_gdb_pretty_printer_section]
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Struct {
     a: int,
     b: f64
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct StructStruct {
     a: Struct,
     b: Struct

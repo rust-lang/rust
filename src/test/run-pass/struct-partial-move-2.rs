@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 pub struct Partial<T> { x: T, y: T }
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct S { val: int }
 impl S { fn new(v: int) -> S { S { val: v } } }
 impl Drop for S { fn drop(&mut self) { } }

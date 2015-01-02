@@ -11,7 +11,7 @@
 
 use std::hash::hash;
 
-#[deriving(PartialEq, Clone, Hash)]
+#[derive(PartialEq, Clone, Hash)]
 struct Foo {
     bar: uint,
     baz: int

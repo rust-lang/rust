@@ -105,21 +105,21 @@ use self::AutoDiscriminant::{One, Two, Three};
 use self::ManualDiscriminant::{OneHundred, OneThousand, OneMillion};
 use self::SingleVariant::TheOnlyVariant;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum AutoDiscriminant {
     One,
     Two,
     Three
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum ManualDiscriminant {
     OneHundred = 100,
     OneThousand = 1000,
     OneMillion = 1000000
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum SingleVariant {
     TheOnlyVariant
 }

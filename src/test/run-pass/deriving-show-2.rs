@@ -10,25 +10,25 @@
 
 use std::fmt;
 
-#[deriving(Show)]
+#[derive(Show)]
 enum A {}
-#[deriving(Show)]
+#[derive(Show)]
 enum B { B1, B2, B3 }
-#[deriving(Show)]
+#[derive(Show)]
 enum C { C1(int), C2(B), C3(String) }
-#[deriving(Show)]
+#[derive(Show)]
 enum D { D1{ a: int } }
-#[deriving(Show)]
+#[derive(Show)]
 struct E;
-#[deriving(Show)]
+#[derive(Show)]
 struct F(int);
-#[deriving(Show)]
+#[derive(Show)]
 struct G(int, int);
-#[deriving(Show)]
+#[derive(Show)]
 struct H { a: int }
-#[deriving(Show)]
+#[derive(Show)]
 struct I { a: int, b: int }
-#[deriving(Show)]
+#[derive(Show)]
 struct J(Custom);
 
 struct Custom;

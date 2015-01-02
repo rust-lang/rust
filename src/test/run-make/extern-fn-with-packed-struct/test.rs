@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[repr(packed)]
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct Foo {
     a: i8,
     b: i16,

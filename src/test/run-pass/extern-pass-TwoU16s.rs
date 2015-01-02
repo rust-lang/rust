@@ -11,7 +11,7 @@
 // Test a foreign function that accepts and returns a struct
 // by value.
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 pub struct TwoU16s {
     one: u16, two: u16
 }
