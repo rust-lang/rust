@@ -2561,6 +2561,9 @@ The currently implemented features of the reference compiler are:
                 if the system linker is not used then specifying custom flags
                 doesn't have much meaning.
 
+* `link_llvm_intrinsics` – Allows linking to LLVM intrinsics via
+                           `#[link_name="llvm.*"]`.
+
 * `linkage` - Allows use of the `linkage` attribute, which is not portable.
 
 * `log_syntax` - Allows use of the `log_syntax` macro attribute, which is a

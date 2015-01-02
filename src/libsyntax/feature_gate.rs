@@ -56,6 +56,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("simd", Active),
     ("default_type_params", Active),
     ("quote", Active),
+    ("link_llvm_intrinsics", Active),
     ("linkage", Active),
     ("struct_inherit", Removed),
 
@@ -327,6 +328,16 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                               "the `linkage` attribute is experimental \
                                and not portable across platforms")
         }
+
+        let links_to_llvm = match attr::first_attr_value_str_by_name(i.attrs[], "link_name") {
+            Some(val) => val.get().starts_with("llvm."),
+            _ => false
+        };
+        if links_to_llvm {
+            self.gate_feature("link_llvm_intrinsics", i.span,
+                              "linking to LLVM intrinsics is experimental");
+        }
+
         visit::walk_foreign_item(self, i)
     }
 
