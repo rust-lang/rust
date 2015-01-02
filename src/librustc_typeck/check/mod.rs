@@ -453,7 +453,6 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
             vtable::select_all_fcx_obligations_or_error(&fcx);
             regionck::regionck_fn(&fcx, id, decl, body);
-            fcx.default_diverging_type_variables_to_nil();
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
@@ -1666,10 +1665,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn default_diverging_type_variables_to_nil(&self) {
+    /// Apply "fallbacks" to some types
+    /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
+    pub fn default_type_parameters(&self) {
+        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
         for (_, &ref ty) in self.inh.node_types.borrow_mut().iter_mut() {
-            if self.infcx().type_var_diverges(self.infcx().resolve_type_vars_if_possible(ty)) {
+            let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+            if self.infcx().type_var_diverges(resolved) {
                 demand::eqtype(self, codemap::DUMMY_SP, *ty, ty::mk_nil(self.tcx()));
+            } else {
+                match self.infcx().type_is_unconstrained_numeric(resolved) {
+                    UnconstrainedInt => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                    },
+                    UnconstrainedFloat => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                    }
+                    Neither => { }
+                }
             }
         }
     }
