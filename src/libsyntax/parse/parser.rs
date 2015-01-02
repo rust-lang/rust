@@ -946,6 +946,8 @@ impl<'a> Parser<'a> {
         self.token = next.tok;
         self.tokens_consumed += 1u;
         self.expected_tokens.clear();
+        // check after each token
+        self.check_unknown_macro_variable();
     }
 
     /// Advance the parser by one token and return the bumped token.
@@ -2655,6 +2657,70 @@ impl<'a> Parser<'a> {
         return e;
     }
 
+    // Parse unquoted tokens after a `$` in a token tree
+    fn parse_unquoted(&mut self) -> TokenTree {
+        let mut sp = self.span;
+        let (name, namep) = match self.token {
+            token::Dollar => {
+                self.bump();
+
+                if self.token == token::OpenDelim(token::Paren) {
+                    let Spanned { node: seq, span: seq_span } = self.parse_seq(
+                        &token::OpenDelim(token::Paren),
+                        &token::CloseDelim(token::Paren),
+                        seq_sep_none(),
+                        |p| p.parse_token_tree()
+                    );
+                    let (sep, repeat) = self.parse_sep_and_kleene_op();
+                    let name_num = macro_parser::count_names(seq[]);
+                    return TtSequence(mk_sp(sp.lo, seq_span.hi),
+                                      Rc::new(SequenceRepetition {
+                                          tts: seq,
+                                          separator: sep,
+                                          op: repeat,
+                                          num_captures: name_num
+                                      }));
+                } else if self.token.is_keyword_allow_following_colon(keywords::Crate) {
+                    self.bump();
+                    return TtToken(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar));
+                } else {
+                    sp = mk_sp(sp.lo, self.span.hi);
+                    let namep = match self.token { token::Ident(_, p) => p, _ => token::Plain };
+                    let name = self.parse_ident();
+                    (name, namep)
+                }
+            }
+            token::SubstNt(name, namep) => {
+                self.bump();
+                (name, namep)
+            }
+            _ => unreachable!()
+        };
+        // continue by trying to parse the `:ident` after `$name`
+        if self.token == token::Colon && self.look_ahead(1, |t| t.is_ident() &&
+                                                                !t.is_strict_keyword() &&
+                                                                !t.is_reserved_keyword()) {
+            self.bump();
+            sp = mk_sp(sp.lo, self.span.hi);
+            let kindp = match self.token { token::Ident(_, p) => p, _ => token::Plain };
+            let nt_kind = self.parse_ident();
+            TtToken(sp, MatchNt(name, nt_kind, namep, kindp))
+        } else {
+            TtToken(sp, SubstNt(name, namep))
+        }
+    }
+
+    pub fn check_unknown_macro_variable(&mut self) {
+        if self.quote_depth == 0u {
+            match self.token {
+                token::SubstNt(name, _) =>
+                    self.fatal(format!("unknown macro variable `{}`",
+                                       token::get_ident(name))[]),
+                _ => {}
+            }
+        }
+    }
+
     /// Parse an optional separator followed by a Kleene-style
     /// repetition token (+ or *).
     pub fn parse_sep_and_kleene_op(&mut self) -> (Option<token::Token>, ast::KleeneOp) {
@@ -2701,63 +2767,25 @@ impl<'a> Parser<'a> {
         fn parse_non_delim_tt_tok(p: &mut Parser) -> TokenTree {
             maybe_whole!(deref p, NtTT);
             match p.token {
-              token::CloseDelim(_) => {
-                  // This is a conservative error: only report the last unclosed delimiter. The
-                  // previous unclosed delimiters could actually be closed! The parser just hasn't
-                  // gotten to them yet.
-                  match p.open_braces.last() {
-                      None => {}
-                      Some(&sp) => p.span_note(sp, "unclosed delimiter"),
-                  };
-                  let token_str = p.this_token_to_string();
-                  p.fatal(format!("incorrect close delimiter: `{}`",
-                                  token_str)[])
-              },
-              /* we ought to allow different depths of unquotation */
-              token::Dollar if p.quote_depth > 0u => {
-                p.bump();
-                let sp = p.span;
-
-                if p.token == token::OpenDelim(token::Paren) {
-                    let seq = p.parse_seq(
-                        &token::OpenDelim(token::Paren),
-                        &token::CloseDelim(token::Paren),
-                        seq_sep_none(),
-                        |p| p.parse_token_tree()
-                    );
-                    let (sep, repeat) = p.parse_sep_and_kleene_op();
-                    let seq = match seq {
-                        Spanned { node, .. } => node,
+                token::CloseDelim(_) => {
+                    // This is a conservative error: only report the last unclosed delimiter. The
+                    // previous unclosed delimiters could actually be closed! The parser just hasn't
+                    // gotten to them yet.
+                    match p.open_braces.last() {
+                        None => {}
+                        Some(&sp) => p.span_note(sp, "unclosed delimiter"),
                     };
-                    let name_num = macro_parser::count_names(seq[]);
-                    TtSequence(mk_sp(sp.lo, p.span.hi),
-                               Rc::new(SequenceRepetition {
-                                   tts: seq,
-                                   separator: sep,
-                                   op: repeat,
-                                   num_captures: name_num
-                               }))
-                } else if p.token.is_keyword_allow_following_colon(keywords::Crate) {
-                    p.bump();
-                    TtToken(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar))
-                } else {
-                    // A nonterminal that matches or not
-                    let namep = match p.token { token::Ident(_, p) => p, _ => token::Plain };
-                    let name = p.parse_ident();
-                    if p.token == token::Colon && p.look_ahead(1, |t| t.is_ident()) {
-                        p.bump();
-                        let kindp = match p.token { token::Ident(_, p) => p, _ => token::Plain };
-                        let nt_kind = p.parse_ident();
-                        let m = TtToken(sp, MatchNt(name, nt_kind, namep, kindp));
-                        m
-                    } else {
-                        TtToken(sp, SubstNt(name, namep))
-                    }
+                    let token_str = p.this_token_to_string();
+                    p.fatal(format!("incorrect close delimiter: `{}`",
+                                    token_str)[])
+                },
+                /* we ought to allow different depths of unquotation */
+                token::Dollar | token::SubstNt(..) if p.quote_depth > 0u => {
+                    p.parse_unquoted()
                 }
-              }
-              _ => {
-                  TtToken(p.span, p.bump_and_get())
-              }
+                _ => {
+                    TtToken(p.span, p.bump_and_get())
+                }
             }
         }
 

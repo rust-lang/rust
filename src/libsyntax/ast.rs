@@ -883,7 +883,6 @@ impl TokenTree {
     pub fn len(&self) -> uint {
         match *self {
             TtToken(_, token::DocComment(_)) => 2,
-            TtToken(_, token::SubstNt(..)) => 2,
             TtToken(_, token::SpecialVarNt(..)) => 2,
             TtToken(_, token::MatchNt(..)) => 3,
             TtDelimited(_, ref delimed) => {
@@ -920,11 +919,6 @@ impl TokenTree {
                     return delimed.close_tt();
                 }
                 delimed.tts[index - 1].clone()
-            }
-            (&TtToken(sp, token::SubstNt(name, name_st)), _) => {
-                let v = [TtToken(sp, token::Dollar),
-                         TtToken(sp, token::Ident(name, name_st))];
-                v[index]
             }
             (&TtToken(sp, token::SpecialVarNt(var)), _) => {
                 let v = [TtToken(sp, token::Dollar),

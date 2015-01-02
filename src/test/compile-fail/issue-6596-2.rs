@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unexpected token
+#![feature(macro_rules)]
 
-macro_rules! e {
+// error-pattern: unknown macro variable `nonexistent`
+
+macro_rules! g {
     ($inp:ident) => (
-        $nonexistent
+        { $inp $nonexistent }
     );
 }
 
 fn main() {
-    e!(foo);
+    g!(foo);
 }
