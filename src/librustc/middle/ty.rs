@@ -5719,7 +5719,7 @@ pub fn unboxed_closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
                                                 })
                                     }
                                     None => {
-                                        // TODO we should really return None here;
+                                        // FIXME(#16640) we should really return None here;
                                         // but that requires better inference integration,
                                         // for now gin up something.
                                         freevar_ty
