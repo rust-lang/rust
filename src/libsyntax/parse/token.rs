@@ -392,6 +392,7 @@ impl fmt::Show for Nonterminal {
     }
 }
 
+
 // Get the first "argument"
 macro_rules! first {
     ( $first:expr, $( $remainder:expr, )* ) => ( $first )
