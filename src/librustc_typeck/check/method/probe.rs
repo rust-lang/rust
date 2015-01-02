@@ -788,9 +788,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     debug!("impl_obligations={}", obligations.repr(self.tcx()));
 
                     // Evaluate those obligations to see if they might possibly hold.
-                    let mut selcx = traits::SelectionContext::new(self.infcx(),
-                                                                  &self.fcx.inh.param_env,
-                                                                  self.fcx);
+                    let mut selcx = traits::SelectionContext::new(self.infcx(), self.fcx);
                     obligations.all(|o| selcx.evaluate_obligation(o))
                 }
 

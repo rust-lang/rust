@@ -272,7 +272,6 @@ pub type McResult<T> = Result<T, ()>;
 /// can be sure that only `Ok` results will occur.
 pub trait Typer<'tcx> : ty::UnboxedClosureTyper<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
-    fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx>;
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>>;
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>>;
     fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool;
@@ -1292,77 +1291,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
               self.tcx().sess.span_bug(pat.span, "unexpanded macro");
           }
         }
-    }
 
-    pub fn cmt_to_string(&self, cmt: &cmt_<'tcx>) -> String {
-        fn upvar_to_string(upvar: &Upvar, is_copy: bool) -> String {
-            if upvar.is_unboxed {
-                let kind = match upvar.kind {
-                    ty::FnUnboxedClosureKind => "Fn",
-                    ty::FnMutUnboxedClosureKind => "FnMut",
-                    ty::FnOnceUnboxedClosureKind => "FnOnce"
-                };
-                format!("captured outer variable in an `{}` closure", kind)
-            } else {
-                (match (upvar.kind, is_copy) {
-                    (ty::FnOnceUnboxedClosureKind, true) => "captured outer variable in a proc",
-                    _ => "captured outer variable"
-                }).to_string()
-            }
-        }
-
-        match cmt.cat {
-          cat_static_item => {
-              "static item".to_string()
-          }
-          cat_rvalue(..) => {
-              "non-lvalue".to_string()
-          }
-          cat_local(vid) => {
-              match self.tcx().map.find(vid) {
-                  Some(ast_map::NodeArg(_)) => {
-                      "argument".to_string()
-                  }
-                  _ => "local variable".to_string()
-              }
-          }
-          cat_deref(_, _, pk) => {
-              let upvar = cmt.upvar();
-              match upvar.as_ref().map(|i| &i.cat) {
-                  Some(&cat_upvar(ref var)) => {
-                      upvar_to_string(var, false)
-                  }
-                  Some(_) => unreachable!(),
-                  None => {
-                      match pk {
-                          Implicit(..) => {
-                            "dereference (dereference is implicit, due to indexing)".to_string()
-                          }
-                          Unique => format!("dereference of `{}`", ptr_sigil(pk)),
-                          _ => format!("dereference of `{}`-pointer", ptr_sigil(pk))
-                      }
-                  }
-              }
-          }
-          cat_interior(_, InteriorField(NamedField(_))) => {
-              "field".to_string()
-          }
-          cat_interior(_, InteriorField(PositionalField(_))) => {
-              "anonymous field".to_string()
-          }
-          cat_interior(_, InteriorElement(VecElement)) => {
-              "vec content".to_string()
-          }
-          cat_interior(_, InteriorElement(OtherElement)) => {
-              "indexed content".to_string()
-          }
-          cat_upvar(ref var) => {
-              upvar_to_string(var, true)
-          }
-          cat_downcast(ref cmt, _) => {
-            self.cmt_to_string(&**cmt)
-          }
-        }
+        Ok(())
     }
 }
 
@@ -1472,6 +1402,78 @@ impl<'tcx> cmt_<'tcx> {
                 })
             }
             NoteNone => None
+        }
+    }
+
+
+    pub fn descriptive_string(&self, tcx: &ty::ctxt) -> String {
+        fn upvar_to_string(upvar: &Upvar, is_copy: bool) -> String {
+            if upvar.is_unboxed {
+                let kind = match upvar.kind {
+                    ty::FnUnboxedClosureKind => "Fn",
+                    ty::FnMutUnboxedClosureKind => "FnMut",
+                    ty::FnOnceUnboxedClosureKind => "FnOnce"
+                };
+                format!("captured outer variable in an `{}` closure", kind)
+            } else {
+                (match (upvar.kind, is_copy) {
+                    (ty::FnOnceUnboxedClosureKind, true) => "captured outer variable in a proc",
+                    _ => "captured outer variable"
+                }).to_string()
+            }
+        }
+
+        match self.cat {
+            cat_static_item => {
+                "static item".to_string()
+            }
+            cat_rvalue(..) => {
+                "non-lvalue".to_string()
+            }
+            cat_local(vid) => {
+                match tcx.map.find(vid) {
+                    Some(ast_map::NodeArg(_)) => {
+                        "argument".to_string()
+                    }
+                    _ => "local variable".to_string()
+                }
+            }
+            cat_deref(_, _, pk) => {
+                let upvar = self.upvar();
+                match upvar.as_ref().map(|i| &i.cat) {
+                    Some(&cat_upvar(ref var)) => {
+                        upvar_to_string(var, false)
+                    }
+                    Some(_) => unreachable!(),
+                    None => {
+                        match pk {
+                            Implicit(..) => {
+                                "dereference (dereference is implicit, due to indexing)".to_string()
+                            }
+                            Unique => format!("dereference of `{}`", ptr_sigil(pk)),
+                            _ => format!("dereference of `{}`-pointer", ptr_sigil(pk))
+                        }
+                    }
+                }
+            }
+            cat_interior(_, InteriorField(NamedField(_))) => {
+                "field".to_string()
+            }
+            cat_interior(_, InteriorField(PositionalField(_))) => {
+                "anonymous field".to_string()
+            }
+            cat_interior(_, InteriorElement(VecElement)) => {
+                "vec content".to_string()
+            }
+            cat_interior(_, InteriorElement(OtherElement)) => {
+                "indexed content".to_string()
+            }
+            cat_upvar(ref var) => {
+                upvar_to_string(var, true)
+            }
+            cat_downcast(ref cmt, _) => {
+                cmt.descriptive_string(tcx)
+            }
         }
     }
 }

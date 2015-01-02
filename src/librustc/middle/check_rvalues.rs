@@ -41,7 +41,7 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
         {
             let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
             let mut delegate = RvalueContextDelegate { tcx: self.tcx, param_env: &param_env };
-            let mut euv = euv::ExprUseVisitor::new(&mut delegate, self.tcx, &param_env);
+            let mut euv = euv::ExprUseVisitor::new(&mut delegate, &param_env);
             euv.walk_fn(fd, b);
         }
         visit::walk_fn(self, fk, fd, b, s)
@@ -50,7 +50,7 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
 
 struct RvalueContextDelegate<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    param_env: &'a ty::ParameterEnvironment<'tcx>,
+    param_env: &'a ty::ParameterEnvironment<'a,'tcx>,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'tcx> {

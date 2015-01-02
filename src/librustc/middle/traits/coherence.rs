@@ -42,8 +42,8 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
 
     // Determine whether `impl2` can provide an implementation for those
     // same types.
-    let param_env = ty::empty_parameter_environment();
-    let mut selcx = SelectionContext::intercrate(infcx, &param_env, infcx.tcx);
+    let param_env = ty::empty_parameter_environment(infcx.tcx);
+    let mut selcx = SelectionContext::intercrate(infcx, &param_env);
     let obligation = Obligation::new(ObligationCause::dummy(),
                                      ty::Binder(ty::TraitPredicate {
                                          trait_ref: Rc::new(impl1_trait_ref),

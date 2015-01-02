@@ -41,7 +41,7 @@ struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {
     // environments for each function we encounter. When we find a
     // call to `transmute`, we can check it in the context of the top
     // of the stack (which ought not to be empty).
-    param_envs: Vec<ty::ParameterEnvironment<'tcx>>,
+    param_envs: Vec<ty::ParameterEnvironment<'a,'tcx>>,
 
     // Dummy sized/unsized types that use to substitute for type
     // parameters in order to estimate how big a type will be for any
