@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cell::RefCell;
-use std::comm::channel;
+use std::sync::mpsc::channel;
 use std::dynamic_lib::DynamicLibrary;
 use std::io::{Command, TempDir};
 use std::io;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::{mod, channel};
+use std::sync::mpsc::{TryRecvError, channel};
 use std::io::timer::Timer;
 use std::thread::Thread;
 use std::time::Duration;
@@ -18,13 +18,13 @@ pub fn main() {
     let _t = Thread::spawn(move||{
         let mut timer = Timer::new().unwrap();
         timer.sleep(Duration::milliseconds(10));
-        tx.send(());
+        tx.send(()).unwrap();
     });
     loop {
         match rx.try_recv() {
             Ok(()) => break,
-            Err(comm::Empty) => {}
-            Err(comm::Disconnected) => unreachable!()
+            Err(TryRecvError::Empty) => {}
+            Err(TryRecvError::Disconnected) => unreachable!()
         }
     }
 }

@@ -92,7 +92,7 @@ mod tests {
     use prelude::v1::*;
 
     use sync::{Arc, Barrier};
-    use comm::{channel, Empty};
+    use sync::mpsc::{channel, TryRecvError};
     use thread::Thread;
 
     #[test]
@@ -105,21 +105,21 @@ mod tests {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 c.wait();
-                tx.send(true);
+                tx.send(true).unwrap();
             }).detach();
         }
 
         // At this point, all spawned tasks should be blocked,
         // so we shouldn't get anything from the port
         assert!(match rx.try_recv() {
-            Err(Empty) => true,
+            Err(TryRecvError::Empty) => true,
             _ => false,
         });
 
         barrier.wait();
         // Now, the barrier is cleared and we should get data.
         for _ in range(0u, 9) {
-            rx.recv();
+            rx.recv().unwrap();
         }
     }
 }

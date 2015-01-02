@@ -9,19 +9,19 @@
 // except according to those terms.
 
 use std::thread::Thread;
-use std::comm::{channel, Receiver};
+use std::sync::mpsc::{channel, Receiver};
 
 fn periodical(n: int) -> Receiver<bool> {
     let (chan, port) = channel();
     Thread::spawn(move|| {
         loop {
             for _ in range(1, n) {
-                match chan.send_opt(false) {
+                match chan.send(false) {
                     Ok(()) => {}
                     Err(..) => break,
                 }
             }
-            match chan.send_opt(true) {
+            match chan.send(true) {
                 Ok(()) => {}
                 Err(..) => break
             }
@@ -35,7 +35,7 @@ fn integers() -> Receiver<int> {
     Thread::spawn(move|| {
         let mut i = 1;
         loop {
-            match chan.send_opt(i) {
+            match chan.send(i) {
                 Ok(()) => {}
                 Err(..) => break,
             }
@@ -50,7 +50,7 @@ fn main() {
     let threes = periodical(3);
     let fives = periodical(5);
     for _ in range(1i, 100i) {
-        match (ints.recv(), threes.recv(), fives.recv()) {
+        match (ints.recv().unwrap(), threes.recv().unwrap(), fives.recv().unwrap()) {
             (_, true, true) => println!("FizzBuzz"),
             (_, true, false) => println!("Fizz"),
             (_, false, true) => println!("Buzz"),

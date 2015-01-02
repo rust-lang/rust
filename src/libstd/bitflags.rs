@@ -266,7 +266,6 @@ macro_rules! bitflags {
 mod tests {
     use hash;
     use option::Option::{Some, None};
-    use ops::{BitOr, BitAnd, BitXor, Sub, Not};
 
     bitflags! {
         #[doc = "> The first principle is that you must not fool yourself — and"]

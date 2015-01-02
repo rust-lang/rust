@@ -133,7 +133,6 @@ pub mod compat {
     use intrinsics::{atomic_store_relaxed, transmute};
     use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
     use prelude::v1::*;
-
     use c_str::ToCStr;
 
     extern "system" {

@@ -386,7 +386,7 @@ mod test {
         let mut r = TeeReader::new(MemReader::new(vec!(0, 1, 2)),
                                    Vec::new());
         assert_eq!(vec!(0, 1, 2), r.read_to_end().unwrap());
-        let (_, w) = r.unwrap();
+        let (_, w) = r.into_inner();
         assert_eq!(vec!(0, 1, 2), w);
     }
 

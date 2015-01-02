@@ -155,7 +155,7 @@ impl<T: Send> Drop for Queue<T> {
 mod tests {
     use prelude::v1::*;
 
-    use comm::channel;
+    use sync::mpsc::channel;
     use super::{Queue, Data, Empty, Inconsistent};
     use sync::Arc;
     use thread::Thread;
@@ -186,7 +186,7 @@ mod tests {
                 for i in range(0, nmsgs) {
                     q.push(i);
                 }
-                tx.send(());
+                tx.send(()).unwrap();
             }).detach();
         }
 
@@ -199,7 +199,7 @@ mod tests {
         }
         drop(tx);
         for _ in range(0, nthreads) {
-            rx.recv();
+            rx.recv().unwrap();
         }
     }
 }

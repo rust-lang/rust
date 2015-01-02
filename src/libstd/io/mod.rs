@@ -1918,7 +1918,7 @@ impl fmt::Show for FilePermission {
 #[cfg(test)]
 mod tests {
     use self::BadReaderBehavior::*;
-    use super::{IoResult, MemReader, NoProgress, InvalidInput};
+    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput};
     use prelude::v1::*;
     use uint;
 

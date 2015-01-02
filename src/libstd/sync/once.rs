@@ -126,7 +126,7 @@ mod test {
 
     use thread::Thread;
     use super::{ONCE_INIT, Once};
-    use comm::channel;
+    use sync::mpsc::channel;
 
     #[test]
     fn smoke_once() {
@@ -155,7 +155,7 @@ mod test {
                     });
                     assert!(run);
                 }
-                tx.send(());
+                tx.send(()).unwrap();
             }).detach();
         }
 
@@ -168,7 +168,7 @@ mod test {
         }
 
         for _ in range(0u, 10) {
-            rx.recv();
+            rx.recv().unwrap();
         }
     }
 }

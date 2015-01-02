@@ -12,7 +12,7 @@
 // and shared between tasks as long as all types fulfill Send.
 
 use std::sync::Arc;
-use std::comm::channel;
+use std::sync::mpsc::channel;
 use std::task;
 
 trait Pet {
