@@ -289,6 +289,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    fn evaluate_predicates_recursively<'a,'o,I>(&mut self,
+                                                stack: Option<&TraitObligationStack<'o, 'tcx>>,
+                                                mut predicates: I)
+                                                -> EvaluationResult<'tcx>
+        where I : Iterator<&'a PredicateObligation<'tcx>>, 'tcx:'a
+    {
+        let mut result = EvaluatedToOk;
+        for obligation in predicates {
+            match self.evaluate_predicate_recursively(stack, obligation) {
+                EvaluatedToErr(e) => { return EvaluatedToErr(e); }
+                EvaluatedToAmbig => { result = EvaluatedToAmbig; }
+                EvaluatedToOk => { }
+            }
+        }
+        result
+    }
+
     fn evaluate_predicate_recursively<'o>(&mut self,
                                           previous_stack: Option<&TraitObligationStack<'o, 'tcx>>,
                                           obligation: &PredicateObligation<'tcx>)
@@ -320,9 +337,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 EvaluatedToOk
             }
 
-            ty::Predicate::Projection(..) => {
-                // FIXME(#20296) -- we should be able to give a more precise answer here
-                EvaluatedToAmbig
+            ty::Predicate::Projection(ref data) => {
+                let result = self.infcx.probe(|_| {
+                    let project_obligation = obligation.with(data.clone());
+                    project::poly_project_and_unify_type(self, &project_obligation)
+                });
+                match result {
+                    Ok(Some(subobligations)) => {
+                        self.evaluate_predicates_recursively(previous_stack, subobligations.iter())
+                    }
+                    Ok(None) => {
+                        EvaluatedToAmbig
+                    }
+                    Err(_) => {
+                        EvaluatedToErr(Unimplemented)
+                    }
+                }
             }
         }
     }
@@ -1026,15 +1056,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             selection: Selection<'tcx>)
                             -> EvaluationResult<'tcx>
     {
-        let mut result = EvaluatedToOk;
-        for obligation in selection.iter_nested() {
-            match self.evaluate_predicate_recursively(stack, obligation) {
-                EvaluatedToErr(e) => { return EvaluatedToErr(e); }
-                EvaluatedToAmbig => { result = EvaluatedToAmbig; }
-                EvaluatedToOk => { }
-            }
-        }
-        result
+        self.evaluate_predicates_recursively(stack, selection.iter_nested())
     }
 
     /// Returns true if `candidate_i` should be dropped in favor of `candidate_j`.
