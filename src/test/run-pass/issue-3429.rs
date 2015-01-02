@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-  let x = 1;
-  let y: || -> int = || x;
+  let x = 1u;
+  let y = |&:| x;
   let _z = y();
 }

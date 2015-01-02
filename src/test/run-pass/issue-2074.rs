@@ -11,11 +11,11 @@
 #![allow(non_camel_case_types)]
 
 pub fn main() {
-    let one: || -> uint = || {
+    let one = |&:| {
         enum r { a };
         r::a as uint
     };
-    let two: || -> uint = || {
+    let two = |&:| {
         enum r { a };
         r::a as uint
     };

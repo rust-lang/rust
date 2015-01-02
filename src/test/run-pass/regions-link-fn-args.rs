@@ -13,7 +13,7 @@
 
 #![allow(dead_code)]
 
-fn with<'a>(_: |&'a Vec<int>| -> &'a Vec<int>) { }
+fn with<'a, F>(_: F) where F: FnOnce(&'a Vec<int>) -> &'a Vec<int> { }
 
 fn foo() {
     with(|&ref ints| ints);

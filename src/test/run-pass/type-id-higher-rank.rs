@@ -34,24 +34,6 @@ fn main() {
         let f = TypeId::of::<fn(for<'a> fn(&'a int) -> &'a int)>();
         assert!(e != f);
     }
-    // Stack closures
-    {
-        let a = TypeId::of::<|&'static int, &'static int|>();
-        let b = TypeId::of::<for<'a> |&'static int, &'a int|>();
-        let c = TypeId::of::<for<'a, 'b> |&'a int, &'b int|>();
-        let d = TypeId::of::<for<'a, 'b> |&'b int, &'a int|>();
-        assert!(a != b);
-        assert!(a != c);
-        assert!(a != d);
-        assert!(b != c);
-        assert!(b != d);
-        assert_eq!(c, d);
-
-        // Make sure De Bruijn indices are handled correctly
-        let e = TypeId::of::<for<'a> |(|&'a int| -> &'a int)|>();
-        let f = TypeId::of::<|for<'a> |&'a int| -> &'a int|>();
-        assert!(e != f);
-    }
     // Boxed unboxed closures
     {
         let a = TypeId::of::<Box<Fn(&'static int, &'static int)>>();

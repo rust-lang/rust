@@ -10,5 +10,5 @@
 
 fn main() {
     let mut buf = Vec::new();
-    |c: u8| buf.push(c);
+    |&mut: c: u8| buf.push(c);
 }

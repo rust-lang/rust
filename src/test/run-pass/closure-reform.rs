@@ -22,23 +22,12 @@ fn call_it<F>(f: F)
     println!("{}", f("Fred".to_string()))
 }
 
-fn call_a_thunk(f: ||) {
+fn call_a_thunk<F>(f: F) where F: FnOnce() {
     f();
 }
 
-fn call_this(f: |&str|:Send) {
+fn call_this<F>(f: F) where F: FnOnce(&str) + Send {
     f("Hello!");
-}
-
-fn call_that(f: <'a>|&'a int, &'a int| -> int) {
-    let (ten, forty_two) = (10, 42);
-    println!("Your lucky number is {}", f(&ten, &forty_two));
-}
-
-fn call_cramped(f:||->uint,g:<'a>||->&'a uint) {
-    let number = f();
-    let other_number = *g();
-    println!("Ticket {} wins an all-expenses-paid trip to Mountain View", number + other_number);
 }
 
 fn call_bare(f: fn(&str)) {
@@ -70,16 +59,6 @@ pub fn main() {
     call_a_thunk(|| println!("Hello world!"));
 
     call_this(|s| println!("{}", s));
-
-    call_that(|x, y| *x + *y);
-
-    let z = 100;
-    call_that(|x, y| *x + *y - z);
-
-    call_cramped(|| 1, || unsafe {
-        static a: uint = 100;
-        mem::transmute(&a)
-    });
 
     // External functions
 

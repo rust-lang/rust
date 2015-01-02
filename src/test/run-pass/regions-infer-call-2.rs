@@ -10,7 +10,7 @@
 
 fn takes_two(x: &int, y: &int) -> int { *x + *y }
 
-fn with<T>(f: |x: &int| -> T) -> T {
+fn with<T, F>(f: F) -> T where F: FnOnce(&int) -> T {
     f(&20)
 }
 

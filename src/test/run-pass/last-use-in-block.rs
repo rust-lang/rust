@@ -10,7 +10,7 @@
 
 // Issue #1818
 
-fn lp<T>(s: String, f: |String| -> T) -> T {
+fn lp<T, F>(s: String, mut f: F) -> T where F: FnMut(String) -> T {
     while false {
         let r = f(s);
         return (r);
@@ -18,8 +18,8 @@ fn lp<T>(s: String, f: |String| -> T) -> T {
     panic!();
 }
 
-fn apply<T>(s: String, f: |String| -> T) -> T {
-    fn g<T>(s: String, f: |String| -> T) -> T {f(s)}
+fn apply<T, F>(s: String, mut f: F) -> T where F: FnMut(String) -> T {
+    fn g<T, F>(s: String, mut f: F) -> T where F: FnMut(String) -> T {f(s)}
     g(s, |v| { let r = f(v); r })
 }
 

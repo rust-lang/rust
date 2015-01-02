@@ -13,7 +13,7 @@
 static mut calls: uint = 0;
 
 fn surrounding() {
-    let return_works = |n: int| {
+    let return_works = |&: n: int| {
         unsafe { calls += 1 }
 
         if n >= 0 { return; }

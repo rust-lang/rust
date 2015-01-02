@@ -17,8 +17,8 @@
 
 fn f() { }
 static bare_fns: &'static [fn()] = &[f, f];
-struct S<'a>(||:'a);
-static mut closures: &'static mut [S<'static>] = &mut [S(f), S(f)];
+struct S<F: FnOnce()>(F);
+static mut closures: &'static mut [S<fn()>] = &mut [S(f as fn()), S(f as fn())];
 
 pub fn main() {
     unsafe {

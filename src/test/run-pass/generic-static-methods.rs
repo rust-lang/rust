@@ -10,11 +10,11 @@
 
 
 trait vec_utils<T> {
-    fn map_<U>(x: &Self, f: |&T| -> U) -> Vec<U> ;
+    fn map_<U, F>(x: &Self, f: F) -> Vec<U> where F: FnMut(&T) -> U;
 }
 
 impl<T> vec_utils<T> for Vec<T> {
-    fn map_<U>(x: &Vec<T> , f: |&T| -> U) -> Vec<U> {
+    fn map_<U, F>(x: &Vec<T> , mut f: F) -> Vec<U> where F: FnMut(&T) -> U {
         let mut r = Vec::new();
         for elt in x.iter() {
             r.push(f(elt));

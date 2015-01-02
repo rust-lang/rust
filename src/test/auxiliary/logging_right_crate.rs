@@ -13,5 +13,5 @@
 
 pub fn foo<T>() {
     fn death() -> int { panic!() }
-    debug!("{}", (||{ death() })());
+    debug!("{}", (|&:|{ death() })());
 }

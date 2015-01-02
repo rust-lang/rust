@@ -19,9 +19,6 @@ use std::sync::Arc;
 trait Trait {}
 
 fn main() {
-    // Closures - ||
-    assert_eq!(size_of::<||>(), size_of::<Option<||>>());
-
     // Functions
     assert_eq!(size_of::<fn(int)>(), size_of::<Option<fn(int)>>());
     assert_eq!(size_of::<extern "C" fn(int)>(), size_of::<Option<extern "C" fn(int)>>());
