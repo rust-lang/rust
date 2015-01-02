@@ -17,7 +17,7 @@
 extern crate log;
 extern crate libc;
 
-use std::comm::channel;
+use std::sync::mpsc::channel;
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
 use std::thread::{Builder, Thread};
@@ -35,7 +35,7 @@ fn main() {
     let (tx, rx) = channel();
     Thread::spawn(move || -> () {
         let mut listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        tx.send(listener.socket_name().unwrap());
+        tx.send(listener.socket_name().unwrap()).unwrap();
         let mut acceptor = listener.listen();
         loop {
             let mut stream = match acceptor.accept() {
@@ -49,7 +49,7 @@ fn main() {
             stream.write(&[2]);
         }
     }).detach();
-    let addr = rx.recv();
+    let addr = rx.recv().unwarp();
 
     let (tx, rx) = channel();
     for _ in range(0u, 1000) {
@@ -64,7 +64,7 @@ fn main() {
                 },
                 Err(e) => debug!("{}", e)
             }
-            tx.send(());
+            tx.send(()).unwrap();
         }).detach();
     }
 
@@ -72,7 +72,7 @@ fn main() {
     // server just runs infinitely.
     drop(tx);
     for _ in range(0u, 1000) {
-        rx.recv();
+        rx.recv().unwrap();
     }
     unsafe { libc::exit(0) }
 }
