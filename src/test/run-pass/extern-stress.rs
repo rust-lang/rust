@@ -12,7 +12,7 @@
 // while holding onto C stacks
 
 extern crate libc;
-use std::task;
+use std::thread::Thread;
 
 mod rustrt {
     extern crate libc;
@@ -29,7 +29,7 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
     if data == 1 {
         data
     } else {
-        task::deschedule();
+        Thread::yield_now();
         count(data - 1) + count(data - 1)
     }
 }
@@ -41,9 +41,9 @@ fn count(n: libc::uintptr_t) -> libc::uintptr_t {
 }
 
 pub fn main() {
-    for _ in range(0u, 100) {
-        task::spawn(move|| {
+    range(0u, 100).map(|_| {
+        Thread::spawn(move|| {
             assert_eq!(count(5), 16);
-        });
-    }
+        })
+    }).collect::<Vec<_>>();
 }

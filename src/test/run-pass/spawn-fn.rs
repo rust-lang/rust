@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
 fn x(s: String, n: int) {
     println!("{}", s);
@@ -16,13 +16,13 @@ fn x(s: String, n: int) {
 }
 
 pub fn main() {
-    task::spawn(move|| x("hello from first spawned fn".to_string(), 65) );
-    task::spawn(move|| x("hello from second spawned fn".to_string(), 66) );
-    task::spawn(move|| x("hello from third spawned fn".to_string(), 67) );
+    let _t = Thread::spawn(|| x("hello from first spawned fn".to_string(), 65) );
+    let _t = Thread::spawn(|| x("hello from second spawned fn".to_string(), 66) );
+    let _t = Thread::spawn(|| x("hello from third spawned fn".to_string(), 67) );
     let mut i: int = 30;
     while i > 0 {
         i = i - 1;
         println!("parent sleeping");
-        task::deschedule();
+        Thread::yield_now();
     }
 }

@@ -12,7 +12,7 @@
 
 use borrow::BorrowFrom;
 use clone::Clone;
-use cmp::{Eq, Equiv, PartialEq};
+use cmp::{Eq, PartialEq};
 use core::kinds::Sized;
 use default::Default;
 use fmt::Show;
@@ -226,13 +226,6 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     #[stable]
     pub fn shrink_to_fit(&mut self) {
         self.map.shrink_to_fit()
-    }
-
-    /// Deprecated: use `contains` and `BorrowFrom`.
-    #[deprecated = "use contains and BorrowFrom"]
-    #[allow(deprecated)]
-    pub fn contains_equiv<Sized? Q: Hash<S> + Equiv<T>>(&self, value: &Q) -> bool {
-      self.map.contains_key_equiv(value)
     }
 
     /// An iterator visiting all elements in arbitrary order.

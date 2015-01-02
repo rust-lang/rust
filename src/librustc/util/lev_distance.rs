@@ -47,7 +47,7 @@ fn test_lev_distance() {
     // Test bytelength agnosticity
     for c in range(0u32, MAX as u32)
              .filter_map(|i| from_u32(i))
-             .map(|i| String::from_char(1, i)) {
+             .map(|i| i.to_string()) {
         assert_eq!(lev_distance(c[], c[]), 0);
     }
 

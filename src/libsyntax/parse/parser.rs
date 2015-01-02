@@ -89,7 +89,6 @@ use std::mem;
 use std::num::Float;
 use std::rc::Rc;
 use std::slice;
-use std::str::from_str;
 
 bitflags! {
     flags Restrictions: u8 {

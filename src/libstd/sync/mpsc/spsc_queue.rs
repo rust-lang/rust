@@ -41,7 +41,7 @@ use alloc::boxed::Box;
 use core::mem;
 use core::cell::UnsafeCell;
 
-use sync::atomic::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
+use sync::atomic::{AtomicPtr, AtomicUint, Ordering};
 
 // Node within the linked list queue of messages to send
 struct Node<T> {
@@ -109,7 +109,7 @@ impl<T: Send> Queue<T> {
     pub unsafe fn new(bound: uint) -> Queue<T> {
         let n1 = Node::new();
         let n2 = Node::new();
-        (*n1).next.store(n2, Relaxed);
+        (*n1).next.store(n2, Ordering::Relaxed);
         Queue {
             tail: UnsafeCell::new(n2),
             tail_prev: AtomicPtr::new(n1),
@@ -131,8 +131,8 @@ impl<T: Send> Queue<T> {
             let n = self.alloc();
             assert!((*n).value.is_none());
             (*n).value = Some(t);
-            (*n).next.store(0 as *mut Node<T>, Relaxed);
-            (**self.head.get()).next.store(n, Release);
+            (*n).next.store(0 as *mut Node<T>, Ordering::Relaxed);
+            (**self.head.get()).next.store(n, Ordering::Release);
             *self.head.get() = n;
         }
     }
@@ -144,23 +144,23 @@ impl<T: Send> Queue<T> {
         // only one subtracting from the cache).
         if *self.first.get() != *self.tail_copy.get() {
             if self.cache_bound > 0 {
-                let b = self.cache_subtractions.load(Relaxed);
-                self.cache_subtractions.store(b + 1, Relaxed);
+                let b = self.cache_subtractions.load(Ordering::Relaxed);
+                self.cache_subtractions.store(b + 1, Ordering::Relaxed);
             }
             let ret = *self.first.get();
-            *self.first.get() = (*ret).next.load(Relaxed);
+            *self.first.get() = (*ret).next.load(Ordering::Relaxed);
             return ret;
         }
         // If the above fails, then update our copy of the tail and try
         // again.
-        *self.tail_copy.get() = self.tail_prev.load(Acquire);
+        *self.tail_copy.get() = self.tail_prev.load(Ordering::Acquire);
         if *self.first.get() != *self.tail_copy.get() {
             if self.cache_bound > 0 {
-                let b = self.cache_subtractions.load(Relaxed);
-                self.cache_subtractions.store(b + 1, Relaxed);
+                let b = self.cache_subtractions.load(Ordering::Relaxed);
+                self.cache_subtractions.store(b + 1, Ordering::Relaxed);
             }
             let ret = *self.first.get();
-            *self.first.get() = (*ret).next.load(Relaxed);
+            *self.first.get() = (*ret).next.load(Ordering::Relaxed);
             return ret;
         }
         // If all of that fails, then we have to allocate a new node
@@ -177,25 +177,26 @@ impl<T: Send> Queue<T> {
             // tail's next field and see if we can use it. If we do a pop, then
             // the current tail node is a candidate for going into the cache.
             let tail = *self.tail.get();
-            let next = (*tail).next.load(Acquire);
+            let next = (*tail).next.load(Ordering::Acquire);
             if next.is_null() { return None }
             assert!((*next).value.is_some());
             let ret = (*next).value.take();
 
             *self.tail.get() = next;
             if self.cache_bound == 0 {
-                self.tail_prev.store(tail, Release);
+                self.tail_prev.store(tail, Ordering::Release);
             } else {
                 // FIXME: this is dubious with overflow.
-                let additions = self.cache_additions.load(Relaxed);
-                let subtractions = self.cache_subtractions.load(Relaxed);
+                let additions = self.cache_additions.load(Ordering::Relaxed);
+                let subtractions = self.cache_subtractions.load(Ordering::Relaxed);
                 let size = additions - subtractions;
 
                 if size < self.cache_bound {
-                    self.tail_prev.store(tail, Release);
-                    self.cache_additions.store(additions + 1, Relaxed);
+                    self.tail_prev.store(tail, Ordering::Release);
+                    self.cache_additions.store(additions + 1, Ordering::Relaxed);
                 } else {
-                    (*self.tail_prev.load(Relaxed)).next.store(next, Relaxed);
+                    (*self.tail_prev.load(Ordering::Relaxed))
+                          .next.store(next, Ordering::Relaxed);
                     // We have successfully erased all references to 'tail', so
                     // now we can safely drop it.
                     let _: Box<Node<T>> = mem::transmute(tail);
@@ -217,7 +218,7 @@ impl<T: Send> Queue<T> {
         // stripped out.
         unsafe {
             let tail = *self.tail.get();
-            let next = (*tail).next.load(Acquire);
+            let next = (*tail).next.load(Ordering::Acquire);
             if next.is_null() { return None }
             return (*next).value.as_mut();
         }
@@ -230,7 +231,7 @@ impl<T: Send> Drop for Queue<T> {
         unsafe {
             let mut cur = *self.first.get();
             while !cur.is_null() {
-                let next = (*cur).next.load(Relaxed);
+                let next = (*cur).next.load(Ordering::Relaxed);
                 let _n: Box<Node<T>> = mem::transmute(cur);
                 cur = next;
             }

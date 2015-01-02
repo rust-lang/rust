@@ -12,7 +12,6 @@
 
 use std::collections::VecMap;
 use std::os;
-use std::str::from_str;
 use std::time::Duration;
 use std::uint;
 
@@ -37,8 +36,8 @@ fn main() {
     } else {
         args.into_iter().collect()
     };
-    let max = from_str::<uint>(args[1].as_slice()).unwrap();
-    let rep = from_str::<uint>(args[2].as_slice()).unwrap();
+    let max = args[1].parse::<uint>().unwrap();
+    let rep = args[2].parse::<uint>().unwrap();
 
     let mut checkf = Duration::seconds(0);
     let mut appendf = Duration::seconds(0);

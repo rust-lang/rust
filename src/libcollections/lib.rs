@@ -66,7 +66,7 @@ pub mod vec;
 pub mod vec_map;
 
 pub mod bitv {
-    pub use bit::{Bitv, Iter, from_fn, from_bytes};
+    pub use bit::{Bitv, Iter};
 }
 
 pub mod bitv_set {
@@ -105,7 +105,7 @@ mod prelude {
     pub use core::borrow::IntoCow;
     pub use core::char::Char;
     pub use core::clone::Clone;
-    pub use core::cmp::{PartialEq, Eq, Equiv, PartialOrd, Ord};
+    pub use core::cmp::{PartialEq, Eq, PartialOrd, Ord};
     pub use core::cmp::Ordering::{Less, Equal, Greater};
     pub use core::iter::range;
     pub use core::iter::{FromIterator, Extend, IteratorExt};
@@ -123,7 +123,7 @@ mod prelude {
 
     // in core and collections (may differ).
     pub use slice::{AsSlice, SliceExt};
-    pub use str::{from_str, Str, StrExt};
+    pub use str::{Str, StrExt};
 
     // from other crates.
     pub use alloc::boxed::Box;
@@ -131,7 +131,6 @@ mod prelude {
 
     // from collections.
     pub use slice::SliceConcatExt;
-    pub use str::IntoMaybeOwned;
     pub use string::{String, ToString};
     pub use vec::Vec;
 }

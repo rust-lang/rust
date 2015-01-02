@@ -19,7 +19,7 @@ use option::Option::{None, Some};
 use os;
 use path::{Path, GenericPath};
 use result::Result::{Ok, Err};
-use sync::atomic;
+use sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Ordering};
 
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-based deletion.
@@ -90,14 +90,14 @@ impl TempDir {
             return TempDir::new_in(&abs_tmpdir, suffix);
         }
 
-        static CNT: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
+        static CNT: AtomicUint = ATOMIC_UINT_INIT;
 
         let mut attempts = 0u;
         loop {
             let filename =
                 format!("rs-{}-{}-{}",
                         unsafe { libc::getpid() },
-                        CNT.fetch_add(1, atomic::SeqCst),
+                        CNT.fetch_add(1, Ordering::SeqCst),
                         suffix);
             let p = tmpdir.join(filename);
             match fs::mkdir(&p, io::USER_RWX) {
@@ -128,10 +128,6 @@ impl TempDir {
         let mut tmpdir = self;
         tmpdir.path.take().unwrap()
     }
-
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub fn unwrap(self) -> Path { self.into_inner() }
 
     /// Access the wrapped `std::path::Path` to the temporary directory.
     pub fn path<'a>(&'a self) -> &'a Path {

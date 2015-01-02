@@ -17,6 +17,7 @@ extern crate alloc;
 
 use alloc::heap;
 use std::ptr;
+use std::iter::repeat;
 
 fn main() {
     unsafe {
@@ -26,7 +27,7 @@ fn main() {
 
 unsafe fn test_triangle() -> bool {
     static COUNT : uint = 16;
-    let mut ascend = Vec::from_elem(COUNT, ptr::null_mut());
+    let mut ascend = repeat(ptr::null_mut()).take(COUNT).collect::<Vec<_>>();
     let ascend = ascend.as_mut_slice();
     static ALIGN : uint = 1;
 

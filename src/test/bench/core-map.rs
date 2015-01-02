@@ -13,7 +13,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::os;
 use std::rand::{Rng, IsaacRng, SeedableRng};
-use std::str::from_str;
 use std::time::Duration;
 use std::uint;
 
@@ -107,7 +106,7 @@ fn main() {
     let args = args.as_slice();
     let n_keys = {
         if args.len() == 2 {
-            from_str::<uint>(args[1].as_slice()).unwrap()
+            args[1].parse::<uint>().unwrap()
         } else {
             1000000
         }

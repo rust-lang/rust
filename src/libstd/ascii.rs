@@ -13,7 +13,6 @@
 //! Operations on ASCII strings and characters
 
 #![unstable = "unsure about placement and naming"]
-#![allow(deprecated)]
 
 use core::kinds::Sized;
 use iter::IteratorExt;

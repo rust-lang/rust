@@ -19,10 +19,9 @@ extern crate regex;
 #[phase(link, plugin)]
 extern crate log;
 
-#[phase(plugin)] extern crate regex_macros;
-
 use std::collections::HashMap;
 use std::io::File;
+use regex::Regex;
 
 use syntax::parse;
 use syntax::parse::lexer;
@@ -168,9 +167,9 @@ fn count(lit: &str) -> uint {
 }
 
 fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>) -> TokenAndSpan {
-    let re = regex!(
+    let re = Regex::new(
       r"\[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?)',<(?P<toknum>-?\d+)>,\d+:\d+]"
-    );
+    ).unwrap();
 
     let m = re.captures(s).expect(format!("The regex didn't match {}", s).as_slice());
     let start = m.name("start").unwrap_or("");

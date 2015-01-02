@@ -226,7 +226,6 @@ pub mod hash;
 
 /* Threads and communication */
 
-pub mod task;
 pub mod thread;
 pub mod sync;
 

@@ -114,12 +114,6 @@ pub trait FromStr {
     fn from_str(s: &str) -> Option<Self>;
 }
 
-/// A utility function that just calls FromStr::from_str
-#[deprecated = "call the .parse() method on the string instead"]
-pub fn from_str<A: FromStr>(s: &str) -> Option<A> {
-    FromStr::from_str(s)
-}
-
 impl FromStr for bool {
     /// Parse a `bool` from a string.
     ///
@@ -427,8 +421,7 @@ impl<'a> Fn(&'a u8) -> u8 for BytesDeref {
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[derive(Clone)]
-#[deprecated = "Type is now named `Split` or `SplitTerminator`"]
-pub struct CharSplits<'a, Sep> {
+struct CharSplits<'a, Sep> {
     /// The slice remaining to be iterated
     string: &'a str,
     sep: Sep,
@@ -441,8 +434,7 @@ pub struct CharSplits<'a, Sep> {
 /// An iterator over the substrings of a string, separated by `sep`,
 /// splitting at most `count` times.
 #[derive(Clone)]
-#[deprecated = "Type is now named `SplitN` or `RSplitN`"]
-pub struct CharSplitsN<'a, Sep> {
+struct CharSplitsN<'a, Sep> {
     iter: CharSplits<'a, Sep>,
     /// The number of splits remaining
     count: uint,
@@ -873,10 +865,6 @@ pub struct SplitStr<'a> {
     finished: bool
 }
 
-/// Deprecated
-#[deprecated = "Type is now named `SplitStr`"]
-pub type StrSplits<'a> = SplitStr<'a>;
-
 impl<'a> Iterator for MatchIndices<'a> {
     type Item = (uint, uint);
 
@@ -1027,22 +1015,6 @@ fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
     }
 }
 
-/// Determines if a vector of bytes contains valid UTF-8.
-#[deprecated = "call from_utf8 instead"]
-pub fn is_utf8(v: &[u8]) -> bool {
-    run_utf8_validation_iterator(&mut v.iter()).is_ok()
-}
-
-/// Deprecated function
-#[deprecated = "this function will be removed"]
-pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
-    match v.iter().position(|c| *c == 0) {
-        // don't include the 0
-        Some(i) => v[..i],
-        None => v
-    }
-}
-
 // https://tools.ietf.org/html/rfc3629
 static UTF8_CHAR_WIDTH: [u8; 256] = [
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
@@ -1063,13 +1035,6 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0, // 0xFF
 ];
 
-/// Given a first byte, determine how many bytes are in this UTF-8 character
-#[inline]
-#[deprecated = "this function has moved to libunicode"]
-pub fn utf8_char_width(b: u8) -> uint {
-    return UTF8_CHAR_WIDTH[b as uint] as uint;
-}
-
 /// Struct that contains a `char` and the index of the first byte of
 /// the next `char` in a string.  This can be used as a data structure
 /// for iterating over the UTF-8 bytes of a string.
@@ -1087,78 +1052,19 @@ const CONT_MASK: u8 = 0b0011_1111u8;
 /// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte
 const TAG_CONT_U8: u8 = 0b1000_0000u8;
 
-/// Unsafe operations
-#[deprecated]
-pub mod raw {
-    use ptr::PtrExt;
-    use raw::Slice;
-    use slice::SliceExt;
-    use str::StrExt;
-
-    /// Converts a slice of bytes to a string slice without checking
-    /// that the string contains valid UTF-8.
-    #[deprecated = "renamed to str::from_utf8_unchecked"]
-    pub unsafe fn from_utf8<'a>(v: &'a [u8]) -> &'a str {
-        super::from_utf8_unchecked(v)
-    }
-
-    /// Form a slice from a C string. Unsafe because the caller must ensure the
-    /// C string has the static lifetime, or else the return value may be
-    /// invalidated later.
-    #[deprecated = "renamed to str::from_c_str"]
-    pub unsafe fn c_str_to_static_slice(s: *const i8) -> &'static str {
-        let s = s as *const u8;
-        let mut curr = s;
-        let mut len = 0u;
-        while *curr != 0u8 {
-            len += 1u;
-            curr = s.offset(len as int);
-        }
-        let v = Slice { data: s, len: len };
-        super::from_utf8(::mem::transmute(v)).unwrap()
-    }
-
-    /// Takes a bytewise (not UTF-8) slice from a string.
-    ///
-    /// Returns the substring from [`begin`..`end`).
-    ///
-    /// # Panics
-    ///
-    /// If begin is greater than end.
-    /// If end is greater than the length of the string.
-    #[inline]
-    #[deprecated = "call the slice_unchecked method instead"]
-    pub unsafe fn slice_bytes<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        assert!(begin <= end);
-        assert!(end <= s.len());
-        s.slice_unchecked(begin, end)
-    }
-
-    /// Takes a bytewise (not UTF-8) slice from a string.
-    ///
-    /// Returns the substring from [`begin`..`end`).
-    ///
-    /// Caller must check slice boundaries!
-    #[inline]
-    #[deprecated = "this has moved to a method on `str` directly"]
-    pub unsafe fn slice_unchecked<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        s.slice_unchecked(begin, end)
-    }
-}
-
 /*
 Section: Trait implementations
 */
 
 #[allow(missing_docs)]
 pub mod traits {
-    use cmp::{Ordering, Ord, PartialEq, PartialOrd, Equiv, Eq};
+    use cmp::{Ordering, Ord, PartialEq, PartialOrd, Eq};
     use cmp::Ordering::{Less, Equal, Greater};
     use iter::IteratorExt;
     use option::Option;
     use option::Option::Some;
     use ops;
-    use str::{Str, StrExt, eq_slice};
+    use str::{StrExt, eq_slice};
 
     #[stable]
     impl Ord for str {
@@ -1197,13 +1103,6 @@ pub mod traits {
         }
     }
 
-    #[allow(deprecated)]
-    #[deprecated = "Use overloaded `core::cmp::PartialEq`"]
-    impl<S: Str> Equiv<S> for str {
-        #[inline]
-        fn equiv(&self, other: &S) -> bool { eq_slice(self, other.as_slice()) }
-    }
-
     impl ops::Slice<uint, str> for str {
         #[inline]
         fn as_slice_<'a>(&'a self) -> &'a str {
@@ -1236,13 +1135,11 @@ pub trait Str for Sized? {
     fn as_slice<'a>(&'a self) -> &'a str;
 }
 
-#[allow(deprecated)]
 impl Str for str {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str { self }
 }
 
-#[allow(deprecated)]
 impl<'a, Sized? S> Str for &'a S where S: Str {
     #[inline]
     fn as_slice(&self) -> &str { Str::as_slice(*self) }
@@ -1316,6 +1213,7 @@ pub trait StrExt for Sized? {
     fn as_ptr(&self) -> *const u8;
     fn len(&self) -> uint;
     fn is_empty(&self) -> bool;
+    fn parse<T: FromStr>(&self) -> Option<T>;
 }
 
 #[inline(never)]
@@ -1352,7 +1250,6 @@ impl StrExt for str {
     }
 
     #[inline]
-    #[allow(deprecated)] // For using CharSplits
     fn split<P: CharEq>(&self, pat: P) -> Split<P> {
         Split(CharSplits {
             string: self,
@@ -1364,7 +1261,6 @@ impl StrExt for str {
     }
 
     #[inline]
-    #[allow(deprecated)] // For using CharSplitsN
     fn splitn<P: CharEq>(&self, count: uint, pat: P) -> SplitN<P> {
         SplitN(CharSplitsN {
             iter: self.split(pat).0,
@@ -1374,7 +1270,6 @@ impl StrExt for str {
     }
 
     #[inline]
-    #[allow(deprecated)] // For using CharSplits
     fn split_terminator<P: CharEq>(&self, pat: P) -> SplitTerminator<P> {
         SplitTerminator(CharSplits {
             allow_trailing_empty: false,
@@ -1383,7 +1278,6 @@ impl StrExt for str {
     }
 
     #[inline]
-    #[allow(deprecated)] // For using CharSplitsN
     fn rsplitn<P: CharEq>(&self, count: uint, pat: P) -> RSplitN<P> {
         RSplitN(CharSplitsN {
             iter: self.split(pat).0,
@@ -1681,6 +1575,9 @@ impl StrExt for str {
 
     #[inline]
     fn is_empty(&self) -> bool { self.len() == 0 }
+
+    #[inline]
+    fn parse<T: FromStr>(&self) -> Option<T> { FromStr::from_str(self) }
 }
 
 #[stable]

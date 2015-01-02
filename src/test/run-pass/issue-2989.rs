@@ -14,19 +14,19 @@ trait methods {
 
 impl methods for () {
     fn to_bytes(&self) -> Vec<u8> {
-        Vec::from_elem(0, 0u8)
+        Vec::new()
     }
 }
 
 // the position of this function is significant! - if it comes before methods
 // then it works, if it comes after it then it doesn't!
 fn to_bools(bitv: Storage) -> Vec<bool> {
-    Vec::from_fn(8, |i| {
+    range(0, 8).map(|i| {
         let w = i / 64;
         let b = i % 64;
         let x = 1u64 & (bitv.storage[w] >> b);
         x == 1u64
-    })
+    }).collect()
 }
 
 struct Storage { storage: Vec<u64> }

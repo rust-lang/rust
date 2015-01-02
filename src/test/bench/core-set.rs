@@ -20,7 +20,6 @@ use std::collections::BitvSet;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::os;
-use std::str::from_str;
 use std::time::Duration;
 use std::uint;
 
@@ -181,7 +180,7 @@ fn main() {
     let args = args.as_slice();
     let num_keys = {
         if args.len() == 2 {
-            from_str::<uint>(args[1].as_slice()).unwrap()
+            args[1].parse::<uint>().unwrap()
         } else {
             100 // woefully inadequate for any real measurement
         }

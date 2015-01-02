@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::os;
-use std::str::from_str;
 use std::uint;
 
 fn main() {
@@ -22,7 +21,7 @@ fn main() {
         args.into_iter().collect()
     };
 
-    let n = from_str::<uint>(args[1].as_slice()).unwrap();
+    let n = args[1].parse().unwrap();
 
     for i in range(0u, n) {
         let x = i.to_string();

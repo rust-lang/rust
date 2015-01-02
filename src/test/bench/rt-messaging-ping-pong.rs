@@ -19,7 +19,6 @@
 
 use std::sync::mpsc::channel;
 use std::os;
-use std::str::from_str;
 use std::thread::Thread;
 use std::uint;
 
@@ -66,13 +65,13 @@ fn main() {
     let args = os::args();
     let args = args.as_slice();
     let n = if args.len() == 3 {
-        from_str::<uint>(args[1].as_slice()).unwrap()
+        args[1].parse::<uint>().unwrap()
     } else {
         10000
     };
 
     let m = if args.len() == 3 {
-        from_str::<uint>(args[2].as_slice()).unwrap()
+        args[2].parse::<uint>().unwrap()
     } else {
         4
     };

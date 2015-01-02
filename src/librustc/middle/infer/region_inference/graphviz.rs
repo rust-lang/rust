@@ -29,7 +29,7 @@ use util::ppaux::Repr;
 use std::collections::hash_map::Entry::Vacant;
 use std::io::{self, File};
 use std::os;
-use std::sync::atomic;
+use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 use syntax::ast;
 
 fn print_help_message() {
@@ -73,10 +73,10 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
     let output_path = {
         let output_template = match requested_output {
             Some(ref s) if s.as_slice() == "help" => {
-                static PRINTED_YET : atomic::AtomicBool = atomic::ATOMIC_BOOL_INIT;
-                if !PRINTED_YET.load(atomic::SeqCst) {
+                static PRINTED_YET: AtomicBool = ATOMIC_BOOL_INIT;
+                if !PRINTED_YET.load(Ordering::SeqCst) {
                     print_help_message();
-                    PRINTED_YET.store(true, atomic::SeqCst);
+                    PRINTED_YET.store(true, Ordering::SeqCst);
                 }
                 return;
             }

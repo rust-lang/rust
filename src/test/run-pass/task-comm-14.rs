@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::sync::mpsc::{channel, Sender};
-use std::task;
+use std::thread::Thread;
 
 pub fn main() {
     let (tx, rx) = channel();
@@ -19,7 +19,7 @@ pub fn main() {
     while (i > 0) {
         println!("{}", i);
         let tx = tx.clone();
-        task::spawn({let i = i; move|| { child(i, &tx) }});
+        Thread::spawn({let i = i; move|| { child(i, &tx) }}).detach();
         i = i - 1;
     }
 
@@ -29,7 +29,7 @@ pub fn main() {
     i = 10;
     while (i > 0) {
         println!("{}", i);
-        rx.recv();
+        rx.recv().unwrap();
         i = i - 1;
     }
 
@@ -38,5 +38,5 @@ pub fn main() {
 
 fn child(x: int, tx: &Sender<int>) {
     println!("{}", x);
-    tx.send(x);
+    tx.send(x).unwrap();
 }

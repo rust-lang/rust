@@ -267,10 +267,6 @@ impl<T> RefCell<T> {
         unsafe { self.value.into_inner() }
     }
 
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub fn unwrap(self) -> T { self.into_inner() }
-
     /// Attempts to immutably borrow the wrapped value.
     ///
     /// The borrow lasts until the returned `Ref` exits scope. Multiple
@@ -569,8 +565,4 @@ impl<T> UnsafeCell<T> {
     #[inline]
     #[stable]
     pub unsafe fn into_inner(self) -> T { self.value }
-
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub unsafe fn unwrap(self) -> T { self.into_inner() }
 }

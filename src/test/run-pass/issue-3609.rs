@@ -10,7 +10,7 @@
 
 #![feature(default_type_params)]
 
-use std::task;
+use std::thread::Thread;
 use std::sync::mpsc::Sender;
 use std::thunk::Invoke;
 
@@ -23,7 +23,7 @@ enum Msg
 }
 
 fn foo(name: String, samples_chan: Sender<Msg>) {
-    task::spawn(move|| {
+    let _t = Thread::spawn(move|| {
         let mut samples_chan = samples_chan;
 
         // `box() (...)` syntax is needed to make pretty printer converge in one try:

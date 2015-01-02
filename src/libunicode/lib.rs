@@ -58,19 +58,16 @@ mod u_str;
 /// however the converse is not always true due to the above range limits
 /// and, as such, should be performed via the `from_u32` function..
 pub mod char {
-    pub use core::char::{MAX, from_u32, is_digit_radix, to_digit};
-    pub use core::char::{from_digit, escape_unicode, escape_default};
-    pub use core::char::{len_utf8_bytes, Char};
+    pub use core::char::{MAX, from_u32};
+    pub use core::char::{from_digit};
+    pub use core::char::Char;
 
     pub use normalize::{decompose_canonical, decompose_compatible, compose};
 
     pub use tables::normalization::canonical_combining_class;
     pub use tables::UNICODE_VERSION;
 
-    pub use u_char::{is_alphabetic, is_XID_start, is_XID_continue};
-    pub use u_char::{is_lowercase, is_uppercase, is_whitespace};
-    pub use u_char::{is_alphanumeric, is_control, is_digit};
-    pub use u_char::{to_uppercase, to_lowercase, width, UnicodeChar};
+    pub use u_char::UnicodeChar;
 }
 
 pub mod str {

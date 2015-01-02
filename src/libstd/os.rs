@@ -54,7 +54,7 @@ use result::Result::{Err, Ok};
 use slice::{AsSlice, SliceExt};
 use str::{Str, StrExt};
 use string::{String, ToString};
-use sync::atomic::{AtomicInt, ATOMIC_INT_INIT, SeqCst};
+use sync::atomic::{AtomicInt, ATOMIC_INT_INIT, Ordering};
 use vec::Vec;
 
 #[cfg(unix)] use c_str::ToCStr;
@@ -606,13 +606,13 @@ static EXIT_STATUS: AtomicInt = ATOMIC_INT_INIT;
 ///
 /// Note that this is not synchronized against modifications of other threads.
 pub fn set_exit_status(code: int) {
-    EXIT_STATUS.store(code, SeqCst)
+    EXIT_STATUS.store(code, Ordering::SeqCst)
 }
 
 /// Fetches the process's current exit code. This defaults to 0 and can change
 /// by calling `set_exit_status`.
 pub fn get_exit_status() -> int {
-    EXIT_STATUS.load(SeqCst)
+    EXIT_STATUS.load(Ordering::SeqCst)
 }
 
 #[cfg(target_os = "macos")]

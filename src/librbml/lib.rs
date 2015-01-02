@@ -1165,12 +1165,12 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_A_aligned(b: &mut Bencher) {
-        let data = Vec::from_fn(4*100, |i| {
+        let data = range(0, 4*100).map(|i| {
             match i % 2 {
               0 => 0x80u8,
               _ => i as u8,
             }
-        });
+        }).collect::<Vec<_>>();
         let mut sum = 0u;
         b.iter(|| {
             let mut i = 0;
@@ -1183,12 +1183,12 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_A_unaligned(b: &mut Bencher) {
-        let data = Vec::from_fn(4*100+1, |i| {
+        let data = range(0, 4*100+1).map(|i| {
             match i % 2 {
               1 => 0x80u8,
               _ => i as u8
             }
-        });
+        }).collect::<Vec<_>>();
         let mut sum = 0u;
         b.iter(|| {
             let mut i = 1;
@@ -1201,13 +1201,13 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_D_aligned(b: &mut Bencher) {
-        let data = Vec::from_fn(4*100, |i| {
+        let data = range(0, 4*100).map(|i| {
             match i % 4 {
               0 => 0x10u8,
               3 => i as u8,
               _ => 0u8
             }
-        });
+        }).collect::<Vec<_>>();
         let mut sum = 0u;
         b.iter(|| {
             let mut i = 0;
@@ -1220,13 +1220,13 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_D_unaligned(b: &mut Bencher) {
-        let data = Vec::from_fn(4*100+1, |i| {
+        let data = range(0, 4*100+1).map(|i| {
             match i % 4 {
               1 => 0x10u8,
               0 => i as u8,
               _ => 0u8
             }
-        });
+        }).collect::<Vec<_>>();
         let mut sum = 0u;
         b.iter(|| {
             let mut i = 1;

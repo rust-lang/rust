@@ -11,7 +11,7 @@
 #![allow(dead_assignment)]
 
 use std::sync::mpsc::{channel, Sender};
-use std::task;
+use std::thread::Thread;
 
 pub fn main() { test00(); }
 
@@ -28,19 +28,19 @@ fn test00() {
     let number_of_messages: int = 10;
 
     let tx2 = tx.clone();
-    task::spawn(move|| {
+    let _t = Thread::spawn(move|| {
         test00_start(&tx2, number_of_messages * 0, number_of_messages);
     });
     let tx2 = tx.clone();
-    task::spawn(move|| {
+    let _t = Thread::spawn(move|| {
         test00_start(&tx2, number_of_messages * 1, number_of_messages);
     });
     let tx2 = tx.clone();
-    task::spawn(move|| {
+    let _t = Thread::spawn(move|| {
         test00_start(&tx2, number_of_messages * 2, number_of_messages);
     });
     let tx2 = tx.clone();
-    task::spawn(move|| {
+    let _t = Thread::spawn(move|| {
         test00_start(&tx2, number_of_messages * 3, number_of_messages);
     });
 

@@ -45,7 +45,6 @@ use std::io::{BufferedWriter, File};
 use std::io;
 use std::num::Float;
 use std::os;
-use std::str::from_str;
 
 const LINE_LENGTH: uint = 60;
 const IM: u32 = 139968;
@@ -113,7 +112,7 @@ fn run<W: Writer>(writer: &mut W) -> std::io::IoResult<()> {
     } else if args.len() <= 1u {
         1000
     } else {
-        from_str(args[1].as_slice()).unwrap()
+        args[1].parse().unwrap()
     };
 
     let rng = &mut MyRandom::new();

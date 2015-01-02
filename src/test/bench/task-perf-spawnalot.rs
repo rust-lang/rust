@@ -9,14 +9,13 @@
 // except according to those terms.
 
 use std::os;
-use std::task;
 use std::uint;
-use std::str::from_str;
+use std::thread::Thread;
 
 fn f(n: uint) {
     let mut i = 0u;
     while i < n {
-        task::try(move|| g());
+        let _ = Thread::spawn(move|| g()).join();
         i += 1u;
     }
 }
@@ -32,7 +31,7 @@ fn main() {
     } else {
         args.into_iter().collect()
     };
-    let n = from_str::<uint>(args[1].as_slice()).unwrap();
+    let n = args[1].parse().unwrap();
     let mut i = 0u;
-    while i < n { task::spawn(move|| f(n) ); i += 1u; }
+    while i < n { Thread::spawn(move|| f(n) ).detach(); i += 1u; }
 }

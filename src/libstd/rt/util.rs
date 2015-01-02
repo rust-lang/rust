@@ -19,7 +19,7 @@ use libc::{self, uintptr_t};
 use os;
 use slice;
 use str;
-use sync::atomic;
+use sync::atomic::{mod, Ordering};
 
 /// Dynamically inquire about whether we're running under V.
 /// You should usually not use this unless your test definitely
@@ -47,7 +47,7 @@ pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
 
 pub fn min_stack() -> uint {
     static MIN: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
-    match MIN.load(atomic::SeqCst) {
+    match MIN.load(Ordering::SeqCst) {
         0 => {}
         n => return n - 1,
     }
@@ -55,7 +55,7 @@ pub fn min_stack() -> uint {
     let amt = amt.unwrap_or(2 * 1024 * 1024);
     // 0 is our sentinel value, so ensure that we'll never see 0 after
     // initialization has run
-    MIN.store(amt + 1, atomic::SeqCst);
+    MIN.store(amt + 1, Ordering::SeqCst);
     return amt;
 }
 

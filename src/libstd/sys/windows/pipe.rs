@@ -90,7 +90,8 @@ use libc;
 use c_str::CString;
 use mem;
 use ptr;
-use sync::{atomic, Arc, Mutex};
+use sync::{Arc, Mutex};
+use sync::atomic::{AtomicBool, Ordering};
 use io::{self, IoError, IoResult};
 
 use sys_common::{self, eof};
@@ -126,8 +127,8 @@ impl Drop for Event {
 struct Inner {
     handle: libc::HANDLE,
     lock: Mutex<()>,
-    read_closed: atomic::AtomicBool,
-    write_closed: atomic::AtomicBool,
+    read_closed: AtomicBool,
+    write_closed: AtomicBool,
 }
 
 impl Inner {
@@ -135,8 +136,8 @@ impl Inner {
         Inner {
             handle: handle,
             lock: Mutex::new(()),
-            read_closed: atomic::AtomicBool::new(false),
-            write_closed: atomic::AtomicBool::new(false),
+            read_closed: AtomicBool::new(false),
+            write_closed: AtomicBool::new(false),
         }
     }
 }
@@ -334,11 +335,11 @@ impl UnixStream {
     pub fn handle(&self) -> libc::HANDLE { self.inner.handle }
 
     fn read_closed(&self) -> bool {
-        self.inner.read_closed.load(atomic::SeqCst)
+        self.inner.read_closed.load(Ordering::SeqCst)
     }
 
     fn write_closed(&self) -> bool {
-        self.inner.write_closed.load(atomic::SeqCst)
+        self.inner.write_closed.load(Ordering::SeqCst)
     }
 
     fn cancel_io(&self) -> IoResult<()> {
@@ -517,14 +518,14 @@ impl UnixStream {
         // and 2 with a lock with respect to close_read(), we're guaranteed that
         // no thread will erroneously sit in a read forever.
         let _guard = unsafe { self.inner.lock.lock() };
-        self.inner.read_closed.store(true, atomic::SeqCst);
+        self.inner.read_closed.store(true, Ordering::SeqCst);
         self.cancel_io()
     }
 
     pub fn close_write(&mut self) -> IoResult<()> {
         // see comments in close_read() for why this lock is necessary
         let _guard = unsafe { self.inner.lock.lock() };
-        self.inner.write_closed.store(true, atomic::SeqCst);
+        self.inner.write_closed.store(true, Ordering::SeqCst);
         self.cancel_io()
     }
 
@@ -586,7 +587,7 @@ impl UnixListener {
             deadline: 0,
             inner: Arc::new(AcceptorState {
                 abort: try!(Event::new(true, false)),
-                closed: atomic::AtomicBool::new(false),
+                closed: AtomicBool::new(false),
             }),
         })
     }
@@ -614,7 +615,7 @@ unsafe impl Sync for UnixAcceptor {}
 
 struct AcceptorState {
     abort: Event,
-    closed: atomic::AtomicBool,
+    closed: AtomicBool,
 }
 
 unsafe impl Send for AcceptorState {}
@@ -658,7 +659,7 @@ impl UnixAcceptor {
 
         // If we've had an artificial call to close_accept, be sure to never
         // proceed in accepting new clients in the future
-        if self.inner.closed.load(atomic::SeqCst) { return Err(eof()) }
+        if self.inner.closed.load(Ordering::SeqCst) { return Err(eof()) }
 
         let name = try!(to_utf16(self.listener.name.as_str()));
 
@@ -734,7 +735,7 @@ impl UnixAcceptor {
     }
 
     pub fn close_accept(&mut self) -> IoResult<()> {
-        self.inner.closed.store(true, atomic::SeqCst);
+        self.inner.closed.store(true, Ordering::SeqCst);
         let ret = unsafe {
             c::SetEvent(self.inner.abort.handle())
         };

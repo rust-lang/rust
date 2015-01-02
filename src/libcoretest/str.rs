@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::str::from_str;
-
 #[test]
 fn test_bool_from_str() {
-    assert_eq!(from_str::<bool>("true"), Some(true));
-    assert_eq!(from_str::<bool>("false"), Some(false));
-    assert_eq!(from_str::<bool>("not even a boolean"), None);
+    assert_eq!("true".parse(), Some(true));
+    assert_eq!("false".parse(), Some(false));
+    assert_eq!("not even a boolean".parse::<bool>(), None);
 }
 
 fn check_contains_all_substrings(s: &str) {
@@ -120,6 +118,6 @@ fn test_rev_split_char_iterator_no_trailing() {
 #[test]
 fn test_utf16_code_units() {
     use unicode::str::Utf16Encoder;
-    assert_eq!(Utf16Encoder::new(vec!['é', '\U0001F4A9'].into_iter()).collect::<Vec<u16>>(),
+    assert_eq!(Utf16Encoder::new(vec!['é', '\u{1F4A9}'].into_iter()).collect::<Vec<u16>>(),
                vec![0xE9, 0xD83D, 0xDCA9])
 }

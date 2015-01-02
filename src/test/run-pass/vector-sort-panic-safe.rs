@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
-use std::sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Relaxed};
+use std::sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Ordering};
 use std::rand::{thread_rng, Rng, Rand};
+use std::thread::Thread;
 
 const REPEATS: uint = 5;
 const MAX_LEN: uint = 32;
@@ -36,7 +36,7 @@ struct DropCounter { x: uint, creation_id: uint }
 impl Rand for DropCounter {
     fn rand<R: Rng>(rng: &mut R) -> DropCounter {
         // (we're not using this concurrently, so Relaxed is fine.)
-        let num = creation_count.fetch_add(1, Relaxed);
+        let num = creation_count.fetch_add(1, Ordering::Relaxed);
         DropCounter {
             x: rng.gen(),
             creation_id: num
@@ -46,7 +46,7 @@ impl Rand for DropCounter {
 
 impl Drop for DropCounter {
     fn drop(&mut self) {
-        drop_counts[self.creation_id].fetch_add(1, Relaxed);
+        drop_counts[self.creation_id].fetch_add(1, Ordering::Relaxed);
     }
 }
 
@@ -57,7 +57,7 @@ pub fn main() {
         for _ in range(0, REPEATS) {
             // reset the count for these new DropCounters, so their
             // IDs start from 0.
-            creation_count.store(0, Relaxed);
+            creation_count.store(0, Ordering::Relaxed);
 
             let main = thread_rng().gen_iter::<DropCounter>()
                                  .take(len)
@@ -72,27 +72,27 @@ pub fn main() {
             for panic_countdown in range(0i, count) {
                 // refresh the counters.
                 for c in drop_counts.iter() {
-                    c.store(0, Relaxed);
+                    c.store(0, Ordering::Relaxed);
                 }
 
                 let v = main.clone();
 
-                let _ = task::try(move|| {
-                        let mut v = v;
-                        let mut panic_countdown = panic_countdown;
-                        v.as_mut_slice().sort_by(|a, b| {
-                                if panic_countdown == 0 {
-                                    panic!()
-                                }
-                                panic_countdown -= 1;
-                                a.cmp(b)
-                            })
-                    });
+                let _ = Thread::spawn(move|| {
+                    let mut v = v;
+                    let mut panic_countdown = panic_countdown;
+                    v.as_mut_slice().sort_by(|a, b| {
+                        if panic_countdown == 0 {
+                            panic!()
+                        }
+                        panic_countdown -= 1;
+                        a.cmp(b)
+                    })
+                }).join();
 
                 // check that the number of things dropped is exactly
                 // what we expect (i.e. the contents of `v`).
                 for (i, c) in drop_counts.iter().enumerate().take(len) {
-                    let count = c.load(Relaxed);
+                    let count = c.load(Ordering::Relaxed);
                     assert!(count == 1,
                             "found drop count == {} for i == {}, len == {}",
                             count, i, len);

@@ -23,7 +23,6 @@ extern crate getopts;
 use std::sync::mpsc::{channel, Sender};
 use std::os;
 use std::result::Result::{Ok, Err};
-use std::str::from_str;
 use std::thread::Thread;
 use std::time::Duration;
 
@@ -103,7 +102,7 @@ fn main() {
     if opts.stress {
         stress(2);
     } else {
-        let max = from_str::<uint>(args[1].as_slice()).unwrap() as int;
+        let max = args[1].parse::<int>().unwrap();
 
         let num_trials = 10;
 

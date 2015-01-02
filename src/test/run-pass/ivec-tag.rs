@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 use std::sync::mpsc::{channel, Sender};
 
 fn producer(tx: &Sender<Vec<u8>>) {
@@ -19,7 +19,7 @@ fn producer(tx: &Sender<Vec<u8>>) {
 
 pub fn main() {
     let (tx, rx) = channel::<Vec<u8>>();
-    let _prod = task::spawn(move|| {
+    let _prod = Thread::spawn(move|| {
         producer(&tx)
     });
 

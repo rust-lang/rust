@@ -17,10 +17,8 @@
 
 use clone::Clone;
 use io::net::ip::{SocketAddr, IpAddr, ToSocketAddr};
-use io::{Reader, Writer, IoResult};
-use ops::FnOnce;
+use io::IoResult;
 use option::Option;
-use result::Result::{Ok, Err};
 use sys::udp::UdpSocket as UdpSocketImp;
 use sys_common;
 
@@ -86,21 +84,6 @@ impl UdpSocket {
     /// documentation for concrete examples.
     pub fn send_to<A: ToSocketAddr>(&mut self, buf: &[u8], addr: A) -> IoResult<()> {
         super::with_addresses(addr, |addr| self.inner.send_to(buf, addr))
-    }
-
-    /// Creates a `UdpStream`, which allows use of the `Reader` and `Writer`
-    /// traits to receive and send data from the same address. This transfers
-    /// ownership of the socket to the stream.
-    ///
-    /// Note that this call does not perform any actual network communication,
-    /// because UDP is a datagram protocol.
-    #[deprecated = "`UdpStream` has been deprecated"]
-    #[allow(deprecated)]
-    pub fn connect(self, other: SocketAddr) -> UdpStream {
-        UdpStream {
-            socket: self,
-            connected_to: other,
-        }
     }
 
     /// Returns the socket address that this socket was created from.
@@ -189,59 +172,6 @@ impl Clone for UdpSocket {
 impl sys_common::AsInner<UdpSocketImp> for UdpSocket {
     fn as_inner(&self) -> &UdpSocketImp {
         &self.inner
-    }
-}
-
-/// A type that allows convenient usage of a UDP stream connected to one
-/// address via the `Reader` and `Writer` traits.
-///
-/// # Note
-///
-/// This structure has been deprecated because `Reader` is a stream-oriented API but UDP
-/// is a packet-oriented protocol. Every `Reader` method will read a whole packet and
-/// throw all superfluous bytes away so that they are no longer available for further
-/// method calls.
-#[deprecated]
-pub struct UdpStream {
-    socket: UdpSocket,
-    connected_to: SocketAddr
-}
-
-impl UdpStream {
-    /// Allows access to the underlying UDP socket owned by this stream. This
-    /// is useful to, for example, use the socket to send data to hosts other
-    /// than the one that this stream is connected to.
-    pub fn as_socket<T, F>(&mut self, f: F) -> T where
-        F: FnOnce(&mut UdpSocket) -> T,
-    {
-        f(&mut self.socket)
-    }
-
-    /// Consumes this UDP stream and returns out the underlying socket.
-    pub fn disconnect(self) -> UdpSocket {
-        self.socket
-    }
-}
-
-impl Reader for UdpStream {
-    /// Returns the next non-empty message from the specified address.
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        let peer = self.connected_to;
-        self.as_socket(|sock| {
-            loop {
-                let (nread, src) = try!(sock.recv_from(buf));
-                if nread > 0 && src == peer {
-                    return Ok(nread);
-                }
-            }
-        })
-    }
-}
-
-impl Writer for UdpStream {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        let connected_to = self.connected_to;
-        self.as_socket(|sock| sock.send_to(buf, connected_to))
     }
 }
 
@@ -335,91 +265,6 @@ mod test {
             }
             Err(..) => panic!()
         }
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn stream_smoke_test_ip4() {
-        let server_ip = next_test_ip4();
-        let client_ip = next_test_ip4();
-        let dummy_ip = next_test_ip4();
-        let (tx1, rx1) = channel();
-        let (tx2, rx2) = channel();
-
-        let _t = Thread::spawn(move|| {
-            let send_as = |&:ip, val: &[u8]| {
-                match UdpSocket::bind(ip) {
-                    Ok(client) => {
-                        let client = box client;
-                        let mut stream = client.connect(server_ip);
-                        stream.write(val).unwrap();
-                    }
-                    Err(..) => panic!()
-                }
-            };
-            rx1.recv().unwrap();
-            send_as(dummy_ip, &[98]);
-            send_as(client_ip, &[99]);
-            tx2.send(()).unwrap();
-        });
-
-        match UdpSocket::bind(server_ip) {
-            Ok(server) => {
-                let server = box server;
-                let mut stream = server.connect(client_ip);
-                tx1.send(()).unwrap();
-                let mut buf = [0];
-                match stream.read(&mut buf) {
-                    Ok(nread) => {
-                        assert_eq!(nread, 1);
-                        assert_eq!(buf[0], 99);
-                    }
-                    Err(..) => panic!(),
-                }
-            }
-            Err(..) => panic!()
-        }
-        rx2.recv().unwrap();
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn stream_smoke_test_ip6() {
-        let server_ip = next_test_ip6();
-        let client_ip = next_test_ip6();
-        let (tx1, rx1) = channel();
-        let (tx2, rx2) = channel();
-
-        let _t = Thread::spawn(move|| {
-            match UdpSocket::bind(client_ip) {
-                Ok(client) => {
-                    let client = box client;
-                    let mut stream = client.connect(server_ip);
-                    rx1.recv().unwrap();
-                    stream.write(&[99]).unwrap();
-                }
-                Err(..) => panic!()
-            }
-            tx2.send(()).unwrap();
-        });
-
-        match UdpSocket::bind(server_ip) {
-            Ok(server) => {
-                let server = box server;
-                let mut stream = server.connect(client_ip);
-                tx1.send(()).unwrap();
-                let mut buf = [0];
-                match stream.read(&mut buf) {
-                    Ok(nread) => {
-                        assert_eq!(nread, 1);
-                        assert_eq!(buf[0], 99);
-                    }
-                    Err(..) => panic!()
-                }
-            }
-            Err(..) => panic!()
-        }
-        rx2.recv().unwrap();
     }
 
     pub fn socket_name(addr: SocketAddr) {

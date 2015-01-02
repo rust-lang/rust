@@ -249,14 +249,14 @@ mod test {
         let seed : &[_] = &[0u32; 8];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
 
-        let v = Vec::from_fn(16, |_| ra.next_u32());
+        let v = range(0, 16).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(0xade0b876, 0x903df1a0, 0xe56a5d40, 0x28bd8653,
                         0xb819d2bd, 0x1aed8da0, 0xccef36a8, 0xc70d778b,
                         0x7c5941da, 0x8d485751, 0x3fe02477, 0x374ad8b8,
                         0xf4b8436a, 0x1ca11815, 0x69b687c3, 0x8665eeb2));
 
-        let v = Vec::from_fn(16, |_| ra.next_u32());
+        let v = range(0, 16).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(0xbee7079f, 0x7a385155, 0x7c97ba98, 0x0d082d73,
                         0xa0290fcb, 0x6965e348, 0x3e53c612, 0xed7aee32,

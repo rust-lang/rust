@@ -555,7 +555,7 @@ mod test {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = Vec::from_fn(10, |_| ra.next_u32());
+        let v = range(0, 10).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(2558573138, 873787463, 263499565, 2103644246, 3595684709,
                         4203127393, 264982119, 2765226902, 2737944514, 3900253796));
@@ -565,7 +565,7 @@ mod test {
         // skip forward to the 10000th number
         for _ in range(0u, 10000) { rb.next_u32(); }
 
-        let v = Vec::from_fn(10, |_| rb.next_u32());
+        let v = range(0, 10).map(|_| rb.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(3676831399, 3183332890, 2834741178, 3854698763, 2717568474,
                         1576568959, 3507990155, 179069555, 141456972, 2478885421));
@@ -575,7 +575,7 @@ mod test {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = Vec::from_fn(10, |_| ra.next_u64());
+        let v = range(0, 10).map(|_| ra.next_u64()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(547121783600835980, 14377643087320773276, 17351601304698403469,
                         1238879483818134882, 11952566807690396487, 13970131091560099343,
@@ -587,7 +587,7 @@ mod test {
         // skip forward to the 10000th number
         for _ in range(0u, 10000) { rb.next_u64(); }
 
-        let v = Vec::from_fn(10, |_| rb.next_u64());
+        let v = range(0, 10).map(|_| rb.next_u64()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(18143823860592706164, 8491801882678285927, 2699425367717515619,
                         17196852593171130876, 2606123525235546165, 15790932315217671084,

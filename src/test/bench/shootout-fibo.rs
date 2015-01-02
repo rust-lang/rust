@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::os;
-use std::str::from_str;
 
 fn fib(n: int) -> int {
     if n < 2 {
@@ -28,6 +27,6 @@ fn main() {
     } else {
         args.into_iter().collect()
     };
-    let n = from_str::<int>(args[1].as_slice()).unwrap();
+    let n = args[1].parse().unwrap();
     println!("{}\n", fib(n));
 }

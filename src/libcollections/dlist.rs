@@ -219,22 +219,6 @@ impl<T> DList<T> {
         DList{list_head: None, list_tail: Rawlink::none(), length: 0}
     }
 
-    /// Deprecated: Not clearly useful enough; use split and append when available.
-    #[deprecated = "Not clearly useful enough; use split and append when available"]
-    pub fn rotate_forward(&mut self) {
-        self.pop_back_node().map(|tail| {
-            self.push_front_node(tail)
-        });
-    }
-
-    /// Deprecated: Not clearly useful enough; use split and append when available.
-    #[deprecated = "Not clearly useful enough; use split and append when available"]
-    pub fn rotate_backward(&mut self) {
-        self.pop_front_node().map(|head| {
-            self.push_back_node(head)
-        });
-    }
-
     /// Adds all elements from `other` to the end of the list.
     ///
     /// This operation should compute in O(1) time.
@@ -276,49 +260,6 @@ impl<T> DList<T> {
             }
         }
     }
-
-    /// Deprecated: Use append and a swap instead.
-    #[deprecated = "Use append and a swap instead"]
-    pub fn prepend(&mut self, mut other: DList<T>) {
-        mem::swap(self, &mut other);
-        self.append(other);
-    }
-
-    /// Deprecated: Use custom methods on IterMut.
-    #[deprecated = "Use custom methods on IterMut"]
-    pub fn insert_when<F>(&mut self, elt: T, mut f: F) where F: FnMut(&T, &T) -> bool {
-        let mut it = self.iter_mut();
-        loop {
-            match it.peek_next() {
-                None => break,
-                Some(x) => if f(x, &elt) { break }
-            }
-            it.next();
-        }
-        it.insert_next(elt);
-    }
-
-    /// Deprecated: Use custom methods on IterMut.
-    #[deprecated = "Use custom methods on IterMut"]
-    pub fn merge<F>(&mut self, mut other: DList<T>, mut f: F) where F: FnMut(&T, &T) -> bool {
-        {
-            let mut it = self.iter_mut();
-            loop {
-                let take_a = match (it.peek_next(), other.front()) {
-                    (_   , None) => return,
-                    (None, _   ) => break,
-                    (Some(ref mut x), Some(y)) => f(*x, y),
-                };
-                if take_a {
-                    it.next();
-                } else {
-                    it.insert_next_node(other.pop_front_node().unwrap());
-                }
-            }
-        }
-        self.append(other);
-    }
-
 
     /// Provides a forward iterator.
     #[inline]
@@ -426,12 +367,6 @@ impl<T> DList<T> {
         self.pop_front_node().map(|box Node{value, ..}| value)
     }
 
-    /// Deprecated: Renamed to `push_back`.
-    #[deprecated = "Renamed to `push_back`"]
-    pub fn push(&mut self, elt: T) {
-        self.push_back(elt)
-    }
-
     /// Appends an element to the back of a list
     ///
     /// # Examples
@@ -447,12 +382,6 @@ impl<T> DList<T> {
     #[stable]
     pub fn push_back(&mut self, elt: T) {
         self.push_back_node(box Node::new(elt))
-    }
-
-    /// Deprecated: Renamed to `pop_back`.
-    #[deprecated = "Renamed to `pop_back`"]
-    pub fn pop(&mut self) -> Option<T> {
-        self.pop_back()
     }
 
     /// Removes the last element from a list and returns it, or `None` if
@@ -472,15 +401,6 @@ impl<T> DList<T> {
     #[stable]
     pub fn pop_back(&mut self) -> Option<T> {
         self.pop_back_node().map(|box Node{value, ..}| value)
-    }
-}
-
-impl<T: Ord> DList<T> {
-    /// Deprecated: Why are you maintaining a sorted DList?
-    #[deprecated = "Why are you maintaining a sorted DList?"]
-    #[allow(deprecated)]
-    pub fn insert_ordered(&mut self, elt: T) {
-        self.insert_when(elt, |a, b| a >= b)
     }
 }
 
@@ -588,19 +508,6 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 
 #[stable]
 impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
-
-/// Allows mutating a `DList` while iterating.
-#[deprecated = "Trait is deprecated, use inherent methods on the iterator instead"]
-pub trait ListInsertion<A> {
-    /// Inserts `elt` just after to the element most recently returned by
-    /// `.next()`
-    ///
-    /// The inserted element does not appear in the iteration.
-    fn insert_next(&mut self, elt: A);
-
-    /// Provides a reference to the next element, without changing the iterator
-    fn peek_next<'a>(&'a mut self) -> Option<&'a mut A>;
-}
 
 // private methods for IterMut
 impl<'a, A> IterMut<'a, A> {
@@ -780,7 +687,7 @@ mod tests {
     use prelude::*;
     use std::rand;
     use std::hash;
-    use std::task::spawn;
+    use std::thread::Thread;
     use test::Bencher;
     use test;
 
@@ -866,88 +773,6 @@ mod tests {
     #[cfg(test)]
     fn list_from<T: Clone>(v: &[T]) -> DList<T> {
         v.iter().map(|x| (*x).clone()).collect()
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_append() {
-        {
-            let mut m = DList::new();
-            let mut n = DList::new();
-            n.push_back(2i);
-            m.append(n);
-            assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
-            check_links(&m);
-        }
-        {
-            let mut m = DList::new();
-            let n = DList::new();
-            m.push_back(2i);
-            m.append(n);
-            assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
-            check_links(&m);
-        }
-
-        let v = vec![1i,2,3,4,5];
-        let u = vec![9i,8,1,2,3,4,5];
-        let mut m = list_from(v.as_slice());
-        m.append(list_from(u.as_slice()));
-        check_links(&m);
-        let mut sum = v;
-        sum.push_all(u.as_slice());
-        assert_eq!(sum.len(), m.len());
-        for elt in sum.into_iter() {
-            assert_eq!(m.pop_front(), Some(elt))
-        }
-    }
-
-    #[test]
-    fn test_prepend() {
-        {
-            let mut m = DList::new();
-            let mut n = DList::new();
-            n.push_back(2i);
-            m.prepend(n);
-            assert_eq!(m.len(), 1);
-            assert_eq!(m.pop_back(), Some(2));
-            check_links(&m);
-        }
-
-        let v = vec![1i,2,3,4,5];
-        let mut u = vec![9i,8,1,2,3,4,5];
-        let mut m = list_from(v.as_slice());
-        m.prepend(list_from(u.as_slice()));
-        check_links(&m);
-        u.extend(v.iter().map(|&b| b));
-        assert_eq!(u.len(), m.len());
-        for elt in u.into_iter() {
-            assert_eq!(m.pop_front(), Some(elt))
-        }
-    }
-
-    #[test]
-    fn test_rotate() {
-        let mut n: DList<int> = DList::new();
-        n.rotate_backward(); check_links(&n);
-        assert_eq!(n.len(), 0);
-        n.rotate_forward(); check_links(&n);
-        assert_eq!(n.len(), 0);
-
-        let v = vec![1i,2,3,4,5];
-        let mut m = list_from(v.as_slice());
-        m.rotate_backward(); check_links(&m);
-        m.rotate_forward(); check_links(&m);
-        assert_eq!(v.iter().collect::<Vec<&int>>(), m.iter().collect::<Vec<_>>());
-        m.rotate_forward(); check_links(&m);
-        m.rotate_forward(); check_links(&m);
-        m.pop_front(); check_links(&m);
-        m.rotate_forward(); check_links(&m);
-        m.rotate_backward(); check_links(&m);
-        m.push_front(9); check_links(&m);
-        m.rotate_forward(); check_links(&m);
-        assert_eq!(vec![3i,9,5,1,2], m.into_iter().collect::<Vec<_>>());
     }
 
     #[test]
@@ -1081,33 +906,6 @@ mod tests {
     }
 
     #[test]
-    fn test_merge() {
-        let mut m = list_from(&[0i, 1, 3, 5, 6, 7, 2]);
-        let n = list_from(&[-1i, 0, 0, 7, 7, 9]);
-        let len = m.len() + n.len();
-        m.merge(n, |a, b| a <= b);
-        assert_eq!(m.len(), len);
-        check_links(&m);
-        let res = m.into_iter().collect::<Vec<int>>();
-        assert_eq!(res, vec![-1, 0, 0, 0, 1, 3, 5, 6, 7, 2, 7, 7, 9]);
-    }
-
-    #[test]
-    fn test_insert_ordered() {
-        let mut n = DList::new();
-        n.insert_ordered(1i);
-        assert_eq!(n.len(), 1);
-        assert_eq!(n.pop_front(), Some(1));
-
-        let mut m = DList::new();
-        m.push_back(2i);
-        m.push_back(4);
-        m.insert_ordered(3);
-        check_links(&m);
-        assert_eq!(vec![2,3,4], m.into_iter().collect::<Vec<int>>());
-    }
-
-    #[test]
     fn test_mut_rev_iter() {
         let mut m = generate_test();
         for (i, elt) in m.iter_mut().rev().enumerate() {
@@ -1124,11 +922,11 @@ mod tests {
     #[test]
     fn test_send() {
         let n = list_from(&[1i,2,3]);
-        spawn(move || {
+        Thread::spawn(move || {
             check_links(&n);
             let a: &[_] = &[&1,&2,&3];
             assert_eq!(a, n.iter().collect::<Vec<&int>>());
-        });
+        }).join().ok().unwrap();
     }
 
     #[test]
@@ -1265,6 +1063,40 @@ mod tests {
         assert_eq!(i, v.len());
     }
 
+    #[allow(deprecated)]
+    fn test_append() {
+        {
+            let mut m = DList::new();
+            let mut n = DList::new();
+            n.push_back(2i);
+            m.append(n);
+            assert_eq!(m.len(), 1);
+            assert_eq!(m.pop_back(), Some(2));
+            check_links(&m);
+        }
+        {
+            let mut m = DList::new();
+            let n = DList::new();
+            m.push_back(2i);
+            m.append(n);
+            assert_eq!(m.len(), 1);
+            assert_eq!(m.pop_back(), Some(2));
+            check_links(&m);
+        }
+
+        let v = vec![1i,2,3,4,5];
+        let u = vec![9i,8,1,2,3,4,5];
+        let mut m = list_from(v.as_slice());
+        m.append(list_from(u.as_slice()));
+        check_links(&m);
+        let mut sum = v;
+        sum.push_all(u.as_slice());
+        assert_eq!(sum.len(), m.len());
+        for elt in sum.into_iter() {
+            assert_eq!(m.pop_front(), Some(elt))
+        }
+    }
+
     #[bench]
     fn bench_collect_into(b: &mut test::Bencher) {
         let v = &[0i; 64];
@@ -1304,26 +1136,6 @@ mod tests {
         b.iter(|| {
             m.push_front(0);
             m.pop_front();
-        })
-    }
-
-    #[bench]
-    fn bench_rotate_forward(b: &mut test::Bencher) {
-        let mut m: DList<int> = DList::new();
-        m.push_front(0i);
-        m.push_front(1);
-        b.iter(|| {
-            m.rotate_forward();
-        })
-    }
-
-    #[bench]
-    fn bench_rotate_backward(b: &mut test::Bencher) {
-        let mut m: DList<int> = DList::new();
-        m.push_front(0i);
-        m.push_front(1);
-        b.iter(|| {
-            m.rotate_backward();
         })
     }
 
