@@ -1164,7 +1164,7 @@ impl<T: PartialEq> Vec<T> {
 
 /// Deprecated: use `unzip` directly on the iterator instead.
 #[deprecated = "use unzip directly on the iterator instead"]
-pub fn unzip<T, U, V: Iterator<(T, U)>>(iter: V) -> (Vec<T>, Vec<U>) {
+pub fn unzip<T, U, V: Iterator<Item=(T, U)>>(iter: V) -> (Vec<T>, Vec<U>) {
     iter.unzip()
 }
 
@@ -1317,7 +1317,7 @@ impl<T> ops::DerefMut for Vec<T> {
 #[experimental = "waiting on FromIterator stability"]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I:Iterator<T>>(mut iterator: I) -> Vec<T> {
+    fn from_iter<I:Iterator<Item=T>>(mut iterator: I) -> Vec<T> {
         let (lower, _) = iterator.size_hint();
         let mut vector = Vec::with_capacity(lower);
         for element in iterator {
@@ -1330,7 +1330,7 @@ impl<T> FromIterator<T> for Vec<T> {
 #[experimental = "waiting on Extend stability"]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
-    fn extend<I: Iterator<T>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=T>>(&mut self, mut iterator: I) {
         let (lower, _) = iterator.size_hint();
         self.reserve(lower);
         for element in iterator {
@@ -1506,7 +1506,7 @@ impl<'a> fmt::Writer for Vec<u8> {
 pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
 
 impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
-    fn from_iter<I: Iterator<T>>(it: I) -> CowVec<'a, T> {
+    fn from_iter<I: Iterator<Item=T>>(it: I) -> CowVec<'a, T> {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }
@@ -1557,7 +1557,9 @@ impl<T> IntoIter<T> {
     pub fn unwrap(self) -> Vec<T> { self.into_inner() }
 }
 
-impl<T> Iterator<T> for IntoIter<T> {
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
     #[inline]
     fn next<'a>(&'a mut self) -> Option<T> {
         unsafe {
@@ -1591,7 +1593,7 @@ impl<T> Iterator<T> for IntoIter<T> {
     }
 }
 
-impl<T> DoubleEndedIterator<T> for IntoIter<T> {
+impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back<'a>(&'a mut self) -> Option<T> {
         unsafe {
@@ -1614,7 +1616,7 @@ impl<T> DoubleEndedIterator<T> for IntoIter<T> {
     }
 }
 
-impl<T> ExactSizeIterator<T> for IntoIter<T> {}
+impl<T> ExactSizeIterator for IntoIter<T> {}
 
 #[unsafe_destructor]
 impl<T> Drop for IntoIter<T> {
@@ -1638,7 +1640,9 @@ pub struct Drain<'a, T> {
     marker: ContravariantLifetime<'a>,
 }
 
-impl<'a, T> Iterator<T> for Drain<'a, T> {
+impl<'a, T> Iterator for Drain<'a, T> {
+    type Item = T;
+
     #[inline]
     fn next(&mut self) -> Option<T> {
         unsafe {
@@ -1672,7 +1676,7 @@ impl<'a, T> Iterator<T> for Drain<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<T> for Drain<'a, T> {
+impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         unsafe {
@@ -1695,7 +1699,7 @@ impl<'a, T> DoubleEndedIterator<T> for Drain<'a, T> {
     }
 }
 
-impl<'a, T> ExactSizeIterator<T> for Drain<'a, T> {}
+impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 
 #[unsafe_destructor]
 impl<'a, T> Drop for Drain<'a, T> {

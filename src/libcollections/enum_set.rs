@@ -231,7 +231,9 @@ impl<E:CLike> Iter<E> {
     }
 }
 
-impl<E:CLike> Iterator<E> for Iter<E> {
+impl<E:CLike> Iterator for Iter<E> {
+    type Item = E;
+
     fn next(&mut self) -> Option<E> {
         if self.bits == 0 {
             return None;
@@ -254,7 +256,7 @@ impl<E:CLike> Iterator<E> for Iter<E> {
 }
 
 impl<E:CLike> FromIterator<E> for EnumSet<E> {
-    fn from_iter<I:Iterator<E>>(iterator: I) -> EnumSet<E> {
+    fn from_iter<I:Iterator<Item=E>>(iterator: I) -> EnumSet<E> {
         let mut ret = EnumSet::new();
         ret.extend(iterator);
         ret
@@ -262,7 +264,7 @@ impl<E:CLike> FromIterator<E> for EnumSet<E> {
 }
 
 impl<E:CLike> Extend<E> for EnumSet<E> {
-    fn extend<I: Iterator<E>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=E>>(&mut self, mut iterator: I) {
         for element in iterator {
             self.insert(element);
         }
