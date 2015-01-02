@@ -1490,9 +1490,9 @@ impl<T:fmt::Show> fmt::Show for Vec<T> {
     }
 }
 
-impl<'a> fmt::FormatWriter for Vec<u8> {
-    fn write(&mut self, buf: &[u8]) -> fmt::Result {
-        self.push_all(buf);
+impl<'a> fmt::Writer for Vec<u8> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.push_all(s.as_bytes());
         Ok(())
     }
 }

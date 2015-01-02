@@ -1028,16 +1028,16 @@ pub trait Writer {
     ///
     /// This function will return any I/O error reported while formatting.
     fn write_fmt(&mut self, fmt: fmt::Arguments) -> IoResult<()> {
-        // Create a shim which translates a Writer to a FormatWriter and saves
+        // Create a shim which translates a Writer to a fmt::Writer and saves
         // off I/O errors. instead of discarding them
         struct Adaptor<'a, T:'a> {
             inner: &'a mut T,
             error: IoResult<()>,
         }
 
-        impl<'a, T: Writer> fmt::FormatWriter for Adaptor<'a, T> {
-            fn write(&mut self, bytes: &[u8]) -> fmt::Result {
-                match self.inner.write(bytes) {
+        impl<'a, T: Writer> fmt::Writer for Adaptor<'a, T> {
+            fn write_str(&mut self, s: &str) -> fmt::Result {
+                match self.inner.write(s.as_bytes()) {
                     Ok(()) => Ok(()),
                     Err(e) => {
                         self.error = Err(e);

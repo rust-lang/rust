@@ -41,7 +41,7 @@ use std::io::File;
 use std::io;
 use std::rc::Rc;
 use externalfiles::ExternalHtml;
-use serialize::{Decodable, Encodable};
+use serialize::Decodable;
 use serialize::json::{mod, Json};
 use rustc::session::search_paths::SearchPaths;
 
@@ -493,14 +493,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
 
     // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
     // straight to the Rust JSON representation.
-    let crate_json_str = {
-        let mut w = Vec::new();
-        {
-            let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
-            krate.encode(&mut encoder).unwrap();
-        }
-        String::from_utf8(w).unwrap()
-    };
+    let crate_json_str = format!("{}", json::as_json(&krate));
     let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,
         Err(e) => panic!("Rust generated JSON is invalid: {}", e)
@@ -510,5 +503,5 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     json.insert("plugins".to_string(), Json::Object(plugins_json));
 
     let mut file = try!(File::create(&dst));
-    Json::Object(json).to_writer(&mut file)
+    write!(&mut file, "{}", Json::Object(json))
 }

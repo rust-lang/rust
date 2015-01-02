@@ -16,7 +16,6 @@
 #![allow(unused_must_use)]
 
 use std::fmt;
-use std::io;
 
 struct A;
 struct B;
@@ -24,17 +23,17 @@ struct C;
 
 impl fmt::LowerHex for A {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write("aloha".as_bytes())
+        f.write_str("aloha")
     }
 }
 impl fmt::UpperHex for B {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write("adios".as_bytes())
+        f.write_str("adios")
     }
 }
 impl fmt::Show for C {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad_integral(true, "☃", "123".as_bytes())
+        f.pad_integral(true, "☃", "123")
     }
 }
 
@@ -160,18 +159,18 @@ pub fn main() {
 // Basic test to make sure that we can invoke the `write!` macro with an
 // io::Writer instance.
 fn test_write() {
-    let mut buf = Vec::new();
-    write!(&mut buf as &mut io::Writer, "{}", 3i);
+    use std::fmt::Writer;
+    let mut buf = String::new();
+    write!(&mut buf, "{}", 3i);
     {
-        let w = &mut buf as &mut io::Writer;
+        let w = &mut buf;
         write!(w, "{foo}", foo=4i);
         write!(w, "{}", "hello");
         writeln!(w, "{}", "line");
         writeln!(w, "{foo}", foo="bar");
     }
 
-    let s = String::from_utf8(buf).unwrap();
-    t!(s, "34helloline\nbar\n");
+    t!(buf, "34helloline\nbar\n");
 }
 
 // Just make sure that the macros are defined, there's not really a lot that we
@@ -187,14 +186,15 @@ fn test_print() {
 // Just make sure that the macros are defined, there's not really a lot that we
 // can do with them just yet (to test the output)
 fn test_format_args() {
-    let mut buf = Vec::new();
+    use std::fmt::Writer;
+    let mut buf = String::new();
     {
-        let w = &mut buf as &mut io::Writer;
+        let w = &mut buf;
         write!(w, "{}", format_args!("{}", 1i));
         write!(w, "{}", format_args!("test"));
         write!(w, "{}", format_args!("{test}", test=3i));
     }
-    let s = String::from_utf8(buf).unwrap();
+    let s = buf;
     t!(s, "1test3");
 
     let s = fmt::format(format_args!("hello {}", "world"));
