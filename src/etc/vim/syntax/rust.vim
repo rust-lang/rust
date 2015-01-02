@@ -157,8 +157,8 @@ syn region    rustString      start=+b"+ skip=+\\\\\|\\"+ end=+"+ contains=rustE
 syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustEscape,rustEscapeUnicode,rustEscapeError,rustStringContinuation,@Spell
 syn region    rustString      start='b\?r\z(#*\)"' end='"\z1' contains=@Spell
 
-syn region    rustAttribute   start="#!\?\[" end="\]" contains=rustString,rustDeriving
-syn region    rustDeriving    start="deriving(" end=")" contained contains=rustTrait
+syn region    rustAttribute   start="#!\?\[" end="\]" contains=rustString,rustDerive
+syn region    rustDerive      start="derive(" end=")" contained contains=rustTrait
 
 " Number literals
 syn match     rustDecNumber   display "\<[0-9][0-9_]*\%([iu]\%(8\|16\|32\|64\)\=\)\="
@@ -263,7 +263,7 @@ hi def link rustMacro         Macro
 hi def link rustType          Type
 hi def link rustTodo          Todo
 hi def link rustAttribute     PreProc
-hi def link rustDeriving      PreProc
+hi def link rustDerive        PreProc
 hi def link rustStorage       StorageClass
 hi def link rustObsoleteStorage Error
 hi def link rustLifetime      Special
@@ -275,7 +275,7 @@ hi def link rustBoxPlacementExpr rustKeyword
 
 " Other Suggestions:
 " hi rustAttribute ctermfg=cyan
-" hi rustDeriving ctermfg=cyan
+" hi rustDerive ctermfg=cyan
 " hi rustAssert ctermfg=yellow
 " hi rustPanic ctermfg=red
 " hi rustMacro ctermfg=magenta
