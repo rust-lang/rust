@@ -12,7 +12,7 @@
 
 use std::cmp::Ordering::{Less,Equal,Greater};
 
-#[deriving(Eq,Ord)]
+#[derive(Eq,Ord)]
 struct A<'a> {
     x: &'a int
 }

@@ -552,7 +552,7 @@ impl LintPass for BoxPointers {
 declare_lint! {
     RAW_POINTER_DERIVING,
     Warn,
-    "uses of #[deriving] with raw pointers are rarely correct"
+    "uses of #[derive] with raw pointers are rarely correct"
 }
 
 struct RawPtrDerivingVisitor<'a, 'tcx: 'a> {
@@ -561,7 +561,7 @@ struct RawPtrDerivingVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for RawPtrDerivingVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
-        static MSG: &'static str = "use of `#[deriving]` with a raw pointer";
+        static MSG: &'static str = "use of `#[derive]` with a raw pointer";
         if let ast::TyPtr(..) = ty.node {
             self.cx.span_lint(RAW_POINTER_DERIVING, ty.span, MSG);
         }

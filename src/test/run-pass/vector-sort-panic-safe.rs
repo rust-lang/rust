@@ -30,7 +30,7 @@ static drop_counts: [AtomicUint;  MAX_LEN] =
 
 static creation_count: AtomicUint = ATOMIC_UINT_INIT;
 
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
 struct DropCounter { x: uint, creation_id: uint }
 
 impl Rand for DropCounter {

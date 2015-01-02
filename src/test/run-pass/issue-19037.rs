@@ -10,7 +10,7 @@
 
 struct Str([u8]);
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct CharSplits<'a, Sep> {
     string: &'a Str,
     sep: Sep,

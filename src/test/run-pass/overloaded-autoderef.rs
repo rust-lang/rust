@@ -12,7 +12,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::num::ToPrimitive;
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct Point {
     x: int,
     y: int

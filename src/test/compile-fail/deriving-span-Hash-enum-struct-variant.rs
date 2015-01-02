@@ -15,7 +15,7 @@ extern crate rand;
 
 struct Error;
 
-#[deriving(Hash)]
+#[derive(Hash)]
 enum Enum {
    A {
      x: Error //~ ERROR

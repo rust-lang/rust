@@ -11,7 +11,7 @@
 // Test that a class with a non-copyable field can't be
 // copied
 
-#[deriving(Show)]
+#[derive(Show)]
 struct bar {
   x: int,
 }
@@ -26,7 +26,7 @@ fn bar(x:int) -> bar {
     }
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct foo {
   i: int,
   j: bar,

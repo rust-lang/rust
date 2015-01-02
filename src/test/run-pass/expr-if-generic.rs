@@ -22,7 +22,7 @@ fn test_bool() {
     test_generic::<bool>(true, false, compare_bool);
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Pair {
     a: int,
     b: int,

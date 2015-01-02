@@ -12,10 +12,10 @@
 
 extern crate rand;
 
-#[deriving(Eq,PartialOrd,PartialEq)]
+#[derive(Eq,PartialOrd,PartialEq)]
 struct Error;
 
-#[deriving(Ord,Eq,PartialOrd,PartialEq)]
+#[derive(Ord,Eq,PartialOrd,PartialEq)]
 struct Struct(
     Error //~ ERROR
 );

@@ -10,12 +10,12 @@
 
 trait Trait {}
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Foo<T: Trait> {
     foo: T,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Bar<T> where T: Trait {
     bar: T,
 }

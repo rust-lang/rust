@@ -41,7 +41,7 @@ fn test_rbml<'a, 'b, A:
     assert!(*a1 == a2);
 }
 
-#[deriving(Decodable, Encodable)]
+#[derive(Decodable, Encodable)]
 enum Expr {
     Val(uint),
     Plus(@Expr, @Expr),
@@ -108,26 +108,26 @@ impl cmp::Eq for CLike {
     fn ne(&self, other: &CLike) -> bool { !self.eq(other) }
 }
 
-#[deriving(Decodable, Encodable, Eq)]
+#[derive(Decodable, Encodable, Eq)]
 struct Spanned<T> {
     lo: uint,
     hi: uint,
     node: T,
 }
 
-#[deriving(Decodable, Encodable)]
+#[derive(Decodable, Encodable)]
 struct SomeStruct { v: Vec<uint> }
 
-#[deriving(Decodable, Encodable)]
+#[derive(Decodable, Encodable)]
 struct Point {x: uint, y: uint}
 
-#[deriving(Decodable, Encodable)]
+#[derive(Decodable, Encodable)]
 enum Quark<T> {
     Top(T),
     Bottom(T)
 }
 
-#[deriving(Decodable, Encodable)]
+#[derive(Decodable, Encodable)]
 enum CLike { A, B, C }
 
 pub fn main() {

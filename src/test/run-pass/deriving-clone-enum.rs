@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Clone)]
+#[derive(Clone)]
 enum E {
     A,
     B(()),

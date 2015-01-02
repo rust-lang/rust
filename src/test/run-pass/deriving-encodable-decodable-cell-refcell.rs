@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // This briefly tests the capability of `Cell` and `RefCell` to implement the
-// `Encodable` and `Decodable` traits via `#[deriving(Encodable, Decodable)]`
+// `Encodable` and `Decodable` traits via `#[derive(Encodable, Decodable)]`
 
 #![feature(old_orphan_check)]
 
@@ -19,12 +19,12 @@ use std::cell::{Cell, RefCell};
 use serialize::{Encodable, Decodable};
 use serialize::json;
 
-#[deriving(Encodable, Decodable)]
+#[derive(Encodable, Decodable)]
 struct A {
     baz: int
 }
 
-#[deriving(Encodable, Decodable)]
+#[derive(Encodable, Decodable)]
 struct B {
     foo: Cell<bool>,
     bar: RefCell<A>,

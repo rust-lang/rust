@@ -10,19 +10,19 @@
 
 use std::rand;
 
-#[deriving(Rand)]
+#[derive(Rand)]
 struct A;
 
-#[deriving(Rand)]
+#[derive(Rand)]
 struct B(int, int);
 
-#[deriving(Rand)]
+#[derive(Rand)]
 struct C {
     x: f64,
     y: (u8, u8)
 }
 
-#[deriving(Rand)]
+#[derive(Rand)]
 enum D {
     D0,
     D1(uint),

@@ -11,7 +11,7 @@
 use std::task;
 use std::sync::mpsc::{channel, Sender};
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 enum Message {
     Dropped,
     DestructorRan

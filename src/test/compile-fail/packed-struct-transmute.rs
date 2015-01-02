@@ -23,7 +23,7 @@ struct Foo {
     baz: uint
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Oof {
     rab: u8,
     zab: uint

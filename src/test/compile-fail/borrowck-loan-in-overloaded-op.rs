@@ -10,7 +10,7 @@
 
 use std::ops::Add;
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct foo(Box<uint>);
 
 impl Add<foo, foo> for foo {

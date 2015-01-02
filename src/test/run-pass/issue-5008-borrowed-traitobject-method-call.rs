@@ -19,7 +19,7 @@ trait Debuggable {
     fn debug_name(&self) -> String;
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Thing {
     name: String,
 }

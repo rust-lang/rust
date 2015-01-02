@@ -10,7 +10,7 @@
 
 
 
-#[deriving(Show)]
+#[derive(Show)]
 enum foo { large, small, }
 
 impl Copy for foo {}
