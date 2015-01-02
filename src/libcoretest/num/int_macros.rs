@@ -17,6 +17,7 @@ mod tests {
     use core::int;
     use core::num::{FromStrRadix, Int, SignedInt};
     use core::str::from_str;
+    use core::ops::{Shl, Shr, Not, BitXor, BitAnd, BitOr};
     use num;
 
     #[test]

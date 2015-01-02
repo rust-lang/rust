@@ -14,7 +14,9 @@
 //
 // I *think* it's the same, more or less.
 
+use std::comm::{channel, Sender, Receiver};
 use std::os;
+use std::str::from_str;
 use std::thread::Thread;
 use std::time::Duration;
 use std::uint;

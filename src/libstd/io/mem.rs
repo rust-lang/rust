@@ -399,9 +399,10 @@ impl<'a> Buffer for BufReader<'a> {
 #[cfg(test)]
 mod test {
     extern crate "test" as test_crate;
+    use prelude::v1::*;
+
     use super::*;
-    use io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
-    use prelude::{Ok, Err, range,  Vec, Buffer,  AsSlice, SliceExt, IteratorExt, CloneSliceExt};
+    use io::{SeekSet, SeekCur, SeekEnd};
     use io;
     use self::test_crate::Bencher;
 

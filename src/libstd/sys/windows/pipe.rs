@@ -84,14 +84,14 @@
 //! the test suite passing (the suite is in libstd), and that's good enough for
 //! me!
 
-use alloc::arc::Arc;
+use prelude::v1::*;
+
 use libc;
 use c_str::CString;
 use mem;
 use ptr;
-use sync::{atomic, Mutex};
+use sync::{atomic, Arc, Mutex};
 use io::{mod, IoError, IoResult};
-use prelude::*;
 
 use sys_common::{mod, eof};
 

@@ -233,7 +233,7 @@ use fmt;
 use int;
 use iter::{Iterator, IteratorExt};
 use mem::transmute;
-use ops::{BitOr, BitXor, BitAnd, Sub, Not, FnOnce};
+use ops::FnOnce;
 use option::Option;
 use option::Option::{Some, None};
 use os;
@@ -1918,8 +1918,8 @@ impl fmt::Show for FilePermission {
 #[cfg(test)]
 mod tests {
     use self::BadReaderBehavior::*;
-    use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput, Writer};
-    use prelude::{Ok, Vec, Buffer, CloneSliceExt};
+    use super::{IoResult, MemReader, NoProgress, InvalidInput};
+    use prelude::v1::*;
     use uint;
 
     #[deriving(Clone, PartialEq, Show)]

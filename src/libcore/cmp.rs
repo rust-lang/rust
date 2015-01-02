@@ -125,10 +125,11 @@ impl Ordering {
     /// # Example
     ///
     /// ```rust
+    /// use std::cmp::Ordering::{Less, Equal, Greater};
+    ///
     /// assert_eq!(Less.reverse(), Greater);
     /// assert_eq!(Equal.reverse(), Equal);
     /// assert_eq!(Greater.reverse(), Less);
-    ///
     ///
     /// let mut data: &mut [_] = &mut [2u, 10, 5, 8];
     ///
@@ -170,6 +171,8 @@ pub trait Ord for Sized?: Eq + PartialOrd<Self> {
     /// the expression `self <operator> other` if true.  For example:
     ///
     /// ```
+    /// use std::cmp::Ordering::{Less, Equal, Greater};
+    ///
     /// assert_eq!( 5u.cmp(&10), Less);     // because 5 < 10
     /// assert_eq!(10u.cmp(&5),  Greater);  // because 10 > 5
     /// assert_eq!( 5u.cmp(&5),  Equal);    // because 5 == 5

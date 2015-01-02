@@ -15,6 +15,9 @@
 // necessary. Testing the methods of the impls is done within the source
 // file for each numeric type.
 
+use std::ops::Add;
+use std::num::ToPrimitive;
+
 pub fn main() {
 // ints
     // num

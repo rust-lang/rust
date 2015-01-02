@@ -175,7 +175,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use io;
     use io::{MemReader, BytesReader};
 
@@ -507,7 +507,7 @@ mod test {
 mod bench {
     extern crate test;
 
-    use prelude::*;
+    use prelude::v1::*;
     use self::test::Bencher;
 
     // why is this a macro? wouldn't an inlined function work just as well?

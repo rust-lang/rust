@@ -69,7 +69,7 @@ use util::nodemap::{FnvHashMap};
 use arena::TypedArena;
 use std::borrow::BorrowFrom;
 use std::cell::{Cell, RefCell};
-use std::cmp;
+use std::cmp::{mod, Ordering};
 use std::fmt::{mod, Show};
 use std::hash::{Hash, sip, Writer};
 use std::mem;

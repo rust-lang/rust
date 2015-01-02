@@ -27,8 +27,8 @@ use syntax::ptr::P;
 use syntax::visit::{mod, Visitor};
 use syntax::{ast_map, ast_util, codemap};
 
-use std::rc::Rc;
 use std::collections::hash_map::Entry::Vacant;
+use std::rc::Rc;
 
 //
 // This pass classifies expressions by their constant-ness.

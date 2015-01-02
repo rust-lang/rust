@@ -17,22 +17,23 @@
 extern crate log;
 extern crate libc;
 
+use std::comm::channel;
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
-use std::thread::Builder;
+use std::thread::{Builder, Thread};
 use std::time::Duration;
 
 fn main() {
     // This test has a chance to time out, try to not let it time out
-    spawn(move|| {
+    Thread::spawn(move|| -> () {
         use std::io::timer;
         timer::sleep(Duration::milliseconds(30 * 1000));
         println!("timed out!");
         unsafe { libc::exit(1) }
-    });
+    }).detach();
 
     let (tx, rx) = channel();
-    spawn(move|| {
+    Thread::spawn(move || -> () {
         let mut listener = TcpListener::bind("127.0.0.1:0").unwrap();
         tx.send(listener.socket_name().unwrap());
         let mut acceptor = listener.listen();
@@ -47,7 +48,7 @@ fn main() {
             stream.read_byte();
             stream.write(&[2]);
         }
-    });
+    }).detach();
     let addr = rx.recv();
 
     let (tx, rx) = channel();

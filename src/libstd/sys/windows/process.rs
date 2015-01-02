@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
+
 use libc::{pid_t, c_void, c_int};
 use libc;
-use c_str::CString;
+use c_str::{CString, ToCStr};
 use io;
 use mem;
 use os;
 use ptr;
-use prelude::*;
 use io::process::{ProcessExit, ExitStatus, ExitSignal};
 use collections;
 use path::BytesContainer;
@@ -466,10 +467,11 @@ fn free_handle(handle: *mut ()) {
 
 #[cfg(test)]
 mod tests {
+    use c_str::ToCStr;
 
     #[test]
     fn test_make_command_line() {
-        use prelude::*;
+        use prelude::v1::*;
         use str;
         use c_str::CString;
         use super::make_command_line;

@@ -15,6 +15,7 @@
  */
 
 use std::task;
+use std::comm::{channel, Sender};
 
 type ctx = Sender<int>;
 

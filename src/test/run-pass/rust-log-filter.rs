@@ -14,6 +14,9 @@
 #[phase(plugin,link)]
 extern crate log;
 
+use std::comm::{channel, Sender, Receiver};
+use std::thread::Thread;
+
 pub struct ChannelLogger {
     tx: Sender<String>
 }
@@ -34,7 +37,7 @@ impl log::Logger for ChannelLogger {
 pub fn main() {
     let (logger, rx) = ChannelLogger::new();
 
-    spawn(move|| {
+    let _t = Thread::spawn(move|| {
         log::set_logger(logger);
 
         // our regex is "f.o"

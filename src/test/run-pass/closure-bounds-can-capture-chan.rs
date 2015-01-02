@@ -10,7 +10,7 @@
 
 #![feature(unboxed_closures)]
 
-use std::comm;
+use std::comm::channel;
 
 fn foo<F:FnOnce()+Send>(blk: F) {
     blk();

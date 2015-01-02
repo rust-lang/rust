@@ -44,11 +44,13 @@
 #![feature(unboxed_closures)]
 
 use std::iter::AdditiveIterator;
+use std::thread::Thread;
 use std::mem;
 use std::num::Float;
 use std::os;
 use std::raw::Repr;
 use std::simd::f64x2;
+use std::str::from_str;
 
 fn main() {
     let args = os::args();
@@ -80,14 +82,15 @@ fn mult_AtAv(v: &[f64], out: &mut [f64], tmp: &mut [f64]) {
 }
 
 fn mult_Av(v: &[f64], out: &mut [f64]) {
-    parallel(out, |&: start, out| mult(v, out, start, |i, j| A(i, j)));
+    parallel(out, |start, out| mult(v, out, start, |i, j| A(i, j)));
 }
 
 fn mult_Atv(v: &[f64], out: &mut [f64]) {
-    parallel(out, |&: start, out| mult(v, out, start, |i, j| A(j, i)));
+    parallel(out, |start, out| mult(v, out, start, |i, j| A(j, i)));
 }
 
-fn mult(v: &[f64], out: &mut [f64], start: uint, a: |uint, uint| -> f64) {
+fn mult<F>(v: &[f64], out: &mut [f64], start: uint, a: F)
+           where F: Fn(uint, uint) -> f64 {
     for (i, slot) in out.iter_mut().enumerate().map(|(i, s)| (i + start, s)) {
         let mut sum = f64x2(0.0, 0.0);
         for (j, chunk) in v.chunks(2).enumerate().map(|(j, s)| (2 * j, s)) {
@@ -116,25 +119,19 @@ unsafe impl<T: 'static> Send for Racy<T> {}
 // Executes a closure in parallel over the given mutable slice. The closure `f`
 // is run in parallel and yielded the starting index within `v` as well as a
 // sub-slice of `v`.
-fn parallel<'a, T, F>(v: &'a mut [T], f: F)
-                      where T: Send + Sync,
-                            F: Fn(uint, &'a mut [T]) + Sync {
-    let (tx, rx) = channel();
+fn parallel<T, F>(v: &mut [T], f: F)
+                  where T: Send + Sync,
+                        F: Fn(uint, &mut [T]) + Sync {
     let size = v.len() / os::num_cpus() + 1;
 
-    for (i, chunk) in v.chunks_mut(size).enumerate() {
-        let tx = tx.clone();
-
+    v.chunks_mut(size).enumerate().map(|(i, chunk)| {
         // Need to convert `f` and `chunk` to something that can cross the task
         // boundary.
         let f = Racy(&f as *const _ as *const uint);
         let raw = Racy(chunk.repr());
-        spawn(move|| {
+        Thread::spawn(move|| {
             let f = f.0 as *const F;
             unsafe { (*f)(i * size, mem::transmute(raw.0)) }
-            drop(tx)
-        });
-    }
-    drop(tx);
-    for () in rx.iter() {}
+        })
+    }).collect::<Vec<_>>();
 }

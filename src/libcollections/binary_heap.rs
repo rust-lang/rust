@@ -26,6 +26,7 @@
 //! [dir_graph]: http://en.wikipedia.org/wiki/Directed_graph
 //!
 //! ```
+//! use std::cmp::Ordering;
 //! use std::collections::BinaryHeap;
 //! use std::uint;
 //!
@@ -151,6 +152,7 @@
 use core::prelude::*;
 
 use core::default::Default;
+use core::iter::FromIterator;
 use core::mem::{zeroed, replace, swap};
 use core::ptr;
 

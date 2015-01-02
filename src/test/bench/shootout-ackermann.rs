@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::os;
+use std::str::from_str;
 
 fn ack(m: int, n: int) -> int {
     if m == 0 {

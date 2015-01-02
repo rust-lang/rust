@@ -26,6 +26,7 @@ use std::io::*;
 use std::io::test::*;
 use std::io;
 use std::time::Duration;
+use std::comm::channel;
 
 #[cfg_attr(target_os = "freebsd", ignore)]
 fn eventual_timeout() {

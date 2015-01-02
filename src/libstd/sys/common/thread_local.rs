@@ -56,7 +56,7 @@
 
 #![allow(non_camel_case_types)]
 
-use prelude::*;
+use prelude::v1::*;
 
 use sync::atomic::{mod, AtomicUint};
 use sync::{Mutex, Once, ONCE_INIT};
@@ -246,7 +246,7 @@ impl Drop for Key {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
     use super::{Key, StaticKey, INIT_INNER};
 
     fn assert_sync<T: Sync>() {}

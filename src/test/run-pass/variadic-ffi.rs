@@ -9,7 +9,8 @@
 // except according to those terms.
 
 extern crate libc;
-use std::c_str::CString;
+
+use std::c_str::{CString, ToCStr};
 use libc::{c_char, c_int};
 
 // ignore-fast doesn't like extern crate

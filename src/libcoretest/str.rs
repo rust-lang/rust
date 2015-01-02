@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::str::from_str;
+
 #[test]
 fn test_bool_from_str() {
     assert_eq!(from_str::<bool>("true"), Some(true));

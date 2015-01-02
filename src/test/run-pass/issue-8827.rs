@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::thread::Thread;
+use std::comm::{channel, Receiver};
+
 fn periodical(n: int) -> Receiver<bool> {
     let (chan, port) = channel();
-    spawn(move|| {
+    Thread::spawn(move|| {
         loop {
             for _ in range(1, n) {
                 match chan.send_opt(false) {
@@ -23,13 +26,13 @@ fn periodical(n: int) -> Receiver<bool> {
                 Err(..) => break
             }
         }
-    });
+    }).detach();
     return port;
 }
 
 fn integers() -> Receiver<int> {
     let (chan, port) = channel();
-    spawn(move|| {
+    Thread::spawn(move|| {
         let mut i = 1;
         loop {
             match chan.send_opt(i) {
@@ -38,7 +41,7 @@ fn integers() -> Receiver<int> {
             }
             i = i + 1;
         }
-    });
+    }).detach();
     return port;
 }
 

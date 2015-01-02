@@ -47,6 +47,7 @@
 //! which is cyclic.
 //!
 //! ```rust
+//! use std::borrow::IntoCow;
 //! use graphviz as dot;
 //!
 //! type Nd = int;
@@ -146,6 +147,7 @@
 //! entity `&sube`).
 //!
 //! ```rust
+//! use std::borrow::IntoCow;
 //! use graphviz as dot;
 //!
 //! type Nd = uint;
@@ -201,6 +203,7 @@
 //! Hasse-diagram for the subsets of the set `{x, y}`.
 //!
 //! ```rust
+//! use std::borrow::IntoCow;
 //! use graphviz as dot;
 //!
 //! type Nd<'a> = (uint, &'a str);
@@ -273,6 +276,7 @@
 
 pub use self::LabelText::*;
 
+use std::borrow::IntoCow;
 use std::io;
 use std::str::CowString;
 use std::vec::CowVec;
@@ -586,6 +590,7 @@ mod tests {
     use super::{Nodes, Edges, GraphWalk, render};
     use std::io::IoResult;
     use std::str;
+    use std::borrow::IntoCow;
 
     /// each node is an index in a vector in the graph.
     type Node = uint;

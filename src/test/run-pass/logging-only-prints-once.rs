@@ -13,6 +13,7 @@
 
 use std::cell::Cell;
 use std::fmt;
+use std::thread::Thread;
 
 struct Foo(Cell<int>);
 
@@ -26,13 +27,10 @@ impl fmt::Show for Foo {
 }
 
 pub fn main() {
-    let (tx, rx) = channel();
-    spawn(move|| {
+    Thread::spawn(move|| {
         let mut f = Foo(Cell::new(0));
         println!("{}", f);
         let Foo(ref mut f) = f;
         assert!(f.get() == 1);
-        tx.send(());
-    });
-    rx.recv();
+    }).join().ok().unwrap();
 }

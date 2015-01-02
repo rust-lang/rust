@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ops::Index;
+
 struct Mat<T> { data: Vec<T>, cols: uint, }
 
 impl<T> Mat<T> {

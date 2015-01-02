@@ -150,9 +150,10 @@ impl<A:Send> Future<A> {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
+    use comm::channel;
     use sync::Future;
-    use task;
+    use thread::Thread;
 
     #[test]
     fn test_from_value() {
@@ -210,7 +211,7 @@ mod test {
         let expected = "schlorf";
         let (tx, rx) = channel();
         let f = Future::spawn(move|| { expected });
-        task::spawn(move|| {
+        let _t = Thread::spawn(move|| {
             let mut f = f;
             tx.send(f.get());
         });

@@ -12,9 +12,10 @@
 
 #![macro_escape]
 
+use prelude::v1::*;
+
 use libc;
 use os;
-use prelude::*;
 use std::io::net::ip::*;
 use sync::atomic::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
 

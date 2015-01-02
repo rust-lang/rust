@@ -10,6 +10,8 @@
 
 // Test that a custom deref with a fat pointer return type does not ICE
 
+use std::ops::{Deref, DerefMut};
+
 pub struct Arr {
     ptr: Box<[uint]>
 }

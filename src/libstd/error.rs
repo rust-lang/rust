@@ -78,7 +78,7 @@
 //! }
 //! ```
 
-use prelude::*;
+use prelude::v1::*;
 
 use str::Utf8Error;
 use string::{FromUtf8Error, FromUtf16Error};

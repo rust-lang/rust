@@ -819,7 +819,7 @@ fn access_string(access: FileAccess) -> &'static str {
 #[allow(unused_variables)]
 #[allow(unused_mut)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite, FileType};
     use io;
     use str;

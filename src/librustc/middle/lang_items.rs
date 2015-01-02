@@ -36,6 +36,7 @@ use syntax::visit::Visitor;
 use syntax::visit;
 
 use std::iter::Enumerate;
+use std::num::FromPrimitive;
 use std::slice;
 
 // The actual lang items defined come at the end of this file in one handy table.
