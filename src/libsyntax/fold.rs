@@ -553,7 +553,7 @@ pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedPara
 pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
     l.map(|Local {id, pat, ty, init, source, span}| Local {
         id: fld.new_id(id),
-        ty: fld.fold_ty(ty),
+        ty: ty.map(|t| fld.fold_ty(t)),
         pat: fld.fold_pat(pat),
         init: init.map(|e| fld.fold_expr(e)),
         source: source,

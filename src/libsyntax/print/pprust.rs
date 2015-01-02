@@ -1858,13 +1858,11 @@ impl<'a> State<'a> {
 
     pub fn print_local_decl(&mut self, loc: &ast::Local) -> IoResult<()> {
         try!(self.print_pat(&*loc.pat));
-        match loc.ty.node {
-            ast::TyInfer => Ok(()),
-            _ => {
-                try!(self.word_space(":"));
-                self.print_type(&*loc.ty)
-            }
+        if let Some(ref ty) = loc.ty {
+            try!(self.word_space(":"));
+            try!(self.print_type(&**ty));
         }
+        Ok(())
     }
 
     pub fn print_decl(&mut self, decl: &ast::Decl) -> IoResult<()> {

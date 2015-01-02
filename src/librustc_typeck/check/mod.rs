@@ -507,9 +507,9 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for GatherLocalsVisitor<'a, 'tcx> {
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &ast::Local) {
-        let o_ty = match local.ty.node {
-            ast::TyInfer => None,
-            _ => Some(self.fcx.to_ty(&*local.ty))
+        let o_ty = match local.ty {
+            Some(ref ty) => Some(self.fcx.to_ty(&**ty)),
+            None => None
         };
         self.assign(local.span, local.id, o_ty);
         debug!("Local variable {} is assigned type {}",
