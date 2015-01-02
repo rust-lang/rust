@@ -195,51 +195,39 @@ pub enum deref_kind {
 // Categorizes a derefable type.  Note that we include vectors and strings as
 // derefable (we model an index as the combination of a deref and then a
 // pointer adjustment).
-pub fn opt_deref_kind(t: Ty) -> Option<deref_kind> {
+pub fn deref_kind(t: Ty) -> McResult<deref_kind> {
     match t.sty {
         ty::ty_uniq(_) |
         ty::ty_closure(box ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
-            Some(deref_ptr(Unique))
+            Ok(deref_ptr(Unique))
         }
 
         ty::ty_rptr(r, mt) => {
             let kind = ty::BorrowKind::from_mutbl(mt.mutbl);
-            Some(deref_ptr(BorrowedPtr(kind, *r)))
+            Ok(deref_ptr(BorrowedPtr(kind, *r)))
         }
 
         ty::ty_closure(box ty::ClosureTy {
                 store: ty::RegionTraitStore(r, _),
                 ..
             }) => {
-            Some(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
+            Ok(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
         }
 
         ty::ty_ptr(ref mt) => {
-            Some(deref_ptr(UnsafePtr(mt.mutbl)))
+            Ok(deref_ptr(UnsafePtr(mt.mutbl)))
         }
 
         ty::ty_enum(..) |
         ty::ty_struct(..) => { // newtype
-            Some(deref_interior(InteriorField(PositionalField(0))))
+            Ok(deref_interior(InteriorField(PositionalField(0))))
         }
 
         ty::ty_vec(_, _) | ty::ty_str => {
-            Some(deref_interior(InteriorElement(element_kind(t))))
+            Ok(deref_interior(InteriorElement(element_kind(t))))
         }
 
-        _ => None
-    }
-}
-
-pub fn deref_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> deref_kind {
-    debug!("deref_kind {}", ty_to_string(tcx, t));
-    match opt_deref_kind(t) {
-      Some(k) => k,
-      None => {
-        tcx.sess.bug(
-            format!("deref_kind() invoked on non-derefable type {}",
-                    ty_to_string(tcx, t))[]);
-      }
+        _ => Err(()),
     }
 }
 
@@ -403,7 +391,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
     fn pat_ty(&self, pat: &ast::Pat) -> McResult<Ty<'tcx>> {
         let tcx = self.typer.tcx();
-        let base_ty = self.typer.node_ty(pat.id);
+        let base_ty = try!(self.typer.node_ty(pat.id));
         // FIXME (Issue #18207): This code detects whether we are
         // looking at a `ref x`, and if so, figures out what the type
         // *being borrowed* is.  But ideally we would put in a more
@@ -413,15 +401,16 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 // a bind-by-ref means that the base_ty will be the type of the ident itself,
                 // but what we want here is the type of the underlying value being borrowed.
                 // So peel off one-level, turning the &T into T.
-                ty::deref(base_ty, false).unwrap_or_else(|| {
-                    panic!("encountered BindByRef with non &-type");
-                }).ty
+                match ty::deref(base_ty, false) {
+                    Some(t) => t.ty,
+                    None => { return Err(()); }
+                }
             }
             _ => base_ty,
         };
         debug!("pat_ty(pat={}) base_ty={} ret_ty={}",
                pat.repr(tcx), base_ty.repr(tcx), ret_ty.repr(tcx));
-        ret_ty
+        Ok(ret_ty)
     }
 
     pub fn cat_expr(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
@@ -909,13 +898,13 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             }
             None => base_cmt
         };
-        match ty::deref(base_cmt.ty, true) {
+        let base_cmt_ty = base_cmt.ty;
+        match ty::deref(base_cmt_ty, true) {
             Some(mt) => self.cat_deref_common(node, base_cmt, deref_cnt, mt.ty, implicit),
             None => {
-                self.tcx().sess.span_bug(
-                    node.span(),
-                    format!("Explicit deref of non-derefable type: {}",
-                            base_cmt.ty.repr(self.tcx()))[]);
+                debug!("Explicit deref of non-derefable type: {}",
+                       base_cmt_ty.repr(self.tcx()));
+                return Err(());
             }
         }
     }
@@ -992,17 +981,14 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 match ty::array_element_ty(self.tcx(), base_cmt.ty) {
                     Some(ty) => ty,
                     None => {
-                        self.tcx().sess.span_bug(
-                            elt.span(),
-                            format!("Explicit index of non-index type `{}`",
-                                    base_cmt.ty.repr(self.tcx()))[]);
+                        return Err(());
                     }
                 }
             }
         };
 
         let m = base_cmt.mutbl.inherit();
-        return interior(elt, base_cmt.clone(), base_cmt.ty, m, element_ty);
+        return Ok(interior(elt, base_cmt.clone(), base_cmt.ty, m, element_ty));
 
         fn interior<'tcx, N: ast_node>(elt: &N,
                                        of_cmt: cmt<'tcx>,
