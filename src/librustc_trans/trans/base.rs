@@ -3070,7 +3070,9 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
         step: unsafe extern "C" fn(ValueRef) -> ValueRef,
     }
 
-    impl Iterator<ValueRef> for ValueIter {
+    impl Iterator for ValueIter {
+        type Item = ValueRef;
+
         fn next(&mut self) -> Option<ValueRef> {
             let old = self.cur;
             if !old.is_null() {
