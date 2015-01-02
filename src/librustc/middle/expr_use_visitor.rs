@@ -673,6 +673,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     }
                 }
             }
+            ty::ty_err => { }
             _ => {
                 let overloaded_call_type =
                     match self.typer.node_method_origin(MethodCall::expr(call.id)) {
@@ -792,9 +793,17 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 ty::struct_fields(self.tcx(), did, substs)
             }
             _ => {
-                self.tcx().sess.span_bug(
-                    with_expr.span,
-                    "with expression doesn't evaluate to a struct");
+                // the base expression should always evaluate to a
+                // struct; however, when EUV is run during typeck, it
+                // may not. This will generate an error earlier in typeck,
+                // so we can just ignore it.
+                if !self.tcx().sess.has_errors() {
+                    self.tcx().sess.span_bug(
+                        with_expr.span,
+                        "with expression doesn't evaluate to a struct");
+                }
+                assert!(self.tcx().sess.has_errors());
+                vec!()
             }
         };
 
@@ -1004,8 +1013,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         debug!("determine_pat_move_mode cmt_discr={} pat={}", cmt_discr.repr(self.tcx()),
                pat.repr(self.tcx()));
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |_mc, cmt_pat, pat| {
-            let tcx = self.typer.tcx();
-            let def_map = &self.typer.tcx().def_map;
+            let tcx = self.tcx();
+            let def_map = &self.tcx().def_map;
             if pat_util::pat_is_binding(def_map, pat) {
                 match pat.node {
                     ast::PatIdent(ast::BindByRef(_), _, _) =>
@@ -1041,7 +1050,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
         let mc = &self.mc;
         let typer = self.typer;
-        let def_map = &self.typer.tcx().def_map;
+        let def_map = &self.tcx().def_map;
         let delegate = &mut self.delegate;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
             if pat_util::pat_is_binding(def_map, pat) {
@@ -1058,8 +1067,12 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 // Each match binding is effectively an assignment to the
                 // binding being produced.
                 let def = def_map.borrow()[pat.id].clone();
-                let binding_cmt = mc.cat_def(pat.id, pat.span, pat_ty, def);
-                delegate.mutate(pat.id, pat.span, binding_cmt, Init);
+                match mc.cat_def(pat.id, pat.span, pat_ty, def) {
+                    Ok(binding_cmt) => {
+                        delegate.mutate(pat.id, pat.span, binding_cmt, Init);
+                    }
+                    Err(_) => { }
+                }
 
                 // It is also a borrow or copy/move of the value being matched.
                 match pat.node {
@@ -1080,7 +1093,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         delegate.consume_pat(pat, cmt_pat, mode);
                     }
                     _ => {
-                        typer.tcx().sess.span_bug(
+                        tcx.sess.span_bug(
                             pat.span,
                             "binding pattern not an identifier");
                     }
@@ -1181,17 +1194,29 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             // An enum's type -- should never be in a
                             // pattern.
 
-                            let msg = format!("Pattern has unexpected type: {}", def);
-                            tcx.sess.span_bug(pat.span, msg[])
+                            if !tcx.sess.has_errors() {
+                                let msg = format!("Pattern has unexpected type: {} and type {}",
+                                                  def,
+                                                  cmt_pat.ty.repr(tcx));
+                                tcx.sess.span_bug(pat.span, msg[])
+                            }
                         }
 
                         Some(def) => {
                             // Remaining cases are e.g. DefFn, to
                             // which identifiers within patterns
-                            // should not resolve.
+                            // should not resolve. However, we do
+                            // encouter this when using the
+                            // expr-use-visitor during typeck. So just
+                            // ignore it, an error should have been
+                            // reported.
 
-                            let msg = format!("Pattern has unexpected def: {}", def);
-                            tcx.sess.span_bug(pat.span, msg[])
+                            if !tcx.sess.has_errors() {
+                                let msg = format!("Pattern has unexpected def: {} and type {}",
+                                                  def,
+                                                  cmt_pat.ty.repr(tcx));
+                                tcx.sess.span_bug(pat.span, msg[])
+                            }
                         }
                     }
                 }
@@ -1217,8 +1242,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     fn walk_captures(&mut self, closure_expr: &ast::Expr) {
         debug!("walk_captures({})", closure_expr.repr(self.tcx()));
 
-        let tcx = self.typer.tcx();
-        ty::with_freevars(tcx, closure_expr.id, |freevars| {
+        ty::with_freevars(self.tcx(), closure_expr.id, |freevars| {
             match self.tcx().capture_mode(closure_expr.id) {
                 ast::CaptureByRef => {
                     self.walk_by_ref_captures(closure_expr, freevars);
