@@ -82,9 +82,7 @@
 #[doc(no_inline)] pub use core::prelude::{Tuple9, Tuple10, Tuple11, Tuple12};
 #[doc(no_inline)] pub use str::{Str, StrExt};
 #[doc(no_inline)] pub use slice::AsSlice;
-#[doc(no_inline)] pub use slice::{SliceConcatExt, PartialEqSliceExt};
-#[doc(no_inline)] pub use slice::{CloneSliceExt, OrdSliceExt, SliceExt};
-#[doc(no_inline)] pub use slice::{BoxedSliceExt};
+#[doc(no_inline)] pub use slice::{SliceConcatExt, SliceExt};
 #[doc(no_inline)] pub use string::{IntoString, String, ToString};
 #[doc(no_inline)] pub use vec::Vec;
 

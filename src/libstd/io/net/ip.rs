@@ -25,7 +25,7 @@ use ops::FnOnce;
 use option::Option;
 use option::Option::{None, Some};
 use result::Result::{Ok, Err};
-use slice::{CloneSliceExt, SliceExt};
+use slice::SliceExt;
 use str::{FromStr, StrExt};
 use vec::Vec;
 
