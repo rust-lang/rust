@@ -5708,7 +5708,10 @@ pub fn unboxed_closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
             freevars.iter()
                     .map(|freevar| {
                         let freevar_def_id = freevar.def.def_id();
-                        let freevar_ty = typer.node_ty(freevar_def_id.node);
+                        let freevar_ty = match typer.node_ty(freevar_def_id.node) {
+                            Ok(t) => { t }
+                            Err(()) => { return None; }
+                        };
                         let freevar_ty = freevar_ty.subst(tcx, substs);
 
                         match capture_mode {
