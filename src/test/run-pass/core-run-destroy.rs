@@ -23,6 +23,8 @@ extern crate libc;
 use std::io::{Process, Command, timer};
 use std::time::Duration;
 use std::str;
+use std::sync::mpsc::channel;
+use std::thread::Thread;
 
 macro_rules! succeed( ($e:expr) => (
     match $e { Ok(..) => {}, Err(e) => panic!("panic: {}", e) }
@@ -84,15 +86,15 @@ pub fn test_destroy_actually_kills(force: bool) {
     let (tx, rx1) = channel();
     let mut t = timer::Timer::new().unwrap();
     let rx2 = t.oneshot(Duration::milliseconds(1000));
-    spawn(move|| {
+    Thread::spawn(move|| {
         select! {
-            () = rx2.recv() => unsafe { libc::exit(1) },
-            () = rx1.recv() => {}
+            _ = rx2.recv() => unsafe { libc::exit(1) },
+            _ = rx1.recv() => {}
         }
-    });
+    }).detach();
     match p.wait().unwrap() {
         ExitStatus(..) => panic!("expected a signal"),
-        ExitSignal(..) => tx.send(()),
+        ExitSignal(..) => tx.send(()).unwrap(),
     }
 }
 

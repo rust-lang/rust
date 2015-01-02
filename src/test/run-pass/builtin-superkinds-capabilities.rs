@@ -12,16 +12,18 @@
 // builtin-kinds, e.g., if a trait requires Send to implement, then
 // at usage site of that trait, we know we have the Send capability.
 
+use std::sync::mpsc::{channel, Sender, Receiver};
+
 trait Foo : Send { }
 
 impl <T: Send> Foo for T { }
 
 fn foo<T: Foo>(val: T, chan: Sender<T>) {
-    chan.send(val);
+    chan.send(val).unwrap();
 }
 
 pub fn main() {
     let (tx, rx): (Sender<int>, Receiver<int>) = channel();
     foo(31337i, tx);
-    assert!(rx.recv() == 31337i);
+    assert!(rx.recv().unwrap() == 31337i);
 }

@@ -84,10 +84,10 @@ mod imp {
     #[cfg(all(target_os = "linux",
               any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm")))]
     fn is_getrandom_available() -> bool {
-        use sync::atomic::{AtomicBool, INIT_ATOMIC_BOOL, Relaxed};
+        use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Relaxed};
 
-        static GETRANDOM_CHECKED: AtomicBool = INIT_ATOMIC_BOOL;
-        static GETRANDOM_AVAILABLE: AtomicBool = INIT_ATOMIC_BOOL;
+        static GETRANDOM_CHECKED: AtomicBool = ATOMIC_BOOL_INIT;
+        static GETRANDOM_AVAILABLE: AtomicBool = ATOMIC_BOOL_INIT;
 
         if !GETRANDOM_CHECKED.load(Relaxed) {
             let mut buf: [u8; 0] = [];
@@ -338,10 +338,11 @@ mod imp {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
 
-    use super::OsRng;
+    use sync::mpsc::channel;
     use rand::Rng;
+    use super::OsRng;
     use thread::Thread;
 
     #[test]
@@ -365,7 +366,7 @@ mod test {
 
             Thread::spawn(move|| {
                 // wait until all the tasks are ready to go.
-                rx.recv();
+                rx.recv().unwrap();
 
                 // deschedule to attempt to interleave things as much
                 // as possible (XXX: is this a good test?)
@@ -386,7 +387,7 @@ mod test {
 
         // start all the tasks
         for tx in txs.iter() {
-            tx.send(())
+            tx.send(()).unwrap();
         }
     }
 }

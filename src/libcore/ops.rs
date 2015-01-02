@@ -25,6 +25,8 @@
 //! demonstrates adding and subtracting two `Point`s.
 //!
 //! ```rust
+//! use std::ops::{Add, Sub};
+//!
 //! #[deriving(Show)]
 //! struct Point {
 //!     x: int,
@@ -68,13 +70,13 @@ use option::Option::{mod, Some, None};
 /// struct HasDrop;
 ///
 /// impl Drop for HasDrop {
-///   fn drop(&mut self) {
-///       println!("Dropping!");
-///   }
+///     fn drop(&mut self) {
+///         println!("Dropping!");
+///     }
 /// }
 ///
 /// fn main() {
-///   let _x = HasDrop;
+///     let _x = HasDrop;
 /// }
 /// ```
 #[lang="drop"]
@@ -91,6 +93,8 @@ pub trait Drop {
 /// calling `add`, and therefore, `main` prints `Adding!`.
 ///
 /// ```rust
+/// use std::ops::Add;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -130,6 +134,8 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `sub`, and therefore, `main` prints `Subtracting!`.
 ///
 /// ```rust
+/// use std::ops::Sub;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -169,6 +175,8 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `mul`, and therefore, `main` prints `Multiplying!`.
 ///
 /// ```rust
+/// use std::ops::Mul;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -208,6 +216,8 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `div`, and therefore, `main` prints `Dividing!`.
 ///
 /// ```
+/// use std::ops::Div;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -247,6 +257,8 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
 ///
 /// ```
+/// use std::ops::Rem;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -300,6 +312,8 @@ rem_float_impl! { f64, fmod }
 /// `neg`, and therefore, `main` prints `Negating!`.
 ///
 /// ```
+/// use std::ops::Neg;
+///
 /// struct Foo;
 ///
 /// impl Copy for Foo {}
@@ -356,6 +370,8 @@ neg_uint_impl! { u64, i64 }
 /// `not`, and therefore, `main` prints `Not-ing!`.
 ///
 /// ```
+/// use std::ops::Not;
+///
 /// struct Foo;
 ///
 /// impl Copy for Foo {}
@@ -396,6 +412,8 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
 ///
 /// ```
+/// use std::ops::BitAnd;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -435,6 +453,8 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitor`, and therefore, `main` prints `Bitwise Or-ing!`.
 ///
 /// ```
+/// use std::ops::BitOr;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -474,6 +494,8 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitxor`, and therefore, `main` prints `Bitwise Xor-ing!`.
 ///
 /// ```
+/// use std::ops::BitXor;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -513,6 +535,8 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shl`, and therefore, `main` prints `Shifting left!`.
 ///
 /// ```
+/// use std::ops::Shl;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -554,6 +578,8 @@ shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shr`, and therefore, `main` prints `Shifting right!`.
 ///
 /// ```
+/// use std::ops::Shr;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -594,6 +620,8 @@ shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `index`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
+/// use std::ops::Index;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -623,6 +651,8 @@ pub trait Index<Sized? Index, Sized? Result> for Sized? {
 /// calling `index_mut`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
+/// use std::ops::IndexMut;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -652,6 +682,8 @@ pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
 /// calling `slice_to`, and therefore, `main` prints `Slicing!`.
 ///
 /// ```ignore
+/// use std::ops::Slice;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -699,6 +731,8 @@ pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
 /// calling `slice_from_mut`, and therefore, `main` prints `Slicing!`.
 ///
 /// ```ignore
+/// use std::ops::SliceMut;
+///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
@@ -827,11 +861,17 @@ pub struct RangeTo<Idx> {
 /// struct.
 ///
 /// ```
+/// #![feature(associated_types)]
+///
+/// use std::ops::Deref;
+///
 /// struct DerefExample<T> {
 ///     value: T
 /// }
 ///
-/// impl<T> Deref<T> for DerefExample<T> {
+/// impl<T> Deref for DerefExample<T> {
+///     type Target = T;
+///
 ///     fn deref<'a>(&'a self) -> &'a T {
 ///         &self.value
 ///     }
@@ -843,16 +883,22 @@ pub struct RangeTo<Idx> {
 /// }
 /// ```
 #[lang="deref"]
-pub trait Deref<Sized? Result> for Sized? {
+pub trait Deref for Sized? {
+    type Sized? Target;
+
     /// The method called to dereference a value
-    fn deref<'a>(&'a self) -> &'a Result;
+    fn deref<'a>(&'a self) -> &'a Self::Target;
 }
 
-impl<'a, Sized? T> Deref<T> for &'a T {
+impl<'a, Sized? T> Deref for &'a T {
+    type Target = T;
+
     fn deref(&self) -> &T { *self }
 }
 
-impl<'a, Sized? T> Deref<T> for &'a mut T {
+impl<'a, Sized? T> Deref for &'a mut T {
+    type Target = T;
+
     fn deref(&self) -> &T { *self }
 }
 
@@ -865,17 +911,23 @@ impl<'a, Sized? T> Deref<T> for &'a mut T {
 /// struct.
 ///
 /// ```
+/// #![feature(associated_types)]
+///
+/// use std::ops::{Deref, DerefMut};
+///
 /// struct DerefMutExample<T> {
 ///     value: T
 /// }
 ///
-/// impl<T> Deref<T> for DerefMutExample<T> {
+/// impl<T> Deref for DerefMutExample<T> {
+///     type Target = T;
+///
 ///     fn deref<'a>(&'a self) -> &'a T {
 ///         &self.value
 ///     }
 /// }
 ///
-/// impl<T> DerefMut<T> for DerefMutExample<T> {
+/// impl<T> DerefMut for DerefMutExample<T> {
 ///     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
 ///         &mut self.value
 ///     }
@@ -888,12 +940,12 @@ impl<'a, Sized? T> Deref<T> for &'a mut T {
 /// }
 /// ```
 #[lang="deref_mut"]
-pub trait DerefMut<Sized? Result> for Sized? : Deref<Result> {
+pub trait DerefMut for Sized? : Deref {
     /// The method called to mutably dereference a value
-    fn deref_mut<'a>(&'a mut self) -> &'a mut Result;
+    fn deref_mut<'a>(&'a mut self) -> &'a mut <Self as Deref>::Target;
 }
 
-impl<'a, Sized? T> DerefMut<T> for &'a mut T {
+impl<'a, Sized? T> DerefMut for &'a mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }
 

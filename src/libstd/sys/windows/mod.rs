@@ -18,9 +18,10 @@
 
 extern crate libc;
 
+use prelude::v1::*;
+
 use num;
 use mem;
-use prelude::*;
 use io::{mod, IoResult, IoError};
 use sync::{Once, ONCE_INIT};
 
@@ -28,7 +29,7 @@ macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
     static $name: Helper<$m> = Helper {
         lock: ::sync::MUTEX_INIT,
         cond: ::sync::CONDVAR_INIT,
-        chan: ::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
+        chan: ::cell::UnsafeCell { value: 0 as *mut ::sync::mpsc::Sender<$m> },
         signal: ::cell::UnsafeCell { value: 0 },
         initialized: ::cell::UnsafeCell { value: false },
         shutdown: ::cell::UnsafeCell { value: false },
@@ -171,7 +172,7 @@ pub fn init_net() {
     unsafe {
         static START: Once = ONCE_INIT;
 
-        START.doit(|| {
+        START.call_once(|| {
             let mut data: c::WSADATA = mem::zeroed();
             let ret = c::WSAStartup(0x202, // version 2.2
                                     &mut data);

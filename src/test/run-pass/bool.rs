@@ -10,6 +10,9 @@
 
 // Basic boolean tests
 
+use std::cmp::Ordering::{Equal, Greater, Less};
+use std::ops::{BitAnd, BitOr, BitXor};
+
 fn main() {
     assert_eq!(false.eq(&true), false);
     assert_eq!(false == false, true);

@@ -9,12 +9,13 @@
 // except according to those terms.
 
 use std::thread::Thread;
+use std::sync::mpsc::{channel, Sender};
 
 pub fn main() { test00(); }
 
 fn test00_start(c: &Sender<int>, number_of_messages: int) {
     let mut i: int = 0;
-    while i < number_of_messages { c.send(i + 0); i += 1; }
+    while i < number_of_messages { c.send(i + 0).unwrap(); i += 1; }
 }
 
 fn test00() {
@@ -29,7 +30,7 @@ fn test00() {
 
     let mut i: int = 0;
     while i < number_of_messages {
-        sum += rx.recv();
+        sum += rx.recv().unwrap();
         println!("{}", r);
         i += 1;
     }

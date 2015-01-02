@@ -10,17 +10,23 @@
 
 // Test that a custom deref with a fat pointer return type does not ICE
 
+#![feature(associated_types)]
+
+use std::ops::{Deref, DerefMut};
+
 pub struct Arr {
     ptr: Box<[uint]>
 }
 
-impl Deref<[uint]> for Arr {
+impl Deref for Arr {
+    type Target = [uint];
+
     fn deref(&self) -> &[uint] {
         panic!();
     }
 }
 
-impl DerefMut<[uint]> for Arr {
+impl DerefMut for Arr {
     fn deref_mut(&mut self) -> &mut [uint] {
         &mut *self.ptr
     }

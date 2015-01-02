@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ops::Add;
+
 trait Positioned<S> {
   fn SetX(&mut self, S);
   fn X(&self) -> S;

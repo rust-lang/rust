@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
+use prelude::v1::*;
 
 use sync::atomic;
 use alloc::{mod, heap};
@@ -20,7 +20,7 @@ const SPIN_COUNT: DWORD = 4000;
 
 pub struct Mutex { inner: atomic::AtomicUint }
 
-pub const MUTEX_INIT: Mutex = Mutex { inner: atomic::INIT_ATOMIC_UINT };
+pub const MUTEX_INIT: Mutex = Mutex { inner: atomic::ATOMIC_UINT_INIT };
 
 unsafe impl Sync for Mutex {}
 

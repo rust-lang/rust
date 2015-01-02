@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use std::task;
+use std::sync::mpsc::{channel, Sender};
 
 fn start(tx: &Sender<Sender<String>>) {
     let (tx2, rx) = channel();
-    tx.send(tx2);
+    tx.send(tx2).unwrap();
 
     let mut a;
     let mut b;
-    a = rx.recv();
+    a = rx.recv().unwrap();
     assert!(a == "A".to_string());
     println!("{}", a);
-    b = rx.recv();
+    b = rx.recv().unwrap();
     assert!(b == "B".to_string());
     println!("{}", b);
 }
@@ -29,8 +29,8 @@ pub fn main() {
     let (tx, rx) = channel();
     let _child = task::spawn(move|| { start(&tx) });
 
-    let mut c = rx.recv();
-    c.send("A".to_string());
-    c.send("B".to_string());
+    let mut c = rx.recv().unwrap();
+    c.send("A".to_string()).unwrap();
+    c.send("B".to_string()).unwrap();
     task::deschedule();
 }

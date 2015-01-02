@@ -21,16 +21,16 @@
 //! the other two implementations of timers with nothing *that* new showing up.
 
 use self::Req::*;
+use prelude::v1::*;
 
 use libc;
 use ptr;
-use comm;
 
+use io::IoResult;
+use sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use sys::c;
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
-use prelude::*;
-use io::IoResult;
 
 helper_init! { static HELPER: Helper<Req> }
 
@@ -71,7 +71,7 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>, _: ()) {
                         chans.push((c, one));
                     }
                     Ok(RemoveTimer(obj, c)) => {
-                        c.send(());
+                        c.send(()).unwrap();
                         match objs.iter().position(|&o| o == obj) {
                             Some(i) => {
                                 drop(objs.remove(i));
@@ -80,7 +80,7 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>, _: ()) {
                             None => {}
                         }
                     }
-                    Err(comm::Disconnected) => {
+                    Err(TryRecvError::Disconnected) => {
                         assert_eq!(objs.len(), 1);
                         assert_eq!(chans.len(), 0);
                         break 'outer;
@@ -132,7 +132,7 @@ impl Timer {
 
         let (tx, rx) = channel();
         HELPER.send(RemoveTimer(self.obj, tx));
-        rx.recv();
+        rx.recv().unwrap();
 
         self.on_worker = false;
     }

@@ -11,6 +11,7 @@
 #![feature(default_type_params)]
 
 use std::task;
+use std::sync::mpsc::Sender;
 use std::thunk::Invoke;
 
 type RingBuffer = Vec<f64> ;

@@ -22,7 +22,6 @@ use result::Result::{Ok, Err};
 use slice::{SliceExt};
 use slice;
 use vec::Vec;
-use kinds::{Send,Sync};
 
 /// Wraps a Reader and buffers input from it
 ///
@@ -51,11 +50,6 @@ pub struct BufferedReader<R> {
     pos: uint,
     cap: uint,
 }
-
-
-unsafe impl<R: Send> Send for BufferedReader<R> {}
-unsafe impl<R: Send+Sync> Sync for BufferedReader<R> {}
-
 
 impl<R: Reader> BufferedReader<R> {
     /// Creates a new `BufferedReader` with the specified buffer capacity
@@ -410,7 +404,7 @@ impl<S: Stream> Writer for BufferedStream<S> {
 mod test {
     extern crate test;
     use io;
-    use prelude::*;
+    use prelude::v1::*;
     use super::*;
     use super::super::{IoResult, EndOfFile};
     use super::super::mem::MemReader;
@@ -534,7 +528,7 @@ mod test {
         w.write(&[0, 1]).unwrap();
         let a: &[_] = &[];
         assert_eq!(a, w.get_ref()[]);
-        let w = w.unwrap();
+        let w = w.into_inner();
         let a: &[_] = &[0, 1];
         assert_eq!(a, w[]);
     }

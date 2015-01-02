@@ -15,11 +15,12 @@
 extern crate collections;
 extern crate rand;
 
+use std::collections::BTreeSet;
 use std::collections::BitvSet;
 use std::collections::HashSet;
-use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::os;
+use std::str::from_str;
 use std::time::Duration;
 use std::uint;
 

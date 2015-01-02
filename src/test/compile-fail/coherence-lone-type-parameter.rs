@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:coherence-lib.rs
 
-trait Foo {
-    fn foo(self: Box<Self>) { bar(self as Box<Foo>); }
-}
+extern crate "coherence-lib" as lib;
+use lib::Remote;
 
-fn bar(_b: Box<Foo>) { }
+impl<T> Remote for T { } //~ ERROR E0117
 
-fn main() {}
+fn main() { }

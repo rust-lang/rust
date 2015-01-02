@@ -59,6 +59,7 @@ use middle::subst::{mod, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
 use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
+use middle::ty_walk::TypeWalker;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
 use util::ppaux::{trait_store_to_string, ty_to_string};
 use util::ppaux::{Repr, UserString};
@@ -69,7 +70,7 @@ use util::nodemap::{FnvHashMap};
 use arena::TypedArena;
 use std::borrow::BorrowFrom;
 use std::cell::{Cell, RefCell};
-use std::cmp;
+use std::cmp::{mod, Ordering};
 use std::fmt::{mod, Show};
 use std::hash::{Hash, sip, Writer};
 use std::mem;
@@ -128,7 +129,7 @@ impl ImplOrTraitItemContainer {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub enum ImplOrTraitItem<'tcx> {
     MethodTraitItem(Rc<Method<'tcx>>),
     TypeTraitItem(Rc<AssociatedType>),
@@ -173,7 +174,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
     }
 }
 
-#[deriving(Clone, Copy)]
+#[deriving(Clone, Copy, Show)]
 pub enum ImplOrTraitItemId {
     MethodTraitItemId(ast::DefId),
     TypeTraitItemId(ast::DefId),
@@ -232,7 +233,7 @@ impl<'tcx> Method<'tcx> {
     }
 }
 
-#[deriving(Clone, Copy)]
+#[deriving(Clone, Copy, Show)]
 pub struct AssociatedType {
     pub name: ast::Name,
     pub vis: ast::Visibility,
@@ -827,6 +828,9 @@ pub struct ctxt<'tcx> {
     /// parameters are never placed into this cache, because their
     /// results are dependent on the parameter environment.
     pub type_impls_sized_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
+
+    /// Caches whether traits are object safe
+    pub object_safety_cache: RefCell<DefIdMap<bool>>,
 }
 
 // Flags that we track on types. These flags are propagated upwards
@@ -2384,6 +2388,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         repr_hint_cache: RefCell::new(DefIdMap::new()),
         type_impls_copy_cache: RefCell::new(HashMap::new()),
         type_impls_sized_cache: RefCell::new(HashMap::new()),
+        object_safety_cache: RefCell::new(DefIdMap::new()),
    }
 }
 
@@ -2831,59 +2836,61 @@ pub fn mk_param_from_def<'tcx>(cx: &ctxt<'tcx>, def: &TypeParameterDef) -> Ty<'t
 
 pub fn mk_open<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> { mk_t(cx, ty_open(ty)) }
 
-pub fn walk_ty<'tcx, F>(ty: Ty<'tcx>, mut f: F) where
-    F: FnMut(Ty<'tcx>),
-{
-    maybe_walk_ty(ty, |ty| { f(ty); true });
-}
-
-pub fn maybe_walk_ty<'tcx, F>(ty: Ty<'tcx>, mut f: F) where F: FnMut(Ty<'tcx>) -> bool {
-    // FIXME(#19596) This is a workaround, but there should be a better way to do this
-    fn maybe_walk_ty_<'tcx, F>(ty: Ty<'tcx>, f: &mut F) where F: FnMut(Ty<'tcx>) -> bool {
-        if !(*f)(ty) {
-            return;
-        }
-        match ty.sty {
-            ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-            ty_str | ty_infer(_) | ty_param(_) | ty_err => {}
-            ty_uniq(ty) | ty_vec(ty, _) | ty_open(ty) => maybe_walk_ty_(ty, f),
-            ty_ptr(ref tm) | ty_rptr(_, ref tm) => {
-                maybe_walk_ty_(tm.ty, f);
-            }
-            ty_trait(box TyTrait { ref principal, .. }) => {
-                for subty in principal.0.substs.types.iter() {
-                    maybe_walk_ty_(*subty, f);
-                }
-            }
-            ty_projection(ProjectionTy { ref trait_ref, .. }) => {
-                for subty in trait_ref.substs.types.iter() {
-                    maybe_walk_ty_(*subty, f);
-                }
-            }
-            ty_enum(_, ref substs) |
-            ty_struct(_, ref substs) |
-            ty_unboxed_closure(_, _, ref substs) => {
-                for subty in substs.types.iter() {
-                    maybe_walk_ty_(*subty, f);
-                }
-            }
-            ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty_(*tt, f); } }
-            ty_bare_fn(_, ref ft) => {
-                for a in ft.sig.0.inputs.iter() { maybe_walk_ty_(*a, f); }
-                if let ty::FnConverging(output) = ft.sig.0.output {
-                    maybe_walk_ty_(output, f);
-                }
-            }
-            ty_closure(ref ft) => {
-                for a in ft.sig.0.inputs.iter() { maybe_walk_ty_(*a, f); }
-                if let ty::FnConverging(output) = ft.sig.0.output {
-                    maybe_walk_ty_(output, f);
-                }
-            }
-        }
+impl<'tcx> TyS<'tcx> {
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```notrust
+    /// int => { int }
+    /// Foo<Bar<int>> => { Foo<Bar<int>>, Bar<int>, int }
+    /// [int] => { [int], int }
+    /// ```
+    pub fn walk(&'tcx self) -> TypeWalker<'tcx> {
+        TypeWalker::new(self)
     }
 
-    maybe_walk_ty_(ty, &mut f);
+    /// Iterator that walks types reachable from `self`, in
+    /// depth-first order. Note that this is a shallow walk. For
+    /// example:
+    ///
+    /// ```notrust
+    /// int => { }
+    /// Foo<Bar<int>> => { Bar<int>, int }
+    /// [int] => { int }
+    /// ```
+    pub fn walk_children(&'tcx self) -> TypeWalker<'tcx> {
+        // Walks type reachable from `self` but not `self
+        let mut walker = self.walk();
+        let r = walker.next();
+        assert_eq!(r, Some(self));
+        walker
+    }
+}
+
+pub fn walk_ty<'tcx, F>(ty_root: Ty<'tcx>, mut f: F)
+    where F: FnMut(Ty<'tcx>),
+{
+    for ty in ty_root.walk() {
+        f(ty);
+    }
+}
+
+/// Walks `ty` and any types appearing within `ty`, invoking the
+/// callback `f` on each type. If the callback returns false, then the
+/// children of the current type are ignored.
+///
+/// Note: prefer `ty.walk()` where possible.
+pub fn maybe_walk_ty<'tcx,F>(ty_root: Ty<'tcx>, mut f: F)
+    where F : FnMut(Ty<'tcx>) -> bool
+{
+    let mut walker = ty_root.walk();
+    while let Some(ty) = walker.next() {
+        if !f(ty) {
+            walker.skip_current_subtree();
+        }
+    }
 }
 
 // Folds types from the bottom up.
@@ -4960,10 +4967,11 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
     }
 }
 
-/// Helper for looking things up in the various maps that are populated during typeck::collect
-/// (e.g., `cx.impl_or_trait_items`, `cx.tcache`, etc).  All of these share the pattern that if the
-/// id is local, it should have been loaded into the map by the `typeck::collect` phase.  If the
-/// def-id is external, then we have to go consult the crate loading code (and cache the result for
+/// Helper for looking things up in the various maps that are populated during
+/// typeck::collect (e.g., `cx.impl_or_trait_items`, `cx.tcache`, etc).  All of
+/// these share the pattern that if the id is local, it should have been loaded
+/// into the map by the `typeck::collect` phase.  If the def-id is external,
+/// then we have to go consult the crate loading code (and cache the result for
 /// the future).
 fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
                                           def_id: ast::DefId,
@@ -6034,11 +6042,12 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
         return
     }
 
+    debug!("populate_implementations_for_type_if_necessary: searching for {}", type_id);
+
     let mut inherent_impls = Vec::new();
     csearch::each_implementation_for_type(&tcx.sess.cstore, type_id,
             |impl_def_id| {
-        let impl_items = csearch::get_impl_items(&tcx.sess.cstore,
-                                                 impl_def_id);
+        let impl_items = csearch::get_impl_items(&tcx.sess.cstore, impl_def_id);
 
         // Record the trait->implementation mappings, if applicable.
         let associated_traits = csearch::get_impl_trait(tcx, impl_def_id);
@@ -6120,22 +6129,9 @@ pub fn populate_implementations_for_trait_if_necessary(
 /// Given the def_id of an impl, return the def_id of the trait it implements.
 /// If it implements no trait, return `None`.
 pub fn trait_id_of_impl(tcx: &ctxt,
-                        def_id: ast::DefId) -> Option<ast::DefId> {
-    let node = match tcx.map.find(def_id.node) {
-        Some(node) => node,
-        None => return None
-    };
-    match node {
-        ast_map::NodeItem(item) => {
-            match item.node {
-                ast::ItemImpl(_, _, Some(ref trait_ref), _, _) => {
-                    Some(node_id_to_trait_ref(tcx, trait_ref.ref_id).def_id)
-                }
-                _ => None
-            }
-        }
-        _ => None
-    }
+                        def_id: ast::DefId)
+                        -> Option<ast::DefId> {
+    ty::impl_trait_ref(tcx, def_id).map(|tr| tr.def_id)
 }
 
 /// If the given def ID describes a method belonging to an impl, return the
@@ -7269,7 +7265,7 @@ impl<T:ReferencesError> ReferencesError for Binder<T> {
 
 impl<T:ReferencesError> ReferencesError for Rc<T> {
     fn references_error(&self) -> bool {
-        (&*self).references_error()
+        (&**self).references_error()
     }
 }
 

@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::arc::Arc;
+use prelude::v1::*;
+
 use libc;
 use c_str::CString;
 use mem;
-use sync::{atomic, Mutex};
+use sync::{atomic, Arc, Mutex};
 use io::{mod, IoResult, IoError};
-use prelude::*;
 
 use sys::{mod, timer, retry, c, set_nonblocking, wouldblock};
 use sys::fs::{fd_t, FileDesc};
@@ -117,9 +117,6 @@ pub struct UnixStream {
     write_deadline: u64,
 }
 
-unsafe impl Send for UnixStream {}
-unsafe impl Sync for UnixStream {}
-
 impl UnixStream {
     pub fn connect(addr: &CString,
                    timeout: Option<u64>) -> IoResult<UnixStream> {
@@ -218,6 +215,7 @@ pub struct UnixListener {
     path: CString,
 }
 
+// we currently own the CString, so these impls should be safe
 unsafe impl Send for UnixListener {}
 unsafe impl Sync for UnixListener {}
 
@@ -264,9 +262,6 @@ struct AcceptorInner {
     writer: FileDesc,
     closed: atomic::AtomicBool,
 }
-
-unsafe impl Send for AcceptorInner {}
-unsafe impl Sync for AcceptorInner {}
 
 impl UnixAcceptor {
     pub fn fd(&self) -> fd_t { self.inner.listener.fd() }

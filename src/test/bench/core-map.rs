@@ -13,6 +13,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::os;
 use std::rand::{Rng, IsaacRng, SeedableRng};
+use std::str::from_str;
 use std::time::Duration;
 use std::uint;
 

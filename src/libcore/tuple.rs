@@ -32,35 +32,6 @@
 //! * `PartialOrd`
 //! * `Ord`
 //! * `Default`
-//!
-//! # Examples
-//!
-//! Using methods:
-//!
-//! ```
-//! #[allow(deprecated)]
-//! # fn main() {
-//! let pair = ("pi", 3.14f64);
-//! assert_eq!(pair.val0(), "pi");
-//! assert_eq!(pair.val1(), 3.14f64);
-//! # }
-//! ```
-//!
-//! Using traits implemented for tuples:
-//!
-//! ```
-//! use std::default::Default;
-//!
-//! let a = (1i, 2i);
-//! let b = (3i, 4i);
-//! assert!(a != b);
-//!
-//! let c = b.clone();
-//! assert!(b == c);
-//!
-//! let d : (u32, f32) = Default::default();
-//! assert_eq!(d, (0u32, 0.0f32));
-//! ```
 
 #![stable]
 

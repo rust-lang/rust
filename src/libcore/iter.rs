@@ -54,7 +54,7 @@
 //!
 //! This `for` loop syntax can be applied to any iterator over any type.
 
-pub use self::MinMaxResult::*;
+use self::MinMaxResult::*;
 
 use clone::Clone;
 use cmp;
@@ -65,6 +65,7 @@ use num::{ToPrimitive, Int};
 use ops::{Add, Deref, FnMut};
 use option::Option;
 use option::Option::{Some, None};
+use std::kinds::Sized;
 use uint;
 
 #[deprecated = "renamed to Extend"] pub use self::Extend as Extendable;
@@ -109,7 +110,7 @@ pub trait Extend<A> {
 
 #[unstable = "new convention for extension traits"]
 /// An extension trait providing numerous methods applicable to all iterators.
-pub trait IteratorExt<A>: Iterator<A> {
+pub trait IteratorExt<A>: Iterator<A> + Sized {
     /// Chain this iterator with another, returning a new iterator that will
     /// finish iterating over the current iterator, and then iterate
     /// over the other specified iterator.
@@ -692,7 +693,7 @@ impl<A, I> IteratorExt<A> for I where I: Iterator<A> {}
 
 /// Extention trait for iterators of pairs.
 #[unstable = "newly added trait, likely to be merged with IteratorExt"]
-pub trait IteratorPairExt<A, B>: Iterator<(A, B)> {
+pub trait IteratorPairExt<A, B>: Iterator<(A, B)> + Sized {
     /// Converts an iterator of pairs into a pair of containers.
     ///
     /// Loops through the entire iterator, collecting the first component of
@@ -738,7 +739,7 @@ pub trait DoubleEndedIterator<A>: Iterator<A> {
 
 /// Extension methods for double-ended iterators.
 #[unstable = "new extension trait convention"]
-pub trait DoubleEndedIteratorExt<A>: DoubleEndedIterator<A> {
+pub trait DoubleEndedIteratorExt<A>: DoubleEndedIterator<A> + Sized {
     /// Change the direction of the iterator
     ///
     /// The flipped iterator swaps the ends on an iterator that can already
@@ -1035,7 +1036,7 @@ pub trait IteratorOrdExt<A> {
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::{NoElements, OneElement, MinMax};
+    /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
     ///
     /// let v: [int; 0] = [];
     /// assert_eq!(v.iter().min_max(), NoElements);
@@ -1145,7 +1146,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::{NoElements, OneElement, MinMax, MinMaxResult};
+    /// use std::iter::MinMaxResult::{mod, NoElements, OneElement, MinMax};
     ///
     /// let r: MinMaxResult<int> = NoElements;
     /// assert_eq!(r.into_option(), None);
@@ -1174,7 +1175,7 @@ pub trait IteratorCloneExt<A> {
 }
 
 #[unstable = "trait is unstable"]
-impl<A: Clone, D: Deref<A>, I: Iterator<D>> IteratorCloneExt<A> for I {
+impl<A: Clone, D: Deref<Target=A>, I: Iterator<D>> IteratorCloneExt<A> for I {
     fn cloned(self) -> Cloned<I> {
         Cloned { it: self }
     }
@@ -1185,7 +1186,7 @@ pub struct Cloned<I> {
     it: I,
 }
 
-impl<A: Clone, D: Deref<A>, I: Iterator<D>> Iterator<A> for Cloned<I> {
+impl<A: Clone, D: Deref<Target=A>, I: Iterator<D>> Iterator<A> for Cloned<I> {
     fn next(&mut self) -> Option<A> {
         self.it.next().cloned()
     }
@@ -1195,7 +1196,7 @@ impl<A: Clone, D: Deref<A>, I: Iterator<D>> Iterator<A> for Cloned<I> {
     }
 }
 
-impl<A: Clone, D: Deref<A>, I: DoubleEndedIterator<D>>
+impl<A: Clone, D: Deref<Target=A>, I: DoubleEndedIterator<D>>
         DoubleEndedIterator<A> for Cloned<I> {
     fn next_back(&mut self) -> Option<A> {
         self.it.next_back().cloned()
@@ -1203,7 +1204,7 @@ impl<A: Clone, D: Deref<A>, I: DoubleEndedIterator<D>>
 }
 
 #[unstable = "trait is unstable"]
-impl<A: Clone, D: Deref<A>, I: ExactSizeIterator<D>> ExactSizeIterator<A> for Cloned<I> {}
+impl<A: Clone, D: Deref<Target=A>, I: ExactSizeIterator<D>> ExactSizeIterator<A> for Cloned<I> {}
 
 #[unstable = "recently renamed for extension trait conventions"]
 /// An extension trait for cloneable iterators.

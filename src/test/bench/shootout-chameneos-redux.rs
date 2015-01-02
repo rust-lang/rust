@@ -41,8 +41,10 @@
 // no-pretty-expanded
 
 use self::Color::{Red, Yellow, Blue};
-use std::string::String;
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::fmt;
+use std::str::from_str;
+use std::thread::Thread;
 
 fn print_complements() {
     let all = [Blue, Red, Yellow];
@@ -152,7 +154,7 @@ fn creature(
 
     loop {
         // ask for a pairing
-        to_rendezvous.send(CreatureInfo {name: name, color: color});
+        to_rendezvous.send(CreatureInfo {name: name, color: color}).unwrap();
 
         // log and change, or quit
         match rendezvous.next() {
@@ -170,7 +172,7 @@ fn creature(
     }
     // log creatures met and evil clones of self
     let report = format!("{}{}", creatures_met, Number(evil_clones_met));
-    to_rendezvous_log.send(report);
+    to_rendezvous_log.send(report).unwrap();
 }
 
 fn rendezvous(nn: uint, set: Vec<Color>) {
@@ -188,13 +190,13 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
             let (to_creature, from_rendezvous) = channel();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 creature(ii,
                          col,
                          from_rendezvous,
                          to_rendezvous,
                          to_rendezvous_log);
-            });
+            }).detach();
             to_creature
         }).collect();
 
@@ -202,13 +204,13 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
 
     // set up meetings...
     for _ in range(0, nn) {
-        let fst_creature = from_creatures.recv();
-        let snd_creature = from_creatures.recv();
+        let fst_creature = from_creatures.recv().unwrap();
+        let snd_creature = from_creatures.recv().unwrap();
 
         creatures_met += 2;
 
-        to_creature[fst_creature.name].send(snd_creature);
-        to_creature[snd_creature.name].send(fst_creature);
+        to_creature[fst_creature.name].send(snd_creature).unwrap();
+        to_creature[snd_creature.name].send(fst_creature).unwrap();
     }
 
     // tell each creature to stop

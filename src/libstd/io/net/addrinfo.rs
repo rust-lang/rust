@@ -112,7 +112,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 // permission without help of apk
 #[cfg(all(test, not(target_os = "android")))]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use super::*;
     use io::net::ip::*;
 

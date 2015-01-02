@@ -11,8 +11,8 @@
 // Tests that a heterogeneous list of existential types can be put inside an Arc
 // and shared between tasks as long as all types fulfill Send.
 
-
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 use std::task;
 
 trait Pet {

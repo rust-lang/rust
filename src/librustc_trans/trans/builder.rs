@@ -20,7 +20,7 @@ use trans::machine::llalign_of_pref;
 use trans::type_::Type;
 use util::nodemap::FnvHashMap;
 use libc::{c_uint, c_char};
-use std::string::String;
+use std::c_str::ToCStr;
 use syntax::codemap::Span;
 
 pub struct Builder<'a, 'tcx: 'a> {

@@ -54,7 +54,7 @@ macro_rules! array_impls {
             #[stable]
             impl<'a, A, B, Rhs> PartialEq<Rhs> for [A; $N] where
                 A: PartialEq<B>,
-                Rhs: Deref<[B]>,
+                Rhs: Deref<Target=[B]>,
             {
                 #[inline(always)]
                 fn eq(&self, other: &Rhs) -> bool { PartialEq::eq(self[], &**other) }
@@ -65,7 +65,7 @@ macro_rules! array_impls {
             #[stable]
             impl<'a, A, B, Lhs> PartialEq<[B; $N]> for Lhs where
                 A: PartialEq<B>,
-                Lhs: Deref<[A]>
+                Lhs: Deref<Target=[A]>
             {
                 #[inline(always)]
                 fn eq(&self, other: &[B; $N]) -> bool { PartialEq::eq(&**self, other[]) }

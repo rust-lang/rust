@@ -17,6 +17,7 @@
 
 use std::io::process::Command;
 use std::os;
+use std::thread::Thread;
 
 // lifted from the test module
 // Inlining to avoid llvm turning the recursive functions into tail calls,
@@ -36,12 +37,7 @@ fn main() {
     let args = os::args();
     let args = args.as_slice();
     if args.len() > 1 && args[1].as_slice() == "recurse" {
-        let (tx, rx) = channel();
-        spawn(move|| {
-            recurse();
-            tx.send(());
-        });
-        rx.recv();
+        let _t = Thread::spawn(recurse);
     } else {
         let recurse = Command::new(args[0].as_slice()).arg("recurse").output().unwrap();
         assert!(!recurse.status.success());

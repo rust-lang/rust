@@ -18,10 +18,10 @@
 
 pub use self::imp::Lock;
 
-
 #[cfg(unix)]
 mod imp {
     use libc;
+    use std::c_str::ToCStr;
 
     #[cfg(target_os = "linux")]
     mod os {

@@ -10,7 +10,7 @@
 
 #![feature(unboxed_closures)]
 
-use std::comm;
+use std::sync::mpsc::channel;
 
 fn foo<F:FnOnce()+Send>(blk: F) {
     blk();
@@ -19,7 +19,7 @@ fn foo<F:FnOnce()+Send>(blk: F) {
 pub fn main() {
     let (tx, rx) = channel();
     foo(move || {
-        tx.send(());
+        tx.send(()).unwrap();
     });
-    rx.recv();
+    rx.recv().unwrap();
 }

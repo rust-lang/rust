@@ -21,7 +21,7 @@ trait Y {
 }
 
 
-trait Z: Y {
+trait Z: Y + Sized {
     fn x(self) -> int {
         require_y(self)
     }

@@ -172,7 +172,7 @@ impl<T> AsSlice<T> for CVec<T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
     use super::CVec;
     use libc;
@@ -228,7 +228,7 @@ mod tests {
             let cv = CVec::new_with_dtor(1 as *mut int,
                                          0,
                                          move|:| panic!("Don't run this destructor!"));
-            let p = cv.unwrap();
+            let p = cv.into_inner();
             assert_eq!(p, 1 as *mut int);
         }
     }

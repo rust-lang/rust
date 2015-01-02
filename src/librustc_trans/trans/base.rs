@@ -3097,7 +3097,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
         use std::sync::{Once, ONCE_INIT};
         static INIT: Once = ONCE_INIT;
         static mut POISONED: bool = false;
-        INIT.doit(|| {
+        INIT.call_once(|| {
             if llvm::LLVMStartMultithreaded() != 1 {
                 // use an extra bool to make sure that all future usage of LLVM
                 // cannot proceed despite the Once not running more than once.

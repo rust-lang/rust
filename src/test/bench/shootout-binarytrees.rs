@@ -41,7 +41,7 @@
 extern crate arena;
 
 use std::iter::range_step;
-use std::sync::Future;
+use std::thread::Thread;
 use arena::TypedArena;
 
 enum Tree<'a> {
@@ -75,7 +75,7 @@ fn main() {
     } else if args.len() <= 1u {
         8
     } else {
-        from_str(args[1].as_slice()).unwrap()
+        args[1].parse().unwrap()
     };
     let min_depth = 4;
     let max_depth = if min_depth + 2 > n {min_depth + 2} else {n};
@@ -95,7 +95,7 @@ fn main() {
     let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
             use std::num::Int;
             let iterations = 2i.pow((max_depth - depth + min_depth) as uint);
-            Future::spawn(move|| {
+            Thread::spawn(move|| {
                 let mut chk = 0;
                 for i in range(1, iterations + 1) {
                     let arena = TypedArena::new();
@@ -106,10 +106,10 @@ fn main() {
                 format!("{}\t trees of depth {}\t check: {}",
                         iterations * 2, depth, chk)
             })
-        }).collect::<Vec<Future<String>>>();
+        }).collect::<Vec<_>>();
 
-    for message in messages.iter_mut() {
-        println!("{}", *message.get_ref());
+    for message in messages.into_iter() {
+        println!("{}", message.join().ok().unwrap());
     }
 
     println!("long lived tree of depth {}\t check: {}",

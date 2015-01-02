@@ -87,7 +87,7 @@ impl DefaultResizePolicy {
 
 #[test]
 fn test_resize_policy() {
-    use prelude::*;
+    use prelude::v1::*;
     let rp = DefaultResizePolicy;
     for n in range(0u, 1000) {
         assert!(rp.min_capacity(rp.usable_capacity(n)) <= n);
@@ -311,7 +311,7 @@ fn search_hashed<K, V, M, F>(table: M,
                              hash: SafeHash,
                              mut is_match: F)
                              -> SearchResult<K, V, M> where
-    M: Deref<RawTable<K, V>>,
+    M: Deref<Target=RawTable<K, V>>,
     F: FnMut(&K) -> bool,
 {
     let size = table.size();
@@ -1530,8 +1530,9 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extend<(K, V)> for HashMap<K
 
 #[cfg(test)]
 mod test_map {
-    use prelude::*;
+    use prelude::v1::*;
 
+    use cmp::Equiv;
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
     use hash;
@@ -1541,6 +1542,7 @@ mod test_map {
 
     struct KindaIntLike(int);
 
+    #[allow(deprecated)]
     impl Equiv<int> for KindaIntLike {
         fn equiv(&self, other: &int) -> bool {
             let KindaIntLike(this) = *self;
@@ -1868,7 +1870,7 @@ mod test_map {
     }
 
     #[test]
-    #[allow(experimental)]
+    #[allow(deprecated)]
     fn test_pop_equiv() {
         let mut m = HashMap::new();
         m.insert(1i, 2i);

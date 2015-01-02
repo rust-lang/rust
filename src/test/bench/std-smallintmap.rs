@@ -12,6 +12,7 @@
 
 use std::collections::VecMap;
 use std::os;
+use std::str::from_str;
 use std::time::Duration;
 use std::uint;
 

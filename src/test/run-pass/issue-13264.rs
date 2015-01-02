@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
+use std::ops::Deref;
+
 struct Root {
     jsref: JSRef
 }
 
-impl Deref<JSRef> for Root {
+impl Deref for Root {
+    type Target = JSRef;
+
     fn deref<'a>(&'a self) -> &'a JSRef {
         &self.jsref
     }
@@ -23,7 +29,9 @@ struct JSRef {
     node: *const Node
 }
 
-impl Deref<Node> for JSRef {
+impl Deref for JSRef {
+    type Target = Node;
+
     fn deref<'a>(&'a self) -> &'a Node {
         self.get()
     }

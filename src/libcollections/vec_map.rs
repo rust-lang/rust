@@ -15,12 +15,14 @@
 
 use core::prelude::*;
 
+use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::hash::{Hash, Writer};
+use core::iter::{Enumerate, FilterMap, Map, FromIterator};
 use core::iter;
-use core::iter::{Enumerate, FilterMap, Map};
 use core::mem::replace;
+use core::ops::{Index, IndexMut};
 
 use {vec, slice};
 use vec::Vec;

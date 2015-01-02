@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::task;
+use std::sync::mpsc::{Receiver, channel};
 
 pub fn foo<T:Send + Clone>(x: T) -> Receiver<T> {
     let (tx, rx) = channel();

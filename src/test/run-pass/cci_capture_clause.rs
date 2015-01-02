@@ -16,5 +16,5 @@
 extern crate cci_capture_clause;
 
 pub fn main() {
-    cci_capture_clause::foo(()).recv()
+    cci_capture_clause::foo(()).recv().unwrap();
 }

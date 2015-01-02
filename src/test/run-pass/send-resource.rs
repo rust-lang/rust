@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::task;
+use std::sync::mpsc::channel;
 
 struct test {
   f: int,
@@ -29,10 +30,10 @@ pub fn main() {
 
     task::spawn(move|| {
         let (tx2, rx2) = channel();
-        tx.send(tx2);
+        tx.send(tx2).unwrap();
 
-        let _r = rx2.recv();
+        let _r = rx2.recv().unwrap();
     });
 
-    rx.recv().send(test(42));
+    rx.recv().unwrap().send(test(42)).unwrap();
 }

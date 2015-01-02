@@ -1,5 +1,4 @@
-
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,18 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Previously failed formating invalid utf8.
-// cc #16877
+// aux-build:issue_20389.rs
 
-// error-pattern:panicked at 'hello�'
+#![feature(associated_types)]
+extern crate issue_20389;
 
 struct Foo;
-impl std::fmt::Show for Foo {
-    fn fmt(&self, fmtr:&mut std::fmt::Formatter) -> std::fmt::Result {
-        // Purge invalid utf8: 0xff
-        fmtr.write(&[104, 101, 108, 108, 111, 0xff])
-    }
+
+impl issue_20389::T for Foo {
+    type C = ();
 }
-fn main() {
-    panic!("{}", Foo)
-}
+
+fn main() {}
