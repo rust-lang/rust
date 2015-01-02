@@ -212,7 +212,7 @@ distcheck-osx: dist-osx
 # Unix binary installer tarballs
 ######################################################################
 
-NON_INSTALLED_PREFIXES=COPYRIGHT,LICENSE-APACHE,LICENSE-MIT,README.md,doc
+NON_INSTALLED_PREFIXES=COPYRIGHT,LICENSE-APACHE,LICENSE-MIT,README.md,version
 
 define DEF_INSTALLER
 
@@ -236,6 +236,8 @@ dist-install-dir-$(1): prepare-base-dir-$(1) docs compiler-docs
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)/share/doc/rust
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-MIT $$(PREPARE_DEST_DIR)/share/doc/rust
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)README.md $$(PREPARE_DEST_DIR)/share/doc/rust
+# This tiny morsel of metadata is used by rust-packaging
+	$$(Q)echo "$(CFG_VERSION)" > $$(PREPARE_DEST_DIR)/version
 
 dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
 	@$(call E, build: $$@)
