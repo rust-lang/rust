@@ -14,7 +14,7 @@
 #![feature(associated_types)]
 #![no_implicit_prelude]
 
-use std::option::Option::{None, Some, mod};
+use std::option::Option::{self, None, Some};
 use std::vec::Vec;
 
 trait Iterator {
