@@ -31,8 +31,10 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
+#![allow(unknown_features)]
 #![feature(asm, macro_rules, phase, globs, slicing_syntax)]
 #![feature(unboxed_closures, default_type_params)]
+#![feature(old_orphan_check)]
 
 extern crate getopts;
 extern crate regex;

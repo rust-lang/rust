@@ -22,10 +22,12 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
+#![allow(unknown_features)]
 #![feature(default_type_params, globs, macro_rules, phase, quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(unboxed_closures)]
+#![feature(old_orphan_check)]
 
 extern crate arena;
 extern crate flate;
@@ -98,6 +100,7 @@ pub mod middle {
     pub mod traits;
     pub mod ty;
     pub mod ty_fold;
+    pub mod ty_walk;
     pub mod weak_lang_items;
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that nested vtables work with overloaded calls.
+#![crate_type="lib"]
 
-#![feature(unboxed_closures)]
-
-use std::ops::Fn;
-use std::ops::Add;
-
-struct G<A>;
-
-impl<'a, A: Add<int, int>> Fn<(A,), int> for G<A> {
-    extern "rust-call" fn call(&self, (arg,): (A,)) -> int {
-        arg.add(1)
-    }
+pub trait Remote {
+    fn foo(&self) { }
 }
 
-fn main() {
-    // ICE trigger
-    G(1i);
+pub trait Remote1<T> {
+    fn foo(&self, t: T) { }
 }
 
+pub trait Remote2<T, U> {
+    fn foo(&self, t: T, u: U) { }
+}
+
+pub struct Pair<T,U>(T,U);
