@@ -1045,15 +1045,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                upcast_trait_ref.repr(self.tcx()));
 
         // check whether the upcast version of the trait-ref matches what we are looking for
-        match
-            self.infcx.probe(
-                |_| self.match_poly_trait_ref(obligation, upcast_trait_ref.clone()))
-        {
-            Ok(()) => {
-                debug!("assemble_candidates_from_object_ty: matched, pushing candidate");
-                candidates.vec.push(ObjectCandidate);
-            }
-            Err(()) => { }
+        if let Ok(()) = self.infcx.probe(|_| self.match_poly_trait_ref(obligation,
+                                                                       upcast_trait_ref.clone())) {
+            debug!("assemble_candidates_from_object_ty: matched, pushing candidate");
+            candidates.vec.push(ObjectCandidate);
         }
     }
 
