@@ -168,7 +168,7 @@ impl String {
 
         if i > 0 {
             unsafe {
-                res.as_mut_vec().push_all(v[..i])
+                res.as_mut_vec().push_all(v.index(&(0..i)))
             };
         }
 
@@ -185,7 +185,7 @@ impl String {
             macro_rules! error { () => ({
                 unsafe {
                     if subseqidx != i_ {
-                        res.as_mut_vec().push_all(v[subseqidx..i_]);
+                        res.as_mut_vec().push_all(v.index(&(subseqidx..i_)));
                     }
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
@@ -254,7 +254,7 @@ impl String {
         }
         if subseqidx < total {
             unsafe {
-                res.as_mut_vec().push_all(v[subseqidx..total])
+                res.as_mut_vec().push_all(v.index(&(subseqidx..total)))
             };
         }
         Cow::Owned(res)
@@ -818,30 +818,30 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
-impl<T> ops::Index<ops::Range<uint>, str> for String {
+impl ops::Index<ops::Range<uint>, str> for String {
     #[inline]
-    fn index(&self, &index: &ops::Range<uint>) -> &str {
-        self[][*index]
+    fn index(&self, index: &ops::Range<uint>) -> &str {
+        &self.index(&FullRange)[*index]
     }
 }
 
-impl<T> ops::Index<ops::RangeTo<uint>, str> for String {
+impl ops::Index<ops::RangeTo<uint>, str> for String {
     #[inline]
-    fn index(&self, &index: &ops::RangeTo<uint>) -> &str {
-        self[][*index]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &str {
+        &self.index(&FullRange)[*index]
     }
 }
 
-impl<T> ops::Index<ops::RangeFrom<uint>, str> for String {
+impl ops::Index<ops::RangeFrom<uint>, str> for String {
     #[inline]
-    fn index(&self, &index: &ops::RangeFrom<uint>) -> &str {
-        self[][*index]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
+        &self.index(&FullRange)[*index]
     }
 }
 
-impl<T> ops::Index<ops::FullRange<uint>, str> for String {
+impl ops::Index<ops::FullRange, str> for String {
     #[inline]
-    fn index(&self, &index: &ops::FullRange<uint>) -> &str {
+    fn index(&self, _index: &ops::FullRange) -> &str {
         unsafe { mem::transmute(self.vec.as_slice()) }
     }
 }
@@ -851,7 +851,7 @@ impl ops::Deref for String {
     type Target = str;
 
     fn deref<'a>(&'a self) -> &'a str {
-        unsafe { mem::transmute(self.vec[]) }
+        unsafe { mem::transmute(self.vec.index(&FullRange)) }
     }
 }
 
@@ -1230,10 +1230,10 @@ mod tests {
     #[test]
     fn test_slicing() {
         let s = "foobar".to_string();
-        assert_eq!("foobar", s[]);
-        assert_eq!("foo", s[..3]);
-        assert_eq!("bar", s[3..]);
-        assert_eq!("oob", s[1..4]);
+        assert_eq!("foobar", s.index(&FullRange));
+        assert_eq!("foo", s.index(&(0..3)));
+        assert_eq!("bar", s.index(&(3..)));
+        assert_eq!("oob", s.index(&(1..4)));
     }
 
     #[test]

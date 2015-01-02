@@ -437,7 +437,8 @@ impl<T> Buffer<T> {
         let start = self.start;
         self.size -= 1;
         self.start = (self.start + 1) % self.buf.len();
-        self.buf[start].take().unwrap()
+        let result = &mut self.buf[start];
+        result.take().unwrap()
     }
 
     fn size(&self) -> uint { self.size }

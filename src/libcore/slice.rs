@@ -43,7 +43,7 @@ use default::Default;
 use iter::*;
 use kinds::Copy;
 use num::Int;
-use ops::{FnMut, self};
+use ops::{FnMut, self, Index};
 use option::Option;
 use option::Option::{None, Some};
 use result::Result;
@@ -159,7 +159,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn split_at(&self, mid: uint) -> (&[T], &[T]) {
-        (self[..mid], self[mid..])
+        (self.index(&(0..mid)), self.index(&(mid..)))
     }
 
     #[inline]
@@ -236,11 +236,11 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn tail(&self) -> &[T] { self[1..] }
+    fn tail(&self) -> &[T] { self.index(&(1..)) }
 
     #[inline]
     fn init(&self) -> &[T] {
-        self[..self.len() - 1]
+        self.index(&(0..(self.len() - 1)))
     }
 
     #[inline]
@@ -443,13 +443,13 @@ impl<T> SliceExt for [T] {
     #[inline]
     fn starts_with(&self, needle: &[T]) -> bool where T: PartialEq {
         let n = needle.len();
-        self.len() >= n && needle == self[..n]
+        self.len() >= n && needle == self.index(&(0..n))
     }
 
     #[inline]
     fn ends_with(&self, needle: &[T]) -> bool where T: PartialEq {
         let (m, n) = (self.len(), needle.len());
-        m >= n && needle == self[m-n..]
+        m >= n && needle == self.index(&((m-n)..))
     }
 
     #[unstable]
@@ -622,6 +622,20 @@ impl<T> ops::IndexMut<ops::FullRange, [T]> for [T] {
     }
 }
 
+impl<T> ops::Index<ops::Range<uint>, [T]> for [T] {
+    #[inline]
+    fn index(&self, index: &ops::Range<uint>) -> &[T] {
+        assert!(index.start <= index.end);
+        assert!(index.end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(index.start as int),
+                    len: index.end - index.start
+                })
+        }
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Common traits
@@ -779,7 +793,7 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>, [T]> for Iter<'a, T> {
 #[experimental]
 impl<'a, T> ops::Index<ops::FullRange, [T]> for Iter<'a, T> {
     #[inline]
-    fn index(&self, index: &ops::FullRange) -> &[T] {
+    fn index(&self, _index: &ops::FullRange) -> &[T] {
         self.as_slice()
     }
 }
@@ -868,7 +882,7 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>, [T]> for IterMut<'a, T> {
 #[experimental]
 impl<'a, T> ops::Index<ops::FullRange, [T]> for IterMut<'a, T> {
     #[inline]
-    fn index(&self, index: &ops::FullRange) -> &[T] {
+    fn index(&self, _index: &ops::FullRange) -> &[T] {
         make_slice!(T -> &[T]: self.ptr, self.end)
     }
 }
@@ -900,7 +914,7 @@ impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>, [T]> for IterMut<'a, T> {
 #[experimental]
 impl<'a, T> ops::IndexMut<ops::FullRange, [T]> for IterMut<'a, T> {
     #[inline]
-    fn index_mut(&mut self, index: &ops::FullRange) -> &mut [T] {
+    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
         make_slice!(T -> &mut [T]: self.ptr, self.end)
     }
 }
@@ -964,8 +978,8 @@ impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(self.v[..idx]);
-                self.v = self.v[idx + 1..];
+                let ret = Some(self.v.index(&(0..idx)));
+                self.v = self.v.index(&((idx + 1)..));
                 ret
             }
         }
@@ -990,8 +1004,8 @@ impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> boo
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(self.v[idx + 1..]);
-                self.v = self.v[..idx];
+                let ret = Some(self.v.index(&((idx + 1)..)));
+                self.v = self.v.index(&(0..idx));
                 ret
             }
         }
@@ -1187,8 +1201,8 @@ impl<'a, T> Iterator for Windows<'a, T> {
         if self.size > self.v.len() {
             None
         } else {
-            let ret = Some(self.v[..self.size]);
-            self.v = self.v[1..];
+            let ret = Some(self.v.index(&(0..self.size)));
+            self.v = self.v.index(&(1..));
             ret
         }
     }
@@ -1275,7 +1289,7 @@ impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
             let mut hi = lo + self.size;
             if hi < lo || hi > self.v.len() { hi = self.v.len(); }
 
-            Some(self.v[lo..hi])
+            Some(self.v.index(&(lo..hi)))
         } else {
             None
         }

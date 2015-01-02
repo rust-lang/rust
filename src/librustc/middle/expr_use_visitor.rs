@@ -869,7 +869,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 format!("bad overloaded deref type {}",
-                                    method_ty.repr(self.tcx()))[])
+                                    method_ty.repr(self.tcx())).index(&FullRange))
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
@@ -1191,7 +1191,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                 let msg = format!("Pattern has unexpected def: {} and type {}",
                                                   def,
                                                   cmt_pat.ty.repr(tcx));
-                                tcx.sess.span_bug(pat.span, msg[])
+                                tcx.sess.span_bug(pat.span, msg.index(&FullRange))
                             }
                         }
                     }

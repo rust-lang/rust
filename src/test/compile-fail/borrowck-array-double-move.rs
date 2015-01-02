@@ -12,7 +12,7 @@ fn f() {
     let mut a = [box 0i, box 1i];
     drop(a[0]);
     a[1] = box 2i;
-    drop(a[0]); //~ ERROR use of moved value: `a[..]`
+    drop(a[0]); //~ ERROR use of moved value: `a.index(&(..))`
 }
 
 fn main() {

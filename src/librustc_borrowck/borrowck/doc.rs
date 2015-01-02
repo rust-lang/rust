@@ -138,7 +138,7 @@
 //! - `FREEZE` means that the `LV` cannot be borrowed immutably;
 //!
 //! Finally, it is never possible to move from an lvalue that appears in a
-//! restriction. This implies that the "empty restriction" `(LV, [])`,
+//! restriction. This implies that the "empty restriction" `(LV, .index(&FullRange))`,
 //! which contains an empty set of actions, still has a purpose---it
 //! prevents moves from `LV`. I chose not to make `MOVE` a fourth kind of
 //! action because that would imply that sometimes moves are permitted
@@ -476,7 +476,7 @@
 //! ```text
 //! &mut LV =>   RESTRICTIONS(LV, LT, MUTATE|CLAIM|FREEZE)
 //! &LV =>       RESTRICTIONS(LV, LT, MUTATE|CLAIM)
-//! &const LV => RESTRICTIONS(LV, LT, [])
+//! &const LV => RESTRICTIONS(LV, LT, .index(&FullRange))
 //! ```
 //!
 //! The reasoning here is that a mutable borrow must be the only writer,
@@ -542,7 +542,7 @@
 //! restricting `MUTATE` and `CLAIM` actions:
 //!
 //! ```text
-//! RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Borrowed
+//! RESTRICTIONS(*LV, LT, ACTIONS) = .index(&FullRange)                    // R-Deref-Imm-Borrowed
 //!   TYPE(LV) = &LT' Ty
 //!   LT <= LT'                                            // (1)
 //!   ACTIONS subset of [MUTATE, CLAIM]
@@ -660,7 +660,7 @@
 //! necessary to add any restrictions at all to the final result.
 //!
 //! ```text
-//!     RESTRICTIONS(*LV, LT, []) = []                         // R-Deref-Freeze-Borrowed
+//!     RESTRICTIONS(*LV, LT, .index(&FullRange)) = .index(&FullRange)                         // R-Deref-Freeze-Borrowed
 //!       TYPE(LV) = &const Ty
 //! ```
 //!

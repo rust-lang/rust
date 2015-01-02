@@ -1178,7 +1178,7 @@ impl<T:Clone> Clone for Vec<T> {
 
         // self.len <= other.len due to the truncate above, so the
         // slice here is always in-bounds.
-        let slice = other[self.len()..];
+        let slice = other.index(&(self.len()..));
         self.push_all(slice);
     }
 }
@@ -1209,65 +1209,58 @@ impl<T> IndexMut<uint> for Vec<T> {
     }
 }
 
-impl<T> ops::Slice<uint, [T]> for Vec<T> {
-    #[inline]
-    fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
-        &mut self.as_mut_slice()[*index]
-    }
-}
-
 impl<T> ops::Index<ops::Range<uint>, [T]> for Vec<T> {
     #[inline]
-    fn index(&self, &index: &ops::Range<uint>) -> &[T] {
+    fn index(&self, index: &ops::Range<uint>) -> &[T] {
         self.as_slice().index(index)
     }
 }
 
 impl<T> ops::Index<ops::RangeTo<uint>, [T]> for Vec<T> {
     #[inline]
-    fn index(&self, &index: &ops::RangeTo<uint>) -> &[T] {
+    fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
         self.as_slice().index(index)
     }
 }
 
 impl<T> ops::Index<ops::RangeFrom<uint>, [T]> for Vec<T> {
     #[inline]
-    fn index(&self, &index: &ops::RangeFrom<uint>) -> &[T] {
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
         self.as_slice().index(index)
     }
 }
 
-impl<T> ops::Index<ops::FullRange<uint>, [T]> for Vec<T> {
+impl<T> ops::Index<ops::FullRange, [T]> for Vec<T> {
     #[inline]
-    fn index(&self, &index: &ops::FullRange<uint>) -> &[T] {
+    fn index(&self, _index: &ops::FullRange) -> &[T] {
         self.as_slice()
     }
 }
 
 impl<T> ops::IndexMut<ops::Range<uint>, [T]> for Vec<T> {
     #[inline]
-    fn index_mut(&mut self, &index: &ops::Range<uint>) -> &mut [T] {
+    fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
         self.as_mut_slice().index_mut(index)
     }
 }
 
 impl<T> ops::IndexMut<ops::RangeTo<uint>, [T]> for Vec<T> {
     #[inline]
-    fn index_mut(&mut self, &index: &ops::RangeTo<uint>) -> &mut [T] {
+    fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
         self.as_mut_slice().index_mut(index)
     }
 }
 
 impl<T> ops::IndexMut<ops::RangeFrom<uint>, [T]> for Vec<T> {
     #[inline]
-    fn index_mut(&mut self, &index: &ops::RangeFrom<uint>) -> &mut [T] {
+    fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
         self.as_mut_slice().index_mut(index)
     }
 }
 
-impl<T> ops::IndexMut<ops::FullRange<uint>, [T]> for Vec<T> {
+impl<T> ops::IndexMut<ops::FullRange, [T]> for Vec<T> {
     #[inline]
-    fn index_mut(&mut self, &index: &ops::FullRange<uint>) -> &mut [T] {
+    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
         self.as_mut_slice()
     }
 }
@@ -2125,7 +2118,7 @@ mod tests {
     #[should_fail]
     fn test_slice_out_of_bounds_2() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[..6];
+        x.index(&(0..6));
     }
 
     #[test]
@@ -2139,14 +2132,14 @@ mod tests {
     #[should_fail]
     fn test_slice_out_of_bounds_4() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[1..6];
+        x.index(&(1..6));
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_5() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[3..2];
+        x.index(&(3..2));
     }
 
     #[test]

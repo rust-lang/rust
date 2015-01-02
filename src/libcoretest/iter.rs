@@ -230,7 +230,7 @@ fn test_inspect() {
                .collect::<Vec<uint>>();
 
     assert_eq!(n, xs.len());
-    assert_eq!(xs[], ys[]);
+    assert_eq!(xs.index(&FullRange), ys.index(&FullRange));
 }
 
 #[test]
@@ -281,47 +281,47 @@ fn test_iterator_nth() {
 fn test_iterator_last() {
     let v: &[_] = &[0i, 1, 2, 3, 4];
     assert_eq!(v.iter().last().unwrap(), &4);
-    assert_eq!(v[0..1].iter().last().unwrap(), &0);
+    assert_eq!(v.index(&(0..1)).iter().last().unwrap(), &0);
 }
 
 #[test]
 fn test_iterator_len() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().count(), 4);
-    assert_eq!(v[0..10].iter().count(), 10);
-    assert_eq!(v[0..0].iter().count(), 0);
+    assert_eq!(v.index(&(0..4)).iter().count(), 4);
+    assert_eq!(v.index(&(0..10)).iter().count(), 10);
+    assert_eq!(v.index(&(0..0)).iter().count(), 0);
 }
 
 #[test]
 fn test_iterator_sum() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).sum(), 6);
+    assert_eq!(v.index(&(0..4)).iter().map(|&x| x).sum(), 6);
     assert_eq!(v.iter().map(|&x| x).sum(), 55);
-    assert_eq!(v[0..0].iter().map(|&x| x).sum(), 0);
+    assert_eq!(v.index(&(0..0)).iter().map(|&x| x).sum(), 0);
 }
 
 #[test]
 fn test_iterator_product() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).product(), 0);
-    assert_eq!(v[1..5].iter().map(|&x| x).product(), 24);
-    assert_eq!(v[0..0].iter().map(|&x| x).product(), 1);
+    assert_eq!(v.index(&(0..4)).iter().map(|&x| x).product(), 0);
+    assert_eq!(v.index(&(1..5)).iter().map(|&x| x).product(), 24);
+    assert_eq!(v.index(&(0..0)).iter().map(|&x| x).product(), 1);
 }
 
 #[test]
 fn test_iterator_max() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).max(), Some(3));
+    assert_eq!(v.index(&(0..4)).iter().map(|&x| x).max(), Some(3));
     assert_eq!(v.iter().map(|&x| x).max(), Some(10));
-    assert_eq!(v[0..0].iter().map(|&x| x).max(), None);
+    assert_eq!(v.index(&(0..0)).iter().map(|&x| x).max(), None);
 }
 
 #[test]
 fn test_iterator_min() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).min(), Some(0));
+    assert_eq!(v.index(&(0..4)).iter().map(|&x| x).min(), Some(0));
     assert_eq!(v.iter().map(|&x| x).min(), Some(0));
-    assert_eq!(v[0..0].iter().map(|&x| x).min(), None);
+    assert_eq!(v.index(&(0..0)).iter().map(|&x| x).min(), None);
 }
 
 #[test]

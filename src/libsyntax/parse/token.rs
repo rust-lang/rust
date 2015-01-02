@@ -479,7 +479,7 @@ macro_rules! declare_special_idents_and_keywords {(
         $(init_vec.push($si_str);)*
         $(init_vec.push($sk_str);)*
         $(init_vec.push($rk_str);)*
-        interner::StrInterner::prefill(init_vec[])
+        interner::StrInterner::prefill(init_vec.index(&FullRange))
     }
 }}
 
@@ -628,7 +628,7 @@ impl InternedString {
 
     #[inline]
     pub fn get<'a>(&'a self) -> &'a str {
-        self.string[]
+        self.string.index(&FullRange)
     }
 }
 
@@ -652,29 +652,29 @@ impl BytesContainer for InternedString {
 
 impl fmt::Show for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.string[])
+        write!(f, "{}", self.string.index(&FullRange))
     }
 }
 
 impl<'a> PartialEq<&'a str> for InternedString {
     #[inline(always)]
     fn eq(&self, other: & &'a str) -> bool {
-        PartialEq::eq(self.string[], *other)
+        PartialEq::eq(self.string.index(&FullRange), *other)
     }
     #[inline(always)]
     fn ne(&self, other: & &'a str) -> bool {
-        PartialEq::ne(self.string[], *other)
+        PartialEq::ne(self.string.index(&FullRange), *other)
     }
 }
 
 impl<'a> PartialEq<InternedString > for &'a str {
     #[inline(always)]
     fn eq(&self, other: &InternedString) -> bool {
-        PartialEq::eq(*self, other.string[])
+        PartialEq::eq(*self, other.string.index(&FullRange))
     }
     #[inline(always)]
     fn ne(&self, other: &InternedString) -> bool {
-        PartialEq::ne(*self, other.string[])
+        PartialEq::ne(*self, other.string.index(&FullRange))
     }
 }
 
@@ -682,7 +682,7 @@ impl<'a> PartialEq<InternedString > for &'a str {
 impl<D:Decoder<E>, E> Decodable<D, E> for InternedString {
     fn decode(d: &mut D) -> Result<InternedString, E> {
         Ok(get_name(get_ident_interner().intern(
-                    try!(d.read_str())[])))
+                    try!(d.read_str()).index(&FullRange))))
     }
 }
 
@@ -697,7 +697,7 @@ impl Decodable for InternedString {
 #[cfg(stage0)]
 impl<S:Encoder<E>, E> Encodable<S, E> for InternedString {
     fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(self.string[])
+        s.emit_str(self.string.index(&FullRange))
     }
 }
 

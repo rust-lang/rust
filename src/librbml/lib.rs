@@ -65,7 +65,7 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn as_str_slice<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.data[self.start..self.end]).unwrap()
+        str::from_utf8(self.data.index(&(self.start..self.end))).unwrap()
     }
 
     pub fn as_str(&self) -> String {
@@ -300,7 +300,7 @@ pub mod reader {
     pub fn with_doc_data<T, F>(d: Doc, f: F) -> T where
         F: FnOnce(&[u8]) -> T,
     {
-        f(d.data[d.start..d.end])
+        f(d.data.index(&(d.start..d.end)))
     }
 
 

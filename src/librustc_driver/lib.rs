@@ -105,12 +105,12 @@ fn run_compiler(args: &[String]) {
     let descriptions = diagnostics::registry::Registry::new(&DIAGNOSTICS);
     match matches.opt_str("explain") {
         Some(ref code) => {
-            match descriptions.find_description(code[]) {
+            match descriptions.find_description(code.index(&FullRange)) {
                 Some(ref description) => {
                     println!("{}", description);
                 }
                 None => {
-                    early_error(format!("no extended information for {}", code)[]);
+                    early_error(format!("no extended information for {}", code).index(&FullRange));
                 }
             }
             return;
@@ -136,7 +136,7 @@ fn run_compiler(args: &[String]) {
             early_error("no input filename given");
         }
         1u => {
-            let ifile = matches.free[0][];
+            let ifile = matches.free[0].index(&FullRange);
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
                 let src = String::from_utf8(contents).unwrap();
@@ -313,7 +313,7 @@ Available lint options:
         for lint in lints.into_iter() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
-                     padded(name[]), lint.default_level.as_str(), lint.desc);
+                     padded(name.index(&FullRange)), lint.default_level.as_str(), lint.desc);
         }
         println!("\n");
     };
@@ -343,7 +343,7 @@ Available lint options:
             let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
                          .collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",
-                     padded(name[]), desc);
+                     padded(name.index(&FullRange)), desc);
         }
         println!("\n");
     };
@@ -409,7 +409,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     let matches =
-        match getopts::getopts(args[], config::optgroups()[]) {
+        match getopts::getopts(args.index(&FullRange), config::optgroups().index(&FullRange)) {
             Ok(m) => m,
             Err(f_stable_attempt) => {
                 // redo option parsing, including unstable options this time,
@@ -583,7 +583,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in xs.iter() {
-                    emitter.emit(None, note[], None, diagnostic::Note)
+                    emitter.emit(None, note.index(&FullRange), None, diagnostic::Note)
                 }
 
                 match r.read_to_string() {
@@ -591,7 +591,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                     Err(e) => {
                         emitter.emit(None,
                                      format!("failed to read internal \
-                                              stderr: {}", e)[],
+                                              stderr: {}", e).index(&FullRange),
                                      None,
                                      diagnostic::Error)
                     }

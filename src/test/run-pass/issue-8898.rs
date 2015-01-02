@@ -18,11 +18,11 @@ pub fn main() {
     let abc = [1i, 2, 3];
     let tf = [true, false];
     let x  = [(), ()];
-    let slice = x[0..1];
+    let slice = x.index(&(0..1));
 
-    assert_repr_eq(abc[], "[1, 2, 3]".to_string());
-    assert_repr_eq(tf[], "[true, false]".to_string());
-    assert_repr_eq(x[], "[(), ()]".to_string());
+    assert_repr_eq(abc.index(&FullRange), "[1, 2, 3]".to_string());
+    assert_repr_eq(tf.index(&FullRange), "[true, false]".to_string());
+    assert_repr_eq(x.index(&FullRange), "[(), ()]".to_string());
     assert_repr_eq(slice, "[()]".to_string());
-    assert_repr_eq(x[], "[(), ()]".to_string());
+    assert_repr_eq(x.index(&FullRange), "[(), ()]".to_string());
 }
