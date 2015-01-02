@@ -284,10 +284,7 @@ VAL_OPTIONS=""
 
 flag uninstall "only uninstall from the installation prefix"
 valopt prefix "" "set installation prefix"
-opt cargo 1 "install cargo with rust"
 valopt date "" "use the YYYY-MM-DD nightly instead of the current nightly"
-valopt rust-date "" "use the YYYY-MM-DD rust nightly instead of the current nightly"
-valopt cargo-date "" "use the YYYY-MM-DD cargo nightly instead of the current nightly"
 flag save "save the downloaded nightlies to ~/.rustup"
 
 if [ $HELP -eq 1 ]
@@ -443,37 +440,17 @@ then
     CFG_DATE=`date "+%Y-%m-%d"`
 fi
 
-if [ -z "${CFG_RUST_DATE}" ]; then
-    CFG_RUST_DATE="${CFG_DATE}"
-fi
-
-if [ -z "${CFG_CARGO_DATE}" ]; then
-    CFG_CARGO_DATE="${CFG_DATE}"
-fi
-
 RUST_URL="https://static.rust-lang.org/dist"
-RUST_PACKAGE_NAME=rust-nightly
+RUST_PACKAGE_NAME=rust-combined-nightly
 RUST_PACKAGE_NAME_AND_TRIPLE="${RUST_PACKAGE_NAME}-${HOST_TRIPLE}"
 RUST_TARBALL_NAME="${RUST_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
 RUST_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${RUST_PACKAGE_NAME_AND_TRIPLE}"
 RUST_LOCAL_INSTALL_SCRIPT="${RUST_LOCAL_INSTALL_DIR}/install.sh"
 
-CARGO_URL="https://static.rust-lang.org/cargo-dist"
-CARGO_PACKAGE_NAME=cargo-nightly
-CARGO_PACKAGE_NAME_AND_TRIPLE="${CARGO_PACKAGE_NAME}-${HOST_TRIPLE}"
-CARGO_TARBALL_NAME="${CARGO_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
-CARGO_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${CARGO_PACKAGE_NAME_AND_TRIPLE}"
-CARGO_LOCAL_INSTALL_SCRIPT="${CARGO_LOCAL_INSTALL_DIR}/install.sh"
-
 # add a date suffix if we want a particular nighly.
-if [ -n "${CFG_RUST_DATE}" ];
+if [ -n "${CFG_DATE}" ];
 then
-    RUST_URL="${RUST_URL}/${CFG_RUST_DATE}"
-fi
-
-if [ -n "${CFG_CARGO_DATE}" ];
-then
-    CARGO_URL="${CARGO_URL}/${CFG_CARGO_DATE}"
+    RUST_URL="${RUST_URL}/${CFG_DATE}"
 fi
 
 verify_hash() {
@@ -574,41 +551,23 @@ install_packages() {
     # If we're saving our nightlies, put them in $HOME/.rustup.
     if [ -n "${CFG_SAVE}" ]
     then
-        RUST_DOWNLOAD_DIR="${HOME}/.rustup/${CFG_RUST_DATE}"
-        CARGO_DOWNLOAD_DIR="${HOME}/.rustup/${CFG_CARGO_DATE}"
+        RUST_DOWNLOAD_DIR="${HOME}/.rustup/${CFG_DATE}"
     else
         RUST_DOWNLOAD_DIR="${CFG_TMP_DIR}"
-        CARGO_DOWNLOAD_DIR="${CFG_TMP_DIR}"
     fi
 
     mkdir -p "${RUST_DOWNLOAD_DIR}"
     need_ok "failed to create create download directory"
 
-    mkdir -p "${CARGO_DOWNLOAD_DIR}"
-    need_ok "failed to create create download directory"
-
     RUST_LOCAL_TARBALL="${RUST_DOWNLOAD_DIR}/${RUST_TARBALL_NAME}"
-    CARGO_LOCAL_TARBALL="${CARGO_DOWNLOAD_DIR}/${CARGO_TARBALL_NAME}"
 
     download_package \
         "${RUST_URL}/${RUST_TARBALL_NAME}" \
         "${RUST_LOCAL_TARBALL}"
 
-    if [ -z "${CFG_DISABLE_CARGO}" ]; then
-        download_package \
-            "${CARGO_URL}/${CARGO_TARBALL_NAME}" \
-            "${CARGO_LOCAL_TARBALL}"
-    fi
-
     install_package \
         "${RUST_LOCAL_TARBALL}" \
         "${RUST_LOCAL_INSTALL_SCRIPT}"
-
-    if [ -z "${CFG_DISABLE_CARGO}" ]; then
-        install_package \
-            "${CARGO_LOCAL_TARBALL}" \
-            "${CARGO_LOCAL_INSTALL_SCRIPT}"
-    fi
 
     rm -Rf "${CFG_TMP_DIR}"
     need_ok "couldn't rm temporary installation directory"
