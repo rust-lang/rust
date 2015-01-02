@@ -343,8 +343,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     project::poly_project_and_unify_type(self, &project_obligation)
                 });
                 match result {
-                    Ok(Some(subobligations)) => {
-                        self.evaluate_predicates_recursively(previous_stack, subobligations.iter())
+                    Ok(Some(_subobligations)) => {
+                        // TODO we should evaluate _subobligations, but doing so leads to an ICE
+                        // self.evaluate_predicates_recursively(previous_stack,
+                        //                                      subobligations.iter())
+                        EvaluatedToAmbig
                     }
                     Ok(None) => {
                         EvaluatedToAmbig
