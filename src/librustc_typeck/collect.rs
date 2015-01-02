@@ -428,7 +428,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                                  untransformed_rcvr_ty: Ty<'tcx>,
                                  rcvr_ty_generics: &ty::Generics<'tcx>,
                                  rcvr_visibility: ast::Visibility)
-                                 where I: Iterator<&'i ast::Method> {
+                                 where I: Iterator<Item=&'i ast::Method> {
     debug!("convert_methods(untransformed_rcvr_ty={}, rcvr_ty_generics={})",
            untransformed_rcvr_ty.repr(ccx.tcx),
            rcvr_ty_generics.repr(ccx.tcx));
