@@ -4875,10 +4875,25 @@ impl<'a> Parser<'a> {
             self.span_err(ty.span, "`virtual` structs have been removed from the language");
         }
 
-        self.parse_where_clause(&mut generics);
-
         let mut fields: Vec<StructField>;
         let is_tuple_like;
+
+        // There is a special case worth noting here, as reported in issue #17904.
+        // If we are parsing a tuple struct it is the case that the where clause
+        // should follow the field list. Like so:
+        //
+        // struct Foo<T>(T) where T: Copy;
+        //
+        // If we are parsing a normal record-style struct it is the case
+        // that the where clause comes before the body, and after the generics.
+        // So if we look ahead and see a brace or a where-clause we begin
+        // parsing a record style struct.
+        //
+        // Otherwise if we look ahead and see a paren we parse a tuple-style
+        // struct.
+
+        // Will parse the where-clause if it precedes the brace.
+        self.parse_where_clause(&mut generics);
 
         if self.eat(&token::OpenDelim(token::Brace)) {
             // It's a record-like struct.
@@ -4916,8 +4931,11 @@ impl<'a> Parser<'a> {
                                     written as `struct {};`",
                                    token::get_ident(class_name))[]);
             }
+            self.parse_where_clause(&mut generics);
             self.expect(&token::Semi);
-        } else if self.eat(&token::Semi) {
+        } else if self.token.is_keyword(keywords::Where) || self.eat(&token::Semi) {
+            // We can find a where clause here.
+            self.parse_where_clause(&mut generics);
             // It's a unit-like struct.
             is_tuple_like = true;
             fields = Vec::new();
