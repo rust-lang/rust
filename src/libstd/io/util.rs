@@ -169,7 +169,7 @@ pub struct ChainedReader<I, R> {
     cur_reader: Option<R>,
 }
 
-impl<R: Reader, I: Iterator<R>> ChainedReader<I, R> {
+impl<R: Reader, I: Iterator<Item=R>> ChainedReader<I, R> {
     /// Creates a new `ChainedReader`
     pub fn new(mut readers: I) -> ChainedReader<I, R> {
         let r = readers.next();
@@ -177,7 +177,7 @@ impl<R: Reader, I: Iterator<R>> ChainedReader<I, R> {
     }
 }
 
-impl<R: Reader, I: Iterator<R>> Reader for ChainedReader<I, R> {
+impl<R: Reader, I: Iterator<Item=R>> Reader for ChainedReader<I, R> {
     fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
         loop {
             let err = match self.cur_reader {
@@ -252,7 +252,7 @@ pub struct IterReader<T> {
     iter: T,
 }
 
-impl<T: Iterator<u8>> IterReader<T> {
+impl<T: Iterator<Item=u8>> IterReader<T> {
     /// Creates a new `IterReader` which will read from the specified
     /// `Iterator`.
     pub fn new(iter: T) -> IterReader<T> {
@@ -260,7 +260,7 @@ impl<T: Iterator<u8>> IterReader<T> {
     }
 }
 
-impl<T: Iterator<u8>> Reader for IterReader<T> {
+impl<T: Iterator<Item=u8>> Reader for IterReader<T> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
         let mut len = 0;

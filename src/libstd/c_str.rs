@@ -504,7 +504,9 @@ pub struct CChars<'a> {
     marker: marker::ContravariantLifetime<'a>,
 }
 
-impl<'a> Iterator<libc::c_char> for CChars<'a> {
+impl<'a> Iterator for CChars<'a> {
+    type Item = libc::c_char;
+
     fn next(&mut self) -> Option<libc::c_char> {
         let ch = unsafe { *self.ptr };
         if ch == 0 {

@@ -1371,7 +1371,9 @@ pub struct Lines<'r, T:'r> {
     buffer: &'r mut T,
 }
 
-impl<'r, T: Buffer> Iterator<IoResult<String>> for Lines<'r, T> {
+impl<'r, T: Buffer> Iterator for Lines<'r, T> {
+    type Item = IoResult<String>;
+
     fn next(&mut self) -> Option<IoResult<String>> {
         match self.buffer.read_line() {
             Ok(x) => Some(Ok(x)),
@@ -1398,7 +1400,9 @@ pub struct Chars<'r, T:'r> {
     buffer: &'r mut T
 }
 
-impl<'r, T: Buffer> Iterator<IoResult<char>> for Chars<'r, T> {
+impl<'r, T: Buffer> Iterator for Chars<'r, T> {
+    type Item = IoResult<char>;
+
     fn next(&mut self) -> Option<IoResult<char>> {
         match self.buffer.read_char() {
             Ok(x) => Some(Ok(x)),
@@ -1649,14 +1653,18 @@ pub struct IncomingConnections<'a, Sized? A:'a> {
 }
 
 #[cfg(stage0)]
-impl<'a, T, A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A> {
+impl<'a, T, A: Acceptor<T>> Iterator for IncomingConnections<'a, A> {
+    type Item = IoResult<T>;
+
     fn next(&mut self) -> Option<IoResult<T>> {
         Some(self.inc.accept())
     }
 }
 
 #[cfg(not(stage0))]
-impl<'a, T, Sized? A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A> {
+impl<'a, T, Sized? A: Acceptor<T>> Iterator for IncomingConnections<'a, A> {
+    type Item = IoResult<T>;
+
     fn next(&mut self) -> Option<IoResult<T>> {
         Some(self.inc.accept())
     }
