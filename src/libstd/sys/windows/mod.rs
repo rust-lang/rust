@@ -173,7 +173,7 @@ pub fn init_net() {
     unsafe {
         static START: Once = ONCE_INIT;
 
-        START.doit(|| {
+        START.call_once(|| {
             let mut data: c::WSADATA = mem::zeroed();
             let ret = c::WSAStartup(0x202, // version 2.2
                                     &mut data);

@@ -90,7 +90,7 @@ impl TempDir {
             return TempDir::new_in(&abs_tmpdir, suffix);
         }
 
-        static CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+        static CNT: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
 
         let mut attempts = 0u;
         loop {

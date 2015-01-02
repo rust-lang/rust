@@ -352,7 +352,7 @@ pub struct LogLocation {
 #[doc(hidden)]
 pub fn mod_enabled(level: u32, module: &str) -> bool {
     static INIT: Once = ONCE_INIT;
-    INIT.doit(init);
+    INIT.call_once(init);
 
     // It's possible for many threads are in this function, only one of them
     // will perform the global initialization, but all of them will need to check

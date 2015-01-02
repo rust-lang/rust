@@ -89,16 +89,26 @@ pub enum Ordering {
 
 /// An `AtomicBool` initialized to `false`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
-pub const INIT_ATOMIC_BOOL: AtomicBool =
+pub const ATOMIC_BOOL_INIT: AtomicBool =
         AtomicBool { v: UnsafeCell { value: 0 } };
 /// An `AtomicInt` initialized to `0`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
-pub const INIT_ATOMIC_INT: AtomicInt =
+pub const ATOMIC_INT_INIT: AtomicInt =
         AtomicInt { v: UnsafeCell { value: 0 } };
 /// An `AtomicUint` initialized to `0`.
 #[unstable = "may be renamed, pending conventions for static initalizers"]
-pub const INIT_ATOMIC_UINT: AtomicUint =
+pub const ATOMIC_UINT_INIT: AtomicUint =
         AtomicUint { v: UnsafeCell { value: 0, } };
+
+/// Deprecated
+#[deprecated = "renamed to ATOMIC_BOOL_INIT"]
+pub const INIT_ATOMIC_BOOL: AtomicBool = ATOMIC_BOOL_INIT;
+/// Deprecated
+#[deprecated = "renamed to ATOMIC_INT_INIT"]
+pub const INIT_ATOMIC_INT: AtomicInt = ATOMIC_INT_INIT;
+/// Deprecated
+#[deprecated = "renamed to ATOMIC_UINT_INIT"]
+pub const INIT_ATOMIC_UINT: AtomicUint = ATOMIC_UINT_INIT;
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
 const UINT_TRUE: uint = -1;

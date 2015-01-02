@@ -46,7 +46,7 @@ pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
 }
 
 pub fn min_stack() -> uint {
-    static MIN: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+    static MIN: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
     match MIN.load(atomic::SeqCst) {
         0 => {}
         n => return n - 1,

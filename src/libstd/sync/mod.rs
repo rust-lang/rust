@@ -26,7 +26,7 @@ pub use self::rwlock::{RWLockReadGuard, RWLockWriteGuard};
 pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT};
 pub use self::once::{Once, ONCE_INIT};
 pub use self::semaphore::{Semaphore, SemaphoreGuard};
-pub use self::barrier::Barrier;
+pub use self::barrier::{Barrier, BarrierWaitResult};
 pub use self::poison::{PoisonError, TryLockError, TryLockResult, LockResult};
 
 pub use self::future::Future;

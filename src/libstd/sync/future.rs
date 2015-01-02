@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A type representing values that may be computed concurrently and operations for working with
-//! them.
+//! A type representing values that may be computed concurrently and operations
+//! for working with them.
 //!
 //! # Example
 //!
@@ -23,6 +23,9 @@
 //! ```
 
 #![allow(missing_docs)]
+#![unstable = "futures as-is have yet to be deeply reevaluated with recent \
+               core changes to Rust's synchronization story, and will likely \
+               become stable in the future but are unstable until that time"]
 
 use core::prelude::*;
 use core::mem::replace;

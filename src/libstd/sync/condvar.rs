@@ -88,7 +88,7 @@ unsafe impl Sync for StaticCondvar {}
 #[unstable = "may be merged with Condvar in the future"]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
     inner: sys::CONDVAR_INIT,
-    mutex: atomic::INIT_ATOMIC_UINT,
+    mutex: atomic::ATOMIC_UINT_INIT,
 };
 
 impl Condvar {
