@@ -54,7 +54,7 @@
 //!
 //! This `for` loop syntax can be applied to any iterator over any type.
 
-pub use self::MinMaxResult::*;
+use self::MinMaxResult::*;
 
 use clone::Clone;
 use cmp;
@@ -1035,7 +1035,7 @@ pub trait IteratorOrdExt<A> {
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::{NoElements, OneElement, MinMax};
+    /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
     ///
     /// let v: [int; 0] = [];
     /// assert_eq!(v.iter().min_max(), NoElements);
@@ -1145,7 +1145,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::{NoElements, OneElement, MinMax, MinMaxResult};
+    /// use std::iter::MinMaxResult::{mod, NoElements, OneElement, MinMax};
     ///
     /// let r: MinMaxResult<int> = NoElements;
     /// assert_eq!(r.into_option(), None);
