@@ -150,7 +150,9 @@ struct MutDnaSeqs<'a> { s: &'a mut [u8] }
 fn mut_dna_seqs<'a>(s: &'a mut [u8]) -> MutDnaSeqs<'a> {
     MutDnaSeqs { s: s }
 }
-impl<'a> Iterator<&'a mut [u8]> for MutDnaSeqs<'a> {
+impl<'a> Iterator for MutDnaSeqs<'a> {
+    type Item = &'a mut [u8];
+
     fn next(&mut self) -> Option<&'a mut [u8]> {
         let tmp = std::mem::replace(&mut self.s, &mut []);
         let tmp = match memchr(tmp, b'\n') {
@@ -229,7 +231,7 @@ unsafe impl<T: 'static> Send for Racy<T> {}
 /// The closure `f` is run in parallel with an element of `iter`.
 fn parallel<'a, I, T, F>(mut iter: I, f: F)
         where T: 'a+Send + Sync,
-              I: Iterator<&'a mut [T]>,
+              I: Iterator<Item=&'a mut [T]>,
               F: Fn(&mut [T]) + Sync {
     use std::mem;
     use std::raw::Repr;
