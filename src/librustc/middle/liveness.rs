@@ -111,7 +111,9 @@ use self::VarKind::*;
 
 use middle::def::*;
 use middle::mem_categorization::Typer;
-use middle::{pat_util, ty};
+use middle::pat_util;
+use middle::ty;
+use middle::ty::UnboxedClosureTyper;
 use lint;
 use util::nodemap::NodeMap;
 
@@ -1515,16 +1517,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn fn_ret(&self, id: NodeId) -> ty::FnOutput<'tcx> {
         let fn_ty = ty::node_id_to_type(self.ir.tcx, id);
         match fn_ty.sty {
-            ty::ty_unboxed_closure(closure_def_id, _, _) =>
-                self.ir.tcx.unboxed_closures()
-                    .borrow()
-                    .get(&closure_def_id)
-                    .unwrap()
-                    .closure_type
-                    .sig
-                    .0
-                    .output,
-            _ => ty::ty_fn_ret(fn_ty)
+            ty::ty_unboxed_closure(closure_def_id, _, substs) =>
+                self.ir.tcx.unboxed_closure_type(closure_def_id, substs).sig.0.output,
+            _ =>
+                ty::ty_fn_ret(fn_ty),
         }
     }
 

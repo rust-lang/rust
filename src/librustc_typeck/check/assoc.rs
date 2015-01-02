@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use middle::infer::InferCtxt;
-use middle::mem_categorization as mc;
 use middle::traits::{mod, FulfillmentContext, Normalized, MiscObligation,
                      SelectionContext, ObligationCause};
 use middle::ty::{mod, HasProjectionTypes};
@@ -20,7 +19,7 @@ use util::ppaux::Repr;
 
 pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                                                 param_env: &ty::ParameterEnvironment<'tcx>,
-                                                typer: &(mc::Typer<'tcx>+'a),
+                                                typer: &(ty::UnboxedClosureTyper<'tcx>+'a),
                                                 fulfillment_cx: &mut FulfillmentContext<'tcx>,
                                                 span: Span,
                                                 body_id: ast::NodeId,

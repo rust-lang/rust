@@ -18,6 +18,7 @@ use self::BuiltinBoundConditions::*;
 use self::EvaluationResult::*;
 
 use super::{DerivedObligationCause};
+use super::{project};
 use super::{PredicateObligation, Obligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation};
 use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch};
@@ -29,7 +30,7 @@ use super::{util};
 
 use middle::fast_reject;
 use middle::mem_categorization::Typer;
-use middle::subst::{Subst, Substs, VecPerParamSpace};
+use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
 use middle::ty::{mod, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
@@ -44,7 +45,7 @@ use util::ppaux::Repr;
 pub struct SelectionContext<'cx, 'tcx:'cx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
     param_env: &'cx ty::ParameterEnvironment<'tcx>,
-    typer: &'cx (Typer<'tcx>+'cx),
+    closure_typer: &'cx (ty::UnboxedClosureTyper<'tcx>+'cx),
 
     /// Freshener used specifically for skolemizing entries on the
     /// obligation stack. This ensures that all entries on the stack
@@ -177,12 +178,12 @@ enum EvaluationResult<'tcx> {
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>,
                param_env: &'cx ty::ParameterEnvironment<'tcx>,
-               typer: &'cx Typer<'tcx>)
+               closure_typer: &'cx ty::UnboxedClosureTyper<'tcx>)
                -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
             param_env: param_env,
-            typer: typer,
+            closure_typer: closure_typer,
             freshener: infcx.freshener(),
             intercrate: false,
         }
@@ -190,12 +191,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>,
                       param_env: &'cx ty::ParameterEnvironment<'tcx>,
-                      typer: &'cx Typer<'tcx>)
+                      closure_typer: &'cx ty::UnboxedClosureTyper<'tcx>)
                       -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
             param_env: param_env,
-            typer: typer,
+            closure_typer: closure_typer,
             freshener: infcx.freshener(),
             intercrate: true,
         }
@@ -918,15 +919,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                kind,
                obligation.repr(self.tcx()));
 
-        let closure_kind = match self.typer.unboxed_closures().borrow().get(&closure_def_id) {
-            Some(closure) => closure.kind,
-            None => {
-                self.tcx().sess.span_bug(
-                    obligation.cause.span,
-                    format!("No entry for unboxed closure: {}",
-                            closure_def_id.repr(self.tcx()))[]);
-            }
-        };
+        let closure_kind = self.closure_typer.unboxed_closure_kind(closure_def_id);
 
         debug!("closure_kind = {}", closure_kind);
 
@@ -1398,32 +1391,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return Ok(ParameterBuiltin);
                 }
 
-                match self.tcx().freevars.borrow().get(&def_id.node) {
-                    None => {
-                        // No upvars.
-                        Ok(If(Vec::new()))
+                match self.closure_typer.unboxed_closure_upvars(def_id, substs) {
+                    Some(upvars) => {
+                        Ok(If(upvars.iter().map(|c| c.ty).collect()))
                     }
-
-                    Some(freevars) => {
-                        let tys: Vec<Ty> =
-                            freevars
-                            .iter()
-                            .map(|freevar| {
-                                let freevar_def_id = freevar.def.def_id();
-                                self.typer.node_ty(freevar_def_id.node).subst(self.tcx(), substs)
-                            })
-                            .collect();
-                        Ok(If(tys))
+                    None => {
+                        Ok(AmbiguousBuiltin)
                     }
                 }
             }
 
             ty::ty_struct(def_id, substs) => {
                 let types: Vec<Ty> =
-                    ty::struct_fields(self.tcx(), def_id, substs)
-                    .iter()
-                    .map(|f| f.mt.ty)
-                    .collect();
+                    ty::struct_fields(self.tcx(), def_id, substs).iter()
+                                                                 .map(|f| f.mt.ty)
+                                                                 .collect();
                 nominal(self, bound, def_id, types)
             }
 
@@ -1798,27 +1780,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                closure_def_id.repr(self.tcx()),
                substs.repr(self.tcx()));
 
-        let closure_type = match self.typer.unboxed_closures().borrow().get(&closure_def_id) {
-            Some(closure) => closure.closure_type.clone(),
-            None => {
-                self.tcx().sess.span_bug(
-                    obligation.cause.span,
-                    format!("No entry for unboxed closure: {}",
-                            closure_def_id.repr(self.tcx()))[]);
-            }
-        };
+        let closure_type = self.closure_typer.unboxed_closure_type(closure_def_id, substs);
+
+        debug!("confirm_unboxed_closure_candidate: closure_def_id={} closure_type={}",
+               closure_def_id.repr(self.tcx()),
+               closure_type.repr(self.tcx()));
 
         let closure_sig = &closure_type.sig;
         let arguments_tuple = closure_sig.0.inputs[0];
-        let substs =
+        let trait_substs =
             Substs::new_trait(
-                vec![arguments_tuple.subst(self.tcx(), substs),
-                     closure_sig.0.output.unwrap().subst(self.tcx(), substs)],
+                vec![arguments_tuple, closure_sig.0.output.unwrap()],
                 vec![],
                 obligation.self_ty());
         let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
             def_id: obligation.predicate.def_id(),
-            substs: self.tcx().mk_substs(substs),
+            substs: self.tcx().mk_substs(trait_substs),
         }));
 
         debug!("confirm_unboxed_closure_candidate(closure_def_id={}, trait_ref={})",
@@ -2100,7 +2077,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn impl_predicates(&self,
+    fn impl_predicates(&mut self,
                        cause: ObligationCause<'tcx>,
                        recursion_depth: uint,
                        impl_def_id: ast::DefId,
@@ -2111,8 +2088,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         let impl_generics = ty::lookup_item_type(self.tcx(), impl_def_id).generics;
         let bounds = impl_generics.to_bounds(self.tcx(), impl_substs);
-        let bounds = self.infcx().plug_leaks(skol_map, snapshot, &bounds);
-        util::predicates_for_generics(self.tcx(), cause, recursion_depth, &bounds)
+        let normalized_bounds =
+            project::normalize_with_depth(self, cause.clone(), recursion_depth, &bounds);
+        let normalized_bounds =
+            self.infcx().plug_leaks(skol_map, snapshot, &normalized_bounds);
+        let mut impl_obligations =
+            util::predicates_for_generics(self.tcx(),
+                                          cause,
+                                          recursion_depth,
+                                          &normalized_bounds.value);
+        for obligation in normalized_bounds.obligations.into_iter() {
+            impl_obligations.push(TypeSpace, obligation);
+        }
+        impl_obligations
     }
 
     fn fn_family_trait_kind(&self,

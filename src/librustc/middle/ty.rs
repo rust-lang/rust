@@ -2267,6 +2267,23 @@ impl UnboxedClosureKind {
     }
 }
 
+pub trait UnboxedClosureTyper<'tcx> {
+    fn unboxed_closure_kind(&self,
+                            def_id: ast::DefId)
+                            -> ty::UnboxedClosureKind;
+
+    fn unboxed_closure_type(&self,
+                            def_id: ast::DefId,
+                            substs: &subst::Substs<'tcx>)
+                            -> ty::ClosureTy<'tcx>;
+
+    // Returns `None` if the upvar types cannot yet be definitively determined.
+    fn unboxed_closure_upvars(&self,
+                              def_id: ast::DefId,
+                              substs: &Substs<'tcx>)
+                              -> Option<Vec<UnboxedClosureUpvar<'tcx>>>;
+}
+
 impl<'tcx> CommonTypes<'tcx> {
     fn new(arena: &'tcx TypedArena<TyS<'tcx>>,
            interner: &mut FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>)
@@ -3353,7 +3370,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             ty_unboxed_closure(did, r, substs) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
-                let upvars = unboxed_closure_upvars(cx, did, substs);
+                let upvars = unboxed_closure_upvars(cx, did, substs).unwrap();
                 TypeContents::union(upvars.as_slice(),
                                     |f| tc_ty(cx, f.ty, cache))
                     | borrowed_contents(*r, MutMutable)
@@ -3633,7 +3650,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             }
 
             ty_unboxed_closure(did, _, substs) => {
-                let upvars = unboxed_closure_upvars(cx, did, substs);
+                let upvars = unboxed_closure_upvars(cx, did, substs).unwrap();
                 upvars.iter().any(|f| type_requires(cx, seen, r_ty, f.ty))
             }
 
@@ -3725,7 +3742,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                 find_nonrepresentable(cx, sp, seen, iter)
             }
             ty_unboxed_closure(did, _, substs) => {
-                let upvars = unboxed_closure_upvars(cx, did, substs);
+                let upvars = unboxed_closure_upvars(cx, did, substs).unwrap();
                 find_nonrepresentable(cx, sp, seen, upvars.iter().map(|f| f.ty))
             }
             _ => Representable,
@@ -5656,7 +5673,7 @@ pub fn tup_fields<'tcx>(v: &[Ty<'tcx>]) -> Vec<field<'tcx>> {
     }).collect()
 }
 
-#[deriving(Copy)]
+#[deriving(Copy, Clone)]
 pub struct UnboxedClosureUpvar<'tcx> {
     pub def: def::Def,
     pub span: Span,
@@ -5664,38 +5681,67 @@ pub struct UnboxedClosureUpvar<'tcx> {
 }
 
 // Returns a list of `UnboxedClosureUpvar`s for each upvar.
-pub fn unboxed_closure_upvars<'tcx>(tcx: &ctxt<'tcx>, closure_id: ast::DefId, substs: &Substs<'tcx>)
-                                    -> Vec<UnboxedClosureUpvar<'tcx>> {
+pub fn unboxed_closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
+                                    closure_id: ast::DefId,
+                                    substs: &Substs<'tcx>)
+                                    -> Option<Vec<UnboxedClosureUpvar<'tcx>>>
+{
     // Presently an unboxed closure type cannot "escape" out of a
     // function, so we will only encounter ones that originated in the
     // local crate or were inlined into it along with some function.
     // This may change if abstract return types of some sort are
     // implemented.
     assert!(closure_id.krate == ast::LOCAL_CRATE);
+    let tcx = typer.tcx();
     let capture_mode = tcx.capture_modes.borrow()[closure_id.node].clone();
     match tcx.freevars.borrow().get(&closure_id.node) {
-        None => vec![],
+        None => Some(vec![]),
         Some(ref freevars) => {
-            freevars.iter().map(|freevar| {
-                let freevar_def_id = freevar.def.def_id();
-                let freevar_ty = node_id_to_type(tcx, freevar_def_id.node);
-                let mut freevar_ty = freevar_ty.subst(tcx, substs);
-                if capture_mode == ast::CaptureByRef {
-                    let borrow = tcx.upvar_borrow_map.borrow()[ty::UpvarId {
-                        var_id: freevar_def_id.node,
-                        closure_expr_id: closure_id.node
-                    }].clone();
-                    freevar_ty = mk_rptr(tcx, tcx.mk_region(borrow.region), ty::mt {
-                        ty: freevar_ty,
-                        mutbl: borrow.kind.to_mutbl_lossy()
-                    });
-                }
-                UnboxedClosureUpvar {
-                    def: freevar.def,
-                    span: freevar.span,
-                    ty: freevar_ty
-                }
-            }).collect()
+            freevars.iter()
+                    .map(|freevar| {
+                        let freevar_def_id = freevar.def.def_id();
+                        let freevar_ty = typer.node_ty(freevar_def_id.node);
+                        let freevar_ty = freevar_ty.subst(tcx, substs);
+
+                        match capture_mode {
+                            ast::CaptureByValue => {
+                                Some(UnboxedClosureUpvar { def: freevar.def,
+                                                           span: freevar.span,
+                                                           ty: freevar_ty })
+                            }
+
+                            ast::CaptureByRef => {
+                                let upvar_id = ty::UpvarId {
+                                    var_id: freevar_def_id.node,
+                                    closure_expr_id: closure_id.node
+                                };
+
+                                // FIXME
+                                let freevar_ref_ty = match typer.upvar_borrow(upvar_id) {
+                                    Some(borrow) => {
+                                        mk_rptr(tcx,
+                                                tcx.mk_region(borrow.region),
+                                                ty::mt {
+                                                    ty: freevar_ty,
+                                                    mutbl: borrow.kind.to_mutbl_lossy(),
+                                                })
+                                    }
+                                    None => {
+                                        // FIXME(#16640) we should really return None here;
+                                        // but that requires better inference integration,
+                                        // for now gin up something.
+                                        freevar_ty
+                                    }
+                                };
+                                Some(UnboxedClosureUpvar {
+                                    def: freevar.def,
+                                    span: freevar.span,
+                                    ty: freevar_ref_ty,
+                                })
+                            }
+                        }
+                    })
+                    .collect()
         }
     }
 }
@@ -6509,20 +6555,41 @@ impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
         self.region_maps.temporary_scope(rvalue_id)
     }
 
-    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow {
-        self.upvar_borrow_map.borrow()[upvar_id].clone()
+    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarBorrow> {
+        Some(self.upvar_borrow_map.borrow()[upvar_id].clone())
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause {
         self.capture_modes.borrow()[closure_expr_id].clone()
     }
+}
 
-    fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<UnboxedClosure<'tcx>>> {
-        &self.unboxed_closures
+impl<'tcx> UnboxedClosureTyper<'tcx> for ty::ctxt<'tcx> {
+    fn unboxed_closure_kind(&self,
+                            def_id: ast::DefId)
+                            -> ty::UnboxedClosureKind
+    {
+        self.unboxed_closures.borrow()[def_id].kind
+    }
+
+    fn unboxed_closure_type(&self,
+                            def_id: ast::DefId,
+                            substs: &subst::Substs<'tcx>)
+                            -> ty::ClosureTy<'tcx>
+    {
+        self.unboxed_closures.borrow()[def_id].closure_type.subst(self, substs)
+    }
+
+    fn unboxed_closure_upvars(&self,
+                              def_id: ast::DefId,
+                              substs: &Substs<'tcx>)
+                              -> Option<Vec<UnboxedClosureUpvar<'tcx>>>
+    {
+        unboxed_closure_upvars(self, def_id, substs)
     }
 }
+
 
 /// The category of explicit self.
 #[deriving(Clone, Copy, Eq, PartialEq, Show)]
@@ -7040,9 +7107,27 @@ pub trait HasProjectionTypes {
     fn has_projection_types(&self) -> bool;
 }
 
+impl<'tcx,T:HasProjectionTypes> HasProjectionTypes for Vec<T> {
+    fn has_projection_types(&self) -> bool {
+        self.iter().any(|p| p.has_projection_types())
+    }
+}
+
 impl<'tcx,T:HasProjectionTypes> HasProjectionTypes for VecPerParamSpace<T> {
     fn has_projection_types(&self) -> bool {
         self.iter().any(|p| p.has_projection_types())
+    }
+}
+
+impl<'tcx> HasProjectionTypes for ClosureTy<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.sig.has_projection_types()
+    }
+}
+
+impl<'tcx> HasProjectionTypes for UnboxedClosureUpvar<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.ty.has_projection_types()
     }
 }
 
@@ -7243,5 +7328,25 @@ impl ReferencesError for Region
 {
     fn references_error(&self) -> bool {
         false
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ClosureTy<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("ClosureTy({},{},{},{},{},{})",
+                self.unsafety,
+                self.onceness,
+                self.store,
+                self.bounds.repr(tcx),
+                self.sig.repr(tcx),
+                self.abi)
+    }
+}
+
+impl<'tcx> Repr<'tcx> for UnboxedClosureUpvar<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("UnboxedClosureUpvar({},{})",
+                self.def.repr(tcx),
+                self.ty.repr(tcx))
     }
 }
