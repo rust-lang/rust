@@ -12,7 +12,7 @@
 
 extern crate serialize;
 
-use std::io::IoError;
+use std::fmt;
 use serialize::{Encoder, Encodable};
 use serialize::json;
 
@@ -21,7 +21,7 @@ struct Foo<T> {
 }
 
 #[unsafe_destructor]
-impl<'a, T: Encodable<json::Encoder<'a>, IoError>> Drop for Foo<T> {
+impl<T: for<'a> Encodable<json::Encoder<'a>, fmt::Error>> Drop for Foo<T> {
     fn drop(&mut self) {
         json::encode(&self.v);
     }

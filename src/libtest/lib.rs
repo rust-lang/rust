@@ -171,14 +171,14 @@ impl TestFn {
 
 impl fmt::Show for TestFn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write(match *self {
+        f.write_str(match *self {
             StaticTestFn(..) => "StaticTestFn(..)",
             StaticBenchFn(..) => "StaticBenchFn(..)",
             StaticMetricFn(..) => "StaticMetricFn(..)",
             DynTestFn(..) => "DynTestFn(..)",
             DynMetricFn(..) => "DynMetricFn(..)",
             DynBenchFn(..) => "DynBenchFn(..)"
-        }.as_bytes())
+        })
     }
 }
 
@@ -1212,8 +1212,7 @@ impl MetricMap {
     pub fn save(&self, p: &Path) -> io::IoResult<()> {
         let mut file = try!(File::create(p));
         let MetricMap(ref map) = *self;
-        let mut enc = json::PrettyEncoder::new(&mut file);
-        map.encode(&mut enc)
+        write!(&mut file, "{}", json::as_json(map))
     }
 
     /// Compare against another MetricMap. Optionally compare all

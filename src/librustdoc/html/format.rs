@@ -69,7 +69,7 @@ impl<'a> fmt::Show for TyParamBounds<'a> {
         let &TyParamBounds(bounds) = self;
         for (i, bound) in bounds.iter().enumerate() {
             if i > 0 {
-                try!(f.write(" + ".as_bytes()));
+                try!(f.write_str(" + "));
             }
             try!(write!(f, "{}", *bound));
         }
@@ -80,24 +80,24 @@ impl<'a> fmt::Show for TyParamBounds<'a> {
 impl fmt::Show for clean::Generics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.lifetimes.len() == 0 && self.type_params.len() == 0 { return Ok(()) }
-        try!(f.write("&lt;".as_bytes()));
+        try!(f.write_str("&lt;"));
 
         for (i, life) in self.lifetimes.iter().enumerate() {
             if i > 0 {
-                try!(f.write(", ".as_bytes()));
+                try!(f.write_str(", "));
             }
             try!(write!(f, "{}", *life));
         }
 
         if self.type_params.len() > 0 {
             if self.lifetimes.len() > 0 {
-                try!(f.write(", ".as_bytes()));
+                try!(f.write_str(", "));
             }
             for (i, tp) in self.type_params.iter().enumerate() {
                 if i > 0 {
-                    try!(f.write(", ".as_bytes()))
+                    try!(f.write_str(", "))
                 }
-                try!(f.write(tp.name.as_bytes()));
+                try!(f.write_str(tp.name[]));
 
                 if tp.bounds.len() > 0 {
                     try!(write!(f, ": {}", TyParamBounds(tp.bounds.as_slice())));
@@ -109,7 +109,7 @@ impl fmt::Show for clean::Generics {
                 };
             }
         }
-        try!(f.write("&gt;".as_bytes()));
+        try!(f.write_str("&gt;"));
         Ok(())
     }
 }
@@ -120,10 +120,10 @@ impl<'a> fmt::Show for WhereClause<'a> {
         if gens.where_predicates.len() == 0 {
             return Ok(());
         }
-        try!(f.write(" <span class='where'>where ".as_bytes()));
+        try!(f.write_str(" <span class='where'>where "));
         for (i, pred) in gens.where_predicates.iter().enumerate() {
             if i > 0 {
-                try!(f.write(", ".as_bytes()));
+                try!(f.write_str(", "));
             }
             match pred {
                 &clean::WherePredicate::BoundPredicate { ref ty, ref bounds } => {
@@ -135,7 +135,7 @@ impl<'a> fmt::Show for WhereClause<'a> {
                     try!(write!(f, "{}: ", lifetime));
                     for (i, lifetime) in bounds.iter().enumerate() {
                         if i > 0 {
-                            try!(f.write(" + ".as_bytes()));
+                            try!(f.write_str(" + "));
                         }
 
                         try!(write!(f, "{}", lifetime));
@@ -146,14 +146,14 @@ impl<'a> fmt::Show for WhereClause<'a> {
                 }
             }
         }
-        try!(f.write("</span>".as_bytes()));
+        try!(f.write_str("</span>"));
         Ok(())
     }
 }
 
 impl fmt::Show for clean::Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(f.write(self.get_ref().as_bytes()));
+        try!(f.write_str(self.get_ref()));
         Ok(())
     }
 }
@@ -161,14 +161,14 @@ impl fmt::Show for clean::Lifetime {
 impl fmt::Show for clean::PolyTrait {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.lifetimes.len() > 0 {
-            try!(f.write("for&lt;".as_bytes()));
+            try!(f.write_str("for&lt;"));
             for (i, lt) in self.lifetimes.iter().enumerate() {
                 if i > 0 {
-                    try!(f.write(", ".as_bytes()));
+                    try!(f.write_str(", "));
                 }
                 try!(write!(f, "{}", lt));
             }
-            try!(f.write("&gt; ".as_bytes()));
+            try!(f.write_str("&gt; "));
         }
         write!(f, "{}", self.trait_)
     }
@@ -196,38 +196,38 @@ impl fmt::Show for clean::PathParameters {
         match *self {
             clean::PathParameters::AngleBracketed { ref lifetimes, ref types } => {
                 if lifetimes.len() > 0 || types.len() > 0 {
-                    try!(f.write("&lt;".as_bytes()));
+                    try!(f.write_str("&lt;"));
                     let mut comma = false;
                     for lifetime in lifetimes.iter() {
                         if comma {
-                            try!(f.write(", ".as_bytes()));
+                            try!(f.write_str(", "));
                         }
                         comma = true;
                         try!(write!(f, "{}", *lifetime));
                     }
                     for ty in types.iter() {
                         if comma {
-                            try!(f.write(", ".as_bytes()));
+                            try!(f.write_str(", "));
                         }
                         comma = true;
                         try!(write!(f, "{}", *ty));
                     }
-                    try!(f.write("&gt;".as_bytes()));
+                    try!(f.write_str("&gt;"));
                 }
             }
             clean::PathParameters::Parenthesized { ref inputs, ref output } => {
-                try!(f.write("(".as_bytes()));
+                try!(f.write_str("("));
                 let mut comma = false;
                 for ty in inputs.iter() {
                     if comma {
-                        try!(f.write(", ".as_bytes()));
+                        try!(f.write_str(", "));
                     }
                     comma = true;
                     try!(write!(f, "{}", *ty));
                 }
-                try!(f.write(")".as_bytes()));
+                try!(f.write_str(")"));
                 if let Some(ref ty) = *output {
-                    try!(f.write(" -&gt; ".as_bytes()));
+                    try!(f.write_str(" -&gt; "));
                     try!(write!(f, "{}", ty));
                 }
             }
@@ -238,7 +238,7 @@ impl fmt::Show for clean::PathParameters {
 
 impl fmt::Show for clean::PathSegment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(f.write(self.name.as_bytes()));
+        try!(f.write_str(self.name.as_slice()));
         write!(f, "{}", self.params)
     }
 }
@@ -246,12 +246,12 @@ impl fmt::Show for clean::PathSegment {
 impl fmt::Show for clean::Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.global {
-            try!(f.write("::".as_bytes()))
+            try!(f.write_str("::"))
         }
 
         for (i, seg) in self.segments.iter().enumerate() {
             if i > 0 {
-                try!(f.write("::".as_bytes()))
+                try!(f.write_str("::"))
             }
             try!(write!(f, "{}", seg));
         }
@@ -433,10 +433,10 @@ impl fmt::Show for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::TyParamBinder(id) => {
-                f.write(cache().typarams[ast_util::local_def(id)].as_bytes())
+                f.write_str(cache().typarams[ast_util::local_def(id)][])
             }
             clean::Generic(ref name) => {
-                f.write(name.as_bytes())
+                f.write_str(name.as_slice())
             }
             clean::ResolvedPath{ did, ref typarams, ref path } => {
                 try!(resolved_path(f, did, path, false));
@@ -522,7 +522,7 @@ impl fmt::Show for clean::Type {
                 primitive_link(f, clean::Slice,
                                format!("[{}, ..{}]", **t, *s).as_slice())
             }
-            clean::Bottom => f.write("!".as_bytes()),
+            clean::Bottom => f.write_str("!"),
             clean::RawPointer(m, ref t) => {
                 write!(f, "*{}{}", RawMutableSpace(m), **t)
             }
