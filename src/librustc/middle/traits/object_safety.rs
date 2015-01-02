@@ -38,17 +38,16 @@ pub enum ObjectSafetyViolation<'tcx> {
 /// Reasons a method might not be object-safe.
 #[deriving(Copy,Clone,Show)]
 pub enum MethodViolationCode {
-    /// fn(self),
+    /// e.g., `fn(self)`
     ByValueSelf,
 
-    // fn foo()
+    /// e.g., `fn foo()`
     StaticMethod,
 
-    // fn foo(&self, x: Self)
-    // fn foo(&self) -> Self
+    /// e.g., `fn foo(&self, x: Self)` or `fn foo(&self) -> Self`
     ReferencesSelf,
 
-    // fn foo<A>(),
+    /// e.g., `fn foo<A>()`
     Generic,
 }
 
