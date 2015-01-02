@@ -447,7 +447,7 @@ impl<'tcx> Combineable<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct CombineFields<'a, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'tcx>,
     pub a_is_expected: bool,

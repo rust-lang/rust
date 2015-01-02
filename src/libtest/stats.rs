@@ -126,7 +126,7 @@ pub trait Stats <T: FloatMath + FromPrimitive> for Sized? {
 }
 
 /// Extracted collection of all the summary statistics of a sample set.
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 #[allow(missing_docs)]
 pub struct Summary<T> {
     pub sum: T,

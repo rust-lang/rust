@@ -7807,7 +7807,7 @@ pub mod grapheme {
     use core::result::Result::{Ok, Err};
 
     #[allow(non_camel_case_types)]
-    #[deriving(Clone)]
+    #[derive(Clone)]
     pub enum GraphemeCat {
         GC_LV,
         GC_LVT,

@@ -22,7 +22,7 @@ use parse::token;
 use ptr::P;
 
 /// The specific types of unsupported syntax
-#[deriving(Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, PartialEq, Eq, Hash)]
 pub enum ObsoleteSyntax {
     ObsoleteOwnedType,
     ObsoleteOwnedExpr,

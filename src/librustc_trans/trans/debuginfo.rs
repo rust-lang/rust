@@ -248,7 +248,7 @@ const FLAGS_NONE: c_uint = 0;
 //  Public Interface of debuginfo module
 //=-----------------------------------------------------------------------------
 
-#[deriving(Copy, Show, Hash, Eq, PartialEq, Clone)]
+#[derive(Copy, Show, Hash, Eq, PartialEq, Clone)]
 struct UniqueTypeId(ast::Name);
 
 // The TypeMap is where the CrateDebugContext holds the type metadata nodes
@@ -2380,7 +2380,7 @@ impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum EnumDiscriminantInfo {
     RegularDiscriminant(DIType),
     OptimizedDiscriminant,
@@ -3107,7 +3107,7 @@ impl MetadataCreationResult {
     }
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 enum DebugLocation {
     KnownLocation { scope: DIScope, line: uint, col: uint },
     UnknownLocation

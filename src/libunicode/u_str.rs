@@ -99,7 +99,7 @@ impl UnicodeStr for str {
 }
 
 /// External iterator for grapheme clusters and byte offsets.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct GraphemeIndices<'a> {
     start_offset: uint,
     iter: Graphemes<'a>,
@@ -126,7 +126,7 @@ impl<'a> DoubleEndedIterator<(uint, &'a str)> for GraphemeIndices<'a> {
 
 /// External iterator for a string's
 /// [grapheme clusters](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries).
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Graphemes<'a> {
     string: &'a str,
     extended: bool,
@@ -135,7 +135,7 @@ pub struct Graphemes<'a> {
 }
 
 // state machine for cluster boundary rules
-#[deriving(PartialEq,Eq)]
+#[derive(PartialEq,Eq)]
 enum GraphemeState {
     Start,
     FindExtend,
@@ -401,12 +401,12 @@ pub fn is_utf16(v: &[u16]) -> bool {
 
 /// An iterator that decodes UTF-16 encoded codepoints from a vector
 /// of `u16`s.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Utf16Items<'a> {
     iter: slice::Iter<'a, u16>
 }
 /// The possibilities for values decoded from a `u16` stream.
-#[deriving(PartialEq, Eq, Clone, Show)]
+#[derive(PartialEq, Eq, Clone, Show)]
 pub enum Utf16Item {
     /// A valid codepoint.
     ScalarValue(char),
@@ -497,7 +497,7 @@ pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
 }
 
 /// Iterator adaptor for encoding `char`s to UTF-16.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Utf16Encoder<I> {
     chars: I,
     extra: u16

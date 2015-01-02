@@ -99,7 +99,7 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
     }
 
     if stmts.len() == 0 {
-        cx.span_bug(trait_span, "#[deriving(Hash)] needs at least one field");
+        cx.span_bug(trait_span, "#[derive(Hash)] needs at least one field");
     }
 
     cx.expr_block(cx.block(trait_span, stmts, None))

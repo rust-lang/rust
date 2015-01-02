@@ -42,7 +42,7 @@ use syntax::ast;
 pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_attrs};
 
 /// Specification of a single lint.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Lint {
     /// A string identifier for the lint.
     ///
@@ -174,7 +174,7 @@ pub trait LintPass {
 pub type LintPassObject = Box<LintPass + 'static>;
 
 /// Identifies a lint known to the compiler.
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct LintId {
     // Identity is based on pointer equality of this field.
     lint: &'static Lint,
@@ -210,7 +210,7 @@ impl LintId {
 }
 
 /// Setting for how to handle a lint.
-#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Level {
     Allow, Warn, Deny, Forbid
 }
@@ -239,7 +239,7 @@ impl Level {
 }
 
 /// How a lint level was set.
-#[deriving(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LintSource {
     /// Lint is at the default level as declared
     /// in rustc or a plugin.

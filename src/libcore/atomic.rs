@@ -62,7 +62,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// Rust's memory orderings are [the same as
 /// C++'s](http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync).
 #[stable]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
     #[stable]

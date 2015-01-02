@@ -25,7 +25,7 @@ use trans::type_::Type;
 use std::cmp;
 use std::iter::repeat;
 
-#[deriving(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum RegClass {
     NoClass,
     Int,

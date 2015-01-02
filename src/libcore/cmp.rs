@@ -104,7 +104,7 @@ pub trait Eq for Sized?: PartialEq<Self> {
 }
 
 /// An ordering is, e.g, a result of a comparison between two values.
-#[deriving(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Show)]
 #[stable]
 pub enum Ordering {
     /// An ordering where a compared value is less [than another].

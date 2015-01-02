@@ -26,7 +26,7 @@ pub struct CFG {
     pub exit: CFGIndex,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct CFGNodeData {
     pub id: ast::NodeId
 }

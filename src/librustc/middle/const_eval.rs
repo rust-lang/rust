@@ -62,7 +62,7 @@ use std::collections::hash_map::Entry::Vacant;
 //   - Non-constants: everything else.
 //
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum constness {
     integral_const,
     general_const,
@@ -294,7 +294,7 @@ pub fn process_crate(tcx: &ty::ctxt) {
 
 // FIXME (#33): this doesn't handle big integer/float literals correctly
 // (nor does the rest of our literal handling).
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum const_val {
     const_float(f64),
     const_int(i64),

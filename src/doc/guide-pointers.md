@@ -612,7 +612,7 @@ Sometimes, you need a recursive data structure. The simplest is known as a
 
 
 ```{rust}
-#[deriving(Show)]
+#[derive(Show)]
 enum List<T> {
     Cons(T, Box<List<T>>),
     Nil,

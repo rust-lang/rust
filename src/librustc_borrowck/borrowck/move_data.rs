@@ -76,7 +76,7 @@ pub struct FlowedMoveData<'a, 'tcx: 'a> {
 }
 
 /// Index into `MoveData.paths`, used like a pointer
-#[deriving(Copy, PartialEq, Eq, PartialOrd, Ord, Show)]
+#[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Show)]
 pub struct MovePathIndex(uint);
 
 impl MovePathIndex {
@@ -96,7 +96,7 @@ static InvalidMovePathIndex: MovePathIndex =
     MovePathIndex(uint::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub struct MoveIndex(uint);
 
 impl MoveIndex {
@@ -128,7 +128,7 @@ pub struct MovePath<'tcx> {
     pub next_sibling: MovePathIndex,
 }
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum MoveKind {
     Declared,   // When declared, variables start out "moved".
     MoveExpr,   // Expression or binding that moves a variable
@@ -136,7 +136,7 @@ pub enum MoveKind {
     Captured    // Closure creation that moves a value
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Move {
     /// Path being moved.
     pub path: MovePathIndex,
@@ -151,7 +151,7 @@ pub struct Move {
     pub next_move: MoveIndex
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Assignment {
     /// Path being assigned.
     pub path: MovePathIndex,
@@ -163,7 +163,7 @@ pub struct Assignment {
     pub span: Span,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct VariantMatch {
     /// downcast to the variant.
     pub path: MovePathIndex,
@@ -178,12 +178,12 @@ pub struct VariantMatch {
     pub mode: euv::MatchMode
 }
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct MoveDataFlowOperator;
 
 pub type MoveDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, MoveDataFlowOperator>;
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct AssignDataFlowOperator;
 
 pub type AssignDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, AssignDataFlowOperator>;

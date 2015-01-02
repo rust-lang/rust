@@ -28,7 +28,7 @@ use std::path::BytesContainer;
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -43,7 +43,7 @@ pub enum BinOpToken {
 }
 
 /// A delimeter token
-#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
     Paren,
@@ -53,14 +53,14 @@ pub enum DelimToken {
     Brace,
 }
 
-#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum IdentStyle {
     /// `::` follows the identifier with no whitespace in-between.
     ModName,
     Plain,
 }
 
-#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
@@ -86,7 +86,7 @@ impl Lit {
 }
 
 #[allow(non_camel_case_types)]
-#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show)]
 pub enum Token {
     /* Expression-operator symbols. */
     Eq,
@@ -334,7 +334,7 @@ impl Token {
     }
 }
 
-#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(P<ast::Item>),
@@ -430,7 +430,7 @@ macro_rules! declare_special_idents_and_keywords {(
         pub use self::Keyword::*;
         use ast;
 
-        #[deriving(Copy)]
+        #[derive(Copy)]
         pub enum Keyword {
             $( $sk_variant, )*
             $( $rk_variant, )*
@@ -580,7 +580,7 @@ pub fn reset_ident_interner() {
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until task death
 /// somehow.
-#[deriving(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
+#[derive(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
     string: RcStr,
 }

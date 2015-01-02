@@ -31,7 +31,7 @@ use io;
 
 // FIXME: move uses of Arc and deadline tracking to std::io
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum SocketStatus {
     Readable,
     Writable,

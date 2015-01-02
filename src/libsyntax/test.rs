@@ -282,7 +282,7 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     })
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum HasTestSignature {
     Yes,
     No,

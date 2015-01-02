@@ -79,7 +79,7 @@ use self::Continuation::{Continue, Finished};
 /// force this degenerate behaviour to occur on every operation. While the total amount of work
 /// done on each operation isn't *catastrophic*, and *is* still bounded by O(B log<sub>B</sub>n),
 /// it is certainly much slower when it does.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct BTreeMap<K, V> {
     root: Node<K, V>,

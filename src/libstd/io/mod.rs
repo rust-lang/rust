@@ -300,7 +300,7 @@ pub type IoResult<T> = Result<T, IoError>;
 /// # FIXME
 ///
 /// Is something like this sufficient? It's kind of archaic
-#[deriving(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct IoError {
     /// An enumeration which can be matched against for determining the flavor
     /// of error.
@@ -367,7 +367,7 @@ impl FromError<IoError> for Box<Error> {
 }
 
 /// A list specifying general categories of I/O error.
-#[deriving(Copy, PartialEq, Eq, Clone, Show)]
+#[derive(Copy, PartialEq, Eq, Clone, Show)]
 pub enum IoErrorKind {
     /// Any I/O error not part of this list.
     OtherIoError,
@@ -1560,7 +1560,7 @@ impl<T: Buffer> BufferPrelude for T {
 
 /// When seeking, the resulting cursor is offset from a base by the offset given
 /// to the `seek` function. The base used is specified by this enumeration.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
     SeekSet,
@@ -1683,7 +1683,7 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
 /// A mode specifies how a file should be opened or created. These modes are
 /// passed to `File::open_mode` and are used to control where the file is
 /// positioned when it is initially opened.
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FileMode {
     /// Opens a file positioned at the beginning.
     Open,
@@ -1695,7 +1695,7 @@ pub enum FileMode {
 
 /// Access permissions with which the file should be opened. `File`s
 /// opened with `Read` will return an error if written to.
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FileAccess {
     /// Read-only access, requests to write will result in an error
     Read,
@@ -1706,7 +1706,7 @@ pub enum FileAccess {
 }
 
 /// Different kinds of files which can be identified by a call to stat
-#[deriving(Copy, PartialEq, Show, Hash, Clone)]
+#[derive(Copy, PartialEq, Show, Hash, Clone)]
 pub enum FileType {
     /// This is a normal file, corresponding to `S_IFREG`
     RegularFile,
@@ -1744,7 +1744,7 @@ pub enum FileType {
 /// println!("byte size: {}", info.size);
 /// # }
 /// ```
-#[deriving(Copy, Hash)]
+#[derive(Copy, Hash)]
 pub struct FileStat {
     /// The size of the file, in bytes
     pub size: u64,
@@ -1783,7 +1783,7 @@ pub struct FileStat {
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
 #[unstable]
-#[deriving(Copy, Hash)]
+#[derive(Copy, Hash)]
 pub struct UnstableFileStat {
     /// The ID of the device containing the file.
     pub device: u64,
@@ -1922,7 +1922,7 @@ mod tests {
     use prelude::{Ok, Vec, Buffer, CloneSliceExt};
     use uint;
 
-    #[deriving(Clone, PartialEq, Show)]
+    #[derive(Clone, PartialEq, Show)]
     enum BadReaderBehavior {
         GoodBehavior(uint),
         BadBehavior(uint)

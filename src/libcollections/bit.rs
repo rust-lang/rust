@@ -1020,7 +1020,7 @@ impl cmp::Eq for Bitv {}
 
 /// An iterator for `Bitv`.
 #[stable]
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Iter<'a> {
     bitv: &'a Bitv,
     next_idx: uint,
@@ -1117,7 +1117,7 @@ impl<'a> RandomAccessIterator<bool> for Iter<'a> {
 /// let bv: Bitv = s.into_bitv();
 /// assert!(bv[3]);
 /// ```
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct BitvSet {
     bitv: Bitv,
@@ -1762,7 +1762,7 @@ impl<S: hash::Writer> hash::Hash<S> for BitvSet {
 }
 
 /// An iterator for `BitvSet`.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct SetIter<'a> {
     set: &'a BitvSet,
@@ -1770,7 +1770,7 @@ pub struct SetIter<'a> {
 }
 
 /// An iterator combining two `BitvSet` iterators.
-#[deriving(Clone)]
+#[derive(Clone)]
 struct TwoBitPositions<'a> {
     set: &'a BitvSet,
     other: &'a BitvSet,
