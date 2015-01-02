@@ -194,13 +194,13 @@ pub trait Folder : Sized {
         noop_fold_local(l, self)
     }
 
-    fn fold_mac(&mut self, _macro: Mac) -> Mac {
+    fn fold_mac(&mut self, _mac: Mac) -> Mac {
         panic!("fold_mac disabled by default");
         // NB: see note about macros above.
         // if you really want a folder that
         // works on macros, use this
         // definition in your trait impl:
-        // fold::noop_fold_mac(_macro, self)
+        // fold::noop_fold_mac(_mac, self)
     }
 
     fn fold_explicit_self(&mut self, es: ExplicitSelf) -> ExplicitSelf {
@@ -1487,8 +1487,8 @@ mod test {
         fn fold_ident(&mut self, _: ast::Ident) -> ast::Ident {
             token::str_to_ident("zz")
         }
-        fn fold_mac(&mut self, macro: ast::Mac) -> ast::Mac {
-            fold::noop_fold_mac(macro, self)
+        fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+            fold::noop_fold_mac(mac, self)
         }
     }
 

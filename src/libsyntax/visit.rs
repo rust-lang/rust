@@ -115,13 +115,13 @@ pub trait Visitor<'v> : Sized {
     fn visit_explicit_self(&mut self, es: &'v ExplicitSelf) {
         walk_explicit_self(self, es)
     }
-    fn visit_mac(&mut self, _macro: &'v Mac) {
+    fn visit_mac(&mut self, _mac: &'v Mac) {
         panic!("visit_mac disabled by default");
         // NB: see note about macros above.
         // if you really want a visitor that
         // works on macros, use this
         // definition in your trait impl:
-        // visit::walk_mac(self, _macro)
+        // visit::walk_mac(self, _mac)
     }
     fn visit_path(&mut self, path: &'v Path, _id: ast::NodeId) {
         walk_path(self, path)
@@ -334,7 +334,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                 visitor.visit_trait_item(method)
             }
         }
-        ItemMac(ref macro) => visitor.visit_mac(macro),
+        ItemMac(ref mac) => visitor.visit_mac(mac),
     }
     for attr in item.attrs.iter() {
         visitor.visit_attribute(attr);
@@ -546,7 +546,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
                 visitor.visit_pat(&**postpattern)
             }
         }
-        PatMac(ref macro) => visitor.visit_mac(macro),
+        PatMac(ref mac) => visitor.visit_mac(mac),
     }
 }
 
@@ -746,7 +746,7 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
         StmtExpr(ref expression, _) | StmtSemi(ref expression, _) => {
             visitor.visit_expr(&**expression)
         }
-        StmtMac(ref macro, _) => visitor.visit_mac(&**macro),
+        StmtMac(ref mac, _) => visitor.visit_mac(&**mac),
     }
 }
 
@@ -893,7 +893,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprRet(ref optional_expression) => {
             walk_expr_opt(visitor, optional_expression)
         }
-        ExprMac(ref macro) => visitor.visit_mac(macro),
+        ExprMac(ref mac) => visitor.visit_mac(mac),
         ExprParen(ref subexpression) => {
             visitor.visit_expr(&**subexpression)
         }

@@ -165,8 +165,8 @@ struct MacroVisitor<'a> {
 }
 
 impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
-    fn visit_mac(&mut self, macro: &ast::Mac) {
-        let ast::MacInvocTT(ref path, _, _) = macro.node;
+    fn visit_mac(&mut self, mac: &ast::Mac) {
+        let ast::MacInvocTT(ref path, _, _) = mac.node;
         let id = path.segments.last().unwrap().identifier;
 
         if id == token::str_to_ident("macro_rules") {
