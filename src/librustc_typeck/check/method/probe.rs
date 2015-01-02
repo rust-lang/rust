@@ -267,6 +267,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             return; // already visited
         }
 
+        debug!("assemble_inherent_impl_probe {}", impl_def_id);
+
         let method = match impl_method(self.tcx(), impl_def_id, self.method_name) {
             Some(m) => m,
             None => { return; } // No method with correct name on this impl
@@ -432,7 +434,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 
     fn assemble_extension_candidates_for_trait(&mut self,
-                                           trait_def_id: ast::DefId) {
+                                               trait_def_id: ast::DefId) {
         debug!("assemble_extension_candidates_for_trait: trait_def_id={}",
                trait_def_id.repr(self.tcx()));
 
@@ -984,6 +986,7 @@ fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                       -> Option<(uint, Rc<ty::Method<'tcx>>)>
 {
     let trait_items = ty::trait_items(tcx, trait_def_id);
+    debug!("trait_method; items: {}", trait_items);
     trait_items
         .iter()
         .filter(|item|
