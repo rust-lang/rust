@@ -121,7 +121,7 @@ mat!{match_basic_110, r"a[b-d]", r"aac", Some((1, 3))}
 mat!{match_basic_111, r"a[-b]", r"a-", Some((0, 2))}
 mat!{match_basic_112, r"a[b-]", r"a-", Some((0, 2))}
 mat!{match_basic_113, r"a]", r"a]", Some((0, 2))}
-mat!{match_basic_114, r"a[]]b", r"a]b", Some((0, 3))}
+mat!{match_basic_114, r"a.index(&FullRange)]b", r"a]b", Some((0, 3))}
 mat!{match_basic_115, r"a[^bc]d", r"aed", Some((0, 3))}
 mat!{match_basic_116, r"a[^-b]c", r"adc", Some((0, 3))}
 mat!{match_basic_117, r"a[^]b]c", r"adc", Some((0, 3))}

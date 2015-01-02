@@ -199,7 +199,7 @@ impl Encodable for Ident {
 #[cfg(stage0)]
 impl<D: Decoder<E>, E> Decodable<D, E> for Ident {
     fn decode(d: &mut D) -> Result<Ident, E> {
-        Ok(str_to_ident(try!(d.read_str())[]))
+        Ok(str_to_ident(try!(d.read_str()).index(&FullRange)))
     }
 }
 

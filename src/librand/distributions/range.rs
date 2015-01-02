@@ -12,7 +12,7 @@
 
 // this is surprisingly complicated to be both generic & correct
 
-use core::prelude::*;
+use core::prelude::{PartialOrd};
 use core::num::Int;
 
 use Rng;

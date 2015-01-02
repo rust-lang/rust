@@ -903,7 +903,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let all_bounds =
             util::transitive_bounds(
-                self.tcx(), caller_trait_refs[]);
+                self.tcx(), caller_trait_refs.index(&FullRange));
 
         let matching_bounds =
             all_bounds.filter(
@@ -1523,7 +1523,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.bug(
                     format!(
                         "asked to assemble builtin bounds of unexpected type: {}",
-                        self_ty.repr(self.tcx()))[]);
+                        self_ty.repr(self.tcx())).index(&FullRange));
             }
         };
 
@@ -1693,7 +1693,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
                     format!("builtin bound for {} was ambig",
-                            obligation.repr(self.tcx()))[]);
+                            obligation.repr(self.tcx())).index(&FullRange));
             }
         }
     }
@@ -1872,7 +1872,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
                     format!("Fn pointer candidate for inappropriate self type: {}",
-                            self_ty.repr(self.tcx()))[]);
+                            self_ty.repr(self.tcx())).index(&FullRange));
             }
         };
 
@@ -2002,7 +2002,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.bug(
                     format!("Impl {} was matchable against {} but now is not",
                             impl_def_id.repr(self.tcx()),
-                            obligation.repr(self.tcx()))[]);
+                            obligation.repr(self.tcx())).index(&FullRange));
             }
         }
     }

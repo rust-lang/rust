@@ -564,7 +564,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
     pub fn mod_path(&self) -> Vec<ast::Ident> {
         let mut v = Vec::new();
-        v.push(token::str_to_ident(self.ecfg.crate_name[]));
+        v.push(token::str_to_ident(self.ecfg.crate_name.index(&FullRange)));
         v.extend(self.mod_path.iter().map(|a| *a));
         return v;
     }
@@ -573,7 +573,7 @@ impl<'a> ExtCtxt<'a> {
         if self.recursion_count > self.ecfg.recursion_limit {
             self.span_fatal(ei.call_site,
                             format!("recursion limit reached while expanding the macro `{}`",
-                                    ei.callee.name)[]);
+                                    ei.callee.name).index(&FullRange));
         }
 
         let mut call_site = ei.call_site;
@@ -684,7 +684,7 @@ pub fn check_zero_tts(cx: &ExtCtxt,
                       tts: &[ast::TokenTree],
                       name: &str) {
     if tts.len() != 0 {
-        cx.span_err(sp, format!("{} takes no arguments", name)[]);
+        cx.span_err(sp, format!("{} takes no arguments", name).index(&FullRange));
     }
 }
 
@@ -697,12 +697,12 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
                                -> Option<String> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
-        cx.span_err(sp, format!("{} takes 1 argument", name)[]);
+        cx.span_err(sp, format!("{} takes 1 argument", name).index(&FullRange));
         return None
     }
     let ret = cx.expander().fold_expr(p.parse_expr());
     if p.token != token::Eof {
-        cx.span_err(sp, format!("{} takes 1 argument", name)[]);
+        cx.span_err(sp, format!("{} takes 1 argument", name).index(&FullRange));
     }
     expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| {
         s.get().to_string()

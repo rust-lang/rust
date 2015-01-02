@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that is a slicing expr[..] fails, the correct cleanups happen.
+// Test that is a slicing expr.index(&(..)) fails, the correct cleanups happen.
 
 #![feature(slicing_syntax)]
 

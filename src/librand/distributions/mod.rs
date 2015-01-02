@@ -24,7 +24,7 @@ use core::num::{Float, Int};
 
 use {Rng, Rand};
 
-pub use self::range::Range;
+pub use self::range::Range as RandRange;
 pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
 pub use self::normal::{Normal, LogNormal};
 pub use self::exponential::Exp;
@@ -104,7 +104,7 @@ pub struct Weighted<T> {
 /// ```
 pub struct WeightedChoice<'a, T:'a> {
     items: &'a mut [Weighted<T>],
-    weight_range: Range<uint>
+    weight_range: RandRange<uint>
 }
 
 impl<'a, T: Clone> WeightedChoice<'a, T> {
@@ -138,7 +138,7 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
             items: items,
             // we're likely to be generating numbers in this range
             // relatively often, so might as well cache it
-            weight_range: Range::new(0, running_total)
+            weight_range: RandRange::new(0, running_total)
         }
     }
 }

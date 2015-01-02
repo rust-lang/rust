@@ -16,8 +16,8 @@ struct Foo;
 
 fn main() {
     let x = Foo;
-    x[]; //~ ERROR cannot take a slice of a value with type `Foo`
-    x[Foo..]; //~ ERROR cannot take a slice of a value with type `Foo`
-    x[..Foo]; //~ ERROR cannot take a slice of a value with type `Foo`
-    x[Foo..Foo]; //~ ERROR cannot take a slice of a value with type `Foo`
+    x.index(&FullRange); //~ ERROR cannot take a slice of a value with type `Foo`
+    x.index(&(Foo..)); //~ ERROR cannot take a slice of a value with type `Foo`
+    x.index(&(0..Foo)); //~ ERROR cannot take a slice of a value with type `Foo`
+    x.index(&(Foo..Foo)); //~ ERROR cannot take a slice of a value with type `Foo`
 }

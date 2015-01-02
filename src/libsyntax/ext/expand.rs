@@ -293,7 +293,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                     fld.cx.span_err(
                         pth.span,
                         format!("macro undefined: '{}!'",
-                                extnamestr.get())[]);
+                                extnamestr.get()).index(&FullRange));
 
                     // let compilation continue
                     None
@@ -309,7 +309,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                                 },
                             });
                         let fm = fresh_mark();
-                        let marked_before = mark_tts(tts[], fm);
+                        let marked_before = mark_tts(tts.index(&FullRange), fm);
 
                         // The span that we pass to the expanders we want to
                         // be the root of the call stack. That's the most
@@ -320,7 +320,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                         let opt_parsed = {
                             let expanded = expandfun.expand(fld.cx,
                                                             mac_span,
-                                                            marked_before[]);
+                                                            marked_before.index(&FullRange));
                             parse_thunk(expanded)
                         };
                         let parsed = match opt_parsed {
@@ -329,8 +329,8 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                                 fld.cx.span_err(
                                     pth.span,
                                     format!("non-expression macro in expression position: {}",
-                                            extnamestr.get()[]
-                                            )[]);
+                                            extnamestr.get().index(&FullRange)
+                                            ).index(&FullRange));
                                 return None;
                             }
                         };
@@ -340,7 +340,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                         fld.cx.span_err(
                             pth.span,
                             format!("'{}' is not a tt-style macro",
-                                    extnamestr.get())[]);
+                                    extnamestr.get()).index(&FullRange));
                         None
                     }
                 }
@@ -445,7 +445,7 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
             if valid_ident {
                 fld.cx.mod_push(it.ident);
             }
-            let macro_escape = contains_macro_escape(new_attrs[]);
+            let macro_escape = contains_macro_escape(new_attrs.index(&FullRange));
             let result = with_exts_frame!(fld.cx.syntax_env,
                                           macro_escape,
                                           noop_fold_item(it, fld));
@@ -553,7 +553,7 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
             None => {
                 fld.cx.span_err(path_span,
                                 format!("macro undefined: '{}!'",
-                                        extnamestr)[]);
+                                        extnamestr).index(&FullRange));
                 // let compilation continue
                 return SmallVector::zero();
             }
@@ -566,7 +566,7 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
                                       format!("macro {}! expects no ident argument, \
                                         given '{}'",
                                       extnamestr,
-                                      token::get_ident(it.ident))[]);
+                                      token::get_ident(it.ident)).index(&FullRange));
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -578,14 +578,14 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
                         }
                     });
                     // mark before expansion:
-                    let marked_before = mark_tts(tts[], fm);
-                    expander.expand(fld.cx, it.span, marked_before[])
+                    let marked_before = mark_tts(tts.index(&FullRange), fm);
+                    expander.expand(fld.cx, it.span, marked_before.index(&FullRange))
                 }
                 IdentTT(ref expander, span) => {
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
                                         format!("macro {}! expects an ident argument",
-                                                extnamestr.get())[]);
+                                                extnamestr.get()).index(&FullRange));
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -597,14 +597,14 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
                         }
                     });
                     // mark before expansion:
-                    let marked_tts = mark_tts(tts[], fm);
+                    let marked_tts = mark_tts(tts.index(&FullRange), fm);
                     expander.expand(fld.cx, it.span, it.ident, marked_tts)
                 }
                 LetSyntaxTT(ref expander, span) => {
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
                                         format!("macro {}! expects an ident argument",
-                                                extnamestr.get())[]);
+                                                extnamestr.get()).index(&FullRange));
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -621,7 +621,7 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
                 _ => {
                     fld.cx.span_err(it.span,
                                     format!("{}! is not legal in item position",
-                                            extnamestr.get())[]);
+                                            extnamestr.get()).index(&FullRange));
                     return SmallVector::zero();
                 }
             }
@@ -639,8 +639,8 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
             // result of expanding a LetSyntaxTT, and thus doesn't
             // need to be marked. Not that it could be marked anyway.
             // create issue to recommend refactoring here?
-            fld.cx.syntax_env.insert(intern(name[]), ext);
-            if attr::contains_name(it.attrs[], "macro_export") {
+            fld.cx.syntax_env.insert(intern(name.index(&FullRange)), ext);
+            if attr::contains_name(it.attrs.index(&FullRange), "macro_export") {
                 fld.cx.exported_macros.push(it);
             }
             SmallVector::zero()
@@ -654,7 +654,7 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
         Right(None) => {
             fld.cx.span_err(path_span,
                             format!("non-item macro in item position: {}",
-                                    extnamestr.get())[]);
+                                    extnamestr.get()).index(&FullRange));
             return SmallVector::zero();
         }
     };
@@ -903,7 +903,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
             None => {
                 fld.cx.span_err(pth.span,
                                 format!("macro undefined: '{}!'",
-                                        extnamestr)[]);
+                                        extnamestr).index(&FullRange));
                 // let compilation continue
                 return DummyResult::raw_pat(span);
             }
@@ -920,11 +920,11 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                     });
 
                     let fm = fresh_mark();
-                    let marked_before = mark_tts(tts[], fm);
+                    let marked_before = mark_tts(tts.index(&FullRange), fm);
                     let mac_span = fld.cx.original_span();
                     let expanded = match expander.expand(fld.cx,
                                         mac_span,
-                                        marked_before[]).make_pat() {
+                                        marked_before.index(&FullRange)).make_pat() {
                         Some(e) => e,
                         None => {
                             fld.cx.span_err(
@@ -932,7 +932,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                                 format!(
                                     "non-pattern macro in pattern position: {}",
                                     extnamestr.get()
-                                )[]
+                                ).index(&FullRange)
                             );
                             return DummyResult::raw_pat(span);
                         }
@@ -944,7 +944,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                 _ => {
                     fld.cx.span_err(span,
                                     format!("{}! is not legal in pattern position",
-                                            extnamestr.get())[]);
+                                            extnamestr.get()).index(&FullRange));
                     return DummyResult::raw_pat(span);
                 }
             }
@@ -1237,7 +1237,7 @@ impl Folder for Marker {
             node: match node {
                 MacInvocTT(path, tts, ctxt) => {
                     MacInvocTT(self.fold_path(path),
-                               self.fold_tts(tts[]),
+                               self.fold_tts(tts.index(&FullRange)),
                                mtwt::apply_mark(self.mark, ctxt))
                 }
             },
@@ -1414,9 +1414,9 @@ mod test {
         let attr2 = make_dummy_attr ("bar");
         let escape_attr = make_dummy_attr ("macro_escape");
         let attrs1 = vec!(attr1.clone(), escape_attr, attr2.clone());
-        assert_eq!(contains_macro_escape(attrs1[]),true);
+        assert_eq!(contains_macro_escape(attrs1.index(&FullRange)),true);
         let attrs2 = vec!(attr1,attr2);
-        assert_eq!(contains_macro_escape(attrs2[]),false);
+        assert_eq!(contains_macro_escape(attrs2.index(&FullRange)),false);
     }
 
     // make a MetaWord outer attribute with the given name
@@ -1728,7 +1728,7 @@ foo_module!();
                 let string = ident.get();
                 "xx" == string
             }).collect();
-        let cxbinds: &[&ast::Ident] = cxbinds[];
+        let cxbinds: &[&ast::Ident] = cxbinds.index(&FullRange);
         let cxbind = match cxbinds {
             [b] => b,
             _ => panic!("expected just one binding for ext_cx")

@@ -676,7 +676,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
                                                .unwrap()
                                                .to_string();
 
-    script_str.push_str(format!("command script import {}\n", rust_pp_module_abs_path[])[]);
+    script_str.push_str(format!("command script import {}\n", rust_pp_module_abs_path.index(&FullRange))[]);
     script_str.push_str("type summary add --no-value ");
     script_str.push_str("--python-function lldb_rust_formatters.print_val ");
     script_str.push_str("-x \".*\" --category Rust\n");
@@ -910,7 +910,7 @@ fn check_error_patterns(props: &TestProps,
     if done { return; }
 
     let missing_patterns =
-        props.error_patterns[next_err_idx..];
+        props.error_patterns.index(&(next_err_idx..));
     if missing_patterns.len() == 1u {
         fatal_proc_rec(format!("error pattern '{}' not found!",
                               missing_patterns[0]).as_slice(),
