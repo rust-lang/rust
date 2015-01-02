@@ -1709,6 +1709,7 @@ pub struct MacroDef {
     pub span: Span,
     pub imported_from: Option<Ident>,
     pub export: bool,
+    pub use_locally: bool,
     pub body: Vec<TokenTree>,
 }
 

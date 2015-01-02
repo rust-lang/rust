@@ -87,8 +87,8 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         }
 
         // Parse the attributes relating to macro / plugin loading.
-        let mut load_macros = false;
         let mut load_registrar = false;
+        let mut macro_selection = Some(HashSet::new());  // None => load all
         let mut reexport = HashSet::new();
         for attr in vi.attrs.iter() {
             let mut used = true;
@@ -98,7 +98,22 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
                                        #[macro_use], #[plugin], and/or #[no_link]");
                 }
                 "plugin" => load_registrar = true,
-                "macro_use" => load_macros = true,
+                "macro_use" => {
+                    let names = attr.meta_item_list();
+                    if names.is_none() {
+                        // no names => load all
+                        macro_selection = None;
+                    }
+                    if let (Some(sel), Some(names)) = (macro_selection.as_mut(), names) {
+                        for name in names.iter() {
+                            if let ast::MetaWord(ref name) = name.node {
+                                sel.insert(name.clone());
+                            } else {
+                                self.sess.span_err(name.span, "bad macro import");
+                            }
+                        }
+                    }
+                }
                 "macro_reexport" => {
                     let names = match attr.meta_item_list() {
                         Some(names) => names,
@@ -126,6 +141,11 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         let mut macros = vec![];
         let mut registrar = None;
 
+        let load_macros = match macro_selection.as_ref() {
+            Some(sel) => sel.len() != 0 || reexport.len() != 0,
+            None => true,
+        };
+
         if load_macros || load_registrar {
             let pmd = self.reader.read_plugin_metadata(vi);
             if load_macros {
@@ -137,9 +157,12 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         }
 
         for mut def in macros.into_iter() {
-            if reexport.contains(&token::get_ident(def.ident)) {
-                def.export = true;
-            }
+            let name = token::get_ident(def.ident);
+            def.use_locally = match macro_selection.as_ref() {
+                None => true,
+                Some(sel) => sel.contains(&name),
+            };
+            def.export = reexport.contains(&name);
             self.plugins.macros.push(def);
         }
 

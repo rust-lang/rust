@@ -574,8 +574,10 @@ impl<'a> ExtCtxt<'a> {
         if def.export {
             self.exported_macros.push(def.clone());
         }
-        let ext = macro_rules::compile(self, &def);
-        self.syntax_env.insert(def.ident.name, ext);
+        if def.use_locally {
+            let ext = macro_rules::compile(self, &def);
+            self.syntax_env.insert(def.ident.name, ext);
+        }
     }
 
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
