@@ -1248,18 +1248,6 @@ pub trait Float
     /// Returns the `1` value.
     fn one() -> Self;
 
-    /// Returns true if this value is NaN and false otherwise.
-    fn is_nan(self) -> bool;
-    /// Returns true if this value is positive infinity or negative infinity and
-    /// false otherwise.
-    fn is_infinite(self) -> bool;
-    /// Returns true if this number is neither infinite nor NaN.
-    fn is_finite(self) -> bool;
-    /// Returns true if this number is neither zero, infinite, denormal, or NaN.
-    fn is_normal(self) -> bool;
-    /// Returns the category that this number falls into.
-    fn classify(self) -> FpCategory;
-
     // FIXME (#5527): These should be associated constants
 
     /// Returns the number of binary digits of mantissa that this type supports.
@@ -1282,6 +1270,18 @@ pub trait Float
     fn min_pos_value(unused_self: Option<Self>) -> Self;
     /// Returns the largest finite value that this type can represent.
     fn max_value() -> Self;
+
+    /// Returns true if this value is NaN and false otherwise.
+    fn is_nan(self) -> bool;
+    /// Returns true if this value is positive infinity or negative infinity and
+    /// false otherwise.
+    fn is_infinite(self) -> bool;
+    /// Returns true if this number is neither infinite nor NaN.
+    fn is_finite(self) -> bool;
+    /// Returns true if this number is neither zero, infinite, denormal, or NaN.
+    fn is_normal(self) -> bool;
+    /// Returns the category that this number falls into.
+    fn classify(self) -> FpCategory;
 
     /// Returns the mantissa, exponent and sign as integers, respectively.
     fn integer_decode(self) -> (u64, i16, i8);
