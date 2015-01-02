@@ -13,9 +13,9 @@
 #![feature(macro_rules)]
 
 // shouldn't affect evaluation of $ex.
-macro_rules! bad_macro (($ex:expr) => (
+macro_rules! bad_macro { ($ex:expr) => (
     {match 9 {_x => $ex}}
-))
+)}
 
 fn main() {
     match 8 {

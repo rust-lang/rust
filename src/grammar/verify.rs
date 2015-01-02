@@ -268,7 +268,7 @@ fn main() {
         assert!(rustc_tok.sp == antlr_tok.sp, "{} and {} have different spans", rustc_tok,
                 antlr_tok);
 
-        macro_rules! matches (
+        macro_rules! matches {
             ( $($x:pat),+ ) => (
                 match rustc_tok.tok {
                     $($x => match antlr_tok.tok {
@@ -284,7 +284,7 @@ fn main() {
                     ref c => assert!(c == &antlr_tok.tok, "{} is not {}", rustc_tok, antlr_tok)
                 }
             )
-        );
+        }
 
         matches!(
             token::Literal(token::Byte(..), _),

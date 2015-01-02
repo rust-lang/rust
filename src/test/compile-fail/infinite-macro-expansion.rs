@@ -10,11 +10,9 @@
 
 #![feature(macro_rules)]
 
-macro_rules! recursive(
-      () => (
-                recursive!() //~ ERROR recursion limit reached while expanding the macro `recursive`
-              )
-      );
+macro_rules! recursive {
+    () => (recursive!()) //~ ERROR recursion limit reached while expanding the macro `recursive`
+}
 
 fn main() {
     recursive!()

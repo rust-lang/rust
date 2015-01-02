@@ -503,7 +503,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                                         "target type not found for const cast")
                 });
 
-        macro_rules! define_casts(
+        macro_rules! define_casts {
             ($val:ident, {
                 $($ty_pat:pat => (
                     $intermediate_ty:ty,
@@ -524,7 +524,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                 },)*
                 _ => Err("can't cast this type".to_string())
             })
-        );
+        }
 
         eval_const_expr_partial(tcx, &**base)
             .and_then(|val| define_casts!(val, {

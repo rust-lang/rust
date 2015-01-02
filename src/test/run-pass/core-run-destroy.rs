@@ -26,9 +26,9 @@ use std::str;
 use std::sync::mpsc::channel;
 use std::thread::Thread;
 
-macro_rules! succeed( ($e:expr) => (
+macro_rules! succeed { ($e:expr) => (
     match $e { Ok(..) => {}, Err(e) => panic!("panic: {}", e) }
-) );
+) }
 
 fn test_destroy_once() {
     let mut p = sleeper();

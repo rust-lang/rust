@@ -10,7 +10,7 @@
 
 #![feature(macro_rules)]
 
-macro_rules! foo ( () => ( x ) );
+macro_rules! foo { () => ( x ) }
 
 fn main() {
     let foo!() = 2;

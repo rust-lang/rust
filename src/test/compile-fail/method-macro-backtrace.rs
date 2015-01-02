@@ -12,9 +12,9 @@
 
 #![feature(macro_rules)]
 
-macro_rules! make_method ( ($name:ident) => (
-    fn $name(&self) { }
-));
+macro_rules! make_method {
+    ($name:ident) => ( fn $name(&self) { } )
+}
 
 struct S;
 

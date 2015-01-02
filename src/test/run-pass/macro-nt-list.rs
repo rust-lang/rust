@@ -10,15 +10,15 @@
 
 #![feature(macro_rules)]
 
-macro_rules! list (
+macro_rules! list {
     ( ($($id:ident),*) ) => (());
     ( [$($id:ident),*] ) => (());
     ( {$($id:ident),*} ) => (());
-);
+}
 
-macro_rules! tt_list (
+macro_rules! tt_list {
     ( ($($tt:tt),*) ) => (());
-);
+}
 
 pub fn main() {
     list!( () );

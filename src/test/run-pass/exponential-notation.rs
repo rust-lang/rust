@@ -15,7 +15,9 @@ use std::num::strconv::SignificantDigits::DigMax;
 use std::num::strconv::SignFormat::{SignAll, SignNeg};
 use std::num::strconv::float_to_str_common as to_string;
 
-macro_rules! t(($a:expr, $b:expr) => { { let (r, _) = $a; assert_eq!(r, $b.to_string()); } });
+macro_rules! t {
+    ($a:expr, $b:expr) => { { let (r, _) = $a; assert_eq!(r, $b.to_string()); } }
+}
 
 pub fn main() {
     // Basic usage

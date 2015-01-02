@@ -180,16 +180,16 @@ pub struct FrozenTupleStruct(pub int);
 pub struct LockedTupleStruct(pub int);
 
 #[macro_export]
-macro_rules! macro_test(
+macro_rules! macro_test {
     () => (deprecated());
-);
+}
 
 #[macro_export]
-macro_rules! macro_test_arg(
+macro_rules! macro_test_arg {
     ($func:expr) => ($func);
-);
+}
 
 #[macro_export]
-macro_rules! macro_test_arg_nested(
+macro_rules! macro_test_arg_nested {
     ($func:ident) => (macro_test_arg!($func()));
-);
+}

@@ -27,7 +27,7 @@ trait Test {
     fn get_mut(&mut self) -> &mut FooBar;
 }
 
-macro_rules! generate_test(($type_:path, $slf:ident, $field:expr) => (
+macro_rules! generate_test { ($type_:path, $slf:ident, $field:expr) => (
     impl Test for $type_ {
         fn get_immut(&$slf) -> &FooBar {
             &$field as &FooBar
@@ -37,7 +37,7 @@ macro_rules! generate_test(($type_:path, $slf:ident, $field:expr) => (
             &mut $field as &mut FooBar
         }
     }
-));
+)}
 
 generate_test!(Foo, self, self.bar);
 
