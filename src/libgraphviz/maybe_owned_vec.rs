@@ -124,7 +124,7 @@ impl<'b,T> AsSlice<T> for MaybeOwnedVector<'b,T> {
 
 impl<'a,T> FromIterator<T> for MaybeOwnedVector<'a,T> {
     #[allow(deprecated)]
-    fn from_iter<I:Iterator<T>>(iterator: I) -> MaybeOwnedVector<'a,T> {
+    fn from_iter<I:Iterator<Item=T>>(iterator: I) -> MaybeOwnedVector<'a,T> {
         // If we are building from scratch, might as well build the
         // most flexible variant.
         Growable(iterator.collect())
