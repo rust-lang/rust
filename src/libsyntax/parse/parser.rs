@@ -3628,13 +3628,9 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         let pat = self.parse_pat();
 
-        let mut ty = P(Ty {
-            id: ast::DUMMY_NODE_ID,
-            node: TyInfer,
-            span: mk_sp(lo, lo),
-        });
+        let mut ty = None;
         if self.eat(&token::Colon) {
-            ty = self.parse_ty_sum();
+            ty = Some(self.parse_ty_sum());
         }
         let init = self.parse_initializer();
         P(ast::Local {
