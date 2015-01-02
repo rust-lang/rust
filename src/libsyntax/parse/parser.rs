@@ -292,7 +292,7 @@ pub struct Parser<'a> {
     pub cfg: CrateConfig,
     /// the previous token or None (only stashed sometimes).
     pub last_token: Option<Box<token::Token>>,
-    pub buffer: [TokenAndSpan, ..4],
+    pub buffer: [TokenAndSpan; 4],
     pub buffer_start: int,
     pub buffer_end: int,
     pub tokens_consumed: uint,
@@ -1716,12 +1716,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn maybe_parse_fixed_length_of_vec(&mut self) -> Option<P<ast::Expr>> {
-        if self.check(&token::Comma) &&
-                self.look_ahead(1, |t| *t == token::DotDot) {
-            self.bump();
-            self.bump();
-            Some(self.parse_expr_res(RESTRICTION_NO_DOTS))
-        } else if self.check(&token::Semi) {
+        if self.check(&token::Semi) {
             self.bump();
             Some(self.parse_expr())
         } else {
@@ -2155,10 +2150,10 @@ impl<'a> Parser<'a> {
     }
 
     pub fn mk_range(&mut self,
-                    start: P<Expr>,
+                    start: Option<P<Expr>>,
                     end: Option<P<Expr>>)
                     -> ast::Expr_ {
-        ExprRange(Some(start), end)
+        ExprRange(start, end)
     }
 
     pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::Expr_ {
@@ -2277,15 +2272,7 @@ impl<'a> Parser<'a> {
                 } else {
                     // Nonempty vector.
                     let first_expr = self.parse_expr();
-                    if self.check(&token::Comma) &&
-                        self.look_ahead(1, |t| *t == token::DotDot) {
-                        // Repeating vector syntax: [ 0, ..512 ]
-                        self.bump();
-                        self.bump();
-                        let count = self.parse_expr();
-                        self.expect(&token::CloseDelim(token::Bracket));
-                        ex = ExprRepeat(first_expr, count);
-                    } else if self.check(&token::Semi) {
+                    if self.check(&token::Semi) {
                         // Repeating vector syntax: [ 0; 512 ]
                         self.bump();
                         let count = self.parse_expr();
@@ -2689,7 +2676,7 @@ impl<'a> Parser<'a> {
                 };
 
                 let hi = self.span.hi;
-                let range = self.mk_range(e, opt_end);
+                let range = self.mk_range(Some(e), opt_end);
                 return self.mk_expr(lo, hi, range);
               }
               _ => return e
@@ -2901,6 +2888,13 @@ impl<'a> Parser<'a> {
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             ex = self.mk_unary(UnUniq, e);
+          }
+          token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
+            // A range, closed above: `..expr`.
+            self.bump();
+            let e = self.parse_prefix_expr();
+            hi = e.span.hi;
+            ex = self.mk_range(None, Some(e));
           }
           token::Ident(_, _) => {
             if !self.token.is_keyword(keywords::Box) {

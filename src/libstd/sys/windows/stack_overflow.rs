@@ -90,7 +90,7 @@ pub struct EXCEPTION_RECORD {
     pub ExceptionRecord: *mut EXCEPTION_RECORD,
     pub ExceptionAddress: LPVOID,
     pub NumberParameters: DWORD,
-    pub ExceptionInformation: [LPVOID, ..EXCEPTION_MAXIMUM_PARAMETERS]
+    pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS]
 }
 
 pub struct EXCEPTION_POINTERS {

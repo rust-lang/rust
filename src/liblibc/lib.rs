@@ -425,20 +425,20 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr {
                     pub sa_family: sa_family_t,
-                    pub sa_data: [u8, ..14],
+                    pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_storage {
                     pub ss_family: sa_family_t,
                     pub __ss_align: i64,
-                    pub __ss_pad2: [u8, ..112],
+                    pub __ss_pad2: [u8; 112],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_in {
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
                     pub sin_addr: in_addr,
-                    pub sin_zero: [u8, ..8],
+                    pub sin_zero: [u8; 8],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct in_addr {
@@ -454,7 +454,7 @@ pub mod types {
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct in6_addr {
-                    pub s6_addr: [u16, ..8]
+                    pub s6_addr: [u16; 8]
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct ip_mreq {
@@ -491,7 +491,7 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_un {
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char, ..108]
+                    pub sun_path: [c_char; 108]
                 }
 
                 #[repr(C)]
@@ -609,7 +609,7 @@ pub mod types {
 
                 #[repr(C)]
                 #[deriving(Copy)] pub struct pthread_attr_t {
-                    pub __size: [u32, ..9]
+                    pub __size: [u32; 9]
                 }
             }
             #[cfg(target_arch = "arm")]
@@ -625,14 +625,14 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct stat {
                     pub st_dev: c_ulonglong,
-                    pub __pad0: [c_uchar, ..4],
+                    pub __pad0: [c_uchar; 4],
                     pub __st_ino: ino_t,
                     pub st_mode: c_uint,
                     pub st_nlink: c_uint,
                     pub st_uid: uid_t,
                     pub st_gid: gid_t,
                     pub st_rdev: c_ulonglong,
-                    pub __pad3: [c_uchar, ..4],
+                    pub __pad3: [c_uchar; 4],
                     pub st_size: c_longlong,
                     pub st_blksize: blksize_t,
                     pub st_blocks: c_ulonglong,
@@ -653,7 +653,7 @@ pub mod types {
 
                 #[repr(C)]
                 #[deriving(Copy)] pub struct pthread_attr_t {
-                    pub __size: [u32, ..9]
+                    pub __size: [u32; 9]
                 }
             }
             #[cfg(any(target_arch = "mips", target_arch = "mipsel"))]
@@ -670,14 +670,14 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct stat {
                     pub st_dev: c_ulong,
-                    pub st_pad1: [c_long, ..3],
+                    pub st_pad1: [c_long; 3],
                     pub st_ino: ino_t,
                     pub st_mode: mode_t,
                     pub st_nlink: nlink_t,
                     pub st_uid: uid_t,
                     pub st_gid: gid_t,
                     pub st_rdev: c_ulong,
-                    pub st_pad2: [c_long, ..2],
+                    pub st_pad2: [c_long; 2],
                     pub st_size: off_t,
                     pub st_pad3: c_long,
                     pub st_atime: time_t,
@@ -688,7 +688,7 @@ pub mod types {
                     pub st_ctime_nsec: c_long,
                     pub st_blksize: blksize_t,
                     pub st_blocks: blkcnt_t,
-                    pub st_pad5: [c_long, ..14],
+                    pub st_pad5: [c_long; 14],
                 }
 
                 #[repr(C)]
@@ -699,7 +699,7 @@ pub mod types {
 
                 #[repr(C)]
                 #[deriving(Copy)] pub struct pthread_attr_t {
-                    pub __size: [u32, ..9]
+                    pub __size: [u32; 9]
                 }
             }
             pub mod posix08 {}
@@ -714,7 +714,7 @@ pub mod types {
                     pub sll_hatype: c_ushort,
                     pub sll_pkttype: c_uchar,
                     pub sll_halen: c_uchar,
-                    pub sll_addr: [c_uchar, ..8]
+                    pub sll_addr: [c_uchar; 8]
                 }
             }
 
@@ -788,7 +788,7 @@ pub mod types {
                     pub st_mtime_nsec: c_long,
                     pub st_ctime: time_t,
                     pub st_ctime_nsec: c_long,
-                    pub __unused: [c_long, ..3],
+                    pub __unused: [c_long; 3],
                 }
 
                 #[repr(C)]
@@ -799,7 +799,7 @@ pub mod types {
 
                 #[repr(C)]
                 #[deriving(Copy)] pub struct pthread_attr_t {
-                    pub __size: [u64, ..7]
+                    pub __size: [u64; 7]
                 }
             }
             pub mod posix08 {
@@ -815,7 +815,7 @@ pub mod types {
                     pub sll_hatype: c_ushort,
                     pub sll_pkttype: c_uchar,
                     pub sll_halen: c_uchar,
-                    pub sll_addr: [c_uchar, ..8]
+                    pub sll_addr: [c_uchar; 8]
                 }
 
             }
@@ -878,15 +878,15 @@ pub mod types {
                 #[deriving(Copy)] pub struct sockaddr {
                     pub sa_len: u8,
                     pub sa_family: sa_family_t,
-                    pub sa_data: [u8, ..14],
+                    pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
-                    pub __ss_pad1: [u8, ..6],
+                    pub __ss_pad1: [u8; 6],
                     pub __ss_align: i64,
-                    pub __ss_pad2: [u8, ..112],
+                    pub __ss_pad2: [u8; 112],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_in {
@@ -894,7 +894,7 @@ pub mod types {
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
                     pub sin_addr: in_addr,
-                    pub sin_zero: [u8, ..8],
+                    pub sin_zero: [u8; 8],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct in_addr {
@@ -911,7 +911,7 @@ pub mod types {
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct in6_addr {
-                    pub s6_addr: [u16, ..8]
+                    pub s6_addr: [u16; 8]
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct ip_mreq {
@@ -938,7 +938,7 @@ pub mod types {
                 #[deriving(Copy)] pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char, ..104]
+                    pub sun_path: [c_char; 104]
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct ifaddrs {
@@ -1030,7 +1030,7 @@ pub mod types {
                     pub st_lspare: int32_t,
                     pub st_birthtime: time_t,
                     pub st_birthtime_nsec: c_long,
-                    pub __unused: [uint8_t, ..2],
+                    pub __unused: [uint8_t; 2],
                 }
 
                 #[repr(C)]
@@ -1106,15 +1106,15 @@ pub mod types {
                 #[deriving(Copy)] pub struct sockaddr {
                     pub sa_len: u8,
                     pub sa_family: sa_family_t,
-                    pub sa_data: [u8, ..14],
+                    pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
-                    pub __ss_pad1: [u8, ..6],
+                    pub __ss_pad1: [u8; 6],
                     pub __ss_align: i64,
-                    pub __ss_pad2: [u8, ..112],
+                    pub __ss_pad2: [u8; 112],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_in {
@@ -1122,7 +1122,7 @@ pub mod types {
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
                     pub sin_addr: in_addr,
-                    pub sin_zero: [u8, ..8],
+                    pub sin_zero: [u8; 8],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct in_addr {
@@ -1139,7 +1139,7 @@ pub mod types {
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct in6_addr {
-                    pub s6_addr: [u16, ..8]
+                    pub s6_addr: [u16; 8]
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct ip_mreq {
@@ -1166,7 +1166,7 @@ pub mod types {
                 #[deriving(Copy)] pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char, ..104]
+                    pub sun_path: [c_char; 104]
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct ifaddrs {
@@ -1337,21 +1337,21 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr {
                     pub sa_family: sa_family_t,
-                    pub sa_data: [u8, ..14],
+                    pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_storage {
                     pub ss_family: sa_family_t,
-                    pub __ss_pad1: [u8, ..6],
+                    pub __ss_pad1: [u8; 6],
                     pub __ss_align: i64,
-                    pub __ss_pad2: [u8, ..112],
+                    pub __ss_pad2: [u8; 112],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_in {
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
                     pub sin_addr: in_addr,
-                    pub sin_zero: [u8, ..8],
+                    pub sin_zero: [u8; 8],
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct in_addr {
@@ -1367,7 +1367,7 @@ pub mod types {
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct in6_addr {
-                    pub s6_addr: [u16, ..8]
+                    pub s6_addr: [u16; 8]
                 }
                 #[repr(C)]
                 #[deriving(Copy)] pub struct ip_mreq {
@@ -1393,7 +1393,7 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_un {
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char, ..108]
+                    pub sun_path: [c_char; 108]
                 }
             }
         }
@@ -1626,13 +1626,13 @@ pub mod types {
                     pub Data1: DWORD,
                     pub Data2: WORD,
                     pub Data3: WORD,
-                    pub Data4: [BYTE, ..8],
+                    pub Data4: [BYTE; 8],
                 }
 
                 #[repr(C)]
                 #[deriving(Copy)] pub struct WSAPROTOCOLCHAIN {
                     pub ChainLen: c_int,
-                    pub ChainEntries: [DWORD, ..MAX_PROTOCOL_CHAIN as uint],
+                    pub ChainEntries: [DWORD; MAX_PROTOCOL_CHAIN as uint],
                 }
 
                 pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
@@ -1658,7 +1658,7 @@ pub mod types {
                     pub iSecurityScheme: c_int,
                     pub dwMessageSize: DWORD,
                     pub dwProviderReserved: DWORD,
-                    pub szProtocol: [u8, ..(WSAPROTOCOL_LEN as uint) + 1u],
+                    pub szProtocol: [u8; (WSAPROTOCOL_LEN as uint) + 1u],
                 }
 
                 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
@@ -1675,8 +1675,8 @@ pub mod types {
                     pub nFileSizeLow: DWORD,
                     pub dwReserved0: DWORD,
                     pub dwReserved1: DWORD,
-                    pub cFileName: [wchar_t, ..260], // #define MAX_PATH 260
-                    pub cAlternateFileName: [wchar_t, ..14],
+                    pub cFileName: [wchar_t; 260], // #define MAX_PATH 260
+                    pub cAlternateFileName: [wchar_t; 14],
                 }
 
                 pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
@@ -1741,16 +1741,16 @@ pub mod types {
                 #[deriving(Copy)] pub struct sockaddr {
                     pub sa_len: u8,
                     pub sa_family: sa_family_t,
-                    pub sa_data: [u8, ..14],
+                    pub sa_data: [u8; 14],
                 }
 
                 #[repr(C)]
                 #[deriving(Copy)] pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
-                    pub __ss_pad1: [u8, ..6],
+                    pub __ss_pad1: [u8; 6],
                     pub __ss_align: i64,
-                    pub __ss_pad2: [u8, ..112],
+                    pub __ss_pad2: [u8; 112],
                 }
 
                 #[repr(C)]
@@ -1759,7 +1759,7 @@ pub mod types {
                     pub sin_family: sa_family_t,
                     pub sin_port: in_port_t,
                     pub sin_addr: in_addr,
-                    pub sin_zero: [u8, ..8],
+                    pub sin_zero: [u8; 8],
                 }
 
                 #[repr(C)]
@@ -1779,7 +1779,7 @@ pub mod types {
 
                 #[repr(C)]
                 #[deriving(Copy)] pub struct in6_addr {
-                    pub s6_addr: [u16, ..8]
+                    pub s6_addr: [u16; 8]
                 }
 
                 #[repr(C)]
@@ -1810,7 +1810,7 @@ pub mod types {
                 #[deriving(Copy)] pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
-                    pub sun_path: [c_char, ..104]
+                    pub sun_path: [c_char; 104]
                 }
 
                 #[repr(C)]
@@ -1899,7 +1899,7 @@ pub mod types {
                     pub st_flags: uint32_t,
                     pub st_gen: uint32_t,
                     pub st_lspare: int32_t,
-                    pub st_qspare: [int64_t, ..2],
+                    pub st_qspare: [int64_t; 2],
                 }
 
                 #[repr(C)]
@@ -1911,7 +1911,7 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct pthread_attr_t {
                     pub __sig: c_long,
-                    pub __opaque: [c_char, ..36]
+                    pub __opaque: [c_char; 36]
                 }
             }
             pub mod posix08 {
@@ -2003,7 +2003,7 @@ pub mod types {
                     pub st_flags: uint32_t,
                     pub st_gen: uint32_t,
                     pub st_lspare: int32_t,
-                    pub st_qspare: [int64_t, ..2],
+                    pub st_qspare: [int64_t; 2],
                 }
 
                 #[repr(C)]
@@ -2015,7 +2015,7 @@ pub mod types {
                 #[repr(C)]
                 #[deriving(Copy)] pub struct pthread_attr_t {
                     pub __sig: c_long,
-                    pub __opaque: [c_char, ..56]
+                    pub __opaque: [c_char; 56]
                 }
             }
             pub mod posix08 {

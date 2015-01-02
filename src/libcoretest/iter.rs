@@ -19,7 +19,7 @@ use test::Bencher;
 
 #[test]
 fn test_lt() {
-    let empty: [int, ..0] = [];
+    let empty: [int; 0] = [];
     let xs = [1i,2,3];
     let ys = [1i,2,0];
 
@@ -781,7 +781,7 @@ fn test_peekable_is_empty() {
 
 #[test]
 fn test_min_max() {
-    let v: [int, ..0] = [];
+    let v: [int; 0] = [];
     assert_eq!(v.iter().min_max(), NoElements);
 
     let v = [1i];

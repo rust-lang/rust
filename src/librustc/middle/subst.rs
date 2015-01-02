@@ -188,7 +188,7 @@ pub enum ParamSpace {
 }
 
 impl ParamSpace {
-    pub fn all() -> [ParamSpace, ..3] {
+    pub fn all() -> [ParamSpace; 3] {
         [TypeSpace, SelfSpace, FnSpace]
     }
 

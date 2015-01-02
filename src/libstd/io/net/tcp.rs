@@ -979,7 +979,7 @@ mod test {
 
         rx.recv();
         let mut c = TcpStream::connect(addr).unwrap();
-        let mut b = [0, ..10];
+        let mut b = [0; 10];
         assert_eq!(c.read(&mut b), Ok(1));
         c.write(&[1]).unwrap();
         rx.recv();
@@ -1256,7 +1256,7 @@ mod test {
 
         s.set_timeout(Some(20));
         for i in range(0i, 1001) {
-            match s.write(&[0, .. 128 * 1024]) {
+            match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
                 Err(e) => panic!("{}", e),
@@ -1280,7 +1280,7 @@ mod test {
             rx.recv();
             let mut amt = 0;
             while amt < 100 * 128 * 1024 {
-                match s.read(&mut [0, ..128 * 1024]) {
+                match s.read(&mut [0;128 * 1024]) {
                     Ok(n) => { amt += n; }
                     Err(e) => panic!("{}", e),
                 }
@@ -1295,7 +1295,7 @@ mod test {
 
         tx.send(());
         for _ in range(0i, 100) {
-            assert!(s.write(&[0, ..128 * 1024]).is_ok());
+            assert!(s.write(&[0;128 * 1024]).is_ok());
         }
     }
 
@@ -1314,7 +1314,7 @@ mod test {
         let mut s = a.accept().unwrap();
         s.set_write_timeout(Some(20));
         for i in range(0i, 1001) {
-            match s.write(&[0, .. 128 * 1024]) {
+            match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
                 Err(e) => panic!("{}", e),

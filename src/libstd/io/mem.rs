@@ -252,7 +252,7 @@ impl<'a> Buffer for &'a [u8] {
 /// # #![allow(unused_must_use)]
 /// use std::io::BufWriter;
 ///
-/// let mut buf = [0, ..4];
+/// let mut buf = [0; 4];
 /// {
 ///     let mut w = BufWriter::new(&mut buf);
 ///     w.write(&[0, 1, 2]);
@@ -427,7 +427,7 @@ mod test {
 
     #[test]
     fn test_buf_writer() {
-        let mut buf = [0 as u8, ..9];
+        let mut buf = [0 as u8; 9];
         {
             let mut writer = BufWriter::new(&mut buf);
             assert_eq!(writer.tell(), Ok(0));
@@ -448,7 +448,7 @@ mod test {
 
     #[test]
     fn test_buf_writer_seek() {
-        let mut buf = [0 as u8, ..8];
+        let mut buf = [0 as u8; 8];
         {
             let mut writer = BufWriter::new(&mut buf);
             assert_eq!(writer.tell(), Ok(0));
@@ -477,7 +477,7 @@ mod test {
 
     #[test]
     fn test_buf_writer_error() {
-        let mut buf = [0 as u8, ..2];
+        let mut buf = [0 as u8; 2];
         let mut writer = BufWriter::new(&mut buf);
         writer.write(&[0]).unwrap();
 
@@ -498,7 +498,7 @@ mod test {
         assert_eq!(reader.tell(), Ok(1));
         let b: &[_] = &[0];
         assert_eq!(buf, b);
-        let mut buf = [0, ..4];
+        let mut buf = [0; 4];
         assert_eq!(reader.read(&mut buf), Ok(4));
         assert_eq!(reader.tell(), Ok(5));
         let b: &[_] = &[1, 2, 3, 4];
@@ -524,7 +524,7 @@ mod test {
         assert_eq!(reader.len(), 7);
         let b: &[_] = &[0];
         assert_eq!(buf.as_slice(), b);
-        let mut buf = [0, ..4];
+        let mut buf = [0; 4];
         assert_eq!(reader.read(&mut buf), Ok(4));
         assert_eq!(reader.len(), 3);
         let b: &[_] = &[1, 2, 3, 4];
@@ -551,7 +551,7 @@ mod test {
         assert_eq!(reader.tell(), Ok(1));
         let b: &[_] = &[0];
         assert_eq!(buf, b);
-        let mut buf = [0, ..4];
+        let mut buf = [0; 4];
         assert_eq!(reader.read(&mut buf), Ok(4));
         assert_eq!(reader.tell(), Ok(5));
         let b: &[_] = &[1, 2, 3, 4];
@@ -648,7 +648,7 @@ mod test {
     #[test]
     fn io_read_at_least() {
         let mut r = MemReader::new(vec![1, 2, 3, 4, 5, 6, 7, 8]);
-        let mut buf = [0, ..3];
+        let mut buf = [0; 3];
         assert!(r.read_at_least(buf.len(), &mut buf).is_ok());
         let b: &[_] = &[1, 2, 3];
         assert_eq!(buf, b);
@@ -721,13 +721,13 @@ mod test {
     #[bench]
     fn bench_mem_reader(b: &mut Bencher) {
         b.iter(|| {
-            let buf = [5 as u8, ..100].to_vec();
+            let buf = [5 as u8; 100].to_vec();
             {
                 let mut rdr = MemReader::new(buf);
                 for _i in range(0u, 10) {
-                    let mut buf = [0 as u8, .. 10];
+                    let mut buf = [0 as u8; 10];
                     rdr.read(&mut buf).unwrap();
-                    assert_eq!(buf.as_slice(), [5, .. 10].as_slice());
+                    assert_eq!(buf.as_slice(), [5; 10].as_slice());
                 }
             }
         });
@@ -736,27 +736,27 @@ mod test {
     #[bench]
     fn bench_buf_writer(b: &mut Bencher) {
         b.iter(|| {
-            let mut buf = [0 as u8, ..100];
+            let mut buf = [0 as u8; 100];
             {
                 let mut wr = BufWriter::new(&mut buf);
                 for _i in range(0u, 10) {
-                    wr.write(&[5, .. 10]).unwrap();
+                    wr.write(&[5; 10]).unwrap();
                 }
             }
-            assert_eq!(buf.as_slice(), [5, .. 100].as_slice());
+            assert_eq!(buf.as_slice(), [5; 100].as_slice());
         });
     }
 
     #[bench]
     fn bench_buf_reader(b: &mut Bencher) {
         b.iter(|| {
-            let buf = [5 as u8, ..100];
+            let buf = [5 as u8; 100];
             {
                 let mut rdr = BufReader::new(&buf);
                 for _i in range(0u, 10) {
-                    let mut buf = [0 as u8, .. 10];
+                    let mut buf = [0 as u8; 10];
                     rdr.read(&mut buf).unwrap();
-                    assert_eq!(buf, [5, .. 10]);
+                    assert_eq!(buf, [5; 10]);
                 }
             }
         });
