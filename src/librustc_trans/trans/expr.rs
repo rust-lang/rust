@@ -545,19 +545,6 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let scratch = rvalue_scratch_datum(bcx, ty, "");
                 bcx = trans_rvalue_dps_unadjusted(
                     bcx, expr, SaveIn(scratch.val));
-
-                // Note: this is not obviously a good idea.  It causes
-                // immediate values to be loaded immediately after a
-                // return from a call or other similar expression,
-                // which in turn leads to alloca's having shorter
-                // lifetimes and hence larger stack frames.  However,
-                // in turn it can lead to more register pressure.
-                // Still, in practice it seems to increase
-                // performance, since we have fewer problems with
-                // morestack churn.
-                let scratch = unpack_datum!(
-                    bcx, scratch.to_appropriate_datum(bcx));
-
                 DatumBlock::new(bcx, scratch.to_expr_datum())
             }
         }
