@@ -18,7 +18,7 @@
 
 use self::Searcher::{Naive, TwoWay, TwoWayLong};
 
-use cmp::{mod, Eq};
+use cmp;
 use default::Default;
 use iter::range;
 use iter::{DoubleEndedIteratorExt, ExactSizeIterator};
