@@ -10,8 +10,6 @@
 
 use prelude::v1::*;
 
-use prelude::*;
-
 use libc;
 use c_str::CString;
 use mem;

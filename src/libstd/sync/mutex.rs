@@ -447,7 +447,7 @@ mod test {
     fn test_mutex_arc_poison() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        Thread::spawn(move|| {
+        let _ = Thread::spawn(move|| {
             let lock = arc2.lock().unwrap();
             assert_eq!(*lock, 2);
         }).join();

@@ -307,7 +307,7 @@ mod tests {
         static C: StaticCondvar = CONDVAR_INIT;
         static M: StaticMutex = MUTEX_INIT;
 
-        let mut g = M.lock().unwrap();
+        let g = M.lock().unwrap();
         let _t = Thread::spawn(move|| {
             let _g = M.lock().unwrap();
             C.notify_one();
@@ -386,6 +386,6 @@ mod tests {
         g = C.wait(g).unwrap();
         drop(g);
 
-        C.wait(M2.lock().unwrap()).unwrap();
+        let _ = C.wait(M2.lock().unwrap()).unwrap();
     }
 }

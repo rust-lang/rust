@@ -23,7 +23,6 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use comm::{channel, Sender, Receiver};
 use mem;
 use rt;
 use sync::{StaticMutex, StaticCondvar};

@@ -19,7 +19,7 @@ trait From<Src> {
 trait To {
     // This is a typo, the return type should be `<Dst as From<Self>>::Output`
     fn to<Dst: From<Self>>(self) -> <Dst as From<Self>>::Dst {
-    //~ error: the trait `core::kinds::Sized` is not implemented
+    //~^ error: the trait `core::kinds::Sized` is not implemented
         From::from(self)
     }
 }

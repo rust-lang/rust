@@ -20,7 +20,7 @@ extern crate collections;
 use std::ascii::{AsciiExt, OwnedAsciiExt};
 use std::cmp::Ordering::{mod, Less, Greater, Equal};
 use std::collections::HashMap;
-use std::comm::{channel, Sender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::mem::replace;
 use std::num::Float;
 use std::option;
@@ -120,7 +120,7 @@ fn make_sequence_processor(sz: uint,
 
    loop {
 
-       line = from_parent.recv();
+       line = from_parent.recv().unwrap();
        if line == Vec::new() { break; }
 
        carry.push_all(line.as_slice());
@@ -222,6 +222,6 @@ fn main() {
 
    // now fetch and print result messages
    for (ii, _sz) in sizes.iter().enumerate() {
-       println!("{}", from_child[ii].recv());
+       println!("{}", from_child[ii].recv().unwrap());
    }
 }

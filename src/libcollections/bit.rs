@@ -92,7 +92,7 @@ use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
 use core::iter::{mod, FromIterator};
 use core::num::Int;
 use core::ops::Index;
-use core::slice::{Iter, IterMut};
+use core::slice;
 use core::{u8, u32, uint};
 use bitv_set; //so meta
 

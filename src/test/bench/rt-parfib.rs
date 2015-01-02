@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::channel;
+use std::sync::mpsc::channel;
 use std::os;
-use std::str::from_str;
 use std::thread::Thread;
 use std::uint;
 
@@ -28,7 +27,7 @@ fn parfib(n: uint) -> uint {
         tx.send(parfib(n-1));
     }).detach();
     let m2 = parfib(n-2);
-    return (rx.recv() + m2);
+    return (rx.recv().unwrap() + m2);
 }
 
 fn main() {
@@ -36,7 +35,7 @@ fn main() {
     let args = os::args();
     let args = args.as_slice();
     let n = if args.len() == 2 {
-        from_str::<uint>(args[1].as_slice()).unwrap()
+        args[1].parse::<uint>().unwrap()
     } else {
         10
     };

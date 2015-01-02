@@ -443,8 +443,8 @@ mod test {
     use prelude::v1::*;
 
     use any::{Any, AnyRefExt};
-    use boxed::BoxAny;
     use sync::mpsc::{channel, Sender};
+    use boxed::BoxAny;
     use result;
     use std::io::{ChanReader, ChanWriter};
     use super::{Thread, Builder};

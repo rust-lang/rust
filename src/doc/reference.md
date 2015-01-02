@@ -3177,7 +3177,6 @@ then the expression completes.
 Some examples of call expressions:
 
 ```
-# use std::str::from_str;
 # fn add(x: int, y: int) -> int { 0 }
 
 let x: int = add(1, 2);
