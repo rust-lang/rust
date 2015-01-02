@@ -1327,9 +1327,8 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
         let trmode;
         match bm {
             ast::BindByValue(_)
-                if !ty::type_moves_by_default(tcx,
-                                              variable_ty,
-                                              &param_env) || reassigned => {
+                if !ty::type_moves_by_default(&param_env, span, variable_ty) || reassigned =>
+            {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
                                  "__llmatch");

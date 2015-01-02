@@ -1462,7 +1462,7 @@ fn check_cast(fcx: &FnCtxt,
         return
     }
 
-    if !fcx.type_is_known_to_be_sized(t_1) {
+    if !fcx.type_is_known_to_be_sized(t_1, cast_expr.span) {
         let tstr = fcx.infcx().ty_to_string(t_1);
         fcx.type_error_message(span, |actual| {
             format!("cast to unsized type: `{}` as `{}`", actual, tstr)
@@ -1981,13 +1981,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn type_is_known_to_be_sized(&self,
-                                     ty: Ty<'tcx>)
+                                     ty: Ty<'tcx>,
+                                     span: Span)
                                      -> bool
     {
         traits::type_known_to_meet_builtin_bound(self.infcx(),
                                                  self.param_env(),
                                                  ty,
-                                                 ty::BoundSized)
+                                                 ty::BoundSized,
+                                                 span)
     }
 
     pub fn register_builtin_bound(&self,
