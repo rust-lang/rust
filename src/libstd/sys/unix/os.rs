@@ -20,7 +20,7 @@ use libc::{mod, c_int, c_char, c_void};
 use os;
 use path::{BytesContainer};
 use ptr;
-use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
+use sync::atomic::{AtomicInt, SeqCst};
 use sys::fs::FileDesc;
 
 use os::TMPBUF_SZ;

@@ -73,7 +73,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
     let output_path = {
         let output_template = match requested_output {
             Some(ref s) if s.as_slice() == "help" => {
-                static PRINTED_YET : atomic::AtomicBool = atomic::INIT_ATOMIC_BOOL;
+                static PRINTED_YET : atomic::AtomicBool = atomic::ATOMIC_BOOL_INIT;
                 if !PRINTED_YET.load(atomic::SeqCst) {
                     print_help_message();
                     PRINTED_YET.store(true, atomic::SeqCst);

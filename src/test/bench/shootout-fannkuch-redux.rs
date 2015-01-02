@@ -40,9 +40,8 @@
 
 #![feature(slicing_syntax)]
 
-use std::str::from_str;
-use std::sync::Future;
 use std::{cmp, iter, mem};
+use std::thread::Thread;
 
 fn rotate(x: &mut [i32]) {
     let mut prev = x[0];
@@ -169,15 +168,15 @@ fn fannkuch(n: i32) -> (i32, i32) {
     for (i, j) in range(0, N).zip(iter::count(0, k)) {
         let max = cmp::min(j+k, perm.max());
 
-        futures.push(Future::spawn(move|| {
+        futures.push(Thread::spawn(move|| {
             work(perm, j as uint, max as uint)
         }))
     }
 
     let mut checksum = 0;
     let mut maxflips = 0;
-    for fut in futures.iter_mut() {
-        let (cs, mf) = fut.get();
+    for fut in futures.into_iter() {
+        let (cs, mf) = fut.join().ok().unwrap();
         checksum += cs;
         maxflips = cmp::max(maxflips, mf);
     }

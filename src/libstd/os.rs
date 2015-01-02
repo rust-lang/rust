@@ -55,7 +55,7 @@ use slice::{AsSlice, SliceExt};
 use slice::CloneSliceExt;
 use str::{Str, StrExt};
 use string::{String, ToString};
-use sync::atomic::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
+use sync::atomic::{AtomicInt, ATOMIC_INT_INIT, SeqCst};
 use vec::Vec;
 
 #[cfg(unix)] use c_str::ToCStr;
@@ -596,7 +596,7 @@ pub fn last_os_error() -> String {
     error_string(errno() as uint)
 }
 
-static EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
+static EXIT_STATUS: AtomicInt = ATOMIC_INT_INIT;
 
 /// Sets the process exit code
 ///

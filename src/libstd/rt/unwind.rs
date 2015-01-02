@@ -84,15 +84,15 @@ pub type Callback = fn(msg: &(Any + Send), file: &'static str, line: uint);
 // For more information, see below.
 const MAX_CALLBACKS: uint = 16;
 static CALLBACKS: [atomic::AtomicUint; MAX_CALLBACKS] =
-        [atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
-         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
-         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
-         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
-         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
-         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
-         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT,
-         atomic::INIT_ATOMIC_UINT, atomic::INIT_ATOMIC_UINT];
-static CALLBACK_CNT: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+        [atomic::ATOMIC_UINT_INIT, atomic::ATOMIC_UINT_INIT,
+         atomic::ATOMIC_UINT_INIT, atomic::ATOMIC_UINT_INIT,
+         atomic::ATOMIC_UINT_INIT, atomic::ATOMIC_UINT_INIT,
+         atomic::ATOMIC_UINT_INIT, atomic::ATOMIC_UINT_INIT,
+         atomic::ATOMIC_UINT_INIT, atomic::ATOMIC_UINT_INIT,
+         atomic::ATOMIC_UINT_INIT, atomic::ATOMIC_UINT_INIT,
+         atomic::ATOMIC_UINT_INIT, atomic::ATOMIC_UINT_INIT,
+         atomic::ATOMIC_UINT_INIT, atomic::ATOMIC_UINT_INIT];
+static CALLBACK_CNT: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
 
 thread_local! { static PANICKING: Cell<bool> = Cell::new(false) }
 
@@ -533,7 +533,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     // Make sure the default failure handler is registered before we look at the
     // callbacks.
     static INIT: Once = ONCE_INIT;
-    INIT.doit(|| unsafe { register(failure::on_fail); });
+    INIT.call_once(|| unsafe { register(failure::on_fail); });
 
     // First, invoke call the user-defined callbacks triggered on thread panic.
     //

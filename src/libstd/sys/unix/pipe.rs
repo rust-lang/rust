@@ -10,6 +10,8 @@
 
 use prelude::v1::*;
 
+use prelude::*;
+
 use libc;
 use c_str::CString;
 use mem;
@@ -117,9 +119,6 @@ pub struct UnixStream {
     write_deadline: u64,
 }
 
-unsafe impl Send for UnixStream {}
-unsafe impl Sync for UnixStream {}
-
 impl UnixStream {
     pub fn connect(addr: &CString,
                    timeout: Option<u64>) -> IoResult<UnixStream> {
@@ -218,6 +217,7 @@ pub struct UnixListener {
     path: CString,
 }
 
+// we currently own the CString, so these impls should be safe
 unsafe impl Send for UnixListener {}
 unsafe impl Sync for UnixListener {}
 
@@ -264,9 +264,6 @@ struct AcceptorInner {
     writer: FileDesc,
     closed: atomic::AtomicBool,
 }
-
-unsafe impl Send for AcceptorInner {}
-unsafe impl Sync for AcceptorInner {}
 
 impl UnixAcceptor {
     pub fn fd(&self) -> fd_t { self.inner.listener.fd() }
