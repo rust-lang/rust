@@ -1324,7 +1324,9 @@ pub struct Parser<T> {
     state: ParserState,
 }
 
-impl<T: Iterator<char>> Iterator<JsonEvent> for Parser<T> {
+impl<T: Iterator<Item=char>> Iterator for Parser<T> {
+    type Item = JsonEvent;
+
     fn next(&mut self) -> Option<JsonEvent> {
         if self.state == ParseFinished {
             return None;
@@ -1345,7 +1347,7 @@ impl<T: Iterator<char>> Iterator<JsonEvent> for Parser<T> {
     }
 }
 
-impl<T: Iterator<char>> Parser<T> {
+impl<T: Iterator<Item=char>> Parser<T> {
     /// Creates the JSON parser.
     pub fn new(rdr: T) -> Parser<T> {
         let mut p = Parser {
@@ -1867,7 +1869,7 @@ pub struct Builder<T> {
     token: Option<JsonEvent>,
 }
 
-impl<T: Iterator<char>> Builder<T> {
+impl<T: Iterator<Item=char>> Builder<T> {
     /// Create a JSON Builder.
     pub fn new(src: T) -> Builder<T> {
         Builder { parser: Parser::new(src), token: None, }
