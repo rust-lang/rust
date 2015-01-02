@@ -10,7 +10,6 @@
 
 #![crate_type = "dylib"]
 
-#![macro_reexport(reexported)]
-
+#[macro_reexport(reexported)]
 #[macro_use] #[no_link]
 extern crate macro_reexport_1;

@@ -552,6 +552,7 @@ impl<'a> PluginMetadata<'a> {
                     id: ast::DUMMY_NODE_ID,
                     span: span,
                     imported_from: imported_from,
+                    export: false,  // overridden in plugin/load.rs
                     body: body,
                 });
                 true
