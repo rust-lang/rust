@@ -225,8 +225,6 @@ fn in_ms_u64(d: Duration) -> u64 {
 
 #[cfg(test)]
 mod test {
-    use prelude::v1::*;
-
     use super::Timer;
     use thread::Thread;
     use time::Duration;

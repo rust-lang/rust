@@ -337,7 +337,6 @@ mod test {
     use prelude::v1::*;
 
     use thread::Thread;
-    use super::*;
     use sync::mpsc::*;
 
     // Don't use the libstd version so we can pull in the right Select structure

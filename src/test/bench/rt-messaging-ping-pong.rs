@@ -17,7 +17,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::channel;
+use std::sync::mpsc::channel;
 use std::os;
 use std::str::from_str;
 use std::thread::Thread;

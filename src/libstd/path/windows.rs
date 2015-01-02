@@ -1119,10 +1119,6 @@ fn prefix_len(p: Option<PathPrefix>) -> uint {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::Option::{mod, Some, None};
-    use prelude::v1::{Vec, Clone, AsSlice, SliceExt, CloneSliceExt, IteratorExt};
-    use prelude::v1::{DoubleEndedIteratorExt, Str, ToString, GenericPath};
-
     use super::PathPrefix::*;
     use super::parse_prefix;
     use super::*;
