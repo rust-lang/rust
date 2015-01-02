@@ -546,7 +546,7 @@ impl<V: fmt::Show> fmt::Show for VecMap<V> {
 
 #[stable]
 impl<V> FromIterator<(uint, V)> for VecMap<V> {
-    fn from_iter<Iter: Iterator<(uint, V)>>(iter: Iter) -> VecMap<V> {
+    fn from_iter<Iter: Iterator<Item=(uint, V)>>(iter: Iter) -> VecMap<V> {
         let mut map = VecMap::new();
         map.extend(iter);
         map
@@ -555,7 +555,7 @@ impl<V> FromIterator<(uint, V)> for VecMap<V> {
 
 #[stable]
 impl<V> Extend<(uint, V)> for VecMap<V> {
-    fn extend<Iter: Iterator<(uint, V)>>(&mut self, mut iter: Iter) {
+    fn extend<Iter: Iterator<Item=(uint, V)>>(&mut self, mut iter: Iter) {
         for (k, v) in iter {
             self.insert(k, v);
         }
@@ -581,7 +581,9 @@ impl<V> IndexMut<uint, V> for VecMap<V> {
 macro_rules! iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
         #[stable]
-        impl<'a, V> Iterator<$elem> for $name<'a, V> {
+        impl<'a, V> Iterator for $name<'a, V> {
+            type Item = $elem;
+
             #[inline]
             fn next(&mut self) -> Option<$elem> {
                 while self.front < self.back {
@@ -614,7 +616,7 @@ macro_rules! iterator {
 macro_rules! double_ended_iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
         #[stable]
-        impl<'a, V> DoubleEndedIterator<$elem> for $name<'a, V> {
+        impl<'a, V> DoubleEndedIterator for $name<'a, V> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
                 while self.front < self.back {
@@ -713,32 +715,38 @@ pub struct IntoIter<V> {
 }
 
 #[stable]
-impl<'a, V> Iterator<uint> for Keys<'a, V> {
+impl<'a, V> Iterator for Keys<'a, V> {
+    type Item = uint;
+
     fn next(&mut self) -> Option<uint> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<'a, V> DoubleEndedIterator<uint> for Keys<'a, V> {
+impl<'a, V> DoubleEndedIterator for Keys<'a, V> {
     fn next_back(&mut self) -> Option<uint> { self.iter.next_back() }
 }
 
 #[stable]
-impl<'a, V> Iterator<&'a V> for Values<'a, V> {
+impl<'a, V> Iterator for Values<'a, V> {
+    type Item = &'a V;
+
     fn next(&mut self) -> Option<(&'a V)> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<'a, V> DoubleEndedIterator<&'a V> for Values<'a, V> {
+impl<'a, V> DoubleEndedIterator for Values<'a, V> {
     fn next_back(&mut self) -> Option<(&'a V)> { self.iter.next_back() }
 }
 
 #[stable]
-impl<V> Iterator<(uint, V)> for IntoIter<V> {
+impl<V> Iterator for IntoIter<V> {
+    type Item = (uint, V);
+
     fn next(&mut self) -> Option<(uint, V)> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<V> DoubleEndedIterator<(uint, V)> for IntoIter<V> {
+impl<V> DoubleEndedIterator for IntoIter<V> {
     fn next_back(&mut self) -> Option<(uint, V)> { self.iter.next_back() }
 }
 

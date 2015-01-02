@@ -1151,7 +1151,9 @@ impl<'a, T> Clone for Iter<'a, T> {
 }
 
 #[stable]
-impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         if self.tail == self.head {
@@ -1170,7 +1172,7 @@ impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
 }
 
 #[stable]
-impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
+impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
         if self.tail == self.head {
@@ -1182,10 +1184,10 @@ impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
 }
 
 #[stable]
-impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
+impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 #[stable]
-impl<'a, T> RandomAccessIterator<&'a T> for Iter<'a, T> {
+impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         let (len, _) = self.size_hint();
@@ -1217,7 +1219,9 @@ pub struct IterMut<'a, T:'a> {
 }
 
 #[stable]
-impl<'a, T> Iterator<&'a mut T> for IterMut<'a, T> {
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
         if self.tail == self.head {
@@ -1239,7 +1243,7 @@ impl<'a, T> Iterator<&'a mut T> for IterMut<'a, T> {
 }
 
 #[stable]
-impl<'a, T> DoubleEndedIterator<&'a mut T> for IterMut<'a, T> {
+impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
         if self.tail == self.head {
@@ -1254,7 +1258,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for IterMut<'a, T> {
 }
 
 #[stable]
-impl<'a, T> ExactSizeIterator<&'a mut T> for IterMut<'a, T> {}
+impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// A by-value RingBuf iterator
 #[stable]
@@ -1263,7 +1267,9 @@ pub struct IntoIter<T> {
 }
 
 #[stable]
-impl<T> Iterator<T> for IntoIter<T> {
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
     #[inline]
     fn next(&mut self) -> Option<T> {
         self.inner.pop_front()
@@ -1277,7 +1283,7 @@ impl<T> Iterator<T> for IntoIter<T> {
 }
 
 #[stable]
-impl<T> DoubleEndedIterator<T> for IntoIter<T> {
+impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.inner.pop_back()
@@ -1285,7 +1291,7 @@ impl<T> DoubleEndedIterator<T> for IntoIter<T> {
 }
 
 #[stable]
-impl<T> ExactSizeIterator<T> for IntoIter<T> {}
+impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// A draining RingBuf iterator
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
@@ -1304,7 +1310,9 @@ impl<'a, T: 'a> Drop for Drain<'a, T> {
 }
 
 #[stable]
-impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
+impl<'a, T: 'a> Iterator for Drain<'a, T> {
+    type Item = T;
+
     #[inline]
     fn next(&mut self) -> Option<T> {
         self.inner.pop_front()
@@ -1318,7 +1326,7 @@ impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
 }
 
 #[stable]
-impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
+impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.inner.pop_back()
@@ -1326,7 +1334,7 @@ impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
 }
 
 #[stable]
-impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
+impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
 #[stable]
 impl<A: PartialEq> PartialEq for RingBuf<A> {
@@ -1382,7 +1390,7 @@ impl<A> IndexMut<uint, A> for RingBuf<A> {
 
 #[stable]
 impl<A> FromIterator<A> for RingBuf<A> {
-    fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
+    fn from_iter<T: Iterator<Item=A>>(iterator: T) -> RingBuf<A> {
         let (lower, _) = iterator.size_hint();
         let mut deq = RingBuf::with_capacity(lower);
         deq.extend(iterator);
@@ -1392,7 +1400,7 @@ impl<A> FromIterator<A> for RingBuf<A> {
 
 #[stable]
 impl<A> Extend<A> for RingBuf<A> {
-    fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
+    fn extend<T: Iterator<Item=A>>(&mut self, mut iterator: T) {
         for elt in iterator {
             self.push_back(elt);
         }

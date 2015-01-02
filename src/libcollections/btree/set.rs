@@ -436,7 +436,7 @@ impl<T: Ord> BTreeSet<T> {
 
 #[stable]
 impl<T: Ord> FromIterator<T> for BTreeSet<T> {
-    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> BTreeSet<T> {
+    fn from_iter<Iter: Iterator<Item=T>>(iter: Iter) -> BTreeSet<T> {
         let mut set = BTreeSet::new();
         set.extend(iter);
         set
@@ -446,7 +446,7 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
 #[stable]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
-    fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
+    fn extend<Iter: Iterator<Item=T>>(&mut self, mut iter: Iter) {
         for elem in iter {
             self.insert(elem);
         }
@@ -560,28 +560,33 @@ impl<T: Show> Show for BTreeSet<T> {
 }
 
 #[stable]
-impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
+impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
 }
 #[stable]
-impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
+impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
+
 
 #[stable]
-impl<T> Iterator<T> for IntoIter<T> {
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<T> DoubleEndedIterator<T> for IntoIter<T> {
+impl<T> DoubleEndedIterator for IntoIter<T> {
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
 #[stable]
-impl<T> ExactSizeIterator<T> for IntoIter<T> {}
+impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
 fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
@@ -594,7 +599,9 @@ fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
 }
 
 #[stable]
-impl<'a, T: Ord> Iterator<&'a T> for Difference<'a, T> {
+impl<'a, T: Ord> Iterator for Difference<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Less, Less) {
@@ -607,7 +614,9 @@ impl<'a, T: Ord> Iterator<&'a T> for Difference<'a, T> {
 }
 
 #[stable]
-impl<'a, T: Ord> Iterator<&'a T> for SymmetricDifference<'a, T> {
+impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
@@ -620,7 +629,9 @@ impl<'a, T: Ord> Iterator<&'a T> for SymmetricDifference<'a, T> {
 }
 
 #[stable]
-impl<'a, T: Ord> Iterator<&'a T> for Intersection<'a, T> {
+impl<'a, T: Ord> Iterator for Intersection<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             let o_cmp = match (self.a.peek(), self.b.peek()) {
@@ -639,7 +650,9 @@ impl<'a, T: Ord> Iterator<&'a T> for Intersection<'a, T> {
 }
 
 #[stable]
-impl<'a, T: Ord> Iterator<&'a T> for Union<'a, T> {
+impl<'a, T: Ord> Iterator for Union<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
