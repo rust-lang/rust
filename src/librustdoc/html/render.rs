@@ -1811,6 +1811,18 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
+fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
+              typ: &clean::TyParam) -> fmt::Result {
+    try!(write!(w, "type {}", it.name.as_ref().unwrap()));
+    if typ.bounds.len() > 0 {
+        try!(write!(w, ": {}", TyParamBounds(&*typ.bounds)))
+    }
+    if let Some(ref default) = typ.default {
+        try!(write!(w, " = {}", default));
+    }
+    Ok(())
+}
+
 fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
     fn method(w: &mut fmt::Formatter, it: &clean::Item, unsafety: ast::Unsafety,
            g: &clean::Generics, selfty: &clean::SelfTy,
@@ -1826,17 +1838,6 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
                generics = *g,
                decl = Method(selfty, d),
                where_clause = WhereClause(g))
-    }
-    fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
-                  typ: &clean::TyParam) -> fmt::Result {
-        try!(write!(w, "type {}", it.name.as_ref().unwrap()));
-        if typ.bounds.len() > 0 {
-            try!(write!(w, ": {}", TyParamBounds(&*typ.bounds)))
-        }
-        if let Some(ref default) = typ.default {
-            try!(write!(w, " = {}", default));
-        }
-        Ok(())
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
@@ -2120,6 +2121,15 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                             shortty(item),
                             ConciseStability(&item.stability)));
                 try!(write!(w, "type {} = {}", name, tydef.type_));
+                try!(write!(w, "</code></h4>\n"));
+            }
+            clean::AssociatedTypeItem(ref typaram) => {
+                let name = item.name.as_ref().unwrap();
+                try!(write!(w, "<h4 id='assoc_type.{}' class='{}'>{}<code>",
+                            *name,
+                            shortty(item),
+                            ConciseStability(&item.stability)));
+                try!(assoc_type(w, item, typaram));
                 try!(write!(w, "</code></h4>\n"));
             }
             _ => panic!("can't make docs for trait item with name {}", item.name)
