@@ -27,7 +27,6 @@ use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
-use slice::CloneSliceExt;
 use str::{mod, CharRange, FromStr, Utf8Error};
 use vec::{DerefVec, Vec, as_vec};
 
@@ -94,7 +93,7 @@ impl String {
     #[inline]
     #[experimental = "needs investigation to see if to_string() can match perf"]
     pub fn from_str(string: &str) -> String {
-        String { vec: string.as_bytes().to_vec() }
+        String { vec: ::slice::SliceExt::to_vec(string.as_bytes()) }
     }
 
     /// Returns the vector as a string buffer, if possible, taking care not to

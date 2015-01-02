@@ -401,7 +401,7 @@ mod test {
     extern crate "test" as test_crate;
     use super::*;
     use io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
-    use prelude::{Ok, Err, range,  Vec, Buffer,  AsSlice, SliceExt, IteratorExt, CloneSliceExt};
+    use prelude::{Ok, Err, range,  Vec, Buffer,  AsSlice, SliceExt, IteratorExt};
     use io;
     use self::test_crate::Bencher;
 

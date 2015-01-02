@@ -63,8 +63,6 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
 
-use slice::CloneSliceExt;
-
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
 /// # Examples
@@ -1218,7 +1216,7 @@ unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
 
 #[unstable]
 impl<T:Clone> Clone for Vec<T> {
-    fn clone(&self) -> Vec<T> { self.as_slice().to_vec() }
+    fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(self.as_slice()) }
 
     fn clone_from(&mut self, other: &Vec<T>) {
         // drop anything in self that will not be overwritten
