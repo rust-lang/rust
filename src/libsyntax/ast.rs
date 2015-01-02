@@ -643,8 +643,8 @@ pub enum LocalSource {
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
 #[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub struct Local {
-    pub ty: P<Ty>,
     pub pat: P<Pat>,
+    pub ty: Option<P<Ty>>,
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,

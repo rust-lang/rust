@@ -3401,7 +3401,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_local(&mut self, local: &Local) {
         // Resolve the type.
-        self.resolve_type(&*local.ty);
+        if let Some(ref ty) = local.ty {
+            self.resolve_type(&**ty);
+        }
 
         // Resolve the initializer, if necessary.
         match local.init {
