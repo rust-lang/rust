@@ -57,7 +57,7 @@
 //!
 //! Currently Rust uses unwind runtime provided by libgcc.
 
-use prelude::*;
+use prelude::v1::*;
 
 use any::Any;
 use cell::Cell;

@@ -41,7 +41,9 @@
 extern crate arena;
 
 use std::iter::range_step;
+use std::str::from_str;
 use std::sync::Future;
+
 use arena::TypedArena;
 
 enum Tree<'a> {

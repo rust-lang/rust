@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::{str, string};
+use std::c_str::ToCStr;
 
 const A: [u8; 2] = ['h' as u8, 'i' as u8];
 const B: &'static [u8; 2] = &A;

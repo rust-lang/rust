@@ -15,6 +15,8 @@
 // even when using them cross-crate.
 
 extern crate trait_superkinds_in_metadata;
+
+use std::comm::{channel, Sender, Receiver};
 use trait_superkinds_in_metadata::{RequiresRequiresShareAndSend, RequiresShare};
 
 #[deriving(PartialEq)]

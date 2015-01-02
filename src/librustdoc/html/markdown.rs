@@ -29,11 +29,12 @@
 
 use libc;
 use std::ascii::AsciiExt;
+use std::c_str::ToCStr;
 use std::cell::{RefCell, Cell};
+use std::collections::HashMap;
 use std::fmt;
 use std::slice;
 use std::str;
-use std::collections::HashMap;
 
 use html::toc::TocBuilder;
 use html::highlight;

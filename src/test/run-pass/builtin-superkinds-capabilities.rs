@@ -12,6 +12,8 @@
 // builtin-kinds, e.g., if a trait requires Send to implement, then
 // at usage site of that trait, we know we have the Send capability.
 
+use std::comm::{channel, Sender, Receiver};
+
 trait Foo : Send { }
 
 impl <T: Send> Foo for T { }

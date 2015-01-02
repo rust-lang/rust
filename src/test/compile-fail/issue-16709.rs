@@ -11,6 +11,8 @@
 use std::ptr;
 use std::raw;
 
+trait Slice {}
+
 fn main() {
   unsafe {
     let nil: *const u8 = ptr::null();

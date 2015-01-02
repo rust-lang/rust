@@ -9,9 +9,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-extern crate collections;
-
 /**
    A somewhat reduced test case to expose some Valgrind issues.
 
@@ -24,6 +21,7 @@ pub fn map(filename: String, emit: map_reduce::putter) {
 
 mod map_reduce {
     use std::collections::HashMap;
+    use std::comm::{channel, Sender};
     use std::str;
     use std::task;
 

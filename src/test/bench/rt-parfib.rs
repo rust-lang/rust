@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::comm::channel;
 use std::os;
+use std::str::from_str;
+use std::thread::Thread;
 use std::uint;
 
 // A simple implementation of parfib. One subtree is found in a new
@@ -21,9 +24,9 @@ fn parfib(n: uint) -> uint {
     }
 
     let (tx, rx) = channel();
-    spawn(move|| {
+    Thread::spawn(move|| {
         tx.send(parfib(n-1));
-    });
+    }).detach();
     let m2 = parfib(n-2);
     return (rx.recv() + m2);
 }

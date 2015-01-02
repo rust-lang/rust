@@ -53,8 +53,9 @@ impl<'a> Drop for Sentinel<'a> {
 /// # Example
 ///
 /// ```rust
-/// # use std::sync::TaskPool;
-/// # use std::iter::AdditiveIterator;
+/// use std::sync::TaskPool;
+/// use std::iter::AdditiveIterator;
+/// use std::comm::channel;
 ///
 /// let pool = TaskPool::new(4u);
 ///
@@ -131,8 +132,9 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use super::*;
+    use comm::channel;
 
     const TEST_TASKS: uint = 4u;
 

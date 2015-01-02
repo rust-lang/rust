@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ops::Deref;
+
 struct DerefArray<'a, T:'a> {
     inner: &'a [T]
 }

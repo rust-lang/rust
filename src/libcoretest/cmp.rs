@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::{ partial_min, partial_max };
+use core::cmp::{partial_min, partial_max};
+use core::cmp::Ordering::{Less, Greater, Equal};
 
 #[test]
 fn test_int_totalord() {

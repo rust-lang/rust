@@ -23,14 +23,10 @@
 
 #![allow(dead_code)]
 
-use os;
-use thunk::Thunk;
 use kinds::Send;
-use thread::Thread;
 use ops::FnOnce;
 use sys;
-use sys_common;
-use sys_common::thread_info::{mod, NewThread};
+use thunk::Thunk;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
@@ -65,9 +61,14 @@ const OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
+    use prelude::v1::*;
+
     use mem;
-    use prelude::*;
+    use os;
     use rt;
+    use sys_common::thread_info::{mod, NewThread};
+    use sys_common;
+    use thread::Thread;
 
     let something_around_the_top_of_the_stack = 1;
     let addr = &something_around_the_top_of_the_stack as *const int;

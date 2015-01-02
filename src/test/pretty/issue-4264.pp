@@ -4,7 +4,7 @@
 #[phase(plugin, link)]
 extern crate "std" as std;
 #[prelude_import]
-use std::prelude::*;
+use std::prelude::v1::*;
 // Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.

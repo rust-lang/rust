@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
+use prelude::v1::*;
 
 use cell::UnsafeCell;
 use kinds::marker;
+use ops::{Deref, DerefMut};
 use sync::poison::{mod, LockResult, TryLockError, TryLockResult};
 use sys_common::rwlock as sys;
 
@@ -355,9 +356,10 @@ impl<'a, T> Drop for RWLockWriteGuard<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::*;
+    use prelude::v1::*;
 
     use rand::{mod, Rng};
+    use comm::channel;
     use thread::Thread;
     use sync::{Arc, RWLock, StaticRWLock, RWLOCK_INIT};
 
@@ -389,7 +391,7 @@ mod tests {
         let (tx, rx) = channel::<()>();
         for _ in range(0, N) {
             let tx = tx.clone();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 let mut rng = rand::thread_rng();
                 for _ in range(0, M) {
                     if rng.gen_weighted_bool(N) {
@@ -399,7 +401,7 @@ mod tests {
                     }
                 }
                 drop(tx);
-            });
+            }).detach();
         }
         drop(tx);
         let _ = rx.recv_opt();

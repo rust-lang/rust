@@ -18,11 +18,13 @@
 
 extern crate libc;
 
+use prelude::v1::*;
+
 use num;
 use mem;
-use prelude::*;
 use io::{mod, IoResult, IoError};
 use sync::{Once, ONCE_INIT};
+use comm::Sender;
 
 macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
     static $name: Helper<$m> = Helper {

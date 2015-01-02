@@ -4149,11 +4149,11 @@ Unwinding the stack of a thread is done by the thread itself, on its own control
 stack. If a value with a destructor is freed during unwinding, the code for the
 destructor is run, also on the thread's control stack. Running the destructor
 code causes a temporary transition to a *running* state, and allows the
-destructor code to cause any subsequent state transitions. The original thread 
+destructor code to cause any subsequent state transitions. The original thread
 of unwinding and panicking thereby may suspend temporarily, and may involve
 (recursive) unwinding of the stack of a failed destructor. Nonetheless, the
 outermost unwinding activity will continue until the stack is unwound and the
-thread transitions to the *dead* state. There is no way to "recover" from thread 
+thread transitions to the *dead* state. There is no way to "recover" from thread
 panics. Once a thread has temporarily suspended its unwinding in the *panicking*
 state, a panic occurring from within this destructor results in *hard* panic.
 A hard panic currently results in the process aborting.

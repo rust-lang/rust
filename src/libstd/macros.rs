@@ -334,6 +334,7 @@ macro_rules! vec {
 ///
 /// ```
 /// use std::thread::Thread;
+/// use std::comm::channel;
 ///
 /// let (tx1, rx1) = channel();
 /// let (tx2, rx2) = channel();

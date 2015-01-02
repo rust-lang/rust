@@ -11,6 +11,7 @@
 // no-pretty-expanded FIXME #15189
 
 use std::thread::Thread;
+use std::comm::{channel, Sender};
 
 pub fn main() { println!("===== WITHOUT THREADS ====="); test00(); }
 

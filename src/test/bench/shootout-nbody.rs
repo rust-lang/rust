@@ -39,6 +39,7 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::num::Float;
+use std::str::from_str;
 
 const PI: f64 = 3.141592653589793;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;

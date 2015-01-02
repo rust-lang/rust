@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cmp::PartialEq;
+use std::ops::{Add, Sub, Mul};
 
 trait MyNum : Add<Self,Self> + Sub<Self,Self> + Mul<Self,Self> + PartialEq + Clone { }
 
