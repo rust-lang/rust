@@ -10,7 +10,7 @@
 
 // no-pretty-expanded FIXME #15189
 
-#[deriving(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct S<T> {
     x: T,
     y: T

@@ -22,14 +22,14 @@ mod rusti {
 }
 
 // This is the type with the questionable alignment
-#[deriving(Show)]
+#[derive(Show)]
 struct Inner {
     c64: u64
 }
 
 // This is the type that contains the type with the
 // questionable alignment, for testing
-#[deriving(Show)]
+#[derive(Show)]
 struct Outer {
     c8: u8,
     t: Inner

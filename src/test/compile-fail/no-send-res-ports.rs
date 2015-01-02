@@ -13,11 +13,11 @@
 use std::task;
 use std::rc::Rc;
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Port<T>(Rc<T>);
 
 fn main() {
-    #[deriving(Show)]
+    #[derive(Show)]
     struct foo {
       _x: Port<()>,
     }

@@ -15,7 +15,7 @@ extern crate rand;
 
 struct Error;
 
-#[deriving(Zero)]   //~ ERROR not implemented
+#[derive(Zero)]   //~ ERROR not implemented
 struct Struct(
     Error
 );

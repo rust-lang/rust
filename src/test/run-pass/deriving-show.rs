@@ -10,16 +10,16 @@
 
 #![feature(macro_rules)]
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Unit;
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Tuple(int, uint);
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Struct { x: int, y: uint }
 
-#[deriving(Show)]
+#[derive(Show)]
 enum Enum {
     Nullary,
     Variant(int, uint),

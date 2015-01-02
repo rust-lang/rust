@@ -18,7 +18,7 @@ impl Deref<JSRef> for Root {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct JSRef {
     node: *const Node
 }

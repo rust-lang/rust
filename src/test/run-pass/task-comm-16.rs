@@ -45,7 +45,7 @@ fn test_str() {
     assert_eq!(s1.as_bytes()[3], 't' as u8);
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 enum t {
     tag1,
     tag2(int),

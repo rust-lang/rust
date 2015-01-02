@@ -14,7 +14,7 @@ fn send<T:Send + std::fmt::Show>(ch: _chan<T>, data: T) {
     panic!();
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct _chan<T>(int);
 
 // Tests that "log(debug, message);" is flagged as using

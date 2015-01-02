@@ -12,7 +12,7 @@
 use std::hash;
 use std::hash::Hash;
 
-#[deriving(Hash)]
+#[derive(Hash)]
 struct Person {
     id: uint,
     name: String,

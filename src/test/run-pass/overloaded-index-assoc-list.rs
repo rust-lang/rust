@@ -16,7 +16,7 @@ use std::ops::Index;
 struct AssociationList<K,V> {
     pairs: Vec<AssociationPair<K,V>> }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct AssociationPair<K,V> {
     key: K,
     value: V

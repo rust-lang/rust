@@ -15,7 +15,7 @@ extern crate rand;
 
 struct Error;
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum Enum {
    A {
      x: Error //~ ERROR

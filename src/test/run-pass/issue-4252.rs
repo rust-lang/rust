@@ -17,10 +17,10 @@ trait X {
     }
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Y(int);
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Z<T> {
     x: T
 }
