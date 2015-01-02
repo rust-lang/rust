@@ -7269,7 +7269,7 @@ impl<T:ReferencesError> ReferencesError for Binder<T> {
 
 impl<T:ReferencesError> ReferencesError for Rc<T> {
     fn references_error(&self) -> bool {
-        (&*self).references_error()
+        (&**self).references_error()
     }
 }
 
