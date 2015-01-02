@@ -187,12 +187,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
         for _ in mem::replace(self, BTreeMap::with_b(b)).into_iter() {};
     }
 
-    /// Deprecated: renamed to `get`.
-    #[deprecated = "renamed to `get`"]
-    pub fn find(&self, key: &K) -> Option<&V> {
-        self.get(key)
-    }
-
     // Searching in a B-Tree is pretty straightforward.
     //
     // Start at the root. Try to find the key in the current node. If we find it, return it.
@@ -253,12 +247,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
         self.get(key).is_some()
     }
 
-    /// Deprecated: renamed to `get_mut`.
-    #[deprecated = "renamed to `get_mut`"]
-    pub fn find_mut(&mut self, key: &K) -> Option<&mut V> {
-        self.get_mut(key)
-    }
-
     /// Returns a mutable reference to the value corresponding to the key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
@@ -295,12 +283,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 }
             }
         }
-    }
-
-    /// Deprecated: renamed to `insert`.
-    #[deprecated = "renamed to `insert`"]
-    pub fn swap(&mut self, key: K, value: V) -> Option<V> {
-        self.insert(key, value)
     }
 
     // Insertion in a B-Tree is a bit complicated.
@@ -437,12 +419,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     //      Merging may cause the parent to underflow. If this is the case, then we must repeat
     //      the underflow handling process on the parent. If merging merges the last two children
     //      of the root, then we replace the root with the merged node.
-
-    /// Deprecated: renamed to `remove`.
-    #[deprecated = "renamed to `remove`"]
-    pub fn pop(&mut self, key: &K) -> Option<V> {
-        self.remove(key)
-    }
 
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
@@ -1506,7 +1482,7 @@ mod test {
         let size = 10000u;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = Vec::from_fn(size, |i| (i, i)).into_iter().collect();
+        let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
 
         {
             let mut iter = map.iter();
@@ -1545,7 +1521,7 @@ mod test {
         let size = 10000u;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = Vec::from_fn(size, |i| (i, i)).into_iter().collect();
+        let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
 
         {
             let mut iter = map.iter().rev();

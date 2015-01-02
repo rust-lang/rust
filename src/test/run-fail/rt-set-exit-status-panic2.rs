@@ -13,7 +13,7 @@
 #![feature(phase)]
 #[phase(plugin, link)] extern crate log;
 use std::os;
-use std::task;
+use std::thread::Thread;
 
 struct r {
   x:int,
@@ -36,7 +36,7 @@ fn r(x:int) -> r {
 
 fn main() {
     error!("whatever");
-    task::spawn(move|| {
+    let _t = Thread::spawn(move|| {
       let _i = r(5);
     });
     panic!();

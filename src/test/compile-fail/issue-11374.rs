@@ -32,6 +32,6 @@ pub fn for_stdin<'a>() -> Container<'a> {
 
 fn main() {
     let mut c = for_stdin();
-    let mut v = vec::Vec::from_elem(10, 0u8);
+    let mut v = Vec::new();
     c.read_to(v.as_mut_slice());
 }

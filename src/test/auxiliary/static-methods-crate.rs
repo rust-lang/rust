@@ -12,7 +12,6 @@
 #![crate_type = "lib"]
 
 use std::int;
-use std::str::from_str;
 
 pub trait read {
     fn readMaybe(s: String) -> Option<Self>;
@@ -20,7 +19,7 @@ pub trait read {
 
 impl read for int {
     fn readMaybe(s: String) -> Option<int> {
-        from_str::<int>(s.as_slice())
+        s.parse()
     }
 }
 

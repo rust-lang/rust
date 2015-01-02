@@ -16,7 +16,7 @@ use self::VacantEntryState::*;
 
 use borrow::BorrowFrom;
 use clone::Clone;
-use cmp::{max, Eq, Equiv, PartialEq};
+use cmp::{max, Eq, PartialEq};
 use default::Default;
 use fmt::{self, Show};
 use hash::{Hash, Hasher, RandomSipHasher};
@@ -444,20 +444,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         table::make_hash(&self.hasher, x)
     }
 
-    #[allow(deprecated)]
-    fn search_equiv<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a self, q: &Q)
-                    -> Option<FullBucketImm<'a, K, V>> {
-        let hash = self.make_hash(q);
-        search_hashed(&self.table, hash, |k| q.equiv(k)).into_option()
-    }
-
-    #[allow(deprecated)]
-    fn search_equiv_mut<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a mut self, q: &Q)
-                    -> Option<FullBucketMut<'a, K, V>> {
-        let hash = self.make_hash(q);
-        search_hashed(&mut self.table, hash, |k| q.equiv(k)).into_option()
-    }
-
     /// Search for a key, yielding the index if it's found in the hashtable.
     /// If you already have the hash for the key lying around, use
     /// search_hashed.
@@ -807,30 +793,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    /// Deprecated: use `contains_key` and `BorrowFrom` instead.
-    #[deprecated = "use contains_key and BorrowFrom instead"]
-    pub fn contains_key_equiv<Sized? Q: Hash<S> + Equiv<K>>(&self, key: &Q) -> bool {
-        self.search_equiv(key).is_some()
-    }
-
-    /// Deprecated: use `get` and `BorrowFrom` instead.
-    #[deprecated = "use get and BorrowFrom instead"]
-    pub fn find_equiv<'a, Sized? Q: Hash<S> + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
-        self.search_equiv(k).map(|bucket| bucket.into_refs().1)
-    }
-
-    /// Deprecated: use `remove` and `BorrowFrom` instead.
-    #[deprecated = "use remove and BorrowFrom instead"]
-    pub fn pop_equiv<Sized? Q:Hash<S> + Equiv<K>>(&mut self, k: &Q) -> Option<V> {
-        if self.table.size() == 0 {
-            return None
-        }
-
-        self.reserve(1);
-
-        self.search_equiv_mut(k).map(|bucket| pop_internal(bucket).1)
-    }
-
     /// An iterator visiting all keys in arbitrary order.
     /// Iterator element type is `&'a K`.
     ///
@@ -1047,12 +1009,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         self.drain();
     }
 
-    /// Deprecated: Renamed to `get`.
-    #[deprecated = "Renamed to `get`"]
-    pub fn find(&self, k: &K) -> Option<&V> {
-        self.get(k)
-    }
-
     /// Returns a reference to the value corresponding to the key.
     ///
     /// The key may be any borrowed form of the map's key type, but
@@ -1099,12 +1055,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         self.search(k).is_some()
     }
 
-    /// Deprecated: Renamed to `get_mut`.
-    #[deprecated = "Renamed to `get_mut`"]
-    pub fn find_mut(&mut self, k: &K) -> Option<&mut V> {
-        self.get_mut(k)
-    }
-
     /// Returns a mutable reference to the value corresponding to the key.
     ///
     /// The key may be any borrowed form of the map's key type, but
@@ -1129,12 +1079,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         where Q: Hash<S> + Eq + BorrowFrom<K>
     {
         self.search_mut(k).map(|bucket| bucket.into_mut_refs().1)
-    }
-
-    /// Deprecated: Renamed to `insert`.
-    #[deprecated = "Renamed to `insert`"]
-    pub fn swap(&mut self, k: K, v: V) -> Option<V> {
-        self.insert(k, v)
     }
 
     /// Inserts a key-value pair from the map. If the key already had a value
@@ -1163,12 +1107,6 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
             retval = Some(replace(val_ref, val));
         });
         retval
-    }
-
-    /// Deprecated: Renamed to `remove`.
-    #[deprecated = "Renamed to `remove`"]
-    pub fn pop(&mut self, k: &K) -> Option<V> {
-        self.remove(k)
     }
 
     /// Removes a key from the map, returning the value at the key if the key
@@ -1243,24 +1181,6 @@ fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHas
 
         probe = bucket.next();
         assert!(probe.index() != ib + size + 1);
-    }
-}
-
-impl<K: Eq + Hash<S>, V: Clone, S, H: Hasher<S>> HashMap<K, V, H> {
-    /// Deprecated: Use `map.get(k).cloned()`.
-    ///
-    /// Return a copy of the value corresponding to the key.
-    #[deprecated = "Use `map.get(k).cloned()`"]
-    pub fn find_copy(&self, k: &K) -> Option<V> {
-        self.get(k).cloned()
-    }
-
-    /// Deprecated: Use `map[k].clone()`.
-    ///
-    /// Return a copy of the value corresponding to the key.
-    #[deprecated = "Use `map[k].clone()`"]
-    pub fn get_copy(&self, k: &K) -> V {
-        self[*k].clone()
     }
 }
 
@@ -1574,29 +1494,11 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extend<(K, V)> for HashMap<K
 mod test_map {
     use prelude::v1::*;
 
-    use cmp::Equiv;
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
-    use hash;
-    use iter::{range_inclusive, range_step_inclusive};
+    use iter::{range_inclusive, range_step_inclusive, repeat};
     use cell::RefCell;
     use rand::{weak_rng, Rng};
-
-    struct KindaIntLike(int);
-
-    #[allow(deprecated)]
-    impl Equiv<int> for KindaIntLike {
-        fn equiv(&self, other: &int) -> bool {
-            let KindaIntLike(this) = *self;
-            this == *other
-        }
-    }
-    impl<S: hash::Writer> hash::Hash<S> for KindaIntLike {
-        fn hash(&self, state: &mut S) {
-            let KindaIntLike(this) = *self;
-            this.hash(state)
-        }
-    }
 
     #[test]
     fn test_create_capacity_zero() {
@@ -1654,7 +1556,7 @@ mod test_map {
     #[test]
     fn test_drops() {
         DROP_VECTOR.with(|slot| {
-            *slot.borrow_mut() = Vec::from_elem(200, 0i);
+            *slot.borrow_mut() = repeat(0i).take(200).collect();
         });
 
         {
@@ -1713,7 +1615,7 @@ mod test_map {
     #[test]
     fn test_move_iter_drops() {
         DROP_VECTOR.with(|v| {
-            *v.borrow_mut() = Vec::from_elem(200, 0i);
+            *v.borrow_mut() = repeat(0).take(200).collect();
         });
 
         let hm = {
@@ -1912,15 +1814,6 @@ mod test_map {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_pop_equiv() {
-        let mut m = HashMap::new();
-        m.insert(1i, 2i);
-        assert_eq!(m.pop_equiv(&KindaIntLike(1)), Some(2));
-        assert_eq!(m.pop_equiv(&KindaIntLike(1)), None);
-    }
-
-    #[test]
     fn test_iterate() {
         let mut m = HashMap::with_capacity(4);
         for i in range(0u, 32) {
@@ -1967,27 +1860,6 @@ mod test_map {
         match m.get(&1) {
             None => panic!(),
             Some(v) => assert_eq!(*v, 2)
-        }
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_find_copy() {
-        let mut m = HashMap::new();
-        assert!(m.get(&1i).is_none());
-
-        for i in range(1i, 10000) {
-            m.insert(i, i + 7);
-            match m.find_copy(&i) {
-                None => panic!(),
-                Some(v) => assert_eq!(v, i + 7)
-            }
-            for j in range(1i, i/100) {
-                match m.find_copy(&j) {
-                    None => panic!(),
-                    Some(v) => assert_eq!(v, j + 7)
-                }
-            }
         }
     }
 

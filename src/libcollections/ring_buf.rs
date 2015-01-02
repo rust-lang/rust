@@ -681,12 +681,6 @@ impl<T> RingBuf<T> {
         unsafe { self.buffer_write(tail, t); }
     }
 
-    /// Deprecated: Renamed to `push_back`.
-    #[deprecated = "Renamed to `push_back`"]
-    pub fn push(&mut self, t: T) {
-        self.push_back(t)
-    }
-
     /// Appends an element to the back of a buffer
     ///
     /// # Examples
@@ -709,12 +703,6 @@ impl<T> RingBuf<T> {
         let head = self.head;
         self.head = self.wrap_index(self.head + 1);
         unsafe { self.buffer_write(head, t) }
-    }
-
-    /// Deprecated: Renamed to `pop_back`.
-    #[deprecated = "Renamed to `pop_back`"]
-    pub fn pop(&mut self) -> Option<T> {
-        self.pop_back()
     }
 
     /// Removes the last element from a buffer and returns it, or `None` if
@@ -1452,7 +1440,6 @@ mod tests {
     use self::Taggy::*;
     use self::Taggypar::*;
     use prelude::*;
-    use core::cmp;
     use core::iter;
     use std::fmt::Show;
     use std::hash;

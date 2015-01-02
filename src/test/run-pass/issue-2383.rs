@@ -14,5 +14,5 @@ use std::collections::RingBuf;
 
 pub fn main() {
     let mut q = RingBuf::new();
-    q.push(10i);
+    q.push_front(10i);
 }

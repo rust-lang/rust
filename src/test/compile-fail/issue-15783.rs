@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn foo(params: Option<&[&str]>) -> uint {
-    params.unwrap().head().unwrap().len()
+    params.unwrap().first().unwrap().len()
 }
 
 fn main() {

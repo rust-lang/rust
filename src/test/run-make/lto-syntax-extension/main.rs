@@ -11,9 +11,6 @@
 #![feature(phase)]
 
 extern crate lib;
-extern crate regex;
-#[phase(plugin)] extern crate regex_macros;
+#[phase(plugin, link)] extern crate log;
 
-fn main() {
-    regex!("1234");
-}
+fn main() {}

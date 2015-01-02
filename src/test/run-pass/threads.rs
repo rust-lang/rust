@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
 pub fn main() {
     let mut i = 10;
-    while i > 0 { task::spawn({let i = i; move|| child(i)}); i = i - 1; }
+    while i > 0 {
+        Thread::spawn({let i = i; move|| child(i)}).detach();
+        i = i - 1;
+    }
     println!("main thread exiting");
 }
 

@@ -150,10 +150,6 @@ impl<T> CVec<T> {
         self.base
     }
 
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub unsafe fn unwrap(self) -> *mut T { self.into_inner() }
-
     /// Returns the number of items in this vector.
     pub fn len(&self) -> uint { self.len }
 

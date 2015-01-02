@@ -12,7 +12,7 @@
 
 pub use self::MaybeOwnedVector::*;
 
-use std::cmp::{Equiv, Ordering};
+use std::cmp::Ordering;
 use std::default::Default;
 use std::fmt;
 use std::iter::FromIterator;
@@ -94,13 +94,6 @@ impl<'a, T: PartialOrd> PartialOrd for MaybeOwnedVector<'a, T> {
 impl<'a, T: Ord> Ord for MaybeOwnedVector<'a, T> {
     fn cmp(&self, other: &MaybeOwnedVector<T>) -> Ordering {
         self.as_slice().cmp(other.as_slice())
-    }
-}
-
-#[allow(deprecated)]
-impl<'a, T: PartialEq> Equiv<[T]> for MaybeOwnedVector<'a, T> {
-    fn equiv(&self, other: &[T]) -> bool {
-        self.as_slice() == other
     }
 }
 

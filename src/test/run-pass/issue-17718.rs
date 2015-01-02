@@ -12,10 +12,10 @@
 
 extern crate "issue-17718" as other;
 
-use std::sync::atomic;
+use std::sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Ordering};
 
 const C1: uint = 1;
-const C2: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
+const C2: AtomicUint = ATOMIC_UINT_INIT;
 const C3: fn() = foo;
 const C4: uint = C1 * C1 + C1 / C1;
 const C5: &'static uint = &C4;
@@ -25,7 +25,7 @@ const C6: uint = {
 };
 
 static S1: uint = 3;
-static S2: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
+static S2: AtomicUint = ATOMIC_UINT_INIT;
 
 mod test {
     static A: uint = 4;
@@ -38,14 +38,14 @@ fn foo() {}
 fn main() {
     assert_eq!(C1, 1);
     assert_eq!(C3(), ());
-    assert_eq!(C2.fetch_add(1, atomic::SeqCst), 0);
-    assert_eq!(C2.fetch_add(1, atomic::SeqCst), 0);
+    assert_eq!(C2.fetch_add(1, Ordering::SeqCst), 0);
+    assert_eq!(C2.fetch_add(1, Ordering::SeqCst), 0);
     assert_eq!(C4, 2);
     assert_eq!(*C5, 2);
     assert_eq!(C6, 3);
     assert_eq!(S1, 3);
-    assert_eq!(S2.fetch_add(1, atomic::SeqCst), 0);
-    assert_eq!(S2.fetch_add(1, atomic::SeqCst), 1);
+    assert_eq!(S2.fetch_add(1, Ordering::SeqCst), 0);
+    assert_eq!(S2.fetch_add(1, Ordering::SeqCst), 1);
 
     match 1 {
         C1 => {}
@@ -62,13 +62,13 @@ fn main() {
 
     assert_eq!(other::C1, 1);
     assert_eq!(other::C3(), ());
-    assert_eq!(other::C2.fetch_add(1, atomic::SeqCst), 0);
-    assert_eq!(other::C2.fetch_add(1, atomic::SeqCst), 0);
+    assert_eq!(other::C2.fetch_add(1, Ordering::SeqCst), 0);
+    assert_eq!(other::C2.fetch_add(1, Ordering::SeqCst), 0);
     assert_eq!(other::C4, 2);
     assert_eq!(*other::C5, 2);
     assert_eq!(other::S1, 3);
-    assert_eq!(other::S2.fetch_add(1, atomic::SeqCst), 0);
-    assert_eq!(other::S2.fetch_add(1, atomic::SeqCst), 1);
+    assert_eq!(other::S2.fetch_add(1, Ordering::SeqCst), 0);
+    assert_eq!(other::S2.fetch_add(1, Ordering::SeqCst), 1);
 
     let _a = other::C1;
     let _a = other::C2;

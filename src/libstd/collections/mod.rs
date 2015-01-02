@@ -314,16 +314,8 @@
 pub use core_collections::{BinaryHeap, Bitv, BitvSet, BTreeMap, BTreeSet};
 pub use core_collections::{DList, RingBuf, VecMap};
 
-/// Deprecated: Moved to collect-rs: https://github.com/Gankro/collect-rs/
-#[deprecated = "Moved to collect-rs: https://github.com/Gankro/collect-rs/"]
-pub use core_collections::EnumSet;
-
 pub use core_collections::{binary_heap, bitv, bitv_set, btree_map, btree_set};
 pub use core_collections::{dlist, ring_buf, vec_map};
-
-/// Deprecated: Moved to collect-rs: https://github.com/Gankro/collect-rs/
-#[deprecated = "Moved to collect-rs: https://github.com/Gankro/collect-rs/"]
-pub use core_collections::enum_set;
 
 pub use self::hash_map::HashMap;
 pub use self::hash_set::HashSet;

@@ -263,7 +263,6 @@ pub use self::timer::Timer;
 pub use self::net::ip::IpAddr;
 pub use self::net::tcp::TcpListener;
 pub use self::net::tcp::TcpStream;
-pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
 pub use self::process::{Process, Command};
 pub use self::tempfile::TempDir;
@@ -863,23 +862,6 @@ pub trait Reader {
 }
 
 /// A reader which can be converted to a RefReader.
-#[deprecated = "use ByRefReader instead"]
-pub trait AsRefReader {
-    /// Creates a wrapper around a mutable reference to the reader.
-    ///
-    /// This is useful to allow applying adaptors while still
-    /// retaining ownership of the original value.
-    fn by_ref<'a>(&'a mut self) -> RefReader<'a, Self>;
-}
-
-#[allow(deprecated)]
-impl<T: Reader> AsRefReader for T {
-    fn by_ref<'a>(&'a mut self) -> RefReader<'a, T> {
-        RefReader { inner: self }
-    }
-}
-
-/// A reader which can be converted to a RefReader.
 pub trait ByRefReader {
     /// Creates a wrapper around a mutable reference to the reader.
     ///
@@ -1239,24 +1221,6 @@ pub trait Writer {
     #[inline]
     fn write_i8(&mut self, n: i8) -> IoResult<()> {
         self.write(&[n as u8])
-    }
-}
-
-/// A writer which can be converted to a RefWriter.
-#[deprecated = "use ByRefWriter instead"]
-pub trait AsRefWriter {
-    /// Creates a wrapper around a mutable reference to the writer.
-    ///
-    /// This is useful to allow applying wrappers while still
-    /// retaining ownership of the original value.
-    #[inline]
-    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, Self>;
-}
-
-#[allow(deprecated)]
-impl<T: Writer> AsRefWriter for T {
-    fn by_ref<'a>(&'a mut self) -> RefWriter<'a, T> {
-        RefWriter { inner: self }
     }
 }
 
@@ -1847,64 +1811,6 @@ bitflags! {
 
         #[doc = "All possible permissions enabled."]
         const ALL_PERMISSIONS = USER_RWX.bits | GROUP_RWX.bits | OTHER_RWX.bits,
-
-        // Deprecated names
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use USER_READ instead"]
-        const UserRead     = USER_READ.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use USER_WRITE instead"]
-        const UserWrite    = USER_WRITE.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use USER_EXECUTE instead"]
-        const UserExecute  = USER_EXECUTE.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use GROUP_READ instead"]
-        const GroupRead    = GROUP_READ.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use GROUP_WRITE instead"]
-        const GroupWrite   = GROUP_WRITE.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use GROUP_EXECUTE instead"]
-        const GroupExecute = GROUP_EXECUTE.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use OTHER_READ instead"]
-        const OtherRead    = OTHER_READ.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use OTHER_WRITE instead"]
-        const OtherWrite   = OTHER_WRITE.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use OTHER_EXECUTE instead"]
-        const OtherExecute = OTHER_EXECUTE.bits,
-
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use USER_RWX instead"]
-        const UserRWX  = USER_RWX.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use GROUP_RWX instead"]
-        const GroupRWX = GROUP_RWX.bits,
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use OTHER_RWX instead"]
-        const OtherRWX = OTHER_RWX.bits,
-
-        #[doc = "Deprecated: use `USER_FILE` instead."]
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use USER_FILE instead"]
-        const UserFile = USER_FILE.bits,
-
-        #[doc = "Deprecated: use `USER_DIR` instead."]
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use USER_DIR instead"]
-        const UserDir  = USER_DIR.bits,
-        #[doc = "Deprecated: use `USER_EXEC` instead."]
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use USER_EXEC instead"]
-        const UserExec = USER_EXEC.bits,
-
-        #[doc = "Deprecated: use `ALL_PERMISSIONS` instead"]
-        #[allow(non_upper_case_globals)]
-        #[deprecated = "use ALL_PERMISSIONS instead"]
-        const AllPermissions = ALL_PERMISSIONS.bits,
     }
 }
 

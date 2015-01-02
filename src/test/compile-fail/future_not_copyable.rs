@@ -13,5 +13,5 @@ use std::sync::Future;
 fn main() {
     let f = Future::from_value(());
     let g = f;
-    f.unwrap(); //~ ERROR use of moved value
+    f.into_inner(); //~ ERROR use of moved value
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
 fn f() {
     let _a = box 0i;
@@ -16,5 +16,5 @@ fn f() {
 }
 
 pub fn main() {
-    task::spawn(f);
+    let _t = Thread::spawn(f);
 }

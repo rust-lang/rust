@@ -36,7 +36,7 @@
 
 use mem::transmute;
 use clone::Clone;
-use cmp::{Ordering, PartialEq, PartialOrd, Eq, Ord, Equiv};
+use cmp::{Ordering, PartialEq, PartialOrd, Eq, Ord};
 use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
@@ -1369,68 +1369,6 @@ pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
 // Submodules
 //
 
-/// Unsafe operations
-#[deprecated]
-pub mod raw {
-    use mem::transmute;
-    use ptr::PtrExt;
-    use raw::Slice;
-    use ops::FnOnce;
-    use option::Option;
-    use option::Option::{None, Some};
-
-    /// Form a slice from a pointer and length (as a number of units,
-    /// not bytes).
-    #[inline]
-    #[deprecated = "renamed to slice::from_raw_buf"]
-    pub unsafe fn buf_as_slice<T, U, F>(p: *const T, len: uint, f: F) -> U where
-        F: FnOnce(&[T]) -> U,
-    {
-        f(transmute(Slice {
-            data: p,
-            len: len
-        }))
-    }
-
-    /// Form a slice from a pointer and length (as a number of units,
-    /// not bytes).
-    #[inline]
-    #[deprecated = "renamed to slice::from_raw_mut_buf"]
-    pub unsafe fn mut_buf_as_slice<T, U, F>(p: *mut T, len: uint, f: F) -> U where
-        F: FnOnce(&mut [T]) -> U,
-    {
-        f(transmute(Slice {
-            data: p as *const T,
-            len: len
-        }))
-    }
-
-    /// Returns a pointer to first element in slice and adjusts
-    /// slice so it no longer contains that element. Returns None
-    /// if the slice is empty. O(1).
-    #[inline]
-    #[deprecated = "inspect `Slice::{data, len}` manually (increment data by 1)"]
-    pub unsafe fn shift_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
-        if slice.len == 0 { return None; }
-        let head: *const T = slice.data;
-        slice.data = slice.data.offset(1);
-        slice.len -= 1;
-        Some(head)
-    }
-
-    /// Returns a pointer to last element in slice and adjusts
-    /// slice so it no longer contains that element. Returns None
-    /// if the slice is empty. O(1).
-    #[inline]
-    #[deprecated = "inspect `Slice::{data, len}` manually (decrement len by 1)"]
-    pub unsafe fn pop_ptr<T>(slice: &mut Slice<T>) -> Option<*const T> {
-        if slice.len == 0 { return None; }
-        let tail: *const T = slice.data.offset((slice.len - 1) as int);
-        slice.len -= 1;
-        Some(tail)
-    }
-}
-
 /// Operations on `[u8]`.
 #[experimental = "needs review"]
 pub mod bytes {
@@ -1489,20 +1427,6 @@ impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
 
 #[stable]
 impl<T: Eq> Eq for [T] {}
-
-#[allow(deprecated)]
-#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
-impl<T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for [T] {
-    #[inline]
-    fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
-}
-
-#[allow(deprecated)]
-#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
-impl<'a,T:PartialEq, Sized? V: AsSlice<T>> Equiv<V> for &'a mut [T] {
-    #[inline]
-    fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
-}
 
 #[stable]
 impl<T: Ord> Ord for [T] {

@@ -14,7 +14,6 @@
 //! module's count includes its children's.
 
 use std::cmp::Ordering;
-use std::num::Zero;
 use std::ops::Add;
 
 use syntax::attr::{Deprecated, Experimental, Unstable, Stable, Frozen, Locked};
@@ -26,7 +25,7 @@ use clean::{TypeTraitItem, ViewItemItem, PrimitiveItem, Stability};
 
 use html::render::cache;
 
-#[derive(Zero, RustcEncodable, RustcDecodable, PartialEq, Eq)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, Eq)]
 /// The counts for each stability level.
 #[derive(Copy)]
 pub struct Counts {

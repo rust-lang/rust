@@ -50,7 +50,7 @@ use alloc::boxed::Box;
 use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
 use core::borrow::{Cow, IntoCow};
 use core::cmp::max;
-use core::cmp::{Equiv, Ordering};
+use core::cmp::{Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
@@ -207,13 +207,6 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Deprecated: use `iter::range(0, length).map(op).collect()` instead
-    #[inline]
-    #[deprecated = "use iter::range(0, length).map(op).collect() instead"]
-    pub fn from_fn<F>(length: uint, op: F) -> Vec<T> where F: FnMut(uint) -> T {
-        range(0, length).map(op).collect()
-    }
-
     /// Creates a `Vec<T>` directly from the raw components of another vector.
     ///
     /// This is highly unsafe, due to the number of invariants that aren't checked.
@@ -268,13 +261,6 @@ impl<T> Vec<T> {
         dst
     }
 
-    /// Deprecated: use `into_iter().partition(f)` instead.
-    #[inline]
-    #[deprecated = "use into_iter().partition(f) instead"]
-    pub fn partition<F>(self, f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
-        self.into_iter().partition(f)
-    }
-
     /// Returns the number of elements the vector can hold without
     /// reallocating.
     ///
@@ -288,12 +274,6 @@ impl<T> Vec<T> {
     #[stable]
     pub fn capacity(&self) -> uint {
         self.cap
-    }
-
-    /// Deprecated: Renamed to `reserve`.
-    #[deprecated = "Renamed to `reserve`"]
-    pub fn reserve_additional(&mut self, extra: uint) {
-        self.reserve(extra)
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the given
@@ -635,12 +615,6 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Deprecated: use `extend(range(0, n).map(f))` instead.
-    #[deprecated = "use extend(range(0, n).map(f)) instead"]
-    pub fn grow_fn<F>(&mut self, n: uint, f: F) where F: FnMut(uint) -> T {
-        self.extend(range(0, n).map(f));
-    }
-
     /// Appends an element to the back of a collection.
     ///
     /// # Panics
@@ -979,13 +953,6 @@ impl<T> Vec<T> {
 }
 
 impl<T: Clone> Vec<T> {
-    /// Deprecated: use `repeat(value).take(length).collect()` instead.
-    #[inline]
-    #[deprecated = "use repeat(value).take(length).collect() instead"]
-    pub fn from_elem(length: uint, value: T) -> Vec<T> {
-        repeat(value).take(length).collect()
-    }
-
     /// Resizes the `Vec` in-place so that `len()` is equal to `new_len`.
     ///
     /// Calls either `extend()` or `truncate()` depending on whether `new_len`
@@ -1043,18 +1010,6 @@ impl<T: Clone> Vec<T> {
                 self.set_len(len + 1);
             }
         }
-    }
-
-    /// Deprecated: use `extend(repeat(value).take(n))` instead
-    #[deprecated = "use extend(repeat(value).take(n)) instead"]
-    pub fn grow(&mut self, n: uint, value: T) {
-        self.extend(repeat(value).take(n))
-    }
-
-    /// Deprecated: use `iter().cloned().partition(f)` instead.
-    #[deprecated = "use iter().cloned().partition(f) instead"]
-    pub fn partitioned<F>(&self, f: F) -> (Vec<T>, Vec<T>) where F: FnMut(&T) -> bool {
-        self.iter().cloned().partition(f)
     }
 }
 
@@ -1156,16 +1111,6 @@ impl<T: PartialEq> Vec<T> {
             self.truncate(w);
         }
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Public free fns
-////////////////////////////////////////////////////////////////////////////////
-
-/// Deprecated: use `unzip` directly on the iterator instead.
-#[deprecated = "use unzip directly on the iterator instead"]
-pub fn unzip<T, U, V: Iterator<Item=(T, U)>>(iter: V) -> (Vec<T>, Vec<U>) {
-    iter.unzip()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1438,13 +1383,6 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
 #[unstable = "waiting on Eq stability"]
 impl<T: Eq> Eq for Vec<T> {}
 
-#[allow(deprecated)]
-#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
-impl<T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for Vec<T> {
-    #[inline]
-    fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
-}
-
 #[unstable = "waiting on Ord stability"]
 impl<T: Ord> Ord for Vec<T> {
     #[inline]
@@ -1563,9 +1501,6 @@ pub struct IntoIter<T> {
     end: *const T
 }
 
-#[deprecated = "use IntoIter instead"]
-pub type MoveItems<T> = IntoIter<T>;
-
 impl<T> IntoIter<T> {
     #[inline]
     /// Drops all items that have not yet been moved and returns the empty vector.
@@ -1578,10 +1513,6 @@ impl<T> IntoIter<T> {
             Vec { ptr: NonZero::new(allocation), cap: cap, len: 0 }
         }
     }
-
-    /// Deprecated, use .into_inner() instead
-    #[deprecated = "use .into_inner() instead"]
-    pub fn unwrap(self) -> Vec<T> { self.into_inner() }
 }
 
 impl<T> Iterator for IntoIter<T> {
@@ -1781,26 +1712,6 @@ pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Raw module (deprecated)
-////////////////////////////////////////////////////////////////////////////////
-
-/// Unsafe vector operations.
-#[deprecated]
-pub mod raw {
-    use super::Vec;
-
-    /// Constructs a vector from an unsafe pointer to a buffer.
-    ///
-    /// The elements of the buffer are copied into the vector without cloning,
-    /// as if `ptr::read()` were called on them.
-    #[inline]
-    #[deprecated = "renamed to Vec::from_raw_buf"]
-    pub unsafe fn from_buf<T>(ptr: *const T, elts: uint) -> Vec<T> {
-        Vec::from_raw_buf(ptr, elts)
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Partial vec, used for map_in_place
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1879,8 +1790,9 @@ impl<T,U> Drop for PartialVecZeroSized<T,U> {
 mod tests {
     use prelude::*;
     use core::mem::size_of;
+    use core::iter::repeat;
     use test::Bencher;
-    use super::{as_vec, unzip, raw};
+    use super::as_vec;
 
     struct DropCounter<'a> {
         count: &'a mut int
@@ -2070,13 +1982,6 @@ mod tests {
     }
 
     #[test]
-    fn test_grow_fn() {
-        let mut v = vec![0u, 1];
-        v.grow_fn(3, |i| i);
-        assert!(v == vec![0u, 1, 0, 1, 2]);
-    }
-
-    #[test]
     fn test_retain() {
         let mut vec = vec![1u, 2, 3, 4];
         vec.retain(|&x| x % 2 == 0);
@@ -2116,25 +2021,17 @@ mod tests {
 
     #[test]
     fn test_partition() {
-        assert_eq!(vec![].partition(|x: &int| *x < 3), (vec![], vec![]));
-        assert_eq!(vec![1i, 2, 3].partition(|x: &int| *x < 4), (vec![1, 2, 3], vec![]));
-        assert_eq!(vec![1i, 2, 3].partition(|x: &int| *x < 2), (vec![1], vec![2, 3]));
-        assert_eq!(vec![1i, 2, 3].partition(|x: &int| *x < 0), (vec![], vec![1, 2, 3]));
-    }
-
-    #[test]
-    fn test_partitioned() {
-        assert_eq!(vec![].partitioned(|x: &int| *x < 3), (vec![], vec![]));
-        assert_eq!(vec![1i, 2, 3].partitioned(|x: &int| *x < 4), (vec![1, 2, 3], vec![]));
-        assert_eq!(vec![1i, 2, 3].partitioned(|x: &int| *x < 2), (vec![1], vec![2, 3]));
-        assert_eq!(vec![1i, 2, 3].partitioned(|x: &int| *x < 0), (vec![], vec![1, 2, 3]));
+        assert_eq!(vec![].into_iter().partition(|x: &int| *x < 3), (vec![], vec![]));
+        assert_eq!(vec![1i, 2, 3].into_iter().partition(|x: &int| *x < 4), (vec![1, 2, 3], vec![]));
+        assert_eq!(vec![1i, 2, 3].into_iter().partition(|x: &int| *x < 2), (vec![1], vec![2, 3]));
+        assert_eq!(vec![1i, 2, 3].into_iter().partition(|x: &int| *x < 0), (vec![], vec![1, 2, 3]));
     }
 
     #[test]
     fn test_zip_unzip() {
         let z1 = vec![(1i, 4i), (2, 5), (3, 6)];
 
-        let (left, right) = unzip(z1.iter().map(|&x| x));
+        let (left, right): (Vec<_>, Vec<_>) = z1.iter().map(|&x| x).unzip();
 
         assert_eq!((1, 4), (left[0], right[0]));
         assert_eq!((2, 5), (left[1], right[1]));
@@ -2147,13 +2044,13 @@ mod tests {
             // Test on-stack copy-from-buf.
             let a = [1i, 2, 3];
             let ptr = a.as_ptr();
-            let b = raw::from_buf(ptr, 3u);
+            let b = Vec::from_raw_buf(ptr, 3u);
             assert_eq!(b, vec![1, 2, 3]);
 
             // Test on-heap copy-from-buf.
             let c = vec![1i, 2, 3, 4, 5];
             let ptr = c.as_ptr();
-            let d = raw::from_buf(ptr, 5u);
+            let d = Vec::from_raw_buf(ptr, 5u);
             assert_eq!(d, vec![1, 2, 3, 4, 5]);
         }
     }
@@ -2254,7 +2151,7 @@ mod tests {
         vec.push(1);
         vec.push(2);
         let ptr = vec.as_ptr();
-        vec = vec.into_iter().unwrap();
+        vec = vec.into_iter().into_inner();
         assert_eq!(vec.as_ptr(), ptr);
         assert_eq!(vec.capacity(), 7);
         assert_eq!(vec.len(), 0);
@@ -2283,8 +2180,7 @@ mod tests {
 
     #[test]
     fn test_map_in_place_zero_drop_count() {
-        use std::sync::atomic;
-        use std::sync::atomic::AtomicUint;
+        use std::sync::atomic::{AtomicUint, Ordering, ATOMIC_UINT_INIT};
 
         #[derive(Clone, PartialEq, Show)]
         struct Nothing;
@@ -2294,20 +2190,20 @@ mod tests {
         struct ZeroSized;
         impl Drop for ZeroSized {
             fn drop(&mut self) {
-                DROP_COUNTER.fetch_add(1, atomic::Relaxed);
+                DROP_COUNTER.fetch_add(1, Ordering::Relaxed);
             }
         }
         const NUM_ELEMENTS: uint = 2;
-        static DROP_COUNTER: AtomicUint = atomic::ATOMIC_UINT_INIT;
+        static DROP_COUNTER: AtomicUint = ATOMIC_UINT_INIT;
 
-        let v = Vec::from_elem(NUM_ELEMENTS, Nothing);
+        let v = repeat(Nothing).take(NUM_ELEMENTS).collect::<Vec<_>>();
 
-        DROP_COUNTER.store(0, atomic::Relaxed);
+        DROP_COUNTER.store(0, Ordering::Relaxed);
 
         let v = v.map_in_place(|_| ZeroSized);
-        assert_eq!(DROP_COUNTER.load(atomic::Relaxed), 0);
+        assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), 0);
         drop(v);
-        assert_eq!(DROP_COUNTER.load(atomic::Relaxed), NUM_ELEMENTS);
+        assert_eq!(DROP_COUNTER.load(Ordering::Relaxed), NUM_ELEMENTS);
     }
 
     #[test]
@@ -2423,7 +2319,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst = Vec::from_fn(src_len, |i| i);
+            let dst = range(0, src_len).collect::<Vec<_>>();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         })
@@ -2453,7 +2349,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst: Vec<uint> = Vec::from_elem(src_len, 5);
+            let dst: Vec<uint> = repeat(5).take(src_len).collect();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().all(|x| *x == 5));
         })

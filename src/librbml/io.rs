@@ -133,6 +133,7 @@ mod tests {
     extern crate test;
     use super::SeekableMemWriter;
     use std::io;
+    use std::iter::repeat;
     use test::Bencher;
 
     #[test]
@@ -183,7 +184,7 @@ mod tests {
     }
 
     fn do_bench_seekable_mem_writer(b: &mut Bencher, times: uint, len: uint) {
-        let src: Vec<u8> = Vec::from_elem(len, 5);
+        let src: Vec<u8> = repeat(5).take(len).collect();
 
         b.bytes = (times * len) as u64;
         b.iter(|| {

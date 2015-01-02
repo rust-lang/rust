@@ -600,11 +600,9 @@ mod tests {
     use std::ops::Drop;
     use std::option::Option;
     use std::option::Option::{Some, None};
-    use std::str::Str;
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
-    use std::task;
-    use std::kinds::Send;
+    use std::thread::Thread;
     use std::vec::Vec;
     use super::{Arc, Weak, weak_count, strong_count};
     use std::sync::Mutex;
@@ -631,7 +629,7 @@ mod tests {
 
         let (tx, rx) = channel();
 
-        task::spawn(move || {
+        let _t = Thread::spawn(move || {
             let arc_v: Arc<Vec<int>> = rx.recv().unwrap();
             assert_eq!((*arc_v)[3], 4);
         });

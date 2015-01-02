@@ -43,8 +43,10 @@
 #![feature(associated_types, slicing_syntax)]
 
 use std::ascii::OwnedAsciiExt;
+use std::iter::repeat;
 use std::slice;
-use std::sync::{Arc, Future};
+use std::sync::Arc;
+use std::thread::Thread;
 
 static TABLE: [u8;4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
 static TABLE_SIZE: uint = 2 << 16;
@@ -136,7 +138,7 @@ struct Items<'a> {
 impl Table {
     fn new() -> Table {
         Table {
-            items: Vec::from_fn(TABLE_SIZE, |_| None),
+            items: range(0, TABLE_SIZE).map(|_| None).collect()
         }
     }
 
@@ -300,19 +302,19 @@ fn main() {
     };
     let input = Arc::new(input);
 
-    let nb_freqs: Vec<(uint, Future<Table>)> = range(1u, 3).map(|i| {
+    let nb_freqs: Vec<_> = range(1u, 3).map(|i| {
         let input = input.clone();
-        (i, Future::spawn(move|| generate_frequencies(input.as_slice(), i)))
+        (i, Thread::spawn(move|| generate_frequencies(input.as_slice(), i)))
     }).collect();
-    let occ_freqs: Vec<Future<Table>> = OCCURRENCES.iter().map(|&occ| {
+    let occ_freqs: Vec<_> = OCCURRENCES.iter().map(|&occ| {
         let input = input.clone();
-        Future::spawn(move|| generate_frequencies(input.as_slice(), occ.len()))
+        Thread::spawn(move|| generate_frequencies(input.as_slice(), occ.len()))
     }).collect();
 
     for (i, freq) in nb_freqs.into_iter() {
-        print_frequencies(&freq.unwrap(), i);
+        print_frequencies(&freq.join().ok().unwrap(), i);
     }
     for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs.into_iter()) {
-        print_occurrences(&mut freq.unwrap(), occ);
+        print_occurrences(&mut freq.join().ok().unwrap(), occ);
     }
 }

@@ -77,12 +77,6 @@ extern crate libc;
 #[cfg(test)] #[phase(plugin, link)] extern crate std;
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
-// The deprecated name of the boxed module
-
-#[deprecated = "use boxed instead"]
-#[cfg(not(test))]
-pub use boxed as owned;
-
 // Heaps provided for low-level allocation strategies
 
 pub mod heap;

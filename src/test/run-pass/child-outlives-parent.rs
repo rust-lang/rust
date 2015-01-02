@@ -10,10 +10,10 @@
 
 // Reported as issue #126, child leaks the string.
 
-use std::task;
+use std::thread::Thread;
 
 fn child2(_s: String) { }
 
 pub fn main() {
-    let _x = task::spawn(move|| child2("hi".to_string()));
+    let _x = Thread::spawn(move|| child2("hi".to_string()));
 }

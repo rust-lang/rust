@@ -25,7 +25,6 @@ pub mod decodable;
 pub mod hash;
 pub mod rand;
 pub mod show;
-pub mod zero;
 pub mod default;
 pub mod primitive;
 
@@ -110,7 +109,6 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
 
                             "Show" => expand!(show::expand_deriving_show),
 
-                            "Zero" => expand!(zero::expand_deriving_zero),
                             "Default" => expand!(default::expand_deriving_default),
 
                             "FromPrimitive" => expand!(primitive::expand_deriving_from_primitive),

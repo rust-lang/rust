@@ -266,10 +266,6 @@ impl CString {
         self.buf
     }
 
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub unsafe fn unwrap(self) -> *const libc::c_char { self.into_inner() }
-
     /// Return the number of bytes in the CString (not including the NUL
     /// terminator).
     #[inline]

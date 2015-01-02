@@ -20,7 +20,6 @@ use intrinsics;
 use mem;
 use num::Float;
 use num::FpCategory as Fp;
-use num::from_str_radix;
 use option::Option;
 
 #[stable]
@@ -314,14 +313,6 @@ impl Float for f32 {
         unsafe { intrinsics::powf32(self, n) }
     }
 
-    /// sqrt(2.0)
-    #[inline]
-    fn sqrt2() -> f32 { consts::SQRT2 }
-
-    /// 1.0 / sqrt(2.0)
-    #[inline]
-    fn frac_1_sqrt2() -> f32 { consts::FRAC_1_SQRT2 }
-
     #[inline]
     fn sqrt(self) -> f32 {
         if self < 0.0 {
@@ -333,66 +324,6 @@ impl Float for f32 {
 
     #[inline]
     fn rsqrt(self) -> f32 { self.sqrt().recip() }
-
-    /// Archimedes' constant
-    #[inline]
-    fn pi() -> f32 { consts::PI }
-
-    /// 2.0 * pi
-    #[inline]
-    fn two_pi() -> f32 { consts::PI_2 }
-
-    /// pi / 2.0
-    #[inline]
-    fn frac_pi_2() -> f32 { consts::FRAC_PI_2 }
-
-    /// pi / 3.0
-    #[inline]
-    fn frac_pi_3() -> f32 { consts::FRAC_PI_3 }
-
-    /// pi / 4.0
-    #[inline]
-    fn frac_pi_4() -> f32 { consts::FRAC_PI_4 }
-
-    /// pi / 6.0
-    #[inline]
-    fn frac_pi_6() -> f32 { consts::FRAC_PI_6 }
-
-    /// pi / 8.0
-    #[inline]
-    fn frac_pi_8() -> f32 { consts::FRAC_PI_8 }
-
-    /// 1.0 / pi
-    #[inline]
-    fn frac_1_pi() -> f32 { consts::FRAC_1_PI }
-
-    /// 2.0 / pi
-    #[inline]
-    fn frac_2_pi() -> f32 { consts::FRAC_2_PI }
-
-    /// 2.0 / sqrt(pi)
-    #[inline]
-    fn frac_2_sqrtpi() -> f32 { consts::FRAC_2_SQRTPI }
-
-    /// Euler's number
-    #[inline]
-    fn e() -> f32 { consts::E }
-
-    /// log2(e)
-    #[inline]
-    fn log2_e() -> f32 { consts::LOG2_E }
-
-    /// log10(e)
-    #[inline]
-    fn log10_e() -> f32 { consts::LOG10_E }
-
-    /// ln(2.0)
-    #[inline]
-    fn ln_2() -> f32 { consts::LN_2 }
-
-    /// ln(10.0)
-    #[inline]
-    fn ln_10() -> f32 { consts::LN_10 }
 
     /// Returns the exponential of the number.
     #[inline]
@@ -438,11 +369,4 @@ impl Float for f32 {
         let value: f32 = consts::PI;
         self * (value / 180.0f32)
     }
-}
-
-#[inline]
-#[allow(missing_docs)]
-#[deprecated="Use `FromStrRadix::from_str_radix(src, 16)`"]
-pub fn from_str_hex(src: &str) -> Option<f32> {
-    from_str_radix(src, 16)
 }

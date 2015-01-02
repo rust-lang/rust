@@ -11,7 +11,7 @@
 #![feature(unsafe_destructor)]
 
 use std::os;
-use std::task;
+use std::thread::Thread;
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -36,9 +36,9 @@ fn main() {
 fn run(repeat: int, depth: int) {
     for _ in range(0, repeat) {
         let dur = Duration::span(|| {
-            task::try(move|| {
+            let _ = Thread::spawn(move|| {
                 recurse_or_panic(depth, None)
-            });
+            }).join();
         });
         println!("iter: {}", dur);
     }

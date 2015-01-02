@@ -23,6 +23,7 @@ use std::mem::replace;
 use std::num;
 use std::rc::Rc;
 use std::str;
+use std::string::CowString;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
@@ -277,7 +278,7 @@ impl<'a> StringReader<'a> {
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
     fn translate_crlf<'b>(&self, start: BytePos,
-                          s: &'b str, errmsg: &'b str) -> str::CowString<'b> {
+                          s: &'b str, errmsg: &'b str) -> CowString<'b> {
         let mut i = 0u;
         while i < s.len() {
             let str::CharRange { ch, next } = s.char_range_at(i);

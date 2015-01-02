@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
 use std::sync::mpsc::{channel, Sender};
+use std::thread::Thread;
 
 fn child(tx: &Sender<Box<uint>>, i: uint) {
     tx.send(box i).unwrap();
@@ -21,9 +21,9 @@ pub fn main() {
     let mut expected = 0u;
     for i in range(0u, n) {
         let tx = tx.clone();
-        task::spawn(move|| {
+        Thread::spawn(move|| {
             child(&tx, i)
-        });
+        }).detach();
         expected += i;
     }
 

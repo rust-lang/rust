@@ -69,9 +69,9 @@ use iter::IteratorExt;
 use option::Option;
 use option::Option::{None, Some};
 use str;
-use str::{CowString, MaybeOwned, Str, StrExt};
-use string::String;
-use slice::{AsSlice, SliceExt};
+use str::StrExt;
+use string::{String, CowString};
+use slice::SliceExt;
 use vec::Vec;
 
 /// Typedef for POSIX file paths.
@@ -894,20 +894,6 @@ impl BytesContainer for CString {
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_bytes_no_nul()
     }
-}
-
-#[allow(deprecated)]
-impl<'a> BytesContainer for str::MaybeOwned<'a> {
-    #[inline]
-    fn container_as_bytes<'b>(&'b self) -> &'b [u8] {
-        self.as_slice().as_bytes()
-    }
-    #[inline]
-    fn container_as_str<'b>(&'b self) -> Option<&'b str> {
-        Some(self.as_slice())
-    }
-    #[inline]
-    fn is_str(_: Option<&str::MaybeOwned>) -> bool { true }
 }
 
 impl<'a, Sized? T: BytesContainer> BytesContainer for &'a T {

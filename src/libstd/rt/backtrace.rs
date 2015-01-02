@@ -15,7 +15,7 @@
 use prelude::v1::*;
 
 use os;
-use sync::atomic;
+use sync::atomic::{mod, Ordering};
 
 pub use sys::backtrace::write;
 
@@ -23,7 +23,7 @@ pub use sys::backtrace::write;
 // whether the magical environment variable is present to see if it's turned on.
 pub fn log_enabled() -> bool {
     static ENABLED: atomic::AtomicInt = atomic::ATOMIC_INT_INIT;
-    match ENABLED.load(atomic::SeqCst) {
+    match ENABLED.load(Ordering::SeqCst) {
         1 => return false,
         2 => return true,
         _ => {}
@@ -33,7 +33,7 @@ pub fn log_enabled() -> bool {
         Some(..) => 2,
         None => 1,
     };
-    ENABLED.store(val, atomic::SeqCst);
+    ENABLED.store(val, Ordering::SeqCst);
     val == 2
 }
 
