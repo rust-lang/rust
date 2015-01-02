@@ -9,14 +9,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 /**
    A somewhat reduced test case to expose some Valgrind issues.
 
    This originally came from the word-count benchmark.
 */
 
-pub fn map(filename: String, emit: map_reduce::putter) {
-    emit(filename, "1".to_string());
+pub fn map(filename: String, mut emit: map_reduce::putter) {
+    emit.call_mut((filename, "1".to_string(),));
 }
 
 mod map_reduce {
@@ -25,7 +27,7 @@ mod map_reduce {
     use std::str;
     use std::thread::Thread;
 
-    pub type putter<'a> = |String, String|: 'a;
+    pub type putter<'a> = Box<FnMut(String, String) + 'a>;
 
     pub type mapper = extern fn(String, putter);
 
@@ -58,7 +60,7 @@ mod map_reduce {
         }
 
         let ctrl_clone = ctrl.clone();
-        ::map(input, |a,b| emit(&mut intermediates, ctrl.clone(), a, b) );
+        ::map(input, box |a,b| emit(&mut intermediates, ctrl.clone(), a, b) );
         ctrl_clone.send(ctrl_proto::mapper_done).unwrap();
     }
 

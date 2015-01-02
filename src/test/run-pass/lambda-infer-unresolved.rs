@@ -16,7 +16,7 @@ struct Refs { refs: Vec<int> , n: int }
 
 pub fn main() {
     let mut e = Refs{refs: vec!(), n: 0};
-    let _f: || = || println!("{}", e.n);
+    let _f = |&:| println!("{}", e.n);
     let x: &[int] = e.refs.as_slice();
     assert_eq!(x.len(), 0);
 }

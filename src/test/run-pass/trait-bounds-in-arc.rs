@@ -11,12 +11,16 @@
 // Tests that a heterogeneous list of existential types can be put inside an Arc
 // and shared between tasks as long as all types fulfill Send.
 
+// ignore-pretty
+
+#![feature(unboxed_closures)]
+
 use std::sync::Arc;
 use std::sync::mpsc::channel;
 use std::thread::Thread;
 
 trait Pet {
-    fn name(&self, blk: |&str|);
+    fn name(&self, blk: Box<FnMut(&str)>);
     fn num_legs(&self) -> uint;
     fn of_good_pedigree(&self) -> bool;
 }
@@ -38,19 +42,19 @@ struct Goldfyshe {
 }
 
 impl Pet for Catte {
-    fn name(&self, blk: |&str|) { blk(self.name.as_slice()) }
+    fn name(&self, mut blk: Box<FnMut(&str)>) { blk.call_mut((self.name.as_slice(),)) }
     fn num_legs(&self) -> uint { 4 }
     fn of_good_pedigree(&self) -> bool { self.num_whiskers >= 4 }
 }
 impl Pet for Dogge {
-    fn name(&self, blk: |&str|) { blk(self.name.as_slice()) }
+    fn name(&self, mut blk: Box<FnMut(&str)>) { blk.call_mut((self.name.as_slice(),)) }
     fn num_legs(&self) -> uint { 4 }
     fn of_good_pedigree(&self) -> bool {
         self.bark_decibels < 70 || self.tricks_known > 20
     }
 }
 impl Pet for Goldfyshe {
-    fn name(&self, blk: |&str|) { blk(self.name.as_slice()) }
+    fn name(&self, mut blk: Box<FnMut(&str)>) { blk.call_mut((self.name.as_slice(),)) }
     fn num_legs(&self) -> uint { 0 }
     fn of_good_pedigree(&self) -> bool { self.swim_speed >= 500 }
 }
@@ -98,7 +102,7 @@ fn check_legs(arc: Arc<Vec<Box<Pet+Sync+Send>>>) {
 }
 fn check_names(arc: Arc<Vec<Box<Pet+Sync+Send>>>) {
     for pet in arc.iter() {
-        pet.name(|name| {
+        pet.name(box |name| {
             assert!(name.as_bytes()[0] == 'a' as u8 && name.as_bytes()[1] == 'l' as u8);
         })
     }

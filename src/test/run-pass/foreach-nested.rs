@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn two(it: |int|) { it(0); it(1); }
+fn two<F>(mut it: F) where F: FnMut(int) { it(0); it(1); }
 
 pub fn main() {
     let mut a: Vec<int> = vec!(-1, -1, -1, -1);

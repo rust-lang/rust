@@ -26,7 +26,7 @@ fn what() {
         return while !x.get() { x.set(true); };
     }
     let i = &Cell::new(false);
-    let dont = {||the(i)};
+    let dont = {|&:|the(i)};
     dont();
     assert!((i.get()));
 }

@@ -9,12 +9,12 @@
 // except according to those terms.
 
 struct Foo<'a> {
-    listener: ||: 'a
+    listener: Box<FnMut() + 'a>,
 }
 
 impl<'a> Foo<'a> {
-    fn new(listener: ||: 'a) -> Foo<'a> {
-        Foo { listener: listener }
+    fn new<F>(listener: F) -> Foo<'a> where F: FnMut() + 'a {
+        Foo { listener: box listener }
     }
 }
 

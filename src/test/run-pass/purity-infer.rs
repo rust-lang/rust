@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn something(f: ||) { f(); }
+fn something<F>(f: F) where F: FnOnce() { f(); }
 pub fn main() {
     something(|| println!("hi!") );
 }

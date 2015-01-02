@@ -16,7 +16,7 @@ struct S { val: int }
 impl S { fn new(v: int) -> S { S { val: v } } }
 impl Drop for S { fn drop(&mut self) { } }
 
-pub fn f<T>((b1, b2): (T, T), f: |T| -> T) -> Partial<T> {
+pub fn f<T, F>((b1, b2): (T, T), mut f: F) -> Partial<T> where F: FnMut(T) -> T {
     let p = Partial { x: b1, y: b2 };
 
     // Move of `p` is legal even though we are also moving `p.y`; the

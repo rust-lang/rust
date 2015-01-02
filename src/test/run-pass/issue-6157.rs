@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait OpInt<'a> { fn call(&mut self, int, int) -> int; }
+pub trait OpInt { fn call(&mut self, int, int) -> int; }
 
-impl<'a> OpInt<'a> for |int, int|: 'a -> int {
+impl<F> OpInt for F where F: FnMut(int, int) -> int {
     fn call(&mut self, a:int, b:int) -> int {
         (*self)(a, b)
     }
@@ -21,7 +21,7 @@ fn squarei<'a>(x: int, op: &'a mut OpInt) -> int { op.call(x, x) }
 fn muli(x:int, y:int) -> int { x * y }
 
 pub fn main() {
-    let mut f = |x,y| muli(x,y);
+    let mut f = |&mut: x, y| muli(x, y);
     {
         let g = &mut f;
         let h = g as &mut OpInt;

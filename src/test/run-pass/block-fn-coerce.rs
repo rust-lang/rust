@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn force(f: || -> int) -> int { return f(); }
+fn force<F>(f: F) -> int where F: FnOnce() -> int { return f(); }
+
 pub fn main() {
     fn f() -> int { return 7; }
     assert_eq!(force(f), 7);
-    let g = {||force(f)};
+    let g = {|&:|force(f)};
     assert_eq!(g(), 7);
 }

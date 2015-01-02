@@ -13,7 +13,7 @@
 
 enum thing { a, b, c, }
 
-fn foo(it: |int|) { it(10); }
+fn foo<F>(it: F) where F: FnOnce(int) { it(10); }
 
 pub fn main() {
     let mut x = true;

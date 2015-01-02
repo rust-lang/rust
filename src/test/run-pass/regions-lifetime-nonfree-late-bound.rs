@@ -24,15 +24,15 @@
 
 pub fn main() {
     fn explicit() {
-        fn test(_x: Option<|f: <'a> |g: &'a int||>) {}
-        test(Some(|_f: <'a> |g: &'a int|| {}));
+        fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<for<'a> FnMut(&'a int)>) {}
+        test(Some(box |&mut: _f: Box<for<'a> FnMut(&'a int)>| {}));
     }
 
     // The code below is shorthand for the code above (and more likely
     // to represent what one encounters in practice).
     fn implicit() {
-        fn test(_x: Option<|f:      |g: &   int||>) {}
-        test(Some(|_f:      |g: &   int|| {}));
+        fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<        FnMut(&   int)>) {}
+        test(Some(box |&mut: _f: Box<        FnMut(&   int)>| {}));
     }
 
     explicit();

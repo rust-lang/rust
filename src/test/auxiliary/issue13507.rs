@@ -21,7 +21,6 @@ pub mod testtypes {
         ids.push(TypeId::of::<FooEnum>());
         ids.push(TypeId::of::<FooUniq>());
         ids.push(TypeId::of::<FooPtr>());
-        ids.push(TypeId::of::<FooClosure>());
         ids.push(TypeId::of::<&'static FooTrait>());
         ids.push(TypeId::of::<FooStruct>());
         ids.push(TypeId::of::<FooTuple>());
@@ -67,9 +66,6 @@ pub mod testtypes {
     // Skipping ty_rptr
 
     // Skipping ty_bare_fn (how do you get a bare function type, rather than proc or closure?)
-
-    // Tests ty_closure (does not test all types of closures)
-    pub type FooClosure = |arg: u8|: 'static -> u8;
 
     // Tests ty_trait
     pub trait FooTrait {
