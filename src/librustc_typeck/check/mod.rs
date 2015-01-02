@@ -2844,7 +2844,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ast::LitInt(_, ast::SignedIntLit(t, _)) => ty::mk_mach_int(tcx, t),
         ast::LitInt(_, ast::UnsignedIntLit(t)) => ty::mk_mach_uint(tcx, t),
         ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
-            let opt_ty = expected.map_to_option(fcx, |ty| {
+            let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::ty_int(_) | ty::ty_uint(_) => Some(ty),
                     ty::ty_char => Some(tcx.types.u8),
@@ -2858,7 +2858,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
         ast::LitFloat(_, t) => ty::mk_mach_float(tcx, t),
         ast::LitFloatUnsuffixed(_) => {
-            let opt_ty = expected.map_to_option(fcx, |ty| {
+            let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::ty_float(_) => Some(ty),
                     _ => None
@@ -3761,7 +3761,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
       }
       ast::ExprUnary(unop, ref oprnd) => {
-        let expected_inner = expected.map(fcx, |ty| {
+        let expected_inner = expected.to_option(fcx).map_or(NoExpectation, |ty| {
             match unop {
                 ast::UnUniq => match ty.sty {
                     ty::ty_uniq(ty) => {
@@ -3851,8 +3851,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, oprnd_t);
       }
       ast::ExprAddrOf(mutbl, ref oprnd) => {
-        let expected = expected.only_has_type();
-        let hint = expected.map(fcx, |ty| {
+        let hint = expected.only_has_type(fcx).map_or(NoExpectation, |ty| {
             match ty.sty {
                 ty::ty_rptr(_, ref mt) | ty::ty_ptr(ref mt) => {
                     if ty::expr_is_lval(fcx.tcx(), &**oprnd) {
@@ -4065,7 +4064,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         check_cast(fcx, expr, &**e, &**t);
       }
       ast::ExprVec(ref args) => {
-        let uty = expected.map_to_option(fcx, |uty| {
+        let uty = expected.to_option(fcx).and_then(|uty| {
             match uty.sty {
                 ty::ty_vec(ty, _) => Some(ty),
                 _ => None
@@ -4134,8 +4133,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
       }
       ast::ExprTup(ref elts) => {
-        let expected = expected.only_has_type();
-        let flds = expected.map_to_option(fcx, |ty| {
+        let flds = expected.only_has_type(fcx).and_then(|ty| {
             match ty.sty {
                 ty::ty_tup(ref flds) => Some(&flds[]),
                 _ => None
@@ -4428,13 +4426,6 @@ impl<'tcx> Expectation<'tcx> {
         }
     }
 
-    fn only_has_type(self) -> Expectation<'tcx> {
-        match self {
-            ExpectHasType(t) => ExpectHasType(t),
-            _ => NoExpectation
-        }
-    }
-
     // Resolves `expected` by a single level if it is a variable. If
     // there is no expected type or resolution is not possible (e.g.,
     // no constraints yet present), just returns `None`.
@@ -4458,25 +4449,19 @@ impl<'tcx> Expectation<'tcx> {
         }
     }
 
-    fn map<'a, F>(self, fcx: &FnCtxt<'a, 'tcx>, unpack: F) -> Expectation<'tcx> where
-        F: FnOnce(Ty<'tcx>) -> Expectation<'tcx>
-    {
-        match self.resolve(fcx) {
-            NoExpectation => NoExpectation,
-            ExpectCastableToType(ty) |
-            ExpectHasType(ty) |
-            ExpectRvalueLikeUnsized(ty) => unpack(ty),
-        }
-    }
-
-    fn map_to_option<'a, O, F>(self, fcx: &FnCtxt<'a, 'tcx>, unpack: F) -> Option<O> where
-        F: FnOnce(Ty<'tcx>) -> Option<O>,
-    {
+    fn to_option<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             NoExpectation => None,
             ExpectCastableToType(ty) |
             ExpectHasType(ty) |
-            ExpectRvalueLikeUnsized(ty) => unpack(ty),
+            ExpectRvalueLikeUnsized(ty) => Some(ty),
+        }
+    }
+
+    fn only_has_type<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
+        match self.resolve(fcx) {
+            ExpectHasType(ty) => Some(ty),
+            _ => None
         }
     }
 }
