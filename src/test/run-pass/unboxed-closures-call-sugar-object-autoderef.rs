@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Homura;
+// Test that the call operator autoderefs when calling to an object type.
 
-fn akemi(homura: Homura) {
-    let Some(ref madoka) = Some(homura.kaname()); //~ ERROR does not implement any method
-    madoka.clone();
+#![feature(unboxed_closures)]
+
+use std::ops::FnMut;
+
+fn make_adder(x: int) -> Box<FnMut(int)->int + 'static> {
+    box move |y| { x + y }
 }
 
-fn main() { }
+pub fn main() {
+    let mut adder = make_adder(3);
+    let z = adder(2);
+    println!("{}", z);
+    assert_eq!(z, 5);
+}
+

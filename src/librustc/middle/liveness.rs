@@ -1149,7 +1149,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           ast::ExprCall(ref f, ref args) => {
             let diverges = !self.ir.tcx.is_method_call(expr.id) && {
-                let t_ret = ty::ty_fn_ret(ty::expr_ty(self.ir.tcx, &**f));
+                let t_ret = ty::ty_fn_ret(ty::expr_ty_adjusted(self.ir.tcx, &**f));
                 t_ret == ty::FnDiverging
             };
             let succ = if diverges {
