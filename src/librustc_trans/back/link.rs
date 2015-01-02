@@ -266,7 +266,7 @@ pub fn sanitize(s: &str) -> String {
     return result;
 }
 
-pub fn mangle<PI: Iterator<PathElem>>(mut path: PI,
+pub fn mangle<PI: Iterator<Item=PathElem>>(mut path: PI,
                                       hash: Option<&str>) -> String {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.

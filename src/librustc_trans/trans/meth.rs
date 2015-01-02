@@ -727,7 +727,7 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 /// Helper function to declare and initialize the vtable.
-pub fn make_vtable<I: Iterator<ValueRef>>(ccx: &CrateContext,
+pub fn make_vtable<I: Iterator<Item=ValueRef>>(ccx: &CrateContext,
                                           drop_glue: ValueRef,
                                           size: ValueRef,
                                           align: ValueRef,

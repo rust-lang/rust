@@ -168,7 +168,9 @@ pub struct CrateContextIterator<'a, 'tcx: 'a> {
     index: uint,
 }
 
-impl<'a, 'tcx> Iterator<CrateContext<'a, 'tcx>> for CrateContextIterator<'a,'tcx> {
+impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
+    type Item = CrateContext<'a, 'tcx>;
+
     fn next(&mut self) -> Option<CrateContext<'a, 'tcx>> {
         if self.index >= self.shared.local_ccxs.len() {
             return None;
@@ -193,7 +195,9 @@ pub struct CrateContextMaybeIterator<'a, 'tcx: 'a> {
     origin: uint,
 }
 
-impl<'a, 'tcx> Iterator<(CrateContext<'a, 'tcx>, bool)> for CrateContextMaybeIterator<'a, 'tcx> {
+impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
+    type Item = (CrateContext<'a, 'tcx>, bool);
+
     fn next(&mut self) -> Option<(CrateContext<'a, 'tcx>, bool)> {
         if self.index >= self.shared.local_ccxs.len() {
             return None;
