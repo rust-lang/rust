@@ -57,6 +57,11 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                     ty::ty_trait(ref data) => {
                         self.check_def_id(item.span, data.principal_def_id());
                     }
+                    ty::ty_uniq(..) => {
+                        self.check_def_id(item.span,
+                                          self.tcx.lang_items.owned_box()
+                                              .unwrap());
+                    }
                     _ => {
                         span_err!(self.tcx.sess, item.span, E0118,
                                   "no base type found for inherent implementation; \
