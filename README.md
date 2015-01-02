@@ -60,6 +60,7 @@ the direction the language is evolving in.
 * [0463-future-proof-literal-suffixes.md](text/0463-future-proof-literal-suffixes.md)
 * [0474-path-reform.md](text/0474-path-reform.md)
 * [0490-dst-syntax.md](text/0490-dst-syntax.md)
+* [0507-release-channels.md](text/0507-release-channels.md)
 * [0509-collections-reform-part-2.md](text/0509-collections-reform-part-2.md)
 * [0520-new-array-repeat-syntax.md](text/0520-new-array-repeat-syntax.md)
 * [0522-self-impl.md](text/0522-self-impl.md)
