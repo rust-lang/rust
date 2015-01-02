@@ -74,7 +74,7 @@ pub use self::categorization::*;
 use middle::def;
 use middle::region;
 use middle::ty::{mod, Ty};
-use util::nodemap::{DefIdMap, NodeMap};
+use util::nodemap::{NodeMap};
 use util::ppaux::{ty_to_string, Repr};
 
 use syntax::ast::{MutImmutable, MutMutable};
@@ -280,7 +280,7 @@ impl<'t,TYPER:'t> Copy for MemCategorizationContext<'t,TYPER> {}
 /// In the borrow checker, in contrast, type checking is complete and we
 /// know that no errors have occurred, so we simply consult the tcx and we
 /// can be sure that only `Ok` results will occur.
-pub trait Typer<'tcx> {
+pub trait Typer<'tcx> : ty::UnboxedClosureTyper<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx>;
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx>;
@@ -290,11 +290,9 @@ pub trait Typer<'tcx> {
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
-    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> ty::UpvarBorrow;
+    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarBorrow>;
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause;
-    fn unboxed_closures<'a>(&'a self)
-                        -> &'a RefCell<DefIdMap<ty::UnboxedClosure<'tcx>>>;
 }
 
 impl MutabilityCategory {
@@ -622,8 +620,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                       self.cat_upvar(id, span, var_id, fn_node_id, kind, mode, false)
                   }
                   ty::ty_unboxed_closure(closure_id, _, _) => {
-                      let unboxed_closures = self.typer.unboxed_closures().borrow();
-                      let kind = (*unboxed_closures)[closure_id].kind;
+                      let kind = self.typer.unboxed_closure_kind(closure_id);
                       let mode = self.typer.capture_mode(fn_node_id);
                       self.cat_upvar(id, span, var_id, fn_node_id, kind, mode, true)
                   }
@@ -800,7 +797,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 }
 
                 // Look up upvar borrow so we can get its region
-                let upvar_borrow = self.typer.upvar_borrow(upvar_id);
+                let upvar_borrow = self.typer.upvar_borrow(upvar_id).unwrap();
                 let ptr = BorrowedPtr(upvar_borrow.kind, upvar_borrow.region);
 
                 Rc::new(cmt_ {

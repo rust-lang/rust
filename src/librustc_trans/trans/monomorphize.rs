@@ -323,7 +323,8 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
 
     let infcx = infer::new_infer_ctxt(tcx);
     let param_env = ty::empty_parameter_environment();
-    let mut selcx = traits::SelectionContext::new(&infcx, &param_env, tcx);
+    let typer = NormalizingUnboxedClosureTyper::new(infcx.tcx);
+    let mut selcx = traits::SelectionContext::new(&infcx, &param_env, &typer);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =
         traits::normalize(&mut selcx, cause, value);

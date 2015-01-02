@@ -110,7 +110,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     pub fn normalize_projection_type<'a>(&mut self,
                                          infcx: &InferCtxt<'a,'tcx>,
                                          param_env: &ty::ParameterEnvironment<'tcx>,
-                                         typer: &Typer<'tcx>,
+                                         typer: &ty::UnboxedClosureTyper<'tcx>,
                                          projection_ty: ty::ProjectionTy<'tcx>,
                                          cause: ObligationCause<'tcx>)
                                          -> Ty<'tcx>
@@ -187,7 +187,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     pub fn select_all_or_error<'a>(&mut self,
                                    infcx: &InferCtxt<'a,'tcx>,
                                    param_env: &ty::ParameterEnvironment<'tcx>,
-                                   typer: &Typer<'tcx>)
+                                   typer: &ty::UnboxedClosureTyper<'tcx>)
                                    -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         try!(self.select_where_possible(infcx, param_env, typer));
@@ -213,7 +213,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     pub fn select_new_obligations<'a>(&mut self,
                                       infcx: &InferCtxt<'a,'tcx>,
                                       param_env: &ty::ParameterEnvironment<'tcx>,
-                                      typer: &Typer<'tcx>)
+                                      typer: &ty::UnboxedClosureTyper<'tcx>)
                                       -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         let mut selcx = SelectionContext::new(infcx, param_env, typer);
@@ -223,7 +223,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     pub fn select_where_possible<'a>(&mut self,
                                      infcx: &InferCtxt<'a,'tcx>,
                                      param_env: &ty::ParameterEnvironment<'tcx>,
-                                     typer: &Typer<'tcx>)
+                                     typer: &ty::UnboxedClosureTyper<'tcx>)
                                      -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
         let mut selcx = SelectionContext::new(infcx, param_env, typer);
