@@ -91,15 +91,8 @@ pub trait PartialEq<Sized? Rhs = Self> for Sized? {
 /// - transitive: `a == b` and `b == c` implies `a == c`.
 #[stable]
 pub trait Eq for Sized?: PartialEq<Self> {
-    // FIXME #13101: this method is used solely by #[deriving] to
-    // assert that every component of a type implements #[deriving]
-    // itself, the current deriving infrastructure means doing this
-    // assertion without using a method on this trait is nearly
-    // impossible.
-    //
-    // This should never be implemented by hand.
-    #[doc(hidden)]
-    #[inline(always)]
+    #[cfg(stage0)]
+    #[allow(missing_docs)]
     fn assert_receiver_is_total_eq(&self) {}
 }
 

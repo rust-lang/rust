@@ -145,7 +145,7 @@
 
 use self::Option::*;
 
-use cmp::{Eq, Ord};
+use cmp::Ord;
 use default::Default;
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator};
 use iter::{ExactSizeIterator};
