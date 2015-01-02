@@ -13,9 +13,10 @@
 //! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
 //! the standard library, and "std" is the core library.
 
-use ast::{Item, MetaItem, MetaList, MetaNameValue, MetaWord};
+use attr::{mk_attr_id, AttrMetaMethods};
+use ast::{AttrStyle, Attribute_, Item, MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
-use codemap::Span;
+use codemap::{Span, Spanned};
 use ptr::P;
 
 pub mod bounds;
@@ -58,14 +59,59 @@ pub fn expand_meta_deriving(cx: &mut ExtCtxt,
         }
         MetaList(_, ref titems) => {
             for titem in titems.iter().rev() {
+                let mut attrs = Vec::new();
+                match titem.node {
+                    MetaNameValue(_, _) |
+                    MetaWord(_) => { }
+                    MetaList(_, ref alist) => {
+                        if alist.len() != 1 {
+                            cx.span_err(titem.span, "unexpected syntax in `deriving`")
+                        } else {
+                            let alist = &alist[0];
+                            if alist.name().get() == "attributes" {
+                                match alist.meta_item_list() {
+                                    None => cx.span_err(alist.span,
+                                                        "unexpected syntax in `deriving`"),
+                                    Some(metas) => {
+                                        for meta in metas.iter() {
+                                            attrs.push(Spanned {
+                                                span: meta.span,
+                                                node: Attribute_ {
+                                                    id: mk_attr_id(),
+                                                    style: AttrStyle::AttrOuter,
+                                                    value: meta.clone() /* bad clone */,
+                                                    is_sugared_doc: false
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // so we don't need to clone in the closure below. we also can't move,
+                // unfortunately, since it would capture the outer `push` as well.
+                let mut attrs = Some(attrs);
+
                 match titem.node {
                     MetaNameValue(ref tname, _) |
                     MetaList(ref tname, _) |
                     MetaWord(ref tname) => {
-                        macro_rules! expand(($func:path) => ($func(cx, titem.span,
-                                                                   &**titem, item,
-                                                                   |i| push.call_mut((i,)))));
+                        // note: for the unwrap to succeed, this macro can't be evaluated more than
+                        // once in any control flow branch. don't use it twice in a match arm
+                        // below!
+                        macro_rules! expand(
+                            ($func:path) =>
+                            ($func(cx, titem.span, &**titem, item,
+                                   |i| push.call_mut((i.map(|mut i| {
+                                       i.attrs.extend(attrs.take().unwrap().into_iter());
+                                       i
+                                   }),)))));
                         match tname.get() {
+                            // if you change this list without updating reference.md, cmr will be
+                            // sad
                             "Clone" => expand!(clone::expand_deriving_clone),
 
                             "Hash" => expand!(hash::expand_deriving_hash),

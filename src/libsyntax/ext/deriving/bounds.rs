@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, MetaWord, Item};
+use ast::{MetaItem, MetaWord, MetaList, Item};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::deriving::generic::*;
@@ -23,7 +23,8 @@ pub fn expand_deriving_bound<F>(cx: &mut ExtCtxt,
     F: FnOnce(P<Item>),
 {
     let name = match mitem.node {
-        MetaWord(ref tname) => {
+        MetaWord(ref tname) |
+        MetaList(ref tname, _) => {
             match tname.get() {
                 "Copy" => "Copy",
                 "Send" | "Sync" => {
