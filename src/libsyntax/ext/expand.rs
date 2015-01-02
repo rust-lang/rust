@@ -17,7 +17,6 @@ use ast;
 use ast_util::path_to_ident;
 use ext::mtwt;
 use ext::build::AstBuilder;
-use ext::tt::macro_rules;
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
@@ -636,14 +635,10 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         id: ast::DUMMY_NODE_ID,
                         span: it.span,
                         imported_from: None,
+                        export: attr::contains_name(it.attrs.as_slice(), "macro_export"),
                         body: tts,
                     };
-                    let ext = macro_rules::compile(fld.cx, &def);
-                    fld.cx.syntax_env.insert(def.ident.name, ext);
-
-                    if attr::contains_name(def.attrs.as_slice(), "macro_export") {
-                        fld.cx.exported_macros.push(def);
-                    }
+                    fld.cx.insert_macro(def);
 
                     // macro_rules! has a side effect but expands to nothing.
                     fld.cx.bt_pop();
@@ -1178,7 +1173,6 @@ pub struct ExpansionConfig {
     pub deriving_hash_type_parameter: bool,
     pub enable_quotes: bool,
     pub recursion_limit: uint,
-    pub reexported_macros: Vec<String>,
 }
 
 impl ExpansionConfig {
@@ -1188,7 +1182,6 @@ impl ExpansionConfig {
             deriving_hash_type_parameter: false,
             enable_quotes: false,
             recursion_limit: 64,
-            reexported_macros: vec![],
         }
     }
 }
@@ -1202,15 +1195,8 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
     let mut expander = MacroExpander::new(&mut cx);
 
-    for def in imported_macros.iter() {
-        let ext = macro_rules::compile(expander.cx, def);
-        expander.cx.syntax_env.insert(def.ident.name, ext);
-
-        if expander.cx.ecfg.reexported_macros.iter()
-            .any(|e| e[] == token::get_ident(def.ident).get()) {
-
-            expander.cx.exported_macros.push(def.clone());
-        }
+    for def in imported_macros.into_iter() {
+        expander.cx.insert_macro(def);
     }
 
     for (name, extension) in user_exts.into_iter() {

@@ -16,6 +16,7 @@ use codemap;
 use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION};
 use ext;
 use ext::expand;
+use ext::tt::macro_rules;
 use parse;
 use parse::parser;
 use parse::token;
@@ -568,6 +569,15 @@ impl<'a> ExtCtxt<'a> {
             }
         }
     }
+
+    pub fn insert_macro(&mut self, def: ast::MacroDef) {
+        if def.export {
+            self.exported_macros.push(def.clone());
+        }
+        let ext = macro_rules::compile(self, &def);
+        self.syntax_env.insert(def.ident.name, ext);
+    }
+
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
     ///
     /// `span_err` should be strongly preferred where-ever possible:

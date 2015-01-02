@@ -117,9 +117,6 @@
 
 #![reexport_test_harness_main = "test_main"]
 
-#![macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
-    unreachable, unimplemented, write, writeln, vec)]
-
 #[cfg(all(test, stage0))]
 #[phase(plugin, link)]
 extern crate log;
@@ -134,6 +131,8 @@ extern crate core;
 
 #[cfg(not(stage0))]
 #[macro_use]
+#[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
+    unreachable, unimplemented, write, writeln)]
 extern crate core;
 
 #[cfg(stage0)]
@@ -142,6 +141,7 @@ extern crate "collections" as core_collections;
 
 #[cfg(not(stage0))]
 #[macro_use]
+#[macro_reexport(vec)]
 extern crate "collections" as core_collections;
 
 extern crate "rand" as core_rand;

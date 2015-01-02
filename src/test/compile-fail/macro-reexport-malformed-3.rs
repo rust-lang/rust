@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_reexport(foo="bar")]  //~ ERROR malformed macro_reexport attribute
+#[macro_reexport(foo="bar")]  //~ ERROR bad macro reexport
+extern crate std;
 
 fn main() { }

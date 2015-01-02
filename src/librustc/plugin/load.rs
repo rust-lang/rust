@@ -17,8 +17,10 @@ use plugin::registry::Registry;
 use std::mem;
 use std::os;
 use std::dynamic_lib::DynamicLibrary;
+use std::collections::HashSet;
 use syntax::ast;
 use syntax::attr;
+use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::attr::AttrMetaMethods;
@@ -87,6 +89,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         // Parse the attributes relating to macro / plugin loading.
         let mut load_macros = false;
         let mut load_registrar = false;
+        let mut reexport = HashSet::new();
         for attr in vi.attrs.iter() {
             let mut used = true;
             match attr.name().get() {
@@ -96,6 +99,23 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
                 }
                 "plugin" => load_registrar = true,
                 "macro_use" => load_macros = true,
+                "macro_reexport" => {
+                    let names = match attr.meta_item_list() {
+                        Some(names) => names,
+                        None => {
+                            self.sess.span_err(attr.span, "bad macro reexport");
+                            continue;
+                        }
+                    };
+
+                    for name in names.iter() {
+                        if let ast::MetaWord(ref name) = name.node {
+                            reexport.insert(name.clone());
+                        } else {
+                            self.sess.span_err(name.span, "bad macro reexport");
+                        }
+                    }
+                }
                 _ => used = false,
             }
             if used {
@@ -116,7 +136,13 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             }
         }
 
-        self.plugins.macros.extend(macros.into_iter());
+        for mut def in macros.into_iter() {
+            if reexport.contains(&token::get_ident(def.ident)) {
+                def.export = true;
+            }
+            self.plugins.macros.push(def);
+        }
+
         if let Some((lib, symbol)) = registrar {
             self.dylink_registrar(vi, lib, symbol);
         }
