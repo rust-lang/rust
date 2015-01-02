@@ -64,11 +64,12 @@ pub mod vec;
 pub mod vec_map;
 
 pub mod bitv {
-    pub use bit::{Bitv, Bits, from_fn, from_bytes};
+    pub use bit::{Bitv, Iter, from_fn, from_bytes};
 }
 
 pub mod bitv_set {
-    pub use bit::{BitvSet, BitPositions, TwoBitPositions};
+    pub use bit::{BitvSet, Union, Intersection, Difference, SymmetricDifference};
+    pub use bit::SetIter as Iter;
 }
 
 pub mod btree_map {
