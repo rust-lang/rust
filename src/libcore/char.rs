@@ -198,10 +198,7 @@ pub trait CharExt {
 impl CharExt for char {
     #[unstable = "pending integer conventions"]
     fn is_digit(self, radix: uint) -> bool {
-        match self.to_digit(radix) {
-            Some(_) => true,
-            None    => false,
-        }
+        self.to_digit(radix).is_some()
     }
 
     #[unstable = "pending integer conventions"]
