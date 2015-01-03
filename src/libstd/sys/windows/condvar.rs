@@ -27,16 +27,18 @@ impl Condvar {
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        let r = ffi::SleepConditionVariableCS(self.inner.get(),
-                                              mutex::raw(mutex),
-                                              libc::INFINITE);
+        let r = ffi::SleepConditionVariableSRW(self.inner.get(),
+                                               mutex::raw(mutex),
+                                               libc::INFINITE,
+                                               0);
         debug_assert!(r != 0);
     }
 
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
-        let r = ffi::SleepConditionVariableCS(self.inner.get(),
-                                              mutex::raw(mutex),
-                                              dur.num_milliseconds() as DWORD);
+        let r = ffi::SleepConditionVariableSRW(self.inner.get(),
+                                               mutex::raw(mutex),
+                                               dur.num_milliseconds() as DWORD,
+                                               0);
         if r == 0 {
             const ERROR_TIMEOUT: DWORD = 0x5B4;
             debug_assert_eq!(os::errno() as uint, ERROR_TIMEOUT as uint);
