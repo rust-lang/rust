@@ -589,7 +589,6 @@ mod tests {
     use super::{Id, Labeller, Nodes, Edges, GraphWalk, render};
     use super::LabelText::{mod, LabelStr, EscStr};
     use std::io::IoResult;
-    use std::str;
     use std::borrow::IntoCow;
 
     /// each node is an index in a vector in the graph.

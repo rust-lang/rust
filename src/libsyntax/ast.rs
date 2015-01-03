@@ -1667,7 +1667,6 @@ mod test {
     // are ASTs encodable?
     #[test]
     fn check_asts_encodable() {
-        use std::io;
         let e = Crate {
             module: Mod {
                 inner: Span {
