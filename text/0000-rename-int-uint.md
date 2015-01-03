@@ -6,6 +6,8 @@
 
 This RFC proposes that we rename the pointer-sized integer types `int/uint` to stress the fact that they are pointer-sized, so as to avoid misconceptions and misuses.
 
+Also, please see **Alternative C and D** for a possible alternative/enhancement that may or may not be a better solution.
+
 # Motivation
 
 Currently, Rust defines two [machine-dependent integer types](http://doc.rust-lang.org/reference.html#machine-dependent-integer-types) `int/uint` that have the same number of bits as the target platform's pointer type. These two types are used for many purposes: indices, counts, sizes, offsets, etc.
@@ -71,7 +73,7 @@ Each pair of candidates make different trade-offs, and choosing one would be a q
 #### `iptr/uptr` and `intp/uintp`:
 
 - Pros: "Pointer-sized integer", exactly what they are.
-- Cons: C/C++ have `intptr_t/uintptr_t`, which are typically *only* used for storing casted pointer values. We don't want people to confuse the Rust types with the C/C++ ones, as the Rust ones have more typical use cases.
+- Cons: C/C++ have `intptr_t/uintptr_t`, which are typically *only* used for storing casted pointer values. We don't want people to confuse the Rust types with the C/C++ ones, as the Rust ones have more typical use cases. Also, people may wonder why all data structures have "pointers" in their method signatures. Besides the "funny-looking" aspect, the names may have an incorrect "pointer fiddling and unsafe staff" connotation there.
 
 However, note that Rust (barring FFI) don't have `size_t`/`ptrdiff_t` etc like C/C++ do, so the disadvantage may not actually matter much.
 
@@ -86,9 +88,9 @@ When originally proposed, `mem`/`m` are interpreted as "memory numbers" (See @1f
 However this interpretation seems vague and not quite convincing, especially when all other integer types in Rust are named precisely in the "`i`/`u` + `size`" pattern, with no "indirection" involved. What is "memory-sized" anyway? But actually, they can be interpreted as **_mem_ory-pointer-sized**, and be a *precise* size specifier just like `ptr`.
 
 - Pros: Types with similar names do not exist in mainstream languages, so people will not make incorrect assumptions.
-- Cons: `mem` -> *memory-pointer-sized* is not as obvious as `ptr` -> *pointer-sized*.
+- Cons: `mem` -> *memory-pointer-sized* is definitely not as obvious as `ptr` -> *pointer-sized*.
 
-However, people will be tempted to read the documentation anyway when they encounter `imem/umem` or `intm/uintm`. And this RFC author expects the "memory-pointer-sized" interpretation to be quite easy to internalize once the documentation gets consulted.
+However, people will be tempted to read the documentation anyway when they encounter `imem/umem` or `intm/uintm`. And this RFC author expects the "memory-pointer-sized" interpretation to be easy (or easier) to internalize once the documentation gets consulted.
 
 ### Note:
 
@@ -108,6 +110,20 @@ Which may hurt in the long run, especially when there is at least one (would-be?
 
 `intx/uintx` were actually the names that got promoted in the previous revisions of this RFC, where `x` means "unknown", "variable" or "platform-dependent". However the `x` suffix was too vague as there were other integer types that have platform-dependent sizes, like register-sized ones, so `intx/uintx` lost their "promoted" status in this revision.
 
+## C. Use `idiff/usize` as the new type names.
+
+Previously, the names involving suffixes like `diff`/`addr`/`size`/`offset` are rejected mainly because they favour specific use cases of `int/uint` while overlooking others. However, it is true that in the majority of cases in safe code, Rust's `int/uint` are used just like standard C/C++ `ptrdiff_t/size_t`. When used in this context, names `idiff/usize` have clarity and familiarity advantages **over all other alternatives**.
+
+(Note: this author advices against `isize`, as it most likely corresponds to C/C++ `ssize_t`. `ssize_t` is in the POSIX standard, not the C/C++ ones, and is *not for offsets/diffs* according to that standard.)
+
+But how about the other use cases of `int/uint` especially the "storing casted pointers" one? Using `libc`'s `intptr_t`/`uintptr_t` is not an option here, as "Rust on bare metal" would be ruled out. Forcing a pointer value into something called `idiff/usize` doesn't seem right either. Thus, this leads us to:
+
+## D. Rename `int/uint` to `iptr/uptr`, with `idiff/usize` being aliases and preferred in container method signatures.
+
+Best of both worlds, maybe? This author believes that if `imem/umem` are deemed too foreign (and quite a few people do think so), then this can be a good solution.
+
+We may even treat `iptr/uptr` and `idiff/usize` as different types to prevent people from accidentally mixing their usage.
+
 # Unresolved questions
 
-This RFC author believes that we should nail down our general integer types/coercions/data structure indexing policies, as discussed in [Restarting the `int/uint` Discussion](http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), before deciding which names to rename `int/uint` to.
+This RFC author believes that we should nail down our general integer type/coercion/data structure indexing policies, as discussed in [Restarting the `int/uint` Discussion](http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), before deciding which names to rename `int/uint` to.
