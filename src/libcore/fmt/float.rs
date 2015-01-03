@@ -17,7 +17,7 @@ pub use self::SignFormat::*;
 use char;
 use char::Char;
 use fmt;
-use iter::{range, DoubleEndedIteratorExt};
+use iter::{IteratorExt, range};
 use num::{cast, Float, ToPrimitive};
 use num::FpCategory as Fp;
 use ops::FnOnce;

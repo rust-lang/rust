@@ -1449,7 +1449,7 @@ pub mod raw {
 mod tests {
     use std::boxed::Box;
     use prelude::{Some, None, range, Vec, ToString, Clone, Greater, Less, Equal};
-    use prelude::{SliceExt, Iterator, IteratorExt, DoubleEndedIteratorExt};
+    use prelude::{SliceExt, Iterator, IteratorExt};
     use prelude::AsSlice;
     use prelude::{RandomAccessIterator, Ord, SliceConcatExt};
     use core::cell::Cell;

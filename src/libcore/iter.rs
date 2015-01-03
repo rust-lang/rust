@@ -719,6 +719,24 @@ pub trait IteratorExt: Iterator + Sized {
             }
         }).map(|(x, _)| x)
     }
+
+    /// Change the direction of the iterator
+    ///
+    /// The flipped iterator swaps the ends on an iterator that can already
+    /// be iterated from the front and from the back.
+    ///
+    ///
+    /// If the iterator also implements RandomAccessIterator, the flipped
+    /// iterator is also random access, with the indices starting at the back
+    /// of the original iterator.
+    ///
+    /// Note: Random access with flipped indices still only applies to the first
+    /// `uint::MAX` elements of the original iterator.
+    #[inline]
+    #[stable]
+    fn rev(self) -> Rev<Self> {
+        Rev{iter: self}
+    }
 }
 
 #[unstable = "trait is unstable"]
@@ -771,31 +789,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Yield an element from the end of the range, returning `None` if the range is empty.
     fn next_back(&mut self) -> Option< <Self as Iterator>::Item>;
 }
-
-/// Extension methods for double-ended iterators.
-#[unstable = "new extension trait convention"]
-pub trait DoubleEndedIteratorExt: DoubleEndedIterator + Sized {
-    /// Change the direction of the iterator
-    ///
-    /// The flipped iterator swaps the ends on an iterator that can already
-    /// be iterated from the front and from the back.
-    ///
-    ///
-    /// If the iterator also implements RandomAccessIterator, the flipped
-    /// iterator is also random access, with the indices starting at the back
-    /// of the original iterator.
-    ///
-    /// Note: Random access with flipped indices still only applies to the first
-    /// `uint::MAX` elements of the original iterator.
-    #[inline]
-    #[stable]
-    fn rev(self) -> Rev<Self> {
-        Rev{iter: self}
-    }
-}
-
-#[unstable = "trait is unstable"]
-impl<I> DoubleEndedIteratorExt for I where I: DoubleEndedIterator {}
 
 /// A double-ended iterator yielding mutable references
 #[experimental = "not widely used"]
