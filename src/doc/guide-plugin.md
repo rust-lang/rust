@@ -31,9 +31,13 @@ extend the compiler's behavior with new syntax extensions, lint checks, etc.
 
 A plugin is a dynamic library crate with a designated "registrar" function that
 registers extensions with `rustc`. Other crates can use these extensions by
-loading the plugin crate with `#[phase(plugin)] extern crate`. See the
+loading the plugin crate with `#[plugin] extern crate`. See the
 [`rustc::plugin`](rustc/plugin/index.html) documentation for more about the
 mechanics of defining and loading a plugin.
+
+Arguments passed as `#[plugin=...]` or `#[plugin(...)]` are not interpreted by
+rustc itself.  They are provided to the plugin through the `Registry`'s [`args`
+method](rustc/plugin/registry/struct.Registry.html#method.args).
 
 # Syntax extensions
 
@@ -105,10 +109,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
 Then we can use `rn!()` like any other macro:
 
 ```ignore
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
-extern crate roman_numerals;
+#[plugin] extern crate roman_numerals;
 
 fn main() {
     assert_eq!(rn!(MMXV), 2015);
@@ -217,8 +220,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 Then code like
 
 ```ignore
-#[phase(plugin)]
-extern crate lint_plugin_test;
+#[plugin] extern crate lint_plugin_test;
 
 fn lintme() { }
 ```
