@@ -10,7 +10,7 @@
 
 // force-host
 
-#![feature(globs, plugin_registrar, macro_rules, quote)]
+#![feature(globs, plugin_registrar, quote)]
 
 extern crate syntax;
 extern crate rustc;

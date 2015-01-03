@@ -10,8 +10,6 @@
 
 // ignore-pretty: pprust doesn't print hygiene output
 
-#![feature(macro_rules)]
-
 macro_rules! loop_x {
     ($e: expr) => {
         // $e shouldn't be able to interact with this 'x

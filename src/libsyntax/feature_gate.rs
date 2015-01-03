@@ -37,7 +37,7 @@ use std::ascii::AsciiExt;
 // if you change this list without updating src/doc/reference.md, @cmr will be sad
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("globs", Active),
-    ("macro_rules", Active),
+    ("macro_rules", Accepted),
     ("struct_variant", Accepted),
     ("asm", Active),
     ("managed_boxes", Removed),
@@ -169,12 +169,7 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
         let ast::MacInvocTT(ref path, _, _) = mac.node;
         let id = path.segments.last().unwrap().identifier;
 
-        if id == token::str_to_ident("macro_rules") {
-            self.context.gate_feature("macro_rules", path.span, "macro definitions are \
-                not stable enough for use and are subject to change");
-        }
-
-        else if id == token::str_to_ident("asm") {
+        if id == token::str_to_ident("asm") {
             self.context.gate_feature("asm", path.span, "inline assembly is not \
                 stable enough for use and is subject to change");
         }

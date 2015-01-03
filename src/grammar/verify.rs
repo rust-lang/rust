@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs, plugin, macro_rules)]
+#![feature(globs, plugin)]
 
 extern crate syntax;
 extern crate rustc;

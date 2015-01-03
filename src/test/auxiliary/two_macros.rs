@@ -10,8 +10,6 @@
 
 // force-host
 
-#![feature(macro_rules)]
-
 #[macro_export]
 macro_rules! macro_one { () => ("one") }
 

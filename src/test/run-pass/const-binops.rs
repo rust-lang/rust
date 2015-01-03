@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({
         use std::num::Float;

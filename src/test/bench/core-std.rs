@@ -11,7 +11,6 @@
 // ignore-lexer-test FIXME #15679
 // Microbenchmarks for various functions in std and extra
 
-#![feature(macro_rules)]
 #![feature(unboxed_closures)]
 
 use std::io::File;

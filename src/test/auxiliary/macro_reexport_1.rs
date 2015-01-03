@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #![crate_type = "dylib"]
-#![feature(macro_rules)]
-
 #[macro_export]
 macro_rules! reexported {
     () => ( 3u )

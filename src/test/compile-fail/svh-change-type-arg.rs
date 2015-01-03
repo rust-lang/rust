@@ -13,8 +13,6 @@
 // aux-build:svh-b.rs
 // aux-build:svh-a-change-type-arg.rs
 
-#![feature(macro_rules)]
-
 extern crate a;
 extern crate b; //~ ERROR: found possibly newer version of crate `a` which `b` depends on
 //~^ NOTE: perhaps this crate needs to be recompiled

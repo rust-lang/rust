@@ -10,8 +10,6 @@
 
 // ignore-pretty
 
-#![feature(macro_rules)]
-
 macro_rules! third {
     ($e:expr) => ({let x = 2; $e[x]})
 }
