@@ -40,7 +40,7 @@
 
 // ignore-android see #10393 #13206
 
-#![feature(slicing_syntax)]
+#![feature(associated_types, slicing_syntax)]
 
 use std::ascii::OwnedAsciiExt;
 use std::slice;

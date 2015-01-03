@@ -40,6 +40,8 @@
 
 // no-pretty-expanded FIXME #15189
 
+#![feature(associated_types)]
+
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread::Thread;
