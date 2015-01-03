@@ -21,6 +21,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::attr;
 use syntax::parse::token;
+use syntax::ptr::P;
 use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::attr::AttrMetaMethods;
@@ -29,12 +30,17 @@ use syntax::attr::AttrMetaMethods;
 pub type PluginRegistrarFun =
     fn(&mut Registry);
 
+pub struct PluginRegistrar {
+    pub fun: PluginRegistrarFun,
+    pub args: P<ast::MetaItem>,
+}
+
 /// Information about loaded plugins.
 pub struct Plugins {
     /// Imported macros.
     pub macros: Vec<ast::MacroDef>,
     /// Registrars, as function pointers.
-    pub registrars: Vec<PluginRegistrarFun>,
+    pub registrars: Vec<PluginRegistrar>,
 }
 
 struct PluginLoader<'a> {
@@ -87,7 +93,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         }
 
         // Parse the attributes relating to macro / plugin loading.
-        let mut load_registrar = false;
+        let mut plugin_attr = None;
         let mut macro_selection = Some(HashSet::new());  // None => load all
         let mut reexport = HashSet::new();
         for attr in vi.attrs.iter() {
@@ -97,7 +103,12 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
                     self.sess.span_err(attr.span, "#[phase] is deprecated; use \
                                        #[macro_use], #[plugin], and/or #[no_link]");
                 }
-                "plugin" => load_registrar = true,
+                "plugin" => {
+                    if plugin_attr.is_some() {
+                        self.sess.span_err(attr.span, "#[plugin] specified multiple times");
+                    }
+                    plugin_attr = Some(attr.node.value.clone());
+                }
                 "macro_use" => {
                     let names = attr.meta_item_list();
                     if names.is_none() {
@@ -145,6 +156,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             Some(sel) => sel.len() != 0 || reexport.len() != 0,
             None => true,
         };
+        let load_registrar = plugin_attr.is_some();
 
         if load_macros || load_registrar {
             let pmd = self.reader.read_plugin_metadata(vi);
@@ -167,7 +179,11 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         }
 
         if let Some((lib, symbol)) = registrar {
-            self.dylink_registrar(vi, lib, symbol);
+            let fun = self.dylink_registrar(vi, lib, symbol);
+            self.plugins.registrars.push(PluginRegistrar {
+                fun: fun,
+                args: plugin_attr.unwrap(),
+            });
         }
     }
 
@@ -179,7 +195,10 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
 
 impl<'a> PluginLoader<'a> {
     // Dynamically link a registrar function into the compiler process.
-    fn dylink_registrar(&mut self, vi: &ast::ViewItem, path: Path, symbol: String) {
+    fn dylink_registrar(&mut self,
+                        vi: &ast::ViewItem,
+                        path: Path,
+                        symbol: String) -> PluginRegistrarFun {
         // Make sure the path contains a / or the linker will search for it.
         let path = os::make_absolute(&path).unwrap();
 
@@ -201,13 +220,12 @@ impl<'a> PluginLoader<'a> {
                     Err(err) => self.sess.span_fatal(vi.span, err[])
                 };
 
-            self.plugins.registrars.push(registrar);
-
             // Intentionally leak the dynamic library. We can't ever unload it
             // since the library can make things that will live arbitrarily long
             // (e.g. an @-box cycle or a task).
             mem::forget(lib);
 
+            registrar
         }
     }
 }

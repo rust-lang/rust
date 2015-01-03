@@ -18,6 +18,7 @@ use syntax::ext::base::{IdentTT, Decorator, Modifier, MacroRulesTT};
 use syntax::ext::base::{MacroExpanderFn};
 use syntax::codemap::Span;
 use syntax::parse::token;
+use syntax::ptr::P;
 use syntax::ast;
 
 use std::collections::HashMap;
@@ -34,6 +35,9 @@ pub struct Registry<'a> {
     /// Compiler session. Useful if you want to emit diagnostic messages
     /// from the plugin registrar.
     pub sess: &'a Session,
+
+    #[doc(hidden)]
+    pub args_hidden: Option<P<ast::MetaItem>>,
 
     #[doc(hidden)]
     pub krate_span: Span,
@@ -53,11 +57,20 @@ impl<'a> Registry<'a> {
     pub fn new(sess: &'a Session, krate: &ast::Crate) -> Registry<'a> {
         Registry {
             sess: sess,
+            args_hidden: None,
             krate_span: krate.span,
             syntax_exts: vec!(),
             lint_passes: vec!(),
             lint_groups: HashMap::new(),
         }
+    }
+
+    /// Get the `#[plugin]` attribute used to load this plugin.
+    ///
+    /// This gives access to arguments passed via `#[plugin=...]` or
+    /// `#[plugin(...)]`.
+    pub fn args<'b>(&'b self) -> &'b P<ast::MetaItem> {
+        self.args_hidden.as_ref().expect("args not set")
     }
 
     /// Register a syntax extension of any kind.
