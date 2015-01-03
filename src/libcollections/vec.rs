@@ -1245,6 +1245,8 @@ impl<S: hash::Writer, T: Hash<S>> Hash<S> for Vec<T> {
     }
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 #[experimental = "waiting on Index stability"]
 impl<T> Index<uint,T> for Vec<T> {
     #[inline]
@@ -1253,7 +1255,30 @@ impl<T> Index<uint,T> for Vec<T> {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[experimental = "waiting on Index stability"]
+impl<T> Index<uint> for Vec<T> {
+    type Output = T;
+
+    #[inline]
+    fn index<'a>(&'a self, index: &uint) -> &'a T {
+        &self.as_slice()[*index]
+    }
+}
+
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> IndexMut<uint,T> for Vec<T> {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
+        &mut self.as_mut_slice()[*index]
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<T> IndexMut<uint> for Vec<T> {
+    type Output = T;
+
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
         &mut self.as_mut_slice()[*index]
