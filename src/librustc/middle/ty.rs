@@ -1047,7 +1047,7 @@ pub struct ClosureTy<'tcx> {
     pub abi: abi::Abi,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum FnOutput<'tcx> {
     FnConverging(Ty<'tcx>),
     FnDiverging
@@ -1699,8 +1699,7 @@ impl fmt::Show for RegionVid {
 
 impl<'tcx> fmt::Show for FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // grr, without tcx not much we can do.
-        write!(f, "(...)")
+        write!(f, "({}; variadic: {})->{}", self.inputs, self.variadic, self.output)
     }
 }
 

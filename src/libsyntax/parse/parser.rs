@@ -63,7 +63,7 @@ use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast;
 use ast_util::{self, as_prec, ident_to_path, operator_prec};
-use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, DUMMY_SP};
+use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp};
 use diagnostic;
 use ext::tt::macro_parser;
 use parse;
@@ -2103,22 +2103,6 @@ impl<'a> Parser<'a> {
         ExprIndex(expr, idx)
     }
 
-    pub fn mk_slice(&mut self,
-                    expr: P<Expr>,
-                    start: Option<P<Expr>>,
-                    end: Option<P<Expr>>,
-                    _mutbl: Mutability)
-                    -> ast::Expr_ {
-        // FIXME: we could give more accurate span info here.
-        let (lo, hi) = match (&start, &end) {
-            (&Some(ref s), &Some(ref e)) => (s.span.lo, e.span.hi),
-            (&Some(ref s), &None) => (s.span.lo, s.span.hi),
-            (&None, &Some(ref e)) => (e.span.lo, e.span.hi),
-            (&None, &None) => (DUMMY_SP.lo, DUMMY_SP.hi),
-        };
-        ExprIndex(expr, self.mk_expr(lo, hi, ExprRange(start, end)))
-    }
-
     pub fn mk_range(&mut self,
                     start: Option<P<Expr>>,
                     end: Option<P<Expr>>)
@@ -2550,87 +2534,28 @@ impl<'a> Parser<'a> {
               }
 
               // expr[...]
-              // Could be either an index expression or a slicing expression.
-              // Any slicing non-terminal can have a mutable version with `mut`
-              // after the opening square bracket.
+              // An index expression.
               token::OpenDelim(token::Bracket) => {
+                let bracket_pos = self.span.lo;
                 self.bump();
-                let mutbl = if self.eat_keyword(keywords::Mut) {
-                    MutMutable
+                if self.eat(&token::CloseDelim(token::Bracket)) {
+                    // No expression, expand to a FullRange
+                    let ix = {
+                        hi = self.last_span.hi;
+                        let range = ExprStruct(ident_to_path(mk_sp(lo, hi),
+                                                             token::special_idents::FullRange),
+                                               vec![],
+                                               None);
+                        self.mk_expr(bracket_pos, hi, range)
+                    };
+                    let index = self.mk_index(e, ix);
+                    e = self.mk_expr(lo, hi, index)
                 } else {
-                    MutImmutable
-                };
-                match self.token {
-                    // e.index(&FullRange)
-                    token::CloseDelim(token::Bracket) => {
-                        self.bump();
-                        hi = self.span.hi;
-                        let slice = self.mk_slice(e, None, None, mutbl);
-                        e = self.mk_expr(lo, hi, slice)
-                    }
-                    // e.index(&(0..e))
-                    token::DotDot => {
-                        self.bump();
-                        match self.token {
-                            // e.index(&(..))
-                            token::CloseDelim(token::Bracket) => {
-                                self.bump();
-                                hi = self.span.hi;
-                                let slice = self.mk_slice(e, None, None, mutbl);
-                                e = self.mk_expr(lo, hi, slice);
-
-                                self.span_err(e.span, "incorrect slicing expression: `[..]`");
-                                self.span_note(e.span,
-                                    "use `expr.index(&FullRange)` to construct a slice of the whole of expr");
-                            }
-                            // e.index(&(0..e))
-                            _ => {
-                                hi = self.span.hi;
-                                let e2 = self.parse_expr();
-                                self.commit_expr_expecting(&*e2, token::CloseDelim(token::Bracket));
-                                let slice = self.mk_slice(e, None, Some(e2), mutbl);
-                                e = self.mk_expr(lo, hi, slice)
-                            }
-                        }
-                    }
-                    // e[e] | e.index(&(e..)) | e.index(&(e..e))
-                    _ => {
-                        let ix = self.parse_expr_res(RESTRICTION_NO_DOTS);
-                        match self.token {
-                            // e.index(&(e..)) | e.index(&(e..e))
-                            token::DotDot => {
-                                self.bump();
-                                let e2 = match self.token {
-                                    // e.index(&(e..))
-                                    token::CloseDelim(token::Bracket) => {
-                                        self.bump();
-                                        None
-                                    }
-                                    // e.index(&(e..e))
-                                    _ => {
-                                        let e2 = self.parse_expr_res(RESTRICTION_NO_DOTS);
-                                        self.commit_expr_expecting(&*e2,
-                                            token::CloseDelim(token::Bracket));
-                                        Some(e2)
-                                    }
-                                };
-                                hi = self.span.hi;
-                                let slice = self.mk_slice(e, Some(ix), e2, mutbl);
-                                e = self.mk_expr(lo, hi, slice)
-                            }
-                            // e[e]
-                            _ => {
-                                if mutbl == ast::MutMutable {
-                                    self.span_err(e.span,
-                                                  "`mut` keyword is invalid in index expressions");
-                                }
-                                hi = self.span.hi;
-                                self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket));
-                                let index = self.mk_index(e, ix);
-                                e = self.mk_expr(lo, hi, index)
-                            }
-                        }
-                    }
+                    let ix = self.parse_expr();
+                    hi = self.span.hi;
+                    self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket));
+                    let index = self.mk_index(e, ix);
+                    e = self.mk_expr(lo, hi, index)
                 }
               }
 
