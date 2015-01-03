@@ -562,6 +562,8 @@ impl<V> Extend<(uint, V)> for VecMap<V> {
     }
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 #[stable]
 impl<V> Index<uint, V> for VecMap<V> {
     #[inline]
@@ -570,8 +572,31 @@ impl<V> Index<uint, V> for VecMap<V> {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<V> Index<uint> for VecMap<V> {
+    type Output = V;
+
+    #[inline]
+    fn index<'a>(&'a self, i: &uint) -> &'a V {
+        self.get(i).expect("key not present")
+    }
+}
+
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 #[stable]
 impl<V> IndexMut<uint, V> for VecMap<V> {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut V {
+        self.get_mut(i).expect("key not present")
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable]
+impl<V> IndexMut<uint> for VecMap<V> {
+    type Output = V;
+
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut V {
         self.get_mut(i).expect("key not present")
