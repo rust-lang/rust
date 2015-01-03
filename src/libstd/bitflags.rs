@@ -249,7 +249,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl ::std::ops::Not<$BitFlags> for $BitFlags {
+        impl ::std::ops::Not for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the complement of this set of flags.
             #[inline]
             fn not(self) -> $BitFlags {

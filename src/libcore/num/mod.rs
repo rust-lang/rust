@@ -58,7 +58,7 @@ pub trait Int
     + Mul<Output=Self>
     + Div<Output=Self>
     + Rem<Output=Self>
-    + Not<Self>
+    + Not<Output=Self>
     + BitAnd<Output=Self>
     + BitOr<Output=Self>
     + BitXor<Output=Self>
@@ -613,7 +613,7 @@ int_impl! { int = i64, u64, 64,
 #[unstable = "recently settled as part of numerics reform"]
 pub trait SignedInt
     : Int
-    + Neg<Self>
+    + Neg<Output=Self>
 {
     /// Computes the absolute value of `self`. `Int::min_value()` will be
     /// returned if the number is `Int::min_value()`.
@@ -1245,7 +1245,7 @@ pub trait Float
     + NumCast
     + PartialOrd
     + PartialEq
-    + Neg<Self>
+    + Neg<Output=Self>
     + Add<Output=Self>
     + Sub<Output=Self>
     + Mul<Output=Self>
@@ -1718,7 +1718,7 @@ macro_rules! trait_impl {
 #[deprecated = "Generalised numbers are no longer supported"]
 #[allow(deprecated)]
 pub trait Num: PartialEq + Zero + One
-             + Neg<Self>
+             + Neg<Output=Self>
              + Add<Output=Self>
              + Sub<Output=Self>
              + Mul<Output=Self>
