@@ -10,8 +10,6 @@
 #![crate_name="lint_stability"]
 #![crate_type = "lib"]
 
-#![feature(macro_rules)]
-
 #[deprecated]
 pub fn deprecated() {}
 #[deprecated="text"]

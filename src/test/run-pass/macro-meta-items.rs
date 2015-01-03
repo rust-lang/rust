@@ -11,8 +11,6 @@
 // ignore-pretty - token trees can't pretty print
 // compile-flags: --cfg foo
 
-#![feature(macro_rules)]
-
 macro_rules! compiles_fine {
     ($at:meta) => {
         #[cfg($at)]

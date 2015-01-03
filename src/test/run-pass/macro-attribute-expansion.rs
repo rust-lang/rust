@@ -10,8 +10,6 @@
 
 // ignore-pretty - token trees can't pretty print
 
-#![feature(macro_rules)]
-
 macro_rules! descriptions {
     ($name:ident is $desc:expr) => {
         // Check that we will correctly expand attributes

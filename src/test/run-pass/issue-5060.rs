@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
 macro_rules! print_hd_tl {
     ($field_hd:ident, $($field_tl:ident),+) => ({
         print!("{}", stringify!($field_hd));

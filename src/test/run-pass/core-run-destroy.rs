@@ -15,7 +15,6 @@
 // memory, which makes for some *confusing* logs. That's why these are here
 // instead of in std.
 
-#![feature(macro_rules)]
 #![reexport_test_harness_main = "test_main"]
 
 extern crate libc;

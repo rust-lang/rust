@@ -16,7 +16,7 @@
 // one test task to ensure that errors are timeouts, not file descriptor
 // exhaustion.
 
-#![feature(macro_rules, globs)]
+#![feature(globs)]
 #![allow(experimental)]
 #![reexport_test_harness_main = "test_main"]
 

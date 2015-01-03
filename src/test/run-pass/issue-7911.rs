@@ -14,8 +14,6 @@
 // with different mutability in macro in two methods
 
 #![allow(unused_variable)] // unused foobar_immut + foobar_mut
-#![feature(macro_rules)]
-
 trait FooBar {}
 struct Bar(i32);
 struct Foo { bar: Bar }

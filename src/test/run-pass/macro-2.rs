@@ -10,8 +10,6 @@
 
 // ignore-pretty - token trees can't pretty print
 
-#![feature(macro_rules)]
-
 pub fn main() {
 
     macro_rules! mylambda_tt {

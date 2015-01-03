@@ -15,8 +15,6 @@
 
 // ignore-test
 
-#![feature(macro_rules)]
-
 macro_rules! f { () => (n) }
 
 fn main() -> (){

@@ -10,8 +10,6 @@
 
 // ignore-test #9383
 
-#![feature(macro_rules)]
-
 // shouldn't affect evaluation of $ex:
 macro_rules! bad_macro {
     ($ex:expr) => ({(|_x| { $ex }) (9) })

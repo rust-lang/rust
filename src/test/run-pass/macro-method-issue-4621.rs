@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
 struct A;
 
 macro_rules! make_thirteen_method {() => (fn thirteen(&self)->int {13})}
