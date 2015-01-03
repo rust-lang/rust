@@ -17,13 +17,13 @@ fn twice(x: Box<uint>) -> uint {
      *x * 2
 }
 
-fn invoke(f: || -> uint) {
+fn invoke<F>(f: F) where F: FnOnce() -> uint {
      f();
 }
 
 fn main() {
       let x  : Box<uint>  = box 9;
-      let sq : || -> uint =  || { *x * *x };
+      let sq =  |:| { *x * *x };
 
       twice(x); //~ ERROR: cannot move out of
       invoke(sq);

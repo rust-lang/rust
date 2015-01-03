@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn with(f: |&String|) {}
+fn with<F>(f: F) where F: FnOnce(&String) {}
 
 fn arg_item(&_x: &String) {}
     //~^ ERROR cannot move out of dereference of `&`-pointer

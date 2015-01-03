@@ -57,9 +57,6 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     // mutable object types are not ok
     assert_copy::<&'a mut (Dummy+Copy)>();  //~ ERROR `core::kinds::Copy` is not implemented
 
-    // closures are like an `&mut` object
-    assert_copy::<||>(); //~ ERROR `core::kinds::Copy` is not implemented
-
     // unsafe ptrs are ok
     assert_copy::<*const int>();
     assert_copy::<*const &'a mut int>();

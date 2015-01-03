@@ -8,18 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 struct closure_box<'a> {
-    cl: ||: 'a
+    cl: Box<FnMut() + 'a>,
 }
 
-fn box_it<'r>(x: ||: 'r) -> closure_box<'r> {
+fn box_it<'r>(x: Box<FnMut() + 'r>) -> closure_box<'r> {
     closure_box {cl: x}
 }
 
 fn main() {
     let cl_box = {
-        let mut i = 3;
-        box_it(|| i += 1) //~ ERROR cannot infer
+        let mut i = 3i;
+        box_it(box || i += 1) //~ ERROR cannot infer
     };
-    (cl_box.cl)();
+    cl_box.cl.call_mut(());
 }

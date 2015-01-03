@@ -25,7 +25,7 @@ impl CrateId {
 
 pub fn remove_package_from_database() {
     let mut lines_to_use: Vec<&CrateId> = Vec::new();
-    let push_id = |installed_id: &CrateId| {
+    let push_id = |&mut: installed_id: &CrateId| {
         lines_to_use.push(installed_id);
         //~^ ERROR cannot infer an appropriate lifetime for automatic coercion due to
         // conflicting requirements
@@ -38,7 +38,7 @@ pub fn remove_package_from_database() {
 
 }
 
-pub fn list_database(f: |&CrateId|) {
+pub fn list_database<F>(mut f: F) where F: FnMut(&CrateId) {
     let stuff = ["foo", "bar"];
 
     for l in stuff.iter() {

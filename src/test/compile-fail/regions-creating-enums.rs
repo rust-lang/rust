@@ -27,14 +27,14 @@ fn compute(x: &ast) -> uint {
     }
 }
 
-fn map_nums<'a,'b>(x: &ast, f: |uint| -> uint) -> &'a ast<'b> {
+fn map_nums<'a,'b, F>(x: &ast, f: &mut F) -> &'a ast<'b> where F: FnMut(uint) -> uint {
     match *x {
       ast::num(x) => {
-        return &ast::num(f(x)); //~ ERROR borrowed value does not live long enough
+        return &ast::num((*f)(x)); //~ ERROR borrowed value does not live long enough
       }
       ast::add(x, y) => {
-        let m_x = map_nums(x, |z| f(z));
-        let m_y = map_nums(y, |z| f(z));
+        let m_x = map_nums(x, f);
+        let m_y = map_nums(y, f);
         return &ast::add(m_x, m_y);  //~ ERROR borrowed value does not live long enough
       }
     }
