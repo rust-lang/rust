@@ -59,13 +59,13 @@ use sys_common::rwlock as sys;
 /// } // write lock is dropped here
 /// ```
 #[stable]
-pub struct RWLock<T> {
+pub struct RwLock<T> {
     inner: Box<StaticRWLock>,
     data: UnsafeCell<T>,
 }
 
-unsafe impl<T:'static+Send> Send for RWLock<T> {}
-unsafe impl<T> Sync for RWLock<T> {}
+unsafe impl<T:'static+Send> Send for RwLock<T> {}
+unsafe impl<T> Sync for RwLock<T> {}
 
 /// Structure representing a statically allocated RWLock.
 ///
@@ -127,11 +127,11 @@ pub struct RWLockWriteGuard<'a, T: 'a> {
     __marker: marker::NoSend,
 }
 
-impl<T: Send + Sync> RWLock<T> {
+impl<T: Send + Sync> RwLock<T> {
     /// Creates a new instance of an RWLock which is unlocked and read to go.
     #[stable]
-    pub fn new(t: T) -> RWLock<T> {
-        RWLock { inner: box RWLOCK_INIT, data: UnsafeCell::new(t) }
+    pub fn new(t: T) -> RwLock<T> {
+        RwLock { inner: box RWLOCK_INIT, data: UnsafeCell::new(t) }
     }
 
     /// Locks this rwlock with shared read access, blocking the current thread
@@ -228,7 +228,7 @@ impl<T: Send + Sync> RWLock<T> {
 }
 
 #[unsafe_destructor]
-impl<T> Drop for RWLock<T> {
+impl<T> Drop for RwLock<T> {
     fn drop(&mut self) {
         unsafe { self.inner.lock.destroy() }
     }
