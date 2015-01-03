@@ -643,11 +643,12 @@ fn confirm_candidate<'cx,'tcx>(
             match impl_ty {
                 Some(ty) => (ty, impl_vtable.nested.to_vec()),
                 None => {
-                    selcx.tcx().sess.span_bug(
-                        obligation.cause.span,
-                        format!("impl `{}` did not contain projection for `{}`",
-                                impl_vtable.repr(selcx.tcx()),
-                                obligation.repr(selcx.tcx())).as_slice());
+                    // This means that the impl is missing a
+                    // definition for the associated type. This error
+                    // ought to be reported by the type checker method
+                    // `check_impl_items_against_trait`, so here we
+                    // just return ty_err.
+                    (selcx.tcx().types.err, vec!())
                 }
             }
         }
