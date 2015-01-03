@@ -717,6 +717,15 @@ macro_rules! shr_impl {
 
 shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 
+// NOTE(stage0) remove trait after a snapshot
+#[cfg(stage0)]
+#[allow(missing_docs)]
+#[lang="index"]
+pub trait Index<Sized? Index, Sized? Result> for Sized? {
+    /// The method for the indexing (`Foo[Bar]`) operation
+    fn index<'a>(&'a self, index: &Index) -> &'a Result;
+}
+
 /// The `Index` trait is used to specify the functionality of indexing operations
 /// like `arr[idx]` when used in an immutable context.
 ///
@@ -726,12 +735,16 @@ shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `index`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
+/// #![feature(associated_types)]
+///
 /// use std::ops::Index;
 ///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl Index<Foo, Foo> for Foo {
+/// impl Index<Foo> for Foo {
+///     type Output = Foo;
+///
 ///     fn index<'a>(&'a self, _index: &Foo) -> &'a Foo {
 ///         println!("Indexing!");
 ///         self
@@ -742,10 +755,22 @@ shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 ///     Foo[Foo];
 /// }
 /// ```
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
 #[lang="index"]
-pub trait Index<Sized? Index, Sized? Result> for Sized? {
+pub trait Index<Sized? Index> for Sized? {
+    type Sized? Output;
+
     /// The method for the indexing (`Foo[Bar]`) operation
-    fn index<'a>(&'a self, index: &Index) -> &'a Result;
+    fn index<'a>(&'a self, index: &Index) -> &'a Self::Output;
+}
+
+// NOTE(stage0) remove trait after a snapshot
+#[cfg(stage0)]
+#[allow(missing_docs)]
+#[lang="index_mut"]
+pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
+    /// The method for the indexing (`Foo[Bar]`) operation
+    fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Result;
 }
 
 /// The `IndexMut` trait is used to specify the functionality of indexing
@@ -757,12 +782,16 @@ pub trait Index<Sized? Index, Sized? Result> for Sized? {
 /// calling `index_mut`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
+/// #![feature(associated_types)]
+///
 /// use std::ops::IndexMut;
 ///
 /// #[deriving(Copy)]
 /// struct Foo;
 ///
-/// impl IndexMut<Foo, Foo> for Foo {
+/// impl IndexMut<Foo> for Foo {
+///     type Output = Foo;
+///
 ///     fn index_mut<'a>(&'a mut self, _index: &Foo) -> &'a mut Foo {
 ///         println!("Indexing!");
 ///         self
@@ -773,10 +802,13 @@ pub trait Index<Sized? Index, Sized? Result> for Sized? {
 ///     &mut Foo[Foo];
 /// }
 /// ```
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
 #[lang="index_mut"]
-pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
+pub trait IndexMut<Sized? Index> for Sized? {
+    type Sized? Output;
+
     /// The method for the indexing (`Foo[Bar]`) operation
-    fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Result;
+    fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Self::Output;
 }
 
 /// The `Slice` trait is used to specify the functionality of slicing operations
