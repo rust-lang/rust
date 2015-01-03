@@ -477,7 +477,10 @@ verify_hash() {
 
     if [ "${remote_sha256}" != "${local_sha256}" ]; then
         rm -Rf "${CFG_TMP_DIR}"
-        err "invalid sha256.\n  ${remote_sha256}\t${remote_tarball}\n  ${local_sha256}\t${local_tarball}"
+        errmsg="invalid sha256.\n"
+        errmsg="$errmsg ${remote_sha256}\t${remote_tarball}\n"
+        errmsg="$errmsg ${local_sha256}\t${local_tarball}"
+        err "$errmsg"
     fi
 }
 
