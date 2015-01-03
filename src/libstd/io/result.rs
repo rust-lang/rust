@@ -78,7 +78,7 @@ impl<T, A: Acceptor<T>> Acceptor<T> for IoResult<A> {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use super::super::mem::*;
     use io;
 

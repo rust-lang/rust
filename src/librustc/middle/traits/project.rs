@@ -21,8 +21,10 @@ use super::VtableImplData;
 
 use middle::infer;
 use middle::subst::Subst;
-use middle::ty::{mod, AsPredicate, RegionEscape, HasProjectionTypes, ToPolyTraitRef, Ty};
+use middle::ty::{mod, AsPredicate, ReferencesError, RegionEscape,
+                 HasProjectionTypes, ToPolyTraitRef, Ty};
 use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
+use std::rc::Rc;
 use util::ppaux::Repr;
 
 pub type PolyProjectionObligation<'tcx> =
@@ -372,25 +374,30 @@ fn project_type<'cx,'tcx>(
         return Err(ProjectionTyError::TraitSelectionError(Overflow));
     }
 
+    let obligation_trait_ref =
+        selcx.infcx().resolve_type_vars_if_possible(&obligation.predicate.trait_ref);
+
+    debug!("project: obligation_trait_ref={}", obligation_trait_ref.repr(selcx.tcx()));
+
+    if obligation_trait_ref.references_error() {
+        return Ok(ProjectedTy::Progress(selcx.tcx().types.err, vec!()));
+    }
+
     let mut candidates = ProjectionTyCandidateSet {
         vec: Vec::new(),
         ambiguous: false,
     };
 
-    assemble_candidates_from_object_type(selcx,
-                                         obligation,
-                                         &mut candidates);
+    assemble_candidates_from_param_env(selcx,
+                                       obligation,
+                                       &obligation_trait_ref,
+                                       &mut candidates);
 
-    if candidates.vec.is_empty() {
-        assemble_candidates_from_param_env(selcx,
-                                           obligation,
-                                           &mut candidates);
-
-        if let Err(e) = assemble_candidates_from_impls(selcx,
-                                                       obligation,
-                                                       &mut candidates) {
-            return Err(ProjectionTyError::TraitSelectionError(e));
-        }
+    if let Err(e) = assemble_candidates_from_impls(selcx,
+                                                   obligation,
+                                                   &obligation_trait_ref,
+                                                   &mut candidates) {
+        return Err(ProjectionTyError::TraitSelectionError(e));
     }
 
     debug!("{} candidates, ambiguous={}",
@@ -421,17 +428,20 @@ fn project_type<'cx,'tcx>(
 /// there that can answer this question.
 fn assemble_candidates_from_param_env<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
-    obligation:  &ProjectionTyObligation<'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
 {
     let env_predicates = selcx.param_env().caller_bounds.predicates.clone();
     let env_predicates = env_predicates.iter().cloned().collect();
-    assemble_candidates_from_predicates(selcx, obligation, candidate_set, env_predicates);
+    assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
+                                        candidate_set, env_predicates);
 }
 
 fn assemble_candidates_from_predicates<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
-    obligation:  &ProjectionTyObligation<'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
     env_predicates: Vec<ty::Predicate<'tcx>>)
 {
@@ -445,7 +455,7 @@ fn assemble_candidates_from_predicates<'cx,'tcx>(
                 let is_match = infcx.probe(|_| {
                     let origin = infer::Misc(obligation.cause.span);
                     let obligation_poly_trait_ref =
-                        obligation.predicate.trait_ref.to_poly_trait_ref();
+                        obligation_trait_ref.to_poly_trait_ref();
                     let data_poly_trait_ref =
                         data.to_poly_trait_ref();
                     infcx.sub_poly_trait_refs(false,
@@ -467,36 +477,41 @@ fn assemble_candidates_from_predicates<'cx,'tcx>(
 fn assemble_candidates_from_object_type<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation:  &ProjectionTyObligation<'tcx>,
-    candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
+    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
+    candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
+    object_ty: Ty<'tcx>)
 {
     let infcx = selcx.infcx();
-    let trait_ref = infcx.resolve_type_vars_if_possible(&obligation.predicate.trait_ref);
-    debug!("assemble_candidates_from_object_type(trait_ref={})",
-           trait_ref.repr(infcx.tcx));
-    let self_ty = trait_ref.self_ty();
-    let data = match self_ty.sty {
+    debug!("assemble_candidates_from_object_type(object_ty={})",
+           object_ty.repr(infcx.tcx));
+    let data = match object_ty.sty {
         ty::ty_trait(ref data) => data,
-        _ => { return; }
+        _ => {
+            selcx.tcx().sess.span_bug(
+                obligation.cause.span,
+                format!("assemble_candidates_from_object_type called with non-object: {}",
+                        object_ty.repr(selcx.tcx()))[]);
+        }
     };
-    let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), self_ty);
+    let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
     let env_predicates = projection_bounds.iter()
                                           .map(|p| p.as_predicate())
                                           .collect();
-    assemble_candidates_from_predicates(selcx, obligation, candidate_set, env_predicates)
+    assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
+                                        candidate_set, env_predicates)
 }
 
 fn assemble_candidates_from_impls<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
     -> Result<(), SelectionError<'tcx>>
 {
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
-    let trait_ref =
-        obligation.predicate.trait_ref.to_poly_trait_ref();
-    let trait_obligation =
-        obligation.with(trait_ref.to_poly_trait_predicate());
+    let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+    let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
     let vtable = match selcx.select(&trait_obligation) {
         Ok(Some(vtable)) => vtable,
         Ok(None) => {
@@ -514,6 +529,11 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
         super::VtableImpl(data) => {
             candidate_set.vec.push(
                 ProjectionTyCandidate::Impl(data));
+        }
+        super::VtableObject(data) => {
+            assemble_candidates_from_object_type(
+                selcx, obligation, obligation_trait_ref, candidate_set,
+                data.object_ty);
         }
         super::VtableParam(..) => {
             // This case tell us nothing about the value of an

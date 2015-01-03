@@ -45,6 +45,8 @@
 //! ```rust
 //! extern crate libc;
 //!
+//! use std::c_str::ToCStr;
+//!
 //! extern {
 //!     fn puts(s: *const libc::c_char);
 //! }
@@ -70,6 +72,7 @@
 use core::prelude::*;
 use libc;
 
+use cmp::Ordering;
 use fmt;
 use hash;
 use mem;
@@ -155,6 +158,8 @@ impl CString {
     /// one).
     ///
     /// ```rust
+    /// use std::c_str::ToCStr;
+    ///
     /// let foo = "some string";
     ///
     /// // right
@@ -169,6 +174,8 @@ impl CString {
     ///
     /// ```rust
     /// extern crate libc;
+    ///
+    /// use std::c_str::ToCStr;
     ///
     /// fn main() {
     ///     let c_str = "foo bar".to_c_str();
@@ -189,6 +196,8 @@ impl CString {
     /// one).
     ///
     /// ```rust
+    /// use std::c_str::ToCStr;
+    ///
     /// let foo = "some string";
     ///
     /// // right
@@ -308,6 +317,8 @@ pub trait ToCStr for Sized? {
     ///
     /// ```rust
     /// extern crate libc;
+    ///
+    /// use std::c_str::ToCStr;
     ///
     /// fn main() {
     ///     let s = "PATH".with_c_str(|path| unsafe {
@@ -538,9 +549,8 @@ pub unsafe fn from_c_multistring<F>(buf: *const libc::c_char,
 
 #[cfg(test)]
 mod tests {
+    use prelude::v1::*;
     use super::*;
-    use prelude::{spawn, Some, None, Option, FnOnce, ToString, CloneSliceExt};
-    use prelude::{Clone, PtrExt, Iterator, SliceExt, StrExt};
     use ptr;
     use thread::Thread;
     use libc;
@@ -613,7 +623,7 @@ mod tests {
     #[test]
     fn test_unwrap() {
         let c_str = "hello".to_c_str();
-        unsafe { libc::free(c_str.unwrap() as *mut libc::c_void) }
+        unsafe { libc::free(c_str.into_inner() as *mut libc::c_void) }
     }
 
     #[test]
@@ -732,9 +742,10 @@ mod tests {
 mod bench {
     extern crate test;
 
+    use prelude::v1::*;
     use self::test::Bencher;
     use libc;
-    use prelude::*;
+    use c_str::ToCStr;
 
     #[inline]
     fn check(s: &str, c_str: *const libc::c_char) {

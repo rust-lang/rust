@@ -26,7 +26,7 @@ in the `$`s, they just indicate the start of each command):
 curl -L https://static.rust-lang.org/rustup.sh | sudo sh
 ```
 
-If you're concerned about the [potential insecurity](http://curlpipesh.tumblr.com/) of using `curl | sudo sh`, 
+If you're concerned about the [potential insecurity](http://curlpipesh.tumblr.com/) of using `curl | sudo sh`,
 please keep reading and see our disclaimer below. And feel free to use a two-step version of the installation and examine our installation script:
 
 ```bash
@@ -1106,13 +1106,21 @@ enum Ordering {
 ```
 
 An `Ordering` can only be _one_ of `Less`, `Equal`, or `Greater` at any given
-time. Here's an example:
+time.
+
+Because `Ordering` is provided by the standard library, we can use the `use`
+keyword to use it in our code. We'll learn more about `use` later, but it's
+used to bring names into scope.
+
+Here's an example of how to use `Ordering`:
 
 ```{rust}
+use std::cmp::Ordering;
+
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1121,28 +1129,35 @@ fn main() {
 
     let ordering = cmp(x, y); // ordering: Ordering
 
-    if ordering == Less {
+    if ordering == Ordering::Less {
         println!("less");
-    } else if ordering == Greater {
+    } else if ordering == Ordering::Greater {
         println!("greater");
-    } else if ordering == Equal {
+    } else if ordering == Ordering::Equal {
         println!("equal");
     }
 }
 ```
 
-`cmp` is a function that compares two things, and returns an `Ordering`. We
-return either `Less`, `Greater`, or `Equal`, depending on if the two values
-are greater, less, or equal.
+There's a symbol here we haven't seen before: the double colon (`::`).
+This is used to indicate a namesapce. In this case, `Ordering` lives in
+the `cmp` submodule of the `std` module. We'll talk more about modules
+later in the guide. For now, all you need to know is that you can `use`
+things from the standard library if you need them.
+
+Okay, let's talk about the actual code in the example. `cmp` is a function that
+compares two things, and returns an `Ordering`. We return either
+`Ordering::Less`, `Ordering::Greater`, or `Ordering::Equal`, depending on if
+the two values are greater, less, or equal. Note that each variant of the
+`enum` is namespaced under the `enum` itself: it's `Ordering::Greater` not
+`Greater`.
 
 The `ordering` variable has the type `Ordering`, and so contains one of the
-three values. We can then do a bunch of `if`/`else` comparisons to check
-which one it is.
-
-However, repeated `if`/`else` comparisons get quite tedious. Rust has a feature
-that not only makes them nicer to read, but also makes sure that you never
-miss a case. Before we get to that, though, let's talk about another kind of
-enum: one with values.
+three values. We can then do a bunch of `if`/`else` comparisons to check which
+one it is. However, repeated `if`/`else` comparisons get quite tedious. Rust
+has a feature that not only makes them nicer to read, but also makes sure that
+you never miss a case. Before we get to that, though, let's talk about another
+kind of enum: one with values.
 
 This enum has two variants, one of which has a value:
 
@@ -1175,18 +1190,19 @@ enum StringResult {
     ErrorReason(String),
 }
 ```
-Where a `StringResult` is either a `StringOK`, with the result of a computation, or an
-`ErrorReason` with a `String` explaining what caused the computation to fail. These kinds of
-`enum`s are actually very useful and are even part of the standard library.
+Where a `StringResult` is either a `StringResult::StringOK`, with the result of
+a computation, or an `StringResult::ErrorReason` with a `String` explaining
+what caused the computation to fail. These kinds of `enum`s are actually very
+useful and are even part of the standard library.
 
-Enum variants are namespaced under the enum names. For example, here is an example of using
-our `StringResult`:
+Here is an example of using our `StringResult`:
 
 ```rust
-# enum StringResult {
-#     StringOK(String),
-#     ErrorReason(String),
-# }
+enum StringResult {
+    StringOK(String),
+    ErrorReason(String),
+}
+
 fn respond(greeting: &str) -> StringResult {
     if greeting == "Hello" {
         StringResult::StringOK("Good morning!".to_string())
@@ -1196,10 +1212,7 @@ fn respond(greeting: &str) -> StringResult {
 }
 ```
 
-Notice that we need both the enum name and the variant name: `StringResult::StringOK`, but
-we didn't need to with `Ordering` – we just said `Greater` rather than `Ordering::Greater`.
-There's a reason: the Rust prelude imports the variants of `Ordering` as well as the enum
-itself. We can use the `use` keyword to do something similar with `StringResult`:
+That's a lot of typing! We can use the `use` keyword to make it shorter:
 
 ```rust
 use StringResult::StringOK;
@@ -1221,12 +1234,11 @@ fn respond(greeting: &str) -> StringResult {
 }
 ```
 
-We'll learn more about `use` later, but it's used to bring names into scope. `use` declarations
-must come before anything else, which looks a little strange in this example, since we `use`
-the variants before we define them. Anyway, in the body of `respond`, we can just say `StringOK`
-now, rather than the full `StringResult::StringOK`. Importing variants can be convenient, but can
-also cause name conflicts, so do this with caution. It's considered good style to rarely import
-variants for this reason.
+`use` declarations must come before anything else, which looks a little strange in this example,
+since we `use` the variants before we define them. Anyway, in the body of `respond`, we can just
+say `StringOK` now, rather than the full `StringResult::StringOK`. Importing variants can be
+convenient, but can also cause name conflicts, so do this with caution. It's considered good style
+to rarely import variants for this reason.
 
 As you can see, `enum`s with values are quite a powerful tool for data representation,
 and can be even more useful when they're generic across types. Before we get to generics,
@@ -1280,10 +1292,12 @@ for every possible value of `x`, and so our program will compile successfully.
 section on enums?
 
 ```{rust}
+use std::cmp::Ordering;
+
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1292,11 +1306,11 @@ fn main() {
 
     let ordering = cmp(x, y);
 
-    if ordering == Less {
+    if ordering == Ordering::Less {
         println!("less");
-    } else if ordering == Greater {
+    } else if ordering == Ordering::Greater {
         println!("greater");
-    } else if ordering == Equal {
+    } else if ordering == Ordering::Equal {
         println!("equal");
     }
 }
@@ -1305,10 +1319,12 @@ fn main() {
 We can re-write this as a `match`:
 
 ```{rust}
+use std::cmp::Ordering;
+
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1316,9 +1332,9 @@ fn main() {
     let y = 10i;
 
     match cmp(x, y) {
-        Less    => println!("less"),
-        Greater => println!("greater"),
-        Equal   => println!("equal"),
+        Ordering::Less    => println!("less"),
+        Ordering::Greater => println!("greater"),
+        Ordering::Equal   => println!("equal"),
     }
 }
 ```
@@ -1365,10 +1381,12 @@ side of a `let` binding or directly where an expression is used. We could
 also implement the previous line like this:
 
 ```{rust}
+use std::cmp::Ordering;
+
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 
 fn main() {
@@ -1376,9 +1394,9 @@ fn main() {
     let y = 10i;
 
     println!("{}", match cmp(x, y) {
-        Less    => "less",
-        Greater => "greater",
-        Equal   => "equal",
+        Ordering::Less    => "less",
+        Ordering::Greater => "greater",
+        Ordering::Equal   => "equal",
     });
 }
 ```
@@ -2139,6 +2157,7 @@ guess to the secret number:
 ```{rust,ignore}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2157,16 +2176,16 @@ fn main() {
     println!("You guessed: {}", input);
 
     match cmp(input, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: int, b: int) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2193,6 +2212,7 @@ we wrote the `cmp` function! Let's change it to take `uint`s:
 ```{rust,ignore}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2211,16 +2231,16 @@ fn main() {
     println!("You guessed: {}", input);
 
     match cmp(input, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2290,6 +2310,7 @@ Anyway, with us now converting our input to a number, our code looks like this:
 ```{rust,ignore}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2308,16 +2329,16 @@ fn main() {
     println!("You guessed: {}", input_num);
 
     match cmp(input_num, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2339,6 +2360,7 @@ to do that. Try this code:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2366,16 +2388,16 @@ fn main() {
     println!("You guessed: {}", num);
 
     match cmp(num, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2405,6 +2427,7 @@ code looks like this:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2432,16 +2455,16 @@ fn main() {
     println!("You guessed: {}", num);
 
     match cmp(num, secret_number) {
-        Less    => println!("Too small!"),
-        Greater => println!("Too big!"),
-        Equal   => println!("You win!"),
+        Ordering::Less    => println!("Too small!"),
+        Ordering::Greater => println!("Too big!"),
+        Ordering::Equal   => println!("You win!"),
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2478,6 +2501,7 @@ Let's add that in:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2507,17 +2531,17 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Less    => println!("Too small!"),
-            Greater => println!("Too big!"),
-            Equal   => println!("You win!"),
+            Ordering::Less    => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal   => println!("You win!"),
         }
     }
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2553,6 +2577,7 @@ suboptimal to say the least. First, let's actually quit when you win the game:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2582,9 +2607,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Less    => println!("Too small!"),
-            Greater => println!("Too big!"),
-            Equal   => {
+            Ordering::Less    => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal   => {
                 println!("You win!");
                 return;
             },
@@ -2593,9 +2618,9 @@ fn main() {
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2608,6 +2633,7 @@ we don't want to quit, we just want to ignore it. Change that `return` to
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2637,9 +2663,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Less    => println!("Too small!"),
-            Greater => println!("Too big!"),
-            Equal   => {
+            Ordering::Less    => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal   => {
                 println!("You win!");
                 return;
             },
@@ -2648,9 +2674,9 @@ fn main() {
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -2686,6 +2712,7 @@ It was good for testing, but it kind of ruins the game. Here's our final source:
 ```{rust,no_run}
 use std::io;
 use std::rand;
+use std::cmp::Ordering;
 
 fn main() {
     println!("Guess the number!");
@@ -2713,9 +2740,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Less    => println!("Too small!"),
-            Greater => println!("Too big!"),
-            Equal   => {
+            Ordering::Less    => println!("Too small!"),
+            Ordering::Greater => println!("Too big!"),
+            Ordering::Equal   => {
                 println!("You win!");
                 return;
             },
@@ -2724,9 +2751,9 @@ fn main() {
 }
 
 fn cmp(a: uint, b: uint) -> Ordering {
-    if a < b { Less }
-    else if a > b { Greater }
-    else { Equal }
+    if a < b { Ordering::Less }
+    else if a > b { Ordering::Greater }
+    else { Ordering::Equal }
 }
 ```
 
@@ -4154,7 +4181,7 @@ We've made a struct that represents a circle. We then write an `impl` block,
 and inside it, define a method, `area`. Methods take a  special first
 parameter, `&self`. There are three variants: `self`, `&self`, and `&mut self`.
 You can think of this first parameter as being the `x` in `x.foo()`. The three
-variants correspond to the three kinds of thing `x` could be: `self` if it's
+variants correspond to the three kinds of things `x` could be: `self` if it's
 just a value on the stack, `&self` if it's a reference, and `&mut self` if it's
 a mutable reference. We should default to using `&self`, as it's the most
 common.
@@ -4742,13 +4769,13 @@ enum OptionalFloat64 {
 }
 ```
 
-This is really unfortunate. Luckily, Rust has a feature that gives us a better
-way: generics. Generics are called **parametric polymorphism** in type theory,
-which means that they are types or functions that have multiple forms ("poly"
-is multiple, "morph" is form) over a given parameter ("parametric").
+Such repetition is unfortunate. Luckily, Rust has a feature that gives us a
+better way: **generics**. Generics are called **parametric polymorphism** in
+type theory, which means that they are types or functions that have multiple
+forms over a given parameter ("parametric").
 
-Anyway, enough with type theory declarations, let's check out the generic form
-of `OptionalInt`. It is actually provided by Rust itself, and looks like this:
+Let's see how generics help us escape `OptionalInt`. `Option` is already
+provided in Rust's standard library and looks like this:
 
 ```rust
 enum Option<T> {
@@ -4757,25 +4784,27 @@ enum Option<T> {
 }
 ```
 
-The `<T>` part, which you've seen a few times before, indicates that this is
-a generic data type. Inside the declaration of our enum, wherever we see a `T`,
-we substitute that type for the same type used in the generic. Here's an
-example of using `Option<T>`, with some extra type annotations:
+The `<T>` part, which you've seen a few times before, indicates that this is a
+generic data type. `T` is called a **type parameter**. When we create instances
+of `Option`, we need to provide a concrete type in place of the type
+parameter. For example, if we wanted something like our `OptionalInt`, we would
+need to instantiate an `Option<int>`. Inside the declaration of our enum,
+wherever we see a `T`, we replace it with the type specified (or inferred by the
+the compiler).
 
 ```{rust}
 let x: Option<int> = Some(5i);
 ```
 
-In the type declaration, we say `Option<int>`. Note how similar this looks to
-`Option<T>`. So, in this particular `Option`, `T` has the value of `int`. On
-the right-hand side of the binding, we do make a `Some(T)`, where `T` is `5i`.
-Since that's an `int`, the two sides match, and Rust is happy. If they didn't
-match, we'd get an error:
+In this particular `Option`, `T` has the value of `int`. On the right-hand side
+of the binding, we do make a `Some(T)`, where `T` is `5i`.  Since that's an
+`int`, the two sides match, and Rust is happy. If they didn't match, we'd get an
+error:
 
 ```{rust,ignore}
 let x: Option<f64> = Some(5i);
-// error: mismatched types: expected `core::option::Option<f64>`
-// but found `core::option::Option<int>` (expected f64 but found int)
+// error: mismatched types: expected `core::option::Option<f64>`,
+// found `core::option::Option<int>` (expected f64, found int)
 ```
 
 That doesn't mean we can't make `Option<T>`s that hold an `f64`! They just have to
@@ -4785,8 +4814,6 @@ match up:
 let x: Option<int> = Some(5i);
 let y: Option<f64> = Some(5.0f64);
 ```
-
-This is just fine. One definition, multiple uses.
 
 Generics don't have to only be generic over one type. Consider Rust's built-in
 `Result<T, E>` type:
@@ -4808,20 +4835,20 @@ enum Result<H, N> {
 }
 ```
 
-if we wanted to. Convention says that the first generic parameter should be
-`T`, for 'type,' and that we use `E` for 'error'. Rust doesn't care, however.
+Convention says that the first generic parameter should be `T`, for "type," and
+that we use `E` for "error."
 
-The `Result<T, E>` type is intended to
-be used to return the result of a computation, and to have the ability to
-return an error if it didn't work out. Here's an example:
+The `Result<T, E>` type is intended to be used to return the result of a
+computation and to have the ability to return an error if it didn't work
+out. Here's an example:
 
 ```{rust}
 let x: Result<f64, String> = Ok(2.3f64);
 let y: Result<f64, String> = Err("There was an error.".to_string());
 ```
 
-This particular Result will return an `f64` if there's a success, and a
-`String` if there's a failure. Let's write a function that uses `Result<T, E>`:
+This particular `Result` will return an `f64` upon success and a `String` if
+there's a failure. Let's write a function that uses `Result<T, E>`:
 
 ```{rust}
 fn inverse(x: f64) -> Result<f64, String> {
@@ -4831,17 +4858,18 @@ fn inverse(x: f64) -> Result<f64, String> {
 }
 ```
 
-We don't want to take the inverse of zero, so we check to make sure that we
-weren't passed zero. If we were, then we return an `Err`, with a message. If
-it's okay, we return an `Ok`, with the answer.
+We want to indicate that `inverse(0.0f64)` is undefined or is an erroneous usage
+of the function, so we check to make sure that we weren't passed zero. If we
+were, we return an `Err` with a message. If it's okay, we return an `Ok` with
+the answer.
 
 Why does this matter? Well, remember how `match` does exhaustive matches?
 Here's how this function gets used:
 
 ```{rust}
 # fn inverse(x: f64) -> Result<f64, String> {
-#     if x == 0.0f64 { return Err("x cannot be zero!".to_string()); }
-#     Ok(1.0f64 / x)
+# if x == 0.0f64 { return Err("x cannot be zero!".to_string()); }
+# Ok(1.0f64 / x)
 # }
 let x = inverse(25.0f64);
 
@@ -4862,8 +4890,8 @@ println!("{}", x + 2.0f64); // error: binary operation `+` cannot be applied
 ```
 
 This function is great, but there's one other problem: it only works for 64 bit
-floating point values. What if we wanted to handle 32 bit floating point as
-well? We'd have to write this:
+floating point values. If we wanted to handle 32 bit floating point values we'd
+have to write this:
 
 ```{rust}
 fn inverse32(x: f32) -> Result<f32, String> {
@@ -4873,9 +4901,9 @@ fn inverse32(x: f32) -> Result<f32, String> {
 }
 ```
 
-Bummer. What we need is a **generic function**. Luckily, we can write one!
-However, it won't _quite_ work yet. Before we get into that, let's talk syntax.
-A generic version of `inverse` would look something like this:
+What we need is a **generic function**. We can do that with Rust! However, it
+won't _quite_ work yet. We need to talk about syntax. A first attempt at a
+generic version of `inverse` might look something like this:
 
 ```{rust,ignore}
 fn inverse<T>(x: T) -> Result<T, String> {
@@ -4885,24 +4913,34 @@ fn inverse<T>(x: T) -> Result<T, String> {
 }
 ```
 
-Just like how we had `Option<T>`, we use a similar syntax for `inverse<T>`.
-We can then use `T` inside the rest of the signature: `x` has type `T`, and half
-of the `Result` has type `T`. However, if we try to compile that example, we'll get
-an error:
+Just like how we had `Option<T>`, we use a similar syntax for `inverse<T>`.  We
+can then use `T` inside the rest of the signature: `x` has type `T`, and half of
+the `Result` has type `T`. However, if we try to compile that example, we'll get
+some errors:
 
 ```text
 error: binary operation `==` cannot be applied to type `T`
+     if x == 0.0 { return Err("x cannot be zero!".to_string()); }
+                ^~~~~~~~
+error: mismatched types: expected `_`, found `T` (expected floating-point variable, found type parameter)
+     Ok(1.0 / x)
+              ^
+error: mismatched types: expected `core::result::Result<T, collections::string::String>`, found `core::result::Result<_, _>` (expected type parameter, found floating-point variable)
+     Ok(1.0 / x)
+     ^~~~~~~~~~~
 ```
 
-Because `T` can be _any_ type, it may be a type that doesn't implement `==`,
-and therefore, the first line would be wrong. What do we do?
+The problem is that `T` is unconstrained: it can be _any_ type. It could be a
+`String`, and the expression `1.0 / x` has no meaning if `x` is a `String`. It
+may be a type that doesn't implement `==`, and the first line would be
+wrong. What do we do?
 
-To fix this example, we need to learn about another Rust feature: traits.
+To fix this example, we need to learn about another Rust feature: **traits**.
 
 # Traits
 
-Do you remember the `impl` keyword, used to call a function with method
-syntax?
+Our discussion of **traits** begins with the `impl` keyword. We used it before
+to specify methods.
 
 ```{rust}
 struct Circle {
@@ -4918,8 +4956,8 @@ impl Circle {
 }
 ```
 
-Traits are similar, except that we define a trait with just the method
-signature, then implement the trait for that struct. Like this:
+We define a trait in terms of its methods. We then `impl` a trait `for` a type
+(or many types).
 
 ```{rust}
 struct Circle {
@@ -4939,19 +4977,18 @@ impl HasArea for Circle {
 }
 ```
 
-As you can see, the `trait` block looks very similar to the `impl` block,
-but we don't define a body, just a type signature. When we `impl` a trait,
-we use `impl Trait for Item`, rather than just `impl Item`.
+The `trait` block defines only type signatures. When we `impl` a trait, we use
+`impl Trait for Item`, rather than just `impl Item`.
 
-So what's the big deal? Remember the error we were getting with our generic
-`inverse` function?
+The first of the three errors we got with our generic `inverse` function was
+this:
 
 ```text
 error: binary operation `==` cannot be applied to type `T`
 ```
 
-We can use traits to constrain our generics. Consider this function, which
-does not compile, and gives us a similar error:
+We can use traits to constrain generic type parameters. Consider this function,
+which does not compile, and gives us a similar error:
 
 ```{rust,ignore}
 fn print_area<T>(shape: T) {
@@ -4966,8 +5003,9 @@ error: type `T` does not implement any method in scope named `area`
 ```
 
 Because `T` can be any type, we can't be sure that it implements the `area`
-method. But we can add a **trait constraint** to our generic `T`, ensuring
-that it does:
+method. But we can add a **trait constraint** to our generic `T`, ensuring that
+we can only compile the function if it's called with types which `impl` the
+`HasArea` trait:
 
 ```{rust}
 # trait HasArea {
@@ -4978,9 +5016,9 @@ fn print_area<T: HasArea>(shape: T) {
 }
 ```
 
-The syntax `<T: HasArea>` means `any type that implements the HasArea trait`.
-Because traits define function type signatures, we can be sure that any type
-which implements `HasArea` will have an `.area()` method.
+The syntax `<T: HasArea>` means "any type that implements the HasArea trait."
+Because traits define method signatures, we can be sure that any type which
+implements `HasArea` will have an `area` method.
 
 Here's an extended example of how this works:
 
@@ -5078,55 +5116,22 @@ impl HasArea for int {
 It is considered poor style to implement methods on such primitive types, even
 though it is possible.
 
-This may seem like the Wild West, but there are two other restrictions around
-implementing traits that prevent this from getting out of hand. First, traits
-must be `use`d in any scope where you wish to use the trait's method. So for
-example, this does not work:
+## Scoped Method Resolution and Orphan `impl`s
 
-```{rust,ignore}
-mod shapes {
-    use std::f64::consts;
+There are two restrictions for implementing traits that prevent this from
+getting out of hand.
 
-    trait HasArea {
-        fn area(&self) -> f64;
-    }
+1. **Scope-based Method Resolution**: Traits must be `use`d in any scope where
+   you wish to use the trait's methods
+2. **No Orphan `impl`s**: Either the trait or the type you're writing the `impl`
+   for must be inside your crate.
 
-    struct Circle {
-        x: f64,
-        y: f64,
-        radius: f64,
-    }
-
-    impl HasArea for Circle {
-        fn area(&self) -> f64 {
-            consts::PI * (self.radius * self.radius)
-        }
-    }
-}
-
-fn main() {
-    let c = shapes::Circle {
-        x: 0.0f64,
-        y: 0.0f64,
-        radius: 1.0f64,
-    };
-
-    println!("{}", c.area());
-}
-```
-
-Now that we've moved the structs and traits into their own module, we get an
-error:
-
-```text
-error: type `shapes::Circle` does not implement any method in scope named `area`
-```
-
-If we add a `use` line right above `main` and make the right things public,
-everything is fine:
+If we organize our crate differently by using modules, we'll need to ensure both
+of the conditions are satisfied. Don't worry, you can lean on the compiler since
+it won't let you get away with violating them.
 
 ```{rust}
-use shapes::HasArea;
+use shapes::HasArea; // satisfies #1
 
 mod shapes {
     use std::f64::consts;
@@ -5148,8 +5153,8 @@ mod shapes {
     }
 }
 
-
 fn main() {
+    // use shapes::HasArea; // This would satisfy #1, too
     let c = shapes::Circle {
         x: 0.0f64,
         y: 0.0f64,
@@ -5160,18 +5165,25 @@ fn main() {
 }
 ```
 
-This means that even if someone does something bad like add methods to `int`,
-it won't affect you, unless you `use` that trait.
+Requiring us to `use` traits whose methods we want means that even if someone
+does something bad like add methods to `int`, it won't affect us, unless you
+`use` that trait.
 
-There's one more restriction on implementing traits. Either the trait or the
-type you're writing the `impl` for must be inside your crate. So, we could
-implement the `HasArea` type for `int`, because `HasArea` is in our crate.  But
-if we tried to implement `Float`, a trait provided by Rust, for `int`, we could
-not, because both the trait and the type aren't in our crate.
+The second condition allows us to `impl` built-in `trait`s for types we define,
+or allows us to `impl` our own `trait`s for built-in types, but restricts us
+from mixing and matching third party or built-in `impl`s with third party or
+built-in types.
 
-One last thing about traits: generic functions with a trait bound use
-**monomorphization** ("mono": one, "morph": form), so they are statically
-dispatched. What's that mean? Well, let's take a look at `print_area` again:
+We could `impl` the `HasArea` trait for `int`, because `HasArea` is in our
+crate. But if we tried to implement `Float`, a standard library `trait`, for
+`int`, we could not, because neither the `trait` nor the `type` are in our
+crate.
+
+## Monomorphization
+
+One last thing about generics and traits: the compiler performs
+**monomorphization** on generic functions so they are statically dispatched. To
+see what that means, let's take a look at `print_area` again:
 
 ```{rust,ignore}
 fn print_area<T: HasArea>(shape: T) {
@@ -5188,10 +5200,11 @@ fn main() {
 }
 ```
 
-When we use this trait with `Circle` and `Square`, Rust ends up generating
-two different functions with the concrete type, and replacing the call sites with
-calls to the concrete implementations. In other words, you get something like
-this:
+Because we have called `print_area` with two different types in place of its
+type paramater `T`, Rust will generate two versions of the function with the
+appropriate concrete types, replacing the call sites with calls to the concrete
+implementations. In other words, the compiler will actually compile something
+more like this:
 
 ```{rust,ignore}
 fn __print_area_circle(shape: Circle) {
@@ -5212,12 +5225,14 @@ fn main() {
 }
 ```
 
-The names don't actually change to this, it's just for illustration. But
-as you can see, there's no overhead of deciding which version to call here,
-hence 'statically dispatched'. The downside is that we have two copies of
-the same function, so our binary is a little bit larger.
+These names are for illustration; the compiler will generate its own cryptic
+names for internal uses. The point is that there is no runtime overhead of
+deciding which version to call. The function to be called is determined
+statically, at compile time. Thus, generic functions are **statically
+dispatched**. The downside is that we have two similar functions, so our binary
+is larger.
 
-# Threads 
+# Threads
 
 Concurrency and parallelism are topics that are of increasing interest to a
 broad subsection of software developers. Modern computers are often multi-core,
@@ -5312,6 +5327,7 @@ example, if you wish to compute some value in the background, `Future` is
 a useful thing to use:
 
 ```{rust}
+# #![allow(deprecated)]
 use std::sync::Future;
 
 let mut delayed_value = Future::spawn(move || {

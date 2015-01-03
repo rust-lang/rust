@@ -25,7 +25,7 @@ use ops::FnOnce;
 use option::Option;
 use option::Option::{None, Some};
 use result::Result::{Ok, Err};
-use slice::{CloneSliceExt, SliceExt};
+use slice::SliceExt;
 use str::{FromStr, StrExt};
 use vec::Vec;
 
@@ -267,8 +267,8 @@ impl<'a> Parser<'a> {
                     });
                     match ipv4 {
                         Some(Ipv4Addr(a, b, c, d)) => {
-                            groups[i + 0] = (a as u16 << 8) | (b as u16);
-                            groups[i + 1] = (c as u16 << 8) | (d as u16);
+                            groups[i + 0] = ((a as u16) << 8) | (b as u16);
+                            groups[i + 1] = ((c as u16) << 8) | (d as u16);
                             return (i + 2, true);
                         }
                         _ => {}
@@ -544,7 +544,7 @@ impl<'a> ToSocketAddr for &'a str {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use super::*;
     use str::FromStr;
 

@@ -10,6 +10,8 @@
 
 //! A unique pointer type.
 
+#![stable]
+
 use core::any::{Any, AnyRefExt};
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
@@ -44,7 +46,7 @@ pub static HEAP: () = ();
 
 /// A type that represents a uniquely-owned value.
 #[lang = "owned_box"]
-#[unstable = "custom allocators will add an additional type parameter (with default)"]
+#[stable]
 pub struct Box<T>(Unique<T>);
 
 #[stable]
@@ -111,20 +113,20 @@ impl<S: hash::Writer, Sized? T: Hash<S>> Hash<S> for Box<T> {
     }
 }
 
-
 /// Extension methods for an owning `Any` trait object.
 #[unstable = "post-DST and coherence changes, this will not be a trait but \
               rather a direct `impl` on `Box<Any>`"]
 pub trait BoxAny {
     /// Returns the boxed value if it is of type `T`, or
     /// `Err(Self)` if it isn't.
-    #[unstable = "naming conventions around accessing innards may change"]
+    #[stable]
     fn downcast<T: 'static>(self) -> Result<Box<T>, Self>;
 }
 
-#[stable]
 impl BoxAny for Box<Any> {
     #[inline]
+    #[unstable = "method may be renamed with respect to other downcasting \
+                  methods"]
     fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
@@ -147,17 +149,19 @@ impl<Sized? T: fmt::Show> fmt::Show for Box<T> {
     }
 }
 
-impl fmt::Show for Box<Any+'static> {
+impl fmt::Show for Box<Any> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
     }
 }
 
-impl<Sized? T> Deref<T> for Box<T> {
+impl<Sized? T> Deref for Box<T> {
+    type Target = T;
+
     fn deref(&self) -> &T { &**self }
 }
 
-impl<Sized? T> DerefMut<T> for Box<T> {
+impl<Sized? T> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
 }
 
@@ -210,7 +214,7 @@ mod test {
 
     #[test]
     fn deref() {
-        fn homura<T: Deref<i32>>(_: T) { }
+        fn homura<T: Deref<Target=i32>>(_: T) { }
         homura(box 765i32);
     }
 }

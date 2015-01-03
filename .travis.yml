@@ -2,6 +2,7 @@
 # RVM/bundler/ruby and whatnot. Right now 'rust' as a language actually
 # downloads a rust/cargo snapshot, which we don't really want for building rust.
 language: c
+sudo: false
 
 # The test suite is in general way too stressful for travis, especially in
 # terms of time limit and reliability. In the past we've tried to scale things

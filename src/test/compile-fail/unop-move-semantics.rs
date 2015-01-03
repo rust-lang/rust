@@ -10,6 +10,8 @@
 
 // Test that move restrictions are enforced on overloaded unary operations
 
+use std::ops::Not;
+
 fn move_then_borrow<T: Not<T> + Clone>(x: T) {
     !x;
 

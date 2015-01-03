@@ -11,7 +11,7 @@
 // Check that an unsafe impl does not imply that unsafe actions are
 // legal in the methods.
 
-unsafe trait UnsafeTrait {
+unsafe trait UnsafeTrait : Sized {
     fn foo(self) { }
 }
 

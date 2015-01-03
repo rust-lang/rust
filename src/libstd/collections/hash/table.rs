@@ -210,7 +210,7 @@ impl<K, V, M> Bucket<K, V, M> {
     }
 }
 
-impl<K, V, M: Deref<RawTable<K, V>>> Bucket<K, V, M> {
+impl<K, V, M: Deref<Target=RawTable<K, V>>> Bucket<K, V, M> {
     pub fn new(table: M, hash: SafeHash) -> Bucket<K, V, M> {
         Bucket::at_index(table, hash.inspect() as uint)
     }
@@ -279,7 +279,7 @@ impl<K, V, M: Deref<RawTable<K, V>>> Bucket<K, V, M> {
     }
 }
 
-impl<K, V, M: Deref<RawTable<K, V>>> EmptyBucket<K, V, M> {
+impl<K, V, M: Deref<Target=RawTable<K, V>>> EmptyBucket<K, V, M> {
     #[inline]
     pub fn next(self) -> Bucket<K, V, M> {
         let mut bucket = self.into_bucket();
@@ -315,7 +315,7 @@ impl<K, V, M: Deref<RawTable<K, V>>> EmptyBucket<K, V, M> {
     }
 }
 
-impl<K, V, M: DerefMut<RawTable<K, V>>> EmptyBucket<K, V, M> {
+impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> EmptyBucket<K, V, M> {
     /// Puts given key and value pair, along with the key's hash,
     /// into this bucket in the hashtable. Note how `self` is 'moved' into
     /// this function, because this slot will no longer be empty when
@@ -337,7 +337,7 @@ impl<K, V, M: DerefMut<RawTable<K, V>>> EmptyBucket<K, V, M> {
     }
 }
 
-impl<K, V, M: Deref<RawTable<K, V>>> FullBucket<K, V, M> {
+impl<K, V, M: Deref<Target=RawTable<K, V>>> FullBucket<K, V, M> {
     #[inline]
     pub fn next(self) -> Bucket<K, V, M> {
         let mut bucket = self.into_bucket();
@@ -384,7 +384,7 @@ impl<K, V, M: Deref<RawTable<K, V>>> FullBucket<K, V, M> {
     }
 }
 
-impl<K, V, M: DerefMut<RawTable<K, V>>> FullBucket<K, V, M> {
+impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> FullBucket<K, V, M> {
     /// Removes this bucket's key and value from the hashtable.
     ///
     /// This works similarly to `put`, building an `EmptyBucket` out of the
@@ -428,7 +428,7 @@ impl<K, V, M: DerefMut<RawTable<K, V>>> FullBucket<K, V, M> {
     }
 }
 
-impl<'t, K, V, M: Deref<RawTable<K, V>> + 't> FullBucket<K, V, M> {
+impl<'t, K, V, M: Deref<Target=RawTable<K, V>> + 't> FullBucket<K, V, M> {
     /// Exchange a bucket state for immutable references into the table.
     /// Because the underlying reference to the table is also consumed,
     /// no further changes to the structure of the table are possible;
@@ -442,7 +442,7 @@ impl<'t, K, V, M: Deref<RawTable<K, V>> + 't> FullBucket<K, V, M> {
     }
 }
 
-impl<'t, K, V, M: DerefMut<RawTable<K, V>> + 't> FullBucket<K, V, M> {
+impl<'t, K, V, M: Deref<Target=RawTable<K, V>> + DerefMut + 't> FullBucket<K, V, M> {
     /// This works similarly to `into_refs`, exchanging a bucket state
     /// for mutable references into the table.
     pub fn into_mut_refs(self) -> (&'t mut K, &'t mut V) {
@@ -463,7 +463,7 @@ impl<K, V, M> BucketState<K, V, M> {
     }
 }
 
-impl<K, V, M: Deref<RawTable<K, V>>> GapThenFull<K, V, M> {
+impl<K, V, M: Deref<Target=RawTable<K, V>>> GapThenFull<K, V, M> {
     #[inline]
     pub fn full(&self) -> &FullBucket<K, V, M> {
         &self.full

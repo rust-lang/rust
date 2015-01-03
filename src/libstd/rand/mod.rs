@@ -419,7 +419,7 @@ pub fn sample<T, I: Iterator<T>, R: Rng>(rng: &mut R,
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
     use super::{Rng, thread_rng, random, SeedableRng, StdRng, sample};
     use iter::order;
 
@@ -615,7 +615,7 @@ static RAND_BENCH_N: u64 = 100;
 #[cfg(test)]
 mod bench {
     extern crate test;
-    use prelude::*;
+    use prelude::v1::*;
 
     use self::test::Bencher;
     use super::{XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};

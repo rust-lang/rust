@@ -317,9 +317,8 @@ macro_rules! try {
 #[macro_export]
 macro_rules! vec {
     ($($x:expr),*) => ({
-        use std::slice::BoxedSliceExt;
         let xs: ::std::boxed::Box<[_]> = box [$($x),*];
-        xs.into_vec()
+        ::std::slice::SliceExt::into_vec(xs)
     });
     ($($x:expr,)*) => (vec![$($x),*])
 }
@@ -334,6 +333,7 @@ macro_rules! vec {
 ///
 /// ```
 /// use std::thread::Thread;
+/// use std::sync::mpsc::channel;
 ///
 /// let (tx1, rx1) = channel();
 /// let (tx2, rx2) = channel();
@@ -344,21 +344,21 @@ macro_rules! vec {
 /// Thread::spawn(move|| { tx2.send(calculate_the_answer()) }).detach();
 ///
 /// select! (
-///     () = rx1.recv() => println!("the long running task finished first"),
+///     _ = rx1.recv() => println!("the long running task finished first"),
 ///     answer = rx2.recv() => {
-///         println!("the answer was: {}", answer);
+///         println!("the answer was: {}", answer.unwrap());
 ///     }
 /// )
 /// ```
 ///
-/// For more information about select, see the `std::comm::Select` structure.
+/// For more information about select, see the `std::sync::mpsc::Select` structure.
 #[macro_export]
 #[experimental]
 macro_rules! select {
     (
         $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
     ) => ({
-        use std::comm::Select;
+        use std::sync::mpsc::Select;
         let sel = Select::new();
         $( let mut $rx = sel.handle(&$rx); )+
         unsafe {

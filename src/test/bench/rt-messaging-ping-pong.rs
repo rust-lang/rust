@@ -17,7 +17,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sync::mpsc::channel;
 use std::os;
+use std::str::from_str;
+use std::thread::Thread;
 use std::uint;
 
 // This is a simple bench that creates M pairs of tasks. These
@@ -34,21 +37,21 @@ fn ping_pong_bench(n: uint, m: uint) {
         // Create a stream B->A
         let (btx, brx) = channel::<()>();
 
-        spawn(move|| {
+        Thread::spawn(move|| {
             let (tx, rx) = (atx, brx);
             for _ in range(0, n) {
                 tx.send(());
                 rx.recv();
             }
-        });
+        }).detach();
 
-        spawn(move|| {
+        Thread::spawn(move|| {
             let (tx, rx) = (btx, arx);
             for _ in range(0, n) {
                 rx.recv();
                 tx.send(());
             }
-        });
+        }).detach();
     }
 
     for _ in range(0, m) {

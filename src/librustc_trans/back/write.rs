@@ -30,6 +30,7 @@ use std::ptr;
 use std::str;
 use std::mem;
 use std::sync::{Arc, Mutex};
+use std::sync::mpsc::channel;
 use std::thread;
 use libc::{c_uint, c_int, c_void};
 
@@ -928,13 +929,13 @@ fn run_work_multithreaded(sess: &Session,
                 }
             }
 
-            tx.take().unwrap().send(());
+            tx.take().unwrap().send(()).unwrap();
         }).detach();
     }
 
     let mut panicked = false;
     for rx in futures.into_iter() {
-        match rx.recv_opt() {
+        match rx.recv() {
             Ok(()) => {},
             Err(_) => {
                 panicked = true;
@@ -1009,7 +1010,7 @@ unsafe fn configure_llvm(sess: &Session) {
         }
     }
 
-    INIT.doit(|| {
+    INIT.call_once(|| {
         llvm::LLVMInitializePasses();
 
         // Only initialize the platforms supported by Rust here, because

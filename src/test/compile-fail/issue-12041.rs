@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sync::mpsc::channel;
+use std::thread::Thread;
+
 fn main() {
     let (tx, rx) = channel();
-    spawn(move|| {
+    let _t = Thread::spawn(move|| -> () {
         loop {
             let tx = tx;
             //~^ ERROR: use of moved value: `tx`

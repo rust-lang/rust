@@ -38,15 +38,19 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::sync::mpsc::{channel, Sender, Receiver};
+use std::str::from_str;
+use std::thread::Thread;
+
 fn start(n_tasks: int, token: int) {
     let (tx, mut rx) = channel();
     tx.send(token);
     for i in range(2, n_tasks + 1) {
         let (tx, next_rx) = channel();
-        spawn(move|| roundtrip(i, tx, rx));
+        Thread::spawn(move|| roundtrip(i, tx, rx)).detach();
         rx = next_rx;
     }
-    spawn(move|| roundtrip(1, tx, rx));
+    Thread::spawn(move|| roundtrip(1, tx, rx)).detach();
 }
 
 fn roundtrip(id: int, tx: Sender<int>, rx: Receiver<int>) {

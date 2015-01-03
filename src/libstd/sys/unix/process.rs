@@ -7,22 +7,23 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+use prelude::v1::*;
 use self::Req::*;
 
-use libc::{mod, pid_t, c_void, c_int};
-use c_str::CString;
+use c_str::{CString, ToCStr};
+use collections;
+use hash::Hash;
+use io::process::{ProcessExit, ExitStatus, ExitSignal};
 use io::{mod, IoResult, IoError, EndOfFile};
+use libc::{mod, pid_t, c_void, c_int};
 use mem;
 use os;
-use ptr;
-use prelude::*;
-use io::process::{ProcessExit, ExitStatus, ExitSignal};
-use collections;
 use path::BytesContainer;
-use hash::Hash;
-
-use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval};
+use ptr;
+use sync::mpsc::{channel, Sender, Receiver};
 use sys::fs::FileDesc;
+use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval};
 use sys_common::helper_thread::Helper;
 use sys_common::{AsInner, mkerr_libc, timeout};
 
@@ -276,8 +277,8 @@ impl Process {
     }
 
     pub fn wait(&self, deadline: u64) -> IoResult<ProcessExit> {
-        use std::cmp;
-        use std::comm;
+        use cmp;
+        use sync::mpsc::TryRecvError;
 
         static mut WRITE_FD: libc::c_int = 0;
 
@@ -336,9 +337,9 @@ impl Process {
 
         let (tx, rx) = channel();
         unsafe { HELPER.send(NewChild(self.pid, tx, deadline)); }
-        return match rx.recv_opt() {
+        return match rx.recv() {
             Ok(e) => Ok(e),
-            Err(()) => Err(timeout("wait timed out")),
+            Err(..) => Err(timeout("wait timed out")),
         };
 
         // Register a new SIGCHLD handler, returning the reading half of the
@@ -419,11 +420,11 @@ impl Process {
                             Ok(NewChild(pid, tx, deadline)) => {
                                 active.push((pid, tx, deadline));
                             }
-                            Err(comm::Disconnected) => {
+                            Err(TryRecvError::Disconnected) => {
                                 assert!(active.len() == 0);
                                 break 'outer;
                             }
-                            Err(comm::Empty) => break,
+                            Err(TryRecvError::Empty) => break,
                         }
                     }
                 }
@@ -459,7 +460,7 @@ impl Process {
                     active.retain(|&(pid, ref tx, _)| {
                         let pr = Process { pid: pid };
                         match pr.try_wait() {
-                            Some(msg) => { tx.send(msg); false }
+                            Some(msg) => { tx.send(msg).unwrap(); false }
                             None => true,
                         }
                     });

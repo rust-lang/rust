@@ -20,30 +20,32 @@
 
 extern crate getopts;
 
+use std::sync::mpsc::{channel, Sender};
 use std::os;
 use std::result::Result::{Ok, Err};
+use std::str::from_str;
 use std::thread::Thread;
 use std::time::Duration;
 
 fn fib(n: int) -> int {
     fn pfib(tx: &Sender<int>, n: int) {
         if n == 0 {
-            tx.send(0);
+            tx.send(0).unwrap();
         } else if n <= 2 {
-            tx.send(1);
+            tx.send(1).unwrap();
         } else {
             let (tx1, rx) = channel();
             let tx2 = tx1.clone();
             Thread::spawn(move|| pfib(&tx2, n - 1)).detach();
             let tx2 = tx1.clone();
             Thread::spawn(move|| pfib(&tx2, n - 2)).detach();
-            tx.send(rx.recv() + rx.recv());
+            tx.send(rx.recv().unwrap() + rx.recv().unwrap());
         }
     }
 
     let (tx, rx) = channel();
     Thread::spawn(move|| pfib(&tx, n) ).detach();
-    rx.recv()
+    rx.recv().unwrap()
 }
 
 struct Config {

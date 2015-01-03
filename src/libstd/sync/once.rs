@@ -32,10 +32,11 @@ use sync::{StaticMutex, MUTEX_INIT};
 ///
 /// static START: Once = ONCE_INIT;
 ///
-/// START.doit(|| {
+/// START.call_once(|| {
 ///     // run initialization here
 /// });
 /// ```
+#[stable]
 pub struct Once {
     mutex: StaticMutex,
     cnt: atomic::AtomicInt,
@@ -45,23 +46,25 @@ pub struct Once {
 unsafe impl Sync for Once {}
 
 /// Initialization value for static `Once` values.
+#[stable]
 pub const ONCE_INIT: Once = Once {
     mutex: MUTEX_INIT,
-    cnt: atomic::INIT_ATOMIC_INT,
-    lock_cnt: atomic::INIT_ATOMIC_INT,
+    cnt: atomic::ATOMIC_INT_INIT,
+    lock_cnt: atomic::ATOMIC_INT_INIT,
 };
 
 impl Once {
     /// Perform an initialization routine once and only once. The given closure
-    /// will be executed if this is the first time `doit` has been called, and
-    /// otherwise the routine will *not* be invoked.
+    /// will be executed if this is the first time `call_once` has been called,
+    /// and otherwise the routine will *not* be invoked.
     ///
     /// This method will block the calling task if another initialization
     /// routine is currently running.
     ///
     /// When this function returns, it is guaranteed that some initialization
     /// has run and completed (it may not be the closure specified).
-    pub fn doit<F>(&'static self, f: F) where F: FnOnce() {
+    #[stable]
+    pub fn call_once<F>(&'static self, f: F) where F: FnOnce() {
         // Optimize common path: load is much cheaper than fetch_add.
         if self.cnt.load(atomic::SeqCst) < 0 {
             return
@@ -91,13 +94,13 @@ impl Once {
         //
         // It is crucial that the negative value is swapped in *after* the
         // initialization routine has completed because otherwise new threads
-        // calling `doit` will return immediately before the initialization has
-        // completed.
+        // calling `call_once` will return immediately before the initialization
+        // has completed.
 
         let prev = self.cnt.fetch_add(1, atomic::SeqCst);
         if prev < 0 {
             // Make sure we never overflow, we'll never have int::MIN
-            // simultaneous calls to `doit` to make this value go back to 0
+            // simultaneous calls to `call_once` to make this value go back to 0
             self.cnt.store(int::MIN, atomic::SeqCst);
             return
         }
@@ -118,22 +121,27 @@ impl Once {
             unsafe { self.mutex.destroy() }
         }
     }
+
+    /// Deprecated
+    #[deprecated = "renamed to `call_once`"]
+    pub fn doit<F>(&'static self, f: F) where F: FnOnce() { self.call_once(f) }
 }
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
+    use prelude::v1::*;
 
     use thread::Thread;
     use super::{ONCE_INIT, Once};
+    use sync::mpsc::channel;
 
     #[test]
     fn smoke_once() {
         static O: Once = ONCE_INIT;
         let mut a = 0i;
-        O.doit(|| a += 1);
+        O.call_once(|| a += 1);
         assert_eq!(a, 1);
-        O.doit(|| a += 1);
+        O.call_once(|| a += 1);
         assert_eq!(a, 1);
     }
 
@@ -145,21 +153,21 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0u, 10) {
             let tx = tx.clone();
-            spawn(move|| {
+            Thread::spawn(move|| {
                 for _ in range(0u, 4) { Thread::yield_now() }
                 unsafe {
-                    O.doit(|| {
+                    O.call_once(|| {
                         assert!(!run);
                         run = true;
                     });
                     assert!(run);
                 }
-                tx.send(());
-            });
+                tx.send(()).unwrap();
+            }).detach();
         }
 
         unsafe {
-            O.doit(|| {
+            O.call_once(|| {
                 assert!(!run);
                 run = true;
             });
@@ -167,7 +175,7 @@ mod test {
         }
 
         for _ in range(0u, 10) {
-            rx.recv();
+            rx.recv().unwrap();
         }
     }
 }

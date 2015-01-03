@@ -1480,9 +1480,9 @@ data are being stored, or single-address and mutability properties are required.
 ```
 use std::sync::atomic;
 
-// Note that INIT_ATOMIC_UINT is a *const*, but it may be used to initialize a
+// Note that ATOMIC_UINT_INIT is a *const*, but it may be used to initialize a
 // static. This static can be modified, so it is not placed in read-only memory.
-static COUNTER: atomic::AtomicUint = atomic::INIT_ATOMIC_UINT;
+static COUNTER: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
 
 // This table is a candidate to be placed in read-only memory.
 static TABLE: &'static [uint] = &[1, 2, 3, /* ... */];
@@ -2560,6 +2560,9 @@ The currently implemented features of the reference compiler are:
                 system linker is not guaranteed to continue in the future, and
                 if the system linker is not used then specifying custom flags
                 doesn't have much meaning.
+
+* `link_llvm_intrinsics` – Allows linking to LLVM intrinsics via
+                           `#[link_name="llvm.*"]`.
 
 * `linkage` - Allows use of the `linkage` attribute, which is not portable.
 
@@ -4149,11 +4152,11 @@ Unwinding the stack of a thread is done by the thread itself, on its own control
 stack. If a value with a destructor is freed during unwinding, the code for the
 destructor is run, also on the thread's control stack. Running the destructor
 code causes a temporary transition to a *running* state, and allows the
-destructor code to cause any subsequent state transitions. The original thread 
+destructor code to cause any subsequent state transitions. The original thread
 of unwinding and panicking thereby may suspend temporarily, and may involve
 (recursive) unwinding of the stack of a failed destructor. Nonetheless, the
 outermost unwinding activity will continue until the stack is unwound and the
-thread transitions to the *dead* state. There is no way to "recover" from thread 
+thread transitions to the *dead* state. There is no way to "recover" from thread
 panics. Once a thread has temporarily suspended its unwinding in the *panicking*
 state, a panic occurring from within this destructor results in *hard* panic.
 A hard panic currently results in the process aborting.

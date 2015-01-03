@@ -13,6 +13,7 @@ use core::fmt::Show;
 use core::num::{NumCast, cast};
 use core::ops::{Add, Sub, Mul, Div, Rem};
 use core::kinds::Copy;
+use std::str::from_str;
 
 mod int_macros;
 mod i8;
@@ -54,6 +55,7 @@ mod test {
     use core::option::Option::{Some, None};
     use core::num::Float;
     use core::num::from_str_radix;
+    use core::str::from_str;
 
     #[test]
     fn from_str_issue7588() {

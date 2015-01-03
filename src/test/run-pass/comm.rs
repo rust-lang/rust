@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use std::task;
+use std::sync::mpsc::{channel, Sender};
 
 pub fn main() {
     let (tx, rx) = channel();
     let _t = task::spawn(move|| { child(&tx) });
-    let y = rx.recv();
+    let y = rx.recv().unwrap();
     println!("received");
     println!("{}", y);
     assert_eq!(y, 10);
@@ -21,6 +22,6 @@ pub fn main() {
 
 fn child(c: &Sender<int>) {
     println!("sending");
-    c.send(10);
+    c.send(10).unwrap();
     println!("value sent");
 }

@@ -10,9 +10,10 @@
 
 use core::prelude::*;
 
-use thread::Thread;
 use cell::RefCell;
 use string::String;
+use thread::Thread;
+use thread_local::State;
 
 struct ThreadInfo {
     // This field holds the known bounds of the stack in (lo, hi)
@@ -27,7 +28,7 @@ thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(N
 
 impl ThreadInfo {
     fn with<R, F>(f: F) -> R where F: FnOnce(&mut ThreadInfo) -> R {
-        if THREAD_INFO.destroyed() {
+        if THREAD_INFO.state() == State::Destroyed {
             panic!("Use of std::thread::Thread::current() is not possible after \
                     the thread's local data has been destroyed");
         }

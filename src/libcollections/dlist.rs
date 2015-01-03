@@ -22,12 +22,13 @@
 use core::prelude::*;
 
 use alloc::boxed::Box;
+use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
-use core::iter;
+use core::hash::{Writer, Hash};
+use core::iter::{mod, FromIterator};
 use core::mem;
 use core::ptr;
-use std::hash::{Writer, Hash};
 
 /// A doubly-linked list.
 #[stable]

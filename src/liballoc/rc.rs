@@ -355,7 +355,9 @@ impl<T> BorrowFrom<Rc<T>> for T {
 }
 
 #[experimental = "Deref is experimental."]
-impl<T> Deref<T> for Rc<T> {
+impl<T> Deref for Rc<T> {
+    type Target = T;
+
     #[inline(always)]
     fn deref(&self) -> &T {
         &self.inner().value

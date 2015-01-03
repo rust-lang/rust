@@ -20,7 +20,10 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+
+#![allow(unknown_features)]
 #![feature(phase, globs)]
+#![feature(old_orphan_check)]
 
 #[cfg(test)] #[phase(plugin, link)] extern crate log;
 
@@ -30,10 +33,9 @@ extern crate libc;
 pub use self::ParseError::*;
 use self::Fmt::*;
 
-use std::fmt::Show;
-use std::fmt;
+use std::fmt::{mod, Show};
 use std::num::SignedInt;
-use std::string::String;
+use std::ops::{Add, Sub};
 use std::time::Duration;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
@@ -147,8 +149,8 @@ pub fn get_time() -> Timespec {
         // A FILETIME contains a 64-bit value representing the number of
         // hectonanosecond (100-nanosecond) intervals since 1601-01-01T00:00:00Z.
         // http://support.microsoft.com/kb/167296/en-us
-        let ns_since_1601 = ((time.dwHighDateTime as u64 << 32) |
-                             (time.dwLowDateTime  as u64 <<  0)) / 10;
+        let ns_since_1601 = (((time.dwHighDateTime as u64) << 32) |
+                             ((time.dwLowDateTime  as u64) <<  0)) / 10;
         let ns_since_1970 = ns_since_1601 - NANOSECONDS_FROM_1601_TO_1970;
 
         ((ns_since_1970 / 1000000) as i64,
@@ -198,7 +200,7 @@ pub fn precise_time_ns() -> u64 {
                                                                                    denom: 0 };
         static ONCE: std::sync::Once = std::sync::ONCE_INIT;
         unsafe {
-            ONCE.doit(|| {
+            ONCE.call_once(|| {
                 imp::mach_timebase_info(&mut TIMEBASE);
             });
             let time = imp::mach_absolute_time();
@@ -1274,6 +1276,7 @@ mod tests {
     #[cfg(windows)]
     fn set_time_zone() {
         use libc;
+        use std::c_str::ToCStr;
         // Windows crt doesn't see any environment variable set by
         // `SetEnvironmentVariable`, which `os::setenv` internally uses.
         // It is why we use `putenv` here.

@@ -10,6 +10,8 @@
 
 // Test that a class with only sendable fields can be sent
 
+use std::sync::mpsc::channel;
+
 struct foo {
   i: int,
   j: char,

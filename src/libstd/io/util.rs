@@ -10,7 +10,7 @@
 
 //! Utility implementations of Reader and Writer
 
-use prelude::*;
+use prelude::v1::*;
 use cmp;
 use io;
 use slice::bytes::MutableByteVector;
@@ -278,11 +278,11 @@ impl<T: Iterator<u8>> Reader for IterReader<T> {
 
 #[cfg(test)]
 mod test {
+    use prelude::v1::*;
+
     use io::{MemReader, ByRefReader};
     use io;
-    use boxed::Box;
     use super::*;
-    use prelude::{Ok, range, Vec, Buffer, Writer, Reader, ToString, AsSlice};
 
     #[test]
     fn test_limit_reader_unlimited() {
@@ -386,7 +386,7 @@ mod test {
         let mut r = TeeReader::new(MemReader::new(vec!(0, 1, 2)),
                                    Vec::new());
         assert_eq!(vec!(0, 1, 2), r.read_to_end().unwrap());
-        let (_, w) = r.unwrap();
+        let (_, w) = r.into_inner();
         assert_eq!(vec!(0, 1, 2), w);
     }
 

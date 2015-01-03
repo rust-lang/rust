@@ -44,7 +44,9 @@ impl<T: Zeroable> NonZero<T> {
     }
 }
 
-impl<T: Zeroable> Deref<T> for NonZero<T> {
+impl<T: Zeroable> Deref for NonZero<T> {
+    type Target = T;
+
     #[inline]
     fn deref<'a>(&'a self) -> &'a T {
         let NonZero(ref inner) = *self;

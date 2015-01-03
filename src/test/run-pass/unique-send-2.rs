@@ -9,9 +9,10 @@
 // except according to those terms.
 
 use std::task;
+use std::sync::mpsc::{channel, Sender};
 
 fn child(tx: &Sender<Box<uint>>, i: uint) {
-    tx.send(box i);
+    tx.send(box i).unwrap();
 }
 
 pub fn main() {
@@ -28,7 +29,7 @@ pub fn main() {
 
     let mut actual = 0u;
     for _ in range(0u, n) {
-        let j = rx.recv();
+        let j = rx.recv().unwrap();
         actual += *j;
     }
 

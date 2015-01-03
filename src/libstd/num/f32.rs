@@ -15,7 +15,7 @@
 #![allow(unsigned_negation)]
 #![doc(primitive = "f32")]
 
-use prelude::*;
+use prelude::v1::*;
 
 use intrinsics;
 use libc::c_int;
@@ -496,23 +496,25 @@ mod tests {
 
     #[test]
     fn test_real_consts() {
-        let pi: f32 = Float::pi();
-        let two_pi: f32 = Float::two_pi();
-        let frac_pi_2: f32 = Float::frac_pi_2();
-        let frac_pi_3: f32 = Float::frac_pi_3();
-        let frac_pi_4: f32 = Float::frac_pi_4();
-        let frac_pi_6: f32 = Float::frac_pi_6();
-        let frac_pi_8: f32 = Float::frac_pi_8();
-        let frac_1_pi: f32 = Float::frac_1_pi();
-        let frac_2_pi: f32 = Float::frac_2_pi();
-        let frac_2_sqrtpi: f32 = Float::frac_2_sqrtpi();
-        let sqrt2: f32 = Float::sqrt2();
-        let frac_1_sqrt2: f32 = Float::frac_1_sqrt2();
-        let e: f32 = Float::e();
-        let log2_e: f32 = Float::log2_e();
-        let log10_e: f32 = Float::log10_e();
-        let ln_2: f32 = Float::ln_2();
-        let ln_10: f32 = Float::ln_10();
+        use super::consts;
+
+        let pi: f32 = consts::PI;
+        let two_pi: f32 = consts::PI_2;
+        let frac_pi_2: f32 = consts::FRAC_PI_2;
+        let frac_pi_3: f32 = consts::FRAC_PI_3;
+        let frac_pi_4: f32 = consts::FRAC_PI_4;
+        let frac_pi_6: f32 = consts::FRAC_PI_6;
+        let frac_pi_8: f32 = consts::FRAC_PI_8;
+        let frac_1_pi: f32 = consts::FRAC_1_PI;
+        let frac_2_pi: f32 = consts::FRAC_2_PI;
+        let frac_2_sqrtpi: f32 = consts::FRAC_2_SQRTPI;
+        let sqrt2: f32 = consts::SQRT2;
+        let frac_1_sqrt2: f32 = consts::FRAC_1_SQRT2;
+        let e: f32 = consts::E;
+        let log2_e: f32 = consts::LOG2_E;
+        let log10_e: f32 = consts::LOG10_E;
+        let ln_2: f32 = consts::LN_2;
+        let ln_10: f32 = consts::LN_10;
 
         assert_approx_eq!(two_pi, 2f32 * pi);
         assert_approx_eq!(frac_pi_2, pi / 2f32);

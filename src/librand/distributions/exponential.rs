@@ -94,7 +94,7 @@ impl IndependentSample<f64> for Exp {
 
 #[cfg(test)]
 mod test {
-    use std::prelude::*;
+    use std::prelude::v1::*;
 
     use distributions::{Sample, IndependentSample};
     use super::Exp;
@@ -124,7 +124,7 @@ mod test {
 mod bench {
     extern crate test;
 
-    use std::prelude::*;
+    use std::prelude::v1::*;
 
     use self::test::Bencher;
     use std::mem::size_of;

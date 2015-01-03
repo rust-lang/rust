@@ -45,9 +45,10 @@
 extern crate libc;
 
 use std::io::stdio::{stdin_raw, stdout_raw};
+use std::io::{IoResult, EndOfFile};
 use std::num::{div_rem};
 use std::ptr::{copy_memory, Unique};
-use std::io::{IoResult, EndOfFile};
+use std::thread::Thread;
 
 struct Tables {
     table8: [u8;1 << 8],
@@ -62,7 +63,7 @@ impl Tables {
         }
         let mut table16 = [0;1 << 16];
         for (i, v) in table16.iter_mut().enumerate() {
-            *v = table8[i & 255] as u16 << 8 |
+            *v = (table8[i & 255] as u16) << 8 |
                  table8[i >> 8]  as u16;
         }
         Tables { table8: table8, table16: table16 }
@@ -229,26 +230,20 @@ unsafe impl<T: 'static> Send for Racy<T> {}
 fn parallel<'a, I, T, F>(mut iter: I, f: F)
         where T: 'a+Send + Sync,
               I: Iterator<&'a mut [T]>,
-              F: Fn(&'a mut [T]) + Sync {
+              F: Fn(&mut [T]) + Sync {
     use std::mem;
     use std::raw::Repr;
 
-    let (tx, rx) = channel();
-    for chunk in iter {
-        let tx = tx.clone();
-
+    iter.map(|chunk| {
         // Need to convert `f` and `chunk` to something that can cross the task
         // boundary.
         let f = Racy(&f as *const F as *const uint);
         let raw = Racy(chunk.repr());
-        spawn(move|| {
+        Thread::spawn(move|| {
             let f = f.0 as *const F;
             unsafe { (*f)(mem::transmute(raw.0)) }
-            drop(tx)
-        });
-    }
-    drop(tx);
-    for () in rx.iter() {}
+        })
+    }).collect::<Vec<_>>();
 }
 
 fn main() {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use std::sync::mpsc::{channel, Sender};
 use std::task;
 
 fn start(tx: &Sender<int>, start: int, number_of_messages: int) {

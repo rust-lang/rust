@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// If `Mul` used an associated type for its output, this test would
+// work more smoothly.
+#![feature(old_orphan_check)]
+
+use std::ops::Mul;
+
 struct Vec2 {
     x: f64,
     y: f64

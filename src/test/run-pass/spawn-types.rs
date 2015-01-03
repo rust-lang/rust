@@ -15,6 +15,7 @@
  */
 
 use std::task;
+use std::sync::mpsc::{channel, Sender};
 
 type ctx = Sender<int>;
 

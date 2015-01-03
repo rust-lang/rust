@@ -22,8 +22,10 @@ use util::interner::{RcStr, StrInterner};
 use util::interner;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
+use std::cmp::Equiv;
 use std::fmt;
 use std::mem;
+use std::ops::Deref;
 use std::path::BytesContainer;
 use std::rc::Rc;
 
@@ -606,7 +608,9 @@ impl InternedString {
     }
 }
 
-impl Deref<str> for InternedString {
+impl Deref for InternedString {
+    type Target = str;
+
     fn deref(&self) -> &str { &*self.string }
 }
 

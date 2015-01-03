@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::task;
+use std::sync::mpsc::{channel, Sender};
 
 #[derive(PartialEq, Show)]
 enum Message {
@@ -22,7 +23,7 @@ struct SendOnDrop {
 
 impl Drop for SendOnDrop {
     fn drop(&mut self) {
-        self.sender.send(Message::Dropped);
+        self.sender.send(Message::Dropped).unwrap();
     }
 }
 
@@ -36,10 +37,10 @@ impl Drop for Foo {
     fn drop(&mut self) {
         match self {
             &Foo::SimpleVariant(ref mut sender) => {
-                sender.send(Message::DestructorRan);
+                sender.send(Message::DestructorRan).unwrap();
             }
             &Foo::NestedVariant(_, _, ref mut sender) => {
-                sender.send(Message::DestructorRan);
+                sender.send(Message::DestructorRan).unwrap();
             }
             &Foo::FailingVariant { .. } => {
                 panic!("Failed");
@@ -53,23 +54,23 @@ pub fn main() {
     {
         let v = Foo::SimpleVariant(sender);
     }
-    assert_eq!(receiver.recv(), Message::DestructorRan);
-    assert_eq!(receiver.recv_opt().ok(), None);
+    assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);
+    assert_eq!(receiver.recv().ok(), None);
 
     let (sender, receiver) = channel();
     {
         let v = Foo::NestedVariant(box 42u, SendOnDrop { sender: sender.clone() }, sender);
     }
-    assert_eq!(receiver.recv(), Message::DestructorRan);
-    assert_eq!(receiver.recv(), Message::Dropped);
-    assert_eq!(receiver.recv_opt().ok(), None);
+    assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);
+    assert_eq!(receiver.recv().unwrap(), Message::Dropped);
+    assert_eq!(receiver.recv().ok(), None);
 
     let (sender, receiver) = channel();
     task::spawn(move|| {
         let v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
     });
-    assert_eq!(receiver.recv(), Message::Dropped);
-    assert_eq!(receiver.recv_opt().ok(), None);
+    assert_eq!(receiver.recv().unwrap(), Message::Dropped);
+    assert_eq!(receiver.recv().ok(), None);
 
     let (sender, receiver) = channel();
     {
@@ -82,11 +83,11 @@ pub fn main() {
             v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
         });
     }
-    assert_eq!(receiver.recv(), Message::DestructorRan);
-    assert_eq!(receiver.recv(), Message::Dropped);
-    assert_eq!(receiver.recv(), Message::DestructorRan);
-    assert_eq!(receiver.recv(), Message::Dropped);
-    assert_eq!(receiver.recv(), Message::DestructorRan);
-    assert_eq!(receiver.recv(), Message::Dropped);
-    assert_eq!(receiver.recv_opt().ok(), None);
+    assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);
+    assert_eq!(receiver.recv().unwrap(), Message::Dropped);
+    assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);
+    assert_eq!(receiver.recv().unwrap(), Message::Dropped);
+    assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);
+    assert_eq!(receiver.recv().unwrap(), Message::Dropped);
+    assert_eq!(receiver.recv().ok(), None);
 }

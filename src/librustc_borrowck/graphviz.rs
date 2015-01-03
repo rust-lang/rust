@@ -24,6 +24,7 @@ use rustc::middle::cfg::{CFGIndex};
 use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use rustc::middle::dataflow;
 use std::rc::Rc;
+use std::borrow::IntoCow;
 
 #[deriving(Show, Copy)]
 pub enum Variant {

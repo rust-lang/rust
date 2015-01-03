@@ -86,15 +86,15 @@
 //! Keep a global count of live tasks:
 //!
 //! ```
-//! use std::sync::atomic::{AtomicUint, SeqCst, INIT_ATOMIC_UINT};
+//! use std::sync::atomic::{AtomicUint, SeqCst, ATOMIC_UINT_INIT};
 //!
-//! static GLOBAL_TASK_COUNT: AtomicUint = INIT_ATOMIC_UINT;
+//! static GLOBAL_TASK_COUNT: AtomicUint = ATOMIC_UINT_INIT;
 //!
 //! let old_task_count = GLOBAL_TASK_COUNT.fetch_add(1, SeqCst);
 //! println!("live tasks: {}", old_task_count + 1);
 //! ```
 
-#![allow(deprecated)]
+#![stable]
 
 use alloc::boxed::Box;
 use core::mem;
@@ -102,6 +102,7 @@ use core::prelude::{Send, Drop, None, Option, Some};
 
 pub use core::atomic::{AtomicBool, AtomicInt, AtomicUint, AtomicPtr};
 pub use core::atomic::{INIT_ATOMIC_BOOL, INIT_ATOMIC_INT, INIT_ATOMIC_UINT};
+pub use core::atomic::{ATOMIC_BOOL_INIT, ATOMIC_INT_INIT, ATOMIC_UINT_INIT};
 pub use core::atomic::fence;
 pub use core::atomic::Ordering::{mod, Relaxed, Release, Acquire, AcqRel, SeqCst};
 
@@ -116,6 +117,7 @@ pub struct AtomicOption<T> {
     p: AtomicUint,
 }
 
+#[allow(deprecated)]
 impl<T: Send> AtomicOption<T> {
     /// Create a new `AtomicOption`
     pub fn new(p: Box<T>) -> AtomicOption<T> {
@@ -180,7 +182,7 @@ impl<T: Send> Drop for AtomicOption<T> {
 
 #[cfg(test)]
 mod test {
-    use prelude::{Some, None};
+    use prelude::v1::*;
     use super::*;
 
     #[test]

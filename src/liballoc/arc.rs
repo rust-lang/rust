@@ -247,7 +247,9 @@ impl<T> BorrowFrom<Arc<T>> for T {
 }
 
 #[experimental = "Deref is experimental."]
-impl<T> Deref<T> for Arc<T> {
+impl<T> Deref for Arc<T> {
+    type Target = T;
+
     #[inline]
     fn deref(&self) -> &T {
         &self.inner().data
@@ -593,7 +595,7 @@ impl<T: Default + Sync + Send> Default for Arc<T> {
 #[allow(experimental)]
 mod tests {
     use std::clone::Clone;
-    use std::comm::channel;
+    use std::sync::mpsc::channel;
     use std::mem::drop;
     use std::ops::Drop;
     use std::option::Option;
@@ -630,11 +632,11 @@ mod tests {
         let (tx, rx) = channel();
 
         task::spawn(move || {
-            let arc_v: Arc<Vec<int>> = rx.recv();
+            let arc_v: Arc<Vec<int>> = rx.recv().unwrap();
             assert_eq!((*arc_v)[3], 4);
         });
 
-        tx.send(arc_v.clone());
+        tx.send(arc_v.clone()).unwrap();
 
         assert_eq!((*arc_v)[2], 3);
         assert_eq!((*arc_v)[4], 5);

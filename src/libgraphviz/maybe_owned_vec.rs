@@ -12,8 +12,10 @@
 
 pub use self::MaybeOwnedVector::*;
 
+use std::cmp::{Equiv, Ordering};
 use std::default::Default;
 use std::fmt;
+use std::iter::FromIterator;
 use std::path::BytesContainer;
 use std::slice;
 
@@ -96,9 +98,9 @@ impl<'a, T: Ord> Ord for MaybeOwnedVector<'a, T> {
 }
 
 #[allow(deprecated)]
-impl<'a, T: PartialEq, Sized? V: AsSlice<T>> Equiv<V> for MaybeOwnedVector<'a, T> {
-    fn equiv(&self, other: &V) -> bool {
-        self.as_slice() == other.as_slice()
+impl<'a, T: PartialEq> Equiv<[T]> for MaybeOwnedVector<'a, T> {
+    fn equiv(&self, other: &[T]) -> bool {
+        self.as_slice() == other
     }
 }
 
@@ -125,7 +127,7 @@ impl<'a,T> FromIterator<T> for MaybeOwnedVector<'a,T> {
     fn from_iter<I:Iterator<T>>(iterator: I) -> MaybeOwnedVector<'a,T> {
         // If we are building from scratch, might as well build the
         // most flexible variant.
-        Growable(FromIterator::from_iter(iterator))
+        Growable(iterator.collect())
     }
 }
 

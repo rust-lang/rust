@@ -54,9 +54,11 @@ use rustc::metadata;
 use rustc::DIAGNOSTICS;
 
 use std::any::AnyRefExt;
+use std::cmp::Ordering::Equal;
 use std::io;
 use std::iter::repeat;
 use std::os;
+use std::sync::mpsc::channel;
 use std::thread;
 
 use rustc::session::early_error;

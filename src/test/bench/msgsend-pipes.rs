@@ -14,6 +14,7 @@
 //
 // I *think* it's the same, more or less.
 
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::os;
 use std::thread::Thread;
 use std::time::Duration;
@@ -31,7 +32,7 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
     let mut count: uint = 0;
     let mut done = false;
     while !done {
-        match requests.recv_opt() {
+        match requests.recv() {
           Ok(request::get_count) => { responses.send(count.clone()); }
           Ok(request::bytes(b)) => {
             //println!("server: received {} bytes", b);
@@ -48,8 +49,8 @@ fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
 fn run(args: &[String]) {
     let (to_parent, from_child) = channel();
 
-    let size = from_str::<uint>(args[1].as_slice()).unwrap();
-    let workers = from_str::<uint>(args[2].as_slice()).unwrap();
+    let size = args[1].parse::<uint>().unwrap();
+    let workers = args[2].parse::<uint>().unwrap();
     let num_bytes = 100;
     let mut result = None;
     let mut to_parent = Some(to_parent);
@@ -91,7 +92,7 @@ fn run(args: &[String]) {
         //println!("sending stop message");
         //to_child.send(stop);
         //move_out(to_child);
-        result = Some(from_child.recv());
+        result = Some(from_child.recv().unwrap());
     });
     let result = result.unwrap();
     print!("Count is {}\n", result);

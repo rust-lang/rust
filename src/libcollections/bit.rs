@@ -82,17 +82,20 @@
 
 use core::prelude::*;
 
+use core::cmp::Ordering;
 use core::cmp;
 use core::default::Default;
 use core::fmt;
-use core::iter::{Cloned, Chain, Enumerate, Repeat, Skip, Take, repeat};
-use core::iter;
+use core::hash;
+use core::iter::RandomAccessIterator;
+use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
+use core::iter::{mod, FromIterator};
 use core::num::Int;
+use core::ops::Index;
 use core::slice;
 use core::{u8, u32, uint};
 use bitv_set; //so meta
 
-use core::hash;
 use Vec;
 
 type Blocks<'a> = Cloned<slice::Iter<'a, u32>>;
@@ -316,17 +319,17 @@ impl Bitv {
 
         for i in range(0, complete_words) {
             bitv.storage.push(
-                (reverse_bits(bytes[i * 4 + 0]) as u32 << 0) |
-                (reverse_bits(bytes[i * 4 + 1]) as u32 << 8) |
-                (reverse_bits(bytes[i * 4 + 2]) as u32 << 16) |
-                (reverse_bits(bytes[i * 4 + 3]) as u32 << 24)
+                ((reverse_bits(bytes[i * 4 + 0]) as u32) << 0) |
+                ((reverse_bits(bytes[i * 4 + 1]) as u32) << 8) |
+                ((reverse_bits(bytes[i * 4 + 2]) as u32) << 16) |
+                ((reverse_bits(bytes[i * 4 + 3]) as u32) << 24)
             );
         }
 
         if extra_bytes > 0 {
             let mut last_word = 0u32;
             for (i, &byte) in bytes[complete_words*4..].iter().enumerate() {
-                last_word |= reverse_bits(byte) as u32 << (i * 8);
+                last_word |= (reverse_bits(byte) as u32) << (i * 8);
             }
             bitv.storage.push(last_word);
         }
@@ -647,7 +650,7 @@ impl Bitv {
             if offset >= bitv.nbits {
                 0
             } else {
-                bitv[offset] as u8 << (7 - bit)
+                (bitv[offset] as u8) << (7 - bit)
             }
         }
 
@@ -2507,7 +2510,7 @@ mod tests {
 
 #[cfg(test)]
 mod bitv_bench {
-    use std::prelude::*;
+    use std::prelude::v1::*;
     use std::rand;
     use std::rand::Rng;
     use std::u32;
@@ -3002,7 +3005,7 @@ mod bitv_set_test {
 
 #[cfg(test)]
 mod bitv_set_bench {
-    use std::prelude::*;
+    use std::prelude::v1::*;
     use std::rand;
     use std::rand::Rng;
     use std::u32;

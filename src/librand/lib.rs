@@ -52,14 +52,14 @@ pub mod reseeding;
 mod rand_impls;
 
 /// A type that can be randomly generated using an `Rng`.
-pub trait Rand {
+pub trait Rand : Sized {
     /// Generates a random instance of this type using the specified source of
     /// randomness.
     fn rand<R: Rng>(rng: &mut R) -> Self;
 }
 
 /// A random number generator.
-pub trait Rng {
+pub trait Rng : Sized {
     /// Return the next random u32.
     ///
     /// This rarely needs to be called directly, prefer `r.gen()` to
@@ -74,7 +74,7 @@ pub trait Rng {
     /// these two methods. Similarly to `next_u32`, this rarely needs
     /// to be called directly, prefer `r.gen()` to `r.next_u64()`.
     fn next_u64(&mut self) -> u64 {
-        (self.next_u32() as u64 << 32) | (self.next_u32() as u64)
+        ((self.next_u32() as u64) << 32) | (self.next_u32() as u64)
     }
 
     /// Return the next random f32 selected from the half-open

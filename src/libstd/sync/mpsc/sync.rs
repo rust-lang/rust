@@ -42,8 +42,8 @@ use vec::Vec;
 use core::mem;
 
 use sync::{atomic, Mutex, MutexGuard};
-use comm::blocking::{mod, WaitToken, SignalToken};
-use comm::select::StartResult::{mod, Installed, Abort};
+use sync::mpsc::blocking::{mod, WaitToken, SignalToken};
+use sync::mpsc::select::StartResult::{mod, Installed, Abort};
 
 pub struct Packet<T> {
     /// Only field outside of the mutex. Just done for kicks, but mainly because
@@ -204,14 +204,14 @@ impl<T: Send> Packet<T> {
     pub fn try_send(&self, t: T) -> Result<(), super::TrySendError<T>> {
         let mut guard = self.lock.lock().unwrap();
         if guard.disconnected {
-            Err(super::RecvDisconnected(t))
+            Err(super::TrySendError::Disconnected(t))
         } else if guard.buf.size() == guard.buf.cap() {
-            Err(super::Full(t))
+            Err(super::TrySendError::Full(t))
         } else if guard.cap == 0 {
             // With capacity 0, even though we have buffer space we can't
             // transfer the data unless there's a receiver waiting.
             match mem::replace(&mut guard.blocker, NoneBlocked) {
-                NoneBlocked => Err(super::Full(t)),
+                NoneBlocked => Err(super::TrySendError::Full(t)),
                 BlockedSender(..) => unreachable!(),
                 BlockedReceiver(token) => {
                     guard.buf.enqueue(t);

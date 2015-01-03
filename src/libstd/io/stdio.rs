@@ -117,13 +117,15 @@ pub struct StdinReaderGuard<'a> {
     inner: MutexGuard<'a, RaceBox>,
 }
 
-impl<'a> Deref<BufferedReader<StdReader>> for StdinReaderGuard<'a> {
+impl<'a> Deref for StdinReaderGuard<'a> {
+    type Target = BufferedReader<StdReader>;
+
     fn deref(&self) -> &BufferedReader<StdReader> {
         &self.inner.0
     }
 }
 
-impl<'a> DerefMut<BufferedReader<StdReader>> for StdinReaderGuard<'a> {
+impl<'a> DerefMut for StdinReaderGuard<'a> {
     fn deref_mut(&mut self) -> &mut BufferedReader<StdReader> {
         &mut self.inner.0
     }
@@ -218,7 +220,7 @@ pub fn stdin() -> StdinReader {
     static ONCE: Once = ONCE_INIT;
 
     unsafe {
-        ONCE.doit(|| {
+        ONCE.call_once(|| {
             // The default buffer capacity is 64k, but apparently windows doesn't like
             // 64k reads on stdin. See #13304 for details, but the idea is that on
             // windows we use a slightly smaller buffer that's been seen to be
@@ -520,8 +522,11 @@ impl Writer for StdWriter {
 
 #[cfg(test)]
 mod tests {
+    use prelude::v1::*;
+
     use super::*;
-    use prelude::*;
+    use sync::mpsc::channel;
+    use thread::Thread;
 
     #[test]
     fn smoke() {
@@ -537,7 +542,7 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        spawn(move|| {
+        let _t = Thread::spawn(move|| {
             set_stdout(box w);
             println!("hello!");
         });
@@ -550,7 +555,7 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        spawn(move|| {
+        let _t = Thread::spawn(move || -> () {
             set_stderr(box w);
             panic!("my special message");
         });

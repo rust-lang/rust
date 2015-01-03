@@ -32,13 +32,15 @@ use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{mod, Ty};
 use middle::astencode::vtable_decoder_helpers;
 
+use std::collections::HashMap;
 use std::hash::Hash;
 use std::hash;
 use std::io::extensions::u64_from_be_bytes;
 use std::io;
-use std::collections::hash_map::HashMap;
+use std::num::FromPrimitive;
 use std::rc::Rc;
 use std::str;
+
 use rbml::reader;
 use rbml;
 use serialize::Decodable;
@@ -441,9 +443,15 @@ pub fn get_impl_trait<'tcx>(cdata: Cmd,
                             -> Option<Rc<ty::TraitRef<'tcx>>>
 {
     let item_doc = lookup_item(id, cdata.data());
-    reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
-        doc_trait_ref(tp, tcx, cdata)
-    })
+    let fam = item_family(item_doc);
+    match fam {
+        Family::Impl => {
+            reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
+                doc_trait_ref(tp, tcx, cdata)
+            })
+        }
+        _ => None
+    }
 }
 
 pub fn get_impl_vtables<'tcx>(cdata: Cmd,
@@ -1273,9 +1281,9 @@ pub fn each_impl<F>(cdata: Cmd, mut callback: F) where
 }
 
 pub fn each_implementation_for_type<F>(cdata: Cmd,
-                                    id: ast::NodeId,
-                                    mut callback: F) where
-    F: FnMut(ast::DefId),
+                                       id: ast::NodeId,
+                                       mut callback: F)
+    where F: FnMut(ast::DefId),
 {
     let item_doc = lookup_item(id, cdata.data());
     reader::tagged_docs(item_doc,

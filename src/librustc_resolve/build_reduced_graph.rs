@@ -61,8 +61,9 @@ use syntax::parse::token::{mod, special_idents};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::visit::{mod, Visitor};
 
-use std::rc::Rc;
 use std::mem::replace;
+use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 
 // Specifies how duplicates should be handled when adding a child item if
 // another item exists with the same name in some namespace.
@@ -95,13 +96,15 @@ struct GraphBuilder<'a, 'b:'a, 'tcx:'b> {
     resolver: &'a mut Resolver<'b, 'tcx>
 }
 
-impl<'a, 'b:'a, 'tcx:'b> Deref<Resolver<'b, 'tcx>> for GraphBuilder<'a, 'b, 'tcx> {
+impl<'a, 'b:'a, 'tcx:'b> Deref for GraphBuilder<'a, 'b, 'tcx> {
+    type Target = Resolver<'b, 'tcx>;
+
     fn deref(&self) -> &Resolver<'b, 'tcx> {
         &*self.resolver
     }
 }
 
-impl<'a, 'b:'a, 'tcx:'b> DerefMut<Resolver<'b, 'tcx>> for GraphBuilder<'a, 'b, 'tcx> {
+impl<'a, 'b:'a, 'tcx:'b> DerefMut for GraphBuilder<'a, 'b, 'tcx> {
     fn deref_mut(&mut self) -> &mut Resolver<'b, 'tcx> {
         &mut *self.resolver
     }

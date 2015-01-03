@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sync::mpsc::channel;
 use std::io::{ChanReader, ChanWriter};
 use std::thread;
 

@@ -12,21 +12,22 @@
 
 #![macro_escape]
 
+use prelude::v1::*;
+
 use libc;
 use os;
-use prelude::*;
 use std::io::net::ip::*;
-use sync::atomic::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
+use sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Relaxed};
 
 /// Get a port number, starting at 9600, for use in tests
 pub fn next_test_port() -> u16 {
-    static NEXT_OFFSET: AtomicUint = INIT_ATOMIC_UINT;
+    static NEXT_OFFSET: AtomicUint = ATOMIC_UINT_INIT;
     base_port() + NEXT_OFFSET.fetch_add(1, Relaxed) as u16
 }
 
 /// Get a temporary path which could be the location of a unix socket
 pub fn next_test_unix() -> Path {
-    static COUNT: AtomicUint = INIT_ATOMIC_UINT;
+    static COUNT: AtomicUint = ATOMIC_UINT_INIT;
     // base port and pid are an attempt to be unique between multiple
     // test-runners of different configurations running on one
     // buildbot, the count is to be unique within this executable.

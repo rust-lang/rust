@@ -27,6 +27,7 @@ use rustc::middle::def::Export;
 use syntax::ast;
 use syntax::parse::token;
 
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 struct ExportRecorder<'a, 'b:'a, 'tcx:'b> {
@@ -34,13 +35,15 @@ struct ExportRecorder<'a, 'b:'a, 'tcx:'b> {
 }
 
 // Deref and DerefMut impls allow treating ExportRecorder as Resolver.
-impl<'a, 'b, 'tcx:'b> Deref<Resolver<'b, 'tcx>> for ExportRecorder<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx:'b> Deref for ExportRecorder<'a, 'b, 'tcx> {
+    type Target = Resolver<'b, 'tcx>;
+
     fn deref<'c>(&'c self) -> &'c Resolver<'b, 'tcx> {
         &*self.resolver
     }
 }
 
-impl<'a, 'b, 'tcx:'b> DerefMut<Resolver<'b, 'tcx>> for ExportRecorder<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx:'b> DerefMut for ExportRecorder<'a, 'b, 'tcx> {
     fn deref_mut<'c>(&'c mut self) -> &'c mut Resolver<'b, 'tcx> {
         &mut *self.resolver
     }

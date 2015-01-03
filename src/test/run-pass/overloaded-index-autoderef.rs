@@ -10,6 +10,8 @@
 
 // Test overloaded indexing combined with autoderef.
 
+use std::ops::{Index, IndexMut};
+
 struct Foo {
     x: int,
     y: int,

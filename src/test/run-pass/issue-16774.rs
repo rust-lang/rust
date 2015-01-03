@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
+#![feature(associated_types, unboxed_closures)]
+
+use std::ops::{Deref, DerefMut};
 
 struct X(Box<int>);
 
@@ -23,14 +25,16 @@ impl Drop for X {
     }
 }
 
-impl Deref<int> for X {
+impl Deref for X {
+    type Target = int;
+
     fn deref(&self) -> &int {
         let &X(box ref x) = self;
         x
     }
 }
 
-impl DerefMut<int> for X {
+impl DerefMut for X {
     fn deref_mut(&mut self) -> &mut int {
         let &X(box ref mut x) = self;
         x
