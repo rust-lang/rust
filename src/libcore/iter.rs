@@ -737,20 +737,15 @@ pub trait IteratorExt: Iterator + Sized {
     fn rev(self) -> Rev<Self> {
         Rev{iter: self}
     }
-}
 
-#[unstable = "trait is unstable"]
-impl<I> IteratorExt for I where I: Iterator {}
-
-/// Extention trait for iterators of pairs.
-#[unstable = "newly added trait, likely to be merged with IteratorExt"]
-pub trait IteratorPairExt<A, B>: Iterator<Item=(A, B)> + Sized {
     /// Converts an iterator of pairs into a pair of containers.
     ///
     /// Loops through the entire iterator, collecting the first component of
     /// each item into one new container, and the second component into another.
-    fn unzip<FromA, FromB>(mut self) -> (FromA, FromB) where
-        FromA: Default + Extend<A>, FromB: Default + Extend<B>
+    fn unzip<A, B, FromA, FromB>(mut self) -> (FromA, FromB) where
+        FromA: Default + Extend<A>,
+        FromB: Default + Extend<B>,
+        Self: Iterator<Item=(A, B)>,
     {
         struct SizeHint<A>(uint, Option<uint>);
         impl<A> Iterator for SizeHint<A> {
@@ -778,7 +773,8 @@ pub trait IteratorPairExt<A, B>: Iterator<Item=(A, B)> + Sized {
     }
 }
 
-impl<A, B, I> IteratorPairExt<A, B> for I where I: Iterator<Item=(A, B)> {}
+#[unstable = "trait is unstable"]
+impl<I> IteratorExt for I where I: Iterator {}
 
 /// A range iterator able to yield elements from both ends
 ///
