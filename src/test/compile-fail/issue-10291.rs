@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn test<'x>(x: &'x int) {
-    drop::< for<'z>|&'z int| -> &'z int >(|z| {
+    drop::<Box<for<'z> FnMut(&'z int) -> &'z int>>(box |z| {
         x
         //~^ ERROR cannot infer an appropriate lifetime
     });

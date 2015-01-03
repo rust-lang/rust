@@ -10,7 +10,7 @@
 
 fn main() {
     let mut v = vec!(1i);
-    let f = || v.push(2i);
+    let mut f = |&mut:| v.push(2i);
     let _w = v; //~ ERROR: cannot move out of `v`
 
     f();

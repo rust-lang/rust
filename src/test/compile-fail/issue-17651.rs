@@ -12,7 +12,7 @@
 // and rejected.
 
 fn main() {
-    (|| box *[0u].as_slice())();
+    (|&:| box *[0u].as_slice())();
     //~^ ERROR cannot move out of dereference
     //~^^ ERROR cannot move a value of type [uint]
 }

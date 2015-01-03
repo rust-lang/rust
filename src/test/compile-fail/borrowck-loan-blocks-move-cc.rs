@@ -10,7 +10,7 @@
 
 use std::thread::Thread;
 
-fn borrow(v: &int, f: |x: &int|) {
+fn borrow<F>(v: &int, f: F) where F: FnOnce(&int) {
     f(v);
 }
 

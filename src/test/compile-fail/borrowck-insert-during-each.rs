@@ -16,7 +16,7 @@ struct Foo {
 }
 
 impl Foo {
-    pub fn foo(&mut self, fun: |&int|) {
+    pub fn foo<F>(&mut self, mut fun: F) where F: FnMut(&int) {
         for f in self.n.iter() {
             fun(f);
         }

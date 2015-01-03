@@ -23,27 +23,27 @@ fn set(x: &mut int) -> int {
 }
 
 fn a(x: &mut int) {
-    let c1 = || get(x);
-    let c2 = || get(x);
+    let c1 = |&mut:| get(x);
+    let c2 = |&mut:| get(x);
 }
 
 fn b(x: &mut int) {
-    let c1 = || get(x);
-    let c2 = || set(x); //~ ERROR closure requires unique access to `x`
+    let c1 = |&mut:| get(x);
+    let c2 = |&mut:| set(x); //~ ERROR closure requires unique access to `x`
 }
 
 fn c(x: &mut int) {
-    let c1 = || get(x);
-    let c2 = || { get(x); set(x); }; //~ ERROR closure requires unique access to `x`
+    let c1 = |&mut:| get(x);
+    let c2 = |&mut:| { get(x); set(x); }; //~ ERROR closure requires unique access to `x`
 }
 
 fn d(x: &mut int) {
-    let c1 = || set(x);
-    let c2 = || set(x); //~ ERROR closure requires unique access to `x`
+    let c1 = |&mut:| set(x);
+    let c2 = |&mut:| set(x); //~ ERROR closure requires unique access to `x`
 }
 
 fn e(x: &mut int) {
-    let c1: || = || x = panic!(); //~ ERROR closure cannot assign to immutable local variable
+    let c1 = |&mut:| x = panic!(); //~ ERROR closure cannot assign to immutable local variable
 }
 
 fn main() {

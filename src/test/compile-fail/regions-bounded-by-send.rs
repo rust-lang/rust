@@ -69,11 +69,6 @@ fn object_with_send_bound_not_ok<'a>() {
     //~^ ERROR declared lifetime bound not satisfied
 }
 
-fn closure_with_lifetime_not_ok<'a>() {
-    assert_send::<||:'a>();
-    //~^ ERROR not implemented
-}
-
 // unsafe pointers are ok unless they point at unsendable things
 
 struct UniqueUnsafePtr(Unique<*const int>);
