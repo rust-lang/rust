@@ -11,12 +11,16 @@
 // Test that overloaded index expressions with DST result types
 // work and don't ICE.
 
+#![feature(associated_types)]
+
 use std::ops::Index;
 use std::fmt::Show;
 
 struct S;
 
-impl Index<uint, str> for S {
+impl Index<uint> for S {
+    type Output = str;
+
     fn index<'a>(&'a self, _: &uint) -> &'a str {
         "hello"
     }
@@ -24,7 +28,9 @@ impl Index<uint, str> for S {
 
 struct T;
 
-impl Index<uint, Show + 'static> for T {
+impl Index<uint> for T {
+    type Output = Show + 'static;
+
     fn index<'a>(&'a self, idx: &uint) -> &'a (Show + 'static) {
         static x: uint = 42;
         &x

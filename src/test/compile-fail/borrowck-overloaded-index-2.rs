@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 use std::ops::Index;
 
 struct MyVec<T> {
     data: Vec<T>,
 }
 
-impl<T> Index<uint, T> for MyVec<T> {
+impl<T> Index<uint> for MyVec<T> {
+    type Output = T;
+
     fn index(&self, &i: &uint) -> &T {
         &self.data[i]
     }
