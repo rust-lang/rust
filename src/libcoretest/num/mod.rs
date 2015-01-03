@@ -13,7 +13,6 @@ use core::fmt::Show;
 use core::num::{NumCast, cast};
 use core::ops::{Add, Sub, Mul, Div, Rem};
 use core::kinds::Copy;
-use std::str::from_str;
 
 mod int_macros;
 mod i8;
