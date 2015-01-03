@@ -60,16 +60,16 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
 
     fn node_label(&'a self, &(i, n): &Node<'a>) -> dot::LabelText<'a> {
         if i == self.cfg.entry {
-            dot::LabelStr("entry".into_cow())
+            dot::LabelText::LabelStr("entry".into_cow())
         } else if i == self.cfg.exit {
-            dot::LabelStr("exit".into_cow())
+            dot::LabelText::LabelStr("exit".into_cow())
         } else if n.data.id == ast::DUMMY_NODE_ID {
-            dot::LabelStr("(dummy_node)".into_cow())
+            dot::LabelText::LabelStr("(dummy_node)".into_cow())
         } else {
             let s = self.ast_map.node_to_string(n.data.id);
             // left-aligns the lines
             let s = replace_newline_with_backslash_l(s);
-            dot::EscStr(s.into_cow())
+            dot::LabelText::EscStr(s.into_cow())
         }
     }
 
@@ -87,7 +87,7 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
             let s = replace_newline_with_backslash_l(s);
             label.push_str(format!("exiting scope_{} {}", i, s[])[]);
         }
-        dot::EscStr(label.into_cow())
+        dot::LabelText::EscStr(label.into_cow())
     }
 }
 
