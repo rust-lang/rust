@@ -1300,6 +1300,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H>
     }
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 #[stable]
 impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> Index<Q, V> for HashMap<K, V, H>
     where Q: BorrowFrom<K> + Hash<S> + Eq
@@ -1310,10 +1312,38 @@ impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> Index<Q, V> for HashMap<K, V
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable]
+impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> Index<Q> for HashMap<K, V, H>
+    where Q: BorrowFrom<K> + Hash<S> + Eq
+{
+    type Output = V;
+
+    #[inline]
+    fn index<'a>(&'a self, index: &Q) -> &'a V {
+        self.get(index).expect("no entry found for key")
+    }
+}
+
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 #[stable]
 impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> IndexMut<Q, V> for HashMap<K, V, H>
     where Q: BorrowFrom<K> + Hash<S> + Eq
 {
+    #[inline]
+    fn index_mut<'a>(&'a mut self, index: &Q) -> &'a mut V {
+        self.get_mut(index).expect("no entry found for key")
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable]
+impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> IndexMut<Q> for HashMap<K, V, H>
+    where Q: BorrowFrom<K> + Hash<S> + Eq
+{
+    type Output = V;
+
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &Q) -> &'a mut V {
         self.get_mut(index).expect("no entry found for key")
