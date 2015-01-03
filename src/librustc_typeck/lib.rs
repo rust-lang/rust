@@ -104,9 +104,6 @@ use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
 use syntax::ast_util::local_def;
 
-#[cfg(stage0)]
-mod diagnostics;
-
 mod check;
 mod rscope;
 mod astconv;
