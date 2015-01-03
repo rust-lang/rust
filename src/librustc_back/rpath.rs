@@ -151,7 +151,6 @@ fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
 mod test {
     use super::{RPathConfig};
     use super::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
-    use syntax::abi;
 
     #[test]
     fn test_rpaths_to_flags() {

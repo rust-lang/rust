@@ -1876,14 +1876,9 @@ impl<'a> Iterator<uint> for SymmetricDifference<'a> {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use core::iter::range_step;
     use core::u32;
-    use std::rand;
-    use std::rand::Rng;
-    use test::{Bencher, black_box};
 
-    use super::{Bitv, BitvSet, from_fn, from_bytes};
-    use bitv;
+    use super::{Bitv, from_fn, from_bytes};
 
     #[test]
     fn test_to_str() {
