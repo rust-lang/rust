@@ -38,7 +38,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(slicing_syntax)]
+#![feature(associated_types, slicing_syntax)]
 
 use std::cmp::min;
 use std::io::{BufferedWriter, File};
