@@ -2,8 +2,6 @@
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
 
-**NOTE**: Draft, not finalized.
-
 # Key Terminology
 
 - `macro`: anything invokable as `foo!(...)` in source code.
@@ -87,9 +85,9 @@ allowed tokens for the given NT's fragment specifier, and is defined below.
 2. For each token `T` in `M`:
     1. If `T` is not an NT, continue.
     2. If `T` is a simple NT, look ahead to the next token `T'` in `M`. If
-       `T'` is `EOF`, replace `T'` with `F`. If `T'` is in the set
-       `FOLLOW(NT)`, `T'` is EOF, `T'` is any NT, or `T'` is any identifier,
-       continue. Else, reject.
+       `T'` is `EOF` or a close delimiter of a token tree, replace `T'` with
+       `F`. If `T'` is in the set `FOLLOW(NT)`, `T'` is EOF, `T'` is any NT,
+       or `T'` is any identifier, continue. Else, reject.
     3. Else, `T` is a complex NT.
         1. If `T` has the form `$(...)+` or `$(...)*`, run the algorithm on
            the contents with `F` set to `EOF`. If it accepts, continue, else,
@@ -105,21 +103,16 @@ emitted and compilation should not complete.
 The current legal fragment specifiers are: `item`, `block`, `stmt`, `pat`,
 `expr`, `ty`, `ident`, `path`, `meta`, and `tt`.
 
-- `FOLLOW(item)` = `{}`
-- `FOLLOW(block)` = `FOLLOW(expr)`
 - `FOLLOW(stmt)` = `FOLLOW(expr)`
 - `FOLLOW(pat)` = `{FatArrow, Comma, Pipe}`
-- `FOLLOW(expr)` = `{Comma, FatArrow, CloseBrace, CloseParen, Lit}` (where
-  `Lit` is any literal, string or numeric)
-- `FOLLOW(ty)` = `{Comma, Eq, Gt, Lt, RArrow, FatArrow, OpenBrace, OpenParen,
-  CloseBrace, CloseParen}`
+- `FOLLOW(expr)` = `{Comma, FatArrow, CloseBrace, CloseParen, CloseBracket}`
+- `FOLLOW(ty)` = `{Comma, CloseBrace, CloseParen, CloseBracket}`
+- `FOLLOW(block)` = any token
 - `FOLLOW(ident)` = any token
-- `FOLLOW(path)` = any token
-- `FOLLOW(meta)` = any token
 - `FOLLOW(tt)` = any token
-
-**Note**: the `FOLLOW` sets as given are based on every MBE in the Rust
-distribution, but should probably be tuned before the RFC is accepted.
+- `FOLLOW(item)` = up for discussion
+- `FOLLOW(path)` = up for discussion
+- `FOLLOW(meta)` = up for discussion
 
 # Drawbacks
 
@@ -146,4 +139,9 @@ reasonable freedom.
 
 # Unresolved questions
 
-Are the given `FOLLOW` sets adequate?
+1. What should the FOLLOW sets for `item`, `path`, and `meta` be?
+2. Should the `FOLLOW` set for `ty` be extended? In practice, `RArrow`,
+   `Colon`, `as`, and `in` are also used. (See next item)
+2. What, if any, identifiers should be allowed in the FOLLOW sets? The author
+   is concerned that allowing arbitrary identifiers would limit the future use
+   of "contextual keywords".
