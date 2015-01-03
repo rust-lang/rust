@@ -267,8 +267,8 @@ impl<'a> Parser<'a> {
                     });
                     match ipv4 {
                         Some(Ipv4Addr(a, b, c, d)) => {
-                            groups[i + 0] = (a as u16 << 8) | (b as u16);
-                            groups[i + 1] = (c as u16 << 8) | (d as u16);
+                            groups[i + 0] = ((a as u16) << 8) | (b as u16);
+                            groups[i + 1] = ((c as u16) << 8) | (d as u16);
                             return (i + 2, true);
                         }
                         _ => {}

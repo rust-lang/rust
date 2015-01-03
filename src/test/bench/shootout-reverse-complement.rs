@@ -63,7 +63,7 @@ impl Tables {
         }
         let mut table16 = [0;1 << 16];
         for (i, v) in table16.iter_mut().enumerate() {
-            *v = table8[i & 255] as u16 << 8 |
+            *v = (table8[i & 255] as u16) << 8 |
                  table8[i >> 8]  as u16;
         }
         Tables { table8: table8, table16: table16 }
