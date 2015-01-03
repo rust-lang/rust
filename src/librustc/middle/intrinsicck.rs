@@ -41,7 +41,7 @@ struct IntrinsicCheckingVisitor<'a, 'tcx: 'a> {
     // environments for each function we encounter. When we find a
     // call to `transmute`, we can check it in the context of the top
     // of the stack (which ought not to be empty).
-    param_envs: Vec<ty::ParameterEnvironment<'tcx>>,
+    param_envs: Vec<ty::ParameterEnvironment<'a,'tcx>>,
 
     // Dummy sized/unsized types that use to substitute for type
     // parameters in order to estimate how big a type will be for any
@@ -170,6 +170,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
 
         let mut substs = param_env.free_substs.clone();
         self.with_each_combination(
+            span,
             param_env,
             param_env.free_substs.types.iter_enumerated(),
             &mut substs,
@@ -187,7 +188,8 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
     }
 
     fn with_each_combination(&self,
-                             param_env: &ty::ParameterEnvironment<'tcx>,
+                             span: Span,
+                             param_env: &ty::ParameterEnvironment<'a,'tcx>,
                              mut types_in_scope: EnumeratedItems<Ty<'tcx>>,
                              substs: &mut Substs<'tcx>,
                              callback: &mut FnMut(&Substs<'tcx>))
@@ -210,15 +212,17 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
                 debug!("with_each_combination: space={}, index={}, param_ty={}",
                        space, index, param_ty.repr(self.tcx));
 
-                if !ty::type_is_sized(self.tcx, param_ty, param_env) {
+                if !ty::type_is_sized(param_env, span, param_ty) {
                     debug!("with_each_combination: param_ty is not known to be sized");
 
                     substs.types.get_mut_slice(space)[index] = self.dummy_unsized_ty;
-                    self.with_each_combination(param_env, types_in_scope.clone(), substs, callback);
+                    self.with_each_combination(span, param_env, types_in_scope.clone(),
+                                               substs, callback);
                 }
 
                 substs.types.get_mut_slice(space)[index] = self.dummy_sized_ty;
-                self.with_each_combination(param_env, types_in_scope, substs, callback);
+                self.with_each_combination(span, param_env, types_in_scope,
+                                           substs, callback);
             }
         }
     }

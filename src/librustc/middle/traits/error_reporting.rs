@@ -77,7 +77,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     "overflow evaluating the requirement `{}`",
                     predicate.user_string(infcx.tcx)).as_slice());
 
-            suggest_new_overflow_limit(infcx, obligation.cause.span);
+            suggest_new_overflow_limit(infcx.tcx, obligation.cause.span);
 
             note_obligation_cause(infcx, obligation);
         }
@@ -332,10 +332,10 @@ fn note_obligation_cause_code<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
-pub fn suggest_new_overflow_limit(infcx: &InferCtxt, span: Span) {
-    let current_limit = infcx.tcx.sess.recursion_limit.get();
+pub fn suggest_new_overflow_limit(tcx: &ty::ctxt, span: Span) {
+    let current_limit = tcx.sess.recursion_limit.get();
     let suggested_limit = current_limit * 2;
-    infcx.tcx.sess.span_note(
+    tcx.sess.span_note(
         span,
         format!(
             "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",

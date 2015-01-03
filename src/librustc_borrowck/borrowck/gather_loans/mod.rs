@@ -51,9 +51,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
 
     {
-        let mut euv = euv::ExprUseVisitor::new(&mut glcx,
-                                               bccx.tcx,
-                                               &param_env);
+        let mut euv = euv::ExprUseVisitor::new(&mut glcx, &param_env);
         euv.walk_fn(decl, body);
     }
 
@@ -485,13 +483,15 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 /// This visitor walks static initializer's expressions and makes
 /// sure the loans being taken are sound.
 struct StaticInitializerCtxt<'a, 'tcx: 'a> {
-    bccx: &'a BorrowckCtxt<'a, 'tcx>
+    bccx: &'a BorrowckCtxt<'a, 'tcx>,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         if let ast::ExprAddrOf(mutbl, ref base) = ex.node {
-            let base_cmt = self.bccx.cat_expr(&**base);
+            let param_env = ty::empty_parameter_environment(self.bccx.tcx);
+            let mc = mc::MemCategorizationContext::new(&param_env);
+            let base_cmt = mc.cat_expr(&**base).unwrap();
             let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
             // Check that we don't allow borrows of unsafe static items.
             if check_aliasability(self.bccx, ex.span, euv::AddrOf,

@@ -13,6 +13,6 @@
 struct B<T>;
 
 fn main() {
-    let foo = B; //~ ERROR unable to infer enough type information
-    let closure = |:| foo;
+    let foo = B;
+    let closure = |:| foo; //~ ERROR unable to infer enough type information
 }

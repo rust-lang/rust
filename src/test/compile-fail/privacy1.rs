@@ -14,6 +14,9 @@
 #[lang="sized"]
 pub trait Sized {}
 
+#[lang="copy"]
+pub trait Copy {}
+
 mod bar {
     // shouldn't bring in too much
     pub use self::glob::*;

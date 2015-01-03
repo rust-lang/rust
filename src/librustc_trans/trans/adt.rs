@@ -61,7 +61,7 @@ use trans::datum;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{mod, Ty};
+use middle::ty::{mod, Ty, UnboxedClosureTyper};
 use middle::ty::Disr;
 use syntax::ast;
 use syntax::attr;
@@ -168,7 +168,8 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             Univariant(mk_struct(cx, ftys[], packed, t), dtor)
         }
         ty::ty_unboxed_closure(def_id, _, substs) => {
-            let upvars = ty::unboxed_closure_upvars(cx.tcx(), def_id, substs).unwrap();
+            let typer = NormalizingUnboxedClosureTyper::new(cx.tcx());
+            let upvars = typer.unboxed_closure_upvars(def_id, substs).unwrap();
             let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
             Univariant(mk_struct(cx, upvar_types[], false, t), false)
         }

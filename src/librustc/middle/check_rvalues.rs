@@ -41,7 +41,7 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
         {
             let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
             let mut delegate = RvalueContextDelegate { tcx: self.tcx, param_env: &param_env };
-            let mut euv = euv::ExprUseVisitor::new(&mut delegate, self.tcx, &param_env);
+            let mut euv = euv::ExprUseVisitor::new(&mut delegate, &param_env);
             euv.walk_fn(fd, b);
         }
         visit::walk_fn(self, fk, fd, b, s)
@@ -50,7 +50,7 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
 
 struct RvalueContextDelegate<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    param_env: &'a ty::ParameterEnvironment<'tcx>,
+    param_env: &'a ty::ParameterEnvironment<'a,'tcx>,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'tcx> {
@@ -60,7 +60,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'tcx> {
                cmt: mc::cmt<'tcx>,
                _: euv::ConsumeMode) {
         debug!("consume; cmt: {}; type: {}", *cmt, ty_to_string(self.tcx, cmt.ty));
-        if !ty::type_is_sized(self.tcx, cmt.ty, self.param_env) {
+        if !ty::type_is_sized(self.param_env, span, cmt.ty) {
             span_err!(self.tcx.sess, span, E0161,
                 "cannot move a value of type {0}: the size of {0} cannot be statically determined",
                 ty_to_string(self.tcx, cmt.ty));
