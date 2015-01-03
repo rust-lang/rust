@@ -16,8 +16,8 @@ pub fn main() {
 
     print!("[");
     for xi in x.iter() {
-        print!("{}, ", (*xi)[]);
+        print!("{}, ", &xi[]);
     }
     println!("]");
-    println!("{}", y.index(&FullRange));
+    println!("{}", &y[]);
 }
