@@ -2058,7 +2058,9 @@ impl<'tcx> TraitRef<'tcx> {
 /// future I hope to refine the representation of types so as to make
 /// more distinctions clearer.
 #[deriving(Clone)]
-pub struct ParameterEnvironment<'tcx> {
+pub struct ParameterEnvironment<'a, 'tcx:'a> {
+    pub tcx: &'a ctxt<'tcx>,
+
     /// A substitution that can be applied to move from
     /// the "outer" view of a type or method to the "inner" view.
     /// In general, this means converting from bound parameters to
@@ -2082,8 +2084,8 @@ pub struct ParameterEnvironment<'tcx> {
     pub selection_cache: traits::SelectionCache<'tcx>,
 }
 
-impl<'tcx> ParameterEnvironment<'tcx> {
-    pub fn for_item(cx: &ctxt<'tcx>, id: NodeId) -> ParameterEnvironment<'tcx> {
+impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
+    pub fn for_item(cx: &'a ctxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match **impl_item {
@@ -2272,6 +2274,8 @@ impl UnboxedClosureKind {
 }
 
 pub trait UnboxedClosureTyper<'tcx> {
+    fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx>;
+
     fn unboxed_closure_kind(&self,
                             def_id: ast::DefId)
                             -> ty::UnboxedClosureKind;
@@ -2423,6 +2427,21 @@ impl<'tcx> ctxt<'tcx> {
         let region = self.arenas.region.alloc(region);
         self.region_interner.borrow_mut().insert(region, region);
         region
+    }
+
+    pub fn unboxed_closure_kind(&self,
+                            def_id: ast::DefId)
+                            -> ty::UnboxedClosureKind
+    {
+        self.unboxed_closures.borrow()[def_id].kind
+    }
+
+    pub fn unboxed_closure_type(&self,
+                            def_id: ast::DefId,
+                            substs: &subst::Substs<'tcx>)
+                            -> ty::ClosureTy<'tcx>
+    {
+        self.unboxed_closures.borrow()[def_id].closure_type.subst(self, substs)
     }
 }
 
@@ -3377,7 +3396,8 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             ty_unboxed_closure(did, r, substs) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
-                let upvars = unboxed_closure_upvars(cx, did, substs).unwrap();
+                let param_env = ty::empty_parameter_environment(cx);
+                let upvars = unboxed_closure_upvars(&param_env, did, substs).unwrap();
                 TypeContents::union(upvars.as_slice(),
                                     |f| tc_ty(cx, f.ty, cache))
                     | borrowed_contents(*r, MutMutable)
@@ -3526,12 +3546,12 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
     }
 }
 
-fn type_impls_bound<'tcx>(cx: &ctxt<'tcx>,
-                          cache: &RefCell<HashMap<Ty<'tcx>,bool>>,
-                          param_env: &ParameterEnvironment<'tcx>,
-                          ty: Ty<'tcx>,
-                          bound: ty::BuiltinBound)
-                          -> bool
+fn type_impls_bound<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
+                             cache: &RefCell<HashMap<Ty<'tcx>,bool>>,
+                             ty: Ty<'tcx>,
+                             bound: ty::BuiltinBound,
+                             span: Span)
+                             -> bool
 {
     assert!(!ty::type_needs_infer(ty));
 
@@ -3540,7 +3560,7 @@ fn type_impls_bound<'tcx>(cx: &ctxt<'tcx>,
             None => {}
             Some(&result) => {
                 debug!("type_impls_bound({}, {}) = {} (cached)",
-                       ty_to_string(cx, ty),
+                       ty.repr(param_env.tcx),
                        bound,
                        result);
                 return result
@@ -3548,11 +3568,12 @@ fn type_impls_bound<'tcx>(cx: &ctxt<'tcx>,
         }
     }
 
-    let infcx = infer::new_infer_ctxt(cx);
-    let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env, ty, bound);
+    let infcx = infer::new_infer_ctxt(param_env.tcx);
+
+    let is_impld = traits::type_known_to_meet_builtin_bound(&infcx, param_env, ty, bound, span);
 
     debug!("type_impls_bound({}, {}) = {}",
-           ty_to_string(cx, ty),
+           ty.repr(param_env.tcx),
            bound,
            is_impld);
 
@@ -3564,20 +3585,22 @@ fn type_impls_bound<'tcx>(cx: &ctxt<'tcx>,
     is_impld
 }
 
-pub fn type_moves_by_default<'tcx>(cx: &ctxt<'tcx>,
-                                   ty: Ty<'tcx>,
-                                   param_env: &ParameterEnvironment<'tcx>)
-                                   -> bool
+pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
+                                      span: Span,
+                                      ty: Ty<'tcx>)
+                                      -> bool
 {
-    !type_impls_bound(cx, &cx.type_impls_copy_cache, param_env, ty, ty::BoundCopy)
+    let tcx = param_env.tcx;
+    !type_impls_bound(param_env, &tcx.type_impls_copy_cache, ty, ty::BoundCopy, span)
 }
 
-pub fn type_is_sized<'tcx>(cx: &ctxt<'tcx>,
-                           ty: Ty<'tcx>,
-                           param_env: &ParameterEnvironment<'tcx>)
-                           -> bool
+pub fn type_is_sized<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
+                              span: Span,
+                              ty: Ty<'tcx>)
+                              -> bool
 {
-    type_impls_bound(cx, &cx.type_impls_sized_cache, param_env, ty, ty::BoundSized)
+    let tcx = param_env.tcx;
+    type_impls_bound(param_env, &tcx.type_impls_sized_cache, ty, ty::BoundSized, span)
 }
 
 pub fn is_ffi_safe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -3622,8 +3645,6 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_str |
             ty_bare_fn(..) |
             ty_closure(_) |
-            ty_infer(_) |
-            ty_err |
             ty_param(_) |
             ty_projection(_) |
             ty_vec(_, None) => {
@@ -3656,9 +3677,12 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 r
             }
 
-            ty_unboxed_closure(did, _, substs) => {
-                let upvars = unboxed_closure_upvars(cx, did, substs).unwrap();
-                upvars.iter().any(|f| type_requires(cx, seen, r_ty, f.ty))
+            ty_err |
+            ty_infer(_) |
+            ty_unboxed_closure(..) => {
+                // this check is run on type definitions, so we don't expect to see
+                // inference by-products or unboxed closure types
+                cx.sess.bug(format!("requires check invoked on inapplicable type: {}", ty)[])
             }
 
             ty_tup(ref ts) => {
@@ -3748,9 +3772,10 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
                 find_nonrepresentable(cx, sp, seen, iter)
             }
-            ty_unboxed_closure(did, _, substs) => {
-                let upvars = unboxed_closure_upvars(cx, did, substs).unwrap();
-                find_nonrepresentable(cx, sp, seen, upvars.iter().map(|f| f.ty))
+            ty_unboxed_closure(..) => {
+                // this check is run on type definitions, so we don't expect to see
+                // unboxed closure types
+                cx.sess.bug(format!("requires check invoked on inapplicable type: {}", ty)[])
             }
             _ => Representable,
         }
@@ -5708,7 +5733,10 @@ pub fn unboxed_closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
             freevars.iter()
                     .map(|freevar| {
                         let freevar_def_id = freevar.def.def_id();
-                        let freevar_ty = typer.node_ty(freevar_def_id.node);
+                        let freevar_ty = match typer.node_ty(freevar_def_id.node) {
+                            Ok(t) => { t }
+                            Err(()) => { return None; }
+                        };
                         let freevar_ty = freevar_ty.subst(tcx, substs);
 
                         match capture_mode {
@@ -6371,19 +6399,20 @@ impl Variance {
 
 /// Construct a parameter environment suitable for static contexts or other contexts where there
 /// are no free type/lifetime parameters in scope.
-pub fn empty_parameter_environment<'tcx>() -> ParameterEnvironment<'tcx> {
-    ty::ParameterEnvironment { free_substs: Substs::empty(),
+pub fn empty_parameter_environment<'a,'tcx>(cx: &'a ctxt<'tcx>) -> ParameterEnvironment<'a,'tcx> {
+    ty::ParameterEnvironment { tcx: cx,
+                               free_substs: Substs::empty(),
                                caller_bounds: GenericBounds::empty(),
                                implicit_region_bound: ty::ReEmpty,
                                selection_cache: traits::SelectionCache::new(), }
 }
 
 /// See `ParameterEnvironment` struct def'n for details
-pub fn construct_parameter_environment<'tcx>(
-    tcx: &ctxt<'tcx>,
+pub fn construct_parameter_environment<'a,'tcx>(
+    tcx: &'a ctxt<'tcx>,
     generics: &ty::Generics<'tcx>,
     free_id: ast::NodeId)
-    -> ParameterEnvironment<'tcx>
+    -> ParameterEnvironment<'a, 'tcx>
 {
 
     //
@@ -6426,6 +6455,7 @@ pub fn construct_parameter_environment<'tcx>(
            bounds.repr(tcx));
 
     return ty::ParameterEnvironment {
+        tcx: tcx,
         free_substs: free_substs,
         implicit_region_bound: ty::ReScope(free_id_scope),
         caller_bounds: bounds,
@@ -6516,57 +6546,76 @@ impl BorrowKind {
     }
 }
 
-impl<'tcx> mc::Typer<'tcx> for ty::ctxt<'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> {
-        self
+impl<'tcx> ctxt<'tcx> {
+    pub fn capture_mode(&self, closure_expr_id: ast::NodeId)
+                    -> ast::CaptureClause {
+        self.capture_modes.borrow()[closure_expr_id].clone()
     }
 
-    fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
-        ty::node_id_to_type(self, id)
+    pub fn is_method_call(&self, expr_id: ast::NodeId) -> bool {
+        self.method_map.borrow().contains_key(&MethodCall::expr(expr_id))
+    }
+}
+
+impl<'a,'tcx> mc::Typer<'tcx> for ParameterEnvironment<'a,'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
+        self.tcx
     }
 
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
-        ty::expr_ty_adjusted(self, expr)
+    fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
+        Ok(ty::node_id_to_type(self.tcx, id))
+    }
+
+    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> mc::McResult<Ty<'tcx>> {
+        Ok(ty::expr_ty_adjusted(self.tcx, expr))
     }
 
     fn node_method_ty(&self, method_call: ty::MethodCall) -> Option<Ty<'tcx>> {
-        self.method_map.borrow().get(&method_call).map(|method| method.ty)
+        self.tcx.method_map.borrow().get(&method_call).map(|method| method.ty)
     }
 
     fn node_method_origin(&self, method_call: ty::MethodCall)
                           -> Option<ty::MethodOrigin<'tcx>>
     {
-        self.method_map.borrow().get(&method_call).map(|method| method.origin.clone())
+        self.tcx.method_map.borrow().get(&method_call).map(|method| method.origin.clone())
     }
 
-    fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
-        &self.adjustments
+    fn adjustments(&self) -> &RefCell<NodeMap<ty::AutoAdjustment<'tcx>>> {
+        &self.tcx.adjustments
     }
 
     fn is_method_call(&self, id: ast::NodeId) -> bool {
-        self.method_map.borrow().contains_key(&MethodCall::expr(id))
+        self.tcx.is_method_call(id)
     }
 
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent> {
-        self.region_maps.temporary_scope(rvalue_id)
+        self.tcx.region_maps.temporary_scope(rvalue_id)
     }
 
     fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarBorrow> {
-        Some(self.upvar_borrow_map.borrow()[upvar_id].clone())
+        Some(self.tcx.upvar_borrow_map.borrow()[upvar_id].clone())
     }
 
     fn capture_mode(&self, closure_expr_id: ast::NodeId)
                     -> ast::CaptureClause {
-        self.capture_modes.borrow()[closure_expr_id].clone()
+        self.tcx.capture_mode(closure_expr_id)
+    }
+
+    fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {
+        type_moves_by_default(self, span, ty)
     }
 }
 
-impl<'tcx> UnboxedClosureTyper<'tcx> for ty::ctxt<'tcx> {
+impl<'a,'tcx> UnboxedClosureTyper<'tcx> for ty::ParameterEnvironment<'a,'tcx> {
+    fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
+        self
+    }
+
     fn unboxed_closure_kind(&self,
                             def_id: ast::DefId)
                             -> ty::UnboxedClosureKind
     {
-        self.unboxed_closures.borrow()[def_id].kind
+        self.tcx.unboxed_closure_kind(def_id)
     }
 
     fn unboxed_closure_type(&self,
@@ -6574,7 +6623,7 @@ impl<'tcx> UnboxedClosureTyper<'tcx> for ty::ctxt<'tcx> {
                             substs: &subst::Substs<'tcx>)
                             -> ty::ClosureTy<'tcx>
     {
-        self.unboxed_closures.borrow()[def_id].closure_type.subst(self, substs)
+        self.tcx.unboxed_closure_type(def_id, substs)
     }
 
     fn unboxed_closure_upvars(&self,
@@ -6941,15 +6990,18 @@ pub enum CopyImplementationError {
     TypeIsStructural,
 }
 
-pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
-                                     self_type: Ty<'tcx>,
-                                     param_env: &ParameterEnvironment<'tcx>)
-                                     -> Result<(),CopyImplementationError> {
+pub fn can_type_implement_copy<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tcx>,
+                                        span: Span,
+                                        self_type: Ty<'tcx>)
+                                        -> Result<(),CopyImplementationError>
+{
+    let tcx = param_env.tcx;
+
     match self_type.sty {
         ty::ty_struct(struct_did, substs) => {
             let fields = ty::struct_fields(tcx, struct_did, substs);
             for field in fields.iter() {
-                if type_moves_by_default(tcx, field.mt.ty, param_env) {
+                if type_moves_by_default(param_env, span, field.mt.ty) {
                     return Err(FieldDoesNotImplementCopy(field.name))
                 }
             }
@@ -6960,9 +7012,7 @@ pub fn can_type_implement_copy<'tcx>(tcx: &ctxt<'tcx>,
                 for variant_arg_type in variant.args.iter() {
                     let substd_arg_type =
                         variant_arg_type.subst(tcx, substs);
-                    if type_moves_by_default(tcx,
-                                             substd_arg_type,
-                                             param_env) {
+                    if type_moves_by_default(param_env, span, substd_arg_type) {
                         return Err(VariantDoesNotImplementCopy(variant.name))
                     }
                 }

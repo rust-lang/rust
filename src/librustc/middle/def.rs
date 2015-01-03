@@ -126,6 +126,12 @@ impl TraitItemKind {
 }
 
 impl Def {
+    pub fn local_node_id(&self) -> ast::NodeId {
+        let def_id = self.def_id();
+        assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+        def_id.node
+    }
+
     pub fn def_id(&self) -> ast::DefId {
         match *self {
             DefFn(id, _) | DefStaticMethod(id, _) | DefMod(id) |

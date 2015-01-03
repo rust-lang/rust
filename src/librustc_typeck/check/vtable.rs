@@ -287,9 +287,7 @@ pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {
     fcx.default_type_parameters();
 
     let mut fulfillment_cx = fcx.inh.fulfillment_cx.borrow_mut();
-    let r = fulfillment_cx.select_all_or_error(fcx.infcx(),
-                                               &fcx.inh.param_env,
-                                               fcx);
+    let r = fulfillment_cx.select_all_or_error(fcx.infcx(), fcx);
     match r {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
@@ -302,7 +300,7 @@ pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt)
     match
         fcx.inh.fulfillment_cx
         .borrow_mut()
-        .select_where_possible(fcx.infcx(), &fcx.inh.param_env, fcx)
+        .select_where_possible(fcx.infcx(), fcx)
     {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
@@ -316,7 +314,7 @@ pub fn select_new_fcx_obligations(fcx: &FnCtxt) {
     match
         fcx.inh.fulfillment_cx
         .borrow_mut()
-        .select_new_obligations(fcx.infcx(), &fcx.inh.param_env, fcx)
+        .select_new_obligations(fcx.infcx(), fcx)
     {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }

@@ -482,7 +482,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_copy: self_type={} (free)",
                    self_type.repr(tcx));
 
-            match ty::can_type_implement_copy(tcx, self_type, &param_env) {
+            match ty::can_type_implement_copy(&param_env, span, self_type) {
                 Ok(()) => {}
                 Err(ty::FieldDoesNotImplementCopy(name)) => {
                     tcx.sess

@@ -28,6 +28,7 @@ use util::ppaux::{ty_to_string};
 
 use std::fmt;
 use syntax::ast;
+use syntax::codemap::DUMMY_SP;
 
 /// A `Datum` encapsulates the result of evaluating an expression.  It
 /// describes where the value is stored, what Rust type the value has,
@@ -543,8 +544,9 @@ impl<'tcx, K: KindOps + fmt::Show> Datum<'tcx, K> {
          * affine values (since they must never be duplicated).
          */
 
-        let param_env = ty::empty_parameter_environment();
-        assert!(!ty::type_moves_by_default(bcx.tcx(), self.ty, &param_env));
+        assert!(!ty::type_moves_by_default(&ty::empty_parameter_environment(bcx.tcx()),
+                                           DUMMY_SP,
+                                           self.ty));
         self.shallow_copy_raw(bcx, dst)
     }
 
