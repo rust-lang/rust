@@ -1451,7 +1451,9 @@ impl<T> AsSlice<T> for Vec<T> {
     }
 }
 
-impl<'a, T: Clone> Add<&'a [T], Vec<T>> for Vec<T> {
+impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
+    type Output = Vec<T>;
+
     #[inline]
     fn add(mut self, rhs: &[T]) -> Vec<T> {
         self.push_all(rhs);

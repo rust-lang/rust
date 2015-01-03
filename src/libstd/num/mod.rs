@@ -127,9 +127,9 @@ pub fn abs_sub<T: FloatMath>(x: T, y: T) -> T {
 #[cfg(test)]
 pub fn test_num<T>(ten: T, two: T) where
     T: PartialEq + NumCast
-     + Add<T, T> + Sub<T, T>
-     + Mul<T, T> + Div<T, T>
-     + Rem<T, T> + Show
+     + Add<Output=T> + Sub<Output=T>
+     + Mul<Output=T> + Div<Output=T>
+     + Rem<Output=T> + Show
      + Copy
 {
     assert_eq!(ten.add(two),  cast(12i).unwrap());

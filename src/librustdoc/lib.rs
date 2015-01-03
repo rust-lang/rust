@@ -21,6 +21,7 @@
 #![feature(globs, macro_rules, phase, slicing_syntax)]
 #![feature(unboxed_closures)]
 #![feature(old_orphan_check)]
+#![feature(associated_types)]
 
 extern crate arena;
 extern crate getopts;
