@@ -24,6 +24,7 @@ fn a(x: &int) {
     //~^ ERROR cannot borrow
     let c2 = || set(&mut *x);
     //~^ ERROR cannot borrow
+    //~| ERROR closure requires unique access
 }
 
 fn main() {

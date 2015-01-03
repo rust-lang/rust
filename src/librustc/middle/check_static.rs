@@ -54,7 +54,7 @@ struct CheckStaticVisitor<'a, 'tcx: 'a> {
 }
 
 struct GlobalVisitor<'a,'b,'tcx:'a+'b>(
-    euv::ExprUseVisitor<'a,'b,'tcx,ty::ctxt<'tcx>>);
+    euv::ExprUseVisitor<'a,'b,'tcx,ty::ParameterEnvironment<'b,'tcx>>);
 struct GlobalChecker {
     static_consumptions: NodeSet,
     const_borrows: NodeSet,
@@ -70,8 +70,8 @@ pub fn check_crate(tcx: &ty::ctxt) {
         static_local_borrows: NodeSet::new(),
     };
     {
-        let param_env = ty::empty_parameter_environment();
-        let visitor = euv::ExprUseVisitor::new(&mut checker, tcx, &param_env);
+        let param_env = ty::empty_parameter_environment(tcx);
+        let visitor = euv::ExprUseVisitor::new(&mut checker, &param_env);
         visit::walk_crate(&mut GlobalVisitor(visitor), tcx.map.krate());
     }
     visit::walk_crate(&mut CheckStaticVisitor {
@@ -121,8 +121,8 @@ impl<'a, 'tcx> CheckStaticVisitor<'a, 'tcx> {
         let mut fulfill_cx = traits::FulfillmentContext::new();
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
         fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
-        let env = ty::empty_parameter_environment();
-        match fulfill_cx.select_all_or_error(&infcx, &env, self.tcx) {
+        let env = ty::empty_parameter_environment(self.tcx);
+        match fulfill_cx.select_all_or_error(&infcx, &env) {
             Ok(()) => { },
             Err(ref errors) => {
                 traits::report_fulfillment_errors(&infcx, errors);

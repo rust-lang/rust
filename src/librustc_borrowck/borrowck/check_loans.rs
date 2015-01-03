@@ -87,7 +87,7 @@ struct CheckLoanCtxt<'a, 'tcx: 'a> {
     dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
     move_data: move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan<'tcx>],
-    param_env: &'a ty::ParameterEnvironment<'tcx>,
+    param_env: &'a ty::ParameterEnvironment<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
@@ -208,9 +208,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     };
 
     {
-        let mut euv = euv::ExprUseVisitor::new(&mut clcx,
-                                               bccx.tcx,
-                                               &param_env);
+        let mut euv = euv::ExprUseVisitor::new(&mut clcx, &param_env);
         euv.walk_fn(decl, body);
     }
 }

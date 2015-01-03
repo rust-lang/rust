@@ -322,9 +322,8 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     // FIXME(#20304) -- cache
 
     let infcx = infer::new_infer_ctxt(tcx);
-    let param_env = ty::empty_parameter_environment();
-    let typer = NormalizingUnboxedClosureTyper::new(infcx.tcx);
-    let mut selcx = traits::SelectionContext::new(&infcx, &param_env, &typer);
+    let typer = NormalizingUnboxedClosureTyper::new(tcx);
+    let mut selcx = traits::SelectionContext::new(&infcx, &typer);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =
         traits::normalize(&mut selcx, cause, value);
@@ -337,7 +336,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     for obligation in obligations.into_iter() {
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
     }
-    let result = drain_fulfillment_cx(DUMMY_SP, &infcx, &param_env, &mut fulfill_cx, &result);
+    let result = drain_fulfillment_cx(DUMMY_SP, &infcx, &mut fulfill_cx, &result);
 
     result
 }
