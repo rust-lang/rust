@@ -266,8 +266,6 @@ lets_do_this! {
     ShrTraitLangItem,                "shr",                     shr_trait;
     IndexTraitLangItem,              "index",                   index_trait;
     IndexMutTraitLangItem,           "index_mut",               index_mut_trait;
-    SliceTraitLangItem,              "slice",                   slice_trait;
-    SliceMutTraitLangItem,           "slice_mut",               slice_mut_trait;
     RangeStructLangItem,             "range",                   range_struct;
     RangeFromStructLangItem,         "range_from",              range_from_struct;
     RangeToStructLangItem,           "range_to",                range_to_struct;

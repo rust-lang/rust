@@ -24,8 +24,7 @@ use trans::common;
 use trans::common::{Block, FunctionContext, ExprId, NodeInfo};
 use trans::debuginfo;
 use trans::glue;
-// Temporary due to slicing syntax hacks (KILLME)
-//use middle::region;
+use middle::region;
 use trans::type_::Type;
 use middle::ty::{self, Ty};
 use std::fmt;
@@ -129,8 +128,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         // excluding id's that correspond to closure bodies only). For
         // now we just say that if there is already an AST scope on the stack,
         // this new AST scope had better be its immediate child.
-        // Temporarily removed due to slicing syntax hacks (KILLME).
-        /*let top_scope = self.top_ast_scope();
+        let top_scope = self.top_ast_scope();
         if top_scope.is_some() {
             assert_eq!(self.ccx
                            .tcx()
@@ -138,7 +136,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                            .opt_encl_scope(region::CodeExtent::from_node_id(debug_loc.id))
                            .map(|s|s.node_id()),
                        top_scope);
-        }*/
+        }
 
         self.push_scope(CleanupScope::new(AstScopeKind(debug_loc.id),
                                           Some(debug_loc)));
