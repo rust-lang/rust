@@ -21,7 +21,7 @@ use self::Searcher::{Naive, TwoWay, TwoWayLong};
 use cmp::{mod, Eq};
 use default::Default;
 use iter::range;
-use iter::{DoubleEndedIteratorExt, ExactSizeIterator};
+use iter::ExactSizeIterator;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
 use kinds::Sized;
 use mem;
