@@ -463,7 +463,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
     /// This calls span_note unless the lint level is Allow, in which case
     /// it does nothing.
     pub fn span_lint_note(&self, lint: &'static Lint, span: Span, msg: &str) {
-        match lint.default_level {
+        match self.current_level(lint) {
             Allow => (),
             _ => self.sess().span_note(span, msg),
         }
