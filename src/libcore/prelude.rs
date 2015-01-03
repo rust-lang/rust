@@ -44,7 +44,7 @@ pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 pub use iter::{Extend, IteratorExt};
 pub use iter::{Iterator, DoubleEndedIterator};
 pub use iter::{IteratorCloneExt, CloneIteratorExt};
-pub use iter::{IteratorOrdExt, ExactSizeIterator, IteratorPairExt};
+pub use iter::{IteratorOrdExt, ExactSizeIterator};
 pub use option::Option::{mod, Some, None};
 pub use ptr::{PtrExt, MutPtrExt};
 pub use result::Result::{mod, Ok, Err};
