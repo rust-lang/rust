@@ -1,4 +1,4 @@
-# Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -261,7 +261,7 @@ endif
 ######################################################################
 
 # FIXME: x86-ism
-LLVM_COMPONENTS=x86 arm mips ipo bitreader bitwriter linker asmparser mcjit \
+LLVM_COMPONENTS=x86 arm aarch64 mips ipo bitreader bitwriter linker asmparser mcjit \
                 interpreter instrumentation
 
 # Only build these LLVM tools
