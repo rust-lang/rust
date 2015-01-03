@@ -11,6 +11,8 @@
 // Test that we still see borrowck errors of various kinds when using
 // indexing and autoderef in combination.
 
+#![feature(associated_types)]
+
 use std::ops::{Index, IndexMut};
 
 struct Foo {
@@ -18,7 +20,9 @@ struct Foo {
     y: int,
 }
 
-impl Index<String,int> for Foo {
+impl Index<String> for Foo {
+    type Output = int;
+
     fn index<'a>(&'a self, z: &String) -> &'a int {
         if z.as_slice() == "x" {
             &self.x
@@ -28,7 +32,9 @@ impl Index<String,int> for Foo {
     }
 }
 
-impl IndexMut<String,int> for Foo {
+impl IndexMut<String> for Foo {
+    type Output = int;
+
     fn index_mut<'a>(&'a mut self, z: &String) -> &'a mut int {
         if z.as_slice() == "x" {
             &mut self.x
