@@ -13,7 +13,7 @@
 #![feature(slicing_syntax)]
 
 extern crate core;
-use core::ops::{Slice,SliceMut};
+use core::ops::{Index, Range, RangeTo, RangeFrom, FullRange};
 
 static mut COUNT: uint = 0;
 
@@ -56,16 +56,17 @@ impl SliceMut<Foo, Foo> for Foo {
         self
     }
 }
+
 fn main() {
     let mut x = Foo;
-    x.index(&FullRange);
-    x.index(&(Foo..));
-    x.index(&(0..Foo));
-    x.index(&(Foo..Foo));
-    x[mut];
-    x[mut Foo..];
-    x[mut ..Foo];
-    x[mut Foo..Foo];
+    &x[];
+    &x[Foo..];
+    &x[0..Foo];
+    &x[Foo..Foo];
+    &mut x[];
+    &mut x[Foo..];
+    &mut x[..Foo];
+    &mut x[Foo..Foo];
     unsafe {
         assert!(COUNT == 8);
     }
