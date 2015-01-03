@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -175,17 +175,21 @@ macro_rules! thread_local {
 #[doc(hidden)]
 macro_rules! __thread_local_inner {
     (static $name:ident: $t:ty = $init:expr) => (
-        #[cfg_attr(any(target_os = "macos", target_os = "linux"), thread_local)]
+        #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                       not(target_arch = "aarch64")),
+                   thread_local)]
         static $name: ::std::thread_local::__impl::KeyInner<$t> =
             __thread_local_inner!($init, $t);
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
-        #[cfg_attr(any(target_os = "macos", target_os = "linux"), thread_local)]
+        #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                       not(target_arch = "aarch64")),
+                   thread_local)]
         pub static $name: ::std::thread_local::__impl::KeyInner<$t> =
             __thread_local_inner!($init, $t);
     );
     ($init:expr, $t:ty) => ({
-        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        #[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
         const _INIT: ::std::thread_local::__impl::KeyInner<$t> = {
             ::std::thread_local::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: $init },
@@ -194,7 +198,7 @@ macro_rules! __thread_local_inner {
             }
         };
 
-        #[cfg(all(not(any(target_os = "macos", target_os = "linux"))))]
+        #[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
         const _INIT: ::std::thread_local::__impl::KeyInner<$t> = {
             unsafe extern fn __destroy(ptr: *mut u8) {
                 ::std::thread_local::__impl::destroy_value::<$t>(ptr);
@@ -317,7 +321,7 @@ impl<T: 'static> Key<T> {
     pub fn destroyed(&'static self) -> bool { self.state() == State::Destroyed }
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
 mod imp {
     use prelude::v1::*;
 
@@ -449,7 +453,7 @@ mod imp {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+#[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
 mod imp {
     use prelude::v1::*;
 

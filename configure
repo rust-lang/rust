@@ -444,6 +444,10 @@ case $CFG_CPUTYPE in
         CFG_OSTYPE="${CFG_OSTYPE}eabihf"
         ;;
 
+    aarch64)
+        CFG_CPUTYPE=aarch64
+        ;;
+
     x86_64 | x86-64 | x64 | amd64)
         CFG_CPUTYPE=x86_64
         ;;
@@ -988,7 +992,7 @@ do
     make_dir $t/rt/jemalloc
     for i in                                          \
       isaac sync test \
-      arch/i386 arch/x86_64 arch/arm arch/mips
+      arch/i386 arch/x86_64 arch/arm arch/aarch64 arch/mips
     do
       make_dir $t/rt/stage$s/$i
     done
@@ -1165,7 +1169,7 @@ do
 
         msg "configuring LLVM for $gnu_t"
 
-        LLVM_TARGETS="--enable-targets=x86,x86_64,arm,mips"
+        LLVM_TARGETS="--enable-targets=x86,x86_64,arm,aarch64,mips"
         LLVM_BUILD="--build=$gnu_t"
         LLVM_HOST="--host=$gnu_t"
         LLVM_TARGET="--target=$gnu_t"
