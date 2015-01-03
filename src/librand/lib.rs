@@ -74,7 +74,7 @@ pub trait Rng : Sized {
     /// these two methods. Similarly to `next_u32`, this rarely needs
     /// to be called directly, prefer `r.gen()` to `r.next_u64()`.
     fn next_u64(&mut self) -> u64 {
-        (self.next_u32() as u64 << 32) | (self.next_u32() as u64)
+        ((self.next_u32() as u64) << 32) | (self.next_u32() as u64)
     }
 
     /// Return the next random f32 selected from the half-open

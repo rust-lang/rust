@@ -149,8 +149,8 @@ pub fn get_time() -> Timespec {
         // A FILETIME contains a 64-bit value representing the number of
         // hectonanosecond (100-nanosecond) intervals since 1601-01-01T00:00:00Z.
         // http://support.microsoft.com/kb/167296/en-us
-        let ns_since_1601 = ((time.dwHighDateTime as u64 << 32) |
-                             (time.dwLowDateTime  as u64 <<  0)) / 10;
+        let ns_since_1601 = (((time.dwHighDateTime as u64) << 32) |
+                             ((time.dwLowDateTime  as u64) <<  0)) / 10;
         let ns_since_1970 = ns_since_1601 - NANOSECONDS_FROM_1601_TO_1970;
 
         ((ns_since_1970 / 1000000) as i64,
