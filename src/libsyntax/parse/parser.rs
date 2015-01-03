@@ -679,47 +679,21 @@ impl<'a> Parser<'a> {
 
     /// Attempt to consume a `<`. If `<<` is seen, replace it with a single
     /// `<` and continue. If a `<` is not seen, return false.
-    ///
-    /// This is meant to be used when parsing generics on a path to get the
-    /// starting token. The `force` parameter is used to forcefully break up a
-    /// `<<` token. If `force` is false, then `<<` is only broken when a lifetime
-    /// shows up next. For example, consider the expression:
-    ///
-    ///      foo as bar << test
-    ///
-    /// The parser needs to know if `bar <<` is the start of a generic path or if
-    /// it's a left-shift token. If `test` were a lifetime, then it's impossible
-    /// for the token to be a left-shift, but if it's not a lifetime, then it's
-    /// considered a left-shift.
-    ///
-    /// The reason for this is that the only current ambiguity with `<<` is when
-    /// parsing closure types:
-    ///
-    ///      foo::<<'a> ||>();
-    ///      impl Foo<<'a> ||>() { ... }
-    fn eat_lt(&mut self, force: bool) -> bool {
+    fn eat_lt(&mut self) -> bool {
         match self.token {
             token::Lt => { self.bump(); true }
             token::BinOp(token::Shl) => {
-                let next_lifetime = self.look_ahead(1, |t| match *t {
-                    token::Lifetime(..) => true,
-                    _ => false,
-                });
-                if force || next_lifetime {
-                    let span = self.span;
-                    let lo = span.lo + BytePos(1);
-                    self.replace_token(token::Lt, lo, span.hi);
-                    true
-                } else {
-                    false
-                }
+                let span = self.span;
+                let lo = span.lo + BytePos(1);
+                self.replace_token(token::Lt, lo, span.hi);
+                true
             }
             _ => false,
         }
     }
 
     fn expect_lt(&mut self) {
-        if !self.eat_lt(true) {
+        if !self.eat_lt() {
             let found_token = self.this_token_to_string();
             let token_str = Parser::token_to_string(&token::Lt);
             self.fatal(format!("expected `{}`, found `{}`",
@@ -1877,7 +1851,7 @@ impl<'a> Parser<'a> {
             let identifier = self.parse_ident();
 
             // Parse types, optionally.
-            let parameters = if self.eat_lt(false) {
+            let parameters = if self.eat_lt() {
                 let (lifetimes, types, bindings) = self.parse_generic_values_after_lt();
 
                 ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
@@ -1938,7 +1912,7 @@ impl<'a> Parser<'a> {
             }
 
             // Check for a type segment.
-            if self.eat_lt(false) {
+            if self.eat_lt() {
                 // Consumed `a::b::<`, go look for types
                 let (lifetimes, types, bindings) = self.parse_generic_values_after_lt();
                 segments.push(ast::PathSegment {
