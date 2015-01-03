@@ -1,14 +1,5 @@
 % The Rust Macros Guide
 
-<div class="unstable-feature">
-<b>Warning:</b> There are currently various problems with invoking macros, how
-they interact with their environment, and how they are used outside of the
-location in which they are defined. Macro definitions are likely to change
-slightly in the future. For this reason, they are hidden behind the
-<code>macro_rules</code> <a href="reference.html#compiler-features">feature
-attribute</a>.
-</div>
-
 # Introduction
 
 Functions are the primary tool that programmers can use to build abstractions.
@@ -46,19 +37,18 @@ lightweight custom syntax extensions, themselves defined using the
 the pattern in the above code:
 
 ~~~~
-# #![feature(macro_rules)]
 # enum T { SpecialA(uint), SpecialB(uint) }
 # fn f() -> uint {
 # let input_1 = T::SpecialA(0);
 # let input_2 = T::SpecialA(0);
-macro_rules! early_return(
+macro_rules! early_return {
     ($inp:expr $sp:path) => ( // invoke it like `(input_5 SpecialE)`
         match $inp {
             $sp(x) => { return x; }
             _ => {}
         }
     );
-);
+}
 // ...
 early_return!(input_1 T::SpecialA);
 // ...
@@ -109,10 +99,10 @@ that could be invoked like: `my_macro!(i->(( 2+2 )))`.
 
 ## Invocation location
 
-A macro invocation may take the place of (and therefore expand to)
-an expression, an item, or a statement.
-The Rust parser will parse the macro invocation as a "placeholder"
-for whichever of those three nonterminals is appropriate for the location.
+A macro invocation may take the place of (and therefore expand to) an
+expression, item, statement, or pattern.  The Rust parser will parse the macro
+invocation as a "placeholder" for whichever syntactic form is appropriate for
+the location.
 
 At expansion time, the output of the macro will be parsed as whichever of the
 three nonterminals it stands in for. This means that a single macro might,
@@ -166,12 +156,11 @@ separator token (a comma-separated list could be written `$(...),*`), and `+`
 instead of `*` to mean "at least one".
 
 ~~~~
-# #![feature(macro_rules)]
 # enum T { SpecialA(uint),SpecialB(uint),SpecialC(uint),SpecialD(uint)}
 # fn f() -> uint {
 # let input_1 = T::SpecialA(0);
 # let input_2 = T::SpecialA(0);
-macro_rules! early_return(
+macro_rules! early_return {
     ($inp:expr, [ $($sp:path)|+ ]) => (
         match $inp {
             $(
@@ -180,7 +169,7 @@ macro_rules! early_return(
             _ => {}
         }
     )
-);
+}
 // ...
 early_return!(input_1, [T::SpecialA|T::SpecialC|T::SpecialD]);
 // ...
@@ -228,7 +217,6 @@ solves the problem.
 Now consider code like the following:
 
 ~~~~
-# #![feature(macro_rules)]
 # enum T1 { Good1(T2, uint), Bad1}
 # struct T2 { body: T3 }
 # enum T3 { Good2(uint), Bad2}
@@ -255,8 +243,7 @@ a match, but with a syntax that suits the problem better. The following macro
 can solve the problem:
 
 ~~~~
-# #![feature(macro_rules)]
-macro_rules! biased_match (
+macro_rules! biased_match {
     // special case: `let (x) = ...` is illegal, so use `let x = ...` instead
     ( ($e:expr) ~ ($p:pat) else $err:stmt ;
       binds $bind_res:ident
@@ -275,7 +262,7 @@ macro_rules! biased_match (
             _ => { $err }
         };
     )
-);
+}
 
 # enum T1 { Good1(T2, uint), Bad1}
 # struct T2 { body: T3 }
@@ -297,13 +284,12 @@ like this, we might prefer to write a single macro invocation. The input
 pattern we want is clear:
 
 ~~~~
-# #![feature(macro_rules)]
 # fn main() {}
-# macro_rules! b(
+# macro_rules! b {
     ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
       binds $( $bind_res:ident ),*
     )
-# => (0));
+# => (0) }
 ~~~~
 
 However, it's not possible to directly expand to nested match statements. But
@@ -320,24 +306,22 @@ process the semicolon-terminated lines, one-by-one. So, we want the following
 input patterns:
 
 ~~~~
-# #![feature(macro_rules)]
-# macro_rules! b(
+# macro_rules! b {
     ( binds $( $bind_res:ident ),* )
-# => (0));
+# => (0) }
 # fn main() {}
 ~~~~
 
 ...and:
 
 ~~~~
-# #![feature(macro_rules)]
 # fn main() {}
-# macro_rules! b(
+# macro_rules! b {
     (    ($e     :expr) ~ ($p     :pat) else $err     :stmt ;
       $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*
       binds  $( $bind_res:ident ),*
     )
-# => (0));
+# => (0) }
 ~~~~
 
 The resulting macro looks like this. Note that the separation into
@@ -345,10 +329,9 @@ The resulting macro looks like this. Note that the separation into
 piece of syntax (the `let`) which we only want to transcribe once.
 
 ~~~~
-# #![feature(macro_rules)]
 # fn main() {
 
-macro_rules! biased_match_rec (
+macro_rules! biased_match_rec {
     // Handle the first layer
     (   ($e     :expr) ~ ($p     :pat) else $err     :stmt ;
      $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*
@@ -366,10 +349,10 @@ macro_rules! biased_match_rec (
     );
     // Produce the requested values
     ( binds $( $bind_res:ident ),* ) => ( ($( $bind_res ),*) )
-);
+}
 
 // Wrap the whole thing in a `let`.
-macro_rules! biased_match (
+macro_rules! biased_match {
     // special case: `let (x) = ...` is illegal, so use `let x = ...` instead
     ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
       binds $bind_res:ident
@@ -388,7 +371,7 @@ macro_rules! biased_match (
             binds $( $bind_res ),*
         );
     )
-);
+}
 
 
 # enum T1 { Good1(T2, uint), Bad1}
@@ -434,9 +417,7 @@ As an example, `loop` and `for-loop` labels (discussed in the lifetimes guide)
 will not clash. The following code will print "Hello!" only once:
 
 ~~~
-#![feature(macro_rules)]
-
-macro_rules! loop_x (
+macro_rules! loop_x {
     ($e: expr) => (
         // $e will not interact with this 'x
         'x: loop {
@@ -444,7 +425,7 @@ macro_rules! loop_x (
             $e
         }
     );
-);
+}
 
 fn main() {
     'x: loop {
@@ -467,22 +448,30 @@ lexical-order traversal of a crate's source. So a macro defined at module scope
 is visible to any subsequent code in the same module, which includes the body
 of any subsequent child `mod` items.
 
-If a module has the `macro_escape` attribute, its macros are also visible in
-its parent module after the child's `mod` item. If the parent also has
-`macro_escape` then the macros will be visible in the grandparent after the
-parent's `mod` item, and so forth.
+If a module has the `macro_use` attribute, its macros are also visible in its
+parent module after the child's `mod` item. If the parent also has `macro_use`
+then the macros will be visible in the grandparent after the parent's `mod`
+item, and so forth.
 
-Independent of `macro_escape`, the `macro_export` attribute controls visibility
-between crates.  Any `macro_rules!` definition with the `macro_export`
-attribute will be visible to other crates that have loaded this crate with
-`phase(plugin)`. There is currently no way for the importing crate to control
-which macros are imported.
+The `macro_use` attribute can also appear on `extern crate`.  In this context
+it controls which macros are loaded from the external crate, e.g.
+
+```rust,ignore
+#[macro_use(foo, bar)]
+extern crate baz;
+```
+
+If the attribute is given simply as `#[macro_use]`, all macros are loaded.  If
+there is no `#[macro_use]` attribute then no macros are loaded.  Only macros
+defined with the `#[macro_export]` attribute may be loaded.
+
+To load a crate's macros *without* linking it into the output, use `#[no_link]`
+as well.
 
 An example:
 
 ```rust
-# #![feature(macro_rules)]
-macro_rules! m1 (() => (()));
+macro_rules! m1 { () => (()) }
 
 // visible here: m1
 
@@ -490,22 +479,22 @@ mod foo {
     // visible here: m1
 
     #[macro_export]
-    macro_rules! m2 (() => (()));
+    macro_rules! m2 { () => (()) }
 
     // visible here: m1, m2
 }
 
 // visible here: m1
 
-macro_rules! m3 (() => (()));
+macro_rules! m3 { () => (()) }
 
 // visible here: m1, m3
 
-#[macro_escape]
+#[macro_use]
 mod bar {
     // visible here: m1, m3
 
-    macro_rules! m4 (() => (()));
+    macro_rules! m4 { () => (()) }
 
     // visible here: m1, m3, m4
 }
@@ -514,8 +503,58 @@ mod bar {
 # fn main() { }
 ```
 
-When this library is loaded with `#[phase(plugin)] extern crate`, only `m2`
-will be imported.
+When this library is loaded with `#[use_macros] extern crate`, only `m2` will
+be imported.
+
+The Rust Reference has a [listing of macro-related
+attributes](reference.html#macro--and-plugin-related-attributes).
+
+# The variable `$crate`
+
+A further difficulty occurs when a macro is used in multiple crates.  Say that
+`mylib` defines
+
+```rust
+pub fn increment(x: uint) -> uint {
+    x + 1
+}
+
+#[macro_export]
+macro_rules! inc_a {
+    ($x:expr) => ( ::increment($x) )
+}
+
+#[macro_export]
+macro_rules! inc_b {
+    ($x:expr) => ( ::mylib::increment($x) )
+}
+# fn main() { }
+```
+
+`inc_a` only works within `mylib`, while `inc_b` only works outside the
+library.  Furthermore, `inc_b` will break if the user imports `mylib` under
+another name.
+
+Rust does not (yet) have a hygiene system for crate references, but it does
+provide a simple workaround for this problem.  Within a macro imported from a
+crate named `foo`, the special macro variable `$crate` will expand to `::foo`.
+By contrast, when a macro is defined and then used in the same crate, `$crate`
+will expand to nothing.  This means we can write
+
+```rust
+#[macro_export]
+macro_rules! inc {
+    ($x:expr) => ( $crate::increment($x) )
+}
+# fn main() { }
+```
+
+to define a single macro that works both inside and outside our library.  The
+function name will expand to either `::increment` or `::mylib::increment`.
+
+To keep this system simple and correct, `#[macro_use] extern crate ...` may
+only appear at the root of your crate, not inside `mod`.  This ensures that
+`$crate` is a single identifier.
 
 # A final note
 
