@@ -218,7 +218,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     let mut registry = Registry::new(sess, &krate);
 
-    time(time_passes, "plugin registration", (), |_| {
+    time(time_passes, "plugin registration", registrars, |registrars| {
         if sess.features.borrow().rustc_diagnostic_macros {
             registry.register_macro("__diagnostic_used",
                 diagnostics::plugin::expand_diagnostic_used);
@@ -228,8 +228,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 diagnostics::plugin::expand_build_diagnostic_array);
         }
 
-        for &registrar in registrars.iter() {
-            registrar(&mut registry);
+        for registrar in registrars.into_iter() {
+            registry.args_hidden = Some(registrar.args);
+            (registrar.fun)(&mut registry);
         }
     });
 
