@@ -12,13 +12,13 @@
 
 use std::ops::Not;
 
-fn move_then_borrow<T: Not<T> + Clone>(x: T) {
+fn move_then_borrow<T: Not<Output=T> + Clone>(x: T) {
     !x;
 
     x.clone();  //~ ERROR: use of moved value
 }
 
-fn move_borrowed<T: Not<T>>(x: T, mut y: T) {
+fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {
     let m = &x;
     let n = &mut y;
 
@@ -27,7 +27,7 @@ fn move_borrowed<T: Not<T>>(x: T, mut y: T) {
     !y;  //~ ERROR: cannot move out of `y` because it is borrowed
 }
 
-fn illegal_dereference<T: Not<T>>(mut x: T, y: T) {
+fn illegal_dereference<T: Not<Output=T>>(mut x: T, y: T) {
     let m = &mut x;
     let n = &y;
 

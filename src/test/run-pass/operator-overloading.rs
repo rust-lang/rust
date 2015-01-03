@@ -35,13 +35,17 @@ impl ops::Sub for Point {
     }
 }
 
-impl ops::Neg<Point> for Point {
+impl ops::Neg for Point {
+    type Output = Point;
+
     fn neg(self) -> Point {
         Point {x: -self.x, y: -self.y}
     }
 }
 
-impl ops::Not<Point> for Point {
+impl ops::Not for Point {
+    type Output = Point;
+
     fn not(self) -> Point {
         Point {x: !self.x, y: !self.y }
     }
