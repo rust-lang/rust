@@ -20,6 +20,7 @@ pub use self::ValuePairs::*;
 pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
+pub use self::region_inference::GenericKind;
 
 use middle::subst;
 use middle::subst::Substs;
@@ -380,19 +381,6 @@ pub fn mk_subr<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
     let snapshot = cx.region_vars.start_snapshot();
     cx.region_vars.make_subregion(origin, a, b);
     cx.region_vars.commit(snapshot);
-}
-
-pub fn verify_param_bound<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                    origin: SubregionOrigin<'tcx>,
-                                    param_ty: ty::ParamTy,
-                                    a: ty::Region,
-                                    bs: Vec<ty::Region>) {
-    debug!("verify_param_bound({}, {} <: {})",
-           param_ty.repr(cx.tcx),
-           a.repr(cx.tcx),
-           bs.repr(cx.tcx));
-
-    cx.region_vars.verify_param_bound(origin, param_ty, a, bs);
 }
 
 pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -1069,6 +1057,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.tcx,
             value,
             |br, _| self.next_region_var(LateBoundRegion(span, br, lbrct)))
+    }
+
+    /// See `verify_generic_bound` method in `region_inference`
+    pub fn verify_generic_bound(&self,
+                                origin: SubregionOrigin<'tcx>,
+                                kind: GenericKind<'tcx>,
+                                a: ty::Region,
+                                bs: Vec<ty::Region>) {
+        debug!("verify_generic_bound({}, {} <: {})",
+               kind.repr(self.tcx),
+               a.repr(self.tcx),
+               bs.repr(self.tcx));
+
+        self.region_vars.verify_generic_bound(origin, kind, a, bs);
     }
 }
 
