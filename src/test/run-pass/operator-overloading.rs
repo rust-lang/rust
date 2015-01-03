@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
 
 use std::cmp;
 use std::ops;
@@ -42,7 +43,9 @@ impl ops::Not<Point> for Point {
     }
 }
 
-impl ops::Index<bool,int> for Point {
+impl ops::Index<bool> for Point {
+    type Output = int;
+
     fn index(&self, x: &bool) -> &int {
         if *x {
             &self.x
