@@ -20,6 +20,7 @@ use std::dynamic_lib::DynamicLibrary;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::attr;
+use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::visit;
@@ -45,6 +46,7 @@ pub struct Plugins {
 
 struct PluginLoader<'a> {
     sess: &'a Session,
+    span_whitelist: HashSet<Span>,
     reader: CrateReader<'a>,
     plugins: Plugins,
 }
@@ -54,6 +56,7 @@ impl<'a> PluginLoader<'a> {
         PluginLoader {
             sess: sess,
             reader: CrateReader::new(sess),
+            span_whitelist: HashSet::new(),
             plugins: Plugins {
                 macros: vec!(),
                 registrars: vec!(),
@@ -66,6 +69,14 @@ impl<'a> PluginLoader<'a> {
 pub fn load_plugins(sess: &Session, krate: &ast::Crate,
                     addl_plugins: Option<Plugins>) -> Plugins {
     let mut loader = PluginLoader::new(sess);
+
+    // We need to error on `#[macro_use] extern crate` when it isn't at the
+    // crate root, because `$crate` won't work properly. Identify these by
+    // spans, because the crate map isn't set up yet.
+    for vi in krate.module.view_items.iter() {
+        loader.span_whitelist.insert(vi.span);
+    }
+
     visit::walk_crate(&mut loader, krate);
 
     let mut plugins = loader.plugins;
@@ -157,6 +168,11 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             None => true,
         };
         let load_registrar = plugin_attr.is_some();
+
+        if load_macros && !self.span_whitelist.contains(&vi.span) {
+            self.sess.span_err(vi.span, "an `extern crate` loading macros must be at \
+                                         the crate root");
+        }
 
         if load_macros || load_registrar {
             let pmd = self.reader.read_plugin_metadata(vi);
