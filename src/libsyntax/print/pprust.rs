@@ -1067,7 +1067,6 @@ impl<'a> State<'a> {
                         span: codemap::Span) -> IoResult<()> {
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
-        try!(self.print_where_clause(generics));
         if ast_util::struct_def_is_tuple_like(struct_def) {
             if !struct_def.fields.is_empty() {
                 try!(self.popen());
@@ -1086,10 +1085,12 @@ impl<'a> State<'a> {
                 ));
                 try!(self.pclose());
             }
+            try!(self.print_where_clause(generics));
             try!(word(&mut self.s, ";"));
             try!(self.end());
             self.end() // close the outer-box
         } else {
+            try!(self.print_where_clause(generics));
             try!(self.nbsp());
             try!(self.bopen());
             try!(self.hardbreak_if_not_bol());
