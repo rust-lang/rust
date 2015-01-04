@@ -19,7 +19,7 @@ use trans::base::*;
 use trans::build::*;
 use trans::cleanup::{CleanupMethods, ScopeId};
 use trans::common::*;
-use trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
+use trans::datum::{Datum, Lvalue, rvalue_scratch_datum};
 use trans::datum::{Rvalue, ByValue};
 use trans::debuginfo;
 use trans::expr;
@@ -29,10 +29,8 @@ use trans::type_::Type;
 use middle::ty::{self, Ty, UnboxedClosureTyper};
 use middle::subst::{Substs};
 use session::config::FullDebugInfo;
-use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
 
-use arena::TypedArena;
 use syntax::ast;
 use syntax::ast_util;
 
@@ -580,98 +578,4 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     adt::trans_set_discr(bcx, &*repr, dest_addr, 0);
 
     bcx
-}
-
-pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                         closure_ty: Ty<'tcx>,
-                                         def_id: ast::DefId,
-                                         fn_ptr: ValueRef,
-                                         is_local: bool) -> ValueRef {
-
-    match ccx.closure_bare_wrapper_cache().borrow().get(&fn_ptr) {
-        Some(&llval) => return llval,
-        None => {}
-    }
-
-    let tcx = ccx.tcx();
-
-    debug!("get_wrapper_for_bare_fn(closure_ty={})", closure_ty.repr(tcx));
-
-    let f = match closure_ty.sty {
-        _ => {
-            ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
-                                    expected a closure ty, got {}",
-                                    closure_ty.repr(tcx))[]);
-        }
-    };
-
-    let name = ty::with_path(tcx, def_id, |path| {
-        mangle_internal_name_by_path_and_seq(path, "as_closure")
-    });
-    let llfn = if is_local {
-        decl_internal_rust_fn(ccx, closure_ty, name[])
-    } else {
-        decl_rust_fn(ccx, closure_ty, name[])
-    };
-
-    ccx.closure_bare_wrapper_cache().borrow_mut().insert(fn_ptr, llfn);
-
-    // This is only used by statics inlined from a different crate.
-    if !is_local {
-        // Don't regenerate the wrapper, just reuse the original one.
-        return llfn;
-    }
-
-    let _icx = push_ctxt("closure::get_wrapper_for_bare_fn");
-
-    let arena = TypedArena::new();
-    let empty_param_substs = Substs::trans_empty();
-    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, true, f.sig.0.output,
-                          &empty_param_substs, None, &arena);
-    let bcx = init_function(&fcx, true, f.sig.0.output);
-
-    let args = create_datums_for_fn_args(&fcx,
-                                         ty::ty_fn_args(closure_ty)
-                                            []);
-    let mut llargs = Vec::new();
-    match fcx.llretslotptr.get() {
-        Some(llretptr) => {
-            assert!(!fcx.needs_ret_allocas);
-            llargs.push(llretptr);
-        }
-        None => {}
-    }
-    llargs.extend(args.iter().map(|arg| arg.val));
-
-    let retval = Call(bcx, fn_ptr, llargs.as_slice(), None);
-    match f.sig.0.output {
-        ty::FnConverging(output_type) => {
-            if return_type_is_void(ccx, output_type) || fcx.llretslotptr.get().is_some() {
-                RetVoid(bcx);
-            } else {
-                Ret(bcx, retval);
-            }
-        }
-        ty::FnDiverging => {
-            RetVoid(bcx);
-        }
-    }
-
-    // HACK(eddyb) finish_fn cannot be used here, we returned directly.
-    debuginfo::clear_source_location(&fcx);
-    fcx.cleanup();
-
-    llfn
-}
-
-pub fn make_closure_from_bare_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                             closure_ty: Ty<'tcx>,
-                                             def_id: ast::DefId,
-                                             fn_ptr: ValueRef)
-                                             -> DatumBlock<'blk, 'tcx, Expr>  {
-    let scratch = rvalue_scratch_datum(bcx, closure_ty, "__adjust");
-    let wrapper = get_wrapper_for_bare_fn(bcx.ccx(), closure_ty, def_id, fn_ptr, true);
-    fill_fn_pair(bcx, scratch.val, wrapper, C_null(Type::i8p(bcx.ccx())));
-
-    DatumBlock::new(bcx, scratch.to_expr_datum())
 }

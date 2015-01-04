@@ -473,22 +473,6 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         DatumBlock::new(bcx, scratch.to_expr_datum())
     }
-
-    fn add_env<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                           def_id: ast::DefId,
-                           expr: &ast::Expr,
-                           datum: Datum<'tcx, Expr>)
-                           -> DatumBlock<'blk, 'tcx, Expr> {
-        // This is not the most efficient thing possible; since closures
-        // are two words it'd be better if this were compiled in
-        // 'dest' mode, but I can't find a nice way to structure the
-        // code and keep it DRY that accommodates that use case at the
-        // moment.
-
-        let closure_ty = expr_ty_adjusted(bcx, expr);
-        let fn_ptr = datum.to_llscalarish(bcx);
-        closure::make_closure_from_bare_fn(bcx, closure_ty, def_id, fn_ptr)
-    }
 }
 
 /// Translates an expression in "lvalue" mode -- meaning that it returns a reference to the memory

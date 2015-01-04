@@ -19,7 +19,7 @@ pub use self::CalleeData::*;
 pub use self::CallArgs::*;
 
 use arena::TypedArena;
-use back::{abi,link};
+use back::link;
 use session;
 use llvm::{ValueRef};
 use llvm::get_param;
@@ -100,7 +100,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
 
     fn datum_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                 -> Callee<'blk, 'tcx> {
-        let DatumBlock {mut bcx, datum} = expr::trans(bcx, expr);
+        let DatumBlock { datum, .. } = expr::trans(bcx, expr);
         match datum.ty.sty {
             ty::ty_bare_fn(..) => {
                 let llval = datum.to_llscalarish(bcx);

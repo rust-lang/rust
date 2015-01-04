@@ -15,7 +15,7 @@ use llvm::{ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, Bool, Tru
 use llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, IntSLT, IntSLE,
            RealOEQ, RealOGT, RealOGE, RealOLT, RealOLE, RealONE};
 use middle::{const_eval, def};
-use trans::{adt, closure, consts, debuginfo, expr, inline, machine};
+use trans::{adt, consts, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
 use trans::common::*;
 use trans::type_::Type;
