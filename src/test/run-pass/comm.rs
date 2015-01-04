@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 use std::sync::mpsc::{channel, Sender};
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _t = task::spawn(move|| { child(&tx) });
+    let _t = Thread::spawn(move|| { child(&tx) });
     let y = rx.recv().unwrap();
     println!("received");
     println!("{}", y);

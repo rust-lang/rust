@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 use std::sync::mpsc::{channel, Sender};
 
 #[derive(PartialEq, Show)]
@@ -66,23 +66,23 @@ pub fn main() {
     assert_eq!(receiver.recv().ok(), None);
 
     let (sender, receiver) = channel();
-    task::spawn(move|| {
+    let _t = Thread::spawn(move|| {
         let v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
     });
     assert_eq!(receiver.recv().unwrap(), Message::Dropped);
     assert_eq!(receiver.recv().ok(), None);
 
     let (sender, receiver) = channel();
-    {
-        task::spawn(move|| {
+    let _t = {
+        Thread::spawn(move|| {
             let mut v = Foo::NestedVariant(box 42u, SendOnDrop {
                 sender: sender.clone()
             }, sender.clone());
             v = Foo::NestedVariant(box 42u, SendOnDrop { sender: sender.clone() }, sender.clone());
             v = Foo::SimpleVariant(sender.clone());
             v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
-        });
-    }
+        })
+    };
     assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);
     assert_eq!(receiver.recv().unwrap(), Message::Dropped);
     assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);

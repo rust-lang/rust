@@ -44,11 +44,14 @@
 #![feature(macro_rules, phase, slicing_syntax)]
 
 extern crate regex;
-#[phase(plugin)]extern crate regex_macros;
 
 use std::io;
 use regex::{NoExpand, Regex};
 use std::sync::{Arc, Future};
+
+macro_rules! regex {
+    ($e:expr) => (Regex::new($e).unwrap())
+}
 
 fn count_matches(seq: &str, variant: &Regex) -> int {
     let mut n = 0;

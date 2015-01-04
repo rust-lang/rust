@@ -10,8 +10,6 @@
 //
 // ignore-lexer-test FIXME #15679
 
-use core::char::{escape_unicode, escape_default};
-
 #[test]
 fn test_is_lowercase() {
     assert!('a'.is_lowercase());
@@ -33,12 +31,12 @@ fn test_is_uppercase() {
 #[test]
 fn test_is_whitespace() {
     assert!(' '.is_whitespace());
-    assert!('\u2007'.is_whitespace());
+    assert!('\u{2007}'.is_whitespace());
     assert!('\t'.is_whitespace());
     assert!('\n'.is_whitespace());
     assert!(!'a'.is_whitespace());
     assert!(!'_'.is_whitespace());
-    assert!(!'\u0000'.is_whitespace());
+    assert!(!'\u{0}'.is_whitespace());
 }
 
 #[test]
@@ -92,15 +90,15 @@ fn test_to_uppercase() {
 
 #[test]
 fn test_is_control() {
-    assert!('\u0000'.is_control());
-    assert!('\u0003'.is_control());
-    assert!('\u0006'.is_control());
-    assert!('\u0009'.is_control());
-    assert!('\u007f'.is_control());
-    assert!('\u0092'.is_control());
-    assert!(!'\u0020'.is_control());
-    assert!(!'\u0055'.is_control());
-    assert!(!'\u0068'.is_control());
+    assert!('\u{0}'.is_control());
+    assert!('\u{3}'.is_control());
+    assert!('\u{6}'.is_control());
+    assert!('\u{9}'.is_control());
+    assert!('\u{7f}'.is_control());
+    assert!('\u{92}'.is_control());
+    assert!(!'\u{20}'.is_control());
+    assert!(!'\u{55}'.is_control());
+    assert!(!'\u{68}'.is_control());
 }
 
 #[test]
@@ -116,9 +114,7 @@ fn test_is_digit() {
 #[test]
 fn test_escape_default() {
     fn string(c: char) -> String {
-        let mut result = String::new();
-        escape_default(c, |c| { result.push(c); });
-        return result;
+        c.escape_default().collect()
     }
     let s = string('\n');
     assert_eq!(s, "\\n");
@@ -175,9 +171,9 @@ fn test_encode_utf8() {
     }
 
     check('x', &[0x78]);
-    check('\u00e9', &[0xc3, 0xa9]);
-    check('\ua66e', &[0xea, 0x99, 0xae]);
-    check('\U0001f4a9', &[0xf0, 0x9f, 0x92, 0xa9]);
+    check('\u{e9}', &[0xc3, 0xa9]);
+    check('\u{a66e}', &[0xea, 0x99, 0xae]);
+    check('\u{1f4a9}', &[0xf0, 0x9f, 0x92, 0xa9]);
 }
 
 #[test]
@@ -189,17 +185,17 @@ fn test_encode_utf16() {
     }
 
     check('x', &[0x0078]);
-    check('\u00e9', &[0x00e9]);
-    check('\ua66e', &[0xa66e]);
-    check('\U0001f4a9', &[0xd83d, 0xdca9]);
+    check('\u{e9}', &[0x00e9]);
+    check('\u{a66e}', &[0xa66e]);
+    check('\u{1f4a9}', &[0xd83d, 0xdca9]);
 }
 
 #[test]
 fn test_len_utf16() {
     assert!('x'.len_utf16() == 1);
-    assert!('\u00e9'.len_utf16() == 1);
-    assert!('\ua66e'.len_utf16() == 1);
-    assert!('\U0001f4a9'.len_utf16() == 2);
+    assert!('\u{e9}'.len_utf16() == 1);
+    assert!('\u{a66e}'.len_utf16() == 1);
+    assert!('\u{1f4a9}'.len_utf16() == 2);
 }
 
 #[test]
@@ -216,15 +212,15 @@ fn test_width() {
     assert_eq!('ｈ'.width(false),Some(2));
     assert_eq!('ｈ'.width(true),Some(2));
 
-    assert_eq!('\u00AD'.width(false),Some(1));
-    assert_eq!('\u00AD'.width(true),Some(1));
+    assert_eq!('\u{AD}'.width(false),Some(1));
+    assert_eq!('\u{AD}'.width(true),Some(1));
 
-    assert_eq!('\u1160'.width(false),Some(0));
-    assert_eq!('\u1160'.width(true),Some(0));
+    assert_eq!('\u{1160}'.width(false),Some(0));
+    assert_eq!('\u{1160}'.width(true),Some(0));
 
-    assert_eq!('\u00a1'.width(false),Some(1));
-    assert_eq!('\u00a1'.width(true),Some(2));
+    assert_eq!('\u{a1}'.width(false),Some(1));
+    assert_eq!('\u{a1}'.width(true),Some(2));
 
-    assert_eq!('\u0300'.width(false),Some(0));
-    assert_eq!('\u0300'.width(true),Some(0));
+    assert_eq!('\u{300}'.width(false),Some(0));
+    assert_eq!('\u{300}'.width(true),Some(0));
 }

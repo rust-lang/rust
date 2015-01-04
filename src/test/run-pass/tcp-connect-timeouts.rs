@@ -27,6 +27,7 @@ use std::io::test::*;
 use std::io;
 use std::time::Duration;
 use std::sync::mpsc::channel;
+use std::thread::Thread;
 
 #[cfg_attr(target_os = "freebsd", ignore)]
 fn eventual_timeout() {
@@ -34,7 +35,7 @@ fn eventual_timeout() {
 
     let (tx1, rx1) = channel();
     let (_tx2, rx2) = channel::<()>();
-    std::task::spawn(move|| {
+    let _t = Thread::spawn(move|| {
         let _l = TcpListener::bind(addr).unwrap().listen();
         tx1.send(()).unwrap();
         let _ = rx2.recv();

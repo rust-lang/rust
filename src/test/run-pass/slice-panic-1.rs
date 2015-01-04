@@ -12,7 +12,7 @@
 
 #![feature(slicing_syntax)]
 
-use std::task;
+use std::thread::Thread;
 
 struct Foo;
 
@@ -28,6 +28,6 @@ fn foo() {
 }
 
 fn main() {
-    let _ = task::try(move|| foo());
+    let _ = Thread::spawn(move|| foo()).join();
     unsafe { assert!(DTOR_COUNT == 2); }
 }

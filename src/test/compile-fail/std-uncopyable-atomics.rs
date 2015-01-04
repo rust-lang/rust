@@ -24,6 +24,4 @@ fn main() {
     let x = *&x; //~ ERROR: cannot move out of dereference
     let x: AtomicPtr<uint> = AtomicPtr::new(ptr::null_mut());
     let x = *&x; //~ ERROR: cannot move out of dereference
-    let x: AtomicOption<uint> = AtomicOption::empty();
-    let x = *&x; //~ ERROR: cannot move out of dereference
 }

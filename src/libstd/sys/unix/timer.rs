@@ -54,7 +54,7 @@ use libc;
 use mem;
 use os;
 use ptr;
-use sync::atomic;
+use sync::atomic::{mod, Ordering};
 use sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use sys::c;
 use sys::fs::FileDesc;
@@ -212,7 +212,7 @@ impl Timer {
         HELPER.boot(|| {}, helper);
 
         static ID: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
-        let id = ID.fetch_add(1, atomic::Relaxed);
+        let id = ID.fetch_add(1, Ordering::Relaxed);
         Ok(Timer {
             id: id,
             inner: Some(box Inner {

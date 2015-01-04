@@ -18,13 +18,13 @@ const C: *const u8 = B as *const u8;
 pub fn main() {
     unsafe {
         let foo = &A as *const u8;
-        assert_eq!(str::raw::from_utf8(&A), "hi");
-        assert_eq!(string::raw::from_buf_len(foo, A.len()), "hi".to_string());
-        assert_eq!(string::raw::from_buf_len(C, B.len()), "hi".to_string());
+        assert_eq!(str::from_utf8_unchecked(&A), "hi");
+        assert_eq!(String::from_raw_buf_len(foo, A.len()), "hi".to_string());
+        assert_eq!(String::from_raw_buf_len(C, B.len()), "hi".to_string());
         assert!(*C == A[0]);
         assert!(*(&B[0] as *const u8) == A[0]);
 
-        let bar = str::raw::from_utf8(&A).to_c_str();
+        let bar = str::from_utf8_unchecked(&A).to_c_str();
         assert_eq!(bar.as_str(), "hi".to_c_str().as_str());
     }
 }

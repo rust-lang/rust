@@ -68,8 +68,6 @@ use option::Option::{Some, None};
 use std::kinds::Sized;
 use uint;
 
-#[deprecated = "renamed to Extend"] pub use self::Extend as Extendable;
-
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
 /// being located on the call stack.
@@ -2779,15 +2777,6 @@ step_impl_no_between!(u64 i64);
 #[stable]
 pub struct Repeat<A> {
     element: A
-}
-
-impl<A: Clone> Repeat<A> {
-    /// Create a new `Repeat` that endlessly repeats the element `elt`.
-    #[inline]
-    #[deprecated = "use iter::repeat instead"]
-    pub fn new(elt: A) -> Repeat<A> {
-        Repeat{element: elt}
-    }
 }
 
 #[unstable = "trait is unstable"]

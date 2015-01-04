@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 use std::sync::mpsc::{channel, Sender};
 
 pub fn main() { test05(); }
@@ -24,7 +24,7 @@ fn test05_start(tx : &Sender<int>) {
 
 fn test05() {
     let (tx, rx) = channel();
-    task::spawn(move|| { test05_start(&tx) });
+    let _t = Thread::spawn(move|| { test05_start(&tx) });
     let mut value: int = rx.recv().unwrap();
     println!("{}", value);
     value = rx.recv().unwrap();

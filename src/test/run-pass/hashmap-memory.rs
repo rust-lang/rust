@@ -23,7 +23,7 @@ mod map_reduce {
     use std::collections::HashMap;
     use std::sync::mpsc::{channel, Sender};
     use std::str;
-    use std::task;
+    use std::thread::Thread;
 
     pub type putter<'a> = |String, String|: 'a;
 
@@ -35,7 +35,7 @@ mod map_reduce {
         for i in inputs.iter() {
             let ctrl = ctrl.clone();
             let i = i.clone();
-            task::spawn(move|| map_task(ctrl.clone(), i.clone()) );
+            Thread::spawn(move|| map_task(ctrl.clone(), i.clone()) ).detach();
         }
     }
 

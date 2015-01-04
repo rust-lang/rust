@@ -21,12 +21,8 @@
 #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 #[cfg(test)] use kinds::Copy;
 
-pub use core::num::{Num, div_rem, Zero, zero, One, one};
-pub use core::num::{Unsigned, pow, Bounded};
-pub use core::num::{Primitive, Int, SignedInt, UnsignedInt};
+pub use core::num::{Int, SignedInt, UnsignedInt};
 pub use core::num::{cast, FromPrimitive, NumCast, ToPrimitive};
-pub use core::num::{next_power_of_two, is_power_of_two};
-pub use core::num::{checked_next_power_of_two};
 pub use core::num::{from_int, from_i8, from_i16, from_i32, from_i64};
 pub use core::num::{from_uint, from_u8, from_u16, from_u32, from_u64};
 pub use core::num::{from_f32, from_f64};
@@ -117,11 +113,6 @@ pub trait FloatMath: Float {
 }
 
 // DEPRECATED
-
-#[deprecated = "Use `FloatMath::abs_sub`"]
-pub fn abs_sub<T: FloatMath>(x: T, y: T) -> T {
-    x.abs_sub(y)
-}
 
 /// Helper function for testing numeric operations
 #[cfg(test)]
@@ -804,7 +795,7 @@ mod bench {
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
-        let v = Vec::from_fn(1024u, |n| n);
+        let v = range(0, 1024u).collect::<Vec<_>>();
         b.iter(|| {v.iter().fold(0u, |old, new| old.pow(*new));});
     }
 }

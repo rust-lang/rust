@@ -396,7 +396,7 @@ mod tests {
 
         for _ in range(0u, 1000) {
             let times = thread_rng().gen_range(1u, 100);
-            let v = Vec::from_fn(times, |_| random::<u8>());
+            let v = thread_rng().gen_iter::<u8>().take(times).collect::<Vec<_>>();
             assert_eq!(v.to_base64(STANDARD)
                         .from_base64()
                         .unwrap(),

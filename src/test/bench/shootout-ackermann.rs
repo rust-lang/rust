@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::os;
-use std::str::from_str;
 
 fn ack(m: int, n: int) -> int {
     if m == 0 {
@@ -32,6 +31,6 @@ fn main() {
     } else {
         args.into_iter().collect()
     };
-    let n = from_str::<int>(args[1].as_slice()).unwrap();
+    let n = args[1].parse().unwrap();
     println!("Ack(3,{}): {}\n", n, ack(3, n));
 }

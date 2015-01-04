@@ -39,7 +39,6 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::num::Float;
-use std::str::from_str;
 
 const PI: f64 = 3.141592653589793;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -176,7 +175,7 @@ fn main() {
         5000000
     } else {
         std::os::args().as_slice().get(1)
-            .and_then(|arg| from_str(arg.as_slice()))
+            .and_then(|arg| arg.parse())
             .unwrap_or(1000)
     };
     let mut bodies = BODIES;

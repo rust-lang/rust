@@ -47,8 +47,8 @@
 use std::io;
 use std::os;
 use std::simd::f64x2;
-use std::str::from_str;
-use std::sync::{Arc, Future};
+use std::sync::Arc;
+use std::thread::Thread;
 
 const ITER: int = 50;
 const LIMIT: f64 = 2.0;
@@ -82,8 +82,8 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
     let mut precalc_r = Vec::with_capacity(w);
     let mut precalc_i = Vec::with_capacity(h);
 
-    let precalc_futures = Vec::from_fn(WORKERS, |i| {
-        Future::spawn(move|| {
+    let precalc_futures = range(0, WORKERS).map(|i| {
+        Thread::spawn(move|| {
             let mut rs = Vec::with_capacity(w / WORKERS);
             let mut is = Vec::with_capacity(w / WORKERS);
 
@@ -106,10 +106,10 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
 
             (rs, is)
         })
-    });
+    }).collect::<Vec<_>>();
 
     for res in precalc_futures.into_iter() {
-        let (rs, is) = res.unwrap();
+        let (rs, is) = res.join().ok().unwrap();
         precalc_r.extend(rs.into_iter());
         precalc_i.extend(is.into_iter());
     }
@@ -120,11 +120,11 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
     let arc_init_r = Arc::new(precalc_r);
     let arc_init_i = Arc::new(precalc_i);
 
-    let data = Vec::from_fn(WORKERS, |i| {
+    let data = range(0, WORKERS).map(|i| {
         let vec_init_r = arc_init_r.clone();
         let vec_init_i = arc_init_i.clone();
 
-        Future::spawn(move|| {
+        Thread::spawn(move|| {
             let mut res: Vec<u8> = Vec::with_capacity((chunk_size * w) / 8);
             let init_r_slice = vec_init_r.as_slice();
 
@@ -141,11 +141,11 @@ fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
 
             res
         })
-    });
+    }).collect::<Vec<_>>();
 
     try!(writeln!(&mut out as &mut Writer, "P4\n{} {}", w, h));
     for res in data.into_iter() {
-        try!(out.write(res.unwrap().as_slice()));
+        try!(out.write(res.join().ok().unwrap().as_slice()));
     }
     out.flush()
 }
@@ -206,7 +206,7 @@ fn main() {
                   which interferes with the test runner.");
         mandelbrot(1000, io::util::NullWriter)
     } else {
-        mandelbrot(from_str(args[1].as_slice()).unwrap(), io::stdout())
+        mandelbrot(args[1].parse().unwrap(), io::stdout())
     };
     res.unwrap();
 }

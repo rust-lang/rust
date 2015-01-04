@@ -43,14 +43,13 @@
 #![allow(non_snake_case)]
 #![feature(unboxed_closures)]
 
-use std::iter::AdditiveIterator;
+use std::iter::{repeat, AdditiveIterator};
 use std::thread::Thread;
 use std::mem;
 use std::num::Float;
 use std::os;
 use std::raw::Repr;
 use std::simd::f64x2;
-use std::str::from_str;
 
 fn main() {
     let args = os::args();
@@ -59,16 +58,16 @@ fn main() {
     } else if args.len() < 2 {
         2000
     } else {
-        from_str(args[1].as_slice()).unwrap()
+        args[1].parse().unwrap()
     });
     println!("{:.9}", answer);
 }
 
 fn spectralnorm(n: uint) -> f64 {
     assert!(n % 2 == 0, "only even lengths are accepted");
-    let mut u = Vec::from_elem(n, 1.0);
-    let mut v = Vec::from_elem(n, 1.0);
-    let mut tmp = Vec::from_elem(n, 1.0);
+    let mut u = repeat(1.0).take(n).collect::<Vec<_>>();
+    let mut v = u.clone();
+    let mut tmp = v.clone();
     for _ in range(0u, 10) {
         mult_AtAv(u.as_slice(), v.as_mut_slice(), tmp.as_mut_slice());
         mult_AtAv(v.as_slice(), u.as_mut_slice(), tmp.as_mut_slice());

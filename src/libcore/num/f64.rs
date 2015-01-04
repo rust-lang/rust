@@ -20,7 +20,6 @@ use intrinsics;
 use mem;
 use num::Float;
 use num::FpCategory as Fp;
-use num::from_str_radix;
 use option::Option;
 
 // FIXME(#5527): These constants should be deprecated once associated
@@ -322,14 +321,6 @@ impl Float for f64 {
         unsafe { intrinsics::powif64(self, n) }
     }
 
-    /// sqrt(2.0)
-    #[inline]
-    fn sqrt2() -> f64 { consts::SQRT2 }
-
-    /// 1.0 / sqrt(2.0)
-    #[inline]
-    fn frac_1_sqrt2() -> f64 { consts::FRAC_1_SQRT2 }
-
     #[inline]
     fn sqrt(self) -> f64 {
         if self < 0.0 {
@@ -341,66 +332,6 @@ impl Float for f64 {
 
     #[inline]
     fn rsqrt(self) -> f64 { self.sqrt().recip() }
-
-    /// Archimedes' constant
-    #[inline]
-    fn pi() -> f64 { consts::PI }
-
-    /// 2.0 * pi
-    #[inline]
-    fn two_pi() -> f64 { consts::PI_2 }
-
-    /// pi / 2.0
-    #[inline]
-    fn frac_pi_2() -> f64 { consts::FRAC_PI_2 }
-
-    /// pi / 3.0
-    #[inline]
-    fn frac_pi_3() -> f64 { consts::FRAC_PI_3 }
-
-    /// pi / 4.0
-    #[inline]
-    fn frac_pi_4() -> f64 { consts::FRAC_PI_4 }
-
-    /// pi / 6.0
-    #[inline]
-    fn frac_pi_6() -> f64 { consts::FRAC_PI_6 }
-
-    /// pi / 8.0
-    #[inline]
-    fn frac_pi_8() -> f64 { consts::FRAC_PI_8 }
-
-    /// 1.0 / pi
-    #[inline]
-    fn frac_1_pi() -> f64 { consts::FRAC_1_PI }
-
-    /// 2.0 / pi
-    #[inline]
-    fn frac_2_pi() -> f64 { consts::FRAC_2_PI }
-
-    /// 2.0 / sqrt(pi)
-    #[inline]
-    fn frac_2_sqrtpi() -> f64 { consts::FRAC_2_SQRTPI }
-
-    /// Euler's number
-    #[inline]
-    fn e() -> f64 { consts::E }
-
-    /// log2(e)
-    #[inline]
-    fn log2_e() -> f64 { consts::LOG2_E }
-
-    /// log10(e)
-    #[inline]
-    fn log10_e() -> f64 { consts::LOG10_E }
-
-    /// ln(2.0)
-    #[inline]
-    fn ln_2() -> f64 { consts::LN_2 }
-
-    /// ln(10.0)
-    #[inline]
-    fn ln_10() -> f64 { consts::LN_10 }
 
     /// Returns the exponential of the number.
     #[inline]
@@ -446,11 +377,4 @@ impl Float for f64 {
         let value: f64 = consts::PI;
         self * (value / 180.0)
     }
-}
-
-#[inline]
-#[allow(missing_docs)]
-#[deprecated="Use `FromStrRadix::from_str_radix(src, 16)`"]
-pub fn from_str_hex(src: &str) -> Option<f64> {
-    from_str_radix(src, 16)
 }

@@ -35,17 +35,6 @@
 //!
 //! # Examples
 //!
-//! Using fields:
-//!
-//! ```
-//! #[allow(deprecated)]
-//! # fn main() {
-//! let pair = ("pi", 3.14f64);
-//! assert_eq!(pair.0, "pi");
-//! assert_eq!(pair.1, 3.14f64);
-//! # }
-//! ```
-//!
 //! Using traits implemented for tuples:
 //!
 //! ```
