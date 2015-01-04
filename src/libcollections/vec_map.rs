@@ -673,7 +673,7 @@ pub struct Iter<'a, V:'a> {
     iter: slice::Iter<'a, Option<V>>
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, V> Clone for Iter<'a, V> {
     fn clone(&self) -> Iter<'a, V> {
         Iter {
@@ -705,7 +705,7 @@ pub struct Keys<'a, V: 'a> {
     iter: Map<(uint, &'a V), uint, Iter<'a, V>, fn((uint, &'a V)) -> uint>
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, V> Clone for Keys<'a, V> {
     fn clone(&self) -> Keys<'a, V> {
         Keys {
@@ -720,7 +720,7 @@ pub struct Values<'a, V: 'a> {
     iter: Map<(uint, &'a V), &'a V, Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, V> Clone for Values<'a, V> {
     fn clone(&self) -> Values<'a, V> {
         Values {

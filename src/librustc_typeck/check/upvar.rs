@@ -44,11 +44,11 @@ use super::FnCtxt;
 
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
-use middle::ty::{mod};
+use middle::ty::{self};
 use middle::infer::{InferCtxt, UpvarRegion};
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit::{mod, Visitor};
+use syntax::visit::{self, Visitor};
 use util::ppaux::Repr;
 
 ///////////////////////////////////////////////////////////////////////////

@@ -22,7 +22,7 @@ use metadata::common::LinkMeta;
 use metadata::{encoder, cstore, filesearch, csearch, creader};
 use metadata::filesearch::FileDoesntMatch;
 use trans::{CrateContext, CrateTranslation, gensym_name};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};

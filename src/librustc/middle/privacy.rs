@@ -21,7 +21,7 @@ use std::mem::replace;
 
 use metadata::csearch;
 use middle::def;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::{MethodCall, MethodMap, MethodOrigin, MethodParam, MethodTypeParam};
 use middle::ty::{MethodStatic, MethodStaticUnboxedClosure, MethodObject, MethodTraitObject};
 use util::nodemap::{DefIdSet, NodeMap, NodeSet};
@@ -30,7 +30,7 @@ use syntax::{ast, ast_map};
 use syntax::ast_util::{is_local, local_def, PostExpansionMethod};
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::visit::{mod, Visitor};
+use syntax::visit::{self, Visitor};
 
 type Context<'a, 'tcx> = (&'a MethodMap<'tcx>, &'a def::ExportMap);
 
@@ -49,7 +49,7 @@ pub type PublicItems = NodeSet;
 // FIXME: dox
 pub type LastPrivateMap = NodeMap<LastPrivate>;
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum LastPrivate {
     LastMod(PrivateDep),
     // `use` directives (imports) can refer to two separate definitions in the
@@ -63,14 +63,14 @@ pub enum LastPrivate {
                type_used: ImportUse},
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum PrivateDep {
     AllPublic,
     DependsOn(ast::DefId),
 }
 
 // How an import is used.
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum ImportUse {
     Unused,       // The import is not used.
     Used,         // The import is used.

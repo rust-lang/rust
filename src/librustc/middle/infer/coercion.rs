@@ -67,7 +67,7 @@ use super::sub::Sub;
 use middle::subst;
 use middle::ty::{AutoPtr, AutoDerefRef, AdjustDerefRef, AutoUnsize, AutoUnsafe};
 use middle::ty::{mt};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux;
 use util::ppaux::Repr;
 

@@ -252,7 +252,7 @@ pub mod dl {
         dlclose(handle as *mut libc::c_void); ()
     }
 
-    #[deriving(Copy)]
+    #[derive(Copy)]
     pub enum Rtld {
         Lazy = 1,
         Now = 2,

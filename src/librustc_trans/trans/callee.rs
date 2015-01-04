@@ -48,7 +48,7 @@ use trans::meth;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
@@ -58,7 +58,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ptr::P;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct MethodData {
     pub llfn: ValueRef,
     pub llself: ValueRef,
@@ -1052,7 +1052,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     bcx
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum AutorefArg {
     DontAutorefArg,
     DoAutorefArg(ast::NodeId)

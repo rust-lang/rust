@@ -18,7 +18,7 @@
 pub use self::IpAddr::*;
 
 use fmt;
-use io::{mod, IoResult, IoError};
+use io::{self, IoResult, IoError};
 use io::net;
 use iter::{Iterator, IteratorExt};
 use ops::FnOnce;
@@ -31,7 +31,7 @@ use vec::Vec;
 
 pub type Port = u16;
 
-#[deriving(Copy, PartialEq, Eq, Clone, Hash)]
+#[derive(Copy, PartialEq, Eq, Clone, Hash)]
 pub enum IpAddr {
     Ipv4Addr(u8, u8, u8, u8),
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
@@ -62,7 +62,7 @@ impl fmt::Show for IpAddr {
     }
 }
 
-#[deriving(Copy, PartialEq, Eq, Clone, Hash)]
+#[derive(Copy, PartialEq, Eq, Clone, Hash)]
 pub struct SocketAddr {
     pub ip: IpAddr,
     pub port: Port,

@@ -35,7 +35,7 @@ use super::glb::Glb;
 use super::lub::Lub;
 
 use middle::ty::{TyVar};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux::Repr;
 
 pub trait LatticeDir<'tcx> {

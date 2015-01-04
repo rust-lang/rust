@@ -14,8 +14,8 @@
 use super::{CombinedSnapshot, cres, InferCtxt, HigherRankedType, SkolemizationMap};
 use super::combine::{Combine, Combineable};
 
-use middle::ty::{mod, Binder};
-use middle::ty_fold::{mod, TypeFoldable};
+use middle::ty::{self, Binder};
+use middle::ty_fold::{self, TypeFoldable};
 use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;

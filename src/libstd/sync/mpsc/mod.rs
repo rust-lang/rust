@@ -379,7 +379,7 @@ pub struct SyncSender<T> {
 /// A `send` operation can only fail if the receiving end of a channel is
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
-#[deriving(PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 #[stable]
 pub struct SendError<T>(pub T);
 
@@ -387,13 +387,13 @@ pub struct SendError<T>(pub T);
 ///
 /// The `recv` operation can only fail if the sending half of a channel is
 /// disconnected, implying that no further messages will ever be received.
-#[deriving(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 #[stable]
 pub struct RecvError;
 
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
-#[deriving(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 #[stable]
 pub enum TryRecvError {
     /// This channel is currently empty, but the sender(s) have not yet
@@ -409,7 +409,7 @@ pub enum TryRecvError {
 
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 #[stable]
 pub enum TrySendError<T> {
     /// The data could not be sent on the channel because it would require that

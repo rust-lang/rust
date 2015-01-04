@@ -17,7 +17,7 @@ use trans::adt;
 use trans::common::*;
 use trans::foreign;
 use trans::machine;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux;
 use util::ppaux::Repr;
 
@@ -446,7 +446,7 @@ pub fn align_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
 }
 
 // Want refinements! (Or case classes, I guess
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum named_ty {
     a_struct,
     an_enum,

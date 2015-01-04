@@ -35,7 +35,7 @@ pub type StrComponents<'a> =
     Map<&'a [u8], Option<&'a str>, Components<'a>, fn(&[u8]) -> Option<&str>>;
 
 /// Represents a POSIX file path
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Path {
     repr: Vec<u8>, // assumed to never be empty or contain NULs
     sepidx: Option<uint> // index of the final separator in repr
@@ -450,10 +450,10 @@ mod tests {
 
     use clone::Clone;
     use iter::IteratorExt;
-    use option::Option::{mod, Some, None};
+    use option::Option::{self, Some, None};
     use path::GenericPath;
     use slice::{AsSlice, SliceExt};
-    use str::{mod, Str, StrExt};
+    use str::{self, Str, StrExt};
     use string::ToString;
     use vec::Vec;
 

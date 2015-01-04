@@ -28,7 +28,7 @@ use core::cmp;
 use core::int;
 use thread::Thread;
 
-use sync::mpsc::blocking::{mod, SignalToken};
+use sync::mpsc::blocking::{self, SignalToken};
 use sync::mpsc::spsc_queue as spsc;
 use sync::mpsc::Receiver;
 use sync::atomic;

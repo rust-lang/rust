@@ -29,7 +29,7 @@
 //!
 //! use std::ops::{Add, Sub};
 //!
-//! #[deriving(Show)]
+//! #[derive(Show)]
 //! struct Point {
 //!     x: int,
 //!     y: int
@@ -62,7 +62,7 @@
 use clone::Clone;
 use iter::{Step, Iterator,DoubleEndedIterator,ExactSizeIterator};
 use kinds::Sized;
-use option::Option::{mod, Some, None};
+use option::Option::{self, Some, None};
 
 /// The `Drop` trait is used to run some code when a value goes out of scope. This
 /// is sometimes called a 'destructor'.
@@ -103,7 +103,7 @@ pub trait Drop {
 ///
 /// use std::ops::Add;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Add for Foo {
@@ -152,7 +152,7 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 ///
 /// use std::ops::Sub;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Sub for Foo {
@@ -201,7 +201,7 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 ///
 /// use std::ops::Mul;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Mul for Foo {
@@ -250,7 +250,7 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 ///
 /// use std::ops::Div;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Div for Foo {
@@ -299,7 +299,7 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 ///
 /// use std::ops::Rem;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Rem for Foo {
@@ -482,7 +482,7 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 ///
 /// use std::ops::BitAnd;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl BitAnd for Foo {
@@ -531,7 +531,7 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 ///
 /// use std::ops::BitOr;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl BitOr for Foo {
@@ -580,7 +580,7 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 ///
 /// use std::ops::BitXor;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl BitXor for Foo {
@@ -629,7 +629,7 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 ///
 /// use std::ops::Shl;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Shl<Foo> for Foo {
@@ -680,7 +680,7 @@ shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 ///
 /// use std::ops::Shr;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Shr<Foo> for Foo {
@@ -739,7 +739,7 @@ pub trait Index<Sized? Index, Sized? Result> for Sized? {
 ///
 /// use std::ops::Index;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Index<Foo> for Foo {
@@ -786,7 +786,7 @@ pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
 ///
 /// use std::ops::IndexMut;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl IndexMut<Foo> for Foo {
@@ -822,7 +822,7 @@ pub trait IndexMut<Sized? Index> for Sized? {
 /// ```ignore
 /// use std::ops::Slice;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl Slice<Foo, Foo> for Foo {
@@ -871,7 +871,7 @@ pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
 /// ```ignore
 /// use std::ops::SliceMut;
 ///
-/// #[deriving(Copy)]
+/// #[derive(Copy)]
 /// struct Foo;
 ///
 /// impl SliceMut<Foo, Foo> for Foo {
@@ -911,12 +911,12 @@ pub trait SliceMut<Sized? Idx, Sized? Result> for Sized? {
 
 
 /// An unbounded range.
-#[deriving(Copy)]
+#[derive(Copy)]
 #[lang="full_range"]
 pub struct FullRange;
 
 /// A (half-open) range which is bounded at both ends.
-#[deriving(Copy)]
+#[derive(Copy)]
 #[lang="range"]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -966,7 +966,7 @@ impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
 impl<Idx: Clone + Step> ExactSizeIterator for Range<Idx> {}
 
 /// A range which is only bounded below.
-#[deriving(Copy)]
+#[derive(Copy)]
 #[lang="range_from"]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -986,7 +986,7 @@ impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
 }
 
 /// A range which is only bounded above.
-#[deriving(Copy)]
+#[derive(Copy)]
 #[lang="range_to"]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).

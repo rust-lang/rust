@@ -16,22 +16,22 @@ use c_str::ToCStr;
 use io::net::addrinfo;
 use io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 use io::{IoResult, IoError};
-use libc::{mod, c_char, c_int};
+use libc::{self, c_char, c_int};
 use c_str::CString;
 use mem;
 use num::Int;
-use ptr::{mod, null, null_mut};
-use sys::{mod, retry, c, sock_t, last_error, last_net_error, last_gai_error, close_sock,
+use ptr::{self, null, null_mut};
+use sys::{self, retry, c, sock_t, last_error, last_net_error, last_gai_error, close_sock,
           wrlen, msglen_t, os, wouldblock, set_nonblocking, timer, ms_to_timeval,
           decode_error_detailed};
 use sync::{Arc, Mutex, MutexGuard};
-use sys_common::{mod, keep_going, short_write, timeout};
+use sys_common::{self, keep_going, short_write, timeout};
 use cmp;
 use io;
 
 // FIXME: move uses of Arc and deadline tracking to std::io
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum SocketStatus {
     Readable,
     Writable,

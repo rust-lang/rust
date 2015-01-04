@@ -53,7 +53,7 @@ use std::iter::range_step;
 use syntax::ast;
 use syntax::visit;
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Svh {
     hash: String,
 }
@@ -172,7 +172,7 @@ mod svh_visitor {
     // This enum represents the different potential bits of code the
     // visitor could encounter that could affect the ABI for the crate,
     // and assigns each a distinct tag to feed into the hash computation.
-    #[deriving(Hash)]
+    #[derive(Hash)]
     enum SawAbiComponent<'a> {
 
         // FIXME (#14132): should we include (some function of)
@@ -220,7 +220,7 @@ mod svh_visitor {
     /// because the SVH is just a developer convenience; there is no
     /// guarantee of collision-freedom, hash collisions are just
     /// (hopefully) unlikely.)
-    #[deriving(Hash)]
+    #[derive(Hash)]
     pub enum SawExprComponent<'a> {
 
         SawExprLoop(Option<token::InternedString>),
@@ -299,7 +299,7 @@ mod svh_visitor {
     }
 
     /// SawStmtComponent is analogous to SawExprComponent, but for statements.
-    #[deriving(Hash)]
+    #[derive(Hash)]
     pub enum SawStmtComponent {
         SawStmtDecl,
         SawStmtExpr,

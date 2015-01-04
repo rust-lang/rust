@@ -23,7 +23,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of::*;
 use trans::type_of;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::subst::{Substs};
 use std::cmp;
 use std::c_str::ToCStr;

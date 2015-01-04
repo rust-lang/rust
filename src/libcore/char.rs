@@ -430,13 +430,13 @@ impl Char for char {
 
 /// An iterator over the characters that represent a `char`, as escaped by
 /// Rust's unicode escaping rules.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct EscapeUnicode {
     c: char,
     state: EscapeUnicodeState
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 enum EscapeUnicodeState {
     Backslash,
     Type,
@@ -490,12 +490,12 @@ impl Iterator for EscapeUnicode {
 
 /// An iterator over the characters that represent a `char`, escaped
 /// for maximum portability.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct EscapeDefault {
     state: EscapeDefaultState
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 enum EscapeDefaultState {
     Backslash(char),
     Char(char),

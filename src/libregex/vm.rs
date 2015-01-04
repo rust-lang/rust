@@ -37,7 +37,7 @@ pub use self::MatchKind::*;
 pub use self::StepState::*;
 
 use std::cmp;
-use std::cmp::Ordering::{mod, Less, Equal, Greater};
+use std::cmp::Ordering::{self, Less, Equal, Greater};
 use std::mem;
 use std::iter::repeat;
 use std::slice::SliceExt;
@@ -52,7 +52,7 @@ use unicode::regex::PERLW;
 pub type CaptureLocs = Vec<Option<uint>>;
 
 /// Indicates the type of match to be performed by the VM.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum MatchKind {
     /// Only checks if a match exists or not. Does not return location.
     Exists,
@@ -97,7 +97,7 @@ struct Nfa<'r, 't> {
 
 /// Indicates the next action to take after a single non-empty instruction
 /// is processed.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum StepState {
     /// This is returned if and only if a Match instruction is reached and
     /// we only care about the existence of a match. It instructs the VM to

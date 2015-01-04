@@ -15,7 +15,7 @@ use super::{Obligation, ObligationCause};
 use super::util;
 
 use middle::subst::Subst;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::infer::InferCtxt;
 use std::collections::HashSet;
 use std::rc::Rc;

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::ty::{BuiltinBounds};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::infer::combine::*;
 use middle::infer::{cres};

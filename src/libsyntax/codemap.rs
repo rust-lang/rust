@@ -36,13 +36,13 @@ pub trait Pos {
 
 /// A byte offset. Keep this small (currently 32-bits), as AST contains
 /// a lot of them.
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Show)]
 pub struct BytePos(pub u32);
 
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-#[deriving(Copy, PartialEq, Hash, PartialOrd, Show)]
+#[derive(Copy, PartialEq, Hash, PartialOrd, Show)]
 pub struct CharPos(pub uint);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
@@ -94,7 +94,7 @@ impl Sub for CharPos {
 /// are *absolute* positions from the beginning of the codemap, not positions
 /// relative to FileMaps. Methods on the CodeMap can be used to relate spans back
 /// to the original source.
-#[deriving(Clone, Copy, Show, Hash)]
+#[derive(Clone, Copy, Show, Hash)]
 pub struct Span {
     pub lo: BytePos,
     pub hi: BytePos,
@@ -105,7 +105,7 @@ pub struct Span {
 
 pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_id: NO_EXPANSION };
 
-#[deriving(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
@@ -188,15 +188,15 @@ pub struct FileMapAndLine { pub fm: Rc<FileMap>, pub line: uint }
 pub struct FileMapAndBytePos { pub fm: Rc<FileMap>, pub pos: BytePos }
 
 /// The syntax with which a macro was invoked.
-#[deriving(Clone, Copy, Hash, Show)]
+#[derive(Clone, Copy, Hash, Show)]
 pub enum MacroFormat {
-    /// e.g. #[deriving(...)] <item>
+    /// e.g. #[derive(...)] <item>
     MacroAttribute,
     /// e.g. `format!()`
     MacroBang
 }
 
-#[deriving(Clone, Hash, Show)]
+#[derive(Clone, Hash, Show)]
 pub struct NameAndSpan {
     /// The name of the macro that was invoked to create the thing
     /// with this Span.
@@ -210,7 +210,7 @@ pub struct NameAndSpan {
 }
 
 /// Extra information for tracking macro expansion of spans
-#[deriving(Hash, Show)]
+#[derive(Hash, Show)]
 pub struct ExpnInfo {
     /// The location of the actual macro invocation, e.g. `let x =
     /// foo!();`
@@ -231,7 +231,7 @@ pub struct ExpnInfo {
     pub callee: NameAndSpan
 }
 
-#[deriving(PartialEq, Eq, Clone, Show, Hash, RustcEncodable, RustcDecodable, Copy)]
+#[derive(PartialEq, Eq, Clone, Show, Hash, RustcEncodable, RustcDecodable, Copy)]
 pub struct ExpnId(u32);
 
 pub const NO_EXPANSION: ExpnId = ExpnId(-1);
@@ -255,7 +255,7 @@ pub struct FileLines {
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct MultiByteChar {
     /// The absolute offset of the character in the CodeMap
     pub pos: BytePos,

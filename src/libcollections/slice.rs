@@ -90,15 +90,15 @@
 use alloc::boxed::Box;
 use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
 use core::clone::Clone;
-use core::cmp::Ordering::{mod, Greater, Less};
-use core::cmp::{mod, Ord, PartialEq};
+use core::cmp::Ordering::{self, Greater, Less};
+use core::cmp::{self, Ord, PartialEq};
 use core::iter::{Iterator, IteratorExt, IteratorCloneExt};
 use core::iter::{range, range_step, MultiplicativeIterator};
 use core::kinds::Sized;
 use core::mem::size_of;
 use core::mem;
 use core::ops::{FnMut, SliceMut};
-use core::option::Option::{mod, Some, None};
+use core::option::Option::{self, Some, None};
 use core::ptr::PtrExt;
 use core::ptr;
 use core::result::Result;
@@ -1083,7 +1083,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
 #[experimental]
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct ElementSwaps {
     sdir: Vec<SizeDirection>,
     /// If `true`, emit the last swap that returns the sequence to initial
@@ -1130,11 +1130,11 @@ impl<T: Clone> ToOwned<Vec<T>> for [T] {
 // Iterators
 ////////////////////////////////////////////////////////////////////////////////
 
-#[deriving(Copy, Clone)]
+#[derive(Copy, Clone)]
 enum Direction { Pos, Neg }
 
 /// An `Index` and `Direction` together.
-#[deriving(Copy, Clone)]
+#[derive(Copy, Clone)]
 struct SizeDirection {
     size: uint,
     dir: Direction,
@@ -2709,7 +2709,7 @@ mod tests {
         assert!(values == [2, 3, 5, 6, 7]);
     }
 
-    #[deriving(Clone, PartialEq)]
+    #[derive(Clone, PartialEq)]
     struct Foo;
 
     #[test]

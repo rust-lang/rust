@@ -28,7 +28,7 @@ use term;
 /// maximum number of lines we will print for each error; arbitrary.
 static MAX_LINES: uint = 6u;
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum RenderSpan {
     /// A FullSpan renders with both with an initial line for the
     /// message, prefixed by file:linenum, followed by a summary of
@@ -54,7 +54,7 @@ impl RenderSpan {
     }
 }
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum ColorConfig {
     Auto,
     Always,
@@ -71,12 +71,12 @@ pub trait Emitter {
 /// This structure is used to signify that a task has panicked with a fatal error
 /// from the diagnostics. You can use this with the `Any` trait to figure out
 /// how a rustc task died (if so desired).
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct FatalError;
 
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct ExplicitBug;
 
 /// A span-handler is like a handler but also
@@ -222,7 +222,7 @@ pub fn mk_handler(e: Box<Emitter + Send>) -> Handler {
     }
 }
 
-#[deriving(Copy, PartialEq, Clone)]
+#[derive(Copy, PartialEq, Clone)]
 pub enum Level {
     Bug,
     Fatal,

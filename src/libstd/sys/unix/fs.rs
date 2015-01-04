@@ -17,7 +17,7 @@ use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
 use io::{IoResult, FileStat, SeekStyle};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 use io;
-use libc::{mod, c_int, c_void};
+use libc::{self, c_int, c_void};
 use mem;
 use sys::retry;
 use sys_common::{keep_going, eof, mkerr_libc};

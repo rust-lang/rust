@@ -10,7 +10,7 @@
 
 //! An iterator over the type substructure.
 
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use std::iter::Iterator;
 
 pub struct TypeWalker<'tcx> {

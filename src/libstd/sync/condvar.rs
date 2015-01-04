@@ -10,8 +10,8 @@
 
 use prelude::v1::*;
 
-use sync::atomic::{mod, AtomicUint};
-use sync::poison::{mod, LockResult};
+use sync::atomic::{self, AtomicUint};
+use sync::poison::{self, LockResult};
 use sys_common::condvar as sys;
 use sys_common::mutex as sys_mutex;
 use time::Duration;

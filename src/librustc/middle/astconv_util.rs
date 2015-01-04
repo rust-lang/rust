@@ -15,7 +15,7 @@
  */
 
 use middle::def;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use syntax::ast;
 use util::ppaux::Repr;
 

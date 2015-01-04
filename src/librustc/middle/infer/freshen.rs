@@ -30,11 +30,11 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty_fold;
 use middle::ty_fold::TypeFoldable;
 use middle::ty_fold::TypeFolder;
-use std::collections::hash_map::{mod, Entry};
+use std::collections::hash_map::{self, Entry};
 
 use super::InferCtxt;
 use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;

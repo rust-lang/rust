@@ -43,8 +43,8 @@ use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::subst;
 use middle::weak_lang_items;
 use middle::subst::{Subst, Substs};
-use middle::ty::{mod, Ty, UnboxedClosureTyper};
-use session::config::{mod, NoDebugInfo, FullDebugInfo};
+use middle::ty::{self, Ty, UnboxedClosureTyper};
+use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use trans::_match;
 use trans::adt;
@@ -547,7 +547,7 @@ pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
 
 
 // Used only for creating scalar comparison glue.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
 pub fn compare_scalar_types<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
@@ -1784,7 +1784,7 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
     }
 }
 
-#[deriving(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum IsUnboxedClosureFlag {
     NotUnboxedClosure,
     IsUnboxedClosure,
@@ -2206,7 +2206,7 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
 
 
 /// Enum describing the origin of an LLVM `Value`, for linkage purposes.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum ValueOrigin {
     /// The LLVM `Value` is in this context because the corresponding item was
     /// assigned to the current compilation unit.

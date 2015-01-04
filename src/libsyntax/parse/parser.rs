@@ -65,8 +65,8 @@ use ast::{ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast;
-use ast_util::{mod, as_prec, ident_to_path, operator_prec};
-use codemap::{mod, Span, BytePos, Spanned, spanned, mk_sp, DUMMY_SP};
+use ast_util::{self, as_prec, ident_to_path, operator_prec};
+use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, DUMMY_SP};
 use diagnostic;
 use ext::tt::macro_parser;
 use parse;
@@ -75,7 +75,7 @@ use parse::classify;
 use parse::common::{SeqSep, seq_sep_none, seq_sep_trailing_allowed};
 use parse::lexer::{Reader, TokenAndSpan};
 use parse::obsolete::*;
-use parse::token::{mod, MatchNt, SubstNt, InternedString};
+use parse::token::{self, MatchNt, SubstNt, InternedString};
 use parse::token::{keywords, special_idents};
 use parse::{new_sub_parser_from_file, ParseSess};
 use print::pprust;
@@ -106,7 +106,7 @@ type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
 
 /// How to parse a path. There are four different kinds of paths, all of which
 /// are parsed somewhat differently.
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum PathParsingMode {
     /// A path with no type parameters; e.g. `foo::bar::Baz`
     NoTypesAllowed,
@@ -119,7 +119,7 @@ pub enum PathParsingMode {
 }
 
 /// How to parse a bound, whether to allow bound modifiers such as `?`.
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum BoundParsingMode {
     Bare,
     Modified,
@@ -318,7 +318,7 @@ pub struct Parser<'a> {
     pub expected_tokens: Vec<TokenType>,
 }
 
-#[deriving(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum TokenType {
     Token(token::Token),
     Operator,

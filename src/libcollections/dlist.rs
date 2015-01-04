@@ -26,7 +26,7 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::hash::{Writer, Hash};
-use core::iter::{mod, FromIterator};
+use core::iter::{self, FromIterator};
 use core::mem;
 use core::ptr;
 
@@ -84,7 +84,7 @@ pub struct IterMut<'a, T:'a> {
 }
 
 /// An iterator over mutable references to the items of a `DList`.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct IntoIter<T> {
     list: DList<T>

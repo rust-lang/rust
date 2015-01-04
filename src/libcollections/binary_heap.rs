@@ -30,7 +30,7 @@
 //! use std::collections::BinaryHeap;
 //! use std::uint;
 //!
-//! #[deriving(Copy, Eq, PartialEq)]
+//! #[derive(Copy, Eq, PartialEq)]
 //! struct State {
 //!     cost: uint,
 //!     position: uint,
@@ -157,12 +157,12 @@ use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
 use slice;
-use vec::{mod, Vec};
+use vec::{self, Vec};
 
 /// A priority queue implemented with a binary heap.
 ///
 /// This will be a max-heap.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct BinaryHeap<T> {
     data: Vec<T>,
@@ -565,7 +565,7 @@ pub struct Iter <'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> {
         Iter { iter: self.iter.clone() }

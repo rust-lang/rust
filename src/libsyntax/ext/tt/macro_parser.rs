@@ -103,7 +103,7 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 // To avoid costly uniqueness checks, we require that `MatchSeq` always has
 // a nonempty body.
 
-#[deriving(Clone)]
+#[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
     Tt(ast::TokenTree),
     TtSeq(Rc<Vec<ast::TokenTree>>),
@@ -126,13 +126,13 @@ impl TokenTreeOrTokenTreeVec {
 }
 
 /// an unzipping of `TokenTree`s
-#[deriving(Clone)]
+#[derive(Clone)]
 struct MatcherTtFrame {
     elts: TokenTreeOrTokenTreeVec,
     idx: uint,
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct MatcherPos {
     stack: Vec<MatcherTtFrame>,
     top_elts: TokenTreeOrTokenTreeVec,

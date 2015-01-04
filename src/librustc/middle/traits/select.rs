@@ -33,7 +33,7 @@ use super::{util};
 use middle::fast_reject;
 use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
-use middle::ty::{mod, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
+use middle::ty::{self, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
@@ -83,7 +83,7 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     previous: Option<&'prev TraitObligationStack<'prev, 'tcx>>
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct SelectionCache<'tcx> {
     hashmap: RefCell<HashMap<Rc<ty::TraitRef<'tcx>>,
                              SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
@@ -95,7 +95,7 @@ pub enum MethodMatchResult {
     MethodDidNotMatch,
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum MethodMatchedData {
     // In the case of a precise match, we don't really need to store
     // how the match was found. So don't.
@@ -130,7 +130,7 @@ pub enum MethodMatchedData {
 /// matching where clause. Part of the reason for this is that where
 /// clauses can give additional information (like, the types of output
 /// parameters) that would have to be inferred from the impl.
-#[deriving(PartialEq,Eq,Show,Clone)]
+#[derive(PartialEq,Eq,Show,Clone)]
 enum SelectionCandidate<'tcx> {
     BuiltinCandidate(ty::BuiltinBound),
     ParamCandidate(ty::PolyTraitRef<'tcx>),
@@ -171,7 +171,7 @@ enum BuiltinBoundConditions<'tcx> {
     AmbiguousBuiltin
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 enum EvaluationResult<'tcx> {
     EvaluatedToOk,
     EvaluatedToAmbig,

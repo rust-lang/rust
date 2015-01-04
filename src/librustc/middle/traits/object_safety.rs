@@ -20,9 +20,9 @@
 use super::supertraits;
 use super::elaborate_predicates;
 
-use middle::subst::{mod, SelfSpace};
+use middle::subst::{self, SelfSpace};
 use middle::traits;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use std::rc::Rc;
 use syntax::ast;
 use util::ppaux::Repr;
@@ -36,7 +36,7 @@ pub enum ObjectSafetyViolation<'tcx> {
 }
 
 /// Reasons a method might not be object-safe.
-#[deriving(Copy,Clone,Show)]
+#[derive(Copy,Clone,Show)]
 pub enum MethodViolationCode {
     /// e.g., `fn(self)`
     ByValueSelf,

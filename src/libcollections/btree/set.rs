@@ -14,7 +14,7 @@
 use core::prelude::*;
 
 use core::borrow::BorrowFrom;
-use core::cmp::Ordering::{mod, Less, Greater, Equal};
+use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
 use core::fmt::Show;
 use core::fmt;
@@ -30,7 +30,7 @@ use btree_map::{BTreeMap, Keys};
 ///
 /// See BTreeMap's documentation for a detailed discussion of this collection's performance
 /// benefits and drawbacks.
-#[deriving(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[stable]
 pub struct BTreeSet<T>{
     map: BTreeMap<T, ()>,

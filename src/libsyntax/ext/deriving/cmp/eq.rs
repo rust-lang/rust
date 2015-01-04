@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, Item, Expr, mod};
+use ast::{MetaItem, Item, Expr, self};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;

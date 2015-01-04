@@ -15,7 +15,7 @@ use prelude::v1::*;
 use cmp;
 use fmt;
 use intrinsics;
-use libc::{mod, uintptr_t};
+use libc::{self, uintptr_t};
 use os;
 use slice;
 use str;

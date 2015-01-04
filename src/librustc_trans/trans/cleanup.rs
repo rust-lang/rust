@@ -27,7 +27,7 @@ use trans::glue;
 // Temporary due to slicing syntax hacks (KILLME)
 //use middle::region;
 use trans::type_::Type;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use std::fmt;
 use syntax::ast;
 use util::ppaux::Repr;
@@ -51,7 +51,7 @@ pub struct CleanupScope<'blk, 'tcx: 'blk> {
     cached_landing_pad: Option<BasicBlockRef>,
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub struct CustomScopeIndex {
     index: uint
 }
@@ -82,14 +82,14 @@ impl<'blk, 'tcx: 'blk> fmt::Show for CleanupScopeKind<'blk, 'tcx> {
     }
 }
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum EarlyExitLabel {
     UnwindExit,
     ReturnExit,
     LoopExit(ast::NodeId, uint)
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct CachedEarlyExit {
     label: EarlyExitLabel,
     cleanup_block: BasicBlockRef,
@@ -107,7 +107,7 @@ pub trait Cleanup<'tcx> {
 
 pub type CleanupObj<'tcx> = Box<Cleanup<'tcx>+'tcx>;
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum ScopeId {
     AstScope(ast::NodeId),
     CustomScope(CustomScopeIndex)
@@ -871,7 +871,7 @@ impl EarlyExitLabel {
 ///////////////////////////////////////////////////////////////////////////
 // Cleanup types
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct DropValue<'tcx> {
     is_immediate: bool,
     must_unwind: bool,
@@ -909,12 +909,12 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     }
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum Heap {
     HeapExchange
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct FreeValue<'tcx> {
     ptr: ValueRef,
     heap: Heap,
@@ -948,7 +948,7 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct FreeSlice {
     ptr: ValueRef,
     size: ValueRef,
@@ -983,7 +983,7 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct LifetimeEnd {
     ptr: ValueRef,
 }

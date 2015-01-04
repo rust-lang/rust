@@ -10,7 +10,7 @@
 
 use cell::UnsafeCell;
 use libc;
-use sys::mutex::{mod, Mutex};
+use sys::mutex::{self, Mutex};
 use sys::sync as ffi;
 use time::Duration;
 

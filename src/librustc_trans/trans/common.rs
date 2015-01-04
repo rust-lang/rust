@@ -24,7 +24,7 @@ use middle::infer;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::region;
-use middle::subst::{mod, Subst, Substs};
+use middle::subst::{self, Subst, Substs};
 use trans::base;
 use trans::build;
 use trans::cleanup;
@@ -35,7 +35,7 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::traits;
-use middle::ty::{mod, HasProjectionTypes, Ty};
+use middle::ty::{self, HasProjectionTypes, Ty};
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use util::ppaux::Repr;
@@ -220,7 +220,7 @@ pub fn gensym_name(name: &str) -> PathElem {
     PathName(token::gensym(format!("{}:{}", name, num)[]))
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct tydesc_info<'tcx> {
     pub ty: Ty<'tcx>,
     pub tydesc: ValueRef,
@@ -255,7 +255,7 @@ pub struct tydesc_info<'tcx> {
  *
  */
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct NodeInfo {
     pub id: ast::NodeId,
     pub span: Span,
@@ -1086,7 +1086,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum ExprOrMethodCall {
     // Type parameters for a path like `None::<int>`
     ExprId(ast::NodeId),

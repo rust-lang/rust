@@ -92,7 +92,7 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
     }
 }
 
-#[deriving(Clone, PartialEq, Hash, PartialOrd)]
+#[derive(Clone, PartialEq, Hash, PartialOrd)]
 pub struct RcStr {
     string: Rc<String>,
 }

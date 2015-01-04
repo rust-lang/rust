@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The compiler code necessary to implement the `#[deriving(Encodable)]`
+//! The compiler code necessary to implement the `#[derive(Encodable)]`
 //! (and `Decodable`, in decodable.rs) extension.  The idea here is that
-//! type-defining items may be tagged with `#[deriving(Encodable, Decodable)]`.
+//! type-defining items may be tagged with `#[derive(Encodable, Decodable)]`.
 //!
 //! For example, a type like:
 //!
 //! ```ignore
-//! #[deriving(Encodable, Decodable)]
+//! #[derive(Encodable, Decodable)]
 //! struct Node { id: uint }
 //! ```
 //!
@@ -49,7 +49,7 @@
 //! references other non-built-in types.  A type definition like:
 //!
 //! ```ignore
-//! #[deriving(Encodable, Decodable)]
+//! #[derive(Encodable, Decodable)]
 //! struct Spanned<T> { node: T, span: Span }
 //! ```
 //!

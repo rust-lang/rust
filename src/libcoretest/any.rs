@@ -11,7 +11,7 @@ use core::any::*;
 use test::Bencher;
 use test;
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 struct Test;
 
 static TEST: &'static str = "Test";

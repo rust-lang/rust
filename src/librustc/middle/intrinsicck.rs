@@ -12,7 +12,7 @@ use metadata::csearch;
 use middle::def::DefFn;
 use middle::subst::{Subst, Substs, EnumeratedItems};
 use middle::ty::{TransmuteRestriction, ctxt, ty_bare_fn};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux::Repr;
 
 use syntax::abi::RustIntrinsic;

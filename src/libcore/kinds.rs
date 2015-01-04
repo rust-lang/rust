@@ -132,7 +132,7 @@ pub mod marker {
     /// (for example, `S<&'static int>` is a subtype of `S<&'a int>`
     /// for some lifetime `'a`, but not the other way around).
     #[lang="covariant_type"]
-    #[deriving(PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
     pub struct CovariantType<Sized? T>;
 
     impl<Sized? T> Copy for CovariantType<T> {}
@@ -180,7 +180,7 @@ pub mod marker {
     /// function requires arguments of type `T`, it must also accept
     /// arguments of type `U`, hence such a conversion is safe.
     #[lang="contravariant_type"]
-    #[deriving(PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
     pub struct ContravariantType<Sized? T>;
 
     impl<Sized? T> Copy for ContravariantType<T> {}
@@ -210,7 +210,7 @@ pub mod marker {
     /// never written, but in fact `Cell` uses unsafe code to achieve
     /// interior mutability.
     #[lang="invariant_type"]
-    #[deriving(PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(PartialEq, Eq, PartialOrd, Ord)]
     pub struct InvariantType<Sized? T>;
 
     impl<Sized? T> Copy for InvariantType<T> {}
@@ -235,7 +235,7 @@ pub mod marker {
     /// For more information about variance, refer to this Wikipedia
     /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
     #[lang="covariant_lifetime"]
-    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct CovariantLifetime<'a>;
 
     /// As `ContravariantType`, but for lifetime parameters. Using
@@ -251,7 +251,7 @@ pub mod marker {
     /// For more information about variance, refer to this Wikipedia
     /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
     #[lang="contravariant_lifetime"]
-    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct ContravariantLifetime<'a>;
 
     /// As `InvariantType`, but for lifetime parameters. Using
@@ -262,7 +262,7 @@ pub mod marker {
     /// and this pointer is itself stored in an inherently mutable
     /// location (such as a `Cell`).
     #[lang="invariant_lifetime"]
-    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct InvariantLifetime<'a>;
 
     /// A type which is considered "not sendable", meaning that it cannot
@@ -270,14 +270,14 @@ pub mod marker {
     /// typically embedded in other types, such as `Gc`, to ensure that
     /// their instances remain thread-local.
     #[lang="no_send_bound"]
-    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct NoSend;
 
     /// A type which is considered "not POD", meaning that it is not
     /// implicitly copyable. This is typically embedded in other types to
     /// ensure that they are never copied, even if they lack a destructor.
     #[lang="no_copy_bound"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
     #[allow(missing_copy_implementations)]
     pub struct NoCopy;
 
@@ -285,13 +285,13 @@ pub mod marker {
     /// its contents are not threadsafe, hence they cannot be
     /// shared between tasks.
     #[lang="no_sync_bound"]
-    #[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct NoSync;
 
     /// A type which is considered managed by the GC. This is typically
     /// embedded in other types.
     #[lang="managed_bound"]
-    #[deriving(Clone, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
     #[allow(missing_copy_implementations)]
     pub struct Managed;
 }

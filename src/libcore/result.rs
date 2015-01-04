@@ -30,7 +30,7 @@
 //! defined and used like so:
 //!
 //! ```
-//! #[deriving(Show)]
+//! #[derive(Show)]
 //! enum Version { Version1, Version2 }
 //!
 //! fn parse_version(header: &[u8]) -> Result<Version, &'static str> {
@@ -236,14 +236,14 @@ use clone::Clone;
 use fmt::Show;
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
 use ops::{FnMut, FnOnce};
-use option::Option::{mod, None, Some};
+use option::Option::{self, None, Some};
 use slice::AsSlice;
 use slice;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
 #[must_use]
 #[stable]
 pub enum Result<T, E> {

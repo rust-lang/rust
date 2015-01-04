@@ -196,7 +196,7 @@ use arena::Arena;
 use middle::resolve_lifetime as rl;
 use middle::subst;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use std::fmt;
 use std::rc::Rc;
 use std::iter::repeat;
@@ -230,10 +230,10 @@ pub fn infer_variance(tcx: &ty::ctxt) {
 
 type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 struct InferredIndex(uint);
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum VarianceTerm<'a> {
     ConstantTerm(ty::Variance),
     TransformTerm(VarianceTermPtr<'a>, VarianceTermPtr<'a>),
@@ -266,7 +266,7 @@ struct TermsContext<'a, 'tcx: 'a> {
     inferred_infos: Vec<InferredInfo<'a>> ,
 }
 
-#[deriving(Copy, Show, PartialEq)]
+#[derive(Copy, Show, PartialEq)]
 enum ParamKind {
     TypeParam,
     RegionParam
@@ -423,7 +423,7 @@ struct ConstraintContext<'a, 'tcx: 'a> {
 
 /// Declares that the variable `decl_id` appears in a location with
 /// variance `variance`.
-#[deriving(Copy)]
+#[derive(Copy)]
 struct Constraint<'a> {
     inferred: InferredIndex,
     variance: &'a VarianceTerm<'a>,

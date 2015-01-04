@@ -93,7 +93,7 @@ use middle::def;
 use middle::infer;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use session::config;
 use util::common::time;
 use util::ppaux::Repr;

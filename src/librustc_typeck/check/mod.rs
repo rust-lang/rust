@@ -81,20 +81,20 @@ pub use self::Expectation::*;
 use self::IsBinopAssignment::*;
 use self::TupleArgumentsFlag::*;
 
-use astconv::{mod, ast_region_to_region, ast_ty_to_ty, AstConv};
+use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv};
 use check::_match::pat_ctxt;
 use middle::{const_eval, def};
 use middle::infer;
 use middle::lang_items::IteratorItem;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
-use middle::pat_util::{mod, pat_id_map};
+use middle::pat_util::{self, pat_id_map};
 use middle::region::CodeExtent;
-use middle::subst::{mod, Subst, Substs, VecPerParamSpace, ParamSpace};
+use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits;
 use middle::ty::{FnSig, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
-use middle::ty::{mod, HasProjectionTypes, RegionEscape, Ty};
+use middle::ty::{self, HasProjectionTypes, RegionEscape, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
@@ -105,22 +105,22 @@ use TypeAndSubsts;
 use middle::lang_items::TypeIdLangItem;
 use lint;
 use util::common::{block_query, indenter, loop_query};
-use util::ppaux::{mod, UserString, Repr};
+use util::ppaux::{self, UserString, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 
 use std::cell::{Cell, Ref, RefCell};
 use std::mem::replace;
 use std::rc::Rc;
 use std::iter::repeat;
-use syntax::{mod, abi, attr};
-use syntax::ast::{mod, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
-use syntax::ast_util::{mod, local_def, PostExpansionMethod};
-use syntax::codemap::{mod, Span};
+use syntax::{self, abi, attr};
+use syntax::ast::{self, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
+use syntax::ast_util::{self, local_def, PostExpansionMethod};
+use syntax::codemap::{self, Span};
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::visit::{mod, Visitor};
+use syntax::visit::{self, Visitor};
 
 mod assoc;
 pub mod _match;
@@ -170,7 +170,7 @@ pub struct Inherited<'a, 'tcx: 'a> {
 
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
-#[deriving(Copy)]
+#[derive(Copy)]
 enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
@@ -221,7 +221,7 @@ impl<'tcx> Expectation<'tcx> {
     }
 }
 
-#[deriving(Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct UnsafetyState {
     pub def: ast::NodeId,
     pub unsafety: ast::Unsafety,
@@ -257,13 +257,13 @@ impl UnsafetyState {
 /// Whether `check_binop` is part of an assignment or not.
 /// Used to know whether we allow user overloads and to print
 /// better messages on error.
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum IsBinopAssignment{
     SimpleBinop,
     BinopAssignment,
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct FnCtxt<'a, 'tcx: 'a> {
     body_id: ast::NodeId,
 
@@ -2218,7 +2218,7 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
     }
 }
 
-#[deriving(Copy, Show, PartialEq, Eq)]
+#[derive(Copy, Show, PartialEq, Eq)]
 pub enum LvaluePreference {
     PreferMutLvalue,
     NoPreference
@@ -3058,7 +3058,7 @@ pub fn lookup_tup_field_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 // Controls whether the arguments are automatically referenced. This is useful
 // for overloaded binary and unary operators.
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum AutorefArgs {
     Yes,
     No,
@@ -3080,7 +3080,7 @@ pub enum AutorefArgs {
 /// Instead of:
 ///
 ///     f((1, 2));
-#[deriving(Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 enum TupleArgumentsFlag {
     DontTupleArguments,
     TupleArguments,

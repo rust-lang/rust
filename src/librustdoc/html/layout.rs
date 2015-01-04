@@ -13,7 +13,7 @@ use std::io;
 
 use externalfiles::ExternalHtml;
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Layout {
     pub logo: String,
     pub favicon: String,

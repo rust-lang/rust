@@ -14,7 +14,7 @@ use std::fmt;
 use std::string::String;
 
 /// A (recursive) table of contents
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub struct Toc {
     /// The levels are strictly decreasing, i.e.
     ///
@@ -38,7 +38,7 @@ impl Toc {
     }
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub struct TocEntry {
     level: u32,
     sec_number: String,
@@ -48,7 +48,7 @@ pub struct TocEntry {
 }
 
 /// Progressive construction of a table of contents.
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub struct TocBuilder {
     top_level: Toc,
     /// The current hierarchy of parent headings, the levels are

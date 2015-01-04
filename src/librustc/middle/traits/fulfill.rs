@@ -10,7 +10,7 @@
 
 use middle::infer::{InferCtxt};
 use middle::mem_categorization::Typer;
-use middle::ty::{mod, RegionEscape, Ty};
+use middle::ty::{self, RegionEscape, Ty};
 use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::default::Default;

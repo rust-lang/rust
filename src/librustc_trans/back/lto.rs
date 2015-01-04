@@ -10,7 +10,7 @@
 
 use super::link;
 use super::write;
-use rustc::session::{mod, config};
+use rustc::session::{self, config};
 use llvm;
 use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};

@@ -10,7 +10,7 @@
 
 
 use check::FnCtxt;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::infer;
 
 use std::result::Result::{Err, Ok};

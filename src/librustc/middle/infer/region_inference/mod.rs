@@ -33,7 +33,7 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
 use std::cell::{Cell, RefCell};
-use std::cmp::Ordering::{mod, Less, Greater, Equal};
+use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::iter::repeat;
 use std::u32;
 use syntax::ast;
@@ -42,7 +42,7 @@ mod doc;
 mod graphviz;
 
 // A constraint that influences the inference process.
-#[deriving(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub enum Constraint {
     // One region variable is subregion of another
     ConstrainVarSubVar(RegionVid, RegionVid),
@@ -69,13 +69,13 @@ pub enum Verify<'tcx> {
     VerifyParamBound(ty::ParamTy, SubregionOrigin<'tcx>, Region, Vec<Region>),
 }
 
-#[deriving(Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, PartialEq, Eq, Hash)]
 pub struct TwoRegions {
     a: Region,
     b: Region,
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum UndoLogEntry {
     OpenSnapshot,
     CommitedSnapshot,
@@ -86,12 +86,12 @@ pub enum UndoLogEntry {
     AddCombination(CombineMapType, TwoRegions)
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum CombineMapType {
     Lub, Glb
 }
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub enum RegionResolutionError<'tcx> {
     /// `ConcreteFailure(o, a, b)`:
     ///
@@ -143,7 +143,7 @@ pub enum RegionResolutionError<'tcx> {
 /// ```
 /// would report an error because we expect 'a and 'b to match, and so we group
 /// 'a and 'b together inside a SameRegions struct
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct SameRegions {
     pub scope_id: ast::NodeId,
     pub regions: Vec<BoundRegion>
@@ -217,7 +217,7 @@ pub struct RegionVarBindings<'a, 'tcx: 'a> {
     values: RefCell<Option<Vec<VarValue>>>,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 #[allow(missing_copy_implementations)]
 pub struct RegionSnapshot {
     length: uint,
@@ -937,10 +937,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
 // ______________________________________________________________________
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 enum Classification { Expanding, Contracting }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum VarValue { NoValue, Value(Region), ErrorValue }
 
 struct VarData {

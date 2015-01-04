@@ -17,7 +17,7 @@
 //! `middle/typeck/infer/region_inference.rs`
 
 use session::Session;
-use middle::ty::{mod, Ty, FreeRegion};
+use middle::ty::{self, Ty, FreeRegion};
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 use util::common::can_reach;
 
@@ -36,7 +36,7 @@ use syntax::visit::{Visitor, FnKind};
 /// placate the same deriving in `ty::FreeRegion`, but we may want to
 /// actually attach a more meaningful ordering to scopes than the one
 /// generated via deriving here.
-#[deriving(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
            RustcDecodable, Show, Copy)]
 pub enum CodeExtent {
     Misc(ast::NodeId)
@@ -116,7 +116,7 @@ pub struct RegionMaps {
     terminating_scopes: RefCell<FnvHashSet<CodeExtent>>,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Context {
     var_parent: Option<ast::NodeId>,
 
