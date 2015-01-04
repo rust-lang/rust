@@ -301,6 +301,18 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         self.fcx.tcx()
     }
 
+    fn fold_binder<T>(&mut self, binder: &ty::Binder<T>) -> ty::Binder<T>
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
+    {
+        self.binding_count += 1;
+        let value = liberate_late_bound_regions(self.fcx.tcx(), self.scope, binder);
+        debug!("BoundsChecker::fold_binder: late-bound regions replaced: {}",
+               value.repr(self.tcx()));
+        let value = value.fold_with(self);
+        self.binding_count -= 1;
+        ty::Binder(value)
+    }
+
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         debug!("BoundsChecker t={}",
                t.repr(self.tcx()));
@@ -360,19 +372,6 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                 }
 
                 self.fold_substs(substs);
-            }
-            ty::ty_bare_fn(_, &ty::BareFnTy{sig: ref fn_sig, ..}) |
-            ty::ty_closure(box ty::ClosureTy{sig: ref fn_sig, ..}) => {
-                self.binding_count += 1;
-
-                let fn_sig = liberate_late_bound_regions(self.fcx.tcx(), self.scope, fn_sig);
-
-                debug!("late-bound regions replaced: {}",
-                       fn_sig.repr(self.tcx()));
-
-                self.fold_fn_sig(&fn_sig);
-
-                self.binding_count -= 1;
             }
             _ => {
                 super_fold_ty(self, t);
