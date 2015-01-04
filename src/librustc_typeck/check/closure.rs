@@ -316,7 +316,7 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                        abi::Rust,
                                        expected_sig);
     let fn_sig = fn_ty.sig.clone();
-    let fty = ty::mk_closure(tcx, fn_ty);
+    let fty = panic!("stub");
     debug!("check_expr_fn fty={}", fcx.infcx().ty_to_string(fty));
 
     fcx.write_ty(expr.id, fty);
