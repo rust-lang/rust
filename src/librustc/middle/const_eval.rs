@@ -17,7 +17,7 @@ pub use self::constness::*;
 use metadata::csearch;
 use middle::{astencode, def};
 use middle::pat_util::def_to_path;
-use middle::ty::{mod};
+use middle::ty::{self};
 use middle::astconv_util::{ast_ty_to_prim_ty};
 use util::nodemap::DefIdMap;
 

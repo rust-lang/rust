@@ -43,7 +43,7 @@ use default::Default;
 use iter::*;
 use kinds::Copy;
 use num::Int;
-use ops::{FnMut, mod};
+use ops::{FnMut, self};
 use option::Option;
 use option::Option::{None, Some};
 use result::Result;

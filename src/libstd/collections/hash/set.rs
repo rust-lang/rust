@@ -20,7 +20,7 @@ use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{Iterator, IteratorExt, IteratorCloneExt, FromIterator, Map, Chain, Extend};
 use ops::{BitOr, BitAnd, BitXor, Sub};
-use option::Option::{Some, None, mod};
+use option::Option::{Some, None, self};
 use result::Result::{Ok, Err};
 
 use super::map::{self, HashMap, Keys, INITIAL_CAPACITY};
