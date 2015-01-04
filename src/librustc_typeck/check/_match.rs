@@ -30,7 +30,9 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 
 pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
-                           pat: &ast::Pat, expected: Ty<'tcx>) {
+                           pat: &ast::Pat,
+                           expected: Ty<'tcx>)
+{
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -90,7 +92,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 }
             } else {
                 span_err!(tcx.sess, begin.span, E0029,
-                    "only char and numeric types are allowed in range");
+                          "only char and numeric types are allowed in range");
             }
 
             fcx.write_ty(pat.id, lhs_ty);
@@ -154,8 +156,9 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             check_pat_struct(pcx, pat, path, fields.as_slice(), etc, expected);
         }
         ast::PatTup(ref elements) => {
-            let element_tys: Vec<_> = range(0, elements.len()).map(|_| fcx.infcx()
-                .next_ty_var()).collect();
+            let element_tys: Vec<_> =
+                range(0, elements.len()).map(|_| fcx.infcx().next_ty_var())
+                                        .collect();
             let pat_ty = ty::mk_tup(tcx, element_tys.clone());
             fcx.write_ty(pat.id, pat_ty);
             demand::eqtype(fcx, pat.span, expected, pat_ty);
@@ -183,8 +186,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let inner_ty = fcx.infcx().next_ty_var();
 
             let mutbl =
-                ty::deref(fcx.infcx().shallow_resolve(expected), true)
-                .map_or(ast::MutImmutable, |mt| mt.mutbl);
+                ty::deref(fcx.infcx().shallow_resolve(expected), true).map(|mt| mt.mutbl)
+                                                                      .unwrap_or(ast::MutImmutable);
 
             let mt = ty::mt { ty: inner_ty, mutbl: mutbl };
             let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
@@ -217,8 +220,8 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
                     ty::mk_slice(tcx, tcx.mk_region(region), ty::mt {
                         ty: inner_ty,
-                        mutbl: ty::deref(expected_ty, true)
-                            .map_or(ast::MutImmutable, |mt| mt.mutbl)
+                        mutbl: ty::deref(expected_ty, true).map(|mt| mt.mutbl)
+                                                           .unwrap_or(ast::MutImmutable)
                     })
                 }
             };
