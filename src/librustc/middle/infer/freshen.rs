@@ -66,13 +66,13 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             None => { }
         }
 
-        match self.freshen_map.entry(key) {
+        match self.freshen_map.entry(&key) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 let index = self.freshen_count;
                 self.freshen_count += 1;
                 let t = ty::mk_infer(self.infcx.tcx, freshener(index));
-                entry.set(t);
+                entry.insert(t);
                 t
             }
         }

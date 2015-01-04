@@ -1114,8 +1114,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             None => early_error("--extern value must be of the format `foo=bar`"),
         };
 
-        match externs.entry(name.to_string()) {
-            Vacant(entry) => { entry.set(vec![location.to_string()]); },
+        match externs.entry(&name.to_string()) {
+            Vacant(entry) => { entry.insert(vec![location.to_string()]); },
             Occupied(mut entry) => { entry.get_mut().push(location.to_string()); },
         }
     }
