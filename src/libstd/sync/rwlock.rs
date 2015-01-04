@@ -91,13 +91,13 @@ unsafe impl<T> Sync for RwLock<T> {}
 /// unsafe { LOCK.destroy() } // free all resources
 /// ```
 #[unstable = "may be merged with RwLock in the future"]
-pub struct StaticRWLock {
+pub struct StaticRwLock {
     lock: sys::RWLock,
     poison: poison::Flag,
 }
 
-unsafe impl Send for StaticRWLock {}
-unsafe impl Sync for StaticRWLock {}
+unsafe impl Send for StaticRwLock {}
+unsafe impl Sync for StaticRwLock {}
 
 /// Constant initialization for a statically-initialized rwlock.
 #[unstable = "may be merged with RwLock in the future"]
@@ -238,7 +238,7 @@ struct Dummy(UnsafeCell<()>);
 unsafe impl Sync for Dummy {}
 static DUMMY: Dummy = Dummy(UnsafeCell { value: () });
 
-impl StaticRWLock {
+impl StaticRwLock {
     /// Locks this rwlock with shared read access, blocking the current thread
     /// until it can be acquired.
     ///
