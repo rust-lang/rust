@@ -208,7 +208,7 @@ impl LintStore {
 
         add_builtin_with_new!(sess,
                               TypeLimits,
-                              RawPointerDeriving,
+                              RawPointerDerive,
                               MissingDoc,
         );
 
@@ -247,6 +247,7 @@ impl LintStore {
         self.register_renamed("unknown_crate_type", "unknown_crate_types");
         self.register_renamed("variant_size_difference", "variant_size_differences");
         self.register_renamed("transmute_fat_ptr", "fat_ptr_transmutes");
+        self.register_renamed("raw_pointer_deriving", "raw_pointer_derive");
 
     }
 
