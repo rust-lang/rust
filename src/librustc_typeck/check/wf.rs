@@ -81,10 +81,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         }
     }
 
-    fn with_fcx(&mut self,
-                item: &ast::Item,
-                f: for<'fcx> |&mut CheckTypeWellFormedVisitor<'ccx, 'tcx>,
-                              &FnCtxt<'fcx, 'tcx>|) {
+    fn with_fcx<F>(&mut self, item: &ast::Item, mut f: F) where
+        F: for<'fcx> FnMut(&mut CheckTypeWellFormedVisitor<'ccx, 'tcx>, &FnCtxt<'fcx, 'tcx>),
+    {
         let ccx = self.ccx;
         let item_def_id = local_def(item.id);
         let polytype = ty::lookup_item_type(ccx.tcx, item_def_id);
@@ -100,10 +99,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
-    fn check_type_defn(&mut self,
-                       item: &ast::Item,
-                       lookup_fields: for<'fcx> |&FnCtxt<'fcx, 'tcx>|
-                                                 -> Vec<AdtVariant<'tcx>>)
+    fn check_type_defn<F>(&mut self, item: &ast::Item, mut lookup_fields: F) where
+        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>) -> Vec<AdtVariant<'tcx>>,
     {
         self.with_fcx(item, |this, fcx| {
             let variants = lookup_fields(fcx);
