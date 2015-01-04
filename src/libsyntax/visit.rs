@@ -404,14 +404,6 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
                 visitor.visit_ty(&**tuple_element_type)
             }
         }
-        TyClosure(ref function_declaration) => {
-            for argument in function_declaration.decl.inputs.iter() {
-                visitor.visit_ty(&*argument.ty)
-            }
-            walk_fn_ret_ty(visitor, &function_declaration.decl.output);
-            walk_ty_param_bounds_helper(visitor, &function_declaration.bounds);
-            walk_lifetime_decls_helper(visitor, &function_declaration.lifetimes);
-        }
         TyBareFn(ref function_declaration) => {
             for argument in function_declaration.decl.inputs.iter() {
                 visitor.visit_ty(&*argument.ty)

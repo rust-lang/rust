@@ -364,12 +364,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
-        if let ast::TyClosure(ref closure) =  t.node {
-            // this used to be blocked by a feature gate, but it should just
-            // be plain impossible right now
-            assert!(closure.onceness != ast::Once);
-        }
-
         visit::walk_ty(self, t);
     }
 
