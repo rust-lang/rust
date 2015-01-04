@@ -1452,7 +1452,6 @@ mod tests {
     use self::Taggy::*;
     use self::Taggypar::*;
     use prelude::*;
-    use core::cmp;
     use core::iter;
     use std::fmt::Show;
     use std::hash;

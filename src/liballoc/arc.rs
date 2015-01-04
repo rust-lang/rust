@@ -600,11 +600,9 @@ mod tests {
     use std::ops::Drop;
     use std::option::Option;
     use std::option::Option::{Some, None};
-    use std::str::Str;
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
     use std::task;
-    use std::kinds::Send;
     use std::vec::Vec;
     use super::{Arc, Weak, weak_count, strong_count};
     use std::sync::Mutex;
