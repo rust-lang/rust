@@ -57,11 +57,6 @@ fn constrain_region_for_destructor_safety(rcx: &mut Rcx,
     debug!("constrain_region_for_destructor_safety region: {} :> parent_inner_region: {} (from inner_scope: {}){}",
            region, parent_inner_region, inner_scope,
            if could_have_been_re_function { " could_have_been_re_function" } else { "" });
-    rcx.tcx().sess.span_note(
-        span,
-        format!("constrain_region_for_destructor_safety \
-                 region: {} sub/inner_scope: {} sup/parent_inner_region: {}",
-                region, inner_scope, parent_inner_region).as_slice());
 
     rcx.mk_subr(infer::SafeDestructor(span),
                 parent_inner_region,
