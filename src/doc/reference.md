@@ -1478,11 +1478,11 @@ Constants should in general be preferred over statics, unless large amounts of
 data are being stored, or single-address and mutability properties are required.
 
 ```
-use std::sync::atomic;
+use std::sync::atomic::{AtomicUint, Ordering, ATOMIC_UINT_INIT};;
 
 // Note that ATOMIC_UINT_INIT is a *const*, but it may be used to initialize a
 // static. This static can be modified, so it is not placed in read-only memory.
-static COUNTER: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
+static COUNTER: AtomicUint = ATOMIC_UINT_INIT;
 
 // This table is a candidate to be placed in read-only memory.
 static TABLE: &'static [uint] = &[1, 2, 3, /* ... */];
@@ -1490,7 +1490,7 @@ static TABLE: &'static [uint] = &[1, 2, 3, /* ... */];
 for slot in TABLE.iter() {
     println!("{}", slot);
 }
-COUNTER.fetch_add(1, atomic::SeqCst);
+COUNTER.fetch_add(1, Ordering::SeqCst);
 ```
 
 #### Mutable statics

@@ -685,12 +685,6 @@ impl Bitv {
         ).collect()
     }
 
-    /// Deprecated: Use `iter().collect()`.
-    #[deprecated = "Use `iter().collect()`"]
-    pub fn to_bools(&self) -> Vec<bool> {
-        self.iter().collect()
-    }
-
     /// Compares a `Bitv` to a slice of `bool`s.
     /// Both the `Bitv` and slice must have the same length.
     ///
@@ -933,18 +927,6 @@ impl Bitv {
     pub fn clear(&mut self) {
         for w in self.storage.iter_mut() { *w = 0u32; }
     }
-}
-
-/// Deprecated: Now a static method on Bitv.
-#[deprecated = "Now a static method on Bitv"]
-pub fn from_bytes(bytes: &[u8]) -> Bitv {
-    Bitv::from_bytes(bytes)
-}
-
-/// Deprecated: Now a static method on Bitv.
-#[deprecated = "Now a static method on Bitv"]
-pub fn from_fn<F>(len: uint, f: F) -> Bitv where F: FnMut(uint) -> bool {
-    Bitv::from_fn(len, f)
 }
 
 #[stable]
@@ -1907,14 +1889,9 @@ impl<'a> Iterator for SymmetricDifference<'a> {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use core::iter::range_step;
     use core::u32;
-    use std::rand;
-    use std::rand::Rng;
-    use test::{Bencher, black_box};
 
-    use super::{Bitv, BitvSet, from_fn, from_bytes};
-    use bitv;
+    use super::Bitv;
 
     #[test]
     fn test_to_str() {
@@ -1928,7 +1905,7 @@ mod tests {
     #[test]
     fn test_0_elements() {
         let act = Bitv::new();
-        let exp = Vec::from_elem(0u, false);
+        let exp = Vec::new();
         assert!(act.eq_vec(exp.as_slice()));
         assert!(act.none() && act.all());
     }
@@ -2318,7 +2295,7 @@ mod tests {
 
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), bools);
 
-        let long = Vec::from_fn(10000, |i| i % 2 == 0);
+        let long = range(0, 10000).map(|i| i % 2 == 0).collect::<Vec<_>>();
         let bitv: Bitv = long.iter().map(|n| *n).collect();
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), long)
     }

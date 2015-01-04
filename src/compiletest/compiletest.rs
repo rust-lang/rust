@@ -22,7 +22,7 @@ extern crate regex;
 use std::os;
 use std::io;
 use std::io::fs;
-use std::str::{FromStr, from_str};
+use std::str::FromStr;
 use std::thunk::Thunk;
 use getopts::{optopt, optflag, reqopt};
 use common::Config;

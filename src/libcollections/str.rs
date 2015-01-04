@@ -51,20 +51,14 @@
 
 #![doc(primitive = "str")]
 
-use self::MaybeOwned::*;
 use self::RecompositionState::*;
 use self::DecompositionType::*;
 
-use core::borrow::{BorrowFrom, Cow, ToOwned};
+use core::borrow::{BorrowFrom, ToOwned};
 use core::char::Char;
 use core::clone::Clone;
-use core::cmp::{Equiv, PartialEq, Eq, PartialOrd, Ord, Ordering};
-use core::cmp;
-use core::default::Default;
-use core::fmt;
-use core::hash;
 use core::iter::AdditiveIterator;
-use core::iter::{self, range, Iterator, IteratorExt};
+use core::iter::{range, Iterator, IteratorExt};
 use core::kinds::Sized;
 use core::ops;
 use core::option::Option::{self, Some, None};
@@ -79,16 +73,13 @@ use unicode;
 use vec::Vec;
 use slice::SliceConcatExt;
 
-pub use core::str::{from_utf8, CharEq, Chars, CharIndices};
-pub use core::str::{Bytes, CharSplits, is_utf8};
-pub use core::str::{CharSplitsN, Lines, LinesAny, MatchIndices, StrSplits, SplitStr};
-pub use core::str::{CharRange};
-pub use core::str::{FromStr, from_str, Utf8Error};
-pub use core::str::Str;
-pub use core::str::{from_utf8_unchecked, from_c_str};
-pub use unicode::str::{Words, Graphemes, GraphemeIndices};
+pub use core::str::{FromStr, Utf8Error, Str};
+pub use core::str::{Lines, LinesAny, MatchIndices, SplitStr, CharRange};
 pub use core::str::{Split, SplitTerminator};
 pub use core::str::{SplitN, RSplitN};
+pub use core::str::{from_utf8, CharEq, Chars, CharIndices, Bytes};
+pub use core::str::{from_utf8_unchecked, from_c_str};
+pub use unicode::str::{Words, Graphemes, GraphemeIndices};
 
 /*
 Section: Creating a string
@@ -371,32 +362,6 @@ impl<'a> Iterator for Utf16Units<'a> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.encoder.size_hint() }
 }
 
-/// Replaces all occurrences of one string with another.
-///
-/// # Arguments
-///
-/// * s - The string containing substrings to replace
-/// * from - The string to replace
-/// * to - The replacement string
-///
-/// # Return value
-///
-/// The original string with all occurrences of `from` replaced with `to`.
-///
-/// # Examples
-///
-/// ```rust
-/// # #![allow(deprecated)]
-/// use std::str;
-/// let string = "orange";
-/// let new_string = str::replace(string, "or", "str");
-/// assert_eq!(new_string.as_slice(), "strange");
-/// ```
-#[deprecated = "call the inherent method instead"]
-pub fn replace(s: &str, from: &str, to: &str) -> String {
-    s.replace(from, to)
-}
-
 /*
 Section: Misc
 */
@@ -413,215 +378,6 @@ macro_rules! utf8_acc_cont_byte {
     ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
 }
 
-/*
-Section: MaybeOwned
-*/
-
-/// A string type that can hold either a `String` or a `&str`.
-/// This can be useful as an optimization when an allocation is sometimes
-/// needed but not always.
-#[deprecated = "use std::string::CowString"]
-pub enum MaybeOwned<'a> {
-    /// A borrowed string.
-    Slice(&'a str),
-    /// An owned string.
-    Owned(String)
-}
-
-/// A specialization of `CowString` to be sendable.
-#[deprecated = "use std::string::CowString<'static>"]
-pub type SendStr = CowString<'static>;
-
-#[deprecated = "use std::string::CowString"]
-impl<'a> MaybeOwned<'a> {
-    /// Returns `true` if this `MaybeOwned` wraps an owned string.
-    ///
-    /// # Examples
-    ///
-    /// ``` ignore
-    /// let string = String::from_str("orange");
-    /// let maybe_owned_string = string.into_maybe_owned();
-    /// assert_eq!(true, maybe_owned_string.is_owned());
-    /// ```
-    #[inline]
-    pub fn is_owned(&self) -> bool {
-        match *self {
-            Slice(_) => false,
-            Owned(_) => true
-        }
-    }
-
-    /// Returns `true` if this `MaybeOwned` wraps a borrowed string.
-    ///
-    /// # Examples
-    ///
-    /// ``` ignore
-    /// let string = "orange";
-    /// let maybe_owned_string = string.as_slice().into_maybe_owned();
-    /// assert_eq!(true, maybe_owned_string.is_slice());
-    /// ```
-    #[inline]
-    pub fn is_slice(&self) -> bool {
-        match *self {
-            Slice(_) => true,
-            Owned(_) => false
-        }
-    }
-
-    /// Return the number of bytes in this string.
-    #[inline]
-    #[allow(deprecated)]
-    pub fn len(&self) -> uint { self.as_slice().len() }
-
-    /// Returns true if the string contains no bytes
-    #[allow(deprecated)]
-    #[inline]
-    pub fn is_empty(&self) -> bool { self.len() == 0 }
-}
-
-#[deprecated = "use std::borrow::IntoCow"]
-/// Trait for moving into a `MaybeOwned`.
-pub trait IntoMaybeOwned<'a> {
-    /// Moves `self` into a `MaybeOwned`.
-    fn into_maybe_owned(self) -> MaybeOwned<'a>;
-}
-
-#[deprecated = "use std::borrow::IntoCow"]
-#[allow(deprecated)]
-impl<'a> IntoMaybeOwned<'a> for String {
-    /// # Examples
-    ///
-    /// ``` ignore
-    /// let owned_string = String::from_str("orange");
-    /// let maybe_owned_string = owned_string.into_maybe_owned();
-    /// assert_eq!(true, maybe_owned_string.is_owned());
-    /// ```
-    #[allow(deprecated)]
-    #[inline]
-    fn into_maybe_owned(self) -> MaybeOwned<'a> {
-        Owned(self)
-    }
-}
-
-#[deprecated = "use std::borrow::IntoCow"]
-#[allow(deprecated)]
-impl<'a> IntoMaybeOwned<'a> for &'a str {
-    /// # Examples
-    ///
-    /// ``` ignore
-    /// let string = "orange";
-    /// let maybe_owned_str = string.as_slice().into_maybe_owned();
-    /// assert_eq!(false, maybe_owned_str.is_owned());
-    /// ```
-    #[allow(deprecated)]
-    #[inline]
-    fn into_maybe_owned(self) -> MaybeOwned<'a> { Slice(self) }
-}
-
-#[allow(deprecated)]
-#[deprecated = "use std::borrow::IntoCow"]
-impl<'a> IntoMaybeOwned<'a> for MaybeOwned<'a> {
-    /// # Examples
-    ///
-    /// ``` ignore
-    /// let str = "orange";
-    /// let maybe_owned_str = str.as_slice().into_maybe_owned();
-    /// let maybe_maybe_owned_str = maybe_owned_str.into_maybe_owned();
-    /// assert_eq!(false, maybe_maybe_owned_str.is_owned());
-    /// ```
-    #[inline]
-    fn into_maybe_owned(self) -> MaybeOwned<'a> { self }
-}
-
-#[deprecated = "use std::string::CowString"]
-#[allow(deprecated)]
-impl<'a> PartialEq for MaybeOwned<'a> {
-    #[inline]
-    fn eq(&self, other: &MaybeOwned) -> bool {
-        self.as_slice() == other.as_slice()
-    }
-}
-
-#[deprecated = "use std::string::CowString"]
-impl<'a> Eq for MaybeOwned<'a> {}
-
-#[deprecated = "use std::string::CowString"]
-impl<'a> PartialOrd for MaybeOwned<'a> {
-    #[inline]
-    fn partial_cmp(&self, other: &MaybeOwned) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-#[deprecated = "use std::string::CowString"]
-impl<'a> Ord for MaybeOwned<'a> {
-    #[inline]
-    #[allow(deprecated)]
-    fn cmp(&self, other: &MaybeOwned) -> Ordering {
-        self.as_slice().cmp(other.as_slice())
-    }
-}
-
-#[allow(deprecated)]
-#[deprecated = "use std::string::CowString"]
-impl<'a, S: Str> Equiv<S> for MaybeOwned<'a> {
-    #[inline]
-    fn equiv(&self, other: &S) -> bool {
-        self.as_slice() == other.as_slice()
-    }
-}
-
-#[deprecated = "use std::string::CowString"]
-#[allow(deprecated)]
-impl<'a> Str for MaybeOwned<'a> {
-    #[inline]
-    fn as_slice<'b>(&'b self) -> &'b str {
-        match *self {
-            Slice(s) => s,
-            Owned(ref s) => s.as_slice()
-        }
-    }
-}
-
-#[deprecated = "use std::string::CowString"]
-impl<'a> Clone for MaybeOwned<'a> {
-    #[allow(deprecated)]
-    #[inline]
-    fn clone(&self) -> MaybeOwned<'a> {
-        match *self {
-            Slice(s) => Slice(s),
-            Owned(ref s) => Owned(String::from_str(s.as_slice()))
-        }
-    }
-}
-
-#[deprecated = "use std::string::CowString"]
-impl<'a> Default for MaybeOwned<'a> {
-    #[allow(deprecated)]
-    #[inline]
-    fn default() -> MaybeOwned<'a> { Slice("") }
-}
-
-#[deprecated = "use std::string::CowString"]
-#[allow(deprecated)]
-impl<'a, H: hash::Writer> hash::Hash<H> for MaybeOwned<'a> {
-    #[inline]
-    fn hash(&self, hasher: &mut H) {
-        self.as_slice().hash(hasher)
-    }
-}
-
-#[deprecated = "use std::string::CowString"]
-impl<'a> fmt::Show for MaybeOwned<'a> {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Slice(ref s) => s.fmt(f),
-            Owned(ref s) => s.fmt(f)
-        }
-    }
-}
-
 #[unstable = "trait is unstable"]
 impl BorrowFrom<String> for str {
     fn borrow_from(owned: &String) -> &str { owned[] }
@@ -636,20 +392,9 @@ impl ToOwned<String> for str {
     }
 }
 
-/// Unsafe string operations.
-#[deprecated]
-pub mod raw {
-    pub use core::str::raw::{from_utf8, c_str_to_static_slice, slice_bytes};
-    pub use core::str::raw::{slice_unchecked};
-}
-
 /*
 Section: CowString
 */
-
-/// A clone-on-write string
-#[deprecated = "use std::string::CowString instead"]
-pub type CowString<'a> = Cow<'a, String, str>;
 
 /*
 Section: Trait implementations
@@ -704,46 +449,6 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
         }
         result.push_str(unsafe { self.slice_unchecked(last_end, self.len()) });
         result
-    }
-
-    /// Given a string, makes a new string with repeated copies of it.
-    #[deprecated = "use repeat(self).take(n).collect() instead"]
-    fn repeat(&self, nn: uint) -> String {
-        iter::repeat(self[]).take(nn).collect()
-    }
-
-    /// Returns the Levenshtein Distance between two strings.
-    #[deprecated = "this function will be removed"]
-    fn lev_distance(&self, t: &str) -> uint {
-        let me = self[];
-        if me.is_empty() { return t.chars().count(); }
-        if t.is_empty() { return me.chars().count(); }
-
-        let mut dcol: Vec<_> = range(0, t.len() + 1).collect();
-        let mut t_last = 0;
-
-        for (i, sc) in me.chars().enumerate() {
-
-            let mut current = i;
-            dcol[0] = current + 1;
-
-            for (j, tc) in t.chars().enumerate() {
-
-                let next = dcol[j + 1];
-
-                if sc == tc {
-                    dcol[j + 1] = current;
-                } else {
-                    dcol[j + 1] = cmp::min(current, next);
-                    dcol[j + 1] = cmp::min(dcol[j + 1], dcol[j]) + 1;
-                }
-
-                current = next;
-                t_last = j;
-            }
-        }
-
-        dcol[t_last + 1]
     }
 
     /// Returns an iterator over the string in Unicode Normalization Form D
@@ -1002,7 +707,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// assert_eq!(v, vec!["1", "", "2"]);
     /// ```
     #[unstable = "might get removed in the future in favor of a more generic split()"]
-    fn split_str<'a>(&'a self, pat: &'a str) -> StrSplits<'a> {
+    fn split_str<'a>(&'a self, pat: &'a str) -> SplitStr<'a> {
         core_str::StrExt::split_str(self[], pat)
     }
 
@@ -1036,43 +741,6 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     #[stable]
     fn lines_any(&self) -> LinesAny {
         core_str::StrExt::lines_any(self[])
-    }
-
-    /// Returns the number of Unicode code points (`char`) that a
-    /// string holds.
-    ///
-    /// This does not perform any normalization, and is `O(n)`, since
-    /// UTF-8 is a variable width encoding of code points.
-    ///
-    /// *Warning*: The number of code points in a string does not directly
-    /// correspond to the number of visible characters or width of the
-    /// visible text due to composing characters, and double- and
-    /// zero-width ones.
-    ///
-    /// See also `.len()` for the byte length.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # #![allow(deprecated)]
-    /// // composed forms of `ö` and `é`
-    /// let c = "Löwe 老虎 Léopard"; // German, Simplified Chinese, French
-    /// // decomposed forms of `ö` and `é`
-    /// let d = "Lo\u{0308}we 老虎 Le\u{0301}opard";
-    ///
-    /// assert_eq!(c.char_len(), 15);
-    /// assert_eq!(d.char_len(), 17);
-    ///
-    /// assert_eq!(c.len(), 21);
-    /// assert_eq!(d.len(), 23);
-    ///
-    /// // the two strings *look* the same
-    /// println!("{}", c);
-    /// println!("{}", d);
-    /// ```
-    #[deprecated = "call .chars().count() instead"]
-    fn char_len(&self) -> uint {
-        core_str::StrExt::char_len(self[])
     }
 
     /// Returns a slice of the given string from the byte range
@@ -1220,12 +888,6 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
         core_str::StrExt::trim_matches(self[], pat)
     }
 
-    /// Deprecated
-    #[deprecated = "Replaced by `trim_matches`"]
-    fn trim_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str {
-        self.trim_matches(to_trim)
-    }
-
     /// Returns a string with all prefixes that match
     /// the pattern `pat` repeatedly removed.
     ///
@@ -1246,12 +908,6 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
         core_str::StrExt::trim_left_matches(self[], pat)
     }
 
-    /// Deprecated
-    #[deprecated = "Replaced by `trim_left_matches`"]
-    fn trim_left_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str {
-        self.trim_left_matches(to_trim)
-    }
-
     /// Returns a string with all suffixes that match
     /// the pattern `pat` repeatedly removed.
     ///
@@ -1270,12 +926,6 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     #[stable]
     fn trim_right_matches<P: CharEq>(&self, pat: P) -> &str {
         core_str::StrExt::trim_right_matches(self[], pat)
-    }
-
-    /// Deprecated
-    #[deprecated = "Replaced by `trim_right_matches`"]
-    fn trim_right_chars<'a, C: CharEq>(&'a self, to_trim: C) -> &'a str {
-        self.trim_right_matches(to_trim)
     }
 
     /// Check that `index`-th byte lies at the start and/or end of a
@@ -1599,7 +1249,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     #[inline]
     #[unstable = "this method was just created"]
     fn parse<F: FromStr>(&self) -> Option<F> {
-        FromStr::from_str(self[])
+        core_str::StrExt::parse(self[])
     }
 
     /// Returns an iterator over the
@@ -1657,43 +1307,6 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
         UnicodeStr::words(self[])
     }
 
-    /// Returns true if the string contains only whitespace.
-    ///
-    /// Whitespace characters are determined by `char::is_whitespace`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # #![allow(deprecated)]
-    /// assert!(" \t\n".is_whitespace());
-    /// assert!("".is_whitespace());
-    ///
-    /// assert!( !"abc".is_whitespace());
-    /// ```
-    #[deprecated = "use .chars().all(|c| c.is_whitespace())"]
-    fn is_whitespace(&self) -> bool {
-        UnicodeStr::is_whitespace(self[])
-    }
-
-    /// Returns true if the string contains only alphanumeric code
-    /// points.
-    ///
-    /// Alphanumeric characters are determined by `char::is_alphanumeric`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # #![allow(deprecated)]
-    /// assert!("Löwe老虎Léopard123".is_alphanumeric());
-    /// assert!("".is_alphanumeric());
-    ///
-    /// assert!( !" &*~".is_alphanumeric());
-    /// ```
-    #[deprecated = "use .chars().all(|c| c.is_alphanumeric())"]
-    fn is_alphanumeric(&self) -> bool {
-        UnicodeStr::is_alphanumeric(self[])
-    }
-
     /// Returns a string's displayed width in columns, treating control
     /// characters as zero-width.
     ///
@@ -1725,13 +1338,6 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     fn trim_right(&self) -> &str {
         UnicodeStr::trim_right(self[])
     }
-
-    /// Deprecated, call `.to_owned()` instead from the `std::borrow::ToOwned`
-    /// trait.
-    #[deprecated = "call `.to_owned()` on `std::borrow::ToOwned` instead"]
-    fn into_string(&self) -> String {
-        self[].to_owned()
-    }
 }
 
 impl StrExt for str {}
@@ -1740,10 +1346,8 @@ impl StrExt for str {}
 mod tests {
     use prelude::*;
 
-    use core::default::Default;
     use core::iter::AdditiveIterator;
-    use super::{from_utf8, is_utf8, raw};
-    use super::MaybeOwned::{Owned, Slice};
+    use super::from_utf8;
     use super::Utf8Error;
 
     #[test]
@@ -1764,14 +1368,14 @@ mod tests {
         assert_eq!("\u{2620}".len(), 3u);
         assert_eq!("\u{1d11e}".len(), 4u);
 
-        assert_eq!("".char_len(), 0u);
-        assert_eq!("hello world".char_len(), 11u);
-        assert_eq!("\x63".char_len(), 1u);
-        assert_eq!("\u{a2}".char_len(), 1u);
-        assert_eq!("\u{3c0}".char_len(), 1u);
-        assert_eq!("\u{2620}".char_len(), 1u);
-        assert_eq!("\u{1d11e}".char_len(), 1u);
-        assert_eq!("ประเทศไทย中华Việt Nam".char_len(), 19u);
+        assert_eq!("".chars().count(), 0u);
+        assert_eq!("hello world".chars().count(), 11u);
+        assert_eq!("\x63".chars().count(), 1u);
+        assert_eq!("\u{a2}".chars().count(), 1u);
+        assert_eq!("\u{3c0}".chars().count(), 1u);
+        assert_eq!("\u{2620}".chars().count(), 1u);
+        assert_eq!("\u{1d11e}".chars().count(), 1u);
+        assert_eq!("ประเทศไทย中华Việt Nam".chars().count(), 19u);
 
         assert_eq!("ｈｅｌｌｏ".width(false), 10u);
         assert_eq!("ｈｅｌｌｏ".width(true), 10u);
@@ -1854,7 +1458,7 @@ mod tests {
     #[test]
     fn test_slice_chars() {
         fn t(a: &str, b: &str, start: uint) {
-            assert_eq!(a.slice_chars(start, start + b.char_len()), b);
+            assert_eq!(a.slice_chars(start, start + b.chars().count()), b);
         }
         t("", "", 0);
         t("hello", "llo", 2);
@@ -1864,7 +1468,7 @@ mod tests {
         assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".slice_chars(2, 8));
     }
 
-    fn s(x: &str) -> String { x.into_string() }
+    fn s(x: &str) -> String { x.to_string() }
 
     macro_rules! test_concat {
         ($expected: expr, $string: expr) => {
@@ -1904,7 +1508,7 @@ mod tests {
     #[test]
     fn test_connect_for_different_types() {
         test_connect!("a-b", ["a", "b"], "-");
-        let hyphen = "-".into_string();
+        let hyphen = "-".to_string();
         test_connect!("a-b", [s("a"), s("b")], hyphen.as_slice());
         test_connect!("a-b", vec!["a", "b"], hyphen.as_slice());
         test_connect!("a-b", vec!["a", "b"].as_slice(), "-");
@@ -1921,19 +1525,10 @@ mod tests {
     }
 
     #[test]
-    fn test_repeat() {
-        assert_eq!("x".repeat(4), String::from_str("xxxx"));
-        assert_eq!("hi".repeat(4), String::from_str("hihihihi"));
-        assert_eq!("ไท华".repeat(3), String::from_str("ไท华ไท华ไท华"));
-        assert_eq!("".repeat(4), String::from_str(""));
-        assert_eq!("hi".repeat(0), String::from_str(""));
-    }
-
-    #[test]
     fn test_unsafe_slice() {
-        assert_eq!("ab", unsafe {raw::slice_bytes("abc", 0, 2)});
-        assert_eq!("bc", unsafe {raw::slice_bytes("abc", 1, 3)});
-        assert_eq!("", unsafe {raw::slice_bytes("abc", 1, 1)});
+        assert_eq!("ab", unsafe {"abc".slice_unchecked(0, 2)});
+        assert_eq!("bc", unsafe {"abc".slice_unchecked(1, 3)});
+        assert_eq!("", unsafe {"abc".slice_unchecked(1, 1)});
         fn a_million_letter_a() -> String {
             let mut i = 0u;
             let mut rs = String::new();
@@ -1954,7 +1549,7 @@ mod tests {
         }
         let letters = a_million_letter_a();
         assert!(half_a_million_letter_a() ==
-            unsafe {String::from_str(raw::slice_bytes(letters.as_slice(),
+            unsafe {String::from_str(letters.slice_unchecked(
                                      0u,
                                      500000))});
     }
@@ -2120,48 +1715,48 @@ mod tests {
     }
 
     #[test]
-    fn test_trim_left_chars() {
+    fn test_trim_left_matches() {
         let v: &[char] = &[];
-        assert_eq!(" *** foo *** ".trim_left_chars(v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_left_matches(v), " *** foo *** ");
         let chars: &[char] = &['*', ' '];
-        assert_eq!(" *** foo *** ".trim_left_chars(chars), "foo *** ");
-        assert_eq!(" ***  *** ".trim_left_chars(chars), "");
-        assert_eq!("foo *** ".trim_left_chars(chars), "foo *** ");
+        assert_eq!(" *** foo *** ".trim_left_matches(chars), "foo *** ");
+        assert_eq!(" ***  *** ".trim_left_matches(chars), "");
+        assert_eq!("foo *** ".trim_left_matches(chars), "foo *** ");
 
-        assert_eq!("11foo1bar11".trim_left_chars('1'), "foo1bar11");
+        assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
         let chars: &[char] = &['1', '2'];
-        assert_eq!("12foo1bar12".trim_left_chars(chars), "foo1bar12");
-        assert_eq!("123foo1bar123".trim_left_chars(|&: c: char| c.is_numeric()), "foo1bar123");
+        assert_eq!("12foo1bar12".trim_left_matches(chars), "foo1bar12");
+        assert_eq!("123foo1bar123".trim_left_matches(|&: c: char| c.is_numeric()), "foo1bar123");
     }
 
     #[test]
-    fn test_trim_right_chars() {
+    fn test_trim_right_matches() {
         let v: &[char] = &[];
-        assert_eq!(" *** foo *** ".trim_right_chars(v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_right_matches(v), " *** foo *** ");
         let chars: &[char] = &['*', ' '];
-        assert_eq!(" *** foo *** ".trim_right_chars(chars), " *** foo");
-        assert_eq!(" ***  *** ".trim_right_chars(chars), "");
-        assert_eq!(" *** foo".trim_right_chars(chars), " *** foo");
+        assert_eq!(" *** foo *** ".trim_right_matches(chars), " *** foo");
+        assert_eq!(" ***  *** ".trim_right_matches(chars), "");
+        assert_eq!(" *** foo".trim_right_matches(chars), " *** foo");
 
-        assert_eq!("11foo1bar11".trim_right_chars('1'), "11foo1bar");
+        assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
         let chars: &[char] = &['1', '2'];
-        assert_eq!("12foo1bar12".trim_right_chars(chars), "12foo1bar");
-        assert_eq!("123foo1bar123".trim_right_chars(|&: c: char| c.is_numeric()), "123foo1bar");
+        assert_eq!("12foo1bar12".trim_right_matches(chars), "12foo1bar");
+        assert_eq!("123foo1bar123".trim_right_matches(|&: c: char| c.is_numeric()), "123foo1bar");
     }
 
     #[test]
-    fn test_trim_chars() {
+    fn test_trim_matches() {
         let v: &[char] = &[];
-        assert_eq!(" *** foo *** ".trim_chars(v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_matches(v), " *** foo *** ");
         let chars: &[char] = &['*', ' '];
-        assert_eq!(" *** foo *** ".trim_chars(chars), "foo");
-        assert_eq!(" ***  *** ".trim_chars(chars), "");
-        assert_eq!("foo".trim_chars(chars), "foo");
+        assert_eq!(" *** foo *** ".trim_matches(chars), "foo");
+        assert_eq!(" ***  *** ".trim_matches(chars), "");
+        assert_eq!("foo".trim_matches(chars), "foo");
 
-        assert_eq!("11foo1bar11".trim_chars('1'), "foo1bar");
+        assert_eq!("11foo1bar11".trim_matches('1'), "foo1bar");
         let chars: &[char] = &['1', '2'];
-        assert_eq!("12foo1bar12".trim_chars(chars), "foo1bar");
-        assert_eq!("123foo1bar123".trim_chars(|&: c: char| c.is_numeric()), "foo1bar");
+        assert_eq!("12foo1bar12".trim_matches(chars), "foo1bar");
+        assert_eq!("123foo1bar123".trim_matches(|&: c: char| c.is_numeric()), "foo1bar");
     }
 
     #[test]
@@ -2196,11 +1791,11 @@ mod tests {
 
     #[test]
     fn test_is_whitespace() {
-        assert!("".is_whitespace());
-        assert!(" ".is_whitespace());
-        assert!("\u{2009}".is_whitespace()); // Thin space
-        assert!("  \n\t   ".is_whitespace());
-        assert!(!"   _   ".is_whitespace());
+        assert!("".chars().all(|c| c.is_whitespace()));
+        assert!(" ".chars().all(|c| c.is_whitespace()));
+        assert!("\u{2009}".chars().all(|c| c.is_whitespace())); // Thin space
+        assert!("  \n\t   ".chars().all(|c| c.is_whitespace()));
+        assert!(!"   _   ".chars().all(|c| c.is_whitespace()));
     }
 
     #[test]
@@ -2218,26 +1813,26 @@ mod tests {
     #[test]
     fn test_is_utf8() {
         // deny overlong encodings
-        assert!(!is_utf8(&[0xc0, 0x80]));
-        assert!(!is_utf8(&[0xc0, 0xae]));
-        assert!(!is_utf8(&[0xe0, 0x80, 0x80]));
-        assert!(!is_utf8(&[0xe0, 0x80, 0xaf]));
-        assert!(!is_utf8(&[0xe0, 0x81, 0x81]));
-        assert!(!is_utf8(&[0xf0, 0x82, 0x82, 0xac]));
-        assert!(!is_utf8(&[0xf4, 0x90, 0x80, 0x80]));
+        assert!(from_utf8(&[0xc0, 0x80]).is_err());
+        assert!(from_utf8(&[0xc0, 0xae]).is_err());
+        assert!(from_utf8(&[0xe0, 0x80, 0x80]).is_err());
+        assert!(from_utf8(&[0xe0, 0x80, 0xaf]).is_err());
+        assert!(from_utf8(&[0xe0, 0x81, 0x81]).is_err());
+        assert!(from_utf8(&[0xf0, 0x82, 0x82, 0xac]).is_err());
+        assert!(from_utf8(&[0xf4, 0x90, 0x80, 0x80]).is_err());
 
         // deny surrogates
-        assert!(!is_utf8(&[0xED, 0xA0, 0x80]));
-        assert!(!is_utf8(&[0xED, 0xBF, 0xBF]));
+        assert!(from_utf8(&[0xED, 0xA0, 0x80]).is_err());
+        assert!(from_utf8(&[0xED, 0xBF, 0xBF]).is_err());
 
-        assert!(is_utf8(&[0xC2, 0x80]));
-        assert!(is_utf8(&[0xDF, 0xBF]));
-        assert!(is_utf8(&[0xE0, 0xA0, 0x80]));
-        assert!(is_utf8(&[0xED, 0x9F, 0xBF]));
-        assert!(is_utf8(&[0xEE, 0x80, 0x80]));
-        assert!(is_utf8(&[0xEF, 0xBF, 0xBF]));
-        assert!(is_utf8(&[0xF0, 0x90, 0x80, 0x80]));
-        assert!(is_utf8(&[0xF4, 0x8F, 0xBF, 0xBF]));
+        assert!(from_utf8(&[0xC2, 0x80]).is_ok());
+        assert!(from_utf8(&[0xDF, 0xBF]).is_ok());
+        assert!(from_utf8(&[0xE0, 0xA0, 0x80]).is_ok());
+        assert!(from_utf8(&[0xED, 0x9F, 0xBF]).is_ok());
+        assert!(from_utf8(&[0xEE, 0x80, 0x80]).is_ok());
+        assert!(from_utf8(&[0xEF, 0xBF, 0xBF]).is_ok());
+        assert!(from_utf8(&[0xF0, 0x90, 0x80, 0x80]).is_ok());
+        assert!(from_utf8(&[0xF4, 0x8F, 0xBF, 0xBF]).is_ok());
     }
 
     #[test]
@@ -2411,7 +2006,7 @@ mod tests {
         let mut pos = 0;
         for ch in v.iter() {
             assert!(s.char_at(pos) == *ch);
-            pos += String::from_char(1, *ch).len();
+            pos += ch.to_string().len();
         }
     }
 
@@ -2422,7 +2017,7 @@ mod tests {
         let mut pos = s.len();
         for ch in v.iter().rev() {
             assert!(s.char_at_reverse(pos) == *ch);
-            pos -= String::from_char(1, *ch).len();
+            pos -= ch.to_string().len();
         }
     }
 
@@ -3213,66 +2808,6 @@ mod tests {
         let xs = b"hello\xFF";
         assert_eq!(from_utf8(xs), Err(Utf8Error::TooShort));
     }
-
-    #[test]
-    fn test_maybe_owned_traits() {
-        let s = Slice("abcde");
-        assert_eq!(s.len(), 5);
-        assert_eq!(s.as_slice(), "abcde");
-        assert_eq!(String::from_str(s.as_slice()).as_slice(), "abcde");
-        assert_eq!(format!("{}", s).as_slice(), "abcde");
-        assert!(s.lt(&Owned(String::from_str("bcdef"))));
-        assert_eq!(Slice(""), Default::default());
-
-        let o = Owned(String::from_str("abcde"));
-        assert_eq!(o.len(), 5);
-        assert_eq!(o.as_slice(), "abcde");
-        assert_eq!(String::from_str(o.as_slice()).as_slice(), "abcde");
-        assert_eq!(format!("{}", o).as_slice(), "abcde");
-        assert!(o.lt(&Slice("bcdef")));
-        assert_eq!(Owned(String::from_str("")), Default::default());
-
-        assert!(s.cmp(&o) == Equal);
-        assert!(s.equiv(&o));
-
-        assert!(o.cmp(&s) == Equal);
-        assert!(o.equiv(&s));
-    }
-
-    #[test]
-    fn test_maybe_owned_methods() {
-        let s = Slice("abcde");
-        assert!(s.is_slice());
-        assert!(!s.is_owned());
-
-        let o = Owned(String::from_str("abcde"));
-        assert!(!o.is_slice());
-        assert!(o.is_owned());
-    }
-
-    #[test]
-    fn test_maybe_owned_clone() {
-        assert_eq!(Owned(String::from_str("abcde")), Slice("abcde").clone());
-        assert_eq!(Owned(String::from_str("abcde")), Owned(String::from_str("abcde")).clone());
-        assert_eq!(Slice("abcde"), Slice("abcde").clone());
-        assert_eq!(Slice("abcde"), Owned(String::from_str("abcde")).clone());
-    }
-
-    #[test]
-    fn test_maybe_owned_into_string() {
-        assert_eq!(Slice("abcde").to_string(), String::from_str("abcde"));
-        assert_eq!(Owned(String::from_str("abcde")).to_string(),
-                   String::from_str("abcde"));
-    }
-
-    #[test]
-    fn test_into_maybe_owned() {
-        assert_eq!("abcde".into_maybe_owned(), Slice("abcde"));
-        assert_eq!((String::from_str("abcde")).into_maybe_owned(), Slice("abcde"));
-        assert_eq!("abcde".into_maybe_owned(), Owned(String::from_str("abcde")));
-        assert_eq!((String::from_str("abcde")).into_maybe_owned(),
-                   Owned(String::from_str("abcde")));
-    }
 }
 
 #[cfg(test)]
@@ -3329,7 +2864,7 @@ mod bench {
     #[bench]
     fn char_indicesator(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
-        let len = s.char_len();
+        let len = s.chars().count();
 
         b.iter(|| assert_eq!(s.char_indices().count(), len));
     }
@@ -3337,7 +2872,7 @@ mod bench {
     #[bench]
     fn char_indicesator_rev(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
-        let len = s.char_len();
+        let len = s.chars().count();
 
         b.iter(|| assert_eq!(s.char_indices().rev().count(), len));
     }
@@ -3414,27 +2949,6 @@ mod bench {
 
         let c: &[char] = &[' '];
         b.iter(|| assert_eq!(s.split(c).count(), len));
-    }
-
-    #[bench]
-    fn is_utf8_100_ascii(b: &mut Bencher) {
-
-        let s = b"Hello there, the quick brown fox jumped over the lazy dog! \
-                  Lorem ipsum dolor sit amet, consectetur. ";
-
-        assert_eq!(100, s.len());
-        b.iter(|| {
-            is_utf8(s)
-        });
-    }
-
-    #[bench]
-    fn is_utf8_100_multibyte(b: &mut Bencher) {
-        let s = "𐌀𐌖𐌋𐌄𐌑𐌉ปรدولة الكويتทศไทย中华𐍅𐌿𐌻𐍆𐌹𐌻𐌰".as_bytes();
-        assert_eq!(100, s.len());
-        b.iter(|| {
-            is_utf8(s)
-        });
     }
 
     #[bench]

@@ -10,6 +10,7 @@
 
 use core::ptr::*;
 use core::mem;
+use std::iter::repeat;
 
 #[test]
 fn test() {
@@ -56,19 +57,15 @@ fn test() {
 fn test_is_null() {
     let p: *const int = null();
     assert!(p.is_null());
-    assert!(!p.is_not_null());
 
     let q = unsafe { p.offset(1) };
     assert!(!q.is_null());
-    assert!(q.is_not_null());
 
     let mp: *mut int = null_mut();
     assert!(mp.is_null());
-    assert!(!mp.is_not_null());
 
     let mq = unsafe { mp.offset(1) };
     assert!(!mq.is_null());
-    assert!(mq.is_not_null());
 }
 
 #[test]
@@ -116,7 +113,7 @@ fn test_as_mut() {
 #[test]
 fn test_ptr_addition() {
     unsafe {
-        let xs = Vec::from_elem(16, 5i);
+        let xs = repeat(5i).take(16).collect::<Vec<_>>();
         let mut ptr = xs.as_ptr();
         let end = ptr.offset(16);
 
@@ -134,7 +131,7 @@ fn test_ptr_addition() {
             m_ptr = m_ptr.offset(1);
         }
 
-        assert!(xs_mut == Vec::from_elem(16, 10i));
+        assert!(xs_mut == repeat(10i).take(16).collect::<Vec<_>>());
     }
 }
 

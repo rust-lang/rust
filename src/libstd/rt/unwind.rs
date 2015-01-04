@@ -67,7 +67,7 @@ use fmt;
 use intrinsics;
 use libc::c_void;
 use mem;
-use sync::atomic;
+use sync::atomic::{mod, Ordering};
 use sync::{Once, ONCE_INIT};
 
 use rt::libunwind as uw;
@@ -543,11 +543,11 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
     // callback. Additionally, CALLBACK_CNT may briefly be higher than
     // MAX_CALLBACKS, so we're sure to clamp it as necessary.
     let callbacks = {
-        let amt = CALLBACK_CNT.load(atomic::SeqCst);
+        let amt = CALLBACK_CNT.load(Ordering::SeqCst);
         CALLBACKS[..cmp::min(amt, MAX_CALLBACKS)]
     };
     for cb in callbacks.iter() {
-        match cb.load(atomic::SeqCst) {
+        match cb.load(Ordering::SeqCst) {
             0 => {}
             n => {
                 let f: Callback = unsafe { mem::transmute(n) };
@@ -584,18 +584,18 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
 /// currently possible to unregister a callback once it has been registered.
 #[experimental]
 pub unsafe fn register(f: Callback) -> bool {
-    match CALLBACK_CNT.fetch_add(1, atomic::SeqCst) {
+    match CALLBACK_CNT.fetch_add(1, Ordering::SeqCst) {
         // The invocation code has knowledge of this window where the count has
         // been incremented, but the callback has not been stored. We're
         // guaranteed that the slot we're storing into is 0.
         n if n < MAX_CALLBACKS => {
-            let prev = CALLBACKS[n].swap(mem::transmute(f), atomic::SeqCst);
+            let prev = CALLBACKS[n].swap(mem::transmute(f), Ordering::SeqCst);
             rtassert!(prev == 0);
             true
         }
         // If we accidentally bumped the count too high, pull it back.
         _ => {
-            CALLBACK_CNT.store(MAX_CALLBACKS, atomic::SeqCst);
+            CALLBACK_CNT.store(MAX_CALLBACKS, Ordering::SeqCst);
             false
         }
     }

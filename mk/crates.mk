@@ -50,12 +50,12 @@
 ################################################################################
 
 TARGET_CRATES := libc std flate arena term \
-                 serialize getopts collections test time rand \
+                 serialize getopts collections test rand \
                  log regex graphviz core rbml alloc \
                  unicode
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm
-HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc regex_macros fmt_macros
+HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc
 
@@ -75,11 +75,11 @@ DEPS_rustc_typeck := rustc syntax
 DEPS_rustc_borrowck := rustc log graphviz syntax
 DEPS_rustc_resolve := rustc log syntax
 DEPS_rustc := syntax flate arena serialize getopts rbml \
-              time log graphviz rustc_llvm rustc_back
+              log graphviz rustc_llvm rustc_back
 DEPS_rustc_llvm := native:rustllvm libc std
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
-                test time
+                test
 DEPS_flate := std native:miniz
 DEPS_arena := std
 DEPS_graphviz := std
@@ -90,12 +90,10 @@ DEPS_term := std log
 DEPS_getopts := std
 DEPS_collections := core alloc unicode
 DEPS_num := std
-DEPS_test := std getopts serialize rbml term time regex native:rust_test_helpers
-DEPS_time := std serialize
+DEPS_test := std getopts serialize rbml term regex native:rust_test_helpers
 DEPS_rand := core
 DEPS_log := std regex
 DEPS_regex := std
-DEPS_regex_macros = rustc syntax std regex
 DEPS_fmt_macros = std
 
 TOOL_DEPS_compiletest := test getopts
@@ -124,10 +122,8 @@ DOC_CRATES := $(filter-out rustc, \
               $(filter-out rustc_driver, \
               $(filter-out log, \
               $(filter-out regex, \
-              $(filter-out regex_macros, \
               $(filter-out getopts, \
-              $(filter-out time, \
-              $(filter-out syntax, $(CRATES)))))))))))))
+              $(filter-out syntax, $(CRATES)))))))))))
 COMPILER_DOC_CRATES := rustc rustc_trans rustc_borrowck rustc_resolve \
                        rustc_typeck rustc_driver syntax
 

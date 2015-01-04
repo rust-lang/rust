@@ -43,7 +43,6 @@
 use self::Color::{Red, Yellow, Blue};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::fmt;
-use std::str::from_str;
 use std::thread::Thread;
 
 fn print_complements() {
@@ -235,8 +234,8 @@ fn main() {
     } else {
         std::os::args().as_slice()
                        .get(1)
-                       .and_then(|arg| from_str(arg.as_slice()))
-                       .unwrap_or(600)
+                       .and_then(|arg| arg.parse())
+                       .unwrap_or(600u)
     };
 
     print_complements();

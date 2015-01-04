@@ -20,7 +20,7 @@ trait HasInventory {
 trait TraversesWorld {
     fn attemptTraverse(&self, room: &Room, directionStr: &str) -> Result<&Room, &str> {
         let direction = str_to_direction(directionStr);
-        let maybe_room = room.direction_to_room.find(&direction);
+        let maybe_room = room.direction_to_room.get(&direction);
         //~^ ERROR cannot infer an appropriate lifetime for autoref due to conflicting requirements
         match maybe_room {
             Some(entry) => Ok(entry),

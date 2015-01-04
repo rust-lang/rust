@@ -22,7 +22,6 @@ use util::interner::{RcStr, StrInterner};
 use util::interner;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::cmp::Equiv;
 use std::fmt;
 use std::mem;
 use std::ops::Deref;
@@ -629,13 +628,6 @@ impl BytesContainer for InternedString {
 impl fmt::Show for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.string[])
-    }
-}
-
-#[allow(deprecated)]
-impl<'a> Equiv<&'a str> for InternedString {
-    fn equiv(&self, other: & &'a str) -> bool {
-        (*other) == self.string[]
     }
 }
 

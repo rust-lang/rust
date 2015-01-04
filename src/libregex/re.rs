@@ -14,7 +14,7 @@ pub use self::Regex::*;
 use std::borrow::IntoCow;
 use std::collections::HashMap;
 use std::fmt;
-use std::str::CowString;
+use std::string::CowString;
 
 use compile::Program;
 use parse;
@@ -51,59 +51,6 @@ pub fn is_match(regex: &str, text: &str) -> Result<bool, parse::Error> {
 }
 
 /// A compiled regular expression
-///
-/// It is represented as either a sequence of bytecode instructions (dynamic)
-/// or as a specialized Rust function (native). It can be used to search, split
-/// or replace text. All searching is done with an implicit `.*?` at the
-/// beginning and end of an expression. To force an expression to match the
-/// whole string (or a prefix or a suffix), you must use an anchor like `^` or
-/// `$` (or `\A` and `\z`).
-///
-/// While this crate will handle Unicode strings (whether in the regular
-/// expression or in the search text), all positions returned are **byte
-/// indices**. Every byte index is guaranteed to be at a Unicode code point
-/// boundary.
-///
-/// The lifetimes `'r` and `'t` in this crate correspond to the lifetime of a
-/// compiled regular expression and text to search, respectively.
-///
-/// The only methods that allocate new strings are the string replacement
-/// methods. All other methods (searching and splitting) return borrowed
-/// pointers into the string given.
-///
-/// # Examples
-///
-/// Find the location of a US phone number:
-///
-/// ```rust
-/// # use regex::Regex;
-/// let re = match Regex::new("[0-9]{3}-[0-9]{3}-[0-9]{4}") {
-///     Ok(re) => re,
-///     Err(err) => panic!("{}", err),
-/// };
-/// assert_eq!(re.find("phone: 111-222-3333"), Some((7, 19)));
-/// ```
-///
-/// You can also use the `regex!` macro to compile a regular expression when
-/// you compile your program:
-///
-/// ```rust
-/// #![feature(phase)]
-/// extern crate regex;
-/// #[phase(plugin)] extern crate regex_macros;
-///
-/// fn main() {
-///     let re = regex!(r"\d+");
-///     assert_eq!(re.find("123 abc"), Some((0, 3)));
-/// }
-/// ```
-///
-/// Given an incorrect regular expression, `regex!` will cause the Rust
-/// compiler to produce a compile time error.
-/// Note that `regex!` will compile the expression to native Rust code, which
-/// makes it much faster when searching text.
-/// More details about the `regex!` macro can be found in the `regex` crate
-/// documentation.
 #[derive(Clone)]
 pub enum Regex {
     // The representation of `Regex` is exported to support the `regex!`
@@ -169,46 +116,12 @@ impl Regex {
     }
 
     /// Returns true if and only if the regex matches the string given.
-    ///
-    /// # Example
-    ///
-    /// Test if some text contains at least one word with exactly 13
-    /// characters:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let text = "I categorically deny having triskaidekaphobia.";
-    /// let matched = regex!(r"\b\w{13}\b").is_match(text);
-    /// assert!(matched);
-    /// # }
-    /// ```
     pub fn is_match(&self, text: &str) -> bool {
         has_match(&exec(self, Exists, text))
     }
 
     /// Returns the start and end byte range of the leftmost-first match in
     /// `text`. If no match exists, then `None` is returned.
-    ///
-    /// Note that this should only be used if you want to discover the position
-    /// of the match. Testing the existence of a match is faster if you use
-    /// `is_match`.
-    ///
-    /// # Example
-    ///
-    /// Find the start and end location of the first word with exactly 13
-    /// characters:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let text = "I categorically deny having triskaidekaphobia.";
-    /// let pos = regex!(r"\b\w{13}\b").find(text);
-    /// assert_eq!(pos, Some((2, 15)));
-    /// # }
-    /// ```
     pub fn find(&self, text: &str) -> Option<(uint, uint)> {
         let caps = exec(self, Location, text);
         if has_match(&caps) {
@@ -221,27 +134,6 @@ impl Regex {
     /// Returns an iterator for each successive non-overlapping match in
     /// `text`, returning the start and end byte indices with respect to
     /// `text`.
-    ///
-    /// # Example
-    ///
-    /// Find the start and end location of every word with exactly 13
-    /// characters:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let text = "Retroactively relinquishing remunerations is reprehensible.";
-    /// for pos in regex!(r"\b\w{13}\b").find_iter(text) {
-    ///     println!("{}", pos);
-    /// }
-    /// // Output:
-    /// // (0, 13)
-    /// // (14, 27)
-    /// // (28, 41)
-    /// // (45, 58)
-    /// # }
-    /// ```
     pub fn find_iter<'r, 't>(&'r self, text: &'t str) -> FindMatches<'r, 't> {
         FindMatches {
             re: self,
@@ -258,51 +150,6 @@ impl Regex {
     /// You should only use `captures` if you need access to submatches.
     /// Otherwise, `find` is faster for discovering the location of the overall
     /// match.
-    ///
-    /// # Examples
-    ///
-    /// Say you have some text with movie names and their release years,
-    /// like "'Citizen Kane' (1941)". It'd be nice if we could search for text
-    /// looking like that, while also extracting the movie name and its release
-    /// year separately.
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let re = regex!(r"'([^']+)'\s+\((\d{4})\)");
-    /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
-    /// let caps = re.captures(text).unwrap();
-    /// assert_eq!(caps.at(1), Some("Citizen Kane"));
-    /// assert_eq!(caps.at(2), Some("1941"));
-    /// assert_eq!(caps.at(0), Some("'Citizen Kane' (1941)"));
-    /// # }
-    /// ```
-    ///
-    /// Note that the full match is at capture group `0`. Each subsequent
-    /// capture group is indexed by the order of its opening `(`.
-    ///
-    /// We can make this example a bit clearer by using *named* capture groups:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let re = regex!(r"'(?P<title>[^']+)'\s+\((?P<year>\d{4})\)");
-    /// let text = "Not my favorite movie: 'Citizen Kane' (1941).";
-    /// let caps = re.captures(text).unwrap();
-    /// assert_eq!(caps.name("title"), Some("Citizen Kane"));
-    /// assert_eq!(caps.name("year"), Some("1941"));
-    /// assert_eq!(caps.at(0), Some("'Citizen Kane' (1941)"));
-    /// # }
-    /// ```
-    ///
-    /// Here we name the capture groups, which we can access with the `name`
-    /// method. Note that the named capture groups are still accessible with
-    /// `at`.
-    ///
-    /// The `0`th capture group is always unnamed, so it must always be
-    /// accessed with `at(0)`.
     pub fn captures<'t>(&self, text: &'t str) -> Option<Captures<'t>> {
         let caps = exec(self, Submatches, text);
         Captures::new(self, text, caps)
@@ -311,27 +158,6 @@ impl Regex {
     /// Returns an iterator over all the non-overlapping capture groups matched
     /// in `text`. This is operationally the same as `find_iter` (except it
     /// yields information about submatches).
-    ///
-    /// # Example
-    ///
-    /// We can use this to find all movie titles and their release years in
-    /// some text, where the movie is formatted like "'Title' (xxxx)":
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let re = regex!(r"'(?P<title>[^']+)'\s+\((?P<year>\d{4})\)");
-    /// let text = "'Citizen Kane' (1941), 'The Wizard of Oz' (1939), 'M' (1931).";
-    /// for caps in re.captures_iter(text) {
-    ///     println!("Movie: {}, Released: {}", caps.name("title"), caps.name("year"));
-    /// }
-    /// // Output:
-    /// // Movie: Citizen Kane, Released: 1941
-    /// // Movie: The Wizard of Oz, Released: 1939
-    /// // Movie: M, Released: 1931
-    /// # }
-    /// ```
     pub fn captures_iter<'r, 't>(&'r self, text: &'t str)
                                 -> FindCaptures<'r, 't> {
         FindCaptures {
@@ -348,20 +174,6 @@ impl Regex {
     /// matched by the regular expression.
     ///
     /// This method will *not* copy the text given.
-    ///
-    /// # Example
-    ///
-    /// To split a string delimited by arbitrary amounts of spaces or tabs:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let re = regex!(r"[ \t]+");
-    /// let fields: Vec<&str> = re.split("a b \t  c\td    e").collect();
-    /// assert_eq!(fields, vec!("a", "b", "c", "d", "e"));
-    /// # }
-    /// ```
     pub fn split<'r, 't>(&'r self, text: &'t str) -> RegexSplits<'r, 't> {
         RegexSplits {
             finder: self.find_iter(text),
@@ -378,20 +190,6 @@ impl Regex {
     /// in the iterator.
     ///
     /// This method will *not* copy the text given.
-    ///
-    /// # Example
-    ///
-    /// Get the first two words in some text:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let re = regex!(r"\W+");
-    /// let fields: Vec<&str> = re.splitn("Hey! How are you?", 3).collect();
-    /// assert_eq!(fields, vec!("Hey", "How", "are you?"));
-    /// # }
-    /// ```
     pub fn splitn<'r, 't>(&'r self, text: &'t str, limit: uint)
                          -> RegexSplitsN<'r, 't> {
         RegexSplitsN {
@@ -407,72 +205,6 @@ impl Regex {
     /// `Captures` and returns the replaced string.
     ///
     /// If no match is found, then a copy of the string is returned unchanged.
-    ///
-    /// # Examples
-    ///
-    /// Note that this function is polymorphic with respect to the replacement.
-    /// In typical usage, this can just be a normal string:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let re = regex!("[^01]+");
-    /// assert_eq!(re.replace("1078910", ""), "1010");
-    /// # }
-    /// ```
-    ///
-    /// But anything satisfying the `Replacer` trait will work. For example,
-    /// a closure of type `|&Captures| -> String` provides direct access to the
-    /// captures corresponding to a match. This allows one to access
-    /// submatches easily:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # #![feature(unboxed_closures)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # use regex::Captures; fn main() {
-    /// let re = regex!(r"([^,\s]+),\s+(\S+)");
-    /// let result = re.replace("Springsteen, Bruce", |&: caps: &Captures| {
-    ///     format!("{} {}", caps.at(2).unwrap_or(""), caps.at(1).unwrap_or(""))
-    /// });
-    /// assert_eq!(result, "Bruce Springsteen");
-    /// # }
-    /// ```
-    ///
-    /// But this is a bit cumbersome to use all the time. Instead, a simple
-    /// syntax is supported that expands `$name` into the corresponding capture
-    /// group. Here's the last example, but using this expansion technique
-    /// with named capture groups:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// let re = regex!(r"(?P<last>[^,\s]+),\s+(?P<first>\S+)");
-    /// let result = re.replace("Springsteen, Bruce", "$first $last");
-    /// assert_eq!(result, "Bruce Springsteen");
-    /// # }
-    /// ```
-    ///
-    /// Note that using `$2` instead of `$first` or `$1` instead of `$last`
-    /// would produce the same result. To write a literal `$` use `$$`.
-    ///
-    /// Finally, sometimes you just want to replace a literal string with no
-    /// submatch expansion. This can be done by wrapping a string with
-    /// `NoExpand`:
-    ///
-    /// ```rust
-    /// # #![feature(phase)]
-    /// # extern crate regex; #[phase(plugin)] extern crate regex_macros;
-    /// # fn main() {
-    /// use regex::NoExpand;
-    ///
-    /// let re = regex!(r"(?P<last>[^,\s]+),\s+(\S+)");
-    /// let result = re.replace("Springsteen, Bruce", NoExpand("$2 $last"));
-    /// assert_eq!(result, "$2 $last");
-    /// # }
-    /// ```
     pub fn replace<R: Replacer>(&self, text: &str, rep: R) -> String {
         self.replacen(text, 1, rep)
     }

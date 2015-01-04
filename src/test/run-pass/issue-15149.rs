@@ -10,7 +10,6 @@
 
 use std::io::{TempDir, Command, fs};
 use std::os;
-use std::task::TaskBuilder;
 
 fn main() {
     // If we're the child, make sure we were invoked correctly

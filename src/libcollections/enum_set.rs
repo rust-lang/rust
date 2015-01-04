@@ -81,12 +81,6 @@ fn bit<E:CLike>(e: &E) -> uint {
 }
 
 impl<E:CLike> EnumSet<E> {
-    /// Deprecated: Renamed to `new`.
-    #[deprecated = "Renamed to `new`"]
-    pub fn empty() -> EnumSet<E> {
-        EnumSet::new()
-    }
-
     /// Returns an empty `EnumSet`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> EnumSet<E> {
@@ -107,13 +101,6 @@ impl<E:CLike> EnumSet<E> {
 
     pub fn clear(&mut self) {
         self.bits = 0;
-    }
-
-    /// Returns `true` if the `EnumSet` contains any enum of the given `EnumSet`.
-    /// Deprecated: Use `is_disjoint`.
-    #[deprecated = "Use `is_disjoint`"]
-    pub fn intersects(&self, e: EnumSet<E>) -> bool {
-        !self.is_disjoint(&e)
     }
 
     /// Returns `false` if the `EnumSet` contains any enum of the given `EnumSet`.
@@ -144,12 +131,6 @@ impl<E:CLike> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }
 
-    /// Deprecated: Use `insert`.
-    #[deprecated = "Use `insert`"]
-    pub fn add(&mut self, e: E) {
-        self.insert(e);
-    }
-
     /// Adds an enum to the `EnumSet`, and returns `true` if it wasn't there before
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn insert(&mut self, e: E) -> bool {
@@ -164,12 +145,6 @@ impl<E:CLike> EnumSet<E> {
         let result = self.contains(e);
         self.bits &= !bit(e);
         result
-    }
-
-    /// Deprecated: use `contains`.
-    #[deprecated = "use `contains"]
-    pub fn contains_elem(&self, e: E) -> bool {
-        self.contains(&e)
     }
 
     /// Returns `true` if an `EnumSet` contains a given enum.

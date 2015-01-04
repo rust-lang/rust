@@ -89,10 +89,6 @@ impl<R: Reader> BufferedReader<R> {
     ///
     /// Note that any leftover data in the internal buffer is lost.
     pub fn into_inner(self) -> R { self.inner }
-
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub fn unwrap(self) -> R { self.into_inner() }
 }
 
 impl<R: Reader> Buffer for BufferedReader<R> {
@@ -198,10 +194,6 @@ impl<W: Writer> BufferedWriter<W> {
         self.flush_buf().unwrap();
         self.inner.take().unwrap()
     }
-
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub fn unwrap(self) -> W { self.into_inner() }
 }
 
 impl<W: Writer> Writer for BufferedWriter<W> {
@@ -262,10 +254,6 @@ impl<W: Writer> LineBufferedWriter<W> {
     ///
     /// The internal buffer is flushed before returning the writer.
     pub fn into_inner(self) -> W { self.inner.into_inner() }
-
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub fn unwrap(self) -> W { self.into_inner() }
 }
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {
@@ -374,10 +362,6 @@ impl<S: Stream> BufferedStream<S> {
         let InternalBufferedWriter(w) = self.inner.inner;
         w.into_inner()
     }
-
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub fn unwrap(self) -> S { self.into_inner() }
 }
 
 impl<S: Stream> Buffer for BufferedStream<S> {

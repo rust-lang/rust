@@ -94,7 +94,7 @@ use intrinsics;
 use option::Option::{self, Some, None};
 use kinds::{Send, Sized, Sync};
 
-use cmp::{PartialEq, Eq, Ord, PartialOrd, Equiv};
+use cmp::{PartialEq, Eq, Ord, PartialOrd};
 use cmp::Ordering::{self, Less, Equal, Greater};
 
 // FIXME #19649: instrinsic docs don't render, so these have no docs :(
@@ -246,21 +246,9 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 pub trait PtrExt: Sized {
     type Target;
 
-    /// Returns the null pointer.
-    #[deprecated = "call ptr::null instead"]
-    fn null() -> Self;
-
     /// Returns true if the pointer is null.
     #[stable]
     fn is_null(self) -> bool;
-
-    /// Returns true if the pointer is not equal to the null pointer.
-    #[deprecated = "use !p.is_null() instead"]
-    fn is_not_null(self) -> bool { !self.is_null() }
-
-    /// Returns true if the pointer is not null.
-    #[deprecated = "use `as uint` instead"]
-    fn to_uint(self) -> uint;
 
     /// Returns `None` if the pointer is null, or else returns a reference to
     /// the value wrapped in `Some`.
@@ -309,16 +297,8 @@ impl<T> PtrExt for *const T {
     type Target = T;
 
     #[inline]
-    #[deprecated = "call ptr::null instead"]
-    fn null() -> *const T { null() }
-
-    #[inline]
     #[stable]
     fn is_null(self) -> bool { self as uint == 0 }
-
-    #[inline]
-    #[deprecated = "use `as uint` instead"]
-    fn to_uint(self) -> uint { self as uint }
 
     #[inline]
     #[stable]
@@ -343,16 +323,8 @@ impl<T> PtrExt for *mut T {
     type Target = T;
 
     #[inline]
-    #[deprecated = "call ptr::null instead"]
-    fn null() -> *mut T { null_mut() }
-
-    #[inline]
     #[stable]
     fn is_null(self) -> bool { self as uint == 0 }
-
-    #[inline]
-    #[deprecated = "use `as uint` instead"]
-    fn to_uint(self) -> uint { self as uint }
 
     #[inline]
     #[stable]
@@ -414,23 +386,6 @@ impl<T> PartialEq for *mut T {
 
 #[stable]
 impl<T> Eq for *mut T {}
-
-// Equivalence for pointers
-#[allow(deprecated)]
-#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
-impl<T> Equiv<*mut T> for *const T {
-    fn equiv(&self, other: &*mut T) -> bool {
-        self.to_uint() == other.to_uint()
-    }
-}
-
-#[allow(deprecated)]
-#[deprecated = "Use overloaded `core::cmp::PartialEq`"]
-impl<T> Equiv<*const T> for *mut T {
-    fn equiv(&self, other: &*const T) -> bool {
-        self.to_uint() == other.to_uint()
-    }
-}
 
 #[stable]
 impl<T> Clone for *const T {

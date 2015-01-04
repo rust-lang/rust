@@ -16,141 +16,6 @@
 use core::option::Option;
 use tables::{derived_property, property, general_category, conversions, charwidth};
 
-/// Returns whether the specified `char` is considered a Unicode alphabetic
-/// code point
-#[deprecated = "use UnicodeChar::is_alphabetic"]
-pub fn is_alphabetic(c: char) -> bool {
-    c.is_alphabetic()
-}
-
-/// Returns whether the specified `char` satisfies the 'XID_Start' Unicode property
-///
-/// 'XID_Start' is a Unicode Derived Property specified in
-/// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
-/// mostly similar to ID_Start but modified for closure under NFKx.
-#[allow(non_snake_case)]
-#[deprecated = "use UnicodeChar::is_XID_start"]
-pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
-
-/// Returns whether the specified `char` satisfies the 'XID_Continue' Unicode property
-///
-/// 'XID_Continue' is a Unicode Derived Property specified in
-/// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
-/// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-#[allow(non_snake_case)]
-#[deprecated = "use UnicodeChar::is_XID_continue"]
-pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
-
-///
-/// Indicates whether a `char` is in lower case
-///
-/// This is defined according to the terms of the Unicode Derived Core Property 'Lowercase'.
-///
-#[inline]
-#[deprecated = "use UnicodeChar::is_lowercase"]
-pub fn is_lowercase(c: char) -> bool {
-    c.is_lowercase()
-}
-
-///
-/// Indicates whether a `char` is in upper case
-///
-/// This is defined according to the terms of the Unicode Derived Core Property 'Uppercase'.
-///
-#[inline]
-#[deprecated = "use UnicodeChar::is_uppercase"]
-pub fn is_uppercase(c: char) -> bool {
-    c.is_uppercase()
-}
-
-///
-/// Indicates whether a `char` is whitespace
-///
-/// Whitespace is defined in terms of the Unicode Property 'White_Space'.
-///
-#[inline]
-#[deprecated = "use UnicodeChar::is_whitespace"]
-pub fn is_whitespace(c: char) -> bool {
-    c.is_whitespace()
-}
-
-///
-/// Indicates whether a `char` is alphanumeric
-///
-/// Alphanumericness is defined in terms of the Unicode General Categories
-/// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
-///
-#[inline]
-#[deprecated = "use UnicodeChar::is_alphanumeric"]
-pub fn is_alphanumeric(c: char) -> bool {
-    c.is_alphanumeric()
-}
-
-///
-/// Indicates whether a `char` is a control code point
-///
-/// Control code points are defined in terms of the Unicode General Category
-/// 'Cc'.
-///
-#[inline]
-#[deprecated = "use UnicodeChar::is_control"]
-pub fn is_control(c: char) -> bool { general_category::Cc(c) }
-
-/// Indicates whether the `char` is numeric (Nd, Nl, or No)
-#[inline]
-#[deprecated = "use UnicodeChar::is_numeric"]
-pub fn is_digit(c: char) -> bool {
-    c.is_numeric()
-}
-
-/// Convert a char to its uppercase equivalent
-///
-/// The case-folding performed is the common or simple mapping:
-/// it maps one Unicode codepoint (one char in Rust) to its uppercase equivalent according
-/// to the Unicode database at ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
-/// The additional SpecialCasing.txt is not considered here, as it expands to multiple
-/// codepoints in some cases.
-///
-/// A full reference can be found here
-/// http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
-///
-/// # Return value
-///
-/// Returns the char itself if no conversion was made
-#[inline]
-#[deprecated = "use UnicodeChar::to_uppercase"]
-pub fn to_uppercase(c: char) -> char {
-    conversions::to_upper(c)
-}
-
-/// Convert a char to its lowercase equivalent
-///
-/// The case-folding performed is the common or simple mapping
-/// see `to_uppercase` for references and more information
-///
-/// # Return value
-///
-/// Returns the char itself if no conversion if possible
-#[inline]
-#[deprecated = "use UnicodeChar::to_lowercase"]
-pub fn to_lowercase(c: char) -> char {
-    conversions::to_lower(c)
-}
-
-/// Returns this character's displayed width in columns, or `None` if it is a
-/// control character other than `'\x00'`.
-///
-/// `is_cjk` determines behavior for characters in the Ambiguous category:
-/// if `is_cjk` is `true`, these are 2 columns wide; otherwise, they are 1.
-/// In CJK contexts, `is_cjk` should be `true`, else it should be `false`.
-/// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
-/// recommends that these characters be treated as 1 column (i.e.,
-/// `is_cjk` = `false`) if the context cannot be reliably determined.
-#[deprecated = "use UnicodeChar::width"]
-pub fn width(c: char, is_cjk: bool) -> Option<uint> {
-    charwidth::width(c, is_cjk)
-}
-
 /// Useful functions for Unicode characters.
 #[experimental = "pending prelude organization"]
 pub trait UnicodeChar {
@@ -164,27 +29,7 @@ pub trait UnicodeChar {
     /// 'XID_Start' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to ID_Start but modified for closure under NFKx.
-    #[allow(non_snake_case)]
-    #[deprecated = "use is_xid_start"]
-    fn is_XID_start(self) -> bool;
-
-    /// Returns whether the specified character satisfies the 'XID_Start'
-    /// Unicode property.
-    ///
-    /// 'XID_Start' is a Unicode Derived Property specified in
-    /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
-    /// mostly similar to ID_Start but modified for closure under NFKx.
     fn is_xid_start(self) -> bool;
-
-    /// Returns whether the specified `char` satisfies the 'XID_Continue'
-    /// Unicode property.
-    ///
-    /// 'XID_Continue' is a Unicode Derived Property specified in
-    /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
-    /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-    #[allow(non_snake_case)]
-    #[deprecated = "use is_xid_continue"]
-    fn is_XID_continue(self) -> bool;
 
     /// Returns whether the specified `char` satisfies the 'XID_Continue'
     /// Unicode property.
@@ -281,12 +126,6 @@ impl UnicodeChar for char {
             _ => false
         }
     }
-
-    #[deprecated = "use is_xid_start"]
-    fn is_XID_start(self) -> bool { derived_property::XID_Start(self) }
-
-    #[deprecated = "use is_xid_continue"]
-    fn is_XID_continue(self) -> bool { derived_property::XID_Continue(self) }
 
     fn is_xid_start(self) -> bool { derived_property::XID_Start(self) }
 

@@ -33,9 +33,9 @@ fn start(argc: int, argv: *const *const u8) -> int {
     }
 
     let args = unsafe {
-        Vec::from_fn(argc as uint, |i| {
+        range(0, argc as uint).map(|i| {
             String::from_raw_buf(*argv.offset(i as int)).into_bytes()
-        })
+        }).collect::<Vec<_>>()
     };
     let me = args[0].as_slice();
 

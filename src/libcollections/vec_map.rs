@@ -343,12 +343,6 @@ impl<V> VecMap<V> {
     #[stable]
     pub fn clear(&mut self) { self.v.clear() }
 
-    /// Deprecated: Renamed to `get`.
-    #[deprecated = "Renamed to `get`"]
-    pub fn find(&self, key: &uint) -> Option<&V> {
-        self.get(key)
-    }
-
     /// Returns a reference to the value corresponding to the key.
     ///
     /// # Examples
@@ -391,12 +385,6 @@ impl<V> VecMap<V> {
         self.get(key).is_some()
     }
 
-    /// Deprecated: Renamed to `get_mut`.
-    #[deprecated = "Renamed to `get_mut`"]
-    pub fn find_mut(&mut self, key: &uint) -> Option<&mut V> {
-        self.get_mut(key)
-    }
-
     /// Returns a mutable reference to the value corresponding to the key.
     ///
     /// # Examples
@@ -424,12 +412,6 @@ impl<V> VecMap<V> {
         }
     }
 
-    /// Deprecated: Renamed to `insert`.
-    #[deprecated = "Renamed to `insert`"]
-    pub fn swap(&mut self, key: uint, value: V) -> Option<V> {
-        self.insert(key, value)
-    }
-
     /// Inserts a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise, `None` is returned.
     ///
@@ -455,12 +437,6 @@ impl<V> VecMap<V> {
         replace(&mut self.v[key], Some(value))
     }
 
-    /// Deprecated: Renamed to `remove`.
-    #[deprecated = "Renamed to `remove`"]
-    pub fn pop(&mut self, key: &uint) -> Option<V> {
-        self.remove(key)
-    }
-
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
@@ -480,27 +456,6 @@ impl<V> VecMap<V> {
             return None;
         }
         self.v[*key].take()
-    }
-}
-
-impl<V:Clone> VecMap<V> {
-    /// Deprecated: Use the entry API when available; shouldn't matter anyway, access is cheap.
-    #[deprecated = "Use the entry API when available; shouldn't matter anyway, access is cheap"]
-    #[allow(deprecated)]
-    pub fn update<F>(&mut self, key: uint, newval: V, ff: F) -> bool where F: FnOnce(V, V) -> V {
-        self.update_with_key(key, newval, move |_k, v, v1| ff(v,v1))
-    }
-
-    /// Deprecated: Use the entry API when available; shouldn't matter anyway, access is cheap.
-    #[deprecated = "Use the entry API when available; shouldn't matter anyway, access is cheap"]
-    pub fn update_with_key<F>(&mut self, key: uint, val: V, ff: F) -> bool where
-        F: FnOnce(uint, V, V) -> V
-    {
-        let new_val = match self.get(&key) {
-            None => val,
-            Some(orig) => ff(key, (*orig).clone(), val)
-        };
-        self.insert(key, new_val).is_none()
     }
 }
 
@@ -822,36 +777,6 @@ mod test_map {
         assert!(map.get(&5).is_none());
         assert!(map.get(&11).is_none());
         assert!(map.get(&14).is_none());
-    }
-
-    #[test]
-    fn test_insert_with_key() {
-        let mut map = VecMap::new();
-
-        // given a new key, initialize it with this new count,
-        // given an existing key, add more to its count
-        fn add_more_to_count(_k: uint, v0: uint, v1: uint) -> uint {
-            v0 + v1
-        }
-
-        fn add_more_to_count_simple(v0: uint, v1: uint) -> uint {
-            v0 + v1
-        }
-
-        // count integers
-        map.update(3, 1, add_more_to_count_simple);
-        map.update_with_key(9, 1, add_more_to_count);
-        map.update(3, 7, add_more_to_count_simple);
-        map.update_with_key(5, 3, add_more_to_count);
-        map.update_with_key(3, 2, add_more_to_count);
-
-        // check the total counts
-        assert_eq!(map.get(&3).unwrap(), &10);
-        assert_eq!(map.get(&5).unwrap(), &3);
-        assert_eq!(map.get(&9).unwrap(), &1);
-
-        // sadly, no sevens were counted
-        assert!(map.get(&7).is_none());
     }
 
     #[test]

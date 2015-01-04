@@ -46,7 +46,6 @@ extern crate libc;
 
 use std::io::stdio::{stdin_raw, stdout_raw};
 use std::io::{IoResult, EndOfFile};
-use std::num::{div_rem};
 use std::ptr::{copy_memory, Unique};
 use std::thread::Thread;
 
@@ -189,7 +188,8 @@ fn reverse_complement(seq: &mut [u8], tables: &Tables) {
         i += LINE_LEN + 1;
     }
 
-    let (div, rem) = div_rem(len, 4);
+    let div = len / 4;
+    let rem = len % 4;
     unsafe {
         let mut left = seq.as_mut_ptr() as *mut u16;
         // This is slow if len % 2 != 0 but still faster than bytewise operations.

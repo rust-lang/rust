@@ -15,9 +15,6 @@
 #![stable]
 #![allow(missing_docs)]
 
-use {int, i8, i16, i32, i64};
-use {uint, u8, u16, u32, u64};
-use {f32, f64};
 use char::Char;
 use clone::Clone;
 use cmp::{PartialEq, Eq};
@@ -30,21 +27,7 @@ use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
 use option::Option::{Some, None};
-use str::{FromStr, from_str, StrExt};
-
-/// Simultaneous division and remainder
-#[inline]
-#[deprecated = "use division and remainder directly"]
-pub fn div_rem<T: Clone + Div<Output=T> + Rem<Output=T>>(x: T, y: T) -> (T, T) {
-    (x.clone() / y.clone(), x % y)
-}
-
-/// Raises a `base` to the power of `exp`, using exponentiation by squaring.
-#[inline]
-#[deprecated = "Use Int::pow() instead, as in 2i.pow(4)"]
-pub fn pow<T: Int>(base: T, exp: uint) -> T {
-    base.pow(exp)
-}
+use str::{FromStr, StrExt};
 
 /// A built-in signed or unsigned integer.
 #[unstable = "recently settled as part of numerics reform"]
@@ -1345,64 +1328,12 @@ pub trait Float
     /// Raise a number to a floating point power.
     fn powf(self, n: Self) -> Self;
 
-    /// sqrt(2.0).
-    fn sqrt2() -> Self;
-    /// 1.0 / sqrt(2.0).
-    fn frac_1_sqrt2() -> Self;
-
     /// Take the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
     fn sqrt(self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     fn rsqrt(self) -> Self;
-
-    /// Archimedes' constant.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn pi() -> Self;
-    /// 2.0 * pi.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn two_pi() -> Self;
-    /// pi / 2.0.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn frac_pi_2() -> Self;
-    /// pi / 3.0.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn frac_pi_3() -> Self;
-    /// pi / 4.0.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn frac_pi_4() -> Self;
-    /// pi / 6.0.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn frac_pi_6() -> Self;
-    /// pi / 8.0.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn frac_pi_8() -> Self;
-    /// 1.0 / pi.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn frac_1_pi() -> Self;
-    /// 2.0 / pi.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn frac_2_pi() -> Self;
-    /// 2.0 / sqrt(pi).
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn frac_2_sqrtpi() -> Self;
-
-    /// Euler's number.
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn e() -> Self;
-    /// log2(e).
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn log2_e() -> Self;
-    /// log10(e).
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn log10_e() -> Self;
-    /// ln(2.0).
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn ln_2() -> Self;
-    /// ln(10.0).
-    #[deprecated = "use f32::consts or f64::consts instead"]
-    fn ln_10() -> Self;
 
     /// Returns `e^(self)`, (the exponential function).
     fn exp(self) -> Self;
@@ -1609,9 +1540,9 @@ macro_rules! from_str_radix_float_impl {
                         // Parse the exponent as decimal integer
                         let src = src[offset..];
                         let (is_positive, exp) = match src.slice_shift_char() {
-                            Some(('-', src)) => (false, from_str::<uint>(src)),
-                            Some(('+', src)) => (true,  from_str::<uint>(src)),
-                            Some((_, _))     => (true,  from_str::<uint>(src)),
+                            Some(('-', src)) => (false, src.parse::<uint>()),
+                            Some(('+', src)) => (true,  src.parse::<uint>()),
+                            Some((_, _))     => (true,  src.parse::<uint>()),
                             None             => return None,
                         };
 
@@ -1706,135 +1637,3 @@ from_str_radix_int_impl! { u8 }
 from_str_radix_int_impl! { u16 }
 from_str_radix_int_impl! { u32 }
 from_str_radix_int_impl! { u64 }
-
-// DEPRECATED
-
-macro_rules! trait_impl {
-    ($name:ident for $($t:ty)*) => {
-        $(#[allow(deprecated)] impl $name for $t {})*
-    };
-}
-
-#[deprecated = "Generalised numbers are no longer supported"]
-#[allow(deprecated)]
-pub trait Num: PartialEq + Zero + One
-             + Neg<Output=Self>
-             + Add<Output=Self>
-             + Sub<Output=Self>
-             + Mul<Output=Self>
-             + Div<Output=Self>
-             + Rem<Output=Self> {}
-trait_impl! { Num for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
-
-#[deprecated = "Generalised unsigned numbers are no longer supported"]
-#[allow(deprecated)]
-pub trait Unsigned: Num {}
-trait_impl! { Unsigned for uint u8 u16 u32 u64 }
-
-#[deprecated = "Use `Float` or `Int`"]
-#[allow(deprecated)]
-pub trait Primitive: Copy + Clone + Num + NumCast + PartialOrd {}
-trait_impl! { Primitive for uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
-
-#[deprecated = "The generic `Zero` trait will be removed soon."]
-pub trait Zero: Add<Output=Self> {
-    #[deprecated = "Use `Int::zero()` or `Float::zero()`."]
-    fn zero() -> Self;
-    #[deprecated = "Use `x == Int::zero()` or `x == Float::zero()`."]
-    fn is_zero(&self) -> bool;
-}
-#[deprecated = "Use `Int::zero()` or `Float::zero()`."]
-#[allow(deprecated)]
-pub fn zero<T: Zero>() -> T { Zero::zero() }
-macro_rules! zero_impl {
-    ($t:ty, $v:expr) => {
-        impl Zero for $t {
-            fn zero() -> $t { $v }
-            fn is_zero(&self) -> bool { *self == $v }
-        }
-    }
-}
-zero_impl! { uint, 0u }
-zero_impl! { u8,   0u8 }
-zero_impl! { u16,  0u16 }
-zero_impl! { u32,  0u32 }
-zero_impl! { u64,  0u64 }
-zero_impl! { int, 0i }
-zero_impl! { i8,  0i8 }
-zero_impl! { i16, 0i16 }
-zero_impl! { i32, 0i32 }
-zero_impl! { i64, 0i64 }
-zero_impl! { f32, 0.0f32 }
-zero_impl! { f64, 0.0f64 }
-
-#[deprecated = "The generic `One` trait will be removed soon."]
-pub trait One: Mul<Output=Self> {
-    #[deprecated = "Use `Int::one()` or `Float::one()`."]
-    fn one() -> Self;
-}
-#[deprecated = "Use `Int::one()` or `Float::one()`."]
-#[allow(deprecated)]
-pub fn one<T: One>() -> T { One::one() }
-macro_rules! one_impl {
-    ($t:ty, $v:expr) => {
-        impl One for $t {
-            fn one() -> $t { $v }
-        }
-    }
-}
-one_impl! { uint, 1u }
-one_impl! { u8,  1u8 }
-one_impl! { u16, 1u16 }
-one_impl! { u32, 1u32 }
-one_impl! { u64, 1u64 }
-one_impl! { int, 1i }
-one_impl! { i8,  1i8 }
-one_impl! { i16, 1i16 }
-one_impl! { i32, 1i32 }
-one_impl! { i64, 1i64 }
-one_impl! { f32, 1.0f32 }
-one_impl! { f64, 1.0f64 }
-
-#[deprecated = "Use `UnsignedInt::next_power_of_two`"]
-pub fn next_power_of_two<T: UnsignedInt>(n: T) -> T {
-    n.next_power_of_two()
-}
-#[deprecated = "Use `UnsignedInt::is_power_of_two`"]
-pub fn is_power_of_two<T: UnsignedInt>(n: T) -> bool {
-    n.is_power_of_two()
-}
-#[deprecated = "Use `UnsignedInt::checked_next_power_of_two`"]
-pub fn checked_next_power_of_two<T: UnsignedInt>(n: T) -> Option<T> {
-    n.checked_next_power_of_two()
-}
-
-#[deprecated = "Generalised bounded values are no longer supported"]
-pub trait Bounded {
-    #[deprecated = "Use `Int::min_value` or `Float::min_value`"]
-    fn min_value() -> Self;
-    #[deprecated = "Use `Int::max_value` or `Float::max_value`"]
-    fn max_value() -> Self;
-}
-macro_rules! bounded_impl {
-    ($T:ty, $min:expr, $max:expr) => {
-        impl Bounded for $T {
-            #[inline]
-            fn min_value() -> $T { $min }
-
-            #[inline]
-            fn max_value() -> $T { $max }
-        }
-    };
-}
-bounded_impl! { uint, uint::MIN, uint::MAX }
-bounded_impl! { u8, u8::MIN, u8::MAX }
-bounded_impl! { u16, u16::MIN, u16::MAX }
-bounded_impl! { u32, u32::MIN, u32::MAX }
-bounded_impl! { u64, u64::MIN, u64::MAX }
-bounded_impl! { int, int::MIN, int::MAX }
-bounded_impl! { i8, i8::MIN, i8::MAX }
-bounded_impl! { i16, i16::MIN, i16::MAX }
-bounded_impl! { i32, i32::MIN, i32::MAX }
-bounded_impl! { i64, i64::MIN, i64::MAX }
-bounded_impl! { f32, f32::MIN_VALUE, f32::MAX_VALUE }
-bounded_impl! { f64, f64::MIN_VALUE, f64::MAX_VALUE }

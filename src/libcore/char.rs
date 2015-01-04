@@ -17,7 +17,6 @@
 
 use iter::Iterator;
 use mem::transmute;
-use ops::FnMut;
 use option::Option::{None, Some};
 use option::Option;
 use slice::SliceExt;
@@ -81,51 +80,6 @@ pub fn from_u32(i: u32) -> Option<char> {
 }
 
 ///
-/// Checks if a `char` parses as a numeric digit in the given radix
-///
-/// Compared to `is_numeric()`, this function only recognizes the
-/// characters `0-9`, `a-z` and `A-Z`.
-///
-/// # Return value
-///
-/// Returns `true` if `c` is a valid digit under `radix`, and `false`
-/// otherwise.
-///
-/// # Panics
-///
-/// Panics if given a `radix` > 36.
-///
-/// # Note
-///
-/// This just wraps `to_digit()`.
-///
-#[inline]
-#[deprecated = "use the Char::is_digit method"]
-pub fn is_digit_radix(c: char, radix: uint) -> bool {
-    c.is_digit(radix)
-}
-
-///
-/// Converts a `char` to the corresponding digit
-///
-/// # Return value
-///
-/// If `c` is between '0' and '9', the corresponding value
-/// between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
-/// 'b' or 'B', 11, etc. Returns none if the `char` does not
-/// refer to a digit in the given radix.
-///
-/// # Panics
-///
-/// Panics if given a `radix` outside the range `[0..36]`.
-///
-#[inline]
-#[deprecated = "use the Char::to_digit method"]
-pub fn to_digit(c: char, radix: uint) -> Option<uint> {
-    c.to_digit(radix)
-}
-
-///
 /// Converts a number to the character representing it
 ///
 /// # Return value
@@ -156,48 +110,9 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     }
 }
 
-/// Deprecated, call the escape_unicode method instead.
-#[deprecated = "use the Char::escape_unicode method"]
-pub fn escape_unicode<F>(c: char, mut f: F) where F: FnMut(char) {
-    for char in c.escape_unicode() {
-        f(char);
-    }
-}
-
-/// Deprecated, call the escape_default method instead.
-#[deprecated = "use the Char::escape_default method"]
-pub fn escape_default<F>(c: char, mut f: F) where F: FnMut(char) {
-    for c in c.escape_default() {
-        f(c);
-    }
-}
-
-/// Returns the amount of bytes this `char` would need if encoded in UTF-8
-#[inline]
-#[deprecated = "use the Char::len_utf8 method"]
-pub fn len_utf8_bytes(c: char) -> uint {
-    c.len_utf8()
-}
-
 /// Basic `char` manipulations.
 #[experimental = "trait organization may change"]
 pub trait Char {
-    /// Checks if a `char` parses as a numeric digit in the given radix.
-    ///
-    /// Compared to `is_numeric()`, this function only recognizes the characters
-    /// `0-9`, `a-z` and `A-Z`.
-    ///
-    /// # Return value
-    ///
-    /// Returns `true` if `c` is a valid digit under `radix`, and `false`
-    /// otherwise.
-    ///
-    /// # Panics
-    ///
-    /// Panics if given a radix > 36.
-    #[deprecated = "use is_digit"]
-    fn is_digit_radix(self, radix: uint) -> bool;
-
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
     /// Compared to `is_numeric()`, this function only recognizes the characters
@@ -228,23 +143,6 @@ pub trait Char {
     #[unstable = "pending error conventions, trait organization"]
     fn to_digit(self, radix: uint) -> Option<uint>;
 
-    /// Converts a number to the character representing it.
-    ///
-    /// # Return value
-    ///
-    /// Returns `Some(char)` if `num` represents one digit under `radix`,
-    /// using one character of `0-9` or `a-z`, or `None` if it doesn't.
-    ///
-    /// # Panics
-    ///
-    /// Panics if given a radix > 36.
-    #[deprecated = "use the char::from_digit free function"]
-    fn from_digit(num: uint, radix: uint) -> Option<Self>;
-
-    /// Converts from `u32` to a `char`
-    #[deprecated = "use the char::from_u32 free function"]
-    fn from_u32(i: u32) -> Option<char>;
-
     /// Returns an iterator that yields the hexadecimal Unicode escape
     /// of a character, as `char`s.
     ///
@@ -268,11 +166,6 @@ pub trait Char {
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
     #[unstable = "pending error conventions, trait organization"]
     fn escape_default(self) -> EscapeDefault;
-
-    /// Returns the amount of bytes this character would need if encoded in
-    /// UTF-8.
-    #[deprecated = "use len_utf8"]
-    fn len_utf8_bytes(self) -> uint;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
@@ -303,9 +196,6 @@ pub trait Char {
 
 #[experimental = "trait is experimental"]
 impl Char for char {
-    #[deprecated = "use is_digit"]
-    fn is_digit_radix(self, radix: uint) -> bool { self.is_digit(radix) }
-
     #[unstable = "pending trait organization"]
     fn is_digit(self, radix: uint) -> bool {
         match self.to_digit(radix) {
@@ -329,13 +219,6 @@ impl Char for char {
         else { None }
     }
 
-    #[deprecated = "use the char::from_digit free function"]
-    fn from_digit(num: uint, radix: uint) -> Option<char> { from_digit(num, radix) }
-
-    #[inline]
-    #[deprecated = "use the char::from_u32 free function"]
-    fn from_u32(i: u32) -> Option<char> { from_u32(i) }
-
     #[unstable = "pending error conventions, trait organization"]
     fn escape_unicode(self) -> EscapeUnicode {
         EscapeUnicode { c: self, state: EscapeUnicodeState::Backslash }
@@ -355,10 +238,6 @@ impl Char for char {
         };
         EscapeDefault { state: init_state }
     }
-
-    #[inline]
-    #[deprecated = "use len_utf8"]
-    fn len_utf8_bytes(self) -> uint { self.len_utf8() }
 
     #[inline]
     #[unstable = "pending trait organization"]

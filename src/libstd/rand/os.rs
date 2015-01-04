@@ -93,12 +93,12 @@ mod imp {
                   target_arch = "arm",
                   target_arch = "aarch64")))]
     fn is_getrandom_available() -> bool {
-        use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Relaxed};
+        use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 
         static GETRANDOM_CHECKED: AtomicBool = ATOMIC_BOOL_INIT;
         static GETRANDOM_AVAILABLE: AtomicBool = ATOMIC_BOOL_INIT;
 
-        if !GETRANDOM_CHECKED.load(Relaxed) {
+        if !GETRANDOM_CHECKED.load(Ordering::Relaxed) {
             let mut buf: [u8; 0] = [];
             let result = getrandom(&mut buf);
             let available = if result == -1 {
@@ -107,11 +107,11 @@ mod imp {
             } else {
                 true
             };
-            GETRANDOM_AVAILABLE.store(available, Relaxed);
-            GETRANDOM_CHECKED.store(true, Relaxed);
+            GETRANDOM_AVAILABLE.store(available, Ordering::Relaxed);
+            GETRANDOM_CHECKED.store(true, Ordering::Relaxed);
             available
         } else {
-            GETRANDOM_AVAILABLE.load(Relaxed)
+            GETRANDOM_AVAILABLE.load(Ordering::Relaxed)
         }
     }
 

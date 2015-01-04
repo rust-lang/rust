@@ -58,44 +58,6 @@ macro_rules! tuple_impls {
         }
     )+) => {
         $(
-            #[allow(missing_docs)]
-            #[deprecated]
-            pub trait $Tuple<$($T),+> {
-                $(
-                    #[deprecated = "use tuple indexing: `tuple.N`"]
-                    fn $valN(self) -> $T;
-                    #[deprecated = "use tuple indexing: `&tuple.N`"]
-                    fn $refN<'a>(&'a self) -> &'a $T;
-                    #[deprecated = "use tuple indexing: `&mut tuple.N`"]
-                    fn $mutN<'a>(&'a mut self) -> &'a mut $T;
-                 )+
-            }
-
-            impl<$($T),+> $Tuple<$($T),+> for ($($T,)+) {
-                $(
-                    #[inline]
-                    #[allow(unused_variables)]
-                    #[deprecated = "use tuple indexing: `tuple.N`"]
-                    fn $valN(self) -> $T {
-                        e!(self.$idx)
-                    }
-
-                    #[inline]
-                    #[allow(unused_variables)]
-                    #[deprecated = "use tuple indexing: `&tuple.N`"]
-                    fn $refN<'a>(&'a self) -> &'a $T {
-                        e!(&self.$idx)
-                    }
-
-                    #[inline]
-                    #[allow(unused_variables)]
-                    #[deprecated = "use tuple indexing: &mut tuple.N"]
-                    fn $mutN<'a>(&'a mut self) -> &'a mut $T {
-                        e!(&mut self.$idx)
-                    }
-                )+
-            }
-
             #[stable]
             impl<$($T:Clone),+> Clone for ($($T,)+) {
                 fn clone(&self) -> ($($T,)+) {

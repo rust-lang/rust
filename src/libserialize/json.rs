@@ -2052,7 +2052,7 @@ macro_rules! read_primitive {
                 Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
-                Json::String(s) => match std::str::from_str(s.as_slice()) {
+                Json::String(s) => match s.parse() {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_string(), s)),
                 },

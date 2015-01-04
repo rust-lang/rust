@@ -125,7 +125,6 @@
 //! * It can be implemented highly efficiently on many platforms.
 
 use any::Any;
-use borrow::IntoCow;
 use boxed::Box;
 use cell::UnsafeCell;
 use clone::Clone;
@@ -173,12 +172,6 @@ impl Builder {
     pub fn name(mut self, name: String) -> Builder {
         self.name = Some(name);
         self
-    }
-
-    /// Deprecated: use `name` instead
-    #[deprecated = "use name instead"]
-    pub fn named<T: IntoCow<'static, String, str>>(self, name: T) -> Builder {
-        self.name(name.into_cow().into_owned())
     }
 
     /// Set the size of the stack for the new thread.

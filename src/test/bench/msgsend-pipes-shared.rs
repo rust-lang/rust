@@ -20,7 +20,6 @@
 
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::os;
-use std::str::from_str;
 use std::thread::Thread;
 use std::time::Duration;
 use std::uint;
@@ -55,8 +54,8 @@ fn run(args: &[String]) {
     let (to_parent, from_child) = channel();
     let (to_child, from_parent) = channel();
 
-    let size = from_str::<uint>(args[1].as_slice()).unwrap();
-    let workers = from_str::<uint>(args[2].as_slice()).unwrap();
+    let size = args[1].parse::<uint>().unwrap();
+    let workers = args[2].parse::<uint>().unwrap();
     let num_bytes = 100;
     let mut result = None;
     let mut p = Some((to_child, to_parent, from_parent));

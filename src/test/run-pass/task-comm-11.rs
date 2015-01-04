@@ -9,17 +9,17 @@
 // except according to those terms.
 
 use std::sync::mpsc::{channel, Sender};
-use std::task;
+use std::thread::Thread;
 
 fn start(tx: &Sender<Sender<int>>) {
     let (tx2, _rx) = channel();
-    tx.send(tx2);
+    tx.send(tx2).unwrap();
 }
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _child = task::spawn(move|| {
+    let _child = Thread::spawn(move|| {
         start(&tx)
     });
-    let _tx = rx.recv();
+    let _tx = rx.recv().unwrap();
 }

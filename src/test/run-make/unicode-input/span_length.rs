@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{char, os};
 use std::io::{File, Command};
+use std::iter::repeat;
 use std::rand::{thread_rng, Rng};
+use std::{char, os};
 
 // creates a file with `fn main() { <random ident> }` and checks the
 // compiler emits a span of the appropriate length (for the
@@ -60,7 +61,8 @@ fn main() {
         let err = String::from_utf8_lossy(result.error.as_slice());
 
         // the span should end the line (e.g no extra ~'s)
-        let expected_span = format!("^{}\n", "~".repeat(n - 1));
+        let expected_span = format!("^{}\n", repeat("~").take(n - 1)
+                                                        .collect::<String>());
         assert!(err.as_slice().contains(expected_span.as_slice()));
     }
 }

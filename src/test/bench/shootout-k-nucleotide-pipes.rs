@@ -15,17 +15,14 @@
 
 #![feature(slicing_syntax)]
 
-extern crate collections;
-
 use std::ascii::{AsciiExt, OwnedAsciiExt};
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::HashMap;
-use std::sync::mpsc::{channel, Sender, Receiver};
 use std::mem::replace;
 use std::num::Float;
 use std::option;
 use std::os;
-use std::string::IntoString;
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread::Thread;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
@@ -87,7 +84,7 @@ fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
 // given a map, increment the counter for a key
 fn update_freq(mm: &mut HashMap<Vec<u8> , uint>, key: &[u8]) {
     let key = key.to_vec();
-    let newval = match mm.pop(&key) {
+    let newval = match mm.remove(&key) {
         Some(v) => v + 1,
         None => 1
     };
@@ -142,7 +139,7 @@ fn make_sequence_processor(sz: uint,
         _ => { "".to_string() }
    };
 
-    to_parent.send(buffer);
+    to_parent.send(buffer).unwrap();
 }
 
 // given a FASTA file on stdin, process sequence THREE
@@ -159,7 +156,9 @@ fn main() {
 
     // initialize each sequence sorter
     let sizes = vec!(1u,2,3,4,6,12,18);
-    let mut streams = Vec::from_fn(sizes.len(), |_| Some(channel::<String>()));
+    let mut streams = range(0, sizes.len()).map(|_| {
+        Some(channel::<String>())
+    }).collect::<Vec<_>>();
     let mut from_child = Vec::new();
     let to_child  = sizes.iter().zip(streams.iter_mut()).map(|(sz, stream_ref)| {
         let sz = *sz;
@@ -206,7 +205,7 @@ fn main() {
 
                for (ii, _sz) in sizes.iter().enumerate() {
                    let lb = line_bytes.to_vec();
-                   to_child[ii].send(lb);
+                   to_child[ii].send(lb).unwrap();
                }
            }
 
@@ -217,7 +216,7 @@ fn main() {
 
    // finish...
    for (ii, _sz) in sizes.iter().enumerate() {
-       to_child[ii].send(Vec::new());
+       to_child[ii].send(Vec::new()).unwrap();
    }
 
    // now fetch and print result messages

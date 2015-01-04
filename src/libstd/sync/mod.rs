@@ -18,6 +18,7 @@
 #![experimental]
 
 pub use alloc::arc::{Arc, Weak};
+pub use core::atomic;
 
 pub use self::mutex::{Mutex, MutexGuard, StaticMutex};
 pub use self::mutex::MUTEX_INIT;
@@ -32,7 +33,6 @@ pub use self::poison::{PoisonError, TryLockError, TryLockResult, LockResult};
 pub use self::future::Future;
 pub use self::task_pool::TaskPool;
 
-pub mod atomic;
 pub mod mpsc;
 
 mod barrier;

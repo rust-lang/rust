@@ -278,7 +278,7 @@ pub use self::LabelText::*;
 
 use std::borrow::IntoCow;
 use std::io;
-use std::str::CowString;
+use std::string::CowString;
 use std::vec::CowVec;
 
 pub mod maybe_owned_vec;
@@ -589,8 +589,8 @@ mod tests {
     use super::{Id, LabelText, LabelStr, EscStr, Labeller};
     use super::{Nodes, Edges, GraphWalk, render};
     use std::io::IoResult;
-    use std::str;
     use std::borrow::IntoCow;
+    use std::iter::repeat;
 
     /// each node is an index in a vector in the graph.
     type Node = uint;
@@ -638,7 +638,7 @@ mod tests {
         fn to_opt_strs(self) -> Vec<Option<&'static str>> {
             match self {
                 UnlabelledNodes(len)
-                    => Vec::from_elem(len, None).into_iter().collect(),
+                    => repeat(None).take(len).collect(),
                 AllNodesLabelled(lbls)
                     => lbls.into_iter().map(
                         |l|Some(l)).collect(),
