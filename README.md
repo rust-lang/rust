@@ -32,6 +32,7 @@ the direction the language is evolving in.
 * [0135-where.md](text/0135-where.md)
 * [0141-lifetime-elision.md](text/0141-lifetime-elision.md)
 * [0151-capture-by-value.md](text/0151-capture-by-value.md)
+* [0179-and-mut-patterns.md](text/0179-and-mut-patterns.md)
 * [0195-associated-items.md](text/0195-associated-items.md)
 * [0198-slice-notation.md](text/0198-slice-notation.md)
 * [0199-ownership-variants.md](text/0199-ownership-variants.md)
