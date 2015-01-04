@@ -494,11 +494,7 @@ impl BoxPointers {
         let mut n_uniq = 0i;
         ty::fold_ty(cx.tcx, ty, |t| {
             match t.sty {
-                ty::ty_uniq(_) |
-                ty::ty_closure(box ty::ClosureTy {
-                    store: ty::UniqTraitStore,
-                    ..
-                }) => {
+                ty::ty_uniq(_) => {
                     n_uniq += 1;
                 }
 

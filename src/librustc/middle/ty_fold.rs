@@ -604,9 +604,6 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             let bfn = f.fold_with(this);
             ty::ty_bare_fn(opt_def_id, this.tcx().mk_bare_fn(bfn))
         }
-        ty::ty_closure(ref f) => {
-            ty::ty_closure(f.fold_with(this))
-        }
         ty::ty_rptr(r, ref tm) => {
             let r = r.fold_with(this);
             ty::ty_rptr(this.tcx().mk_region(r), tm.fold_with(this))

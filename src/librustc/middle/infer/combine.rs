@@ -644,12 +644,6 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             Ok(ty::mk_bare_fn(tcx, a_opt_def_id, tcx.mk_bare_fn(fty)))
         }
 
-      (&ty::ty_closure(ref a_fty), &ty::ty_closure(ref b_fty)) => {
-        this.closure_tys(&**a_fty, &**b_fty).and_then(|fty| {
-            Ok(ty::mk_closure(tcx, fty))
-        })
-      }
-
       (&ty::ty_projection(ref a_data), &ty::ty_projection(ref b_data)) => {
           let projection_ty = try!(this.projection_tys(a_data, b_data));
           Ok(ty::mk_projection(tcx, projection_ty.trait_ref, projection_ty.item_name))

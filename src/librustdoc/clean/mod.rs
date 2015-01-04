@@ -1426,19 +1426,6 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 decl: (ast_util::local_def(0), &fty.sig).clean(cx),
                 abi: fty.abi.to_string(),
             }),
-            ty::ty_closure(ref fty) => {
-                let decl = box ClosureDecl {
-                    lifetimes: Vec::new(), // FIXME: this looks wrong...
-                    decl: (ast_util::local_def(0), &fty.sig).clean(cx),
-                    onceness: fty.onceness,
-                    unsafety: fty.unsafety,
-                    bounds: fty.bounds.clean(cx),
-                };
-                match fty.store {
-                    ty::UniqTraitStore => Proc(decl),
-                    ty::RegionTraitStore(..) => Closure(decl),
-                }
-            }
             ty::ty_struct(did, substs) |
             ty::ty_enum(did, substs) => {
                 let fqn = csearch::get_item_path(cx.tcx(), did);

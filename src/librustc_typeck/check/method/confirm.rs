@@ -462,7 +462,6 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                     method_callee: &MethodCallee) {
         let sig = match method_callee.ty.sty {
             ty::ty_bare_fn(_, ref f) => f.sig.clone(),
-            ty::ty_closure(ref f) => f.sig.clone(),
             _ => return,
         };
 

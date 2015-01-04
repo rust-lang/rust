@@ -441,18 +441,6 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                                                          v0,
                                                          t,
                                                          |bb, vv, tt| drop_ty(bb, vv, tt, None)),
-        ty::ty_closure(ref f) if f.store == ty::UniqTraitStore => {
-            let box_cell_v = GEPi(bcx, v0, &[0u, abi::FAT_PTR_EXTRA]);
-            let env = Load(bcx, box_cell_v);
-            let env_ptr_ty = Type::at_box(bcx.ccx(), Type::i8(bcx.ccx())).ptr_to();
-            let env = PointerCast(bcx, env, env_ptr_ty);
-            with_cond(bcx, IsNotNull(bcx, env), |bcx| {
-                let dtor_ptr = GEPi(bcx, env, &[0u, abi::BOX_FIELD_DROP_GLUE]);
-                let dtor = Load(bcx, dtor_ptr);
-                Call(bcx, dtor, &[PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))], None);
-                bcx
-            })
-        }
         ty::ty_trait(..) => {
             // No need to do a null check here (as opposed to the Box<trait case
             // above), because this happens for a trait field in an unsized

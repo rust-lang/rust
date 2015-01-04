@@ -831,20 +831,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ty_bare_fn(_, &ty::BareFnTy { ref sig, .. }) |
-            ty::ty_closure(box ty::ClosureTy {
-                    ref sig,
-                    store: ty::UniqTraitStore,
-                    ..
-                }) =>
-            {
-                self.add_constraints_from_sig(generics, sig, variance);
-            }
-
-            ty::ty_closure(box ty::ClosureTy { ref sig,
-                    store: ty::RegionTraitStore(region, _), .. }) => {
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(generics, region, contra);
+            ty::ty_bare_fn(_, &ty::BareFnTy { ref sig, .. }) => {
                 self.add_constraints_from_sig(generics, sig, variance);
             }
 
