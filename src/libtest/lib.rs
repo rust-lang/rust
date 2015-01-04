@@ -58,7 +58,7 @@ use serialize::{json, Decodable, Encodable};
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
-use std::any::{Any, AnyRefExt};
+use std::any::Any;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::f64;

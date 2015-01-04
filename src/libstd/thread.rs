@@ -435,7 +435,7 @@ impl<T: Send> Drop for JoinGuard<T> {
 mod test {
     use prelude::v1::*;
 
-    use any::{Any, AnyRefExt};
+    use any::Any;
     use sync::mpsc::{channel, Sender};
     use boxed::BoxAny;
     use result;

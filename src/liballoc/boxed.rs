@@ -12,7 +12,7 @@
 
 #![stable]
 
-use core::any::{Any, AnyRefExt};
+use core::any::Any;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;

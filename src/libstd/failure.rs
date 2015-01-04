@@ -12,7 +12,7 @@
 
 use prelude::v1::*;
 
-use any::{Any, AnyRefExt};
+use any::Any;
 use cell::RefCell;
 use io::IoResult;
 use rt::{backtrace, unwind};

@@ -35,7 +35,7 @@
 //!
 //! ```rust
 //! use std::fmt::Show;
-//! use std::any::{Any, AnyRefExt};
+//! use std::any::Any;
 //!
 //! // Logger function for any type that implements Show.
 //! fn log<T: Any+Show>(value: &T) {
@@ -102,24 +102,11 @@ impl<T: 'static> Any for T {
 // Implemented as three extension traits so that the methods can be generic.
 ///////////////////////////////////////////////////////////////////////////////
 
-/// Extension methods for a referenced `Any` trait object
-#[unstable = "this trait will not be necessary once DST lands, it will be a \
-              part of `impl Any`"]
-pub trait AnyRefExt<'a> {
+impl Any {
     /// Returns true if the boxed type is the same as `T`
     #[stable]
-    fn is<T: 'static>(self) -> bool;
-
-    /// Returns some reference to the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    #[unstable = "naming conventions around acquiring references may change"]
-    fn downcast_ref<T: 'static>(self) -> Option<&'a T>;
-}
-
-#[stable]
-impl<'a> AnyRefExt<'a> for &'a Any {
     #[inline]
-    fn is<T: 'static>(self) -> bool {
+    pub fn is<T: 'static>(&self) -> bool {
         // Get TypeId of the type this function is instantiated with
         let t = TypeId::of::<T>();
 
@@ -130,8 +117,11 @@ impl<'a> AnyRefExt<'a> for &'a Any {
         t == boxed
     }
 
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    #[unstable = "naming conventions around acquiring references may change"]
     #[inline]
-    fn downcast_ref<T: 'static>(self) -> Option<&'a T> {
+    pub fn downcast_ref<'a, T: 'static>(&'a self) -> Option<&'a T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -144,22 +134,12 @@ impl<'a> AnyRefExt<'a> for &'a Any {
             None
         }
     }
-}
 
-/// Extension methods for a mutable referenced `Any` trait object
-#[unstable = "this trait will not be necessary once DST lands, it will be a \
-              part of `impl Any`"]
-pub trait AnyMutRefExt<'a> {
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
     #[unstable = "naming conventions around acquiring references may change"]
-    fn downcast_mut<T: 'static>(self) -> Option<&'a mut T>;
-}
-
-#[stable]
-impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     #[inline]
-    fn downcast_mut<T: 'static>(self) -> Option<&'a mut T> {
+    pub fn downcast_mut<'a, T: 'static>(&'a mut self) -> Option<&'a mut T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
