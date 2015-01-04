@@ -103,8 +103,18 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         ast::PatEnum(..) | ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
             let const_did = tcx.def_map.borrow()[pat.id].clone().def_id();
             let const_scheme = ty::lookup_item_type(tcx, const_did);
-            fcx.write_ty(pat.id, const_scheme.ty);
-            demand::suptype(fcx, pat.span, expected, const_scheme.ty);
+            assert!(const_scheme.generics.is_empty());
+            let const_ty = pcx.fcx.instantiate_type_scheme(pat.span,
+                                                           &Substs::empty(),
+                                                           &const_scheme.ty);
+            fcx.write_ty(pat.id, const_ty);
+
+            // FIXME(#20489) -- we should limit the types here to scalars or something!
+
+            // As with PatLit, what we really want here is that there
+            // exist a LUB, but for the cases that can occur, subtype
+            // is good enough.
+            demand::suptype(fcx, pat.span, expected, const_ty);
         }
         ast::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
             let typ = fcx.local_ty(pat.span, pat.id);
