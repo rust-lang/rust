@@ -562,7 +562,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             self.fcx.adjust_expr_ty(
                                 &**base_expr,
                                 Some(&ty::AdjustDerefRef(base_adjustment.clone())));
-
+                        let index_expr_ty = self.fcx.expr_ty(&**index_expr);
+                        
                         let result = check::try_index_step(
                             self.fcx,
                             MethodCall::expr(expr.id),
@@ -570,10 +571,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             &**base_expr,
                             adjusted_base_ty,
                             base_adjustment,
-                            PreferMutLvalue);
+                            PreferMutLvalue,
+                            index_expr_ty);
 
                         if let Some((input_ty, return_ty)) = result {
-                            let index_expr_ty = self.fcx.expr_ty(&**index_expr);
                             demand::suptype(self.fcx, index_expr.span, input_ty, index_expr_ty);
 
                             let expr_ty = self.fcx.expr_ty(&**expr);
