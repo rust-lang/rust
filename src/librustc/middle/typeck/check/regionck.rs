@@ -278,6 +278,11 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
               maybe_links: RefCell::new(FnvHashMap::new()) }
     }
 
+    pub fn reset_traversal(&mut self) {
+        self.breadcrumbs.clear();
+        self.breadcrumbs.shrink_to_fit();
+    }
+
     pub fn traverse_type_if_unseen(&mut self,
                                    typ: ty::Ty<'tcx>,
                                    keep_going: |&mut Rcx<'a, 'tcx>| -> bool) -> bool {
@@ -287,8 +292,18 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         if !rcx.breadcrumbs.contains(&typ) {
             rcx.breadcrumbs.push(typ);
             let keep_going = keep_going(rcx);
-            let top_t = rcx.breadcrumbs.pop();
-            assert_eq!(top_t, Some(typ));
+
+            // FIXME: popping the breadcrumbs here is a reasonable
+            // idea, but then you fall victim to exponential time on
+            // examples like src/tests/compile-fail/huge-struct.rs.
+            // So pnkfelix is trying to experimentally not remove
+            // anything from the vector during any particular
+            // traversal, and instead clear it after the whole
+            // traversal is done.
+            //
+            // let top_t = rcx.breadcrumbs.pop();
+            // assert_eq!(top_t, Some(typ));
+
             keep_going
         } else {
             false

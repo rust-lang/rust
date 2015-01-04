@@ -19,7 +19,8 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
         span,
         scope,
         false,
-        0)
+        0);
+    rcx.reset_traversal();
 }
 
 fn constrain_region_for_destructor_safety(rcx: &mut Rcx,
