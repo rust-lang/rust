@@ -18,14 +18,15 @@ use syntax::ast;
 use syntax::codemap::Span;
 use util::ppaux::Repr;
 
-// Requires that the two types unify, and prints an error message if they
-// don't.
+// Requires that the two types unify, and prints an error message if
+// they don't.
 pub fn suptype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
-                         expected: Ty<'tcx>, actual: Ty<'tcx>) {
-    suptype_with_fn(fcx, sp, false, expected, actual,
+                         ty_expected: Ty<'tcx>, ty_actual: Ty<'tcx>) {
+    suptype_with_fn(fcx, sp, false, ty_expected, ty_actual,
         |sp, e, a, s| { fcx.report_mismatched_types(sp, e, a, s) })
 }
 
+/// As `suptype`, but call `handle_err` if unification for subtyping fails.
 pub fn suptype_with_fn<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                     sp: Span,
                                     b_is_expected: bool,
@@ -48,9 +49,7 @@ pub fn eqtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                         expected: Ty<'tcx>, actual: Ty<'tcx>) {
     match infer::mk_eqty(fcx.infcx(), false, infer::Misc(sp), actual, expected) {
         Ok(()) => { /* ok */ }
-        Err(ref err) => {
-            fcx.report_mismatched_types(sp, expected, actual, err);
-        }
+        Err(ref err) => { fcx.report_mismatched_types(sp, expected, actual, err); }
     }
 }
 
