@@ -71,7 +71,6 @@ use middle::ty::{self, Ty};
 use util::ppaux;
 use util::ppaux::Repr;
 
-use syntax::abi;
 use syntax::ast;
 
 // Note: Coerce is not actually a combiner, in that it does not
