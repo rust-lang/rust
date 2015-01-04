@@ -73,7 +73,7 @@ pub trait TypeFolder<'tcx> : Sized {
     fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
         where T : TypeFoldable<'tcx> + Repr<'tcx>
     {
-        // TODO this should eventually replace `enter_region_binder`/`exit_region_binder` altogether.
+        // FIXME(#20526) this should replace `enter_region_binder`/`exit_region_binder`.
         super_fold_binder(self, t)
     }
 
