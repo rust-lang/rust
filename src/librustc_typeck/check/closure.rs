@@ -13,20 +13,18 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv;
-use middle::infer;
 use middle::region::CodeExtent;
 use middle::subst;
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use rscope::RegionScope;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast::CaptureClause::*;
 use syntax::ast_util;
 use util::ppaux::Repr;
 
 pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    expr: &ast::Expr,
-                                   capture: ast::CaptureClause,
+                                   _capture: ast::CaptureClause,
                                    opt_kind: Option<ast::UnboxedClosureKind>,
                                    decl: &ast::FnDecl,
                                    body: &ast::Block,
