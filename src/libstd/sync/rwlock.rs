@@ -101,7 +101,7 @@ unsafe impl Sync for StaticRwLock {}
 
 /// Constant initialization for a statically-initialized rwlock.
 #[unstable = "may be merged with RwLock in the future"]
-pub const RWLOCK_INIT: StaticRwLock = StaticRwLock {
+pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock {
     lock: sys::RWLOCK_INIT,
     poison: poison::FLAG_INIT,
 };
