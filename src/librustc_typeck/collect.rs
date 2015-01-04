@@ -636,7 +636,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
 
             debug!("trait_def: ident={} trait_def={}",
                    it.ident.repr(ccx.tcx),
-                   trait_def.repr(ccx.tcx()));
+                   trait_def.repr(ccx.tcx));
 
             for trait_method in trait_methods.iter() {
                 let self_type = ty::mk_self_type(tcx);
@@ -1108,14 +1108,13 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn ty_generics_for_fn_or_method<'tcx,AC>(
-        this: &AC,
-        generics: &ast::Generics,
-        base_generics: ty::Generics<'tcx>)
-        -> ty::Generics<'tcx>
-        where AC: AstConv<'tcx> {
+fn ty_generics_for_fn_or_method<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
+                                         generics: &ast::Generics,
+                                         base_generics: ty::Generics<'tcx>)
+                                         -> ty::Generics<'tcx>
+{
     let early_lifetimes = resolve_lifetime::early_bound_lifetimes(generics);
-    ty_generics(this,
+    ty_generics(ccx,
                 subst::FnSpace,
                 early_lifetimes[],
                 generics.ty_params[],
@@ -1124,11 +1123,11 @@ fn ty_generics_for_fn_or_method<'tcx,AC>(
 }
 
 // Add the Sized bound, unless the type parameter is marked as `?Sized`.
-fn add_unsized_bound<'tcx,AC>(this: &AC,
+fn add_unsized_bound<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                               bounds: &mut ty::BuiltinBounds,
                               ast_bounds: &[ast::TyParamBound],
                               span: Span)
-                              where AC: AstConv<'tcx> {
+{
     // Try to find an unbound in bounds.
     let mut unbound = None;
     for ab in ast_bounds.iter() {
@@ -1137,24 +1136,24 @@ fn add_unsized_bound<'tcx,AC>(this: &AC,
                 assert!(ptr.bound_lifetimes.is_empty());
                 unbound = Some(ptr.trait_ref.clone());
             } else {
-                this.tcx().sess.span_err(span, "type parameter has more than one relaxed default \
+                ccx.tcx.sess.span_err(span, "type parameter has more than one relaxed default \
                                                 bound, only one is supported");
             }
         }
     }
 
-    let kind_id = this.tcx().lang_items.require(SizedTraitLangItem);
+    let kind_id = ccx.tcx.lang_items.require(SizedTraitLangItem);
     match unbound {
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
-            let trait_def_id = ty::trait_ref_to_def_id(this.tcx(), tpb);
+            let trait_def_id = ty::trait_ref_to_def_id(ccx.tcx, tpb);
             match kind_id {
                 Ok(kind_id) if trait_def_id != kind_id => {
-                    this.tcx().sess.span_warn(span,
+                    ccx.tcx.sess.span_warn(span,
                                               "default bound relaxed for a type parameter, but \
                                                this does nothing because the given bound is not \
                                                a default. Only `?Sized` is supported");
-                    ty::try_add_builtin_trait(this.tcx(),
+                    ty::try_add_builtin_trait(ccx.tcx,
                                               kind_id,
                                               bounds);
                 }
@@ -1162,27 +1161,26 @@ fn add_unsized_bound<'tcx,AC>(this: &AC,
             }
         }
         _ if kind_id.is_ok() => {
-            ty::try_add_builtin_trait(this.tcx(), kind_id.unwrap(), bounds);
+            ty::try_add_builtin_trait(ccx.tcx, kind_id.unwrap(), bounds);
         }
         // No lang item for Sized, so we can't add it as a bound.
         None => {}
     }
 }
 
-fn ty_generics<'tcx,AC>(this: &AC,
+fn ty_generics<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         space: subst::ParamSpace,
                         lifetime_defs: &[ast::LifetimeDef],
                         types: &[ast::TyParam],
                         base_generics: ty::Generics<'tcx>,
                         where_clause: &ast::WhereClause)
                         -> ty::Generics<'tcx>
-                        where AC: AstConv<'tcx>
 {
     let mut result = base_generics;
 
     for (i, l) in lifetime_defs.iter().enumerate() {
         let bounds = l.bounds.iter()
-                             .map(|l| ast_region_to_region(this.tcx(), l))
+                             .map(|l| ast_region_to_region(ccx.tcx, l))
                              .collect();
         let def = ty::RegionParameterDef { name: l.lifetime.name,
                                            space: space,
@@ -1197,25 +1195,25 @@ fn ty_generics<'tcx,AC>(this: &AC,
 
     // Now create the real type parameters.
     for (i, param) in types.iter().enumerate() {
-        let def = get_or_create_type_parameter_def(this,
+        let def = get_or_create_type_parameter_def(ccx,
                                                    space,
                                                    param,
                                                    i as u32);
         debug!("ty_generics: def for type param: {}, {}",
-               def.repr(this.tcx()),
+               def.repr(ccx.tcx),
                space);
         result.types.push(space, def);
     }
 
     // Just for fun, also push the bounds from the type parameters
     // into the predicates list. This is currently kind of non-DRY.
-    create_predicates(this.tcx(), &mut result, space);
+    create_predicates(ccx.tcx, &mut result, space);
 
     // Add the bounds not associated with a type parameter
     for predicate in where_clause.predicates.iter() {
         match predicate {
             &ast::WherePredicate::BoundPredicate(ref bound_pred) => {
-                let ty = ast_ty_to_ty(this, &ExplicitRscope, &*bound_pred.bounded_ty);
+                let ty = ast_ty_to_ty(ccx, &ExplicitRscope, &*bound_pred.bounded_ty);
 
                 for bound in bound_pred.bounds.iter() {
                     match bound {
@@ -1223,7 +1221,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
                             let mut projections = Vec::new();
 
                             let trait_ref = astconv::instantiate_poly_trait_ref(
-                                this,
+                                ccx,
                                 &ExplicitRscope,
                                 poly_trait_ref,
                                 Some(ty),
@@ -1238,7 +1236,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
                         }
 
                         &ast::TyParamBound::RegionTyParamBound(ref lifetime) => {
-                            let region = ast_region_to_region(this.tcx(), lifetime);
+                            let region = ast_region_to_region(ccx.tcx, lifetime);
                             let pred = ty::Binder(ty::OutlivesPredicate(ty, region));
                             result.predicates.push(space, ty::Predicate::TypeOutlives(pred))
                         }
@@ -1247,9 +1245,9 @@ fn ty_generics<'tcx,AC>(this: &AC,
             }
 
             &ast::WherePredicate::RegionPredicate(ref region_pred) => {
-                let r1 = ast_region_to_region(this.tcx(), &region_pred.lifetime);
+                let r1 = ast_region_to_region(ccx.tcx, &region_pred.lifetime);
                 for bound in region_pred.bounds.iter() {
-                    let r2 = ast_region_to_region(this.tcx(), bound);
+                    let r2 = ast_region_to_region(ccx.tcx, bound);
                     let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
                     result.predicates.push(space, ty::Predicate::RegionOutlives(pred))
                 }
@@ -1257,7 +1255,7 @@ fn ty_generics<'tcx,AC>(this: &AC,
 
             &ast::WherePredicate::EqPredicate(ref eq_pred) => {
                 // FIXME(#20041)
-                this.tcx().sess.span_bug(eq_pred.span,
+                ccx.tcx.sess.span_bug(eq_pred.span,
                                          "Equality constraints are not yet \
                                             implemented (#20041)")
             }
@@ -1292,34 +1290,33 @@ fn ty_generics<'tcx,AC>(this: &AC,
     }
 }
 
-fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
+fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                              space: subst::ParamSpace,
                                              param: &ast::TyParam,
                                              index: u32)
                                              -> ty::TypeParameterDef<'tcx>
-    where AC: AstConv<'tcx>
 {
-    match this.tcx().ty_param_defs.borrow().get(&param.id) {
+    match ccx.tcx.ty_param_defs.borrow().get(&param.id) {
         Some(d) => { return (*d).clone(); }
         None => { }
     }
 
     let param_ty = ty::ParamTy::new(space, index, param.ident.name);
-    let bounds = compute_bounds(this,
-                                param_ty.to_ty(this.tcx()),
+    let bounds = compute_bounds(ccx,
+                                param_ty.to_ty(ccx.tcx),
                                 param.bounds[],
                                 SizedByDefault::Yes,
                                 param.span);
     let default = match param.default {
         None => None,
         Some(ref path) => {
-            let ty = ast_ty_to_ty(this, &ExplicitRscope, &**path);
+            let ty = ast_ty_to_ty(ccx, &ExplicitRscope, &**path);
             let cur_idx = index;
 
             ty::walk_ty(ty, |t| {
                 match t.sty {
                     ty::ty_param(p) => if p.idx > cur_idx {
-                        span_err!(this.tcx().sess, path.span, E0128,
+                        span_err!(ccx.tcx.sess, path.span, E0128,
                                   "type parameters with a default cannot use \
                                    forward declared identifiers");
                         },
@@ -1340,7 +1337,7 @@ fn get_or_create_type_parameter_def<'tcx,AC>(this: &AC,
         default: default
     };
 
-    this.tcx().ty_param_defs.borrow_mut().insert(param.id, def.clone());
+    ccx.tcx.ty_param_defs.borrow_mut().insert(param.id, def.clone());
 
     def
 }
@@ -1350,26 +1347,25 @@ enum SizedByDefault { Yes, No }
 /// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
-fn compute_bounds<'tcx,AC>(this: &AC,
+fn compute_bounds<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                            param_ty: ty::Ty<'tcx>,
                            ast_bounds: &[ast::TyParamBound],
                            sized_by_default: SizedByDefault,
                            span: Span)
                            -> ty::ParamBounds<'tcx>
-                           where AC: AstConv<'tcx>
 {
-    let mut param_bounds = conv_param_bounds(this,
+    let mut param_bounds = conv_param_bounds(ccx,
                                              span,
                                              param_ty,
                                              ast_bounds);
 
     if let SizedByDefault::Yes = sized_by_default {
-        add_unsized_bound(this,
+        add_unsized_bound(ccx,
                           &mut param_bounds.builtin_bounds,
                           ast_bounds,
                           span);
 
-        check_bounds_compatible(this.tcx(),
+        check_bounds_compatible(ccx.tcx,
                                 param_ty,
                                 &param_bounds,
                                 span);
@@ -1404,24 +1400,23 @@ fn check_bounds_compatible<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-fn conv_param_bounds<'tcx,AC>(this: &AC,
+fn conv_param_bounds<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                               span: Span,
                               param_ty: ty::Ty<'tcx>,
                               ast_bounds: &[ast::TyParamBound])
                               -> ty::ParamBounds<'tcx>
-                              where AC: AstConv<'tcx>
 {
     let astconv::PartitionedBounds { builtin_bounds,
                                      trait_bounds,
                                      region_bounds } =
-        astconv::partition_bounds(this.tcx(), span, ast_bounds.as_slice());
+        astconv::partition_bounds(ccx.tcx, span, ast_bounds.as_slice());
 
     let mut projection_bounds = Vec::new();
 
     let trait_bounds: Vec<ty::PolyTraitRef> =
         trait_bounds.into_iter()
         .map(|bound| {
-            astconv::instantiate_poly_trait_ref(this,
+            astconv::instantiate_poly_trait_ref(ccx,
                                                 &ExplicitRscope,
                                                 bound,
                                                 Some(param_ty),
@@ -1430,7 +1425,7 @@ fn conv_param_bounds<'tcx,AC>(this: &AC,
         .collect();
     let region_bounds: Vec<ty::Region> =
         region_bounds.into_iter()
-        .map(|r| ast_region_to_region(this.tcx(), r))
+        .map(|r| ast_region_to_region(ccx.tcx, r))
         .collect();
     ty::ParamBounds {
         region_bounds: region_bounds,
