@@ -2738,10 +2738,6 @@ pub fn mk_nil<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
     mk_tup(cx, Vec::new())
 }
 
-pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, fty: ClosureTy<'tcx>) -> Ty<'tcx> {
-    panic!("stub");
-}
-
 pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>,
                         opt_def_id: Option<ast::DefId>,
                         fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {

@@ -506,9 +506,6 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         st.pos = st.pos + 1u;
         return ty::mk_tup(tcx, params);
       }
-      'f' => {
-        return ty::mk_closure(tcx, parse_closure_ty_(st, conv));
-      }
       'F' => {
           let def_id = parse_def_(st, NominalType, conv);
           return ty::mk_bare_fn(tcx, Some(def_id),

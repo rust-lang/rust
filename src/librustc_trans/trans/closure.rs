@@ -530,7 +530,6 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     // of the closure expression.
     let typer = NormalizingUnboxedClosureTyper::new(bcx.tcx());
     let function_type = typer.unboxed_closure_type(closure_id, bcx.fcx.param_substs);
-    let function_type = ty::mk_closure(bcx.tcx(), function_type);
 
     let freevars: Vec<ty::Freevar> =
         ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
@@ -543,8 +542,8 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   bcx.fcx.param_substs,
                   id,
                   &[],
-                  ty::ty_fn_ret(function_type),
-                  ty::ty_fn_abi(function_type),
+                  function_type.sig.0.output,
+                  function_type.abi,
                   ClosureEnv::new(freevars[],
                                   UnboxedClosure(freevar_mode)));
 
