@@ -3501,23 +3501,6 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         b | (TC::ReachesBorrowed).when(region != ty::ReStatic)
     }
 
-    fn closure_contents(cty: &ClosureTy) -> TypeContents {
-        // Closure contents are just like trait contents, but with potentially
-        // even more stuff.
-        let st = object_contents(&cty.bounds);
-
-        let st = match cty.store {
-            UniqTraitStore => {
-                st.owned_pointer()
-            }
-            RegionTraitStore(r, mutbl) => {
-                st.reference(borrowed_contents(r, mutbl))
-            }
-        };
-
-        st
-    }
-
     fn object_contents(bounds: &ExistentialBounds) -> TypeContents {
         // These are the type contents of the (opaque) interior. We
         // make no assumptions (other than that it cannot have an
