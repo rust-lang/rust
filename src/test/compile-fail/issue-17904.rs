@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<T> where T: Copy;
-struct Bar<T>(T) where T: Copy;
-struct Bleh<T, U>(T, U) where T: Copy, U: Sized;
-struct Baz<T> where T: Copy {
-    field: T
-}
+struct Baz<U> where U: Eq(U); //This is parsed as the new Fn* style parenthesis syntax.
+struct Baz<U> where U: Eq(U) -> R; // Notice this parses as well.
+struct Baz<U>(U) where U: Eq; // This rightfully signals no error as well.
+struct Foo<T> where T: Copy, (T); //~ ERROR unexpected token in `where` clause
+struct Bar<T> { x: T } where T: Copy //~ ERROR expected item, found `where`
 
 fn main() {}
