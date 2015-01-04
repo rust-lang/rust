@@ -856,10 +856,8 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
 fn constrain_callee(rcx: &mut Rcx,
                     callee_id: ast::NodeId,
-                    call_expr: &ast::Expr,
-                    callee_expr: &ast::Expr) {
-    let call_region = ty::ReScope(CodeExtent::from_node_id(call_expr.id));
-
+                    _call_expr: &ast::Expr,
+                    _callee_expr: &ast::Expr) {
     let callee_ty = rcx.resolve_node_type(callee_id);
     match callee_ty.sty {
         ty::ty_bare_fn(..) => { }
