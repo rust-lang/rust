@@ -90,7 +90,7 @@ digraph block {
     N13 -> N14;
     N14 -> N15;
     N15 -> N16;
-    N16 -> N12[label="exiting scope_0 expr break,\lexiting scope_1 stmt break ;,\lexiting scope_2 block { break ; \"unreachable\"; },\lexiting scope_3 expr if x == 0i { break ; \"unreachable\"; },\lexiting scope_4 stmt if x == 0i { break ; \"unreachable\"; },\lexiting scope_5 block {\l    if x == 0i { break ; \"unreachable\"; }\l    x -= 1i;\l    \'a:\l        loop  {\l            if y == 0i { break ; \"unreachable\"; }\l            y -= 1i;\l            \'a: loop  { if z == 0i { break ; \"unreachable\"; } z -= 1i; }\l            if x > 10i { continue \'a ; \"unreachable\"; }\l        }\l}\l"];
+    N16 -> N12[label="exiting scope_0 expr break,\lexiting scope_1 stmt break ;,\lexiting scope_2 stmt break ;,\lexiting scope_3 block { break ; \"unreachable\"; },\lexiting scope_4 block { break ; \"unreachable\"; },\lexiting scope_5 expr if x == 0i { break ; \"unreachable\"; },\lexiting scope_6 stmt if x == 0i { break ; \"unreachable\"; },\lexiting scope_7 stmt if x == 0i { break ; \"unreachable\"; },\lexiting scope_8 block {\l    if x == 0i { break ; \"unreachable\"; }\l    x -= 1i;\l    \'a:\l        loop  {\l            if y == 0i { break ; \"unreachable\"; }\l            y -= 1i;\l            \'a: loop  { if z == 0i { break ; \"unreachable\"; } z -= 1i; }\l            if x > 10i { continue \'a ; \"unreachable\"; }\l        }\l}\l,\lexiting scope_9 block {\l    if x == 0i { break ; \"unreachable\"; }\l    x -= 1i;\l    \'a:\l        loop  {\l            if y == 0i { break ; \"unreachable\"; }\l            y -= 1i;\l            \'a: loop  { if z == 0i { break ; \"unreachable\"; } z -= 1i; }\l            if x > 10i { continue \'a ; \"unreachable\"; }\l        }\l}\l"];
     N17 -> N18;
     N18 -> N19;
     N19 -> N20;
@@ -107,7 +107,7 @@ digraph block {
     N30 -> N31;
     N31 -> N32;
     N32 -> N33;
-    N33 -> N29[label="exiting scope_0 expr break,\lexiting scope_1 stmt break ;,\lexiting scope_2 block { break ; \"unreachable\"; },\lexiting scope_3 expr if y == 0i { break ; \"unreachable\"; },\lexiting scope_4 stmt if y == 0i { break ; \"unreachable\"; },\lexiting scope_5 block {\l    if y == 0i { break ; \"unreachable\"; }\l    y -= 1i;\l    \'a: loop  { if z == 0i { break ; \"unreachable\"; } z -= 1i; }\l    if x > 10i { continue \'a ; \"unreachable\"; }\l}\l"];
+    N33 -> N29[label="exiting scope_0 expr break,\lexiting scope_1 stmt break ;,\lexiting scope_2 stmt break ;,\lexiting scope_3 block { break ; \"unreachable\"; },\lexiting scope_4 block { break ; \"unreachable\"; },\lexiting scope_5 expr if y == 0i { break ; \"unreachable\"; },\lexiting scope_6 stmt if y == 0i { break ; \"unreachable\"; },\lexiting scope_7 stmt if y == 0i { break ; \"unreachable\"; },\lexiting scope_8 block {\l    if y == 0i { break ; \"unreachable\"; }\l    y -= 1i;\l    \'a: loop  { if z == 0i { break ; \"unreachable\"; } z -= 1i; }\l    if x > 10i { continue \'a ; \"unreachable\"; }\l}\l,\lexiting scope_9 block {\l    if y == 0i { break ; \"unreachable\"; }\l    y -= 1i;\l    \'a: loop  { if z == 0i { break ; \"unreachable\"; } z -= 1i; }\l    if x > 10i { continue \'a ; \"unreachable\"; }\l}\l"];
     N34 -> N35;
     N35 -> N36;
     N36 -> N37;
@@ -124,7 +124,7 @@ digraph block {
     N47 -> N48;
     N48 -> N49;
     N49 -> N50;
-    N50 -> N46[label="exiting scope_0 expr break,\lexiting scope_1 stmt break ;,\lexiting scope_2 block { break ; \"unreachable\"; },\lexiting scope_3 expr if z == 0i { break ; \"unreachable\"; },\lexiting scope_4 stmt if z == 0i { break ; \"unreachable\"; },\lexiting scope_5 block { if z == 0i { break ; \"unreachable\"; } z -= 1i; }"];
+    N50 -> N46[label="exiting scope_0 expr break,\lexiting scope_1 stmt break ;,\lexiting scope_2 stmt break ;,\lexiting scope_3 block { break ; \"unreachable\"; },\lexiting scope_4 block { break ; \"unreachable\"; },\lexiting scope_5 expr if z == 0i { break ; \"unreachable\"; },\lexiting scope_6 stmt if z == 0i { break ; \"unreachable\"; },\lexiting scope_7 stmt if z == 0i { break ; \"unreachable\"; },\lexiting scope_8 block { if z == 0i { break ; \"unreachable\"; } z -= 1i; },\lexiting scope_9 block { if z == 0i { break ; \"unreachable\"; } z -= 1i; }"];
     N51 -> N52;
     N52 -> N53;
     N53 -> N54;
@@ -143,7 +143,7 @@ digraph block {
     N64 -> N65;
     N65 -> N66;
     N66 -> N67;
-    N67 -> N28[label="exiting scope_0 expr continue \'a,\lexiting scope_1 stmt continue \'a ;,\lexiting scope_2 block { continue \'a ; \"unreachable\"; },\lexiting scope_3 expr if x > 10i { continue \'a ; \"unreachable\"; },\lexiting scope_4 block {\l    if y == 0i { break ; \"unreachable\"; }\l    y -= 1i;\l    \'a: loop  { if z == 0i { break ; \"unreachable\"; } z -= 1i; }\l    if x > 10i { continue \'a ; \"unreachable\"; }\l}\l"];
+    N67 -> N28[label="exiting scope_0 expr continue \'a,\lexiting scope_1 stmt continue \'a ;,\lexiting scope_2 stmt continue \'a ;,\lexiting scope_3 block { continue \'a ; \"unreachable\"; },\lexiting scope_4 block { continue \'a ; \"unreachable\"; },\lexiting scope_5 expr if x > 10i { continue \'a ; \"unreachable\"; },\lexiting scope_6 block {\l    if y == 0i { break ; \"unreachable\"; }\l    y -= 1i;\l    \'a: loop  { if z == 0i { break ; \"unreachable\"; } z -= 1i; }\l    if x > 10i { continue \'a ; \"unreachable\"; }\l}\l,\lexiting scope_7 block {\l    if y == 0i { break ; \"unreachable\"; }\l    y -= 1i;\l    \'a: loop  { if z == 0i { break ; \"unreachable\"; } z -= 1i; }\l    if x > 10i { continue \'a ; \"unreachable\"; }\l}\l"];
     N68 -> N69;
     N69 -> N70;
     N70 -> N71;
