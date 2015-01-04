@@ -20,6 +20,7 @@ use trans::build::*;
 use trans::cleanup::{CleanupMethods, ScopeId};
 use trans::common::*;
 use trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
+use trans::datum::{Rvalue, ByValue};
 use trans::debuginfo;
 use trans::expr;
 use trans::monomorphize::{self, MonoId};
@@ -453,22 +454,21 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Returns the LLVM function declaration for an unboxed closure, creating it
 /// if necessary. If the ID does not correspond to a closure ID, returns None.
-pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                                closure_id: ast::DefId,
-                                                                substs: &Substs<'tcx>)
-                                                                -> Option<ValueRef> {
-    let ccx = bcx.ccx();
+pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                              closure_id: ast::DefId,
+                                                              substs: &Substs<'tcx>)
+                                                              -> Option<Datum<'tcx, Rvalue>> {
     if !ccx.tcx().unboxed_closures.borrow().contains_key(&closure_id) {
         // Not an unboxed closure.
         return None
     }
 
-    let function_type = ty::node_id_to_type(bcx.tcx(), closure_id.node);
-    let function_type = monomorphize::apply_param_substs(bcx.tcx(), substs, &function_type);
+    let function_type = ty::node_id_to_type(ccx.tcx(), closure_id.node);
+    let function_type = monomorphize::apply_param_substs(ccx.tcx(), substs, &function_type);
 
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
-    let function_type = ty::normalize_ty(bcx.tcx(), function_type);
+    let function_type = ty::normalize_ty(ccx.tcx(), function_type);
     let params = match function_type.sty {
         ty::ty_unboxed_closure(_, _, ref substs) => substs.types.clone(),
         _ => unreachable!()
@@ -479,10 +479,10 @@ pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk,
     };
 
     match ccx.unboxed_closure_vals().borrow().get(&mono_id) {
-        Some(llfn) => {
+        Some(&llfn) => {
             debug!("get_or_create_declaration_if_unboxed_closure(): found \
                     closure");
-            return Some(*llfn)
+            return Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
         }
         None => {}
     }
@@ -502,7 +502,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk,
            ccx.tn().type_to_string(val_ty(llfn)));
     ccx.unboxed_closure_vals().borrow_mut().insert(mono_id, llfn);
 
-    Some(llfn)
+    Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
 }
 
 pub fn trans_unboxed_closure<'blk, 'tcx>(
@@ -519,7 +519,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
 
     let closure_id = ast_util::local_def(id);
     let llfn = get_or_create_declaration_if_unboxed_closure(
-        bcx,
+        bcx.ccx(),
         closure_id,
         bcx.fcx.param_substs).unwrap();
 
@@ -539,7 +539,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     trans_closure(bcx.ccx(),
                   decl,
                   body,
-                  llfn,
+                  llfn.val,
                   bcx.fcx.param_substs,
                   id,
                   &[],

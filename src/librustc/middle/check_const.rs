@@ -111,20 +111,11 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) {
                            expression");
             }
         }
-        ast::ExprPath(ref pth) => {
-            // NB: In the future you might wish to relax this slightly
-            // to handle on-demand instantiation of functions via
-            // foo::<bar> in a const. Currently that is only done on
-            // a path in trans::callee that only works in block contexts.
-            if !pth.segments.iter().all(|segment| segment.parameters.is_empty()) {
-                span_err!(v.tcx.sess, e.span, E0013,
-                          "paths in constants may only refer to items without \
-                           type parameters");
-            }
+        ast::ExprPath(_) => {
             match v.tcx.def_map.borrow()[e.id] {
                 DefStatic(..) | DefConst(..) |
-                DefFn(..) | DefStruct(_) |
-                DefVariant(_, _, _) => {}
+                DefFn(..) | DefStaticMethod(..) | DefMethod(..) |
+                DefStruct(_) | DefVariant(_, _, _) => {}
 
                 def => {
                     debug!("(checking const) found bad def: {}", def);

@@ -38,6 +38,7 @@ use trans::cleanup::CleanupMethods;
 use trans::closure;
 use trans::common;
 use trans::common::*;
+use trans::consts;
 use trans::datum::*;
 use trans::expr;
 use trans::glue;
@@ -152,7 +153,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     _ => false
                 }
             } => {
-                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+                let substs = node_id_substs(bcx.ccx(), ExprId(ref_expr.id),
+                                            bcx.fcx.param_substs);
                 Callee {
                     bcx: bcx,
                     data: NamedTupleConstructor(substs, 0)
@@ -162,23 +164,28 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 ty::ty_bare_fn(_, ref f) => f.abi == synabi::RustIntrinsic,
                 _ => false
             } => {
-                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+                let substs = node_id_substs(bcx.ccx(), ExprId(ref_expr.id),
+                                            bcx.fcx.param_substs);
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
                 Callee { bcx: bcx, data: Intrinsic(def_id.node, substs) }
             }
             def::DefFn(did, _) | def::DefMethod(did, _, def::FromImpl(_)) |
             def::DefStaticMethod(did, def::FromImpl(_)) => {
-                fn_callee(bcx, trans_fn_ref(bcx, did, ExprId(ref_expr.id)))
+                fn_callee(bcx, trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
+                                            bcx.fcx.param_substs).val)
             }
             def::DefStaticMethod(meth_did, def::FromTrait(trait_did)) |
             def::DefMethod(meth_did, _, def::FromTrait(trait_did)) => {
-                fn_callee(bcx, meth::trans_static_method_callee(bcx, meth_did,
+                fn_callee(bcx, meth::trans_static_method_callee(bcx.ccx(),
+                                                                meth_did,
                                                                 trait_did,
-                                                                ref_expr.id))
+                                                                ref_expr.id,
+                                                                bcx.fcx.param_substs).val)
             }
             def::DefVariant(tid, vid, _) => {
                 let vinfo = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
-                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+                let substs = node_id_substs(bcx.ccx(), ExprId(ref_expr.id),
+                                            bcx.fcx.param_substs);
 
                 // Nullary variants are not callable
                 assert!(vinfo.args.len() > 0u);
@@ -189,7 +196,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 }
             }
             def::DefStruct(_) => {
-                let substs = node_id_substs(bcx, ExprId(ref_expr.id));
+                let substs = node_id_substs(bcx.ccx(), ExprId(ref_expr.id),
+                                            bcx.fcx.param_substs);
                 Callee {
                     bcx: bcx,
                     data: NamedTupleConstructor(substs, 0)
@@ -217,15 +225,19 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
 
 /// Translates a reference (with id `ref_id`) to the fn/method with id `def_id` into a function
 /// pointer. This may require monomorphization or inlining.
-pub fn trans_fn_ref(bcx: Block, def_id: ast::DefId, node: ExprOrMethodCall) -> ValueRef {
+pub fn trans_fn_ref<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                              def_id: ast::DefId,
+                              node: ExprOrMethodCall,
+                              param_substs: &subst::Substs<'tcx>)
+                              -> Datum<'tcx, Rvalue> {
     let _icx = push_ctxt("trans_fn_ref");
 
-    let substs = node_id_substs(bcx, node);
+    let substs = node_id_substs(ccx, node, param_substs);
     debug!("trans_fn_ref(def_id={}, node={}, substs={})",
-           def_id.repr(bcx.tcx()),
+           def_id.repr(ccx.tcx()),
            node,
-           substs.repr(bcx.tcx()));
-    trans_fn_ref_with_substs(bcx, def_id, node, substs)
+           substs.repr(ccx.tcx()));
+    trans_fn_ref_with_substs(ccx, def_id, node, param_substs, substs)
 }
 
 fn trans_fn_ref_with_substs_to_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -235,10 +247,11 @@ fn trans_fn_ref_with_substs_to_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                   -> Callee<'blk, 'tcx> {
     Callee {
         bcx: bcx,
-        data: Fn(trans_fn_ref_with_substs(bcx,
+        data: Fn(trans_fn_ref_with_substs(bcx.ccx(),
                                           def_id,
                                           ExprId(ref_id),
-                                          substs)),
+                                          bcx.fcx.param_substs,
+                                          substs).val),
     }
 }
 
@@ -364,28 +377,30 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 ///
 /// # Parameters
 ///
-/// - `bcx`: the current block where the reference to the fn occurs
+/// - `ccx`: the crate context
 /// - `def_id`: def id of the fn or method item being referenced
 /// - `node`: node id of the reference to the fn/method, if applicable.
 ///   This parameter may be zero; but, if so, the resulting value may not
 ///   have the right type, so it must be cast before being used.
+/// - `param_substs`: if the `node` is in a polymorphic function, these
+///   are the substitutions required to monomorphize its type
 /// - `substs`: values for each of the fn/method's parameters
-pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
-    bcx: Block<'blk, 'tcx>,      //
-    def_id: ast::DefId,          // def id of fn
-    node: ExprOrMethodCall,      // node id of use of fn; may be zero if N/A
-    substs: subst::Substs<'tcx>) // vtables for the call
-    -> ValueRef
+pub fn trans_fn_ref_with_substs<'a, 'tcx>(
+    ccx: &CrateContext<'a, 'tcx>,
+    def_id: ast::DefId,
+    node: ExprOrMethodCall,
+    param_substs: &subst::Substs<'tcx>,
+    substs: subst::Substs<'tcx>)
+    -> Datum<'tcx, Rvalue>
 {
     let _icx = push_ctxt("trans_fn_ref_with_substs");
-    let ccx = bcx.ccx();
-    let tcx = bcx.tcx();
+    let tcx = ccx.tcx();
 
-    debug!("trans_fn_ref_with_substs(bcx={}, def_id={}, node={}, \
-            substs={})",
-           bcx.to_str(),
+    debug!("trans_fn_ref_with_substs(def_id={}, node={}, \
+            param_substs={}, substs={})",
            def_id.repr(tcx),
            node,
+           param_substs.repr(tcx),
            substs.repr(tcx));
 
     assert!(substs.types.all(|t| !ty::type_needs_infer(*t)));
@@ -443,15 +458,15 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
                     (true, source_id, new_substs)
                 }
                 ty::TypeTraitItem(_) => {
-                    bcx.tcx().sess.bug("trans_fn_ref_with_vtables() tried \
-                                        to translate an associated type?!")
+                    tcx.sess.bug("trans_fn_ref_with_vtables() tried \
+                                  to translate an associated type?!")
                 }
             }
         }
     };
 
     // If this is an unboxed closure, redirect to it.
-    match closure::get_or_create_declaration_if_unboxed_closure(bcx,
+    match closure::get_or_create_declaration_if_unboxed_closure(ccx,
                                                                 def_id,
                                                                 &substs) {
         None => {}
@@ -494,24 +509,27 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
             MethodCallKey(_) => None,
         };
 
-        let (val, must_cast) =
+        let (val, fn_ty, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, &substs, opt_ref_id);
-        let mut val = val;
         if must_cast && node != ExprId(0) {
             // Monotype of the REFERENCE to the function (type params
             // are subst'd)
             let ref_ty = match node {
-                ExprId(id) => node_id_type(bcx, id),
+                ExprId(id) => ty::node_id_to_type(tcx, id),
                 MethodCallKey(method_call) => {
-                    let t = (*bcx.tcx().method_map.borrow())[method_call].ty;
-                    monomorphize_type(bcx, t)
+                    (*tcx.method_map.borrow())[method_call].ty
                 }
             };
-
-            val = PointerCast(
-                bcx, val, type_of::type_of_fn_from_ty(ccx, ref_ty).ptr_to());
+            let ref_ty = monomorphize::apply_param_substs(tcx,
+                                                          param_substs,
+                                                          &ref_ty);
+            let llptrty = type_of::type_of_fn_from_ty(ccx, ref_ty).ptr_to();
+            if llptrty != val_ty(val) {
+                let val = consts::ptrcast(val, llptrty);
+                return Datum::new(val, ref_ty, Rvalue::new(ByValue));
+            }
         }
-        return val;
+        return Datum::new(val, fn_ty, Rvalue::new(ByValue));
     }
 
     // Type scheme of the function item (may have type params)
@@ -556,12 +574,12 @@ pub fn trans_fn_ref_with_substs<'blk, 'tcx>(
     let llptrty = llty.ptr_to();
     if val_ty(val) != llptrty {
         debug!("trans_fn_ref_with_vtables(): casting pointer!");
-        val = BitCast(bcx, val, llptrty);
+        val = consts::ptrcast(val, llptrty);
     } else {
         debug!("trans_fn_ref_with_vtables(): not casting pointer!");
     }
 
-    val
+    Datum::new(val, fn_type, Rvalue::new(ByValue))
 }
 
 // ______________________________________________________________________
