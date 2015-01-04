@@ -67,6 +67,7 @@ the direction the language is evolving in.
 * [0522-self-impl.md](text/0522-self-impl.md)
 * [0532-self-in-use.md](text/0532-self-in-use.md)
 * [0534-deriving2derive.md](text/0534-deriving2derive.md)
+* [0545-Self-not-sized-by-default.md](text/0546-Self-not-sized-by-default.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
