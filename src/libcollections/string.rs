@@ -973,6 +973,7 @@ mod tests {
     use str::Utf8Error;
     use core::iter::repeat;
     use super::{as_string, CowString};
+    use core::ops::FullRange;
 
     #[test]
     fn test_as_string() {
@@ -1272,10 +1273,10 @@ mod tests {
     #[test]
     fn test_slicing() {
         let s = "foobar".to_string();
-        assert_eq!("foobar", s.index(&FullRange));
-        assert_eq!("foo", s.index(&(0..3)));
-        assert_eq!("bar", s.index(&(3..)));
-        assert_eq!("oob", s.index(&(1..4)));
+        assert_eq!("foobar", &s[]);
+        assert_eq!("foo", &s[..3]);
+        assert_eq!("bar", &s[3..]);
+        assert_eq!("oob", &s[1..4]);
     }
 
     #[test]

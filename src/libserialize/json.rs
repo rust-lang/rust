@@ -2526,12 +2526,12 @@ mod tests {
     use super::ParserError::*;
     use super::DecoderError::*;
     use super::JsonEvent::*;
-    use super::StackElement::*;
     use super::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
                 StackElement, Stack, Decoder};
-    use std::{i64, u64, f32, f64};
+    use std::{i64, u64, f32, f64, io};
     use std::collections::BTreeMap;
     use std::num::Float;
+    use std::ops::Index;
     use std::string;
 
     #[derive(RustcDecodable, Eq, PartialEq, Show)]

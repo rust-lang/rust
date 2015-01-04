@@ -1522,7 +1522,7 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
                 token::get_name(fld).get().to_string()
             }
             InteriorField(PositionalField(i)) => format!("#{}", i),
-            InteriorElement(_) => ".index(&FullRange)".to_string(),
+            InteriorElement(_) => "[]".to_string(),
         }
     }
 }

@@ -572,75 +572,19 @@ impl<T> ops::IndexMut<uint> for [T] {
         unsafe { mem::transmute(self.repr().data.offset(index as int)) }
     }
 }
+impl<T> ops::Index<uint, T> for [T] {
+    fn index(&self, &index: &uint) -> &T {
+        assert!(index < self.len());
 
-impl<T> ops::Index<ops::Range<uint>, [T]> for [T] {
-    #[inline]
-    fn index(&self, &index: &ops::Range<uint>) -> &[T] {
-        assert!(index.start <= index.end);
-        assert!(index.end <= self.len());
-        unsafe {
-            transmute(RawSlice {
-                    data: self.as_ptr().offset(index.start as int),
-                    len: index.end - index.start
-                })
-        }
+        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
     }
 }
 
-impl<T> ops::Index<ops::RangeTo<uint>, [T]> for [T] {
-    #[inline]
-    fn index(&self, &index: &ops::RangeTo<uint>) -> &[T] {
-        self.index(&ops::Range{ start: 0, end: index.end })
-    }
-}
+impl<T> ops::IndexMut<uint, T> for [T] {
+    fn index_mut(&mut self, &index: &uint) -> &mut T {
+        assert!(index < self.len());
 
-impl<T> ops::Index<ops::RangeFrom<uint>, [T]> for [T] {
-    #[inline]
-    fn index(&self, &index: &ops::RangeFrom<uint>) -> &[T] {
-        self.index(&ops::Range{ start: index.start, end: self.len() })
-    }
-}
-
-impl<T> ops::Index<ops::FullRange, [T]> for [T] {
-    #[inline]
-    fn index(&self, &index: &ops::FullRange) -> &[T] {
-        self
-    }
-}
-
-impl<T> ops::IndexMut<ops::Range<uint>, [T]> for [T] {
-    #[inline]
-    fn index_mut(&mut self, &index: &ops::Range<uint>) -> &mut [T] {
-        assert!(index.start <= index.end);
-        assert!(index.end <= self.len());
-        unsafe {
-            transmute(RawSlice {
-                    data: self.as_ptr().offset(index.start as int),
-                    len: index.end - index.start
-                })
-        }
-    }
-}
-
-impl<T> ops::IndexMut<ops::RangeTo<uint>, [T]> for [T] {
-    #[inline]
-    fn index_mut(&mut self, &index: &ops::RangeTo<uint>) -> &mut [T] {
-        self.index_mut(&ops::Range{ start: 0, end: index.end })
-    }
-}
-
-impl<T> ops::IndexMut<ops::RangeFrom<uint>, [T]> for [T] {
-    #[inline]
-    fn index_mut(&mut self, &index: &ops::RangeFrom<uint>) -> &mut [T] {
-        let len = self.len();
-        self.index_mut(&ops::Range{ start: index.start, end: len })
-    }
-}
-
-impl<T> ops::IndexMut<ops::FullRange, [T]> for [T] {
-    #[inline]
-    fn index_mut(&mut self, &index: &ops::FullRange) -> &mut [T] {
-        self
+        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
     }
 }
 
@@ -655,6 +599,63 @@ impl<T> ops::Index<ops::Range<uint>, [T]> for [T] {
                     len: index.end - index.start
                 })
         }
+    }
+}
+
+impl<T> ops::Index<ops::RangeTo<uint>, [T]> for [T] {
+    #[inline]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
+        self.index(&ops::Range{ start: 0, end: index.end })
+    }
+}
+
+impl<T> ops::Index<ops::RangeFrom<uint>, [T]> for [T] {
+    #[inline]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
+        self.index(&ops::Range{ start: index.start, end: self.len() })
+    }
+}
+
+impl<T> ops::Index<ops::FullRange, [T]> for [T] {
+    #[inline]
+    fn index(&self, _index: &ops::FullRange) -> &[T] {
+        self
+    }
+}
+
+impl<T> ops::IndexMut<ops::Range<uint>, [T]> for [T] {
+    #[inline]
+    fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
+        assert!(index.start <= index.end);
+        assert!(index.end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(index.start as int),
+                    len: index.end - index.start
+                })
+        }
+    }
+}
+
+impl<T> ops::IndexMut<ops::RangeTo<uint>, [T]> for [T] {
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
+        self.index_mut(&ops::Range{ start: 0, end: index.end })
+    }
+}
+
+impl<T> ops::IndexMut<ops::RangeFrom<uint>, [T]> for [T] {
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
+        let len = self.len();
+        self.index_mut(&ops::Range{ start: index.start, end: len })
+    }
+}
+
+impl<T> ops::IndexMut<ops::FullRange, [T]> for [T] {
+    #[inline]
+    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
+        self
     }
 }
 

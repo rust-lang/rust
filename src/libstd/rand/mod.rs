@@ -93,10 +93,10 @@
 //!
 //! ```
 //! use std::rand;
-//! use std::rand::distributions::{IndependentSample, Range};
+//! use std::rand::distributions::{IndependentSample, RandRange};
 //!
 //! fn main() {
-//!    let between = Range::new(-1f64, 1.);
+//!    let between = RandRange::new(-1f64, 1.);
 //!    let mut rng = rand::thread_rng();
 //!
 //!    let total = 1_000_000u;
@@ -136,7 +136,7 @@
 //! ```
 //! use std::rand;
 //! use std::rand::Rng;
-//! use std::rand::distributions::{IndependentSample, Range};
+//! use std::rand::distributions::{IndependentSample, RandRange};
 //!
 //! struct SimulationResult {
 //!     win: bool,
@@ -144,7 +144,7 @@
 //! }
 //!
 //! // Run a single simulation of the Monty Hall problem.
-//! fn simulate<R: Rng>(random_door: &Range<uint>, rng: &mut R) -> SimulationResult {
+//! fn simulate<R: Rng>(random_door: &RandRange<uint>, rng: &mut R) -> SimulationResult {
 //!     let car = random_door.ind_sample(rng);
 //!
 //!     // This is our initial choice
@@ -184,7 +184,7 @@
 //!     let num_simulations = 10000u;
 //!
 //!     let mut rng = rand::thread_rng();
-//!     let random_door = Range::new(0u, 3);
+//!     let random_door = RandRange::new(0u, 3);
 //!
 //!     let (mut switch_wins, mut switch_losses) = (0u, 0u);
 //!     let (mut keep_wins, mut keep_losses) = (0u, 0u);

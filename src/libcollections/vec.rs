@@ -1805,6 +1805,7 @@ mod tests {
     use prelude::*;
     use core::mem::size_of;
     use core::iter::repeat;
+    use core::ops::FullRange;
     use test::Bencher;
     use super::as_vec;
 
@@ -1942,7 +1943,7 @@ mod tests {
             let (left, right) = values.split_at_mut(2);
             {
                 let left: &[_] = left;
-                assert!(left[0..left.len()] == [1, 2][]);
+                assert!(&left[..left.len()] == &[1, 2][]);
             }
             for p in left.iter_mut() {
                 *p += 1;
@@ -1950,7 +1951,7 @@ mod tests {
 
             {
                 let right: &[_] = right;
-                assert!(right[0..right.len()] == [3, 4, 5][]);
+                assert!(&right[..right.len()] == &[3, 4, 5][]);
             }
             for p in right.iter_mut() {
                 *p += 2;
@@ -2121,35 +2122,35 @@ mod tests {
     #[should_fail]
     fn test_slice_out_of_bounds_1() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[-1..];
+        &x[(-1)..];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_2() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x.index(&(0..6));
+        &x[..6];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_3() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[-1..4];
+        &x[(-1)..4];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_4() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x.index(&(1..6));
+        &x[1..6];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_5() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x.index(&(3..2));
+        &x[3..2];
     }
 
     #[test]
@@ -2395,7 +2396,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst = src.clone().as_slice().to_vec();
+            let dst = src.clone()[].to_vec();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });

@@ -35,10 +35,10 @@ use distributions::{Sample, IndependentSample};
 /// # Example
 ///
 /// ```rust
-/// use std::rand::distributions::{IndependentSample, Range};
+/// use std::rand::distributions::{IndependentSample, RandRange};
 ///
 /// fn main() {
-///     let between = Range::new(10u, 10000u);
+///     let between = RandRange::new(10u, 10000u);
 ///     let mut rng = std::rand::thread_rng();
 ///     let mut sum = 0;
 ///     for _ in range(0u, 1000) {
@@ -166,17 +166,17 @@ mod tests {
     use std::num::Int;
     use std::prelude::v1::*;
     use distributions::{Sample, IndependentSample};
-    use super::Range;
+    use super::Range as RandRange;
 
     #[should_fail]
     #[test]
     fn test_range_bad_limits_equal() {
-        Range::new(10i, 10i);
+        RandRange::new(10i, 10i);
     }
     #[should_fail]
     #[test]
     fn test_range_bad_limits_flipped() {
-        Range::new(10i, 5i);
+        RandRange::new(10i, 5i);
     }
 
     #[test]
@@ -189,7 +189,7 @@ mod tests {
                                             (10, 127),
                                             (Int::min_value(), Int::max_value())];
                    for &(low, high) in v.iter() {
-                        let mut sampler: Range<$ty> = Range::new(low, high);
+                        let mut sampler: RandRange<$ty> = RandRange::new(low, high);
                         for _ in range(0u, 1000) {
                             let v = sampler.sample(&mut rng);
                             assert!(low <= v && v < high);
@@ -215,7 +215,7 @@ mod tests {
                                             (1e-35, 1e-25),
                                             (-1e35, 1e35)];
                    for &(low, high) in v.iter() {
-                        let mut sampler: Range<$ty> = Range::new(low, high);
+                        let mut sampler: RandRange<$ty> = RandRange::new(low, high);
                         for _ in range(0u, 1000) {
                             let v = sampler.sample(&mut rng);
                             assert!(low <= v && v < high);

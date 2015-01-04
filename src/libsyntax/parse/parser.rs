@@ -2548,16 +2548,24 @@ impl<'a> Parser<'a> {
               token::OpenDelim(token::Bracket) => {
                 let bracket_pos = self.span.lo;
                 self.bump();
-                if self.eat(&token::CloseDelim(token::Bracket)) {
+
+                let mut found_dotdot = false;
+                if self.token == token::DotDot &&
+                   self.look_ahead(1, |t| t == &token::CloseDelim(token::Bracket)) {
+                    // Using expr[..], which is a mistake, should be expr[]
+                    self.bump();
+                    self.bump();
+                    found_dotdot = true;
+                }
+
+                if found_dotdot || self.eat(&token::CloseDelim(token::Bracket)) {
                     // No expression, expand to a FullRange
-                    let ix = {
-                        hi = self.last_span.hi;
-                        let range = ExprStruct(ident_to_path(mk_sp(lo, hi),
-                                                             token::special_idents::FullRange),
-                                               vec![],
-                                               None);
-                        self.mk_expr(bracket_pos, hi, range)
-                    };
+                    hi = self.last_span.hi;
+                    let range = ExprStruct(ident_to_path(mk_sp(lo, hi),
+                                                         token::special_idents::FullRange),
+                                           vec![],
+                                           None);
+                    let ix = self.mk_expr(bracket_pos, hi, range);
                     let index = self.mk_index(e, ix);
                     e = self.mk_expr(lo, hi, index)
                 } else {
@@ -2566,6 +2574,12 @@ impl<'a> Parser<'a> {
                     self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket));
                     let index = self.mk_index(e, ix);
                     e = self.mk_expr(lo, hi, index)
+                }
+
+                if found_dotdot {
+                    self.span_err(e.span, "incorrect slicing expression: `[..]`");
+                    self.span_note(e.span,
+                                   "use `&expr[]` to construct a slice of the whole of expr");
                 }
               }
 

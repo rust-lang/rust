@@ -414,7 +414,7 @@ impl<'tcx> TypeMap<'tcx> {
                         unique_type_id.push_str(format!("[{}]", len).index(&FullRange));
                     }
                     None => {
-                        unique_type_id.push_str(".index(&FullRange)");
+                        unique_type_id.push_str("[]");
                     }
                 };
 

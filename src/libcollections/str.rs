@@ -2121,7 +2121,7 @@ mod tests {
         let mut bytes = [0u8; 4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
-            let s = ::core::str::from_utf8(bytes.index(&(0..len))).unwrap();
+            let s = ::core::str::from_utf8(&bytes[..len]).unwrap();
             if Some(c) != s.chars().next() {
                 panic!("character {:x}={} does not decode correctly", c as u32, c);
             }
@@ -2133,7 +2133,7 @@ mod tests {
         let mut bytes = [0u8; 4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
-            let s = ::core::str::from_utf8(bytes.index(&(0..len))).unwrap();
+            let s = ::core::str::from_utf8(&bytes[..len]).unwrap();
             if Some(c) != s.chars().rev().next() {
                 panic!("character {:x}={} does not decode correctly", c as u32, c);
             }
