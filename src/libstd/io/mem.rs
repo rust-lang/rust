@@ -19,7 +19,10 @@ use option::Option::None;
 use result::Result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
-use slice::{mod, AsSlice, SliceExt};
+use mem;
+use raw;
+use ptr::RawPtr;
+use slice::{mod, AsSlice, SlicePrelude};
 use vec::Vec;
 
 const BUF_CAPACITY: uint = 128;
@@ -240,6 +243,32 @@ impl<'a> Buffer for &'a [u8] {
     }
 }
 
+impl<'a> Writer for &'a mut [u8] {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        if self.is_empty() { return Err(io::standard_error(io::EndOfFile)); }
+
+        let self_len = self.len();
+        let buf_len = buf.len();
+
+        let write_len = min(self_len, buf_len);
+
+        slice::bytes::copy_memory(*self, buf.slice_to(write_len));
+
+        unsafe {
+            *self = mem::transmute(raw::Slice {
+                data: self.as_ptr().offset(write_len as int),
+                len: self_len - write_len,
+            });
+        }
+
+        if buf_len > self_len {
+            Err(io::standard_error(io::ShortWrite(write_len)))
+        } else {
+            Ok(())
+        }
+    }
+}
 
 /// Writes to a fixed-size byte slice
 ///
@@ -424,6 +453,24 @@ mod test {
         writer.write(&[4, 5, 6, 7]).unwrap();
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         assert_eq!(writer.get_ref(), b);
+    }
+
+    #[test]
+    fn test_slice_writer() {
+        let mut buf = [0_u8, ..8];
+        {
+            // FIXME(#19147): this could be written without the `&mut writer`
+            // once that bug is fixed.
+            let mut writer = buf.as_mut_slice();
+            (&mut writer).write(&[0]).unwrap();
+            (&mut writer).write(&[1, 2, 3]).unwrap();
+            (&mut writer).write(&[4, 5, 6, 7]).unwrap();
+            (&mut writer).write(&[]).unwrap();
+
+            assert!(writer.write(&[1]).is_err());
+        }
+        let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
+        assert_eq!(buf.as_slice(), b);
     }
 
     #[test]
