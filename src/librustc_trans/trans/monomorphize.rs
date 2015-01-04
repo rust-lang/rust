@@ -38,7 +38,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: ast::DefId,
                                 psubsts: &subst::Substs<'tcx>,
                                 ref_id: Option<ast::NodeId>)
-    -> (ValueRef, bool) {
+    -> (ValueRef, Ty<'tcx>, bool) {
     debug!("monomorphic_fn(\
             fn_id={}, \
             real_substs={}, \
@@ -58,11 +58,14 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         params: psubsts.types.clone()
     };
 
+    let item_ty = ty::lookup_item_type(ccx.tcx(), fn_id).ty;
+    let mono_ty = item_ty.subst(ccx.tcx(), psubsts);
+
     match ccx.monomorphized().borrow().get(&hash_id) {
         Some(&val) => {
             debug!("leaving monomorphic fn {}",
             ty::item_path_str(ccx.tcx(), fn_id));
-            return (val, false);
+            return (val, mono_ty, false);
         }
         None => ()
     }
@@ -75,8 +78,6 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            psubsts.repr(ccx.tcx()),
            hash_id);
 
-    let tpt = ty::lookup_item_type(ccx.tcx(), fn_id);
-    let llitem_ty = tpt.ty;
 
     let map_node = session::expect(
         ccx.sess(),
@@ -91,13 +92,12 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if let ast_map::NodeForeignItem(_) = map_node {
         if ccx.tcx().map.get_foreign_abi(fn_id.node) != abi::RustIntrinsic {
             // Foreign externs don't have to be monomorphized.
-            return (get_item_val(ccx, fn_id.node), true);
+            return (get_item_val(ccx, fn_id.node), mono_ty, true);
         }
     }
 
-    debug!("monomorphic_fn about to subst into {}", llitem_ty.repr(ccx.tcx()));
+    debug!("monomorphic_fn about to subst into {}", item_ty.repr(ccx.tcx()));
 
-    let mono_ty = llitem_ty.subst(ccx.tcx(), psubsts);
     debug!("mono_ty = {} (post-substitution)", mono_ty.repr(ccx.tcx()));
 
     let mono_ty = normalize_associated_type(ccx.tcx(), &mono_ty);
@@ -283,7 +283,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     ccx.monomorphizing().borrow_mut().insert(fn_id, depth);
 
     debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
-    (lldecl, true)
+    (lldecl, mono_ty, true)
 }
 
 #[derive(PartialEq, Eq, Hash, Show)]
