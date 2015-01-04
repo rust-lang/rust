@@ -19,7 +19,7 @@
 //!
 //! A `Sender` or `SyncSender` is used to send data to a `Receiver`. Both
 //! senders are clone-able (multi-producer) such that many threads can send
-//! simultaneously to one receiver (single-consumer).  These channels are
+//! simultaneously to one receiver (single-consumer).
 //!
 //! These channels come in two flavors:
 //!
