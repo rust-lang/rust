@@ -263,7 +263,15 @@ trait def_id_encoder_helpers {
     fn emit_def_id(&mut self, did: ast::DefId);
 }
 
+#[cfg(stage0)]
 impl<S:serialize::Encoder<E>, E> def_id_encoder_helpers for S {
+    fn emit_def_id(&mut self, did: ast::DefId) {
+        did.encode(self).ok().unwrap()
+    }
+}
+
+#[cfg(not(stage0))]
+impl<S:serialize::Encoder> def_id_encoder_helpers for S {
     fn emit_def_id(&mut self, did: ast::DefId) {
         did.encode(self).ok().unwrap()
     }
@@ -275,7 +283,22 @@ trait def_id_decoder_helpers {
                          cdata: &cstore::crate_metadata) -> ast::DefId;
 }
 
+#[cfg(stage0)]
 impl<D:serialize::Decoder<E>, E> def_id_decoder_helpers for D {
+    fn read_def_id(&mut self, dcx: &DecodeContext) -> ast::DefId {
+        let did: ast::DefId = Decodable::decode(self).ok().unwrap();
+        did.tr(dcx)
+    }
+
+    fn read_def_id_nodcx(&mut self,
+                         cdata: &cstore::crate_metadata) -> ast::DefId {
+        let did: ast::DefId = Decodable::decode(self).ok().unwrap();
+        decoder::translate_def_id(cdata, did)
+    }
+}
+
+#[cfg(not(stage0))]
+impl<D:serialize::Decoder> def_id_decoder_helpers for D {
     fn read_def_id(&mut self, dcx: &DecodeContext) -> ast::DefId {
         let did: ast::DefId = Decodable::decode(self).ok().unwrap();
         did.tr(dcx)

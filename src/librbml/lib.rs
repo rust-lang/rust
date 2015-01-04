@@ -25,7 +25,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![allow(unknown_features)]
 #![feature(macro_rules, phase, slicing_syntax, globs)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, associated_types)]
 #![allow(missing_docs)]
 
 extern crate serialize;
@@ -417,7 +417,265 @@ pub mod reader {
         }
     }
 
+    #[cfg(stage0)]
     impl<'doc> serialize::Decoder<Error> for Decoder<'doc> {
+        fn read_nil(&mut self) -> DecodeResult<()> { Ok(()) }
+
+        fn read_u64(&mut self) -> DecodeResult<u64> { Ok(doc_as_u64(try!(self.next_doc(EsU64)))) }
+        fn read_u32(&mut self) -> DecodeResult<u32> { Ok(doc_as_u32(try!(self.next_doc(EsU32)))) }
+        fn read_u16(&mut self) -> DecodeResult<u16> { Ok(doc_as_u16(try!(self.next_doc(EsU16)))) }
+        fn read_u8 (&mut self) -> DecodeResult<u8 > { Ok(doc_as_u8 (try!(self.next_doc(EsU8 )))) }
+        fn read_uint(&mut self) -> DecodeResult<uint> {
+            let v = doc_as_u64(try!(self.next_doc(EsUint)));
+            if v > (::std::uint::MAX as u64) {
+                Err(IntTooBig(v as uint))
+            } else {
+                Ok(v as uint)
+            }
+        }
+
+        fn read_i64(&mut self) -> DecodeResult<i64> {
+            Ok(doc_as_u64(try!(self.next_doc(EsI64))) as i64)
+        }
+        fn read_i32(&mut self) -> DecodeResult<i32> {
+            Ok(doc_as_u32(try!(self.next_doc(EsI32))) as i32)
+        }
+        fn read_i16(&mut self) -> DecodeResult<i16> {
+            Ok(doc_as_u16(try!(self.next_doc(EsI16))) as i16)
+        }
+        fn read_i8 (&mut self) -> DecodeResult<i8> {
+            Ok(doc_as_u8(try!(self.next_doc(EsI8 ))) as i8)
+        }
+        fn read_int(&mut self) -> DecodeResult<int> {
+            let v = doc_as_u64(try!(self.next_doc(EsInt))) as i64;
+            if v > (int::MAX as i64) || v < (int::MIN as i64) {
+                debug!("FIXME \\#6122: Removing this makes this function miscompile");
+                Err(IntTooBig(v as uint))
+            } else {
+                Ok(v as int)
+            }
+        }
+
+        fn read_bool(&mut self) -> DecodeResult<bool> {
+            Ok(doc_as_u8(try!(self.next_doc(EsBool))) != 0)
+        }
+
+        fn read_f64(&mut self) -> DecodeResult<f64> {
+            let bits = doc_as_u64(try!(self.next_doc(EsF64)));
+            Ok(unsafe { transmute(bits) })
+        }
+        fn read_f32(&mut self) -> DecodeResult<f32> {
+            let bits = doc_as_u32(try!(self.next_doc(EsF32)));
+            Ok(unsafe { transmute(bits) })
+        }
+        fn read_char(&mut self) -> DecodeResult<char> {
+            Ok(char::from_u32(doc_as_u32(try!(self.next_doc(EsChar)))).unwrap())
+        }
+        fn read_str(&mut self) -> DecodeResult<String> {
+            Ok(try!(self.next_doc(EsStr)).as_str())
+        }
+
+        // Compound types:
+        fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_enum({})", name);
+            try!(self._check_label(name));
+
+            let doc = try!(self.next_doc(EsEnum));
+
+            let (old_parent, old_pos) = (self.parent, self.pos);
+            self.parent = doc;
+            self.pos = self.parent.start;
+
+            let result = try!(f(self));
+
+            self.parent = old_parent;
+            self.pos = old_pos;
+            Ok(result)
+        }
+
+        fn read_enum_variant<T, F>(&mut self, _: &[&str],
+                                   mut f: F) -> DecodeResult<T>
+            where F: FnMut(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
+        {
+            debug!("read_enum_variant()");
+            let idx = try!(self._next_uint(EsEnumVid));
+            debug!("  idx={}", idx);
+
+            let doc = try!(self.next_doc(EsEnumBody));
+
+            let (old_parent, old_pos) = (self.parent, self.pos);
+            self.parent = doc;
+            self.pos = self.parent.start;
+
+            let result = try!(f(self, idx));
+
+            self.parent = old_parent;
+            self.pos = old_pos;
+            Ok(result)
+        }
+
+        fn read_enum_variant_arg<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_enum_variant_arg(idx={})", idx);
+            f(self)
+        }
+
+        fn read_enum_struct_variant<T, F>(&mut self, _: &[&str],
+                                          mut f: F) -> DecodeResult<T>
+            where F: FnMut(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
+        {
+            debug!("read_enum_struct_variant()");
+            let idx = try!(self._next_uint(EsEnumVid));
+            debug!("  idx={}", idx);
+
+            let doc = try!(self.next_doc(EsEnumBody));
+
+            let (old_parent, old_pos) = (self.parent, self.pos);
+            self.parent = doc;
+            self.pos = self.parent.start;
+
+            let result = try!(f(self, idx));
+
+            self.parent = old_parent;
+            self.pos = old_pos;
+            Ok(result)
+        }
+
+        fn read_enum_struct_variant_field<T, F>(&mut self,
+                                                name: &str,
+                                                idx: uint,
+                                                f: F)
+                                                -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+                debug!("read_enum_struct_variant_arg(name={}, idx={})", name, idx);
+            f(self)
+        }
+
+        fn read_struct<T, F>(&mut self, name: &str, _: uint, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_struct(name={})", name);
+            f(self)
+        }
+
+        fn read_struct_field<T, F>(&mut self, name: &str, idx: uint, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_struct_field(name={}, idx={})", name, idx);
+            try!(self._check_label(name));
+            f(self)
+        }
+
+        fn read_tuple<T, F>(&mut self, tuple_len: uint, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_tuple()");
+            self.read_seq(move |d, len| {
+                if len == tuple_len {
+                    f(d)
+                } else {
+                    Err(Expected(format!("Expected tuple of length `{}`, \
+                                          found tuple of length `{}`", tuple_len, len)))
+                }
+            })
+        }
+
+        fn read_tuple_arg<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_tuple_arg(idx={})", idx);
+            self.read_seq_elt(idx, f)
+        }
+
+        fn read_tuple_struct<T, F>(&mut self, name: &str, len: uint, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_tuple_struct(name={})", name);
+            self.read_tuple(len, f)
+        }
+
+        fn read_tuple_struct_arg<T, F>(&mut self,
+                                       idx: uint,
+                                       f: F)
+                                       -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_tuple_struct_arg(idx={})", idx);
+            self.read_tuple_arg(idx, f)
+        }
+
+        fn read_option<T, F>(&mut self, mut f: F) -> DecodeResult<T> where
+            F: FnMut(&mut Decoder<'doc>, bool) -> DecodeResult<T>,
+        {
+            debug!("read_option()");
+            self.read_enum("Option", move |this| {
+                this.read_enum_variant(&["None", "Some"], move |this, idx| {
+                    match idx {
+                        0 => f(this, false),
+                        1 => f(this, true),
+                        _ => {
+                            Err(Expected(format!("Expected None or Some")))
+                        }
+                    }
+                })
+            })
+        }
+
+        fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
+        {
+            debug!("read_seq()");
+            self.push_doc(EsVec, move |d| {
+                let len = try!(d._next_uint(EsVecLen));
+                debug!("  len={}", len);
+                f(d, len)
+            })
+        }
+
+        fn read_seq_elt<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_seq_elt(idx={})", idx);
+            self.push_doc(EsVecElt, f)
+        }
+
+        fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
+        {
+            debug!("read_map()");
+            self.push_doc(EsMap, move |d| {
+                let len = try!(d._next_uint(EsMapLen));
+                debug!("  len={}", len);
+                f(d, len)
+            })
+        }
+
+        fn read_map_elt_key<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_map_elt_key(idx={})", idx);
+            self.push_doc(EsMapKey, f)
+        }
+
+        fn read_map_elt_val<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+            F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
+        {
+            debug!("read_map_elt_val(idx={})", idx);
+            self.push_doc(EsMapVal, f)
+        }
+
+        fn error(&mut self, err: &str) -> Error {
+            ApplicationError(err.to_string())
+        }
+    }
+
+    #[cfg(not(stage0))]
+    impl<'doc> serialize::Decoder for Decoder<'doc> {
+        type Error = Error;
         fn read_nil(&mut self) -> DecodeResult<()> { Ok(()) }
 
         fn read_u64(&mut self) -> DecodeResult<u64> { Ok(doc_as_u64(try!(self.next_doc(EsU64)))) }
@@ -872,7 +1130,212 @@ pub mod writer {
         }
     }
 
+    #[cfg(stage0)]
     impl<'a, W: Writer + Seek> serialize::Encoder<io::IoError> for Encoder<'a, W> {
+
+        fn emit_nil(&mut self) -> EncodeResult {
+            Ok(())
+        }
+
+        fn emit_uint(&mut self, v: uint) -> EncodeResult {
+            self.wr_tagged_u64(EsUint as uint, v as u64)
+        }
+        fn emit_u64(&mut self, v: u64) -> EncodeResult {
+            self.wr_tagged_u64(EsU64 as uint, v)
+        }
+        fn emit_u32(&mut self, v: u32) -> EncodeResult {
+            self.wr_tagged_u32(EsU32 as uint, v)
+        }
+        fn emit_u16(&mut self, v: u16) -> EncodeResult {
+            self.wr_tagged_u16(EsU16 as uint, v)
+        }
+        fn emit_u8(&mut self, v: u8) -> EncodeResult {
+            self.wr_tagged_u8(EsU8 as uint, v)
+        }
+
+        fn emit_int(&mut self, v: int) -> EncodeResult {
+            self.wr_tagged_i64(EsInt as uint, v as i64)
+        }
+        fn emit_i64(&mut self, v: i64) -> EncodeResult {
+            self.wr_tagged_i64(EsI64 as uint, v)
+        }
+        fn emit_i32(&mut self, v: i32) -> EncodeResult {
+            self.wr_tagged_i32(EsI32 as uint, v)
+        }
+        fn emit_i16(&mut self, v: i16) -> EncodeResult {
+            self.wr_tagged_i16(EsI16 as uint, v)
+        }
+        fn emit_i8(&mut self, v: i8) -> EncodeResult {
+            self.wr_tagged_i8(EsI8 as uint, v)
+        }
+
+        fn emit_bool(&mut self, v: bool) -> EncodeResult {
+            self.wr_tagged_u8(EsBool as uint, v as u8)
+        }
+
+        fn emit_f64(&mut self, v: f64) -> EncodeResult {
+            let bits = unsafe { mem::transmute(v) };
+            self.wr_tagged_u64(EsF64 as uint, bits)
+        }
+        fn emit_f32(&mut self, v: f32) -> EncodeResult {
+            let bits = unsafe { mem::transmute(v) };
+            self.wr_tagged_u32(EsF32 as uint, bits)
+        }
+        fn emit_char(&mut self, v: char) -> EncodeResult {
+            self.wr_tagged_u32(EsChar as uint, v as u32)
+        }
+
+        fn emit_str(&mut self, v: &str) -> EncodeResult {
+            self.wr_tagged_str(EsStr as uint, v)
+        }
+
+        fn emit_enum<F>(&mut self, name: &str, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            try!(self._emit_label(name));
+            try!(self.start_tag(EsEnum as uint));
+            try!(f(self));
+            self.end_tag()
+        }
+
+        fn emit_enum_variant<F>(&mut self,
+                                _: &str,
+                                v_id: uint,
+                                _: uint,
+                                f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            try!(self._emit_tagged_uint(EsEnumVid, v_id));
+            try!(self.start_tag(EsEnumBody as uint));
+            try!(f(self));
+            self.end_tag()
+        }
+
+        fn emit_enum_variant_arg<F>(&mut self, _: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            f(self)
+        }
+
+        fn emit_enum_struct_variant<F>(&mut self,
+                                       v_name: &str,
+                                       v_id: uint,
+                                       cnt: uint,
+                                       f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            self.emit_enum_variant(v_name, v_id, cnt, f)
+        }
+
+        fn emit_enum_struct_variant_field<F>(&mut self,
+                                             _: &str,
+                                             idx: uint,
+                                             f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            self.emit_enum_variant_arg(idx, f)
+        }
+
+        fn emit_struct<F>(&mut self, _: &str, _len: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            f(self)
+        }
+
+        fn emit_struct_field<F>(&mut self, name: &str, _: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            try!(self._emit_label(name));
+            f(self)
+        }
+
+        fn emit_tuple<F>(&mut self, len: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            self.emit_seq(len, f)
+        }
+        fn emit_tuple_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            self.emit_seq_elt(idx, f)
+        }
+
+        fn emit_tuple_struct<F>(&mut self, _: &str, len: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            self.emit_seq(len, f)
+        }
+        fn emit_tuple_struct_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            self.emit_seq_elt(idx, f)
+        }
+
+        fn emit_option<F>(&mut self, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            self.emit_enum("Option", f)
+        }
+        fn emit_option_none(&mut self) -> EncodeResult {
+            self.emit_enum_variant("None", 0, 0, |_| Ok(()))
+        }
+        fn emit_option_some<F>(&mut self, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+
+            self.emit_enum_variant("Some", 1, 1, f)
+        }
+
+        fn emit_seq<F>(&mut self, len: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+
+            try!(self.start_tag(EsVec as uint));
+            try!(self._emit_tagged_uint(EsVecLen, len));
+            try!(f(self));
+            self.end_tag()
+        }
+
+        fn emit_seq_elt<F>(&mut self, _idx: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+
+            try!(self.start_tag(EsVecElt as uint));
+            try!(f(self));
+            self.end_tag()
+        }
+
+        fn emit_map<F>(&mut self, len: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+
+            try!(self.start_tag(EsMap as uint));
+            try!(self._emit_tagged_uint(EsMapLen, len));
+            try!(f(self));
+            self.end_tag()
+        }
+
+        fn emit_map_elt_key<F>(&mut self, _idx: uint, mut f: F) -> EncodeResult where
+            F: FnMut(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+
+            try!(self.start_tag(EsMapKey as uint));
+            try!(f(self));
+            self.end_tag()
+        }
+
+        fn emit_map_elt_val<F>(&mut self, _idx: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
+        {
+            try!(self.start_tag(EsMapVal as uint));
+            try!(f(self));
+            self.end_tag()
+        }
+    }
+    #[cfg(not(stage0))]
+    impl<'a, W: Writer + Seek> serialize::Encoder for Encoder<'a, W> {
+        type Error = io::IoError;
+
         fn emit_nil(&mut self) -> EncodeResult {
             Ok(())
         }
