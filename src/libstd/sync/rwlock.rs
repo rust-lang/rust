@@ -153,9 +153,9 @@ impl<T: Send + Sync> RwLock<T> {
     /// The failure will occur immediately after the lock has been acquired.
     #[inline]
     #[stable]
-    pub fn read(&self) -> LockResult<RWLockReadGuard<T>> {
+    pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
         unsafe { self.inner.lock.read() }
-        RWLockReadGuard::new(&*self.inner, &self.data)
+        RwLockReadGuard::new(&*self.inner, &self.data)
     }
 
     /// Attempt to acquire this lock with shared read access.
@@ -175,9 +175,9 @@ impl<T: Send + Sync> RwLock<T> {
     /// acquired.
     #[inline]
     #[stable]
-    pub fn try_read(&self) -> TryLockResult<RWLockReadGuard<T>> {
+    pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
         if unsafe { self.inner.lock.try_read() } {
-            Ok(try!(RWLockReadGuard::new(&*self.inner, &self.data)))
+            Ok(try!(RwLockReadGuard::new(&*self.inner, &self.data)))
         } else {
             Err(TryLockError::WouldBlock)
         }
@@ -245,9 +245,9 @@ impl StaticRwLock {
     /// See `RwLock::read`.
     #[inline]
     #[unstable = "may be merged with RwLock in the future"]
-    pub fn read(&'static self) -> LockResult<RWLockReadGuard<'static, ()>> {
+    pub fn read(&'static self) -> LockResult<RwLockReadGuard<'static, ()>> {
         unsafe { self.lock.read() }
-        RWLockReadGuard::new(self, &DUMMY.0)
+        RwLockReadGuard::new(self, &DUMMY.0)
     }
 
     /// Attempt to acquire this lock with shared read access.
@@ -256,9 +256,9 @@ impl StaticRwLock {
     #[inline]
     #[unstable = "may be merged with RwLock in the future"]
     pub fn try_read(&'static self)
-                    -> TryLockResult<RWLockReadGuard<'static, ()>> {
+                    -> TryLockResult<RwLockReadGuard<'static, ()>> {
         if unsafe { self.lock.try_read() } {
-            Ok(try!(RWLockReadGuard::new(self, &DUMMY.0)))
+            Ok(try!(RwLockReadGuard::new(self, &DUMMY.0)))
         } else {
             Err(TryLockError::WouldBlock)
         }
