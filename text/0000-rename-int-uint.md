@@ -71,11 +71,7 @@ Each pair of candidates make different trade-offs, and choosing one would be a q
 #### `iptr/uptr` and `intp/uintp`:
 
 - Pros: "Pointer-sized integer", exactly what they are.
-- Cons: C/C++ have `intptr_t/uintptr_t`, which are typically *only* used for storing casted pointer values. We don't want people to confuse the Rust types with the C/C++ ones, as the Rust ones have more typical use cases. Also, people may wonder why all data structures have "pointers" in their method signatures. Besides the "funny-looking" aspect, the names may have an incorrect "pointer fiddling and unsafe staff" connotation there.
-
-However, note that Rust (barring FFI) don't have `size_t`/`ptrdiff_t` etc like C/C++ do, so the disadvantage may not actually matter much.
-
-Also, there are talks about parametrizing data structures over their indexing/size types, if this lands, then in a sense the pointer-sized integers would no longer be the "privileged types for sizes/indexes", and `iptr/uptr` or `intp/uintp` would be quite fine names.  
+- Cons: C/C++ have `intptr_t/uintptr_t`, which are typically *only* used for storing casted pointer values. We don't want people to confuse the Rust types with the C/C++ ones, as the Rust ones have more typical use cases. Also, people may wonder why all data structures have "pointers" in their method signatures. Besides the "funny-looking" aspect, the names may have an incorrect "pointer fiddling and unsafe staff" connotation there, as `ptr` isn't usually seen in safe Rust code. 
 
 #### `imem/umem` and `intm/uintm`:
 
@@ -83,16 +79,16 @@ When originally proposed, `mem`/`m` are interpreted as "memory numbers" (See @1f
 
 > `imem`/`umem` are "memory numbers." They're good for indexes, counts, offsets, sizes, etc. As memory numbers, it makes sense that they're sized by the address space.
 
-However this interpretation seems vague and not quite convincing, especially when all other integer types in Rust are named precisely in the "`i`/`u` + `size`" pattern, with no "indirection" involved. What is "memory-sized" anyway? But actually, they can be interpreted as **_mem_ory-pointer-sized**, and be a *precise* size specifier just like `ptr`.
+However this interpretation seems vague and not quite convincing, especially when all other integer types in Rust are named precisely in the "`i`/`u` + `{size}`" pattern, with no "indirection" involved. What is "memory-sized" anyway? But actually, they can be interpreted as **_mem_ory-pointer-sized**, and be a *precise* size specifier just like `ptr`.
 
 - Pros: Types with similar names do not exist in mainstream languages, so people will not make incorrect assumptions.
-- Cons: `mem` -> *memory-pointer-sized* is definitely not as obvious as `ptr` -> *pointer-sized*.
+- Cons: `mem` -> *memory-pointer-sized* is definitely not as obvious as `ptr` -> *pointer-sized*. The unfamiliarity may turn newcomers away from Rust. 
 
-However, people will be tempted to read the documentation anyway when they encounter `imem/umem` or `intm/uintm`. And this RFC author expects the "memory-pointer-sized" interpretation to be easy (or easier) to internalize once the documentation gets consulted.
+However, this RFC author expects newcomers to read the documentation when they encounter `imem/umem` or `intm/uintm` because they wonder "what on earth are these two types?" If they don't bother reading the documentation, then it is unlikely that they will be using Rust anyway (`imem/umem` or `intm/uintm` are minor problems compared to something like explicit lifetimes or the borrow checker). And the "memory-pointer-sized" interpretation is easy (or easier) to internalize once the documentation gets consulted.
 
 ### Note:
 
-This RFC author personally prefers `imem/umem` now, but `intp/uintp` and `iptr/uptr` also have plenty of community support. No one else seem to care about `intm/uintm`, and they are only in for symmetry and completeness.
+This RFC author personally prefers `imem/umem` now, but `intp/uintp` and `iptr/uptr` also have plenty of community support. Few people seem to care about `intm/uintm`, and these two are only in for symmetry and completeness.
 
 # Drawbacks
 
