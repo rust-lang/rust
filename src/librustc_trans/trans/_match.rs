@@ -227,7 +227,7 @@ use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::ptr::P;
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
@@ -242,7 +242,7 @@ impl<'a> ConstantExpr<'a> {
 }
 
 // An option identifying a branch (either a literal, an enum variant or a range)
-#[deriving(Show)]
+#[derive(Show)]
 enum Opt<'a, 'tcx> {
     ConstantValue(ConstantExpr<'a>),
     ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>),
@@ -298,7 +298,7 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
     }
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum BranchKind {
     NoBranch,
     Single,
@@ -313,7 +313,7 @@ pub enum OptResult<'blk, 'tcx: 'blk> {
     LowerBound(Result<'blk, 'tcx>)
 }
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum TransBindingMode {
     TrByCopy(/* llbinding */ ValueRef),
     TrByMove,
@@ -327,7 +327,7 @@ pub enum TransBindingMode {
 /// - `trmode` is the trans binding mode
 /// - `id` is the node id of the binding
 /// - `ty` is the Rust type of the binding
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct BindingInfo<'tcx> {
     pub llmatch: ValueRef,
     pub trmode: TransBindingMode,

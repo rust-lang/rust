@@ -23,7 +23,7 @@ use syntax::visit::Visitor;
 
 // Useful type to use with `Result<>` indicate that an error has already
 // been reported to the user, so no need to continue checking.
-#[deriving(Clone, Copy, Show)]
+#[derive(Clone, Copy, Show)]
 pub struct ErrorReported;
 
 pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where

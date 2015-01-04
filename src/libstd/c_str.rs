@@ -498,7 +498,7 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
 ///
 /// Use with the `std::iter` module.
 #[allow(raw_pointer_deriving)]
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct CChars<'a> {
     ptr: *const libc::c_char,
     marker: marker::ContravariantLifetime<'a>,

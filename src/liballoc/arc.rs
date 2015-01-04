@@ -800,6 +800,6 @@ mod tests {
     }
 
     // Make sure deriving works with Arc<T>
-    #[deriving(Eq, Ord, PartialEq, PartialOrd, Clone, Show, Default)]
+    #[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Show, Default)]
     struct Foo { inner: Arc<int> }
 }

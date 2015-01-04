@@ -111,7 +111,7 @@ fn lookup_item<'a>(item_id: ast::NodeId, data: &'a [u8]) -> rbml::Doc<'a> {
     find_item(item_id, items)
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum Family {
     ImmStatic,             // c
     MutStatic,             // b
@@ -471,7 +471,7 @@ pub fn get_symbol(data: &[u8], id: ast::NodeId) -> String {
 }
 
 // Something that a name can resolve to.
-#[deriving(Copy, Clone, Show)]
+#[derive(Copy, Clone, Show)]
 pub enum DefLike {
     DlDef(def::Def),
     DlImpl(ast::DefId),
@@ -1173,7 +1173,7 @@ pub fn get_crate_attributes(data: &[u8]) -> Vec<ast::Attribute> {
     get_attributes(rbml::Doc::new(data))
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct CrateDep {
     pub cnum: ast::CrateNum,
     pub name: String,

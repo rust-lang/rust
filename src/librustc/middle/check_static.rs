@@ -39,7 +39,7 @@ use syntax::visit::Visitor;
 use syntax::codemap::Span;
 use syntax::visit;
 
-#[deriving(Copy, Eq, PartialEq)]
+#[derive(Copy, Eq, PartialEq)]
 enum Mode {
     InConstant,
     InStatic,

@@ -361,7 +361,7 @@ pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static st
 }
 
 /// A low-level OS in-memory pipe.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Pipe {
     /// A file descriptor representing the reading end of the pipe. Data written
     /// on the `out` file descriptor can be read from this file descriptor.
@@ -862,7 +862,7 @@ pub enum MapOption {
 impl Copy for MapOption {}
 
 /// Possible errors when creating a map.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum MapError {
     /// # The following are POSIX-specific
     ///

@@ -29,7 +29,7 @@ const RAND_SIZE_UINT: uint = 1 << (RAND_SIZE_LEN as uint);
 ///
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct IsaacRng {
     cnt: u32,
     rsl: [u32; RAND_SIZE_UINT],
@@ -264,7 +264,7 @@ const RAND_SIZE_64: uint = 1 << RAND_SIZE_64_LEN;
 ///
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Isaac64Rng {
     cnt: uint,
     rsl: [u64; RAND_SIZE_64],

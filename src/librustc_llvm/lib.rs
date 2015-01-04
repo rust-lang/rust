@@ -68,7 +68,7 @@ pub const False: Bool = 0 as Bool;
 
 // Consts for the LLVM CallConv type, pre-cast to uint.
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum CallConv {
     CCallConv = 0,
     FastCallConv = 8,
@@ -78,7 +78,7 @@ pub enum CallConv {
     X86_64_Win64 = 79,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Visibility {
     LLVMDefaultVisibility = 0,
     HiddenVisibility = 1,
@@ -89,7 +89,7 @@ pub enum Visibility {
 // DLLExportLinkage, GhostLinkage and LinkOnceODRAutoHideLinkage.
 // LinkerPrivateLinkage and LinkerPrivateWeakLinkage are not included either;
 // they've been removed in upstream LLVM commit r203866.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Linkage {
     ExternalLinkage = 0,
     AvailableExternallyLinkage = 1,
@@ -105,7 +105,7 @@ pub enum Linkage {
 }
 
 #[repr(C)]
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum DiagnosticSeverity {
     Error,
     Warning,
@@ -146,7 +146,7 @@ bitflags! {
 
 
 #[repr(u64)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum OtherAttribute {
     // The following are not really exposed in
     // the LLVM c api so instead to add these
@@ -167,13 +167,13 @@ pub enum OtherAttribute {
     NonNullAttribute = 1 << 44,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum SpecialAttribute {
     DereferenceableAttribute(u64)
 }
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum AttributeSet {
     ReturnIndex = 0,
     FunctionIndex = !0
@@ -265,7 +265,7 @@ impl AttrBuilder {
 }
 
 // enum for the LLVM IntPredicate type
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum IntPredicate {
     IntEQ = 32,
     IntNE = 33,
@@ -280,7 +280,7 @@ pub enum IntPredicate {
 }
 
 // enum for the LLVM RealPredicate type
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum RealPredicate {
     RealPredicateFalse = 0,
     RealOEQ = 1,
@@ -302,7 +302,7 @@ pub enum RealPredicate {
 
 // The LLVM TypeKind type - must stay in sync with the def of
 // LLVMTypeKind in llvm/include/llvm-c/Core.h
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 #[repr(C)]
 pub enum TypeKind {
     Void      = 0,
@@ -324,7 +324,7 @@ pub enum TypeKind {
 }
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum AtomicBinOp {
     AtomicXchg = 0,
     AtomicAdd  = 1,
@@ -340,7 +340,7 @@ pub enum AtomicBinOp {
 }
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum AtomicOrdering {
     NotAtomic = 0,
     Unordered = 1,
@@ -354,13 +354,13 @@ pub enum AtomicOrdering {
 
 // Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum FileType {
     AssemblyFileType = 0,
     ObjectFileType = 1
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum MetadataType {
     MD_dbg = 0,
     MD_tbaa = 1,
@@ -371,13 +371,13 @@ pub enum MetadataType {
 }
 
 // Inline Asm Dialect
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum AsmDialect {
     AD_ATT   = 0,
     AD_Intel = 1
 }
 
-#[deriving(Copy, PartialEq, Clone)]
+#[derive(Copy, PartialEq, Clone)]
 #[repr(C)]
 pub enum CodeGenOptLevel {
     CodeGenLevelNone = 0,
@@ -386,7 +386,7 @@ pub enum CodeGenOptLevel {
     CodeGenLevelAggressive = 3,
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 #[repr(C)]
 pub enum RelocMode {
     RelocDefault = 0,
@@ -396,7 +396,7 @@ pub enum RelocMode {
 }
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum CodeGenModel {
     CodeModelDefault = 0,
     CodeModelJITDefault = 1,
@@ -407,7 +407,7 @@ pub enum CodeGenModel {
 }
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum DiagnosticKind {
     DK_InlineAsm = 0,
     DK_StackSize,
@@ -513,7 +513,7 @@ pub mod debuginfo {
     pub type DIArray = DIDescriptor;
     pub type DISubrange = DIDescriptor;
 
-    #[deriving(Copy)]
+    #[derive(Copy)]
     pub enum DIDescriptorFlags {
       FlagPrivate            = 1 << 0,
       FlagProtected          = 1 << 1,

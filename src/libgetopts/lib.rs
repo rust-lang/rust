@@ -105,7 +105,7 @@ use std::iter::repeat;
 use std::result;
 
 /// Name of an option. Either a string or a single char.
-#[deriving(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Name {
     /// A string representing the long name of an option.
     /// For example: "help"
@@ -116,7 +116,7 @@ pub enum Name {
 }
 
 /// Describes whether an option has an argument.
-#[deriving(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum HasArg {
     /// The option requires an argument.
     Yes,
@@ -127,7 +127,7 @@ pub enum HasArg {
 }
 
 /// Describes how often an option may occur.
-#[deriving(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Occur {
     /// The option occurs once.
     Req,
@@ -138,7 +138,7 @@ pub enum Occur {
 }
 
 /// A description of a possible option.
-#[deriving(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Opt {
     /// Name of the option
     pub name: Name,
@@ -152,7 +152,7 @@ pub struct Opt {
 
 /// One group of options, e.g., both `-h` and `--help`, along with
 /// their shared description and properties.
-#[deriving(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct OptGroup {
     /// Short name of the option, e.g. `h` for a `-h` option
     pub short_name: String,
@@ -169,7 +169,7 @@ pub struct OptGroup {
 }
 
 /// Describes whether an option is given at all or has a value.
-#[deriving(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 enum Optval {
     Val(String),
     Given,
@@ -177,7 +177,7 @@ enum Optval {
 
 /// The result of checking command line arguments. Contains a vector
 /// of matches and a vector of free strings.
-#[deriving(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Matches {
     /// Options that matched
     opts: Vec<Opt>,
@@ -190,7 +190,7 @@ pub struct Matches {
 /// The type returned when the command line does not conform to the
 /// expected format. Use the `Show` implementation to output detailed
 /// information.
-#[deriving(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Fail {
     /// The option requires an argument but none was passed.
     ArgumentMissing(String),
@@ -205,7 +205,7 @@ pub enum Fail {
 }
 
 /// The type of failure that occurred.
-#[deriving(Copy, PartialEq, Eq)]
+#[derive(Copy, PartialEq, Eq)]
 #[allow(missing_docs)]
 pub enum FailType {
     ArgumentMissing_,
@@ -827,18 +827,18 @@ pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> String {
     line
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum SplitWithinState {
     A,  // leading whitespace, initial state
     B,  // words
     C,  // internal and trailing whitespace
 }
-#[deriving(Copy)]
+#[derive(Copy)]
 enum Whitespace {
     Ws, // current char is whitespace
     Cr  // current char is not whitespace
 }
-#[deriving(Copy)]
+#[derive(Copy)]
 enum LengthLimit {
     UnderLim, // current char makes current substring still fit in limit
     OverLim   // current char makes current substring no longer fit in limit

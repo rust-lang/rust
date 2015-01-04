@@ -1218,7 +1218,7 @@ impl_num_cast! { f32,   to_f32 }
 impl_num_cast! { f64,   to_f64 }
 
 /// Used for representing the classification of floating point numbers
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 #[unstable = "may be renamed"]
 pub enum FpCategory {
     /// "Not a Number", often obtained by dividing by zero

@@ -98,7 +98,7 @@ pub fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
     rbml_w.wr_tagged_str(tag_def_id, def_to_string(id)[]);
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct entry<T> {
     val: T,
     pos: u64

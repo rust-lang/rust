@@ -52,7 +52,7 @@ pub const INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
 /// This behavior is characterized by the following condition:
 ///
 /// - if size > 0.909 * capacity: grow the map
-#[deriving(Clone)]
+#[derive(Clone)]
 struct DefaultResizePolicy;
 
 impl DefaultResizePolicy {
@@ -215,7 +215,7 @@ fn test_resize_policy() {
 /// overridden with one of the constructors.
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
-/// this can frequently be achieved by using `#[deriving(Eq, Hash)]`.
+/// this can frequently be achieved by using `#[derive(Eq, Hash)]`.
 ///
 /// Relevant papers/articles:
 ///
@@ -270,7 +270,7 @@ fn test_resize_policy() {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// #[deriving(Hash, Eq, PartialEq, Show)]
+/// #[derive(Hash, Eq, PartialEq, Show)]
 /// struct Viking {
 ///     name: String,
 ///     country: String,
@@ -295,7 +295,7 @@ fn test_resize_policy() {
 ///     println!("{} has {} hp", viking, health);
 /// }
 /// ```
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct HashMap<K, V, H = RandomSipHasher> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
@@ -1356,7 +1356,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     inner: table::Iter<'a, K, V>
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for Iter<'a, K, V> {
     fn clone(&self) -> Iter<'a, K, V> {
         Iter {
@@ -1388,7 +1388,7 @@ pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a K, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for Keys<'a, K, V> {
     fn clone(&self) -> Keys<'a, K, V> {
         Keys {
@@ -1403,7 +1403,7 @@ pub struct Values<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for Values<'a, K, V> {
     fn clone(&self) -> Values<'a, K, V> {
         Values {
@@ -1622,7 +1622,7 @@ mod test_map {
 
     thread_local! { static DROP_VECTOR: RefCell<Vec<int>> = RefCell::new(Vec::new()) }
 
-    #[deriving(Hash, PartialEq, Eq)]
+    #[derive(Hash, PartialEq, Eq)]
     struct Dropable {
         k: uint
     }

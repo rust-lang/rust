@@ -16,12 +16,12 @@ use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-#[deriving(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum Context {
     Normal, Loop, Closure
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct CheckLoopVisitor<'a> {
     sess: &'a Session,
     cx: Context

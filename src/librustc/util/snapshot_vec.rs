@@ -22,7 +22,7 @@ use self::UndoLog::*;
 
 use std::mem;
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub enum UndoLog<T,U> {
     /// Indicates where a snapshot started.
     OpenSnapshot,

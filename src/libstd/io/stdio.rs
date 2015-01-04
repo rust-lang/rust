@@ -104,7 +104,7 @@ unsafe impl Send for RaceBox {}
 unsafe impl Sync for RaceBox {}
 
 /// A synchronized wrapper around a buffered reader from stdin
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct StdinReader {
     inner: Arc<Mutex<RaceBox>>,
 }
