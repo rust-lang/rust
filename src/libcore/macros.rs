@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![macro_escape]
+#![allow(shadowing_macros)]
 
 // NOTE(stage0): Remove cfg after a snapshot
 #[cfg(not(stage0))]

@@ -273,20 +273,6 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
         _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 
-    // Warn if the name already exists in our local macro syntax environment
-    match cx.syntax_env.find(&name.name) {
-        Some(_) => {
-          cx.span_warn(
-              sp,
-              format!(
-                  "shadowing macro definition: {}",
-                  name.as_str()
-              )[]
-          );
-        },
-        None => {}
-    };
-
     let exp = box MacroRulesMacroExpander {
         name: name,
         lhses: lhses,
