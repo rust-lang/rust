@@ -42,7 +42,7 @@ pub fn div_rem<T: Clone + Div<Output=T> + Rem<Output=T>>(x: T, y: T) -> (T, T) {
 /// Raises a `base` to the power of `exp`, using exponentiation by squaring.
 #[inline]
 #[deprecated = "Use Int::pow() instead, as in 2i.pow(4)"]
-pub fn pow<T: Int>(base: T, exp: uint) -> T {
+pub fn pow<T: Int>(base: T, exp: u32) -> T {
     base.pow(exp)
 }
 
@@ -92,7 +92,7 @@ pub trait Int
     ///
     /// assert_eq!(n.count_ones(), 3);
     /// ```
-    fn count_ones(self) -> uint;
+    fn count_ones(self) -> u32;
 
     /// Returns the number of zeros in the binary representation of `self`.
     ///
@@ -106,7 +106,7 @@ pub trait Int
     /// assert_eq!(n.count_zeros(), 5);
     /// ```
     #[inline]
-    fn count_zeros(self) -> uint {
+    fn count_zeros(self) -> u32 {
         (!self).count_ones()
     }
 
@@ -122,7 +122,7 @@ pub trait Int
     ///
     /// assert_eq!(n.leading_zeros(), 10);
     /// ```
-    fn leading_zeros(self) -> uint;
+    fn leading_zeros(self) -> u32;
 
     /// Returns the number of trailing zeros in the binary representation
     /// of `self`.
@@ -136,7 +136,7 @@ pub trait Int
     ///
     /// assert_eq!(n.trailing_zeros(), 3);
     /// ```
-    fn trailing_zeros(self) -> uint;
+    fn trailing_zeros(self) -> u32;
 
     /// Shifts the bits to the left by a specified amount amount, `n`, wrapping
     /// the truncated bits to the end of the resulting integer.
@@ -151,7 +151,7 @@ pub trait Int
     ///
     /// assert_eq!(n.rotate_left(12), m);
     /// ```
-    fn rotate_left(self, n: uint) -> Self;
+    fn rotate_left(self, n: u32) -> Self;
 
     /// Shifts the bits to the right by a specified amount amount, `n`, wrapping
     /// the truncated bits to the beginning of the resulting integer.
@@ -166,7 +166,7 @@ pub trait Int
     ///
     /// assert_eq!(n.rotate_right(12), m);
     /// ```
-    fn rotate_right(self, n: uint) -> Self;
+    fn rotate_right(self, n: u32) -> Self;
 
     /// Reverses the byte order of the integer.
     ///
@@ -356,7 +356,7 @@ pub trait Int
     /// assert_eq!(2i.pow(4), 16);
     /// ```
     #[inline]
-    fn pow(self, mut exp: uint) -> Self {
+    fn pow(self, mut exp: u32) -> Self {
         let mut base = self;
         let mut acc: Self = Int::one();
         while exp > 0 {
@@ -401,25 +401,25 @@ macro_rules! uint_impl {
             fn max_value() -> $T { -1 }
 
             #[inline]
-            fn count_ones(self) -> uint { unsafe { $ctpop(self as $ActualT) as uint } }
+            fn count_ones(self) -> u32 { unsafe { $ctpop(self as $ActualT) as u32 } }
 
             #[inline]
-            fn leading_zeros(self) -> uint { unsafe { $ctlz(self as $ActualT) as uint } }
+            fn leading_zeros(self) -> u32 { unsafe { $ctlz(self as $ActualT) as u32 } }
 
             #[inline]
-            fn trailing_zeros(self) -> uint { unsafe { $cttz(self as $ActualT) as uint } }
+            fn trailing_zeros(self) -> u32 { unsafe { $cttz(self as $ActualT) as u32 } }
 
             #[inline]
-            fn rotate_left(self, n: uint) -> $T {
+            fn rotate_left(self, n: u32) -> $T {
                 // Protect against undefined behaviour for over-long bit shifts
-                let n = n % $BITS;
+                let n = (n % $BITS) as uint;
                 (self << n) | (self >> (($BITS - n) % $BITS))
             }
 
             #[inline]
-            fn rotate_right(self, n: uint) -> $T {
+            fn rotate_right(self, n: u32) -> $T {
                 // Protect against undefined behaviour for over-long bit shifts
-                let n = n % $BITS;
+                let n = (n % $BITS) as uint;
                 (self >> n) | (self << (($BITS - n) % $BITS))
             }
 
@@ -532,19 +532,19 @@ macro_rules! int_impl {
             fn max_value() -> $T { let min: $T = Int::min_value(); !min }
 
             #[inline]
-            fn count_ones(self) -> uint { (self as $UnsignedT).count_ones() }
+            fn count_ones(self) -> u32 { (self as $UnsignedT).count_ones() }
 
             #[inline]
-            fn leading_zeros(self) -> uint { (self as $UnsignedT).leading_zeros() }
+            fn leading_zeros(self) -> u32 { (self as $UnsignedT).leading_zeros() }
 
             #[inline]
-            fn trailing_zeros(self) -> uint { (self as $UnsignedT).trailing_zeros() }
+            fn trailing_zeros(self) -> u32 { (self as $UnsignedT).trailing_zeros() }
 
             #[inline]
-            fn rotate_left(self, n: uint) -> $T { (self as $UnsignedT).rotate_left(n) as $T }
+            fn rotate_left(self, n: u32) -> $T { (self as $UnsignedT).rotate_left(n) as $T }
 
             #[inline]
-            fn rotate_right(self, n: uint) -> $T { (self as $UnsignedT).rotate_right(n) as $T }
+            fn rotate_right(self, n: u32) -> $T { (self as $UnsignedT).rotate_right(n) as $T }
 
             #[inline]
             fn swap_bytes(self) -> $T { (self as $UnsignedT).swap_bytes() as $T }
@@ -682,7 +682,7 @@ pub trait UnsignedInt: Int {
     fn next_power_of_two(self) -> Self {
         let bits = size_of::<Self>() * 8;
         let one: Self = Int::one();
-        one << ((bits - (self - one).leading_zeros()) % bits)
+        one << ((bits - (self - one).leading_zeros() as uint) % bits)
     }
 
     /// Returns the smallest power of two greater than or equal to `n`. If the

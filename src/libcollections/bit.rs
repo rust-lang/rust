@@ -1674,7 +1674,7 @@ impl BitvSet {
     #[inline]
     #[stable]
     pub fn len(&self) -> uint  {
-        self.bitv.blocks().fold(0, |acc, n| acc + n.count_ones())
+        self.bitv.blocks().fold(0, |acc, n| acc + n.count_ones() as uint)
     }
 
     /// Returns whether there are no bits set in this set
