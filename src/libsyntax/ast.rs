@@ -453,6 +453,9 @@ pub struct Crate {
     pub attrs: Vec<Attribute>,
     pub config: CrateConfig,
     pub span: Span,
+    /// Macros defined inside the crate
+    pub macros: Vec<P<Item>>,
+    /// Macros exported from the crate via macro_export attribute
     pub exported_macros: Vec<P<Item>>
 }
 

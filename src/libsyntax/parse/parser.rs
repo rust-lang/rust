@@ -6188,7 +6188,8 @@ impl<'a> Parser<'a> {
             attrs: inner,
             config: self.cfg.clone(),
             span: mk_sp(lo, self.span.lo),
-            exported_macros: Vec::new(),
+            macros: Vec::new(),
+            exported_macros: Vec::new()
         }
     }
 
