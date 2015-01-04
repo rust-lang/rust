@@ -183,8 +183,10 @@ fn exec<'t>(which: ::regex::native::MatchKind, input: &'t str,
         fn run(&mut self, start: uint, end: uint) -> Vec<Option<uint>> {
             let mut matched = false;
             let prefix_bytes: &[u8] = $prefix_bytes;
-            let mut clist = &mut Threads::new(self.which);
-            let mut nlist = &mut Threads::new(self.which);
+            let mut cthread = Threads::new(self.which);
+            let mut nthread = Threads::new(self.which);
+            let mut clist = &mut cthread;
+            let mut nlist = &mut nthread;
 
             let mut groups = $init_groups;
 
