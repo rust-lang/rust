@@ -853,7 +853,9 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match def {
         def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) |
         def::DefStruct(_) | def::DefVariant(..) => {
-            trans_def_fn_unadjusted(bcx, ref_expr, def)
+            let datum = trans_def_fn_unadjusted(bcx.ccx(), ref_expr, def,
+                                                bcx.fcx.param_substs);
+            DatumBlock::new(bcx, datum.to_expr_datum())
         }
         def::DefStatic(did, _) => {
             // There are two things that may happen here:
@@ -1250,7 +1252,9 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let variant_info = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
             if variant_info.args.len() > 0u {
                 // N-ary variant.
-                let llfn = callee::trans_fn_ref(bcx, vid, ExprId(ref_expr.id));
+                let llfn = callee::trans_fn_ref(bcx.ccx(), vid,
+                                                ExprId(ref_expr.id),
+                                                bcx.fcx.param_substs).val;
                 Store(bcx, llfn, lldest);
                 return bcx;
             } else {
@@ -1281,34 +1285,33 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn trans_def_fn_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                       ref_expr: &ast::Expr,
-                                       def: def::Def)
-                                       -> DatumBlock<'blk, 'tcx, Expr> {
+pub fn trans_def_fn_unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                         ref_expr: &ast::Expr,
+                                         def: def::Def,
+                                         param_substs: &subst::Substs<'tcx>)
+                                         -> Datum<'tcx, Rvalue> {
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 
-    let llfn = match def {
+    match def {
         def::DefFn(did, _) |
         def::DefStruct(did) | def::DefVariant(_, did, _) |
         def::DefStaticMethod(did, def::FromImpl(_)) |
         def::DefMethod(did, _, def::FromImpl(_)) => {
-            callee::trans_fn_ref(bcx, did, ExprId(ref_expr.id))
+            callee::trans_fn_ref(ccx, did, ExprId(ref_expr.id), param_substs)
         }
         def::DefStaticMethod(impl_did, def::FromTrait(trait_did)) |
         def::DefMethod(impl_did, _, def::FromTrait(trait_did)) => {
-            meth::trans_static_method_callee(bcx, impl_did,
-                                             trait_did, ref_expr.id)
+            meth::trans_static_method_callee(ccx, impl_did,
+                                             trait_did, ref_expr.id,
+                                             param_substs)
         }
         _ => {
-            bcx.tcx().sess.span_bug(ref_expr.span, format!(
+            ccx.tcx().sess.span_bug(ref_expr.span, format!(
                     "trans_def_fn_unadjusted invoked on: {} for {}",
                     def,
-                    ref_expr.repr(bcx.tcx()))[]);
+                    ref_expr.repr(ccx.tcx()))[]);
         }
-    };
-
-    let fn_ty = expr_ty(bcx, ref_expr);
-    DatumBlock::new(bcx, Datum::new(llfn, fn_ty, RvalueExpr(Rvalue::new(ByValue))))
+    }
 }
 
 /// Translates a reference to a local variable or argument. This always results in an lvalue datum.

@@ -122,9 +122,10 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ty::MethodStaticUnboxedClosure(did) => {
             Callee {
                 bcx: bcx,
-                data: Fn(callee::trans_fn_ref(bcx,
+                data: Fn(callee::trans_fn_ref(bcx.ccx(),
                                               did,
-                                              MethodCallKey(method_call))),
+                                              MethodCallKey(method_call),
+                                              bcx.fcx.param_substs).val),
             }
         }
 
@@ -166,30 +167,31 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn trans_static_method_callee(bcx: Block,
-                                  method_id: ast::DefId,
-                                  trait_id: ast::DefId,
-                                  expr_id: ast::NodeId)
-                                  -> ValueRef
+pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                            method_id: ast::DefId,
+                                            trait_id: ast::DefId,
+                                            expr_id: ast::NodeId,
+                                            param_substs: &subst::Substs<'tcx>)
+                                            -> Datum<'tcx, Rvalue>
 {
     let _icx = push_ctxt("meth::trans_static_method_callee");
-    let ccx = bcx.ccx();
+    let tcx = ccx.tcx();
 
     debug!("trans_static_method_callee(method_id={}, trait_id={}, \
             expr_id={})",
            method_id,
-           ty::item_path_str(bcx.tcx(), trait_id),
+           ty::item_path_str(tcx, trait_id),
            expr_id);
 
     let mname = if method_id.krate == ast::LOCAL_CRATE {
-        match bcx.tcx().map.get(method_id.node) {
+        match tcx.map.get(method_id.node) {
             ast_map::NodeTraitItem(method) => {
                 let ident = match *method {
                     ast::RequiredMethod(ref m) => m.ident,
                     ast::ProvidedMethod(ref m) => m.pe_ident(),
                     ast::TypeTraitItem(_) => {
-                        bcx.tcx().sess.bug("trans_static_method_callee() on \
-                                            an associated type?!")
+                        tcx.sess.bug("trans_static_method_callee() on \
+                                      an associated type?!")
                     }
                 };
                 ident.name
@@ -197,7 +199,7 @@ pub fn trans_static_method_callee(bcx: Block,
             _ => panic!("callee is not a trait method")
         }
     } else {
-        csearch::get_item_path(bcx.tcx(), method_id).last().unwrap().name()
+        csearch::get_item_path(tcx, method_id).last().unwrap().name()
     };
     debug!("trans_static_method_callee: method_id={}, expr_id={}, \
             name={}", method_id, expr_id, token::get_name(mname));
@@ -205,7 +207,7 @@ pub fn trans_static_method_callee(bcx: Block,
     // Find the substitutions for the fn itself. This includes
     // type parameters that belong to the trait but also some that
     // belong to the method:
-    let rcvr_substs = node_id_substs(bcx, ExprId(expr_id));
+    let rcvr_substs = node_id_substs(ccx, ExprId(expr_id), param_substs);
     let subst::SeparateVecsPerParamSpace {
         types: rcvr_type,
         selfs: rcvr_self,
@@ -238,11 +240,11 @@ pub fn trans_static_method_callee(bcx: Block,
         Substs::erased(VecPerParamSpace::new(rcvr_type,
                                              rcvr_self,
                                              Vec::new()));
-    let trait_substs = bcx.tcx().mk_substs(trait_substs);
-    debug!("trait_substs={}", trait_substs.repr(bcx.tcx()));
+    let trait_substs = tcx.mk_substs(trait_substs);
+    debug!("trait_substs={}", trait_substs.repr(tcx));
     let trait_ref = ty::Binder(Rc::new(ty::TraitRef { def_id: trait_id,
                                                       substs: trait_substs }));
-    let vtbl = fulfill_obligation(bcx.ccx(),
+    let vtbl = fulfill_obligation(ccx,
                                   DUMMY_SP,
                                   trait_ref);
 
@@ -282,17 +284,13 @@ pub fn trans_static_method_callee(bcx: Block,
                                                      rcvr_method));
 
             let mth_id = method_with_name(ccx, impl_did, mname);
-            let llfn = trans_fn_ref_with_substs(bcx, mth_id, ExprId(expr_id),
-                                                callee_substs);
-
-            let callee_ty = node_id_type(bcx, expr_id);
-            let llty = type_of_fn_from_ty(ccx, callee_ty).ptr_to();
-            PointerCast(bcx, llfn, llty)
+            trans_fn_ref_with_substs(ccx, mth_id, ExprId(expr_id),
+                                     param_substs,
+                                     callee_substs)
         }
         _ => {
-            bcx.tcx().sess.bug(
-                format!("static call to invalid vtable: {}",
-                        vtbl.repr(bcx.tcx()))[]);
+            tcx.sess.bug(format!("static call to invalid vtable: {}",
+                                 vtbl.repr(tcx))[]);
         }
     }
 }
@@ -346,20 +344,22 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     bcx, MethodCallKey(method_call), vtable_impl.substs);
 
             // translate the function
-            let llfn = trans_fn_ref_with_substs(bcx,
+            let llfn = trans_fn_ref_with_substs(bcx.ccx(),
                                                 mth_id,
                                                 MethodCallKey(method_call),
-                                                callee_substs);
+                                                bcx.fcx.param_substs,
+                                                callee_substs).val;
 
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableUnboxedClosure(closure_def_id, substs) => {
             // The substitutions should have no type parameters remaining
             // after passing through fulfill_obligation
-            let llfn = trans_fn_ref_with_substs(bcx,
+            let llfn = trans_fn_ref_with_substs(bcx.ccx(),
                                                 closure_def_id,
                                                 MethodCallKey(method_call),
-                                                substs);
+                                                bcx.fcx.param_substs,
+                                                substs).val;
 
             Callee {
                 bcx: bcx,
@@ -400,7 +400,7 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 {
     let ccx = bcx.ccx();
 
-    let node_substs = node_id_substs(bcx, node);
+    let node_substs = node_id_substs(ccx, node, bcx.fcx.param_substs);
 
     debug!("rcvr_substs={}", rcvr_substs.repr(ccx.tcx()));
     debug!("node_substs={}", node_substs.repr(ccx.tcx()));
@@ -684,10 +684,11 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
             traits::VtableUnboxedClosure(closure_def_id, substs) => {
                 let llfn = trans_fn_ref_with_substs(
-                    bcx,
+                    bcx.ccx(),
                     closure_def_id,
                     ExprId(0),
-                    substs.clone());
+                    bcx.fcx.param_substs,
+                    substs.clone()).val;
 
                 (vec!(llfn)).into_iter()
             }
@@ -788,10 +789,11 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     Some(C_null(Type::nil(ccx).ptr_to())).into_iter()
                 } else {
                     let fn_ref = trans_fn_ref_with_substs(
-                        bcx,
+                        ccx,
                         m_id,
                         ExprId(0),
-                        substs.clone());
+                        bcx.fcx.param_substs,
+                        substs.clone()).val;
 
                     // currently, at least, by-value self is not object safe
                     assert!(m.explicit_self != ty::ByValueExplicitSelfCategory);
