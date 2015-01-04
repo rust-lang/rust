@@ -49,7 +49,7 @@ pub struct Guard {
 
 /// A type of error which can be returned whenever a lock is acquired.
 ///
-/// Both Mutexes and RWLocks are poisoned whenever a task fails while the lock
+/// Both Mutexes and RwLocks are poisoned whenever a task fails while the lock
 /// is held. The precise semantics for when a lock is poisoned is documented on
 /// each lock, but once a lock is poisoned then all future acquisitions will
 /// return this error.
