@@ -662,27 +662,27 @@ pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<ast_map::PathElem> {
     item_path(lookup_item(id, cdata.data()))
 }
 
-pub type DecodeInlinedItem<'a> = for<'tcx> |cdata: Cmd,
-                                            tcx: &ty::ctxt<'tcx>,
-                                            path: Vec<ast_map::PathElem>,
-                                            par_doc: rbml::Doc|: 'a
-                                            -> Result<&'tcx ast::InlinedItem,
-                                                      Vec<ast_map::PathElem>>;
+pub type DecodeInlinedItem<'a> =
+    Box<for<'tcx> FnMut(Cmd,
+                        &ty::ctxt<'tcx>,
+                        Vec<ast_map::PathElem>,
+                        rbml::Doc)
+                        -> Result<&'tcx ast::InlinedItem, Vec<ast_map::PathElem>> + 'a>;
 
 pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeId,
-                                decode_inlined_item: DecodeInlinedItem)
+                                mut decode_inlined_item: DecodeInlinedItem)
                                 -> csearch::found_ast<'tcx> {
     debug!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data());
     let path = item_path(item_doc).init().to_vec();
-    match decode_inlined_item(cdata, tcx, path, item_doc) {
+    match decode_inlined_item.call_mut((cdata, tcx, path, item_doc)) {
         Ok(ii) => csearch::found(ii),
         Err(path) => {
             match item_parent_item(item_doc) {
                 Some(did) => {
                     let did = translate_def_id(cdata, did);
                     let parent_item = lookup_item(did.node, cdata.data());
-                    match decode_inlined_item(cdata, tcx, path, parent_item) {
+                    match decode_inlined_item.call_mut((cdata, tcx, path, parent_item)) {
                         Ok(ii) => csearch::found_parent(did, ii),
                         Err(_) => csearch::not_found
                     }
