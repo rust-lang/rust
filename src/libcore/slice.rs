@@ -1083,6 +1083,7 @@ impl<T, I: SplitIter + Iterator<Item=T>> Iterator for GenericSplitN<I> {
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
+#[stable]
 pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
 }
@@ -1090,12 +1091,14 @@ pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
+#[stable]
 pub struct RSplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
 }
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
+#[stable]
 pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
 }
@@ -1103,6 +1106,7 @@ pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
+#[stable]
 pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
 }
@@ -1134,7 +1138,7 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
 /// An iterator over overlapping subslices of length `size`.
 #[derive(Clone)]
-#[experimental = "needs review"]
+#[stable]
 pub struct Windows<'a, T:'a> {
     v: &'a [T],
     size: uint
@@ -1171,7 +1175,7 @@ impl<'a, T> Iterator for Windows<'a, T> {
 /// When the slice len is not evenly divided by the chunk size, the last slice
 /// of the iteration will be the remainder.
 #[derive(Clone)]
-#[experimental = "needs review"]
+#[stable]
 pub struct Chunks<'a, T:'a> {
     v: &'a [T],
     size: uint
@@ -1246,7 +1250,7 @@ impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
 /// An iterator over a slice in (non-overlapping) mutable chunks (`size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last slice of the iteration will be the remainder.
-#[experimental = "needs review"]
+#[stable]
 pub struct ChunksMut<'a, T:'a> {
     v: &'a mut [T],
     chunk_size: uint
@@ -1360,7 +1364,7 @@ pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
 /// not being able to provide a non-aliasing guarantee of the returned mutable
 /// slice.
 #[inline]
-#[unstable = "jshould be renamed to from_raw_parts_mut"]
+#[unstable = "should be renamed to from_raw_parts_mut"]
 pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
     transmute(RawSlice { data: *p as *const T, len: len })
 }

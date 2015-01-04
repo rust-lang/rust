@@ -86,6 +86,7 @@
 //! * Further iterators exist that split, chunk or permute the slice.
 
 #![doc(primitive = "slice")]
+#![stable]
 
 use alloc::boxed::Box;
 use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
@@ -119,8 +120,9 @@ pub use core::slice::{from_raw_buf, from_raw_mut_buf};
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Allocating extension methods for slices.
-#[unstable = "needs associated types, may merge with other traits"]
+#[stable]
 pub trait SliceExt for Sized? {
+    #[stable]
     type Item;
 
     /// Sorts the slice, in place, using `compare` to compare
@@ -699,7 +701,7 @@ pub trait SliceExt for Sized? {
     fn into_vec(self: Box<Self>) -> Vec<Self::Item>;
 }
 
-#[unstable = "trait is unstable"]
+#[stable]
 impl<T> SliceExt for [T] {
     type Item = T;
 
