@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -139,13 +139,11 @@ impl SafeHash {
 /// This function wraps up `hash_keyed` to be the only way outside this
 /// module to generate a SafeHash.
 pub fn make_hash<Sized? T: Hash<S>, S, H: Hasher<S>>(hasher: &H, t: &T) -> SafeHash {
-    match hasher.hash(t) {
-        // This constant is exceedingly likely to hash to the same
-        // bucket, but it won't be counted as empty! Just so we can maintain
-        // our precious uniform distribution of initial indexes.
-        EMPTY_BUCKET => SafeHash { hash: 0x8000_0000_0000_0000 },
-        h            => SafeHash { hash: h },
-    }
+    // We need to avoid 0u64 in order to prevent collisions with
+    // EMPTY_HASH. We can maintain our precious uniform distribution
+    // of initial indexes by unconditionally setting the MSB,
+    // effectively reducing 64-bits hashes to 63 bits.
+    SafeHash { hash: 0x8000_0000_0000_0000 | hasher.hash(t) }
 }
 
 // `replace` casts a `*u64` to a `*SafeHash`. Since we statically
