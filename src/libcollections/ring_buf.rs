@@ -525,7 +525,7 @@ impl<T> RingBuf<T> {
     ///     *num = *num - 2;
     /// }
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
-    /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
+    /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
     #[stable]
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {

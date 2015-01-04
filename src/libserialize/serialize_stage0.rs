@@ -14,6 +14,7 @@
 Core encoding and decoding interfaces.
 */
 
+use std::ops::FullRange;
 use std::path;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
@@ -308,7 +309,7 @@ impl<E, S:Encoder<E>> Encodable<S, E> for str {
 
 impl<E, S:Encoder<E>> Encodable<S, E> for String {
     fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(self[])
+        s.emit_str(self.index(&FullRange))
     }
 }
 

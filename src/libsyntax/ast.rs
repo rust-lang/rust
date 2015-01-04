@@ -206,7 +206,7 @@ impl<D: Decoder<E>, E> Decodable<D, E> for Ident {
 #[cfg(not(stage0))]
 impl Decodable for Ident {
     fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(str_to_ident(try!(d.read_str())[]))
+        Ok(str_to_ident(try!(d.read_str()).index(&FullRange)))
     }
 }
 

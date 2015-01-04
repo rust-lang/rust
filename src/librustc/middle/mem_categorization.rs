@@ -495,7 +495,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                                                         ret_ty), 1, true)
                 }
                 None => {
-                    self.cat_index(expr, self.cat_expr(&**base))
+                    self.cat_index(expr, try!(self.cat_expr(&**base)))
                 }
             }
           }
@@ -1497,7 +1497,7 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
                 token::get_name(fld).get().to_string()
             }
             InteriorField(PositionalField(i)) => format!("#{}", i),
-            InteriorElement(_) => ".index(&FullRange)".to_string(),
+            InteriorElement(_) => "[]".to_string(),
         }
     }
 }

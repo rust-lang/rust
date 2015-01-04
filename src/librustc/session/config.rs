@@ -639,7 +639,7 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     let target = match Target::search(opts.target_triple.index(&FullRange)) {
         Ok(t) => t,
         Err(e) => {
-            sp.handler().fatal((format!("Error loading target specification: {}", e)).index(&FullRange));
+            sp.handler().fatal((format!("Error loading target specification: {}", e)).as_slice());
     }
     };
 
@@ -1027,7 +1027,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 s => {
                     early_error(format!("unknown library kind `{}`, expected \
                                          one of dylib, framework, or static",
-                                        s)[]);
+                                        s).as_slice());
                 }
             };
             return (name.to_string(), kind)

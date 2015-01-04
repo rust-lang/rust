@@ -1369,13 +1369,13 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let tcx = bcx.tcx();
     with_field_tys(tcx, ty, Some(expr_id), |discr, field_tys| {
-        let mut need_base: Vec<_> = repeat(true).take(field_tys.len()).collect();
+        let mut need_base: Vec<bool> = repeat(true).take(field_tys.len()).collect();
 
         let numbered_fields = fields.iter().map(|field| {
             let opt_pos =
                 field_tys.iter().position(|field_ty|
                                           field_ty.name == field.ident.node.name);
-            match opt_pos {
+            let result = match opt_pos {
                 Some(i) => {
                     need_base[i] = false;
                     (i, &*field.expr)
@@ -1384,14 +1384,15 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     tcx.sess.span_bug(field.span,
                                       "Couldn't find field in struct type")
                 }
-            }
+            };
+            result
         }).collect::<Vec<_>>();
         let optbase = match base {
             Some(base_expr) => {
                 let mut leftovers = Vec::new();
                 for (i, b) in need_base.iter().enumerate() {
                     if *b {
-                        leftovers.push((i, field_tys[i].mt.ty))
+                        leftovers.push((i, field_tys[i].mt.ty));
                     }
                 }
                 Some(StructBaseInfo {expr: base_expr,
@@ -1408,7 +1409,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         trans_adt(bcx,
                   ty,
                   discr,
-                  numbered_fields.index(&FullRange),
+                  numbered_fields.as_slice(),
                   optbase,
                   dest,
                   Some(NodeInfo { id: expr_id, span: expr_span }))

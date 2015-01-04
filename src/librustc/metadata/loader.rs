@@ -624,7 +624,8 @@ impl<'a> Context<'a> {
                     return true
                 } else {
                     let (ref prefix, ref suffix) = dylibname;
-                    if file.starts_with(prefix.index(&FullRange)) && file.ends_with(suffix.index(&FullRange)) {
+                    if file.starts_with(prefix.index(&FullRange)) &&
+                       file.ends_with(suffix.index(&FullRange)) {
                         return true
                     }
                 }

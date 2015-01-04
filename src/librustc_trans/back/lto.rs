@@ -64,7 +64,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         debug!("reading {}", file);
         for i in iter::count(0u, 1) {
             let bc_encoded = time(sess.time_passes(),
-                                  format!("check for {}.{}.bytecode.deflate", name, i).index(&FullRange),
+                                  format!("check for {}.{}.bytecode.deflate", name, i).as_slice(),
                                   (),
                                   |_| {
                                       archive.read(format!("{}.{}.bytecode.deflate",

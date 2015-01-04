@@ -3763,13 +3763,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             self.resolve_error(path.span,
                                 format!("`{}` is not an enum variant, struct or const",
                                     token::get_ident(
-                                        path.segments.last().unwrap().identifier)).index(&FullRange));
+                                        path.segments.last().unwrap().identifier)).as_slice());
                         }
                         None => {
                             self.resolve_error(path.span,
                                 format!("unresolved enum variant, struct or const `{}`",
                                     token::get_ident(
-                                        path.segments.last().unwrap().identifier)).index(&FullRange));
+                                        path.segments.last().unwrap().identifier)).as_slice());
                         }
                     }
 

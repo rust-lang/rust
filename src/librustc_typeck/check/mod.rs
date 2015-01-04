@@ -3976,7 +3976,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           callee::check_call(fcx, expr, &**callee, args.as_slice());
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
-        check_method_call(fcx, expr, ident, args.index(&FullRange), tps.index(&FullRange), lvalue_pref);
+        check_method_call(fcx, expr, ident, args.as_slice(), tps.as_slice(), lvalue_pref);
         let arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
         let  args_err = arg_tys.fold(false,
              |rest_err, a| {

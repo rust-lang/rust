@@ -1826,10 +1826,10 @@ fn encode_macro_defs(rbml_w: &mut Encoder,
         rbml_w.start_tag(tag_macro_def);
 
         encode_name(rbml_w, def.ident.name);
-        encode_attributes(rbml_w, def.attrs[]);
+        encode_attributes(rbml_w, def.attrs.index(&FullRange));
 
         rbml_w.start_tag(tag_macro_def_body);
-        rbml_w.wr_str(pprust::tts_to_string(def.body[])[]);
+        rbml_w.wr_str(pprust::tts_to_string(def.body.index(&FullRange)).index(&FullRange));
         rbml_w.end_tag();
 
         rbml_w.end_tag();

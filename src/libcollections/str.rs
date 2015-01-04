@@ -60,7 +60,7 @@ use core::char::CharExt;
 use core::clone::Clone;
 use core::iter::AdditiveIterator;
 use core::iter::{range, Iterator, IteratorExt};
-use core::ops::{self, llRange, Index};
+use core::ops::{FullRange, Index};
 use core::option::Option::{self, Some, None};
 use core::slice::AsSlice;
 use core::str as core_str;
@@ -408,7 +408,7 @@ Section: Trait implementations
 
 /// Any string that can be represented as a slice.
 #[stable]
-pub trait StrExt: Index<FullRange, str> {
+pub trait StrExt: Index<FullRange, Output = str> {
     /// Escapes each char in `s` with `char::escape_default`.
     #[unstable = "return type may change to be an iterator"]
     fn escape_default(&self) -> String {
@@ -1339,12 +1339,6 @@ pub trait StrExt: Index<FullRange, str> {
     fn trim_left(&self) -> &str {
         UnicodeStr::trim_left(self.index(&FullRange))
     }
-
-    /// Returns a string with trailing whitespace removed.
-    #[stable]
-    fn trim_right(&self) -> &str {
-        UnicodeStr::trim_right(self.index(&FullRange))
-    }
 }
 
 #[stable]
@@ -2133,7 +2127,7 @@ mod tests {
         let mut bytes = [0u8; 4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
-            let s = ::core::str::from_utf8(bytes.index(&(0..len))).unwrap();
+            let s = ::core::str::from_utf8(&bytes[..len]).unwrap();
             if Some(c) != s.chars().next() {
                 panic!("character {:x}={} does not decode correctly", c as u32, c);
             }
@@ -2145,7 +2139,7 @@ mod tests {
         let mut bytes = [0u8; 4];
         for c in range(0u32, 0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
-            let s = ::core::str::from_utf8(bytes.index(&(0..len))).unwrap();
+            let s = ::core::str::from_utf8(&bytes[..len]).unwrap();
             if Some(c) != s.chars().rev().next() {
                 panic!("character {:x}={} does not decode correctly", c as u32, c);
             }

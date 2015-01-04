@@ -1167,10 +1167,10 @@ mod test {
 
         for &src in srcs.iter() {
             let spans = get_spans_of_pat_idents(src);
-            let Span{lo:lo,hi:hi,..} = spans[0];
-            assert!("self" == src[lo.to_uint()..hi.to_uint()],
+            let Span{ lo, hi, .. } = spans[0];
+            assert!("self" == &src[lo.to_uint()..hi.to_uint()],
                     "\"{}\" != \"self\". src=\"{}\"",
-                    src[lo.to_uint()..hi.to_uint()], src)
+                    &src[lo.to_uint()..hi.to_uint()], src)
         }
     }
 

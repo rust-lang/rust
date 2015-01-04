@@ -804,7 +804,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             mc::AliasableClosure(id) => {
                 self.tcx.sess.span_err(span,
                                        format!("{} in a captured outer \
-                                               variable in an `Fn` closure", prefix).index(&FullRange));
+                                               variable in an `Fn` closure", prefix).as_slice());
                 span_help!(self.tcx.sess, self.tcx.map.span(id),
                            "consider changing this closure to take self by mutable reference");
             }

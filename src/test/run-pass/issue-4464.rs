@@ -10,6 +10,6 @@
 
 #![feature(slicing_syntax)]
 
-fn broken(v: &[u8], i: uint, j: uint) -> &[u8] { v.index(&(i..j)) }
+fn broken(v: &[u8], i: uint, j: uint) -> &[u8] { &v[i..j] }
 
 pub fn main() {}

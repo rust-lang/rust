@@ -22,7 +22,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{self, Deref, Add};
+use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
@@ -818,28 +818,29 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
-impl ops::Index<ops::Range<uint>, str> for String {
+impl ops::Index<ops::Range<uint>> for String {
+    type Output = str;
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &str {
         &self.index(&FullRange)[*index]
     }
 }
-
-impl ops::Index<ops::RangeTo<uint>, str> for String {
+impl ops::Index<ops::RangeTo<uint>> for String {
+    type Output = str;
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &str {
         &self.index(&FullRange)[*index]
     }
 }
-
-impl ops::Index<ops::RangeFrom<uint>, str> for String {
+impl ops::Index<ops::RangeFrom<uint>> for String {
+    type Output = str;
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
         &self.index(&FullRange)[*index]
     }
 }
-
-impl ops::Index<ops::FullRange, str> for String {
+impl ops::Index<ops::FullRange> for String {
+    type Output = str;
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &str {
         unsafe { mem::transmute(self.vec.as_slice()) }
@@ -949,6 +950,7 @@ mod tests {
     use str::Utf8Error;
     use core::iter::repeat;
     use super::{as_string, CowString};
+    use core::ops::FullRange;
 
     #[test]
     fn test_as_string() {
@@ -1230,10 +1232,10 @@ mod tests {
     #[test]
     fn test_slicing() {
         let s = "foobar".to_string();
-        assert_eq!("foobar", s.index(&FullRange));
-        assert_eq!("foo", s.index(&(0..3)));
-        assert_eq!("bar", s.index(&(3..)));
-        assert_eq!("oob", s.index(&(1..4)));
+        assert_eq!("foobar", &s[]);
+        assert_eq!("foo", &s[..3]);
+        assert_eq!("bar", &s[3..]);
+        assert_eq!("oob", &s[1..4]);
     }
 
     #[test]

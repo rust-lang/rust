@@ -97,7 +97,7 @@ impl fmt::Show for clean::Generics {
                 if i > 0 {
                     try!(f.write_str(", "))
                 }
-                try!(f.write_str(tp.name[]));
+                try!(f.write_str(tp.name.as_slice()));
 
                 if tp.bounds.len() > 0 {
                     try!(write!(f, ": {}", TyParamBounds(tp.bounds.as_slice())));
@@ -337,7 +337,7 @@ fn path<F, G>(w: &mut fmt::Formatter,
         // This is a documented path, link to it!
         Some((ref fqp, shortty)) if abs_root.is_some() => {
             let mut url = String::from_str(abs_root.unwrap().as_slice());
-            let to_link = fqp[..fqp.len() - 1];
+            let to_link = &fqp[..(fqp.len() - 1)];
             for component in to_link.iter() {
                 url.push_str(component.as_slice());
                 url.push_str("/");
@@ -433,7 +433,7 @@ impl fmt::Show for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::TyParamBinder(id) => {
-                f.write_str(cache().typarams[ast_util::local_def(id)][])
+                f.write_str(cache().typarams[ast_util::local_def(id)].as_slice())
             }
             clean::Generic(ref name) => {
                 f.write_str(name.as_slice())

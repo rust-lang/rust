@@ -1318,7 +1318,7 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
     let param_ty = ty::ParamTy::new(space, index, param.ident.name);
     let bounds = compute_bounds(ccx,
                                 param_ty.to_ty(ccx.tcx),
-                                param.bounds.index(&FullRange,
+                                param.bounds.index(&FullRange),
                                 SizedByDefault::Yes,
                                 param.span);
     let default = match param.default {

@@ -1124,7 +1124,7 @@ impl Json {
     }
 }
 
-impl<'a> ops::Index<&'a str>  for Json {
+impl<'a> Index<&'a str>  for Json {
     type Output = Json;
 
     fn index(&self, idx: & &str) -> &Json {
@@ -1132,7 +1132,7 @@ impl<'a> ops::Index<&'a str>  for Json {
     }
 }
 
-impl ops::Index<uint> for Json {
+impl Index<uint> for Json {
     type Output = Json;
 
     fn index<'a>(&'a self, idx: &uint) -> &'a Json {
@@ -1186,7 +1186,8 @@ pub struct Stack {
 }
 
 /// StackElements compose a Stack.
-/// For example, StackElement::Key("foo"), StackElement::Key("bar"), StackElement::Index(3) and StackElement::Key("x") are the
+/// For example, StackElement::Key("foo"), StackElement::Key("bar"),
+/// StackElement::Index(3) and StackElement::Key("x") are the
 /// StackElements compositing the stack that represents foo.bar[3].x
 #[derive(PartialEq, Clone, Show)]
 pub enum StackElement<'l> {
@@ -2505,12 +2506,12 @@ mod tests {
     use super::ParserError::*;
     use super::DecoderError::*;
     use super::JsonEvent::*;
-    use super::StackElement::*;
     use super::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
                 StackElement, Stack, Decoder};
-    use std::{i64, u64, f32, f64};
+    use std::{i64, u64, f32, f64, io};
     use std::collections::BTreeMap;
     use std::num::Float;
+    use std::ops::Index;
     use std::string;
 
     #[derive(RustcDecodable, Eq, PartialEq, Show)]
@@ -3487,9 +3488,12 @@ mod tests {
                     (U64Value(5),         vec![StackElement::Key("array"), StackElement::Index(5)]),
                   (ArrayEnd,              vec![StackElement::Key("array")]),
                   (ArrayStart,            vec![StackElement::Key("idents")]),
-                    (NullValue,           vec![StackElement::Key("idents"), StackElement::Index(0)]),
-                    (BooleanValue(true),  vec![StackElement::Key("idents"), StackElement::Index(1)]),
-                    (BooleanValue(false), vec![StackElement::Key("idents"), StackElement::Index(2)]),
+                    (NullValue,           vec![StackElement::Key("idents"),
+                                               StackElement::Index(0)]),
+                    (BooleanValue(true),  vec![StackElement::Key("idents"),
+                                               StackElement::Index(1)]),
+                    (BooleanValue(false), vec![StackElement::Key("idents"),
+                                               StackElement::Index(2)]),
                   (ArrayEnd,              vec![StackElement::Key("idents")]),
                 (ObjectEnd,               vec![]),
             ]
@@ -3567,13 +3571,24 @@ mod tests {
                 (ObjectStart,                   vec![]),
                   (F64Value(1.0),               vec![StackElement::Key("a")]),
                   (ArrayStart,                  vec![StackElement::Key("b")]),
-                    (BooleanValue(true),        vec![StackElement::Key("b"), StackElement::Index(0)]),
-                    (StringValue("foo\nbar".to_string()),  vec![StackElement::Key("b"), StackElement::Index(1)]),
-                    (ObjectStart,               vec![StackElement::Key("b"), StackElement::Index(2)]),
-                      (ObjectStart,             vec![StackElement::Key("b"), StackElement::Index(2), StackElement::Key("c")]),
-                        (NullValue,             vec![StackElement::Key("b"), StackElement::Index(2), StackElement::Key("c"), StackElement::Key("d")]),
-                      (ObjectEnd,               vec![StackElement::Key("b"), StackElement::Index(2), StackElement::Key("c")]),
-                    (ObjectEnd,                 vec![StackElement::Key("b"), StackElement::Index(2)]),
+                    (BooleanValue(true),        vec![StackElement::Key("b"),
+                                                     StackElement::Index(0)]),
+                    (StringValue("foo\nbar".to_string()),  vec![StackElement::Key("b"),
+                                                                StackElement::Index(1)]),
+                    (ObjectStart,               vec![StackElement::Key("b"),
+                                                     StackElement::Index(2)]),
+                      (ObjectStart,             vec![StackElement::Key("b"),
+                                                     StackElement::Index(2),
+                                                     StackElement::Key("c")]),
+                        (NullValue,             vec![StackElement::Key("b"),
+                                                     StackElement::Index(2),
+                                                     StackElement::Key("c"),
+                                                     StackElement::Key("d")]),
+                      (ObjectEnd,               vec![StackElement::Key("b"),
+                                                     StackElement::Index(2),
+                                                     StackElement::Key("c")]),
+                    (ObjectEnd,                 vec![StackElement::Key("b"),
+                                                     StackElement::Index(2)]),
                   (ArrayEnd,                    vec![StackElement::Key("b")]),
                 (ObjectEnd,                     vec![]),
             ]
@@ -3716,13 +3731,19 @@ mod tests {
         stack.push_key("bar".to_string());
 
         assert!(stack.len() == 3);
-        assert!(stack.is_equal_to(&[StackElement::Index(1), StackElement::Key("foo"), StackElement::Key("bar")]));
+        assert!(stack.is_equal_to(&[StackElement::Index(1),
+                                    StackElement::Key("foo"),
+                                    StackElement::Key("bar")]));
         assert!(stack.starts_with(&[StackElement::Index(1)]));
         assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
-        assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo"), StackElement::Key("bar")]));
+        assert!(stack.starts_with(&[StackElement::Index(1),
+                                    StackElement::Key("foo"),
+                                    StackElement::Key("bar")]));
         assert!(stack.ends_with(&[StackElement::Key("bar")]));
         assert!(stack.ends_with(&[StackElement::Key("foo"), StackElement::Key("bar")]));
-        assert!(stack.ends_with(&[StackElement::Index(1), StackElement::Key("foo"), StackElement::Key("bar")]));
+        assert!(stack.ends_with(&[StackElement::Index(1),
+                                  StackElement::Key("foo"),
+                                  StackElement::Key("bar")]));
         assert!(!stack.last_is_index());
         assert!(stack.get(0) == StackElement::Index(1));
         assert!(stack.get(1) == StackElement::Key("foo"));

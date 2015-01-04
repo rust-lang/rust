@@ -15,7 +15,7 @@ fn main() {
     let ss: &&[int] = &s;
     let sss: &&&[int] = &ss;
 
-    println!("{}", s.index(&(0..3)));
-    println!("{}", ss.index(&(3..)));
-    println!("{}", sss.index(&(2..4)));
+    println!("{}", &s[0..3]);
+    println!("{}", &ss[3..]);
+    println!("{}", &sss[2..4]);
 }

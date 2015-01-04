@@ -13,7 +13,7 @@
 //! Readers and Writers for in-memory buffers
 
 use cmp::min;
-use prelude::Index;
+use prelude::v1::Index;
 use option::Option::None;
 use result::Result::{Err, Ok};
 use io;
@@ -391,9 +391,9 @@ impl<'a> Buffer for BufReader<'a> {
 #[cfg(test)]
 mod test {
     extern crate "test" as test_crate;
-    use prelude::v1::*;
-
-    use io::{SeekSet, SeekCur, SeekEnd};
+    use io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
+    use prelude::v1::{Ok, Err, range,  Vec, Buffer,  AsSlice, SliceExt};
+    use prelude::v1::{IteratorExt, Index};
     use io;
     use iter::repeat;
     use self::test_crate::Bencher;

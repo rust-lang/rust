@@ -2239,7 +2239,7 @@ pub fn update_linkage(ccx: &CrateContext,
     if let Some(id) = id {
         let item = ccx.tcx().map.get(id);
         if let ast_map::NodeItem(i) = item {
-            if let Some(name) = attr::first_attr_value_str_by_name(i.attrs.index(&FullRange), "linkage") {
+            if let Some(name) = attr::first_attr_value_str_by_name(i.attrs.as_slice(), "linkage") {
                 if let Some(linkage) = llvm_linkage_by_name(name.get()) {
                     llvm::SetLinkage(llval, linkage);
                 } else {
@@ -2597,7 +2597,11 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
                           llfty: Type) -> ValueRef {
     debug!("register_fn_llvmty id={} sym={}", node_id, sym);
 
-    let llfn = decl_fn(ccx, sym.index(&FullRange), cc, llfty, ty::FnConverging(ty::mk_nil(ccx.tcx())));
+    let llfn = decl_fn(ccx,
+                       sym.index(&FullRange),
+                       cc,
+                       llfty,
+                       ty::FnConverging(ty::mk_nil(ccx.tcx())));
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
