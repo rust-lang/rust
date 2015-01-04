@@ -266,10 +266,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             Some(adjustment) => {
                 let adj_object = ty::adjust_is_object(&adjustment);
                 let resolved_adjustment = match adjustment {
-                    ty::AdjustAddEnv(def_id, store) => {
-                        ty::AdjustAddEnv(def_id, self.resolve(&store, reason))
-                    }
-
                     ty::AdjustReifyFnPointer(def_id) => {
                         ty::AdjustReifyFnPointer(def_id)
                     }

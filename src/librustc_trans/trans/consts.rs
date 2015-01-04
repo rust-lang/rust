@@ -189,20 +189,6 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
         None => { }
         Some(adj) => {
             match adj {
-                ty::AdjustAddEnv(def_id, ty::RegionTraitStore(ty::ReStatic, _)) => {
-                    let wrapper = closure::get_wrapper_for_bare_fn(cx,
-                                                                   ety_adjusted,
-                                                                   def_id,
-                                                                   llconst,
-                                                                   true);
-                    llconst = C_struct(cx, &[wrapper, C_null(Type::i8p(cx))], false)
-                }
-                ty::AdjustAddEnv(_, store) => {
-                    cx.sess()
-                      .span_bug(e.span,
-                                format!("unexpected static function: {}",
-                                        store)[])
-                }
                 ty::AdjustReifyFnPointer(_def_id) => {
                     // FIXME(#19925) once fn item types are
                     // zero-sized, we'll need to do something here

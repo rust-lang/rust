@@ -1031,13 +1031,6 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
-                ty::AdjustAddEnv(def_id, store) => {
-                    this.emit_enum_variant("AdjustAddEnv", 0, 2, |this| {
-                        this.emit_enum_variant_arg(0, |this| def_id.encode(this));
-                        this.emit_enum_variant_arg(1, |this| store.encode(this))
-                    })
-                }
-
                 ty::AdjustReifyFnPointer(def_id) => {
                     this.emit_enum_variant("AdjustReifyFnPointer", 1, 2, |this| {
                         this.emit_enum_variant_arg(0, |this| def_id.encode(this))
@@ -1678,14 +1671,6 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
             let variants = ["AutoAddEnv", "AutoDerefRef"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
-                    0 => {
-                        let def_id: ast::DefId =
-                            this.read_def_id(dcx);
-                        let store: ty::TraitStore =
-                            this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
-
-                        ty::AdjustAddEnv(def_id, store.tr(dcx))
-                    }
                     1 => {
                         let def_id: ast::DefId =
                             this.read_def_id(dcx);
