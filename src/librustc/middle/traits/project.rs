@@ -21,9 +21,9 @@ use super::VtableImplData;
 
 use middle::infer;
 use middle::subst::Subst;
-use middle::ty::{mod, AsPredicate, ReferencesError, RegionEscape,
+use middle::ty::{self, AsPredicate, ReferencesError, RegionEscape,
                  HasProjectionTypes, ToPolyTraitRef, Ty};
-use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
+use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use std::rc::Rc;
 use util::ppaux::Repr;
 

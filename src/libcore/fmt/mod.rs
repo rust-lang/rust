@@ -24,7 +24,7 @@ use result::Result::{Ok, Err};
 use result;
 use slice::SliceExt;
 use slice;
-use str::{mod, StrExt, Utf8Error};
+use str::{self, StrExt, Utf8Error};
 
 pub use self::num::radix;
 pub use self::num::Radix;

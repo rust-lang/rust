@@ -29,7 +29,7 @@ use self::MethodContext::*;
 use metadata::csearch;
 use middle::def::*;
 use middle::subst::Substs;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use util::ppaux::{ty_to_string};
@@ -43,13 +43,13 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::{abi, ast, ast_map};
 use syntax::ast_util::is_shift_binop;
-use syntax::attr::{mod, AttrMetaMethods};
+use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token;
 use syntax::ast::{TyI, TyU, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ast_util;
 use syntax::ptr::P;
-use syntax::visit::{mod, Visitor};
+use syntax::visit::{self, Visitor};
 
 declare_lint! {
     WHILE_TRUE,

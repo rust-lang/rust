@@ -48,7 +48,7 @@ use middle::ty::{mod};
 use middle::infer::{InferCtxt, UpvarRegion};
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit::{mod, Visitor};
+use syntax::visit::{self, Visitor};
 use util::ppaux::Repr;
 
 ///////////////////////////////////////////////////////////////////////////

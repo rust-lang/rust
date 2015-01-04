@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use syntax::ast;
 
 use self::SimplifiedType::*;

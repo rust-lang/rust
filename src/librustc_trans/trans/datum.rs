@@ -23,7 +23,7 @@ use trans::cleanup::CleanupMethods;
 use trans::expr;
 use trans::tvec;
 use trans::type_of;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux::{ty_to_string};
 
 use std::fmt;

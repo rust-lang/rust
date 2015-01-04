@@ -27,7 +27,7 @@ use trans::machine;
 use trans::machine::{nonzero_llsize_of, llsize_of_alloc};
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux::ty_to_string;
 
 use syntax::ast;

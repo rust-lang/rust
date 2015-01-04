@@ -27,7 +27,7 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
 use std::collections::hash_map::Entry::Vacant;
-use std::io::{mod, File};
+use std::io::{self, File};
 use std::os;
 use std::sync::atomic;
 use syntax::ast;

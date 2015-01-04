@@ -1125,7 +1125,7 @@ mod tests {
 
     use clone::Clone;
     use iter::IteratorExt;
-    use option::Option::{mod, Some, None};
+    use option::Option::{self, Some, None};
     use path::GenericPath;
     use slice::{AsSlice, SliceExt};
     use str::Str;

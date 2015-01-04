@@ -104,7 +104,7 @@ pub use core::atomic::{AtomicBool, AtomicInt, AtomicUint, AtomicPtr};
 pub use core::atomic::{INIT_ATOMIC_BOOL, INIT_ATOMIC_INT, INIT_ATOMIC_UINT};
 pub use core::atomic::{ATOMIC_BOOL_INIT, ATOMIC_INT_INIT, ATOMIC_UINT_INIT};
 pub use core::atomic::fence;
-pub use core::atomic::Ordering::{mod, Relaxed, Release, Acquire, AcqRel, SeqCst};
+pub use core::atomic::Ordering::{self, Relaxed, Release, Acquire, AcqRel, SeqCst};
 
 /// An atomic, nullable unique pointer
 ///

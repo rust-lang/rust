@@ -16,7 +16,7 @@ use astconv;
 use middle::infer;
 use middle::region::CodeExtent;
 use middle::subst;
-use middle::ty::{mod, ToPolyTraitRef, Ty};
+use middle::ty::{self, ToPolyTraitRef, Ty};
 use rscope::RegionScope;
 use syntax::abi;
 use syntax::ast;

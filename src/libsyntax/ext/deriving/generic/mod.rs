@@ -196,7 +196,7 @@ use attr;
 use attr::AttrMetaMethods;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use codemap::{mod, DUMMY_SP};
+use codemap::{self, DUMMY_SP};
 use codemap::Span;
 use fold::MoveMap;
 use owned_slice::OwnedSlice;

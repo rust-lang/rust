@@ -53,13 +53,13 @@ use middle::def;
 use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
-use middle::ty::{mod, RegionEscape, Ty};
-use rscope::{mod, UnelidableRscope, RegionScope, SpecificRscope,
+use middle::ty::{self, RegionEscape, Ty};
+use rscope::{self, UnelidableRscope, RegionScope, SpecificRscope,
              ShiftedRscope, BindingRscope};
 use TypeAndSubsts;
 use util::common::ErrorReported;
 use util::nodemap::DefIdMap;
-use util::ppaux::{mod, Repr, UserString};
+use util::ppaux::{self, Repr, UserString};
 
 use std::rc::Rc;
 use std::iter::{repeat, AdditiveIterator};

@@ -22,7 +22,7 @@ use trans::common::{ExternMap,tydesc_info,BuilderRef_res};
 use trans::debuginfo;
 use trans::monomorphize::MonoId;
 use trans::type_::{Type, TypeNames};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use session::config::NoDebugInfo;
 use session::Session;
 use util::ppaux::Repr;

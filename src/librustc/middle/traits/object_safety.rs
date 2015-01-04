@@ -20,9 +20,9 @@
 use super::supertraits;
 use super::elaborate_predicates;
 
-use middle::subst::{mod, SelfSpace};
+use middle::subst::{self, SelfSpace};
 use middle::traits;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use std::rc::Rc;
 use syntax::ast;
 use util::ppaux::Repr;

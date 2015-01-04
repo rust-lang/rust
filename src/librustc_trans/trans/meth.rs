@@ -11,7 +11,7 @@
 use arena::TypedArena;
 use back::abi;
 use back::link;
-use llvm::{mod, ValueRef, get_param};
+use llvm::{self, ValueRef, get_param};
 use metadata::csearch;
 use middle::subst::{Subst, Substs};
 use middle::subst::VecPerParamSpace;
@@ -30,7 +30,7 @@ use trans::glue;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of::*;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::ppaux::Repr;
 

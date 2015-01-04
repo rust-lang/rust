@@ -33,7 +33,7 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
 use std::cell::{Cell, RefCell};
-use std::cmp::Ordering::{mod, Less, Greater, Equal};
+use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::iter::repeat;
 use std::u32;
 use syntax::ast;

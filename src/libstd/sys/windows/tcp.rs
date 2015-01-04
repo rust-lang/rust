@@ -17,8 +17,8 @@ use prelude::v1::*;
 use super::{last_error, last_net_error, retry, sock_t};
 use sync::{Arc, atomic};
 use sys::fs::FileDesc;
-use sys::{mod, c, set_nonblocking, wouldblock, timer};
-use sys_common::{mod, timeout, eof, net};
+use sys::{self, c, set_nonblocking, wouldblock, timer};
+use sys_common::{self, timeout, eof, net};
 
 pub use sys_common::net::TcpStream;
 

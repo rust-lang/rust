@@ -53,7 +53,7 @@ use core::cmp::max;
 use core::cmp::{Equiv, Ordering};
 use core::default::Default;
 use core::fmt;
-use core::hash::{mod, Hash};
+use core::hash::{self, Hash};
 use core::iter::{repeat, FromIterator};
 use core::kinds::marker::{ContravariantLifetime, InvariantType};
 use core::mem;

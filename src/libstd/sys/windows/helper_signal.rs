@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{mod, BOOL, LPCSTR, HANDLE, LPSECURITY_ATTRIBUTES, CloseHandle};
+use libc::{self, BOOL, LPCSTR, HANDLE, LPSECURITY_ATTRIBUTES, CloseHandle};
 use ptr;
 
 pub type signal = HANDLE;

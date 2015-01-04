@@ -13,7 +13,7 @@
 use self::UnsafeContext::*;
 
 use middle::def;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::ppaux;
 

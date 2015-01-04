@@ -21,7 +21,7 @@ pub use self::DefIdSource::*;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{mod, AsPredicate, Ty};
+use middle::ty::{self, AsPredicate, Ty};
 
 use std::rc::Rc;
 use std::str;

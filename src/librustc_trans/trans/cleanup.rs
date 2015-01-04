@@ -27,7 +27,7 @@ use trans::glue;
 // Temporary due to slicing syntax hacks (KILLME)
 //use middle::region;
 use trans::type_::Type;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use std::fmt;
 use syntax::ast;
 use util::ppaux::Repr;

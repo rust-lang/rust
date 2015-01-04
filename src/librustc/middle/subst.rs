@@ -13,8 +13,8 @@
 pub use self::ParamSpace::*;
 pub use self::RegionSubsts::*;
 
-use middle::ty::{mod, Ty};
-use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
+use middle::ty::{self, Ty};
+use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use util::ppaux::Repr;
 
 use std::fmt;

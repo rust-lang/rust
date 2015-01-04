@@ -62,7 +62,7 @@ use core::mem;
 use core::uint;
 
 use sync::mpsc::{Receiver, RecvError};
-use sync::mpsc::blocking::{mod, SignalToken};
+use sync::mpsc::blocking::{self, SignalToken};
 
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.

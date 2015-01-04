@@ -16,8 +16,8 @@ use self::ExponentFormat::*;
 use self::SignificantDigits::*;
 use self::SignFormat::*;
 
-use char::{mod, Char};
-use num::{mod, Int, Float, ToPrimitive};
+use char::{self, Char};
+use num::{self, Int, Float, ToPrimitive};
 use num::FpCategory as Fp;
 use ops::FnMut;
 use slice::SliceExt;

@@ -90,15 +90,15 @@
 use alloc::boxed::Box;
 use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
 use core::clone::Clone;
-use core::cmp::Ordering::{mod, Greater, Less};
-use core::cmp::{mod, Ord, PartialEq};
+use core::cmp::Ordering::{self, Greater, Less};
+use core::cmp::{self, Ord, PartialEq};
 use core::iter::{Iterator, IteratorExt, IteratorCloneExt};
 use core::iter::{range, range_step, MultiplicativeIterator};
 use core::kinds::Sized;
 use core::mem::size_of;
 use core::mem;
 use core::ops::{FnMut, SliceMut};
-use core::option::Option::{mod, Some, None};
+use core::option::Option::{self, Some, None};
 use core::ptr::PtrExt;
 use core::ptr;
 use core::result::Result;

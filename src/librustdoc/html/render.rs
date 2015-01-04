@@ -35,7 +35,7 @@
 pub use self::ExternalLocation::*;
 
 use std::cell::RefCell;
-use std::cmp::Ordering::{mod, Less, Greater, Equal};
+use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::{HashMap, HashSet};
 use std::default::Default;

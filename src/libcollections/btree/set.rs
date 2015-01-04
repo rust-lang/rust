@@ -14,7 +14,7 @@
 use core::prelude::*;
 
 use core::borrow::BorrowFrom;
-use core::cmp::Ordering::{mod, Less, Greater, Equal};
+use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
 use core::fmt::Show;
 use core::fmt;

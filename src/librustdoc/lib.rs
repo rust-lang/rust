@@ -44,7 +44,7 @@ use std::io;
 use std::rc::Rc;
 use externalfiles::ExternalHtml;
 use serialize::Decodable;
-use serialize::json::{mod, Json};
+use serialize::json::{self, Json};
 use rustc::session::search_paths::SearchPaths;
 
 // reexported from `clean` so it can be easily updated with the mod itself

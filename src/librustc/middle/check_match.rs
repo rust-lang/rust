@@ -27,14 +27,14 @@ use std::fmt;
 use std::iter::{range_inclusive, AdditiveIterator, FromIterator, repeat};
 use std::num::Float;
 use std::slice;
-use syntax::ast::{mod, DUMMY_NODE_ID, NodeId, Pat};
+use syntax::ast::{self, DUMMY_NODE_ID, NodeId, Pat};
 use syntax::ast_util::walk_pat;
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use syntax::fold::{Folder, noop_fold_pat};
 use syntax::print::pprust::pat_to_string;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::visit::{mod, Visitor, FnKind};
+use syntax::visit::{self, Visitor, FnKind};
 use util::ppaux::ty_to_string;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {

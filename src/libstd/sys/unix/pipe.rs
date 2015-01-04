@@ -14,9 +14,9 @@ use libc;
 use c_str::CString;
 use mem;
 use sync::{atomic, Arc, Mutex};
-use io::{mod, IoResult, IoError};
+use io::{self, IoResult, IoError};
 
-use sys::{mod, timer, retry, c, set_nonblocking, wouldblock};
+use sys::{self, timer, retry, c, set_nonblocking, wouldblock};
 use sys::fs::{fd_t, FileDesc};
 use sys_common::net::*;
 use sys_common::net::SocketStatus::*;

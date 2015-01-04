@@ -36,7 +36,7 @@
 
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::traits;
 use std::rc::Rc;
 use syntax::owned_slice::OwnedSlice;

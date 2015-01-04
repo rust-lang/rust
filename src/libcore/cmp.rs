@@ -44,7 +44,7 @@
 use self::Ordering::*;
 
 use kinds::Sized;
-use option::Option::{mod, Some, None};
+use option::Option::{self, Some, None};
 
 /// Trait for equality comparisons which are [partial equivalence relations](
 /// http://en.wikipedia.org/wiki/Partial_equivalence_relation).

@@ -13,7 +13,7 @@ use prelude::v1::*;
 use cell::UnsafeCell;
 use kinds::marker;
 use ops::{Deref, DerefMut};
-use sync::poison::{mod, TryLockError, TryLockResult, LockResult};
+use sync::poison::{self, TryLockError, TryLockResult, LockResult};
 use sys_common::mutex as sys;
 
 /// A mutual exclusion primitive useful for protecting shared data

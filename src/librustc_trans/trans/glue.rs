@@ -34,7 +34,7 @@ use trans::machine::*;
 use trans::tvec;
 use trans::type_::Type;
 use trans::type_of::{type_of, sizing_type_of, align_of};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux::{ty_to_short_str, Repr};
 use util::ppaux;
 

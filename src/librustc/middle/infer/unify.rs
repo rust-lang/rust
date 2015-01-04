@@ -13,7 +13,7 @@ pub use self::VarValue::*;
 use std::kinds::marker;
 
 use middle::ty::{expected_found, IntVarValue};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::infer::{uok, ures};
 use middle::infer::InferCtxt;
 use std::cell::RefCell;

@@ -17,7 +17,7 @@ use core::prelude::*;
 use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
-use core::iter::{mod, FromIterator, RandomAccessIterator};
+use core::iter::{self, FromIterator, RandomAccessIterator};
 use core::kinds::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};

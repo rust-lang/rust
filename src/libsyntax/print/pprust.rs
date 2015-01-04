@@ -11,7 +11,7 @@
 pub use self::AnnNode::*;
 
 use abi;
-use ast::{mod, FnUnboxedClosureKind, FnMutUnboxedClosureKind};
+use ast::{self, FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
 use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
@@ -19,17 +19,17 @@ use ast::{UnboxedClosureKind};
 use ast_util;
 use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
-use codemap::{mod, CodeMap, BytePos};
+use codemap::{self, CodeMap, BytePos};
 use diagnostic;
-use parse::token::{mod, BinOpToken, Token};
+use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
 use parse;
-use print::pp::{mod, break_offset, word, space, zerobreak, hardbreak};
+use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
 use print::pp::{Breaks, Consistent, Inconsistent, eof};
 use ptr::P;
 
 use std::{ascii, mem};
-use std::io::{mod, IoResult};
+use std::io::{self, IoResult};
 use std::iter;
 
 pub enum AnnNode<'a> {

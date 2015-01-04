@@ -19,7 +19,7 @@ use super::{
 };
 
 use middle::infer::InferCtxt;
-use middle::ty::{mod, AsPredicate, ReferencesError, ToPolyTraitRef};
+use middle::ty::{self, AsPredicate, ReferencesError, ToPolyTraitRef};
 use syntax::codemap::Span;
 use util::ppaux::{Repr, UserString};
 

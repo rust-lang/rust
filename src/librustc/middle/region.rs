@@ -17,7 +17,7 @@
 //! `middle/typeck/infer/region_inference.rs`
 
 use session::Session;
-use middle::ty::{mod, Ty, FreeRegion};
+use middle::ty::{self, Ty, FreeRegion};
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 use util::common::can_reach;
 
