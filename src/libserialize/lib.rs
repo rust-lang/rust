@@ -40,11 +40,25 @@ extern crate collections;
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
                           DecoderHelpers, EncoderHelpers};
 
+#[cfg(stage0)]
+#[path = "serialize_stage0.rs"]
 mod serialize;
+#[cfg(not(stage0))]
+mod serialize;
+
+#[cfg(stage0)]
+#[path = "collection_impls_stage0.rs"]
+mod collection_impls;
+#[cfg(not(stage0))]
 mod collection_impls;
 
 pub mod base64;
 pub mod hex;
+
+#[cfg(stage0)]
+#[path = "json_stage0.rs"]
+pub mod json;
+#[cfg(not(stage0))]
 pub mod json;
 
 mod rustc_serialize {
