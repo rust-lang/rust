@@ -726,7 +726,10 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         // specify any of the types for the function, we just make it a symbol
         // that LLVM can later use.
         let llpersonality = match pad_bcx.tcx().lang_items.eh_personality() {
-            Some(def_id) => callee::trans_fn_ref(pad_bcx, def_id, ExprId(0)),
+            Some(def_id) => {
+                callee::trans_fn_ref(pad_bcx.ccx(), def_id, ExprId(0),
+                                     pad_bcx.fcx.param_substs).val
+            }
             None => {
                 let mut personality = self.ccx.eh_personality().borrow_mut();
                 match *personality {

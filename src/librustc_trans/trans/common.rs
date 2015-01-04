@@ -28,6 +28,7 @@ use middle::subst::{self, Subst, Substs};
 use trans::base;
 use trans::build;
 use trans::cleanup;
+use trans::consts;
 use trans::datum;
 use trans::debuginfo;
 use trans::machine;
@@ -803,12 +804,9 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
-    unsafe {
-        let len = s.get().len();
-        let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s, false),
-                                            Type::i8p(cx).to_ref());
-        C_named_struct(cx.tn().find_type("str_slice").unwrap(), &[cs, C_uint(cx, len)])
-    }
+    let len = s.get().len();
+    let cs = consts::ptrcast(C_cstr(cx, s, false), Type::i8p(cx));
+    C_named_struct(cx.tn().find_type("str_slice").unwrap(), &[cs, C_uint(cx, len)])
 }
 
 pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
@@ -824,7 +822,7 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
         llvm::LLVMSetGlobalConstant(g, True);
         llvm::SetLinkage(g, llvm::InternalLinkage);
 
-        let cs = llvm::LLVMConstPointerCast(g, Type::i8p(cx).to_ref());
+        let cs = consts::ptrcast(g, Type::i8p(cx));
         C_struct(cx, &[cs, C_uint(cx, len)], false)
     }
 }
@@ -1095,11 +1093,11 @@ pub enum ExprOrMethodCall {
     MethodCallKey(ty::MethodCall)
 }
 
-pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                  node: ExprOrMethodCall)
-                                  -> subst::Substs<'tcx>
-{
-    let tcx = bcx.tcx();
+pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                node: ExprOrMethodCall,
+                                param_substs: &subst::Substs<'tcx>)
+                                -> subst::Substs<'tcx> {
+    let tcx = ccx.tcx();
 
     let substs = match node {
         ExprId(id) => {
@@ -1111,15 +1109,13 @@ pub fn node_id_substs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     if substs.types.any(|t| ty::type_needs_infer(*t)) {
-        bcx.sess().bug(
-            format!("type parameters for node {} include inference types: \
-                     {}",
-                    node,
-                    substs.repr(bcx.tcx()))[]);
+        tcx.sess.bug(format!("type parameters for node {} include inference types: {}",
+                             node, substs.repr(tcx))[]);
     }
 
-    let substs = substs.erase_regions();
-    bcx.monomorphize(&substs)
+    monomorphize::apply_param_substs(tcx,
+                                     param_substs,
+                                     &substs.erase_regions())
 }
 
 pub fn langcall(bcx: Block,
