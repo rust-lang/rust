@@ -54,7 +54,7 @@ use trans::inline;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{struct_fields, tup_fields};
-use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustAddEnv, AutoUnsafe};
+use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AutoUnsafe};
 use middle::ty::{AutoPtr};
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
@@ -179,9 +179,6 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            datum.to_string(bcx.ccx()),
            adjustment.repr(bcx.tcx()));
     match adjustment {
-        AdjustAddEnv(def_id, _) => {
-            datum = unpack_datum!(bcx, add_env(bcx, def_id, expr, datum));
-        }
         AdjustReifyFnPointer(_def_id) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here

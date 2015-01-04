@@ -293,7 +293,6 @@ pub enum Variance {
 
 #[derive(Clone, Show)]
 pub enum AutoAdjustment<'tcx> {
-    AdjustAddEnv(ast::DefId, ty::TraitStore),
     AdjustReifyFnPointer(ast::DefId), // go from a fn-item type to a fn-pointer type
     AdjustDerefRef(AutoDerefRef<'tcx>)
 }
@@ -4315,33 +4314,6 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AdjustAddEnv(_, store) => {
-                    match unadjusted_ty.sty {
-                        ty::ty_bare_fn(Some(_), ref b) => {
-                            let bounds = ty::ExistentialBounds {
-                                region_bound: ReStatic,
-                                builtin_bounds: all_builtin_bounds(),
-                                projection_bounds: vec!(),
-                            };
-
-                            ty::mk_closure(
-                                cx,
-                                ty::ClosureTy {unsafety: b.unsafety,
-                                               onceness: ast::Many,
-                                               store: store,
-                                               bounds: bounds,
-                                               sig: b.sig.clone(),
-                                               abi: b.abi})
-                        }
-                        ref b => {
-                            cx.sess.bug(
-                                format!("add_env adjustment on non-fn-item: \
-                                         {}",
-                                        b).as_slice());
-                        }
-                    }
-                }
-
                 AdjustReifyFnPointer(_) => {
                     match unadjusted_ty.sty {
                         ty::ty_bare_fn(Some(_), b) => {
@@ -6696,7 +6668,6 @@ pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
 impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
-            AdjustAddEnv(..) => false,
             AdjustReifyFnPointer(..) => false,
             AdjustDerefRef(ref r) => r.is_identity(),
         }
@@ -6820,11 +6791,8 @@ impl DebruijnIndex {
 impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
-            AdjustAddEnv(def_id, ref trait_store) => {
-                format!("AdjustAddEnv({},{})", def_id.repr(tcx), trait_store)
-            }
             AdjustReifyFnPointer(def_id) => {
-                format!("AdjustAddEnv({})", def_id.repr(tcx))
+                format!("AdjustReifyFnPointer({})", def_id.repr(tcx))
             }
             AdjustDerefRef(ref data) => {
                 data.repr(tcx)
