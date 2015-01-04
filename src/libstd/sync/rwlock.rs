@@ -199,9 +199,9 @@ impl<T: Send + Sync> RwLock<T> {
     /// An error will be returned when the lock is acquired.
     #[inline]
     #[stable]
-    pub fn write(&self) -> LockResult<RWLockWriteGuard<T>> {
+    pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
         unsafe { self.inner.lock.write() }
-        RWLockWriteGuard::new(&*self.inner, &self.data)
+        RwLockWriteGuard::new(&*self.inner, &self.data)
     }
 
     /// Attempt to lock this rwlock with exclusive write access.
@@ -218,9 +218,9 @@ impl<T: Send + Sync> RwLock<T> {
     /// acquired.
     #[inline]
     #[stable]
-    pub fn try_write(&self) -> TryLockResult<RWLockWriteGuard<T>> {
+    pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
         if unsafe { self.inner.lock.try_read() } {
-            Ok(try!(RWLockWriteGuard::new(&*self.inner, &self.data)))
+            Ok(try!(RwLockWriteGuard::new(&*self.inner, &self.data)))
         } else {
             Err(TryLockError::WouldBlock)
         }
@@ -270,9 +270,9 @@ impl StaticRwLock {
     /// See `RwLock::write`.
     #[inline]
     #[unstable = "may be merged with RwLock in the future"]
-    pub fn write(&'static self) -> LockResult<RWLockWriteGuard<'static, ()>> {
+    pub fn write(&'static self) -> LockResult<RwLockWriteGuard<'static, ()>> {
         unsafe { self.lock.write() }
-        RWLockWriteGuard::new(self, &DUMMY.0)
+        RwLockWriteGuard::new(self, &DUMMY.0)
     }
 
     /// Attempt to lock this rwlock with exclusive write access.
@@ -281,9 +281,9 @@ impl StaticRwLock {
     #[inline]
     #[unstable = "may be merged with RwLock in the future"]
     pub fn try_write(&'static self)
-                     -> TryLockResult<RWLockWriteGuard<'static, ()>> {
+                     -> TryLockResult<RwLockWriteGuard<'static, ()>> {
         if unsafe { self.lock.try_write() } {
-            Ok(try!(RWLockWriteGuard::new(self, &DUMMY.0)))
+            Ok(try!(RwLockWriteGuard::new(self, &DUMMY.0)))
         } else {
             Err(TryLockError::WouldBlock)
         }
