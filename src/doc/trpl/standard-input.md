@@ -83,12 +83,12 @@ fn main() {
 
     match x {
         OptionalInt::Value(n) => println!("x is {}", n),
-        OptionalInt::Missing  => println!("x is missing!"),
+        OptionalInt::Missing => println!("x is missing!"),
     }
 
     match y {
         OptionalInt::Value(n) => println!("y is {}", n),
-        OptionalInt::Missing  => println!("y is missing!"),
+        OptionalInt::Missing => println!("y is missing!"),
     }
 }
 ```
@@ -141,11 +141,11 @@ use std::io;
 fn main() {
     println!("Type something!");
 
-                                                  // here, we'll show the types at each step
+    // here, we'll show the types at each step
 
-    let input = io::stdin()                       // std::io::stdio::StdinReader
-                  .read_line()                    // IoResult<String>
-                  .ok()                           // Option<String>
+    let input = io::stdin() // std::io::stdio::StdinReader
+                  .read_line() // IoResult<String>
+                  .ok() // Option<String>
                   .expect("Failed to read line"); // String
 
     println!("{}", input);

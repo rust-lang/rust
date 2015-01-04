@@ -463,7 +463,7 @@ fn succ(x: &i32) -> i32 { *x + 1 }
 
 let ref_x = &5;
 let box_x = Box::new(5);
-let rc_x  = Rc::new(5);
+let rc_x = Rc::new(5);
 
 succ(ref_x);
 succ(&*box_x);

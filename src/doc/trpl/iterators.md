@@ -143,7 +143,7 @@ let greater_than_forty_two = range(0, 100)
 
 match greater_than_forty_two {
     Some(_) => println!("We got some numbers!"),
-    None    => println!("No numbers found :("),
+    None => println!("No numbers found :("),
 }
 ```
 

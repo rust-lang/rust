@@ -84,9 +84,9 @@ fn main() {
     let y = 10;
 
     match cmp(x, y) {
-        Ordering::Less    => println!("less"),
+        Ordering::Less => println!("less"),
         Ordering::Greater => println!("greater"),
-        Ordering::Equal   => println!("equal"),
+        Ordering::Equal => println!("equal"),
     }
 }
 ```
@@ -112,12 +112,12 @@ fn main() {
 
     match x {
         OptionalInt::Value(n) => println!("x is {}", n),
-        OptionalInt::Missing  => println!("x is missing!"),
+        OptionalInt::Missing => println!("x is missing!"),
     }
 
     match y {
         OptionalInt::Value(n) => println!("y is {}", n),
-        OptionalInt::Missing  => println!("y is missing!"),
+        OptionalInt::Missing => println!("y is missing!"),
     }
 }
 ```
@@ -146,9 +146,9 @@ fn main() {
     let y = 10;
 
     println!("{}", match cmp(x, y) {
-        Ordering::Less    => "less",
+        Ordering::Less => "less",
         Ordering::Greater => "greater",
-        Ordering::Equal   => "equal",
+        Ordering::Equal => "equal",
     });
 }
 ```
