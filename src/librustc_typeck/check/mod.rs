@@ -2387,17 +2387,29 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             base_expr: &ast::Expr,
                             adjusted_ty: Ty<'tcx>,
                             adjustment: ty::AutoDerefRef<'tcx>,
-                            lvalue_pref: LvaluePreference)
+                            lvalue_pref: LvaluePreference,
+                            index_ty: Ty<'tcx>)
                             -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
 {
     let tcx = fcx.tcx();
-    debug!("try_index_step(expr={}, base_expr.id={}, adjusted_ty={}, adjustment={})",
+    debug!("try_index_step(expr={}, base_expr.id={}, adjusted_ty={}, adjustment={}, index_ty={})",
            expr.repr(tcx),
            base_expr.repr(tcx),
            adjusted_ty.repr(tcx),
-           adjustment);
+           adjustment,
+           index_ty.repr(tcx));
 
     let input_ty = fcx.infcx().next_ty_var();
+
+    // First, try built-in indexing.
+    match (ty::index(adjusted_ty), &index_ty.sty) {
+        (Some(ty), &ty::ty_uint(ast::TyU)) | (Some(ty), &ty::ty_infer(ty::IntVar(_))) => {
+            debug!("try_index_step: success, using built-in indexing");
+            fcx.write_adjustment(base_expr.id, base_expr.span, ty::AdjustDerefRef(adjustment));
+            return Some((tcx.types.uint, ty));
+        }
+        _ => {}
+    }
 
     // Try `IndexMut` first, if preferred.
     let method = match (lvalue_pref, tcx.lang_items.index_mut_trait()) {
@@ -2428,18 +2440,6 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
         (method, _) => method,
     };
-
-    if method.is_none() {
-        // If there are no overridden index impls, use built-in indexing.
-        match ty::index(adjusted_ty) {
-            Some(ty) => {
-                debug!("try_index_step: success, using built-in indexing");
-                fcx.write_adjustment(base_expr.id, base_expr.span, ty::AdjustDerefRef(adjustment));
-                return Some((tcx.types.uint, ty));
-            }
-            None => {}
-        }
-    }
 
     // If some lookup succeeds, write callee into table and extract index/element
     // type from the method signature.
@@ -4205,11 +4205,14 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                          &**base,
                                          adj_ty,
                                          adj,
-                                         lvalue_pref)
+                                         lvalue_pref,
+                                         idx_t)
                       });
 
                   match result {
                       Some((index_ty, element_ty)) => {
+                          // FIXME: we've already checked idx above, we should
+                          // probably just demand subtype or something here.
                           check_expr_has_type(fcx, &**idx, index_ty);
                           fcx.write_ty(id, element_ty);
                       }
