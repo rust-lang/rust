@@ -70,6 +70,13 @@ pub trait TypeFolder<'tcx> : Sized {
     /// track the Debruijn index nesting level.
     fn exit_region_binder(&mut self) { }
 
+    fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
+    {
+        // FIXME(#20526) this should replace `enter_region_binder`/`exit_region_binder`.
+        super_fold_binder(self, t)
+    }
+
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         super_fold_ty(self, t)
     }
@@ -183,12 +190,9 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Vec<T> {
     }
 }
 
-impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
+impl<'tcx, T:TypeFoldable<'tcx>+Repr<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Binder<T> {
-        folder.enter_region_binder();
-        let result = ty::Binder(self.0.fold_with(folder));
-        folder.exit_region_binder();
-        result
+        folder.fold_binder(self)
     }
 }
 
@@ -555,6 +559,17 @@ impl<'tcx> TypeFoldable<'tcx> for ty::UnboxedClosureUpvar<'tcx> {
 // "super" routines: these are the default implementations for TypeFolder.
 //
 // They should invoke `foo.fold_with()` to do recursive folding.
+
+pub fn super_fold_binder<'tcx, T, U>(this: &mut T,
+                                     binder: &ty::Binder<U>)
+                                     -> ty::Binder<U>
+    where T : TypeFolder<'tcx>, U : TypeFoldable<'tcx>
+{
+    this.enter_region_binder();
+    let result = ty::Binder(binder.0.fold_with(this));
+    this.exit_region_binder();
+    result
+}
 
 pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                 ty: Ty<'tcx>)
