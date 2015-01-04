@@ -118,7 +118,6 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::ty_float(..) |
         ty::ty_str(..) |
         ty::ty_bare_fn(..) |
-        ty::ty_closure(..) |
         ty::ty_vec(..) |
         ty::ty_ptr(..) |
         ty::ty_rptr(..) |

@@ -268,7 +268,6 @@ fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     // fresh bound regions for any bound regions we find in the
     // expected types so as to avoid capture.
     let expected_cenv = expected.map_to_option(fcx, |ty| match ty.sty {
-        ty::ty_closure(ref cenv) => Some(cenv),
         _ => None
     });
     let (expected_sig, expected_onceness, expected_bounds) = match expected_cenv {

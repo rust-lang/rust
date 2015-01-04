@@ -67,10 +67,6 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 // No borrowed content reachable here.
             }
 
-            ty::ty_closure(box ref c) => {
-                self.accumulate_from_closure_ty(ty, c);
-            }
-
             ty::ty_unboxed_closure(_, region, _) => {
                 // An "unboxed closure type" is basically
                 // modeled here as equivalent to a struct like

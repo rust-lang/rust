@@ -160,15 +160,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 };
             }
 
-            ty::ty_closure(box ty::ClosureTy {
-                    store: ty::RegionTraitStore(..),
-                    ..
-                }) => {
-                return self.unpack_actual_value(a, |a| {
-                    self.coerce_borrowed_fn(a, b)
-                });
-            }
-
             _ => {}
         }
 
@@ -511,21 +502,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                    a.repr(self.tcx()), b.repr(self.tcx()));
 
             match b.sty {
-                ty::ty_closure(ref f) => {
-                    if fn_ty_a.abi != abi::Rust || fn_ty_a.unsafety != ast::Unsafety::Normal {
-                        return self.subtype(a, b);
-                    }
-
-                    let fn_ty_b = (*f).clone();
-                    let adj = ty::AdjustAddEnv(fn_def_id_a, fn_ty_b.store);
-                    let a_closure = ty::mk_closure(self.tcx(),
-                                                   ty::ClosureTy {
-                                                       sig: fn_ty_a.sig.clone(),
-                                                       .. *fn_ty_b
-                                                   });
-                    try!(self.subtype(a_closure, b));
-                    Ok(Some(adj))
-                }
                 ty::ty_bare_fn(None, _) => {
                     let a_fn_pointer = ty::mk_bare_fn(self.tcx(), None, fn_ty_a);
                     try!(self.subtype(a_fn_pointer, b));

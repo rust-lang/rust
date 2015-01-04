@@ -197,21 +197,13 @@ pub enum deref_kind {
 // pointer adjustment).
 pub fn deref_kind(t: Ty) -> McResult<deref_kind> {
     match t.sty {
-        ty::ty_uniq(_) |
-        ty::ty_closure(box ty::ClosureTy {store: ty::UniqTraitStore, ..}) => {
+        ty::ty_uniq(_) => {
             Ok(deref_ptr(Unique))
         }
 
         ty::ty_rptr(r, mt) => {
             let kind = ty::BorrowKind::from_mutbl(mt.mutbl);
             Ok(deref_ptr(BorrowedPtr(kind, *r)))
-        }
-
-        ty::ty_closure(box ty::ClosureTy {
-                store: ty::RegionTraitStore(r, _),
-                ..
-            }) => {
-            Ok(deref_ptr(BorrowedPtr(ty::ImmBorrow, r)))
         }
 
         ty::ty_ptr(ref mt) => {
@@ -592,25 +584,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           def::DefUpvar(var_id, fn_node_id, _) => {
               let ty = try!(self.node_ty(fn_node_id));
               match ty.sty {
-                  ty::ty_closure(ref closure_ty) => {
-                      // Translate old closure type info into unboxed
-                      // closure kind/capture mode
-                      let (mode, kind) = match (closure_ty.store, closure_ty.onceness) {
-                          // stack closure
-                          (ty::RegionTraitStore(..), ast::Many) => {
-                              (ast::CaptureByRef, ty::FnMutUnboxedClosureKind)
-                          }
-                          // proc or once closure
-                          (_, ast::Once) => {
-                              (ast::CaptureByValue, ty::FnOnceUnboxedClosureKind)
-                          }
-                          // There should be no such old closure type
-                          (ty::UniqTraitStore, ast::Many) => {
-                              self.tcx().sess.span_bug(span, "Impossible closure type");
-                          }
-                      };
-                      self.cat_upvar(id, span, var_id, fn_node_id, kind, mode, false)
-                  }
                   ty::ty_unboxed_closure(closure_id, _, _) => {
                       let kind = self.typer.unboxed_closure_kind(closure_id);
                       let mode = self.typer.capture_mode(fn_node_id);

@@ -599,7 +599,6 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("get_wrapper_for_bare_fn(closure_ty={})", closure_ty.repr(tcx));
 
     let f = match closure_ty.sty {
-        ty::ty_closure(ref f) => f,
         _ => {
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
                                     expected a closure ty, got {}",

@@ -111,14 +111,6 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     data: Fn(llval),
                 };
             }
-            ty::ty_closure(..) => {
-                let datum = unpack_datum!(
-                    bcx, datum.to_lvalue_datum(bcx, "callee", expr.id));
-                return Callee {
-                    bcx: bcx,
-                    data: Closure(datum),
-                };
-            }
             _ => {
                 bcx.tcx().sess.span_bug(
                     expr.span,
@@ -679,7 +671,6 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     let (abi, ret_ty) = match callee_ty.sty {
         ty::ty_bare_fn(_, ref f) => (f.abi, f.sig.0.output),
-        ty::ty_closure(ref f) => (f.abi, f.sig.0.output),
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
     };
 

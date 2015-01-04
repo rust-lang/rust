@@ -735,29 +735,6 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     let function_type = rcx.resolve_node_type(expr.id);
 
     match function_type.sty {
-        ty::ty_closure(box ty::ClosureTy{store: ty::RegionTraitStore(..),
-                                         ref bounds,
-                                         ..}) => {
-            // For closure, ensure that the variables outlive region
-            // bound, since they are captured by reference.
-            ty::with_freevars(tcx, expr.id, |freevars| {
-                if freevars.is_empty() {
-                    // No free variables means that the environment
-                    // will be NULL at runtime and hence the closure
-                    // has static lifetime.
-                } else {
-                    // Variables being referenced must outlive closure.
-                    constrain_free_variables_in_by_ref_closure(
-                        rcx, bounds.region_bound, expr, freevars);
-
-                    // Closure is stack allocated and hence cannot
-                    // outlive the appropriate temporary scope.
-                    let s = rcx.repeating_scope;
-                    rcx.fcx.mk_subr(infer::InfStackClosure(expr.span),
-                                    bounds.region_bound, ty::ReScope(CodeExtent::from_node_id(s)));
-                }
-            });
-        }
         ty::ty_unboxed_closure(_, region, _) => {
             if tcx.capture_modes.borrow()[expr.id].clone() == ast::CaptureByRef {
                 ty::with_freevars(tcx, expr.id, |freevars| {
@@ -778,11 +755,6 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     rcx.set_repeating_scope(repeating_scope);
 
     match function_type.sty {
-        ty::ty_closure(box ty::ClosureTy {ref bounds, ..}) => {
-            ty::with_freevars(tcx, expr.id, |freevars| {
-                ensure_free_variable_types_outlive_closure_bound(rcx, bounds, expr, freevars);
-            })
-        }
         ty::ty_unboxed_closure(_, region, _) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 let bounds = ty::region_existential_bound(*region);
@@ -891,26 +863,6 @@ fn constrain_callee(rcx: &mut Rcx,
     let callee_ty = rcx.resolve_node_type(callee_id);
     match callee_ty.sty {
         ty::ty_bare_fn(..) => { }
-        ty::ty_closure(ref closure_ty) => {
-            let region = match closure_ty.store {
-                ty::RegionTraitStore(r, _) => {
-                    // While we're here, link the closure's region with a unique
-                    // immutable borrow (gathered later in borrowck)
-                    let mc = mc::MemCategorizationContext::new(rcx.fcx);
-                    let expr_cmt = ignore_err!(mc.cat_expr(callee_expr));
-                    link_region(rcx, callee_expr.span, call_region,
-                                ty::UniqueImmBorrow, expr_cmt);
-                    r
-                }
-                ty::UniqTraitStore => ty::ReStatic
-            };
-            rcx.fcx.mk_subr(infer::InvokeClosure(callee_expr.span),
-                            call_region, region);
-
-            let region = closure_ty.bounds.region_bound;
-            rcx.fcx.mk_subr(infer::InvokeClosure(callee_expr.span),
-                            call_region, region);
-        }
         _ => {
             // this should not happen, but it does if the program is
             // erroneous

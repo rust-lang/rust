@@ -51,9 +51,6 @@ impl<'tcx> TypeWalker<'tcx> {
             ty::ty_bare_fn(_, ref ft) => {
                 self.push_sig_subtypes(&ft.sig);
             }
-            ty::ty_closure(ref ft) => {
-                self.push_sig_subtypes(&ft.sig);
-            }
         }
     }
 

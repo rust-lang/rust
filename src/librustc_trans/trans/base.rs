@@ -287,9 +287,6 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::ty_bare_fn(_, ref f) => {
             (f.sig.0.inputs.clone(), f.sig.0.output, f.abi, None)
         }
-        ty::ty_closure(ref f) => {
-            (f.sig.0.inputs.clone(), f.sig.0.output, f.abi, Some(Type::i8p(ccx)))
-        }
         ty::ty_unboxed_closure(closure_did, _, substs) => {
             let typer = common::NormalizingUnboxedClosureTyper::new(ccx.tcx());
             let function_type = typer.unboxed_closure_type(closure_did, substs);
@@ -951,9 +948,6 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                       name[])
                 }
             }
-        }
-        ty::ty_closure(_) => {
-            get_extern_rust_fn(ccx, t, name[], did)
         }
         _ => {
             get_extern_const(ccx, did, t)
@@ -2438,7 +2432,6 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     use middle::ty::{BrAnon, ReLateBound};
 
     let (fn_sig, abi, has_env) = match fn_ty.sty {
-        ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
         ty::ty_bare_fn(_, ref f) => (f.sig.clone(), f.abi, false),
         ty::ty_unboxed_closure(closure_did, _, substs) => {
             let typer = common::NormalizingUnboxedClosureTyper::new(ccx.tcx());
