@@ -76,9 +76,9 @@ unsafe impl<T> Sync for RwLock<T> {}
 /// # Example
 ///
 /// ```
-/// use std::sync::{StaticRwLock, RWLOCK_INIT};
+/// use std::sync::{StaticRwLock, RW_LOCK_INIT};
 ///
-/// static LOCK: StaticRwLock = RWLOCK_INIT;
+/// static LOCK: StaticRwLock = RW_LOCK_INIT;
 ///
 /// {
 ///     let _g = LOCK.read().unwrap();
@@ -131,7 +131,7 @@ impl<T: Send + Sync> RwLock<T> {
     /// Creates a new instance of an RwLock which is unlocked and read to go.
     #[stable]
     pub fn new(t: T) -> RwLock<T> {
-        RwLock { inner: box RWLOCK_INIT, data: UnsafeCell::new(t) }
+        RwLock { inner: box RW_LOCK_INIT, data: UnsafeCell::new(t) }
     }
 
     /// Locks this rwlock with shared read access, blocking the current thread
@@ -365,7 +365,7 @@ mod tests {
     use rand::{mod, Rng};
     use sync::mpsc::channel;
     use thread::Thread;
-    use sync::{Arc, RwLock, StaticRwLock, RWLOCK_INIT};
+    use sync::{Arc, RwLock, StaticRwLock, RW_LOCK_INIT};
 
     #[test]
     fn smoke() {
@@ -378,7 +378,7 @@ mod tests {
 
     #[test]
     fn static_smoke() {
-        static R: StaticRwLock = RWLOCK_INIT;
+        static R: StaticRwLock = RW_LOCK_INIT;
         drop(R.read().unwrap());
         drop(R.write().unwrap());
         drop((R.read().unwrap(), R.read().unwrap()));
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn frob() {
-        static R: StaticRwLock = RWLOCK_INIT;
+        static R: StaticRwLock = RW_LOCK_INIT;
         static N: uint = 10;
         static M: uint = 1000;
 
