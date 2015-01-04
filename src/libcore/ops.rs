@@ -943,7 +943,7 @@ impl<Idx: Clone + Step> Iterator for Range<Idx> {
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        if let Some(hint) = Step::steps_between(&self.end, &self.start) {
+        if let Some(hint) = Step::steps_between(&self.start, &self.end) {
             (hint, Some(hint))
         } else {
             (0, None)
