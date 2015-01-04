@@ -120,7 +120,7 @@ pub struct RwLockReadGuard<'a, T: 'a> {
 /// dropped.
 #[must_use]
 #[stable]
-pub struct RWLockWriteGuard<'a, T: 'a> {
+pub struct RwLockWriteGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
     __poison: poison::Guard,
@@ -313,11 +313,11 @@ impl<'rwlock, T> RwLockReadGuard<'rwlock, T> {
         })
     }
 }
-impl<'rwlock, T> RWLockWriteGuard<'rwlock, T> {
+impl<'rwlock, T> RwLockWriteGuard<'rwlock, T> {
     fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
-           -> LockResult<RWLockWriteGuard<'rwlock, T>> {
+           -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
-            RWLockWriteGuard {
+            RwLockWriteGuard {
                 __lock: lock,
                 __data: data,
                 __poison: guard,
@@ -332,12 +332,12 @@ impl<'rwlock, T> Deref for RwLockReadGuard<'rwlock, T> {
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-impl<'rwlock, T> Deref for RWLockWriteGuard<'rwlock, T> {
+impl<'rwlock, T> Deref for RwLockWriteGuard<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-impl<'rwlock, T> DerefMut for RWLockWriteGuard<'rwlock, T> {
+impl<'rwlock, T> DerefMut for RwLockWriteGuard<'rwlock, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.__data.get() }
     }
@@ -351,7 +351,7 @@ impl<'a, T> Drop for RwLockReadGuard<'a, T> {
 }
 
 #[unsafe_destructor]
-impl<'a, T> Drop for RWLockWriteGuard<'a, T> {
+impl<'a, T> Drop for RwLockWriteGuard<'a, T> {
     fn drop(&mut self) {
         self.__lock.poison.done(&self.__poison);
         unsafe { self.__lock.lock.write_unlock(); }
