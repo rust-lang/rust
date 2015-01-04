@@ -2543,7 +2543,6 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     let input_ty = fcx.infcx().next_ty_var();
-    let return_ty = fcx.infcx().next_ty_var();
 
     // Try `IndexMut` first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.index_mut_trait()) {
@@ -2555,7 +2554,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                              trait_did,
                                              adjustment.clone(),
                                              adjusted_ty,
-                                             Some(vec![input_ty, return_ty]))
+                                             Some(vec![input_ty]))
         }
         _ => None,
     };
@@ -2570,7 +2569,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                              trait_did,
                                              adjustment,
                                              adjusted_ty,
-                                             Some(vec![input_ty, return_ty]))
+                                             Some(vec![input_ty]))
         }
         (method, _) => method,
     };
@@ -2578,9 +2577,9 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // If some lookup succeeds, write callee into table and extract index/element
     // type from the method signature.
     // If some lookup succeeded, install method in table
-    method.map(|method| {
-        make_overloaded_lvalue_return_type(fcx, Some(method_call), Some(method));
-        (input_ty, return_ty)
+    method.and_then(|method| {
+        make_overloaded_lvalue_return_type(fcx, Some(method_call), Some(method)).
+            map(|ret| (input_ty, ret.ty))
     })
 }
 

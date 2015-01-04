@@ -292,7 +292,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                 stack: Option<&TraitObligationStack<'o, 'tcx>>,
                                                 mut predicates: I)
                                                 -> EvaluationResult<'tcx>
-        where I : Iterator<&'a PredicateObligation<'tcx>>, 'tcx:'a
+        where I : Iterator<Item=&'a PredicateObligation<'tcx>>, 'tcx:'a
     {
         let mut result = EvaluatedToOk;
         for obligation in predicates {
@@ -2310,9 +2310,9 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
     }
 }
 
-impl<'o, 'tcx> Iterator<&'o TraitObligationStack<'o,'tcx>>
-           for Option<&'o TraitObligationStack<'o, 'tcx>>
-{
+impl<'o, 'tcx> Iterator for Option<&'o TraitObligationStack<'o, 'tcx>> {
+    type Item = &'o TraitObligationStack<'o,'tcx>;
+
     fn next(&mut self) -> Option<&'o TraitObligationStack<'o, 'tcx>> {
         match *self {
             Some(o) => {

@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 use std::slice;
 
 pub struct PhfMapEntries<'a, T: 'a> {
     iter: slice::Iter<'a, (&'static str, T)>,
 }
 
-impl<'a, T> Iterator<(&'static str, &'a T)> for PhfMapEntries<'a, T> {
+impl<'a, T> Iterator for PhfMapEntries<'a, T> {
+    type Item = (&'static str, &'a T);
+
     fn next(&mut self) -> Option<(&'static str, &'a T)> {
         self.iter.by_ref().map(|&(key, ref value)| (key, value)).next()
     }

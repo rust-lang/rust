@@ -24,6 +24,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(macro_rules, globs, slicing_syntax)]
+#![feature(associated_types)]
 
 pub use self::Piece::*;
 pub use self::Position::*;
@@ -142,7 +143,9 @@ pub struct Parser<'a> {
     pub errors: Vec<string::String>,
 }
 
-impl<'a> Iterator<Piece<'a>> for Parser<'a> {
+impl<'a> Iterator for Parser<'a> {
+    type Item = Piece<'a>;
+
     fn next(&mut self) -> Option<Piece<'a>> {
         match self.cur.clone().next() {
             Some((pos, '{')) => {

@@ -823,7 +823,7 @@ mod stack {
 
 #[stable]
 impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
-    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> BTreeMap<K, V> {
+    fn from_iter<T: Iterator<Item=(K, V)>>(iter: T) -> BTreeMap<K, V> {
         let mut map = BTreeMap::new();
         map.extend(iter);
         map
@@ -833,7 +833,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
 #[stable]
 impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
-    fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
+    fn extend<T: Iterator<Item=(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
         }
@@ -898,6 +898,8 @@ impl<K: Show, V: Show> Show for BTreeMap<K, V> {
     }
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 #[stable]
 impl<K: Ord, Sized? Q, V> Index<Q, V> for BTreeMap<K, V>
     where Q: BorrowFrom<K> + Ord
@@ -907,10 +909,36 @@ impl<K: Ord, Sized? Q, V> Index<Q, V> for BTreeMap<K, V>
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable]
+impl<K: Ord, Sized? Q, V> Index<Q> for BTreeMap<K, V>
+    where Q: BorrowFrom<K> + Ord
+{
+    type Output = V;
+
+    fn index(&self, key: &Q) -> &V {
+        self.get(key).expect("no entry found for key")
+    }
+}
+
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 #[stable]
 impl<K: Ord, Sized? Q, V> IndexMut<Q, V> for BTreeMap<K, V>
     where Q: BorrowFrom<K> + Ord
 {
+    fn index_mut(&mut self, key: &Q) -> &mut V {
+        self.get_mut(key).expect("no entry found for key")
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable]
+impl<K: Ord, Sized? Q, V> IndexMut<Q> for BTreeMap<K, V>
+    where Q: BorrowFrom<K> + Ord
+{
+    type Output = V;
+
     fn index_mut(&mut self, key: &Q) -> &mut V {
         self.get_mut(key).expect("no entry found for key")
     }
@@ -949,8 +977,11 @@ enum StackOp<T> {
     Pop,
 }
 
-impl<K, V, E, T: Traverse<E> + DoubleEndedIterator<TraversalItem<K, V, E>>>
-        Iterator<(K, V)> for AbsIter<T> {
+impl<K, V, E, T> Iterator for AbsIter<T> where
+    T: DoubleEndedIterator + Iterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
+{
+    type Item = (K, V);
+
     // This function is pretty long, but only because there's a lot of cases to consider.
     // Our iterator represents two search paths, left and right, to the smallest and largest
     // elements we have yet to yield. lca represents the least common ancestor of these two paths,
@@ -1015,8 +1046,9 @@ impl<K, V, E, T: Traverse<E> + DoubleEndedIterator<TraversalItem<K, V, E>>>
     }
 }
 
-impl<K, V, E, T: Traverse<E> + DoubleEndedIterator<TraversalItem<K, V, E>>>
-        DoubleEndedIterator<(K, V)> for AbsIter<T> {
+impl<K, V, E, T> DoubleEndedIterator for AbsIter<T> where
+    T: DoubleEndedIterator + Iterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
+{
     // next_back is totally symmetric to next
     fn next_back(&mut self) -> Option<(K, V)> {
         loop {
@@ -1054,64 +1086,75 @@ impl<K, V, E, T: Traverse<E> + DoubleEndedIterator<TraversalItem<K, V, E>>>
 }
 
 #[stable]
-impl<'a, K, V> Iterator<(&'a K, &'a V)> for Iter<'a, K, V> {
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = (&'a K, &'a V);
+
     fn next(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 #[stable]
-impl<'a, K, V> DoubleEndedIterator<(&'a K, &'a V)> for Iter<'a, K, V> {
+impl<'a, K, V> DoubleEndedIterator for Iter<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next_back() }
 }
 #[stable]
-impl<'a, K, V> ExactSizeIterator<(&'a K, &'a V)> for Iter<'a, K, V> {}
+impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {}
 
 #[stable]
-impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for IterMut<'a, K, V> {
+impl<'a, K, V> Iterator for IterMut<'a, K, V> {
+    type Item = (&'a K, &'a mut V);
+
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 #[stable]
-impl<'a, K, V> DoubleEndedIterator<(&'a K, &'a mut V)> for IterMut<'a, K, V> {
+impl<'a, K, V> DoubleEndedIterator for IterMut<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next_back() }
 }
 #[stable]
-impl<'a, K, V> ExactSizeIterator<(&'a K, &'a mut V)> for IterMut<'a, K, V> {}
+impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {}
 
 #[stable]
-impl<K, V> Iterator<(K, V)> for IntoIter<K, V> {
+impl<K, V> Iterator for IntoIter<K, V> {
+    type Item = (K, V);
+
     fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 #[stable]
-impl<K, V> DoubleEndedIterator<(K, V)> for IntoIter<K, V> {
+impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
     fn next_back(&mut self) -> Option<(K, V)> { self.inner.next_back() }
 }
 #[stable]
-impl<K, V> ExactSizeIterator<(K, V)> for IntoIter<K, V> {}
+impl<K, V> ExactSizeIterator for IntoIter<K, V> {}
 
 #[stable]
-impl<'a, K, V> Iterator<&'a K> for Keys<'a, K, V> {
+impl<'a, K, V> Iterator for Keys<'a, K, V> {
+    type Item = &'a K;
+
     fn next(&mut self) -> Option<(&'a K)> { self.inner.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 #[stable]
-impl<'a, K, V> DoubleEndedIterator<&'a K> for Keys<'a, K, V> {
+impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K)> { self.inner.next_back() }
 }
 #[stable]
-impl<'a, K, V> ExactSizeIterator<&'a K> for Keys<'a, K, V> {}
+impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {}
+
 
 #[stable]
-impl<'a, K, V> Iterator<&'a V> for Values<'a, K, V> {
+impl<'a, K, V> Iterator for Values<'a, K, V> {
+    type Item = &'a V;
+
     fn next(&mut self) -> Option<(&'a V)> { self.inner.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 #[stable]
-impl<'a, K, V> DoubleEndedIterator<&'a V> for Values<'a, K, V> {
+impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a V)> { self.inner.next_back() }
 }
 #[stable]
-impl<'a, K, V> ExactSizeIterator<&'a V> for Values<'a, K, V> {}
+impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {}
 
 
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {

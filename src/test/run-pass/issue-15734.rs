@@ -10,7 +10,8 @@
 
 // If `Index` used an associated type for its output, this test would
 // work more smoothly.
-#![feature(old_orphan_check)]
+
+#![feature(associated_types, old_orphan_check)]
 
 use std::ops::Index;
 
@@ -25,13 +26,17 @@ impl<T> Mat<T> {
     }
 }
 
-impl<T> Index<(uint, uint), T> for Mat<T> {
+impl<T> Index<(uint, uint)> for Mat<T> {
+    type Output = T;
+
     fn index<'a>(&'a self, &(row, col): &(uint, uint)) -> &'a T {
         &self.data[row * self.cols + col]
     }
 }
 
-impl<'a, T> Index<(uint, uint), T> for &'a Mat<T> {
+impl<'a, T> Index<(uint, uint)> for &'a Mat<T> {
+    type Output = T;
+
     fn index<'b>(&'b self, index: &(uint, uint)) -> &'b T {
         (*self).index(index)
     }
@@ -39,7 +44,9 @@ impl<'a, T> Index<(uint, uint), T> for &'a Mat<T> {
 
 struct Row<M> { mat: M, row: uint, }
 
-impl<T, M: Index<(uint, uint), T>> Index<uint, T> for Row<M> {
+impl<T, M: Index<(uint, uint), Output=T>> Index<uint> for Row<M> {
+    type Output = T;
+
     fn index<'a>(&'a self, col: &uint) -> &'a T {
         &self.mat[(self.row, *col)]
     }

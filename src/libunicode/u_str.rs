@@ -105,7 +105,9 @@ pub struct GraphemeIndices<'a> {
     iter: Graphemes<'a>,
 }
 
-impl<'a> Iterator<(uint, &'a str)> for GraphemeIndices<'a> {
+impl<'a> Iterator for GraphemeIndices<'a> {
+    type Item = (uint, &'a str);
+
     #[inline]
     fn next(&mut self) -> Option<(uint, &'a str)> {
         self.iter.next().map(|s| (s.as_ptr() as uint - self.start_offset, s))
@@ -117,7 +119,7 @@ impl<'a> Iterator<(uint, &'a str)> for GraphemeIndices<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator<(uint, &'a str)> for GraphemeIndices<'a> {
+impl<'a> DoubleEndedIterator for GraphemeIndices<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, &'a str)> {
         self.iter.next_back().map(|s| (s.as_ptr() as uint - self.start_offset, s))
@@ -145,7 +147,9 @@ enum GraphemeState {
     Regional,
 }
 
-impl<'a> Iterator<&'a str> for Graphemes<'a> {
+impl<'a> Iterator for Graphemes<'a> {
+    type Item = &'a str;
+
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         let slen = self.string.len();
@@ -251,7 +255,7 @@ impl<'a> Iterator<&'a str> for Graphemes<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator<&'a str> for Graphemes<'a> {
+impl<'a> DoubleEndedIterator for Graphemes<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
         use tables::grapheme as gr;
@@ -428,7 +432,9 @@ impl Utf16Item {
     }
 }
 
-impl<'a> Iterator<Utf16Item> for Utf16Items<'a> {
+impl<'a> Iterator for Utf16Items<'a> {
+    type Item = Utf16Item;
+
     fn next(&mut self) -> Option<Utf16Item> {
         let u = match self.iter.next() {
             Some(u) => *u,
@@ -505,12 +511,14 @@ pub struct Utf16Encoder<I> {
 
 impl<I> Utf16Encoder<I> {
     /// Create an UTF-16 encoder from any `char` iterator.
-    pub fn new(chars: I) -> Utf16Encoder<I> where I: Iterator<char> {
+    pub fn new(chars: I) -> Utf16Encoder<I> where I: Iterator<Item=char> {
         Utf16Encoder { chars: chars, extra: 0 }
     }
 }
 
-impl<I> Iterator<u16> for Utf16Encoder<I> where I: Iterator<char> {
+impl<I> Iterator for Utf16Encoder<I> where I: Iterator<Item=char> {
+    type Item = u16;
+
     #[inline]
     fn next(&mut self) -> Option<u16> {
         if self.extra != 0 {
@@ -537,9 +545,11 @@ impl<I> Iterator<u16> for Utf16Encoder<I> where I: Iterator<char> {
     }
 }
 
-impl<'a> Iterator<&'a str> for Words<'a> {
+impl<'a> Iterator for Words<'a> {
+    type Item = &'a str;
+
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
 }
-impl<'a> DoubleEndedIterator<&'a str> for Words<'a> {
+impl<'a> DoubleEndedIterator for Words<'a> {
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
 }

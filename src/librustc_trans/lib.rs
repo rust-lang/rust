@@ -28,6 +28,7 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(unboxed_closures)]
 #![feature(old_orphan_check)]
+#![feature(associated_types)]
 
 extern crate arena;
 extern crate flate;

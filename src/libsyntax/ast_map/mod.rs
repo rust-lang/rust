@@ -61,7 +61,9 @@ struct LinkedPathNode<'a> {
 
 type LinkedPath<'a> = Option<&'a LinkedPathNode<'a>>;
 
-impl<'a> Iterator<PathElem> for LinkedPath<'a> {
+impl<'a> Iterator for LinkedPath<'a> {
+    type Item = PathElem;
+
     fn next(&mut self) -> Option<PathElem> {
         match *self {
             Some(node) => {
@@ -77,7 +79,9 @@ impl<'a> Iterator<PathElem> for LinkedPath<'a> {
 #[deriving(Clone)]
 pub struct Values<'a, T:'a>(pub slice::Iter<'a, T>);
 
-impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
+impl<'a, T: Copy> Iterator for Values<'a, T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         let &Values(ref mut items) = self;
         items.next().map(|&x| x)
@@ -87,7 +91,7 @@ impl<'a, T: Copy> Iterator<T> for Values<'a, T> {
 /// The type of the iterator used by with_path.
 pub type PathElems<'a, 'b> = iter::Chain<Values<'a, PathElem>, LinkedPath<'b>>;
 
-pub fn path_to_string<PI: Iterator<PathElem>>(path: PI) -> String {
+pub fn path_to_string<PI: Iterator<Item=PathElem>>(path: PI) -> String {
     let itr = token::get_ident_interner();
 
     path.fold(String::new(), |mut s, e| {
@@ -629,7 +633,9 @@ impl<'a, 'ast> NodesMatchingSuffix<'a, 'ast> {
     }
 }
 
-impl<'a, 'ast> Iterator<NodeId> for NodesMatchingSuffix<'a, 'ast> {
+impl<'a, 'ast> Iterator for NodesMatchingSuffix<'a, 'ast> {
+    type Item = NodeId;
+
     fn next(&mut self) -> Option<NodeId> {
         loop {
             let idx = self.idx;

@@ -12,7 +12,7 @@
 
 use std::ops::Add;
 
-fn foo<T: Add<T, T> + Clone>([x, y, z]: [T; 3]) -> (T, T, T) {
+fn foo<T: Add<Output=T> + Clone>([x, y, z]: [T; 3]) -> (T, T, T) {
     (x.clone(), x.clone() + y.clone(), x + y + z)
 }
 fn bar(a: &'static str, b: &'static str) -> [&'static str; 4] {

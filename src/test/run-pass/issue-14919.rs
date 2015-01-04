@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 trait Matcher {
     fn next_match(&mut self) -> Option<(uint, uint)>;
 }
@@ -40,7 +42,9 @@ struct MatchIndices<M> {
     matcher: M
 }
 
-impl<M: Matcher> Iterator<(uint, uint)> for MatchIndices<M> {
+impl<M: Matcher> Iterator for MatchIndices<M> {
+    type Item = (uint, uint);
+
     fn next(&mut self) -> Option<(uint, uint)> {
         self.matcher.next_match()
     }

@@ -1036,21 +1036,7 @@ pub trait Writer {
             error: IoResult<()>,
         }
 
-        #[cfg(not(stage0))]
         impl<'a, Sized? T: Writer> fmt::Writer for Adaptor<'a, T> {
-            fn write_str(&mut self, s: &str) -> fmt::Result {
-                match self.inner.write(s.as_bytes()) {
-                    Ok(()) => Ok(()),
-                    Err(e) => {
-                        self.error = Err(e);
-                        Err(fmt::Error)
-                    }
-                }
-            }
-        }
-
-        #[cfg(stage0)]
-        impl<'a, T: Writer> fmt::Writer for Adaptor<'a, T> {
             fn write_str(&mut self, s: &str) -> fmt::Result {
                 match self.inner.write(s.as_bytes()) {
                     Ok(()) => Ok(()),
@@ -1371,7 +1357,9 @@ pub struct Lines<'r, T:'r> {
     buffer: &'r mut T,
 }
 
-impl<'r, T: Buffer> Iterator<IoResult<String>> for Lines<'r, T> {
+impl<'r, T: Buffer> Iterator for Lines<'r, T> {
+    type Item = IoResult<String>;
+
     fn next(&mut self) -> Option<IoResult<String>> {
         match self.buffer.read_line() {
             Ok(x) => Some(Ok(x)),
@@ -1398,7 +1386,9 @@ pub struct Chars<'r, T:'r> {
     buffer: &'r mut T
 }
 
-impl<'r, T: Buffer> Iterator<IoResult<char>> for Chars<'r, T> {
+impl<'r, T: Buffer> Iterator for Chars<'r, T> {
+    type Item = IoResult<char>;
+
     fn next(&mut self) -> Option<IoResult<char>> {
         match self.buffer.read_char() {
             Ok(x) => Some(Ok(x)),
@@ -1648,15 +1638,9 @@ pub struct IncomingConnections<'a, Sized? A:'a> {
     inc: &'a mut A,
 }
 
-#[cfg(stage0)]
-impl<'a, T, A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A> {
-    fn next(&mut self) -> Option<IoResult<T>> {
-        Some(self.inc.accept())
-    }
-}
+impl<'a, T, Sized? A: Acceptor<T>> Iterator for IncomingConnections<'a, A> {
+    type Item = IoResult<T>;
 
-#[cfg(not(stage0))]
-impl<'a, T, Sized? A: Acceptor<T>> Iterator<IoResult<T>> for IncomingConnections<'a, A> {
     fn next(&mut self) -> Option<IoResult<T>> {
         Some(self.inc.accept())
     }

@@ -603,7 +603,7 @@ impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
 
 #[stable]
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
-    fn from_iter<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
+    fn from_iter<I: Iterator<Item=T>>(iter: I) -> HashSet<T, H> {
         let lower = iter.size_hint().0;
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
         set.extend(iter);
@@ -613,7 +613,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, 
 
 #[stable]
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extend<T> for HashSet<T, H> {
-    fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
+    fn extend<I: Iterator<Item=T>>(&mut self, mut iter: I) {
         for k in iter {
             self.insert(k);
         }
@@ -630,7 +630,9 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
 
 #[stable]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
-BitOr<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+BitOr<&'b HashSet<T, H>> for &'a HashSet<T, H> {
+    type Output = HashSet<T, H>;
+
     /// Returns the union of `self` and `rhs` as a new `HashSet<T, H>`.
     ///
     /// # Examples
@@ -658,7 +660,9 @@ BitOr<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
 
 #[stable]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
-BitAnd<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+BitAnd<&'b HashSet<T, H>> for &'a HashSet<T, H> {
+    type Output = HashSet<T, H>;
+
     /// Returns the intersection of `self` and `rhs` as a new `HashSet<T, H>`.
     ///
     /// # Examples
@@ -686,7 +690,9 @@ BitAnd<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
 
 #[stable]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
-BitXor<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+BitXor<&'b HashSet<T, H>> for &'a HashSet<T, H> {
+    type Output = HashSet<T, H>;
+
     /// Returns the symmetric difference of `self` and `rhs` as a new `HashSet<T, H>`.
     ///
     /// # Examples
@@ -714,7 +720,9 @@ BitXor<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
 
 #[stable]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
-Sub<&'b HashSet<T, H>, HashSet<T, H>> for &'a HashSet<T, H> {
+Sub<&'b HashSet<T, H>> for &'a HashSet<T, H> {
+    type Output = HashSet<T, H>;
+
     /// Returns the difference of `self` and `rhs` as a new `HashSet<T, H>`.
     ///
     /// # Examples
@@ -789,27 +797,35 @@ pub struct Union<'a, T: 'a, H: 'a> {
 }
 
 #[stable]
-impl<'a, K> Iterator<&'a K> for Iter<'a, K> {
+impl<'a, K> Iterator for Iter<'a, K> {
+    type Item = &'a K;
+
     fn next(&mut self) -> Option<&'a K> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
 #[stable]
-impl<K> Iterator<K> for IntoIter<K> {
+impl<K> Iterator for IntoIter<K> {
+    type Item = K;
+
     fn next(&mut self) -> Option<K> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
 #[stable]
-impl<'a, K: 'a> Iterator<K> for Drain<'a, K> {
+impl<'a, K: 'a> Iterator for Drain<'a, K> {
+    type Item = K;
+
     fn next(&mut self) -> Option<K> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
 #[stable]
-impl<'a, T, S, H> Iterator<&'a T> for Intersection<'a, T, H>
+impl<'a, T, S, H> Iterator for Intersection<'a, T, H>
     where T: Eq + Hash<S>, H: Hasher<S>
 {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match self.iter.next() {
@@ -828,9 +844,11 @@ impl<'a, T, S, H> Iterator<&'a T> for Intersection<'a, T, H>
 }
 
 #[stable]
-impl<'a, T, S, H> Iterator<&'a T> for Difference<'a, T, H>
+impl<'a, T, S, H> Iterator for Difference<'a, T, H>
     where T: Eq + Hash<S>, H: Hasher<S>
 {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match self.iter.next() {
@@ -849,17 +867,21 @@ impl<'a, T, S, H> Iterator<&'a T> for Difference<'a, T, H>
 }
 
 #[stable]
-impl<'a, T, S, H> Iterator<&'a T> for SymmetricDifference<'a, T, H>
+impl<'a, T, S, H> Iterator for SymmetricDifference<'a, T, H>
     where T: Eq + Hash<S>, H: Hasher<S>
 {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
 #[stable]
-impl<'a, T, S, H> Iterator<&'a T> for Union<'a, T, H>
+impl<'a, T, S, H> Iterator for Union<'a, T, H>
     where T: Eq + Hash<S>, H: Hasher<S>
 {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }

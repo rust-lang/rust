@@ -563,7 +563,9 @@ pub struct Directories {
     stack: Vec<Path>,
 }
 
-impl Iterator<Path> for Directories {
+impl Iterator for Directories {
+    type Item = Path;
+
     fn next(&mut self) -> Option<Path> {
         match self.stack.pop() {
             Some(path) => {

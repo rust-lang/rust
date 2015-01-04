@@ -12,7 +12,7 @@
 // lifetime parameters defined on the method bound correctly.
 
 pub trait Foo {
-    fn bar<'a, I: Iterator<&'a ()>>(&self, it: I) -> uint {
+    fn bar<'a, I: Iterator<Item=&'a ()>>(&self, it: I) -> uint {
         let mut xs = it.filter(|_| true);
         xs.count()
     }

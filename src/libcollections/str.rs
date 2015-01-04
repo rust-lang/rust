@@ -181,7 +181,9 @@ pub struct Decompositions<'a> {
     sorted: bool
 }
 
-impl<'a> Iterator<char> for Decompositions<'a> {
+impl<'a> Iterator for Decompositions<'a> {
+    type Item = char;
+
     #[inline]
     fn next(&mut self) -> Option<char> {
         match self.buffer.first() {
@@ -268,7 +270,9 @@ pub struct Recompositions<'a> {
     last_ccc: Option<u8>
 }
 
-impl<'a> Iterator<char> for Recompositions<'a> {
+impl<'a> Iterator for Recompositions<'a> {
+    type Item = char;
+
     #[inline]
     fn next(&mut self) -> Option<char> {
         loop {
@@ -357,7 +361,9 @@ pub struct Utf16Units<'a> {
     encoder: Utf16Encoder<Chars<'a>>
 }
 
-impl<'a> Iterator<u16> for Utf16Units<'a> {
+impl<'a> Iterator for Utf16Units<'a> {
+    type Item = u16;
+
     #[inline]
     fn next(&mut self) -> Option<u16> { self.encoder.next() }
 
@@ -3272,7 +3278,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use super::*;
-    use prelude::{SliceExt, IteratorExt, DoubleEndedIteratorExt, SliceConcatExt};
+    use prelude::{SliceExt, IteratorExt, SliceConcatExt};
     use test::Bencher;
     use test::black_box;
 

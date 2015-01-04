@@ -1140,7 +1140,9 @@ struct SizeDirection {
     dir: Direction,
 }
 
-impl Iterator<(uint, uint)> for ElementSwaps {
+impl Iterator for ElementSwaps {
+    type Item = (uint, uint);
+
     #[inline]
     fn next(&mut self) -> Option<(uint, uint)> {
         fn new_pos(i: uint, s: Direction) -> uint {
@@ -1207,7 +1209,9 @@ pub struct Permutations<T> {
 }
 
 #[unstable = "trait is unstable"]
-impl<T: Clone> Iterator<Vec<T>> for Permutations<T> {
+impl<T: Clone> Iterator for Permutations<T> {
+    type Item = Vec<T>;
+
     #[inline]
     fn next(&mut self) -> Option<Vec<T>> {
         match self.swaps.next() {
@@ -1445,7 +1449,7 @@ pub mod raw {
 mod tests {
     use std::boxed::Box;
     use prelude::{Some, None, range, Vec, ToString, Clone, Greater, Less, Equal};
-    use prelude::{SliceExt, Iterator, IteratorExt, DoubleEndedIteratorExt};
+    use prelude::{SliceExt, Iterator, IteratorExt};
     use prelude::AsSlice;
     use prelude::{RandomAccessIterator, Ord, SliceConcatExt};
     use core::cell::Cell;

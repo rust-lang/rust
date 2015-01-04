@@ -164,8 +164,25 @@ pub struct Bitv {
     nbits: uint
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 // FIXME(Gankro): NopeNopeNopeNopeNope (wait for IndexGet to be a thing)
 impl Index<uint,bool> for Bitv {
+    #[inline]
+    fn index(&self, i: &uint) -> &bool {
+        if self.get(*i).expect("index out of bounds") {
+            &TRUE
+        } else {
+            &FALSE
+        }
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+// FIXME(Gankro): NopeNopeNopeNopeNope (wait for IndexGet to be a thing)
+impl Index<uint> for Bitv {
+    type Output = bool;
+
     #[inline]
     fn index(&self, i: &uint) -> &bool {
         if self.get(*i).expect("index out of bounds") {
@@ -938,7 +955,7 @@ impl Default for Bitv {
 
 #[stable]
 impl FromIterator<bool> for Bitv {
-    fn from_iter<I:Iterator<bool>>(iterator: I) -> Bitv {
+    fn from_iter<I:Iterator<Item=bool>>(iterator: I) -> Bitv {
         let mut ret = Bitv::new();
         ret.extend(iterator);
         ret
@@ -948,7 +965,7 @@ impl FromIterator<bool> for Bitv {
 #[stable]
 impl Extend<bool> for Bitv {
     #[inline]
-    fn extend<I: Iterator<bool>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=bool>>(&mut self, mut iterator: I) {
         let (min, _) = iterator.size_hint();
         self.reserve(min);
         for element in iterator {
@@ -1031,7 +1048,9 @@ pub struct Iter<'a> {
 }
 
 #[stable]
-impl<'a> Iterator<bool> for Iter<'a> {
+impl<'a> Iterator for Iter<'a> {
+    type Item = bool;
+
     #[inline]
     fn next(&mut self) -> Option<bool> {
         if self.next_idx != self.end_idx {
@@ -1050,7 +1069,7 @@ impl<'a> Iterator<bool> for Iter<'a> {
 }
 
 #[stable]
-impl<'a> DoubleEndedIterator<bool> for Iter<'a> {
+impl<'a> DoubleEndedIterator for Iter<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<bool> {
         if self.next_idx != self.end_idx {
@@ -1063,10 +1082,10 @@ impl<'a> DoubleEndedIterator<bool> for Iter<'a> {
 }
 
 #[stable]
-impl<'a> ExactSizeIterator<bool> for Iter<'a> {}
+impl<'a> ExactSizeIterator for Iter<'a> {}
 
 #[stable]
-impl<'a> RandomAccessIterator<bool> for Iter<'a> {
+impl<'a> RandomAccessIterator for Iter<'a> {
     #[inline]
     fn indexable(&self) -> uint {
         self.end_idx - self.next_idx
@@ -1134,7 +1153,7 @@ impl Default for BitvSet {
 
 #[stable]
 impl FromIterator<uint> for BitvSet {
-    fn from_iter<I:Iterator<uint>>(iterator: I) -> BitvSet {
+    fn from_iter<I:Iterator<Item=uint>>(iterator: I) -> BitvSet {
         let mut ret = BitvSet::new();
         ret.extend(iterator);
         ret
@@ -1144,7 +1163,7 @@ impl FromIterator<uint> for BitvSet {
 #[stable]
 impl Extend<uint> for BitvSet {
     #[inline]
-    fn extend<I: Iterator<uint>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=uint>>(&mut self, mut iterator: I) {
         for i in iterator {
             self.insert(i);
         }
@@ -1792,7 +1811,9 @@ pub struct Difference<'a>(TwoBitPositions<'a>);
 pub struct SymmetricDifference<'a>(TwoBitPositions<'a>);
 
 #[stable]
-impl<'a> Iterator<uint> for SetIter<'a> {
+impl<'a> Iterator for SetIter<'a> {
+    type Item = uint;
+
     fn next(&mut self) -> Option<uint> {
         while self.next_idx < self.set.bitv.len() {
             let idx = self.next_idx;
@@ -1813,7 +1834,9 @@ impl<'a> Iterator<uint> for SetIter<'a> {
 }
 
 #[stable]
-impl<'a> Iterator<uint> for TwoBitPositions<'a> {
+impl<'a> Iterator for TwoBitPositions<'a> {
+    type Item = uint;
+
     fn next(&mut self) -> Option<uint> {
         while self.next_idx < self.set.bitv.len() ||
               self.next_idx < self.other.bitv.len() {
@@ -1849,25 +1872,33 @@ impl<'a> Iterator<uint> for TwoBitPositions<'a> {
 }
 
 #[stable]
-impl<'a> Iterator<uint> for Union<'a> {
+impl<'a> Iterator for Union<'a> {
+    type Item = uint;
+
     #[inline] fn next(&mut self) -> Option<uint> { self.0.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
 #[stable]
-impl<'a> Iterator<uint> for Intersection<'a> {
+impl<'a> Iterator for Intersection<'a> {
+    type Item = uint;
+
     #[inline] fn next(&mut self) -> Option<uint> { self.0.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
 #[stable]
-impl<'a> Iterator<uint> for Difference<'a> {
+impl<'a> Iterator for Difference<'a> {
+    type Item = uint;
+
     #[inline] fn next(&mut self) -> Option<uint> { self.0.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
 #[stable]
-impl<'a> Iterator<uint> for SymmetricDifference<'a> {
+impl<'a> Iterator for SymmetricDifference<'a> {
+    type Item = uint;
+
     #[inline] fn next(&mut self) -> Option<uint> { self.0.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
