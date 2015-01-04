@@ -46,30 +46,17 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             // evidence than an unboxed closure is desired, we'll use
             // that, otherwise we'll fall back to boxed closures.
             match expected_sig_and_kind {
-                None => { // doesn't look like an unboxed closure
-                    let region = astconv::opt_ast_region_to_region(fcx,
-                                                                   fcx,
-                                                                   expr.span,
-                                                                   &None);
+                None => { // don't have information about the kind, request explicit annotation
+                    // HACK We still need to typeck the body, so assume `FnMut` kind just for that
+                    let kind = ty::FnMutUnboxedClosureKind;
 
-                    check_boxed_closure(fcx,
-                                        expr,
-                                        ty::RegionTraitStore(region, ast::MutMutable),
-                                        decl,
-                                        body,
-                                        expected);
+                    check_unboxed_closure(fcx, expr, kind, decl, body, None);
 
-                    match capture {
-                        CaptureByValue => {
-                            fcx.ccx.tcx.sess.span_err(
-                                expr.span,
-                                "boxed closures can't capture by value, \
-                                if you want to use an unboxed closure, \
-                                explicitly annotate its kind: e.g. `move |:|`");
-                        },
-                        CaptureByRef => {}
-                    }
-                }
+                    fcx.ccx.tcx.sess.span_err(
+                        expr.span,
+                        "Can't infer the \"kind\" of the closure, explicitly annotate it. e.g. \
+                        `|&:| {}`");
+                },
                 Some((sig, kind)) => {
                     check_unboxed_closure(fcx, expr, kind, decl, body, Some(sig));
                 }
@@ -253,92 +240,4 @@ fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
     }
 
     None
-}
-
-
-fn check_boxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                expr: &ast::Expr,
-                                store: ty::TraitStore,
-                                decl: &ast::FnDecl,
-                                body: &ast::Block,
-                                expected: Expectation<'tcx>) {
-    let tcx = fcx.ccx.tcx;
-
-    // Find the expected input/output types (if any). Substitute
-    // fresh bound regions for any bound regions we find in the
-    // expected types so as to avoid capture.
-    let expected_cenv = expected.map_to_option(fcx, |ty| match ty.sty {
-        _ => None
-    });
-    let (expected_sig, expected_onceness, expected_bounds) = match expected_cenv {
-        Some(cenv) => {
-            let (sig, _) =
-                ty::replace_late_bound_regions(
-                    tcx,
-                    &cenv.sig,
-                    |_, debruijn| fcx.inh.infcx.fresh_bound_region(debruijn));
-            let onceness = match (&store, &cenv.store) {
-                // As the closure type and onceness go, only three
-                // combinations are legit:
-                //      once closure
-                //      many closure
-                //      once proc
-                // If the actual and expected closure type disagree with
-                // each other, set expected onceness to be always Once or
-                // Many according to the actual type. Otherwise, it will
-                // yield either an illegal "many proc" or a less known
-                // "once closure" in the error message.
-                (&ty::UniqTraitStore, &ty::UniqTraitStore) |
-                (&ty::RegionTraitStore(..), &ty::RegionTraitStore(..)) =>
-                    cenv.onceness,
-                (&ty::UniqTraitStore, _) => ast::Once,
-                (&ty::RegionTraitStore(..), _) => ast::Many,
-            };
-            (Some(sig), onceness, cenv.bounds.clone())
-        }
-        _ => {
-            // Not an error! Means we're inferring the closure type
-            let region = fcx.infcx().next_region_var(
-                infer::AddrOfRegion(expr.span));
-            let bounds = ty::region_existential_bound(region);
-            let onceness = ast::Many;
-            (None, onceness, bounds)
-        }
-    };
-
-    // construct the function type
-    let fn_ty = astconv::ty_of_closure(fcx,
-                                       ast::Unsafety::Normal,
-                                       expected_onceness,
-                                       expected_bounds,
-                                       store,
-                                       decl,
-                                       abi::Rust,
-                                       expected_sig);
-    let fn_sig = fn_ty.sig.clone();
-    let fty = panic!("stub");
-    debug!("check_expr_fn fty={}", fcx.infcx().ty_to_string(fty));
-
-    fcx.write_ty(expr.id, fty);
-
-    // If the closure is a stack closure and hasn't had some non-standard
-    // style inferred for it, then check it under its parent's style.
-    // Otherwise, use its own
-    let (inherited_style, inherited_style_id) = match store {
-        ty::RegionTraitStore(..) => (fcx.ps.borrow().unsafety,
-                                     fcx.ps.borrow().def),
-        ty::UniqTraitStore => (ast::Unsafety::Normal, expr.id)
-    };
-
-    let fn_sig =
-        ty::liberate_late_bound_regions(tcx, CodeExtent::from_node_id(body.id), &fn_sig);
-
-    check_fn(fcx.ccx,
-             inherited_style,
-             inherited_style_id,
-             &fn_sig,
-             &*decl,
-             expr.id,
-             &*body,
-             fcx.inh);
 }
