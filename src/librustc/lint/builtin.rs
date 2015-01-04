@@ -550,20 +550,20 @@ impl LintPass for BoxPointers {
 }
 
 declare_lint! {
-    RAW_POINTER_DERIVING,
+    RAW_POINTER_DERIVE,
     Warn,
     "uses of #[derive] with raw pointers are rarely correct"
 }
 
-struct RawPtrDerivingVisitor<'a, 'tcx: 'a> {
+struct RawPtrDeriveVisitor<'a, 'tcx: 'a> {
     cx: &'a Context<'a, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for RawPtrDerivingVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for RawPtrDeriveVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
         static MSG: &'static str = "use of `#[derive]` with a raw pointer";
         if let ast::TyPtr(..) = ty.node {
-            self.cx.span_lint(RAW_POINTER_DERIVING, ty.span, MSG);
+            self.cx.span_lint(RAW_POINTER_DERIVE, ty.span, MSG);
         }
         visit::walk_ty(self, ty);
     }
@@ -572,21 +572,21 @@ impl<'a, 'tcx, 'v> Visitor<'v> for RawPtrDerivingVisitor<'a, 'tcx> {
     fn visit_block(&mut self, _: &ast::Block) {}
 }
 
-pub struct RawPointerDeriving {
+pub struct RawPointerDerive {
     checked_raw_pointers: NodeSet,
 }
 
-impl RawPointerDeriving {
-    pub fn new() -> RawPointerDeriving {
-        RawPointerDeriving {
+impl RawPointerDerive {
+    pub fn new() -> RawPointerDerive {
+        RawPointerDerive {
             checked_raw_pointers: NodeSet::new(),
         }
     }
 }
 
-impl LintPass for RawPointerDeriving {
+impl LintPass for RawPointerDerive {
     fn get_lints(&self) -> LintArray {
-        lint_array!(RAW_POINTER_DERIVING)
+        lint_array!(RAW_POINTER_DERIVE)
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
@@ -611,7 +611,7 @@ impl LintPass for RawPointerDeriving {
         if !self.checked_raw_pointers.insert(item.id) { return }
         match item.node {
             ast::ItemStruct(..) | ast::ItemEnum(..) => {
-                let mut visitor = RawPtrDerivingVisitor { cx: cx };
+                let mut visitor = RawPtrDeriveVisitor { cx: cx };
                 visit::walk_item(&mut visitor, &*item);
             }
             _ => {}
