@@ -509,7 +509,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         let method_call = ty::MethodCall::expr(call_expr.id);
         let return_ty = ty::ty_fn_ret(match self.tcx.method_map.borrow().get(&method_call) {
             Some(method) => method.ty,
-            None => ty::expr_ty(self.tcx, func_or_rcvr)
+            None => ty::expr_ty_adjusted(self.tcx, func_or_rcvr)
         });
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);

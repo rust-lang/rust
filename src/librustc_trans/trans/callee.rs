@@ -576,7 +576,7 @@ pub fn trans_call<'a, 'blk, 'tcx>(in_cx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_call");
     trans_call_inner(in_cx,
                      Some(common::expr_info(call_ex)),
-                     expr_ty(in_cx, f),
+                     expr_ty_adjusted(in_cx, f),
                      |cx, _| trans(cx, f),
                      args,
                      Some(dest)).bcx
