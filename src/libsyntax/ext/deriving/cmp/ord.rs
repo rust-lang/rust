@@ -83,7 +83,7 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum OrderingOp {
     PartialCmpOp, LtOp, LeOp, GtOp, GeOp,
 }

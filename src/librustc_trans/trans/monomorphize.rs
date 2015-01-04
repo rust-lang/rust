@@ -286,7 +286,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     (lldecl, true)
 }
 
-#[deriving(PartialEq, Eq, Hash, Show)]
+#[derive(PartialEq, Eq, Hash, Show)]
 pub struct MonoId<'tcx> {
     pub def: ast::DefId,
     pub params: subst::VecPerParamSpace<Ty<'tcx>>

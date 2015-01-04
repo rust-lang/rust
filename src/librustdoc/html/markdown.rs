@@ -373,7 +373,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     }
 }
 
-#[deriving(Eq, PartialEq, Clone, Show)]
+#[derive(Eq, PartialEq, Clone, Show)]
 struct LangString {
     should_fail: bool,
     no_run: bool,

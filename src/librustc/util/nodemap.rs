@@ -68,7 +68,7 @@ pub mod DefIdSet {
 ///
 /// This uses FNV hashing, as described here:
 /// http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-#[deriving(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default)]
 pub struct FnvHasher;
 
 #[allow(missing_copy_implementations)]

@@ -163,7 +163,7 @@ use ops::{Deref, FnOnce};
 // which basically means it must be `Option`.
 
 /// The `Option` type.
-#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
 #[stable]
 pub enum Option<T> {
     /// No value
@@ -772,7 +772,7 @@ impl<T> Default for Option<T> {
 // The Option Iterators
 /////////////////////////////////////////////////////////////////////////////
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct Item<A> {
     opt: Option<A>
 }

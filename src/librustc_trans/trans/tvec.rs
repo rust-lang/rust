@@ -89,7 +89,7 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     })
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct VecTypes<'tcx> {
     pub unit_ty: Ty<'tcx>,
     pub llunit_ty: Type,

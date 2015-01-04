@@ -80,7 +80,7 @@ mod imp {
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable,
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable,
            RustcDecodable, Show, Copy)]
 pub struct Timespec {
     pub sec: i64,
@@ -241,7 +241,7 @@ pub fn tzset() {
 /// also called a broken-down time value.
 // FIXME: use c_int instead of i32?
 #[repr(C)]
-#[deriving(Clone, Copy, PartialEq, Eq, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Show)]
 pub struct Tm {
     /// Seconds after the minute - [0, 60]
     pub tm_sec: i32,
@@ -423,7 +423,7 @@ impl Tm {
     }
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum ParseError {
     InvalidSecond,
     InvalidMinute,

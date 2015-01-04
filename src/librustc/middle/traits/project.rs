@@ -45,7 +45,7 @@ pub enum ProjectionTyError<'tcx> {
     TraitSelectionError(SelectionError<'tcx>),
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::type_err<'tcx>
 }

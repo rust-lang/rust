@@ -30,7 +30,7 @@ use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
-#[deriving(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum Fragment {
     // This represents the path described by the move path index
     Just(MovePathIndex),

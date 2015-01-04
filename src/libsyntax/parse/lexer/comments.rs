@@ -24,7 +24,7 @@ use std::str;
 use std::string::String;
 use std::uint;
 
-#[deriving(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum CommentStyle {
     /// No code on either side of each line of the comment
     Isolated,
@@ -36,7 +36,7 @@ pub enum CommentStyle {
     BlankLine,
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Comment {
     pub style: CommentStyle,
     pub lines: Vec<String>,
@@ -327,7 +327,7 @@ fn consume_comment(rdr: &mut StringReader,
     debug!("<<< consume comment");
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Literal {
     pub lit: String,
     pub pos: BytePos,

@@ -32,7 +32,7 @@ use syntax::parse::token;
 
 use std::collections::hash_map::HashMap;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct MethodInfo {
     pub name: ast::Name,
     pub def_id: ast::DefId,

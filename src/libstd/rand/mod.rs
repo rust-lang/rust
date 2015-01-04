@@ -245,7 +245,7 @@ pub mod reader;
 
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct StdRng {
     rng: IsaacWordRng,
 }

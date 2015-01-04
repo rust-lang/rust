@@ -67,7 +67,7 @@ use std::rc::Rc;
 
 // Specifies how duplicates should be handled when adding a child item if
 // another item exists with the same name in some namespace.
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 enum DuplicateCheckingMode {
     ForbidDuplicateModules,
     ForbidDuplicateTypesAndModules,
@@ -76,7 +76,7 @@ enum DuplicateCheckingMode {
     OverwriteDuplicates
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 enum NamespaceError {
     NoError,
     ModuleError,

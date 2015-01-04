@@ -17,7 +17,7 @@ use libc::c_char;
 
 use {ValueRef, TwineRef, DebugLocRef, DiagnosticInfoRef};
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum OptimizationDiagnosticKind {
     OptimizationRemark,
     OptimizationMissed,
@@ -68,7 +68,7 @@ impl OptimizationDiagnostic {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Diagnostic {
     Optimization(OptimizationDiagnostic),
 

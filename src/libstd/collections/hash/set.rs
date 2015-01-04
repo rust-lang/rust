@@ -71,7 +71,7 @@ use super::map::{self, HashMap, Keys, INITIAL_CAPACITY};
 ///
 /// ```
 /// use std::collections::HashSet;
-/// #[deriving(Hash, Eq, PartialEq, Show)]
+/// #[derive(Hash, Eq, PartialEq, Show)]
 /// struct Viking<'a> {
 ///     name: &'a str,
 ///     power: uint,
@@ -89,7 +89,7 @@ use super::map::{self, HashMap, Keys, INITIAL_CAPACITY};
 ///     println!("{}", x);
 /// }
 /// ```
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct HashSet<T, H = RandomSipHasher> {
     map: HashMap<T, (), H>

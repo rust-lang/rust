@@ -219,7 +219,7 @@ macro_rules! __thread_local_inner {
 
 /// Indicator of the state of a thread local storage key.
 #[unstable = "state querying was recently added"]
-#[deriving(Eq, PartialEq, Copy)]
+#[derive(Eq, PartialEq, Copy)]
 pub enum State {
     /// All keys are in this state whenever a thread starts. Keys will
     /// transition to the `Valid` state once the first call to `with` happens

@@ -84,7 +84,7 @@ pub struct IterMut<'a, T:'a> {
 }
 
 /// An iterator over mutable references to the items of a `DList`.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct IntoIter<T> {
     list: DList<T>

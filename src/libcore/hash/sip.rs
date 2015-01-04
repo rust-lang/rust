@@ -30,7 +30,7 @@ use default::Default;
 use super::{Hash, Hasher, Writer};
 
 /// `SipState` computes a SipHash 2-4 hash over a stream of bytes.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct SipState {
     k0: u64,
     k1: u64,
@@ -213,7 +213,7 @@ impl Default for SipState {
 }
 
 /// `SipHasher` computes the SipHash algorithm from a stream of bytes.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[allow(missing_copy_implementations)]
 pub struct SipHasher {
     k0: u64,

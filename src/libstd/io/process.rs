@@ -97,12 +97,12 @@ pub struct Process {
 /// A representation of environment variable name
 /// It compares case-insensitive on Windows and case-sensitive everywhere else.
 #[cfg(not(windows))]
-#[deriving(PartialEq, Eq, Hash, Clone, Show)]
+#[derive(PartialEq, Eq, Hash, Clone, Show)]
 struct EnvKey(CString);
 
 #[doc(hidden)]
 #[cfg(windows)]
-#[deriving(Eq, Clone, Show)]
+#[derive(Eq, Clone, Show)]
 struct EnvKey(CString);
 
 #[cfg(windows)]
@@ -168,7 +168,7 @@ pub type EnvMap = HashMap<EnvKey, CString>;
 ///
 /// let output = process.stdout.as_mut().unwrap().read_to_end();
 /// ```
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Command {
     // The internal data for the builder. Documented by the builder
     // methods below, and serialized into rt::rtio::ProcessConfig.
@@ -450,7 +450,7 @@ impl sys::process::ProcessConfig<EnvKey, CString> for Command {
 }
 
 /// The output of a finished process.
-#[deriving(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct ProcessOutput {
     /// The status (exit code) of the process.
     pub status: ProcessExit,
@@ -461,7 +461,7 @@ pub struct ProcessOutput {
 }
 
 /// Describes what to do with a standard io stream for a child process.
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum StdioContainer {
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
@@ -483,7 +483,7 @@ pub enum StdioContainer {
 
 /// Describes the result of a process after it has terminated.
 /// Note that Windows have no signals, so the result is usually ExitStatus.
-#[deriving(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum ProcessExit {
     /// Normal termination with an exit status.
     ExitStatus(int),

@@ -22,14 +22,14 @@ pub use self::Position::*;
 pub use self::Flag::*;
 
 #[doc(hidden)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Argument<'a> {
     pub position: Position,
     pub format: FormatSpec,
 }
 
 #[doc(hidden)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct FormatSpec {
     pub fill: char,
     pub align: Alignment,
@@ -39,7 +39,7 @@ pub struct FormatSpec {
 }
 
 /// Possible alignments that can be requested as part of a formatting directive.
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum Alignment {
     /// Indication that contents should be left-aligned.
     AlignLeft,
@@ -52,13 +52,13 @@ pub enum Alignment {
 }
 
 #[doc(hidden)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Count {
     CountIs(uint), CountIsParam(uint), CountIsNextParam, CountImplied,
 }
 
 #[doc(hidden)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Position {
     ArgumentNext, ArgumentIs(uint)
 }
@@ -68,7 +68,7 @@ pub enum Position {
 /// These flags are discovered through the `flags` field of the `Formatter`
 /// structure. The flag in that structure is a union of these flags into a
 /// `uint` where each flag's discriminant is the corresponding bit.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Flag {
     /// A flag which enables number formatting to always print the sign of a
     /// number.

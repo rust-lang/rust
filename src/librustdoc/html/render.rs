@@ -74,7 +74,7 @@ use stability_summary;
 /// It is intended that this context is a lightweight object which can be fairly
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Context {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
@@ -129,7 +129,7 @@ pub struct Implementor {
 }
 
 /// Metadata about implementations for a type.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Impl {
     pub impl_: clean::Impl,
     pub dox: Option<String>,
@@ -145,7 +145,7 @@ pub struct Impl {
 /// to be a fairly large and expensive structure to clone. Instead this adheres
 /// to `Send` so it may be stored in a `Arc` instance and shared among the various
 /// rendering tasks.
-#[deriving(Default)]
+#[derive(Default)]
 pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty printing doesn't have to
@@ -225,7 +225,7 @@ struct Source<'a>(&'a str);
 // Helper structs for rendering items/sidebars and carrying along contextual
 // information
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct Item<'a> {
     cx: &'a Context,
     item: &'a clean::Item,

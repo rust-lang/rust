@@ -33,7 +33,7 @@ impl<T> Copy for Slice<T> {}
 
 /// The representation of a Rust closure
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Closure {
     pub code: *mut (),
     pub env: *mut (),
@@ -44,7 +44,7 @@ pub struct Closure {
 /// This struct does not have a `Repr` implementation
 /// because there is no way to refer to all trait objects generically.
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct TraitObject {
     pub data: *mut (),
     pub vtable: *mut (),

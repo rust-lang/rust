@@ -147,7 +147,7 @@ Section: Creating a string
 */
 
 /// Errors which can occur when attempting to interpret a byte slice as a `str`.
-#[deriving(Copy, Eq, PartialEq, Clone)]
+#[derive(Copy, Eq, PartialEq, Clone)]
 pub enum Utf8Error {
     /// An invalid byte was detected at the byte offset given.
     ///
@@ -252,7 +252,7 @@ Section: Iterators
 /// Iterator for the char (representing *Unicode Scalar Values*) of a string
 ///
 /// Created with the method `.chars()`.
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
 }
@@ -361,7 +361,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
 
 /// External iterator for a string's characters and their byte offsets.
 /// Use with the `std::iter` module.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct CharIndices<'a> {
     front_offset: uint,
     iter: Chars<'a>,
@@ -409,13 +409,13 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 ///
 /// Created with `StrExt::bytes`
 #[stable]
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Bytes<'a>(Map<&'a u8, u8, slice::Iter<'a, u8>, BytesDeref>);
 delegate_iter!{exact u8 in Bytes<'a>}
 
 /// A temporary fn new type that ensures that the `Bytes` iterator
 /// is cloneable.
-#[deriving(Copy, Clone)]
+#[derive(Copy, Clone)]
 struct BytesDeref;
 
 impl<'a> Fn(&'a u8) -> u8 for BytesDeref {
@@ -426,7 +426,7 @@ impl<'a> Fn(&'a u8) -> u8 for BytesDeref {
 }
 
 /// An iterator over the substrings of a string, separated by `sep`.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[deprecated = "Type is now named `Split` or `SplitTerminator`"]
 pub struct CharSplits<'a, Sep> {
     /// The slice remaining to be iterated
@@ -440,7 +440,7 @@ pub struct CharSplits<'a, Sep> {
 
 /// An iterator over the substrings of a string, separated by `sep`,
 /// splitting at most `count` times.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[deprecated = "Type is now named `SplitN` or `RSplitN`"]
 pub struct CharSplitsN<'a, Sep> {
     iter: CharSplits<'a, Sep>,
@@ -564,7 +564,7 @@ impl<'a, Sep: CharEq> Iterator for CharSplitsN<'a, Sep> {
 
 /// The internal state of an iterator that searches for matches of a substring
 /// within a larger string using naive search
-#[deriving(Clone)]
+#[derive(Clone)]
 struct NaiveSearcher {
     position: uint
 }
@@ -590,7 +590,7 @@ impl NaiveSearcher {
 
 /// The internal state of an iterator that searches for matches of a substring
 /// within a larger string using two-way search
-#[deriving(Clone)]
+#[derive(Clone)]
 struct TwoWaySearcher {
     // constants
     crit_pos: uint,
@@ -827,7 +827,7 @@ impl TwoWaySearcher {
 
 /// The internal state of an iterator that searches for matches of a substring
 /// within a larger string using a dynamically chosen search algorithm
-#[deriving(Clone)]
+#[derive(Clone)]
 enum Searcher {
     Naive(NaiveSearcher),
     TwoWay(TwoWaySearcher),
@@ -855,7 +855,7 @@ impl Searcher {
 
 /// An iterator over the start and end indices of the matches of a
 /// substring within a larger string
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct MatchIndices<'a> {
     // constants
     haystack: &'a str,
@@ -865,7 +865,7 @@ pub struct MatchIndices<'a> {
 
 /// An iterator over the substrings of a string separated by a given
 /// search string
-#[deriving(Clone)]
+#[derive(Clone)]
 #[unstable = "Type might get removed"]
 pub struct SplitStr<'a> {
     it: MatchIndices<'a>,
@@ -1073,7 +1073,7 @@ pub fn utf8_char_width(b: u8) -> uint {
 /// Struct that contains a `char` and the index of the first byte of
 /// the next `char` in a string.  This can be used as a data structure
 /// for iterating over the UTF-8 bytes of a string.
-#[deriving(Copy)]
+#[derive(Copy)]
 #[unstable = "naming is uncertain with container conventions"]
 pub struct CharRange {
     /// Current `char`
@@ -1249,25 +1249,25 @@ impl<'a, Sized? S> Str for &'a S where S: Str {
 }
 
 /// Return type of `StrExt::split`
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct Split<'a, P>(CharSplits<'a, P>);
 delegate_iter!{pattern &'a str in Split<'a, P>}
 
 /// Return type of `StrExt::split_terminator`
-#[deriving(Clone)]
+#[derive(Clone)]
 #[unstable = "might get removed in favour of a constructor method on Split"]
 pub struct SplitTerminator<'a, P>(CharSplits<'a, P>);
 delegate_iter!{pattern &'a str in SplitTerminator<'a, P>}
 
 /// Return type of `StrExt::splitn`
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct SplitN<'a, P>(CharSplitsN<'a, P>);
 delegate_iter!{pattern forward &'a str in SplitN<'a, P>}
 
 /// Return type of `StrExt::rsplitn`
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct RSplitN<'a, P>(CharSplitsN<'a, P>);
 delegate_iter!{pattern forward &'a str in RSplitN<'a, P>}

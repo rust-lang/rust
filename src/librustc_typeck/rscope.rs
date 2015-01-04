@@ -37,7 +37,7 @@ pub trait RegionScope {
 
 // A scope in which all regions must be explicitly named. This is used
 // for types that appear in structs and so on.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct ExplicitRscope;
 
 impl RegionScope for ExplicitRscope {

@@ -907,7 +907,7 @@ pub struct Split<'a, T:'a, P> where P: FnMut(&T) -> bool {
     finished: bool
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     fn clone(&self) -> Split<'a, T, P> {
@@ -1133,7 +1133,7 @@ forward_iterator! { SplitNMut: T, &'a mut [T] }
 forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
 /// An iterator over overlapping subslices of length `size`.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[experimental = "needs review"]
 pub struct Windows<'a, T:'a> {
     v: &'a [T],
@@ -1170,7 +1170,7 @@ impl<'a, T> Iterator for Windows<'a, T> {
 ///
 /// When the slice len is not evenly divided by the chunk size, the last slice
 /// of the iteration will be the remainder.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[experimental = "needs review"]
 pub struct Chunks<'a, T:'a> {
     v: &'a [T],
