@@ -21,7 +21,7 @@ pub use alloc::arc::{Arc, Weak};
 
 pub use self::mutex::{Mutex, MutexGuard, StaticMutex};
 pub use self::mutex::MUTEX_INIT;
-pub use self::rwlock::{RwLock, StaticRWLock, RWLOCK_INIT};
+pub use self::rwlock::{RwLock, StaticRwLock, RWLOCK_INIT};
 pub use self::rwlock::{RWLockReadGuard, RWLockWriteGuard};
 pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT};
 pub use self::once::{Once, ONCE_INIT};

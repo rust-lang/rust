@@ -60,7 +60,7 @@ use sys_common::rwlock as sys;
 /// ```
 #[stable]
 pub struct RwLock<T> {
-    inner: Box<StaticRWLock>,
+    inner: Box<StaticRwLock>,
     data: UnsafeCell<T>,
 }
 
@@ -76,9 +76,9 @@ unsafe impl<T> Sync for RwLock<T> {}
 /// # Example
 ///
 /// ```
-/// use std::sync::{StaticRWLock, RWLOCK_INIT};
+/// use std::sync::{StaticRwLock, RWLOCK_INIT};
 ///
-/// static LOCK: StaticRWLock = RWLOCK_INIT;
+/// static LOCK: StaticRwLock = RWLOCK_INIT;
 ///
 /// {
 ///     let _g = LOCK.read().unwrap();
@@ -101,7 +101,7 @@ unsafe impl Sync for StaticRwLock {}
 
 /// Constant initialization for a statically-initialized rwlock.
 #[unstable = "may be merged with RwLock in the future"]
-pub const RWLOCK_INIT: StaticRWLock = StaticRWLock {
+pub const RWLOCK_INIT: StaticRwLock = StaticRwLock {
     lock: sys::RWLOCK_INIT,
     poison: poison::FLAG_INIT,
 };
@@ -111,7 +111,7 @@ pub const RWLOCK_INIT: StaticRWLock = StaticRWLock {
 #[must_use]
 #[stable]
 pub struct RWLockReadGuard<'a, T: 'a> {
-    __lock: &'a StaticRWLock,
+    __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
     __marker: marker::NoSend,
 }
@@ -121,7 +121,7 @@ pub struct RWLockReadGuard<'a, T: 'a> {
 #[must_use]
 #[stable]
 pub struct RWLockWriteGuard<'a, T: 'a> {
-    __lock: &'a StaticRWLock,
+    __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
     __poison: poison::Guard,
     __marker: marker::NoSend,
@@ -302,7 +302,7 @@ impl StaticRwLock {
 }
 
 impl<'rwlock, T> RWLockReadGuard<'rwlock, T> {
-    fn new(lock: &'rwlock StaticRWLock, data: &'rwlock UnsafeCell<T>)
+    fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RWLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |_| {
             RWLockReadGuard {
@@ -314,7 +314,7 @@ impl<'rwlock, T> RWLockReadGuard<'rwlock, T> {
     }
 }
 impl<'rwlock, T> RWLockWriteGuard<'rwlock, T> {
-    fn new(lock: &'rwlock StaticRWLock, data: &'rwlock UnsafeCell<T>)
+    fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RWLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
             RWLockWriteGuard {
@@ -365,7 +365,7 @@ mod tests {
     use rand::{mod, Rng};
     use sync::mpsc::channel;
     use thread::Thread;
-    use sync::{Arc, RwLock, StaticRWLock, RWLOCK_INIT};
+    use sync::{Arc, RwLock, StaticRwLock, RWLOCK_INIT};
 
     #[test]
     fn smoke() {
@@ -378,7 +378,7 @@ mod tests {
 
     #[test]
     fn static_smoke() {
-        static R: StaticRWLock = RWLOCK_INIT;
+        static R: StaticRwLock = RWLOCK_INIT;
         drop(R.read().unwrap());
         drop(R.write().unwrap());
         drop((R.read().unwrap(), R.read().unwrap()));
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn frob() {
-        static R: StaticRWLock = RWLOCK_INIT;
+        static R: StaticRwLock = RWLOCK_INIT;
         static N: uint = 10;
         static M: uint = 1000;
 
