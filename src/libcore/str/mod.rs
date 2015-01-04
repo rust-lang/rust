@@ -18,7 +18,7 @@
 
 use self::Searcher::{Naive, TwoWay, TwoWayLong};
 
-use cmp::{mod, Eq};
+use cmp::{self, Eq};
 use default::Default;
 use iter::range;
 use iter::ExactSizeIterator;
@@ -27,11 +27,11 @@ use kinds::Sized;
 use mem;
 use num::Int;
 use ops::{Fn, FnMut};
-use option::Option::{mod, None, Some};
+use option::Option::{self, None, Some};
 use ptr::PtrExt;
 use raw::{Repr, Slice};
-use result::Result::{mod, Ok, Err};
-use slice::{mod, SliceExt};
+use result::Result::{self, Ok, Err};
+use slice::{self, SliceExt};
 use uint;
 
 macro_rules! delegate_iter {

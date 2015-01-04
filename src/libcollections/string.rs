@@ -23,13 +23,13 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{mod, Deref, Add};
+use core::ops::{self, Deref, Add};
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
-use str::{mod, CharRange, FromStr, Utf8Error};
+use str::{self, CharRange, FromStr, Utf8Error};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.

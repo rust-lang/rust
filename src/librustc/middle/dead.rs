@@ -19,8 +19,8 @@ use util::nodemap::NodeSet;
 use std::collections::HashSet;
 use syntax::{ast, ast_map, codemap};
 use syntax::ast_util::{local_def, is_local, PostExpansionMethod};
-use syntax::attr::{mod, AttrMetaMethods};
-use syntax::visit::{mod, Visitor};
+use syntax::attr::{self, AttrMetaMethods};
+use syntax::visit::{self, Visitor};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live NodeItem that is a

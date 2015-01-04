@@ -10,7 +10,7 @@
 
 use middle::subst::{Substs, VecPerParamSpace};
 use middle::infer::InferCtxt;
-use middle::ty::{mod, Ty, AsPredicate, ToPolyTraitRef};
+use middle::ty::{self, Ty, AsPredicate, ToPolyTraitRef};
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;

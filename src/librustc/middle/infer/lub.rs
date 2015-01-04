@@ -18,7 +18,7 @@ use super::{cres, InferCtxt};
 use super::{TypeTrace, Subtype};
 
 use middle::ty::{BuiltinBounds};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use syntax::ast::{Many, Once};
 use syntax::ast::{Onceness, Unsafety};
 use syntax::ast::{MutMutable, MutImmutable};

@@ -15,13 +15,13 @@
 
 use {DefModifiers, PUBLIC, IMPORTABLE};
 use ImportDirective;
-use ImportDirectiveSubclass::{mod, SingleImport, GlobImport};
+use ImportDirectiveSubclass::{self, SingleImport, GlobImport};
 use ImportResolution;
 use Module;
 use ModuleKind::*;
 use Namespace::{TypeNS, ValueNS};
 use NameBindings;
-use ParentLink::{mod, ModuleParentLink, BlockParentLink};
+use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
 use RibKind::*;
 use Shadowable;
@@ -55,11 +55,11 @@ use syntax::ast::{ViewItemUse, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
 use syntax::ast::TyPath;
 use syntax::ast;
-use syntax::ast_util::{mod, PostExpansionMethod, local_def};
+use syntax::ast_util::{self, PostExpansionMethod, local_def};
 use syntax::attr::AttrMetaMethods;
-use syntax::parse::token::{mod, special_idents};
+use syntax::parse::token::{self, special_idents};
 use syntax::codemap::{Span, DUMMY_SP};
-use syntax::visit::{mod, Visitor};
+use syntax::visit::{self, Visitor};
 
 use std::mem::replace;
 use std::ops::{Deref, DerefMut};

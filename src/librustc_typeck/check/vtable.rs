@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use check::{FnCtxt, structurally_resolved_type};
-use middle::traits::{mod, ObjectSafetyViolation, MethodViolationCode};
+use middle::traits::{self, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
-use middle::ty::{mod, Ty, AsPredicate};
+use middle::ty::{self, Ty, AsPredicate};
 use middle::infer;
 use syntax::ast;
 use syntax::codemap::Span;

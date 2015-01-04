@@ -17,11 +17,11 @@ use llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, IntSLT,
 use metadata::csearch;
 use middle::{const_eval, def};
 use trans::{adt, closure, consts, debuginfo, expr, inline, machine};
-use trans::base::{mod, push_ctxt};
+use trans::base::{self, push_ctxt};
 use trans::common::*;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux::{Repr, ty_to_string};
 
 use std::c_str::ToCStr;

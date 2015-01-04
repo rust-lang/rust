@@ -73,7 +73,7 @@ pub use self::categorization::*;
 
 use middle::def;
 use middle::region;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::nodemap::{NodeMap};
 use util::ppaux::{Repr};
 

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use super::{InferCtxt, fixup_err, fres, unresolved_ty, unresolved_int_ty, unresolved_float_ty};
-use middle::ty::{mod, Ty};
-use middle::ty_fold::{mod, TypeFoldable};
+use middle::ty::{self, Ty};
+use middle::ty_fold::{self, TypeFoldable};
 use util::ppaux::Repr;
 
 ///////////////////////////////////////////////////////////////////////////

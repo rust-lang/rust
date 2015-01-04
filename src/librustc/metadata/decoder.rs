@@ -29,7 +29,7 @@ use middle::def;
 use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::astencode::vtable_decoder_helpers;
 
 use std::collections::HashMap;

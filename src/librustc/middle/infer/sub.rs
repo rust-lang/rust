@@ -19,7 +19,7 @@ use super::{TypeTrace, Subtype};
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use middle::ty::{BuiltinBounds};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use util::ppaux::{Repr};
 

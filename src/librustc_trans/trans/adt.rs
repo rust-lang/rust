@@ -61,7 +61,7 @@ use trans::datum;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{mod, Ty, UnboxedClosureTyper};
+use middle::ty::{self, Ty, UnboxedClosureTyper};
 use middle::ty::Disr;
 use syntax::ast;
 use syntax::attr;

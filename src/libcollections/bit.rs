@@ -89,7 +89,7 @@ use core::fmt;
 use core::hash;
 use core::iter::RandomAccessIterator;
 use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
-use core::iter::{mod, FromIterator};
+use core::iter::{self, FromIterator};
 use core::num::Int;
 use core::ops::Index;
 use core::slice;

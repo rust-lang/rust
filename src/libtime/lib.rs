@@ -35,7 +35,7 @@ extern crate libc;
 pub use self::ParseError::*;
 use self::Fmt::*;
 
-use std::fmt::{mod, Show};
+use std::fmt::{self, Show};
 use std::num::SignedInt;
 use std::ops::{Add, Sub};
 use std::time::Duration;

@@ -26,7 +26,7 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::hash::{Writer, Hash};
-use core::iter::{mod, FromIterator};
+use core::iter::{self, FromIterator};
 use core::mem;
 use core::ptr;
 

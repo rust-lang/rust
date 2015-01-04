@@ -120,13 +120,13 @@ use util::nodemap::NodeMap;
 use std::{fmt, io, uint};
 use std::rc::Rc;
 use std::iter::repeat;
-use syntax::ast::{mod, NodeId, Expr};
+use syntax::ast::{self, NodeId, Expr};
 use syntax::codemap::{BytePos, original_sp, Span};
-use syntax::parse::token::{mod, special_idents};
+use syntax::parse::token::{self, special_idents};
 use syntax::print::pprust::{expr_to_string, block_to_string};
 use syntax::ptr::P;
 use syntax::ast_util;
-use syntax::visit::{mod, Visitor, FnKind};
+use syntax::visit::{self, Visitor, FnKind};
 
 /// For use with `propagate_through_loop`.
 enum LoopKind<'a> {

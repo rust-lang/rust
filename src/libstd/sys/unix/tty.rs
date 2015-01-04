@@ -11,8 +11,8 @@
 use prelude::v1::*;
 
 use sys::fs::FileDesc;
-use libc::{mod, c_int};
-use io::{mod, IoResult, IoError};
+use libc::{self, c_int};
+use io::{self, IoResult, IoError};
 use sys_common;
 
 pub struct TTY {

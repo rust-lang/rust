@@ -17,7 +17,7 @@ use trans::adt;
 use trans::common::*;
 use trans::foreign;
 use trans::machine;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux;
 use util::ppaux::Repr;
 

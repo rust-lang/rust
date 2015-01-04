@@ -10,7 +10,7 @@
 pub use self::MaybeTyped::*;
 
 use rustc_driver::driver;
-use rustc::session::{mod, config};
+use rustc::session::{self, config};
 use rustc::session::search_paths::SearchPaths;
 use rustc::middle::{privacy, ty};
 use rustc::lint;

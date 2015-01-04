@@ -19,7 +19,7 @@ pub use self::DefRegion::*;
 use self::ScopeChain::*;
 
 use session::Session;
-use middle::def::{mod, DefMap};
+use middle::def::{self, DefMap};
 use middle::region;
 use middle::subst;
 use middle::ty;

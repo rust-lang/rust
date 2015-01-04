@@ -20,13 +20,13 @@ use fold::Folder;
 use parse::token;
 use print::pprust;
 use ptr::P;
-use visit::{mod, Visitor};
+use visit::{self, Visitor};
 
 use arena::TypedArena;
 use std::cell::RefCell;
 use std::fmt;
 use std::io::IoResult;
-use std::iter::{mod, repeat};
+use std::iter::{self, repeat};
 use std::mem;
 use std::slice;
 

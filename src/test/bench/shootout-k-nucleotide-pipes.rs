@@ -18,7 +18,7 @@
 extern crate collections;
 
 use std::ascii::{AsciiExt, OwnedAsciiExt};
-use std::cmp::Ordering::{mod, Less, Greater, Equal};
+use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::HashMap;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::mem::replace;

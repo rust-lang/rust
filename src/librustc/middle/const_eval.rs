@@ -21,10 +21,10 @@ use middle::ty::{mod};
 use middle::astconv_util::{ast_ty_to_prim_ty};
 use util::nodemap::DefIdMap;
 
-use syntax::ast::{mod, Expr};
+use syntax::ast::{self, Expr};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::visit::{mod, Visitor};
+use syntax::visit::{self, Visitor};
 use syntax::{ast_map, ast_util, codemap};
 
 use std::collections::hash_map::Entry::Vacant;

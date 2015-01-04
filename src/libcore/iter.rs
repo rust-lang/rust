@@ -1176,7 +1176,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::MinMaxResult::{mod, NoElements, OneElement, MinMax};
+    /// use std::iter::MinMaxResult::{self, NoElements, OneElement, MinMax};
     ///
     /// let r: MinMaxResult<int> = NoElements;
     /// assert_eq!(r.into_option(), None);

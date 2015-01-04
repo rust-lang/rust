@@ -19,7 +19,7 @@
 // processing.
 
 use {Module, NameBindings, Resolver};
-use Namespace::{mod, TypeNS, ValueNS};
+use Namespace::{self, TypeNS, ValueNS};
 
 use build_reduced_graph;
 

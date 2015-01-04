@@ -13,7 +13,7 @@ use prelude::v1::*;
 use cell::UnsafeCell;
 use kinds::marker;
 use ops::{Deref, DerefMut};
-use sync::poison::{mod, LockResult, TryLockError, TryLockResult};
+use sync::poison::{self, LockResult, TryLockError, TryLockResult};
 use sys_common::rwlock as sys;
 
 /// A reader-writer lock
@@ -362,7 +362,7 @@ impl<'a, T> Drop for RWLockWriteGuard<'a, T> {
 mod tests {
     use prelude::v1::*;
 
-    use rand::{mod, Rng};
+    use rand::{self, Rng};
     use sync::mpsc::channel;
     use thread::Thread;
     use sync::{Arc, RWLock, StaticRWLock, RWLOCK_INIT};

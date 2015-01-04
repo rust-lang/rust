@@ -17,7 +17,7 @@ use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
-use core::hash::{mod, Hash};
+use core::hash::{self, Hash};
 use core::kinds::Sized;
 use core::mem;
 use core::option::Option;

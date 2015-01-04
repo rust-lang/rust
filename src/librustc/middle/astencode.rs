@@ -26,7 +26,7 @@ use metadata::tyencode;
 use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{mod, Ty, MethodCall, MethodCallee, MethodOrigin};
+use middle::ty::{self, Ty, MethodCall, MethodCallee, MethodOrigin};
 use util::ppaux::ty_to_string;
 
 use syntax::{ast, ast_map, ast_util, codemap, fold};

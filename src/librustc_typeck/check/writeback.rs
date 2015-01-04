@@ -16,7 +16,7 @@ use self::ResolveReason::*;
 use astconv::AstConv;
 use check::FnCtxt;
 use middle::pat_util;
-use middle::ty::{mod, Ty, MethodCall, MethodCallee};
+use middle::ty::{self, Ty, MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
 use middle::infer;
 use write_substs_to_tcx;

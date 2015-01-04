@@ -10,7 +10,7 @@
 
 #![allow(missing_docs)]
 
-use std::cmp::Ordering::{mod, Less, Greater, Equal};
+use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::hash_map;
 use std::fmt::Show;

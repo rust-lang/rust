@@ -236,7 +236,7 @@ use clone::Clone;
 use fmt::Show;
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
 use ops::{FnMut, FnOnce};
-use option::Option::{mod, None, Some};
+use option::Option::{self, None, Some};
 use slice::AsSlice;
 use slice;
 

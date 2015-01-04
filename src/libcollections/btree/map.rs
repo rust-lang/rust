@@ -33,9 +33,9 @@ use ring_buf::RingBuf;
 use self::Continuation::{Continue, Finished};
 use self::StackOp::*;
 use super::node::ForceResult::{Leaf, Internal};
-use super::node::TraversalItem::{mod, Elem, Edge};
+use super::node::TraversalItem::{self, Elem, Edge};
 use super::node::{Traversal, MutTraversal, MoveTraversal};
-use super::node::{mod, Node, Found, GoDown};
+use super::node::{self, Node, Found, GoDown};
 
 // FIXME(conventions): implement bounded iterators
 
@@ -505,7 +505,7 @@ mod stack {
     use core::mem;
     use core::ops::{Deref, DerefMut};
     use super::BTreeMap;
-    use super::super::node::{mod, Node, Fit, Split, Internal, Leaf};
+    use super::super::node::{self, Node, Fit, Split, Internal, Leaf};
     use super::super::node::handle;
     use vec::Vec;
 

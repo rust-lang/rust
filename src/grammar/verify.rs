@@ -26,7 +26,7 @@ use std::io::File;
 
 use syntax::parse;
 use syntax::parse::lexer;
-use rustc::session::{mod, config};
+use rustc::session::{self, config};
 
 use syntax::ast;
 use syntax::ast::Name;

@@ -25,7 +25,7 @@ use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::replace_late_bound_regions;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use std::cell::{RefCell};
 use std::rc::Rc;

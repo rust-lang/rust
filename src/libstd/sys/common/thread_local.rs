@@ -58,7 +58,7 @@
 
 use prelude::v1::*;
 
-use sync::atomic::{mod, AtomicUint};
+use sync::atomic::{self, AtomicUint};
 use sync::{Mutex, Once, ONCE_INIT};
 
 use sys::thread_local as imp;

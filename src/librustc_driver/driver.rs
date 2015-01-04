@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::session::Session;
-use rustc::session::config::{mod, Input, OutputFilenames};
+use rustc::session::config::{self, Input, OutputFilenames};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::metadata::creader;

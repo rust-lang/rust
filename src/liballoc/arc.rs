@@ -71,7 +71,7 @@ use core::atomic;
 use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
 use core::borrow::BorrowFrom;
 use core::clone::Clone;
-use core::fmt::{mod, Show};
+use core::fmt::{self, Show};
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
 use core::default::Default;
 use core::kinds::{Sync, Send};
@@ -81,7 +81,7 @@ use core::nonzero::NonZero;
 use core::ops::{Drop, Deref};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::{mod, PtrExt};
+use core::ptr::{self, PtrExt};
 use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.

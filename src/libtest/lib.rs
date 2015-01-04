@@ -73,7 +73,7 @@ use std::num::{Float, FloatMath, Int};
 use std::os;
 use std::str::{FromStr, from_str};
 use std::sync::mpsc::{channel, Sender};
-use std::thread::{mod, Thread};
+use std::thread::{self, Thread};
 use std::thunk::{Thunk, Invoke};
 use std::time::Duration;
 

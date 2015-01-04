@@ -25,7 +25,7 @@ use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::region;
-use rustc::middle::ty::{mod, Ty};
+use rustc::middle::ty::{self, Ty};
 use rustc::util::ppaux::{note_and_explain_region, Repr, UserString};
 use std::rc::Rc;
 use std::string::String;

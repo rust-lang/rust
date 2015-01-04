@@ -18,11 +18,11 @@ use borrow::BorrowFrom;
 use clone::Clone;
 use cmp::{max, Eq, Equiv, PartialEq};
 use default::Default;
-use fmt::{mod, Show};
+use fmt::{self, Show};
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{mod, Iterator, IteratorExt, FromIterator, Extend, Map};
+use iter::{self, Iterator, IteratorExt, FromIterator, Extend, Map};
 use kinds::Sized;
-use mem::{mod, replace};
+use mem::{self, replace};
 use num::{Int, UnsignedInt};
 use ops::{Deref, FnMut, Index, IndexMut};
 use option::Option;
@@ -31,7 +31,7 @@ use result::Result;
 use result::Result::{Ok, Err};
 
 use super::table::{
-    mod,
+    self,
     Bucket,
     EmptyBucket,
     FullBucket,

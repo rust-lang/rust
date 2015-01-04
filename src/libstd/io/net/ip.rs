@@ -18,7 +18,7 @@
 pub use self::IpAddr::*;
 
 use fmt;
-use io::{mod, IoResult, IoError};
+use io::{self, IoResult, IoError};
 use io::net;
 use iter::{Iterator, IteratorExt};
 use ops::FnOnce;

@@ -18,7 +18,7 @@
 
 use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
-use middle::subst::{mod, Subst};
+use middle::subst::{self, Subst};
 use middle::ty::RegionEscape;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
 use middle::ty::{ParameterEnvironment, TypeTraitItemId, lookup_item_type};

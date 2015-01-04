@@ -131,12 +131,12 @@ use cell::UnsafeCell;
 use clone::Clone;
 use kinds::{Send, Sync};
 use ops::{Drop, FnOnce};
-use option::Option::{mod, Some, None};
+use option::Option::{self, Some, None};
 use result::Result::{Err, Ok};
 use sync::{Mutex, Condvar, Arc};
 use str::Str;
 use string::String;
-use rt::{mod, unwind};
+use rt::{self, unwind};
 use io::{Writer, stdio};
 use thunk::Thunk;
 

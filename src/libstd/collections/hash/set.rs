@@ -23,7 +23,7 @@ use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, mod};
 use result::Result::{Ok, Err};
 
-use super::map::{mod, HashMap, Keys, INITIAL_CAPACITY};
+use super::map::{self, HashMap, Keys, INITIAL_CAPACITY};
 
 // Future Optimization (FIXME!)
 // =============================
