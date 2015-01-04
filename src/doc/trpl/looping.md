@@ -54,7 +54,7 @@ The other kind of looping construct in Rust is the `while` loop. It looks like
 this:
 
 ```{rust}
-let mut x = 5;        // mut x: u32
+let mut x = 5; // mut x: u32
 let mut done = false; // mut done: bool
 
 while !done {
