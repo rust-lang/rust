@@ -168,10 +168,10 @@
 //!         dot::Id::new(format!("N{}", n)).unwrap()
 //!     }
 //!     fn node_label<'b>(&'b self, n: &Nd) -> dot::LabelText<'b> {
-//!         dot::LabelStr(self.nodes[*n].as_slice().into_cow())
+//!         dot::LabelText::LabelStr(self.nodes[*n].as_slice().into_cow())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed) -> dot::LabelText<'b> {
-//!         dot::LabelStr("&sube;".into_cow())
+//!         dot::LabelText::LabelStr("&sube;".into_cow())
 //!     }
 //! }
 //!
@@ -225,10 +225,10 @@
 //!     }
 //!     fn node_label<'b>(&'b self, n: &Nd<'b>) -> dot::LabelText<'b> {
 //!         let &(i, _) = n;
-//!         dot::LabelStr(self.nodes[i].as_slice().into_cow())
+//!         dot::LabelText::LabelStr(self.nodes[i].as_slice().into_cow())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed<'b>) -> dot::LabelText<'b> {
-//!         dot::LabelStr("&sube;".into_cow())
+//!         dot::LabelText::LabelStr("&sube;".into_cow())
 //!     }
 //! }
 //!
@@ -274,7 +274,7 @@
 #![feature(globs, slicing_syntax)]
 #![feature(unboxed_closures)]
 
-pub use self::LabelText::*;
+use self::LabelText::*;
 
 use std::borrow::IntoCow;
 use std::io;
@@ -586,10 +586,9 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
 #[cfg(test)]
 mod tests {
     use self::NodeLabels::*;
-    use super::{Id, LabelText, LabelStr, EscStr, Labeller};
-    use super::{Nodes, Edges, GraphWalk, render};
+    use super::{Id, Labeller, Nodes, Edges, GraphWalk, render};
+    use super::LabelText::{mod, LabelStr, EscStr};
     use std::io::IoResult;
-    use std::str;
     use std::borrow::IntoCow;
 
     /// each node is an index in a vector in the graph.

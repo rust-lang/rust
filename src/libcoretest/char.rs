@@ -10,7 +10,7 @@
 //
 // ignore-lexer-test FIXME #15679
 
-use core::char::{escape_unicode, escape_default};
+use core::char::escape_default;
 
 #[test]
 fn test_is_lowercase() {

@@ -137,9 +137,9 @@ unsafe fn init_dtors() {
     rt::at_exit(move|| {
         DTOR_LOCK.lock();
         let dtors = DTORS;
-        DTORS = 0 as *mut _;
+        DTORS = 1 as *mut _;
         mem::transmute::<_, Box<Vec<(Key, Dtor)>>>(dtors);
-        assert!(DTORS.is_null()); // can't re-init after destructing
+        assert!(DTORS as uint == 1); // can't re-init after destructing
         DTOR_LOCK.unlock();
     });
 }
@@ -147,6 +147,9 @@ unsafe fn init_dtors() {
 unsafe fn register_dtor(key: Key, dtor: Dtor) {
     DTOR_LOCK.lock();
     init_dtors();
+    assert!(DTORS as uint != 0);
+    assert!(DTORS as uint != 1,
+            "cannot create new TLS keys after the main thread has exited");
     (*DTORS).push((key, dtor));
     DTOR_LOCK.unlock();
 }
@@ -154,6 +157,9 @@ unsafe fn register_dtor(key: Key, dtor: Dtor) {
 unsafe fn unregister_dtor(key: Key) -> bool {
     DTOR_LOCK.lock();
     init_dtors();
+    assert!(DTORS as uint != 0);
+    assert!(DTORS as uint != 1,
+            "cannot unregister destructors after the main thread has exited");
     let ret = {
         let dtors = &mut *DTORS;
         let before = dtors.len();
@@ -232,6 +238,7 @@ unsafe extern "system" fn on_tls_callback(h: LPVOID,
     }
 }
 
+#[allow(dead_code)] // not actually dead
 unsafe fn run_dtors() {
     let mut any_run = true;
     for _ in range(0, 5i) {

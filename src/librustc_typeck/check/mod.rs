@@ -2229,7 +2229,8 @@ pub enum LvaluePreference {
 ///
 /// Note: this method does not modify the adjustments table. The caller is responsible for
 /// inserting an AutoAdjustment record into the `fcx` using one of the suitable methods.
-pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
+pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
+                                 sp: Span,
                                  base_ty: Ty<'tcx>,
                                  expr_id: Option<ast::NodeId>,
                                  mut lvalue_pref: LvaluePreference,
@@ -2274,58 +2275,6 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
         "reached the recursion limit while auto-dereferencing {}",
         base_ty.repr(fcx.tcx()));
     (fcx.tcx().types.err, 0, None)
-}
-
-/// Attempts to resolve a call expression as an overloaded call.
-fn try_overloaded_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                 call_expression: &ast::Expr,
-                                 callee: &ast::Expr,
-                                 callee_type: Ty<'tcx>,
-                                 args: &[&P<ast::Expr>])
-                                 -> bool {
-    // Bail out if the callee is a bare function or a closure. We check those
-    // manually.
-    match structurally_resolved_type(fcx, callee.span, callee_type).sty {
-        ty::ty_bare_fn(..) | ty::ty_closure(_) => return false,
-        _ => {}
-    }
-
-    // Try the options that are least restrictive on the caller first.
-    for &(maybe_function_trait, method_name) in [
-        (fcx.tcx().lang_items.fn_trait(), token::intern("call")),
-        (fcx.tcx().lang_items.fn_mut_trait(), token::intern("call_mut")),
-        (fcx.tcx().lang_items.fn_once_trait(), token::intern("call_once")),
-    ].iter() {
-        let function_trait = match maybe_function_trait {
-            None => continue,
-            Some(function_trait) => function_trait,
-        };
-        let method_callee =
-            match method::lookup_in_trait(fcx,
-                                          call_expression.span,
-                                          Some(&*callee),
-                                          method_name,
-                                          function_trait,
-                                          callee_type,
-                                          None) {
-                None => continue,
-                Some(method_callee) => method_callee,
-            };
-        let method_call = MethodCall::expr(call_expression.id);
-        let output_type = check_method_argument_types(fcx,
-                                                      call_expression.span,
-                                                      method_callee.ty,
-                                                      call_expression,
-                                                      args,
-                                                      AutorefArgs::No,
-                                                      TupleArguments);
-        fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
-        write_call(fcx, call_expression, output_type);
-
-        return true
-    }
-
-    false
 }
 
 fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -2689,7 +2638,6 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         check_argument_types(fcx,
                              sp,
                              err_inputs[],
-                             callee_expr,
                              args_no_rcvr,
                              autoref_args,
                              false,
@@ -2702,7 +2650,6 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 check_argument_types(fcx,
                                      sp,
                                      fty.sig.0.inputs.slice_from(1),
-                                     callee_expr,
                                      args_no_rcvr,
                                      autoref_args,
                                      fty.sig.0.variadic,
@@ -2722,7 +2669,6 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   sp: Span,
                                   fn_inputs: &[Ty<'tcx>],
-                                  _callee_expr: &ast::Expr,
                                   args: &[&P<ast::Expr>],
                                   autoref_args: AutorefArgs,
                                   variadic: bool,
@@ -3105,63 +3051,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 {
     debug!(">> typechecking: expr={} expected={}",
            expr.repr(fcx.tcx()), expected.repr(fcx.tcx()));
-
-    // A generic function for doing all of the checking for call expressions
-    fn check_call(fcx: &FnCtxt,
-                  call_expr: &ast::Expr,
-                  f: &ast::Expr,
-                  args: &[&P<ast::Expr>]) {
-        // Store the type of `f` as the type of the callee
-        let fn_ty = fcx.expr_ty(f);
-
-        // Extract the function signature from `in_fty`.
-        let fn_ty = structurally_resolved_type(fcx, f.span, fn_ty);
-
-        // This is the "default" function signature, used in case of error.
-        // In that case, we check each argument against "error" in order to
-        // set up all the node type bindings.
-        let error_fn_sig = ty::Binder(FnSig {
-            inputs: err_args(fcx.tcx(), args.len()),
-            output: ty::FnConverging(fcx.tcx().types.err),
-            variadic: false
-        });
-
-        let fn_sig = match fn_ty.sty {
-            ty::ty_bare_fn(_, &ty::BareFnTy {ref sig, ..}) |
-            ty::ty_closure(box ty::ClosureTy {ref sig, ..}) => sig,
-            _ => {
-                fcx.type_error_message(call_expr.span, |actual| {
-                    format!("expected function, found `{}`", actual)
-                }, fn_ty, None);
-                &error_fn_sig
-            }
-        };
-
-        // Replace any late-bound regions that appear in the function
-        // signature with region variables. We also have to
-        // renormalize the associated types at this point, since they
-        // previously appeared within a `Binder<>` and hence would not
-        // have been normalized before.
-        let fn_sig =
-            fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
-                                                                  infer::FnCall,
-                                                                  fn_sig).0;
-        let fn_sig =
-            fcx.normalize_associated_types_in(call_expr.span,
-                                              &fn_sig);
-
-        // Call the generic checker.
-        check_argument_types(fcx,
-                             call_expr.span,
-                             fn_sig.inputs[],
-                             f,
-                             args,
-                             AutorefArgs::No,
-                             fn_sig.variadic,
-                             DontTupleArguments);
-
-        write_call(fcx, call_expr, fn_sig.output);
-    }
 
     // Checks a method call.
     fn check_method_call(fcx: &FnCtxt,
@@ -4164,24 +4053,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         check_block_with_expected(fcx, &**b, expected);
         fcx.write_ty(id, fcx.node_ty(b.id));
       }
-      ast::ExprCall(ref f, ref args) => {
-          // Index expressions need to be handled separately, to inform them
-          // that they appear in call position.
-          check_expr(fcx, &**f);
-          let f_ty = fcx.expr_ty(&**f);
-
-          let args: Vec<_> = args.iter().map(|x| x).collect();
-          if !try_overloaded_call(fcx, expr, &**f, f_ty, args[]) {
-              check_call(fcx, expr, &**f, args[]);
-              let args_err = args.iter().fold(false,
-                 |rest_err, a| {
-                     // is this not working?
-                     let a_ty = fcx.expr_ty(&***a);
-                     rest_err || ty::type_is_error(a_ty)});
-              if ty::type_is_error(f_ty) || args_err {
-                  fcx.write_error(id);
-              }
-          }
+      ast::ExprCall(ref callee, ref args) => {
+          callee::check_call(fcx, expr, &**callee, args.as_slice());
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
         check_method_call(fcx, expr, ident, args[], tps[], lvalue_pref);

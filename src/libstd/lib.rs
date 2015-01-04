@@ -230,12 +230,12 @@ pub mod task;
 pub mod thread;
 pub mod sync;
 
+#[path = "sys/common/mod.rs"] mod sys_common;
+
 #[cfg(unix)]
 #[path = "sys/unix/mod.rs"] mod sys;
 #[cfg(windows)]
 #[path = "sys/windows/mod.rs"] mod sys;
-
-#[path = "sys/common/mod.rs"] mod sys_common;
 
 pub mod rt;
 mod failure;
