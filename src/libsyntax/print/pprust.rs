@@ -1537,6 +1537,9 @@ impl<'a> State<'a> {
 
             ast::ExprStruct(ref path, ref fields, ref wth) => {
                 try!(self.print_path(path, true));
+                if fields.is_empty() && wth.is_none() {
+                    return;
+                }
                 try!(word(&mut self.s, "{"));
                 try!(self.commasep_cmnt(
                     Consistent,
@@ -1560,7 +1563,7 @@ impl<'a> State<'a> {
                         try!(self.print_expr(&**expr));
                         try!(self.end());
                     }
-                    _ => try!(word(&mut self.s, ","))
+                    _ => try!(word(&mut self.s, ",")),
                 }
                 try!(word(&mut self.s, "}"));
             }
