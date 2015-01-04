@@ -4,9 +4,7 @@
 
 # Summary
 
-This RFC proposes that we rename the pointer-sized integer types `int/uint` to stress the fact that they are pointer-sized, so as to avoid misconceptions and misuses.
-
-Also, please see **Alternative C and D** for a possible alternative/enhancement that may or may not be a better solution.
+This RFC proposes that we rename the pointer-sized integer types `int/uint` to stress the fact that they are pointer-sized, so as to avoid misconceptions and misuses. Among all the candidates, this RFC author (@CloudiDust) considers `imem/umem` to be his favourite names.
 
 # Motivation
 
@@ -44,7 +42,7 @@ Before the rejection of [RFC PR 464](https://github.com/rust-lang/rfcs/pull/464)
 
 This RFC originally proposed a new pair of alternatives `intx/uintx`.
 
-However, given the discussions about the previous revisions of this RFC, and the discussions in [Restarting the `int/uint` Discussion]( http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), this RFC author (@CloudiDust) now believes that `iptr/uptr` and `imem/umem` can still be viable candidates.
+However, given the discussions about the previous revisions of this RFC, and the discussions in [Restarting the `int/uint` Discussion]( http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), this RFC author now believes that `iptr/uptr` and `imem/umem` can still be viable candidates.
 
 This RFC also proposes two more pairs of candidates: `intp/uintp` and `intm/uintm`, which are actually variants of the above, but stress the `int` part instead of the `ptr`/`mem` part, which may make them subjectively better (or worse), as some would think `iptr/uptr` and `imem/umem` stress the wrong part of the name, and don't look like integer types.
 
@@ -120,9 +118,17 @@ But how about the other use cases of `int/uint` especially the "storing casted p
 
 ## D. Rename `int/uint` to `iptr/uptr`, with `idiff/usize` being aliases and preferred in container method signatures.
 
-Best of both worlds, maybe? This author believes that if `imem/umem` are deemed too foreign (and quite a few people do think so), then this can be a good solution.
+Best of both worlds, maybe?
+
+`iptr/uptr` will be used for storing casted pointer values, while `idiff/usize` will be used for offsets and sizes/indices, respectively.
 
 We may even treat `iptr/uptr` and `idiff/usize` as different types to prevent people from accidentally mixing their usage.
+
+This will bring the Rust type names quite in line with the standard C99 type names, which may be a plus from the familiarity point of view.
+
+However, this setup brings two sets of types that share the same underlying representations, which also brings confusion. Furthermore, C distinguishes between `size_t`/`uintptr_t`/`intptr_t`/`ptrdiff_t` not only because they are used under different circumstances, but also because the four may have representations that are potentially different from *each other* on some architectures. Rust assumes a flat memory address space and its `int/uint` types don't exactly share semantics with any of the C types if the C standard is strictly followed. Thus, this RFC author believes that, it is better to completely forego type names that will remind people of the C types.
+
+`imem/umem` are still the better choices.
 
 # Unresolved questions
 
