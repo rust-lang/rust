@@ -10,11 +10,11 @@
 
 use super::probe;
 
-use check::{mod, FnCtxt, NoPreference, PreferMutLvalue, callee, demand};
+use check::{self, FnCtxt, NoPreference, PreferMutLvalue, callee, demand};
 use middle::mem_categorization::Typer;
-use middle::subst::{mod};
+use middle::subst::{self};
 use middle::traits;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
                  MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
 use middle::ty_fold::TypeFoldable;

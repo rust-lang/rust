@@ -66,7 +66,7 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     use mem;
     use os;
     use rt;
-    use sys_common::thread_info::{mod, NewThread};
+    use sys_common::thread_info::{self, NewThread};
     use sys_common;
     use thread::Thread;
 

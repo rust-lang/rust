@@ -27,7 +27,7 @@
 
 use prelude::v1::*;
 
-use io::{mod, IoError, IoResult, MemReader};
+use io::{self, IoError, IoResult, MemReader};
 use iter::repeat;
 use libc::types::os::arch::extra::LPCVOID;
 use libc::{c_int, HANDLE, LPDWORD, DWORD, LPVOID};

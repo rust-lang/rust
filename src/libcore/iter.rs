@@ -885,7 +885,7 @@ impl<A, B, I, F> ExactSizeIterator for Map<A, B, I, F> where
 impl<A, B> ExactSizeIterator for Zip<A, B> where A: ExactSizeIterator, B: ExactSizeIterator {}
 
 /// An double-ended iterator with the direction inverted
-#[deriving(Clone)]
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Rev<T> {
@@ -1153,7 +1153,7 @@ impl<T, I> IteratorOrdExt<T> for I where I: Iterator<Item=T>, T: Ord {
 }
 
 /// `MinMaxResult` is an enum returned by `min_max`. See `IteratorOrdExt::min_max` for more detail.
-#[deriving(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Show)]
 #[unstable = "waiting on namespaced enum conventions"]
 pub enum MinMaxResult<T> {
     /// Empty iterator
@@ -1176,7 +1176,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::MinMaxResult::{mod, NoElements, OneElement, MinMax};
+    /// use std::iter::MinMaxResult::{self, NoElements, OneElement, MinMax};
     ///
     /// let r: MinMaxResult<int> = NoElements;
     /// assert_eq!(r.into_option(), None);
@@ -1280,7 +1280,7 @@ impl<I> CloneIteratorExt for I where I: Iterator + Clone {
 }
 
 /// An iterator that repeats endlessly
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Cycle<I> {
@@ -1338,7 +1338,7 @@ impl<I> RandomAccessIterator for Cycle<I> where
 }
 
 /// An iterator that strings two iterators together
-#[deriving(Clone)]
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Chain<A, B> {
@@ -1418,7 +1418,7 @@ impl<T, A, B> RandomAccessIterator for Chain<A, B> where
 }
 
 /// An iterator that iterates two other iterators simultaneously
-#[deriving(Clone)]
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Zip<A, B> {
@@ -1517,7 +1517,7 @@ pub struct Map<A, B, I: Iterator<Item=A>, F: FnMut(A) -> B> {
     f: F,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<A, B, I, F> Clone for Map<A, B, I, F> where
     I: Clone + Iterator<Item=A>,
@@ -1594,7 +1594,7 @@ pub struct Filter<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
     predicate: P,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<A, I, P> Clone for Filter<A, I, P> where
     I: Clone + Iterator<Item=A>,
@@ -1655,7 +1655,7 @@ pub struct FilterMap<A, B, I, F> where I: Iterator<Item=A>, F: FnMut(A) -> Optio
     f: F,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<A, B, I, F> Clone for FilterMap<A, B, I, F> where
     I: Clone + Iterator<Item=A>,
@@ -1712,7 +1712,7 @@ impl<A, B, I, F> DoubleEndedIterator for FilterMap<A, B, I, F> where
 }
 
 /// An iterator that yields the current count and the element during iteration
-#[deriving(Clone)]
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Enumerate<I> {
@@ -1775,7 +1775,7 @@ impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
 /// An iterator with a `peek()` that returns an optional reference to the next element.
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Peekable<T, I> where I: Iterator<Item=T> {
     iter: I,
     peeked: Option<T>,
@@ -1837,7 +1837,7 @@ pub struct SkipWhile<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
     predicate: P,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<A, I, P> Clone for SkipWhile<A, I, P> where
     I: Clone + Iterator<Item=A>,
@@ -1883,7 +1883,7 @@ pub struct TakeWhile<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
     predicate: P,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<A, I, P> Clone for TakeWhile<A, I, P> where
     I: Clone + Iterator<Item=A>,
@@ -1929,7 +1929,7 @@ impl<A, I, P> Iterator for TakeWhile<A, I, P> where I: Iterator<Item=A>, P: FnMu
 }
 
 /// An iterator that skips over `n` elements of `iter`.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Skip<I> {
@@ -1999,7 +1999,7 @@ impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
 }
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Take<I> {
@@ -2065,7 +2065,7 @@ pub struct Scan<A, B, I, St, F> where I: Iterator, F: FnMut(&mut St, A) -> Optio
     pub state: St,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<A, B, I, St, F> Clone for Scan<A, B, I, St, F> where
     I: Clone + Iterator<Item=A>,
@@ -2116,7 +2116,7 @@ pub struct FlatMap<A, B, I, U, F> where
     backiter: Option<U>,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<A, B, I, U, F> Clone for FlatMap<A, B, I, U, F> where
     I: Clone + Iterator<Item=A>,
@@ -2193,7 +2193,7 @@ impl<A, B, I, U, F> DoubleEndedIterator for FlatMap<A, B, I, U, F> where
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable]
 pub struct Fuse<I> {
@@ -2281,7 +2281,7 @@ pub struct Inspect<A, I, F> where I: Iterator<Item=A>, F: FnMut(&A) {
     f: F,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<A, I, F> Clone for Inspect<A, I, F> where
     I: Clone + Iterator<Item=A>,
@@ -2391,7 +2391,7 @@ pub struct Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     pub state: St,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable]
 impl<A, St, F> Clone for Unfold<A, St, F> where
     F: Clone + FnMut(&mut St) -> Option<A>,
@@ -2436,7 +2436,7 @@ impl<A, St, F> Iterator for Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A
 
 /// An infinite iterator starting at `start` and advancing by `step` with each
 /// iteration
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 #[unstable = "may be renamed"]
 pub struct Counter<A> {
     /// The current state the counter is at (next value to be yielded)
@@ -2470,7 +2470,7 @@ impl<A: Add<Output=A> + Clone> Iterator for Counter<A> {
 }
 
 /// An iterator over the range [start, stop)
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 #[unstable = "may be refactored due to numerics reform or ops reform"]
 pub struct Range<A> {
     state: A,
@@ -2565,7 +2565,7 @@ impl<A: Int + ToPrimitive> DoubleEndedIterator for Range<A> {
 }
 
 /// An iterator over the range [start, stop]
-#[deriving(Clone)]
+#[derive(Clone)]
 #[unstable = "may be refactored due to numerics reform or ops reform"]
 pub struct RangeInclusive<A> {
     range: Range<A>,
@@ -2635,7 +2635,7 @@ impl<A: Int + ToPrimitive> DoubleEndedIterator for RangeInclusive<A> {
 }
 
 /// An iterator over the range [start, stop) by `step`. It handles overflow by stopping.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[unstable = "may be refactored due to numerics reform or ops reform"]
 pub struct RangeStep<A> {
     state: A,
@@ -2672,7 +2672,7 @@ impl<A: Int> Iterator for RangeStep<A> {
 }
 
 /// An iterator over the range [start, stop] by `step`. It handles overflow by stopping.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[unstable = "may be refactored due to numerics reform or ops reform"]
 pub struct RangeStepInclusive<A> {
     state: A,
@@ -2775,7 +2775,7 @@ step_impl_no_between!(u64 i64);
 
 
 /// An iterator that repeats an element endlessly
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct Repeat<A> {
     element: A

@@ -87,7 +87,7 @@ use c_str::CString;
 use io::{IoResult, Writer};
 use libc;
 use mem;
-use option::Option::{mod, Some, None};
+use option::Option::{self, Some, None};
 use result::Result::{Ok, Err};
 use sync::{StaticMutex, MUTEX_INIT};
 

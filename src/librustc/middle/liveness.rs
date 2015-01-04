@@ -120,13 +120,13 @@ use util::nodemap::NodeMap;
 use std::{fmt, io, uint};
 use std::rc::Rc;
 use std::iter::repeat;
-use syntax::ast::{mod, NodeId, Expr};
+use syntax::ast::{self, NodeId, Expr};
 use syntax::codemap::{BytePos, original_sp, Span};
-use syntax::parse::token::{mod, special_idents};
+use syntax::parse::token::{self, special_idents};
 use syntax::print::pprust::{expr_to_string, block_to_string};
 use syntax::ptr::P;
 use syntax::ast_util;
-use syntax::visit::{mod, Visitor, FnKind};
+use syntax::visit::{self, Visitor, FnKind};
 
 /// For use with `propagate_through_loop`.
 enum LoopKind<'a> {
@@ -138,10 +138,10 @@ enum LoopKind<'a> {
     ForLoop(&'a ast::Pat),
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 struct Variable(uint);
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 struct LiveNode(uint);
 
 impl Variable {
@@ -158,7 +158,7 @@ impl Clone for LiveNode {
     }
 }
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 enum LiveNodeKind {
     FreeVarNode(Span),
     ExprNode(Span),
@@ -244,13 +244,13 @@ struct CaptureInfo {
     var_nid: NodeId
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 struct LocalInfo {
     id: NodeId,
     ident: ast::Ident
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 enum VarKind {
     Arg(NodeId, ast::Ident),
     Local(LocalInfo),
@@ -529,7 +529,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
 // Actually we compute just a bit more than just liveness, but we use
 // the same basic propagation framework in all cases.
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 struct Users {
     reader: LiveNode,
     writer: LiveNode,
@@ -544,7 +544,7 @@ fn invalid_users() -> Users {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct Specials {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,

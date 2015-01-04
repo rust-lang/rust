@@ -11,7 +11,7 @@
 //! Generic hashing support.
 //!
 //! This module provides a generic way to compute the hash of a value. The
-//! simplest way to make a type hashable is to use `#[deriving(Hash)]`:
+//! simplest way to make a type hashable is to use `#[derive(Hash)]`:
 //!
 //! # Examples
 //!
@@ -19,7 +19,7 @@
 //! use std::hash;
 //! use std::hash::Hash;
 //!
-//! #[deriving(Hash)]
+//! #[derive(Hash)]
 //! struct Person {
 //!     id: uint,
 //!     name: String,

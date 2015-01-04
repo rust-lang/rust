@@ -61,7 +61,7 @@ use trans::datum;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{mod, Ty, UnboxedClosureTyper};
+use middle::ty::{self, Ty, UnboxedClosureTyper};
 use middle::ty::Disr;
 use syntax::ast;
 use syntax::attr;
@@ -71,7 +71,7 @@ use util::ppaux::ty_to_string;
 type Hint = attr::ReprAttr;
 
 /// Representations.
-#[deriving(Eq, PartialEq, Show)]
+#[derive(Eq, PartialEq, Show)]
 pub enum Repr<'tcx> {
     /// C-like enums; basically an int.
     CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
@@ -116,7 +116,7 @@ pub enum Repr<'tcx> {
 }
 
 /// For structs, and struct-like parts of anything fancier.
-#[deriving(Eq, PartialEq, Show)]
+#[derive(Eq, PartialEq, Show)]
 pub struct Struct<'tcx> {
     // If the struct is DST, then the size and alignment do not take into
     // account the unsized fields of the struct.
@@ -469,7 +469,7 @@ fn mk_struct<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct IntBounds {
     slo: i64,
     shi: i64,

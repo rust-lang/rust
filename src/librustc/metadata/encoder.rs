@@ -23,7 +23,7 @@ use metadata::decoder;
 use metadata::tyencode;
 use middle::def;
 use middle::ty::{lookup_item_type};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::stability;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
@@ -32,7 +32,7 @@ use std::cell::RefCell;
 use std::hash::Hash;
 use std::hash;
 use syntax::abi;
-use syntax::ast::{mod, DefId, NodeId};
+use syntax::ast::{self, DefId, NodeId};
 use syntax::ast_map::{PathElem, PathElems};
 use syntax::ast_map;
 use syntax::ast_util::*;
@@ -98,7 +98,7 @@ pub fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
     rbml_w.wr_tagged_str(tag_def_id, def_to_string(id)[]);
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 struct entry<T> {
     val: T,
     pos: u64

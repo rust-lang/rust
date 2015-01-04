@@ -19,7 +19,7 @@ use option::Option::None;
 use result::Result::{Err, Ok};
 use io;
 use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
-use slice::{mod, AsSlice, SliceExt};
+use slice::{self, AsSlice, SliceExt};
 use vec::Vec;
 
 const BUF_CAPACITY: uint = 128;
@@ -65,7 +65,7 @@ impl Writer for Vec<u8> {
 /// assert_eq!(w.into_inner(), vec!(0, 1, 2));
 /// ```
 #[deprecated = "use the Vec<u8> Writer implementation directly"]
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct MemWriter {
     buf: Vec<u8>,
 }

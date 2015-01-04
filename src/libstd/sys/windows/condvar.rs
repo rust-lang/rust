@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use cell::UnsafeCell;
-use libc::{mod, DWORD};
+use libc::{self, DWORD};
 use os;
-use sys::mutex::{mod, Mutex};
+use sys::mutex::{self, Mutex};
 use sys::sync as ffi;
 use time::Duration;
 

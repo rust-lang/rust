@@ -36,14 +36,14 @@ pub use self::Dest::*;
 use self::lazy_binop_ty::*;
 
 use back::abi;
-use llvm::{mod, ValueRef};
+use llvm::{self, ValueRef};
 use middle::def;
 use middle::mem_categorization::Typer;
-use middle::subst::{mod, Substs};
+use middle::subst::{self, Substs};
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
-use trans::cleanup::{mod, CleanupMethods};
+use trans::cleanup::{self, CleanupMethods};
 use trans::common::*;
 use trans::datum::*;
 use trans::debuginfo;
@@ -56,7 +56,7 @@ use trans::type_of;
 use middle::ty::{struct_fields, tup_fields};
 use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustAddEnv, AutoUnsafe};
 use middle::ty::{AutoPtr};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::common::indenter;
 use util::ppaux::Repr;
@@ -75,7 +75,7 @@ use std::iter::repeat;
 // These are passed around by the code generating functions to track the
 // destination of a computation's value.
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum Dest {
     SaveIn(ValueRef),
     Ignore,
@@ -1978,7 +1978,7 @@ fn float_cast(bcx: Block,
     } else { llsrc };
 }
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum cast_kind {
     cast_pointer,
     cast_integral,

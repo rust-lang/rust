@@ -27,14 +27,14 @@ use std::fmt;
 use std::iter::{range_inclusive, AdditiveIterator, FromIterator, repeat};
 use std::num::Float;
 use std::slice;
-use syntax::ast::{mod, DUMMY_NODE_ID, NodeId, Pat};
+use syntax::ast::{self, DUMMY_NODE_ID, NodeId, Pat};
 use syntax::ast_util::walk_pat;
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use syntax::fold::{Folder, noop_fold_pat};
 use syntax::print::pprust::pat_to_string;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::visit::{mod, Visitor, FnKind};
+use syntax::visit::{self, Visitor, FnKind};
 use util::ppaux::ty_to_string;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
@@ -102,7 +102,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub param_env: ParameterEnvironment<'a, 'tcx>,
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Constructor {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g. struct patterns and fixed-length arrays.
@@ -119,14 +119,14 @@ pub enum Constructor {
     SliceWithSubslice(uint, uint)
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 enum Usefulness {
     Useful,
     UsefulWithWitness(Vec<P<Pat>>),
     NotUseful
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness

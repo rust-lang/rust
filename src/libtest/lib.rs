@@ -73,7 +73,7 @@ use std::num::{Float, FloatMath, Int};
 use std::os;
 use std::str::{FromStr, from_str};
 use std::sync::mpsc::{channel, Sender};
-use std::thread::{mod, Thread};
+use std::thread::{self, Thread};
 use std::thunk::{Thunk, Invoke};
 use std::time::Duration;
 
@@ -95,7 +95,7 @@ pub mod stats;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(String)
@@ -114,7 +114,7 @@ impl Show for TestName {
     }
 }
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 enum NamePadding {
     PadNone,
     PadOnLeft,
@@ -189,14 +189,14 @@ impl fmt::Show for TestFn {
 /// This is feed into functions marked with `#[bench]` to allow for
 /// set-up & tear-down before running a piece of code repeatedly via a
 /// call to `iter`.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Bencher {
     iterations: u64,
     dur: Duration,
     pub bytes: u64,
 }
 
-#[deriving(Copy, Clone, Show, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Show, PartialEq, Eq, Hash)]
 pub enum ShouldFail {
     No,
     Yes(Option<&'static str>)
@@ -204,20 +204,20 @@ pub enum ShouldFail {
 
 // The definition of a single test. A test runner will run a list of
 // these.
-#[deriving(Clone, Show, PartialEq, Eq, Hash)]
+#[derive(Clone, Show, PartialEq, Eq, Hash)]
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
     pub should_fail: ShouldFail,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub struct TestDescAndFn {
     pub desc: TestDesc,
     pub testfn: TestFn,
 }
 
-#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show, Copy)]
 pub struct Metric {
     value: f64,
     noise: f64
@@ -229,7 +229,7 @@ impl Metric {
     }
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub struct MetricMap(BTreeMap<String,Metric>);
 
 impl Clone for MetricMap {
@@ -240,7 +240,7 @@ impl Clone for MetricMap {
 }
 
 /// Analysis of a single change in metric
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum MetricChange {
     LikelyNoise,
     MetricAdded,
@@ -285,7 +285,7 @@ pub fn test_main_static(args: &[String], tests: &[TestDescAndFn]) {
     test_main(args, owned_tests)
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum ColorConfig {
     AutoColor,
     AlwaysColor,
@@ -510,13 +510,13 @@ pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
 }
 
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct BenchSamples {
     ns_iter_summ: stats::Summary<f64>,
     mb_s: uint,
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum TestResult {
     TrOk,
     TrFailed,
@@ -969,7 +969,7 @@ fn use_color(opts: &TestOpts) -> bool {
     }
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 enum TestEvent {
     TeFiltered(Vec<TestDesc> ),
     TeWait(TestDesc, NamePadding),

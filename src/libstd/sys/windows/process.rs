@@ -24,7 +24,7 @@ use hash::Hash;
 use io::{IoResult, IoError};
 
 use sys::fs;
-use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval, timer};
+use sys::{self, retry, c, wouldblock, set_nonblocking, ms_to_timeval, timer};
 use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
 use sys_common::{AsInner, mkerr_libc, timeout};

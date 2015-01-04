@@ -20,7 +20,7 @@ use std::thunk::Thunk;
 
 use std::collections::{HashSet, HashMap};
 use testing;
-use rustc::session::{mod, config};
+use rustc::session::{self, config};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_driver::driver;
 use syntax::ast;

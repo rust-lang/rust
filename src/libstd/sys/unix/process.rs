@@ -15,15 +15,15 @@ use c_str::{CString, ToCStr};
 use collections;
 use hash::Hash;
 use io::process::{ProcessExit, ExitStatus, ExitSignal};
-use io::{mod, IoResult, IoError, EndOfFile};
-use libc::{mod, pid_t, c_void, c_int};
+use io::{self, IoResult, IoError, EndOfFile};
+use libc::{self, pid_t, c_void, c_int};
 use mem;
 use os;
 use path::BytesContainer;
 use ptr;
 use sync::mpsc::{channel, Sender, Receiver};
 use sys::fs::FileDesc;
-use sys::{mod, retry, c, wouldblock, set_nonblocking, ms_to_timeval};
+use sys::{self, retry, c, wouldblock, set_nonblocking, ms_to_timeval};
 use sys_common::helper_thread::Helper;
 use sys_common::{AsInner, mkerr_libc, timeout};
 

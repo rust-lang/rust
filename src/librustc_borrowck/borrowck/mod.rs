@@ -25,7 +25,7 @@ use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::region;
-use rustc::middle::ty::{mod, Ty};
+use rustc::middle::ty::{self, Ty};
 use rustc::util::ppaux::{note_and_explain_region, Repr, UserString};
 use std::rc::Rc;
 use std::string::String;
@@ -56,7 +56,7 @@ pub mod gather_loans;
 
 pub mod move_data;
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
@@ -287,7 +287,7 @@ impl<'tcx> Loan<'tcx> {
     }
 }
 
-#[deriving(Eq, Hash, Show)]
+#[derive(Eq, Hash, Show)]
 pub struct LoanPath<'tcx> {
     kind: LoanPathKind<'tcx>,
     ty: ty::Ty<'tcx>,
@@ -302,7 +302,7 @@ impl<'tcx> PartialEq for LoanPath<'tcx> {
     }
 }
 
-#[deriving(PartialEq, Eq, Hash, Show)]
+#[derive(PartialEq, Eq, Hash, Show)]
 pub enum LoanPathKind<'tcx> {
     LpVar(ast::NodeId),                         // `x` in doc.rs
     LpUpvar(ty::UpvarId),                       // `x` captured by-value into closure
@@ -323,7 +323,7 @@ impl<'tcx> LoanPath<'tcx> {
 //     b2b39e8700e37ad32b486b9a8409b50a8a53aa51#commitcomment-7892003
 static DOWNCAST_PRINTED_OPERATOR : &'static str = " as ";
 
-#[deriving(Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Hash, Show)]
 pub enum LoanPathElem {
     LpDeref(mc::PointerKind),    // `*LV` in doc.rs
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
@@ -472,7 +472,7 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
 // Errors
 
 // Errors that can occur
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 #[allow(missing_copy_implementations)]
 pub enum bckerr_code {
     err_mutbl,
@@ -482,7 +482,7 @@ pub enum bckerr_code {
 
 // Combination of an error code and the categorization of the expression
 // that caused it
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub struct BckError<'tcx> {
     span: Span,
     cause: euv::LoanCause,
@@ -490,13 +490,13 @@ pub struct BckError<'tcx> {
     code: bckerr_code
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum AliasableViolationKind {
     MutabilityViolation,
     BorrowViolation(euv::LoanCause)
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum MovedValueUseKind {
     MovedInUse,
     MovedInCapture,

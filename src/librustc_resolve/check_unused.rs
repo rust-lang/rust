@@ -28,7 +28,7 @@ use syntax::ast;
 use syntax::ast::{ViewItem, ViewItemExternCrate, ViewItemUse};
 use syntax::ast::{ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::codemap::{Span, DUMMY_SP};
-use syntax::visit::{mod, Visitor};
+use syntax::visit::{self, Visitor};
 
 struct UnusedImportCheckVisitor<'a, 'b:'a, 'tcx:'b> {
     resolver: &'a mut Resolver<'b, 'tcx>

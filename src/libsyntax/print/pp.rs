@@ -67,25 +67,25 @@ use std::io;
 use std::string;
 use std::iter::repeat;
 
-#[deriving(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Breaks {
     Consistent,
     Inconsistent,
 }
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct BreakToken {
     offset: int,
     blank_space: int
 }
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct BeginToken {
     offset: int,
     breaks: Breaks
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum Token {
     String(string::String, int),
     Break(BreakToken),
@@ -148,13 +148,13 @@ pub fn buf_str(toks: Vec<Token>,
     s
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum PrintStackBreak {
     Fits,
     Broken(Breaks),
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct PrintStackElem {
     offset: int,
     pbreak: PrintStackBreak

@@ -31,7 +31,7 @@ unsafe impl Zeroable for u64 {}
 /// A wrapper type for raw pointers and integers that will never be
 /// NULL or 0 that might allow certain optimizations.
 #[lang="non_zero"]
-#[deriving(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Show)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Show)]
 #[experimental]
 pub struct NonZero<T: Zeroable>(T);
 

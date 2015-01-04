@@ -17,7 +17,7 @@ use core::prelude::*;
 use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
-use core::iter::{mod, FromIterator, RandomAccessIterator};
+use core::iter::{self, FromIterator, RandomAccessIterator};
 use core::kinds::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
@@ -1139,7 +1139,7 @@ pub struct Iter<'a, T:'a> {
     head: uint
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> {
         Iter {
@@ -1674,21 +1674,21 @@ mod tests {
         })
     }
 
-    #[deriving(Clone, PartialEq, Show)]
+    #[derive(Clone, PartialEq, Show)]
     enum Taggy {
         One(int),
         Two(int, int),
         Three(int, int, int),
     }
 
-    #[deriving(Clone, PartialEq, Show)]
+    #[derive(Clone, PartialEq, Show)]
     enum Taggypar<T> {
         Onepar(int),
         Twopar(int, int),
         Threepar(int, int, int),
     }
 
-    #[deriving(Clone, PartialEq, Show)]
+    #[derive(Clone, PartialEq, Show)]
     struct RecCy {
         x: int,
         y: int,

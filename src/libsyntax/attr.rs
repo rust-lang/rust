@@ -277,7 +277,7 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<InternedString> {
     first_attr_value_str_by_name(attrs, "crate_name")
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum InlineAttr {
     InlineNone,
     InlineHint,
@@ -340,14 +340,14 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
 }
 
 /// Represents the #[deprecated="foo"] and friends attributes.
-#[deriving(RustcEncodable,RustcDecodable,Clone,Show)]
+#[derive(RustcEncodable,RustcDecodable,Clone,Show)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub text: Option<InternedString>
 }
 
 /// The available stability levels.
-#[deriving(RustcEncodable,RustcDecodable,PartialEq,PartialOrd,Clone,Show,Copy)]
+#[derive(RustcEncodable,RustcDecodable,PartialEq,PartialOrd,Clone,Show,Copy)]
 pub enum StabilityLevel {
     Deprecated,
     Experimental,
@@ -463,7 +463,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
     }
 }
 
-#[deriving(PartialEq, Show, RustcEncodable, RustcDecodable, Copy)]
+#[derive(PartialEq, Show, RustcEncodable, RustcDecodable, Copy)]
 pub enum ReprAttr {
     ReprAny,
     ReprInt(Span, IntType),
@@ -482,7 +482,7 @@ impl ReprAttr {
     }
 }
 
-#[deriving(Eq, Hash, PartialEq, Show, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Eq, Hash, PartialEq, Show, RustcEncodable, RustcDecodable, Copy)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)

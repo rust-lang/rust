@@ -193,7 +193,7 @@ use llvm::{ValueRef, BasicBlockRef};
 use middle::check_match::StaticInliner;
 use middle::check_match;
 use middle::const_eval;
-use middle::def::{mod, DefMap};
+use middle::def::{self, DefMap};
 use middle::expr_use_visitor as euv;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
@@ -204,15 +204,15 @@ use trans::build::{AddCase, And, BitCast, Br, CondBr, GEPi, InBoundsGEP, Load};
 use trans::build::{Mul, Not, Store, Sub, add_comment};
 use trans::build;
 use trans::callee;
-use trans::cleanup::{mod, CleanupMethods};
+use trans::cleanup::{self, CleanupMethods};
 use trans::common::*;
 use trans::consts;
 use trans::datum::*;
-use trans::expr::{mod, Dest};
+use trans::expr::{self, Dest};
 use trans::tvec;
 use trans::type_of;
 use trans::debuginfo;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use session::config::FullDebugInfo;
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
@@ -227,7 +227,7 @@ use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::ptr::P;
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
@@ -242,7 +242,7 @@ impl<'a> ConstantExpr<'a> {
 }
 
 // An option identifying a branch (either a literal, an enum variant or a range)
-#[deriving(Show)]
+#[derive(Show)]
 enum Opt<'a, 'tcx> {
     ConstantValue(ConstantExpr<'a>),
     ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>),
@@ -298,7 +298,7 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
     }
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum BranchKind {
     NoBranch,
     Single,
@@ -313,7 +313,7 @@ pub enum OptResult<'blk, 'tcx: 'blk> {
     LowerBound(Result<'blk, 'tcx>)
 }
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum TransBindingMode {
     TrByCopy(/* llbinding */ ValueRef),
     TrByMove,
@@ -327,7 +327,7 @@ pub enum TransBindingMode {
 /// - `trmode` is the trans binding mode
 /// - `id` is the node id of the binding
 /// - `ty` is the Rust type of the binding
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct BindingInfo<'tcx> {
     pub llmatch: ValueRef,
     pub trmode: TransBindingMode,

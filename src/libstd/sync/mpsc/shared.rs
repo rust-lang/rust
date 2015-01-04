@@ -27,7 +27,7 @@ use core::int;
 
 use sync::{atomic, Mutex, MutexGuard};
 use sync::mpsc::mpsc_queue as mpsc;
-use sync::mpsc::blocking::{mod, SignalToken};
+use sync::mpsc::blocking::{self, SignalToken};
 use sync::mpsc::select::StartResult;
 use sync::mpsc::select::StartResult::*;
 use thread::Thread;

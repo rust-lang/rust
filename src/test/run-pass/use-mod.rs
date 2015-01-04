@@ -26,7 +26,7 @@ mod foo {
 }
 
 mod baz {
-    use super::foo::{bar, mod};
+    use super::foo::{bar, self};
     pub use foo::Third;
 }
 

@@ -53,7 +53,7 @@ impl<'tcx> MoveError<'tcx> {
     }
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct MoveSpanAndPath {
     pub span: codemap::Span,
     pub ident: ast::Ident

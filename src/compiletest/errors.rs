@@ -30,7 +30,7 @@ pub struct ExpectedError {
 pub static EXPECTED_PATTERN : &'static str =
     r"//~(?P<follow>\|)?(?P<adjusts>\^*)\s*(?P<kind>\S*)\s*(?P<msg>.*)";
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 enum WhichLine { ThisLine, FollowPrevious(uint), AdjustBackward(uint) }
 
 // Load any test directives embedded in the file

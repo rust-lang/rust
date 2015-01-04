@@ -12,7 +12,7 @@ pub use self::RelationDir::*;
 use self::TypeVariableValue::*;
 use self::UndoEntry::*;
 
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use std::cmp::min;
 use std::mem;
 use std::u32;
@@ -46,7 +46,7 @@ struct Delegate;
 
 type Relation = (RelationDir, ty::TyVid);
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum RelationDir {
     SubtypeOf, SupertypeOf, EqTo
 }

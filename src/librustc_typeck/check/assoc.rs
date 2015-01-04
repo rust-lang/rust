@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use middle::infer::InferCtxt;
-use middle::traits::{mod, FulfillmentContext, Normalized, MiscObligation,
+use middle::traits::{self, FulfillmentContext, Normalized, MiscObligation,
                      SelectionContext, ObligationCause};
-use middle::ty::{mod, HasProjectionTypes};
+use middle::ty::{self, HasProjectionTypes};
 use middle::ty_fold::{TypeFoldable, TypeFolder};
 use syntax::ast;
 use syntax::codemap::Span;

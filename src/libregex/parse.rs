@@ -52,7 +52,7 @@ impl fmt::Show for Error {
 ///
 /// Note that this representation prevents one from reproducing the regex as
 /// it was typed. (But it could be used to reproduce an equivalent regex.)
-#[deriving(Show, Clone)]
+#[derive(Show, Clone)]
 pub enum Ast {
     Nothing,
     Literal(char, Flags),
@@ -69,14 +69,14 @@ pub enum Ast {
     Rep(Box<Ast>, Repeater, Greed),
 }
 
-#[deriving(Show, PartialEq, Clone)]
+#[derive(Show, PartialEq, Clone)]
 pub enum Repeater {
     ZeroOne,
     ZeroMore,
     OneMore,
 }
 
-#[deriving(Copy, Show, Clone)]
+#[derive(Copy, Show, Clone)]
 pub enum Greed {
     Greedy,
     Ungreedy,
@@ -103,7 +103,7 @@ impl Greed {
 /// constructing an abstract syntax tree. Its central purpose is to facilitate
 /// parsing groups and alternations while also maintaining a stack of flag
 /// state.
-#[deriving(Show)]
+#[derive(Show)]
 enum BuildAst {
     Expr(Ast),
     Paren(Flags, uint, String), // '('

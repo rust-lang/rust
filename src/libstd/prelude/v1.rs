@@ -30,9 +30,9 @@
 #[stable] #[doc(no_inline)] pub use iter::ExactSizeIterator;
 #[stable] #[doc(no_inline)] pub use iter::{Iterator, IteratorExt, Extend};
 #[stable] #[doc(no_inline)] pub use iter::{IteratorCloneExt, IteratorOrdExt};
-#[stable] #[doc(no_inline)] pub use option::Option::{mod, Some, None};
+#[stable] #[doc(no_inline)] pub use option::Option::{self, Some, None};
 #[stable] #[doc(no_inline)] pub use ptr::{PtrExt, MutPtrExt};
-#[stable] #[doc(no_inline)] pub use result::Result::{mod, Ok, Err};
+#[stable] #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
 #[stable] #[doc(no_inline)] pub use slice::AsSlice;
 #[stable] #[doc(no_inline)] pub use slice::{SliceExt, SliceConcatExt};
 #[stable] #[doc(no_inline)] pub use str::{Str, StrExt};

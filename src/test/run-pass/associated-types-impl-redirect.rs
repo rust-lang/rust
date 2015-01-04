@@ -20,7 +20,7 @@
 #![no_implicit_prelude]
 
 use std::kinds::Sized;
-use std::option::Option::{None, Some, mod};
+use std::option::Option::{None, Some, self};
 
 trait Iterator {
     type Item;

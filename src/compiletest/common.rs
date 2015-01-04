@@ -13,7 +13,7 @@ use std::fmt;
 use std::str::FromStr;
 use regex::Regex;
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Mode {
     CompileFail,
     RunFail,
@@ -59,7 +59,7 @@ impl fmt::Show for Mode {
     }
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Config {
     // The library paths required for running the compiler
     pub compile_lib_path: String,

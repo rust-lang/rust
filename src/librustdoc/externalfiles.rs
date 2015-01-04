@@ -10,7 +10,7 @@
 
 use std::{io, str};
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct ExternalHtml{
     pub in_header: String,
     pub before_content: String,

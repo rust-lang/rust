@@ -22,10 +22,10 @@ use trans::common::*;
 use trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
 use trans::debuginfo;
 use trans::expr;
-use trans::monomorphize::{mod, MonoId};
+use trans::monomorphize::{self, MonoId};
 use trans::type_of::*;
 use trans::type_::Type;
-use middle::ty::{mod, Ty, UnboxedClosureTyper};
+use middle::ty::{self, Ty, UnboxedClosureTyper};
 use middle::subst::{Substs};
 use session::config::FullDebugInfo;
 use util::ppaux::Repr;
@@ -101,7 +101,7 @@ use syntax::ast_util;
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct EnvValue<'tcx> {
     action: ast::CaptureClause,
     datum: Datum<'tcx, Lvalue>
@@ -348,7 +348,7 @@ fn fill_fn_pair(bcx: Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef) 
     Store(bcx, llenvptr, GEPi(bcx, pair, &[0u, abi::FAT_PTR_EXTRA]));
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub enum ClosureKind<'tcx> {
     NotClosure,
     // See load_environment.

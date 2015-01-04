@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use syntax::ast;
 
 use self::SimplifiedType::*;
 
 /// See `simplify_type
-#[deriving(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SimplifiedType {
     BoolSimplifiedType,
     CharSimplifiedType,

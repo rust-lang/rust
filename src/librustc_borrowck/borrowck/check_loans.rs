@@ -213,7 +213,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     }
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum UseError<'tcx> {
     UseOk,
     UseWhileBorrowed(/*loan*/Rc<LoanPath<'tcx>>, /*loan*/Span)

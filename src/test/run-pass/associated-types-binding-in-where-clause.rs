@@ -17,7 +17,7 @@ pub trait Foo {
     fn boo(&self) -> <Self as Foo>::A;
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 struct Bar;
 
 impl Foo for int {

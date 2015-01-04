@@ -13,7 +13,7 @@
 pub use self::WfConstraint::*;
 
 use middle::subst::{ParamSpace, Subst, Substs};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder};
 
 use syntax::ast;

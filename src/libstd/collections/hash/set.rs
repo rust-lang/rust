@@ -20,10 +20,10 @@ use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{Iterator, IteratorExt, IteratorCloneExt, FromIterator, Map, Chain, Extend};
 use ops::{BitOr, BitAnd, BitXor, Sub};
-use option::Option::{Some, None, mod};
+use option::Option::{Some, None, self};
 use result::Result::{Ok, Err};
 
-use super::map::{mod, HashMap, Keys, INITIAL_CAPACITY};
+use super::map::{self, HashMap, Keys, INITIAL_CAPACITY};
 
 // Future Optimization (FIXME!)
 // =============================
@@ -71,7 +71,7 @@ use super::map::{mod, HashMap, Keys, INITIAL_CAPACITY};
 ///
 /// ```
 /// use std::collections::HashSet;
-/// #[deriving(Hash, Eq, PartialEq, Show)]
+/// #[derive(Hash, Eq, PartialEq, Show)]
 /// struct Viking<'a> {
 ///     name: &'a str,
 ///     power: uint,
@@ -89,7 +89,7 @@ use super::map::{mod, HashMap, Keys, INITIAL_CAPACITY};
 ///     println!("{}", x);
 /// }
 /// ```
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct HashSet<T, H = RandomSipHasher> {
     map: HashMap<T, (), H>

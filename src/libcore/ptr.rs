@@ -91,11 +91,11 @@
 use mem;
 use clone::Clone;
 use intrinsics;
-use option::Option::{mod, Some, None};
+use option::Option::{self, Some, None};
 use kinds::{Send, Sized, Sync};
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd, Equiv};
-use cmp::Ordering::{mod, Less, Equal, Greater};
+use cmp::Ordering::{self, Less, Equal, Greater};
 
 // FIXME #19649: instrinsic docs don't render, so these have no docs :(
 

@@ -17,7 +17,7 @@ use util::nodemap::NodeMap;
 
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
-use syntax::diagnostic::{mod, Emitter};
+use syntax::diagnostic::{self, Emitter};
 use syntax::diagnostics;
 use syntax::feature_gate;
 use syntax::parse;

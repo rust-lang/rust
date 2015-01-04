@@ -36,7 +36,7 @@
 //!   implementation changes (using a special thread-local heap, for example).
 //!   Moreover, a switch to, e.g. `P<'a, T>` would be easy and mostly automated.
 
-use std::fmt::{mod, Show};
+use std::fmt::{self, Show};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::ptr;

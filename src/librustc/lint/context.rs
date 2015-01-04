@@ -26,7 +26,7 @@
 use self::TargetLint::*;
 
 use middle::privacy::ExportedItems;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use session::{early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass, LintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};

@@ -17,7 +17,7 @@ pub use self::ObligationCauseCode::*;
 
 use middle::mem_categorization::Typer;
 use middle::subst;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::infer::InferCtxt;
 use std::slice::Iter;
 use std::rc::Rc;
@@ -63,7 +63,7 @@ mod util;
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
 /// provides the required vtable, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Obligation<'tcx, T> {
     pub cause: ObligationCause<'tcx>,
     pub recursion_depth: uint,
@@ -74,7 +74,7 @@ pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 /// Why did we incur this obligation? Used for error reporting.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
@@ -89,7 +89,7 @@ pub struct ObligationCause<'tcx> {
     pub code: ObligationCauseCode<'tcx>
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
@@ -126,7 +126,7 @@ pub enum ObligationCauseCode<'tcx> {
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct DerivedObligationCause<'tcx> {
     /// The trait reference of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
@@ -144,7 +144,7 @@ pub type TraitObligations<'tcx> = subst::VecPerParamSpace<TraitObligation<'tcx>>
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 
-#[deriving(Clone,Show)]
+#[derive(Clone,Show)]
 pub enum SelectionError<'tcx> {
     Unimplemented,
     Overflow,
@@ -158,7 +158,7 @@ pub struct FulfillmentError<'tcx> {
     pub code: FulfillmentErrorCode<'tcx>
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
@@ -212,7 +212,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[deriving(Show,Clone)]
+#[derive(Show,Clone)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -247,21 +247,21 @@ pub enum Vtable<'tcx, N> {
 /// is `Obligation`, as one might expect. During trans, however, this
 /// is `()`, because trans only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: ast::DefId,
     pub substs: subst::Substs<'tcx>,
     pub nested: subst::VecPerParamSpace<N>
 }
 
-#[deriving(Show,Clone)]
+#[derive(Show,Clone)]
 pub struct VtableBuiltinData<N> {
     pub nested: subst::VecPerParamSpace<N>
 }
 
 /// A vtable for some object-safe trait `Foo` automatically derived
 /// for the object type `Foo`.
-#[deriving(PartialEq,Eq,Clone)]
+#[derive(PartialEq,Eq,Clone)]
 pub struct VtableObjectData<'tcx> {
     pub object_ty: Ty<'tcx>,
 }
