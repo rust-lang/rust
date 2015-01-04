@@ -284,12 +284,13 @@ program doesn't have any dependencies, so we'll only be using the first part of
 its functionality. Eventually, we'll add more. Since we started off by using
 Cargo, it'll be easy to add later.
 
-Let's convert Hello World to Cargo. The first thing we need to do to begin
-using Cargo is to install Cargo. Luckily for us, the script we ran to install
-Rust includes Cargo by default. If you installed Rust some other way, you may
-want to [check the Cargo
+If you installed Rust via the official installers you will also have
+Cargo. If you installed Rust some other way, you may want to [check
+the Cargo
 README](https://github.com/rust-lang/cargo#installing-cargo-from-nightlies)
 for specific instructions about installing it.
+
+Let's convert Hello World to Cargo.
 
 To Cargo-ify our project, we need to do two things: Make a `Cargo.toml`
 configuration file, and put our source file in the right place. Let's
