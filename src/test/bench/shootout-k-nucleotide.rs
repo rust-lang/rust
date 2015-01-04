@@ -40,7 +40,7 @@
 
 // ignore-android see #10393 #13206
 
-#![feature(slicing_syntax)]
+#![feature(associated_types, slicing_syntax)]
 
 use std::ascii::OwnedAsciiExt;
 use std::slice;
@@ -194,7 +194,9 @@ impl Table {
     }
 }
 
-impl<'a> Iterator<&'a Entry> for Items<'a> {
+impl<'a> Iterator for Items<'a> {
+    type Item = &'a Entry;
+
     fn next(&mut self) -> Option<&'a Entry> {
         let ret = match self.cur {
             None => {

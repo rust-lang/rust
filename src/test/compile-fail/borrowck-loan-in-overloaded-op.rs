@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 use std::ops::Add;
 
 #[derive(Clone)]
 struct foo(Box<uint>);
 
-impl Add<foo, foo> for foo {
+impl Add for foo {
+    type Output = foo;
+
     fn add(self, f: foo) -> foo {
         let foo(box i) = self;
         let foo(box j) = f;

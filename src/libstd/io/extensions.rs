@@ -52,7 +52,9 @@ impl<'r, R: Reader> Bytes<'r, R> {
     }
 }
 
-impl<'r, R: Reader> Iterator<IoResult<u8>> for Bytes<'r, R> {
+impl<'r, R: Reader> Iterator for Bytes<'r, R> {
+    type Item = IoResult<u8>;
+
     #[inline]
     fn next(&mut self) -> Option<IoResult<u8>> {
         match self.reader.read_byte() {

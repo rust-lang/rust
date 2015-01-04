@@ -508,7 +508,9 @@ impl<T> Drop for DList<T> {
 }
 
 #[stable]
-impl<'a, A> Iterator<&'a A> for Iter<'a, A> {
+impl<'a, A> Iterator for Iter<'a, A> {
+    type Item = &'a A;
+
     #[inline]
     fn next(&mut self) -> Option<&'a A> {
         if self.nelem == 0 {
@@ -528,7 +530,7 @@ impl<'a, A> Iterator<&'a A> for Iter<'a, A> {
 }
 
 #[stable]
-impl<'a, A> DoubleEndedIterator<&'a A> for Iter<'a, A> {
+impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a A> {
         if self.nelem == 0 {
@@ -543,10 +545,11 @@ impl<'a, A> DoubleEndedIterator<&'a A> for Iter<'a, A> {
 }
 
 #[stable]
-impl<'a, A> ExactSizeIterator<&'a A> for Iter<'a, A> {}
+impl<'a, A> ExactSizeIterator for Iter<'a, A> {}
 
 #[stable]
-impl<'a, A> Iterator<&'a mut A> for IterMut<'a, A> {
+impl<'a, A> Iterator for IterMut<'a, A> {
+    type Item = &'a mut A;
     #[inline]
     fn next(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
@@ -569,7 +572,7 @@ impl<'a, A> Iterator<&'a mut A> for IterMut<'a, A> {
 }
 
 #[stable]
-impl<'a, A> DoubleEndedIterator<&'a mut A> for IterMut<'a, A> {
+impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
@@ -584,7 +587,7 @@ impl<'a, A> DoubleEndedIterator<&'a mut A> for IterMut<'a, A> {
 }
 
 #[stable]
-impl<'a, A> ExactSizeIterator<&'a mut A> for IterMut<'a, A> {}
+impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 
 /// Allows mutating a `DList` while iterating.
 #[deprecated = "Trait is deprecated, use inherent methods on the iterator instead"]
@@ -676,7 +679,9 @@ impl<'a, A> IterMut<'a, A> {
 }
 
 #[stable]
-impl<A> Iterator<A> for IntoIter<A> {
+impl<A> Iterator for IntoIter<A> {
+    type Item = A;
+
     #[inline]
     fn next(&mut self) -> Option<A> { self.list.pop_front() }
 
@@ -687,14 +692,14 @@ impl<A> Iterator<A> for IntoIter<A> {
 }
 
 #[stable]
-impl<A> DoubleEndedIterator<A> for IntoIter<A> {
+impl<A> DoubleEndedIterator for IntoIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
 
 #[stable]
 impl<A> FromIterator<A> for DList<A> {
-    fn from_iter<T: Iterator<A>>(iterator: T) -> DList<A> {
+    fn from_iter<T: Iterator<Item=A>>(iterator: T) -> DList<A> {
         let mut ret = DList::new();
         ret.extend(iterator);
         ret
@@ -703,7 +708,7 @@ impl<A> FromIterator<A> for DList<A> {
 
 #[stable]
 impl<A> Extend<A> for DList<A> {
-    fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
+    fn extend<T: Iterator<Item=A>>(&mut self, mut iterator: T) {
         for elt in iterator { self.push_back(elt); }
     }
 }

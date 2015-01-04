@@ -155,7 +155,9 @@ pub struct Users {
     next: Option<Use>
 }
 
-impl Iterator<Value> for Users {
+impl Iterator for Users {
+    type Item = Value;
+
     fn next(&mut self) -> Option<Value> {
         let current = self.next;
 

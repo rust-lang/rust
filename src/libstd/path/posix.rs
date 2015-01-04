@@ -15,7 +15,7 @@ use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use hash;
 use io::Writer;
-use iter::{DoubleEndedIteratorExt, AdditiveIterator, Extend};
+use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map};
 use option::Option;
 use option::Option::{None, Some};
@@ -449,7 +449,7 @@ mod tests {
     use super::*;
 
     use clone::Clone;
-    use iter::{IteratorExt, DoubleEndedIteratorExt};
+    use iter::IteratorExt;
     use option::Option::{mod, Some, None};
     use path::GenericPath;
     use slice::{AsSlice, SliceExt};

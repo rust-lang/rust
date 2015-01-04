@@ -220,7 +220,7 @@ pub struct MacItems {
 }
 
 impl MacItems {
-    pub fn new<I: Iterator<P<ast::Item>>>(it: I) -> Box<MacResult+'static> {
+    pub fn new<I: Iterator<Item=P<ast::Item>>>(it: I) -> Box<MacResult+'static> {
         box MacItems { items: it.collect() } as Box<MacResult+'static>
     }
 }

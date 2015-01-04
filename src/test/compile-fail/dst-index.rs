@@ -11,6 +11,8 @@
 // Test that overloaded index expressions with DST result types
 // can't be used as rvalues
 
+#![feature(associated_types)]
+
 use std::ops::Index;
 use std::fmt::Show;
 
@@ -18,7 +20,9 @@ struct S;
 
 impl Copy for S {}
 
-impl Index<uint, str> for S {
+impl Index<uint> for S {
+    type Output = str;
+
     fn index<'a>(&'a self, _: &uint) -> &'a str {
         "hello"
     }
@@ -28,7 +32,9 @@ struct T;
 
 impl Copy for T {}
 
-impl Index<uint, Show + 'static> for T {
+impl Index<uint> for T {
+    type Output = Show + 'static;
+
     fn index<'a>(&'a self, idx: &uint) -> &'a (Show + 'static) {
         static x: uint = 42;
         &x

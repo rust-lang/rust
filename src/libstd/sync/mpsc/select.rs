@@ -319,7 +319,9 @@ impl<'rx, T: Send> Drop for Handle<'rx, T> {
     }
 }
 
-impl Iterator<*mut Handle<'static, ()>> for Packets {
+impl Iterator for Packets {
+    type Item = *mut Handle<'static, ()>;
+
     fn next(&mut self) -> Option<*mut Handle<'static, ()>> {
         if self.cur.is_null() {
             None

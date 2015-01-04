@@ -781,7 +781,7 @@ impl fmt::Show for FromUtf16Error {
 
 #[experimental = "waiting on FromIterator stabilization"]
 impl FromIterator<char> for String {
-    fn from_iter<I:Iterator<char>>(iterator: I) -> String {
+    fn from_iter<I:Iterator<Item=char>>(iterator: I) -> String {
         let mut buf = String::new();
         buf.extend(iterator);
         buf
@@ -790,7 +790,7 @@ impl FromIterator<char> for String {
 
 #[experimental = "waiting on FromIterator stabilization"]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I:Iterator<&'a str>>(iterator: I) -> String {
+    fn from_iter<I:Iterator<Item=&'a str>>(iterator: I) -> String {
         let mut buf = String::new();
         buf.extend(iterator);
         buf
@@ -799,7 +799,7 @@ impl<'a> FromIterator<&'a str> for String {
 
 #[experimental = "waiting on Extend stabilization"]
 impl Extend<char> for String {
-    fn extend<I:Iterator<char>>(&mut self, mut iterator: I) {
+    fn extend<I:Iterator<Item=char>>(&mut self, mut iterator: I) {
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
         for ch in iterator {
@@ -810,7 +810,7 @@ impl Extend<char> for String {
 
 #[experimental = "waiting on Extend stabilization"]
 impl<'a> Extend<&'a str> for String {
-    fn extend<I: Iterator<&'a str>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=&'a str>>(&mut self, mut iterator: I) {
         // A guess that at least one byte per iterator element will be needed.
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
@@ -911,7 +911,9 @@ impl<'a, S: Str> Equiv<S> for String {
 }
 
 #[experimental = "waiting on Add stabilization"]
-impl<'a> Add<&'a str, String> for String {
+impl<'a> Add<&'a str> for String {
+    type Output = String;
+
     fn add(mut self, other: &str) -> String {
         self.push_str(other);
         self

@@ -40,6 +40,8 @@
 
 // no-pretty-expanded FIXME #15189
 
+#![feature(associated_types)]
+
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::thread::Thread;
@@ -57,7 +59,9 @@ struct Iterate<'a, T> {
     f: |&T|: 'a -> T,
     next: T
 }
-impl<'a, T> Iterator<T> for Iterate<'a, T> {
+impl<'a, T> Iterator for Iterate<'a, T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         let mut res = (self.f)(&self.next);
         std::mem::swap(&mut res, &mut self.next);
@@ -78,7 +82,9 @@ impl<'a, T> List<'a, T> {
         ListIterator{cur: self}
     }
 }
-impl<'a, T> Iterator<&'a T> for ListIterator<'a, T> {
+impl<'a, T> Iterator for ListIterator<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         match *self.cur {
             List::Nil => None,

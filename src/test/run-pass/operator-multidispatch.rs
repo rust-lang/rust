@@ -11,6 +11,8 @@
 // Test that we can overload the `+` operator for points so that two
 // points can be added, and a point can be added to an integer.
 
+#![feature(associated_types, default_type_params)]
+
 use std::ops;
 
 #[derive(Show,PartialEq,Eq)]
@@ -19,13 +21,17 @@ struct Point {
     y: int
 }
 
-impl ops::Add<Point,Point> for Point {
+impl ops::Add for Point {
+    type Output = Point;
+
     fn add(self, other: Point) -> Point {
         Point {x: self.x + other.x, y: self.y + other.y}
     }
 }
 
-impl ops::Add<int,Point> for Point {
+impl ops::Add<int> for Point {
+    type Output = Point;
+
     fn add(self, other: int) -> Point {
         Point {x: self.x + other,
                y: self.y + other}

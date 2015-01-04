@@ -345,7 +345,9 @@ enum NodesMatchingUII<'a, 'ast: 'a> {
     NodesMatchingSuffix(ast_map::NodesMatchingSuffix<'a, 'ast>),
 }
 
-impl<'a, 'ast> Iterator<ast::NodeId> for NodesMatchingUII<'a, 'ast> {
+impl<'a, 'ast> Iterator for NodesMatchingUII<'a, 'ast> {
+    type Item = ast::NodeId;
+
     fn next(&mut self) -> Option<ast::NodeId> {
         match self {
             &NodesMatchingDirect(ref mut iter) => iter.next(),

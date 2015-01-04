@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 struct StateMachineIter<'a> {
     statefn: &'a StateMachineFunc<'a>
 }
 
 type StateMachineFunc<'a> = fn(&mut StateMachineIter<'a>) -> Option<&'static str>;
 
-impl<'a> Iterator<&'static str> for StateMachineIter<'a> {
+impl<'a> Iterator for StateMachineIter<'a> {
+    type Item = &'static str;
+
     fn next(&mut self) -> Option<&'static str> {
         return  (*self.statefn)(self);
     }

@@ -77,7 +77,7 @@ impl<T: Clone> Clone for OwnedSlice<T> {
 }
 
 impl<T> FromIterator<T> for OwnedSlice<T> {
-    fn from_iter<I: Iterator<T>>(iter: I) -> OwnedSlice<T> {
+    fn from_iter<I: Iterator<Item=T>>(iter: I) -> OwnedSlice<T> {
         OwnedSlice::from_vec(iter.collect())
     }
 }

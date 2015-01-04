@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_types)]
+
 trait MatrixRow {}
 
 struct Mat;
@@ -18,7 +20,9 @@ struct Rows<M: MatrixRow> {
     mat: M,
 }
 
-impl<'a> Iterator<()> for Rows<&'a Mat> {
+impl<'a> Iterator for Rows<&'a Mat> {
+    type Item = ();
+
     fn next(&mut self) -> Option<()> {
         unimplemented!()
     }

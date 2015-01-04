@@ -30,7 +30,7 @@ enum SmallVectorRepr<T> {
 }
 
 impl<T> FromIterator<T> for SmallVector<T> {
-    fn from_iter<I: Iterator<T>>(iter: I) -> SmallVector<T> {
+    fn from_iter<I: Iterator<Item=T>>(iter: I) -> SmallVector<T> {
         let mut v = SmallVector::zero();
         v.extend(iter);
         v
@@ -38,7 +38,7 @@ impl<T> FromIterator<T> for SmallVector<T> {
 }
 
 impl<T> Extend<T> for SmallVector<T> {
-    fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
+    fn extend<I: Iterator<Item=T>>(&mut self, mut iter: I) {
         for val in iter {
             self.push(val);
         }
@@ -147,7 +147,9 @@ enum IntoIterRepr<T> {
     ManyIterator(vec::IntoIter<T>),
 }
 
-impl<T> Iterator<T> for IntoIter<T> {
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         match self.repr {
             ZeroIterator => None,

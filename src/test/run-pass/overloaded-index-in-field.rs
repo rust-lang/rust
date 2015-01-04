@@ -11,6 +11,8 @@
 // Test using overloaded indexing when the "map" is stored in a
 // field. This caused problems at some point.
 
+#![feature(associated_types)]
+
 use std::ops::Index;
 
 struct Foo {
@@ -22,7 +24,9 @@ struct Bar {
     foo: Foo
 }
 
-impl Index<int,int> for Foo {
+impl Index<int> for Foo {
+    type Output = int;
+
     fn index(&self, z: &int) -> &int {
         if *z == 0 {
             &self.x

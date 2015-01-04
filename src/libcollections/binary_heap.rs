@@ -573,7 +573,9 @@ impl<'a, T> Clone for Iter<'a, T> {
 }
 
 #[stable]
-impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
     #[inline]
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
 
@@ -582,13 +584,13 @@ impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
 }
 
 #[stable]
-impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
+impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
 }
 
 #[stable]
-impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
+impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 /// An iterator that moves out of a `BinaryHeap`.
 pub struct IntoIter<T> {
@@ -596,7 +598,9 @@ pub struct IntoIter<T> {
 }
 
 #[stable]
-impl<T> Iterator<T> for IntoIter<T> {
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
     #[inline]
     fn next(&mut self) -> Option<T> { self.iter.next() }
 
@@ -605,13 +609,13 @@ impl<T> Iterator<T> for IntoIter<T> {
 }
 
 #[stable]
-impl<T> DoubleEndedIterator<T> for IntoIter<T> {
+impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
 
 #[stable]
-impl<T> ExactSizeIterator<T> for IntoIter<T> {}
+impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
 pub struct Drain<'a, T: 'a> {
@@ -619,7 +623,9 @@ pub struct Drain<'a, T: 'a> {
 }
 
 #[stable]
-impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
+impl<'a, T: 'a> Iterator for Drain<'a, T> {
+    type Item = T;
+
     #[inline]
     fn next(&mut self) -> Option<T> { self.iter.next() }
 
@@ -628,24 +634,24 @@ impl<'a, T: 'a> Iterator<T> for Drain<'a, T> {
 }
 
 #[stable]
-impl<'a, T: 'a> DoubleEndedIterator<T> for Drain<'a, T> {
+impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
 
 #[stable]
-impl<'a, T: 'a> ExactSizeIterator<T> for Drain<'a, T> {}
+impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
 #[stable]
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
-    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> BinaryHeap<T> {
+    fn from_iter<Iter: Iterator<Item=T>>(iter: Iter) -> BinaryHeap<T> {
         BinaryHeap::from_vec(iter.collect())
     }
 }
 
 #[stable]
 impl<T: Ord> Extend<T> for BinaryHeap<T> {
-    fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
+    fn extend<Iter: Iterator<Item=T>>(&mut self, mut iter: Iter) {
         let (lower, _) = iter.size_hint();
 
         self.reserve(lower);

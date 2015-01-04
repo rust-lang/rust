@@ -262,7 +262,9 @@ impl Duration {
     }
 }
 
-impl Neg<Duration> for Duration {
+impl Neg for Duration {
+    type Output = Duration;
+
     #[inline]
     fn neg(self) -> Duration {
         if self.nanos == 0 {
@@ -273,7 +275,9 @@ impl Neg<Duration> for Duration {
     }
 }
 
-impl Add<Duration, Duration> for Duration {
+impl Add for Duration {
+    type Output = Duration;
+
     fn add(self, rhs: Duration) -> Duration {
         let mut secs = self.secs + rhs.secs;
         let mut nanos = self.nanos + rhs.nanos;
@@ -285,7 +289,9 @@ impl Add<Duration, Duration> for Duration {
     }
 }
 
-impl Sub<Duration, Duration> for Duration {
+impl Sub for Duration {
+    type Output = Duration;
+
     fn sub(self, rhs: Duration) -> Duration {
         let mut secs = self.secs - rhs.secs;
         let mut nanos = self.nanos - rhs.nanos;
@@ -297,7 +303,9 @@ impl Sub<Duration, Duration> for Duration {
     }
 }
 
-impl Mul<i32, Duration> for Duration {
+impl Mul<i32> for Duration {
+    type Output = Duration;
+
     fn mul(self, rhs: i32) -> Duration {
         // Multiply nanoseconds as i64, because it cannot overflow that way.
         let total_nanos = self.nanos as i64 * rhs as i64;
@@ -307,7 +315,9 @@ impl Mul<i32, Duration> for Duration {
     }
 }
 
-impl Div<i32, Duration> for Duration {
+impl Div<i32> for Duration {
+    type Output = Duration;
+
     fn div(self, rhs: i32) -> Duration {
         let mut secs = self.secs / rhs as i64;
         let carry = self.secs - secs * rhs as i64;

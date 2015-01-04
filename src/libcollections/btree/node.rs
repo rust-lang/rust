@@ -210,7 +210,9 @@ impl<T> RawItems<T> {
     }
 }
 
-impl<T> Iterator<T> for RawItems<T> {
+impl<T> Iterator for RawItems<T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         if self.head == self.tail {
             None
@@ -230,7 +232,7 @@ impl<T> Iterator<T> for RawItems<T> {
     }
 }
 
-impl<T> DoubleEndedIterator<T> for RawItems<T> {
+impl<T> DoubleEndedIterator for RawItems<T> {
     fn next_back(&mut self) -> Option<T> {
         if self.head == self.tail {
             None
@@ -1321,8 +1323,10 @@ trait TraversalImpl<K, V, E> {
 /// as no deallocation needs to be done.
 struct ElemsAndEdges<Elems, Edges>(Elems, Edges);
 
-impl<K, V, E, Elems: DoubleEndedIterator<(K, V)>, Edges: DoubleEndedIterator<E>>
-        TraversalImpl<K, V, E> for ElemsAndEdges<Elems, Edges> {
+impl<K, V, E, Elems: DoubleEndedIterator, Edges: DoubleEndedIterator>
+        TraversalImpl<K, V, E> for ElemsAndEdges<Elems, Edges>
+    where Elems : Iterator<Item=(K, V)>, Edges : Iterator<Item=E>
+{
 
     fn next_kv(&mut self) -> Option<(K, V)> { self.0.next() }
     fn next_kv_back(&mut self) -> Option<(K, V)> { self.0.next_back() }
@@ -1414,8 +1418,8 @@ pub type MutTraversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Iter<'a,
 pub type MoveTraversal<K, V> = AbsTraversal<MoveTraversalImpl<K, V>>;
 
 
-impl<K, V, E, Impl: TraversalImpl<K, V, E>>
-        Iterator<TraversalItem<K, V, E>> for AbsTraversal<Impl> {
+impl<K, V, E, Impl: TraversalImpl<K, V, E>> Iterator for AbsTraversal<Impl> {
+    type Item = TraversalItem<K, V, E>;
 
     fn next(&mut self) -> Option<TraversalItem<K, V, E>> {
         let head_is_edge = self.head_is_edge;
@@ -1429,9 +1433,7 @@ impl<K, V, E, Impl: TraversalImpl<K, V, E>>
     }
 }
 
-impl<K, V, E, Impl: TraversalImpl<K, V, E>>
-        DoubleEndedIterator<TraversalItem<K, V, E>> for AbsTraversal<Impl> {
-
+impl<K, V, E, Impl: TraversalImpl<K, V, E>> DoubleEndedIterator for AbsTraversal<Impl> {
     fn next_back(&mut self) -> Option<TraversalItem<K, V, E>> {
         let tail_is_edge = self.tail_is_edge;
         self.tail_is_edge = !tail_is_edge;
