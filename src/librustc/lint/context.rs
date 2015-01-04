@@ -499,7 +499,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                                 None => {
                                     self.span_lint(builtin::UNKNOWN_LINTS, span,
                                                format!("unknown `{}` attribute: `{}`",
-                                                       level.as_str(), lint_name).index(&FullRange));
+                                                       level.as_str(), lint_name).as_slice());
                                     continue;
                                 }
                             }
@@ -791,7 +791,7 @@ pub fn check_crate(tcx: &ty::ctxt,
         for &(lint, span, ref msg) in v.iter() {
             tcx.sess.span_bug(span,
                               format!("unprocessed lint {} at {}: {}",
-                                      lint.as_str(), tcx.map.node_to_string(*id), *msg).index(&FullRange))
+                                      lint.as_str(), tcx.map.node_to_string(*id), *msg).as_slice())
         }
     }
 

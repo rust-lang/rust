@@ -1119,28 +1119,29 @@ mod traits {
         }
     }
 
-    impl ops::Index<ops::Range<uint>, str> for str {
+    impl ops::Index<ops::Range<uint>> for str {
+        type Output = str;
         #[inline]
         fn index(&self, index: &ops::Range<uint>) -> &str {
             self.slice(index.start, index.end)
         }
     }
-
-    impl ops::Index<ops::RangeTo<uint>, str> for str {
+    impl ops::Index<ops::RangeTo<uint>> for str {
+        type Output = str;
         #[inline]
         fn index(&self, index: &ops::RangeTo<uint>) -> &str {
             self.slice_to(index.end)
         }
     }
-
-    impl ops::Index<ops::RangeFrom<uint>, str> for str {
+    impl ops::Index<ops::RangeFrom<uint>> for str {
+        type Output = str;
         #[inline]
         fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
             self.slice_from(index.start)
         }
     }
-
-    impl ops::Index<ops::FullRange, str> for str {
+    impl ops::Index<ops::FullRange> for str {
+        type Output = str;
         #[inline]
         fn index(&self, _index: &ops::FullRange) -> &str {
             self

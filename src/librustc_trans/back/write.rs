@@ -381,8 +381,8 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
                 cgcx.handler.note(format!("optimization {} for {} at {}: {}",
                                           opt.kind.describe(),
                                           pass_name,
-                                          if loc.is_empty() { "[unknown]" } else { loc.index(&FullRange) },
-                                          llvm::twine_to_string(opt.message)).index(&FullRange));
+                                          if loc.is_empty() { "[unknown]" } else { loc.as_slice() },
+                                          llvm::twine_to_string(opt.message)).as_slice());
             }
         }
 

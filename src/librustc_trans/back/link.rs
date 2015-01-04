@@ -608,7 +608,7 @@ fn link_rlib<'a>(sess: &'a Session,
                 // extension to it. This is to work around a bug in LLDB that
                 // would cause it to crash if the name of a file in an archive
                 // was exactly 16 bytes.
-                let bc_filename = obj_filename.with_extension(format!("{}.bc", i).index(&FullRange));
+                let bc_filename = obj_filename.with_extension(format!("{}.bc", i).as_slice());
                 let bc_deflated_filename = obj_filename.with_extension(
                     format!("{}.bytecode.deflate", i).index(&FullRange));
 
@@ -1083,8 +1083,8 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
             // -force_load is the OSX equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             let lib = archive::find_library(l.index(&FullRange),
-                                            sess.target.target.options.staticlib_prefix.index(&FullRange),
-                                            sess.target.target.options.staticlib_suffix.index(&FullRange),
+                                            sess.target.target.options.staticlib_prefix.as_slice(),
+                                            sess.target.target.options.staticlib_suffix.as_slice(),
                                             search_path.index(&FullRange),
                                             &sess.diagnostic().handler);
             let mut v = b"-Wl,-force_load,".to_vec();

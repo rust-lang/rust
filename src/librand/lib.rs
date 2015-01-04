@@ -58,7 +58,7 @@ use core::prelude::*;
 pub use isaac::{IsaacRng, Isaac64Rng};
 pub use chacha::ChaChaRng;
 
-use distributions::{RandRange, IndependentSample};
+use distributions::{Range, IndependentSample};
 use distributions::range::SampleRange;
 
 #[cfg(test)]
@@ -247,7 +247,7 @@ pub trait Rng : Sized {
     /// ```
     fn gen_range<T: PartialOrd + SampleRange>(&mut self, low: T, high: T) -> T {
         assert!(low < high, "Rng.gen_range called with low >= high");
-        RandRange::new(low, high).ind_sample(self)
+        Range::new(low, high).ind_sample(self)
     }
 
     /// Return a bool with a 1 in n chance of true
@@ -290,8 +290,8 @@ pub trait Rng : Sized {
     /// let choices = [1i, 2, 4, 8, 16, 32];
     /// let mut rng = thread_rng();
     /// println!("{}", rng.choose(&choices));
-    /// # // replace with slicing syntax when it's stable!
-    /// assert_eq!(rng.choose(choices.index(&(0..0))), None);
+    /// # // uncomment when slicing syntax is stable
+    /// //assert_eq!(rng.choose(choices.index(&(0..0))), None);
     /// ```
     fn choose<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
         if values.is_empty() {

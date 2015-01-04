@@ -24,7 +24,7 @@ use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map, repeat};
 use mem;
 use option::Option::{self, Some, None};
-use prelude::{FullRange, Index};
+use prelude::v1::{FullRange, Index};
 use slice::{SliceExt, SliceConcatExt};
 use str::{SplitTerminator, FromStr, StrExt};
 use string::{String, ToString};
@@ -337,8 +337,12 @@ impl GenericPath for Path {
         Some(match self.sepidx_or_prefix_len() {
             None if ".." == self.repr => self.repr.index(&FullRange),
             None => ".",
-            Some((_,idxa,end)) if self.repr.index(&(idxa..end)) == ".." => self.repr.index(&FullRange),
-            Some((idxb,_,end)) if self.repr.index(&(idxb..end)) == "\\" => self.repr.index(&FullRange),
+            Some((_,idxa,end)) if self.repr.index(&(idxa..end)) == ".." => {
+                self.repr.index(&FullRange)
+            }
+            Some((idxb,_,end)) if self.repr.index(&(idxb..end)) == "\\" => {
+                self.repr.index(&FullRange)
+            }
             Some((0,idxa,_)) => self.repr.index(&(0..idxa)),
             Some((idxb,idxa,_)) => {
                 match self.prefix {

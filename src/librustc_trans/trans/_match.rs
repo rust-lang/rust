@@ -1037,8 +1037,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                         field_vals.len())
             );
             let mut vals = field_vals;
-            vals.push_all(vals_left.index(&FullRange));
-            compile_submatch(bcx, pats.index(&FullRange), vals.index(&FullRange), chk, has_genuine_default);
+            vals.push_all(vals_left.as_slice());
+            compile_submatch(bcx, pats.as_slice(), vals.as_slice(), chk, has_genuine_default);
             return;
         }
         _ => ()

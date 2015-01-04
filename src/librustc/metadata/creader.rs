@@ -209,7 +209,7 @@ impl<'a> CrateReader<'a> {
                 let name = match *path_opt {
                     Some((ref path_str, _)) => {
                         let name = path_str.get().to_string();
-                        validate_crate_name(Some(self.sess), name[],
+                        validate_crate_name(Some(self.sess), name.index(&FullRange),
                                             Some(i.span));
                         name
                     }
@@ -276,7 +276,7 @@ impl<'a> CrateReader<'a> {
                                     } else {
                                         self.sess.span_err(m.span,
                                             format!("unknown kind: `{}`",
-                                                    k)[]);
+                                                    k).index(&FullRange));
                                         cstore::NativeUnknown
                                     }
                                 }
@@ -330,7 +330,7 @@ impl<'a> CrateReader<'a> {
             match self.sess.opts.externs.get(name) {
                 Some(locs) => {
                     let found = locs.iter().any(|l| {
-                        let l = fs::realpath(&Path::new(l[])).ok();
+                        let l = fs::realpath(&Path::new(l.index(&FullRange))).ok();
                         l == source.dylib || l == source.rlib
                     });
                     if found {
@@ -409,7 +409,7 @@ impl<'a> CrateReader<'a> {
                     crate_name: name,
                     hash: hash.map(|a| &*a),
                     filesearch: self.sess.target_filesearch(kind),
-                    triple: self.sess.opts.target_triple[],
+                    triple: self.sess.opts.target_triple.index(&FullRange),
                     root: root,
                     rejected_via_hash: vec!(),
                     rejected_via_triple: vec!(),

@@ -1393,15 +1393,20 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
 
 #[cfg(test)]
 mod tests {
-    use prelude::{Some, None, range, Vec, ToString, Clone, Greater, Less, Equal};
-    use prelude::{SliceExt, Iterator, IteratorExt};
-    use prelude::AsSlice;
-    use prelude::{RandomAccessIterator, Ord, SliceConcatExt};
+    use core::cmp::Ordering::{Greater, Less, Equal};
+    use core::prelude::{Some, None, range, Clone};
+    use core::prelude::{Iterator, IteratorExt};
+    use core::prelude::{AsSlice};
+    use core::prelude::{Ord, FullRange};
     use core::default::Default;
     use core::mem;
+    use core::ops::Index;
+    use std::iter::RandomAccessIterator;
     use std::rand::{Rng, thread_rng};
     use std::rc::Rc;
-    use super::ElementSwaps;
+    use string::ToString;
+    use vec::Vec;
+    use super::{ElementSwaps, SliceConcatExt, SliceExt};
 
     fn square(n: uint) -> uint { n * n }
 

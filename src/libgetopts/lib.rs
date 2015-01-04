@@ -1413,7 +1413,7 @@ mod tests {
         assert!(matches_single.opts_present(&["e".to_string(), "encrypt".to_string()]));
         assert!(!matches_single.opts_present(&["encrypt".to_string()]));
         assert!(!matches_single.opts_present(&["thing".to_string()]));
-        assert!(!matches_single.opts_present(&.index(&FullRange)));
+        assert!(!matches_single.opts_present(&[]));
 
         assert_eq!(matches_single.opts_str(&["e".to_string()]).unwrap(), "foo");
         assert_eq!(matches_single.opts_str(&["e".to_string(), "encrypt".to_string()]).unwrap(),
@@ -1434,7 +1434,7 @@ mod tests {
         assert!(matches_both.opts_present(&["e".to_string(), "encrypt".to_string()]));
         assert!(!matches_both.opts_present(&["f".to_string()]));
         assert!(!matches_both.opts_present(&["thing".to_string()]));
-        assert!(!matches_both.opts_present(&.index(&FullRange)));
+        assert!(!matches_both.opts_present(&[]));
 
         assert_eq!(matches_both.opts_str(&["e".to_string()]).unwrap(), "foo");
         assert_eq!(matches_both.opts_str(&["encrypt".to_string()]).unwrap(), "foo");

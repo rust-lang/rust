@@ -166,7 +166,7 @@ mod tests {
     use std::num::Int;
     use std::prelude::v1::*;
     use distributions::{Sample, IndependentSample};
-    use super::Range;
+    use super::Range as Range;
 
     #[should_fail]
     #[test]

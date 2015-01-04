@@ -85,7 +85,9 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
             let s = self.ast_map.node_to_string(node_id);
             // left-aligns the lines
             let s = replace_newline_with_backslash_l(s);
-            label.push_str(format!("exiting scope_{} {}", i, s.index(&FullRange)).index(&FullRange));
+            label.push_str(format!("exiting scope_{} {}",
+                                   i,
+                                   s.index(&FullRange)).index(&FullRange));
         }
         dot::LabelText::EscStr(label.into_cow())
     }

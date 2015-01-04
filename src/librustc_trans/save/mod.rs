@@ -292,7 +292,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                 Some(def_id) => {
                                     result.push_str(" as ");
                                     result.push_str(
-                                        ty::item_path_str(&self.analysis.ty_cx, def_id).index(&FullRange));
+                                        ty::item_path_str(&self.analysis.ty_cx, def_id).as_slice());
                                 },
                                 None => {}
                             }
@@ -636,7 +636,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         item.id);
 
                     for field in struct_def.fields.iter() {
-                        self.process_struct_field_def(field, qualname.index(&FullRange), variant.node.id);
+                        self.process_struct_field_def(field, qualname.as_slice(), variant.node.id);
                         self.visit_ty(&*field.node.ty);
                     }
                 }
@@ -774,7 +774,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         let def_map = self.analysis.ty_cx.def_map.borrow();
         if !def_map.contains_key(&id) {
             self.sess.span_bug(span,
-                               format!("def_map has no key for {} in visit_expr", id).index(&FullRange));
+                               format!("def_map has no key for {} in visit_expr", id).as_slice());
         }
         let def = &(*def_map)[id];
         let sub_span = self.span.span_for_last_ident(span);
@@ -1065,7 +1065,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                      value.index(&FullRange));
 
                 self.visit_ty(&**ty);
-                self.process_generic_params(ty_params, item.span, qualname.index(&FullRange), item.id);
+                self.process_generic_params(ty_params, item.span, qualname.as_slice(), item.id);
             },
             ast::ItemMac(_) => (),
             _ => visit::walk_item(self, item),
@@ -1418,7 +1418,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             let def_map = self.analysis.ty_cx.def_map.borrow();
             if !def_map.contains_key(&id) {
                 self.sess.span_bug(p.span,
-                                   format!("def_map has no key for {} in visit_arm", id).index(&FullRange));
+                                   format!("def_map has no key for {} in visit_arm",
+                                           id).index(&FullRange));
             }
             let def = &(*def_map)[id];
             match *def {

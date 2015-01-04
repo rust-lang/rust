@@ -556,7 +556,8 @@ pub fn instantiate_trait_ref<'tcx>(
         _ => {
             this.tcx().sess.span_fatal(
                 ast_trait_ref.path.span,
-                format!("`{}` is not a trait", ast_trait_ref.path.user_string(this.tcx())).index(&FullRange));
+                format!("`{}` is not a trait",
+                        ast_trait_ref.path.user_string(this.tcx())).index(&FullRange));
         }
     }
 }
@@ -1069,8 +1070,12 @@ pub fn ast_ty_to_ty<'tcx>(
             ast::TyObjectSum(ref ty, ref bounds) => {
                 match ast_ty_to_trait_ref(this, rscope, &**ty, bounds.index(&FullRange)) {
                     Ok((trait_ref, projection_bounds)) => {
-                        trait_ref_to_object_type(this, rscope, ast_ty.span,
-                                                 trait_ref, projection_bounds, bounds.index(&FullRange))
+                        trait_ref_to_object_type(this,
+                                                 rscope,
+                                                 ast_ty.span,
+                                                 trait_ref,
+                                                 projection_bounds,
+                                                 bounds.index(&FullRange))
                     }
                     Err(ErrorReported) => {
                         this.tcx().types.err

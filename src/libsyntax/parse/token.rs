@@ -689,8 +689,7 @@ impl<D:Decoder<E>, E> Decodable<D, E> for InternedString {
 #[cfg(not(stage0))]
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(get_name(get_ident_interner().intern(
-                    try!(d.read_str())[])))
+        Ok(get_name(get_ident_interner().intern(try!(d.read_str()).index(&FullRange))))
     }
 }
 
@@ -704,7 +703,7 @@ impl<S:Encoder<E>, E> Encodable<S, E> for InternedString {
 #[cfg(not(stage0))]
 impl Encodable for InternedString {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self.string[])
+        s.emit_str(self.string.index(&FullRange))
     }
 }
 

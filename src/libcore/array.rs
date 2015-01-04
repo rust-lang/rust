@@ -57,9 +57,13 @@ macro_rules! array_impls {
                 Rhs: Deref<Target=[B]>,
             {
                 #[inline(always)]
-                fn eq(&self, other: &Rhs) -> bool { PartialEq::eq(self.index(&FullRange), &**other) }
+                fn eq(&self, other: &Rhs) -> bool {
+                    PartialEq::eq(self.index(&FullRange), &**other)
+                }
                 #[inline(always)]
-                fn ne(&self, other: &Rhs) -> bool { PartialEq::ne(self.index(&FullRange), &**other) }
+                fn ne(&self, other: &Rhs) -> bool {
+                    PartialEq::ne(self.index(&FullRange), &**other)
+                }
             }
 
             #[stable]
@@ -68,9 +72,13 @@ macro_rules! array_impls {
                 Lhs: Deref<Target=[A]>
             {
                 #[inline(always)]
-                fn eq(&self, other: &[B; $N]) -> bool { PartialEq::eq(&**self, other.index(&FullRange)) }
+                fn eq(&self, other: &[B; $N]) -> bool {
+                    PartialEq::eq(&**self, other.index(&FullRange))
+                }
                 #[inline(always)]
-                fn ne(&self, other: &[B; $N]) -> bool { PartialEq::ne(&**self, other.index(&FullRange)) }
+                fn ne(&self, other: &[B; $N]) -> bool {
+                    PartialEq::ne(&**self, other.index(&FullRange))
+                }
             }
 
             #[stable]

@@ -1537,35 +1537,34 @@ impl<'a> State<'a> {
 
             ast::ExprStruct(ref path, ref fields, ref wth) => {
                 try!(self.print_path(path, true));
-                if fields.is_empty() && wth.is_none() {
-                    return;
-                }
-                try!(word(&mut self.s, "{"));
-                try!(self.commasep_cmnt(
-                    Consistent,
-                    fields.index(&FullRange),
-                    |s, field| {
-                        try!(s.ibox(indent_unit));
-                        try!(s.print_ident(field.ident.node));
-                        try!(s.word_space(":"));
-                        try!(s.print_expr(&*field.expr));
-                        s.end()
-                    },
-                    |f| f.span));
-                match *wth {
-                    Some(ref expr) => {
-                        try!(self.ibox(indent_unit));
-                        if !fields.is_empty() {
-                            try!(word(&mut self.s, ","));
-                            try!(space(&mut self.s));
+                if !(fields.is_empty() && wth.is_none()) {
+                    try!(word(&mut self.s, "{"));
+                    try!(self.commasep_cmnt(
+                        Consistent,
+                        fields.index(&FullRange),
+                        |s, field| {
+                            try!(s.ibox(indent_unit));
+                            try!(s.print_ident(field.ident.node));
+                            try!(s.word_space(":"));
+                            try!(s.print_expr(&*field.expr));
+                            s.end()
+                        },
+                        |f| f.span));
+                    match *wth {
+                        Some(ref expr) => {
+                            try!(self.ibox(indent_unit));
+                            if !fields.is_empty() {
+                                try!(word(&mut self.s, ","));
+                                try!(space(&mut self.s));
+                            }
+                            try!(word(&mut self.s, ".."));
+                            try!(self.print_expr(&**expr));
+                            try!(self.end());
                         }
-                        try!(word(&mut self.s, ".."));
-                        try!(self.print_expr(&**expr));
-                        try!(self.end());
+                        _ => try!(word(&mut self.s, ",")),
                     }
-                    _ => try!(word(&mut self.s, ",")),
+                    try!(word(&mut self.s, "}"));
                 }
-                try!(word(&mut self.s, "}"));
             }
             ast::ExprTup(ref exprs) => {
                 try!(self.popen());
@@ -2781,7 +2780,7 @@ impl<'a> State<'a> {
                              format!("-{}", istr).index(&FullRange))
                     }
                     ast::UnsignedIntLit(ut) => {
-                        word(&mut self.s, ast_util::uint_ty_to_string(ut, Some(i)).index(&FullRange))
+                        word(&mut self.s, ast_util::uint_ty_to_string(ut, Some(i)).as_slice())
                     }
                     ast::UnsuffixedIntLit(ast::Plus) => {
                         word(&mut self.s, format!("{}", i).index(&FullRange))
