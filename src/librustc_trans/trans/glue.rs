@@ -531,13 +531,14 @@ fn declare_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
     return (fn_nm, llfn);
 }
 
-fn make_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               t: Ty<'tcx>,
-                               llfn: ValueRef,
-                               helper: for<'blk> |Block<'blk, 'tcx>, ValueRef, Ty<'tcx>|
-                                                  -> Block<'blk, 'tcx>,
-                               name: &str)
-                               -> ValueRef {
+fn make_generic_glue<'a, 'tcx, F>(ccx: &CrateContext<'a, 'tcx>,
+                                  t: Ty<'tcx>,
+                                  llfn: ValueRef,
+                                  helper: F,
+                                  name: &str)
+                                  -> ValueRef where
+    F: for<'blk> FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+{
     let _icx = push_ctxt("make_generic_glue");
     let glue_name = format!("glue {} {}", name, ty_to_short_str(ccx.tcx(), t));
     let _s = StatRecorder::new(ccx, glue_name);
