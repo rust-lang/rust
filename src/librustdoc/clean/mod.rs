@@ -2243,8 +2243,12 @@ fn name_from_pat(p: &ast::Pat) -> String {
         },
         PatRange(..) => panic!("tried to get argument name from PatRange, \
                               which is not allowed in function arguments"),
-        PatVec(..) => panic!("tried to get argument name from pat_vec, \
-                             which is not allowed in function arguments"),
+        PatVec(ref begin, ref mid, ref end) => {
+            let begin = begin.iter().map(|p| name_from_pat(&**p));
+            let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
+            let end = end.iter().map(|p| name_from_pat(&**p));
+            format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().connect(", "))
+        },
         PatMac(..) => {
             warn!("can't document the name of a function argument \
                    produced by a pattern macro");
