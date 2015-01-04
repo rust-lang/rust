@@ -1138,7 +1138,7 @@ fn main() {
 ```
 
 There's a symbol here we haven't seen before: the double colon (`::`).
-This is used to indicate a namesapce. In this case, `Ordering` lives in
+This is used to indicate a namespace. In this case, `Ordering` lives in
 the `cmp` submodule of the `std` module. We'll talk more about modules
 later in the guide. For now, all you need to know is that you can `use`
 things from the standard library if you need them.
