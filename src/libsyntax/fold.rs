@@ -414,17 +414,6 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyRptr(region, mt) => {
                 TyRptr(fld.fold_opt_lifetime(region), fld.fold_mt(mt))
             }
-            TyClosure(f) => {
-                TyClosure(f.map(|ClosureTy {unsafety, onceness, bounds, decl, lifetimes}| {
-                    ClosureTy {
-                        unsafety: unsafety,
-                        onceness: onceness,
-                        bounds: fld.fold_bounds(bounds),
-                        decl: fld.fold_fn_decl(decl),
-                        lifetimes: fld.fold_lifetime_defs(lifetimes)
-                    }
-                }))
-            }
             TyBareFn(f) => {
                 TyBareFn(f.map(|BareFnTy {lifetimes, unsafety, abi, decl}| BareFnTy {
                     lifetimes: fld.fold_lifetime_defs(lifetimes),

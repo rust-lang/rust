@@ -1366,7 +1366,6 @@ impl Clean<Type> for ast::Ty {
                     }
                 }
             }
-            TyClosure(ref c) => Closure(box c.clean(cx)),
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyParen(ref ty) => ty.clean(cx),
             TyQPath(ref qp) => qp.clean(cx),
