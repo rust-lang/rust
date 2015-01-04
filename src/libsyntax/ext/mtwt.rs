@@ -21,7 +21,6 @@ use ast::{Ident, Mrk, Name, SyntaxContext};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 /// The SCTable contains a table of SyntaxContext_'s. It
 /// represents a flattened tree structure, to avoid having
@@ -67,10 +66,9 @@ pub fn apply_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
 /// Extend a syntax context with a given mark and sctable (explicit memoization)
 fn apply_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
     let key = (ctxt, m);
-    * match table.mark_memo.borrow_mut().entry(key) {
-        Vacant(entry) => entry.set(idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt))),
-        Occupied(entry) => entry.into_mut(),
-    }
+    * table.mark_memo.borrow_mut().entry(&key).get().unwrap_or_else(
+          |vacant_entry|
+              vacant_entry.insert(idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt))))
 }
 
 /// Extend a syntax context with a given rename
@@ -86,10 +84,9 @@ fn apply_rename_internal(id: Ident,
                        table: &SCTable) -> SyntaxContext {
     let key = (ctxt, id, to);
 
-    * match table.rename_memo.borrow_mut().entry(key) {
-        Vacant(entry) => entry.set(idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt))),
-        Occupied(entry) => entry.into_mut(),
-    }
+    * table.rename_memo.borrow_mut().entry(&key).get().unwrap_or_else(
+          |vacant_entry|
+              vacant_entry.insert(idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt))))
 }
 
 /// Apply a list of renamings to a context

@@ -38,7 +38,6 @@ extern crate "serialize" as rustc_serialize; // used by deriving
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::io::File;
 use std::io;
 use std::rc::Rc;
@@ -321,10 +320,9 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
                 return Err("--extern value must be of the format `foo=bar`".to_string());
             }
         };
-        let locs = match externs.entry(name.to_string()) {
-            Vacant(entry) => entry.set(Vec::with_capacity(1)),
-            Occupied(entry) => entry.into_mut(),
-        };
+        let name = name.to_string();
+        let locs = externs.entry(&name).get().unwrap_or_else(
+            |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
         locs.push(location.to_string());
     }
     Ok(externs)
