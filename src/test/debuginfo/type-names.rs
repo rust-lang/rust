@@ -167,11 +167,11 @@
 
 
 // CLOSURES
-// gdb-command:whatis stack_closure1
-// gdb-check:type = struct (&mut|int|, uint)
+// gdb-command:whatis closure1
+// gdb-check:type = struct (closure, uint)
 
-// gdb-command:whatis stack_closure2
-// gdb-check:type = struct (&mut|i8, f32| -> f32, uint)
+// gdb-command:whatis closure2
+// gdb-check:type = struct (closure, uint)
 
 #![omit_gdb_pretty_printer_section]
 
@@ -321,8 +321,8 @@ fn main() {
     // how that maps to rustc's internal representation of these forms.
     // Once closures have reached their 1.0 form, the tests below should
     // probably be expanded.
-    let stack_closure1 = (|x:int| {}, 0u);
-    let stack_closure2 = (|x:i8, y: f32| { (x as f32) + y }, 0u);
+    let closure1 = (|&: x:int| {}, 0u);
+    let closure2 = (|&: x:i8, y: f32| { (x as f32) + y }, 0u);
 
     zzz(); // #break
 }
