@@ -131,19 +131,19 @@ def print_enum_val(val, internal_dict):
       try:
         disr_field_indices = first_variant_name[start_index :
                                               last_separator_index].split("$")
-        disr_field_indices = [int(index) for index in dis_field_indices]
+        disr_field_indices = [int(index) for index in disr_field_indices]
       except:
         return "<invalid enum encoding: %s>" % first_variant_name
 
       # Read the discriminant
       disr_val = val.GetChildAtIndex(0)
       for index in disr_field_indices:
-        disr_val = disr_val.GetChildAtIndex(disr_field_index)
+        disr_val = disr_val.GetChildAtIndex(index)
 
       # If the discriminant field is a fat pointer we have to consider the
       # first word as the true discriminant
       if disr_val.GetType().GetTypeClass() == lldb.eTypeClassStruct:
-          disr_val = disr_val.GetChildAtIndex(0)
+        disr_val = disr_val.GetChildAtIndex(0)
 
       if disr_val.GetValueAsUnsigned() == 0:
         # Null case: Print the name of the null-variant
