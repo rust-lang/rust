@@ -1130,7 +1130,7 @@ pub mod traits {
 #[unstable = "Instead of taking this bound generically, this trait will be \
               replaced with one of slicing syntax, deref coercions, or \
               a more generic conversion trait"]
-pub trait Str for Sized? {
+pub trait Str {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a str;
 }
@@ -1171,7 +1171,7 @@ delegate_iter!{pattern forward &'a str in RSplitN<'a, P>}
 
 /// Methods for string slices
 #[allow(missing_docs)]
-pub trait StrExt for Sized? {
+pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.
 

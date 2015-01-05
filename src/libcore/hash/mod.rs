@@ -76,7 +76,7 @@ pub mod sip;
 /// A hashable type. The `S` type parameter is an abstract hash state that is
 /// used by the `Hash` to compute the hash. It defaults to
 /// `std::hash::sip::SipState`.
-pub trait Hash<S = sip::SipState> for Sized? {
+pub trait Hash<S = sip::SipState> {
     /// Computes the hash of a value.
     fn hash(&self, state: &mut S);
 }

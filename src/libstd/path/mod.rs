@@ -786,7 +786,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 }
 
 /// A trait that represents something bytes-like (e.g. a &[u8] or a &str)
-pub trait BytesContainer for Sized? {
+pub trait BytesContainer {
     /// Returns a &[u8] representing the receiver
     fn container_as_bytes<'a>(&'a self) -> &'a [u8];
     /// Returns the receiver interpreted as a utf-8 string, if possible

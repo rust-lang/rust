@@ -16,7 +16,7 @@
 struct Splits<'a, T, P>;
 struct SplitsN<I>;
 
-trait SliceExt2 for Sized? {
+trait SliceExt2 {
     type Item;
 
     fn split2<'a, P>(&'a self, pred: P) -> Splits<'a, Self::Item, P>

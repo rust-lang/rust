@@ -63,7 +63,7 @@ impl RegClass {
     }
 }
 
-trait ClassList for Sized? {
+trait ClassList {
     fn is_pass_byval(&self) -> bool;
     fn is_ret_bysret(&self) -> bool;
 }
