@@ -66,8 +66,6 @@ pub struct MethodData {
 }
 
 pub enum CalleeData<'tcx> {
-    Closure(Datum<'tcx, Lvalue>),
-
     // Constructor for enum variant/tuple-like-struct
     // i.e. Some, Ok
     NamedTupleConstructor(subst::Substs<'tcx>, ty::Disr),
@@ -680,16 +678,6 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         }
         TraitItem(d) => {
             (d.llfn, None, Some(d.llself))
-        }
-        Closure(d) => {
-            // Closures are represented as (llfn, llclosure) pair:
-            // load the requisite values out.
-            let pair = d.to_llref();
-            let llfn = GEPi(bcx, pair, &[0u, abi::FAT_PTR_ADDR]);
-            let llfn = Load(bcx, llfn);
-            let llenv = GEPi(bcx, pair, &[0u, abi::FAT_PTR_EXTRA]);
-            let llenv = Load(bcx, llenv);
-            (llfn, Some(llenv), None)
         }
         Intrinsic(node, substs) => {
             assert!(abi == synabi::RustIntrinsic);
