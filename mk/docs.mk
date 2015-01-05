@@ -25,13 +25,15 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial guide guide-ffi guide-macros guide-ownership \
-	guide-tasks guide-container guide-pointers guide-testing \
-	guide-plugin guide-crates complement-bugreport guide-error-handling \
-	complement-lang-faq complement-design-faq complement-project-faq \
-    rustdoc guide-unsafe guide-strings reference
+DOCS := index intro reference rustdoc \
+	book/index book/basic book/intermediate book/advanced \
+	book/ffi book/macros book/ownership \
+	book/tasks book/pointers book/testing \
+	book/plugin book/crates book/error-handling \
+	book/unsafe book/strings reference \
+	complement-bugreport complement-lang-faq complement-design-faq complement-project-faq
 
-PDF_DOCS := guide reference
+PDF_DOCS := reference
 
 RUSTDOC_DEPS_reference := doc/full-toc.inc
 RUSTDOC_FLAGS_reference := --html-in-header=doc/full-toc.inc

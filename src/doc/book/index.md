@@ -1,0 +1,40 @@
+% The Rust Programming Language
+
+A book about Rust.
+
+* [I: The Basics](basic.md)
+    * [Installing Rust](installing-rust.md)
+    * [Hello, world!](hello-world.md)
+    * [Hello, Cargo!](hello-cargo.md)
+    * [Variable Bindings](variable-bindings.md)
+    * [If](if.md)
+    * [Functions](functions.md)
+    * [Comments](comments.md)
+    * [Compound Data Types](compound-data-types.md)
+    * [Match](match.md)
+    * [Looping](looping.md)
+    * [Strings](strings.md)
+    * [Arrays, Vectors, and Slices](arrays-vectors-and-slices.md)
+    * [Standard Input](standard-input.md)
+    * [Guessing Game](guessing-game.md)
+* [II: Intermedite Rust](intermediate.md)
+    * [Crates and Modules](crates-and-modules.md)
+    * [Testing](testing.md)
+    * [Pointers](pointers.md)
+    * [Patterns](patterns.md)
+    * [Method Syntax](method-syntax.md)
+    * [Closures](closures.md)
+    * [Iterators](iterators.md)
+    * [Generics](generics.md)
+    * [Traits](traits.md)
+    * [Tasks](tasks.md)
+    * [Error Handling](error-handling.md)
+* [III: Advanced Topics](advanced.md)
+    * [FFI](ffi.md)
+    * [Unsafe Code](unsafe.md)
+    * [Macros](macros.md)
+    * [Compiler Plugins](plugins.md)
+* [Conclusion](conclusion.md)
+
+vim installing-rust.md hello-world.md hello-cargo.md variable-bindings.md if.md functions.md comments.md compound-data-types.md match.md looping.md strings.md arrays-vectors-and-slices.md standard-input.md guessing-game.md
+
