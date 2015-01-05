@@ -35,9 +35,8 @@ use slice::{self, SliceExt};
 use uint;
 
 macro_rules! delegate_iter {
-    (exact $te:ty in $ti:ty) => {
-        delegate_iter!{$te in $ti}
-        #[stable]
+    (exact $te:ty : $ti:ty) => {
+        delegate_iter!{$te : $ti}
         impl<'a> ExactSizeIterator for $ti {
             #[inline]
             fn len(&self) -> uint {
@@ -45,7 +44,7 @@ macro_rules! delegate_iter {
             }
         }
     };
-    ($te:ty in $ti:ty) => {
+    ($te:ty : $ti:ty) => {
         #[stable]
         impl<'a> Iterator for $ti {
             type Item = $te;
@@ -67,7 +66,7 @@ macro_rules! delegate_iter {
             }
         }
     };
-    (pattern $te:ty in $ti:ty) => {
+    (pattern $te:ty : $ti:ty) => {
         #[stable]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
@@ -89,7 +88,7 @@ macro_rules! delegate_iter {
             }
         }
     };
-    (pattern forward $te:ty in $ti:ty) => {
+    (pattern forward $te:ty : $ti:ty) => {
         #[stable]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
@@ -415,7 +414,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 #[stable]
 #[derive(Clone)]
 pub struct Bytes<'a>(Map<&'a u8, u8, slice::Iter<'a, u8>, BytesDeref>);
-delegate_iter!{exact u8 in Bytes<'a>}
+delegate_iter!{exact u8 : Bytes<'a>}
 
 /// A temporary fn new type that ensures that the `Bytes` iterator
 /// is cloneable.
@@ -1165,25 +1164,25 @@ impl<'a, S: ?Sized> Str for &'a S where S: Str {
 #[derive(Clone)]
 #[stable]
 pub struct Split<'a, P>(CharSplits<'a, P>);
-delegate_iter!{pattern &'a str in Split<'a, P>}
+delegate_iter!{pattern &'a str : Split<'a, P>}
 
 /// Return type of `StrExt::split_terminator`
 #[derive(Clone)]
 #[unstable = "might get removed in favour of a constructor method on Split"]
 pub struct SplitTerminator<'a, P>(CharSplits<'a, P>);
-delegate_iter!{pattern &'a str in SplitTerminator<'a, P>}
+delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}
 
 /// Return type of `StrExt::splitn`
 #[derive(Clone)]
 #[stable]
 pub struct SplitN<'a, P>(CharSplitsN<'a, P>);
-delegate_iter!{pattern forward &'a str in SplitN<'a, P>}
+delegate_iter!{pattern forward &'a str : SplitN<'a, P>}
 
 /// Return type of `StrExt::rsplitn`
 #[derive(Clone)]
 #[stable]
 pub struct RSplitN<'a, P>(CharSplitsN<'a, P>);
-delegate_iter!{pattern forward &'a str in RSplitN<'a, P>}
+delegate_iter!{pattern forward &'a str : RSplitN<'a, P>}
 
 /// Methods for string slices
 #[allow(missing_docs)]
