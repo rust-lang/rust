@@ -1156,7 +1156,7 @@ impl<'a> Parser<'a> {
         let _ = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
         let _ = self.parse_ret_ty();
 
-        self.obsolete(proc_span, ObsoleteProcType);
+        self.obsolete(proc_span, ObsoleteSyntax::ProcType);
 
         TyInfer
     }
@@ -1521,8 +1521,10 @@ impl<'a> Parser<'a> {
             self.bump();
             let last_span = self.last_span;
             match self.token {
-                token::OpenDelim(token::Bracket) => self.obsolete(last_span, ObsoleteOwnedVector),
-                _ => self.obsolete(last_span, ObsoleteOwnedType)
+                token::OpenDelim(token::Bracket) => {
+                    self.obsolete(last_span, ObsoleteSyntax::OwnedVector)
+                }
+                _ => self.obsolete(last_span, ObsoleteSyntax::OwnedType)
             }
             TyTup(vec![self.parse_ty()])
         } else if self.check(&token::BinOp(token::Star)) {
@@ -2285,7 +2287,7 @@ impl<'a> Parser<'a> {
                     let span = self.last_span;
                     let _ = self.parse_proc_decl();
                     let _ = self.parse_expr();
-                    return self.obsolete_expr(span, ObsoleteProcExpr);
+                    return self.obsolete_expr(span, ObsoleteSyntax::ProcExpr);
                 }
                 if self.eat_keyword(keywords::If) {
                     return self.parse_if_expr();
@@ -2860,9 +2862,9 @@ impl<'a> Parser<'a> {
             let last_span = self.last_span;
             match self.token {
                 token::OpenDelim(token::Bracket) => {
-                    self.obsolete(last_span, ObsoleteOwnedVector)
+                    self.obsolete(last_span, ObsoleteSyntax::OwnedVector)
                 },
-                _ => self.obsolete(last_span, ObsoleteOwnedExpr)
+                _ => self.obsolete(last_span, ObsoleteSyntax::OwnedExpr)
             }
 
             let e = self.parse_prefix_expr();
@@ -3233,7 +3235,7 @@ impl<'a> Parser<'a> {
                     } else {
                         let _ = self.parse_pat();
                         let span = self.span;
-                        self.obsolete(span, ObsoleteSubsliceMatch);
+                        self.obsolete(span, ObsoleteSyntax::SubsliceMatch);
                     }
                     continue
                 }
@@ -3349,7 +3351,7 @@ impl<'a> Parser<'a> {
             pat = PatBox(sub);
             let last_span = self.last_span;
             hi = last_span.hi;
-            self.obsolete(last_span, ObsoleteOwnedPattern);
+            self.obsolete(last_span, ObsoleteSyntax::OwnedPattern);
             return P(ast::Pat {
                 id: ast::DUMMY_NODE_ID,
                 node: pat,
@@ -4463,7 +4465,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     drop(self.expect_self_ident());
                     let last_span = self.last_span;
-                    self.obsolete(last_span, ObsoleteOwnedSelf)
+                    self.obsolete(last_span, ObsoleteSyntax::OwnedSelf)
                 }
                 SelfStatic
             }
@@ -4514,7 +4516,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     drop(self.expect_self_ident());
                     let last_span = self.last_span;
-                    self.obsolete(last_span, ObsoleteOwnedSelf);
+                    self.obsolete(last_span, ObsoleteSyntax::OwnedSelf);
                     SelfStatic
                 } else {
                     SelfStatic
@@ -5343,7 +5345,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     let path = self.parse_str();
                     let span = self.span;
-                    self.obsolete(span, ObsoleteExternCrateRenaming);
+                    self.obsolete(span, ObsoleteSyntax::ExternCrateRenaming);
                     Some(path)
                 } else if self.eat_keyword(keywords::As) {
                     // skip the ident if there is one
@@ -6000,7 +6002,7 @@ impl<'a> Parser<'a> {
                 path.push(id);
             }
             let span = mk_sp(path_lo, self.span.hi);
-            self.obsolete(span, ObsoleteImportRenaming);
+            self.obsolete(span, ObsoleteSyntax::ImportRenaming);
             let path = ast::Path {
                 span: span,
                 global: false,
