@@ -2976,14 +2976,17 @@ impl<'a> Parser<'a> {
     /// actually, this seems to be the main entry point for
     /// parsing an arbitrary expression.
     pub fn parse_assign_expr(&mut self) -> P<Expr> {
-        let lo = self.span.lo;
         let lhs = self.parse_binops();
+        self.parse_assign_expr_with(lhs)
+    }
+
+    pub fn parse_assign_expr_with(&mut self, lhs: P<Expr>) -> P<Expr> {
         let restrictions = self.restrictions & RESTRICTION_NO_STRUCT_LITERAL;
         match self.token {
           token::Eq => {
               self.bump();
               let rhs = self.parse_expr_res(restrictions);
-              self.mk_expr(lo, rhs.span.hi, ExprAssign(lhs, rhs))
+              self.mk_expr(lhs.span.lo, rhs.span.hi, ExprAssign(lhs, rhs))
           }
           token::BinOpEq(op) => {
               self.bump();
@@ -3001,8 +3004,9 @@ impl<'a> Parser<'a> {
                   token::Shr =>     BiShr
               };
               let rhs_span = rhs.span;
+              let span = lhs.span;
               let assign_op = self.mk_assign_op(aop, lhs, rhs);
-              self.mk_expr(lo, rhs_span.hi, assign_op)
+              self.mk_expr(span.lo, rhs_span.hi, assign_op)
           }
           _ => {
               lhs
@@ -3357,11 +3361,16 @@ impl<'a> Parser<'a> {
             })
           }
           token::BinOp(token::And) | token::AndAnd => {
-            // parse &pat
+            // parse &pat and &mut pat
             let lo = self.span.lo;
             self.expect_and();
+            let mutability = if self.eat_keyword(keywords::Mut) {
+                ast::MutMutable
+            } else {
+                ast::MutImmutable
+            };
             let sub = self.parse_pat();
-            pat = PatRegion(sub);
+            pat = PatRegion(sub, mutability);
             hi = self.last_span.hi;
             return P(ast::Pat {
                 id: ast::DUMMY_NODE_ID,
@@ -3896,8 +3905,9 @@ impl<'a> Parser<'a> {
                                     let e = self.mk_mac_expr(span.lo,
                                                              span.hi,
                                                              macro.and_then(|m| m.node));
-                                    let e =
-                                        self.parse_dot_or_call_expr_with(e);
+                                    let e = self.parse_dot_or_call_expr_with(e);
+                                    let e = self.parse_more_binops(e, 0);
+                                    let e = self.parse_assign_expr_with(e);
                                     self.handle_expression_like_statement(
                                         e,
                                         ast::DUMMY_NODE_ID,
@@ -4890,67 +4900,116 @@ impl<'a> Parser<'a> {
             self.span_err(ty.span, "`virtual` structs have been removed from the language");
         }
 
-        self.parse_where_clause(&mut generics);
+        // There is a special case worth noting here, as reported in issue #17904.
+        // If we are parsing a tuple struct it is the case that the where clause
+        // should follow the field list. Like so:
+        //
+        // struct Foo<T>(T) where T: Copy;
+        //
+        // If we are parsing a normal record-style struct it is the case
+        // that the where clause comes before the body, and after the generics.
+        // So if we look ahead and see a brace or a where-clause we begin
+        // parsing a record style struct.
+        //
+        // Otherwise if we look ahead and see a paren we parse a tuple-style
+        // struct.
 
-        let mut fields: Vec<StructField>;
-        let is_tuple_like;
+        let (fields, ctor_id) = if self.token.is_keyword(keywords::Where) {
+            self.parse_where_clause(&mut generics);
+            if self.eat(&token::Semi) {
+                // If we see a: `struct Foo<T> where T: Copy;` style decl.
+                (Vec::new(), Some(ast::DUMMY_NODE_ID))
+            } else {
+                // If we see: `struct Foo<T> where T: Copy { ... }`
+                (self.parse_record_struct_body(&class_name), None)
+            }
+        // No `where` so: `struct Foo<T>;`
+        } else if self.eat(&token::Semi) {
+            (Vec::new(), Some(ast::DUMMY_NODE_ID))
+        // Record-style struct definition
+        } else if self.token == token::OpenDelim(token::Brace) {
+            let fields = self.parse_record_struct_body(&class_name);
+            (fields, None)
+        // Tuple-style struct definition with optional where-clause.
+        } else {
+            let fields = self.parse_tuple_struct_body(&class_name, &mut generics);
+            (fields, Some(ast::DUMMY_NODE_ID))
+        };
 
+        (class_name,
+         ItemStruct(P(ast::StructDef {
+             fields: fields,
+             ctor_id: ctor_id,
+         }), generics),
+         None)
+    }
+
+    pub fn parse_record_struct_body(&mut self, class_name: &ast::Ident) -> Vec<StructField> {
+        let mut fields = Vec::new();
         if self.eat(&token::OpenDelim(token::Brace)) {
-            // It's a record-like struct.
-            is_tuple_like = false;
-            fields = Vec::new();
             while self.token != token::CloseDelim(token::Brace) {
                 fields.push(self.parse_struct_decl_field(true));
             }
+
             if fields.len() == 0 {
                 self.fatal(format!("unit-like struct definition should be \
-                                    written as `struct {};`",
-                                   token::get_ident(class_name))[]);
+                    written as `struct {};`",
+                    token::get_ident(class_name.clone()))[]);
             }
+
             self.bump();
-        } else if self.check(&token::OpenDelim(token::Paren)) {
-            // It's a tuple-like struct.
-            is_tuple_like = true;
-            fields = self.parse_unspanned_seq(
+        } else {
+            let token_str = self.this_token_to_string();
+            self.fatal(format!("expected `where`, or `{}` after struct \
+                                name, found `{}`", "{",
+                                token_str)[]);
+        }
+
+        fields
+    }
+
+    pub fn parse_tuple_struct_body(&mut self,
+                                   class_name: &ast::Ident,
+                                   generics: &mut ast::Generics)
+                                   -> Vec<StructField> {
+        // This is the case where we find `struct Foo<T>(T) where T: Copy;`
+        if self.check(&token::OpenDelim(token::Paren)) {
+            let fields = self.parse_unspanned_seq(
                 &token::OpenDelim(token::Paren),
                 &token::CloseDelim(token::Paren),
                 seq_sep_trailing_allowed(token::Comma),
                 |p| {
-                let attrs = p.parse_outer_attributes();
-                let lo = p.span.lo;
-                let struct_field_ = ast::StructField_ {
-                    kind: UnnamedField(p.parse_visibility()),
-                    id: ast::DUMMY_NODE_ID,
-                    ty: p.parse_ty_sum(),
-                    attrs: attrs,
-                };
-                spanned(lo, p.span.hi, struct_field_)
-            });
+                    let attrs = p.parse_outer_attributes();
+                    let lo = p.span.lo;
+                    let struct_field_ = ast::StructField_ {
+                        kind: UnnamedField(p.parse_visibility()),
+                        id: ast::DUMMY_NODE_ID,
+                        ty: p.parse_ty_sum(),
+                        attrs: attrs,
+                    };
+                    spanned(lo, p.span.hi, struct_field_)
+                });
+
             if fields.len() == 0 {
                 self.fatal(format!("unit-like struct definition should be \
-                                    written as `struct {};`",
-                                   token::get_ident(class_name))[]);
+                    written as `struct {};`",
+                    token::get_ident(class_name.clone()))[]);
             }
+
+            self.parse_where_clause(generics);
             self.expect(&token::Semi);
-        } else if self.eat(&token::Semi) {
-            // It's a unit-like struct.
-            is_tuple_like = true;
-            fields = Vec::new();
+            fields
+        // This is the case where we just see struct Foo<T> where T: Copy;
+        } else if self.token.is_keyword(keywords::Where) {
+            self.parse_where_clause(generics);
+            self.expect(&token::Semi);
+            Vec::new()
+        // This case is where we see: `struct Foo<T>;`
         } else {
             let token_str = self.this_token_to_string();
-            self.fatal(format!("expected `{}`, `(`, or `;` after struct \
-                                name, found `{}`", "{",
-                               token_str)[])
+            self.fatal(format!("expected `where`, `{}`, `(`, or `;` after struct \
+                name, found `{}`", "{", token_str)[]);
         }
-
-        let _ = ast::DUMMY_NODE_ID;  // FIXME: Workaround for crazy bug.
-        let new_id = ast::DUMMY_NODE_ID;
-        (class_name,
-         ItemStruct(P(ast::StructDef {
-             fields: fields,
-             ctor_id: if is_tuple_like { Some(new_id) } else { None },
-         }), generics),
-         None)
     }
 
     /// Parse a structure field declaration

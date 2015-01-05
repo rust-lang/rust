@@ -24,9 +24,10 @@ use trans::type_::Type;
 use trans::type_of::*;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use middle::subst::{Substs};
+use middle::subst::Substs;
+
+use std::ffi::CString;
 use std::cmp;
-use std::c_str::ToCStr;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
 use syntax::abi::{RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};
@@ -132,9 +133,9 @@ pub fn register_static(ccx: &CrateContext,
             };
             unsafe {
                 // Declare a symbol `foo` with the desired linkage.
-                let g1 = ident.get().with_c_str(|buf| {
-                    llvm::LLVMAddGlobal(ccx.llmod(), llty2.to_ref(), buf)
-                });
+                let buf = CString::from_slice(ident.get().as_bytes());
+                let g1 = llvm::LLVMAddGlobal(ccx.llmod(), llty2.to_ref(),
+                                             buf.as_ptr());
                 llvm::SetLinkage(g1, linkage);
 
                 // Declare an internal global `extern_with_linkage_foo` which
@@ -145,9 +146,9 @@ pub fn register_static(ccx: &CrateContext,
                 // zero.
                 let mut real_name = "_rust_extern_with_linkage_".to_string();
                 real_name.push_str(ident.get());
-                let g2 = real_name.with_c_str(|buf| {
-                    llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(), buf)
-                });
+                let real_name = CString::from_vec(real_name.into_bytes());
+                let g2 = llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(),
+                                             real_name.as_ptr());
                 llvm::SetLinkage(g2, llvm::InternalLinkage);
                 llvm::LLVMSetInitializer(g2, g1);
                 g2
@@ -155,9 +156,8 @@ pub fn register_static(ccx: &CrateContext,
         }
         None => unsafe {
             // Generate an external declaration.
-            ident.get().with_c_str(|buf| {
-                llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(), buf)
-            })
+            let buf = CString::from_slice(ident.get().as_bytes());
+            llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(), buf.as_ptr())
         }
     }
 }
@@ -606,9 +606,9 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         //         return r;
         //     }
 
-        let the_block =
-            "the block".with_c_str(
-                |s| llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llwrapfn, s));
+        let ptr = "the block\0".as_ptr();
+        let the_block = llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llwrapfn,
+                                                            ptr as *const _);
 
         let builder = ccx.builder();
         builder.position_at_end(the_block);

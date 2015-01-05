@@ -12,7 +12,7 @@
 
 extern crate libc;
 
-use std::c_str::ToCStr;
+use std::ffi::CString;
 
 mod mlibc {
     use libc::{c_char, c_long, c_longlong};
@@ -24,11 +24,13 @@ mod mlibc {
 }
 
 fn atol(s: String) -> int {
-    s.as_slice().with_c_str(|x| unsafe { mlibc::atol(x) as int })
+    let c = CString::from_slice(s.as_bytes());
+    unsafe { mlibc::atol(c.as_ptr()) as int }
 }
 
 fn atoll(s: String) -> i64 {
-    s.as_slice().with_c_str(|x| unsafe { mlibc::atoll(x) as i64 })
+    let c = CString::from_slice(s.as_bytes());
+    unsafe { mlibc::atoll(c.as_ptr()) as i64 }
 }
 
 pub fn main() {

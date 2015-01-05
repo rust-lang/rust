@@ -226,7 +226,7 @@ use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
 use util::fs;
 
-use std::c_str::ToCStr;
+use std::ffi::CString;
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::io::fs::PathExtensions;
@@ -720,9 +720,8 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
         }
     }
     unsafe {
-        let mb = filename.with_c_str(|buf| {
-            llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-        });
+        let buf = CString::from_slice(filename.as_vec());
+        let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr());
         if mb as int == 0 {
             return Err(format!("error reading library: '{}'",
                                filename.display()))
@@ -738,8 +737,9 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let mut name_buf = ptr::null();
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
-            let name = String::from_raw_buf_len(name_buf as *const u8,
-                                                name_len as uint);
+            let name = slice::from_raw_buf(&(name_buf as *const u8),
+                                           name_len as uint).to_vec();
+            let name = String::from_utf8(name).unwrap();
             debug!("get_metadata_section: name {}", name);
             if read_meta_section_name(is_osx) == name {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);

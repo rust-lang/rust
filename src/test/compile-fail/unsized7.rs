@@ -10,7 +10,7 @@
 
 // Test sized-ness checking in substitution in impls.
 
-trait T for Sized? {}
+trait T {}
 
 // I would like these to fail eventually.
 // impl - bounded

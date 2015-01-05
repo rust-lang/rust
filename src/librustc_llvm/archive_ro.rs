@@ -13,7 +13,7 @@
 use libc;
 use ArchiveRef;
 
-use std::c_str::ToCStr;
+use std::ffi::CString;
 use std::mem;
 use std::raw;
 
@@ -30,9 +30,8 @@ impl ArchiveRO {
     /// raised.
     pub fn open(dst: &Path) -> Option<ArchiveRO> {
         unsafe {
-            let ar = dst.with_c_str(|dst| {
-                ::LLVMRustOpenArchive(dst)
-            });
+            let s = CString::from_slice(dst.as_vec());
+            let ar = ::LLVMRustOpenArchive(s.as_ptr());
             if ar.is_null() {
                 None
             } else {
@@ -45,9 +44,9 @@ impl ArchiveRO {
     pub fn read<'a>(&'a self, file: &str) -> Option<&'a [u8]> {
         unsafe {
             let mut size = 0 as libc::size_t;
-            let ptr = file.with_c_str(|file| {
-                ::LLVMRustArchiveReadSection(self.ptr, file, &mut size)
-            });
+            let file = CString::from_slice(file.as_bytes());
+            let ptr = ::LLVMRustArchiveReadSection(self.ptr, file.as_ptr(),
+                                                   &mut size);
             if ptr.is_null() {
                 None
             } else {

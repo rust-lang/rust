@@ -8,23 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate serialize;
-
-use std::fmt;
-use serialize::{Encodable, Encoder};
-
-pub fn buffer_encode<'a,
-                     T:Encodable<serialize::json::Encoder<'a>,fmt::Error>>(
-                     to_encode_object: &T)
-                     -> String {
-    let mut m = String::new();
-    {
-        let mut encoder =
-            serialize::json::Encoder::new(&mut m);
-        //~^ ERROR `m` does not live long enough
-        to_encode_object.encode(&mut encoder);
-    }
-    m
-}
+struct Baz<U> where U: Eq(U); // This is parsed as the new Fn* style parenthesis syntax.
+struct Baz<U> where U: Eq(U) -> R; // Notice this parses as well.
+struct Baz<U>(U) where U: Eq; // This rightfully signals no error as well.
+struct Foo<T> where T: Copy, (T); //~ ERROR: unexpected token in `where` clause
+struct Bar<T> { x: T } where T: Copy //~ ERROR: expected item, found `where`
 
 fn main() {}

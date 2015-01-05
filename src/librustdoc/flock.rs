@@ -20,8 +20,8 @@ pub use self::imp::Lock;
 
 #[cfg(unix)]
 mod imp {
+    use std::ffi::CString;
     use libc;
-    use std::c_str::ToCStr;
 
     #[cfg(target_os = "linux")]
     mod os {
@@ -111,9 +111,11 @@ mod imp {
 
     impl Lock {
         pub fn new(p: &Path) -> Lock {
-            let fd = p.with_c_str(|s| unsafe {
-                libc::open(s, libc::O_RDWR | libc::O_CREAT, libc::S_IRWXU)
-            });
+            let buf = CString::from_slice(p.as_vec());
+            let fd = unsafe {
+                libc::open(buf.as_ptr(), libc::O_RDWR | libc::O_CREAT,
+                           libc::S_IRWXU)
+            };
             assert!(fd > 0);
             let flock = os::flock {
                 l_start: 0,

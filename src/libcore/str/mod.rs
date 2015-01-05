@@ -190,7 +190,7 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
 /// # Panics
 ///
 /// This function will panic if the string pointed to by `s` is not valid UTF-8.
-#[unstable = "may change location based on the outcome of the c_str module"]
+#[deprecated = "use std::ffi::c_str_to_bytes + str::from_utf8"]
 pub unsafe fn from_c_str(s: *const i8) -> &'static str {
     let s = s as *const u8;
     let mut len = 0u;
@@ -230,7 +230,7 @@ impl<F> CharEq for F where F: FnMut(char) -> bool {
 impl<'a> CharEq for &'a [char] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&mut m| m.matches(c))
+        self.iter().any(|&m| { let mut m = m; m.matches(c) })
     }
 
     #[inline]
@@ -1130,7 +1130,7 @@ pub mod traits {
 #[unstable = "Instead of taking this bound generically, this trait will be \
               replaced with one of slicing syntax, deref coercions, or \
               a more generic conversion trait"]
-pub trait Str for Sized? {
+pub trait Str {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a str;
 }
@@ -1171,7 +1171,7 @@ delegate_iter!{pattern forward &'a str in RSplitN<'a, P>}
 
 /// Methods for string slices
 #[allow(missing_docs)]
-pub trait StrExt for Sized? {
+pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.
 

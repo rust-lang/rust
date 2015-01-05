@@ -15,17 +15,15 @@
 use self::PathPrefix::*;
 
 use ascii::AsciiExt;
-use c_str::{CString, ToCStr};
 use char::CharExt;
 use clone::Clone;
-use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+use cmp::{Ordering, Eq, Ord, PartialEq, PartialOrd};
 use hash;
 use io::Writer;
 use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map, repeat};
 use mem;
-use option::Option;
-use option::Option::{Some, None};
+use option::Option::{self, Some, None};
 use slice::{SliceExt, SliceConcatExt};
 use str::{SplitTerminator, FromStr, StrExt};
 use string::{String, ToString};
@@ -109,26 +107,6 @@ impl Ord for Path {
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {
         Path::new_opt(s)
-    }
-}
-
-// FIXME (#12938): Until DST lands, we cannot decompose &str into & and str, so
-// we cannot usefully take ToCStr arguments by reference (without forcing an
-// additional & around &str). So we are instead temporarily adding an instance
-// for &Path, so that we can take ToCStr as owned. When DST lands, the &Path
-// instance should be removed, and arguments bound by ToCStr should be passed by
-// reference.
-
-impl ToCStr for Path {
-    #[inline]
-    fn to_c_str(&self) -> CString {
-        // The Path impl guarantees no internal NUL
-        unsafe { self.to_c_str_unchecked() }
-    }
-
-    #[inline]
-    unsafe fn to_c_str_unchecked(&self) -> CString {
-        self.as_vec().to_c_str_unchecked()
     }
 }
 
