@@ -62,14 +62,16 @@ def rust_pretty_printer_lookup_function(val):
         assert first_variant_name.startswith("RUST$ENCODED$ENUM$")
         # This is a space-optimized enum
         last_separator_index = first_variant_name.rfind("$")
-        second_last_separator_index = first_variant_name.rfind("$", 0, last_separator_index)
-        disr_field_index = first_variant_name[second_last_separator_index + 1 :
+        start_index = len("RUST$ENCODED$ENUM")
+        disr_field_indices = first_variant_name[start_index + 1 :
                                               last_separator_index]
-        disr_field_index = int(disr_field_index)
+        disr_field_indices = [int(index) for index in disr_field_indices.split("$")]
 
         sole_variant_val = val[enum_members[0]]
-        disr_field = get_field_at_index(sole_variant_val, disr_field_index)
-        discriminant = sole_variant_val[disr_field]
+        discriminant = sole_variant_val
+       for disr_field_index in disr_field_indices:
+         disr_field = get_field_at_index(discriminant, disr_field_index)
+          discriminant = discriminant[disr_field]
 
         # If the discriminant field is a fat pointer we have to consider the
         # first word as the true discriminant
@@ -234,4 +236,5 @@ def get_field_at_index(val, index):
   for field in val.type.fields():
     if i == index:
       return field
+    i += 1
   return None
