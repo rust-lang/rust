@@ -266,7 +266,7 @@ impl RegionMaps {
         self.free_region_map.borrow_mut().insert(sub, vec!(sup));
     }
 
-    fn record_encl_scope(&self, sub: CodeExtent, sup: CodeExtent) {
+    pub fn record_encl_scope(&self, sub: CodeExtent, sup: CodeExtent) {
         debug!("record_encl_scope(sub={}, sup={})", sub, sup);
         assert!(sub != sup);
         assert!(self.scope_map.borrow().get(&sup) != Some(&sub),
