@@ -26,6 +26,7 @@
 #![feature(unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
 #![feature(old_orphan_check)]
+#![feature(old_impl_check)]
 #![feature(associated_types)]
 #![no_std]
 

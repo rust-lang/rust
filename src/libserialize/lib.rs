@@ -26,6 +26,7 @@ Core encoding and decoding interfaces.
 #![feature(macro_rules, default_type_params, phase, slicing_syntax, globs)]
 #![feature(unboxed_closures)]
 #![feature(associated_types)]
+#![feature(old_impl_check)]
 
 // test harness access
 #[cfg(test)]

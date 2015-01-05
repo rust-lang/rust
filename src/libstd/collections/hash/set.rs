@@ -128,6 +128,7 @@ impl<T: Hash + Eq> HashSet<T, RandomSipHasher> {
     }
 }
 
+#[old_impl_check]
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
@@ -571,6 +572,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
     fn eq(&self, other: &HashSet<T, H>) -> bool {
         if self.len() != other.len() { return false; }
@@ -580,9 +582,11 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> PartialEq for HashSet<T, H> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
 
 #[stable]
+#[old_impl_check]
 impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
@@ -597,6 +601,7 @@ impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
     fn from_iter<I: Iterator<Item=T>>(iter: I) -> HashSet<T, H> {
         let lower = iter.size_hint().0;
@@ -607,6 +612,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, 
 }
 
 #[stable]
+#[old_impl_check]
 impl<T: Eq + Hash<S>, S, H: Hasher<S>> Extend<T> for HashSet<T, H> {
     fn extend<I: Iterator<Item=T>>(&mut self, mut iter: I) {
         for k in iter {
@@ -616,6 +622,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> Extend<T> for HashSet<T, H> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
     #[stable]
     fn default() -> HashSet<T, H> {
@@ -624,6 +631,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Default for HashSet<T, H> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
 BitOr<&'b HashSet<T, H>> for &'a HashSet<T, H> {
     type Output = HashSet<T, H>;
@@ -654,6 +662,7 @@ BitOr<&'b HashSet<T, H>> for &'a HashSet<T, H> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
 BitAnd<&'b HashSet<T, H>> for &'a HashSet<T, H> {
     type Output = HashSet<T, H>;
@@ -684,6 +693,7 @@ BitAnd<&'b HashSet<T, H>> for &'a HashSet<T, H> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
 BitXor<&'b HashSet<T, H>> for &'a HashSet<T, H> {
     type Output = HashSet<T, H>;
@@ -714,6 +724,7 @@ BitXor<&'b HashSet<T, H>> for &'a HashSet<T, H> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<'a, 'b, T: Eq + Hash<S> + Clone, S, H: Hasher<S> + Default>
 Sub<&'b HashSet<T, H>> for &'a HashSet<T, H> {
     type Output = HashSet<T, H>;
@@ -816,6 +827,7 @@ impl<'a, K: 'a> Iterator for Drain<'a, K> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<'a, T, S, H> Iterator for Intersection<'a, T, H>
     where T: Eq + Hash<S>, H: Hasher<S>
 {
@@ -839,6 +851,7 @@ impl<'a, T, S, H> Iterator for Intersection<'a, T, H>
 }
 
 #[stable]
+#[old_impl_check]
 impl<'a, T, S, H> Iterator for Difference<'a, T, H>
     where T: Eq + Hash<S>, H: Hasher<S>
 {
@@ -862,6 +875,7 @@ impl<'a, T, S, H> Iterator for Difference<'a, T, H>
 }
 
 #[stable]
+#[old_impl_check]
 impl<'a, T, S, H> Iterator for SymmetricDifference<'a, T, H>
     where T: Eq + Hash<S>, H: Hasher<S>
 {
@@ -872,6 +886,7 @@ impl<'a, T, S, H> Iterator for SymmetricDifference<'a, T, H>
 }
 
 #[stable]
+#[old_impl_check]
 impl<'a, T, S, H> Iterator for Union<'a, T, H>
     where T: Eq + Hash<S>, H: Hasher<S>
 {
