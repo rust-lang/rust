@@ -62,10 +62,10 @@ def rust_pretty_printer_lookup_function(val):
         assert first_variant_name.startswith("RUST$ENCODED$ENUM$")
         # This is a space-optimized enum
         last_separator_index = first_variant_name.rfind("$")
-        start_index = len("RUST$ENCODED$ENUM")
-        disr_field_indices = first_variant_name[start_index + 1 :
-                                              last_separator_index]
-        disr_field_indices = [int(index) for index in disr_field_indices.split("$")]
+        start_index = len("RUST$ENCODED$ENUM$")
+        disr_field_indices = first_variant_name[start_index :
+                                              last_separator_index].split("$")
+        disr_field_indices = [int(index) for index in disr_field_indices]
 
         sole_variant_val = val[enum_members[0]]
         discriminant = sole_variant_val
