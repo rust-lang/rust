@@ -4231,7 +4231,7 @@ arguments, really powerful things are possible.
 
 Let's make a closure:
 
-```{rust}
+```{rust,ignore}
 let add_one = |x| { 1 + x };
 
 println!("The sum of 5 plus 1 is {}.", add_one(5));
@@ -4243,7 +4243,7 @@ binding name and two parentheses, just like we would for a named function.
 
 Let's compare syntax. The two are pretty close:
 
-```{rust}
+```{rust,ignore}
 let add_one = |x: i32| -> i32 { 1 + x };
 fn  add_one   (x: i32) -> i32 { 1 + x }
 ```
@@ -4256,7 +4256,7 @@ There's one big difference between a closure and named functions, and it's in
 the name: a closure "closes over its environment." What does that mean? It means
 this:
 
-```{rust}
+```{rust,ignore}
 fn main() {
     let x = 5;
 
@@ -4297,7 +4297,7 @@ now. We'll talk about them more in the "Threads" section of the guide.
 
 Closures are most useful as an argument to another function. Here's an example:
 
-```{rust}
+```{rust,ignore}
 fn twice(x: i32, f: |i32| -> i32) -> i32 {
     f(x) + f(x)
 }
@@ -4311,14 +4311,14 @@ fn main() {
 
 Let's break the example down, starting with `main`:
 
-```{rust}
+```{rust,ignore}
 let square = |x: i32| { x * x };
 ```
 
 We've seen this before. We make a closure that takes an integer, and returns
 its square.
 
-```{rust}
+```{rust,ignore}
 # fn twice(x: i32, f: |i32| -> i32) -> i32 { f(x) + f(x) }
 # let square = |x: i32| { x * x };
 twice(5, square); // evaluates to 50
@@ -4342,7 +4342,7 @@ though, and that function takes an `i32` and returns an `i32`. Notice
 how the `|i32| -> i32` syntax looks a lot like our definition of `square`
 above, if we added the return type in:
 
-```{rust}
+```{rust,ignore}
 let square = |x: i32| -> i32 { x * x };
 //           |i32|    -> i32
 ```
@@ -4357,7 +4357,7 @@ Finally, `twice` returns an `i32` as well.
 
 Okay, let's look at the body of `twice`:
 
-```{rust}
+```{rust,ignore}
 fn twice(x: i32, f: |i32| -> i32) -> i32 {
   f(x) + f(x)
 }
@@ -4375,7 +4375,7 @@ this technique a lot.
 If we didn't want to give `square` a name, we could just define it inline.
 This example is the same as the previous one:
 
-```{rust}
+```{rust,ignore}
 fn twice(x: i32, f: |i32| -> i32) -> i32 {
     f(x) + f(x)
 }
@@ -4388,7 +4388,7 @@ fn main() {
 A named function's name can be used wherever you'd use a closure. Another
 way of writing the previous example:
 
-```{rust}
+```{rust,ignore}
 fn twice(x: i32, f: |i32| -> i32) -> i32 {
     f(x) + f(x)
 }
