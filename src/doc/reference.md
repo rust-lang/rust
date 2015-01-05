@@ -1559,11 +1559,11 @@ Type parameters can be specified for a trait to make it generic. These appear
 after the trait name, using the same syntax used in [generic
 functions](#generic-functions).
 
-``` ignore
+```
 trait Seq<T> {
    fn len(&self) -> uint;
    fn elt_at(&self, n: uint) -> T;
-   fn iter(&self, |T|);
+   fn iter<F>(&self, F) where F: Fn(T);
 }
 ```
 
@@ -3217,8 +3217,8 @@ expression's captured environment.
 In this example, we define a function `ten_times` that takes a higher-order
 function argument, and call it with a lambda expression as an argument.
 
-``` ignore
-fn ten_times(f: |int|) {
+```
+fn ten_times<F>(f: F) where F: Fn(int) {
     let mut i = 0;
     while i < 10 {
         f(i);
@@ -3821,14 +3821,14 @@ or `extern`), a sequence of input types and an output type.
 
 An example of a `fn` type:
 
-``` ignore
+```
 fn add(x: int, y: int) -> int {
   return x + y;
 }
 
 let mut x = add(5,7);
 
-type Binop<'a> = |int,int|: 'a -> int;
+type Binop = fn(int, int) -> int;
 let bo: Binop = add;
 x = bo(5,7);
 ```
@@ -3849,17 +3849,17 @@ The type of a closure mapping an input of type `A` to an output of type `B` is
 
 An example of creating and calling a closure:
 
-``` ignore
+```rust
 let captured_var = 10i;
 
-let closure_no_args = || println!("captured_var={}", captured_var);
+let closure_no_args = |&:| println!("captured_var={}", captured_var);
 
-let closure_args = |arg: int| -> int {
+let closure_args = |&: arg: int| -> int {
   println!("captured_var={}, arg={}", captured_var, arg);
   arg // Note lack of semicolon after 'arg'
 };
 
-fn call_closure(c1: ||, c2: |int| -> int) {
+fn call_closure<F: Fn(), G: Fn(int) -> int>(c1: F, c2: G) {
   c1();
   c2(2);
 }
