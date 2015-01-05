@@ -439,6 +439,7 @@ impl<K, V, M> SearchResult<K, V, M> {
     }
 }
 
+#[old_impl_check]
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     fn make_hash<X: ?Sized + Hash<S>>(&self, x: &X) -> SafeHash {
         table::make_hash(&self.hasher, x)
@@ -517,6 +518,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomSipHasher> {
     }
 }
 
+#[old_impl_check]
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// Creates an empty hashmap which will use the given hasher to hash keys.
     ///
@@ -1191,6 +1193,7 @@ fn search_entry_hashed<'a, K, V, Q: ?Sized>(table: &'a mut RawTable<K,V>, hash: 
 }
 
 #[stable]
+#[old_impl_check]
 impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V, H> {
     fn eq(&self, other: &HashMap<K, V, H>) -> bool {
         if self.len() != other.len() { return false; }
@@ -1202,9 +1205,11 @@ impl<K: Eq + Hash<S>, V: PartialEq, S, H: Hasher<S>> PartialEq for HashMap<K, V,
 }
 
 #[stable]
+#[old_impl_check]
 impl<K: Eq + Hash<S>, V: Eq, S, H: Hasher<S>> Eq for HashMap<K, V, H> {}
 
 #[stable]
+#[old_impl_check]
 impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{{"));
@@ -1219,6 +1224,7 @@ impl<K: Eq + Hash<S> + Show, V: Show, S, H: Hasher<S>> Show for HashMap<K, V, H>
 }
 
 #[stable]
+#[old_impl_check]
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H> {
     #[stable]
     fn default() -> HashMap<K, V, H> {
@@ -1227,6 +1233,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H>
 }
 
 #[stable]
+#[old_impl_check]
 impl<K: Hash<S> + Eq, Q: ?Sized, V, S, H: Hasher<S>> Index<Q> for HashMap<K, V, H>
     where Q: BorrowFrom<K> + Hash<S> + Eq
 {
@@ -1239,6 +1246,7 @@ impl<K: Hash<S> + Eq, Q: ?Sized, V, S, H: Hasher<S>> Index<Q> for HashMap<K, V, 
 }
 
 #[stable]
+#[old_impl_check]
 impl<K: Hash<S> + Eq, Q: ?Sized, V, S, H: Hasher<S>> IndexMut<Q> for HashMap<K, V, H>
     where Q: BorrowFrom<K> + Hash<S> + Eq
 {
@@ -1472,6 +1480,7 @@ impl<'a, Q: ?Sized + 'a + ToOwned<K>, K: 'a, V: 'a> VacantEntry<'a, Q, K, V> {
 }
 
 #[stable]
+#[old_impl_check]
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
     fn from_iter<T: Iterator<Item=(K, V)>>(iter: T) -> HashMap<K, V, H> {
         let lower = iter.size_hint().0;
@@ -1482,6 +1491,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for Has
 }
 
 #[stable]
+#[old_impl_check]
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Extend<(K, V)> for HashMap<K, V, H> {
     fn extend<T: Iterator<Item=(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
