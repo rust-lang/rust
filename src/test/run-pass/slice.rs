@@ -11,6 +11,7 @@
 // Test slicing sugar.
 
 #![feature(slicing_syntax)]
+#![feature(associated_types)]
 
 extern crate core;
 use core::ops::{Index, Range, RangeTo, RangeFrom, FullRange};
@@ -19,50 +20,58 @@ static mut COUNT: uint = 0;
 
 struct Foo;
 
-impl Index<Range<Foo>, Foo> for Foo {
+impl Index<Range<Foo>> for Foo {
+    type Output = Foo;
     fn index(&self, index: &Range<Foo>) -> &Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
-impl Index<RangeTo<Foo>, Foo> for Foo {
+impl Index<RangeTo<Foo>> for Foo {
+    type Output = Foo;
     fn index(&self, index: &RangeTo<Foo>) -> &Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
-impl Index<RangeFrom<Foo>, Foo> for Foo {
+impl Index<RangeFrom<Foo>> for Foo {
+    type Output = Foo;
     fn index(&self, index: &RangeFrom<Foo>) -> &Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
-impl Index<FullRange, Foo> for Foo {
+impl Index<FullRange> for Foo {
+    type Output = Foo;
     fn index(&self, _index: &FullRange) -> &Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
 
-impl IndexMut<Range<Foo>, Foo> for Foo {
+impl IndexMut<Range<Foo>> for Foo {
+    type Output = Foo;
     fn index_mut(&mut self, index: &Range<Foo>) -> &mut Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
-impl IndexMut<RangeTo<Foo>, Foo> for Foo {
+impl IndexMut<RangeTo<Foo>> for Foo {
+    type Output = Foo;
     fn index_mut(&mut self, index: &RangeTo<Foo>) -> &mut Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
-impl IndexMut<RangeFrom<Foo>, Foo> for Foo {
+impl IndexMut<RangeFrom<Foo>> for Foo {
+    type Output = Foo;
     fn index_mut(&mut self, index: &RangeFrom<Foo>) -> &mut Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
-impl IndexMut<FullRange, Foo> for Foo {
+impl IndexMut<FullRange> for Foo {
+    type Output = Foo;
     fn index_mut(&mut self, _index: &FullRange) -> &mut Foo {
         unsafe { COUNT += 1; }
         self

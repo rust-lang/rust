@@ -22,7 +22,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{self, Deref, Add};
+use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
@@ -842,28 +842,62 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
+#[cfg(stage0)]
 impl ops::Index<ops::Range<uint>, str> for String {
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &str {
         &self.index(&FullRange)[*index]
     }
 }
-
+#[cfg(stage0)]
 impl ops::Index<ops::RangeTo<uint>, str> for String {
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &str {
         &self.index(&FullRange)[*index]
     }
 }
-
+#[cfg(stage0)]
 impl ops::Index<ops::RangeFrom<uint>, str> for String {
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
         &self.index(&FullRange)[*index]
     }
 }
-
+#[cfg(stage0)]
 impl ops::Index<ops::FullRange, str> for String {
+    #[inline]
+    fn index(&self, _index: &ops::FullRange) -> &str {
+        unsafe { mem::transmute(self.vec.as_slice()) }
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl ops::Index<ops::Range<uint>> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, index: &ops::Range<uint>) -> &str {
+        &self.index(&FullRange)[*index]
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl ops::Index<ops::RangeTo<uint>> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &str {
+        &self.index(&FullRange)[*index]
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl ops::Index<ops::RangeFrom<uint>> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
+        &self.index(&FullRange)[*index]
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl ops::Index<ops::FullRange> for String {
+    type Output = str;
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &str {
         unsafe { mem::transmute(self.vec.as_slice()) }

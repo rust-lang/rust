@@ -741,16 +741,12 @@ impl Drop for Process {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use io::timer::*;
     use io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
-    use prelude::{Ok, Err, spawn, range, drop, Box, Some, None, Option, Vec, Buffer};
-    use prelude::{from_str, Path, String, channel, Reader, Writer, Clone, Index};
-    use prelude::{SliceExt, Str, StrExt, AsSlice, ToString, GenericPath};
+    use prelude::v1::{Ok, Err, range, drop, Some, None, Vec};
+    use prelude::v1::{Path, String, Reader, Writer, Clone};
+    use prelude::v1::{SliceExt, Str, StrExt, AsSlice, ToString, GenericPath};
     use io::fs::PathExtensions;
-    use io::process;
     use io::timer::*;
-    use io::{Truncate, Write, TimedOut, timer, FileNotFound};
     use rt::running_on_valgrind;
     use str;
     use super::{CreatePipe};

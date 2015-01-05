@@ -2267,7 +2267,7 @@ fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
     try!(w.write_str(highlight::highlight(t.source.as_slice(),
                                           Some("macro"),
-                                          None)[]));
+                                          None).as_slice()));
     document(w, it)
 }
 

@@ -305,7 +305,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                     _ => {}
                 }
 
-                if attr::contains_name(i.attrs[],
+                if attr::contains_name(i.attrs.as_slice(),
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",
                                       i.span,
@@ -351,7 +351,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                and not portable across platforms")
         }
 
-        let links_to_llvm = match attr::first_attr_value_str_by_name(i.attrs[], "link_name") {
+        let links_to_llvm = match attr::first_attr_value_str_by_name(i.attrs.as_slice(), "link_name") {
             Some(val) => val.get().starts_with("llvm."),
             _ => false
         };

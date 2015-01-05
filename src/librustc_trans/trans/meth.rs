@@ -600,7 +600,7 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     // the remaining arguments will be, well, whatever they are
     let llargs: Vec<_> =
-        fty.sig.0.inputs[1..].iter()
+        fty.sig.0.inputs.index(&(1..)).iter()
         .enumerate()
         .map(|(i, _)| {
             let llarg = get_param(fcx.llfn, fcx.arg_pos(i+1) as u32);

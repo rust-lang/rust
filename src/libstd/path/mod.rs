@@ -68,7 +68,7 @@ use fmt;
 use iter::IteratorExt;
 use option::Option;
 use option::Option::{None, Some};
-use prelude::{FullRange, Index};
+use prelude::v1::{FullRange, Index};
 use str;
 use str::StrExt;
 use string::{String, CowString};

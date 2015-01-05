@@ -97,7 +97,7 @@ impl fmt::Show for clean::Generics {
                 if i > 0 {
                     try!(f.write_str(", "))
                 }
-                try!(f.write_str(tp.name[]));
+                try!(f.write_str(tp.name.as_slice()));
 
                 if tp.bounds.len() > 0 {
                     try!(write!(f, ": {}", TyParamBounds(tp.bounds.as_slice())));
@@ -433,7 +433,7 @@ impl fmt::Show for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::TyParamBinder(id) => {
-                f.write_str(cache().typarams[ast_util::local_def(id)][])
+                f.write_str(cache().typarams[ast_util::local_def(id)].as_slice())
             }
             clean::Generic(ref name) => {
                 f.write_str(name.as_slice())

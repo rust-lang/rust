@@ -1026,7 +1026,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 s => {
                     early_error(format!("unknown library kind `{}`, expected \
                                          one of dylib, framework, or static",
-                                        s)[]);
+                                        s).as_slice());
                 }
             };
             return (name.to_string(), kind)

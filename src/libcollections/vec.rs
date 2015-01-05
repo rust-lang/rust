@@ -1230,27 +1230,28 @@ impl<T> IndexMut<uint> for Vec<T> {
     }
 }
 
+#[cfg(stage0)]
 impl<T> ops::Index<ops::Range<uint>, [T]> for Vec<T> {
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &[T] {
         self.as_slice().index(index)
     }
 }
-
+#[cfg(stage0)]
 impl<T> ops::Index<ops::RangeTo<uint>, [T]> for Vec<T> {
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
         self.as_slice().index(index)
     }
 }
-
+#[cfg(stage0)]
 impl<T> ops::Index<ops::RangeFrom<uint>, [T]> for Vec<T> {
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
         self.as_slice().index(index)
     }
 }
-
+#[cfg(stage0)]
 impl<T> ops::Index<ops::FullRange, [T]> for Vec<T> {
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &[T] {
@@ -1258,33 +1259,102 @@ impl<T> ops::Index<ops::FullRange, [T]> for Vec<T> {
     }
 }
 
+#[cfg(stage0)]
 impl<T> ops::IndexMut<ops::Range<uint>, [T]> for Vec<T> {
     #[inline]
     fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
         self.as_mut_slice().index_mut(index)
     }
 }
-
+#[cfg(stage0)]
 impl<T> ops::IndexMut<ops::RangeTo<uint>, [T]> for Vec<T> {
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
         self.as_mut_slice().index_mut(index)
     }
 }
-
+#[cfg(stage0)]
 impl<T> ops::IndexMut<ops::RangeFrom<uint>, [T]> for Vec<T> {
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
         self.as_mut_slice().index_mut(index)
     }
 }
-
+#[cfg(stage0)]
 impl<T> ops::IndexMut<ops::FullRange, [T]> for Vec<T> {
     #[inline]
     fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
         self.as_mut_slice()
     }
 }
+
+
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::Index<ops::Range<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::Range<uint>) -> &[T] {
+        self.as_slice().index(index)
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::Index<ops::RangeTo<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
+        self.as_slice().index(index)
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
+        self.as_slice().index(index)
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::Index<ops::FullRange> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, _index: &ops::FullRange) -> &[T] {
+        self.as_slice()
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::IndexMut<ops::Range<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
+        self.as_mut_slice().index_mut(index)
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::IndexMut<ops::RangeTo<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
+        self.as_mut_slice().index_mut(index)
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
+        self.as_mut_slice().index_mut(index)
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::IndexMut<ops::FullRange> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
+        self.as_mut_slice()
+    }
+}
+
 
 #[experimental = "waiting on Deref stability"]
 impl<T> ops::Deref for Vec<T> {

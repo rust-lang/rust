@@ -1103,28 +1103,62 @@ pub mod traits {
         }
     }
 
+    #[cfg(stage0)]
     impl ops::Index<ops::Range<uint>, str> for str {
         #[inline]
         fn index(&self, index: &ops::Range<uint>) -> &str {
             self.slice(index.start, index.end)
         }
     }
-
+    #[cfg(stage0)]
     impl ops::Index<ops::RangeTo<uint>, str> for str {
         #[inline]
         fn index(&self, index: &ops::RangeTo<uint>) -> &str {
             self.slice_to(index.end)
         }
     }
-
+    #[cfg(stage0)]
     impl ops::Index<ops::RangeFrom<uint>, str> for str {
         #[inline]
         fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
             self.slice_from(index.start)
         }
     }
-
+    #[cfg(stage0)]
     impl ops::Index<ops::FullRange, str> for str {
+        #[inline]
+        fn index(&self, _index: &ops::FullRange) -> &str {
+            self
+        }
+    }
+
+    #[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+    impl ops::Index<ops::Range<uint>> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, index: &ops::Range<uint>) -> &str {
+            self.slice(index.start, index.end)
+        }
+    }
+    #[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+    impl ops::Index<ops::RangeTo<uint>> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, index: &ops::RangeTo<uint>) -> &str {
+            self.slice_to(index.end)
+        }
+    }
+    #[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+    impl ops::Index<ops::RangeFrom<uint>> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
+            self.slice_from(index.start)
+        }
+    }
+    #[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+    impl ops::Index<ops::FullRange> for str {
+        type Output = str;
         #[inline]
         fn index(&self, _index: &ops::FullRange) -> &str {
             self

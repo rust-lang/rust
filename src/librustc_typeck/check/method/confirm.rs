@@ -641,7 +641,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     self.span,
                     format!("cannot upcast `{}` to `{}`",
                             source_trait_ref.repr(self.tcx()),
-                            target_trait_def_id.repr(self.tcx()))[]);
+                            target_trait_def_id.repr(self.tcx())).as_slice());
             }
         }
     }

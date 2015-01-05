@@ -401,6 +401,7 @@ Section: Trait implementations
 */
 
 /// Any string that can be represented as a slice.
+#[cfg(stage0)]
 pub trait StrExt for Sized?: Index<FullRange, str> {
     /// Escapes each char in `s` with `char::escape_default`.
     #[unstable = "return type may change to be an iterator"]
@@ -1339,6 +1340,948 @@ pub trait StrExt for Sized?: Index<FullRange, str> {
         UnicodeStr::trim_right(self.index(&FullRange))
     }
 }
+
+/// Any string that can be represented as a slice.
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+pub trait StrExt for Sized?: Index<FullRange, Output=str> {
+    /// Escapes each char in `s` with `char::escape_default`.
+    #[unstable = "return type may change to be an iterator"]
+    fn escape_default(&self) -> String {
+        self.chars().flat_map(|c| c.escape_default()).collect()
+    }
+
+    /// Escapes each char in `s` with `char::escape_unicode`.
+    #[unstable = "return type may change to be an iterator"]
+    fn escape_unicode(&self) -> String {
+        self.chars().flat_map(|c| c.escape_unicode()).collect()
+    }
+
+    /// Replaces all occurrences of one string with another.
+    ///
+    /// # Arguments
+    ///
+    /// * `from` - The string to replace
+    /// * `to` - The replacement string
+    ///
+    /// # Return value
+    ///
+    /// The original string with all occurrences of `from` replaced with `to`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let s = "Do you know the muffin man,
+    /// The muffin man, the muffin man, ...".to_string();
+    ///
+    /// assert_eq!(s.replace("muffin man", "little lamb"),
+    ///            "Do you know the little lamb,
+    /// The little lamb, the little lamb, ...".to_string());
+    ///
+    /// // not found, so no change.
+    /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
+    /// ```
+    #[stable]
+    fn replace(&self, from: &str, to: &str) -> String {
+        let mut result = String::new();
+        let mut last_end = 0;
+        for (start, end) in self.match_indices(from) {
+            result.push_str(unsafe { self.slice_unchecked(last_end, start) });
+            result.push_str(to);
+            last_end = end;
+        }
+        result.push_str(unsafe { self.slice_unchecked(last_end, self.len()) });
+        result
+    }
+
+    /// Returns an iterator over the string in Unicode Normalization Form D
+    /// (canonical decomposition).
+    #[inline]
+    #[unstable = "this functionality may be moved to libunicode"]
+    fn nfd_chars<'a>(&'a self) -> Decompositions<'a> {
+        Decompositions {
+            iter: self.index(&FullRange).chars(),
+            buffer: Vec::new(),
+            sorted: false,
+            kind: Canonical
+        }
+    }
+
+    /// Returns an iterator over the string in Unicode Normalization Form KD
+    /// (compatibility decomposition).
+    #[inline]
+    #[unstable = "this functionality may be moved to libunicode"]
+    fn nfkd_chars<'a>(&'a self) -> Decompositions<'a> {
+        Decompositions {
+            iter: self.index(&FullRange).chars(),
+            buffer: Vec::new(),
+            sorted: false,
+            kind: Compatible
+        }
+    }
+
+    /// An Iterator over the string in Unicode Normalization Form C
+    /// (canonical decomposition followed by canonical composition).
+    #[inline]
+    #[unstable = "this functionality may be moved to libunicode"]
+    fn nfc_chars<'a>(&'a self) -> Recompositions<'a> {
+        Recompositions {
+            iter: self.nfd_chars(),
+            state: Composing,
+            buffer: RingBuf::new(),
+            composee: None,
+            last_ccc: None
+        }
+    }
+
+    /// An Iterator over the string in Unicode Normalization Form KC
+    /// (compatibility decomposition followed by canonical composition).
+    #[inline]
+    #[unstable = "this functionality may be moved to libunicode"]
+    fn nfkc_chars<'a>(&'a self) -> Recompositions<'a> {
+        Recompositions {
+            iter: self.nfkd_chars(),
+            state: Composing,
+            buffer: RingBuf::new(),
+            composee: None,
+            last_ccc: None
+        }
+    }
+
+    /// Returns true if a string contains a string pattern.
+    ///
+    /// # Arguments
+    ///
+    /// - pat - The string pattern to look for
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("bananas".contains("nana"));
+    /// ```
+    #[stable]
+    fn contains(&self, pat: &str) -> bool {
+        core_str::StrExt::contains(self.index(&FullRange), pat)
+    }
+
+    /// Returns true if a string contains a char pattern.
+    ///
+    /// # Arguments
+    ///
+    /// - pat - The char pattern to look for
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("hello".contains_char('e'));
+    /// ```
+    #[unstable = "might get removed in favour of a more generic contains()"]
+    fn contains_char<P: CharEq>(&self, pat: P) -> bool {
+        core_str::StrExt::contains_char(self.index(&FullRange), pat)
+    }
+
+    /// An iterator over the characters of `self`. Note, this iterates
+    /// over Unicode code-points, not Unicode graphemes.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<char> = "abc åäö".chars().collect();
+    /// assert_eq!(v, vec!['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
+    /// ```
+    #[stable]
+    fn chars(&self) -> Chars {
+        core_str::StrExt::chars(self.index(&FullRange))
+    }
+
+    /// An iterator over the bytes of `self`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<u8> = "bors".bytes().collect();
+    /// assert_eq!(v, b"bors".to_vec());
+    /// ```
+    #[stable]
+    fn bytes(&self) -> Bytes {
+        core_str::StrExt::bytes(self.index(&FullRange))
+    }
+
+    /// An iterator over the characters of `self` and their byte offsets.
+    #[stable]
+    fn char_indices(&self) -> CharIndices {
+        core_str::StrExt::char_indices(self.index(&FullRange))
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by the pattern `pat`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
+    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
+    ///
+    /// let v: Vec<&str> = "abc1def2ghi".split(|&: c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, vec!["abc", "def", "ghi"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
+    /// assert_eq!(v, vec!["lion", "", "tiger", "leopard"]);
+    ///
+    /// let v: Vec<&str> = "".split('X').collect();
+    /// assert_eq!(v, vec![""]);
+    /// ```
+    #[stable]
+    fn split<P: CharEq>(&self, pat: P) -> Split<P> {
+        core_str::StrExt::split(self.index(&FullRange), pat)
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by the pattern `pat`, restricted to splitting at most `count`
+    /// times.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
+    /// assert_eq!(v, vec!["Mary", "had", "a little lambda"]);
+    ///
+    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |&: c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, vec!["abc", "def2ghi"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
+    /// assert_eq!(v, vec!["lion", "", "tigerXleopard"]);
+    ///
+    /// let v: Vec<&str> = "abcXdef".splitn(0, 'X').collect();
+    /// assert_eq!(v, vec!["abcXdef"]);
+    ///
+    /// let v: Vec<&str> = "".splitn(1, 'X').collect();
+    /// assert_eq!(v, vec![""]);
+    /// ```
+    #[stable]
+    fn splitn<P: CharEq>(&self, count: uint, pat: P) -> SplitN<P> {
+        core_str::StrExt::splitn(self.index(&FullRange), count, pat)
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by the pattern `pat`.
+    ///
+    /// Equivalent to `split`, except that the trailing substring
+    /// is skipped if empty (terminator semantics).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "A.B.".split_terminator('.').collect();
+    /// assert_eq!(v, vec!["A", "B"]);
+    ///
+    /// let v: Vec<&str> = "A..B..".split_terminator('.').collect();
+    /// assert_eq!(v, vec!["A", "", "B", ""]);
+    ///
+    /// let v: Vec<&str> = "Mary had a little lamb".split(' ').rev().collect();
+    /// assert_eq!(v, vec!["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let v: Vec<&str> = "abc1def2ghi".split(|&: c: char| c.is_numeric()).rev().collect();
+    /// assert_eq!(v, vec!["ghi", "def", "abc"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
+    /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
+    /// ```
+    #[unstable = "might get removed"]
+    fn split_terminator<P: CharEq>(&self, pat: P) -> SplitTerminator<P> {
+        core_str::StrExt::split_terminator(self.index(&FullRange), pat)
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by the pattern `pat`, starting from the end of the string.
+    /// Restricted to splitting at most `count` times.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
+    /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
+    ///
+    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |&: c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, vec!["ghi", "abc1def"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
+    /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
+    /// ```
+    #[stable]
+    fn rsplitn<P: CharEq>(&self, count: uint, pat: P) -> RSplitN<P> {
+        core_str::StrExt::rsplitn(self.index(&FullRange), count, pat)
+    }
+
+    /// An iterator over the start and end indices of the disjoint
+    /// matches of the pattern `pat` within `self`.
+    ///
+    /// That is, each returned value `(start, end)` satisfies
+    /// `self.slice(start, end) == sep`. For matches of `sep` within
+    /// `self` that overlap, only the indices corresponding to the
+    /// first match are returned.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<(uint, uint)> = "abcXXXabcYYYabc".match_indices("abc").collect();
+    /// assert_eq!(v, vec![(0,3), (6,9), (12,15)]);
+    ///
+    /// let v: Vec<(uint, uint)> = "1abcabc2".match_indices("abc").collect();
+    /// assert_eq!(v, vec![(1,4), (4,7)]);
+    ///
+    /// let v: Vec<(uint, uint)> = "ababa".match_indices("aba").collect();
+    /// assert_eq!(v, vec![(0, 3)]); // only the first `aba`
+    /// ```
+    #[unstable = "might have its iterator type changed"]
+    fn match_indices<'a>(&'a self, pat: &'a str) -> MatchIndices<'a> {
+        core_str::StrExt::match_indices(self.index(&FullRange), pat)
+    }
+
+    /// An iterator over the substrings of `self` separated by the pattern `sep`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "abcXXXabcYYYabc".split_str("abc").collect();
+    /// assert_eq!(v, vec!["", "XXX", "YYY", ""]);
+    ///
+    /// let v: Vec<&str> = "1abcabc2".split_str("abc").collect();
+    /// assert_eq!(v, vec!["1", "", "2"]);
+    /// ```
+    #[unstable = "might get removed in the future in favor of a more generic split()"]
+    fn split_str<'a>(&'a self, pat: &'a str) -> SplitStr<'a> {
+        core_str::StrExt::split_str(self.index(&FullRange), pat)
+    }
+
+    /// An iterator over the lines of a string (subsequences separated
+    /// by `\n`). This does not include the empty string after a
+    /// trailing `\n`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let four_lines = "foo\nbar\n\nbaz\n";
+    /// let v: Vec<&str> = four_lines.lines().collect();
+    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
+    /// ```
+    #[stable]
+    fn lines(&self) -> Lines {
+        core_str::StrExt::lines(self.index(&FullRange))
+    }
+
+    /// An iterator over the lines of a string, separated by either
+    /// `\n` or `\r\n`. As with `.lines()`, this does not include an
+    /// empty trailing line.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let four_lines = "foo\r\nbar\n\r\nbaz\n";
+    /// let v: Vec<&str> = four_lines.lines_any().collect();
+    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
+    /// ```
+    #[stable]
+    fn lines_any(&self) -> LinesAny {
+        core_str::StrExt::lines_any(self.index(&FullRange))
+    }
+
+    /// Returns a slice of the given string from the byte range
+    /// [`begin`..`end`).
+    ///
+    /// This operation is `O(1)`.
+    ///
+    /// Panics when `begin` and `end` do not point to valid characters
+    /// or point beyond the last character of the string.
+    ///
+    /// See also `slice_to` and `slice_from` for slicing prefixes and
+    /// suffixes of strings, and `slice_chars` for slicing based on
+    /// code point counts.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert_eq!(s.slice(0, 1), "L");
+    ///
+    /// assert_eq!(s.slice(1, 9), "öwe 老");
+    ///
+    /// // these will panic:
+    /// // byte 2 lies within `ö`:
+    /// // s.slice(2, 3);
+    ///
+    /// // byte 8 lies within `老`
+    /// // s.slice(1, 8);
+    ///
+    /// // byte 100 is outside the string
+    /// // s.slice(3, 100);
+    /// ```
+    #[unstable = "use slice notation [a..b] instead"]
+    fn slice(&self, begin: uint, end: uint) -> &str {
+        core_str::StrExt::slice(self.index(&FullRange), begin, end)
+    }
+
+    /// Returns a slice of the string from `begin` to its end.
+    ///
+    /// Equivalent to `self.slice(begin, self.len())`.
+    ///
+    /// Panics when `begin` does not point to a valid character, or is
+    /// out of bounds.
+    ///
+    /// See also `slice`, `slice_to` and `slice_chars`.
+    #[unstable = "use slice notation [a..] instead"]
+    fn slice_from(&self, begin: uint) -> &str {
+        core_str::StrExt::slice_from(self.index(&FullRange), begin)
+    }
+
+    /// Returns a slice of the string from the beginning to byte
+    /// `end`.
+    ///
+    /// Equivalent to `self.slice(0, end)`.
+    ///
+    /// Panics when `end` does not point to a valid character, or is
+    /// out of bounds.
+    ///
+    /// See also `slice`, `slice_from` and `slice_chars`.
+    #[unstable = "use slice notation [0..a] instead"]
+    fn slice_to(&self, end: uint) -> &str {
+        core_str::StrExt::slice_to(self.index(&FullRange), end)
+    }
+
+    /// Returns a slice of the string from the character range
+    /// [`begin`..`end`).
+    ///
+    /// That is, start at the `begin`-th code point of the string and
+    /// continue to the `end`-th code point. This does not detect or
+    /// handle edge cases such as leaving a combining character as the
+    /// first code point of the string.
+    ///
+    /// Due to the design of UTF-8, this operation is `O(end)`.
+    /// See `slice`, `slice_to` and `slice_from` for `O(1)`
+    /// variants that use byte indices rather than code point
+    /// indices.
+    ///
+    /// Panics if `begin` > `end` or the either `begin` or `end` are
+    /// beyond the last character of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert_eq!(s.slice_chars(0, 4), "Löwe");
+    /// assert_eq!(s.slice_chars(5, 7), "老虎");
+    /// ```
+    #[unstable = "may have yet to prove its worth"]
+    fn slice_chars(&self, begin: uint, end: uint) -> &str {
+        core_str::StrExt::slice_chars(self.index(&FullRange), begin, end)
+    }
+
+    /// Takes a bytewise (not UTF-8) slice from a string.
+    ///
+    /// Returns the substring from [`begin`..`end`).
+    ///
+    /// Caller must check both UTF-8 character boundaries and the boundaries of
+    /// the entire slice as well.
+    #[stable]
+    unsafe fn slice_unchecked(&self, begin: uint, end: uint) -> &str {
+        core_str::StrExt::slice_unchecked(self.index(&FullRange), begin, end)
+    }
+
+    /// Returns true if the pattern `pat` is a prefix of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("banana".starts_with("ba"));
+    /// ```
+    #[stable]
+    fn starts_with(&self, pat: &str) -> bool {
+        core_str::StrExt::starts_with(self.index(&FullRange), pat)
+    }
+
+    /// Returns true if the pattern `pat` is a suffix of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("banana".ends_with("nana"));
+    /// ```
+    #[stable]
+    fn ends_with(&self, pat: &str) -> bool {
+        core_str::StrExt::ends_with(self.index(&FullRange), pat)
+    }
+
+    /// Returns a string with all pre- and suffixes that match
+    /// the pattern `pat` repeatedly removed.
+    ///
+    /// # Arguments
+    ///
+    /// * pat - a string pattern
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("11foo1bar11".trim_matches('1'), "foo1bar");
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_matches(x), "foo1bar");
+    /// assert_eq!("123foo1bar123".trim_matches(|&: c: char| c.is_numeric()), "foo1bar");
+    /// ```
+    #[stable]
+    fn trim_matches<P: CharEq>(&self, pat: P) -> &str {
+        core_str::StrExt::trim_matches(self.index(&FullRange), pat)
+    }
+
+    /// Returns a string with all prefixes that match
+    /// the pattern `pat` repeatedly removed.
+    ///
+    /// # Arguments
+    ///
+    /// * pat - a string pattern
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
+    /// assert_eq!("123foo1bar123".trim_left_matches(|&: c: char| c.is_numeric()), "foo1bar123");
+    /// ```
+    #[stable]
+    fn trim_left_matches<P: CharEq>(&self, pat: P) -> &str {
+        core_str::StrExt::trim_left_matches(self.index(&FullRange), pat)
+    }
+
+    /// Returns a string with all suffixes that match
+    /// the pattern `pat` repeatedly removed.
+    ///
+    /// # Arguments
+    ///
+    /// * pat - a string pattern
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!("12foo1bar12".trim_right_matches(x), "12foo1bar");
+    /// assert_eq!("123foo1bar123".trim_right_matches(|&: c: char| c.is_numeric()), "123foo1bar");
+    /// ```
+    #[stable]
+    fn trim_right_matches<P: CharEq>(&self, pat: P) -> &str {
+        core_str::StrExt::trim_right_matches(self.index(&FullRange), pat)
+    }
+
+    /// Check that `index`-th byte lies at the start and/or end of a
+    /// UTF-8 code point sequence.
+    ///
+    /// The start and end of the string (when `index == self.len()`)
+    /// are considered to be boundaries.
+    ///
+    /// Panics if `index` is greater than `self.len()`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert!(s.is_char_boundary(0));
+    /// // start of `老`
+    /// assert!(s.is_char_boundary(6));
+    /// assert!(s.is_char_boundary(s.len()));
+    ///
+    /// // second byte of `ö`
+    /// assert!(!s.is_char_boundary(2));
+    ///
+    /// // third byte of `老`
+    /// assert!(!s.is_char_boundary(8));
+    /// ```
+    #[unstable = "naming is uncertain with container conventions"]
+    fn is_char_boundary(&self, index: uint) -> bool {
+        core_str::StrExt::is_char_boundary(self.index(&FullRange), index)
+    }
+
+    /// Pluck a character out of a string and return the index of the next
+    /// character.
+    ///
+    /// This function can be used to iterate over the Unicode characters of a
+    /// string.
+    ///
+    /// # Example
+    ///
+    /// This example manually iterates through the characters of a
+    /// string; this should normally be done by `.chars()` or
+    /// `.char_indices`.
+    ///
+    /// ```rust
+    /// use std::str::CharRange;
+    ///
+    /// let s = "中华Việt Nam";
+    /// let mut i = 0u;
+    /// while i < s.len() {
+    ///     let CharRange {ch, next} = s.char_range_at(i);
+    ///     println!("{}: {}", i, ch);
+    ///     i = next;
+    /// }
+    /// ```
+    ///
+    /// This outputs:
+    ///
+    /// ```text
+    /// 0: 中
+    /// 3: 华
+    /// 6: V
+    /// 7: i
+    /// 8: ệ
+    /// 11: t
+    /// 12:
+    /// 13: N
+    /// 14: a
+    /// 15: m
+    /// ```
+    ///
+    /// # Arguments
+    ///
+    /// * s - The string
+    /// * i - The byte offset of the char to extract
+    ///
+    /// # Return value
+    ///
+    /// A record {ch: char, next: uint} containing the char value and the byte
+    /// index of the next Unicode character.
+    ///
+    /// # Panics
+    ///
+    /// If `i` is greater than or equal to the length of the string.
+    /// If `i` is not the index of the beginning of a valid UTF-8 character.
+    #[unstable = "naming is uncertain with container conventions"]
+    fn char_range_at(&self, start: uint) -> CharRange {
+        core_str::StrExt::char_range_at(self.index(&FullRange), start)
+    }
+
+    /// Given a byte position and a str, return the previous char and its position.
+    ///
+    /// This function can be used to iterate over a Unicode string in reverse.
+    ///
+    /// Returns 0 for next index if called on start index 0.
+    ///
+    /// # Panics
+    ///
+    /// If `i` is greater than the length of the string.
+    /// If `i` is not an index following a valid UTF-8 character.
+    #[unstable = "naming is uncertain with container conventions"]
+    fn char_range_at_reverse(&self, start: uint) -> CharRange {
+        core_str::StrExt::char_range_at_reverse(self.index(&FullRange), start)
+    }
+
+    /// Plucks the character starting at the `i`th byte of a string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "abπc";
+    /// assert_eq!(s.char_at(1), 'b');
+    /// assert_eq!(s.char_at(2), 'π');
+    /// assert_eq!(s.char_at(4), 'c');
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If `i` is greater than or equal to the length of the string.
+    /// If `i` is not the index of the beginning of a valid UTF-8 character.
+    #[unstable = "naming is uncertain with container conventions"]
+    fn char_at(&self, i: uint) -> char {
+        core_str::StrExt::char_at(self.index(&FullRange), i)
+    }
+
+    /// Plucks the character ending at the `i`th byte of a string.
+    ///
+    /// # Panics
+    ///
+    /// If `i` is greater than the length of the string.
+    /// If `i` is not an index following a valid UTF-8 character.
+    #[unstable = "naming is uncertain with container conventions"]
+    fn char_at_reverse(&self, i: uint) -> char {
+        core_str::StrExt::char_at_reverse(self.index(&FullRange), i)
+    }
+
+    /// Work with the byte buffer of a string as a byte slice.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert_eq!("bors".as_bytes(), b"bors");
+    /// ```
+    #[stable]
+    fn as_bytes(&self) -> &[u8] {
+        core_str::StrExt::as_bytes(self.index(&FullRange))
+    }
+
+    /// Returns the byte index of the first character of `self` that
+    /// matches the pattern `pat`.
+    ///
+    /// # Return value
+    ///
+    /// `Some` containing the byte index of the last matching character
+    /// or `None` if there is no match
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.find('L'), Some(0));
+    /// assert_eq!(s.find('é'), Some(14));
+    ///
+    /// // the first space
+    /// assert_eq!(s.find(|&: c: char| c.is_whitespace()), Some(5));
+    ///
+    /// // neither are found
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(s.find(x), None);
+    /// ```
+    #[stable]
+    fn find<P: CharEq>(&self, pat: P) -> Option<uint> {
+        core_str::StrExt::find(self.index(&FullRange), pat)
+    }
+
+    /// Returns the byte index of the last character of `self` that
+    /// matches the pattern `pat`.
+    ///
+    /// # Return value
+    ///
+    /// `Some` containing the byte index of the last matching character
+    /// or `None` if there is no match.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.rfind('L'), Some(13));
+    /// assert_eq!(s.rfind('é'), Some(14));
+    ///
+    /// // the second space
+    /// assert_eq!(s.rfind(|&: c: char| c.is_whitespace()), Some(12));
+    ///
+    /// // searches for an occurrence of either `1` or `2`, but neither are found
+    /// let x: &[_] = &['1', '2'];
+    /// assert_eq!(s.rfind(x), None);
+    /// ```
+    #[stable]
+    fn rfind<P: CharEq>(&self, pat: P) -> Option<uint> {
+        core_str::StrExt::rfind(self.index(&FullRange), pat)
+    }
+
+    /// Returns the byte index of the first matching substring
+    ///
+    /// # Arguments
+    ///
+    /// * `needle` - The string to search for
+    ///
+    /// # Return value
+    ///
+    /// `Some` containing the byte index of the first matching substring
+    /// or `None` if there is no match.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.find_str("老虎 L"), Some(6));
+    /// assert_eq!(s.find_str("muffin man"), None);
+    /// ```
+    #[unstable = "might get removed in favor of a more generic find in the future"]
+    fn find_str(&self, needle: &str) -> Option<uint> {
+        core_str::StrExt::find_str(self.index(&FullRange), needle)
+    }
+
+    /// Retrieves the first character from a string slice and returns
+    /// it. This does not allocate a new string; instead, it returns a
+    /// slice that point one character beyond the character that was
+    /// shifted. If the string does not contain any characters,
+    /// None is returned instead.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// let (c, s1) = s.slice_shift_char().unwrap();
+    /// assert_eq!(c, 'L');
+    /// assert_eq!(s1, "öwe 老虎 Léopard");
+    ///
+    /// let (c, s2) = s1.slice_shift_char().unwrap();
+    /// assert_eq!(c, 'ö');
+    /// assert_eq!(s2, "we 老虎 Léopard");
+    /// ```
+    #[unstable = "awaiting conventions about shifting and slices"]
+    fn slice_shift_char(&self) -> Option<(char, &str)> {
+        core_str::StrExt::slice_shift_char(self.index(&FullRange))
+    }
+
+    /// Returns the byte offset of an inner slice relative to an enclosing outer slice.
+    ///
+    /// Panics if `inner` is not a direct slice contained within self.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let string = "a\nb\nc";
+    /// let lines: Vec<&str> = string.lines().collect();
+    ///
+    /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
+    /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
+    /// assert!(string.subslice_offset(lines[2]) == 4); // &"c"
+    /// ```
+    #[unstable = "awaiting convention about comparability of arbitrary slices"]
+    fn subslice_offset(&self, inner: &str) -> uint {
+        core_str::StrExt::subslice_offset(self.index(&FullRange), inner)
+    }
+
+    /// Return an unsafe pointer to the strings buffer.
+    ///
+    /// The caller must ensure that the string outlives this pointer,
+    /// and that it is not reallocated (e.g. by pushing to the
+    /// string).
+    #[stable]
+    #[inline]
+    fn as_ptr(&self) -> *const u8 {
+        core_str::StrExt::as_ptr(self.index(&FullRange))
+    }
+
+    /// Return an iterator of `u16` over the string encoded as UTF-16.
+    #[unstable = "this functionality may only be provided by libunicode"]
+    fn utf16_units(&self) -> Utf16Units {
+        Utf16Units { encoder: Utf16Encoder::new(self.index(&FullRange).chars()) }
+    }
+
+    /// Return the number of bytes in this string
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!("foo".len(), 3);
+    /// assert_eq!("ƒoo".len(), 4);
+    /// ```
+    #[stable]
+    #[inline]
+    fn len(&self) -> uint {
+        core_str::StrExt::len(self.index(&FullRange))
+    }
+
+    /// Returns true if this slice contains no bytes
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert!("".is_empty());
+    /// ```
+    #[inline]
+    #[stable]
+    fn is_empty(&self) -> bool {
+        core_str::StrExt::is_empty(self.index(&FullRange))
+    }
+
+    /// Parse this string into the specified type.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// assert_eq!("4".parse::<u32>(), Some(4));
+    /// assert_eq!("j".parse::<u32>(), None);
+    /// ```
+    #[inline]
+    #[unstable = "this method was just created"]
+    fn parse<F: FromStr>(&self) -> Option<F> {
+        core_str::StrExt::parse(self.index(&FullRange))
+    }
+
+    /// Returns an iterator over the
+    /// [grapheme clusters](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
+    /// of the string.
+    ///
+    /// If `is_extended` is true, the iterator is over the *extended grapheme clusters*;
+    /// otherwise, the iterator is over the *legacy grapheme clusters*.
+    /// [UAX#29](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
+    /// recommends extended grapheme cluster boundaries for general processing.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let gr1 = "a\u{310}e\u{301}o\u{308}\u{332}".graphemes(true).collect::<Vec<&str>>();
+    /// let b: &[_] = &["a\u{310}", "e\u{301}", "o\u{308}\u{332}"];
+    /// assert_eq!(gr1.as_slice(), b);
+    /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
+    /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
+    /// assert_eq!(gr2.as_slice(), b);
+    /// ```
+    #[unstable = "this functionality may only be provided by libunicode"]
+    fn graphemes(&self, is_extended: bool) -> Graphemes {
+        UnicodeStr::graphemes(self.index(&FullRange), is_extended)
+    }
+
+    /// Returns an iterator over the grapheme clusters of self and their byte offsets.
+    /// See `graphemes()` method for more information.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(uint, &str)>>();
+    /// let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
+    /// assert_eq!(gr_inds.as_slice(), b);
+    /// ```
+    #[unstable = "this functionality may only be provided by libunicode"]
+    fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
+        UnicodeStr::grapheme_indices(self.index(&FullRange), is_extended)
+    }
+
+    /// An iterator over the words of a string (subsequences separated
+    /// by any sequence of whitespace). Sequences of whitespace are
+    /// collapsed, so empty "words" are not included.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let some_words = " Mary   had\ta little  \n\t lamb";
+    /// let v: Vec<&str> = some_words.words().collect();
+    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
+    /// ```
+    #[stable]
+    fn words(&self) -> Words {
+        UnicodeStr::words(self.index(&FullRange))
+    }
+
+    /// Returns a string's displayed width in columns, treating control
+    /// characters as zero-width.
+    ///
+    /// `is_cjk` determines behavior for characters in the Ambiguous category:
+    /// if `is_cjk` is `true`, these are 2 columns wide; otherwise, they are 1.
+    /// In CJK locales, `is_cjk` should be `true`, else it should be `false`.
+    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
+    /// recommends that these characters be treated as 1 column (i.e.,
+    /// `is_cjk` = `false`) if the locale is unknown.
+    #[unstable = "this functionality may only be provided by libunicode"]
+    fn width(&self, is_cjk: bool) -> uint {
+        UnicodeStr::width(self.index(&FullRange), is_cjk)
+    }
+
+    /// Returns a string with leading and trailing whitespace removed.
+    #[stable]
+    fn trim(&self) -> &str {
+        UnicodeStr::trim(self.index(&FullRange))
+    }
+
+    /// Returns a string with leading whitespace removed.
+    #[stable]
+    fn trim_left(&self) -> &str {
+        UnicodeStr::trim_left(self.index(&FullRange))
+    }
+
+    /// Returns a string with trailing whitespace removed.
+    #[stable]
+    fn trim_right(&self) -> &str {
+        UnicodeStr::trim_right(self.index(&FullRange))
+    }
+}
+
 
 impl StrExt for str {}
 

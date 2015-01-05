@@ -572,22 +572,9 @@ impl<T> ops::IndexMut<uint> for [T] {
         unsafe { mem::transmute(self.repr().data.offset(index as int)) }
     }
 }
-impl<T> ops::Index<uint, T> for [T] {
-    fn index(&self, &index: &uint) -> &T {
-        assert!(index < self.len());
 
-        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
-    }
-}
-
-impl<T> ops::IndexMut<uint, T> for [T] {
-    fn index_mut(&mut self, &index: &uint) -> &mut T {
-        assert!(index < self.len());
-
-        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
-    }
-}
-
+// NOTE(stage0) remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> ops::Index<ops::Range<uint>, [T]> for [T] {
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &[T] {
@@ -601,21 +588,24 @@ impl<T> ops::Index<ops::Range<uint>, [T]> for [T] {
         }
     }
 }
-
+// NOTE(stage0) remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> ops::Index<ops::RangeTo<uint>, [T]> for [T] {
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
         self.index(&ops::Range{ start: 0, end: index.end })
     }
 }
-
+// NOTE(stage0) remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> ops::Index<ops::RangeFrom<uint>, [T]> for [T] {
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
         self.index(&ops::Range{ start: index.start, end: self.len() })
     }
 }
-
+// NOTE(stage0) remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> ops::Index<ops::FullRange, [T]> for [T] {
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &[T] {
@@ -623,6 +613,8 @@ impl<T> ops::Index<ops::FullRange, [T]> for [T] {
     }
 }
 
+// NOTE(stage0) remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> ops::IndexMut<ops::Range<uint>, [T]> for [T] {
     #[inline]
     fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
@@ -636,14 +628,16 @@ impl<T> ops::IndexMut<ops::Range<uint>, [T]> for [T] {
         }
     }
 }
-
+// NOTE(stage0) remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> ops::IndexMut<ops::RangeTo<uint>, [T]> for [T] {
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
         self.index_mut(&ops::Range{ start: 0, end: index.end })
     }
 }
-
+// NOTE(stage0) remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> ops::IndexMut<ops::RangeFrom<uint>, [T]> for [T] {
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
@@ -651,8 +645,91 @@ impl<T> ops::IndexMut<ops::RangeFrom<uint>, [T]> for [T] {
         self.index_mut(&ops::Range{ start: index.start, end: len })
     }
 }
-
+// NOTE(stage0) remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> ops::IndexMut<ops::FullRange, [T]> for [T] {
+    #[inline]
+    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
+        self
+    }
+}
+
+
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::Index<ops::Range<uint>> for [T] {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::Range<uint>) -> &[T] {
+        assert!(index.start <= index.end);
+        assert!(index.end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(index.start as int),
+                    len: index.end - index.start
+                })
+        }
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::Index<ops::RangeTo<uint>> for [T] {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
+        self.index(&ops::Range{ start: 0, end: index.end })
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::Index<ops::RangeFrom<uint>> for [T] {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
+        self.index(&ops::Range{ start: index.start, end: self.len() })
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::Index<ops::FullRange> for [T] {
+    type Output = [T];
+    #[inline]
+    fn index(&self, _index: &ops::FullRange) -> &[T] {
+        self
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::IndexMut<ops::Range<uint>> for [T] {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
+        assert!(index.start <= index.end);
+        assert!(index.end <= self.len());
+        unsafe {
+            transmute(RawSlice {
+                    data: self.as_ptr().offset(index.start as int),
+                    len: index.end - index.start
+                })
+        }
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::IndexMut<ops::RangeTo<uint>> for [T] {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
+        self.index_mut(&ops::Range{ start: 0, end: index.end })
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::IndexMut<ops::RangeFrom<uint>> for [T] {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
+        let len = self.len();
+        self.index_mut(&ops::Range{ start: index.start, end: len })
+    }
+}
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<T> ops::IndexMut<ops::FullRange> for [T] {
+    type Output = [T];
     #[inline]
     fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
         self
@@ -790,6 +867,7 @@ pub struct Iter<'a, T: 'a> {
 }
 
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::Index<ops::Range<uint>, [T]> for Iter<'a, T> {
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &[T] {
@@ -798,6 +876,7 @@ impl<'a, T> ops::Index<ops::Range<uint>, [T]> for Iter<'a, T> {
 }
 
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::Index<ops::RangeTo<uint>, [T]> for Iter<'a, T> {
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
@@ -806,6 +885,7 @@ impl<'a, T> ops::Index<ops::RangeTo<uint>, [T]> for Iter<'a, T> {
 }
 
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::Index<ops::RangeFrom<uint>, [T]> for Iter<'a, T> {
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
@@ -814,6 +894,7 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>, [T]> for Iter<'a, T> {
 }
 
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::Index<ops::FullRange, [T]> for Iter<'a, T> {
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &[T] {
@@ -821,6 +902,45 @@ impl<'a, T> ops::Index<ops::FullRange, [T]> for Iter<'a, T> {
     }
 }
 
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::Index<ops::Range<uint>> for Iter<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::Range<uint>) -> &[T] {
+        self.as_slice().index(index)
+    }
+}
+
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::Index<ops::RangeTo<uint>> for Iter<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
+        self.as_slice().index(index)
+    }
+}
+
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::Index<ops::RangeFrom<uint>> for Iter<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
+        self.as_slice().index(index)
+    }
+}
+
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::Index<ops::FullRange> for Iter<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, _index: &ops::FullRange) -> &[T] {
+        self.as_slice()
+    }
+}
 
 impl<'a, T> Iter<'a, T> {
     /// View the underlying data as a subslice of the original data.
@@ -879,30 +999,31 @@ pub struct IterMut<'a, T: 'a> {
 }
 
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::Index<ops::Range<uint>, [T]> for IterMut<'a, T> {
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &[T] {
         self.index(&ops::FullRange).index(index)
     }
 }
-
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::Index<ops::RangeTo<uint>, [T]> for IterMut<'a, T> {
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
         self.index(&ops::FullRange).index(index)
     }
 }
-
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::Index<ops::RangeFrom<uint>, [T]> for IterMut<'a, T> {
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
         self.index(&ops::FullRange).index(index)
     }
 }
-
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::Index<ops::FullRange, [T]> for IterMut<'a, T> {
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &[T] {
@@ -911,31 +1032,107 @@ impl<'a, T> ops::Index<ops::FullRange, [T]> for IterMut<'a, T> {
 }
 
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::IndexMut<ops::Range<uint>, [T]> for IterMut<'a, T> {
     #[inline]
     fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::IndexMut<ops::RangeTo<uint>, [T]> for IterMut<'a, T> {
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-
 #[experimental]
+#[cfg(stage0)]
 impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>, [T]> for IterMut<'a, T> {
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
+#[experimental]
+#[cfg(stage0)]
+impl<'a, T> ops::IndexMut<ops::FullRange, [T]> for IterMut<'a, T> {
+    #[inline]
+    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
+        make_slice!(T -> &mut [T]: self.ptr, self.end)
+    }
+}
+
 
 #[experimental]
-impl<'a, T> ops::IndexMut<ops::FullRange, [T]> for IterMut<'a, T> {
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::Index<ops::Range<uint>> for IterMut<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::Range<uint>) -> &[T] {
+        self.index(&ops::FullRange).index(index)
+    }
+}
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::Index<ops::RangeTo<uint>> for IterMut<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
+        self.index(&ops::FullRange).index(index)
+    }
+}
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::Index<ops::RangeFrom<uint>> for IterMut<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
+        self.index(&ops::FullRange).index(index)
+    }
+}
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::Index<ops::FullRange> for IterMut<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, _index: &ops::FullRange) -> &[T] {
+        make_slice!(T -> &[T]: self.ptr, self.end)
+    }
+}
+
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::IndexMut<ops::Range<uint>> for IterMut<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
+        self.index_mut(&ops::FullRange).index_mut(index)
+    }
+}
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::IndexMut<ops::RangeTo<uint>> for IterMut<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
+        self.index_mut(&ops::FullRange).index_mut(index)
+    }
+}
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>> for IterMut<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
+        self.index_mut(&ops::FullRange).index_mut(index)
+    }
+}
+#[experimental]
+#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
+impl<'a, T> ops::IndexMut<ops::FullRange> for IterMut<'a, T> {
+    type Output = [T];
     #[inline]
     fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
         make_slice!(T -> &mut [T]: self.ptr, self.end)

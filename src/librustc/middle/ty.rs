@@ -3686,7 +3686,8 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_unboxed_closure(..) => {
                 // this check is run on type definitions, so we don't expect to see
                 // inference by-products or unboxed closure types
-                cx.sess.bug(format!("requires check invoked on inapplicable type: {}", ty)[])
+                cx.sess.bug(format!("requires check invoked on inapplicable type: {}",
+                                    ty).as_slice())
             }
 
             ty_tup(ref ts) => {
@@ -3779,7 +3780,8 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
             ty_unboxed_closure(..) => {
                 // this check is run on type definitions, so we don't expect to see
                 // unboxed closure types
-                cx.sess.bug(format!("requires check invoked on inapplicable type: {}", ty)[])
+                cx.sess.bug(format!("requires check invoked on inapplicable type: {}",
+                                    ty).as_slice())
             }
             _ => Representable,
         }

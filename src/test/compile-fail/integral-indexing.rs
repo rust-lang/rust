@@ -13,14 +13,22 @@ pub fn main() {
     let s: String = "abcdef".to_string();
     v.as_slice()[3u];
     v.as_slice()[3];
-    v.as_slice()[3u8]; //~ERROR the trait `core::ops::Index<u8, _>` is not implemented
-    v.as_slice()[3i8]; //~ERROR the trait `core::ops::Index<i8, _>` is not implemented
-    v.as_slice()[3u32]; //~ERROR the trait `core::ops::Index<u32, _>` is not implemented
-    v.as_slice()[3i32]; //~ERROR the trait `core::ops::Index<i32, _>` is not implemented
+    v.as_slice()[3u8];  //~ERROR the trait `core::ops::Index<u8>` is not implemented
+    //~^ ERROR the trait `core::ops::Index<u8>` is not implemented
+    v.as_slice()[3i8];  //~ERROR the trait `core::ops::Index<i8>` is not implemented
+    //~^ ERROR the trait `core::ops::Index<i8>` is not implemented
+    v.as_slice()[3u32]; //~ERROR the trait `core::ops::Index<u32>` is not implemented
+    //~^ ERROR the trait `core::ops::Index<u32>` is not implemented
+    v.as_slice()[3i32]; //~ERROR the trait `core::ops::Index<i32>` is not implemented
+    //~^ ERROR the trait `core::ops::Index<i32>` is not implemented
     s.as_bytes()[3u];
     s.as_bytes()[3];
-    s.as_bytes()[3u8]; //~ERROR the trait `core::ops::Index<u8, _>` is not implemented
-    s.as_bytes()[3i8]; //~ERROR the trait `core::ops::Index<i8, _>` is not implemented
-    s.as_bytes()[3u32]; //~ERROR the trait `core::ops::Index<u32, _>` is not implemented
-    s.as_bytes()[3i32]; //~ERROR the trait `core::ops::Index<i32, _>` is not implemented
+    s.as_bytes()[3u8];  //~ERROR the trait `core::ops::Index<u8>` is not implemented
+    //~^ERROR the trait `core::ops::Index<u8>` is not implemented
+    s.as_bytes()[3i8];  //~ERROR the trait `core::ops::Index<i8>` is not implemented
+    //~^ERROR the trait `core::ops::Index<i8>` is not implemented
+    s.as_bytes()[3u32]; //~ERROR the trait `core::ops::Index<u32>` is not implemented
+    //~^ERROR the trait `core::ops::Index<u32>` is not implemented
+    s.as_bytes()[3i32]; //~ERROR the trait `core::ops::Index<i32>` is not implemented
+    //~^ERROR the trait `core::ops::Index<i32>` is not implemented
 }

@@ -19,7 +19,7 @@ use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map};
 use option::Option;
 use option::Option::{None, Some};
-use prelude::Index;
+use prelude::v1::Index;
 use kinds::Sized;
 use str::{FromStr, Str};
 use str;
