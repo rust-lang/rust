@@ -35,6 +35,7 @@ use sys;
 use thread::Thread;
 
 #[cfg(windows)] use std::hash::sip::SipState;
+#[cfg(windows)] use str;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
@@ -109,11 +110,11 @@ struct EnvKey(CString);
 impl Hash for EnvKey {
     fn hash(&self, state: &mut SipState) {
         let &EnvKey(ref x) = self;
-        match x.as_str() {
-            Some(s) => for ch in s.chars() {
+        match str::from_utf8(x.as_bytes()) {
+            Ok(s) => for ch in s.chars() {
                 (ch as u8 as char).to_lowercase().hash(state);
             },
-            None => x.hash(state)
+            Err(..) => x.hash(state)
         }
     }
 }
@@ -123,8 +124,8 @@ impl PartialEq for EnvKey {
     fn eq(&self, other: &EnvKey) -> bool {
         let &EnvKey(ref x) = self;
         let &EnvKey(ref y) = other;
-        match (x.as_str(), y.as_str()) {
-            (Some(xs), Some(ys)) => {
+        match (str::from_utf8(x.as_bytes()), str::from_utf8(y.as_bytes())) {
+            (Ok(xs), Ok(ys)) => {
                 if xs.len() != ys.len() {
                     return false
                 } else {

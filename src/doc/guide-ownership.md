@@ -462,19 +462,19 @@ When talking about lifetime elision, we use the term 'input lifetime' and
 of a function, and an 'output lifetime' is a lifetime associated with the return
 value of a function. For example, this function has an input lifetime:
 
-```
+```{rust,ignore}
 fn foo<'a>(bar: &'a str)
 ```
 
 This one has an output lifetime:
 
-```
+```{rust,ignore}
 fn foo<'a>() -> &'a str
 ```
 
 This one has both:
 
-```
+```{rust,ignore}
 fn foo<'a>(bar: &'a str) -> &'a str
 ```
 

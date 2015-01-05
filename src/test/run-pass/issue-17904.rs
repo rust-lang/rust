@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty
+
 struct Foo<T> where T: Copy;
 struct Bar<T>(T) where T: Copy;
 struct Bleh<T, U>(T, U) where T: Copy, U: Sized;

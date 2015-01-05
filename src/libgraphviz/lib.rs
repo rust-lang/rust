@@ -587,7 +587,7 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
 mod tests {
     use self::NodeLabels::*;
     use super::{Id, Labeller, Nodes, Edges, GraphWalk, render};
-    use super::LabelText::{mod, LabelStr, EscStr};
+    use super::LabelText::{self, LabelStr, EscStr};
     use std::io::IoResult;
     use std::borrow::IntoCow;
     use std::iter::repeat;

@@ -360,8 +360,8 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
             let ptr = info.Name.as_ptr() as *const libc::c_char;
             let bytes = unsafe { ffi::c_str_to_bytes(&ptr) };
             match str::from_utf8(bytes) {
-                Some(s) => try!(demangle(w, s)),
-                None => try!(w.write(bytes[..bytes.len()-1])),
+                Ok(s) => try!(demangle(w, s)),
+                Err(..) => try!(w.write(bytes[..bytes.len()-1])),
             }
         }
         try!(w.write(&['\n' as u8]));

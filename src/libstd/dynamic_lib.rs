@@ -271,7 +271,6 @@ pub mod dl {
 #[cfg(target_os = "windows")]
 pub mod dl {
     use iter::IteratorExt;
-    use iter::Iterator;
     use libc;
     use ops::FnOnce;
     use os;

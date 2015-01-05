@@ -1103,24 +1103,6 @@ mod tests {
     }
 
     #[test]
-    fn test_from_buf_len() {
-        unsafe {
-            let a = vec![65u8, 65, 65, 65, 65, 65, 65, 0];
-            assert_eq!(String::from_raw_buf_len(a.as_ptr(), 3), String::from_str("AAA"));
-        }
-    }
-
-    #[test]
-    fn test_from_buf() {
-        unsafe {
-            let a = vec![65, 65, 65, 65, 65, 65, 65, 0];
-            let b = a.as_ptr();
-            let c = String::from_raw_buf(b);
-            assert_eq!(c, String::from_str("AAAAAAA"));
-        }
-    }
-
-    #[test]
     fn test_push_bytes() {
         let mut s = String::from_str("ABC");
         unsafe {
