@@ -1850,7 +1850,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        span: Span,
                                        adj: &ty::AutoAdjustment<'tcx>) {
         match *adj {
-            ty::AdjustAddEnv(..) |
             ty::AdjustReifyFnPointer(..) => {
             }
             ty::AdjustDerefRef(ref d_r) => {

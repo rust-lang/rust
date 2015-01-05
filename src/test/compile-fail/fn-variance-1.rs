@@ -12,7 +12,7 @@ fn takes_imm(x: &int) { }
 
 fn takes_mut(x: &mut int) { }
 
-fn apply<T>(t: T, f: |T|) {
+fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
     f(t)
 }
 

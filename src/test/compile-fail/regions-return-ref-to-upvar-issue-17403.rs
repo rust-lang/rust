@@ -20,11 +20,4 @@ fn main() {
         let x = f();
         let y = f();
     }
-    // Boxed closure case
-    {
-        let mut x = 0u;
-        let f = || &mut x; //~ ERROR cannot infer
-        let x = f();
-        let y = f();
-    }
 }

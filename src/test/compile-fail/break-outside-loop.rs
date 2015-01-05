@@ -14,7 +14,7 @@ struct Foo {
 
 fn cond() -> bool { true }
 
-fn foo(_: ||) {}
+fn foo<F>(_: F) where F: FnOnce() {}
 
 fn main() {
     let pth = break; //~ ERROR: `break` outside of loop

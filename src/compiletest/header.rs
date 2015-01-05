@@ -220,7 +220,9 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     !val
 }
 
-fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
+fn iter_header<F>(testfile: &Path, mut it: F) -> bool where
+    F: FnMut(&str) -> bool,
+{
     use std::io::{BufferedReader, File};
 
     let mut rdr = BufferedReader::new(File::open(testfile).unwrap());

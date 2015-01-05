@@ -12,7 +12,7 @@
 // (locally rooted) mutable, unique vector, and that we then prevent
 // modifications to the contents.
 
-fn takes_imm_elt(_v: &int, f: ||) {
+fn takes_imm_elt<F>(_v: &int, f: F) where F: FnOnce() {
     f();
 }
 

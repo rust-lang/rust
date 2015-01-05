@@ -19,7 +19,7 @@ pub use self::CalleeData::*;
 pub use self::CallArgs::*;
 
 use arena::TypedArena;
-use back::{abi,link};
+use back::link;
 use session;
 use llvm::{ValueRef};
 use llvm::get_param;
@@ -66,8 +66,6 @@ pub struct MethodData {
 }
 
 pub enum CalleeData<'tcx> {
-    Closure(Datum<'tcx, Lvalue>),
-
     // Constructor for enum variant/tuple-like-struct
     // i.e. Some, Ok
     NamedTupleConstructor(subst::Substs<'tcx>, ty::Disr),
@@ -102,21 +100,13 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
 
     fn datum_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                 -> Callee<'blk, 'tcx> {
-        let DatumBlock {mut bcx, datum} = expr::trans(bcx, expr);
+        let DatumBlock { bcx, datum, .. } = expr::trans(bcx, expr);
         match datum.ty.sty {
             ty::ty_bare_fn(..) => {
                 let llval = datum.to_llscalarish(bcx);
                 return Callee {
                     bcx: bcx,
                     data: Fn(llval),
-                };
-            }
-            ty::ty_closure(..) => {
-                let datum = unpack_datum!(
-                    bcx, datum.to_lvalue_datum(bcx, "callee", expr.id));
-                return Callee {
-                    bcx: bcx,
-                    data: Closure(datum),
                 };
             }
             _ => {
@@ -679,7 +669,6 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     let (abi, ret_ty) = match callee_ty.sty {
         ty::ty_bare_fn(_, ref f) => (f.abi, f.sig.0.output),
-        ty::ty_closure(ref f) => (f.abi, f.sig.0.output),
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
     };
 
@@ -689,16 +678,6 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         }
         TraitItem(d) => {
             (d.llfn, None, Some(d.llself))
-        }
-        Closure(d) => {
-            // Closures are represented as (llfn, llclosure) pair:
-            // load the requisite values out.
-            let pair = d.to_llref();
-            let llfn = GEPi(bcx, pair, &[0u, abi::FAT_PTR_ADDR]);
-            let llfn = Load(bcx, llfn);
-            let llenv = GEPi(bcx, pair, &[0u, abi::FAT_PTR_EXTRA]);
-            let llenv = Load(bcx, llenv);
-            (llfn, Some(llenv), None)
         }
         Intrinsic(node, substs) => {
             assert!(abi == synabi::RustIntrinsic);

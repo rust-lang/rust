@@ -20,7 +20,7 @@ mod foo {
     }
 }
 
-fn callback<T>(_f: || -> T) -> T { panic!() }
+fn callback<T, F>(_f: F) -> T where F: FnOnce() -> T { panic!() }
 unsafe fn unsf() {}
 
 fn bad1() { unsafe {} }                  //~ ERROR: unnecessary `unsafe` block

@@ -1273,62 +1273,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_closure(ref c) => {
-                match c.store {
-                    ty::UniqTraitStore => {
-                        // proc: Equivalent to `Box<FnOnce>`
-                        match bound {
-                            ty::BoundCopy => {
-                                Err(Unimplemented)
-                            }
-
-                            ty::BoundSized => {
-                                Ok(If(Vec::new()))
-                            }
-
-                            ty::BoundSync |
-                            ty::BoundSend => {
-                                if c.bounds.builtin_bounds.contains(&bound) {
-                                    Ok(If(Vec::new()))
-                                } else {
-                                    Err(Unimplemented)
-                                }
-                            }
-                        }
-                    }
-                    ty::RegionTraitStore(_, mutbl) => {
-                        // ||: Equivalent to `&FnMut` or `&mut FnMut` or something like that.
-                        match bound {
-                            ty::BoundCopy => {
-                                match mutbl {
-                                    ast::MutMutable => {
-                                        // &mut T is affine
-                                        Err(Unimplemented)
-                                    }
-                                    ast::MutImmutable => {
-                                        // &T is copyable, no matter what T is
-                                        Ok(If(Vec::new()))
-                                    }
-                                }
-                            }
-
-                            ty::BoundSized => {
-                                Ok(If(Vec::new()))
-                            }
-
-                            ty::BoundSync |
-                            ty::BoundSend => {
-                                if c.bounds.builtin_bounds.contains(&bound) {
-                                    Ok(If(Vec::new()))
-                                } else {
-                                    Err(Unimplemented)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             ty::ty_trait(ref data) => {
                 match bound {
                     ty::BoundSized => {

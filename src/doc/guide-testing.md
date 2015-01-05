@@ -537,7 +537,8 @@ computation entirely. This could be done for the example above by adjusting the
 `b.iter` call to
 
 ```rust
-# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
+# struct X;
+# impl X { fn iter<T, F>(&self, _: F) where F: FnMut() -> T {} } let b = X;
 b.iter(|| {
     // note lack of `;` (could also use an explicit `return`).
     range(0u, 1000).fold(0, |old, new| old ^ new)
@@ -552,7 +553,8 @@ argument as used.
 extern crate test;
 
 # fn main() {
-# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
+# struct X;
+# impl X { fn iter<T, F>(&self, _: F) where F: FnMut() -> T {} } let b = X;
 b.iter(|| {
     test::black_box(range(0u, 1000).fold(0, |old, new| old ^ new));
 });

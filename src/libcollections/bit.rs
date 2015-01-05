@@ -164,21 +164,6 @@ pub struct Bitv {
     nbits: uint
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-// FIXME(Gankro): NopeNopeNopeNopeNope (wait for IndexGet to be a thing)
-impl Index<uint,bool> for Bitv {
-    #[inline]
-    fn index(&self, i: &uint) -> &bool {
-        if self.get(*i).expect("index out of bounds") {
-            &TRUE
-        } else {
-            &FALSE
-        }
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 // FIXME(Gankro): NopeNopeNopeNopeNope (wait for IndexGet to be a thing)
 impl Index<uint> for Bitv {
     type Output = bool;

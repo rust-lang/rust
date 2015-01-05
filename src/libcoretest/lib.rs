@@ -30,7 +30,6 @@ mod num;
 mod ops;
 mod option;
 mod ptr;
-mod raw;
 mod result;
 mod slice;
 mod str;

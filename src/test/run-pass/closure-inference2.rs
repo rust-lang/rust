@@ -11,7 +11,7 @@
 // Test a rather underspecified example:
 
 pub fn main() {
-    let f = {|i| i};
+    let f = {|&: i| i};
     assert_eq!(f(2i), 2i);
     assert_eq!(f(5i), 5i);
 }

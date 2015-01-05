@@ -24,10 +24,10 @@ impl to_str for () {
 }
 
 trait map<T> {
-    fn map<U>(&self, f: |&T| -> U) -> Vec<U> ;
+    fn map<U, F>(&self, f: F) -> Vec<U> where F: FnMut(&T) -> U;
 }
 impl<T> map<T> for Vec<T> {
-    fn map<U>(&self, f: |&T| -> U) -> Vec<U> {
+    fn map<U, F>(&self, mut f: F) -> Vec<U> where F: FnMut(&T) -> U {
         let mut r = Vec::new();
         for i in self.iter() {
             r.push(f(i));

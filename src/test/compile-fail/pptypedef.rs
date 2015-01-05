@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn let_in<T>(x: T, f: |T|) {}
+fn let_in<T, F>(x: T, f: F) where F: FnOnce(T) {}
 
 fn main() {
     let_in(3u, |i| { assert!(i == 3i); });

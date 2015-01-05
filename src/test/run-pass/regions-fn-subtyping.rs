@@ -14,21 +14,21 @@
 #![allow(unused_variable)]
 
 // Should pass region checking.
-fn ok(f: |x: &uint|) {
+fn ok(f: Box<FnMut(&uint)>) {
     // Here, g is a function that can accept a uint pointer with
     // lifetime r, and f is a function that can accept a uint pointer
     // with any lifetime.  The assignment g = f should be OK (i.e.,
     // f's type should be a subtype of g's type), because f can be
     // used in any context that expects g's type.  But this currently
     // fails.
-    let mut g: <'r>|y: &'r uint| = |x| { };
+    let mut g: Box<for<'r> FnMut(&'r uint)> = box |x| { };
     g = f;
 }
 
 // This version is the same as above, except that here, g's type is
 // inferred.
-fn ok_inferred(f: |x: &uint|) {
-    let mut g: <'r>|x: &'r uint| = |_| {};
+fn ok_inferred(f: Box<FnMut(&uint)>) {
+    let mut g: Box<for<'r> FnMut(&'r uint)> = box |_| {};
     g = f;
 }
 

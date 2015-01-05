@@ -13,14 +13,14 @@ struct point { x: int, y: int }
 
 trait methods {
     fn impurem(&self);
-    fn blockm(&self, f: ||);
+    fn blockm<F>(&self, f: F) where F: FnOnce();
 }
 
 impl methods for point {
     fn impurem(&self) {
     }
 
-    fn blockm(&self, f: ||) { f() }
+    fn blockm<F>(&self, f: F) where F: FnOnce() { f() }
 }
 
 fn a() {

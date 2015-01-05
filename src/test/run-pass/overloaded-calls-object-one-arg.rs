@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S;
+// Tests calls to closure arguments where the closure takes 1 argument.
+// This is a bit tricky due to rust-call ABI.
 
-impl S {
-    fn foo(&self) {
-        let _ = move || { self };  //~error boxed closures can't capture by value
-    }
+fn foo(f: &mut FnMut(int) -> int) -> int {
+    f(22)
 }
 
 fn main() {
+    let z = foo(&mut |x| x *100);
+    assert_eq!(z, 2200);
 }

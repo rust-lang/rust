@@ -465,11 +465,6 @@ impl<'tcx> TypeMap<'tcx> {
                     }
                 }
             },
-            ty::ty_closure(box ref closure_ty) => {
-                self.get_unique_type_id_of_closure_type(cx,
-                                                        closure_ty.clone(),
-                                                        &mut unique_type_id);
-            },
             ty::ty_unboxed_closure(def_id, _, substs) => {
                 let typer = NormalizingUnboxedClosureTyper::new(cx.tcx());
                 let closure_ty = typer.unboxed_closure_type(def_id, substs);
@@ -3017,9 +3012,6 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_bare_fn(_, ref barefnty) => {
             subroutine_type_metadata(cx, unique_type_id, &barefnty.sig, usage_site_span)
         }
-        ty::ty_closure(ref closurety) => {
-            subroutine_type_metadata(cx, unique_type_id, &closurety.sig, usage_site_span)
-        }
         ty::ty_unboxed_closure(def_id, _, substs) => {
             let typer = NormalizingUnboxedClosureTyper::new(cx.tcx());
             let sig = typer.unboxed_closure_type(def_id, substs).sig;
@@ -3858,66 +3850,6 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
 
             output.push(')');
-
-            match sig.0.output {
-                ty::FnConverging(result_type) if ty::type_is_nil(result_type) => {}
-                ty::FnConverging(result_type) => {
-                    output.push_str(" -> ");
-                    push_debuginfo_type_name(cx, result_type, true, output);
-                }
-                ty::FnDiverging => {
-                    output.push_str(" -> !");
-                }
-            }
-        },
-        ty::ty_closure(box ty::ClosureTy { unsafety,
-                                           onceness,
-                                           store,
-                                           ref sig,
-                                           .. // omitting bounds ...
-                                           }) => {
-            if unsafety == ast::Unsafety::Unsafe {
-                output.push_str("unsafe ");
-            }
-
-            if onceness == ast::Once {
-                output.push_str("once ");
-            }
-
-            let param_list_closing_char;
-            match store {
-                ty::UniqTraitStore => {
-                    output.push_str("proc(");
-                    param_list_closing_char = ')';
-                }
-                ty::RegionTraitStore(_, ast::MutMutable) => {
-                    output.push_str("&mut|");
-                    param_list_closing_char = '|';
-                }
-                ty::RegionTraitStore(_, ast::MutImmutable) => {
-                    output.push_str("&|");
-                    param_list_closing_char = '|';
-                }
-            };
-
-            if sig.0.inputs.len() > 0 {
-                for &parameter_type in sig.0.inputs.iter() {
-                    push_debuginfo_type_name(cx, parameter_type, true, output);
-                    output.push_str(", ");
-                }
-                output.pop();
-                output.pop();
-            }
-
-            if sig.0.variadic {
-                if sig.0.inputs.len() > 0 {
-                    output.push_str(", ...");
-                } else {
-                    output.push_str("...");
-                }
-            }
-
-            output.push(param_list_closing_char);
 
             match sig.0.output {
                 ty::FnConverging(result_type) if ty::type_is_nil(result_type) => {}

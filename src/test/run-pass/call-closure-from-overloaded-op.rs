@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 fn foo() -> int { 22 }
 
 pub fn main() {

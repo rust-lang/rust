@@ -662,13 +662,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                     default_msgs: (&'static str, &'static str))
                                     -> (&'static str, &'static str) {
             match ty.sty {
-                ty::ty_closure(box ty::ClosureTy {
-                    store: ty::RegionTraitStore(..),
-                    ..
-                }) => {
-                    ("a non-copyable stack closure",
-                     "capture it in a new closure, e.g. `|x| f(x)`, to override")
-                }
                 _ => {
                     if ty::type_moves_by_default(param_env, span, ty) {
                         ("non-copyable",

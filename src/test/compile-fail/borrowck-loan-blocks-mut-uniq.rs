@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrow(v: &int, f: |x: &int|) {
+fn borrow<F>(v: &int, f: F) where F: FnOnce(&int) {
     f(v);
 }
 

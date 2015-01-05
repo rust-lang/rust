@@ -43,19 +43,16 @@ fn bar<'a>(x: &'a int) {
 
     // &'a CAN be declared on functions and used then:
     fn g<'a>(a: &'a int) { } // OK
-    fn h(a: for<'a>|&'a int|) { } // OK
-
-    // But not in the bound of a closure, it's not in scope *there*
-    fn i(a: for<'a>|&int|:'a) { } //~ ERROR undeclared lifetime
+    fn h(a: Box<for<'a> FnOnce(&'a int)>) { } // OK
 }
 
 // Test nesting of lifetimes in fn type declarations
 fn fn_types(a: &'a int, //~ ERROR undeclared lifetime
-            b: for<'a>|a: &'a int,
-                       b: &'b int, //~ ERROR undeclared lifetime
-                       c: for<'b>|a: &'a int,
-                                  b: &'b int|,
-                       d: &'b int|, //~ ERROR undeclared lifetime
+            b: Box<for<'a> FnOnce(&'a int,
+                                  &'b int, //~ ERROR undeclared lifetime
+                                  Box<for<'b> FnOnce(&'a int,
+                                                     &'b int)>,
+                                  &'b int)>, //~ ERROR undeclared lifetime
             c: &'a int) //~ ERROR undeclared lifetime
 {
 }

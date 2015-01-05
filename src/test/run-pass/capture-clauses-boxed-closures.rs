@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn each<T>(x: &[T], f: |&T|) {
+fn each<T, F>(x: &[T], mut f: F) where F: FnMut(&T) {
     for val in x.iter() {
         f(val)
     }

@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct X {
-    field: ||:'static + Send,
+struct X<F> where F: FnOnce() + 'static + Send {
+    field: F,
 }
 
-fn foo(blk: ||:'static) -> X {
-    return X { field: blk }; //~ ERROR expected bounds `Send`
+fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
+    //~^ ERROR the trait `core::kinds::Send` is not implemented for the type
+    return X { field: blk };
 }
 
 fn main() {

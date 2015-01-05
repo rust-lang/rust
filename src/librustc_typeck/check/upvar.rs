@@ -122,7 +122,6 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
                      _body: &ast::Block)
     {
         let is_old_skool_closure = match self.fcx.expr_ty(expr).sty {
-            ty::ty_closure(..) => true,
             _ => false,
         };
 

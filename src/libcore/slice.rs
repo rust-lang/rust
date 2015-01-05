@@ -531,17 +531,6 @@ impl<T> SliceExt for [T] {
     }
 }
 
-// NOTE(stage0) remove impl after a snapshot
-#[cfg(stage0)]
-impl<T> ops::Index<uint, T> for [T] {
-    fn index(&self, &index: &uint) -> &T {
-        assert!(index < self.len());
-
-        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
 impl<T> ops::Index<uint> for [T] {
     type Output = T;
 
@@ -552,17 +541,6 @@ impl<T> ops::Index<uint> for [T] {
     }
 }
 
-// NOTE(stage0) remove impl after a snapshot
-#[cfg(stage0)]
-impl<T> ops::IndexMut<uint, T> for [T] {
-    fn index_mut(&mut self, &index: &uint) -> &mut T {
-        assert!(index < self.len());
-
-        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
 impl<T> ops::IndexMut<uint> for [T] {
     type Output = T;
 

@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 fn id<T>(t: T) -> T { t }
 
-fn f<'r, T>(v: &'r T) -> ||: 'r -> T {
-    id(|| *v) //~ ERROR cannot infer
+fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
+    id(box |&mut:| *v) //~ ERROR cannot infer
 }
 
 fn main() {
     let v = &5i;
-    println!("{}", f(v)());
+    println!("{}", f(v).call_mut(()));
 }

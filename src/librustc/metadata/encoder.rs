@@ -59,9 +59,8 @@ pub enum InlinedItemRef<'a> {
 
 pub type Encoder<'a> = writer::Encoder<'a, SeekableMemWriter>;
 
-pub type EncodeInlinedItem<'a> = |ecx: &EncodeContext,
-                                  rbml_w: &mut Encoder,
-                                  ii: InlinedItemRef|: 'a;
+pub type EncodeInlinedItem<'a> =
+    Box<FnMut(&EncodeContext, &mut Encoder, InlinedItemRef) + 'a>;
 
 pub struct EncodeParams<'a, 'tcx: 'a> {
     pub diag: &'a SpanHandler,
@@ -953,7 +952,7 @@ fn encode_inlined_item(ecx: &EncodeContext,
                        ii: InlinedItemRef) {
     let mut eii = ecx.encode_inlined_item.borrow_mut();
     let eii: &mut EncodeInlinedItem = &mut *eii;
-    (*eii)(ecx, rbml_w, ii)
+    eii.call_mut((ecx, rbml_w, ii))
 }
 
 const FN_FAMILY: char = 'f';

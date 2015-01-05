@@ -8,30 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
+// Tests calls to closure arguments where the closure takes 0 arguments.
+// This is a bit tricky due to rust-call ABI.
 
-fn id<T>(x: T) -> T {
-    x
+fn foo(f: &mut FnMut() -> int) -> int {
+    f()
 }
 
-#[derive(PartialEq, Show)]
-struct Foo<T>(T);
-
-#[derive(PartialEq, Show)]
-enum Bar<T> {
-    Baz(T)
-}
-
-pub fn main() {
-    let f: |int| -> int = id;
-    assert_eq!(f(5), 5);
-
-    let f: |int| -> Foo<int> = Foo;
-    assert_eq!(f(5), Foo(5));
-
-    let f: |int| -> Bar<int> = Bar::Baz;
-    assert_eq!(f(5), Bar::Baz(5));
-
-    let f: |int| -> Option<int> = Some;
-    assert_eq!(f(5), Some(5));
+fn main() {
+    let z = foo(&mut || 22);
+    assert_eq!(z, 22);
 }

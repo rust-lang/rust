@@ -11,11 +11,11 @@
 
 
 trait vec_monad<A> {
-    fn bind<B>(&self, f: |&A| -> Vec<B> ) -> Vec<B> ;
+    fn bind<B, F>(&self, f: F ) -> Vec<B> where F: FnMut(&A) -> Vec<B> ;
 }
 
 impl<A> vec_monad<A> for Vec<A> {
-    fn bind<B>(&self, f: |&A| -> Vec<B> ) -> Vec<B> {
+    fn bind<B, F>(&self, mut f: F) -> Vec<B> where F: FnMut(&A) -> Vec<B> {
         let mut r = Vec::new();
         for elt in self.iter() {
             r.extend(f(elt).into_iter());
@@ -25,11 +25,11 @@ impl<A> vec_monad<A> for Vec<A> {
 }
 
 trait option_monad<A> {
-    fn bind<B>(&self, f: |&A| -> Option<B>) -> Option<B>;
+    fn bind<B, F>(&self, f: F) -> Option<B> where F: FnOnce(&A) -> Option<B>;
 }
 
 impl<A> option_monad<A> for Option<A> {
-    fn bind<B>(&self, f: |&A| -> Option<B>) -> Option<B> {
+    fn bind<B, F>(&self, f: F) -> Option<B> where F: FnOnce(&A) -> Option<B> {
         match *self {
             Some(ref a) => { f(a) }
             None => { None }
