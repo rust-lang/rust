@@ -87,8 +87,8 @@ fn dump_crates(cstore: &CStore) {
 fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
     let mut map = FnvHashMap::new();
     cstore.iter_crate_data(|cnum, data| {
-        match map.entry(data.name()) {
-            Vacant(entry) => { entry.set(vec![cnum]); },
+        match map.entry(&data.name()) {
+            Vacant(entry) => { entry.insert(vec![cnum]); },
             Occupied(mut entry) => { entry.get_mut().push(cnum); },
         }
     });

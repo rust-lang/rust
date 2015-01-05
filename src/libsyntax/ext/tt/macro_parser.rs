@@ -219,9 +219,9 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                 }
             }
             &TtToken(sp, MatchNt(bind_name, _, _, _)) => {
-                match ret_val.entry(bind_name) {
+                match ret_val.entry(&bind_name) {
                     Vacant(spot) => {
-                        spot.set(res[*idx].clone());
+                        spot.insert(res[*idx].clone());
                         *idx += 1;
                     }
                     Occupied(..) => {

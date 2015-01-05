@@ -11,7 +11,7 @@
 use prelude::*;
 use std::rand;
 use std::rand::Rng;
-use test::Bencher;
+use test::{Bencher, black_box};
 
 pub fn insert_rand_n<M, I, R>(n: uint,
                               map: &mut M,
@@ -33,7 +33,8 @@ pub fn insert_rand_n<M, I, R>(n: uint,
         let k = rng.gen::<uint>() % n;
         insert(map, k);
         remove(map, k);
-    })
+    });
+    black_box(map);
 }
 
 pub fn insert_seq_n<M, I, R>(n: uint,
@@ -55,7 +56,8 @@ pub fn insert_seq_n<M, I, R>(n: uint,
         insert(map, i);
         remove(map, i);
         i = (i + 2) % n;
-    })
+    });
+    black_box(map);
 }
 
 pub fn find_rand_n<M, T, I, F>(n: uint,
@@ -82,7 +84,7 @@ pub fn find_rand_n<M, T, I, F>(n: uint,
     b.iter(|| {
         let t = find(map, keys[i]);
         i = (i + 1) % n;
-        t
+        black_box(t);
     })
 }
 
@@ -104,6 +106,6 @@ pub fn find_seq_n<M, T, I, F>(n: uint,
     b.iter(|| {
         let x = find(map, i);
         i = (i + 1) % n;
-        x
+        black_box(x);
     })
 }
