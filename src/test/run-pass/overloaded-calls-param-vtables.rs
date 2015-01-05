@@ -10,7 +10,7 @@
 
 // Tests that nested vtables work with overloaded calls.
 
-#![feature(default_type_params, unboxed_closures)]
+#![feature(unboxed_closures)]
 
 use std::ops::Fn;
 use std::ops::Add;
@@ -27,4 +27,3 @@ fn main() {
     // ICE trigger
     G(1i);
 }
-
