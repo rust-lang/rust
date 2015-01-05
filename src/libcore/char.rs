@@ -69,7 +69,7 @@ pub const MAX: char = '\u{10ffff}';
 
 /// Converts from `u32` to a `char`
 #[inline]
-#[unstable = "pending decisions about costructors for primitives"]
+#[stable]
 pub fn from_u32(i: u32) -> Option<char> {
     // catch out-of-bounds and surrogates
     if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
@@ -92,7 +92,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// Panics if given an `radix` > 36.
 ///
 #[inline]
-#[unstable = "pending decisions about costructors for primitives"]
+#[unstable = "pending integer conventions"]
 pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
         panic!("from_digit: radix is too high (maximum 36)");
@@ -111,8 +111,8 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 }
 
 /// Basic `char` manipulations.
-#[experimental = "trait organization may change"]
-pub trait Char {
+#[stable]
+pub trait CharExt {
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
     /// Compared to `is_numeric()`, this function only recognizes the characters
@@ -126,7 +126,7 @@ pub trait Char {
     /// # Panics
     ///
     /// Panics if given a radix > 36.
-    #[unstable = "pending error conventions"]
+    #[unstable = "pending integer conventions"]
     fn is_digit(self, radix: uint) -> bool;
 
     /// Converts a character to the corresponding digit.
@@ -140,7 +140,7 @@ pub trait Char {
     /// # Panics
     ///
     /// Panics if given a radix outside the range [0..36].
-    #[unstable = "pending error conventions, trait organization"]
+    #[unstable = "pending integer conventions"]
     fn to_digit(self, radix: uint) -> Option<uint>;
 
     /// Returns an iterator that yields the hexadecimal Unicode escape
@@ -149,7 +149,7 @@ pub trait Char {
     /// All characters are escaped with Rust syntax of the form `\\u{NNNN}`
     /// where `NNNN` is the shortest hexadecimal representation of the code
     /// point.
-    #[unstable = "pending error conventions, trait organization"]
+    #[stable]
     fn escape_unicode(self) -> EscapeUnicode;
 
     /// Returns an iterator that yields the 'default' ASCII and
@@ -164,17 +164,17 @@ pub trait Char {
     ///   escaped.
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
-    #[unstable = "pending error conventions, trait organization"]
+    #[stable]
     fn escape_default(self) -> EscapeDefault;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
-    #[unstable = "pending trait organization"]
+    #[stable]
     fn len_utf8(self) -> uint;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-16.
-    #[unstable = "pending trait organization"]
+    #[stable]
     fn len_utf16(self) -> uint;
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
@@ -182,29 +182,26 @@ pub trait Char {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
-    #[unstable = "pending trait organization"]
-    fn encode_utf8(&self, dst: &mut [u8]) -> Option<uint>;
+    #[stable]
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint>;
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
     /// and then returns the number of `u16`s written.
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
-    #[unstable = "pending trait organization"]
-    fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint>;
+    #[stable]
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint>;
 }
 
-#[experimental = "trait is experimental"]
-impl Char for char {
-    #[unstable = "pending trait organization"]
+#[stable]
+impl CharExt for char {
+    #[unstable = "pending integer conventions"]
     fn is_digit(self, radix: uint) -> bool {
-        match self.to_digit(radix) {
-            Some(_) => true,
-            None    => false,
-        }
+        self.to_digit(radix).is_some()
     }
 
-    #[unstable = "pending trait organization"]
+    #[unstable = "pending integer conventions"]
     fn to_digit(self, radix: uint) -> Option<uint> {
         if radix > 36 {
             panic!("to_digit: radix is too high (maximum 36)");
@@ -219,12 +216,12 @@ impl Char for char {
         else { None }
     }
 
-    #[unstable = "pending error conventions, trait organization"]
+    #[stable]
     fn escape_unicode(self) -> EscapeUnicode {
         EscapeUnicode { c: self, state: EscapeUnicodeState::Backslash }
     }
 
-    #[unstable = "pending error conventions, trait organization"]
+    #[stable]
     fn escape_default(self) -> EscapeDefault {
         let init_state = match self {
             '\t' => EscapeDefaultState::Backslash('t'),
@@ -240,7 +237,7 @@ impl Char for char {
     }
 
     #[inline]
-    #[unstable = "pending trait organization"]
+    #[stable]
     fn len_utf8(self) -> uint {
         let code = self as u32;
         match () {
@@ -252,17 +249,17 @@ impl Char for char {
     }
 
     #[inline]
-    #[unstable = "pending trait organization"]
+    #[stable]
     fn len_utf16(self) -> uint {
         let ch = self as u32;
         if (ch & 0xFFFF_u32) == ch { 1 } else { 2 }
     }
 
     #[inline]
-    #[unstable = "pending error conventions, trait organization"]
-    fn encode_utf8<'a>(&self, dst: &'a mut [u8]) -> Option<uint> {
+    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
-        let code = *self as u32;
+        let code = self as u32;
         if code < MAX_ONE_B && dst.len() >= 1 {
             dst[0] = code as u8;
             Some(1)
@@ -287,10 +284,10 @@ impl Char for char {
     }
 
     #[inline]
-    #[unstable = "pending error conventions, trait organization"]
-    fn encode_utf16(&self, dst: &mut [u16]) -> Option<uint> {
+    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
-        let mut ch = *self as u32;
+        let mut ch = self as u32;
         if (ch & 0xFFFF_u32) == ch  && dst.len() >= 1 {
             // The BMP falls through (assuming non-surrogate, as it should)
             dst[0] = ch as u16;
@@ -310,6 +307,7 @@ impl Char for char {
 /// An iterator over the characters that represent a `char`, as escaped by
 /// Rust's unicode escaping rules.
 #[derive(Clone)]
+#[stable]
 pub struct EscapeUnicode {
     c: char,
     state: EscapeUnicodeState
@@ -325,6 +323,7 @@ enum EscapeUnicodeState {
     Done,
 }
 
+#[stable]
 impl Iterator for EscapeUnicode {
     type Item = char;
 
@@ -370,6 +369,7 @@ impl Iterator for EscapeUnicode {
 /// An iterator over the characters that represent a `char`, escaped
 /// for maximum portability.
 #[derive(Clone)]
+#[stable]
 pub struct EscapeDefault {
     state: EscapeDefaultState
 }
@@ -382,6 +382,7 @@ enum EscapeDefaultState {
     Unicode(EscapeUnicode),
 }
 
+#[stable]
 impl Iterator for EscapeDefault {
     type Item = char;
 

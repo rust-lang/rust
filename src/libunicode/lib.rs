@@ -44,9 +44,9 @@ mod u_str;
 // re-export char so that std et al see it correctly
 /// Character manipulation (`char` type, Unicode Scalar Value)
 ///
-/// This module  provides the `Char` and `UnicodeChar` traits, as well as their
-/// implementation for the primitive `char` type, in order to allow basic character
-/// manipulation.
+/// This module provides the `CharExt` trait, as well as its
+/// implementation for the primitive `char` type, in order to allow
+/// basic character manipulation.
 ///
 /// A `char` actually represents a
 /// *[Unicode Scalar Value](http://www.unicode.org/glossary/#unicode_scalar_value)*,
@@ -58,16 +58,14 @@ mod u_str;
 /// however the converse is not always true due to the above range limits
 /// and, as such, should be performed via the `from_u32` function..
 pub mod char {
-    pub use core::char::{MAX, from_u32};
-    pub use core::char::{from_digit};
-    pub use core::char::Char;
+    pub use core::char::{MAX, from_u32, from_digit};
 
     pub use normalize::{decompose_canonical, decompose_compatible, compose};
 
     pub use tables::normalization::canonical_combining_class;
     pub use tables::UNICODE_VERSION;
 
-    pub use u_char::UnicodeChar;
+    pub use u_char::CharExt;
 }
 
 pub mod str {

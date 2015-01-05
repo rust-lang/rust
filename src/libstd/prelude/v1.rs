@@ -22,7 +22,7 @@
 // Reexported types and traits
 
 #[stable] #[doc(no_inline)] pub use boxed::Box;
-#[stable] #[doc(no_inline)] pub use char::{Char, UnicodeChar};
+#[stable] #[doc(no_inline)] pub use char::CharExt;
 #[stable] #[doc(no_inline)] pub use clone::Clone;
 #[stable] #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 #[stable] #[doc(no_inline)] pub use iter::CloneIteratorExt;
