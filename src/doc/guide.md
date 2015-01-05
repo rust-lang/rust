@@ -1639,16 +1639,16 @@ cover generics.
 
 As in other languages, arrays can also be multidimensional, providing their type `T` is also an array. For example:
 
- ```{rust}
- let matrix = [[42i; 10]; 10];
+```{rust}
+let matrix = [[42i; 10]; 10];
  
- for row in matrix.iter() {
-   for col in row.iter() {
-     print!("{} ", col);
-   }
-   println!("");
- }
- ```
+for row in matrix.iter() {
+    for col in row.iter() {
+        print!("{} ", col);
+    }
+    println!("");
+}
+```
 
 You can get the number of elements in an array `a` with `a.len()`, and use
 `a.iter()` to iterate over them with a for loop. This code will print each
