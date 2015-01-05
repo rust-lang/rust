@@ -53,7 +53,7 @@ pub trait AsciiExt<T = Self> for Sized? {
     fn to_ascii_lowercase(&self) -> T;
 
     /// Check that two strings are an ASCII case-insensitive match.
-    /// Same as `to_ascii_lowercase(a) == to_ascii_lower(b)`,
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporary strings.
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
 }
