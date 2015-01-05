@@ -1372,7 +1372,6 @@ pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
 /// Operations on `[u8]`.
 #[experimental = "needs review"]
 pub mod bytes {
-    use kinds::Sized;
     use ptr;
     use slice::SliceExt;
 
