@@ -54,7 +54,7 @@ use libc;
 use mem;
 use os;
 use ptr;
-use sync::atomic::{mod, Ordering};
+use sync::atomic::{self, Ordering};
 use sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use sys::c;
 use sys::fs::FileDesc;

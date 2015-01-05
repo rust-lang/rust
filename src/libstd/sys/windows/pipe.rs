@@ -87,7 +87,7 @@
 use prelude::v1::*;
 
 use libc;
-use c_str::CString;
+use ffi::CString;
 use mem;
 use ptr;
 use sync::{Arc, Mutex};

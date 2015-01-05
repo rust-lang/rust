@@ -12,7 +12,7 @@ use prelude::v1::*;
 
 use libc::{pid_t, c_void, c_int};
 use libc;
-use c_str::{CString, ToCStr};
+use ffi::CString;
 use io;
 use mem;
 use os;
