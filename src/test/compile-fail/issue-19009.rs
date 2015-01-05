@@ -11,7 +11,7 @@
 #![feature(lang_items)]
 #![no_std]
 #![crate_type="rlib"]
-#[lang="sized"] pub trait Sized for Sized? {}
+#[lang="sized"] pub trait Sized {}
 
 fn ice(f: for <'s> ||
     :'s //~ ERROR use of undeclared lifetime name `'s`

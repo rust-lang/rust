@@ -39,7 +39,7 @@ fn local_sort<T: Float>(v: &mut [T]) {
 }
 
 /// Trait that provides simple descriptive statistics on a univariate set of numeric samples.
-pub trait Stats <T: FloatMath + FromPrimitive> for Sized? {
+pub trait Stats <T: FloatMath + FromPrimitive> {
 
     /// Sum of the samples.
     ///

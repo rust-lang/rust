@@ -11,7 +11,7 @@
 // Test `Sized?` local variables.
 
 
-trait T for Sized? {}
+trait T {}
 
 fn f1<Sized? X>(x: &X) {
     let _: X; // <-- this is OK, no bindings created, no initializer.

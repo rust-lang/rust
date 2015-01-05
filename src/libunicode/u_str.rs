@@ -37,7 +37,7 @@ pub struct Words<'a> {
 
 /// Methods for Unicode string slices
 #[allow(missing_docs)] // docs in libcollections
-pub trait UnicodeStr for Sized? {
+pub trait UnicodeStr {
     fn graphemes<'a>(&'a self, is_extended: bool) -> Graphemes<'a>;
     fn grapheme_indices<'a>(&'a self, is_extended: bool) -> GraphemeIndices<'a>;
     fn words<'a>(&'a self) -> Words<'a>;

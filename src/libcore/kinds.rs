@@ -19,19 +19,19 @@
 
 /// Types able to be transferred across task boundaries.
 #[lang="send"]
-pub unsafe trait Send for Sized? : 'static {
+pub unsafe trait Send : 'static {
     // empty.
 }
 
 /// Types with a constant size known at compile-time.
 #[lang="sized"]
-pub trait Sized for Sized? {
+pub trait Sized {
     // Empty.
 }
 
 /// Types that can be copied by simply copying bits (i.e. `memcpy`).
 #[lang="copy"]
-pub trait Copy for Sized? {
+pub trait Copy {
     // Empty.
 }
 
@@ -81,7 +81,7 @@ pub trait Copy for Sized? {
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
 #[lang="sync"]
-pub unsafe trait Sync for Sized? {
+pub unsafe trait Sync {
     // Empty
 }
 
