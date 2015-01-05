@@ -1332,10 +1332,11 @@ impl MetricMap {
 /// elimination.
 ///
 /// This function is a no-op, and does not even read from `dummy`.
-pub fn black_box<T>(dummy: T) {
+pub fn black_box<T>(dummy: T) -> T {
     // we need to "use" the argument in some way LLVM can't
     // introspect.
     unsafe {asm!("" : : "r"(&dummy))}
+    dummy
 }
 
 
