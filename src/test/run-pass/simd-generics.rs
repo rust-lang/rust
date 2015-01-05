@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![feature(associated_types, simd)]
+#![feature(simd)]
 
 use std::ops;
 

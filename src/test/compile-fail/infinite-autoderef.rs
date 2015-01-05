@@ -10,8 +10,6 @@
 
 // error-pattern: reached the recursion limit while auto-dereferencing
 
-#![feature(associated_types)]
-
 use std::ops::Deref;
 
 struct Foo;

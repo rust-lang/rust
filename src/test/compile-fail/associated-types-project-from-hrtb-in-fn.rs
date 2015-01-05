@@ -11,8 +11,6 @@
 // Check projection of an associated type out of a higher-ranked trait-bound
 // in the context of a function signature.
 
-#![feature(associated_types)]
-
 pub trait Foo<T> {
     type A;
 

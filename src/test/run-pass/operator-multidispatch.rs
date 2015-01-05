@@ -11,7 +11,7 @@
 // Test that we can overload the `+` operator for points so that two
 // points can be added, and a point can be added to an integer.
 
-#![feature(associated_types, default_type_params)]
+#![feature(default_type_params)]
 
 use std::ops;
 

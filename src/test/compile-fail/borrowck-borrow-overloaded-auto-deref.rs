@@ -11,8 +11,6 @@
 // Test how overloaded deref interacts with borrows when only
 // Deref and not DerefMut is implemented.
 
-#![feature(associated_types)]
-
 use std::ops::Deref;
 
 struct Rc<T> {

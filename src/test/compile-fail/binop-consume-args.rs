@@ -10,7 +10,7 @@
 
 // Test that binary operators consume their arguments
 
-#![feature(associated_types, default_type_params)]
+#![feature(default_type_params)]
 
 use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitXor, BitOr, Shl, Shr};
 

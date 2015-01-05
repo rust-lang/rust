@@ -10,8 +10,6 @@
 
 // Test type checking of uses of associated types via sugary paths.
 
-#![feature(associated_types)]
-
 pub trait Foo {
     type A;
 }

@@ -11,7 +11,7 @@
 // If `Index` used an associated type for its output, this test would
 // work more smoothly.
 
-#![feature(associated_types, old_orphan_check)]
+#![feature(old_orphan_check)]
 
 use std::ops::Index;
 
