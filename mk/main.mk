@@ -13,7 +13,7 @@
 ######################################################################
 
 # The version number
-CFG_RELEASE_NUM=0.13.0
+CFG_RELEASE_NUM=1.0.0
 
 # An optional number to put after the label, e.g. '2' -> '-beta2'
 CFG_BETA_CYCLE=
