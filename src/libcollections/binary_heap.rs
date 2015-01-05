@@ -148,6 +148,7 @@
 //! ```
 
 #![allow(missing_docs)]
+#![stable]
 
 use core::prelude::*;
 

@@ -19,6 +19,8 @@
 // Backlinks over DList::prev are raw pointers that form a full chain in
 // the reverse direction.
 
+#![stable]
+
 use core::prelude::*;
 
 use alloc::boxed::Box;

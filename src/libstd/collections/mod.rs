@@ -309,7 +309,7 @@
 //! }
 //! ```
 
-#![experimental]
+#![stable]
 
 pub use core_collections::{BinaryHeap, Bitv, BitvSet, BTreeMap, BTreeSet};
 pub use core_collections::{DList, RingBuf, VecMap};
@@ -322,11 +322,13 @@ pub use self::hash_set::HashSet;
 
 mod hash;
 
+#[stable]
 pub mod hash_map {
     //! A hashmap
     pub use super::hash::map::*;
 }
 
+#[stable]
 pub mod hash_set {
     //! A hashset
     pub use super::hash::set::*;
