@@ -1560,7 +1560,9 @@ fn element_kind(t: Ty) -> ElementKind {
 /// Returns the maximal region scope for the which the lvalue `cmt` is
 /// guaranteed to be valid without any rooting etc, and presuming `cmt`
 /// is not mutated. See the `SCOPE(LV)` function in `borrowck/doc.rs`.
-pub fn scope<'tcx>(tcx: &ty::ctxt<'tcx>, cmt: &cmt<'tcx>, extent: region::CodeExtent) -> ty::Region {
+pub fn scope<'tcx>(tcx: &ty::ctxt<'tcx>,
+                   cmt: &cmt<'tcx>,
+                   extent: region::CodeExtent) -> ty::Region {
     let ret = match cmt.cat {
         cat_rvalue(temp_scope) => temp_scope,
         cat_upvar(..) => ty::ReScope(extent),

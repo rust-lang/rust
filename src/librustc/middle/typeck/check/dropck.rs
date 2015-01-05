@@ -1,3 +1,13 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use middle::region;
 use middle::subst;
 use middle::ty;
@@ -54,7 +64,8 @@ fn constrain_region_for_destructor_safety(rcx: &mut Rcx,
             Some(parent_inner_scope) => ty::ReScope(parent_inner_scope),
         };
 
-    debug!("constrain_region_for_destructor_safety region: {} :> parent_inner_region: {} (from inner_scope: {}){}",
+    debug!("constrain_region_for_destructor_safety region: {} :> \
+            parent_inner_region: {} (from inner_scope: {}){}",
            region, parent_inner_region, inner_scope,
            if could_have_been_re_function { " could_have_been_re_function" } else { "" });
 

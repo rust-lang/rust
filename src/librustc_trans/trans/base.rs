@@ -1213,7 +1213,9 @@ fn memzero<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>) {
     b.call(llintrinsicfn, &[llptr, llzeroval, size, align, volatile], None);
 }
 
-pub fn alloc_ty<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, t: Ty<'tcx>, name: &str) -> ValueRef {
+pub fn alloc_ty<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
+                                  t: Ty<'tcx>,
+                                  name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);

@@ -152,7 +152,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
             explain_span(cx, place, Span { lo: stmt_span.hi, ..blk.span })
           }
           _ => {
-            cx.sess.bug("failed to find block for BlockRemainder") 
+            cx.sess.bug("failed to find block for BlockRemainder")
           }
         }
       }
