@@ -188,6 +188,7 @@ impl Condvar {
     pub fn notify_all(&self) { unsafe { self.inner.inner.notify_all() } }
 }
 
+#[stable]
 impl Drop for Condvar {
     fn drop(&mut self) {
         unsafe { self.inner.inner.destroy() }

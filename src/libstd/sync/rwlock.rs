@@ -228,6 +228,7 @@ impl<T: Send + Sync> RWLock<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T> Drop for RWLock<T> {
     fn drop(&mut self) {
         unsafe { self.inner.lock.destroy() }
@@ -327,16 +328,19 @@ impl<'rwlock, T> RWLockWriteGuard<'rwlock, T> {
     }
 }
 
+#[stable]
 impl<'rwlock, T> Deref for RWLockReadGuard<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
+#[stable]
 impl<'rwlock, T> Deref for RWLockWriteGuard<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
+#[stable]
 impl<'rwlock, T> DerefMut for RWLockWriteGuard<'rwlock, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.__data.get() }
@@ -344,6 +348,7 @@ impl<'rwlock, T> DerefMut for RWLockWriteGuard<'rwlock, T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<'a, T> Drop for RWLockReadGuard<'a, T> {
     fn drop(&mut self) {
         unsafe { self.__lock.lock.read_unlock(); }
@@ -351,6 +356,7 @@ impl<'a, T> Drop for RWLockReadGuard<'a, T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<'a, T> Drop for RWLockWriteGuard<'a, T> {
     fn drop(&mut self) {
         self.__lock.poison.done(&self.__poison);

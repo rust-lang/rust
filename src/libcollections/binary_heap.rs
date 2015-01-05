@@ -562,11 +562,13 @@ impl<T: Ord> BinaryHeap<T> {
 }
 
 /// `BinaryHeap` iterator.
+#[stable]
 pub struct Iter <'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+#[stable]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> {
         Iter { iter: self.iter.clone() }
@@ -594,6 +596,7 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 /// An iterator that moves out of a `BinaryHeap`.
+#[stable]
 pub struct IntoIter<T> {
     iter: vec::IntoIter<T>,
 }
@@ -619,6 +622,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
+#[unstable = "recent addition"]
 pub struct Drain<'a, T: 'a> {
     iter: vec::Drain<'a, T>,
 }

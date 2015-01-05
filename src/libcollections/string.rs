@@ -711,7 +711,7 @@ impl fmt::Show for FromUtf16Error {
     }
 }
 
-#[experimental = "waiting on FromIterator stabilization"]
+#[stable]
 impl FromIterator<char> for String {
     fn from_iter<I:Iterator<Item=char>>(iterator: I) -> String {
         let mut buf = String::new();
@@ -720,7 +720,7 @@ impl FromIterator<char> for String {
     }
 }
 
-#[experimental = "waiting on FromIterator stabilization"]
+#[stable]
 impl<'a> FromIterator<&'a str> for String {
     fn from_iter<I:Iterator<Item=&'a str>>(iterator: I) -> String {
         let mut buf = String::new();
@@ -832,7 +832,7 @@ impl<H: hash::Writer> hash::Hash<H> for String {
     }
 }
 
-#[experimental = "waiting on Add stabilization"]
+#[unstable = "recent addition, needs more experience"]
 impl<'a> Add<&'a str> for String {
     type Output = String;
 
@@ -864,7 +864,7 @@ impl ops::Slice<uint, str> for String {
     }
 }
 
-#[experimental = "waiting on Deref stabilization"]
+#[stable]
 impl ops::Deref for String {
     type Target = str;
 

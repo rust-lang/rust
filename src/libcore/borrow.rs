@@ -191,6 +191,7 @@ impl<'a, T, Sized? B> Cow<'a, T, B> where B: ToOwned<T> {
     }
 }
 
+#[stable]
 impl<'a, T, Sized? B> Deref for Cow<'a, T, B> where B: ToOwned<T>  {
     type Target = B;
 
