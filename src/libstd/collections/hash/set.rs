@@ -605,7 +605,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, 
 }
 
 #[stable]
-impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extend<T> for HashSet<T, H> {
+impl<T: Eq + Hash<S>, S, H: Hasher<S>> Extend<T> for HashSet<T, H> {
     fn extend<I: Iterator<Item=T>>(&mut self, mut iter: I) {
         for k in iter {
             self.insert(k);
