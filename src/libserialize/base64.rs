@@ -70,7 +70,7 @@ static URLSAFE_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                        0123456789-_";
 
 /// A trait for converting a value to base64 encoding.
-pub trait ToBase64 for Sized? {
+pub trait ToBase64 {
     /// Converts the value of `self` to a base64 value following the specified
     /// format configuration, returning the owned string.
     fn to_base64(&self, config: Config) -> String;
@@ -170,7 +170,7 @@ impl ToBase64 for [u8] {
 }
 
 /// A trait for converting from base64 encoded values.
-pub trait FromBase64 for Sized? {
+pub trait FromBase64 {
     /// Converts the value of `self`, interpreted as base64 encoded data, into
     /// an owned vector of bytes, returning the vector.
     fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error>;

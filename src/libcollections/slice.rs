@@ -120,7 +120,7 @@ pub use core::slice::{from_raw_buf, from_raw_mut_buf};
 
 /// Allocating extension methods for slices.
 #[unstable = "needs associated types, may merge with other traits"]
-pub trait SliceExt for Sized? {
+pub trait SliceExt {
     type Item;
 
     /// Sorts the slice, in place, using `compare` to compare
@@ -989,7 +989,7 @@ impl<T> SliceExt for [T] {
 ////////////////////////////////////////////////////////////////////////////////
 #[unstable = "U should be an associated type"]
 /// An extension trait for concatenating slices
-pub trait SliceConcatExt<Sized? T, U> for Sized? {
+pub trait SliceConcatExt<Sized? T, U> {
     /// Flattens a slice of `T` into a single value `U`.
     #[stable]
     fn concat(&self) -> U;

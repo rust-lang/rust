@@ -295,7 +295,7 @@ impl fmt::Show for CString {
 }
 
 /// A generic trait for converting a value to a CString.
-pub trait ToCStr for Sized? {
+pub trait ToCStr {
     /// Copy the receiver into a CString.
     ///
     /// # Panics

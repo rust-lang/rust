@@ -21,7 +21,7 @@ trait Foo<'a,T,U> {
     fn dummy(&'a self) -> &'a (T,U);
 }
 
-trait Eq<Sized? X> for Sized? { }
+trait Eq<Sized? X> { }
 impl<Sized? X> Eq<X> for X { }
 fn eq<Sized? A,Sized? B:Eq<A>>() { }
 
