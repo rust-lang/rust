@@ -78,7 +78,15 @@ The following alternatives make different trade-offs, and choosing one would be 
 ## B. `iptr/uptr`:
 
 - Pros: "Pointer-sized integer", exactly what they are.
-- Cons: C/C++ have `intptr_t/uintptr_t`, which are typically *only* used for storing casted pointer values. We don't want people to confuse the Rust types with the C/C++ ones, as the Rust ones have more typical use cases. Also, people may wonder why all data structures have "pointers" in their method signatures. Besides the "funny-looking" aspect, the names may have an incorrect "pointer fiddling and unsafe staff" connotation there, as `ptr` isn't usually seen in safe Rust code. 
+- Cons: C/C++ have `intptr_t/uintptr_t`, which are typically *only* used for storing casted pointer values. We don't want people to confuse the Rust types with the C/C++ ones, as the Rust ones have more typical use cases. Also, people may wonder why all data structures have "pointers" in their method signatures. Besides the "funny-looking" aspect, the names may have an incorrect "pointer fiddling and unsafe staff" connotation there, as `ptr` isn't usually seen in safe Rust code.
+
+In the following snippet:
+
+```rust
+fn slice_or_fail<'b>(&'b self, from: &uptr, to: &uptr) -> &'b [T]
+```
+
+It feels like working with pointers, not integers.
 
 ## C. `imem/umem`:
 
@@ -107,7 +115,12 @@ They are more integer-like than `iptr/uptr` or `imem/umem` if one knows where to
 
 The problem here is that they don't strictly follow the `i/u + {size}` pattern, are of different lengths, and the more frequently used type `uintp`(`uintm`) has a longer name. Granted, this problem already exists with `int/uint`, but those two are names that everyone is familiar with.
 
-So they are not as pretty as `iptr/uptr` or `imem/umem`.
+So they may not be as pretty as `iptr/uptr` or `imem/umem`.
+
+```rust
+fn slice_or_fail<'b>(&'b self, from: &uintm, to: &uintm) -> &'b [T]
+fn slice_or_fail<'b>(&'b self, from: &uintp, to: &uintp) -> &'b [T]
+```
 
 ## E. `intx/uintx`:
 
@@ -122,6 +135,10 @@ Previously, the names involving suffixes like `diff`/`addr`/`size`/`offset` are 
 (Note: this author advices against `isize`, as it most likely corresponds to C/C++ `ssize_t`. `ssize_t` is in the POSIX standard, not the C/C++ ones, and is *not for offsets* according to that standard. However some may argue that, `isize/usize` are different enough from `ssize_t/size_t` so this author's worries are unnecessary.)
 
 But how about the other use cases of `int/uint` especially the "storing casted pointers" one? Using `libc`'s `intptr_t`/`uintptr_t` is not an option here, as "Rust on bare metal" would be ruled out. Forcing a pointer value into something called `idiff/usize` doesn't seem right either. Thus, this leads us to:
+
+```rust
+fn slice_or_fail<'b>(&'b self, from: &usize, to: &usize) -> &'b [T]
+```
 
 ## G. `iptr/uptr` *and* `idiff/usize`:
 
@@ -143,15 +160,27 @@ A pair of variants of `isize/usize`. This author believes that the missing `e` m
 
 However, `isiz/usiz` still hide the actual semantics of the types, and omitting but a single letter from a word does feel a bit too hack-ish.
 
+```rust
+fn slice_or_fail<'b>(&'b self, from: &usiz, to: &usiz) -> &'b [T]
+```
+
 ## I. `iptr_size/uptr_size`:
 
 The names are very clear about the semantics, but are also irregular, too long and feel out of place.
+
+```rust
+fn slice_or_fail<'b>(&'b self, from: &uptr_size, to: &uptr_size) -> &'b [T]
+```
 
 ## J. `iptrsz/uptrsz`:
 
 Clear semantics, but still a bit too long (though better than `iptr_size/uptr_size`), and the `ptr` parts are still a bit concerning (though to a much less extent than `iptr/uptr`).
 
-## H. `ipsz/upsz`:
+```rust
+fn slice_or_fail<'b>(&'b self, from: &uptrsz, to: &uptrsz) -> &'b [T]
+```
+
+## K. `ipsz/upsz`:
 
 Now it is clear where this final pair of alternatives comes from.
 
