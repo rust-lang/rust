@@ -10,7 +10,6 @@
 
 // aux-build:lint-unused-extern-crate.rs
 
-#![feature(globs)]
 #![deny(unused_extern_crates)]
 #![allow(unused_variables)]
 
