@@ -54,7 +54,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("lang_items", Active),
 
     ("simd", Active),
-    ("default_type_params", Active),
+    ("default_type_params", Accepted),
     ("quote", Active),
     ("link_llvm_intrinsics", Active),
     ("linkage", Active),
@@ -112,7 +112,6 @@ enum Status {
 /// A set of features to be used by later passes.
 #[derive(Copy)]
 pub struct Features {
-    pub default_type_params: bool,
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub import_shadowing: bool,
@@ -125,7 +124,6 @@ pub struct Features {
 impl Features {
     pub fn new() -> Features {
         Features {
-            default_type_params: false,
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
             import_shadowing: false,
@@ -356,20 +354,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_expr(self, e);
     }
 
-    fn visit_generics(&mut self, generics: &ast::Generics) {
-        for type_parameter in generics.ty_params.iter() {
-            match type_parameter.default {
-                Some(ref ty) => {
-                    self.gate_feature("default_type_params", ty.span,
-                                      "default type parameters are \
-                                       experimental and possibly buggy");
-                }
-                None => {}
-            }
-        }
-        visit::walk_generics(self, generics);
-    }
-
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         if attr::contains_name(slice::ref_slice(attr), "lang") {
             self.gate_feature("lang_items",
@@ -475,7 +459,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
     check(&mut cx, krate);
 
     (Features {
-        default_type_params: cx.has_feature("default_type_params"),
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         import_shadowing: cx.has_feature("import_shadowing"),

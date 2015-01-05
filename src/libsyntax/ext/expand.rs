@@ -1161,7 +1161,6 @@ fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
 
 pub struct ExpansionConfig {
     pub crate_name: String,
-    pub deriving_hash_type_parameter: bool,
     pub enable_quotes: bool,
     pub recursion_limit: uint,
 }
@@ -1170,7 +1169,6 @@ impl ExpansionConfig {
     pub fn default(crate_name: String) -> ExpansionConfig {
         ExpansionConfig {
             crate_name: crate_name,
-            deriving_hash_type_parameter: false,
             enable_quotes: false,
             recursion_limit: 64,
         }
