@@ -5003,6 +5003,7 @@ impl<'a> Parser<'a> {
         // re-jigged shortly in any case, so leaving the hacky version for now.
         if self.eat_keyword(keywords::For) {
             let span = self.span;
+
             let mut ate_question = false;
             if self.eat(&token::Question) {
                 ate_question = true;
@@ -5020,8 +5021,11 @@ impl<'a> Parser<'a> {
                     "expected `?Sized` after `for` in trait item");
                 return None;
             }
-            let tref = Parser::trait_ref_from_ident(ident, span);
-            Some(tref)
+            let _tref = Parser::trait_ref_from_ident(ident, span);
+
+            self.obsolete(span, ObsoleteForSized);
+
+            None
         } else {
             None
         }
