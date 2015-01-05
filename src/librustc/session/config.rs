@@ -330,7 +330,7 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("parse-only", "Parse only; do not compile, assemble, or link", PARSE_ONLY),
      ("no-trans", "Run all passes except translation; no output", NO_TRANS),
      ("no-analysis", "Parse and expand the source, but run no analysis and",
-      NO_TRANS),
+      NO_ANALYSIS),
      ("unstable-options", "Adds unstable command line options to rustc interface",
       UNSTABLE_OPTIONS),
      ("print-enum-sizes", "Print the size of enums and their variants", PRINT_ENUM_SIZES),
