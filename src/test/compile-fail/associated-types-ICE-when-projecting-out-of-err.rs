@@ -16,7 +16,7 @@
 #![no_std]
 
 #[lang="sized"]
-pub trait Sized for Sized? {
+pub trait Sized {
     // Empty.
 }
 

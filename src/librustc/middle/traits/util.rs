@@ -93,7 +93,7 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                 // seen.  This is necessary to prevent infinite
                 // recursion in some cases.  One common case is when
                 // people define `trait Sized { }` rather than `trait
-                // Sized for Sized? { }`.
+                // Sized { }`.
                 predicates.retain(|r| self.visited.insert(r.clone()));
 
                 self.stack.push(StackEntry { position: 0,

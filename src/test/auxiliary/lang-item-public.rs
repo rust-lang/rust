@@ -12,7 +12,7 @@
 #![feature(lang_items)]
 
 #[lang="sized"]
-pub trait Sized for Sized? {}
+pub trait Sized {}
 
 #[lang="panic"]
 fn panic(_: &(&'static str, &'static str, uint)) -> ! { loop {} }
