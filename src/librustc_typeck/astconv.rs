@@ -53,7 +53,8 @@ use middle::def;
 use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::subst::{VecPerParamSpace};
-use middle::ty::{self, RegionEscape, Ty};
+use middle::traits;
+use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
 use rscope::{self, UnelidableRscope, RegionScope, SpecificRscope,
              ShiftedRscope, BindingRscope};
 use TypeAndSubsts;
@@ -637,7 +638,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
     trait_ref
 }
 
-pub fn ast_type_binding_to_projection_predicate<'tcx>(
+fn ast_type_binding_to_projection_predicate<'tcx>(
     this: &AstConv<'tcx>,
     trait_ref: Rc<ty::TraitRef<'tcx>>,
     binding: &ConvertedBinding<'tcx>)
@@ -659,20 +660,56 @@ pub fn ast_type_binding_to_projection_predicate<'tcx>(
     //
     // We want to produce `<B as SuperTrait<int>>::T == foo`.
 
-    // FIXME(#19541): supertrait upcasting not actually impl'd :)
+    // Simple case: X is defined in the current trait.
+    if trait_defines_associated_type_named(this, trait_ref.def_id, binding.item_name) {
+        return Ok(ty::ProjectionPredicate {
+            projection_ty: ty::ProjectionTy {
+                trait_ref: trait_ref,
+                item_name: binding.item_name,
+            },
+            ty: binding.ty,
+        });
+    }
 
-    if !trait_defines_associated_type_named(this, trait_ref.def_id, binding.item_name) {
+    // Otherwise, we have to walk through the supertraits to find those that do.
+    let mut candidates: Vec<_> =
+        traits::supertraits(this.tcx(), trait_ref.to_poly_trait_ref())
+        .filter(|r| trait_defines_associated_type_named(this, r.def_id(), binding.item_name))
+        .collect();
+
+    if candidates.len() > 1 {
         this.tcx().sess.span_err(
             binding.span,
-            format!("no associated type `{}` defined in `{}`",
+            format!("ambiguous associated type: `{}` defined in multiple supertraits `{}`",
                     token::get_name(binding.item_name),
-                    trait_ref.user_string(this.tcx())).as_slice());
+                    candidates.user_string(this.tcx())).as_slice());
+        return Err(ErrorReported);
+    }
+
+    let candidate = match candidates.pop() {
+        Some(c) => c,
+        None => {
+            this.tcx().sess.span_err(
+                binding.span,
+                format!("no associated type `{}` defined in `{}`",
+                        token::get_name(binding.item_name),
+                        trait_ref.user_string(this.tcx())).as_slice());
+            return Err(ErrorReported);
+        }
+    };
+
+    if ty::binds_late_bound_regions(this.tcx(), &candidate) {
+        this.tcx().sess.span_err(
+            binding.span,
+            format!("associated type `{}` defined in higher-ranked supertrait `{}`",
+                    token::get_name(binding.item_name),
+                    candidate.user_string(this.tcx())).as_slice());
         return Err(ErrorReported);
     }
 
     Ok(ty::ProjectionPredicate {
         projection_ty: ty::ProjectionTy {
-            trait_ref: trait_ref,
+            trait_ref: candidate.0,
             item_name: binding.item_name,
         },
         ty: binding.ty,
@@ -899,6 +936,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
 {
     let tcx = this.tcx();
     let ty_param_def_id = provenance.def_id();
+
     let mut suitable_bounds: Vec<_>;
     let ty_param_name: ast::Name;
     { // contain scope of refcell:
@@ -906,13 +944,9 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         let ty_param_def = &ty_param_defs[ty_param_def_id.node];
         ty_param_name = ty_param_def.name;
 
-        // FIXME(#19541): we should consider associated types in
-        // super-traits. Probably by elaborating the bounds.
-
+        // FIXME(#20300) -- search where clauses, not bounds
         suitable_bounds =
-            ty_param_def.bounds.trait_bounds // FIXME(#20300) -- search where clauses, not bounds
-            .iter()
-            .cloned()
+            traits::transitive_bounds(tcx, ty_param_def.bounds.trait_bounds.as_slice())
             .filter(|b| trait_defines_associated_type_named(this, b.def_id(), assoc_name))
             .collect();
     }
