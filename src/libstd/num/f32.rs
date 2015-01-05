@@ -73,7 +73,7 @@ mod cmath {
     }
 }
 
-#[unstable = "trait is unstable"]
+#[stable]
 impl Float for f32 {
     #[inline]
     fn nan() -> f32 { num::Float::nan() }
