@@ -142,6 +142,14 @@
 //!     // destroyed. There are now no strong (Rc) references to the gadgets.
 //!     // Once they get destroyed, the Gadgets get destroyed. This zeroes the
 //!     // reference count on Gadget Man, so he gets destroyed as well.
+//!
+//!     // This is an unfortunate wart that is a side-effect of the implmentation
+//!     // of new destructor semantics: if the above for-loop is the final expression
+//!     // in the function, the borrow-checker treats the gadget_owner as needing to
+//!     // live past the destruction scope of the function (which of course it does not).
+//!     // To work around this, for now I am inserting a dummy value just so the above
+//!     // for-loop is no longer the final expression in the block.
+//!     ()
 //! }
 //! ```
 
