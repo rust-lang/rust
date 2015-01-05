@@ -13,8 +13,6 @@
 //!
 //! Obsolete syntax that becomes too hard to parse can be removed.
 
-pub use self::ObsoleteSyntax::*;
-
 use ast::{Expr, ExprTup};
 use codemap::Span;
 use parse::parser;
@@ -24,16 +22,16 @@ use ptr::P;
 /// The specific types of unsupported syntax
 #[derive(Copy, PartialEq, Eq, Hash)]
 pub enum ObsoleteSyntax {
-    ObsoleteOwnedType,
-    ObsoleteOwnedExpr,
-    ObsoleteOwnedPattern,
-    ObsoleteOwnedVector,
-    ObsoleteOwnedSelf,
-    ObsoleteImportRenaming,
-    ObsoleteSubsliceMatch,
-    ObsoleteExternCrateRenaming,
-    ObsoleteProcType,
-    ObsoleteProcExpr,
+    OwnedType,
+    OwnedExpr,
+    OwnedPattern,
+    OwnedVector,
+    OwnedSelf,
+    ImportRenaming,
+    SubsliceMatch,
+    ExternCrateRenaming,
+    ProcType,
+    ProcExpr,
 }
 
 pub trait ParserObsoleteMethods {
@@ -55,43 +53,43 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(&mut self, sp: Span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
-            ObsoleteProcType => (
+            ObsoleteSyntax::ProcType => (
                 "the `proc` type",
                 "use unboxed closures instead",
             ),
-            ObsoleteProcExpr => (
+            ObsoleteSyntax::ProcExpr => (
                 "`proc` expression",
                 "use a `move ||` expression instead",
             ),
-            ObsoleteOwnedType => (
+            ObsoleteSyntax::OwnedType => (
                 "`~` notation for owned pointers",
                 "use `Box<T>` in `std::owned` instead"
             ),
-            ObsoleteOwnedExpr => (
+            ObsoleteSyntax::OwnedExpr => (
                 "`~` notation for owned pointer allocation",
                 "use the `box` operator instead of `~`"
             ),
-            ObsoleteOwnedPattern => (
+            ObsoleteSyntax::OwnedPattern => (
                 "`~` notation for owned pointer patterns",
                 "use the `box` operator instead of `~`"
             ),
-            ObsoleteOwnedVector => (
+            ObsoleteSyntax::OwnedVector => (
                 "`~[T]` is no longer a type",
                 "use the `Vec` type instead"
             ),
-            ObsoleteOwnedSelf => (
+            ObsoleteSyntax::OwnedSelf => (
                 "`~self` is no longer supported",
                 "write `self: Box<Self>` instead"
             ),
-            ObsoleteImportRenaming => (
+            ObsoleteSyntax::ImportRenaming => (
                 "`use foo = bar` syntax",
                 "write `use bar as foo` instead"
             ),
-            ObsoleteSubsliceMatch => (
+            ObsoleteSyntax::SubsliceMatch => (
                 "subslice match syntax",
                 "instead of `..xs`, write `xs..` in a pattern"
             ),
-            ObsoleteExternCrateRenaming => (
+            ObsoleteSyntax::ExternCrateRenaming => (
                 "`extern crate foo = bar` syntax",
                 "write `extern crate bar as foo` instead"
             )
