@@ -8,9 +8,6 @@ Make name and behavior of the `#![no_std]` and `#![no_implicit_prelude]` attribu
 consistent by renaming the latter to `#![no_prelude]` and having it only apply to the current
 module.
 
-Optionally add a `#[deep(...)]` attribute for deeply applying an attribute to each module as
-composable replacement for the old behavior.
-
 # Motivation
 
 Currently, Rust automatically inserts an implicit `extern crate std;` in the crate root that can be
@@ -52,12 +49,9 @@ mod my_iter {
 While such use cases might be resolved by just requiring an explicit `use std::prelude::*;`
 in the submodules, it seems like just making the attribute behave as expected is the better outcome.
 
-However, for the cases where you want the prelude disabled for a whole sub tree of modules, it would
-become necessary to add a `#[no_prelude]` attribute for each module in it.
-
-And if the use case of deeply removing the prelude imports is still important enough to support,
-it could be better resolved by providing a general `#[deep(...)]` attribute, that just replicates an
-given attribute recursively, making the old behavior recoverable as `#[deep(no_prelude)]`.
+Of course, for the cases where you want the prelude disabled for a whole sub tree of modules, it
+would now become necessary to add a `#[no_prelude]` attribute in each of them - but that
+is consistent with imports in general.
 
 # Detailed design
 
@@ -71,11 +65,6 @@ changed to `#[no_prelude]` in both the main code base, and user code.
 
 Finally, the old attribute name should emit a deprecated warning, and be removed in time.
 
-If `#[deep(...)]` ends up being implemented, it would be added to syntax as an item modifier
-for module items that first expands the module it is applied too, and then recursively inserts the
-passed `#[...]` attribute into each module AST node it contains. (This could probably live on
-crates.io, though)
-
 # Drawbacks
 
 - The attribute is a rare use case to begin with, so any effort put into this would
@@ -85,8 +74,5 @@ crates.io, though)
 
  - Keep the current behavior
  - Remove the `#[no_implicit_prelude]` attribute all together, instead forcing users to use
-   `#[no_std]` in combination with `extern crate std;` and `use std::prelude::*`
-
-# Unresolved questions
-
-Should the `#[deep(...)]` be included or not?
+   `#[no_std]` in combination with `extern crate std;` and `use std::prelude::*`.
+ - Generalize preludes more to allow custom ones, which might superseed the attributes from this RFC.
