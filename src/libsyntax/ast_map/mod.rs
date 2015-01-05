@@ -755,7 +755,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         let parent = self.parent;
         self.parent = i.id;
         match i.node {
-            ItemImpl(_, _, _, _, ref impl_items) => {
+            ItemImpl(_, _, _, _, _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
                         MethodImplItem(ref m) => {

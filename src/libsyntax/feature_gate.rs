@@ -84,6 +84,9 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     // A way to temporarily opt out of the new orphan rules. This will *never* be accepted.
     ("old_orphan_check", Deprecated),
 
+    // OIBIT specific features
+    ("optin_builtin_traits", Active),
+
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
     ("test_accepted_feature", Accepted),
@@ -291,7 +294,17 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemImpl(_, _, _, _, ref items) => {
+            ast::ItemImpl(_, polarity, _, _, _, ref items) => {
+                match polarity {
+                    ast::ImplPolarity::Negative => {
+                        self.gate_feature("optin_builtin_traits",
+                                          i.span,
+                                          "negative trait bounds are not yet fully implemented; \
+                                          use marker types for now");
+                    },
+                    _ => {}
+                }
+
                 if attr::contains_name(i.attrs[],
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",

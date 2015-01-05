@@ -1299,6 +1299,24 @@ impl fmt::Show for Unsafety {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+pub enum ImplPolarity {
+    /// impl Trait for Type
+    Positive,
+    /// impl !Trait for Type
+    Negative,
+}
+
+impl fmt::Show for ImplPolarity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ImplPolarity::Positive => "positive".fmt(f),
+            ImplPolarity::Negative => "negative".fmt(f),
+        }
+    }
+}
+
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum FunctionRetTy {
     /// Functions with return type ! that always
@@ -1587,6 +1605,7 @@ pub enum Item_ {
               TyParamBounds,
               Vec<TraitItem>),
     ItemImpl(Unsafety,
+             ImplPolarity,
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self

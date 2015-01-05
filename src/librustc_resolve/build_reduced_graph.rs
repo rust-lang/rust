@@ -386,7 +386,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 parent.clone()
             }
 
-            ItemImpl(_, _, None, ref ty, ref impl_items) => {
+            ItemImpl(_, _, _, None, ref ty, ref impl_items) => {
                 // If this implements an anonymous trait, then add all the
                 // methods within to a new module, if the type was defined
                 // within this module.
@@ -527,7 +527,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 parent.clone()
             }
 
-            ItemImpl(_, _, Some(_), _, _) => parent.clone(),
+            ItemImpl(_, _, _, Some(_), _, _) => parent.clone(),
 
             ItemTrait(_, _, _, ref items) => {
                 let name_bindings =

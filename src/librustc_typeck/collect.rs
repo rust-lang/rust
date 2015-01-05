@@ -549,7 +549,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
                                    enum_definition.variants.as_slice(),
                                    generics);
         },
-        ast::ItemImpl(_,
+        ast::ItemImpl(_, _,
                       ref generics,
                       ref opt_trait_ref,
                       ref selfty,
