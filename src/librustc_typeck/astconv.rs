@@ -627,7 +627,8 @@ fn ast_path_to_trait_ref<'a,'tcx>(
         }
         Some(ref mut v) => {
             for binding in assoc_bindings.iter() {
-                match ast_type_binding_to_projection_predicate(this, trait_ref.clone(), binding) {
+                match ast_type_binding_to_projection_predicate(this, trait_ref.clone(),
+                                                               self_ty, binding) {
                     Ok(pp) => { v.push(pp); }
                     Err(ErrorReported) => { }
                 }
@@ -640,10 +641,13 @@ fn ast_path_to_trait_ref<'a,'tcx>(
 
 fn ast_type_binding_to_projection_predicate<'tcx>(
     this: &AstConv<'tcx>,
-    trait_ref: Rc<ty::TraitRef<'tcx>>,
+    mut trait_ref: Rc<ty::TraitRef<'tcx>>,
+    self_ty: Option<Ty<'tcx>>,
     binding: &ConvertedBinding<'tcx>)
     -> Result<ty::ProjectionPredicate<'tcx>, ErrorReported>
 {
+    let tcx = this.tcx();
+
     // Given something like `U : SomeTrait<T=X>`, we want to produce a
     // predicate like `<U as SomeTrait>::T = X`. This is somewhat
     // subtle in the event that `T` is defined in a supertrait of
@@ -671,39 +675,67 @@ fn ast_type_binding_to_projection_predicate<'tcx>(
         });
     }
 
-    // Otherwise, we have to walk through the supertraits to find those that do.
-    let mut candidates: Vec<_> =
-        traits::supertraits(this.tcx(), trait_ref.to_poly_trait_ref())
+    // Otherwise, we have to walk through the supertraits to find
+    // those that do.  This is complicated by the fact that, for an
+    // object type, the `Self` type is not present in the
+    // substitutions (after all, it's being constructed right now),
+    // but the `supertraits` iterator really wants one. To handle
+    // this, we currently insert a dummy type and then remove it
+    // later. Yuck.
+
+    let dummy_self_ty = ty::mk_infer(tcx, ty::FreshTy(0));
+    if self_ty.is_none() { // if converting for an object type
+        let mut dummy_substs = trait_ref.substs.clone();
+        assert!(dummy_substs.self_ty().is_none());
+        dummy_substs.types.push(SelfSpace, dummy_self_ty);
+        trait_ref = Rc::new(ty::TraitRef::new(trait_ref.def_id,
+                                              tcx.mk_substs(dummy_substs)));
+    }
+
+    let mut candidates: Vec<ty::PolyTraitRef> =
+        traits::supertraits(tcx, trait_ref.to_poly_trait_ref())
         .filter(|r| trait_defines_associated_type_named(this, r.def_id(), binding.item_name))
         .collect();
 
+    // If converting for an object type, then remove the dummy-ty from `Self` now.
+    // Yuckety yuck.
+    if self_ty.is_none() {
+        for candidate in candidates.iter_mut() {
+            let mut dummy_substs = candidate.0.substs.clone();
+            assert!(dummy_substs.self_ty() == Some(dummy_self_ty));
+            dummy_substs.types.pop(SelfSpace);
+            *candidate = ty::Binder(Rc::new(ty::TraitRef::new(candidate.def_id(),
+                                                              tcx.mk_substs(dummy_substs))));
+        }
+    }
+
     if candidates.len() > 1 {
-        this.tcx().sess.span_err(
+        tcx.sess.span_err(
             binding.span,
             format!("ambiguous associated type: `{}` defined in multiple supertraits `{}`",
                     token::get_name(binding.item_name),
-                    candidates.user_string(this.tcx())).as_slice());
+                    candidates.user_string(tcx)).as_slice());
         return Err(ErrorReported);
     }
 
     let candidate = match candidates.pop() {
         Some(c) => c,
         None => {
-            this.tcx().sess.span_err(
+            tcx.sess.span_err(
                 binding.span,
                 format!("no associated type `{}` defined in `{}`",
                         token::get_name(binding.item_name),
-                        trait_ref.user_string(this.tcx())).as_slice());
+                        trait_ref.user_string(tcx)).as_slice());
             return Err(ErrorReported);
         }
     };
 
-    if ty::binds_late_bound_regions(this.tcx(), &candidate) {
-        this.tcx().sess.span_err(
+    if ty::binds_late_bound_regions(tcx, &candidate) {
+        tcx.sess.span_err(
             binding.span,
             format!("associated type `{}` defined in higher-ranked supertrait `{}`",
                     token::get_name(binding.item_name),
-                    candidate.user_string(this.tcx())).as_slice());
+                    candidate.user_string(tcx)).as_slice());
         return Err(ErrorReported);
     }
 
