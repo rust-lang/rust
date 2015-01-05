@@ -160,7 +160,9 @@ impl<'a, 'tcx> AstConv<'tcx> for CollectCtxt<'a, 'tcx> {
         }
 
         match self.tcx.map.find(id.node) {
-            Some(ast_map::NodeItem(item)) => ty_of_item(self, &*item),
+            Some(ast_map::NodeItem(item)) => {
+                ty_of_item(self, &*item)
+            }
             Some(ast_map::NodeForeignItem(foreign_item)) => {
                 let abi = self.tcx.map.get_foreign_abi(id.node);
                 ty_of_foreign_item(self, &*foreign_item, abi)
@@ -819,8 +821,8 @@ fn get_trait_def<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
 }
 
 fn trait_def_of_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
-                                   it: &ast::Item)
-                                   -> Rc<ty::TraitDef<'tcx>>
+                               it: &ast::Item)
+                               -> Rc<ty::TraitDef<'tcx>>
 {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
