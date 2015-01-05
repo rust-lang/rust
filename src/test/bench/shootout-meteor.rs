@@ -53,14 +53,14 @@ use std::thread::Thread;
 
 // returns an infinite iterator of repeated applications of f to x,
 // i.e. [x, f(x), f(f(x)), ...], as haskell iterate function.
-fn iterate<'a, T>(x: T, f: |&T|: 'a -> T) -> Iterate<'a, T> {
+fn iterate<T, F>(x: T, f: F) -> Iterate<T, F> where F: FnMut(&T) -> T {
     Iterate {f: f, next: x}
 }
-struct Iterate<'a, T> {
-    f: |&T|: 'a -> T,
+struct Iterate<T, F> where F: FnMut(&T) -> T {
+    f: F,
     next: T
 }
-impl<'a, T> Iterator for Iterate<'a, T> {
+impl<T, F> Iterator for Iterate<T, F> where F: FnMut(&T) -> T {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
