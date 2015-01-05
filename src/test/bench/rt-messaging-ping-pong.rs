@@ -35,21 +35,24 @@ fn ping_pong_bench(n: uint, m: uint) {
         // Create a channel: B->A
         let (btx, brx) = channel();
 
-        Thread::spawn(move|| {
+        let guard_a = Thread::spawn(move|| {
             let (tx, rx) = (atx, brx);
             for _ in range(0, n) {
                 tx.send(()).unwrap();
                 rx.recv().unwrap();
             }
-        }).detach();
+        });
 
-        Thread::spawn(move|| {
+        let guard_b = Thread::spawn(move|| {
             let (tx, rx) = (btx, arx);
             for _ in range(0, n) {
                 rx.recv().unwrap();
                 tx.send(()).unwrap();
             }
-        }).detach();
+        });
+
+        guard_a.join().ok();
+        guard_b.join().ok();
     }
 
     for _ in range(0, m) {
