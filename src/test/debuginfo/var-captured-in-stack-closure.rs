@@ -94,20 +94,20 @@ fn main() {
     let owned = box 6;
 
     {
-        let closure = || {
+        let mut first_closure = |&mut:| {
             zzz(); // #break
             variable = constant + a_struct.a + struct_ref.a + *owned;
         };
 
-        closure();
+        first_closure();
     }
 
     {
-        let mut unboxed_closure = |&mut:| {
+        let mut second_closure = |&mut:| {
             zzz(); // #break
             variable = constant + a_struct.a + struct_ref.a + *owned;
         };
-        unboxed_closure();
+        second_closure();
     }
 }
 

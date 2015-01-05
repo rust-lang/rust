@@ -50,7 +50,7 @@
 
 fn some_generic_fun<T1, T2>(a: T1, b: T2) -> (T2, T1) {
 
-    let closure = |x, y| {
+    let closure = |&: x, y| {
         zzz(); // #break
         (y, x)
     };
