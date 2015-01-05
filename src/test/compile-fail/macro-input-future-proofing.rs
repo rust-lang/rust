@@ -9,18 +9,18 @@
 // except according to those terms.
 
 macro_rules! errors_everywhere {
-    ($ty:ty <) => () //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty` fragments
-    ($ty:ty < foo ,) => () //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty`
-    ($ty:ty , ) => ()
-    ( ( $ty:ty ) ) => ()
-    ( { $ty:ty } ) => ()
-    ( [ $ty:ty ] ) => ()
-    ($bl:block < ) => ()
-    ($pa:pat >) => () //~ ERROR `$pa:pat` is followed by `>` which is not allowed for `pat`
-    ($pa:pat , ) => ()
-    ($pa:pat | ) => ()
-    ($pa:pat $pb:pat $ty:ty ,) => ()
-    ($($ty:ty)-+) => () //~ ERROR `$ty:ty` is followed by `-` which is not allowed for `ty`
+    ($ty:ty <) => (); //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty`
+    ($ty:ty < foo ,) => (); //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty`
+    ($ty:ty , ) => ();
+    ( ( $ty:ty ) ) => ();
+    ( { $ty:ty } ) => ();
+    ( [ $ty:ty ] ) => ();
+    ($bl:block < ) => ();
+    ($pa:pat >) => (); //~ ERROR `$pa:pat` is followed by `>`, which is not allowed for `pat`
+    ($pa:pat , ) => ();
+    ($pa:pat | ) => (); //~ ERROR `$pa:pat` is followed by `|`
+    ($pa:pat $pb:pat $ty:ty ,) => ();
+    ($($ty:ty)-+) => (); //~ ERROR `$ty:ty` is followed by `-`, which is not allowed for `ty`
 }
 
 fn main() { }

@@ -88,7 +88,7 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
             while rest.len() > 0 {
                 if rest.starts_with("$") {
                     macro_rules! demangle {
-                        ($($pat:expr => $demangled:expr),*) => ({
+                        ($($pat:expr, => $demangled:expr),*) => ({
                             $(if rest.starts_with($pat) {
                                 try!(writer.write_str($demangled));
                                 rest = rest.slice_from($pat.len());
@@ -103,22 +103,22 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
 
                     // see src/librustc/back/link.rs for these mappings
                     demangle! (
-                        "$SP$" => "@",
-                        "$UP$" => "Box",
-                        "$RP$" => "*",
-                        "$BP$" => "&",
-                        "$LT$" => "<",
-                        "$GT$" => ">",
-                        "$LP$" => "(",
-                        "$RP$" => ")",
-                        "$C$"  => ",",
+                        "$SP$", => "@",
+                        "$UP$", => "Box",
+                        "$RP$", => "*",
+                        "$BP$", => "&",
+                        "$LT$", => "<",
+                        "$GT$", => ">",
+                        "$LP$", => "(",
+                        "$RP$", => ")",
+                        "$C$", => ",",
 
                         // in theory we can demangle any Unicode code point, but
                         // for simplicity we just catch the common ones.
-                        "$u{20}" => " ",
-                        "$u{27}" => "'",
-                        "$u{5b}" => "[",
-                        "$u{5d}" => "]"
+                        "$u{20}", => " ",
+                        "$u{27}", => "'",
+                        "$u{5b}", => "[",
+                        "$u{5d}", => "]"
                     )
                 } else {
                     let idx = match rest.find('$') {
