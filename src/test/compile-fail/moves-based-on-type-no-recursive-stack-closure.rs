@@ -29,7 +29,7 @@ fn innocent_looking_victim() {
         } else {
             match x {
                 Some(ref msg) => {
-                    f.c.call_mut((f, true));
+                    (f.c)(f, true);
                     //~^ ERROR: cannot borrow `*f` as mutable more than once at a time
                     println!("{}", msg);
                 },

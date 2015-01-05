@@ -17,12 +17,12 @@ fn main() {
     task.call((0i, ));
 
     let mut task: Box<FnMut(int) -> int> = box |&mut: x| x;
-    task.call_mut((0i, ));
+    task(0i);
 
     call(|:x| x, 22);
 }
 
 fn call<F:FnOnce(int) -> int>(f: F, x: int) -> int {
-    f.call_once((x,))
+    f(x)
 }
 

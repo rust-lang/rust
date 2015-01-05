@@ -50,7 +50,7 @@ fn main() {
         x: 3,
         y: 3,
     };
-    let ans = s.call_mut((3,));
+    let ans = s(3);
 
     assert_eq!(ans, 27);
     let s = S2 {
@@ -64,7 +64,7 @@ fn main() {
         x: 3,
         y: 3,
     };
-    let ans = s.call_once((3, 1));
+    let ans = s(3, 1);
     assert_eq!(ans, 27);
 }
 
