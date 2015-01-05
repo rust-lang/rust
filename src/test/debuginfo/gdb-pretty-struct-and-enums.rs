@@ -76,7 +76,6 @@
 // gdb-check:$18 = None
 
 use self::CStyleEnum::{CStyleEnumVar1, CStyleEnumVar2, CStyleEnumVar3};
-use self::CStyleEnum::{CStyleEnumVar1, CStyleEnumVar2, CStyleEnumVar3};
 use self::MixedEnum::{MixedEnumCStyleVar, MixedEnumTupleVar, MixedEnumStructVar};
 use self::NestedEnum::{NestedVariant1, NestedVariant2};
 
