@@ -301,6 +301,14 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        removed in the future");
                 }
 
+                if attr::contains_name(i.attrs[],
+                                       "old_orphan_check") {
+                    self.gate_feature(
+                        "old_orphan_check",
+                        i.span,
+                        "the new orphan check rules will eventually be strictly enforced");
+                }
+
                 for item in items.iter() {
                     match *item {
                         ast::MethodImplItem(_) => {}

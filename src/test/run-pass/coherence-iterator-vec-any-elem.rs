@@ -13,8 +13,8 @@
 extern crate "coherence-lib" as lib;
 use lib::Remote1;
 
-pub struct BigInt;
+struct Foo<T>(T);
 
-impl Remote1<BigInt> for int { }
+impl<T,U> Remote1<U> for Foo<T> { }
 
 fn main() { }
