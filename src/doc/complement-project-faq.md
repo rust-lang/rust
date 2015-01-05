@@ -40,3 +40,7 @@ Mozilla intends to use Rust as a platform for prototyping experimental browser a
 # Why dual MIT/ASL2 license?
 
 The Apache license includes important protection against patent aggression, but it is not compatible with the GPL, version 2. To avoid problems using Rust with GPL2, it is alternately MIT licensed.
+
+# Where did the name "rust" come from?
+
+Rust is named after the robust, distributed, and parallel [Rust fungus](http://en.wikipedia.org/wiki/Rust_(fungus)) that can produce up to five different spore types in its lifetime, not the iron oxide. It is also a substring of "trust," "frustrating," and "rustic."
