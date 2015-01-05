@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:namespaced_enums.rs
-#![feature(globs)]
 
 extern crate namespaced_enums;
 

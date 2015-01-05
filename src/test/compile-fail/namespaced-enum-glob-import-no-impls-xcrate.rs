@@ -9,8 +9,6 @@
 // except according to those terms.
 
 // aux-build:namespaced_enums.rs
-#![feature(globs)]
-
 extern crate namespaced_enums;
 
 mod m {
@@ -25,4 +23,3 @@ pub fn main() {
     bar(); //~ ERROR unresolved name `bar`
     m::bar(); //~ ERROR unresolved name `m::bar`
 }
-
