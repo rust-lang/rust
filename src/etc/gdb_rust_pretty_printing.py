@@ -69,8 +69,8 @@ def rust_pretty_printer_lookup_function(val):
 
         sole_variant_val = val[enum_members[0]]
         discriminant = sole_variant_val
-       for disr_field_index in disr_field_indices:
-         disr_field = get_field_at_index(discriminant, disr_field_index)
+        for disr_field_index in disr_field_indices:
+          disr_field = get_field_at_index(discriminant, disr_field_index)
           discriminant = discriminant[disr_field]
 
         # If the discriminant field is a fat pointer we have to consider the
