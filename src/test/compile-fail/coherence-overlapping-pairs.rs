@@ -16,6 +16,6 @@ use lib::Remote;
 struct Foo;
 
 impl<T> Remote for lib::Pair<T,Foo> { }
-//~^ ERROR type parameter `T` must also appear
+//~^ ERROR type parameter `T` is not constrained
 
 fn main() { }

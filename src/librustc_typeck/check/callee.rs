@@ -22,7 +22,7 @@ use super::TupleArgumentsFlag;
 use super::write_call;
 
 use middle::infer;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;

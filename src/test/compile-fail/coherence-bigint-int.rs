@@ -13,9 +13,8 @@
 extern crate "coherence-lib" as lib;
 use lib::Remote1;
 
-struct Foo<T>(T);
+pub struct BigInt;
 
-impl<T,U> Remote1<U> for Foo<T> { }
-//~^ ERROR type parameter `U` must also appear
+impl Remote1<BigInt> for int { } //~ ERROR E0117
 
 fn main() { }
