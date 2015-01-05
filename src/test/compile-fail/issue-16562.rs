@@ -18,7 +18,7 @@ struct Col<D, C> {
 trait Collection { fn len(&self) -> uint; }
 
 impl<T, M: MatrixShape> Collection for Col<M, uint> {
-//~^ ERROR unable to infer enough type information
+//~^ ERROR type parameter `T` is not constrained
     fn len(&self) -> uint {
         unimplemented!()
     }

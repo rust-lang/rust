@@ -18,8 +18,8 @@ pub fn foo<T>() -> int {
 
 // issue 8134
 struct Foo;
-impl<T> Foo {
-    pub fn foo(&self) {
+impl Foo {
+    pub fn foo<T>(&self) {
         static X: uint = 1;
     }
 }
@@ -33,8 +33,8 @@ impl<T: std::iter::Iterator<Item=char>> Parser<T> {
 }
 
 struct Bar;
-impl<T> Foo {
-    pub fn bar(&self) {
+impl Foo {
+    pub fn bar<T>(&self) {
         static X: uint = 1;
     }
 }
