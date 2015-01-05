@@ -1559,7 +1559,7 @@ Type parameters can be specified for a trait to make it generic. These appear
 after the trait name, using the same syntax used in [generic
 functions](#generic-functions).
 
-```
+``` ignore
 trait Seq<T> {
    fn len(&self) -> uint;
    fn elt_at(&self, n: uint) -> T;
@@ -3217,7 +3217,7 @@ expression's captured environment.
 In this example, we define a function `ten_times` that takes a higher-order
 function argument, and call it with a lambda expression as an argument.
 
-```
+``` ignore
 fn ten_times(f: |int|) {
     let mut i = 0;
     while i < 10 {
@@ -3821,7 +3821,7 @@ or `extern`), a sequence of input types and an output type.
 
 An example of a `fn` type:
 
-```
+``` ignore
 fn add(x: int, y: int) -> int {
   return x + y;
 }
@@ -3849,7 +3849,7 @@ The type of a closure mapping an input of type `A` to an output of type `B` is
 
 An example of creating and calling a closure:
 
-```rust
+``` ignore
 let captured_var = 10i;
 
 let closure_no_args = || println!("captured_var={}", captured_var);

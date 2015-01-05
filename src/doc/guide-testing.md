@@ -536,7 +536,7 @@ optimizer to consider the result used and ensures it cannot remove the
 computation entirely. This could be done for the example above by adjusting the
 `b.iter` call to
 
-```rust
+```{rust,ignore}
 # struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
 b.iter(|| {
     // note lack of `;` (could also use an explicit `return`).
@@ -548,7 +548,7 @@ Or, the other option is to call the generic `test::black_box` function, which
 is an opaque "black box" to the optimizer and so forces it to consider any
 argument as used.
 
-```rust
+```{rust,ignore}
 extern crate test;
 
 # fn main() {
