@@ -82,14 +82,33 @@ impl<T> FromIterator<T> for OwnedSlice<T> {
     }
 }
 
+#[cfg(stage0)]
 impl<S: Encoder<E>, T: Encodable<S, E>, E> Encodable<S, E> for OwnedSlice<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
        self.as_slice().encode(s)
     }
 }
 
+#[cfg(not(stage0))]
+impl<T: Encodable> Encodable for OwnedSlice<T> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+       self.as_slice().encode(s)
+    }
+}
+
+#[cfg(stage0)]
 impl<D: Decoder<E>, T: Decodable<D, E>, E> Decodable<D, E> for OwnedSlice<T> {
     fn decode(d: &mut D) -> Result<OwnedSlice<T>, E> {
+        Ok(OwnedSlice::from_vec(match Decodable::decode(d) {
+            Ok(t) => t,
+            Err(e) => return Err(e)
+        }))
+    }
+}
+
+#[cfg(not(stage0))]
+impl<T: Decodable> Decodable for OwnedSlice<T> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<OwnedSlice<T>, D::Error> {
         Ok(OwnedSlice::from_vec(match Decodable::decode(d) {
             Ok(t) => t,
             Err(e) => return Err(e)
