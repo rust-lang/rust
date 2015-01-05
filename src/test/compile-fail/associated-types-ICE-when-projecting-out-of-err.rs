@@ -12,7 +12,7 @@
 // just propagate the error.
 
 #![crate_type = "lib"]
-#![feature(default_type_params, lang_items)]
+#![feature(lang_items)]
 #![no_std]
 
 #[lang="sized"]

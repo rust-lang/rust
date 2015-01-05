@@ -12,7 +12,7 @@
 // parameters (should be exactly as if angle brackets were used
 // and regions omitted).
 
-#![feature(default_type_params, unboxed_closures)]
+#![feature(unboxed_closures)]
 #![allow(dead_code)]
 
 use std::kinds::marker;
