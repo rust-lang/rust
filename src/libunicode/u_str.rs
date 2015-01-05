@@ -13,7 +13,7 @@
 //! Unicode-intensive string manipulations.
 //!
 //! This module provides functionality to `str` that requires the Unicode methods provided by the
-//! UnicodeChar trait.
+//! unicode parts of the CharExt trait.
 
 use self::GraphemeState::*;
 use core::prelude::*;
@@ -26,7 +26,7 @@ use core::num::Int;
 use core::slice;
 use core::str::Split;
 
-use u_char::UnicodeChar;
+use u_char::CharExt as UCharExt; // conflicts with core::prelude::CharExt
 use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
@@ -529,7 +529,7 @@ impl<I> Iterator for Utf16Encoder<I> where I: Iterator<Item=char> {
 
         let mut buf = [0u16; 2];
         self.chars.next().map(|ch| {
-            let n = ch.encode_utf16(buf.as_mut_slice()).unwrap_or(0);
+            let n = CharExt::encode_utf16(ch, buf.as_mut_slice()).unwrap_or(0);
             if n == 2 { self.extra = buf[1]; }
             buf[0]
         })

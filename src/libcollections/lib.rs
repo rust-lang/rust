@@ -103,7 +103,6 @@ mod std {
 mod prelude {
     // from core.
     pub use core::borrow::IntoCow;
-    pub use core::char::Char;
     pub use core::clone::Clone;
     pub use core::cmp::{PartialEq, Eq, PartialOrd, Ord};
     pub use core::cmp::Ordering::{Less, Equal, Greater};
@@ -127,7 +126,7 @@ mod prelude {
 
     // from other crates.
     pub use alloc::boxed::Box;
-    pub use unicode::char::UnicodeChar;
+    pub use unicode::char::CharExt;
 
     // from collections.
     pub use slice::SliceConcatExt;
