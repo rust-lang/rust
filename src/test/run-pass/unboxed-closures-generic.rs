@@ -13,7 +13,7 @@
 use std::ops::FnMut;
 
 fn call_it<F:FnMut<(int,int),int>>(y: int, mut f: F) -> int {
-    f.call_mut((2, y))
+    f(2, y)
 }
 
 pub fn main() {

@@ -18,7 +18,7 @@
 */
 
 pub fn map(filename: String, mut emit: map_reduce::putter) {
-    emit.call_mut((filename, "1".to_string(),));
+    emit(filename, "1".to_string());
 }
 
 mod map_reduce {

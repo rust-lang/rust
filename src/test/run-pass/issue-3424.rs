@@ -27,7 +27,7 @@ fn tester()
     };
 
     let path = path::Path::new("blah");
-    assert!(loader.call_mut((&path,)).is_ok());
+    assert!(loader(&path).is_ok());
 }
 
 pub fn main() {}
