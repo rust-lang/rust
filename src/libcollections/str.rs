@@ -165,6 +165,7 @@ enum DecompositionType {
 /// External iterator for a string's decomposition's characters.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
+#[unstable]
 pub struct Decompositions<'a> {
     kind: DecompositionType,
     iter: Chars<'a>,
@@ -172,6 +173,7 @@ pub struct Decompositions<'a> {
     sorted: bool
 }
 
+#[stable]
 impl<'a> Iterator for Decompositions<'a> {
     type Item = char;
 
@@ -253,6 +255,7 @@ enum RecompositionState {
 /// External iterator for a string's recomposition's characters.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
+#[unstable]
 pub struct Recompositions<'a> {
     iter: Decompositions<'a>,
     state: RecompositionState,
@@ -261,6 +264,7 @@ pub struct Recompositions<'a> {
     last_ccc: Option<u8>
 }
 
+#[stable]
 impl<'a> Iterator for Recompositions<'a> {
     type Item = char;
 
@@ -348,10 +352,12 @@ impl<'a> Iterator for Recompositions<'a> {
 /// External iterator for a string's UTF16 codeunits.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
+#[unstable]
 pub struct Utf16Units<'a> {
     encoder: Utf16Encoder<Chars<'a>>
 }
 
+#[stable]
 impl<'a> Iterator for Utf16Units<'a> {
     type Item = u16;
 

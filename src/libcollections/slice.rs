@@ -1092,6 +1092,7 @@ struct SizeDirection {
     dir: Direction,
 }
 
+#[stable]
 impl Iterator for ElementSwaps {
     type Item = (uint, uint);
 

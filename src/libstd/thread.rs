@@ -423,6 +423,7 @@ impl<T: Send> JoinGuard<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for JoinGuard<T> {
     fn drop(&mut self) {
         if !self.joined {

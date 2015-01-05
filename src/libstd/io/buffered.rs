@@ -14,7 +14,7 @@
 
 use cmp;
 use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
-use iter::ExactSizeIterator;
+use iter::{IteratorExt, ExactSizeIterator};
 use ops::Drop;
 use option::Option;
 use option::Option::{Some, None};

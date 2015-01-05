@@ -99,6 +99,7 @@ impl Semaphore {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<'a> Drop for SemaphoreGuard<'a> {
     fn drop(&mut self) {
         self.sem.release();

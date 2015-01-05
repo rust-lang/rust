@@ -672,7 +672,7 @@ impl<'a, T> Default for &'a [T] {
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
-        #[experimental = "needs review"]
+        #[stable]
         impl<'a, T> Iterator for $name<'a, T> {
             type Item = $elem;
 
@@ -710,7 +710,7 @@ macro_rules! iterator {
             }
         }
 
-        #[experimental = "needs review"]
+        #[stable]
         impl<'a, T> DoubleEndedIterator for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
@@ -793,7 +793,7 @@ impl<'a,T> Copy for Iter<'a,T> {}
 
 iterator!{struct Iter -> *const T, &'a T}
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 #[stable]
@@ -801,7 +801,7 @@ impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { *self }
 }
 
-#[experimental = "needs review"]
+#[experimental = "trait is experimental"]
 impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -887,7 +887,7 @@ impl<'a, T> IterMut<'a, T> {
 
 iterator!{struct IterMut -> *mut T, &'a mut T}
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// An internal abstraction over the splitting iterators, so that
@@ -919,7 +919,7 @@ impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a [T];
 
@@ -947,7 +947,7 @@ impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -992,7 +992,7 @@ impl<'a, T, P> SplitIter for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a mut [T];
 
@@ -1027,7 +1027,7 @@ impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T, P> DoubleEndedIterator for SplitMut<'a, T, P> where
     P: FnMut(&T) -> bool,
 {
@@ -1060,7 +1060,6 @@ struct GenericSplitN<I> {
     invert: bool
 }
 
-#[experimental = "needs review"]
 impl<T, I: SplitIter + Iterator<Item=T>> Iterator for GenericSplitN<I> {
     type Item = T;
 
@@ -1113,6 +1112,7 @@ pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 macro_rules! forward_iterator {
     ($name:ident: $elem:ident, $iter_of:ty) => {
+        #[stable]
         impl<'a, $elem, P> Iterator for $name<'a, $elem, P> where
             P: FnMut(&T) -> bool
         {
@@ -1144,6 +1144,7 @@ pub struct Windows<'a, T:'a> {
     size: uint
 }
 
+#[stable]
 impl<'a, T> Iterator for Windows<'a, T> {
     type Item = &'a [T];
 
@@ -1181,7 +1182,7 @@ pub struct Chunks<'a, T:'a> {
     size: uint
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> Iterator for Chunks<'a, T> {
     type Item = &'a [T];
 
@@ -1210,7 +1211,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -1226,7 +1227,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     }
 }
 
-#[experimental = "needs review"]
+#[experimental = "trait is experimental"]
 impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1256,7 +1257,7 @@ pub struct ChunksMut<'a, T:'a> {
     chunk_size: uint
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> Iterator for ChunksMut<'a, T> {
     type Item = &'a mut [T];
 
@@ -1286,7 +1287,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
