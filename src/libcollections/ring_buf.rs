@@ -1360,17 +1360,6 @@ impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[stable]
-impl<A> Index<uint, A> for RingBuf<A> {
-    #[inline]
-    fn index<'a>(&'a self, i: &uint) -> &'a A {
-        self.get(*i).expect("Out of bounds access")
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[stable]
 impl<A> Index<uint> for RingBuf<A> {
     type Output = A;
@@ -1381,17 +1370,6 @@ impl<A> Index<uint> for RingBuf<A> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[stable]
-impl<A> IndexMut<uint, A> for RingBuf<A> {
-    #[inline]
-    fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut A {
-        self.get_mut(*i).expect("Out of bounds access")
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[stable]
 impl<A> IndexMut<uint> for RingBuf<A> {
     type Output = A;
