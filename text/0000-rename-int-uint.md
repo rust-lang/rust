@@ -4,7 +4,7 @@
 
 # Summary
 
-This RFC proposes that we rename the pointer-sized integer types `int/uint` to stress the fact that they are pointer-sized, so as to avoid misconceptions and misuses. Among all the candidates, this RFC author (@CloudiDust) considers `imem/umem` to be his favourite names.
+This RFC proposes that we rename the pointer-sized integer types `int/uint` to `ipsz/upsz`, so as to avoid misconceptions and misuses.
 
 # Motivation
 
@@ -42,40 +42,47 @@ Before the rejection of [RFC PR 464](https://github.com/rust-lang/rfcs/pull/464)
 
 This RFC originally proposed a new pair of alternatives `intx/uintx`.
 
-However, given the discussions about the previous revisions of this RFC, and the discussions in [Restarting the `int/uint` Discussion]( http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), this RFC author now believes that `iptr/uptr` and `imem/umem` can still be viable candidates.
-
-This RFC also proposes two more pairs of candidates: `intp/uintp` and `intm/uintm`, which are actually variants of the above, but stress the `int` part instead of the `ptr`/`mem` part, which may make them subjectively better (or worse), as some would think `iptr/uptr` and `imem/umem` stress the wrong part of the name, and don't look like integer types.
+However, given the discussions about the previous revisions of this RFC, and the discussions in [Restarting the `int/uint` Discussion]( http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), this RFC author (@CloudiDust) now believes that `intx/uintx` are not ideal. Instead, `ipsz/upsz` are this author's favourites now.
 
 # Detailed Design
 
-Rename `int/uint` to one of the above pairs of candidates.
+Rename `int/uint` to `ipsz/upsz`, and use `ipsz/upsz` directly as literal suffixes for pointer-sized integers. `ipsz/upsz` are short for **signed/unsigned integer, pointer-sized**.
 
 Update code and documentation to use pointer-sized integers more narrowly for their intended purposes. Provide a deprecation period to carry out these updates.
 
-Also, a decision should be made about whether to introduce the respective literal suffixes `ip/up` or `im/um`, or use the type names as literal suffixes.
-
-This author believes that, if `iptr/uptr` or `imem/umem` are chosen, they should be used directly as suffixes, but if `intp/uintp` or `intm/uintm` are chosen, then `ip/up` or `im/um` should be used, as `uintp`/`uintm` may be too long as suffixes. `ip/up` and `im/um` don't make good *type names* though, as they are too short and have meanings unrelated to integers.
-
 ## Advantages
 
-Each pair of candidates make different trade-offs, and choosing one would be a quite subjective matter. But they are all better than `int/uint`.
-
-### The advantages of all candidates over `int/uint`:
+The advantages of `ipsz/upsz` are:
 
 - The names are foreign to programmers from other languages, so they are less likely to make incorrect assumptions, or use them out of habit.
-- But not too foreign, they still look like integers. (`intp/uintp` and `intm/uintm` may be a bit better here.)
-- They follow the same *signed-ness + size* naming pattern used by other integer types like `i32/u32`. (`iptr/uptr` and `imem/umem` are better here as they follow the pattern more faithfully. Please see the following discussion for why `imem/umem` also have the *size* part.)
+- They follow the same *signed-ness + size* naming pattern used by other integer types like `i32/u32`.
+- The actual semantics of the types are right there in the names, but the names don't stress the `p` (pointer) parts.
+- If anything, the names actually stress the `sz` (size) parts.
+- They are (comparatively) easy on the eyes.
 
-### The advantages and disadvantages of suffixes `ptr`/`p` and `mem`/`m`:
+In order to see why some of the above points are advantages, please refer to the **Alternatives** section for the discussions of the other candidates.
 
-#### `iptr/uptr` and `intp/uintp`:
+# Drawbacks
+
+- Renaming `int`/`uint` requires changing much existing code. On the other hand, this is an ideal opportunity to fix integer portability bugs.
+- Some consider `ipsz/upsz` to be letter soup, and they are right. But this author expects `ipsz/upsz` to be easily understandable *and pleasant to use* once the documentation gets consulted. 
+
+# Alternatives
+
+## A. Keep the status quo.
+
+Which may hurt in the long run, especially when there is at least one (would-be?) high-profile language (which is Rust-inspired) taking the opposite stance of Rust.
+
+The following alternatives make different trade-offs, and choosing one would be quite a subjective matter. But they are all better than the status quo.
+
+## B. `iptr/uptr`:
 
 - Pros: "Pointer-sized integer", exactly what they are.
 - Cons: C/C++ have `intptr_t/uintptr_t`, which are typically *only* used for storing casted pointer values. We don't want people to confuse the Rust types with the C/C++ ones, as the Rust ones have more typical use cases. Also, people may wonder why all data structures have "pointers" in their method signatures. Besides the "funny-looking" aspect, the names may have an incorrect "pointer fiddling and unsafe staff" connotation there, as `ptr` isn't usually seen in safe Rust code. 
 
-#### `imem/umem` and `intm/uintm`:
+## C. `imem/umem`:
 
-When originally proposed, `mem`/`m` are interpreted as "memory numbers" (See @1fish2's comment in[RFC PR 464](https://github.com/rust-lang/rfcs/pull/464)):
+When originally proposed, `mem`/`m` are interpreted as "memory numbers" (See @1fish2's comment in [RFC PR 464](https://github.com/rust-lang/rfcs/pull/464)):
 
 > `imem`/`umem` are "memory numbers." They're good for indexes, counts, offsets, sizes, etc. As memory numbers, it makes sense that they're sized by the address space.
 
@@ -84,48 +91,80 @@ However this interpretation seems vague and not quite convincing, especially whe
 - Pros: Types with similar names do not exist in mainstream languages, so people will not make incorrect assumptions.
 - Cons: `mem` -> *memory-pointer-sized* is definitely not as obvious as `ptr` -> *pointer-sized*. The unfamiliarity may turn newcomers away from Rust. 
 
-However, this RFC author expects newcomers to read the documentation when they encounter `imem/umem` or `intm/uintm` because they wonder "what on earth are these two types?" If they don't bother reading the documentation, then it is unlikely that they will be using Rust anyway (`imem/umem` or `intm/uintm` are minor problems compared to something like explicit lifetimes or the borrow checker). And the "memory-pointer-sized" interpretation is easy (or easier) to internalize once the documentation gets consulted.
+Also, for some, `imem/umem` just don't feel like integers no matter how they are interpreted, especially under certain circumstances. In the following snippet:
 
-### Note:
+```rust
+fn slice_or_fail<'b>(&'b self, from: &umem, to: &umem) -> &'b [T]
+```
 
-This RFC author personally prefers `imem/umem` now, but `intp/uintp` and `iptr/uptr` also have plenty of community support. Few people seem to care about `intm/uintm`, and these two are only in for symmetry and completeness.
+`umem` still feels like a pointer-like construct here (from "some memory" to "some other memory"), even though it doesn't have `ptr` in its name.
 
-# Drawbacks
+## D. `intp/uintp` and `intm/uintm`:
 
-Renaming `int`/`uint` requires changing much existing code. On the other hand, this is an ideal opportunity to fix integer portability bugs.
+Variants of Alternatives B and C. Instead of stressing the `ptr` or `mem` part, they stress the `int` or `uint` part.
 
-# Alternatives
+They are more integer-like than `iptr/uptr` or `imem/umem` if one knows where to split the words.
 
-## A. Keep the status quo.
+The problem here is that they don't strictly follow the `i/u + {size}` pattern, are of different lengths, and the more frequently used type `uintp`(`uintm`) has a longer name. Granted, this problem already exists with `int/uint`, but those two are names that everyone is familiar with.
 
-Which may hurt in the long run, especially when there is at least one (would-be?) high-profile language (which is Rust-inspired) taking the opposite stance of Rust.
+So they are not as pretty as `iptr/uptr` or `imem/umem`.
 
-## B. Use `intx/uintx` as the new type names.
+## E. `intx/uintx`:
 
-`intx/uintx` were actually the names that got promoted in the previous revisions of this RFC, where `x` means "unknown", "variable" or "platform-dependent". However the `x` suffix was too vague as there were other integer types that have platform-dependent sizes, like register-sized ones, so `intx/uintx` lost their "promoted" status in this revision.
+The original proposed names of this RFC, where `x` means "unknown/variable/platform-dependent".
 
-## C. Use `idiff/usize` as the new type names.
+They share the same problems with `intp/uintp` and `intm/uintm`, while *in addition* failing to be specific enough. There are other kinds of platform-dependent integer types after all (like register-sized ones), so which ones are `intx/uintx`?
 
-Previously, the names involving suffixes like `diff`/`addr`/`size`/`offset` are rejected mainly because they favour specific use cases of `int/uint` while overlooking others. However, it is true that in the majority of cases in safe code, Rust's `int/uint` are used just like standard C/C++ `ptrdiff_t/size_t`. When used in this context, names `idiff/usize` have clarity and familiarity advantages **over all other alternatives**.
+## F. `idiff(isize)/usize`:
 
-(Note: this author advices against `isize`, as it most likely corresponds to C/C++ `ssize_t`. `ssize_t` is in the POSIX standard, not the C/C++ ones, and is *not for offsets/diffs* according to that standard.)
+Previously, the names involving suffixes like `diff`/`addr`/`size`/`offset` are rejected mainly because they favour specific use cases of `int/uint` while overlooking others. However, it is true that in the majority of cases in safe code, Rust's `int/uint` are used just like standard C/C++ `ptrdiff_t/size_t`. When used in this context, names `idiff(isize)/usize` have clarity and familiarity advantages **over all other alternatives**.
+
+(Note: this author advices against `isize`, as it most likely corresponds to C/C++ `ssize_t`. `ssize_t` is in the POSIX standard, not the C/C++ ones, and is *not for offsets* according to that standard. However some may argue that, `isize/usize` are different enough from `ssize_t/size_t` so this author's worries are unnecessary.)
 
 But how about the other use cases of `int/uint` especially the "storing casted pointers" one? Using `libc`'s `intptr_t`/`uintptr_t` is not an option here, as "Rust on bare metal" would be ruled out. Forcing a pointer value into something called `idiff/usize` doesn't seem right either. Thus, this leads us to:
 
-## D. Rename `int/uint` to `iptr/uptr`, with `idiff/usize` being aliases and preferred in container method signatures.
+## G. `iptr/uptr` *and* `idiff/usize`:
 
-Best of both worlds, maybe?
+Rename `int/uint` to `iptr/uptr`, with `idiff/usize` being aliases and used in container method signatures.
+
+Best of both worlds on the first glance.
 
 `iptr/uptr` will be used for storing casted pointer values, while `idiff/usize` will be used for offsets and sizes/indices, respectively.
 
-We may even treat `iptr/uptr` and `idiff/usize` as different types to prevent people from accidentally mixing their usage.
+`iptr/uptr` and `idiff/usize` may even be treated as different types to prevent people from accidentally mixing their usage.
 
 This will bring the Rust type names quite in line with the standard C99 type names, which may be a plus from the familiarity point of view.
 
 However, this setup brings two sets of types that share the same underlying representations, which also brings confusion. Furthermore, C distinguishes between `size_t`/`uintptr_t`/`intptr_t`/`ptrdiff_t` not only because they are used under different circumstances, but also because the four may have representations that are potentially different from *each other* on some architectures. Rust assumes a flat memory address space and its `int/uint` types don't exactly share semantics with any of the C types if the C standard is strictly followed. Thus, this RFC author believes that, it is better to completely forego type names that will remind people of the C types.
 
-`imem/umem` are still the better choices.
+## H. `isiz/usiz`:
+
+A pair of variants of `isize/usize`. This author believes that the missing `e` may be enough to warn people that these are not `ssize_t/size_t` with "Rustfied" names. But at the same time, `isiz/usiz` mostly retain the familiarity of `isize/usize`. Actually, this author considers them more pleasant to use than the "full version".
+
+However, `isiz/usiz` still hide the actual semantics of the types, and omitting but a single letter from a word does feel a bit too hack-ish.
+
+## I. `iptr_size/uptr_size`:
+
+The names are very clear about the semantics, but are also irregular, too long and feel out of place.
+
+## J. `iptrsz/uptrsz`:
+
+Clear semantics, but still a bit too long (though better than `iptr_size/uptr_size`), and the `ptr` parts are still a bit concerning (though to a much less extent than `iptr/uptr`).
+
+## H. `ipsz/upsz`:
+
+Now it is clear where this final pair of alternatives comes from.
+
+By shortening `ptr` to `p`, `ipsz/upsz` no longer stress the "pointer" parts in anyway. Instead, the `sz` or "size" parts are (comparatively) stressed. Interestingly, `ipsz/upsz` look similar to `isiz/usiz`.
+
+So this pair of names reflects both the precise semantics of "pointer-sized integers" and the fact that they are commonly used for "sizes". See:
+
+```rust
+fn slice_or_fail<'b>(&'b self, from: &upsz, to: &upsz) -> &'b [T]
+```
+
+Some may still find `upsz` a bit strange here, but no one would be very likely to think that he/she is dealing with pointers. With the help of the documentation, this author believes `ipsz/upsz` to be the overall winner among all the alternatives. Still, not everyone likes letter soup.
 
 # Unresolved questions
 
-This RFC author believes that we should nail down our general integer type/coercion/data structure indexing policies, as discussed in [Restarting the `int/uint` Discussion](http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), before deciding which names to rename `int/uint` to.
+None. Necessary decisions about Rust's general integer type policies have been made in [Restarting the `int/uint` Discussion](http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131).
