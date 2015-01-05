@@ -11,7 +11,6 @@
 // Test that we reliably check the value of the associated type.
 
 #![crate_type = "lib"]
-#![feature(associated_types)]
 #![no_implicit_prelude]
 
 use std::option::Option::{self, None, Some};

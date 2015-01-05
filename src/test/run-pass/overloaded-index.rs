@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 use std::ops::{Index, IndexMut};
 
 struct Foo {
@@ -75,4 +73,3 @@ fn main() {
     assert_eq!(f[1].get(), 5);
     assert_eq!(f[1].get_from_ref(), 5);
 }
-

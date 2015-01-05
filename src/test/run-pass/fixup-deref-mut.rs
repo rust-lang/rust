@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 use std::ops::{Deref, DerefMut};
 
 // Generic unique/owned smaht pointer.
@@ -55,4 +53,3 @@ fn test2(mut x: Own<Own<Own<Point>>>) {
 }
 
 fn main() {}
-

@@ -11,8 +11,6 @@
 // Test you can't use a higher-ranked trait bound inside of a qualified
 // path (just won't parse).
 
-#![feature(associated_types)]
-
 pub trait Foo<T> {
     type A;
 
