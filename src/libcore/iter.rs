@@ -2401,7 +2401,7 @@ impl<A, St, F> Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     }
 }
 
-#[experimental]
+#[stable]
 impl<A, St, F> Iterator for Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     type Item = A;
 
