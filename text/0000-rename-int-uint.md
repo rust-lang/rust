@@ -4,7 +4,7 @@
 
 # Summary
 
-This RFC proposes that we rename the pointer-sized integer types `int/uint` to `ipsz/upsz`, so as to avoid misconceptions and misuses.
+This RFC proposes that we rename the pointer-sized integer types `int/uint`, so as to avoid misconceptions and misuses.
 
 # Motivation
 
@@ -46,26 +46,16 @@ However, given the discussions about the previous revisions of this RFC, and the
 
 # Detailed Design
 
-Rename `int/uint` to `ipsz/upsz`, and use `ipsz/upsz` directly as literal suffixes for pointer-sized integers. `ipsz/upsz` are short for **signed/unsigned integer, pointer-sized**.
+Rename `int/uint` to one of the following pairs of alternatives, and decide how to name the literal suffixes for pointer-sized integers based on the selected alternative.  
 
 Update code and documentation to use pointer-sized integers more narrowly for their intended purposes. Provide a deprecation period to carry out these updates.
 
-## Advantages
-
-The advantages of `ipsz/upsz` are:
-
-- The names are foreign to programmers from other languages, so they are less likely to make incorrect assumptions, or use them out of habit.
-- They follow the same *signed-ness + size* naming pattern used by other integer types like `i32/u32`.
-- The actual semantics of the types are right there in the names, but the names don't stress the `p` (pointer) parts.
-- If anything, the names actually stress the `sz` (size) parts.
-- They are (comparatively) easy on the eyes.
-
-In order to see why some of the above points are advantages, please refer to the **Alternatives** section for the discussions of the other candidates.
+See **Alternatives B to K** for the alternatives.
 
 # Drawbacks
 
 - Renaming `int`/`uint` requires changing much existing code. On the other hand, this is an ideal opportunity to fix integer portability bugs.
-- Some consider `ipsz/upsz` to be letter soup, and they are right. But this author expects `ipsz/upsz` to be easily understandable *and pleasant to use* once the documentation gets consulted. 
+
 
 # Alternatives
 
@@ -192,7 +182,7 @@ So this pair of names reflects both the precise semantics of "pointer-sized inte
 fn slice_or_fail<'b>(&'b self, from: &upsz, to: &upsz) -> &'b [T]
 ```
 
-Some may still find `upsz` a bit strange here, but no one would be very likely to think that he/she is dealing with pointers. With the help of the documentation, this author believes `ipsz/upsz` to be the overall winner among all the alternatives. Still, not everyone likes letter soup.
+Some may still find `upsz` a bit strange here, but no one would be very likely to think that he/she is dealing with pointers. Still, `ipsz/upsz` may be too foreign, and many do not like letter soup. `iptrsz/uptrsz` may actually be better in this regard.
 
 # Unresolved questions
 
