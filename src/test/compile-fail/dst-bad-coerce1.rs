@@ -10,7 +10,7 @@
 
 // Attempt to change the type as well as unsizing.
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     ptr: T
 }
 

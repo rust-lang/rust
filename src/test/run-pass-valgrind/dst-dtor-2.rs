@@ -17,7 +17,7 @@ impl Drop for Foo {
     }
 }
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     f: T
 }
 

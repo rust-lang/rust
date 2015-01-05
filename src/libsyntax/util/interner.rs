@@ -77,7 +77,7 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
         (*vect).len()
     }
 
-    pub fn find<Sized? Q>(&self, val: &Q) -> Option<Name>
+    pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
     where Q: BorrowFrom<T> + Eq + Hash {
         let map = self.map.borrow();
         match (*map).get(val) {
@@ -202,7 +202,7 @@ impl StrInterner {
         self.vect.borrow().len()
     }
 
-    pub fn find<Sized? Q>(&self, val: &Q) -> Option<Name>
+    pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
     where Q: BorrowFrom<RcStr> + Eq + Hash {
         match (*self.map.borrow()).get(val) {
             Some(v) => Some(*v),

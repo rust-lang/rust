@@ -721,7 +721,7 @@ shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 #[cfg(stage0)]
 #[allow(missing_docs)]
 #[lang="index"]
-pub trait Index<Sized? Index, Sized? Result> for Sized? {
+pub trait Index<Index: ?Sized, Result: ?Sized> for Sized? {
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index<'a>(&'a self, index: &Index) -> &'a Result;
 }
@@ -757,8 +757,8 @@ pub trait Index<Sized? Index, Sized? Result> for Sized? {
 /// ```
 #[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
 #[lang="index"]
-pub trait Index<Sized? Index> for Sized? {
-    type Sized? Output;
+pub trait Index<Index: ?Sized> for Sized? {
+    type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index<'a>(&'a self, index: &Index) -> &'a Self::Output;
@@ -768,7 +768,7 @@ pub trait Index<Sized? Index> for Sized? {
 #[cfg(stage0)]
 #[allow(missing_docs)]
 #[lang="index_mut"]
-pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
+pub trait IndexMut<Index: ?Sized, Result: ?Sized> for Sized? {
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Result;
 }
@@ -804,8 +804,8 @@ pub trait IndexMut<Sized? Index, Sized? Result> for Sized? {
 /// ```
 #[cfg(not(stage0))]  // NOTE(stage0) remove cfg after a snapshot
 #[lang="index_mut"]
-pub trait IndexMut<Sized? Index> for Sized? {
-    type Sized? Output;
+pub trait IndexMut<Index: ?Sized> for Sized? {
+    type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Self::Output;
@@ -849,7 +849,7 @@ pub trait IndexMut<Sized? Index> for Sized? {
 /// }
 /// ```
 #[lang="slice"]
-pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
+pub trait Slice<Idx: ?Sized, Result: ?Sized> for Sized? {
     /// The method for the slicing operation foo[]
     fn as_slice_<'a>(&'a self) -> &'a Result;
     /// The method for the slicing operation foo[from..]
@@ -898,7 +898,7 @@ pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
 /// }
 /// ```
 #[lang="slice_mut"]
-pub trait SliceMut<Sized? Idx, Sized? Result> for Sized? {
+pub trait SliceMut<Idx: ?Sized, Result: ?Sized> for Sized? {
     /// The method for the slicing operation foo[]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Result;
     /// The method for the slicing operation foo[from..]
@@ -1026,19 +1026,19 @@ pub struct RangeTo<Idx> {
 /// ```
 #[lang="deref"]
 pub trait Deref for Sized? {
-    type Sized? Target;
+    type Target: ?Sized;
 
     /// The method called to dereference a value
     fn deref<'a>(&'a self) -> &'a Self::Target;
 }
 
-impl<'a, Sized? T> Deref for &'a T {
+impl<'a, T: ?Sized> Deref for &'a T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
 }
 
-impl<'a, Sized? T> Deref for &'a mut T {
+impl<'a, T: ?Sized> Deref for &'a mut T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
@@ -1087,7 +1087,7 @@ pub trait DerefMut for Sized? : Deref {
     fn deref_mut<'a>(&'a mut self) -> &'a mut <Self as Deref>::Target;
 }
 
-impl<'a, Sized? T> DerefMut for &'a mut T {
+impl<'a, T: ?Sized> DerefMut for &'a mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }
 
@@ -1112,8 +1112,8 @@ pub trait FnOnce<Args,Result> {
     extern "rust-call" fn call_once(self, args: Args) -> Result;
 }
 
-impl<Sized? F,A,R> FnMut<A,R> for F
-    where F : Fn<A,R>
+impl<F: ?Sized, A, R> FnMut<A, R> for F
+    where F : Fn<A, R>
 {
     extern "rust-call" fn call_mut(&mut self, args: A) -> R {
         self.call(args)

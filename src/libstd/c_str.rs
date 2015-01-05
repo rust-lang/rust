@@ -430,7 +430,7 @@ impl ToCStr for [u8] {
     }
 }
 
-impl<'a, Sized? T: ToCStr> ToCStr for &'a T {
+impl<'a, T: ?Sized + ToCStr> ToCStr for &'a T {
     #[inline]
     fn to_c_str(&self) -> CString {
         (**self).to_c_str()

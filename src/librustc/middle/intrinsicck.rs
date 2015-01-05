@@ -121,7 +121,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
         // However, it's not as simple as checking whether `T :
         // Sized`, because even if `T : Sized` does not hold, that
         // just means that `T` *may* not be sized.  After all, even a
-        // type parameter `Sized? T` could be bound to a sized
+        // type parameter `T: ?Sized` could be bound to a sized
         // type. (Issue #20116)
         //
         // To handle this, we first check for "interior" type
@@ -139,16 +139,16 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
         // exhaustively checking all possible combinations. Here are some examples:
         //
         // ```
-        // fn foo<T,U>() {
+        // fn foo<T, U>() {
         //     // T=int, U=int
         // }
         //
-        // fn bar<Sized? T,U>() {
+        // fn bar<T: ?Sized, U>() {
         //     // T=int, U=int
         //     // T=[int], U=int
         // }
         //
-        // fn baz<Sized? T, Sized?U>() {
+        // fn baz<T: ?Sized, U: ?Sized>() {
         //     // T=int, U=int
         //     // T=[int], U=int
         //     // T=int, U=[int]

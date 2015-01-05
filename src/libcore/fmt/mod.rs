@@ -78,9 +78,9 @@ pub trait Writer {
         // This Adapter is needed to allow `self` (of type `&mut
         // Self`) to be cast to a FormatWriter (below) without
         // requiring a `Sized` bound.
-        struct Adapter<'a,Sized? T:'a>(&'a mut T);
+        struct Adapter<'a,T: ?Sized +'a>(&'a mut T);
 
-        impl<'a, Sized? T> Writer for Adapter<'a, T>
+        impl<'a, T: ?Sized> Writer for Adapter<'a, T>
             where T: Writer
         {
             fn write_str(&mut self, s: &str) -> Result {
@@ -592,10 +592,10 @@ pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
 
 // Implementations of the core formatting traits
 
-impl<'a, Sized? T: Show> Show for &'a T {
+impl<'a, T: ?Sized + Show> Show for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result { (**self).fmt(f) }
 }
-impl<'a, Sized? T: Show> Show for &'a mut T {
+impl<'a, T: ?Sized + Show> Show for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { (**self).fmt(f) }
 }
 

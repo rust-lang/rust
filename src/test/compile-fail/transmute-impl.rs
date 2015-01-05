@@ -14,11 +14,11 @@
 
 use std::mem::transmute;
 
-struct Foo<Sized? T> {
+struct Foo<T: ?Sized> {
     t: Box<T>
 }
 
-impl<Sized? T> Foo<T> {
+impl<T: ?Sized> Foo<T> {
     fn m(x: &T) -> &int where T : Sized {
         // OK here, because T : Sized is in scope.
         unsafe { transmute(x) }
