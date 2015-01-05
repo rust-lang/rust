@@ -22,12 +22,12 @@ use num::Float;
 use num::FpCategory as Fp;
 use option::Option;
 
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const RADIX: uint = 2u;
 
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const MANTISSA_DIGITS: uint = 24u;
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const DIGITS: uint = 6u;
 
 #[stable]
@@ -43,14 +43,14 @@ pub const MIN_POS_VALUE: f32 = 1.17549435e-38_f32;
 #[stable]
 pub const MAX_VALUE: f32 = 3.40282347e+38_f32;
 
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const MIN_EXP: int = -125;
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const MAX_EXP: int = 128;
 
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const MIN_10_EXP: int = -37;
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const MAX_10_EXP: int = 38;
 
 #[stable]

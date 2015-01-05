@@ -26,12 +26,11 @@ use option::Option;
 // constants are implemented in favour of referencing the respective
 // members of `Bounded` and `Float`.
 
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const RADIX: uint = 2u;
 
-#[stable]
 pub const MANTISSA_DIGITS: uint = 53u;
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const DIGITS: uint = 15u;
 
 #[stable]
@@ -47,14 +46,14 @@ pub const MIN_POS_VALUE: f64 = 2.2250738585072014e-308_f64;
 #[stable]
 pub const MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
 
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const MIN_EXP: int = -1021;
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const MAX_EXP: int = 1024;
 
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const MIN_10_EXP: int = -307;
-#[stable]
+#[unstable = "pending integer conventions"]
 pub const MAX_10_EXP: int = 308;
 
 #[stable]
