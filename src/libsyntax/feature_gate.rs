@@ -36,7 +36,7 @@ use std::ascii::AsciiExt;
 
 // if you change this list without updating src/doc/reference.md, @cmr will be sad
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
-    ("globs", Active),
+    ("globs", Accepted),
     ("macro_rules", Active),
     ("struct_variant", Accepted),
     ("asm", Active),
@@ -232,13 +232,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_view_item(&mut self, i: &ast::ViewItem) {
         match i.node {
-            ast::ViewItemUse(ref path) => {
-                if let ast::ViewPathGlob(..) = path.node {
-                    self.gate_feature("globs", path.span,
-                                      "glob import statements are \
-                                       experimental and possibly buggy");
-                }
-            }
+            ast::ViewItemUse(..) => {}
             ast::ViewItemExternCrate(..) => {
                 for attr in i.attrs.iter() {
                     if attr.name().get() == "phase"{
