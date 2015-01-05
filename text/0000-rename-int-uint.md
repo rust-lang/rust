@@ -42,7 +42,7 @@ Before the rejection of [RFC PR 464](https://github.com/rust-lang/rfcs/pull/464)
 
 This RFC originally proposed a new pair of alternatives `intx/uintx`.
 
-However, given the discussions about the previous revisions of this RFC, and the discussions in [Restarting the `int/uint` Discussion]( http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), this RFC author (@CloudiDust) now believes that `intx/uintx` are not ideal. Instead, `ipsz/upsz` are this author's favourites now.
+However, given the discussions about the previous revisions of this RFC, and the discussions in [Restarting the `int/uint` Discussion]( http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131), this RFC author (@CloudiDust) now believes that `intx/uintx` are not ideal. Instead, one of the other pairs of alternatives should be chosen.
 
 # Detailed Design
 
@@ -55,7 +55,6 @@ See **Alternatives B to K** for the alternatives.
 # Drawbacks
 
 - Renaming `int`/`uint` requires changing much existing code. On the other hand, this is an ideal opportunity to fix integer portability bugs.
-
 
 # Alternatives
 
@@ -124,11 +123,11 @@ Previously, the names involving suffixes like `diff`/`addr`/`size`/`offset` are 
 
 (Note: this author advices against `isize`, as it most likely corresponds to C/C++ `ssize_t`. `ssize_t` is in the POSIX standard, not the C/C++ ones, and is *not for offsets* according to that standard. However some may argue that, `isize/usize` are different enough from `ssize_t/size_t` so this author's worries are unnecessary.)
 
-But how about the other use cases of `int/uint` especially the "storing casted pointers" one? Using `libc`'s `intptr_t`/`uintptr_t` is not an option here, as "Rust on bare metal" would be ruled out. Forcing a pointer value into something called `idiff/usize` doesn't seem right either. Thus, this leads us to:
-
 ```rust
 fn slice_or_fail<'b>(&'b self, from: &usize, to: &usize) -> &'b [T]
 ```
+
+But how about the other use cases of `int/uint` especially the "storing casted pointers" one? Using `libc`'s `intptr_t`/`uintptr_t` is not an option here, as "Rust on bare metal" would be ruled out. Forcing a pointer value into something called `idiff/usize` doesn't seem right either. Thus, this leads us to:
 
 ## G. `iptr/uptr` *and* `idiff/usize`:
 
@@ -148,7 +147,7 @@ However, this setup brings two sets of types that share the same underlying repr
 
 A pair of variants of `isize/usize`. This author believes that the missing `e` may be enough to warn people that these are not `ssize_t/size_t` with "Rustfied" names. But at the same time, `isiz/usiz` mostly retain the familiarity of `isize/usize`. Actually, this author considers them more pleasant to use than the "full version".
 
-However, `isiz/usiz` still hide the actual semantics of the types, and omitting but a single letter from a word does feel a bit too hack-ish.
+However, `isiz/usiz` still hide the actual semantics of the types, and omitting but a single letter from a word does feel too hack-ish.
 
 ```rust
 fn slice_or_fail<'b>(&'b self, from: &usiz, to: &usiz) -> &'b [T]
@@ -164,7 +163,7 @@ fn slice_or_fail<'b>(&'b self, from: &uptr_size, to: &uptr_size) -> &'b [T]
 
 ## J. `iptrsz/uptrsz`:
 
-Clear semantics, but still a bit too long (though better than `iptr_size/uptr_size`), and the `ptr` parts are still a bit concerning (though to a much less extent than `iptr/uptr`).
+Clear semantics, but still a bit too long (though better than `iptr_size/uptr_size`), and the `ptr` parts are still a bit concerning (though to a much less extent than `iptr/uptr`). On the other hand, being "a bit too long" may not be a disadvantage here.
 
 ```rust
 fn slice_or_fail<'b>(&'b self, from: &uptrsz, to: &uptrsz) -> &'b [T]
@@ -172,17 +171,17 @@ fn slice_or_fail<'b>(&'b self, from: &uptrsz, to: &uptrsz) -> &'b [T]
 
 ## K. `ipsz/upsz`:
 
-Now it is clear where this final pair of alternatives comes from.
+Now (and only now, which is the problem) it is clear where this final pair of alternatives comes from.
 
 By shortening `ptr` to `p`, `ipsz/upsz` no longer stress the "pointer" parts in anyway. Instead, the `sz` or "size" parts are (comparatively) stressed. Interestingly, `ipsz/upsz` look similar to `isiz/usiz`.
 
-So this pair of names reflects both the precise semantics of "pointer-sized integers" and the fact that they are commonly used for "sizes". See:
+So this pair of names actually reflects both the precise semantics of "pointer-sized integers" and the fact that they are commonly used for "sizes". However,
 
 ```rust
 fn slice_or_fail<'b>(&'b self, from: &upsz, to: &upsz) -> &'b [T]
 ```
 
-Some may still find `upsz` a bit strange here, but no one would be very likely to think that he/she is dealing with pointers. Still, `ipsz/upsz` may be too foreign, and many do not like letter soup. `iptrsz/uptrsz` may actually be better in this regard.
+`ipsz/upsz` have gone too far. They are completely incomprehensible without the documentation. Many rightfully do not like letter soup. The only advantage here is that, no one would be very likely to think he/she is dealing with pointers. `iptrsz/uptrsz` are better in this regard.
 
 # Unresolved questions
 
