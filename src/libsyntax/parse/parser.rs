@@ -4092,8 +4092,8 @@ impl<'a> Parser<'a> {
         // unbound, and it may only be `Sized`. To avoid backtracking and other
         // complications, we parse an ident, then check for `?`. If we find it,
         // we use the ident as the unbound, otherwise, we use it as the name of
-        // type param. Even worse, for now, we need to check for `?` before or
-        // after the bound.
+        // type param. Even worse, we need to check for `?` before or after the
+        // bound.
         let mut span = self.span;
         let mut ident = self.parse_ident();
         let mut unbound = None;
@@ -4102,6 +4102,7 @@ impl<'a> Parser<'a> {
             unbound = Some(tref);
             span = self.span;
             ident = self.parse_ident();
+            self.obsolete(span, ObsoleteSyntax::Sized);
         }
 
         let mut bounds = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Modified);
