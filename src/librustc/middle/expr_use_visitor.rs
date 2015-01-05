@@ -656,19 +656,6 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             ty::ty_bare_fn(..) => {
                 self.consume_expr(callee);
             }
-            ty::ty_closure(ref f) => {
-                match f.onceness {
-                    ast::Many => {
-                        self.borrow_expr(callee,
-                                         ty::ReScope(call_scope),
-                                         ty::UniqueImmBorrow,
-                                         ClosureInvocation);
-                    }
-                    ast::Once => {
-                        self.consume_expr(callee);
-                    }
-                }
-            }
             ty::ty_err => { }
             _ => {
                 let overloaded_call_type =
@@ -836,7 +823,6 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             None => { }
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustAddEnv(..) |
                     ty::AdjustReifyFnPointer(..) => {
                         // Creating a closure/fn-pointer consumes the
                         // input and stores it into the resulting

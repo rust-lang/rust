@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn ignore(_f: for<'z>|&'z int| -> &'z int) {}
+fn ignore<F>(_f: F) where F: for<'z> FnOnce(&'z int) -> &'z int {}
 
 fn nested() {
     let y = 3;

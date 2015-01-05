@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test FIXME(#20574)
+
 #![deny(unreachable_code)]
 
 fn main() {
-    let x: || -> ! = || panic!();
+    let x = |:| panic!();
     x();
     std::io::println("Foo bar"); //~ ERROR: unreachable statement
 }

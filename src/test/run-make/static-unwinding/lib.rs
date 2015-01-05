@@ -19,7 +19,7 @@ impl Drop for A {
     }
 }
 
-pub fn callback(f: ||) {
+pub fn callback<F>(f: F) where F: FnOnce() {
     let _a = A;
     f();
 }

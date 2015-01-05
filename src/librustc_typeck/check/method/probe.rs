@@ -387,14 +387,18 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     // Do a search through a list of bounds, using a callback to actually
     // create the candidates.
-    fn elaborate_bounds(
+    fn elaborate_bounds<F>(
         &mut self,
         bounds: &[ty::PolyTraitRef<'tcx>],
         num_includes_types: bool,
-        mk_cand: for<'b> |this: &mut ProbeContext<'b, 'tcx>,
-                          tr: ty::PolyTraitRef<'tcx>,
-                          m: Rc<ty::Method<'tcx>>,
-                          method_num: uint|)
+        mut mk_cand: F,
+    ) where
+        F: for<'b> FnMut(
+            &mut ProbeContext<'b, 'tcx>,
+            ty::PolyTraitRef<'tcx>,
+            Rc<ty::Method<'tcx>>,
+            uint,
+        ),
     {
         debug!("elaborate_bounds(bounds={})", bounds.repr(self.tcx()));
 

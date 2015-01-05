@@ -18,7 +18,7 @@
 fn borrow(_v: &int) {}
 fn borrow_mut(_v: &mut int) {}
 fn cond() -> bool { panic!() }
-fn for_func(_f: || -> bool) { panic!() }
+fn for_func<F>(_f: F) where F: FnOnce() -> bool { panic!() }
 fn produce<T>() -> T { panic!(); }
 
 fn inc(v: &mut Box<int>) {

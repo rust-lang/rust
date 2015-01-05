@@ -11,12 +11,12 @@
 #![crate_name="cci_impl_lib"]
 
 pub trait uint_helpers {
-    fn to(&self, v: uint, f: |uint|);
+    fn to<F>(&self, v: uint, f: F) where F: FnMut(uint);
 }
 
 impl uint_helpers for uint {
     #[inline]
-    fn to(&self, v: uint, f: |uint|) {
+    fn to<F>(&self, v: uint, mut f: F) where F: FnMut(uint) {
         let mut i = *self;
         while i < v {
             f(i);

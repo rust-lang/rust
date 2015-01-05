@@ -15,10 +15,10 @@
 // the closures are in scope. Issue #6801.
 
 fn a() -> int {
-    let mut x = 3;
+    let mut x = 3i;
     x += 1;
-    let c1 = || x * 4;
-    let c2 = || x * 5;
+    let c1 = |&:| x * 4;
+    let c2 = |&:| x * 5;
     c1() * c2() * x
 }
 
@@ -29,16 +29,16 @@ fn get(x: &int) -> int {
 fn b() -> int {
     let mut x = 3;
     x += 1;
-    let c1 = || get(&x);
-    let c2 = || get(&x);
+    let c1 = |&:| get(&x);
+    let c2 = |&:| get(&x);
     c1() * c2() * x
 }
 
 fn c() -> int {
     let mut x = 3;
     x += 1;
-    let c1 = || x * 5;
-    let c2 = || get(&x);
+    let c1 = |&:| x * 5;
+    let c2 = |&:| get(&x);
     c1() * c2() * x
 }
 

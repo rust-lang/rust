@@ -16,7 +16,7 @@
 struct S;
 
 impl S {
-    fn f<B>(&self, _: |&i32| -> B) {
+    fn f<B, F>(&self, _: F) where F: FnOnce(&i32) -> B {
     }
 }
 

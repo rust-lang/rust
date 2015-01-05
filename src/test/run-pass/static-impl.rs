@@ -26,14 +26,14 @@ mod b {
 
 trait uint_utils {
     fn str(&self) -> String;
-    fn multi(&self, f: |uint|);
+    fn multi<F>(&self, f: F) where F: FnMut(uint);
 }
 
 impl uint_utils for uint {
     fn str(&self) -> String {
         self.to_string()
     }
-    fn multi(&self, f: |uint|) {
+    fn multi<F>(&self, mut f: F) where F: FnMut(uint) {
         let mut c = 0u;
         while c < *self { f(c); c += 1u; }
     }
@@ -41,14 +41,14 @@ impl uint_utils for uint {
 
 trait vec_utils<T> {
     fn length_(&self, ) -> uint;
-    fn iter_(&self, f: |&T|);
-    fn map_<U>(&self, f: |&T| -> U) -> Vec<U> ;
+    fn iter_<F>(&self, f: F) where F: FnMut(&T);
+    fn map_<U, F>(&self, f: F) -> Vec<U> where F: FnMut(&T) -> U;
 }
 
 impl<T> vec_utils<T> for Vec<T> {
     fn length_(&self) -> uint { self.len() }
-    fn iter_(&self, f: |&T|) { for x in self.iter() { f(x); } }
-    fn map_<U>(&self, f: |&T| -> U) -> Vec<U> {
+    fn iter_<F>(&self, mut f: F) where F: FnMut(&T) { for x in self.iter() { f(x); } }
+    fn map_<U, F>(&self, mut f: F) -> Vec<U> where F: FnMut(&T) -> U {
         let mut r = Vec::new();
         for elt in self.iter() {
             r.push(f(elt));
@@ -64,7 +64,7 @@ pub fn main() {
     assert_eq!((vec!(1i)).length_().str(), "1".to_string());
     let vect = vec!(3i, 4).map_(|a| *a + 4);
     assert_eq!(vect[0], 7);
-    let vect = (vec!(3i, 4)).map_::<uint>(|a| *a as uint + 4u);
+    let vect = (vec!(3i, 4)).map_::<uint, _>(|a| *a as uint + 4u);
     assert_eq!(vect[0], 7u);
     let mut x = 0u;
     10u.multi(|_n| x += 2u );

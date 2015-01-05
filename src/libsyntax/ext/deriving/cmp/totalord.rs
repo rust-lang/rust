@@ -41,7 +41,7 @@ pub fn expand_deriving_totalord<F>(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(Path::new(vec!("std", "cmp", "Ordering"))),
                 attributes: attrs,
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(box |a, b, c| {
                     cs_cmp(a, b, c)
                 }),
             }
@@ -130,7 +130,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
             cx.expr_block(cx.block(span, vec!(assign), Some(if_)))
         },
         cx.expr_path(equals_path.clone()),
-        |cx, span, (self_args, tag_tuple), _non_self_args| {
+        box |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
             } else {

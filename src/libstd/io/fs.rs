@@ -518,14 +518,16 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// use std::io;
 ///
 /// // one possible implementation of fs::walk_dir only visiting files
-/// fn visit_dirs(dir: &Path, cb: |&Path|) -> io::IoResult<()> {
+/// fn visit_dirs<F>(dir: &Path, cb: &mut F) -> io::IoResult<()> where
+///     F: FnMut(&Path),
+/// {
 ///     if dir.is_dir() {
 ///         let contents = try!(fs::readdir(dir));
 ///         for entry in contents.iter() {
 ///             if entry.is_dir() {
-///                 try!(visit_dirs(entry, |p| cb(p)));
+///                 try!(visit_dirs(entry, cb));
 ///             } else {
-///                 cb(entry);
+///                 (*cb)(entry);
 ///             }
 ///         }
 ///         Ok(())

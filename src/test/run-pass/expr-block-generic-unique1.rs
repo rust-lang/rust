@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-type compare<'a, T> = |Box<T>, Box<T>|: 'a -> bool;
-
-fn test_generic<T:Clone>(expected: Box<T>, eq: compare<T>) {
+fn test_generic<T, F>(expected: Box<T>, eq: F) where T: Clone, F: FnOnce(Box<T>, Box<T>) -> bool {
     let actual: Box<T> = { expected.clone() };
-    assert!((eq(expected, actual)));
+    assert!(eq(expected, actual));
 }
 
 fn test_box() {
@@ -22,7 +19,7 @@ fn test_box() {
         println!("{}", *b2);
         return *b1 == *b2;
     }
-    test_generic::<bool>(box true, compare_box);
+    test_generic::<bool, _>(box true, compare_box);
 }
 
 pub fn main() { test_box(); }

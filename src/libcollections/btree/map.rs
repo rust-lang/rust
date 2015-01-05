@@ -877,18 +877,6 @@ impl<K: Show, V: Show> Show for BTreeMap<K, V> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[stable]
-impl<K: Ord, Sized? Q, V> Index<Q, V> for BTreeMap<K, V>
-    where Q: BorrowFrom<K> + Ord
-{
-    fn index(&self, key: &Q) -> &V {
-        self.get(key).expect("no entry found for key")
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[stable]
 impl<K: Ord, Sized? Q, V> Index<Q> for BTreeMap<K, V>
     where Q: BorrowFrom<K> + Ord
@@ -900,18 +888,6 @@ impl<K: Ord, Sized? Q, V> Index<Q> for BTreeMap<K, V>
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-#[stable]
-impl<K: Ord, Sized? Q, V> IndexMut<Q, V> for BTreeMap<K, V>
-    where Q: BorrowFrom<K> + Ord
-{
-    fn index_mut(&mut self, key: &Q) -> &mut V {
-        self.get_mut(key).expect("no entry found for key")
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 #[stable]
 impl<K: Ord, Sized? Q, V> IndexMut<Q> for BTreeMap<K, V>
     where Q: BorrowFrom<K> + Ord

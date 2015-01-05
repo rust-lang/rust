@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn force(f: ||) { f(); }
+fn force<F>(f: F) where F: FnOnce() { f(); }
 fn main() {
     let x: int;
     force(|| {  //~ ERROR capture of possibly uninitialized variable: `x`

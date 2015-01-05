@@ -75,6 +75,6 @@ pub fn main() {
     x = 30;
     assert_eq!(x, 30);
 
-    (|A { x: mut t }: A| { t = t+1; t })(A { x: 34 });
+    (|&: A { x: mut t }: A| { t = t+1; t })(A { x: 34 });
 
 }

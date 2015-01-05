@@ -1112,28 +1112,6 @@ pub fn ast_ty_to_ty<'tcx>(
                 let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl);
                 ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(bare_fn))
             }
-            ast::TyClosure(ref f) => {
-                // Use corresponding trait store to figure out default bounds
-                // if none were specified.
-                let bounds = conv_existential_bounds(this,
-                                                     rscope,
-                                                     ast_ty.span,
-                                                     None,
-                                                     Vec::new(),
-                                                     f.bounds.as_slice());
-                let region_bound = bounds.region_bound;
-                let fn_decl = ty_of_closure(this,
-                                            f.unsafety,
-                                            f.onceness,
-                                            bounds,
-                                            ty::RegionTraitStore(
-                                                region_bound,
-                                                ast::MutMutable),
-                                            &*f.decl,
-                                            abi::Rust,
-                                            None);
-                ty::mk_closure(tcx, fn_decl)
-            }
             ast::TyPolyTraitRef(ref bounds) => {
                 conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds[])
             }

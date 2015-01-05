@@ -14,7 +14,7 @@ pub use self::PathParsingMode::*;
 use self::ItemOrViewItem::*;
 
 use abi;
-use ast::{AssociatedType, BareFnTy, ClosureTy};
+use ast::{AssociatedType, BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{ProvidedMethod, Public, Unsafety};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
@@ -30,7 +30,6 @@ use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
 use ast::{ExprMethodCall, ExprParen, ExprPath};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
-use ast::{Many};
 use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
 use ast::{FnOnceUnboxedClosureKind};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod, FunctionRetTy};
@@ -55,7 +54,7 @@ use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
-use ast::{TypeField, TyFixedLengthVec, TyClosure, TyBareFn};
+use ast::{TypeField, TyFixedLengthVec, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr, TyQPath};
 use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
@@ -1227,38 +1226,29 @@ impl<'a> Parser<'a> {
 
         */
 
-        let unsafety = self.parse_unsafety();
+        let ty_closure_span = self.last_span;
 
-        let lifetime_defs = self.parse_legacy_lifetime_defs(lifetime_defs);
+        // To be helpful, parse the closure type as ever
+        let _ = self.parse_unsafety();
 
-        let inputs = if self.eat(&token::OrOr) {
-            Vec::new()
-        } else {
+        let _ = self.parse_legacy_lifetime_defs(lifetime_defs);
+
+        if !self.eat(&token::OrOr) {
             self.expect_or();
 
-            let inputs = self.parse_seq_to_before_or(
+            let _ = self.parse_seq_to_before_or(
                 &token::Comma,
                 |p| p.parse_arg_general(false));
             self.expect_or();
-            inputs
-        };
+        }
 
-        let bounds = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
+        let _ = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
 
-        let output = self.parse_ret_ty();
-        let decl = P(FnDecl {
-            inputs: inputs,
-            output: output,
-            variadic: false
-        });
+        let _ = self.parse_ret_ty();
 
-        TyClosure(P(ClosureTy {
-            unsafety: unsafety,
-            onceness: Many,
-            bounds: bounds,
-            decl: decl,
-            lifetimes: lifetime_defs,
-        }))
+        self.obsolete(ty_closure_span, ObsoleteClosureType);
+
+        TyInfer
     }
 
     pub fn parse_unsafety(&mut self) -> Unsafety {

@@ -10,6 +10,6 @@
 
 // error-pattern:can't use type parameters from outer function; try using
 fn foo<T>(x: T) {
-    fn bar(f: |T| -> T) { }
+    fn bar(f: Box<FnMut(T) -> T>) { }
 }
 fn main() { foo(1); }

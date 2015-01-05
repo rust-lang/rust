@@ -24,7 +24,6 @@ pub fn type_ids() -> Vec<TypeId> {
     ids.push(TypeId::of::<testtypes::FooEnum>());
     ids.push(TypeId::of::<testtypes::FooUniq>());
     ids.push(TypeId::of::<testtypes::FooPtr>());
-    ids.push(TypeId::of::<testtypes::FooClosure>());
     ids.push(TypeId::of::<&'static testtypes::FooTrait>());
     ids.push(TypeId::of::<testtypes::FooStruct>());
     ids.push(TypeId::of::<testtypes::FooTuple>());

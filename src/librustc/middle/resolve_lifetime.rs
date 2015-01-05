@@ -136,18 +136,6 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
 
     fn visit_ty(&mut self, ty: &ast::Ty) {
         match ty.node {
-            ast::TyClosure(ref c)  => {
-                // Careful, the bounds on a closure/proc are *not* within its binder.
-                visit::walk_ty_param_bounds_helper(self, &c.bounds);
-                visit::walk_lifetime_decls_helper(self, &c.lifetimes);
-                self.with(LateScope(&c.lifetimes, self.scope), |old_scope, this| {
-                    this.check_lifetime_defs(old_scope, &c.lifetimes);
-                    for argument in c.decl.inputs.iter() {
-                        this.visit_ty(&*argument.ty)
-                    }
-                    visit::walk_fn_ret_ty(this, &c.decl.output);
-                });
-            }
             ast::TyBareFn(ref c) => {
                 visit::walk_lifetime_decls_helper(self, &c.lifetimes);
                 self.with(LateScope(&c.lifetimes, self.scope), |old_scope, this| {

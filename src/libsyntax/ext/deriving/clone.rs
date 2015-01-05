@@ -40,7 +40,7 @@ pub fn expand_deriving_clone<F>(cx: &mut ExtCtxt,
                 args: Vec::new(),
                 ret_ty: Self,
                 attributes: attrs,
-                combine_substructure: combine_substructure(|c, s, sub| {
+                combine_substructure: combine_substructure(box |c, s, sub| {
                     cs_clone("Clone", c, s, sub)
                 }),
             }

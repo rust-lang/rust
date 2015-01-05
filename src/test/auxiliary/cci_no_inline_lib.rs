@@ -12,7 +12,7 @@
 
 
 // same as cci_iter_lib, more-or-less, but not marked inline
-pub fn iter(v: Vec<uint> , f: |uint|) {
+pub fn iter<F>(v: Vec<uint> , mut f: F) where F: FnMut(uint) {
     let mut i = 0u;
     let n = v.len();
     while i < n {

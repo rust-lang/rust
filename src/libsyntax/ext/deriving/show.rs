@@ -46,7 +46,7 @@ pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
                 args: vec!(fmtr),
                 ret_ty: Literal(Path::new(vec!("std", "fmt", "Result"))),
                 attributes: Vec::new(),
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(box |a, b, c| {
                     show_substructure(a, b, c)
                 })
             }

@@ -1220,8 +1220,6 @@ pub enum Ty_ {
     TyPtr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
     TyRptr(Option<Lifetime>, MutTy),
-    /// A closure (e.g. `|uint| -> bool`)
-    TyClosure(P<ClosureTy>),
     /// A bare function (e.g. `fn(uint) -> bool`)
     TyBareFn(P<BareFnTy>),
     /// A tuple (`(A, B, C, D,...)`)

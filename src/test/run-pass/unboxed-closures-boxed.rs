@@ -19,7 +19,7 @@ use std::ops::FnMut;
 
 pub fn main() {
     let mut adder = make_adder(3);
-    let z = adder.call_mut((2,));
+    let z = adder(2);
     println!("{}", z);
     assert_eq!(z, 5);
 }

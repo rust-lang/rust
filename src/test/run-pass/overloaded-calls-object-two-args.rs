@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
-    let early_error: |&str|: 'static -> ! = |_msg| { panic!() };
+// Tests calls to closure arguments where the closure takes 2 arguments.
+// This is a bit tricky due to rust-call ABI.
+
+fn foo(f: &mut FnMut(int, int) -> int) -> int {
+    f(1, 2)
+}
+
+fn main() {
+    let z = foo(&mut |x, y| x * 10 + y);
+    assert_eq!(z, 12);
 }

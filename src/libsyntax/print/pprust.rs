@@ -714,25 +714,6 @@ impl<'a> State<'a> {
                                       Some(&generics),
                                       None));
             }
-            ast::TyClosure(ref f) => {
-                let generics = ast::Generics {
-                    lifetimes: f.lifetimes.clone(),
-                    ty_params: OwnedSlice::empty(),
-                    where_clause: ast::WhereClause {
-                        id: ast::DUMMY_NODE_ID,
-                        predicates: Vec::new(),
-                    },
-                };
-                try!(self.print_ty_fn(None,
-                                      Some('&'),
-                                      f.unsafety,
-                                      f.onceness,
-                                      &*f.decl,
-                                      None,
-                                      &f.bounds,
-                                      Some(&generics),
-                                      None));
-            }
             ast::TyPath(ref path, _) => {
                 try!(self.print_path(path, false));
             }

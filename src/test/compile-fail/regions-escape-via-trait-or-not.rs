@@ -20,7 +20,7 @@ impl<'a> Deref for &'a int {
     }
 }
 
-fn with<R:Deref>(f: |x: &int| -> R) -> int {
+fn with<R:Deref, F>(f: F) -> int where F: FnOnce(&int) -> R {
     f(&3).get()
 }
 

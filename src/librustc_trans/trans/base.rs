@@ -287,9 +287,6 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::ty_bare_fn(_, ref f) => {
             (f.sig.0.inputs.clone(), f.sig.0.output, f.abi, None)
         }
-        ty::ty_closure(ref f) => {
-            (f.sig.0.inputs.clone(), f.sig.0.output, f.abi, Some(Type::i8p(ccx)))
-        }
         ty::ty_unboxed_closure(closure_did, _, substs) => {
             let typer = common::NormalizingUnboxedClosureTyper::new(ccx.tcx());
             let function_type = typer.unboxed_closure_type(closure_did, substs);
@@ -669,30 +666,31 @@ pub fn compare_simd_types<'blk, 'tcx>(
     }
 }
 
-pub type val_and_ty_fn<'a, 'blk, 'tcx> =
-    |Block<'blk, 'tcx>, ValueRef, Ty<'tcx>|: 'a -> Block<'blk, 'tcx>;
-
 // Iterates through the elements of a structural type.
-pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
-                                          av: ValueRef,
-                                          t: Ty<'tcx>,
-                                          f: val_and_ty_fn<'a, 'blk, 'tcx>)
-                                          -> Block<'blk, 'tcx> {
+pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
+                                         av: ValueRef,
+                                         t: Ty<'tcx>,
+                                         mut f: F)
+                                         -> Block<'blk, 'tcx> where
+    F: FnMut(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+{
     let _icx = push_ctxt("iter_structural_ty");
 
-    fn iter_variant<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
-                                    repr: &adt::Repr<'tcx>,
-                                    av: ValueRef,
-                                    variant: &ty::VariantInfo<'tcx>,
-                                    substs: &subst::Substs<'tcx>,
-                                    f: val_and_ty_fn<'a, 'blk, 'tcx>)
-                                    -> Block<'blk, 'tcx> {
+    fn iter_variant<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
+                                   repr: &adt::Repr<'tcx>,
+                                   av: ValueRef,
+                                   variant: &ty::VariantInfo<'tcx>,
+                                   substs: &subst::Substs<'tcx>,
+                                   f: &mut F)
+                                   -> Block<'blk, 'tcx> where
+        F: FnMut(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+    {
         let _icx = push_ctxt("iter_variant");
         let tcx = cx.tcx();
         let mut cx = cx;
 
         for (i, &arg) in variant.args.iter().enumerate() {
-            cx = f(cx,
+            cx = (*f)(cx,
                    adt::trans_field_ptr(cx, repr, av, variant.disr_val, i),
                    arg.subst(tcx, substs));
         }
@@ -764,7 +762,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
           match adt::trans_switch(cx, &*repr, av) {
               (_match::Single, None) => {
                   cx = iter_variant(cx, &*repr, av, &*(*variants)[0],
-                                    substs, f);
+                                    substs, &mut f);
               }
               (_match::Switch, Some(lldiscrim_a)) => {
                   cx = f(cx, lldiscrim_a, cx.tcx().types.int);
@@ -793,7 +791,7 @@ pub fn iter_structural_ty<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                        data_ptr,
                                        &**variant,
                                        substs,
-                                       |x,y,z| f(x,y,z));
+                                       &mut f);
                       Br(variant_cx, next_cx.llbb);
                   }
                   cx = next_cx;
@@ -950,9 +948,6 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                       name[])
                 }
             }
-        }
-        ty::ty_closure(_) => {
-            get_extern_rust_fn(ccx, t, name[], did)
         }
         _ => {
             get_extern_const(ccx, did, t)
@@ -2437,7 +2432,6 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     use middle::ty::{BrAnon, ReLateBound};
 
     let (fn_sig, abi, has_env) = match fn_ty.sty {
-        ty::ty_closure(ref f) => (f.sig.clone(), f.abi, true),
         ty::ty_bare_fn(_, ref f) => (f.sig.clone(), f.abi, false),
         ty::ty_unboxed_closure(closure_did, _, substs) => {
             let typer = common::NormalizingUnboxedClosureTyper::new(ccx.tcx());
@@ -2978,7 +2972,7 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     }
 
     let encode_inlined_item: encoder::EncodeInlinedItem =
-        |ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii);
+        box |ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);

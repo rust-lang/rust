@@ -67,10 +67,6 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 // No borrowed content reachable here.
             }
 
-            ty::ty_closure(box ref c) => {
-                self.accumulate_from_closure_ty(ty, c);
-            }
-
             ty::ty_unboxed_closure(_, region, _) => {
                 // An "unboxed closure type" is basically
                 // modeled here as equivalent to a struct like
@@ -321,22 +317,6 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 }
             }
         }
-    }
-
-    fn accumulate_from_closure_ty(&mut self,
-                                  ty: Ty<'tcx>,
-                                  c: &ty::ClosureTy<'tcx>)
-    {
-        match c.store {
-            ty::RegionTraitStore(r_b, _) => {
-                self.push_region_constraint_from_top(r_b);
-            }
-            ty::UniqTraitStore => { }
-        }
-
-        let required_region_bounds =
-            ty::object_region_bounds(self.tcx, None, c.bounds.builtin_bounds);
-        self.accumulate_from_object_ty(ty, c.bounds.region_bound, required_region_bounds);
     }
 
     fn accumulate_from_object_ty(&mut self,

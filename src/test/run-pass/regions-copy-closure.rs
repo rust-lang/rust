@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 struct closure_box<'a> {
-    cl: ||: 'a,
+    cl: Box<FnMut() + 'a>,
 }
 
-fn box_it(x: ||) -> closure_box {
+fn box_it<'a>(x: Box<FnMut() + 'a>) -> closure_box<'a> {
     closure_box {cl: x}
 }
 
@@ -20,9 +22,9 @@ pub fn main() {
     let mut i = 3i;
     assert_eq!(i, 3);
     {
-        let cl = || i += 1;
-        let cl_box = box_it(cl);
-        (cl_box.cl)();
+        let cl = |&mut:| i += 1;
+        let mut cl_box = box_it(box cl);
+        cl_box.cl.call_mut(());
     }
     assert_eq!(i, 4);
 }

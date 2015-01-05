@@ -143,13 +143,6 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 // Given a function type and a count of ty params, construct an llvm type
 pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) -> Type {
     match fty.sty {
-        ty::ty_closure(ref f) => {
-            type_of_rust_fn(cx,
-                            Some(Type::i8p(cx)),
-                            f.sig.0.inputs.as_slice(),
-                            f.sig.0.output,
-                            f.abi)
-        }
         ty::ty_bare_fn(_, ref f) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
@@ -207,7 +200,6 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         }
 
         ty::ty_bare_fn(..) => Type::i8p(cx),
-        ty::ty_closure(..) => Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false),
 
         ty::ty_vec(ty, Some(size)) => {
             let llty = sizing_type_of(cx, ty);
@@ -368,10 +360,6 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
 
       ty::ty_bare_fn(..) => {
           type_of_fn_from_ty(cx, t).ptr_to()
-      }
-      ty::ty_closure(_) => {
-          let fn_ty = type_of_fn_from_ty(cx, t).ptr_to();
-          Type::struct_(cx, &[fn_ty, Type::i8p(cx)], false)
       }
       ty::ty_tup(ref tys) if tys.is_empty() => Type::nil(cx),
       ty::ty_tup(..) => {

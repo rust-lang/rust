@@ -13,13 +13,13 @@
 // Here, `f` is a function that takes a pointer `x` and a function
 // `g`, where `g` requires its argument `y` to be in the same region
 // that `x` is in.
-fn has_same_region(f: <'a>|x: &'a int, g: |y: &'a int||) {
+fn has_same_region(f: Box<for<'a> FnMut(&'a int, Box<FnMut(&'a int)>)>) {
     // `f` should be the type that `wants_same_region` wants, but
     // right now the compiler complains that it isn't.
     wants_same_region(f);
 }
 
-fn wants_same_region(_f: <'b>|x: &'b int, g: |y: &'b int||) {
+fn wants_same_region(_f: Box<for<'b> FnMut(&'b int, Box<FnMut(&'b int)>)>) {
 }
 
 pub fn main() {

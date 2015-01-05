@@ -416,15 +416,14 @@ pub fn get_base_and_len(bcx: Block,
     }
 }
 
-pub type iter_vec_block<'a, 'blk, 'tcx> =
-    |Block<'blk, 'tcx>, ValueRef, Ty<'tcx>|: 'a -> Block<'blk, 'tcx>;
-
-pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                                      data_ptr: ValueRef,
                                      vt: &VecTypes<'tcx>,
                                      count: ValueRef,
-                                     f: iter_vec_block<'a, 'blk, 'tcx>)
-                                     -> Block<'blk, 'tcx> {
+                                     f: F)
+                                     -> Block<'blk, 'tcx> where
+    F: FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+{
     let _icx = push_ctxt("tvec::iter_vec_loop");
     let fcx = bcx.fcx;
 
@@ -475,12 +474,14 @@ pub fn iter_vec_loop<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     next_bcx
 }
 
-pub fn iter_vec_raw<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    data_ptr: ValueRef,
-                                    unit_ty: Ty<'tcx>,
-                                    len: ValueRef,
-                                    f: iter_vec_block<'a, 'blk, 'tcx>)
-                                    -> Block<'blk, 'tcx> {
+pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+                                   data_ptr: ValueRef,
+                                   unit_ty: Ty<'tcx>,
+                                   len: ValueRef,
+                                   f: F)
+                                   -> Block<'blk, 'tcx> where
+    F: FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+{
     let _icx = push_ctxt("tvec::iter_vec_raw");
     let fcx = bcx.fcx;
 

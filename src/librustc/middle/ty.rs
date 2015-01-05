@@ -293,7 +293,6 @@ pub enum Variance {
 
 #[derive(Clone, Show)]
 pub enum AutoAdjustment<'tcx> {
-    AdjustAddEnv(ast::DefId, ty::TraitStore),
     AdjustReifyFnPointer(ast::DefId), // go from a fn-item type to a fn-pointer type
     AdjustDerefRef(AutoDerefRef<'tcx>)
 }
@@ -916,7 +915,7 @@ impl<'tcx> ctxt<'tcx> {
     pub fn print_debug_stats(&self) {
         sty_debug_print!(
             self,
-            ty_enum, ty_uniq, ty_vec, ty_ptr, ty_rptr, ty_bare_fn, ty_closure, ty_trait,
+            ty_enum, ty_uniq, ty_vec, ty_ptr, ty_rptr, ty_bare_fn, ty_trait,
             ty_struct, ty_unboxed_closure, ty_tup, ty_param, ty_open, ty_infer, ty_projection);
 
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
@@ -1353,7 +1352,6 @@ pub enum sty<'tcx> {
     // fn item. Otherwise, if None(_), it a fn pointer type.
     ty_bare_fn(Option<DefId>, &'tcx BareFnTy<'tcx>),
 
-    ty_closure(Box<ClosureTy<'tcx>>),
     ty_trait(Box<TyTrait<'tcx>>),
     ty_struct(DefId, &'tcx Substs<'tcx>),
 
@@ -2594,14 +2592,6 @@ impl FlagComputation {
             &ty_bare_fn(_, ref f) => {
                 self.add_fn_sig(&f.sig);
             }
-
-            &ty_closure(ref f) => {
-                if let RegionTraitStore(r, _) = f.store {
-                    self.add_region(r);
-                }
-                self.add_fn_sig(&f.sig);
-                self.add_bounds(&f.bounds);
-            }
         }
     }
 
@@ -2746,10 +2736,6 @@ pub fn mk_tup<'tcx>(cx: &ctxt<'tcx>, ts: Vec<Ty<'tcx>>) -> Ty<'tcx> {
 
 pub fn mk_nil<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
     mk_tup(cx, Vec::new())
-}
-
-pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, fty: ClosureTy<'tcx>) -> Ty<'tcx> {
-    mk_t(cx, ty_closure(box fty))
 }
 
 pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>,
@@ -3028,7 +3014,7 @@ pub fn type_is_vec(ty: Ty) -> bool {
 
 pub fn type_is_structural(ty: Ty) -> bool {
     match ty.sty {
-      ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) |
+      ty_struct(..) | ty_tup(_) | ty_enum(..) |
       ty_vec(_, Some(_)) | ty_unboxed_closure(..) => true,
       _ => type_is_slice(ty) | type_is_trait(ty)
     }
@@ -3345,10 +3331,6 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 TC::None
             }
 
-            ty_closure(ref c) => {
-                closure_contents(&**c) | TC::ReachesFfiUnsafe
-            }
-
             ty_uniq(typ) => {
                 TC::ReachesFfiUnsafe | match typ.sty {
                     ty_str => TC::OwnsOwned,
@@ -3519,23 +3501,6 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         b | (TC::ReachesBorrowed).when(region != ty::ReStatic)
     }
 
-    fn closure_contents(cty: &ClosureTy) -> TypeContents {
-        // Closure contents are just like trait contents, but with potentially
-        // even more stuff.
-        let st = object_contents(&cty.bounds);
-
-        let st = match cty.store {
-            UniqTraitStore => {
-                st.owned_pointer()
-            }
-            RegionTraitStore(r, mutbl) => {
-                st.reference(borrowed_contents(r, mutbl))
-            }
-        };
-
-        st
-    }
-
     fn object_contents(bounds: &ExistentialBounds) -> TypeContents {
         // These are the type contents of the (opaque) interior. We
         // make no assumptions (other than that it cannot have an
@@ -3649,7 +3614,6 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_float(_) |
             ty_str |
             ty_bare_fn(..) |
-            ty_closure(_) |
             ty_param(_) |
             ty_projection(_) |
             ty_vec(_, None) => {
@@ -4153,7 +4117,6 @@ pub fn node_id_item_substs<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> ItemSubsts
 pub fn fn_is_variadic(fty: Ty) -> bool {
     match fty.sty {
         ty_bare_fn(_, ref f) => f.sig.0.variadic,
-        ty_closure(ref f) => f.sig.0.variadic,
         ref s => {
             panic!("fn_is_variadic() called on non-fn type: {}", s)
         }
@@ -4163,7 +4126,6 @@ pub fn fn_is_variadic(fty: Ty) -> bool {
 pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
     match fty.sty {
         ty_bare_fn(_, ref f) => &f.sig,
-        ty_closure(ref f) => &f.sig,
         ref s => {
             panic!("ty_fn_sig() called on non-fn type: {}", s)
         }
@@ -4174,7 +4136,6 @@ pub fn ty_fn_sig<'tcx>(fty: Ty<'tcx>) -> &'tcx PolyFnSig<'tcx> {
 pub fn ty_fn_abi(fty: Ty) -> abi::Abi {
     match fty.sty {
         ty_bare_fn(_, ref f) => f.abi,
-        ty_closure(ref f) => f.abi,
         _ => panic!("ty_fn_abi() called on non-fn type"),
     }
 }
@@ -4186,7 +4147,6 @@ pub fn ty_fn_args<'tcx>(fty: Ty<'tcx>) -> &'tcx [Ty<'tcx>] {
 
 pub fn ty_closure_store(fty: Ty) -> TraitStore {
     match fty.sty {
-        ty_closure(ref f) => f.store,
         ty_unboxed_closure(..) => {
             // Close enough for the purposes of all the callers of this
             // function (which is soon to be deprecated anyhow).
@@ -4201,7 +4161,6 @@ pub fn ty_closure_store(fty: Ty) -> TraitStore {
 pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
     match fty.sty {
         ty_bare_fn(_, ref f) => f.sig.0.output,
-        ty_closure(ref f) => f.sig.0.output,
         ref s => {
             panic!("ty_fn_ret() called on non-fn type: {}", s)
         }
@@ -4211,7 +4170,6 @@ pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
 pub fn is_fn_ty(fty: Ty) -> bool {
     match fty.sty {
         ty_bare_fn(..) => true,
-        ty_closure(_) => true,
         _ => false
     }
 }
@@ -4335,33 +4293,6 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-                AdjustAddEnv(_, store) => {
-                    match unadjusted_ty.sty {
-                        ty::ty_bare_fn(Some(_), ref b) => {
-                            let bounds = ty::ExistentialBounds {
-                                region_bound: ReStatic,
-                                builtin_bounds: all_builtin_bounds(),
-                                projection_bounds: vec!(),
-                            };
-
-                            ty::mk_closure(
-                                cx,
-                                ty::ClosureTy {unsafety: b.unsafety,
-                                               onceness: ast::Many,
-                                               store: store,
-                                               bounds: bounds,
-                                               sig: b.sig.clone(),
-                                               abi: b.abi})
-                        }
-                        ref b => {
-                            cx.sess.bug(
-                                format!("add_env adjustment on non-fn-item: \
-                                         {}",
-                                        b).as_slice());
-                        }
-                    }
-                }
-
                 AdjustReifyFnPointer(_) => {
                     match unadjusted_ty.sty {
                         ty::ty_bare_fn(Some(_), b) => {
@@ -4731,7 +4662,6 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_rptr(_, _) => "&-ptr".to_string(),
         ty_bare_fn(Some(_), _) => format!("fn item"),
         ty_bare_fn(None, _) => "fn pointer".to_string(),
-        ty_closure(_) => "fn".to_string(),
         ty_trait(ref inner) => {
             format!("trait {}", item_path_str(cx, inner.principal_def_id()))
         }
@@ -6326,24 +6256,6 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                     fn_sig(state, &b.sig);
                     return false;
                 }
-                ty_closure(ref c) => {
-                    byte!(15);
-                    hash!(c.unsafety);
-                    hash!(c.onceness);
-                    hash!(c.bounds);
-                    match c.store {
-                        UniqTraitStore => byte!(0),
-                        RegionTraitStore(r, m) => {
-                            byte!(1);
-                            region(state, r);
-                            assert_eq!(m, ast::MutMutable);
-                        }
-                    }
-
-                    fn_sig(state, &c.sig);
-
-                    return false;
-                }
                 ty_trait(ref data) => {
                     byte!(17);
                     did(state, data.principal_def_id());
@@ -6666,12 +6578,6 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_struct(_, substs) => {
                 accum_substs(accumulator, substs);
             }
-            ty_closure(ref closure_ty) => {
-                match closure_ty.store {
-                    RegionTraitStore(region, _) => accumulator.push(region),
-                    UniqTraitStore => {}
-                }
-            }
             ty_unboxed_closure(_, region, substs) => {
                 accumulator.push(*region);
                 accum_substs(accumulator, substs);
@@ -6741,7 +6647,6 @@ pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
 impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
-            AdjustAddEnv(..) => false,
             AdjustReifyFnPointer(..) => false,
             AdjustDerefRef(ref r) => r.is_identity(),
         }
@@ -6865,11 +6770,8 @@ impl DebruijnIndex {
 impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
-            AdjustAddEnv(def_id, ref trait_store) => {
-                format!("AdjustAddEnv({},{})", def_id.repr(tcx), trait_store)
-            }
             AdjustReifyFnPointer(def_id) => {
-                format!("AdjustAddEnv({})", def_id.repr(tcx))
+                format!("AdjustReifyFnPointer({})", def_id.repr(tcx))
             }
             AdjustDerefRef(ref data) => {
                 data.repr(tcx)

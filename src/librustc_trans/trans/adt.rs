@@ -355,12 +355,6 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // Functions are just pointers
         ty::ty_bare_fn(..) => Some(path),
 
-        // Closures are a pair of pointers: the code and environment
-        ty::ty_closure(..) => {
-            path.push(FAT_PTR_ADDR);
-            Some(path)
-        },
-
         // Is this the NonZero lang item wrapping a pointer or integer type?
         ty::ty_struct(did, substs) if Some(did) == tcx.lang_items.non_zero() => {
             let nonzero_fields = ty::lookup_struct_fields(tcx, did);
