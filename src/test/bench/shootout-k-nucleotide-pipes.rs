@@ -94,7 +94,9 @@ fn update_freq(mm: &mut HashMap<Vec<u8> , uint>, key: &[u8]) {
 // given a Vec<u8>, for each window call a function
 // i.e., for "hello" and windows of size four,
 // run it("hell") and it("ello"), then return "llo"
-fn windows_with_carry(bb: &[u8], nn: uint, it: |window: &[u8]|) -> Vec<u8> {
+fn windows_with_carry<F>(bb: &[u8], nn: uint, mut it: F) -> Vec<u8> where
+    F: FnMut(&[u8]),
+{
    let mut ii = 0u;
 
    let len = bb.len();

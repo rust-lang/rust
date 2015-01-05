@@ -61,12 +61,14 @@ impl MutableSet<uint> for BitvSet {
 
 impl Results {
     pub fn bench_int<T:MutableSet<uint>,
-                     R: rand::Rng>(
+                     R:rand::Rng,
+                     F:FnMut() -> T>(
                      &mut self,
                      rng: &mut R,
                      num_keys: uint,
                      rand_cap: uint,
-                     f: || -> T) { {
+                     mut f: F) {
+        {
             let mut set = f();
             timed(&mut self.sequential_ints, || {
                 for i in range(0u, num_keys) {
@@ -103,11 +105,12 @@ impl Results {
     }
 
     pub fn bench_str<T:MutableSet<String>,
-                     R:rand::Rng>(
+                     R:rand::Rng,
+                     F:FnMut() -> T>(
                      &mut self,
                      rng: &mut R,
                      num_keys: uint,
-                     f: || -> T) {
+                     mut f: F) {
         {
             let mut set = f();
             timed(&mut self.sequential_strings, || {
