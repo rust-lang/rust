@@ -33,7 +33,7 @@ CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)-alpha$(CFG_BETA_CYCLE)
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),nightly)
 CFG_RELEASE=$(CFG_RELEASE_NUM)-nightly
-# When building nightlydistributables just reuse the same "beta" name
+# When building nightly distributables just reuse the same "nightly" name
 # so when we upload we'll always override the previous nighly. This
 # doesn't actually impact the version reported by rustc - it's just
 # for file naming.
