@@ -22,6 +22,7 @@ use ptr::P;
 /// The specific types of unsupported syntax
 #[derive(Copy, PartialEq, Eq, Hash)]
 pub enum ObsoleteSyntax {
+    Sized,
     OwnedType,
     OwnedExpr,
     OwnedPattern,
@@ -92,7 +93,11 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteSyntax::ExternCrateRenaming => (
                 "`extern crate foo = bar` syntax",
                 "write `extern crate bar as foo` instead"
-            )
+            ),
+            ObsoleteSyntax::Sized => (
+                "`Sized? T` syntax for removing the `Sized` bound",
+                "write `T: ?Sized` instead"
+            ),
         };
 
         self.report(sp, kind, kind_str, desc);
