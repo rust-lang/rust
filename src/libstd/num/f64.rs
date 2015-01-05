@@ -81,7 +81,7 @@ mod cmath {
     }
 }
 
-#[unstable = "trait is unstable"]
+#[stable]
 impl Float for f64 {
     // inlined methods from `num::Float`
     #[inline]
