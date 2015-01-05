@@ -45,14 +45,14 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             // that, otherwise we'll fall back to boxed closures.
             match expected_sig_and_kind {
                 None => { // don't have information about the kind, request explicit annotation
-                    // HACK We still need to typeck the body, so assume `FnMut` kind just for that
+                    // NB We still need to typeck the body, so assume `FnMut` kind just for that
                     let kind = ty::FnMutUnboxedClosureKind;
 
                     check_unboxed_closure(fcx, expr, kind, decl, body, None);
 
                     fcx.ccx.tcx.sess.span_err(
                         expr.span,
-                        "Can't infer the \"kind\" of the closure, explicitly annotate it. e.g. \
+                        "can't infer the \"kind\" of the closure, explicitly annotate it. e.g. \
                         `|&:| {}`");
                 },
                 Some((sig, kind)) => {
