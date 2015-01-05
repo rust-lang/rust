@@ -2253,9 +2253,9 @@ impl<'a> fmt::Show for Source<'a> {
             cols += 1;
             tmp /= 10;
         }
-        try!(write!(fmt, "<pre class='line-numbers'>"));
+        try!(write!(fmt, "<pre class=\"line-numbers\">"));
         for i in range(1, lines + 1) {
-            try!(write!(fmt, "<span id='{0}'>{0:1$}</span>\n", i, cols));
+            try!(write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols));
         }
         try!(write!(fmt, "</pre>"));
         try!(write!(fmt, "{}", highlight::highlight(s.as_slice(), None, None)));

@@ -17,7 +17,7 @@ Some examples that demonstrate different aspects of the language:
 * [sprocketnes], an NES emulator with no GC, using modern Rust conventions
 * The language's general-purpose [hash] function, SipHash-2-4. Bit twiddling, OO, macros
 * The standard library's [HashMap], a sendable hash map in an OO style
-* The extra library's [json] module. Enums and pattern matching
+* The standard library's [json] module. Enums and pattern matching
 
 [sprocketnes]: https://github.com/pcwalton/sprocketnes
 [hash]: https://github.com/rust-lang/rust/blob/master/src/libstd/hash/mod.rs
