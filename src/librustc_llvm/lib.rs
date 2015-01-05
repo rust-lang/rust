@@ -24,6 +24,7 @@
 #![feature(globs)]
 #![feature(link_args)]
 #![feature(unboxed_closures)]
+#![feature(old_orphan_check)]
 
 extern crate libc;
 
