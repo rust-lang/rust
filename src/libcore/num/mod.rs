@@ -910,12 +910,12 @@ impl_to_primitive_uint! { u32 }
 impl_to_primitive_uint! { u64 }
 
 macro_rules! impl_to_primitive_float_to_float {
-    ($SrcT:ty, $DstT:ty, $slf:expr) => (
+    ($SrcT:ident, $DstT:ident, $slf:expr) => (
         if size_of::<$SrcT>() <= size_of::<$DstT>() {
             Some($slf as $DstT)
         } else {
             let n = $slf as f64;
-            let max_value: $SrcT = Float::max_value();
+            let max_value: $SrcT = ::$SrcT::MAX_VALUE;
             if -max_value as f64 <= n && n <= max_value as f64 {
                 Some($slf as $DstT)
             } else {
@@ -926,7 +926,7 @@ macro_rules! impl_to_primitive_float_to_float {
 }
 
 macro_rules! impl_to_primitive_float {
-    ($T:ty) => (
+    ($T:ident) => (
         impl ToPrimitive for $T {
             #[inline]
             fn to_int(&self) -> Option<int> { Some(*self as int) }
@@ -1251,24 +1251,34 @@ pub trait Float
     // FIXME (#5527): These should be associated constants
 
     /// Returns the number of binary digits of mantissa that this type supports.
+    #[deprecated = "use `std::f32::MANTISSA_DIGITS` or `std::f64::MANTISSA_DIGITS` as appropriate"]
     fn mantissa_digits(unused_self: Option<Self>) -> uint;
     /// Returns the number of base-10 digits of precision that this type supports.
+    #[deprecated = "use `std::f32::DIGITS` or `std::f64::DIGITS` as appropriate"]
     fn digits(unused_self: Option<Self>) -> uint;
     /// Returns the difference between 1.0 and the smallest representable number larger than 1.0.
+    #[deprecated = "use `std::f32::EPSILON` or `std::f64::EPSILON` as appropriate"]
     fn epsilon() -> Self;
     /// Returns the minimum binary exponent that this type can represent.
+    #[deprecated = "use `std::f32::MIN_EXP` or `std::f64::MIN_EXP` as appropriate"]
     fn min_exp(unused_self: Option<Self>) -> int;
     /// Returns the maximum binary exponent that this type can represent.
+    #[deprecated = "use `std::f32::MAX_EXP` or `std::f64::MAX_EXP` as appropriate"]
     fn max_exp(unused_self: Option<Self>) -> int;
     /// Returns the minimum base-10 exponent that this type can represent.
+    #[deprecated = "use `std::f32::MIN_10_EXP` or `std::f64::MIN_10_EXP` as appropriate"]
     fn min_10_exp(unused_self: Option<Self>) -> int;
     /// Returns the maximum base-10 exponent that this type can represent.
+    #[deprecated = "use `std::f32::MAX_10_EXP` or `std::f64::MAX_10_EXP` as appropriate"]
     fn max_10_exp(unused_self: Option<Self>) -> int;
     /// Returns the smallest finite value that this type can represent.
+    #[deprecated = "use `std::f32::MIN_VALUE` or `std::f64::MIN_VALUE` as appropriate"]
     fn min_value() -> Self;
     /// Returns the smallest normalized positive number that this type can represent.
+    #[deprecated = "use `std::f32::MIN_POS_VALUE` or `std::f64::MIN_POS_VALUE` as appropriate"]
     fn min_pos_value(unused_self: Option<Self>) -> Self;
     /// Returns the largest finite value that this type can represent.
+    #[deprecated = "use `std::f32::MAX_VALUE` or `std::f64::MAX_VALUE` as appropriate"]
     fn max_value() -> Self;
 
     /// Returns true if this value is NaN and false otherwise.
