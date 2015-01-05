@@ -4939,7 +4939,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                 Some(i) => {
                     span_err!(ccx.tcx.sess, v.span, E0081,
                         "discriminant value `{}` already exists", disr_vals[i]);
-                    span_note!(ccx.tcx.sess, ccx.tcx().map.span(variants[i].id.node),
+                    span_note!(ccx.tcx.sess, ccx.tcx.map.span(variants[i].id.node),
                         "conflicting discriminant here")
                 }
                 None => {}

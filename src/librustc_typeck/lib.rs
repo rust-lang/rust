@@ -119,7 +119,7 @@ struct TypeAndSubsts<'tcx> {
 struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.
     trait_map: ty::TraitMap,
-    tcx: &'a ty::ctxt<'tcx>
+    tcx: &'a ty::ctxt<'tcx>,
 }
 
 // Functions that write types into the node type table
@@ -320,7 +320,7 @@ pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) {
     };
 
     time(time_passes, "type collecting", (), |_|
-        collect::collect_item_types(&ccx));
+         collect::collect_item_types(tcx));
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
