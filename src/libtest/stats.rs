@@ -169,7 +169,8 @@ impl<T: FloatMath + FromPrimitive> Stats<T> for [T] {
     fn sum(&self) -> T {
         let mut partials = vec![];
 
-        for &mut x in self.iter() {
+        for &x in self.iter() {
+            let mut x = x;
             let mut j = 0;
             // This inner loop applies `hi`/`lo` summation to each
             // partial so that the list of partial sums remains exact.

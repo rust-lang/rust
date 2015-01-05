@@ -473,7 +473,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             }
         }
 
-        ty::ty_rptr(_, ty::mt { ty, .. }) => {
+        ty::ty_rptr(_, ty::mt { ty, mutbl }) => {
             match ty.sty {
                ty::ty_vec(_, Some(n)) => match ctor {
                     &Single => {
@@ -493,7 +493,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 
                 _ => {
                     assert_eq!(pats_len, 1);
-                    ast::PatRegion(pats.nth(0).unwrap())
+                    ast::PatRegion(pats.nth(0).unwrap(), mutbl)
                 }
             }
         }
@@ -860,7 +860,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         ast::PatTup(ref args) =>
             Some(args.iter().map(|p| &**p).collect()),
 
-        ast::PatBox(ref inner) | ast::PatRegion(ref inner) =>
+        ast::PatBox(ref inner) | ast::PatRegion(ref inner, _) =>
             Some(vec![&**inner]),
 
         ast::PatLit(ref expr) => {

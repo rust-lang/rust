@@ -572,7 +572,7 @@ pub enum Pat_ {
     PatStruct(Path, Vec<Spanned<FieldPat>>, bool),
     PatTup(Vec<P<Pat>>),
     PatBox(P<Pat>),
-    PatRegion(P<Pat>), // reference pattern
+    PatRegion(P<Pat>, Mutability), // reference pattern
     PatLit(P<Expr>),
     PatRange(P<Expr>, P<Expr>),
     /// [a, b, ..i, y, z] is represented as:

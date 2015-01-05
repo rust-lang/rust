@@ -519,7 +519,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
             }
         }
         PatBox(ref subpattern) |
-        PatRegion(ref subpattern) => {
+        PatRegion(ref subpattern, _) => {
             visitor.visit_pat(&**subpattern)
         }
         PatIdent(_, ref pth1, ref optional_subpattern) => {
