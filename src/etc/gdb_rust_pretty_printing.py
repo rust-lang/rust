@@ -51,7 +51,7 @@ def rust_pretty_printer_lookup_function(val):
     enum_member_count = len(enum_members)
 
     if enum_member_count == 0:
-      return RustStructPrinter(val, false)
+      return RustStructPrinter(val, False)
 
     if enum_member_count == 1:
       first_variant_name = enum_members[0].name
@@ -60,7 +60,11 @@ def rust_pretty_printer_lookup_function(val):
         return rust_pretty_printer_lookup_function(val[enum_members[0]])
       else:
         assert first_variant_name.startswith("RUST$ENCODED$ENUM$")
-        # This is a space-optimized enum
+        # This is a space-optimized enum.
+        # This means this enum has only two states, and Rust uses one of the
+        # fields somewhere in the struct to determine which of the two states
+        # it's in. The location of the field is encoded in the name as something
+        # like RUST$ENCODED$ENUM$(num$)*name_of_zero_state
         last_separator_index = first_variant_name.rfind("$")
         start_index = len("RUST$ENCODED$ENUM$")
         disr_field_indices = first_variant_name[start_index :
@@ -76,7 +80,7 @@ def rust_pretty_printer_lookup_function(val):
         # If the discriminant field is a fat pointer we have to consider the
         # first word as the true discriminant
         if discriminant.type.code == gdb.TYPE_CODE_STRUCT:
-            discriminant = discriminant[get_field_at_index(discriminant, 0)]
+          discriminant = discriminant[get_field_at_index(discriminant, 0)]
 
         if discriminant == 0:
           null_variant_name = first_variant_name[last_separator_index + 1:]
