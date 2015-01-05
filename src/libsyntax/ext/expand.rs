@@ -1111,7 +1111,7 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         let prev_type = self.current_impl_type.clone();
-        if let ast::Item_::ItemImpl(_, _, _, ref ty, _) = item.node {
+        if let ast::Item_::ItemImpl(_, _, _, _, ref ty, _) = item.node {
             self.current_impl_type = Some(ty.clone());
         }
 

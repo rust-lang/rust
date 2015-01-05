@@ -5127,7 +5127,7 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
             match cx.map.find(id.node) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
-                        ast::ItemImpl(_, _, ref opt_trait, _, _) => {
+                        ast::ItemImpl(_, _, _, ref opt_trait, _, _) => {
                             match opt_trait {
                                 &Some(ref t) => {
                                     let trait_ref = ty::node_id_to_trait_ref(cx, t.ref_id);

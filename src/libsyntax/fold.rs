@@ -1014,7 +1014,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
             let struct_def = folder.fold_struct_def(struct_def);
             ItemStruct(struct_def, folder.fold_generics(generics))
         }
-        ItemImpl(unsafety, generics, ifce, ty, impl_items) => {
+        ItemImpl(unsafety, polarity, generics, ifce, ty, impl_items) => {
             let mut new_impl_items = Vec::new();
             for impl_item in impl_items.iter() {
                 match *impl_item {
@@ -1037,6 +1037,7 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
                 }
             };
             ItemImpl(unsafety,
+                     polarity,
                      folder.fold_generics(generics),
                      ifce,
                      folder.fold_ty(ty),
@@ -1166,7 +1167,7 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
     let node = folder.fold_item_underscore(node);
     let ident = match node {
         // The node may have changed, recompute the "pretty" impl name.
-        ItemImpl(_, _, ref maybe_trait, ref ty, _) => {
+        ItemImpl(_, _, _, ref maybe_trait, ref ty, _) => {
             ast_util::impl_pretty_name(maybe_trait, &**ty)
         }
         _ => ident

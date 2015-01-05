@@ -488,6 +488,7 @@ impl<'a> TraitDef<'a> {
             ident,
             a,
             ast::ItemImpl(ast::Unsafety::Normal,
+                          ast::ImplPolarity::Positive,
                           trait_generics,
                           opt_trait_ref,
                           self_type,

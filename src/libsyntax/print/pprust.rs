@@ -917,6 +917,7 @@ impl<'a> State<'a> {
             }
 
             ast::ItemImpl(unsafety,
+                          polarity,
                           ref generics,
                           ref opt_trait,
                           ref ty,
@@ -929,6 +930,13 @@ impl<'a> State<'a> {
                 if generics.is_parameterized() {
                     try!(self.print_generics(generics));
                     try!(space(&mut self.s));
+                }
+
+                match polarity {
+                    ast::ImplPolarity::Negative => {
+                        try!(word(&mut self.s, "!"));
+                    },
+                    _ => {}
                 }
 
                 match opt_trait {

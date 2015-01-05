@@ -182,6 +182,7 @@ pub struct Trait {
 
 pub struct Impl {
     pub unsafety: ast::Unsafety,
+    pub polarity: ast::ImplPolarity,
     pub generics: ast::Generics,
     pub trait_: Option<ast::TraitRef>,
     pub for_: P<ast::Ty>,
