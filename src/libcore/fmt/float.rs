@@ -15,7 +15,7 @@ pub use self::SignificantDigits::*;
 pub use self::SignFormat::*;
 
 use char;
-use char::Char;
+use char::CharExt;
 use fmt;
 use iter::{IteratorExt, range};
 use num::{cast, Float, ToPrimitive};

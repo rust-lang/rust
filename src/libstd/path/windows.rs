@@ -15,6 +15,7 @@
 use self::PathPrefix::*;
 
 use ascii::AsciiExt;
+use char::CharExt;
 use clone::Clone;
 use cmp::{Ordering, Eq, Ord, PartialEq, PartialOrd};
 use hash;
@@ -26,7 +27,6 @@ use option::Option::{self, Some, None};
 use slice::{SliceExt, SliceConcatExt};
 use str::{SplitTerminator, FromStr, StrExt};
 use string::{String, ToString};
-use unicode::char::UnicodeChar;
 use vec::Vec;
 
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};

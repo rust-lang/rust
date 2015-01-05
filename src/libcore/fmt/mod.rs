@@ -388,7 +388,7 @@ impl<'a> Formatter<'a> {
                         prefix: &str,
                         buf: &str)
                         -> Result {
-        use char::Char;
+        use char::CharExt;
         use fmt::rt::{FlagAlternate, FlagSignPlus, FlagSignAwareZeroPad};
 
         let mut width = buf.len();
@@ -504,7 +504,7 @@ impl<'a> Formatter<'a> {
     fn with_padding<F>(&mut self, padding: uint, default: rt::Alignment, f: F) -> Result where
         F: FnOnce(&mut Formatter) -> Result,
     {
-        use char::Char;
+        use char::CharExt;
         let align = match self.align {
             rt::AlignUnknown => default,
             _ => self.align
@@ -613,7 +613,7 @@ impl Show for str {
 
 impl Show for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        use char::Char;
+        use char::CharExt;
 
         let mut utf8 = [0u8; 4];
         let amt = self.encode_utf8(&mut utf8).unwrap_or(0);

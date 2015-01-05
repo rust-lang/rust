@@ -38,7 +38,7 @@ pub use mem::drop;
 
 // Reexported types and traits
 
-pub use char::Char;
+pub use char::CharExt;
 pub use clone::Clone;
 pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 pub use iter::{Extend, IteratorExt};

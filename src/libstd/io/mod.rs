@@ -225,7 +225,7 @@ pub use self::FileMode::*;
 pub use self::FileAccess::*;
 pub use self::IoErrorKind::*;
 
-use char::Char;
+use char::CharExt;
 use clone::Clone;
 use default::Default;
 use error::{FromError, Error};
@@ -248,7 +248,6 @@ use str;
 use string::String;
 use uint;
 use unicode;
-use unicode::char::UnicodeChar;
 use vec::Vec;
 
 // Reexports
