@@ -1233,12 +1233,14 @@ enum TargetLocation {
     ThisDirectory(Path),
 }
 
-fn make_compile_args(config: &Config,
-                     props: &TestProps,
-                     extras: Vec<String> ,
-                     xform: |&Config, &Path| -> TargetLocation,
-                     testfile: &Path)
-                     -> ProcArgs {
+fn make_compile_args<F>(config: &Config,
+                        props: &TestProps,
+                        extras: Vec<String> ,
+                        xform: F,
+                        testfile: &Path)
+                        -> ProcArgs where
+    F: FnOnce(&Config, &Path) -> TargetLocation,
+{
     let xform_file = xform(config, testfile);
     let target = if props.force_host {
         config.host.as_slice()
