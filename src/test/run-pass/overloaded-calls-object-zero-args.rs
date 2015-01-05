@@ -11,11 +11,11 @@
 // Tests calls to closure arguments where the closure takes 0 arguments.
 // This is a bit tricky due to rust-call ABI.
 
-fn foo(f: &mut FnMut()) -> int {
+fn foo(f: &mut FnMut() -> int) -> int {
     f()
 }
 
 fn main() {
-    let z = foo(|| 22);
+    let z = foo(&mut || 22);
     assert_eq!(z, 22);
 }
