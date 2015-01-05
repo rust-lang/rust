@@ -50,6 +50,7 @@
 //! is the same as `&[u8]`.
 
 #![doc(primitive = "str")]
+#![stable]
 
 use self::RecompositionState::*;
 use self::DecompositionType::*;
@@ -401,6 +402,7 @@ Section: Trait implementations
 */
 
 /// Any string that can be represented as a slice.
+#[stable]
 pub trait StrExt for Sized?: ops::Slice<uint, str> {
     /// Escapes each char in `s` with `char::escape_default`.
     #[unstable = "return type may change to be an iterator"]
@@ -1340,6 +1342,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     }
 }
 
+#[stable]
 impl StrExt for str {}
 
 #[cfg(test)]
