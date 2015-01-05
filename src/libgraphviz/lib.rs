@@ -453,7 +453,7 @@ impl<'a> LabelText<'a> {
     pub fn escape(&self) -> String {
         match self {
             &LabelStr(ref s) => s.escape_default(),
-            &EscStr(ref s) => LabelText::escape_str(s[]),
+            &EscStr(ref s) => LabelText::escape_str(s.index(&FullRange)),
         }
     }
 
@@ -482,7 +482,7 @@ impl<'a> LabelText<'a> {
         let mut prefix = self.pre_escaped_content().into_owned();
         let suffix = suffix.pre_escaped_content();
         prefix.push_str(r"\n\n");
-        prefix.push_str(suffix[]);
+        prefix.push_str(suffix.index(&FullRange));
         EscStr(prefix.into_cow())
     }
 }
@@ -676,7 +676,7 @@ mod tests {
 
     impl<'a> Labeller<'a, Node, &'a Edge> for LabelledGraph {
         fn graph_id(&'a self) -> Id<'a> {
-            Id::new(self.name[]).unwrap()
+            Id::new(self.name.index(&FullRange)).unwrap()
         }
         fn node_id(&'a self, n: &Node) -> Id<'a> {
             id_name(n)

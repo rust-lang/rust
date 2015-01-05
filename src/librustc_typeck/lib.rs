@@ -194,7 +194,7 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
                               format!("{}: {}",
                                       msg(),
                                       ty::type_err_to_str(tcx,
-                                                          terr))[]);
+                                                          terr)).index(&FullRange));
             ty::note_and_explain_type_err(tcx, terr);
             false
         }
@@ -243,7 +243,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                               format!("main has a non-function type: found \
                                        `{}`",
                                       ppaux::ty_to_string(tcx,
-                                                       main_t))[]);
+                                                       main_t)).index(&FullRange));
         }
     }
 }
@@ -294,7 +294,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             tcx.sess.span_bug(start_span,
                               format!("start has a non-function type: found \
                                        `{}`",
-                                      ppaux::ty_to_string(tcx, start_t))[]);
+                                      ppaux::ty_to_string(tcx, start_t)).index(&FullRange));
         }
     }
 }

@@ -22,7 +22,7 @@ use super::TupleArgumentsFlag;
 use super::write_call;
 
 use middle::infer;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -196,7 +196,7 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     let arg_exprs: Vec<_> = arg_exprs.iter().collect(); // for some weird reason we take &[&P<...>].
     check_argument_types(fcx,
                          call_expr.span,
-                         fn_sig.inputs[],
+                         fn_sig.inputs.as_slice(),
                          arg_exprs.as_slice(),
                          AutorefArgs::No,
                          fn_sig.variadic,

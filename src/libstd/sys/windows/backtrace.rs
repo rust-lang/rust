@@ -26,6 +26,7 @@ use intrinsics;
 use io::{IoResult, Writer};
 use libc;
 use mem;
+use ops::Index;
 use ops::Drop;
 use option::Option::{Some, None};
 use path::Path;
@@ -361,7 +362,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
             let bytes = cstr.as_bytes();
             match cstr.as_str() {
                 Some(s) => try!(demangle(w, s)),
-                None => try!(w.write(bytes[..bytes.len()-1])),
+                None => try!(w.write(bytes.index(&(0..(bytes.len()-1))))),
             }
         }
         try!(w.write(&['\n' as u8]));

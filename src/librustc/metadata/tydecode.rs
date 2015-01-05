@@ -99,7 +99,7 @@ fn scan<R, F, G>(st: &mut PState, mut is_last: F, op: G) -> R where
     }
     let end_pos = st.pos;
     st.pos += 1;
-    return op(st.data[start_pos..end_pos]);
+    return op(st.data.index(&(start_pos..end_pos)));
 }
 
 pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
@@ -232,7 +232,7 @@ fn parse_trait_store(st: &mut PState, conv: conv_did) -> ty::TraitStore {
         '&' => ty::RegionTraitStore(parse_region(st, conv), parse_mutability(st)),
         c => {
             st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'",
-                                    c)[])
+                                    c).index(&FullRange))
         }
     }
 }
@@ -286,7 +286,7 @@ fn parse_bound_region(st: &mut PState, conv: conv_did) -> ty::BoundRegion {
         }
         '[' => {
             let def = parse_def(st, RegionParameter, |x,y| conv(x,y));
-            let ident = token::str_to_ident(parse_str(st, ']')[]);
+            let ident = token::str_to_ident(parse_str(st, ']').index(&FullRange));
             ty::BrNamed(def, ident.name)
         }
         'f' => {
@@ -317,7 +317,7 @@ fn parse_region(st: &mut PState, conv: conv_did) -> ty::Region {
         assert_eq!(next(st), '|');
         let index = parse_u32(st);
         assert_eq!(next(st), '|');
-        let nm = token::str_to_ident(parse_str(st, ']')[]);
+        let nm = token::str_to_ident(parse_str(st, ']').index(&FullRange));
         ty::ReEarlyBound(node_id, space, index, nm.name)
       }
       'f' => {
@@ -424,7 +424,7 @@ fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>, conv: conv_did) -> Ty<'tcx> {
         assert_eq!(next(st), '|');
         let space = parse_param_space(st);
         assert_eq!(next(st), '|');
-        let name = token::intern(parse_str(st, ']')[]);
+        let name = token::intern(parse_str(st, ']').index(&FullRange));
         return ty::mk_param(tcx, space, index, name);
       }
       '~' => return ty::mk_uniq(tcx, parse_ty(st, |x,y| conv(x,y))),
@@ -580,7 +580,7 @@ fn parse_abi_set(st: &mut PState) -> abi::Abi {
     assert_eq!(next(st), '[');
     scan(st, |c| c == ']', |bytes| {
         let abi_str = str::from_utf8(bytes).unwrap();
-        abi::lookup(abi_str[]).expect(abi_str)
+        abi::lookup(abi_str.index(&FullRange)).expect(abi_str)
     })
 }
 
@@ -656,8 +656,8 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
         panic!();
     }
 
-    let crate_part = buf[0u..colon_idx];
-    let def_part = buf[colon_idx + 1u..len];
+    let crate_part = buf.index(&(0u..colon_idx));
+    let def_part = buf.index(&((colon_idx + 1u)..len));
 
     let crate_num = match str::from_utf8(crate_part).ok().and_then(|s| s.parse::<uint>()) {
        Some(cn) => cn as ast::CrateNum,

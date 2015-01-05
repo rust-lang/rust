@@ -660,7 +660,7 @@
 //! necessary to add any restrictions at all to the final result.
 //!
 //! ```text
-//!     RESTRICTIONS(*LV, LT, []) = []                         // R-Deref-Freeze-Borrowed
+//!     RESTRICTIONS(*LV, LT, []) = []                // R-Deref-Freeze-Borrowed
 //!       TYPE(LV) = &const Ty
 //! ```
 //!

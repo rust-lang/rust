@@ -156,7 +156,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     // compute the type of the closure
-    let cdata_ty = mk_closure_tys(tcx, bound_values[]);
+    let cdata_ty = mk_closure_tys(tcx, bound_values.index(&FullRange));
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
     // tuple.  This could be a ptr in uniq or a box or on stack,
@@ -185,7 +185,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         if ccx.sess().asm_comments() {
             add_comment(bcx, format!("Copy {} into closure",
-                                     bv.to_string(ccx))[]);
+                                     bv.to_string(ccx)).index(&FullRange));
         }
 
         let bound_data = GEPi(bcx, llbox, &[0u, abi::BOX_FIELD_BODY, i]);
@@ -422,7 +422,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let s = tcx.map.with_path(id, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
-    let llfn = decl_internal_rust_fn(ccx, fty, s[]);
+    let llfn = decl_internal_rust_fn(ccx, fty, s.index(&FullRange));
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -446,7 +446,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   &[],
                   ty::ty_fn_ret(fty),
                   ty::ty_fn_abi(fty),
-                  ClosureEnv::new(freevars[],
+                  ClosureEnv::new(freevars.index(&FullRange),
                                   BoxedClosure(cdata_ty, store)));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
     bcx
@@ -491,7 +491,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
 
-    let llfn = decl_internal_rust_fn(ccx, function_type, symbol[]);
+    let llfn = decl_internal_rust_fn(ccx, function_type, symbol.index(&FullRange));
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -545,7 +545,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   &[],
                   ty::ty_fn_ret(function_type),
                   ty::ty_fn_abi(function_type),
-                  ClosureEnv::new(freevars[],
+                  ClosureEnv::new(freevars.index(&FullRange),
                                   UnboxedClosure(freevar_mode)));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
@@ -603,7 +603,7 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => {
             ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
                                     expected a closure ty, got {}",
-                                    closure_ty.repr(tcx))[]);
+                                    closure_ty.repr(tcx)).index(&FullRange));
         }
     };
 
@@ -611,9 +611,9 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         mangle_internal_name_by_path_and_seq(path, "as_closure")
     });
     let llfn = if is_local {
-        decl_internal_rust_fn(ccx, closure_ty, name[])
+        decl_internal_rust_fn(ccx, closure_ty, name.index(&FullRange))
     } else {
-        decl_rust_fn(ccx, closure_ty, name[])
+        decl_rust_fn(ccx, closure_ty, name.index(&FullRange))
     };
 
     ccx.closure_bare_wrapper_cache().borrow_mut().insert(fn_ptr, llfn);
@@ -634,7 +634,7 @@ pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let args = create_datums_for_fn_args(&fcx,
                                          ty::ty_fn_args(closure_ty)
-                                            []);
+                                            .index(&FullRange));
     let mut llargs = Vec::new();
     match fcx.llretslotptr.get() {
         Some(llretptr) => {

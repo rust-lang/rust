@@ -490,7 +490,7 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
                 format!("assemble_candidates_from_object_type called with non-object: {}",
-                        object_ty.repr(selcx.tcx()))[]);
+                        object_ty.repr(selcx.tcx())).as_slice());
         }
     };
     let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
