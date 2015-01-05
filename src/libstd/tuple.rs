@@ -15,7 +15,7 @@
 //!
 //! Indexing starts from zero, so `0` returns first value, `1`
 //! returns second value, and so on. In general, a tuple with _S_
-//! elements provides aforementioned fields from `0` to `S-1`
+//! elements provides aforementioned fields from `0` to `S-1`.
 //!
 //! If every type inside a tuple implements one of the following
 //! traits, then a tuple itself also implements it.
@@ -28,6 +28,17 @@
 //! * `Default`
 //!
 //! # Examples
+//! 
+//! Accessing elements of a tuple at specified indices:
+//! 
+//! ```
+//! let x = ("colorless",  "green", "ideas", "sleep", "furiously");
+//! assert_eq!(x.3, "sleep");
+//! 
+//! let v = (3i, 3i);
+//! let u = (1i, -5i);
+//! assert_eq!(v.0 * u.0 + v.1 * u.1, -12i);
+//! ```
 //!
 //! Using traits implemented for tuples:
 //!
