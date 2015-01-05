@@ -59,7 +59,6 @@ use core::char::CharExt;
 use core::clone::Clone;
 use core::iter::AdditiveIterator;
 use core::iter::{range, Iterator, IteratorExt};
-use core::kinds::Sized;
 use core::ops;
 use core::option::Option::{self, Some, None};
 use core::slice::AsSlice;
