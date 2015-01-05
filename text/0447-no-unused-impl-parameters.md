@@ -1,6 +1,6 @@
 - Start Date: 2014-11-06
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/447
+- Rust Issue: https://github.com/rust-lang/rust/issues/20598
 
 # Summary
 
@@ -83,7 +83,7 @@ impl<A> Foo for Bar {
 impl<A,B:Default> Foo<A> {
     fn do_something(&self) {
     }
-    
+
     fn get(&self) -> B {
         B::Default
     }
