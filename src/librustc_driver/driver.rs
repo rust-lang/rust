@@ -638,7 +638,7 @@ fn write_out_deps(sess: &Session,
         _ => return,
     };
 
-    let result = (|| -> io::IoResult<()> {
+    let result = (|&:| -> io::IoResult<()> {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
         let files: Vec<String> = sess.codemap().files.borrow()
