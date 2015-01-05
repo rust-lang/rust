@@ -86,6 +86,9 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     // A way to temporarily opt out of the new orphan rules. This will *never* be accepted.
     ("old_orphan_check", Deprecated),
 
+    // A way to temporarily opt out of the new impl rules. This will *never* be accepted.
+    ("old_impl_check", Deprecated),
+
     // OIBIT specific features
     ("optin_builtin_traits", Active),
 
@@ -293,6 +296,13 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                         "old_orphan_check",
                         i.span,
                         "the new orphan check rules will eventually be strictly enforced");
+                }
+
+                if attr::contains_name(i.attrs[],
+                                       "old_impl_check") {
+                    self.gate_feature("old_impl_check",
+                                      i.span,
+                                      "`#[old_impl_check]` will be removed in the future");
                 }
             }
 
