@@ -10,7 +10,7 @@
 
 // Attempt to coerce from unsized to sized.
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     ptr: T
 }
 

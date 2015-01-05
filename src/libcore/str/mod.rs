@@ -1140,7 +1140,7 @@ impl Str for str {
     fn as_slice<'a>(&'a self) -> &'a str { self }
 }
 
-impl<'a, Sized? S> Str for &'a S where S: Str {
+impl<'a, S: ?Sized> Str for &'a S where S: Str {
     #[inline]
     fn as_slice(&self) -> &str { Str::as_slice(*self) }
 }

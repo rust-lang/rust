@@ -989,7 +989,7 @@ impl<T> SliceExt for [T] {
 ////////////////////////////////////////////////////////////////////////////////
 #[unstable = "U should be an associated type"]
 /// An extension trait for concatenating slices
-pub trait SliceConcatExt<Sized? T, U> for Sized? {
+pub trait SliceConcatExt<T: ?Sized, U> for Sized? {
     /// Flattens a slice of `T` into a single value `U`.
     #[stable]
     fn concat(&self) -> U;

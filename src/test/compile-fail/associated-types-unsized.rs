@@ -11,7 +11,7 @@
 #![feature(associated_types)]
 
 trait Get {
-    type Sized? Value;
+    type Value: ?Sized;
     fn get(&self) -> <Self as Get>::Value;
 }
 

@@ -14,11 +14,11 @@
 
 use std::mem::transmute;
 
-fn a<T, Sized? U>(x: &[T]) -> &U {
+fn a<T, U: ?Sized>(x: &[T]) -> &U {
     unsafe { transmute(x) } //~ ERROR transmute called on types with potentially different sizes
 }
 
-fn b<Sized? T, Sized? U>(x: &T) -> &U {
+fn b<T: ?Sized, U: ?Sized>(x: &T) -> &U {
     unsafe { transmute(x) } //~ ERROR transmute called on types with potentially different sizes
 }
 
@@ -30,11 +30,11 @@ fn d<T, U>(x: &[T]) -> &[U] {
     unsafe { transmute(x) }
 }
 
-fn e<Sized? T, U>(x: &T) -> &U {
+fn e<T: ?Sized, U>(x: &T) -> &U {
     unsafe { transmute(x) } //~ ERROR transmute called on types with potentially different sizes
 }
 
-fn f<T, Sized? U>(x: &T) -> &U {
+fn f<T, U: ?Sized>(x: &T) -> &U {
     unsafe { transmute(x) } //~ ERROR transmute called on types with potentially different sizes
 }
 

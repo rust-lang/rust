@@ -75,7 +75,7 @@ pub struct FnvHasher;
 pub struct FnvState(u64);
 
 impl Hasher<FnvState> for FnvHasher {
-    fn hash<Sized? T: Hash<FnvState>>(&self, t: &T) -> u64 {
+    fn hash<T: ?Sized + Hash<FnvState>>(&self, t: &T) -> u64 {
         let mut state = FnvState(0xcbf29ce484222325);
         t.hash(&mut state);
         let FnvState(ret) = state;

@@ -14,7 +14,7 @@ struct S;
 trait T {}
 impl T for S {}
 
-struct Foo<Sized? T> {
+struct Foo<T: ?Sized> {
     f: T
 }
 

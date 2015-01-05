@@ -95,7 +95,7 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
                 "write `extern crate bar as foo` instead"
             ),
             ObsoleteSyntax::Sized => (
-                "`Sized? T` syntax for removing the `Sized` bound",
+                "`T: ?Sized` syntax for removing the `Sized` bound",
                 "write `T: ?Sized` instead"
             ),
         };
