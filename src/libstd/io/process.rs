@@ -384,14 +384,38 @@ impl Command {
     }
 }
 
+struct SingleQuotedStr<'a> {
+    s: &'a str
+}
+
+impl<'b> SingleQuotedStr<'b> {
+    fn new<'a>(i: &'a str) -> SingleQuotedStr<'a> {
+        SingleQuotedStr { s: i }
+    }
+}
+
+impl<'a> fmt::Show for SingleQuotedStr<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut elems = self.s.split('\'');
+        let fst = elems.next().unwrap_or("");
+        try!(write!(f, "'{}", fst));
+        for elem in elems {
+            try!(write!(f, "'\\''{}", elem));
+        }
+        write!(f, "'")
+    }
+}
+
 impl fmt::Show for Command {
     /// Format the program and arguments of a Command for display. Any
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{}", String::from_utf8_lossy(self.program.as_bytes_no_nul())));
+        try!(write!(f, "{}", SingleQuotedStr::new(String::from_utf8_lossy(
+                        self.program.as_bytes_no_nul()).as_slice())));
         for arg in self.args.iter() {
-            try!(write!(f, " '{}'", String::from_utf8_lossy(arg.as_bytes_no_nul())));
+            try!(write!(f, " {}", SingleQuotedStr::new(String::from_utf8_lossy(
+                            arg.as_bytes_no_nul()).as_slice())));
         }
         Ok(())
     }
@@ -1216,5 +1240,17 @@ mod tests {
         let env = &cmd.env.unwrap();
         let val = env.get(&EnvKey("PATH".to_c_str()));
         assert!(val.unwrap() == &"bar".to_c_str());
+    }
+
+    fn check_show(c: &Command, v: &str) {
+        assert_eq!(format!("{}", c).as_slice(), v)
+    }
+
+    #[test]
+    fn show() {
+        check_show(Command::new("gcc ").arg("-Ifoo'bar"), "'gcc ' '-Ifoo'\\''bar'");
+        check_show(&Command::new("c99"), "'c99'");
+        check_show(&Command::new("c99 "), "'c99 '");
+        check_show(&Command::new("Can't buy me love"), "'Can'\\''t buy me love'");
     }
 }
