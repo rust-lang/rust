@@ -1222,7 +1222,7 @@ pub enum FpCategory {
 //
 // FIXME(#8888): Several of these functions have a parameter named
 //               `unused_self`. Removing it requires #8888 to be fixed.
-#[unstable = "recently settled as part of numerics reform"]
+#[unstable = "distribution of methods between core/std is unclear"]
 pub trait Float
     : Copy + Clone
     + NumCast
