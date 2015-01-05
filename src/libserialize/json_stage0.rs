@@ -114,7 +114,7 @@
 //! ```notrust
 //! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
-//! use serialize::json::{self, ToJson, Json};
+//! use serialize::json::{mod, ToJson, Json};
 //!
 //! // A custom data structure
 //! struct ComplexNum {
@@ -155,7 +155,7 @@
 //! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
 //! use std::collections::BTreeMap;
-//! use serialize::json::{self, Json, ToJson};
+//! use serialize::json::{mod, Json, ToJson};
 //!
 //! // Only generate `Decodable` trait implementation
 //! #[derive(Decodable)]
@@ -300,7 +300,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
 }
 
 /// Shortcut function to decode a JSON `&str` into an object
-pub fn decode<T: ::Decodable>(s: &str) -> DecodeResult<T> {
+pub fn decode<T: ::Decodable<Decoder, DecoderError>>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
         Err(e) => return Err(ParseError(e))
@@ -311,7 +311,9 @@ pub fn decode<T: ::Decodable>(s: &str) -> DecodeResult<T> {
 }
 
 /// Shortcut function to encode a `T` into a JSON `String`
-pub fn encode<T: ::Encodable>(object: &T) -> string::String {
+pub fn encode<T>(object: &T) -> string::String
+                 where T: for<'a> Encodable<Encoder<'a>, fmt::Error>
+{
     let mut s = String::new();
     {
         let mut encoder = Encoder::new(&mut s);
@@ -442,9 +444,7 @@ impl<'a> Encoder<'a> {
     }
 }
 
-impl<'a> ::Encoder for Encoder<'a> {
-    type Error = fmt::Error;
-
+impl<'a> ::Encoder<fmt::Error> for Encoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
@@ -664,9 +664,7 @@ impl<'a> PrettyEncoder<'a> {
     }
 }
 
-impl<'a> ::Encoder for PrettyEncoder<'a> {
-    type Error = fmt::Error;
-
+impl<'a> ::Encoder<fmt::Error> for PrettyEncoder<'a> {
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
@@ -911,8 +909,8 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     }
 }
 
-impl Encodable for Json {
-    fn encode<E: ::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
+    fn encode(&self, e: &mut E) -> Result<(), S> {
         match *self {
             Json::I64(v) => v.encode(e),
             Json::U64(v) => v.encode(e),
@@ -2064,9 +2062,7 @@ macro_rules! read_primitive {
     }
 }
 
-impl ::Decoder for Decoder {
-    type Error = DecoderError;
-
+impl ::Decoder<DecoderError> for Decoder {
     fn read_nil(&mut self) -> DecodeResult<()> {
         expect!(self.pop(), Null)
     }
@@ -2478,7 +2474,9 @@ impl<'a> fmt::Show for PrettyJson<'a> {
     }
 }
 
-impl<'a, T: Encodable> fmt::Show for AsJson<'a, T> {
+impl<'a, T> fmt::Show for AsJson<'a, T>
+    where T: for<'b> Encodable<Encoder<'b>, fmt::Error>
+{
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2495,7 +2493,9 @@ impl<'a, T> AsPrettyJson<'a, T> {
     }
 }
 
-impl<'a, T: Encodable> fmt::Show for AsPrettyJson<'a, T> {
+impl<'a, T> fmt::Show for AsPrettyJson<'a, T>
+    where T: for<'b> Encodable<PrettyEncoder<'b>, fmt::Error>
+{
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -3155,7 +3155,8 @@ mod tests {
         A(f64),
         B(string::String)
     }
-    fn check_err<T: Decodable>(to_parse: &'static str, expected: DecoderError) {
+    fn check_err<T: Decodable<Decoder, DecoderError>>(to_parse: &'static str,
+                                                      expected: DecoderError) {
         let res: DecodeResult<T> = match from_str(to_parse) {
             Err(e) => Err(ParseError(e)),
             Ok(json) => Decodable::decode(&mut Decoder::new(json))

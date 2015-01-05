@@ -52,27 +52,29 @@ fn expand_deriving_decodable_imp<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new_(vec!(krate, "Decodable"), None,
-                         vec!(box Literal(Path::new_local("__D")),
-                              box Literal(Path::new_local("__E"))), true),
+        path: Path::new_(vec!(krate, "Decodable"), None, vec!(), true),
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds {
-            lifetimes: Vec::new(),
-            bounds: vec!(("__D", vec!(Path::new_(
-                            vec!(krate, "Decoder"), None,
-                            vec!(box Literal(Path::new_local("__E"))), true))),
-                         ("__E", vec!()))
-        },
+        generics: LifetimeBounds::empty(),
         methods: vec!(
             MethodDef {
                 name: "decode",
-                generics: LifetimeBounds::empty(),
+                generics: LifetimeBounds {
+                    lifetimes: Vec::new(),
+                    bounds: vec!(("__D", vec!(Path::new_(
+                                    vec!(krate, "Decoder"), None,
+                                    vec!(), true))))
+                },
                 explicit_self: None,
                 args: vec!(Ptr(box Literal(Path::new_local("__D")),
                             Borrowed(None, MutMutable))),
-                ret_ty: Literal(Path::new_(vec!("std", "result", "Result"), None,
-                                          vec!(box Self,
-                                               box Literal(Path::new_local("__E"))), true)),
+                ret_ty: Literal(Path::new_(
+                    vec!("std", "result", "Result"),
+                    None,
+                    vec!(box Self, box Literal(Path::new_(
+                        vec!["__D", "Error"], None, vec![], false
+                    ))),
+                    true
+                )),
                 attributes: Vec::new(),
                 combine_substructure: combine_substructure(|a, b, c| {
                     decodable_substructure(a, b, c, krate)
