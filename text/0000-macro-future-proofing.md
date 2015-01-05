@@ -87,7 +87,7 @@ allowed tokens for the given NT's fragment specifier, and is defined below.
     2. If `T` is a simple NT, look ahead to the next token `T'` in `M`. If
        `T'` is `EOF` or a close delimiter of a token tree, replace `T'` with
        `F`. If `T'` is in the set `FOLLOW(NT)`, `T'` is EOF, `T'` is any NT,
-       or `T'` is any identifier, continue. Else, reject.
+       or `T'` is any close delimiter, continue. Else, reject.
     3. Else, `T` is a complex NT.
         1. If `T` has the form `$(...)+` or `$(...)*`, run the algorithm on
            the contents with `F` set to `EOF`. If it accepts, continue, else,
@@ -104,15 +104,17 @@ The current legal fragment specifiers are: `item`, `block`, `stmt`, `pat`,
 `expr`, `ty`, `ident`, `path`, `meta`, and `tt`.
 
 - `FOLLOW(stmt)` = `FOLLOW(expr)`
-- `FOLLOW(pat)` = `{FatArrow, Comma, Pipe}`
-- `FOLLOW(expr)` = `{Comma, FatArrow, CloseBrace, CloseParen, CloseBracket}`
-- `FOLLOW(ty)` = `{Comma, CloseBrace, CloseParen, CloseBracket}`
+- `FOLLOW(pat)` = `{FatArrow, Comma, Eq}`
+- `FOLLOW(expr)` = `{Comma, Semicolon}`
+- `FOLLOW(path)` = `FOLLOW(ty)`
+- `FOLLOW(ty)` = `{Comma, RArrow, Colon, Eq, Gt, Ident(as)}`
 - `FOLLOW(block)` = any token
 - `FOLLOW(ident)` = any token
 - `FOLLOW(tt)` = any token
-- `FOLLOW(item)` = up for discussion
-- `FOLLOW(path)` = up for discussion
-- `FOLLOW(meta)` = up for discussion
+- `FOLLOW(item)` = any token
+- `FOLLOW(meta)` = any token
+
+(Note that close delimiters are valid following any NT.)
 
 # Drawbacks
 
@@ -136,12 +138,3 @@ reasonable freedom.
    same issue would come up.
 3. Do nothing. This is very dangerous, and has the potential to essentially
    freeze Rust's syntax for fear of accidentally breaking a macro.
-
-# Unresolved questions
-
-1. What should the FOLLOW sets for `item`, `path`, and `meta` be?
-2. Should the `FOLLOW` set for `ty` be extended? In practice, `RArrow`,
-   `Colon`, `as`, and `in` are also used. (See next item)
-2. What, if any, identifiers should be allowed in the FOLLOW sets? The author
-   is concerned that allowing arbitrary identifiers would limit the future use
-   of "contextual keywords".
