@@ -111,14 +111,30 @@ impl<S, T: Hash<S>> Hash<S> for P<T> {
     }
 }
 
+#[cfg(stage0)]
 impl<E, D: Decoder<E>, T: 'static + Decodable<D, E>> Decodable<D, E> for P<T> {
     fn decode(d: &mut D) -> Result<P<T>, E> {
         Decodable::decode(d).map(P)
     }
 }
 
+#[cfg(not(stage0))]
+impl<T: 'static + Decodable> Decodable for P<T> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<P<T>, D::Error> {
+        Decodable::decode(d).map(P)
+    }
+}
+
+#[cfg(stage0)]
 impl<E, S: Encoder<E>, T: Encodable<S, E>> Encodable<S, E> for P<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
+        (**self).encode(s)
+    }
+}
+
+#[cfg(not(stage0))]
+impl<T: Encodable> Encodable for P<T> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }
