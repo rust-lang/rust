@@ -332,7 +332,7 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
             !cfg_matches(diagnostic, cfgs, &*mis[0])
         }
         ast::MetaList(ref pred, _) => {
-            diagnostic.span_err(cfg.span, format!("invalid predicate `{}`", pred).index(&FullRange));
+            diagnostic.span_err(cfg.span, format!("invalid predicate `{}`", pred).as_slice());
             false
         },
         ast::MetaWord(_) | ast::MetaNameValue(..) => contains(cfgs, cfg),

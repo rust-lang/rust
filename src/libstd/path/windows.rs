@@ -359,8 +359,12 @@ impl GenericPath for Path {
         Some(match self.sepidx_or_prefix_len() {
             None if ".." == self.repr => self.repr.index(&FullRange),
             None => ".",
-            Some((_,idxa,end)) if self.repr.index(&(idxa..end)) == ".." => self.repr.index(&FullRange),
-            Some((idxb,_,end)) if self.repr.index(&(idxb..end)) == "\\" => self.repr.index(&FullRange),
+            Some((_,idxa,end)) if self.repr.index(&(idxa..end)) == ".." => {
+                self.repr.index(&FullRange)
+            }
+            Some((idxb,_,end)) if self.repr.index(&(idxb..end)) == "\\" => {
+                self.repr.index(&FullRange)
+            }
             Some((0,idxa,_)) => self.repr.index(&(0..idxa)),
             Some((idxb,idxa,_)) => {
                 match self.prefix {

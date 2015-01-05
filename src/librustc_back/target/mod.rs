@@ -247,7 +247,9 @@ impl Target {
             } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(name.index(&FullRange)).map(|o| o.as_boolean().map(|s| base.options.$key_name = s));
+                obj.find(name.index(&FullRange))
+                    .map(|o| o.as_boolean()
+                         .map(|s| base.options.$key_name = s));
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");

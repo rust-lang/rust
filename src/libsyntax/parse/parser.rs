@@ -1736,7 +1736,7 @@ impl<'a> Parser<'a> {
 
                     token::Str_(s) => {
                         (true,
-                         LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).index(&FullRange)),
+                         LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
                                 ast::CookedStr))
                     }
                     token::StrRaw(s, n) => {

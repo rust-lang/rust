@@ -386,7 +386,7 @@ pub fn parse(sess: &ParseSess,
                             new_ei.idx += 1u;
                             //we specifically matched zero repeats.
                             for idx in range(ei.match_cur, ei.match_cur + seq.num_captures) {
-                                (&mut new_ei.matches[idx]).push(Rc::new(MatchedSeq(Vec::new(), sp)));
+                                (&mut new_ei.matches[idx]).push(Rc::new(MatchedSeq(vec![], sp)));
                             }
 
                             cur_eis.push(new_ei);

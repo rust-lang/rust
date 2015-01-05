@@ -748,7 +748,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("calling llrustfn = {}, t = {}",
                ccx.tn().val_to_string(llrustfn), t.repr(ccx.tcx()));
         let attributes = base::get_fn_llvm_attributes(ccx, t);
-        let llrust_ret_val = builder.call(llrustfn, llrust_args.index(&FullRange), Some(attributes));
+        let llrust_ret_val = builder.call(llrustfn, llrust_args.as_slice(), Some(attributes));
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {
@@ -869,7 +869,7 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            ty.repr(ccx.tcx()),
            ccx.tn().types_to_str(llsig.llarg_tys.index(&FullRange)),
            ccx.tn().type_to_string(llsig.llret_ty),
-           ccx.tn().types_to_str(fn_ty.arg_tys.iter().map(|t| t.ty).collect::<Vec<_>>().index(&FullRange)),
+           ccx.tn().types_to_str(fn_ty.arg_tys.iter().map(|t| t.ty).collect::<Vec<_>>().as_slice()),
            ccx.tn().type_to_string(fn_ty.ret_ty.ty),
            llsig.ret_def);
 

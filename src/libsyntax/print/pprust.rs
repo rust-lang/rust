@@ -2794,7 +2794,7 @@ impl<'a> State<'a> {
                              format!("-{}", istr).index(&FullRange))
                     }
                     ast::UnsignedIntLit(ut) => {
-                        word(&mut self.s, ast_util::uint_ty_to_string(ut, Some(i)).index(&FullRange))
+                        word(&mut self.s, ast_util::uint_ty_to_string(ut, Some(i)).as_slice())
                     }
                     ast::UnsuffixedIntLit(ast::Plus) => {
                         word(&mut self.s, format!("{}", i).index(&FullRange))

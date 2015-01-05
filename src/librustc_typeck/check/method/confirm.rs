@@ -564,7 +564,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                 &**base_expr,
                                 Some(&ty::AdjustDerefRef(base_adjustment.clone())));
                         let index_expr_ty = self.fcx.expr_ty(&**index_expr);
-                        
+
                         let result = check::try_index_step(
                             self.fcx,
                             MethodCall::expr(expr.id),
