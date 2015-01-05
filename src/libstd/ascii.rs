@@ -14,7 +14,6 @@
 
 #![unstable = "unsure about placement and naming"]
 
-use core::kinds::Sized;
 use iter::IteratorExt;
 use ops::FnMut;
 use slice::SliceExt;

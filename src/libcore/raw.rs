@@ -20,7 +20,6 @@
 
 use kinds::Copy;
 use mem;
-use kinds::Sized;
 
 /// The representation of a Rust slice
 #[repr(C)]
