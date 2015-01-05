@@ -118,6 +118,7 @@ fn test_env(source_string: &str,
                     .expect("phase 2 aborted");
 
     let mut forest = ast_map::Forest::new(krate);
+    let type_arena = TypedArena::new();
     let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
     let krate = ast_map.krate();
 
@@ -128,7 +129,6 @@ fn test_env(source_string: &str,
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
     let region_map = region::resolve_crate(&sess, krate);
     let stability_index = stability::Index::build(krate);
-    let type_arena = TypedArena::new();
     let tcx = ty::mk_ctxt(sess,
                           &type_arena,
                           def_map,
