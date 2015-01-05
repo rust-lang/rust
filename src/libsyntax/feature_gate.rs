@@ -67,7 +67,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("import_shadowing", Active),
     ("advanced_slice_patterns", Active),
     ("tuple_indexing", Accepted),
-    ("associated_types", Active),
+    ("associated_types", Accepted),
     ("visible_private_types", Active),
     ("slicing_syntax", Active),
 
@@ -313,35 +313,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        many unsafe patterns and may be \
                                        removed in the future");
                 }
-
-                for item in items.iter() {
-                    match *item {
-                        ast::MethodImplItem(_) => {}
-                        ast::TypeImplItem(ref typedef) => {
-                            self.gate_feature("associated_types",
-                                              typedef.span,
-                                              "associated types are \
-                                               experimental")
-                        }
-                    }
-                }
             }
 
             _ => {}
         }
 
         visit::walk_item(self, i);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
-        match *trait_item {
-            ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {}
-            ast::TypeTraitItem(ref ti) => {
-                self.gate_feature("associated_types",
-                                  ti.ty_param.span,
-                                  "associated types are experimental")
-            }
-        }
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
