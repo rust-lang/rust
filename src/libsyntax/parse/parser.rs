@@ -2560,6 +2560,8 @@ impl<'a> Parser<'a> {
 
                 if found_dotdot || self.eat(&token::CloseDelim(token::Bracket)) {
                     // No expression, expand to a FullRange
+                    // FIXME(#20516) It would be better to use a lang item or
+                    // something for FullRange.
                     hi = self.last_span.hi;
                     let range = ExprStruct(ident_to_path(mk_sp(lo, hi),
                                                          token::special_idents::FullRange),

@@ -40,7 +40,7 @@ use core::prelude::*;
 pub use isaac::{IsaacRng, Isaac64Rng};
 pub use chacha::ChaChaRng;
 
-use distributions::{RandRange, IndependentSample};
+use distributions::{Range, IndependentSample};
 use distributions::range::SampleRange;
 
 #[cfg(test)]
@@ -229,7 +229,7 @@ pub trait Rng : Sized {
     /// ```
     fn gen_range<T: PartialOrd + SampleRange>(&mut self, low: T, high: T) -> T {
         assert!(low < high, "Rng.gen_range called with low >= high");
-        RandRange::new(low, high).ind_sample(self)
+        Range::new(low, high).ind_sample(self)
     }
 
     /// Return a bool with a 1 in n chance of true
