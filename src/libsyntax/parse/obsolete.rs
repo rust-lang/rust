@@ -58,8 +58,8 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
         let (kind_str, desc) = match kind {
             ObsoleteForSized => (
                 "for Sized?",
-                "no longer required, traits apply to sized and unsized types by default, use \
-                `: Sized` to opt-out of unsized types",
+                "no longer required. Traits (and their `Self` type) do not have the `Sized` bound \
+                 by default",
             ),
             ObsoleteProcType => (
                 "the `proc` type",
