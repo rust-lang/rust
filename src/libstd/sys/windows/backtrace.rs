@@ -26,6 +26,7 @@ use intrinsics;
 use io::{IoResult, Writer};
 use libc;
 use mem;
+use ops::Index;
 use ops::Drop;
 use option::Option::{Some, None};
 use path::Path;
