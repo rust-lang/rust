@@ -1123,15 +1123,6 @@ impl Json {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a> ops::Index<&'a str, Json>  for Json {
-    fn index(&self, idx: & &str) -> &Json {
-        self.find(*idx).unwrap()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 impl<'a> ops::Index<&'a str>  for Json {
     type Output = Json;
 
@@ -1140,18 +1131,6 @@ impl<'a> ops::Index<&'a str>  for Json {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl ops::Index<uint, Json> for Json {
-    fn index<'a>(&'a self, idx: &uint) -> &'a Json {
-        match self {
-            &Json::Array(ref v) => v.index(idx),
-            _ => panic!("can only index Json with uint if it is an array")
-        }
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 impl ops::Index<uint> for Json {
     type Output = Json;
 
