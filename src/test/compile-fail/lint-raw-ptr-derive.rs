@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![deny(raw_pointer_deriving)]
+#![deny(raw_pointer_derive)]
 
 #[derive(Clone)]
 struct Foo {
