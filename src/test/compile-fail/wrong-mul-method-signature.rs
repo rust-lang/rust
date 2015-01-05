@@ -13,7 +13,7 @@
 // (In this case the mul method should take &f64 and not f64)
 // See: #11450
 
-#![feature(associated_types, default_type_params)]
+#![feature(default_type_params)]
 
 use std::ops::Mul;
 

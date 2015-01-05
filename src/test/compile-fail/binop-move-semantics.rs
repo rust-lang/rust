@@ -10,7 +10,7 @@
 
 // Test that move restrictions are enforced on overloaded binary operations
 
-#![feature(associated_types, default_type_params)]
+#![feature(default_type_params)]
 
 use std::ops::Add;
 

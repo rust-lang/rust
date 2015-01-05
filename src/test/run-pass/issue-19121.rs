@@ -11,8 +11,6 @@
 // Test that a partially specified trait object with unspecified associated
 // type does not ICE.
 
-#![feature(associated_types)]
-
 trait Foo {
     type A;
 }

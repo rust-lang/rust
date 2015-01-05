@@ -10,8 +10,6 @@
 
 // Check testing of equality constraints in a higher-ranked context.
 
-#![feature(associated_types)]
-
 pub trait TheTrait<T> {
     type A;
 

@@ -11,8 +11,6 @@
 // Test using overloaded indexing when the "map" is stored in a
 // field. This caused problems at some point.
 
-#![feature(associated_types)]
-
 use std::ops::Index;
 
 struct Foo {
@@ -55,4 +53,3 @@ fn main() {
     } };
     assert_eq!(f.foo[1].get(), 2);
 }
-

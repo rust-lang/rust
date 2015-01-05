@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 struct StateMachineIter<'a> {
     statefn: &'a StateMachineFunc<'a>
 }
@@ -61,4 +59,3 @@ fn main() {
     println!("{}",it.next());
     println!("{}",it.next());
 }
-

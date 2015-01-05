@@ -10,8 +10,6 @@
 
 // Check that an associated type cannot be bound in an expression path.
 
-#![feature(associated_types)]
-
 trait Foo {
     type A;
     fn bar() -> int;
