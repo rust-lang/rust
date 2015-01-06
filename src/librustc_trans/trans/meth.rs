@@ -477,13 +477,19 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
+
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let llcallee_ty = match callee_ty.sty {
         ty::ty_bare_fn(_, ref f) if f.abi == Rust || f.abi == RustCall => {
+            let fake_sig =
+                ty::Binder(ty::FnSig {
+                    inputs: f.sig.0.inputs.slice_from(1).to_vec(),
+                    output: f.sig.0.output,
+                    variadic: f.sig.0.variadic,
+                });
             type_of_rust_fn(ccx,
                             Some(Type::i8p(ccx)),
-                            f.sig.0.inputs.slice_from(1),
-                            f.sig.0.output,
+                            &fake_sig,
                             f.abi)
         }
         _ => {
@@ -557,7 +563,8 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     // Upcast to the trait in question and extract out the substitutions.
     let upcast_trait_ref = traits::upcast(ccx.tcx(), object_trait_ref.clone(), trait_id).unwrap();
-    let object_substs = upcast_trait_ref.substs().clone().erase_regions();
+    let upcast_trait_ref = ty::erase_late_bound_regions(tcx, &upcast_trait_ref);
+    let object_substs = upcast_trait_ref.substs.clone().erase_regions();
     debug!("trans_object_shim: object_substs={}", object_substs.repr(tcx));
 
     // Lookup the type of this method as deeclared in the trait and apply substitutions.
@@ -579,6 +586,8 @@ pub fn trans_object_shim<'a, 'tcx>(
     let llfn =
         decl_internal_rust_fn(ccx, method_bare_fn_ty, function_name.as_slice());
 
+    let sig = ty::erase_late_bound_regions(ccx.tcx(), &fty.sig);
+
     //
     let block_arena = TypedArena::new();
     let empty_substs = Substs::trans_empty();
@@ -586,11 +595,11 @@ pub fn trans_object_shim<'a, 'tcx>(
                           llfn,
                           ast::DUMMY_NODE_ID,
                           false,
-                          fty.sig.0.output,
+                          sig.output,
                           &empty_substs,
                           None,
                           &block_arena);
-    let mut bcx = init_function(&fcx, false, fty.sig.0.output);
+    let mut bcx = init_function(&fcx, false, sig.output);
 
     // the first argument (`self`) will be a trait object
     let llobject = get_param(fcx.llfn, fcx.arg_pos(0) as u32);
@@ -603,18 +612,18 @@ pub fn trans_object_shim<'a, 'tcx>(
         match fty.abi {
             RustCall => {
                 // unpack the tuple to extract the input type arguments:
-                match fty.sig.0.inputs[1].sty {
+                match sig.inputs[1].sty {
                     ty::ty_tup(ref tys) => tys.as_slice(),
                     _ => {
                         bcx.sess().bug(
                             format!("rust-call expects a tuple not {}",
-                                    fty.sig.0.inputs[1].repr(tcx)).as_slice());
+                                    sig.inputs[1].repr(tcx)).as_slice());
                     }
                 }
             }
             _ => {
                 // skip the self parameter:
-                fty.sig.0.inputs.slice_from(1)
+                sig.inputs.slice_from(1)
             }
         };
 
@@ -631,9 +640,12 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     assert!(!fcx.needs_ret_allocas);
 
+    let sig =
+        ty::erase_late_bound_regions(bcx.tcx(), &fty.sig);
+
     let dest =
         fcx.llretslotptr.get().map(
-            |_| expr::SaveIn(fcx.get_ret_slot(bcx, fty.sig.0.output, "ret_slot")));
+            |_| expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot")));
 
     let method_offset_in_vtable =
         traits::get_vtable_index_of_object_method(bcx.tcx(),
@@ -653,7 +665,7 @@ pub fn trans_object_shim<'a, 'tcx>(
                            ArgVals(llargs.as_slice()),
                            dest).bcx;
 
-    finish_fn(&fcx, bcx, fty.sig.0.output);
+    finish_fn(&fcx, bcx, sig.output);
 
     llfn
 }

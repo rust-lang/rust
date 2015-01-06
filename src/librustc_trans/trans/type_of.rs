@@ -17,7 +17,7 @@ use trans::adt;
 use trans::common::*;
 use trans::foreign;
 use trans::machine;
-use middle::ty::{self, Ty};
+use middle::ty::{self, RegionEscape, Ty};
 use util::ppaux;
 use util::ppaux::Repr;
 
@@ -99,18 +99,21 @@ pub fn untuple_arguments_if_necessary<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  llenvironment_type: Option<Type>,
-                                 inputs: &[Ty<'tcx>],
-                                 output: ty::FnOutput<'tcx>,
+                                 sig: &ty::Binder<ty::FnSig<'tcx>>,
                                  abi: abi::Abi)
-                                 -> Type {
+                                 -> Type
+{
+    let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+    assert!(!sig.variadic); // rust fns are never variadic
+
     let mut atys: Vec<Type> = Vec::new();
 
     // First, munge the inputs, if this has the `rust-call` ABI.
-    let inputs = untuple_arguments_if_necessary(cx, inputs, abi);
+    let inputs = untuple_arguments_if_necessary(cx, sig.inputs.as_slice(), abi);
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)
-    let lloutputtype = match output {
+    let lloutputtype = match sig.output {
         ty::FnConverging(output) => {
             let use_out_pointer = return_uses_outptr(cx, output);
             let lloutputtype = arg_type_of(cx, output);
@@ -147,11 +150,7 @@ pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) 
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
             if f.abi == abi::Rust || f.abi == abi::RustCall {
-                type_of_rust_fn(cx,
-                                None,
-                                f.sig.0.inputs.as_slice(),
-                                f.sig.0.output,
-                                f.abi)
+                type_of_rust_fn(cx, None, &f.sig, f.abi)
             } else {
                 foreign::lltype_for_foreign_fn(cx, fty)
             }
@@ -279,12 +278,14 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
 
     debug!("type_of {} {}", t.repr(cx.tcx()), t.sty);
 
+    assert!(!t.has_escaping_regions());
+
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
     // Rust types are defined as the same LLVM types.  If we don't do
     // this then, e.g. `Option<{myfield: bool}>` would be a different
     // type than `Option<myrec>`.
-    let t_norm = ty::normalize_ty(cx.tcx(), t);
+    let t_norm = normalize_ty(cx.tcx(), t);
 
     if t != t_norm {
         let llty = type_of(cx, t_norm);

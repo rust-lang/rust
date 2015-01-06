@@ -442,7 +442,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   bcx.fcx.param_substs,
                   id,
                   &[],
-                  ty::ty_fn_ret(fty),
+                  ty::erase_late_bound_regions(ccx.tcx(), &ty::ty_fn_ret(fty)),
                   ty::ty_fn_abi(fty),
                   ClosureEnv::new(freevars[],
                                   BoxedClosure(cdata_ty, store)));
@@ -466,7 +466,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
 
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
-    let function_type = ty::normalize_ty(ccx.tcx(), function_type);
+    let function_type = normalize_ty(ccx.tcx(), function_type);
     let params = match function_type.sty {
         ty::ty_unboxed_closure(_, _, ref substs) => substs.types.clone(),
         _ => unreachable!()
@@ -533,6 +533,8 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
         ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
     let freevar_mode = bcx.tcx().capture_mode(id);
 
+    let sig = ty::erase_late_bound_regions(bcx.tcx(), &function_type.sig);
+
     trans_closure(bcx.ccx(),
                   decl,
                   body,
@@ -540,7 +542,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   bcx.fcx.param_substs,
                   id,
                   &[],
-                  function_type.sig.0.output,
+                  sig.output,
                   function_type.abi,
                   ClosureEnv::new(freevars[],
                                   UnboxedClosure(freevar_mode)));
