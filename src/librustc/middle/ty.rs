@@ -1866,6 +1866,10 @@ pub struct ProjectionPredicate<'tcx> {
 pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
+    pub fn item_name(&self) -> ast::Name {
+        self.0.projection_ty.item_name // safe to skip the binder to access a name
+    }
+
     pub fn sort_key(&self) -> (ast::DefId, ast::Name) {
         self.0.projection_ty.sort_key()
     }
