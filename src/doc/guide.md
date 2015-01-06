@@ -355,7 +355,7 @@ Hello, world!
 Bam! We build our project with `cargo build`, and run it with
 `./target/hello_world`. This hasn't bought us a whole lot over our simple use
 of `rustc`, but think about the future: when our project has more than one
-file, we would need to call `rustc` twice, and pass it a bunch of options to
+file, we would need to call `rustc` more than once, and pass it a bunch of options to
 tell it to build everything together. With Cargo, as our project grows, we can
 just `cargo build` and it'll work the right way.
 
@@ -977,7 +977,7 @@ fn main() {
 ```
 
 Even though Rust functions can only return one value, a tuple _is_ one value,
-that happens to be made up of two. You can also see in this example how you
+that happens to be made up of more than one value. You can also see in this example how you
 can destructure a pattern returned by a function, as well.
 
 Tuples are a very simple data structure, and so are not often what you want.
