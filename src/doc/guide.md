@@ -90,7 +90,7 @@ $ rustc --version
 You should see some output that looks something like this:
 
 ```bash
-rustc 0.12.0-nightly (b7aa03a3c 2014-09-28 11:38:01 +0000)
+rustc 1.0.0-nightly (f11f3e7ba 2015-01-04 20:02:14 +0000)
 ```
 
 If you did, Rust has been installed successfully! Congrats!
