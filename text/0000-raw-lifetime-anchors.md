@@ -28,7 +28,7 @@ std::slice::from_raw_buf(ptr, len, std::mem::STATIC)
 
 # Motivation
 
-The current library convention on functions constructing lifetime-bound
+The current library convention on functions constructing borrowed
 values from raw pointers has the pointer passed by reference, which
 reference's lifetime is carried over to the return value.
 Unfortunately, the lifetime of a raw pointer is often not indicative
@@ -105,8 +105,8 @@ for each use.
 While we are at it, the first parameter of `std::mem::copy_mut_lifetime`
 could be made a non-mutable reference. There is no reason for the lifetime
 anchor to be mutable: the pointer's mutability is usually the relevant
-question, and it's an unsafe function to begin with. This wart makes
-code tedious, mut-happy, or transmute-happy in cases when a container
+question, and it's an unsafe function to begin with. This wart may
+breed tedious, mut-happy, or transmute-happy code, when e.g. a container
 providing the lifetime for a mutable view into its contents is not itself
 necessarily mutable.
 
