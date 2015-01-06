@@ -507,6 +507,17 @@ pub fn parse(sess: &ParseSess,
 
 pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
     match name {
+        "tt" => {
+            p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
+            let res = token::NtTT(P(p.parse_token_tree()));
+            p.quote_depth -= 1u;
+            return res;
+        }
+        _ => {}
+    }
+    // check at the beginning and the parser checks after each bump
+    p.check_unknown_macro_variable();
+    match name {
       "item" => match p.parse_item(Vec::new()) {
         Some(i) => token::NtItem(i),
         None => p.fatal("expected an item keyword")
@@ -529,12 +540,6 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         token::NtPath(box p.parse_path(LifetimeAndTypesWithoutColons))
       }
       "meta" => token::NtMeta(p.parse_meta_item()),
-      "tt" => {
-        p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
-        let res = token::NtTT(P(p.parse_token_tree()));
-        p.quote_depth -= 1u;
-        res
-      }
       _ => {
           p.fatal(format!("unsupported builtin nonterminal parser: {}", name).index(&FullRange))
       }

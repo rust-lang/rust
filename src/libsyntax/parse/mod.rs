@@ -296,7 +296,9 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<ast::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, None, tts);
-    Parser::new(sess, cfg, box trdr)
+    let mut p = Parser::new(sess, cfg, box trdr);
+    p.check_unknown_macro_variable();
+    p
 }
 
 // FIXME (Issue #16472): The `with_hygiene` mod should go away after

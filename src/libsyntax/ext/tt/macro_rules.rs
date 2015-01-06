@@ -16,7 +16,7 @@ use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_or_else};
-use parse::lexer::new_tt_reader;
+use parse::lexer::{new_tt_reader, new_tt_reader_with_doc_flag};
 use parse::parser::Parser;
 use parse::attr::ParserAttr;
 use parse::token::{special_idents, gensym_ident};
@@ -158,13 +158,13 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 _ => cx.span_fatal(sp, "malformed macro lhs")
             };
             // `None` is because we're not interpolating
-            let mut arg_rdr = new_tt_reader(&cx.parse_sess().span_diagnostic,
-                                            None,
-                                            None,
-                                            arg.iter()
-                                               .map(|x| (*x).clone())
-                                               .collect());
-            arg_rdr.desugar_doc_comments = true;
+            let arg_rdr = new_tt_reader_with_doc_flag(&cx.parse_sess().span_diagnostic,
+                                                      None,
+                                                      None,
+                                                      arg.iter()
+                                                         .map(|x| (*x).clone())
+                                                         .collect(),
+                                                      true);
             match parse(cx.parse_sess(), cx.cfg(), arg_rdr, lhs_tt) {
               Success(named_matches) => {
                 let rhs = match *rhses[i] {
@@ -183,7 +183,8 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                                            Some(named_matches),
                                            imported_from,
                                            rhs);
-                let p = Parser::new(cx.parse_sess(), cx.cfg(), box trncbr);
+                let mut p = Parser::new(cx.parse_sess(), cx.cfg(), box trncbr);
+                p.check_unknown_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return box ParserAnyMacro {
