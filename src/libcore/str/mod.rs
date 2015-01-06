@@ -144,6 +144,7 @@ Section: Creating a string
 
 /// Errors which can occur when attempting to interpret a byte slice as a `str`.
 #[derive(Copy, Eq, PartialEq, Clone)]
+#[unstable = "error enumeration recently added and definitions may be refined"]
 pub enum Utf8Error {
     /// An invalid byte was detected at the byte offset given.
     ///
@@ -167,6 +168,7 @@ pub enum Utf8Error {
 ///
 /// Returns `Err` if the slice is not utf-8 with a description as to why the
 /// provided slice is not utf-8.
+#[stable]
 pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     try!(run_utf8_validation_iterator(&mut v.iter()));
     Ok(unsafe { from_utf8_unchecked(v) })
@@ -249,6 +251,7 @@ Section: Iterators
 ///
 /// Created with the method `.chars()`.
 #[derive(Clone, Copy)]
+#[stable]
 pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
 }
@@ -858,6 +861,7 @@ impl Searcher {
 /// An iterator over the start and end indices of the matches of a
 /// substring within a larger string
 #[derive(Clone)]
+#[unstable = "type may be removed"]
 pub struct MatchIndices<'a> {
     // constants
     haystack: &'a str,
@@ -868,7 +872,7 @@ pub struct MatchIndices<'a> {
 /// An iterator over the substrings of a string separated by a given
 /// search string
 #[derive(Clone)]
-#[unstable = "Type might get removed"]
+#[unstable = "type may be removed"]
 pub struct SplitStr<'a> {
     it: MatchIndices<'a>,
     last_end: uint,
@@ -1068,8 +1072,7 @@ const TAG_CONT_U8: u8 = 0b1000_0000u8;
 Section: Trait implementations
 */
 
-#[allow(missing_docs)]
-pub mod traits {
+mod traits {
     use cmp::{Ordering, Ord, PartialEq, PartialOrd, Eq};
     use cmp::Ordering::{Less, Equal, Greater};
     use iter::IteratorExt;
