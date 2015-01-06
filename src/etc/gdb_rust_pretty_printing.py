@@ -51,7 +51,7 @@ def rust_pretty_printer_lookup_function(val):
     enum_member_count = len(enum_members)
 
     if enum_member_count == 0:
-      return RustStructPrinter(val, false)
+      return RustStructPrinter(val, False)
 
     if enum_member_count == 1:
       first_variant_name = enum_members[0].name
@@ -60,21 +60,27 @@ def rust_pretty_printer_lookup_function(val):
         return rust_pretty_printer_lookup_function(val[enum_members[0]])
       else:
         assert first_variant_name.startswith("RUST$ENCODED$ENUM$")
-        # This is a space-optimized enum
+        # This is a space-optimized enum.
+        # This means this enum has only two states, and Rust uses one of the
+        # fields somewhere in the struct to determine which of the two states
+        # it's in. The location of the field is encoded in the name as something
+        # like RUST$ENCODED$ENUM$(num$)*name_of_zero_state
         last_separator_index = first_variant_name.rfind("$")
-        second_last_separator_index = first_variant_name.rfind("$", 0, last_separator_index)
-        disr_field_index = first_variant_name[second_last_separator_index + 1 :
-                                              last_separator_index]
-        disr_field_index = int(disr_field_index)
+        start_index = len("RUST$ENCODED$ENUM$")
+        disr_field_indices = first_variant_name[start_index :
+                                              last_separator_index].split("$")
+        disr_field_indices = [int(index) for index in disr_field_indices]
 
         sole_variant_val = val[enum_members[0]]
-        disr_field = get_field_at_index(sole_variant_val, disr_field_index)
-        discriminant = sole_variant_val[disr_field]
+        discriminant = sole_variant_val
+        for disr_field_index in disr_field_indices:
+          disr_field = get_field_at_index(discriminant, disr_field_index)
+          discriminant = discriminant[disr_field]
 
         # If the discriminant field is a fat pointer we have to consider the
         # first word as the true discriminant
         if discriminant.type.code == gdb.TYPE_CODE_STRUCT:
-            discriminant = discriminant[get_field_at_index(discriminant, 0)]
+          discriminant = discriminant[get_field_at_index(discriminant, 0)]
 
         if discriminant == 0:
           null_variant_name = first_variant_name[last_separator_index + 1:]
@@ -234,4 +240,5 @@ def get_field_at_index(val, index):
   for field in val.type.fields():
     if i == index:
       return field
+    i += 1
   return None
