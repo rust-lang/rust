@@ -1,6 +1,6 @@
 - Start Date: 2014-12-28
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- RFC PR #: https://github.com/rust-lang/rfcs/pull/544
+- Rust Issue #: https://github.com/rust-lang/rust/issues/20639
 
 # Summary
 
@@ -110,7 +110,7 @@ When originally proposed, `mem`/`m` are interpreted as "memory numbers" (See @1f
 However this interpretation seems vague and not quite convincing, especially when all other integer types in Rust are named precisely in the "`i`/`u` + `{size}`" pattern, with no "indirection" involved. What is "memory-sized" anyway? But actually, they can be interpreted as **_mem_ory-pointer-sized**, and be a *precise* size specifier just like `ptr`.
 
 - Pros: Types with similar names do not exist in mainstream languages, so people will not make incorrect assumptions.
-- Cons: `mem` -> *memory-pointer-sized* is definitely not as obvious as `ptr` -> *pointer-sized*. The unfamiliarity may turn newcomers away from Rust. 
+- Cons: `mem` -> *memory-pointer-sized* is definitely not as obvious as `ptr` -> *pointer-sized*. The unfamiliarity may turn newcomers away from Rust.
 
 Also, for some, `imem/umem` just don't feel like integers no matter how they are interpreted, especially under certain circumstances. In the following snippet:
 
@@ -145,7 +145,7 @@ They share the same problems with `intp/uintp` and `intm/uintm`, while *in addit
 
 There is a problem with `isize`: it most likely will remind people of C/C++ `ssize_t`. But `ssize_t` is in the POSIX standard, not the C/C++ ones, and is *not for index offsets* according to POSIX. The correct type for index offsets in C99 is `ptrdiff_t`, so for a type representing offsets, `idiff` may be a better name.
 
-However, `isize/usize` have the advantage of being symmetrical, and ultimately, even with a name like `idiff`, some semantic mismatch between `idiff` and `ptrdiff_t` would still exist. Also, for fitting a casted pointer value, a type named `isize` is better than one named `idiff`. (Though both would lose to `iptr`.) 
+However, `isize/usize` have the advantage of being symmetrical, and ultimately, even with a name like `idiff`, some semantic mismatch between `idiff` and `ptrdiff_t` would still exist. Also, for fitting a casted pointer value, a type named `isize` is better than one named `idiff`. (Though both would lose to `iptr`.)
 
 ## G. `iptr/uptr` *and* `idiff/usize`:
 
@@ -161,7 +161,7 @@ This will bring the Rust type names quite in line with the standard C99 type nam
 
 However, this setup brings two sets of types that share the same underlying representations. C distinguishes between `size_t`/`uintptr_t`/`intptr_t`/`ptrdiff_t` not only because they are used under different circumstances, but also because the four may have representations that are potentially different from *each other* on some architectures. Rust assumes a flat memory address space and its `int/uint` types don't exactly share semantics with any of the C types if the C standard is strictly followed.
 
-Thus, even introducing four names would not fix the "failing to express the precise semantics of the types" problem. Rust just doesn't need to, and *shouldn't* distinguish between `iptr/idiff` and `uptr/usize`, doing so would bring much confusion for very questionable gain. 
+Thus, even introducing four names would not fix the "failing to express the precise semantics of the types" problem. Rust just doesn't need to, and *shouldn't* distinguish between `iptr/idiff` and `uptr/usize`, doing so would bring much confusion for very questionable gain.
 
 ## H. `isiz/usiz`:
 
@@ -205,7 +205,7 @@ fn slice_or_fail<'b>(&'b self, from: &upsz, to: &upsz) -> &'b [T]
 
 ## L. Others:
 
-There are other alternatives not covered in this RFC. Please refer to this RFC's comments and [RFC PR 464](https://github.com/rust-lang/rfcs/pull/464) for more. 
+There are other alternatives not covered in this RFC. Please refer to this RFC's comments and [RFC PR 464](https://github.com/rust-lang/rfcs/pull/464) for more.
 
 # Unresolved questions
 
