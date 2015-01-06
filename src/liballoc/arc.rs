@@ -42,7 +42,7 @@
 //!
 //!     Thread::spawn(move || {
 //!         println!("{}", five);
-//!     }).detach();
+//!     });
 //! }
 //! ```
 //!
@@ -63,7 +63,7 @@
 //!         *number += 1;
 //!
 //!         println!("{}", *number); // prints 6
-//!     }).detach();
+//!     });
 //! }
 //! ```
 
@@ -106,7 +106,7 @@ use heap::deallocate;
 ///             let local_numbers = child_numbers.as_slice();
 ///
 ///             // Work with the local numbers
-///         }).detach();
+///         });
 ///     }
 /// }
 /// ```

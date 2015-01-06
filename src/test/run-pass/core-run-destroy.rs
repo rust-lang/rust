@@ -90,7 +90,7 @@ pub fn test_destroy_actually_kills(force: bool) {
             _ = rx2.recv() => unsafe { libc::exit(1) },
             _ = rx1.recv() => {}
         }
-    }).detach();
+    });
     match p.wait().unwrap() {
         ExitStatus(..) => panic!("expected a signal"),
         ExitSignal(..) => tx.send(()).unwrap(),

@@ -14,7 +14,7 @@ use std::thread::Thread;
 pub fn main() {
     let (tx, rx) = channel::<&'static str>();
 
-    let t = Thread::spawn(move|| {
+    let t = Thread::scoped(move|| {
         assert_eq!(rx.recv().unwrap(), "hello, world");
     });
 

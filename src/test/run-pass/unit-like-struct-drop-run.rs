@@ -22,7 +22,7 @@ impl Drop for Foo {
 }
 
 pub fn main() {
-    let x = Thread::spawn(move|| {
+    let x = Thread::scoped(move|| {
         let _b = Foo;
     }).join();
 

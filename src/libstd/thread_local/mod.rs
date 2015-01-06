@@ -87,7 +87,7 @@ pub mod __impl {
 ///         assert_eq!(*f.borrow(), 1);
 ///         *f.borrow_mut() = 3;
 ///     });
-/// }).detach();
+/// });
 ///
 /// // we retain our original value of 2 despite the child thread
 /// FOO.with(|f| {
@@ -581,7 +581,7 @@ mod tests {
         }
         thread_local!(static FOO: Foo = foo());
 
-        Thread::spawn(|| {
+        Thread::scoped(|| {
             assert!(FOO.state() == State::Uninitialized);
             FOO.with(|_| {
                 assert!(FOO.state() == State::Valid);
@@ -645,7 +645,7 @@ mod tests {
             }
         }
 
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             drop(S1);
         }).join().ok().unwrap();
     }
@@ -663,7 +663,7 @@ mod tests {
             }
         }
 
-        Thread::spawn(move|| unsafe {
+        Thread::scoped(move|| unsafe {
             K1.with(|s| *s.get() = Some(S1));
         }).join().ok().unwrap();
     }

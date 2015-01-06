@@ -173,7 +173,7 @@ fn main() {
 
         Thread::spawn(move|| {
             make_sequence_processor(sz, &from_parent, &to_parent_);
-        }).detach();
+        });
 
         to_child
     }).collect::<Vec<Sender<Vec<u8> >> >();

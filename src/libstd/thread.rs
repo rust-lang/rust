@@ -332,9 +332,6 @@ pub struct Thread {
     inner: Arc<Inner>,
 }
 
-#[stable]
-unsafe impl Sync for Thread {}
-
 impl Thread {
     // Used only internally to construct a thread object without spawning
     fn new(name: Option<String>) -> Thread {
@@ -520,14 +517,14 @@ mod test {
 
     #[test]
     fn test_unnamed_thread() {
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             assert!(Thread::current().name().is_none());
         }).join().map_err(|_| ()).unwrap();
     }
 
     #[test]
     fn test_named_thread() {
-        Builder::new().name("ada lovelace".to_string()).spawn(move|| {
+        Builder::new().name("ada lovelace".to_string()).scoped(move|| {
             assert!(Thread::current().name().unwrap() == "ada lovelace".to_string());
         }).join().map_err(|_| ()).unwrap();
     }
@@ -537,13 +534,13 @@ mod test {
         let (tx, rx) = channel();
         Thread::spawn(move|| {
             tx.send(()).unwrap();
-        }).detach();
+        });
         rx.recv().unwrap();
     }
 
     #[test]
     fn test_join_success() {
-        match Thread::spawn(move|| -> String {
+        match Thread::scoped(move|| -> String {
             "Success!".to_string()
         }).join().as_ref().map(|s| s.as_slice()) {
             result::Result::Ok("Success!") => (),
@@ -553,7 +550,7 @@ mod test {
 
     #[test]
     fn test_join_panic() {
-        match Thread::spawn(move|| {
+        match Thread::scoped(move|| {
             panic!()
         }).join() {
             result::Result::Err(_) => (),
@@ -575,7 +572,7 @@ mod test {
                 } else {
                     f(i - 1, tx);
                 }
-            }).detach();
+            });
 
         }
         f(10, tx);
@@ -589,8 +586,8 @@ mod test {
         Thread::spawn(move|| {
             Thread::spawn(move|| {
                 tx.send(()).unwrap();
-            }).detach();
-        }).detach();
+            });
+        });
 
         rx.recv().unwrap();
     }
@@ -613,7 +610,7 @@ mod test {
     #[test]
     fn test_avoid_copying_the_body_spawn() {
         avoid_copying_the_body(|v| {
-            Thread::spawn(move || v.invoke(())).detach();
+            Thread::spawn(move || v.invoke(()));
         });
     }
 
@@ -622,14 +619,14 @@ mod test {
         avoid_copying_the_body(|f| {
             Thread::spawn(move|| {
                 f.invoke(());
-            }).detach();
+            });
         })
     }
 
     #[test]
     fn test_avoid_copying_the_body_join() {
         avoid_copying_the_body(|f| {
-            let _ = Thread::spawn(move|| {
+            let _ = Thread::scoped(move|| {
                 f.invoke(())
             }).join();
         })
@@ -645,21 +642,21 @@ mod test {
         fn child_no(x: uint) -> Thunk {
             return Thunk::new(move|| {
                 if x < GENERATIONS {
-                    Thread::spawn(move|| child_no(x+1).invoke(())).detach();
+                    Thread::spawn(move|| child_no(x+1).invoke(()));
                 }
             });
         }
-        Thread::spawn(|| child_no(0).invoke(())).detach();
+        Thread::spawn(|| child_no(0).invoke(()));
     }
 
     #[test]
     fn test_simple_newsched_spawn() {
-        Thread::spawn(move || {}).detach();
+        Thread::spawn(move || {});
     }
 
     #[test]
     fn test_try_panic_message_static_str() {
-        match Thread::spawn(move|| {
+        match Thread::scoped(move|| {
             panic!("static string");
         }).join() {
             Err(e) => {
@@ -673,7 +670,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_owned_str() {
-        match Thread::spawn(move|| {
+        match Thread::scoped(move|| {
             panic!("owned string".to_string());
         }).join() {
             Err(e) => {
@@ -687,7 +684,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_any() {
-        match Thread::spawn(move|| {
+        match Thread::scoped(move|| {
             panic!(box 413u16 as Box<Any + Send>);
         }).join() {
             Err(e) => {
@@ -705,7 +702,7 @@ mod test {
     fn test_try_panic_message_unit_struct() {
         struct Juju;
 
-        match Thread::spawn(move|| {
+        match Thread::scoped(move|| {
             panic!(Juju)
         }).join() {
             Err(ref e) if e.is::<Juju>() => {}
@@ -719,7 +716,7 @@ mod test {
         let mut reader = ChanReader::new(rx);
         let stdout = ChanWriter::new(tx);
 
-        let r = Builder::new().stdout(box stdout as Box<Writer + Send>).spawn(move|| {
+        let r = Builder::new().stdout(box stdout as Box<Writer + Send>).scoped(move|| {
             print!("Hello, world!");
         }).join();
         assert!(r.is_ok());

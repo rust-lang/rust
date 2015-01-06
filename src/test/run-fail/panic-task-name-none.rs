@@ -13,7 +13,7 @@
 use std::thread::Thread;
 
 fn main() {
-    let r: Result<int,_> = Thread::spawn(move|| {
+    let r: Result<int,_> = Thread::scoped(move|| {
         panic!("test");
         1i
     }).join();

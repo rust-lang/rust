@@ -120,10 +120,12 @@
 //!     for stream in acceptor.incoming() {
 //!         match stream {
 //!             Err(e) => { /* connection failed */ }
-//!             Ok(stream) => Thread::spawn(move|| {
-//!                 // connection succeeded
-//!                 handle_client(stream)
-//!             }).detach()
+//!             Ok(stream) => {
+//!                 Thread::spawn(move|| {
+//!                     // connection succeeded
+//!                     handle_client(stream)
+//!                 });
+//!             }
 //!         }
 //!     }
 //!

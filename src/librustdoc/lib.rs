@@ -116,7 +116,7 @@ struct Output {
 
 pub fn main() {
     static STACK_SIZE: uint = 32000000; // 32MB
-    let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
+    let res = std::thread::Builder::new().stack_size(STACK_SIZE).scoped(move || {
         main_args(std::os::args().as_slice())
     }).join();
     std::os::set_exit_status(res.map_err(|_| ()).unwrap());
@@ -358,7 +358,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
 
-    let (mut krate, analysis) = std::thread::Thread::spawn(move |:| {
+    let (mut krate, analysis) = std::thread::Thread::scoped(move |:| {
         let cr = cr;
         core::run_core(paths, cfgs, externs, &cr, triple)
     }).join().map_err(|_| "rustc failed").unwrap();

@@ -19,6 +19,6 @@ fn start(tx: &Sender<int>, start: int, number_of_messages: int) {
 pub fn main() {
     println!("Check that we don't deadlock.");
     let (tx, rx) = channel();
-    let _ = Thread::spawn(move|| { start(&tx, 0, 10) }).join();
+    let _ = Thread::scoped(move|| { start(&tx, 0, 10) }).join();
     println!("Joined task");
 }

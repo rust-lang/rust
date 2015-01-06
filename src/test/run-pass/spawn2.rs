@@ -11,7 +11,7 @@
 use std::thread::Thread;
 
 pub fn main() {
-    let t = Thread::spawn(move|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) );
+    let t = Thread::scoped(move|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) );
     t.join().ok().unwrap();
 }
 

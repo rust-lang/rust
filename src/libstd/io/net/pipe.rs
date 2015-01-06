@@ -608,7 +608,7 @@ mod tests {
             let mut a = a;
             let _s = a.accept().unwrap();
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut b = [0];
         let mut s = UnixStream::connect(&addr).unwrap();
@@ -645,7 +645,7 @@ mod tests {
             let mut a = a;
             let _s = a.accept().unwrap();
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = UnixStream::connect(&addr).unwrap();
         let s2 = s.clone();
@@ -672,7 +672,7 @@ mod tests {
             rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         s.set_timeout(Some(20));
@@ -716,7 +716,7 @@ mod tests {
                 }
             }
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         s.set_read_timeout(Some(20));
@@ -739,7 +739,7 @@ mod tests {
             rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         s.set_write_timeout(Some(20));
@@ -766,7 +766,7 @@ mod tests {
             rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         let s2 = s.clone();

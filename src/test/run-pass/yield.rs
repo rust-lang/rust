@@ -11,7 +11,7 @@
 use std::thread::Thread;
 
 pub fn main() {
-    let mut result = Thread::spawn(child);
+    let mut result = Thread::scoped(child);
     println!("1");
     Thread::yield_now();
     println!("2");

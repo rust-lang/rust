@@ -195,7 +195,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
                          from_rendezvous,
                          to_rendezvous,
                          to_rendezvous_log);
-            }).detach();
+            });
             to_creature
         }).collect();
 

@@ -13,7 +13,7 @@
 use std::thread::Builder;
 
 fn main() {
-    let r: Result<int,_> = Builder::new().name("owned name".to_string()).spawn(move|| {
+    let r: Result<int,_> = Builder::new().name("owned name".to_string()).scoped(move|| {
         panic!("test");
         1i
     }).join();

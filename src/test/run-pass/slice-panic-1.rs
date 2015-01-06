@@ -28,6 +28,6 @@ fn foo() {
 }
 
 fn main() {
-    let _ = Thread::spawn(move|| foo()).join();
+    let _ = Thread::scoped(move|| foo()).join();
     unsafe { assert!(DTOR_COUNT == 2); }
 }

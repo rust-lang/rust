@@ -15,6 +15,6 @@ pub fn main() { test00(); }
 fn start() { println!("Started / Finished task."); }
 
 fn test00() {
-    let _ = Thread::spawn(move|| start() ).join();
+    let _ = Thread::scoped(move|| start() ).join();
     println!("Completing.");
 }
