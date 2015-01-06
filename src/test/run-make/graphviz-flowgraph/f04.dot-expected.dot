@@ -1,10 +1,10 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="expr 4i"];
+    N2[label="expr 4is"];
     N3[label="local _x"];
-    N4[label="stmt let _x = 4i;"];
-    N5[label="block { let _x = 4i; }"];
+    N4[label="stmt let _x = 4is;"];
+    N5[label="block { let _x = 4is; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

@@ -17,8 +17,8 @@ trait Foo<T> {
 }
 
 fn f<T:Foo<int>>(t: &T) {
-    let u: <T as Foo<uint>>::Bar = t.get_bar();
-    //~^ ERROR the trait `Foo<uint>` is not implemented for the type `T`
+    let u: <T as Foo<usize>>::Bar = t.get_bar();
+    //~^ ERROR the trait `Foo<usize>` is not implemented for the type `T`
 }
 
 fn main() { }

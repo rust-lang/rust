@@ -13,9 +13,9 @@
 
 mod xx {
     extern {
-        pub fn strlen(str: *const u8) -> uint; //~ ERROR found rust type `uint`
-        pub fn foo(x: int, y: uint); //~ ERROR found rust type `int`
-        //~^ ERROR found rust type `uint`
+        pub fn strlen(str: *const u8) -> usize; //~ ERROR found rust type `usize`
+        pub fn foo(x: isize, y: usize); //~ ERROR found rust type `isize`
+        //~^ ERROR found rust type `usize`
     }
 }
 

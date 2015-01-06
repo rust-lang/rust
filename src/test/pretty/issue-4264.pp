@@ -20,18 +20,18 @@ use std::prelude::v1::*;
 
 // #4264 fixed-length vector types
 
-pub fn foo(_: [int; (3 as uint)]) { }
+pub fn foo(_: [isize; (3 as usize)]) { }
 
 pub fn bar() {
-    const FOO: uint = ((5u as uint) - (4u as uint) as uint);
-    let _: [(); (FOO as uint)] = ([(() as ())] as [(); 1]);
+    const FOO: usize = ((5us as usize) - (4us as usize) as usize);
+    let _: [(); (FOO as usize)] = ([(() as ())] as [(); 1]);
 
-    let _: [(); (1u as uint)] = ([(() as ())] as [(); 1]);
+    let _: [(); (1us as usize)] = ([(() as ())] as [(); 1]);
 
     let _ =
-        (((&((([(1i as int), (2 as int), (3 as int)] as [int; 3])) as
-                [int; 3]) as &[int; 3]) as *const _ as *const [int; 3]) as
-            *const [int; (3u as uint)] as *const [int; 3]);
+        (((&((([(1is as isize), (2 as isize), (3 as isize)] as [isize; 3])) as
+                [isize; 3]) as &[isize; 3]) as *const _ as *const [isize; 3])
+            as *const [isize; (3us as usize)] as *const [isize; 3]);
 
 
 
@@ -81,18 +81,19 @@ pub fn bar() {
                                                                                              core::fmt::Arguments<'_>))
         as collections::string::String);
 }
-pub type Foo = [int; (3u as uint)];
+pub type Foo = [isize; (3us as usize)];
 pub struct Bar {
-    pub x: [int; (3u as uint)],
+    pub x: [isize; (3us as usize)],
 }
-pub struct TupleBar([int; (4u as uint)]);
-pub enum Baz { BazVariant([int; (5u as uint)]), }
+pub struct TupleBar([isize; (4us as usize)]);
+pub enum Baz { BazVariant([isize; (5us as usize)]), }
 pub fn id<T>(x: T) -> T { (x as T) }
 pub fn use_id() {
     let _ =
-        ((id::<[int; (3u as uint)]> as
-             fn([int; 3]) -> [int; 3] {id})(([(1 as int), (2 as int),
-                                              (3 as int)] as [int; 3])) as
-            [int; 3]);
+        ((id::<[isize; (3us as usize)]> as
+             fn([isize; 3]) -> [isize; 3] {id})(([(1 as isize), (2 as isize),
+                                                  (3 as isize)] as
+                                                    [isize; 3])) as
+            [isize; 3]);
 }
 fn main() { }

@@ -11,7 +11,7 @@
 #![deny(warnings)]
 
 extern {
-    pub fn foo(x: (int)); //~ ERROR found rust type `int` in foreign module
+    pub fn foo(x: (isize)); //~ ERROR found rust type `isize` in foreign module
 }
 
 fn main() {

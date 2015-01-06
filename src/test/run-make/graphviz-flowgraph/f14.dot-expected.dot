@@ -1,20 +1,20 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="expr 14i"];
+    N2[label="expr 14is"];
     N3[label="local x"];
-    N4[label="stmt let x = 14i;"];
+    N4[label="stmt let x = 14is;"];
     N5[label="expr x"];
-    N6[label="expr 1i"];
-    N7[label="expr x > 1i"];
+    N6[label="expr 1is"];
+    N7[label="expr x > 1is"];
     N8[label="expr return"];
     N9[label="(dummy_node)"];
     N10[label="stmt return;"];
     N11[label="expr \"unreachable\""];
     N12[label="stmt \"unreachable\";"];
     N13[label="block { return; \"unreachable\"; }"];
-    N14[label="expr if x > 1i { return; \"unreachable\"; }"];
-    N15[label="block { let x = 14i; if x > 1i { return; \"unreachable\"; } }"];
+    N14[label="expr if x > 1is { return; \"unreachable\"; }"];
+    N15[label="block { let x = 14is; if x > 1is { return; \"unreachable\"; } }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;
