@@ -580,44 +580,6 @@ pub trait IteratorExt: Iterator + Sized {
         (left, right)
     }
 
-    /// Loops through `n` iterations, returning the `n`th element of the
-    /// iterator.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter();
-    /// assert!(it.nth(2).unwrap() == &3);
-    /// assert!(it.nth(2) == None);
-    /// ```
-    #[inline]
-    #[stable]
-    fn nth(&mut self, mut n: uint) -> Option< <Self as Iterator>::Item> {
-        for x in *self {
-            if n == 0 { return Some(x) }
-            n -= 1;
-        }
-        None
-    }
-
-    /// Loops through the entire iterator, returning the last element of the
-    /// iterator.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().last().unwrap() == &5);
-    /// ```
-    #[inline]
-    #[unstable = "just changed to take self by value"]
-    fn last(mut self) -> Option< <Self as Iterator>::Item> {
-        let mut last = None;
-        for x in self { last = Some(x); }
-        last
-    }
-
     /// Performs a fold operation over the entire iterator, returning the
     /// eventual state at the end of the iteration.
     ///
@@ -637,21 +599,6 @@ pub trait IteratorExt: Iterator + Sized {
             accum = f(accum, x);
         }
         accum
-    }
-
-    /// Counts the number of elements in this iterator.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter();
-    /// assert!(it.count() == 5);
-    /// ```
-    #[inline]
-    #[unstable = "just changed to take self by value"]
-    fn count(self) -> uint {
-        self.fold(0, |cnt, _x| cnt + 1)
     }
 
     /// Tests whether the predicate holds true for all elements in the iterator.
