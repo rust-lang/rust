@@ -11,8 +11,6 @@
 // General test that function items in static blocks
 // can be generated with a macro.
 
-#![feature(macro_rules)]
-
 struct MyType {
     desc: &'static str,
     data: uint,

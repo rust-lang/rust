@@ -37,11 +37,8 @@ use uint;
 macro_rules! delegate_iter {
     (exact $te:ty in $ti:ty) => {
         delegate_iter!{$te in $ti}
+        #[stable]
         impl<'a> ExactSizeIterator for $ti {
-            #[inline]
-            fn rposition<P>(&mut self, predicate: P) -> Option<uint> where P: FnMut($te) -> bool{
-                self.0.rposition(predicate)
-            }
             #[inline]
             fn len(&self) -> uint {
                 self.0.len()
@@ -49,6 +46,7 @@ macro_rules! delegate_iter {
         }
     };
     ($te:ty in $ti:ty) => {
+        #[stable]
         impl<'a> Iterator for $ti {
             type Item = $te;
 
@@ -61,6 +59,7 @@ macro_rules! delegate_iter {
                 self.0.size_hint()
             }
         }
+        #[stable]
         impl<'a> DoubleEndedIterator for $ti {
             #[inline]
             fn next_back(&mut self) -> Option<$te> {
@@ -69,6 +68,7 @@ macro_rules! delegate_iter {
         }
     };
     (pattern $te:ty in $ti:ty) => {
+        #[stable]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
 
@@ -81,6 +81,7 @@ macro_rules! delegate_iter {
                 self.0.size_hint()
             }
         }
+        #[stable]
         impl<'a, P: CharEq> DoubleEndedIterator for $ti {
             #[inline]
             fn next_back(&mut self) -> Option<$te> {
@@ -89,6 +90,7 @@ macro_rules! delegate_iter {
         }
     };
     (pattern forward $te:ty in $ti:ty) => {
+        #[stable]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
 
@@ -142,6 +144,7 @@ Section: Creating a string
 
 /// Errors which can occur when attempting to interpret a byte slice as a `str`.
 #[derive(Copy, Eq, PartialEq, Clone)]
+#[unstable = "error enumeration recently added and definitions may be refined"]
 pub enum Utf8Error {
     /// An invalid byte was detected at the byte offset given.
     ///
@@ -165,6 +168,7 @@ pub enum Utf8Error {
 ///
 /// Returns `Err` if the slice is not utf-8 with a description as to why the
 /// provided slice is not utf-8.
+#[stable]
 pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     try!(run_utf8_validation_iterator(&mut v.iter()));
     Ok(unsafe { from_utf8_unchecked(v) })
@@ -190,7 +194,7 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
 /// # Panics
 ///
 /// This function will panic if the string pointed to by `s` is not valid UTF-8.
-#[unstable = "may change location based on the outcome of the c_str module"]
+#[deprecated = "use std::ffi::c_str_to_bytes + str::from_utf8"]
 pub unsafe fn from_c_str(s: *const i8) -> &'static str {
     let s = s as *const u8;
     let mut len = 0u;
@@ -230,7 +234,7 @@ impl<F> CharEq for F where F: FnMut(char) -> bool {
 impl<'a> CharEq for &'a [char] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&mut m| m.matches(c))
+        self.iter().any(|&m| { let mut m = m; m.matches(c) })
     }
 
     #[inline]
@@ -247,6 +251,7 @@ Section: Iterators
 ///
 /// Created with the method `.chars()`.
 #[derive(Clone, Copy)]
+#[stable]
 pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
 }
@@ -275,6 +280,7 @@ fn unwrap_or_0(opt: Option<&u8>) -> u8 {
     }
 }
 
+#[stable]
 impl<'a> Iterator for Chars<'a> {
     type Item = char;
 
@@ -320,6 +326,7 @@ impl<'a> Iterator for Chars<'a> {
     }
 }
 
+#[stable]
 impl<'a> DoubleEndedIterator for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
@@ -356,11 +363,13 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
 /// External iterator for a string's characters and their byte offsets.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
+#[stable]
 pub struct CharIndices<'a> {
     front_offset: uint,
     iter: Chars<'a>,
 }
 
+#[stable]
 impl<'a> Iterator for CharIndices<'a> {
     type Item = (uint, char);
 
@@ -384,6 +393,7 @@ impl<'a> Iterator for CharIndices<'a> {
     }
 }
 
+#[stable]
 impl<'a> DoubleEndedIterator for CharIndices<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
@@ -465,6 +475,7 @@ impl<'a, Sep> CharSplits<'a, Sep> {
     }
 }
 
+#[stable]
 impl<'a, Sep: CharEq> Iterator for CharSplits<'a, Sep> {
     type Item = &'a str;
 
@@ -499,6 +510,7 @@ impl<'a, Sep: CharEq> Iterator for CharSplits<'a, Sep> {
     }
 }
 
+#[stable]
 impl<'a, Sep: CharEq> DoubleEndedIterator for CharSplits<'a, Sep> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
@@ -540,6 +552,7 @@ impl<'a, Sep: CharEq> DoubleEndedIterator for CharSplits<'a, Sep> {
     }
 }
 
+#[stable]
 impl<'a, Sep: CharEq> Iterator for CharSplitsN<'a, Sep> {
     type Item = &'a str;
 
@@ -848,6 +861,7 @@ impl Searcher {
 /// An iterator over the start and end indices of the matches of a
 /// substring within a larger string
 #[derive(Clone)]
+#[unstable = "type may be removed"]
 pub struct MatchIndices<'a> {
     // constants
     haystack: &'a str,
@@ -858,13 +872,14 @@ pub struct MatchIndices<'a> {
 /// An iterator over the substrings of a string separated by a given
 /// search string
 #[derive(Clone)]
-#[unstable = "Type might get removed"]
+#[unstable = "type may be removed"]
 pub struct SplitStr<'a> {
     it: MatchIndices<'a>,
     last_end: uint,
     finished: bool
 }
 
+#[stable]
 impl<'a> Iterator for MatchIndices<'a> {
     type Item = (uint, uint);
 
@@ -881,6 +896,7 @@ impl<'a> Iterator for MatchIndices<'a> {
     }
 }
 
+#[stable]
 impl<'a> Iterator for SplitStr<'a> {
     type Item = &'a str;
 
@@ -948,17 +964,18 @@ fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
         let old = *iter;
 
         // restore the iterator we had at the start of this codepoint.
-        macro_rules! err (() => { {
+        macro_rules! err { () => {{
             *iter = old;
             return Err(Utf8Error::InvalidByte(whole.len() - iter.as_slice().len()))
-        } });
-        macro_rules! next ( () => {
+        }}}
+
+        macro_rules! next { () => {
             match iter.next() {
                 Some(a) => *a,
                 // we needed data, but there was none: error!
                 None => return Err(Utf8Error::TooShort),
             }
-        });
+        }}
 
         let first = match iter.next() {
             Some(&b) => b,
@@ -1056,8 +1073,7 @@ const TAG_CONT_U8: u8 = 0b1000_0000u8;
 Section: Trait implementations
 */
 
-#[allow(missing_docs)]
-pub mod traits {
+mod traits {
     use cmp::{Ordering, Ord, PartialEq, PartialOrd, Eq};
     use cmp::Ordering::{Less, Equal, Greater};
     use iter::IteratorExt;
@@ -1130,7 +1146,7 @@ pub mod traits {
 #[unstable = "Instead of taking this bound generically, this trait will be \
               replaced with one of slicing syntax, deref coercions, or \
               a more generic conversion trait"]
-pub trait Str for Sized? {
+pub trait Str {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a str;
 }
@@ -1140,7 +1156,7 @@ impl Str for str {
     fn as_slice<'a>(&'a self) -> &'a str { self }
 }
 
-impl<'a, Sized? S> Str for &'a S where S: Str {
+impl<'a, S: ?Sized> Str for &'a S where S: Str {
     #[inline]
     fn as_slice(&self) -> &str { Str::as_slice(*self) }
 }
@@ -1171,7 +1187,7 @@ delegate_iter!{pattern forward &'a str in RSplitN<'a, P>}
 
 /// Methods for string slices
 #[allow(missing_docs)]
-pub trait StrExt for Sized? {
+pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.
 
@@ -1586,6 +1602,7 @@ impl<'a> Default for &'a str {
     fn default() -> &'a str { "" }
 }
 
+#[stable]
 impl<'a> Iterator for Lines<'a> {
     type Item = &'a str;
 
@@ -1593,11 +1610,13 @@ impl<'a> Iterator for Lines<'a> {
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
-}
+
+#[stable]}
 impl<'a> DoubleEndedIterator for Lines<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
-}
+
+#[stable]}
 impl<'a> Iterator for LinesAny<'a> {
     type Item = &'a str;
 
@@ -1605,7 +1624,8 @@ impl<'a> Iterator for LinesAny<'a> {
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
-}
+
+#[stable]}
 impl<'a> DoubleEndedIterator for LinesAny<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }

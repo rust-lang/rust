@@ -15,28 +15,41 @@
 	<list name="type">
 		<item> type </item>
 	</list>
+	<list name="reserved">
+		<item> abstract </item>
+		<item> alignof </item>
+		<item> be </item>
+		<item> do </item>
+		<item> final </item>
+		<item> offsetof </item>
+		<item> override </item>
+		<item> priv </item>
+		<item> pure </item>
+		<item> sizeof </item>
+		<item> typeof </item>
+		<item> unsized </item>
+		<item> yield </item>
+	</list>
 	<list name="keywords">
 		<item> as </item>
-		<item> break </item>
 		<item> box </item>
+		<item> break </item>
 		<item> const </item>
 		<item> continue </item>
 		<item> crate </item>
-		<item> do </item>
-		<item> drop </item>
 		<item> else </item>
 		<item> enum </item>
 		<item> extern </item>
 		<item> for </item>
 		<item> if </item>
 		<item> impl </item>
+		<item> in </item>
 		<item> let </item>
 		<item> loop </item>
 		<item> match </item>
 		<item> mod </item>
 		<item> move </item>
 		<item> mut </item>
-		<item> priv </item>
 		<item> pub </item>
 		<item> ref </item>
 		<item> return </item>
@@ -192,6 +205,7 @@
 			<DetectSpaces/>
 			<keyword String="fn" attribute="Keyword" context="Function"/>
 			<keyword String="type" attribute="Keyword" context="Type"/>
+			<keyword String="reserved" attribute="Keyword" context="#stay"/>
 			<keyword String="keywords" attribute="Keyword" context="#stay"/>
 			<keyword String="types" attribute="Type" context="#stay"/>
 			<keyword String="traits" attribute="Trait" context="#stay"/>

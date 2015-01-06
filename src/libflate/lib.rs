@@ -21,15 +21,34 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-#![feature(phase, unboxed_closures)]
+#![feature(unboxed_closures, associated_types)]
 
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
+#[cfg(test)] #[macro_use] extern crate log;
 
 extern crate libc;
 
 use libc::{c_void, size_t, c_int};
-use std::c_vec::CVec;
+use std::ops::Deref;
 use std::ptr::Unique;
+use std::slice;
+
+pub struct Bytes {
+    ptr: Unique<u8>,
+    len: uint,
+}
+
+impl Deref for Bytes {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        unsafe { slice::from_raw_mut_buf(&self.ptr.0, self.len) }
+    }
+}
+
+impl Drop for Bytes {
+    fn drop(&mut self) {
+        unsafe { libc::free(self.ptr.0 as *mut _); }
+    }
+}
 
 #[link(name = "miniz", kind = "static")]
 extern {
@@ -52,7 +71,7 @@ static LZ_NORM : c_int = 0x80;  // LZ with 128 probes, "normal"
 static TINFL_FLAG_PARSE_ZLIB_HEADER : c_int = 0x1; // parse zlib header and adler32 checksum
 static TDEFL_WRITE_ZLIB_HEADER : c_int = 0x01000; // write zlib header and adler32 checksum
 
-fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
+fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<Bytes> {
     unsafe {
         let mut outsz : size_t = 0;
         let res = tdefl_compress_mem_to_heap(bytes.as_ptr() as *const _,
@@ -60,8 +79,8 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
                                              &mut outsz,
                                              flags);
         if !res.is_null() {
-            let res = Unique(res);
-            Some(CVec::new_with_dtor(res.0 as *mut u8, outsz as uint, move|:| libc::free(res.0)))
+            let res = Unique(res as *mut u8);
+            Some(Bytes { ptr: res, len: outsz as uint })
         } else {
             None
         }
@@ -69,16 +88,16 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
 }
 
 /// Compress a buffer, without writing any sort of header on the output.
-pub fn deflate_bytes(bytes: &[u8]) -> Option<CVec<u8>> {
+pub fn deflate_bytes(bytes: &[u8]) -> Option<Bytes> {
     deflate_bytes_internal(bytes, LZ_NORM)
 }
 
 /// Compress a buffer, using a header that zlib can understand.
-pub fn deflate_bytes_zlib(bytes: &[u8]) -> Option<CVec<u8>> {
+pub fn deflate_bytes_zlib(bytes: &[u8]) -> Option<Bytes> {
     deflate_bytes_internal(bytes, LZ_NORM | TDEFL_WRITE_ZLIB_HEADER)
 }
 
-fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
+fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<Bytes> {
     unsafe {
         let mut outsz : size_t = 0;
         let res = tinfl_decompress_mem_to_heap(bytes.as_ptr() as *const _,
@@ -86,8 +105,8 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
                                                &mut outsz,
                                                flags);
         if !res.is_null() {
-            let res = Unique(res);
-            Some(CVec::new_with_dtor(res.0 as *mut u8, outsz as uint, move|:| libc::free(res.0)))
+            let res = Unique(res as *mut u8);
+            Some(Bytes { ptr: res, len: outsz as uint })
         } else {
             None
         }
@@ -95,12 +114,12 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<CVec<u8>> {
 }
 
 /// Decompress a buffer, without parsing any sort of header on the input.
-pub fn inflate_bytes(bytes: &[u8]) -> Option<CVec<u8>> {
+pub fn inflate_bytes(bytes: &[u8]) -> Option<Bytes> {
     inflate_bytes_internal(bytes, 0)
 }
 
 /// Decompress a buffer that starts with a zlib header.
-pub fn inflate_bytes_zlib(bytes: &[u8]) -> Option<CVec<u8>> {
+pub fn inflate_bytes_zlib(bytes: &[u8]) -> Option<Bytes> {
     inflate_bytes_internal(bytes, TINFL_FLAG_PARSE_ZLIB_HEADER)
 }
 

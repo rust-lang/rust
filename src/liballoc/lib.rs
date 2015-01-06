@@ -68,14 +68,33 @@
 #![feature(lang_items, phase, unsafe_destructor, default_type_params, old_orphan_check)]
 #![feature(associated_types)]
 
+#[cfg(stage0)]
 #[phase(plugin, link)]
 extern crate core;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate core;
+
 extern crate libc;
 
 // Allow testing this library
 
-#[cfg(test)] #[phase(plugin, link)] extern crate std;
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate std;
+
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate std;
+
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate log;
 
 // Heaps provided for low-level allocation strategies
 

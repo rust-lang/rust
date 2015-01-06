@@ -49,8 +49,10 @@ RUSTDOC_HTML_OPTS_NO_CSS = --html-before-content=doc/version_info.html \
 RUSTDOC_HTML_OPTS = $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css rust.css
 
 PANDOC_BASE_OPTS := --standalone --toc --number-sections
-PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --include-before-body=doc/version.tex \
-	--from=markdown --include-before-body=doc/footer.tex --to=latex
+PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --from=markdown --to=latex \
+	--include-before-body=doc/version.tex \
+	--include-before-body=doc/footer.tex \
+	--include-in-header=doc/uptack.tex
 PANDOC_EPUB_OPTS = $(PANDOC_BASE_OPTS) --to=epub
 
 # The rustdoc executable...
@@ -155,6 +157,9 @@ doc/footer.tex: $(D)/footer.inc | doc/
 	@$(call E, pandoc: $@)
 	$(CFG_PANDOC) --from=html --to=latex $< --output=$@
 
+doc/uptack.tex: $(D)/uptack.tex | doc/
+	$(Q)cp $< $@
+
 # HTML (rustdoc)
 DOC_TARGETS += doc/not_found.html
 doc/not_found.html: $(D)/not_found.md $(HTML_DEPS) | doc/
@@ -180,7 +185,7 @@ doc/$(1).epub: $$(D)/$(1).md | doc/
 
 # PDF (md =(pandoc)=> tex =(pdflatex)=> pdf)
 DOC_TARGETS += doc/$(1).tex
-doc/$(1).tex: $$(D)/$(1).md doc/footer.tex doc/version.tex | doc/
+doc/$(1).tex: $$(D)/$(1).md doc/uptack.tex doc/footer.tex doc/version.tex | doc/
 	@$$(call E, pandoc: $$@)
 	$$(CFG_PANDOC) $$(PANDOC_TEX_OPTS) $$< --output=$$@
 

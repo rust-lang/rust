@@ -163,6 +163,8 @@
 //! }
 //! ```
 
+#![stable]
+
 // A description of how Rust's channel implementation works
 //
 // Channels are supposed to be the basic building block for all other
@@ -565,6 +567,7 @@ impl<T: Send> Sender<T> {
     /// drop(rx);
     /// assert_eq!(tx.send(1i).err().unwrap().0, 1);
     /// ```
+    #[stable]
     pub fn send(&self, t: T) -> Result<(), SendError<T>> {
         let (new_inner, ret) = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
@@ -587,7 +590,7 @@ impl<T: Send> Sender<T> {
                                 // asleep (we're looking at it), so the receiver
                                 // can't go away.
                                 (*a.get()).send(t).ok().unwrap();
-                                token.signal();
+                        token.signal();
                                 (a, Ok(()))
                             }
                         }
@@ -657,6 +660,7 @@ impl<T: Send> Clone for Sender<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Sender<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
@@ -720,6 +724,7 @@ impl<T: Send> Clone for SyncSender<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for SyncSender<T> {
     fn drop(&mut self) {
         unsafe { (*self.inner.get()).drop_chan(); }
@@ -935,7 +940,7 @@ impl<T: Send> select::Packet for Receiver<T> {
     }
 }
 
-#[unstable]
+#[stable]
 impl<'a, T: Send> Iterator for Iter<'a, T> {
     type Item = T;
 
@@ -943,6 +948,7 @@ impl<'a, T: Send> Iterator for Iter<'a, T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Receiver<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {

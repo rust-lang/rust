@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Borrow<Sized? Borrowed> {
+pub trait Borrow<Borrowed: ?Sized> {
         fn borrow(&self) -> &Borrowed;
 }
 

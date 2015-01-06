@@ -24,8 +24,21 @@
 #![feature(old_orphan_check)]
 #![allow(non_camel_case_types)]
 
-#[phase(plugin, link)] extern crate log;
-#[phase(plugin, link)] extern crate syntax;
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate log;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate syntax;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate syntax;
 
 // for "clarity", rename the graphviz crate to dot; graphviz within `borrowck`
 // refers to the borrowck-specific graphviz adapter traits.

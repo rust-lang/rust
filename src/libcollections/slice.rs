@@ -86,6 +86,7 @@
 //! * Further iterators exist that split, chunk or permute the slice.
 
 #![doc(primitive = "slice")]
+#![stable]
 
 use alloc::boxed::Box;
 use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
@@ -119,8 +120,9 @@ pub use core::slice::{from_raw_buf, from_raw_mut_buf};
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Allocating extension methods for slices.
-#[unstable = "needs associated types, may merge with other traits"]
-pub trait SliceExt for Sized? {
+#[stable]
+pub trait SliceExt {
+    #[stable]
     type Item;
 
     /// Sorts the slice, in place, using `compare` to compare
@@ -699,7 +701,7 @@ pub trait SliceExt for Sized? {
     fn into_vec(self: Box<Self>) -> Vec<Self::Item>;
 }
 
-#[unstable = "trait is unstable"]
+#[stable]
 impl<T> SliceExt for [T] {
     type Item = T;
 
@@ -989,7 +991,7 @@ impl<T> SliceExt for [T] {
 ////////////////////////////////////////////////////////////////////////////////
 #[unstable = "U should be an associated type"]
 /// An extension trait for concatenating slices
-pub trait SliceConcatExt<Sized? T, U> for Sized? {
+pub trait SliceConcatExt<T: ?Sized, U> {
     /// Flattens a slice of `T` into a single value `U`.
     #[stable]
     fn concat(&self) -> U;
@@ -1090,6 +1092,7 @@ struct SizeDirection {
     dir: Direction,
 }
 
+#[stable]
 impl Iterator for ElementSwaps {
     type Item = (uint, uint);
 
@@ -2460,13 +2463,13 @@ mod tests {
 
     #[test]
     fn test_show() {
-        macro_rules! test_show_vec(
+        macro_rules! test_show_vec {
             ($x:expr, $x_str:expr) => ({
                 let (x, x_str) = ($x, $x_str);
                 assert_eq!(format!("{}", x), x_str);
                 assert_eq!(format!("{}", x.as_slice()), x_str);
             })
-        );
+        }
         let empty: Vec<int> = vec![];
         test_show_vec!(empty, "[]");
         test_show_vec!(vec![1i], "[1]");
@@ -2486,12 +2489,12 @@ mod tests {
 
     #[test]
     fn test_vec_default() {
-        macro_rules! t (
+        macro_rules! t {
             ($ty:ty) => {{
                 let v: $ty = Default::default();
                 assert!(v.is_empty());
             }}
-        );
+        }
 
         t!(&[int]);
         t!(Vec<int>);

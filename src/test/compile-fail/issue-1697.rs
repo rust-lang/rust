@@ -10,8 +10,6 @@
 
 // Testing that we don't fail abnormally after hitting the errors
 
-#![feature(globs)]
-
 use unresolved::*; //~ ERROR unresolved import `unresolved::*`. Maybe a missing `extern crate unres
 
 fn main() {}

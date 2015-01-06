@@ -20,7 +20,6 @@
 
 use kinds::Copy;
 use mem;
-use kinds::Sized;
 
 /// The representation of a Rust slice
 #[repr(C)]
@@ -52,7 +51,7 @@ pub struct TraitObject {
 
 /// This trait is meant to map equivalences between raw structs and their
 /// corresponding rust values.
-pub trait Repr<T> for Sized? {
+pub trait Repr<T> {
     /// This function "unwraps" a rust value (without consuming it) into its raw
     /// struct representation. This can be used to read/write different values
     /// for the struct. This is a safe method because by default it does not

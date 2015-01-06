@@ -11,8 +11,8 @@
 use prelude::v1::*;
 use self::Req::*;
 
-use c_str::{CString, ToCStr};
 use collections;
+use ffi::CString;
 use hash::Hash;
 use io::process::{ProcessExit, ExitStatus, ExitSignal};
 use io::{self, IoResult, IoError, EndOfFile};
@@ -101,7 +101,7 @@ impl Process {
 
                 // We may use this in the child, so perform allocations before the
                 // fork
-                let devnull = "/dev/null".to_c_str();
+                let devnull = b"/dev/null\0";
 
                 set_cloexec(output.fd());
 
@@ -204,7 +204,7 @@ impl Process {
                             } else {
                                 libc::O_RDWR
                             };
-                            libc::open(devnull.as_ptr(), flags, 0)
+                            libc::open(devnull.as_ptr() as *const _, flags, 0)
                         }
                         Some(obj) => {
                             let fd = obj.as_inner().fd();

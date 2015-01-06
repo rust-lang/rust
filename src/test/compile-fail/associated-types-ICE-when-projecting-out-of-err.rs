@@ -12,11 +12,11 @@
 // just propagate the error.
 
 #![crate_type = "lib"]
-#![feature(associated_types, default_type_params, lang_items)]
+#![feature(lang_items)]
 #![no_std]
 
 #[lang="sized"]
-pub trait Sized for Sized? {
+pub trait Sized {
     // Empty.
 }
 

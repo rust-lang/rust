@@ -16,6 +16,6 @@ use lib::Remote1;
 pub struct BigInt;
 
 impl<T> Remote1<BigInt> for T { }
-//~^ ERROR type parameter `T` must also appear
+//~^ ERROR type parameter `T` is not constrained
 
 fn main() { }

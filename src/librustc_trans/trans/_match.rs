@@ -683,7 +683,7 @@ fn any_uniq_pat(m: &[Match], col: uint) -> bool {
 }
 
 fn any_region_pat(m: &[Match], col: uint) -> bool {
-    any_pat!(m, col, ast::PatRegion(_))
+    any_pat!(m, col, ast::PatRegion(..))
 }
 
 fn any_irrefutable_adt_pat(tcx: &ty::ctxt, m: &[Match], col: uint) -> bool {
@@ -1725,7 +1725,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llbox = Load(bcx, val);
             bcx = bind_irrefutable_pat(bcx, &**inner, llbox, cleanup_scope);
         }
-        ast::PatRegion(ref inner) => {
+        ast::PatRegion(ref inner, _) => {
             let loaded_val = Load(bcx, val);
             bcx = bind_irrefutable_pat(bcx, &**inner, loaded_val, cleanup_scope);
         }

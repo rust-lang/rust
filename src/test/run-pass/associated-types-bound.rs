@@ -10,8 +10,6 @@
 
 // Test equality constraints on associated types in a where clause.
 
-#![feature(associated_types)]
-
 pub trait ToInt {
     fn to_int(&self) -> int;
 }

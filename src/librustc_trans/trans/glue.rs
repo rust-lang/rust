@@ -40,8 +40,8 @@ use util::ppaux::{ty_to_short_str, Repr};
 use util::ppaux;
 
 use arena::TypedArena;
-use std::c_str::ToCStr;
 use libc::c_uint;
+use std::ffi::CString;
 use syntax::ast;
 use syntax::parse::token;
 
@@ -486,11 +486,11 @@ pub fn declare_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_string(ccx.tcx(), t), name);
-    let gvar = name.with_c_str(|buf| {
-        unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod(), ccx.tydesc_type().to_ref(), buf)
-        }
-    });
+    let buf = CString::from_slice(name.as_bytes());
+    let gvar = unsafe {
+        llvm::LLVMAddGlobal(ccx.llmod(), ccx.tydesc_type().to_ref(),
+                            buf.as_ptr())
+    };
     note_unique_llvm_symbol(ccx, name);
 
     let ty_name = token::intern_and_get_ident(

@@ -76,7 +76,7 @@ pub mod sip;
 /// A hashable type. The `S` type parameter is an abstract hash state that is
 /// used by the `Hash` to compute the hash. It defaults to
 /// `std::hash::sip::SipState`.
-pub trait Hash<S = sip::SipState> for Sized? {
+pub trait Hash<S = sip::SipState> {
     /// Computes the hash of a value.
     fn hash(&self, state: &mut S);
 }
@@ -85,7 +85,7 @@ pub trait Hash<S = sip::SipState> for Sized? {
 /// containers like `HashMap`, which need a generic way hash multiple types.
 pub trait Hasher<S> {
     /// Compute the hash of a value.
-    fn hash<Sized? T: Hash<S>>(&self, value: &T) -> u64;
+    fn hash<T: ?Sized + Hash<S>>(&self, value: &T) -> u64;
 }
 
 #[allow(missing_docs)]
@@ -194,14 +194,14 @@ impl<S: Writer, T: Hash<S>> Hash<S> for [T] {
 }
 
 
-impl<'a, S: Writer, Sized? T: Hash<S>> Hash<S> for &'a T {
+impl<'a, S: Writer, T: ?Sized + Hash<S>> Hash<S> for &'a T {
     #[inline]
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
     }
 }
 
-impl<'a, S: Writer, Sized? T: Hash<S>> Hash<S> for &'a mut T {
+impl<'a, S: Writer, T: ?Sized + Hash<S>> Hash<S> for &'a mut T {
     #[inline]
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
@@ -233,7 +233,7 @@ impl<S: Writer> Hash<S> for TypeId {
     }
 }
 
-impl<'a, T, Sized? B, S> Hash<S> for Cow<'a, T, B> where B: Hash<S> + ToOwned<T> {
+impl<'a, T, B: ?Sized, S> Hash<S> for Cow<'a, T, B> where B: Hash<S> + ToOwned<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
         Hash::hash(&**self, state)

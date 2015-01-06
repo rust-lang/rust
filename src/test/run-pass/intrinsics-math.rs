@@ -9,16 +9,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs, macro_rules, intrinsics)]
+#![feature(intrinsics)]
 
-macro_rules! assert_approx_eq(
+macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({
         use std::num::Float;
         let (a, b) = (&$a, &$b);
         assert!((*a - *b).abs() < 1.0e-6,
                 "{} is not approximately equal to {}", *a, *b);
     })
-);
+}
 
 mod rusti {
     extern "rust-intrinsic" {

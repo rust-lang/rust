@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_type = "lib"]
-#![feature(associated_types)]
 
 pub struct TreeBuilder<H>;
 

@@ -50,6 +50,7 @@
 //! is the same as `&[u8]`.
 
 #![doc(primitive = "str")]
+#![stable]
 
 use self::RecompositionState::*;
 use self::DecompositionType::*;
@@ -59,7 +60,6 @@ use core::char::CharExt;
 use core::clone::Clone;
 use core::iter::AdditiveIterator;
 use core::iter::{range, Iterator, IteratorExt};
-use core::kinds::Sized;
 use core::ops;
 use core::option::Option::{self, Some, None};
 use core::slice::AsSlice;
@@ -165,6 +165,7 @@ enum DecompositionType {
 /// External iterator for a string's decomposition's characters.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
+#[unstable]
 pub struct Decompositions<'a> {
     kind: DecompositionType,
     iter: Chars<'a>,
@@ -172,6 +173,7 @@ pub struct Decompositions<'a> {
     sorted: bool
 }
 
+#[stable]
 impl<'a> Iterator for Decompositions<'a> {
     type Item = char;
 
@@ -253,6 +255,7 @@ enum RecompositionState {
 /// External iterator for a string's recomposition's characters.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
+#[unstable]
 pub struct Recompositions<'a> {
     iter: Decompositions<'a>,
     state: RecompositionState,
@@ -261,6 +264,7 @@ pub struct Recompositions<'a> {
     last_ccc: Option<u8>
 }
 
+#[stable]
 impl<'a> Iterator for Recompositions<'a> {
     type Item = char;
 
@@ -348,10 +352,12 @@ impl<'a> Iterator for Recompositions<'a> {
 /// External iterator for a string's UTF16 codeunits.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
+#[unstable]
 pub struct Utf16Units<'a> {
     encoder: Utf16Encoder<Chars<'a>>
 }
 
+#[stable]
 impl<'a> Iterator for Utf16Units<'a> {
     type Item = u16;
 
@@ -401,7 +407,8 @@ Section: Trait implementations
 */
 
 /// Any string that can be represented as a slice.
-pub trait StrExt for Sized?: ops::Slice<uint, str> {
+#[stable]
+pub trait StrExt: ops::Slice<uint, str> {
     /// Escapes each char in `s` with `char::escape_default`.
     #[unstable = "return type may change to be an iterator"]
     fn escape_default(&self) -> String {
@@ -1340,6 +1347,7 @@ pub trait StrExt for Sized?: ops::Slice<uint, str> {
     }
 }
 
+#[stable]
 impl StrExt for str {}
 
 #[cfg(test)]
@@ -1838,7 +1846,9 @@ mod tests {
     #[test]
     fn test_is_utf16() {
         use unicode::str::is_utf16;
-        macro_rules! pos ( ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } });
+        macro_rules! pos {
+            ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } }
+        }
 
         // non-surrogates
         pos!(&[0x0000],
@@ -1858,7 +1868,9 @@ mod tests {
              &[0x0067, 0xd8ff, 0xddb7, 0x000f, 0xd900, 0xdc80]);
 
         // negative tests
-        macro_rules! neg ( ($($e:expr),*) => { { $(assert!(!is_utf16($e));)* } });
+        macro_rules! neg {
+            ($($e:expr),*) => { { $(assert!(!is_utf16($e));)* } }
+        }
 
         neg!(
             // surrogate + regular unit

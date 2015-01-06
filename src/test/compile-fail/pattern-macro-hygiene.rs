@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
-macro_rules! foo ( () => ( x ) );
+macro_rules! foo { () => ( x ) }
 
 fn main() {
     let foo!() = 2;

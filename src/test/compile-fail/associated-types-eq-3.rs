@@ -11,8 +11,6 @@
 // Test equality constraints on associated types. Check we get type errors
 // where we should.
 
-#![feature(associated_types)]
-
 pub trait Foo {
     type A;
     fn boo(&self) -> <Self as Foo>::A;

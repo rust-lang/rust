@@ -12,12 +12,14 @@
 //! ends of the container. It also has `O(1)` indexing like a vector. The contained elements are
 //! not required to be copyable, and the queue will be sendable if the contained type is sendable.
 
+#![stable]
+
 use core::prelude::*;
 
 use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
-use core::iter::{self, FromIterator, RandomAccessIterator};
+use core::iter::{self, repeat, FromIterator, RandomAccessIterator};
 use core::kinds::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
@@ -30,11 +32,8 @@ use std::cmp;
 
 use alloc::heap;
 
-static INITIAL_CAPACITY: uint = 8u; // 2^3
-static MINIMUM_CAPACITY: uint = 2u;
-
-// FIXME(conventions): implement shrink_to_fit. Awkward with the current design, but it should
-// be scrapped anyway. Defer to rewrite?
+static INITIAL_CAPACITY: uint = 7u; // 2^3 - 1
+static MINIMUM_CAPACITY: uint = 1u; // 2 - 1
 
 /// `RingBuf` is a circular buffer, which can be used as a double-ended queue efficiently.
 #[stable]
@@ -127,7 +126,20 @@ impl<T> RingBuf<T> {
                       self.cap);
         ptr::copy_memory(
             self.ptr.offset(dst as int),
-            self.ptr.offset(src as int) as *const T,
+            self.ptr.offset(src as int),
+            len);
+    }
+
+    /// Copies a contiguous block of memory len long from src to dst
+    #[inline]
+    unsafe fn copy_nonoverlapping(&self, dst: uint, src: uint, len: uint) {
+        debug_assert!(dst + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
+                      self.cap);
+        debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
+                      self.cap);
+        ptr::copy_nonoverlapping_memory(
+            self.ptr.offset(dst as int),
+            self.ptr.offset(src as int),
             len);
     }
 }
@@ -143,7 +155,8 @@ impl<T> RingBuf<T> {
     #[stable]
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         // +1 since the ringbuffer always leaves one space empty
-        let cap = cmp::max(n + 1, MINIMUM_CAPACITY).next_power_of_two();
+        let cap = cmp::max(n + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
+        assert!(cap > n, "capacity overflow");
         let size = cap.checked_mul(mem::size_of::<T>())
                       .expect("capacity overflow");
 
@@ -346,28 +359,131 @@ impl<T> RingBuf<T> {
                 // Nop
             } else if self.head < oldcap - self.tail { // B
                 unsafe {
-                    ptr::copy_nonoverlapping_memory(
-                        self.ptr.offset(oldcap as int),
-                        self.ptr as *const T,
-                        self.head
-                    );
+                    self.copy_nonoverlapping(oldcap, 0, self.head);
                 }
                 self.head += oldcap;
                 debug_assert!(self.head > self.tail);
             } else { // C
+                let new_tail = count - (oldcap - self.tail);
                 unsafe {
-                    ptr::copy_nonoverlapping_memory(
-                        self.ptr.offset((count - (oldcap - self.tail)) as int),
-                        self.ptr.offset(self.tail as int) as *const T,
-                        oldcap - self.tail
-                    );
+                    self.copy_nonoverlapping(new_tail, self.tail, oldcap - self.tail);
                 }
-                self.tail = count - (oldcap - self.tail);
+                self.tail = new_tail;
                 debug_assert!(self.head < self.tail);
             }
             debug_assert!(self.head < self.cap);
             debug_assert!(self.tail < self.cap);
             debug_assert!(self.cap.count_ones() == 1);
+        }
+    }
+
+    /// Shrinks the capacity of the ringbuf as much as possible.
+    ///
+    /// It will drop down as close as possible to the length but the allocator may still inform the
+    /// ringbuf that there is space for a few more elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::with_capacity(15);
+    /// buf.extend(range(0u, 4));
+    /// assert_eq!(buf.capacity(), 15);
+    /// buf.shrink_to_fit();
+    /// assert!(buf.capacity() >= 4);
+    /// ```
+    pub fn shrink_to_fit(&mut self) {
+        // +1 since the ringbuffer always leaves one space empty
+        // len + 1 can't overflow for an existing, well-formed ringbuf.
+        let target_cap = cmp::max(self.len() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
+        if target_cap < self.cap {
+            // There are three cases of interest:
+            //   All elements are out of desired bounds
+            //   Elements are contiguous, and head is out of desired bounds
+            //   Elements are discontiguous, and tail is out of desired bounds
+            //
+            // At all other times, element positions are unaffected.
+            //
+            // Indicates that elements at the head should be moved.
+            let head_outside = self.head == 0 || self.head >= target_cap;
+            // Move elements from out of desired bounds (positions after target_cap)
+            if self.tail >= target_cap && head_outside {
+                //                    T             H
+                //   [. . . . . . . . o o o o o o o . ]
+                //    T             H
+                //   [o o o o o o o . ]
+                unsafe {
+                    self.copy_nonoverlapping(0, self.tail, self.len());
+                }
+                self.head = self.len();
+                self.tail = 0;
+            } else if self.tail != 0 && self.tail < target_cap && head_outside {
+                //          T             H
+                //   [. . . o o o o o o o . . . . . . ]
+                //        H T
+                //   [o o . o o o o o ]
+                let len = self.wrap_index(self.head - target_cap);
+                unsafe {
+                    self.copy_nonoverlapping(0, target_cap, len);
+                }
+                self.head = len;
+                debug_assert!(self.head < self.tail);
+            } else if self.tail >= target_cap {
+                //              H                 T
+                //   [o o o o o . . . . . . . . . o o ]
+                //              H T
+                //   [o o o o o . o o ]
+                debug_assert!(self.wrap_index(self.head - 1) < target_cap);
+                let len = self.cap - self.tail;
+                let new_tail = target_cap - len;
+                unsafe {
+                    self.copy_nonoverlapping(new_tail, self.tail, len);
+                }
+                self.tail = new_tail;
+                debug_assert!(self.head < self.tail);
+            }
+
+            if mem::size_of::<T>() != 0 {
+                let old = self.cap * mem::size_of::<T>();
+                let new_size = target_cap * mem::size_of::<T>();
+                unsafe {
+                    self.ptr = heap::reallocate(self.ptr as *mut u8,
+                                                old,
+                                                new_size,
+                                                mem::min_align_of::<T>()) as *mut T;
+                    if self.ptr.is_null() { ::alloc::oom() }
+                }
+            }
+            self.cap = target_cap;
+            debug_assert!(self.head < self.cap);
+            debug_assert!(self.tail < self.cap);
+            debug_assert!(self.cap.count_ones() == 1);
+        }
+    }
+
+    /// Shorten a ringbuf, dropping excess elements from the back.
+    ///
+    /// If `len` is greater than the ringbuf's current length, this has no
+    /// effect.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push_back(5i);
+    /// buf.push_back(10i);
+    /// buf.push_back(15);
+    /// buf.truncate(1);
+    /// assert_eq!(buf.len(), 1);
+    /// assert_eq!(Some(&5), buf.get(0));
+    /// ```
+    #[unstable = "matches collection reform specification; waiting on panic semantics"]
+    pub fn truncate(&mut self, len: uint) {
+        for _ in range(len, self.len()) {
+            self.pop_back();
         }
     }
 
@@ -735,6 +851,70 @@ impl<T> RingBuf<T> {
         self.tail <= self.head
     }
 
+    /// Removes an element from anywhere in the ringbuf and returns it, replacing it with the last
+    /// element.
+    ///
+    /// This does not preserve ordering, but is O(1).
+    ///
+    /// Returns `None` if `index` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// assert_eq!(buf.swap_back_remove(0), None);
+    /// buf.push_back(5i);
+    /// buf.push_back(99);
+    /// buf.push_back(15);
+    /// buf.push_back(20);
+    /// buf.push_back(10);
+    /// assert_eq!(buf.swap_back_remove(1), Some(99));
+    /// ```
+    #[unstable = "the naming of this function may be altered"]
+    pub fn swap_back_remove(&mut self, index: uint) -> Option<T> {
+        let length = self.len();
+        if length > 0 && index < length - 1 {
+            self.swap(index, length - 1);
+        } else if index >= length {
+            return None;
+        }
+        self.pop_back()
+    }
+
+    /// Removes an element from anywhere in the ringbuf and returns it, replacing it with the first
+    /// element.
+    ///
+    /// This does not preserve ordering, but is O(1).
+    ///
+    /// Returns `None` if `index` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// assert_eq!(buf.swap_front_remove(0), None);
+    /// buf.push_back(15i);
+    /// buf.push_back(5);
+    /// buf.push_back(10);
+    /// buf.push_back(99);
+    /// buf.push_back(20i);
+    /// assert_eq!(buf.swap_front_remove(3), Some(99));
+    /// ```
+    #[unstable = "the naming of this function may be altered"]
+    pub fn swap_front_remove(&mut self, index: uint) -> Option<T> {
+        let length = self.len();
+        if length > 0 && index < length && index != 0 {
+            self.swap(index, 0);
+        } else if index >= length {
+            return None;
+        }
+        self.pop_front()
+    }
+
     /// Inserts an element at position `i` within the ringbuf. Whichever
     /// end is closer to the insertion point will be moved to make room,
     /// and all the affected elements will be moved to new positions.
@@ -743,7 +923,7 @@ impl<T> RingBuf<T> {
     ///
     /// Panics if `i` is greater than ringbuf's length
     ///
-    /// # Example
+    /// # Examples
     /// ```rust
     /// use std::collections::RingBuf;
     ///
@@ -945,7 +1125,7 @@ impl<T> RingBuf<T> {
     /// room, and all the affected elements will be moved to new positions.
     /// Returns `None` if `i` is out of bounds.
     ///
-    /// # Example
+    /// # Examples
     /// ```rust
     /// use std::collections::RingBuf;
     ///
@@ -990,7 +1170,7 @@ impl<T> RingBuf<T> {
         let distance_to_tail = i;
         let distance_to_head = self.len() - i;
 
-        let contiguous = self.tail <= self.head;
+        let contiguous = self.is_contiguous();
 
         match (contiguous, distance_to_tail <= distance_to_head, idx >= self.tail) {
             (true, true, _) => unsafe {
@@ -1102,6 +1282,37 @@ impl<T> RingBuf<T> {
         }
 
         return elem;
+    }
+}
+
+impl<T: Clone> RingBuf<T> {
+    /// Modifies the ringbuf in-place so that `len()` is equal to new_len,
+    /// either by removing excess elements or by appending copies of a value to the back.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf = RingBuf::new();
+    /// buf.push_back(5i);
+    /// buf.push_back(10i);
+    /// buf.push_back(15);
+    /// buf.resize(2, 0);
+    /// buf.resize(6, 20);
+    /// for (a, b) in [5, 10, 20, 20, 20, 20].iter().zip(buf.iter()) {
+    ///     assert_eq!(a, b);
+    /// }
+    /// ```
+    #[unstable = "matches collection reform specification; waiting on panic semantics"]
+    pub fn resize(&mut self, new_len: uint, value: T) {
+        let len = self.len();
+
+        if new_len > len {
+            self.extend(repeat(value).take(new_len - len))
+        } else {
+            self.truncate(new_len);
+        }
     }
 }
 
@@ -2271,6 +2482,50 @@ mod tests {
     }
 
     #[test]
+    fn test_swap_front_back_remove() {
+        fn test(back: bool) {
+            // This test checks that every single combination of tail position and length is tested.
+            // Capacity 15 should be large enough to cover every case.
+            let mut tester = RingBuf::with_capacity(15);
+            let usable_cap = tester.capacity();
+            let final_len = usable_cap / 2;
+
+            for len in range(0, final_len) {
+                let expected = if back {
+                    range(0, len).collect()
+                } else {
+                    range(0, len).rev().collect()
+                };
+                for tail_pos in range(0, usable_cap) {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    if back {
+                        for i in range(0, len * 2) {
+                            tester.push_front(i);
+                        }
+                        for i in range(0, len) {
+                            assert_eq!(tester.swap_back_remove(i), Some(len * 2 - 1 - i));
+                        }
+                    } else {
+                        for i in range(0, len * 2) {
+                            tester.push_back(i);
+                        }
+                        for i in range(0, len) {
+                            let idx = tester.len() - 1 - i;
+                            assert_eq!(tester.swap_front_remove(idx), Some(len * 2 - 1 - i));
+                        }
+                    }
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert_eq!(tester, expected);
+                }
+            }
+        }
+        test(true);
+        test(false);
+    }
+
+    #[test]
     fn test_insert() {
         // This test checks that every single combination of tail position, length, and
         // insertion position is tested. Capacity 15 should be large enough to cover every case.
@@ -2337,6 +2592,38 @@ mod tests {
                     assert!(tester.head < tester.cap);
                     assert_eq!(tester, expected);
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn test_shrink_to_fit() {
+        // This test checks that every single combination of head and tail position,
+        // is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = RingBuf::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+        tester.reserve(63);
+        let max_cap = tester.capacity();
+
+        for len in range(0, cap + 1) {
+            // 0, 1, 2, .., len - 1
+            let expected = iter::count(0, 1).take(len).collect();
+            for tail_pos in range(0, max_cap + 1) {
+                tester.tail = tail_pos;
+                tester.head = tail_pos;
+                tester.reserve(63);
+                for i in range(0, len) {
+                    tester.push_back(i);
+                }
+                tester.shrink_to_fit();
+                assert!(tester.capacity() <= cap);
+                assert!(tester.tail < tester.cap);
+                assert!(tester.head < tester.cap);
+                assert_eq!(tester, expected);
             }
         }
     }

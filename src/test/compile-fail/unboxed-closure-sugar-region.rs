@@ -12,7 +12,7 @@
 // parameters (should be exactly as if angle brackets were used
 // and regions omitted).
 
-#![feature(default_type_params, unboxed_closures)]
+#![feature(unboxed_closures)]
 #![allow(dead_code)]
 
 use std::kinds::marker;
@@ -21,9 +21,9 @@ trait Foo<'a,T,U> {
     fn dummy(&'a self) -> &'a (T,U);
 }
 
-trait Eq<Sized? X> for Sized? { }
-impl<Sized? X> Eq<X> for X { }
-fn eq<Sized? A,Sized? B:Eq<A>>() { }
+trait Eq<X: ?Sized> { }
+impl<X: ?Sized> Eq<X> for X { }
+fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
 
 fn same_type<A,B:Eq<A>>(a: A, b: B) { }
 

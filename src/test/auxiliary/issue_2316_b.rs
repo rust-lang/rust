@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(unused_imports)]
-#![feature(globs)]
 
 extern crate issue_2316_a;
 

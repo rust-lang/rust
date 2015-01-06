@@ -10,18 +10,12 @@
 
 //! Operations on tuples
 //!
-//! To access a single element of a tuple one can use the following
-//! methods:
+//! To access the _N_-th element of a tuple one can use `N` itself
+//! as a field of the tuple.
 //!
-//! * `valN` - returns a value of _N_-th element
-//! * `refN` - returns a reference to _N_-th element
-//! * `mutN` - returns a mutable reference to _N_-th element
-//!
-//! Indexing starts from zero, so `val0` returns first value, `val1`
+//! Indexing starts from zero, so `0` returns first value, `1`
 //! returns second value, and so on. In general, a tuple with _S_
-//! elements provides aforementioned methods suffixed with numbers
-//! from `0` to `S-1`. Traits which contain these methods are
-//! implemented for tuples with up to 12 elements.
+//! elements provides aforementioned fields from `0` to `S-1`.
 //!
 //! If every type inside a tuple implements one of the following
 //! traits, then a tuple itself also implements it.
@@ -34,6 +28,17 @@
 //! * `Default`
 //!
 //! # Examples
+//!
+//! Accessing elements of a tuple at specified indices:
+//!
+//! ```
+//! let x = ("colorless",  "green", "ideas", "sleep", "furiously");
+//! assert_eq!(x.3, "sleep");
+//!
+//! let v = (3i, 3i);
+//! let u = (1i, -5i);
+//! assert_eq!(v.0 * u.0 + v.1 * u.1, -12i);
+//! ```
 //!
 //! Using traits implemented for tuples:
 //!

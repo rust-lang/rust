@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(asm, macro_rules)]
+#![feature(asm)]
 
 type History = Vec<&'static str>;
 

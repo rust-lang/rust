@@ -10,8 +10,6 @@
 
 // ignore-pretty
 
-#![feature(macro_rules)]
-
 
 pub trait bomb { fn boom(&self, Ident); }
 pub struct S;
@@ -19,8 +17,8 @@ impl bomb for S { fn boom(&self, _: Ident) { } }
 
 pub struct Ident { name: uint }
 
-// macro_rules! int3( () => ( unsafe { asm!( "int3" ); } ) )
-macro_rules! int3( () => ( { } ) );
+// macro_rules! int3 { () => ( unsafe { asm!( "int3" ); } ) }
+macro_rules! int3 { () => ( { } ) }
 
 fn Ident_new() -> Ident {
     int3!();

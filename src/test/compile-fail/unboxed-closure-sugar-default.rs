@@ -11,16 +11,16 @@
 // Test interaction between unboxed closure sugar and default type
 // parameters (should be exactly as if angle brackets were used).
 
-#![feature(default_type_params, unboxed_closures)]
+#![feature(unboxed_closures)]
 #![allow(dead_code)]
 
 trait Foo<T,U,V=T> {
     fn dummy(&self, t: T, u: U, v: V);
 }
 
-trait Eq<Sized? X> for Sized? { }
-impl<Sized? X> Eq<X> for X { }
-fn eq<Sized? A,Sized? B>() where A : Eq<B> { }
+trait Eq<X: ?Sized> { }
+impl<X: ?Sized> Eq<X> for X { }
+fn eq<A: ?Sized,B: ?Sized>() where A : Eq<B> { }
 
 fn test<'a,'b>() {
     // Parens are equivalent to omitting default in angle.

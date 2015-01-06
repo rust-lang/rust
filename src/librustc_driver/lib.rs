@@ -39,10 +39,24 @@ extern crate rustc_borrowck;
 extern crate rustc_resolve;
 extern crate rustc_trans;
 extern crate rustc_typeck;
-#[phase(plugin, link)] extern crate log;
-#[phase(plugin, link)] extern crate syntax;
 extern crate serialize;
 extern crate "rustc_llvm" as llvm;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate log;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate syntax;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate syntax;
 
 pub use syntax::diagnostic;
 
@@ -134,7 +148,7 @@ fn run_compiler(args: &[String]) {
         _ => early_error("multiple input filenames provided")
     };
 
-    let sess = build_session(sopts, input_file_path, descriptions);
+    let mut sess = build_session(sopts, input_file_path, descriptions);
     let cfg = config::build_configuration(&sess);
     if print_crate_info(&sess, Some(&input), &odir, &ofile) {
         return
@@ -145,7 +159,7 @@ fn run_compiler(args: &[String]) {
         pretty::parse_pretty(&sess, a.as_slice(), false)
     });
     let pretty = if pretty.is_none() &&
-        sess.debugging_opt(config::UNSTABLE_OPTIONS) {
+        sess.unstable_options() {
             matches.opt_str("xpretty").map(|a| {
                 // extended with unstable pretty-print variants
                 pretty::parse_pretty(&sess, a.as_slice(), true)
@@ -160,6 +174,10 @@ fn run_compiler(args: &[String]) {
             return;
         }
         None => {/* continue */ }
+    }
+
+    if sess.unstable_options() {
+        sess.opts.show_span = matches.opt_str("show-span");
     }
 
     let r = matches.opt_strs("Z");

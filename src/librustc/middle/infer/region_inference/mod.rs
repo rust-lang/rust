@@ -22,7 +22,7 @@ use super::cres;
 use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
 
 use middle::region;
-use middle::ty;
+use middle::ty::{self, Ty};
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
@@ -30,7 +30,7 @@ use middle::graph;
 use middle::graph::{Direction, NodeIndex};
 use util::common::indenter;
 use util::nodemap::{FnvHashMap, FnvHashSet};
-use util::ppaux::Repr;
+use util::ppaux::{Repr, UserString};
 
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering::{self, Less, Greater, Equal};
@@ -61,12 +61,18 @@ pub enum Verify<'tcx> {
     // `b` are inference variables.
     VerifyRegSubReg(SubregionOrigin<'tcx>, Region, Region),
 
-    // VerifyParamBound(T, _, R, RS): The parameter type `T` must
-    // outlive the region `R`. `T` is known to outlive `RS`. Therefore
-    // verify that `R <= RS[i]` for some `i`. Inference variables may
-    // be involved (but this verification step doesn't influence
-    // inference).
-    VerifyParamBound(ty::ParamTy, SubregionOrigin<'tcx>, Region, Vec<Region>),
+    // VerifyGenericBound(T, _, R, RS): The parameter type `T` (or
+    // associated type) must outlive the region `R`. `T` is known to
+    // outlive `RS`. Therefore verify that `R <= RS[i]` for some
+    // `i`. Inference variables may be involved (but this verification
+    // step doesn't influence inference).
+    VerifyGenericBound(GenericKind<'tcx>, SubregionOrigin<'tcx>, Region, Vec<Region>),
+}
+
+#[derive(Clone, Show, PartialEq, Eq)]
+pub enum GenericKind<'tcx> {
+    Param(ty::ParamTy),
+    Projection(ty::ProjectionTy<'tcx>),
 }
 
 #[derive(Copy, PartialEq, Eq, Hash)]
@@ -98,12 +104,12 @@ pub enum RegionResolutionError<'tcx> {
     /// `o` requires that `a <= b`, but this does not hold
     ConcreteFailure(SubregionOrigin<'tcx>, Region, Region),
 
-    /// `ParamBoundFailure(p, s, a, bs)
+    /// `GenericBoundFailure(p, s, a, bs)
     ///
-    /// The parameter type `p` must be known to outlive the lifetime
+    /// The parameter/assocated-type `p` must be known to outlive the lifetime
     /// `a`, but it is only known to outlive `bs` (and none of the
     /// regions in `bs` outlive `a`).
-    ParamBoundFailure(SubregionOrigin<'tcx>, ty::ParamTy, Region, Vec<Region>),
+    GenericBoundFailure(SubregionOrigin<'tcx>, GenericKind<'tcx>, Region, Vec<Region>),
 
     /// `SubSupConflict(v, sub_origin, sub_r, sup_origin, sup_r)`:
     ///
@@ -489,12 +495,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
-    pub fn verify_param_bound(&self,
-                              origin: SubregionOrigin<'tcx>,
-                              param_ty: ty::ParamTy,
-                              sub: Region,
-                              sups: Vec<Region>) {
-        self.add_verify(VerifyParamBound(param_ty, origin, sub, sups));
+    /// See `Verify::VerifyGenericBound`
+    pub fn verify_generic_bound(&self,
+                                origin: SubregionOrigin<'tcx>,
+                                kind: GenericKind<'tcx>,
+                                sub: Region,
+                                sups: Vec<Region>) {
+        self.add_verify(VerifyGenericBound(kind, origin, sub, sups));
     }
 
     pub fn lub_regions(&self,
@@ -660,7 +667,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                     &mut result_set, r,
                                     a, b);
                             }
-                            VerifyParamBound(_, _, a, ref bs) => {
+                            VerifyGenericBound(_, _, a, ref bs) => {
                                 for &b in bs.iter() {
                                     consider_adding_bidirectional_edges(
                                         &mut result_set, r,
@@ -1211,7 +1218,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     errors.push(ConcreteFailure((*origin).clone(), sub, sup));
                 }
 
-                VerifyParamBound(ref param_ty, ref origin, sub, ref sups) => {
+                VerifyGenericBound(ref kind, ref origin, sub, ref sups) => {
                     let sub = normalize(values, sub);
                     if sups.iter()
                            .map(|&sup| normalize(values, sup))
@@ -1223,8 +1230,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     let sups = sups.iter().map(|&sup| normalize(values, sup))
                                           .collect();
                     errors.push(
-                        ParamBoundFailure(
-                            (*origin).clone(), *param_ty, sub, sups));
+                        GenericBoundFailure(
+                            (*origin).clone(), kind.clone(), sub, sups));
                 }
             }
         }
@@ -1584,8 +1591,8 @@ impl<'tcx> Repr<'tcx> for Verify<'tcx> {
             VerifyRegSubReg(_, ref a, ref b) => {
                 format!("VerifyRegSubReg({}, {})", a.repr(tcx), b.repr(tcx))
             }
-            VerifyParamBound(_, ref p, ref a, ref bs) => {
-                format!("VerifyParamBound({}, {}, {})",
+            VerifyGenericBound(_, ref p, ref a, ref bs) => {
+                format!("VerifyGenericBound({}, {}, {})",
                         p.repr(tcx), a.repr(tcx), bs.repr(tcx))
             }
         }
@@ -1622,5 +1629,34 @@ impl<'tcx> Repr<'tcx> for RegionAndOrigin<'tcx> {
         format!("RegionAndOrigin({},{})",
                 self.region.repr(tcx),
                 self.origin.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for GenericKind<'tcx> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        match *self {
+            GenericKind::Param(ref p) => p.repr(tcx),
+            GenericKind::Projection(ref p) => p.repr(tcx),
+        }
+    }
+}
+
+impl<'tcx> UserString<'tcx> for GenericKind<'tcx> {
+    fn user_string(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        match *self {
+            GenericKind::Param(ref p) => p.user_string(tcx),
+            GenericKind::Projection(ref p) => p.user_string(tcx),
+        }
+    }
+}
+
+impl<'tcx> GenericKind<'tcx> {
+    pub fn to_ty(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+        match *self {
+            GenericKind::Param(ref p) =>
+                p.to_ty(tcx),
+            GenericKind::Projection(ref p) =>
+                ty::mk_projection(tcx, p.trait_ref.clone(), p.item_name),
+        }
     }
 }

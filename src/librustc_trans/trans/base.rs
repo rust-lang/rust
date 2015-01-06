@@ -88,11 +88,12 @@ use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use libc::{c_uint, uint64_t};
-use std::c_str::ToCStr;
+use std::ffi::{self, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::mem;
 use std::rc::Rc;
+use std::str;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, Abi};
 use syntax::ast_util::local_def;
@@ -187,11 +188,10 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
 pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
                ty: Type, output: ty::FnOutput) -> ValueRef {
 
-    let llfn: ValueRef = name.with_c_str(|buf| {
-        unsafe {
-            llvm::LLVMGetOrInsertFunction(ccx.llmod(), buf, ty.to_ref())
-        }
-    });
+    let buf = CString::from_slice(name.as_bytes());
+    let llfn: ValueRef = unsafe {
+        llvm::LLVMGetOrInsertFunction(ccx.llmod(), buf.as_ptr(), ty.to_ref())
+    };
 
     // diverging functions may unwind, but can never return normally
     if output == ty::FnDiverging {
@@ -331,9 +331,8 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
         None => ()
     }
     unsafe {
-        let c = name.with_c_str(|buf| {
-            llvm::LLVMAddGlobal(ccx.llmod(), ty.to_ref(), buf)
-        });
+        let buf = CString::from_slice(name.as_bytes());
+        let c = llvm::LLVMAddGlobal(ccx.llmod(), ty.to_ref(), buf.as_ptr());
         // Thread-local statics in some other crate need to *always* be linked
         // against in a thread-local fashion, so we need to be sure to apply the
         // thread-local attribute locally if it was present remotely. If we
@@ -472,15 +471,17 @@ pub fn set_always_inline(f: ValueRef) {
 }
 
 pub fn set_split_stack(f: ValueRef) {
-    "split-stack".with_c_str(|buf| {
-        unsafe { llvm::LLVMAddFunctionAttrString(f, llvm::FunctionIndex as c_uint, buf); }
-    })
+    unsafe {
+        llvm::LLVMAddFunctionAttrString(f, llvm::FunctionIndex as c_uint,
+                                        "split-stack\0".as_ptr() as *const _);
+    }
 }
 
 pub fn unset_split_stack(f: ValueRef) {
-    "split-stack".with_c_str(|buf| {
-        unsafe { llvm::LLVMRemoveFunctionAttrString(f, llvm::FunctionIndex as c_uint, buf); }
-    })
+    unsafe {
+        llvm::LLVMRemoveFunctionAttrString(f, llvm::FunctionIndex as c_uint,
+                                           "split-stack\0".as_ptr() as *const _);
+    }
 }
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
@@ -534,11 +535,8 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // Structural comparison: a rather involved form of glue.
 pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
     if cx.sess().opts.cg.save_temps {
-        s.with_c_str(|buf| {
-            unsafe {
-                llvm::LLVMSetValueName(v, buf)
-            }
-        })
+        let buf = CString::from_slice(s.as_bytes());
+        unsafe { llvm::LLVMSetValueName(v, buf.as_ptr()) }
     }
 }
 
@@ -2639,11 +2637,10 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
             unsafe { llvm::LLVMRustSetDLLExportStorageClass(llfn) }
         }
 
-        let llbb = "top".with_c_str(|buf| {
-            unsafe {
-                llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llfn, buf)
-            }
-        });
+        let llbb = unsafe {
+            llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llfn,
+                                                "top\0".as_ptr() as *const _)
+        };
         let bld = ccx.raw_builder();
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
@@ -2664,9 +2661,9 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                 };
 
                 let args = {
-                    let opaque_rust_main = "rust_main".with_c_str(|buf| {
-                        llvm::LLVMBuildPointerCast(bld, rust_main, Type::i8p(ccx).to_ref(), buf)
-                    });
+                    let opaque_rust_main = llvm::LLVMBuildPointerCast(bld,
+                        rust_main, Type::i8p(ccx).to_ref(),
+                        "rust_main\0".as_ptr() as *const _);
 
                     vec!(
                         opaque_rust_main,
@@ -2773,9 +2770,9 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                 format!("Illegal null byte in export_name \
                                          value: `{}`", sym)[]);
                         }
-                        let g = sym.with_c_str(|buf| {
-                            llvm::LLVMAddGlobal(ccx.llmod(), llty, buf)
-                        });
+                        let buf = CString::from_slice(sym.as_bytes());
+                        let g = llvm::LLVMAddGlobal(ccx.llmod(), llty,
+                                                    buf.as_ptr());
 
                         if attr::contains_name(i.attrs[],
                                                "thread_local") {
@@ -2817,9 +2814,8 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                                  sect.get())[]);
                     }
                     unsafe {
-                        sect.get().with_c_str(|buf| {
-                            llvm::LLVMSetSection(v, buf);
-                        })
+                        let buf = CString::from_slice(sect.get().as_bytes());
+                        llvm::LLVMSetSection(v, buf.as_ptr());
                     }
                 },
                 None => ()
@@ -2986,17 +2982,16 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     let name = format!("rust_metadata_{}_{}",
                        cx.link_meta().crate_name,
                        cx.link_meta().crate_hash);
-    let llglobal = name.with_c_str(|buf| {
-        unsafe {
-            llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(), buf)
-        }
-    });
+    let buf = CString::from_vec(name.into_bytes());
+    let llglobal = unsafe {
+        llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(),
+                            buf.as_ptr())
+    };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
         let name = loader::meta_section_name(cx.sess().target.target.options.is_like_osx);
-        name.with_c_str(|buf| {
-            llvm::LLVMSetSection(llglobal, buf)
-        });
+        let name = CString::from_slice(name.as_bytes());
+        llvm::LLVMSetSection(llglobal, name.as_ptr())
     }
     return metadata;
 }
@@ -3004,8 +2999,6 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
 /// Find any symbols that are defined in one compilation unit, but not declared
 /// in any other compilation unit.  Give these symbols internal linkage.
 fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
-    use std::c_str::CString;
-
     unsafe {
         let mut declared = HashSet::new();
 
@@ -3035,7 +3028,8 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                     continue
                 }
 
-                let name = CString::new(llvm::LLVMGetValueName(val), false);
+                let name = ffi::c_str_to_bytes(&llvm::LLVMGetValueName(val))
+                               .to_vec();
                 declared.insert(name);
             }
         }
@@ -3051,9 +3045,10 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                     continue
                 }
 
-                let name = CString::new(llvm::LLVMGetValueName(val), false);
+                let name = ffi::c_str_to_bytes(&llvm::LLVMGetValueName(val))
+                               .to_vec();
                 if !declared.contains(&name) &&
-                   !reachable.contains(name.as_str().unwrap()) {
+                   !reachable.contains(str::from_utf8(name.as_slice()).unwrap()) {
                     llvm::SetLinkage(val, llvm::InternalLinkage);
                 }
             }

@@ -23,7 +23,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, globs, slicing_syntax)]
+#![feature(globs, slicing_syntax)]
 #![feature(associated_types)]
 
 pub use self::Piece::*;

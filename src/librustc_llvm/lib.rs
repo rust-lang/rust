@@ -24,6 +24,7 @@
 #![feature(globs)]
 #![feature(link_args)]
 #![feature(unboxed_closures)]
+#![feature(old_orphan_check)]
 
 extern crate libc;
 
@@ -47,7 +48,7 @@ pub use self::Visibility::*;
 pub use self::DiagnosticSeverity::*;
 pub use self::Linkage::*;
 
-use std::c_str::ToCStr;
+use std::ffi::CString;
 use std::cell::RefCell;
 use std::{raw, mem};
 use libc::{c_uint, c_ushort, uint64_t, c_int, size_t, c_char};
@@ -2114,10 +2115,9 @@ impl Drop for TargetData {
 }
 
 pub fn mk_target_data(string_rep: &str) -> TargetData {
+    let string_rep = CString::from_slice(string_rep.as_bytes());
     TargetData {
-        lltd: string_rep.with_c_str(|buf| {
-            unsafe { LLVMCreateTargetData(buf) }
-        })
+        lltd: unsafe { LLVMCreateTargetData(string_rep.as_ptr()) }
     }
 }
 

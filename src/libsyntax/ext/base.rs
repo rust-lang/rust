@@ -16,6 +16,7 @@ use codemap;
 use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION};
 use ext;
 use ext::expand;
+use ext::tt::macro_rules;
 use parse;
 use parse::parser;
 use parse::token;
@@ -27,19 +28,6 @@ use fold::Folder;
 
 use std::collections::HashMap;
 use std::rc::Rc;
-
-// new-style macro! tt code:
-//
-//    MacResult, NormalTT, IdentTT
-//
-// also note that ast::Mac used to have a bunch of extraneous cases and
-// is now probably a redundant AST node, can be merged with
-// ast::MacInvocTT.
-
-pub struct MacroDef {
-    pub name: String,
-    pub ext: SyntaxExtension
-}
 
 pub trait ItemDecorator {
     fn expand(&self,
@@ -140,13 +128,6 @@ impl<F> IdentMacroExpander for F
 /// methods are spliced into the AST at the callsite of the macro (or
 /// just into the compiler's internal macro table, for `make_def`).
 pub trait MacResult {
-    /// Attempt to define a new macro.
-    // this should go away; the idea that a macro might expand into
-    // either a macro definition or an expression, depending on what
-    // the context wants, is kind of silly.
-    fn make_def(&mut self) -> Option<MacroDef> {
-        None
-    }
     /// Create an expression.
     fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
         None
@@ -328,13 +309,8 @@ pub enum SyntaxExtension {
     ///
     IdentTT(Box<IdentMacroExpander + 'static>, Option<Span>),
 
-    /// An ident macro that has two properties:
-    /// - it adds a macro definition to the environment, and
-    /// - the definition it adds doesn't introduce any new
-    ///   identifiers.
-    ///
-    /// `macro_rules!` is a LetSyntaxTT
-    LetSyntaxTT(Box<IdentMacroExpander + 'static>, Option<Span>),
+    /// Represents `macro_rules!` itself.
+    MacroRulesTT,
 }
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
@@ -364,8 +340,7 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     }
 
     let mut syntax_expanders = SyntaxEnv::new();
-    syntax_expanders.insert(intern("macro_rules"),
-                            LetSyntaxTT(box ext::tt::macro_rules::add_new_extension, None));
+    syntax_expanders.insert(intern("macro_rules"), MacroRulesTT);
     syntax_expanders.insert(intern("fmt"),
                             builtin_normal_expander(
                                 ext::fmt::expand_syntax_ext));
@@ -475,7 +450,7 @@ pub struct ExtCtxt<'a> {
 
     pub mod_path: Vec<ast::Ident> ,
     pub trace_mac: bool,
-    pub exported_macros: Vec<P<ast::Item>>,
+    pub exported_macros: Vec<ast::MacroDef>,
 
     pub syntax_env: SyntaxEnv,
     pub recursion_count: uint,
@@ -594,6 +569,17 @@ impl<'a> ExtCtxt<'a> {
             }
         }
     }
+
+    pub fn insert_macro(&mut self, def: ast::MacroDef) {
+        if def.export {
+            self.exported_macros.push(def.clone());
+        }
+        if def.use_locally {
+            let ext = macro_rules::compile(self, &def);
+            self.syntax_env.insert(def.ident.name, ext);
+        }
+    }
+
     /// Emit `msg` attached to `sp`, and stop compilation immediately.
     ///
     /// `span_err` should be strongly preferred where-ever possible:

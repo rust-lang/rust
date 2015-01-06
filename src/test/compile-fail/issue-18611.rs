@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 fn add_state(op: <int as HasState>::State) {
 //~^ ERROR the trait `HasState` is not implemented for the type `int`
 }

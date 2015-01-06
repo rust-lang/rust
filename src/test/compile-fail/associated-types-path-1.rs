@@ -10,8 +10,6 @@
 
 // Test that we have one and only one associated type per ref.
 
-#![feature(associated_types)]
-
 pub trait Foo {
     type A;
 }
@@ -23,4 +21,3 @@ pub fn f1<T>(a: T, x: T::A) {} //~ERROR associated type `A` not found
 pub fn f2<T: Foo + Bar>(a: T, x: T::A) {} //~ERROR ambiguous associated type `A`
 
 pub fn main() {}
-

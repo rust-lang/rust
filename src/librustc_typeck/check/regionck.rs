@@ -92,7 +92,7 @@ use middle::region::CodeExtent;
 use middle::traits;
 use middle::ty::{ReScope};
 use middle::ty::{self, Ty, MethodCall};
-use middle::infer;
+use middle::infer::{self, GenericKind};
 use middle::pat_util;
 use util::ppaux::{ty_to_string, Repr};
 
@@ -164,7 +164,7 @@ pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 pub struct Rcx<'a, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
 
-    region_param_pairs: Vec<(ty::Region, ty::ParamTy)>,
+    region_bound_pairs: Vec<(ty::Region, GenericKind<'tcx>)>,
 
     // id of innermost fn or loop
     repeating_scope: ast::NodeId,
@@ -205,7 +205,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         Rcx { fcx: fcx,
               repeating_scope: initial_repeating_scope,
               subject: subject,
-              region_param_pairs: Vec::new() }
+              region_bound_pairs: Vec::new() }
     }
 
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
@@ -286,12 +286,12 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             }
         };
 
-        let len = self.region_param_pairs.len();
+        let len = self.region_bound_pairs.len();
         self.relate_free_regions(fn_sig[], body.id);
         link_fn_args(self, CodeExtent::from_node_id(body.id), fn_decl.inputs[]);
         self.visit_block(body);
         self.visit_region_obligations(body.id);
-        self.region_param_pairs.truncate(len);
+        self.region_bound_pairs.truncate(len);
     }
 
     fn visit_region_obligations(&mut self, node_id: ast::NodeId)
@@ -357,11 +357,11 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                         // relationship that arises here, but
                         // presently we do not.)
                     }
-                    regionmanip::RegionSubParamConstraint(_, r_a, p_b) => {
-                        debug!("RegionSubParamConstraint: {} <= {}",
-                               r_a.repr(tcx), p_b.repr(tcx));
+                    regionmanip::RegionSubGenericConstraint(_, r_a, ref generic_b) => {
+                        debug!("RegionSubGenericConstraint: {} <= {}",
+                               r_a.repr(tcx), generic_b.repr(tcx));
 
-                        self.region_param_pairs.push((r_a, p_b));
+                        self.region_bound_pairs.push((r_a, generic_b.clone()));
                     }
                 }
             }
@@ -1427,31 +1427,31 @@ fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
                 rcx.fcx.mk_subr(o1, r_a, r_b);
             }
-            regionmanip::RegionSubParamConstraint(None, r_a, param_b) => {
-                param_must_outlive(rcx, origin.clone(), r_a, param_b);
+            regionmanip::RegionSubGenericConstraint(None, r_a, ref generic_b) => {
+                generic_must_outlive(rcx, origin.clone(), r_a, generic_b);
             }
-            regionmanip::RegionSubParamConstraint(Some(ty), r_a, param_b) => {
+            regionmanip::RegionSubGenericConstraint(Some(ty), r_a, ref generic_b) => {
                 let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
-                param_must_outlive(rcx, o1, r_a, param_b);
+                generic_must_outlive(rcx, o1, r_a, generic_b);
             }
         }
     }
 }
 
-fn param_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
-                                origin: infer::SubregionOrigin<'tcx>,
-                                region: ty::Region,
-                                param_ty: ty::ParamTy) {
+fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                  origin: infer::SubregionOrigin<'tcx>,
+                                  region: ty::Region,
+                                  generic: &GenericKind<'tcx>) {
     let param_env = &rcx.fcx.inh.param_env;
 
-    debug!("param_must_outlive(region={}, param_ty={})",
+    debug!("param_must_outlive(region={}, generic={})",
            region.repr(rcx.tcx()),
-           param_ty.repr(rcx.tcx()));
+           generic.repr(rcx.tcx()));
 
     // To start, collect bounds from user:
     let mut param_bounds =
         ty::required_region_bounds(rcx.tcx(),
-                                   param_ty.to_ty(rcx.tcx()),
+                                   generic.to_ty(rcx.tcx()),
                                    param_env.caller_bounds.predicates.as_slice().to_vec());
 
     // Add in the default bound of fn body that applies to all in
@@ -1467,22 +1467,21 @@ fn param_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     //     fn foo<'a, A>(x: &'a A) { x.bar() }
     //
     // The problem is that the type of `x` is `&'a A`. To be
-    // well-formed, then, A must be lower-bounded by `'a`, but we
+    // well-formed, then, A must be lower-generic by `'a`, but we
     // don't know that this holds from first principles.
-    for &(ref r, ref p) in rcx.region_param_pairs.iter() {
-        debug!("param_ty={} p={}",
-               param_ty.repr(rcx.tcx()),
+    for &(ref r, ref p) in rcx.region_bound_pairs.iter() {
+        debug!("generic={} p={}",
+               generic.repr(rcx.tcx()),
                p.repr(rcx.tcx()));
-        if param_ty == *p {
+        if generic == p {
             param_bounds.push(*r);
         }
     }
 
-    // Inform region inference that this parameter type must be
-    // properly bounded.
-    infer::verify_param_bound(rcx.fcx.infcx(),
-                              origin,
-                              param_ty,
-                              region,
-                              param_bounds);
+    // Inform region inference that this generic must be properly
+    // bounded.
+    rcx.fcx.infcx().verify_generic_bound(origin,
+                                         generic.clone(),
+                                         region,
+                                         param_bounds);
 }

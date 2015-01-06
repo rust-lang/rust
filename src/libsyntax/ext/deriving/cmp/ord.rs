@@ -27,7 +27,7 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
                               push: F) where
     F: FnOnce(P<Item>),
 {
-    macro_rules! md (
+    macro_rules! md {
         ($name:expr, $op:expr, $equal:expr) => { {
             let inline = cx.meta_word(span, InternedString::new("inline"));
             let attrs = vec!(cx.attribute(span, inline));
@@ -43,7 +43,7 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
                 })
             }
         } }
-    );
+    }
 
     let ordering_ty = Literal(Path::new(vec!["std", "cmp", "Ordering"]));
     let ret_ty = Literal(Path::new_(vec!["std", "option", "Option"],

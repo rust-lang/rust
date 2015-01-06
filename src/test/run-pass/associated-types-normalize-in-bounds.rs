@@ -11,12 +11,10 @@
 // Test that we normalize associated types that appear in bounds; if
 // we didn't, the call to `self.split2()` fails to type check.
 
-#![feature(associated_types)]
-
 struct Splits<'a, T, P>;
 struct SplitsN<I>;
 
-trait SliceExt2 for Sized? {
+trait SliceExt2 {
     type Item;
 
     fn split2<'a, P>(&'a self, pred: P) -> Splits<'a, Self::Item, P>

@@ -57,12 +57,10 @@ use string::{String, ToString};
 use sync::atomic::{AtomicInt, ATOMIC_INT_INIT, Ordering};
 use vec::Vec;
 
-#[cfg(unix)] use c_str::ToCStr;
+#[cfg(unix)] use ffi::{self, CString};
 
-#[cfg(unix)]
-pub use sys::ext as unix;
-#[cfg(windows)]
-pub use sys::ext as windows;
+#[cfg(unix)] pub use sys::ext as unix;
+#[cfg(windows)] pub use sys::ext as windows;
 
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
@@ -196,15 +194,14 @@ pub fn getenv(n: &str) -> Option<String> {
 ///
 /// Panics if `n` has any interior NULs.
 pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
-    use c_str::CString;
-
     unsafe {
         with_env_lock(|| {
-            let s = n.with_c_str(|buf| libc::getenv(buf));
+            let s = CString::from_slice(n.as_bytes());
+            let s = libc::getenv(s.as_ptr()) as *const _;
             if s.is_null() {
                 None
             } else {
-                Some(CString::new(s as *const libc::c_char, false).as_bytes_no_nul().to_vec())
+                Some(ffi::c_str_to_bytes(&s).to_vec())
             }
         })
     }
@@ -253,13 +250,12 @@ pub fn setenv<T: BytesContainer>(n: &str, v: T) {
     fn _setenv(n: &str, v: &[u8]) {
         unsafe {
             with_env_lock(|| {
-                n.with_c_str(|nbuf| {
-                    v.with_c_str(|vbuf| {
-                        if libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1) != 0 {
-                            panic!(IoError::last_error());
-                        }
-                    })
-                })
+                let k = CString::from_slice(n.as_bytes());
+                let v = CString::from_slice(v);
+                if libc::funcs::posix01::unistd::setenv(k.as_ptr(),
+                                                        v.as_ptr(), 1) != 0 {
+                    panic!(IoError::last_error());
+                }
             })
         }
     }
@@ -289,11 +285,10 @@ pub fn unsetenv(n: &str) {
     fn _unsetenv(n: &str) {
         unsafe {
             with_env_lock(|| {
-                n.with_c_str(|nbuf| {
-                    if libc::funcs::posix01::unistd::unsetenv(nbuf) != 0 {
-                        panic!(IoError::last_error());
-                    }
-                })
+                let nbuf = CString::from_slice(n.as_bytes());
+                if libc::funcs::posix01::unistd::unsetenv(nbuf.as_ptr()) != 0 {
+                    panic!(IoError::last_error());
+                }
             })
         }
     }
@@ -618,11 +613,10 @@ pub fn get_exit_status() -> int {
 #[cfg(target_os = "macos")]
 unsafe fn load_argc_and_argv(argc: int,
                              argv: *const *const c_char) -> Vec<Vec<u8>> {
-    use c_str::CString;
     use iter::range;
 
     range(0, argc as uint).map(|i| {
-        CString::new(*argv.offset(i as int), false).as_bytes_no_nul().to_vec()
+        ffi::c_str_to_bytes(&*argv.offset(i as int)).to_vec()
     }).collect()
 }
 
@@ -652,7 +646,6 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 // res
 #[cfg(target_os = "ios")]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
-    use c_str::CString;
     use iter::range;
     use mem;
 

@@ -10,26 +10,25 @@
 
 use prelude::v1::*;
 
+use collections;
+use ffi::CString;
+use hash::Hash;
+use io::fs::PathExtensions;
+use io::process::{ProcessExit, ExitStatus, ExitSignal};
+use io::{IoResult, IoError};
+use io;
 use libc::{pid_t, c_void, c_int};
 use libc;
-use c_str::{CString, ToCStr};
-use io;
 use mem;
 use os;
-use ptr;
-use io::process::{ProcessExit, ExitStatus, ExitSignal};
-use collections;
 use path::BytesContainer;
-use hash::Hash;
-use io::{IoResult, IoError};
-
+use ptr;
+use str;
+use sys::fs::FileDesc;
 use sys::fs;
 use sys::{self, retry, c, wouldblock, set_nonblocking, ms_to_timeval, timer};
-use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
 use sys_common::{AsInner, mkerr_libc, timeout};
-
-use io::fs::PathExtensions;
 
 pub use sys_common::ProcessConfig;
 
@@ -142,10 +141,10 @@ impl Process {
                 // Split the value and test each path to see if the
                 // program exists.
                 for path in os::split_paths(v.container_as_bytes()).into_iter() {
-                    let path = path.join(cfg.program().as_bytes_no_nul())
+                    let path = path.join(cfg.program().as_bytes())
                                    .with_extension(os::consts::EXE_EXTENSION);
                     if path.exists() {
-                        return Some(path.to_c_str())
+                        return Some(CString::from_slice(path.as_vec()))
                     }
                 }
                 break
@@ -363,11 +362,11 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 
 fn make_command_line(prog: &CString, args: &[CString]) -> String {
     let mut cmd = String::new();
-    append_arg(&mut cmd, prog.as_str()
+    append_arg(&mut cmd, str::from_utf8(prog.as_bytes()).ok()
                              .expect("expected program name to be utf-8 encoded"));
     for arg in args.iter() {
         cmd.push(' ');
-        append_arg(&mut cmd, arg.as_str()
+        append_arg(&mut cmd, str::from_utf8(arg.as_bytes()).ok()
                                 .expect("expected argument to be utf-8 encoded"));
     }
     return cmd;
@@ -449,7 +448,7 @@ fn with_dirp<T, F>(d: Option<&CString>, cb: F) -> T where
 {
     match d {
       Some(dir) => {
-          let dir_str = dir.as_str()
+          let dir_str = str::from_utf8(dir.as_bytes()).ok()
                            .expect("expected workingdirectory to be utf-8 encoded");
           let mut dir_str: Vec<u16> = dir_str.utf16_units().collect();
           dir_str.push(0);
@@ -467,19 +466,17 @@ fn free_handle(handle: *mut ()) {
 
 #[cfg(test)]
 mod tests {
-    use c_str::ToCStr;
+    use prelude::v1::*;
+    use str;
+    use ffi::CString;
+    use super::make_command_line;
 
     #[test]
     fn test_make_command_line() {
-        use prelude::v1::*;
-        use str;
-        use c_str::CString;
-        use super::make_command_line;
-
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
-            make_command_line(&prog.to_c_str(),
+            make_command_line(&CString::from_slice(prog.as_bytes()),
                               args.iter()
-                                  .map(|a| a.to_c_str())
+                                  .map(|a| CString::from_slice(a.as_bytes()))
                                   .collect::<Vec<CString>>()
                                   .as_slice())
         }

@@ -20,9 +20,9 @@ trait Foo<T,U> {
     fn dummy(&self, t: T, u: U);
 }
 
-trait Eq<Sized? X> for Sized? { }
-impl<Sized? X> Eq<X> for X { }
-fn eq<Sized? A,Sized? B:Eq<A>>() { }
+trait Eq<X: ?Sized> { }
+impl<X: ?Sized> Eq<X> for X { }
+fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
 
 fn test<'a,'b>() {
     // No errors expected:

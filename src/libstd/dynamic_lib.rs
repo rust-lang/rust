@@ -17,7 +17,7 @@
 
 use prelude::v1::*;
 
-use c_str::ToCStr;
+use ffi::CString;
 use mem;
 use os;
 use str;
@@ -51,13 +51,11 @@ impl DynamicLibrary {
 
     /// Lazily open a dynamic library. When passed None it gives a
     /// handle to the calling process
-    pub fn open<T: ToCStr>(filename: Option<T>)
-                        -> Result<DynamicLibrary, String> {
+    pub fn open(filename: Option<&Path>) -> Result<DynamicLibrary, String> {
         unsafe {
-            let mut filename = filename;
             let maybe_library = dl::check_for_errors_in(|| {
-                match filename.take() {
-                    Some(name) => dl::open_external(name),
+                match filename {
+                    Some(name) => dl::open_external(name.as_vec()),
                     None => dl::open_internal()
                 }
             });
@@ -130,10 +128,9 @@ impl DynamicLibrary {
         // This function should have a lifetime constraint of 'a on
         // T but that feature is still unimplemented
 
+        let raw_string = CString::from_slice(symbol.as_bytes());
         let maybe_symbol_value = dl::check_for_errors_in(|| {
-            symbol.with_c_str(|raw_string| {
-                dl::symbol(self.handle, raw_string)
-            })
+            dl::symbol(self.handle, raw_string.as_ptr())
         });
 
         // The value must not be constructed if there is an error so
@@ -157,7 +154,7 @@ mod test {
     fn test_loading_cosine() {
         // The math library does not need to be loaded since it is already
         // statically linked in
-        let none: Option<Path> = None; // appease the typechecker
+        let none: Option<&Path> = None; // appease the typechecker
         let libm = match DynamicLibrary::open(none) {
             Err(error) => panic!("Could not load self as module: {}", error),
             Ok(libm) => libm
@@ -202,17 +199,17 @@ mod test {
           target_os = "freebsd",
           target_os = "dragonfly"))]
 pub mod dl {
-    use self::Rtld::*;
-
+    pub use self::Rtld::*;
     use prelude::v1::*;
-    use c_str::{CString, ToCStr};
+
+    use ffi::{self, CString};
+    use str;
     use libc;
     use ptr;
 
-    pub unsafe fn open_external<T: ToCStr>(filename: T) -> *mut u8 {
-        filename.with_c_str(|raw_name| {
-            dlopen(raw_name, Lazy as libc::c_int) as *mut u8
-        })
+    pub unsafe fn open_external(filename: &[u8]) -> *mut u8 {
+        let s = CString::from_slice(filename);
+        dlopen(s.as_ptr(), Lazy as libc::c_int) as *mut u8
     }
 
     pub unsafe fn open_internal() -> *mut u8 {
@@ -236,8 +233,8 @@ pub mod dl {
             let ret = if ptr::null() == last_error {
                 Ok(result)
             } else {
-                Err(String::from_str(CString::new(last_error, false).as_str()
-                    .unwrap()))
+                let s = ffi::c_str_to_bytes(&last_error);
+                Err(str::from_utf8(s).unwrap().to_string())
             };
 
             ret
@@ -273,7 +270,6 @@ pub mod dl {
 
 #[cfg(target_os = "windows")]
 pub mod dl {
-    use c_str::ToCStr;
     use iter::IteratorExt;
     use libc;
     use ops::FnOnce;
@@ -287,10 +283,9 @@ pub mod dl {
     use string::String;
     use vec::Vec;
 
-    pub unsafe fn open_external<T: ToCStr>(filename: T) -> *mut u8 {
+    pub unsafe fn open_external(filename: &[u8]) -> *mut u8 {
         // Windows expects Unicode data
-        let filename_cstr = filename.to_c_str();
-        let filename_str = str::from_utf8(filename_cstr.as_bytes_no_nul()).unwrap();
+        let filename_str = str::from_utf8(filename).unwrap();
         let mut filename_str: Vec<u16> = filename_str.utf16_units().collect();
         filename_str.push(0);
         LoadLibraryW(filename_str.as_ptr() as *const libc::c_void) as *mut u8

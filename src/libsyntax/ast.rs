@@ -476,7 +476,7 @@ pub struct Crate {
     pub attrs: Vec<Attribute>,
     pub config: CrateConfig,
     pub span: Span,
-    pub exported_macros: Vec<P<Item>>
+    pub exported_macros: Vec<MacroDef>,
 }
 
 pub type MetaItem = Spanned<MetaItem_>;
@@ -572,7 +572,7 @@ pub enum Pat_ {
     PatStruct(Path, Vec<Spanned<FieldPat>>, bool),
     PatTup(Vec<P<Pat>>),
     PatBox(P<Pat>),
-    PatRegion(P<Pat>), // reference pattern
+    PatRegion(P<Pat>, Mutability), // reference pattern
     PatLit(P<Expr>),
     PatRange(P<Expr>, P<Expr>),
     /// [a, b, ..i, y, z] is represented as:
@@ -884,6 +884,7 @@ impl TokenTree {
         match *self {
             TtToken(_, token::DocComment(_)) => 2,
             TtToken(_, token::SubstNt(..)) => 2,
+            TtToken(_, token::SpecialVarNt(..)) => 2,
             TtToken(_, token::MatchNt(..)) => 3,
             TtDelimited(_, ref delimed) => {
                 delimed.tts.len() + 2
@@ -923,6 +924,12 @@ impl TokenTree {
             (&TtToken(sp, token::SubstNt(name, name_st)), _) => {
                 let v = [TtToken(sp, token::Dollar),
                          TtToken(sp, token::Ident(name, name_st))];
+                v[index]
+            }
+            (&TtToken(sp, token::SpecialVarNt(var)), _) => {
+                let v = [TtToken(sp, token::Dollar),
+                         TtToken(sp, token::Ident(token::str_to_ident(var.as_str()),
+                                                  token::Plain))];
                 v[index]
             }
             (&TtToken(sp, token::MatchNt(name, kind, name_st, kind_st)), _) => {
@@ -1687,6 +1694,21 @@ pub enum InlinedItem {
     IITraitItem(DefId /* impl id */, TraitItem),
     IIImplItem(DefId /* impl id */, ImplItem),
     IIForeign(P<ForeignItem>),
+}
+
+/// A macro definition, in this crate or imported from another.
+///
+/// Not parsed directly, but created on macro import or `macro_rules!` expansion.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
+pub struct MacroDef {
+    pub ident: Ident,
+    pub attrs: Vec<Attribute>,
+    pub id: NodeId,
+    pub span: Span,
+    pub imported_from: Option<Ident>,
+    pub export: bool,
+    pub use_locally: bool,
+    pub body: Vec<TokenTree>,
 }
 
 #[cfg(test)]

@@ -297,7 +297,7 @@ mod tests {
         // it doesn't do weird things to the RNG (so 0 maps to 0, 1 to
         // 1, internally; modulo a modulo operation).
 
-        macro_rules! t (
+        macro_rules! t {
             ($items:expr, $expected:expr) => {{
                 let mut items = $items;
                 let wc = WeightedChoice::new(items.as_mut_slice());
@@ -309,7 +309,7 @@ mod tests {
                     assert_eq!(wc.ind_sample(&mut rng), val)
                 }
             }}
-        );
+        }
 
         t!(vec!(Weighted { weight: 1, item: 10i}), [10]);
 

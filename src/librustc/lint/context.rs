@@ -167,21 +167,27 @@ impl LintStore {
     }
 
     pub fn register_builtin(&mut self, sess: Option<&Session>) {
-        macro_rules! add_builtin ( ( $sess:ident, $($name:ident),*, ) => (
-            {$(
-                self.register_pass($sess, false, box builtin::$name as LintPassObject);
-            )*}
-        ));
+        macro_rules! add_builtin {
+            ($sess:ident, $($name:ident),*,) => (
+                {$(
+                    self.register_pass($sess, false, box builtin::$name as LintPassObject);
+                )*}
+            )
+        }
 
-        macro_rules! add_builtin_with_new ( ( $sess:ident, $($name:ident),*, ) => (
-            {$(
-                self.register_pass($sess, false, box builtin::$name::new() as LintPassObject);
-            )*}
-        ));
+        macro_rules! add_builtin_with_new {
+            ($sess:ident, $($name:ident),*,) => (
+                {$(
+                    self.register_pass($sess, false, box builtin::$name::new() as LintPassObject);
+                )*}
+            )
+        }
 
-        macro_rules! add_lint_group ( ( $sess:ident, $name:expr, $($lint:ident),* ) => (
-            self.register_group($sess, false, $name, vec![$(LintId::of(builtin::$lint)),*]);
-        ));
+        macro_rules! add_lint_group {
+            ($sess:ident, $name:expr, $($lint:ident),*) => (
+                self.register_group($sess, false, $name, vec![$(LintId::of(builtin::$lint)),*]);
+            )
+        }
 
         add_builtin!(sess,
                      HardwiredLints,
@@ -208,7 +214,7 @@ impl LintStore {
 
         add_builtin_with_new!(sess,
                               TypeLimits,
-                              RawPointerDeriving,
+                              RawPointerDerive,
                               MissingDoc,
         );
 
@@ -247,6 +253,7 @@ impl LintStore {
         self.register_renamed("unknown_crate_type", "unknown_crate_types");
         self.register_renamed("variant_size_difference", "variant_size_differences");
         self.register_renamed("transmute_fat_ptr", "fat_ptr_transmutes");
+        self.register_renamed("raw_pointer_deriving", "raw_pointer_derive");
 
     }
 

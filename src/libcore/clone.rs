@@ -43,7 +43,7 @@ pub trait Clone : Sized {
 }
 
 #[stable]
-impl<'a, Sized? T> Clone for &'a T {
+impl<'a, T: ?Sized> Clone for &'a T {
     /// Return a shallow copy of the reference.
     #[inline]
     fn clone(&self) -> &'a T { *self }

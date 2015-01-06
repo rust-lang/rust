@@ -12,7 +12,7 @@ use rustc::session::Session;
 use rustc::session::config::{self, Input, OutputFilenames};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
-use rustc::metadata::creader;
+use rustc::metadata::creader::CrateReader;
 use rustc::middle::{stability, ty, reachable};
 use rustc::middle::dependency_format;
 use rustc::middle;
@@ -146,8 +146,8 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         println!("{}", json::as_json(&krate));
     }
 
-    if sess.show_span() {
-        syntax::show_span::run(sess.diagnostic(), &krate);
+    if let Some(ref s) = sess.opts.show_span {
+        syntax::show_span::run(sess.diagnostic(), s.as_slice(), &krate);
     }
 
     krate
@@ -182,7 +182,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
     //
-    //   #[macro_escape] #[cfg(foo)]
+    //   #[macro_use] #[cfg(foo)]
     //   mod bar { macro_rules! baz!(() => {{}}) }
     //
     // baz! should not use this definition unless foo is enabled.
@@ -216,9 +216,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         = time(time_passes, "plugin loading", (), |_|
                plugin::load::load_plugins(sess, &krate, addl_plugins.take().unwrap()));
 
-    let mut registry = Registry::new(&krate);
+    let mut registry = Registry::new(sess, &krate);
 
-    time(time_passes, "plugin registration", (), |_| {
+    time(time_passes, "plugin registration", registrars, |registrars| {
         if sess.features.borrow().rustc_diagnostic_macros {
             registry.register_macro("__diagnostic_used",
                 diagnostics::plugin::expand_diagnostic_used);
@@ -228,8 +228,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 diagnostics::plugin::expand_build_diagnostic_array);
         }
 
-        for &registrar in registrars.iter() {
-            registrar(&mut registry);
+        for registrar in registrars.into_iter() {
+            registry.args_hidden = Some(registrar.args);
+            (registrar.fun)(&mut registry);
         }
     });
 
@@ -272,7 +273,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             }
             let cfg = syntax::ext::expand::ExpansionConfig {
                 crate_name: crate_name.to_string(),
-                deriving_hash_type_parameter: sess.features.borrow().default_type_params,
                 enable_quotes: sess.features.borrow().quote,
                 recursion_limit: sess.recursion_limit.get(),
             };
@@ -352,7 +352,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let krate = ast_map.krate();
 
     time(time_passes, "external crate/lib resolution", (), |_|
-         creader::read_crates(&sess, krate));
+         CrateReader::new(&sess).read_crates(krate));
 
     let lang_items = time(time_passes, "language item collection", (), |_|
                           middle::lang_items::collect_language_items(krate, &sess));
@@ -572,7 +572,7 @@ pub fn stop_after_phase_1(sess: &Session) -> bool {
         debug!("invoked with --parse-only, returning early from compile_input");
         return true;
     }
-    if sess.show_span() {
+    if sess.opts.show_span.is_some() {
         return true;
     }
     return sess.opts.debugging_opts & config::AST_JSON_NOEXPAND != 0;

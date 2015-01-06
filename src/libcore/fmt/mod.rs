@@ -20,11 +20,14 @@ use mem;
 use option::Option;
 use option::Option::{Some, None};
 use ops::{Deref, FnOnce};
-use result::Result::{Ok, Err};
+use result::Result::Ok;
 use result;
 use slice::SliceExt;
 use slice;
 use str::{self, StrExt, Utf8Error};
+
+// NOTE: for old macros; remove after the next snapshot
+#[cfg(stage0)] use result::Result::Err;
 
 pub use self::num::radix;
 pub use self::num::Radix;
@@ -78,9 +81,9 @@ pub trait Writer {
         // This Adapter is needed to allow `self` (of type `&mut
         // Self`) to be cast to a FormatWriter (below) without
         // requiring a `Sized` bound.
-        struct Adapter<'a,Sized? T:'a>(&'a mut T);
+        struct Adapter<'a,T: ?Sized +'a>(&'a mut T);
 
-        impl<'a, Sized? T> Writer for Adapter<'a, T>
+        impl<'a, T: ?Sized> Writer for Adapter<'a, T>
             where T: Writer
         {
             fn write_str(&mut self, s: &str) -> Result {
@@ -222,7 +225,7 @@ impl<'a> Show for Arguments<'a> {
 /// to this trait. There is not an explicit way of selecting this trait to be
 /// used for formatting, it is only if no other format is specified.
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait Show for Sized? {
+pub trait Show {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
@@ -230,49 +233,49 @@ pub trait Show for Sized? {
 
 /// Format trait for the `o` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait Octal for Sized? {
+pub trait Octal {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `b` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait Binary for Sized? {
+pub trait Binary {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `x` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait LowerHex for Sized? {
+pub trait LowerHex {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `X` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait UpperHex for Sized? {
+pub trait UpperHex {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `p` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait Pointer for Sized? {
+pub trait Pointer {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `e` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait LowerExp for Sized? {
+pub trait LowerExp {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `E` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait UpperExp for Sized? {
+pub trait UpperExp {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
@@ -592,10 +595,10 @@ pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
 
 // Implementations of the core formatting traits
 
-impl<'a, Sized? T: Show> Show for &'a T {
+impl<'a, T: ?Sized + Show> Show for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result { (**self).fmt(f) }
 }
-impl<'a, Sized? T: Show> Show for &'a mut T {
+impl<'a, T: ?Sized + Show> Show for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { (**self).fmt(f) }
 }
 

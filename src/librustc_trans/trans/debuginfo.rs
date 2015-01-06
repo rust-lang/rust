@@ -207,7 +207,7 @@ use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
 use util::ppaux;
 
 use libc::c_uint;
-use std::c_str::{CString, ToCStr};
+use std::ffi::CString;
 use std::cell::{Cell, RefCell};
 use std::ptr;
 use std::rc::{Rc, Weak};
@@ -755,14 +755,15 @@ pub fn finalize(cx: &CrateContext) {
         // for OS X to understand. For more info see #11352
         // This can be overridden using --llvm-opts -dwarf-version,N.
         if cx.sess().target.target.options.is_like_osx {
-            "Dwarf Version".with_c_str(
-                |s| llvm::LLVMRustAddModuleFlag(cx.llmod(), s, 2));
+            llvm::LLVMRustAddModuleFlag(cx.llmod(),
+                                        "Dwarf Version\0".as_ptr() as *const _,
+                                        2)
         }
 
         // Prevent bitcode readers from deleting the debug info.
-        "Debug Info Version".with_c_str(
-            |s| llvm::LLVMRustAddModuleFlag(cx.llmod(), s,
-                                            llvm::LLVMRustDebugMetadataVersion));
+        let ptr = "Debug Info Version\0".as_ptr();
+        llvm::LLVMRustAddModuleFlag(cx.llmod(), ptr as *const _,
+                                    llvm::LLVMRustDebugMetadataVersion);
     };
 }
 
@@ -824,22 +825,20 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         namespace_node.mangled_name_of_contained_item(var_name[]);
     let var_scope = namespace_node.scope;
 
-    var_name.with_c_str(|var_name| {
-        linkage_name.with_c_str(|linkage_name| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateStaticVariable(DIB(cx),
-                                                        var_scope,
-                                                        var_name,
-                                                        linkage_name,
-                                                        file_metadata,
-                                                        line_number,
-                                                        type_metadata,
-                                                        is_local_to_unit,
-                                                        global,
-                                                        ptr::null_mut());
-            }
-        })
-    });
+    let var_name = CString::from_slice(var_name.as_bytes());
+    let linkage_name = CString::from_slice(linkage_name.as_bytes());
+    unsafe {
+        llvm::LLVMDIBuilderCreateStaticVariable(DIB(cx),
+                                                var_scope,
+                                                var_name.as_ptr(),
+                                                linkage_name.as_ptr(),
+                                                file_metadata,
+                                                line_number,
+                                                type_metadata,
+                                                is_local_to_unit,
+                                                global,
+                                                ptr::null_mut());
+    }
 }
 
 /// Creates debug information for the given local variable.
@@ -1383,28 +1382,26 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let is_local_to_unit = is_node_local_to_unit(cx, fn_ast_id);
 
-    let fn_metadata = function_name.with_c_str(|function_name| {
-                          linkage_name.with_c_str(|linkage_name| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateFunction(
-                    DIB(cx),
-                    containing_scope,
-                    function_name,
-                    linkage_name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    function_type_metadata,
-                    is_local_to_unit,
-                    true,
-                    scope_line as c_uint,
-                    FlagPrototyped as c_uint,
-                    cx.sess().opts.optimize != config::No,
-                    llfn,
-                    template_parameters,
-                    ptr::null_mut())
-            }
-        })
-    });
+    let function_name = CString::from_slice(function_name.as_bytes());
+    let linkage_name = CString::from_slice(linkage_name.as_bytes());
+    let fn_metadata = unsafe {
+        llvm::LLVMDIBuilderCreateFunction(
+            DIB(cx),
+            containing_scope,
+            function_name.as_ptr(),
+            linkage_name.as_ptr(),
+            file_metadata,
+            loc.line as c_uint,
+            function_type_metadata,
+            is_local_to_unit,
+            true,
+            scope_line as c_uint,
+            FlagPrototyped as c_uint,
+            cx.sess().opts.optimize != config::No,
+            llfn,
+            template_parameters,
+            ptr::null_mut())
+    };
 
     let scope_map = create_scope_map(cx,
                                      fn_decl.inputs.as_slice(),
@@ -1509,19 +1506,18 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
                 let ident = special_idents::type_self;
 
-                let param_metadata = token::get_ident(ident).get()
-                                                            .with_c_str(|name| {
-                    unsafe {
-                        llvm::LLVMDIBuilderCreateTemplateTypeParameter(
-                            DIB(cx),
-                            file_metadata,
-                            name,
-                            actual_self_type_metadata,
-                            ptr::null_mut(),
-                            0,
-                            0)
-                    }
-                });
+                let ident = token::get_ident(ident);
+                let name = CString::from_slice(ident.get().as_bytes());
+                let param_metadata = unsafe {
+                    llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                        DIB(cx),
+                        file_metadata,
+                        name.as_ptr(),
+                        actual_self_type_metadata,
+                        ptr::null_mut(),
+                        0,
+                        0)
+                };
 
                 template_params.push(param_metadata);
             }
@@ -1544,19 +1540,18 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // Again, only create type information if full debuginfo is enabled
             if cx.sess().opts.debuginfo == FullDebugInfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
-                let param_metadata = token::get_ident(ident).get()
-                                                            .with_c_str(|name| {
-                    unsafe {
-                        llvm::LLVMDIBuilderCreateTemplateTypeParameter(
-                            DIB(cx),
-                            file_metadata,
-                            name,
-                            actual_type_metadata,
-                            ptr::null_mut(),
-                            0,
-                            0)
-                    }
-                });
+                let ident = token::get_ident(ident);
+                let name = CString::from_slice(ident.get().as_bytes());
+                let param_metadata = unsafe {
+                    llvm::LLVMDIBuilderCreateTemplateTypeParameter(
+                        DIB(cx),
+                        file_metadata,
+                        name.as_ptr(),
+                        actual_type_metadata,
+                        ptr::null_mut(),
+                        0,
+                        0)
+                };
                 template_params.push(param_metadata);
             }
         }
@@ -1601,19 +1596,19 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
             } else {
                 match abs_path.path_relative_from(work_dir) {
                     Some(ref p) if p.is_relative() => {
-                            // prepend "./" if necessary
-                            let dotdot = b"..";
-                            let prefix = [dotdot[0], ::std::path::SEP_BYTE];
-                            let mut path_bytes = p.as_vec().to_vec();
+                        // prepend "./" if necessary
+                        let dotdot = b"..";
+                        let prefix: &[u8] = &[dotdot[0], ::std::path::SEP_BYTE];
+                        let mut path_bytes = p.as_vec().to_vec();
 
-                            if path_bytes.slice_to(2) != prefix &&
-                               path_bytes.slice_to(2) != dotdot {
-                                path_bytes.insert(0, prefix[0]);
-                                path_bytes.insert(1, prefix[1]);
-                            }
-
-                            path_bytes.to_c_str()
+                        if path_bytes.slice_to(2) != prefix &&
+                           path_bytes.slice_to(2) != dotdot {
+                            path_bytes.insert(0, prefix[0]);
+                            path_bytes.insert(1, prefix[1]);
                         }
+
+                        CString::from_vec(path_bytes)
+                    }
                     _ => fallback_path(cx)
                 }
             }
@@ -1625,29 +1620,25 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
     let compile_unit_name = compile_unit_name.as_ptr();
-    return work_dir.as_vec().with_c_str(|work_dir| {
-        producer.with_c_str(|producer| {
-            "".with_c_str(|flags| {
-                "".with_c_str(|split_name| {
-                    unsafe {
-                        llvm::LLVMDIBuilderCreateCompileUnit(
-                            debug_context(cx).builder,
-                            DW_LANG_RUST,
-                            compile_unit_name,
-                            work_dir,
-                            producer,
-                            cx.sess().opts.optimize != config::No,
-                            flags,
-                            0,
-                            split_name)
-                    }
-                })
-            })
-        })
-    });
+    let work_dir = CString::from_slice(work_dir.as_vec());
+    let producer = CString::from_slice(producer.as_bytes());
+    let flags = "\0";
+    let split_name = "\0";
+    return unsafe {
+        llvm::LLVMDIBuilderCreateCompileUnit(
+            debug_context(cx).builder,
+            DW_LANG_RUST,
+            compile_unit_name,
+            work_dir.as_ptr(),
+            producer.as_ptr(),
+            cx.sess().opts.optimize != config::No,
+            flags.as_ptr() as *const _,
+            0,
+            split_name.as_ptr() as *const _)
+    };
 
     fn fallback_path(cx: &CrateContext) -> CString {
-        cx.link_meta().crate_name.to_c_str()
+        CString::from_slice(cx.link_meta().crate_name.as_bytes())
     }
 }
 
@@ -1673,42 +1664,41 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         CapturedVariable => (0, DW_TAG_auto_variable)
     };
 
-    let (var_alloca, var_metadata) = name.get().with_c_str(|name| {
-        match variable_access {
-            DirectVariable { alloca } => (
-                alloca,
-                unsafe {
-                    llvm::LLVMDIBuilderCreateLocalVariable(
-                        DIB(cx),
-                        dwarf_tag,
-                        scope_metadata,
-                        name,
-                        file_metadata,
-                        loc.line as c_uint,
-                        type_metadata,
-                        cx.sess().opts.optimize != config::No,
-                        0,
-                        argument_index)
-                }
-            ),
-            IndirectVariable { alloca, address_operations } => (
-                alloca,
-                unsafe {
-                    llvm::LLVMDIBuilderCreateComplexVariable(
-                        DIB(cx),
-                        dwarf_tag,
-                        scope_metadata,
-                        name,
-                        file_metadata,
-                        loc.line as c_uint,
-                        type_metadata,
-                        address_operations.as_ptr(),
-                        address_operations.len() as c_uint,
-                        argument_index)
-                }
-            )
-        }
-    });
+    let name = CString::from_slice(name.get().as_bytes());
+    let (var_alloca, var_metadata) = match variable_access {
+        DirectVariable { alloca } => (
+            alloca,
+            unsafe {
+                llvm::LLVMDIBuilderCreateLocalVariable(
+                    DIB(cx),
+                    dwarf_tag,
+                    scope_metadata,
+                    name.as_ptr(),
+                    file_metadata,
+                    loc.line as c_uint,
+                    type_metadata,
+                    cx.sess().opts.optimize != config::No,
+                    0,
+                    argument_index)
+            }
+        ),
+        IndirectVariable { alloca, address_operations } => (
+            alloca,
+            unsafe {
+                llvm::LLVMDIBuilderCreateComplexVariable(
+                    DIB(cx),
+                    dwarf_tag,
+                    scope_metadata,
+                    name.as_ptr(),
+                    file_metadata,
+                    loc.line as c_uint,
+                    type_metadata,
+                    address_operations.as_ptr(),
+                    address_operations.len() as c_uint,
+                    argument_index)
+            }
+        )
+    };
 
     set_debug_location(cx, DebugLocation::new(scope_metadata,
                                               loc.line,
@@ -1753,14 +1743,12 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
             full_path
         };
 
-    let file_metadata =
-        file_name.with_c_str(|file_name| {
-            work_dir.with_c_str(|work_dir| {
-                unsafe {
-                    llvm::LLVMDIBuilderCreateFile(DIB(cx), file_name, work_dir)
-                }
-            })
-        });
+    let file_name = CString::from_slice(file_name.as_bytes());
+    let work_dir = CString::from_slice(work_dir.as_bytes());
+    let file_metadata = unsafe {
+        llvm::LLVMDIBuilderCreateFile(DIB(cx), file_name.as_ptr(),
+                                      work_dir.as_ptr())
+    };
 
     let mut created_files = debug_context(cx).created_files.borrow_mut();
     created_files.insert(full_path.to_string(), file_metadata);
@@ -1788,16 +1776,14 @@ fn scope_metadata(fcx: &FunctionContext,
 }
 
 fn diverging_type_metadata(cx: &CrateContext) -> DIType {
-    "!".with_c_str(|name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateBasicType(
-                DIB(cx),
-                name,
-                bytes_to_bits(0),
-                bytes_to_bits(0),
-                DW_ATE_unsigned)
-        }
-    })
+    unsafe {
+        llvm::LLVMDIBuilderCreateBasicType(
+            DIB(cx),
+            "!\0".as_ptr() as *const _,
+            bytes_to_bits(0),
+            bytes_to_bits(0),
+            DW_ATE_unsigned)
+    }
 }
 
 fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
@@ -1833,16 +1819,15 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let llvm_type = type_of::type_of(cx, t);
     let (size, align) = size_and_align_of(cx, llvm_type);
-    let ty_metadata = name.with_c_str(|name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateBasicType(
-                DIB(cx),
-                name,
-                bytes_to_bits(size),
-                bytes_to_bits(align),
-                encoding)
-        }
-    });
+    let name = CString::from_slice(name.as_bytes());
+    let ty_metadata = unsafe {
+        llvm::LLVMDIBuilderCreateBasicType(
+            DIB(cx),
+            name.as_ptr(),
+            bytes_to_bits(size),
+            bytes_to_bits(align),
+            encoding)
+    };
 
     return ty_metadata;
 }
@@ -1854,16 +1839,15 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
     let name = compute_debuginfo_type_name(cx, pointer_type, false);
-    let ptr_metadata = name.with_c_str(|name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreatePointerType(
-                DIB(cx),
-                pointee_type_metadata,
-                bytes_to_bits(pointer_size),
-                bytes_to_bits(pointer_align),
-                name)
-        }
-    });
+    let name = CString::from_slice(name.as_bytes());
+    let ptr_metadata = unsafe {
+        llvm::LLVMDIBuilderCreatePointerType(
+            DIB(cx),
+            pointee_type_metadata,
+            bytes_to_bits(pointer_size),
+            bytes_to_bits(pointer_align),
+            name.as_ptr())
+    };
     return ptr_metadata;
 }
 
@@ -2473,14 +2457,14 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let enumerators_metadata: Vec<DIDescriptor> = variants
         .iter()
         .map(|v| {
-            token::get_name(v.name).get().with_c_str(|name| {
-                unsafe {
-                    llvm::LLVMDIBuilderCreateEnumerator(
-                        DIB(cx),
-                        name,
-                        v.disr_val as u64)
-                }
-            })
+            let token = token::get_name(v.name);
+            let name = CString::from_slice(token.get().as_bytes());
+            unsafe {
+                llvm::LLVMDIBuilderCreateEnumerator(
+                    DIB(cx),
+                    name.as_ptr(),
+                    v.disr_val as u64)
+            }
         })
         .collect();
 
@@ -2504,20 +2488,19 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                   codemap::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
-                let discriminant_type_metadata = discriminant_name.get().with_c_str(|name| {
-                    unsafe {
-                        llvm::LLVMDIBuilderCreateEnumerationType(
-                            DIB(cx),
-                            containing_scope,
-                            name,
-                            UNKNOWN_FILE_METADATA,
-                            UNKNOWN_LINE_NUMBER,
-                            bytes_to_bits(discriminant_size),
-                            bytes_to_bits(discriminant_align),
-                            create_DIArray(DIB(cx), enumerators_metadata[]),
-                            discriminant_base_type_metadata)
-                    }
-                });
+                let name = CString::from_slice(discriminant_name.get().as_bytes());
+                let discriminant_type_metadata = unsafe {
+                    llvm::LLVMDIBuilderCreateEnumerationType(
+                        DIB(cx),
+                        containing_scope,
+                        name.as_ptr(),
+                        UNKNOWN_FILE_METADATA,
+                        UNKNOWN_LINE_NUMBER,
+                        bytes_to_bits(discriminant_size),
+                        bytes_to_bits(discriminant_align),
+                        create_DIArray(DIB(cx), enumerators_metadata.as_slice()),
+                        discriminant_base_type_metadata)
+                };
 
                 debug_context(cx).created_enum_disr_types
                                  .borrow_mut()
@@ -2548,24 +2531,22 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              .borrow()
                              .get_unique_type_id_as_string(unique_type_id);
 
-    let enum_metadata = enum_name.with_c_str(|enum_name| {
-        unique_type_id_str.with_c_str(|unique_type_id_str| {
-            unsafe {
-                llvm::LLVMDIBuilderCreateUnionType(
-                DIB(cx),
-                containing_scope,
-                enum_name,
-                UNKNOWN_FILE_METADATA,
-                UNKNOWN_LINE_NUMBER,
-                bytes_to_bits(enum_type_size),
-                bytes_to_bits(enum_type_align),
-                0, // Flags
-                ptr::null_mut(),
-                0, // RuntimeLang
-                unique_type_id_str)
-            }
-        })
-    });
+    let enum_name = CString::from_slice(enum_name.as_bytes());
+    let unique_type_id_str = CString::from_slice(unique_type_id_str.as_bytes());
+    let enum_metadata = unsafe {
+        llvm::LLVMDIBuilderCreateUnionType(
+        DIB(cx),
+        containing_scope,
+        enum_name.as_ptr(),
+        UNKNOWN_FILE_METADATA,
+        UNKNOWN_LINE_NUMBER,
+        bytes_to_bits(enum_type_size),
+        bytes_to_bits(enum_type_align),
+        0, // Flags
+        ptr::null_mut(),
+        0, // RuntimeLang
+        unique_type_id_str.as_ptr())
+    };
 
     return create_and_register_recursive_type_forward_declaration(
         cx,
@@ -2676,21 +2657,20 @@ fn set_members_of_composite_type(cx: &CrateContext,
                 ComputedMemberOffset => machine::llelement_offset(cx, composite_llvm_type, i)
             };
 
-            member_description.name.with_c_str(|member_name| {
-                unsafe {
-                    llvm::LLVMDIBuilderCreateMemberType(
-                        DIB(cx),
-                        composite_type_metadata,
-                        member_name,
-                        UNKNOWN_FILE_METADATA,
-                        UNKNOWN_LINE_NUMBER,
-                        bytes_to_bits(member_size),
-                        bytes_to_bits(member_align),
-                        bytes_to_bits(member_offset),
-                        member_description.flags,
-                        member_description.type_metadata)
-                }
-            })
+            let member_name = CString::from_slice(member_description.name.as_bytes());
+            unsafe {
+                llvm::LLVMDIBuilderCreateMemberType(
+                    DIB(cx),
+                    composite_type_metadata,
+                    member_name.as_ptr(),
+                    UNKNOWN_FILE_METADATA,
+                    UNKNOWN_LINE_NUMBER,
+                    bytes_to_bits(member_size),
+                    bytes_to_bits(member_align),
+                    bytes_to_bits(member_offset),
+                    member_description.flags,
+                    member_description.type_metadata)
+            }
         })
         .collect();
 
@@ -2714,30 +2694,28 @@ fn create_struct_stub(cx: &CrateContext,
     let unique_type_id_str = debug_context(cx).type_map
                                               .borrow()
                                               .get_unique_type_id_as_string(unique_type_id);
+    let name = CString::from_slice(struct_type_name.as_bytes());
+    let unique_type_id = CString::from_slice(unique_type_id_str.as_bytes());
     let metadata_stub = unsafe {
-        struct_type_name.with_c_str(|name| {
-            unique_type_id_str.with_c_str(|unique_type_id| {
-                // LLVMDIBuilderCreateStructType() wants an empty array. A null
-                // pointer will lead to hard to trace and debug LLVM assertions
-                // later on in llvm/lib/IR/Value.cpp.
-                let empty_array = create_DIArray(DIB(cx), &[]);
+        // LLVMDIBuilderCreateStructType() wants an empty array. A null
+        // pointer will lead to hard to trace and debug LLVM assertions
+        // later on in llvm/lib/IR/Value.cpp.
+        let empty_array = create_DIArray(DIB(cx), &[]);
 
-                llvm::LLVMDIBuilderCreateStructType(
-                    DIB(cx),
-                    containing_scope,
-                    name,
-                    UNKNOWN_FILE_METADATA,
-                    UNKNOWN_LINE_NUMBER,
-                    bytes_to_bits(struct_size),
-                    bytes_to_bits(struct_align),
-                    0,
-                    ptr::null_mut(),
-                    empty_array,
-                    0,
-                    ptr::null_mut(),
-                    unique_type_id)
-            })
-        })
+        llvm::LLVMDIBuilderCreateStructType(
+            DIB(cx),
+            containing_scope,
+            name.as_ptr(),
+            UNKNOWN_FILE_METADATA,
+            UNKNOWN_LINE_NUMBER,
+            bytes_to_bits(struct_size),
+            bytes_to_bits(struct_align),
+            0,
+            ptr::null_mut(),
+            empty_array,
+            0,
+            ptr::null_mut(),
+            unique_type_id.as_ptr())
     };
 
     return metadata_stub;
@@ -3464,7 +3442,7 @@ fn create_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::PatBox(ref sub_pat) | ast::PatRegion(ref sub_pat) => {
+            ast::PatBox(ref sub_pat) | ast::PatRegion(ref sub_pat, _) => {
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
                 walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
             }
@@ -4011,18 +3989,18 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
                         None => ptr::null_mut()
                     };
                     let namespace_name = token::get_name(name);
-                    let scope = namespace_name.get().with_c_str(|namespace_name| {
-                        unsafe {
-                            llvm::LLVMDIBuilderCreateNameSpace(
-                                DIB(cx),
-                                parent_scope,
-                                namespace_name,
-                                // cannot reconstruct file ...
-                                ptr::null_mut(),
-                                // ... or line information, but that's not so important.
-                                0)
-                        }
-                    });
+                    let namespace_name = CString::from_slice(namespace_name
+                                                                .get().as_bytes());
+                    let scope = unsafe {
+                        llvm::LLVMDIBuilderCreateNameSpace(
+                            DIB(cx),
+                            parent_scope,
+                            namespace_name.as_ptr(),
+                            // cannot reconstruct file ...
+                            ptr::null_mut(),
+                            // ... or line information, but that's not so important.
+                            0)
+                    };
 
                     let node = Rc::new(NamespaceTreeNode {
                         name: name,
@@ -4060,7 +4038,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
 pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext) {
     if needs_gdb_debug_scripts_section(ccx) {
-        let empty = b"".to_c_str();
+        let empty = CString::from_slice(b"");
         let gdb_debug_scripts_section_global =
             get_or_insert_gdb_debug_scripts_section_global(ccx);
         unsafe {
@@ -4077,14 +4055,15 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext) 
 /// section.
 fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
                                                   -> llvm::ValueRef {
-    let section_var_name = b"__rustc_debug_gdb_scripts_section__".to_c_str();
+    let section_var_name = b"__rustc_debug_gdb_scripts_section__\0";
 
     let section_var = unsafe {
-        llvm::LLVMGetNamedGlobal(ccx.llmod(), section_var_name.as_ptr())
+        llvm::LLVMGetNamedGlobal(ccx.llmod(),
+                                 section_var_name.as_ptr() as *const _)
     };
 
     if section_var == ptr::null_mut() {
-        let section_name = b".debug_gdb_scripts".to_c_str();
+        let section_name = b".debug_gdb_scripts\0";
         let section_contents = b"\x01gdb_load_rust_pretty_printers.py\0";
 
         unsafe {
@@ -4092,8 +4071,9 @@ fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
                                         section_contents.len() as u64);
             let section_var = llvm::LLVMAddGlobal(ccx.llmod(),
                                                   llvm_type.to_ref(),
-                                                  section_var_name.as_ptr());
-            llvm::LLVMSetSection(section_var, section_name.as_ptr());
+                                                  section_var_name.as_ptr()
+                                                    as *const _);
+            llvm::LLVMSetSection(section_var, section_name.as_ptr() as *const _);
             llvm::LLVMSetInitializer(section_var, C_bytes(ccx, section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddr(section_var, llvm::True);

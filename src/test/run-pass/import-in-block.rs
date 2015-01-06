@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs)]
-
 pub fn main() {
     use std::mem::replace;
     let mut x = 5i;

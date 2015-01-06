@@ -230,8 +230,9 @@ fn add_one(num: &int) -> int {
 ```
 
 Rust has a feature called 'lifetime elision,' which allows you to not write
-lifetime annotations in certain circumstances. This is one of them. Without
-eliding the lifetimes, `add_one` looks like this:
+lifetime annotations in certain circumstances. This is one of them. We will
+cover the others later. Without eliding the lifetimes, `add_one` looks like
+this:
 
 ```rust
 fn add_one<'a>(num: &'a int) -> int {
@@ -448,6 +449,80 @@ an `Rc<Car>` rather than just a `Car`.
 This is the simplest kind of multiple ownership possible. For example, there's
 also `Arc<T>`, which uses more expensive atomic instructions to be the
 thread-safe counterpart of `Rc<T>`.
+
+## Lifetime Elision
+
+Earlier, we mentioned 'lifetime elision,' a feature of Rust which allows you to
+not write lifetime annotations in certain circumstances. All references have a
+lifetime, and so if you elide a lifetime (like `&T` instead of `&'a T`), Rust
+will do three things to determine what those lifetimes should be.
+
+When talking about lifetime elision, we use the term 'input lifetime' and
+'output lifetime'. An 'input liftime' is a lifetime associated with a parameter
+of a function, and an 'output lifetime' is a lifetime associated with the return
+value of a function. For example, this function has an input lifetime:
+
+```{rust,ignore}
+fn foo<'a>(bar: &'a str)
+```
+
+This one has an output lifetime:
+
+```{rust,ignore}
+fn foo<'a>() -> &'a str
+```
+
+This one has a lifetime in both positions:
+
+```{rust,ignore}
+fn foo<'a>(bar: &'a str) -> &'a str
+```
+
+Here are the three rules:
+
+* Each elided lifetime in a function's arguments becomes a distinct lifetime
+  parameter.
+
+* If there is exactly one input lifetime, elided or not, that lifetime is
+  assigned to all elided lifetimes in the return values of that function..
+
+* If there are multiple input lifetimes, but one of them is `&self` or `&mut
+  self`, the lifetime of `self` is assigned to all elided output lifetimes.
+
+Otherwise, it is an error to elide an output lifetime.
+
+### Examples
+
+Here are some examples of functions with elided lifetimes, and the version of
+what the elided lifetimes are expand to:
+
+```{rust,ignore}
+fn print(s: &str);                                      // elided
+fn print<'a>(s: &'a str);                               // expanded
+
+fn debug(lvl: uint, s: &str);                           // elided
+fn debug<'a>(lvl: uint, s: &'a str);                    // expanded
+
+// In the preceeding example, `lvl` doesn't need a lifetime because it's not a
+// reference (`&`). Only things relating to references (such as a `struct`
+// which contains a reference) need lifetimes.
+
+fn substr(s: &str, until: uint) -> &str;                // elided
+fn substr<'a>(s: &'a str, until: uint) -> &'a str;      // expanded
+
+fn get_str() -> &str;                                   // ILLEGAL, no inputs
+
+fn frob(s: &str, t: &str) -> &str;                      // ILLEGAL, two inputs
+
+fn get_mut(&mut self) -> &mut T;                        // elided
+fn get_mut<'a>(&'a mut self) -> &'a mut T;              // expanded
+
+fn args<T:ToCStr>(&mut self, args: &[T]) -> &mut Command                  // elided
+fn args<'a, 'b, T:ToCStr>(&'a mut self, args: &'b [T]) -> &'a mut Command // expanded
+
+fn new(buf: &mut [u8]) -> BufWriter;                    // elided
+fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a>          // expanded
+```
 
 # Related Resources
 

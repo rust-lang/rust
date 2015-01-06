@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 trait SignedUnsigned {
     type Opposite;
     fn convert(self) -> Self::Opposite;
@@ -39,4 +37,3 @@ fn main() {
     let x = get(22);
     assert_eq!(22u, x);
 }
-

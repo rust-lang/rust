@@ -85,14 +85,14 @@ pub mod rt {
     */
 
     // FIXME: Move this trait to pprust and get rid of *_to_str?
-    pub trait ToSource for Sized? {
+    pub trait ToSource {
         // Takes a thing and generates a string containing rust code for it.
         fn to_source(&self) -> String;
     }
 
     // FIXME (Issue #16472): This should go away after ToToken impls
     // are revised to go directly to token-trees.
-    trait ToSourceWithHygiene for Sized? : ToSource {
+    trait ToSourceWithHygiene : ToSource {
         // Takes a thing and generates a string containing rust code
         // for it, encoding Idents as special byte sequences to
         // maintain hygiene across serialization and deserialization.

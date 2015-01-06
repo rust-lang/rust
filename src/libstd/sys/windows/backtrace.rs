@@ -21,7 +21,8 @@
 /// copy of that function in my mingw install (maybe it was broken?). Instead,
 /// this takes the route of using StackWalk64 in order to walk the stack.
 
-use c_str::CString;
+use dynamic_lib::DynamicLibrary;
+use ffi;
 use intrinsics;
 use io::{IoResult, Writer};
 use libc;
@@ -30,10 +31,9 @@ use ops::Drop;
 use option::Option::{Some, None};
 use path::Path;
 use result::Result::{Ok, Err};
-use sync::{StaticMutex, MUTEX_INIT};
 use slice::SliceExt;
-use str::StrExt;
-use dynamic_lib::DynamicLibrary;
+use str::{self, StrExt};
+use sync::{StaticMutex, MUTEX_INIT};
 
 use sys_common::backtrace::*;
 
@@ -357,11 +357,11 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
 
         if ret == libc::TRUE {
             try!(write!(w, " - "));
-            let cstr = unsafe { CString::new(info.Name.as_ptr(), false) };
-            let bytes = cstr.as_bytes();
-            match cstr.as_str() {
-                Some(s) => try!(demangle(w, s)),
-                None => try!(w.write(bytes[..bytes.len()-1])),
+            let ptr = info.Name.as_ptr() as *const libc::c_char;
+            let bytes = unsafe { ffi::c_str_to_bytes(&ptr) };
+            match str::from_utf8(bytes) {
+                Ok(s) => try!(demangle(w, s)),
+                Err(..) => try!(w.write(bytes[..bytes.len()-1])),
             }
         }
         try!(w.write(&['\n' as u8]));

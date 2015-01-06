@@ -172,7 +172,7 @@ pub trait Decoder<E> {
     fn error(&mut self, err: &str) -> E;
 }
 
-pub trait Encodable<S:Encoder<E>, E> for Sized? {
+pub trait Encodable<S:Encoder<E>, E> {
     fn encode(&self, s: &mut S) -> Result<(), E>;
 }
 
@@ -378,13 +378,13 @@ impl<E, D:Decoder<E>> Decodable<D, E> for () {
     }
 }
 
-impl<'a, E, S: Encoder<E>, Sized? T: Encodable<S, E>> Encodable<S, E> for &'a T {
+impl<'a, E, S: Encoder<E>, T: ?Sized + Encodable<S, E>> Encodable<S, E> for &'a T {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         (**self).encode(s)
     }
 }
 
-impl<E, S: Encoder<E>, Sized? T: Encodable<S, E>> Encodable<S, E> for Box<T> {
+impl<E, S: Encoder<E>, T: ?Sized + Encodable<S, E>> Encodable<S, E> for Box<T> {
     fn encode(&self, s: &mut S) -> Result<(), E> {
         (**self).encode(s)
     }

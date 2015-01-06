@@ -14,6 +14,6 @@ extern crate "coherence-lib" as lib;
 use lib::Remote;
 
 impl<T> Remote for int { }
-//~^ ERROR cannot provide an extension implementation
+//~^ ERROR E0117
 
 fn main() { }

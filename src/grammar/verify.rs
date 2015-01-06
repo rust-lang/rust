@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs, phase, macro_rules)]
+#![feature(globs, plugin)]
 
 extern crate syntax;
 extern crate rustc;
 
-#[phase(link)]
 extern crate regex;
 
-#[phase(link, plugin)]
+#[macro_use]
 extern crate log;
 
 use std::collections::HashMap;
@@ -269,7 +268,7 @@ fn main() {
         assert!(rustc_tok.sp == antlr_tok.sp, "{} and {} have different spans", rustc_tok,
                 antlr_tok);
 
-        macro_rules! matches (
+        macro_rules! matches {
             ( $($x:pat),+ ) => (
                 match rustc_tok.tok {
                     $($x => match antlr_tok.tok {
@@ -285,7 +284,7 @@ fn main() {
                     ref c => assert!(c == &antlr_tok.tok, "{} is not {}", rustc_tok, antlr_tok)
                 }
             )
-        );
+        }
 
         matches!(
             token::Literal(token::Byte(..), _),

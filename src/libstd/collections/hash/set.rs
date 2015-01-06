@@ -18,10 +18,12 @@ use default::Default;
 use fmt::Show;
 use fmt;
 use hash::{Hash, Hasher, RandomSipHasher};
-use iter::{Iterator, IteratorExt, IteratorCloneExt, FromIterator, Map, Chain, Extend};
+use iter::{Iterator, IteratorExt, FromIterator, Map, Chain, Extend};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
-use result::Result::{Ok, Err};
+
+// NOTE: for old macros; remove after the next snapshot
+#[cfg(stage0)] use result::Result::{Ok, Err};
 
 use super::map::{self, HashMap, Keys, INITIAL_CAPACITY};
 
@@ -451,7 +453,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[stable]
-    pub fn contains<Sized? Q>(&self, value: &Q) -> bool
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
         where Q: BorrowFrom<T> + Hash<S> + Eq
     {
         self.map.contains_key(value)
@@ -561,7 +563,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[stable]
-    pub fn remove<Sized? Q>(&mut self, value: &Q) -> bool
+    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
         where Q: BorrowFrom<T> + Hash<S> + Eq
     {
         self.map.remove(value).is_some()
@@ -605,7 +607,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, 
 }
 
 #[stable]
-impl<T: Eq + Hash<S>, S, H: Hasher<S> + Default> Extend<T> for HashSet<T, H> {
+impl<T: Eq + Hash<S>, S, H: Hasher<S>> Extend<T> for HashSet<T, H> {
     fn extend<I: Iterator<Item=T>>(&mut self, mut iter: I) {
         for k in iter {
             self.insert(k);

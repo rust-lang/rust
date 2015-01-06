@@ -299,7 +299,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[stable]
-    pub fn contains<Sized? Q>(&self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
         self.map.contains_key(value)
     }
 
@@ -429,7 +429,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[stable]
-    pub fn remove<Sized? Q>(&mut self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
+    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
         self.map.remove(value).is_some()
     }
 }

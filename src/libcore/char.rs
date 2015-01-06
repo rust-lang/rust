@@ -314,6 +314,7 @@ pub struct EscapeUnicode {
 }
 
 #[derive(Clone)]
+#[unstable]
 enum EscapeUnicodeState {
     Backslash,
     Type,
@@ -375,6 +376,7 @@ pub struct EscapeDefault {
 }
 
 #[derive(Clone)]
+#[unstable]
 enum EscapeDefaultState {
     Backslash(char),
     Char(char),

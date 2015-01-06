@@ -22,7 +22,7 @@ use syntax::codemap;
 use syntax::diagnostic;
 use syntax::diagnostic::{Emitter, Handler, Level, mk_handler};
 
-use std::c_str::{ToCStr, CString};
+use std::ffi::{self, CString};
 use std::io::Command;
 use std::io::fs;
 use std::iter::Unfold;
@@ -32,7 +32,7 @@ use std::mem;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::thread;
-use libc::{c_uint, c_int, c_void};
+use libc::{self, c_uint, c_int, c_void};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub enum OutputType {
@@ -49,8 +49,9 @@ pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
         if cstr == ptr::null() {
             handler.fatal(msg[]);
         } else {
-            let err = CString::new(cstr, true);
-            let err = String::from_utf8_lossy(err.as_bytes());
+            let err = ffi::c_str_to_bytes(&cstr);
+            let err = String::from_utf8_lossy(err.as_slice()).to_string();
+            libc::free(cstr as *mut _);
             handler.fatal(format!("{}: {}",
                                   msg[],
                                   err[])[]);
@@ -66,13 +67,12 @@ pub fn write_output_file(
         output: &Path,
         file_type: llvm::FileType) {
     unsafe {
-        output.with_c_str(|output| {
-            let result = llvm::LLVMRustWriteOutputFile(
-                    target, pm, m, output, file_type);
-            if !result {
-                llvm_err(handler, "could not write output".to_string());
-            }
-        })
+        let output = CString::from_slice(output.as_vec());
+        let result = llvm::LLVMRustWriteOutputFile(
+                target, pm, m, output.as_ptr(), file_type);
+        if !result {
+            llvm_err(handler, "could not write output".to_string());
+        }
     }
 }
 
@@ -221,28 +221,25 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let triple = sess.target.target.llvm_target[];
 
     let tm = unsafe {
-        triple.with_c_str(|t| {
-            let cpu = match sess.opts.cg.target_cpu {
-                Some(ref s) => s[],
-                None => sess.target.target.options.cpu[]
-            };
-            cpu.with_c_str(|cpu| {
-                target_feature(sess).with_c_str(|features| {
-                    llvm::LLVMRustCreateTargetMachine(
-                        t, cpu, features,
-                        code_model,
-                        reloc_model,
-                        opt_level,
-                        true /* EnableSegstk */,
-                        use_softfp,
-                        no_fp_elim,
-                        !any_library && reloc_model == llvm::RelocPIC,
-                        ffunction_sections,
-                        fdata_sections,
-                    )
-                })
-            })
-        })
+        let triple = CString::from_slice(triple.as_bytes());
+        let cpu = match sess.opts.cg.target_cpu {
+            Some(ref s) => s.as_slice(),
+            None => sess.target.target.options.cpu.as_slice()
+        };
+        let cpu = CString::from_slice(cpu.as_bytes());
+        let features = CString::from_slice(target_feature(sess).as_bytes());
+        llvm::LLVMRustCreateTargetMachine(
+            triple.as_ptr(), cpu.as_ptr(), features.as_ptr(),
+            code_model,
+            reloc_model,
+            opt_level,
+            true /* EnableSegstk */,
+            use_softfp,
+            no_fp_elim,
+            !any_library && reloc_model == llvm::RelocPIC,
+            ffunction_sections,
+            fdata_sections,
+        )
     };
 
     if tm.is_null() {
@@ -371,8 +368,9 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::Optimization(opt) => {
-            let pass_name = CString::new(opt.pass_name, false);
-            let pass_name = pass_name.as_str().expect("got a non-UTF8 pass name from LLVM");
+            let pass_name = str::from_utf8(ffi::c_str_to_bytes(&opt.pass_name))
+                                .ok()
+                                .expect("got a non-UTF8 pass name from LLVM");
             let enabled = match cgcx.remark {
                 AllPasses => true,
                 SomePasses(ref v) => v.iter().any(|s| *s == pass_name),
@@ -416,9 +414,9 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
     if config.emit_no_opt_bc {
         let ext = format!("{}.no-opt.bc", name_extra);
-        output_names.with_extension(ext[]).with_c_str(|buf| {
-            llvm::LLVMWriteBitcodeToFile(llmod, buf);
-        })
+        let out = output_names.with_extension(ext.as_slice());
+        let out = CString::from_slice(out.as_vec());
+        llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
     match config.opt_level {
@@ -433,7 +431,8 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             // If we're verifying or linting, add them to the function pass
             // manager.
             let addpass = |&: pass: &str| {
-                pass.with_c_str(|s| llvm::LLVMRustAddPass(fpm, s))
+                let pass = CString::from_slice(pass.as_bytes());
+                llvm::LLVMRustAddPass(fpm, pass.as_ptr())
             };
             if !config.no_verify { assert!(addpass("verify")); }
 
@@ -445,12 +444,11 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             }
 
             for pass in config.passes.iter() {
-                pass.with_c_str(|s| {
-                    if !llvm::LLVMRustAddPass(mpm, s) {
-                        cgcx.handler.warn(format!("unknown pass {}, ignoring",
-                                                  *pass)[]);
-                    }
-                })
+                let pass = CString::from_slice(pass.as_bytes());
+                if !llvm::LLVMRustAddPass(mpm, pass.as_ptr()) {
+                    cgcx.handler.warn(format!("unknown pass {}, ignoring",
+                                              pass).as_slice());
+                }
             }
 
             // Finally, run the actual optimization passes
@@ -470,9 +468,9 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
                     if config.emit_lto_bc {
                         let name = format!("{}.lto.bc", name_extra);
-                        output_names.with_extension(name[]).with_c_str(|buf| {
-                            llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                        })
+                        let out = output_names.with_extension(name.as_slice());
+                        let out = CString::from_slice(out.as_vec());
+                        llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
                     }
                 },
                 _ => {},
@@ -504,18 +502,18 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
     if config.emit_bc {
         let ext = format!("{}.bc", name_extra);
-        output_names.with_extension(ext[]).with_c_str(|buf| {
-            llvm::LLVMWriteBitcodeToFile(llmod, buf);
-        })
+        let out = output_names.with_extension(ext.as_slice());
+        let out = CString::from_slice(out.as_vec());
+        llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
     time(config.time_passes, "codegen passes", (), |()| {
         if config.emit_ir {
             let ext = format!("{}.ll", name_extra);
-            output_names.with_extension(ext[]).with_c_str(|output| {
-                with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                    llvm::LLVMRustPrintModule(cpm, llmod, output);
-                })
+            let out = output_names.with_extension(ext.as_slice());
+            let out = CString::from_slice(out.as_vec());
+            with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr());
             })
         }
 
@@ -995,7 +993,7 @@ unsafe fn configure_llvm(sess: &Session) {
     let mut llvm_args = Vec::new();
     {
         let mut add = |&mut : arg: &str| {
-            let s = arg.to_c_str();
+            let s = CString::from_slice(arg.as_bytes());
             llvm_args.push(s.as_ptr());
             llvm_c_strs.push(s);
         };
@@ -1083,7 +1081,7 @@ unsafe fn populate_llvm_passes(fpm: llvm::PassManagerRef,
 
     match opt {
         llvm::CodeGenLevelDefault | llvm::CodeGenLevelAggressive => {
-            "mergefunc".with_c_str(|s| llvm::LLVMRustAddPass(mpm, s));
+            llvm::LLVMRustAddPass(mpm, "mergefunc\0".as_ptr() as *const _);
         }
         _ => {}
     };

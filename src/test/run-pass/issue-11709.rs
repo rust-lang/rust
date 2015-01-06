@@ -15,8 +15,6 @@
 // when this bug was opened. The cases where the compiler
 // panics before the fix have a comment.
 
-#![feature(default_type_params)]
-
 use std::thunk::Thunk;
 
 struct S {x:()}

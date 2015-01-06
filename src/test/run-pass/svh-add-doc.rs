@@ -13,8 +13,6 @@
 // aux-build:svh-b.rs
 // aux-build:svh-a-doc.rs
 
-#![feature(macro_rules)]
-
 extern crate a;
 extern crate b;
 

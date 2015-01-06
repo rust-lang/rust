@@ -69,7 +69,7 @@ impl IsaacRng {
         let mut g = a;
         let mut h = a;
 
-        macro_rules! mix(
+        macro_rules! mix {
             () => {{
                 a^=b<<11; d+=a; b+=c;
                 b^=c>>2;  e+=b; c+=d;
@@ -80,14 +80,14 @@ impl IsaacRng {
                 g^=h<<8;  b+=g; h+=a;
                 h^=a>>9;  c+=h; a+=b;
             }}
-        );
+        }
 
         for _ in range(0u, 4) {
             mix!();
         }
 
         if use_rsl {
-            macro_rules! memloop (
+            macro_rules! memloop {
                 ($arr:expr) => {{
                     for i in range_step(0, RAND_SIZE as uint, 8) {
                         a+=$arr[i  ]; b+=$arr[i+1];
@@ -101,7 +101,7 @@ impl IsaacRng {
                         self.mem[i+6]=g; self.mem[i+7]=h;
                     }
                 }}
-            );
+            }
 
             memloop!(self.rsl);
             memloop!(self.mem);
@@ -129,41 +129,42 @@ impl IsaacRng {
 
         static MIDPOINT: uint = (RAND_SIZE / 2) as uint;
 
-        macro_rules! ind (($x:expr) => {
-            self.mem[(($x >> 2) as uint & ((RAND_SIZE - 1) as uint))]
-        });
+        macro_rules! ind {
+            ($x:expr) => ( self.mem[(($x >> 2) as uint & ((RAND_SIZE - 1) as uint))] )
+        }
 
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
         for &(mr_offset, m2_offset) in r.iter() {
 
-            macro_rules! rngstepp(
+            macro_rules! rngstepp {
                 ($j:expr, $shift:expr) => {{
-                        let base = $j;
-                        let mix = a << $shift as uint;
+                    let base = $j;
+                    let mix = a << $shift as uint;
 
-                        let x = self.mem[base  + mr_offset];
-                        a = (a ^ mix) + self.mem[base + m2_offset];
-                        let y = ind!(x) + a + b;
-                        self.mem[base + mr_offset] = y;
+                    let x = self.mem[base  + mr_offset];
+                    a = (a ^ mix) + self.mem[base + m2_offset];
+                    let y = ind!(x) + a + b;
+                    self.mem[base + mr_offset] = y;
 
-                        b = ind!(y >> RAND_SIZE_LEN as uint) + x;
-                        self.rsl[base + mr_offset] = b;
-                    }}
-                );
-            macro_rules! rngstepn(
+                    b = ind!(y >> RAND_SIZE_LEN as uint) + x;
+                    self.rsl[base + mr_offset] = b;
+                }}
+            }
+
+            macro_rules! rngstepn {
                 ($j:expr, $shift:expr) => {{
-                        let base = $j;
-                        let mix = a >> $shift as uint;
+                    let base = $j;
+                    let mix = a >> $shift as uint;
 
-                        let x = self.mem[base  + mr_offset];
-                        a = (a ^ mix) + self.mem[base + m2_offset];
-                        let y = ind!(x) + a + b;
-                        self.mem[base + mr_offset] = y;
+                    let x = self.mem[base  + mr_offset];
+                    a = (a ^ mix) + self.mem[base + m2_offset];
+                    let y = ind!(x) + a + b;
+                    self.mem[base + mr_offset] = y;
 
-                        b = ind!(y >> RAND_SIZE_LEN as uint) + x;
-                        self.rsl[base + mr_offset] = b;
-                    }}
-                );
+                    b = ind!(y >> RAND_SIZE_LEN as uint) + x;
+                    self.rsl[base + mr_offset] = b;
+                }}
+            }
 
             for i in range_step(0u, MIDPOINT, 4) {
                 rngstepp!(i + 0, 13);
@@ -176,6 +177,13 @@ impl IsaacRng {
         self.a = a;
         self.b = b;
         self.cnt = RAND_SIZE;
+    }
+}
+
+// Cannot be derived because [u32; 256] does not implement Clone
+impl Clone for IsaacRng {
+    fn clone(&self) -> IsaacRng {
+        *self
     }
 }
 
@@ -294,15 +302,15 @@ impl Isaac64Rng {
     /// of `rsl` as a seed, otherwise construct one algorithmically (not
     /// randomly).
     fn init(&mut self, use_rsl: bool) {
-        macro_rules! init (
+        macro_rules! init {
             ($var:ident) => (
                 let mut $var = 0x9e3779b97f4a7c13;
             )
-        );
+        }
         init!(a); init!(b); init!(c); init!(d);
         init!(e); init!(f); init!(g); init!(h);
 
-        macro_rules! mix(
+        macro_rules! mix {
             () => {{
                 a-=e; f^=h>>9;  h+=a;
                 b-=f; g^=a<<9;  a+=b;
@@ -313,14 +321,14 @@ impl Isaac64Rng {
                 g-=c; d^=f>>17; f+=g;
                 h-=d; e^=g<<14; g+=h;
             }}
-        );
+        }
 
         for _ in range(0u, 4) {
             mix!();
         }
 
         if use_rsl {
-            macro_rules! memloop (
+            macro_rules! memloop {
                 ($arr:expr) => {{
                     for i in range(0, RAND_SIZE_64 / 8).map(|i| i * 8) {
                         a+=$arr[i  ]; b+=$arr[i+1];
@@ -334,7 +342,7 @@ impl Isaac64Rng {
                         self.mem[i+6]=g; self.mem[i+7]=h;
                     }
                 }}
-            );
+            }
 
             memloop!(self.rsl);
             memloop!(self.mem);
@@ -359,49 +367,51 @@ impl Isaac64Rng {
         let mut b = self.b + self.c;
         const MIDPOINT: uint =  RAND_SIZE_64 / 2;
         const MP_VEC: [(uint, uint); 2] = [(0,MIDPOINT), (MIDPOINT, 0)];
-        macro_rules! ind (
+        macro_rules! ind {
             ($x:expr) => {
                 *self.mem.get_unchecked(($x as uint >> 3) & (RAND_SIZE_64 - 1))
             }
-        );
+        }
 
         for &(mr_offset, m2_offset) in MP_VEC.iter() {
             for base in range(0, MIDPOINT / 4).map(|i| i * 4) {
 
-                macro_rules! rngstepp(
+                macro_rules! rngstepp {
                     ($j:expr, $shift:expr) => {{
-                            let base = base + $j;
-                            let mix = a ^ (a << $shift as uint);
-                            let mix = if $j == 0 {!mix} else {mix};
+                        let base = base + $j;
+                        let mix = a ^ (a << $shift as uint);
+                        let mix = if $j == 0 {!mix} else {mix};
 
-                            unsafe {
-                                let x = *self.mem.get_unchecked(base + mr_offset);
-                                a = mix + *self.mem.get_unchecked(base + m2_offset);
-                                let y = ind!(x) + a + b;
-                                *self.mem.get_unchecked_mut(base + mr_offset) = y;
+                        unsafe {
+                            let x = *self.mem.get_unchecked(base + mr_offset);
+                            a = mix + *self.mem.get_unchecked(base + m2_offset);
+                            let y = ind!(x) + a + b;
+                            *self.mem.get_unchecked_mut(base + mr_offset) = y;
 
-                                b = ind!(y >> RAND_SIZE_64_LEN) + x;
-                                *self.rsl.get_unchecked_mut(base + mr_offset) = b;
-                            }
-                        }}
-                    );
-                macro_rules! rngstepn(
+                            b = ind!(y >> RAND_SIZE_64_LEN) + x;
+                            *self.rsl.get_unchecked_mut(base + mr_offset) = b;
+                        }
+                    }}
+                }
+
+                macro_rules! rngstepn {
                     ($j:expr, $shift:expr) => {{
-                            let base = base + $j;
-                            let mix = a ^ (a >> $shift as uint);
-                            let mix = if $j == 0 {!mix} else {mix};
+                        let base = base + $j;
+                        let mix = a ^ (a >> $shift as uint);
+                        let mix = if $j == 0 {!mix} else {mix};
 
-                            unsafe {
-                                let x = *self.mem.get_unchecked(base + mr_offset);
-                                a = mix + *self.mem.get_unchecked(base + m2_offset);
-                                let y = ind!(x) + a + b;
-                                *self.mem.get_unchecked_mut(base + mr_offset) = y;
+                        unsafe {
+                            let x = *self.mem.get_unchecked(base + mr_offset);
+                            a = mix + *self.mem.get_unchecked(base + m2_offset);
+                            let y = ind!(x) + a + b;
+                            *self.mem.get_unchecked_mut(base + mr_offset) = y;
 
-                                b = ind!(y >> RAND_SIZE_64_LEN) + x;
-                                *self.rsl.get_unchecked_mut(base + mr_offset) = b;
-                            }
-                        }}
-                    );
+                            b = ind!(y >> RAND_SIZE_64_LEN) + x;
+                            *self.rsl.get_unchecked_mut(base + mr_offset) = b;
+                        }
+                    }}
+                }
+
                 rngstepp!(0u, 21);
                 rngstepn!(1u, 5);
                 rngstepp!(2u, 12);
@@ -412,6 +422,13 @@ impl Isaac64Rng {
         self.a = a;
         self.b = b;
         self.cnt = RAND_SIZE_64;
+    }
+}
+
+// Cannot be derived because [u32; 256] does not implement Clone
+impl Clone for Isaac64Rng {
+    fn clone(&self) -> Isaac64Rng {
+        *self
     }
 }
 
@@ -484,6 +501,7 @@ impl Rand for Isaac64Rng {
         return ret;
     }
 }
+
 
 #[cfg(test)]
 mod test {
@@ -593,5 +611,15 @@ mod test {
                         17196852593171130876, 2606123525235546165, 15790932315217671084,
                         596345674630742204, 9947027391921273664, 11788097613744130851,
                         10391409374914919106));
+    }
+
+    #[test]
+    fn test_rng_clone() {
+        let seed: &[_] = &[1, 23, 456, 7890, 12345];
+        let mut rng: Isaac64Rng = SeedableRng::from_seed(seed);
+        let mut clone = rng.clone();
+        for _ in range(0u, 16) {
+            assert_eq!(rng.next_u64(), clone.next_u64());
+        }
     }
 }

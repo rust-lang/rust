@@ -206,8 +206,8 @@ pub const tag_native_libraries_name: uint = 0x89;
 pub const tag_native_libraries_kind: uint = 0x8a;
 
 pub const tag_plugin_registrar_fn: uint = 0x8b;
-pub const tag_exported_macros: uint = 0x8c;
-pub const tag_macro_def: uint = 0x8d;
+
+// GAP 0x8c, 0x8d
 
 pub const tag_method_argument_names: uint = 0x8e;
 pub const tag_method_argument_name: uint = 0x8f;
@@ -261,3 +261,7 @@ pub const tag_associated_type_names: uint = 0xb2;
 pub const tag_associated_type_name: uint = 0xb3;
 
 pub const tag_polarity: uint = 0xb4;
+
+pub const tag_macro_defs: uint = 0xb5;
+pub const tag_macro_def: uint = 0xb6;
+pub const tag_macro_def_body: uint = 0xb7;

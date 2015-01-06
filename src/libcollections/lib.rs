@@ -29,15 +29,34 @@
 #![feature(associated_types)]
 #![no_std]
 
-#[phase(plugin, link)] extern crate core;
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate core;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate core;
+
 extern crate unicode;
 extern crate alloc;
 
 #[cfg(test)] extern crate test;
 
-#[cfg(test)] #[phase(plugin, link)] extern crate std;
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate std;
 
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate std;
+
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate log;
 
 pub use binary_heap::BinaryHeap;
 pub use bitv::Bitv;
@@ -51,6 +70,11 @@ pub use string::String;
 pub use vec::Vec;
 pub use vec_map::VecMap;
 
+// Needed for the vec! macro
+pub use alloc::boxed;
+
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod macros;
 
 pub mod binary_heap;
@@ -65,19 +89,23 @@ pub mod string;
 pub mod vec;
 pub mod vec_map;
 
+#[stable]
 pub mod bitv {
     pub use bit::{Bitv, Iter};
 }
 
+#[stable]
 pub mod bitv_set {
     pub use bit::{BitvSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
 }
 
+#[stable]
 pub mod btree_map {
     pub use btree::map::*;
 }
 
+#[stable]
 pub mod btree_set {
     pub use btree::set::*;
 }
@@ -109,8 +137,7 @@ mod prelude {
     pub use core::iter::range;
     pub use core::iter::{FromIterator, Extend, IteratorExt};
     pub use core::iter::{Iterator, DoubleEndedIterator, RandomAccessIterator};
-    pub use core::iter::{IteratorCloneExt, CloneIteratorExt};
-    pub use core::iter::{IteratorOrdExt, MutableDoubleEndedIterator, ExactSizeIterator};
+    pub use core::iter::{ExactSizeIterator};
     pub use core::kinds::{Copy, Send, Sized, Sync};
     pub use core::mem::drop;
     pub use core::ops::{Drop, Fn, FnMut, FnOnce};

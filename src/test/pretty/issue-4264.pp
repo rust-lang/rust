@@ -1,7 +1,6 @@
-#![feature(phase)]
 #![no_std]
 #![feature(globs)]
-#[phase(plugin, link)]
+#[macro_use]
 extern crate "std" as std;
 #[prelude_import]
 use std::prelude::v1::*;

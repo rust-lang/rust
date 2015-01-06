@@ -440,14 +440,14 @@ impl<K, V, M> SearchResult<K, V, M> {
 }
 
 impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
-    fn make_hash<Sized? X: Hash<S>>(&self, x: &X) -> SafeHash {
+    fn make_hash<X: ?Sized + Hash<S>>(&self, x: &X) -> SafeHash {
         table::make_hash(&self.hasher, x)
     }
 
     /// Search for a key, yielding the index if it's found in the hashtable.
     /// If you already have the hash for the key lying around, use
     /// search_hashed.
-    fn search<'a, Sized? Q>(&'a self, q: &Q) -> Option<FullBucketImm<'a, K, V>>
+    fn search<'a, Q: ?Sized>(&'a self, q: &Q) -> Option<FullBucketImm<'a, K, V>>
         where Q: BorrowFrom<K> + Eq + Hash<S>
     {
         let hash = self.make_hash(q);
@@ -455,7 +455,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
             .into_option()
     }
 
-    fn search_mut<'a, Sized? Q>(&'a mut self, q: &Q) -> Option<FullBucketMut<'a, K, V>>
+    fn search_mut<'a, Q: ?Sized>(&'a mut self, q: &Q) -> Option<FullBucketMut<'a, K, V>>
         where Q: BorrowFrom<K> + Eq + Hash<S>
     {
         let hash = self.make_hash(q);
@@ -923,7 +923,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     #[stable]
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     /// Regardless of whether or not `to_owned()` has been called, the key must hash the same way.
-    pub fn entry<'a, Sized? Q>(&'a mut self, key: &'a Q) -> Entry<'a, Q, K, V>
+    pub fn entry<'a, Q: ?Sized>(&'a mut self, key: &'a Q) -> Entry<'a, Q, K, V>
         where Q: Eq + Hash<S> + ToOwned<K>
     {
         // Gotta resize now.
@@ -1030,7 +1030,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[stable]
-    pub fn get<Sized? Q>(&self, k: &Q) -> Option<&V>
+    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
         where Q: Hash<S> + Eq + BorrowFrom<K>
     {
         self.search(k).map(|bucket| bucket.into_refs().1)
@@ -1053,7 +1053,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[stable]
-    pub fn contains_key<Sized? Q>(&self, k: &Q) -> bool
+    pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
         where Q: Hash<S> + Eq + BorrowFrom<K>
     {
         self.search(k).is_some()
@@ -1079,7 +1079,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// assert_eq!(map[1], "b");
     /// ```
     #[stable]
-    pub fn get_mut<Sized? Q>(&mut self, k: &Q) -> Option<&mut V>
+    pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
         where Q: Hash<S> + Eq + BorrowFrom<K>
     {
         self.search_mut(k).map(|bucket| bucket.into_mut_refs().1)
@@ -1131,7 +1131,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[stable]
-    pub fn remove<Sized? Q>(&mut self, k: &Q) -> Option<V>
+    pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
         where Q: Hash<S> + Eq + BorrowFrom<K>
     {
         if self.table.size() == 0 {
@@ -1142,7 +1142,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
     }
 }
 
-fn search_entry_hashed<'a, K, V, Sized? Q>(table: &'a mut RawTable<K,V>, hash: SafeHash, k: &'a Q)
+fn search_entry_hashed<'a, K, V, Q: ?Sized>(table: &'a mut RawTable<K,V>, hash: SafeHash, k: &'a Q)
         -> Entry<'a, Q, K, V>
     where Q: Eq + ToOwned<K>
 {
@@ -1227,7 +1227,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Default for HashMap<K, V, H>
 }
 
 #[stable]
-impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> Index<Q> for HashMap<K, V, H>
+impl<K: Hash<S> + Eq, Q: ?Sized, V, S, H: Hasher<S>> Index<Q> for HashMap<K, V, H>
     where Q: BorrowFrom<K> + Hash<S> + Eq
 {
     type Output = V;
@@ -1239,7 +1239,7 @@ impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> Index<Q> for HashMap<K, V, H
 }
 
 #[stable]
-impl<K: Hash<S> + Eq, Sized? Q, V, S, H: Hasher<S>> IndexMut<Q> for HashMap<K, V, H>
+impl<K: Hash<S> + Eq, Q: ?Sized, V, S, H: Hasher<S>> IndexMut<Q> for HashMap<K, V, H>
     where Q: BorrowFrom<K> + Hash<S> + Eq
 {
     type Output = V;
@@ -1331,7 +1331,7 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 
 #[stable]
 /// A view into a single empty location in a HashMap
-pub struct VacantEntry<'a, Sized? Q: 'a, K: 'a, V: 'a> {
+pub struct VacantEntry<'a, Q: ?Sized + 'a, K: 'a, V: 'a> {
     hash: SafeHash,
     key: &'a Q,
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
@@ -1339,7 +1339,7 @@ pub struct VacantEntry<'a, Sized? Q: 'a, K: 'a, V: 'a> {
 
 #[stable]
 /// A view into a single location in a map, which may be vacant or occupied
-pub enum Entry<'a, Sized? Q: 'a, K: 'a, V: 'a> {
+pub enum Entry<'a, Q: ?Sized + 'a, K: 'a, V: 'a> {
     /// An occupied Entry
     Occupied(OccupiedEntry<'a, K, V>),
     /// A vacant Entry
@@ -1409,7 +1409,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Drain<'a, K, V> {
     }
 }
 
-impl<'a, Sized? Q, K, V> Entry<'a, Q, K, V> {
+impl<'a, Q: ?Sized, K, V> Entry<'a, Q, K, V> {
     #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, Q, K, V>> {
@@ -1455,7 +1455,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     }
 }
 
-impl<'a, Sized? Q: 'a + ToOwned<K>, K: 'a, V: 'a> VacantEntry<'a, Q, K, V> {
+impl<'a, Q: ?Sized + 'a + ToOwned<K>, K: 'a, V: 'a> VacantEntry<'a, Q, K, V> {
     #[stable]
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it
@@ -1482,7 +1482,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for Has
 }
 
 #[stable]
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extend<(K, V)> for HashMap<K, V, H> {
+impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Extend<(K, V)> for HashMap<K, V, H> {
     fn extend<T: Iterator<Item=(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
             self.insert(k, v);

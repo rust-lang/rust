@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
+macro_rules! inner {
+    ($e:pat ) => ($e)
+}
 
-macro_rules! inner (
-    ($e:pat ) => ($e));
-
-macro_rules! outer (
-    ($e:pat ) => (inner!($e)));
+macro_rules! outer {
+    ($e:pat ) => (inner!($e))
+}
 
 fn main() {
     let outer!(g1) = 13i;

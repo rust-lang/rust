@@ -39,7 +39,7 @@ fn local_sort<T: Float>(v: &mut [T]) {
 }
 
 /// Trait that provides simple descriptive statistics on a univariate set of numeric samples.
-pub trait Stats <T: FloatMath + FromPrimitive> for Sized? {
+pub trait Stats <T: FloatMath + FromPrimitive> {
 
     /// Sum of the samples.
     ///
@@ -169,7 +169,8 @@ impl<T: FloatMath + FromPrimitive> Stats<T> for [T] {
     fn sum(&self) -> T {
         let mut partials = vec![];
 
-        for &mut x in self.iter() {
+        for &x in self.iter() {
+            let mut x = x;
             let mut j = 0;
             // This inner loop applies `hi`/`lo` summation to each
             // partial so that the list of partial sums remains exact.

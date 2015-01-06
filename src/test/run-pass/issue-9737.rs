@@ -10,9 +10,9 @@
 
 // ignore-test #9737
 
-#![feature(macro_rules)]
-
-macro_rules! f((v: $x:expr) => ( println!("{}", $x) ))
+macro_rules! f {
+    (v: $x:expr) => ( println!("{}", $x) )
+}
 
 fn main () {
     let v = 5;

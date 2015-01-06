@@ -40,8 +40,22 @@ extern crate rustc_back;
 extern crate serialize;
 extern crate rbml;
 extern crate collections;
-#[phase(plugin, link)] extern crate log;
-#[phase(plugin, link)] extern crate syntax;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate log;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate syntax;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate syntax;
 
 extern crate "serialize" as rustc_serialize; // used by deriving
 

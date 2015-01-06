@@ -11,8 +11,6 @@
 // Check that the user gets an errror if they omit a binding from an
 // object type.
 
-#![feature(associated_types)]
-
 pub trait Foo {
     type A;
     type B;

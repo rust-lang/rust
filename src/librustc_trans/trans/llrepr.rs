@@ -12,7 +12,7 @@ use trans::context::CrateContext;
 use trans::type_::Type;
 use llvm::ValueRef;
 
-pub trait LlvmRepr for Sized? {
+pub trait LlvmRepr {
     fn llrepr(&self, ccx: &CrateContext) -> String;
 }
 

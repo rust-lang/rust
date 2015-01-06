@@ -18,7 +18,7 @@ use std::fmt;
 use std::error;
 
 /// A trait for converting a value to hexadecimal encoding
-pub trait ToHex for Sized? {
+pub trait ToHex {
     /// Converts the value of `self` to a hex value, returning the owned
     /// string.
     fn to_hex(&self) -> String;
@@ -54,7 +54,7 @@ impl ToHex for [u8] {
 }
 
 /// A trait for converting hexadecimal encoded values
-pub trait FromHex for Sized? {
+pub trait FromHex {
     /// Converts the value of `self`, interpreted as hexadecimal encoded data,
     /// into an owned vector of bytes, returning the vector.
     fn from_hex(&self) -> Result<Vec<u8>, FromHexError>;
