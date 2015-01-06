@@ -11,6 +11,8 @@
 #![feature(lang_items)]
 #![no_std]
 
+extern crate "std" as other;
+
 #[macro_use]
 extern crate core;
 extern crate libc;
@@ -21,10 +23,6 @@ extern crate collections;
 use core::option::Option::Some;
 use core::slice::SliceExt;
 use collections::vec::Vec;
-
-#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
-#[lang = "eh_personality"] extern fn eh_personality() {}
-#[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 
 // Issue #16806
 

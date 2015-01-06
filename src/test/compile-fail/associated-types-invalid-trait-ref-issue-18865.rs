@@ -11,8 +11,6 @@
 // Test that we report an error if the trait ref in an qualified type
 // uses invalid type arguments.
 
-#![feature(associated_types)]
-
 trait Foo<T> {
     type Bar;
     fn get_bar(&self) -> Self::Bar;

@@ -27,7 +27,7 @@ const CHACHA_ROUNDS: uint = 20; // Cryptographically secure from 8 upwards as of
 ///
 /// [1]: D. J. Bernstein, [*ChaCha, a variant of
 /// Salsa20*](http://cr.yp.to/chacha.html)
-#[deriving(Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct ChaChaRng {
     buffer:  [u32; STATE_WORDS], // Internal buffer of output
     state:   [u32; STATE_WORDS], // Initial state
@@ -284,7 +284,7 @@ mod test {
 
     #[test]
     fn test_rng_clone() {
-        let seed : &[_] = &[0u32, ..8];
+        let seed : &[_] = &[0u32; 8];
         let mut rng: ChaChaRng = SeedableRng::from_seed(seed);
         let mut clone = rng.clone();
         for _ in range(0u, 16) {

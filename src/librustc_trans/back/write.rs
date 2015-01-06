@@ -22,7 +22,7 @@ use syntax::codemap;
 use syntax::diagnostic;
 use syntax::diagnostic::{Emitter, Handler, Level, mk_handler};
 
-use std::ffi::{mod, CString};
+use std::ffi::{self, CString};
 use std::io::Command;
 use std::io::fs;
 use std::iter::Unfold;
@@ -32,7 +32,7 @@ use std::mem;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::thread;
-use libc::{mod, c_uint, c_int, c_void};
+use libc::{self, c_uint, c_int, c_void};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub enum OutputType {

@@ -267,7 +267,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemImpl(_, polarity, _, _, _, ref items) => {
+            ast::ItemImpl(_, polarity, _, _, _, _) => {
                 match polarity {
                     ast::ImplPolarity::Negative => {
                         self.gate_feature("optin_builtin_traits",
@@ -293,18 +293,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                         "old_orphan_check",
                         i.span,
                         "the new orphan check rules will eventually be strictly enforced");
-                }
-
-                for item in items.iter() {
-                    match *item {
-                        ast::MethodImplItem(_) => {}
-                        ast::TypeImplItem(ref typedef) => {
-                            self.gate_feature("associated_types",
-                                              typedef.span,
-                                              "associated types are \
-                                               experimental")
-                        }
-                    }
                 }
             }
 

@@ -27,7 +27,7 @@ struct Foo<'a,'tcx:'a> {
 
 impl<'a,'tcx> Foo<'a,'tcx> {
     fn bother(&mut self) -> int {
-        self.elaborate_bounds(|this| {
+        self.elaborate_bounds(box |this| {
             // (*) Here: type of `this` is `&'f0 Foo<&'f1, '_2>`,
             // where `'f0` and `'f1` are fresh, free regions that
             // result from the bound regions on the closure, and `'2`
@@ -50,7 +50,7 @@ impl<'a,'tcx> Foo<'a,'tcx> {
 
     fn elaborate_bounds(
         &mut self,
-        mk_cand: for<'b>|this: &mut Foo<'b, 'tcx>| -> int)
+        mut mk_cand: Box<for<'b> FnMut(&mut Foo<'b, 'tcx>) -> int>)
         -> int
     {
         mk_cand(self)

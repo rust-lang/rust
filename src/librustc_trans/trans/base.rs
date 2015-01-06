@@ -88,7 +88,7 @@ use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use libc::{c_uint, uint64_t};
-use std::ffi::{mod, CString};
+use std::ffi::{self, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::mem;

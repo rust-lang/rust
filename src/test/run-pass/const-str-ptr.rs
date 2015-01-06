@@ -18,8 +18,6 @@ pub fn main() {
     unsafe {
         let foo = &A as *const u8;
         assert_eq!(str::from_utf8_unchecked(&A), "hi");
-        assert_eq!(String::from_raw_buf_len(foo, A.len()), "hi".to_string());
-        assert_eq!(String::from_raw_buf_len(C, B.len()), "hi".to_string());
         assert!(*C == A[0]);
         assert!(*(&B[0] as *const u8) == A[0]);
     }
