@@ -22,8 +22,8 @@ pub use core::atomic;
 
 pub use self::mutex::{Mutex, MutexGuard, StaticMutex};
 pub use self::mutex::MUTEX_INIT;
-pub use self::rwlock::{RWLock, StaticRWLock, RWLOCK_INIT};
-pub use self::rwlock::{RWLockReadGuard, RWLockWriteGuard};
+pub use self::rwlock::{RwLock, StaticRwLock, RW_LOCK_INIT};
+pub use self::rwlock::{RwLockReadGuard, RwLockWriteGuard};
 pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT};
 pub use self::once::{Once, ONCE_INIT};
 pub use self::semaphore::{Semaphore, SemaphoreGuard};
