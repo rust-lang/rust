@@ -228,6 +228,7 @@ impl<T: Send> Mutex<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Mutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
@@ -291,6 +292,7 @@ impl<'mutex, T> MutexGuard<'mutex, T> {
     }
 }
 
+#[stable]
 impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
     type Target = T;
 
@@ -298,6 +300,7 @@ impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
         unsafe { &*self.__data.get() }
     }
 }
+#[stable]
 impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut *self.__data.get() }
@@ -305,6 +308,7 @@ impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<'a, T> Drop for MutexGuard<'a, T> {
     #[inline]
     fn drop(&mut self) {

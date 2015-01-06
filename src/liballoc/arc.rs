@@ -246,7 +246,7 @@ impl<T> BorrowFrom<Arc<T>> for T {
     }
 }
 
-#[experimental = "Deref is experimental."]
+#[stable]
 impl<T> Deref for Arc<T> {
     type Target = T;
 
@@ -290,7 +290,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
 }
 
 #[unsafe_destructor]
-#[experimental = "waiting on stability of Drop"]
+#[stable]
 impl<T: Sync + Send> Drop for Arc<T> {
     /// Drops the `Arc<T>`.
     ///
@@ -418,7 +418,7 @@ impl<T: Sync + Send> Clone for Weak<T> {
 }
 
 #[unsafe_destructor]
-#[experimental = "Weak pointers may not belong in this module."]
+#[stable]
 impl<T: Sync + Send> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///

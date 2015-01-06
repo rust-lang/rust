@@ -1251,19 +1251,19 @@ impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
     }
 }
 
-#[experimental = "waiting on Deref stability"]
+#[stable]
 impl<T> ops::Deref for Vec<T> {
     type Target = [T];
 
     fn deref<'a>(&'a self) -> &'a [T] { self.as_slice() }
 }
 
-#[experimental = "waiting on DerefMut stability"]
+#[stable]
 impl<T> ops::DerefMut for Vec<T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut [T] { self.as_mut_slice() }
 }
 
-#[experimental = "waiting on FromIterator stability"]
+#[stable]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I:Iterator<Item=T>>(mut iterator: I) -> Vec<T> {
@@ -1393,6 +1393,7 @@ impl<T> AsSlice<T> for Vec<T> {
     }
 }
 
+#[unstable = "recent addition, needs more experience"]
 impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
     type Output = Vec<T>;
 
@@ -1404,6 +1405,7 @@ impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         // This is (and should always remain) a no-op if the fields are
@@ -1449,6 +1451,7 @@ impl<'a> fmt::Writer for Vec<u8> {
 /// A clone-on-write vector
 pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
 
+#[unstable]
 impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
     fn from_iter<I: Iterator<Item=T>>(it: I) -> CowVec<'a, T> {
         Cow::Owned(FromIterator::from_iter(it))
@@ -1494,6 +1497,7 @@ impl<T> IntoIter<T> {
     }
 }
 
+#[stable]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
@@ -1530,6 +1534,7 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
+#[stable]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back<'a>(&'a mut self) -> Option<T> {
@@ -1553,9 +1558,11 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
     }
 }
 
+#[stable]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 #[unsafe_destructor]
+#[stable]
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
@@ -1577,6 +1584,7 @@ pub struct Drain<'a, T> {
     marker: ContravariantLifetime<'a>,
 }
 
+#[stable]
 impl<'a, T> Iterator for Drain<'a, T> {
     type Item = T;
 
@@ -1613,6 +1621,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1636,9 +1645,11 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 
 #[unsafe_destructor]
+#[stable]
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         // self.ptr == self.end == null if drop has already been called,
@@ -1671,7 +1682,7 @@ impl<'a, T> Deref for DerefVec<'a, T> {
 
 // Prevent the inner `Vec<T>` from attempting to deallocate memory.
 #[unsafe_destructor]
-#[experimental]
+#[stable]
 impl<'a, T> Drop for DerefVec<'a, T> {
     fn drop(&mut self) {
         self.x.len = 0;
