@@ -26,11 +26,14 @@ Version 1.0.0-alpha (January 2015)
       bounds and thus monomorphized and inlined, or via an opaque
       pointer (boxed) as in the old system. The new system is often
       referred to as 'unboxed' closures.
+    * Traits now support [associated types][assoc], allowing families
+      of related types to be defined together and used generically in
+      powerful ways.
     * Enum variants are [namespaced by their type names][enum].
     * [`where` clauses][where] provide a more versatile and attractive
       syntax for specifying generic bounds, though the previous syntax
       remains valid.
-    * Rust again picks a [fallback] (either i32 or f64) for uninferred
+    * Rust again picks a [fallback][fb] (either i32 or f64) for uninferred
       numeric types.
     * Rust [no longer has a runtime][rt] of any description, and only
       supports OS threads, not green threads.
@@ -40,7 +43,7 @@ Version 1.0.0-alpha (January 2015)
       more consistent.
     * Rust now has a general [range syntax][range], `i..j`, `i..`, and
       `..j` that produce range types and which, when combined with the
-      `Index` operator and multitispatch, leads to a convenient slice
+      `Index` operator and multidispatch, leads to a convenient slice
       notation, `[i..j]`.
     * The new range syntax revealed an ambiguity in the fixed-length
       array syntax, so now fixed length arrays [are written `[T;
@@ -81,13 +84,15 @@ Version 1.0.0-alpha (January 2015)
       not terminated by a semicolon are [parsed as
       expressions][macros], which makes expressions like `vec![1i32,
       2, 3].len()` work as expected.
-    * Trait objects now implement their traits automatically.
+    * Trait objects now implement their traits automatically, and
+      traits that can be coerced to objects now must be [object
+      safe][objsafe].
     * Automatically deriving traits is now done with `#[derive(...)]`
       not `#[deriving(...)]` for [consistency with other naming
       conventions][derive].
-    * Importing the containing module at the same time as items it
-      contains is [now done with `self` instead of `mod`][self], as in
-      use `foo::{self, bar}`
+    * Importing the containing module or enum at the same time as
+      items or variants they contain is [now done with `self` instead
+      of `mod`][self], as in use `foo::{self, bar}`
 
 * Libraries
 
@@ -101,7 +106,7 @@ Version 1.0.0-alpha (January 2015)
       it is easier to discuss failure in the context of error handling
       without making clarifications as to whether you are referring to
       the 'fail' macro or failure more generally.
-    * On Linux, `OsRng` prefers the new, more reliable `getrandom'
+    * On Linux, `OsRng` prefers the new, more reliable `getrandom`
       syscall when available.
     * The 'serialize' crate has been renamed 'rustc-serialize' and
       moved out of the distribution to Cargo. Although it is widely
@@ -159,7 +164,9 @@ Version 1.0.0-alpha (January 2015)
 [show]: https://github.com/rust-lang/rfcs/blob/master/text/0504-show-stabilization.md
 [derive]: https://github.com/rust-lang/rfcs/blob/master/text/0534-deriving2derive.md
 [self]: https://github.com/rust-lang/rfcs/blob/master/text/0532-self-in-use.md
-[fallback]: https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md
+[fb]: https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md
+[objsafe]: https://github.com/rust-lang/rfcs/blob/master/text/0255-object-safety.md
+[assoc]: https://github.com/rust-lang/rfcs/blob/master/text/0195-associated-items.md
 
 Version 0.12.0 (October 2014)
 -----------------------------
