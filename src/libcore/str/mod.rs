@@ -37,11 +37,8 @@ use uint;
 macro_rules! delegate_iter {
     (exact $te:ty in $ti:ty) => {
         delegate_iter!{$te in $ti}
+        #[stable]
         impl<'a> ExactSizeIterator for $ti {
-            #[inline]
-            fn rposition<P>(&mut self, predicate: P) -> Option<uint> where P: FnMut($te) -> bool{
-                self.0.rposition(predicate)
-            }
             #[inline]
             fn len(&self) -> uint {
                 self.0.len()
@@ -49,6 +46,7 @@ macro_rules! delegate_iter {
         }
     };
     ($te:ty in $ti:ty) => {
+        #[stable]
         impl<'a> Iterator for $ti {
             type Item = $te;
 
@@ -61,6 +59,7 @@ macro_rules! delegate_iter {
                 self.0.size_hint()
             }
         }
+        #[stable]
         impl<'a> DoubleEndedIterator for $ti {
             #[inline]
             fn next_back(&mut self) -> Option<$te> {
@@ -69,6 +68,7 @@ macro_rules! delegate_iter {
         }
     };
     (pattern $te:ty in $ti:ty) => {
+        #[stable]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
 
@@ -81,6 +81,7 @@ macro_rules! delegate_iter {
                 self.0.size_hint()
             }
         }
+        #[stable]
         impl<'a, P: CharEq> DoubleEndedIterator for $ti {
             #[inline]
             fn next_back(&mut self) -> Option<$te> {
@@ -89,6 +90,7 @@ macro_rules! delegate_iter {
         }
     };
     (pattern forward $te:ty in $ti:ty) => {
+        #[stable]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
 
@@ -275,6 +277,7 @@ fn unwrap_or_0(opt: Option<&u8>) -> u8 {
     }
 }
 
+#[stable]
 impl<'a> Iterator for Chars<'a> {
     type Item = char;
 
@@ -320,6 +323,7 @@ impl<'a> Iterator for Chars<'a> {
     }
 }
 
+#[stable]
 impl<'a> DoubleEndedIterator for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
@@ -356,11 +360,13 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
 /// External iterator for a string's characters and their byte offsets.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
+#[stable]
 pub struct CharIndices<'a> {
     front_offset: uint,
     iter: Chars<'a>,
 }
 
+#[stable]
 impl<'a> Iterator for CharIndices<'a> {
     type Item = (uint, char);
 
@@ -384,6 +390,7 @@ impl<'a> Iterator for CharIndices<'a> {
     }
 }
 
+#[stable]
 impl<'a> DoubleEndedIterator for CharIndices<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
@@ -465,6 +472,7 @@ impl<'a, Sep> CharSplits<'a, Sep> {
     }
 }
 
+#[stable]
 impl<'a, Sep: CharEq> Iterator for CharSplits<'a, Sep> {
     type Item = &'a str;
 
@@ -499,6 +507,7 @@ impl<'a, Sep: CharEq> Iterator for CharSplits<'a, Sep> {
     }
 }
 
+#[stable]
 impl<'a, Sep: CharEq> DoubleEndedIterator for CharSplits<'a, Sep> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
@@ -540,6 +549,7 @@ impl<'a, Sep: CharEq> DoubleEndedIterator for CharSplits<'a, Sep> {
     }
 }
 
+#[stable]
 impl<'a, Sep: CharEq> Iterator for CharSplitsN<'a, Sep> {
     type Item = &'a str;
 
@@ -865,6 +875,7 @@ pub struct SplitStr<'a> {
     finished: bool
 }
 
+#[stable]
 impl<'a> Iterator for MatchIndices<'a> {
     type Item = (uint, uint);
 
@@ -881,6 +892,7 @@ impl<'a> Iterator for MatchIndices<'a> {
     }
 }
 
+#[stable]
 impl<'a> Iterator for SplitStr<'a> {
     type Item = &'a str;
 
@@ -1586,6 +1598,7 @@ impl<'a> Default for &'a str {
     fn default() -> &'a str { "" }
 }
 
+#[stable]
 impl<'a> Iterator for Lines<'a> {
     type Item = &'a str;
 
@@ -1593,11 +1606,13 @@ impl<'a> Iterator for Lines<'a> {
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
-}
+
+#[stable]}
 impl<'a> DoubleEndedIterator for Lines<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
-}
+
+#[stable]}
 impl<'a> Iterator for LinesAny<'a> {
     type Item = &'a str;
 
@@ -1605,7 +1620,8 @@ impl<'a> Iterator for LinesAny<'a> {
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
-}
+
+#[stable]}
 impl<'a> DoubleEndedIterator for LinesAny<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }

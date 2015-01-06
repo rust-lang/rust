@@ -354,7 +354,7 @@ impl<T> BorrowFrom<Rc<T>> for T {
     }
 }
 
-#[experimental = "Deref is experimental."]
+#[stable]
 impl<T> Deref for Rc<T> {
     type Target = T;
 
@@ -365,7 +365,7 @@ impl<T> Deref for Rc<T> {
 }
 
 #[unsafe_destructor]
-#[experimental = "Drop is experimental."]
+#[stable]
 impl<T> Drop for Rc<T> {
     /// Drops the `Rc<T>`.
     ///
@@ -656,7 +656,7 @@ impl<T> Weak<T> {
 }
 
 #[unsafe_destructor]
-#[experimental = "Weak pointers may not belong in this module."]
+#[stable]
 impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///

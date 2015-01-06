@@ -657,6 +657,7 @@ impl<T: Send> Clone for Sender<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Sender<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
@@ -720,6 +721,7 @@ impl<T: Send> Clone for SyncSender<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for SyncSender<T> {
     fn drop(&mut self) {
         unsafe { (*self.inner.get()).drop_chan(); }
@@ -935,7 +937,7 @@ impl<T: Send> select::Packet for Receiver<T> {
     }
 }
 
-#[unstable]
+#[stable]
 impl<'a, T: Send> Iterator for Iter<'a, T> {
     type Item = T;
 
@@ -943,6 +945,7 @@ impl<'a, T: Send> Iterator for Iter<'a, T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Receiver<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
