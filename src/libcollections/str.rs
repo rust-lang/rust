@@ -60,7 +60,6 @@ use core::char::CharExt;
 use core::clone::Clone;
 use core::iter::AdditiveIterator;
 use core::iter::{range, Iterator, IteratorExt};
-use core::kinds::Sized;
 use core::ops;
 use core::option::Option::{self, Some, None};
 use core::slice::AsSlice;
@@ -409,7 +408,7 @@ Section: Trait implementations
 
 /// Any string that can be represented as a slice.
 #[stable]
-pub trait StrExt for Sized?: ops::Slice<uint, str> {
+pub trait StrExt: ops::Slice<uint, str> {
     /// Escapes each char in `s` with `char::escape_default`.
     #[unstable = "return type may change to be an iterator"]
     fn escape_default(&self) -> String {

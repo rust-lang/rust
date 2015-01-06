@@ -64,7 +64,7 @@ use raw::Slice as RawSlice;
 
 /// Extension methods for slices.
 #[allow(missing_docs)] // docs in libcollections
-pub trait SliceExt for Sized? {
+pub trait SliceExt {
     type Item;
 
     fn slice<'a>(&'a self, start: uint, end: uint) -> &'a [Self::Item];
@@ -614,7 +614,7 @@ impl<T> ops::SliceMut<uint, [T]> for [T] {
 
 /// Data that is viewable as a slice.
 #[experimental = "will be replaced by slice syntax"]
-pub trait AsSlice<T> for Sized? {
+pub trait AsSlice<T> {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a [T];
 }
@@ -1355,12 +1355,11 @@ pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
 /// Operations on `[u8]`.
 #[experimental = "needs review"]
 pub mod bytes {
-    use kinds::Sized;
     use ptr;
     use slice::SliceExt;
 
     /// A trait for operations on mutable `[u8]`s.
-    pub trait MutableByteVector for Sized? {
+    pub trait MutableByteVector {
         /// Sets all bytes of the receiver to the given value.
         fn set_memory(&mut self, value: u8);
     }
@@ -1444,7 +1443,7 @@ impl<T: PartialOrd> PartialOrd for [T] {
 
 /// Extension methods for slices containing integers.
 #[experimental]
-pub trait IntSliceExt<U, S> for Sized? {
+pub trait IntSliceExt<U, S> {
     /// Converts the slice to an immutable slice of unsigned integers with the same width.
     fn as_unsigned<'a>(&'a self) -> &'a [U];
     /// Converts the slice to an immutable slice of signed integers with the same width.

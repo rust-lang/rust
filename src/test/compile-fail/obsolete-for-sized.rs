@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items)]
-#![no_std]
+// Test that we generate obsolete syntax errors around usages of `for Sized?`
 
-#[lang="sized"] pub trait Sized {}
+trait Foo for Sized? {} //~ ERROR obsolete syntax: for Sized?
 
-// error-pattern:requires `start` lang_item
+trait Bar for ?Sized {} //~ ERROR obsolete syntax: for Sized?
 
-fn main() {}
+fn main() { }

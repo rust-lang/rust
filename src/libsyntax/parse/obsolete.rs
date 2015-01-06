@@ -24,6 +24,7 @@ use ptr::P;
 /// The specific types of unsupported syntax
 #[derive(Copy, PartialEq, Eq, Hash)]
 pub enum ObsoleteSyntax {
+    ObsoleteForSized,
     ObsoleteOwnedType,
     ObsoleteOwnedExpr,
     ObsoleteOwnedPattern,
@@ -56,6 +57,11 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(&mut self, sp: Span, kind: ObsoleteSyntax) {
         let (kind_str, desc) = match kind {
+            ObsoleteForSized => (
+                "for Sized?",
+                "no longer required. Traits (and their `Self` type) do not have the `Sized` bound \
+                 by default",
+            ),
             ObsoleteProcType => (
                 "the `proc` type",
                 "use unboxed closures instead",

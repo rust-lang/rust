@@ -222,7 +222,7 @@ impl<'a> Show for Arguments<'a> {
 /// to this trait. There is not an explicit way of selecting this trait to be
 /// used for formatting, it is only if no other format is specified.
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait Show for Sized? {
+pub trait Show {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
@@ -230,49 +230,49 @@ pub trait Show for Sized? {
 
 /// Format trait for the `o` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait Octal for Sized? {
+pub trait Octal {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `b` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait Binary for Sized? {
+pub trait Binary {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `x` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait LowerHex for Sized? {
+pub trait LowerHex {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `X` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait UpperHex for Sized? {
+pub trait UpperHex {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `p` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait Pointer for Sized? {
+pub trait Pointer {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `e` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait LowerExp for Sized? {
+pub trait LowerExp {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `E` character
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait UpperExp for Sized? {
+pub trait UpperExp {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }

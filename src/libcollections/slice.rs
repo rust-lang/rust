@@ -122,6 +122,7 @@ pub type MutItems<'a, T:'a> = IterMut<'a, T>;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Allocating extension methods for slices.
+#[stable]
 pub trait SliceExt for Sized? {
     #[stable]
     type Item;
@@ -1007,7 +1008,7 @@ impl<T: Ord> OrdSliceExt<T> for [T] {
 
 #[unstable = "U should be an associated type"]
 /// An extension trait for concatenating slices
-pub trait SliceConcatExt<Sized? T, U> for Sized? {
+pub trait SliceConcatExt<Sized? T, U> {
     /// Flattens a slice of `T` into a single value `U`.
     #[stable]
     fn concat(&self) -> U;
