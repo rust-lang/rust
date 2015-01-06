@@ -11,7 +11,7 @@
 // force-host
 
 #![crate_type = "dylib"]
-#![feature(plugin_registrar, quote, globs)]
+#![feature(plugin_registrar, quote)]
 
 extern crate "syntax-extension-with-dll-deps-1" as other;
 extern crate syntax;

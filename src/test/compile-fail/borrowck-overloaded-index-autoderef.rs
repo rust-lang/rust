@@ -11,8 +11,6 @@
 // Test that we still see borrowck errors of various kinds when using
 // indexing and autoderef in combination.
 
-#![feature(associated_types)]
-
 use std::ops::{Index, IndexMut};
 
 struct Foo {
@@ -95,5 +93,3 @@ fn test9(mut f: Box<Bar>, g: Bar, s: String) {
 
 fn main() {
 }
-
-

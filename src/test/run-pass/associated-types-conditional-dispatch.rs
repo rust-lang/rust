@@ -14,8 +14,6 @@
 // `Target=[A]`, then the impl marked with `(*)` is seen to conflict
 // with all the others.
 
-#![feature(associated_types, default_type_params)]
-
 use std::ops::Deref;
 
 pub trait MyEq<Sized? U=Self> for Sized? {

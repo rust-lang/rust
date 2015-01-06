@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 // Check that we get an error when you use `<Self as Get>::Value` in
 // the trait definition but `Self` does not, in fact, implement `Get`.
 

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs)]
-
 // error-pattern:declaration of `None` shadows
 use std::option::*;
 

@@ -11,7 +11,6 @@
 // Test that we are able to have an impl that defines an associated type
 // before the actual trait.
 
-#![feature(associated_types)]
 impl X for f64 { type Y = int; }
 trait X {type Y; }
 fn main() {}

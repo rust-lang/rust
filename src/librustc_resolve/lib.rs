@@ -19,6 +19,7 @@
 #![feature(globs, phase, slicing_syntax)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(associated_types)]
+#![feature(old_orphan_check)]
 
 #[phase(plugin, link)] extern crate log;
 #[phase(plugin, link)] extern crate syntax;

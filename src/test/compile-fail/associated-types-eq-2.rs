@@ -11,8 +11,6 @@
 // Test equality constraints on associated types. Check we get an error when an
 // equality constraint is used in a qualified path.
 
-#![feature(associated_types)]
-
 pub trait Foo {
     type A;
     fn boo(&self) -> <Self as Foo>::A;

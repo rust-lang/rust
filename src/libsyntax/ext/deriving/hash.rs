@@ -25,20 +25,14 @@ pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
     F: FnOnce(P<Item>),
 {
 
-    let (path, generics, args) = if cx.ecfg.deriving_hash_type_parameter {
-        (Path::new_(vec!("std", "hash", "Hash"), None,
-                    vec!(box Literal(Path::new_local("__S"))), true),
-         LifetimeBounds {
-             lifetimes: Vec::new(),
-             bounds: vec!(("__S",
-                           vec!(Path::new(vec!("std", "hash", "Writer"))))),
-         },
-         Path::new_local("__S"))
-    } else {
-        (Path::new(vec!("std", "hash", "Hash")),
-         LifetimeBounds::empty(),
-         Path::new(vec!("std", "hash", "sip", "SipState")))
+    let path = Path::new_(vec!("std", "hash", "Hash"), None,
+                          vec!(box Literal(Path::new_local("__S"))), true);
+    let generics = LifetimeBounds {
+        lifetimes: Vec::new(),
+        bounds: vec!(("__S",
+                      vec!(Path::new(vec!("std", "hash", "Writer"))))),
     };
+    let args = Path::new_local("__S");
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let hash_trait_def = TraitDef {

@@ -10,8 +10,6 @@
 
 // ignore-pretty -- FIXME(#17362) pretty prints as `Hash<<Self as Hasher...` which fails to parse
 
-#![feature(associated_types)]
-
 pub trait Hasher {
     type State;
 

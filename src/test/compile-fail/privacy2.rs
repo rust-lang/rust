@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs)]
 #![no_std] // makes debugging this test *a lot* easier (during resolve)
 
 // Test to make sure that globs don't leak in regular `use` statements.
@@ -34,4 +33,3 @@ fn test2() {
 }
 
 #[start] fn main(_: int, _: *const *const u8) -> int { 3 }
-

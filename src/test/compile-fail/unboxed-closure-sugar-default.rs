@@ -11,7 +11,7 @@
 // Test interaction between unboxed closure sugar and default type
 // parameters (should be exactly as if angle brackets were used).
 
-#![feature(default_type_params, unboxed_closures)]
+#![feature(unboxed_closures)]
 #![allow(dead_code)]
 
 trait Foo<T,U,V=T> {
