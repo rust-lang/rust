@@ -3442,7 +3442,7 @@ fn create_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::PatBox(ref sub_pat) | ast::PatRegion(ref sub_pat) => {
+            ast::PatBox(ref sub_pat) | ast::PatRegion(ref sub_pat, _) => {
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
                 walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
             }

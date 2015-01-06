@@ -119,7 +119,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             ast::PatBox(ref subpat) |
-            ast::PatRegion(ref subpat) |
+            ast::PatRegion(ref subpat, _) |
             ast::PatIdent(_, _, Some(ref subpat)) => {
                 let subpat_exit = self.pat(&**subpat, pred);
                 self.add_node(pat.id, &[subpat_exit])

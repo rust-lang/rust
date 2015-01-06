@@ -633,7 +633,7 @@ pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
             PatEnum(_, Some(ref s)) | PatTup(ref s) => {
                 s.iter().all(|p| walk_pat_(&**p, it))
             }
-            PatBox(ref s) | PatRegion(ref s) => {
+            PatBox(ref s) | PatRegion(ref s, _) => {
                 walk_pat_(&**s, it)
             }
             PatVec(ref before, ref slice, ref after) => {
