@@ -14,7 +14,7 @@
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
-use std::kinds::marker;
+use std::marker;
 
 // This is contravariant with respect to 'a, meaning that
 // Contravariant<'foo> <: Contravariant<'static> because

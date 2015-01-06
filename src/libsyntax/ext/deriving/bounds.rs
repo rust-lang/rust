@@ -48,7 +48,7 @@ pub fn expand_deriving_bound<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "kinds", name)),
+        path: Path::new(vec!("std", "marker", name)),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!()

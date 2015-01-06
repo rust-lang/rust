@@ -22,6 +22,6 @@ struct X<T>(T);
 impl <T:Sync> RequiresShare for X<T> { }
 
 impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
-//~^ ERROR the trait `core::kinds::Send` is not implemented
+//~^ ERROR the trait `core::marker::Send` is not implemented
 
 fn main() { }

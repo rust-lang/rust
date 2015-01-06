@@ -92,7 +92,7 @@ use mem;
 use clone::Clone;
 use intrinsics;
 use option::Option::{self, Some, None};
-use kinds::{Send, Sized, Sync};
+use marker::{Send, Sized, Sync};
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd};
 use cmp::Ordering::{self, Less, Equal, Greater};

@@ -41,7 +41,7 @@ use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
-use kinds::Copy;
+use marker::Copy;
 use num::Int;
 use ops::{FnMut, self, Index};
 use option::Option;
@@ -52,7 +52,7 @@ use ptr;
 use ptr::PtrExt;
 use mem;
 use mem::size_of;
-use kinds::{Sized, marker};
+use marker::{Sized, self};
 use raw::Repr;
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
 use raw::Slice as RawSlice;

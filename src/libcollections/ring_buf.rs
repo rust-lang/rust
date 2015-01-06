@@ -20,7 +20,7 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::iter::{self, repeat, FromIterator, RandomAccessIterator};
-use core::kinds::marker;
+use core::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut};

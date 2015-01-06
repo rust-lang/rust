@@ -63,7 +63,7 @@
 
 use clone::Clone;
 use iter::{Step, Iterator,DoubleEndedIterator,ExactSizeIterator};
-use kinds::Sized;
+use marker::Sized;
 use option::Option::{self, Some, None};
 
 /// The `Drop` trait is used to run some code when a value goes out of scope. This

@@ -72,7 +72,7 @@
 
 use self::Ordering::*;
 
-use kinds::Sync;
+use marker::Sync;
 
 use intrinsics;
 use cell::UnsafeCell;

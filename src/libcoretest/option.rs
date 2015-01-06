@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::option::*;
-use core::kinds::marker;
+use core::marker;
 use core::mem;
 use core::clone::Clone;
 

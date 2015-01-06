@@ -18,7 +18,7 @@
 //!
 //! The [`ptr`](ptr/index.html) and [`mem`](mem/index.html)
 //! modules deal with unsafe pointers and memory manipulation.
-//! [`kinds`](kinds/index.html) defines the special built-in traits,
+//! [`markers`](markers/index.html) defines the special built-in traits,
 //! and [`raw`](raw/index.html) the runtime representation of Rust types.
 //! These are some of the lowest-level building blocks in Rust.
 //!
@@ -134,7 +134,7 @@ extern crate libc;
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate "std" as realstd;
-#[cfg(test)] pub use realstd::kinds;
+#[cfg(test)] pub use realstd::marker;
 #[cfg(test)] pub use realstd::ops;
 #[cfg(test)] pub use realstd::cmp;
 #[cfg(test)] pub use realstd::boxed;
@@ -151,7 +151,8 @@ pub use core::default;
 pub use core::finally;
 pub use core::intrinsics;
 pub use core::iter;
-#[cfg(not(test))] pub use core::kinds;
+#[cfg(stage0)] #[cfg(not(test))] pub use core::marker as kinds;
+#[cfg(not(test))] pub use core::marker;
 pub use core::mem;
 #[cfg(not(test))] pub use core::ops;
 pub use core::ptr;
@@ -282,7 +283,9 @@ mod std {
     pub use vec; // used for vec![]
     pub use cell; // used for tls!
     pub use thread_local; // used for thread_local!
-    pub use kinds; // used for tls!
+    #[cfg(stage0)]
+    pub use marker as kinds;
+    pub use marker;  // used for tls!
     pub use ops; // used for bitflags!
 
     // The test runner calls ::std::os::args() but really wants realstd

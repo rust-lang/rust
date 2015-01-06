@@ -23,7 +23,7 @@
 
 #![allow(dead_code)]
 
-use kinds::Send;
+use marker::Send;
 use ops::FnOnce;
 use sys;
 use thunk::Thunk;

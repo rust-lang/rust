@@ -319,7 +319,7 @@ use prelude::v1::*;
 
 use sync::Arc;
 use fmt;
-use kinds::marker;
+use marker;
 use mem;
 use cell::UnsafeCell;
 

@@ -23,7 +23,7 @@ pub mod pipes {
     use std::mem::{replace, swap};
     use std::mem;
     use std::thread::Thread;
-    use std::kinds::Send;
+    use std::marker::Send;
 
     pub struct Stuff<T> {
         state: state,

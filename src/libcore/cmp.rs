@@ -43,7 +43,7 @@
 
 use self::Ordering::*;
 
-use kinds::Sized;
+use marker::Sized;
 use option::Option::{self, Some, None};
 
 /// Trait for equality comparisons which are [partial equivalence relations](
@@ -316,7 +316,7 @@ pub fn partial_max<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
 mod impls {
     use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering};
     use cmp::Ordering::{Less, Greater, Equal};
-    use kinds::Sized;
+    use marker::Sized;
     use option::Option;
     use option::Option::{Some, None};
 

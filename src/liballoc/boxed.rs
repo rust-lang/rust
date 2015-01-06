@@ -18,7 +18,7 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::kinds::Sized;
+use core::marker::Sized;
 use core::mem;
 use core::option::Option;
 use core::ptr::Unique;

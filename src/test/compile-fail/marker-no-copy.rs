@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::marker;
 
 fn foo<P:Copy>(p: P) { }
 
 fn main()
 {
-    foo(marker::NoCopy); //~ ERROR the trait `core::kinds::Copy` is not implemented
+    foo(marker::NoCopy); //~ ERROR the trait `core::marker::Copy` is not implemented
 }

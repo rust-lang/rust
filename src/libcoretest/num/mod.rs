@@ -12,7 +12,7 @@ use core::cmp::PartialEq;
 use core::fmt::Show;
 use core::num::{NumCast, cast};
 use core::ops::{Add, Sub, Mul, Div, Rem};
-use core::kinds::Copy;
+use core::marker::Copy;
 
 #[macro_use]
 mod int_macros;

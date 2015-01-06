@@ -17,7 +17,7 @@
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use fmt;
-use kinds::Copy;
+use marker::Copy;
 use ops::{Deref, FullRange, Index};
 use option::Option;
 

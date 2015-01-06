@@ -13,5 +13,5 @@ use std::sync::mpsc::Sender;
 fn test<T: Sync>() {}
 
 fn main() {
-    test::<Sender<int>>();     //~ ERROR: `core::kinds::Sync` is not implemented
+    test::<Sender<int>>();     //~ ERROR: `core::marker::Sync` is not implemented
 }
