@@ -179,6 +179,13 @@ impl IsaacRng {
     }
 }
 
+// Cannot be derived because [u32; 256] does not implement Clone
+impl Clone for IsaacRng {
+    fn clone(&self) -> IsaacRng {
+        *self
+    }
+}
+
 impl Rng for IsaacRng {
     #[inline]
     fn next_u32(&mut self) -> u32 {
@@ -415,6 +422,13 @@ impl Isaac64Rng {
     }
 }
 
+// Cannot be derived because [u32; 256] does not implement Clone
+impl Clone for Isaac64Rng {
+    fn clone(&self) -> Isaac64Rng {
+        *self
+    }
+}
+
 impl Rng for Isaac64Rng {
     // FIXME #7771: having next_u32 like this should be unnecessary
     #[inline]
@@ -484,6 +498,7 @@ impl Rand for Isaac64Rng {
         return ret;
     }
 }
+
 
 #[cfg(test)]
 mod test {
@@ -593,5 +608,15 @@ mod test {
                         17196852593171130876, 2606123525235546165, 15790932315217671084,
                         596345674630742204, 9947027391921273664, 11788097613744130851,
                         10391409374914919106));
+    }
+
+    #[test]
+    fn test_rng_clone() {
+        let seed: &[_] = &[1, 23, 456, 7890, 12345];
+        let mut rng: Isaac64Rng = SeedableRng::from_seed(seed);
+        let mut clone = rng.clone();
+        for _ in range(0u, 16) {
+            assert_eq!(rng.next_u64(), clone.next_u64());
+        }
     }
 }
