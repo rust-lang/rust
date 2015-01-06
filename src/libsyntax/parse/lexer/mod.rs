@@ -25,7 +25,7 @@ use std::rc::Rc;
 use std::str;
 use std::string::CowString;
 
-pub use ext::tt::transcribe::{TtReader, new_tt_reader};
+pub use ext::tt::transcribe::{TtReader, new_tt_reader, new_tt_reader_with_doc_flag};
 
 pub mod comments;
 

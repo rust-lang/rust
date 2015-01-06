@@ -690,10 +690,9 @@ balanced, but they are otherwise not special.
 
 In the matcher, `$` _name_ `:` _designator_ matches the nonterminal in the Rust
 syntax named by _designator_. Valid designators are `item`, `block`, `stmt`,
-`pat`, `expr`, `ty` (type), `ident`, `path`, `matchers` (lhs of the `=>` in
-macro rules), `tt` (rhs of the `=>` in macro rules). In the transcriber, the
-designator is already known, and so only the name of a matched nonterminal
-comes after the dollar sign.
+`pat`, `expr`, `ty` (type), `ident`, `path`, `tt` (either side of the `=>`
+in macro rules). In the transcriber, the designator is already known, and so
+only the name of a matched nonterminal comes after the dollar sign.
 
 In both the matcher and transcriber, the Kleene star-like operator indicates
 repetition. The Kleene star operator consists of `$` and parens, optionally
