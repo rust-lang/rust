@@ -164,7 +164,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// let h = SipHasher::new();
     /// let mut set = HashSet::with_capacity_and_hasher(10u, h);
-    /// set.insert(1i);
+    /// set.insert(1);
     /// ```
     #[inline]
     #[unstable = "hasher stuff is unclear"]
@@ -283,8 +283,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let a: HashSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// // Can be seen as `a - b`.
     /// for x in a.difference(&b) {
@@ -292,12 +292,12 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// }
     ///
     /// let diff: HashSet<int> = a.difference(&b).map(|&x| x).collect();
-    /// assert_eq!(diff, [1i].iter().map(|&x| x).collect());
+    /// assert_eq!(diff, [1].iter().map(|&x| x).collect());
     ///
     /// // Note that difference is not symmetric,
     /// // and `b - a` means something else:
     /// let diff: HashSet<int> = b.difference(&a).map(|&x| x).collect();
-    /// assert_eq!(diff, [4i].iter().map(|&x| x).collect());
+    /// assert_eq!(diff, [4].iter().map(|&x| x).collect());
     /// ```
     #[stable]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, H>) -> Difference<'a, T, H> {
@@ -313,8 +313,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let a: HashSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// // Print 1, 4 in arbitrary order.
     /// for x in a.symmetric_difference(&b) {
@@ -325,7 +325,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// let diff2: HashSet<int> = b.symmetric_difference(&a).map(|&x| x).collect();
     ///
     /// assert_eq!(diff1, diff2);
-    /// assert_eq!(diff1, [1i, 4].iter().map(|&x| x).collect());
+    /// assert_eq!(diff1, [1, 4].iter().map(|&x| x).collect());
     /// ```
     #[stable]
     pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T, H>)
@@ -339,8 +339,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let a: HashSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// // Print 2, 3 in arbitrary order.
     /// for x in a.intersection(&b) {
@@ -348,7 +348,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// }
     ///
     /// let diff: HashSet<int> = a.intersection(&b).map(|&x| x).collect();
-    /// assert_eq!(diff, [2i, 3].iter().map(|&x| x).collect());
+    /// assert_eq!(diff, [2, 3].iter().map(|&x| x).collect());
     /// ```
     #[stable]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, H>) -> Intersection<'a, T, H> {
@@ -364,8 +364,8 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let a: HashSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order.
     /// for x in a.union(&b) {
@@ -373,7 +373,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// }
     ///
     /// let diff: HashSet<int> = a.union(&b).map(|&x| x).collect();
-    /// assert_eq!(diff, [1i, 2, 3, 4].iter().map(|&x| x).collect());
+    /// assert_eq!(diff, [1, 2, 3, 4].iter().map(|&x| x).collect());
     /// ```
     #[stable]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, H>) -> Union<'a, T, H> {
