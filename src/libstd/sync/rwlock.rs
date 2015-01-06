@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use kinds::marker;
+use marker;
 use ops::{Deref, DerefMut};
 use sync::poison::{self, LockResult, TryLockError, TryLockResult};
 use sys_common::rwlock as sys;

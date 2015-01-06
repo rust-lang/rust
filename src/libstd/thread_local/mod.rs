@@ -345,7 +345,7 @@ mod imp {
         pub dtor_running: UnsafeCell<bool>, // should be Cell
     }
 
-    unsafe impl<T> ::kinds::Sync for Key<T> { }
+    unsafe impl<T> ::marker::Sync for Key<T> { }
 
     #[doc(hidden)]
     impl<T> Key<T> {
@@ -471,7 +471,7 @@ mod imp {
         pub os: OsStaticKey,
     }
 
-    unsafe impl<T> ::kinds::Sync for Key<T> { }
+    unsafe impl<T> ::marker::Sync for Key<T> { }
 
     struct Value<T: 'static> {
         key: &'static Key<T>,

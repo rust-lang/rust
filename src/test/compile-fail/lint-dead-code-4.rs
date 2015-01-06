@@ -19,7 +19,7 @@ use std::num::Int;
 struct Foo {
     x: uint,
     b: bool, //~ ERROR: struct field is never used
-    marker: std::kinds::marker::NoCopy
+    marker: std::marker::NoCopy
 }
 
 fn field_read(f: Foo) -> uint {
@@ -59,7 +59,7 @@ fn field_match_in_let(f: Bar) -> bool {
 }
 
 fn main() {
-    field_read(Foo { x: 1, b: false, marker: std::kinds::marker::NoCopy });
+    field_read(Foo { x: 1, b: false, marker: std::marker::NoCopy });
     field_match_in_patterns(XYZ::Z);
     field_match_in_let(Bar { x: 42u, b: true, _guard: () });
     let _ = Baz { x: 0 };

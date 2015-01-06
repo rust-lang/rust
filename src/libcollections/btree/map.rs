@@ -480,7 +480,7 @@ enum Continuation<A, B> {
 /// boilerplate gets cut out.
 mod stack {
     use core::prelude::*;
-    use core::kinds::marker;
+    use core::marker;
     use core::mem;
     use core::ops::{Deref, DerefMut};
     use super::BTreeMap;

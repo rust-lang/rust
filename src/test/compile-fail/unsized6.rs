@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test `Sized?` local variables.
+// Test `?Sized` local variables.
 
 
 trait T {}
@@ -16,27 +16,27 @@ trait T {}
 fn f1<X: ?Sized>(x: &X) {
     let _: X; // <-- this is OK, no bindings created, no initializer.
     let _: (int, (X, int)); // same
-    let y: X; //~ERROR the trait `core::kinds::Sized` is not implemented
-    let y: (int, (X, int)); //~ERROR the trait `core::kinds::Sized` is not implemented
+    let y: X; //~ERROR the trait `core::marker::Sized` is not implemented
+    let y: (int, (X, int)); //~ERROR the trait `core::marker::Sized` is not implemented
 }
 fn f2<X: ?Sized + T>(x: &X) {
-    let y: X; //~ERROR the trait `core::kinds::Sized` is not implemented
-    let y: (int, (X, int)); //~ERROR the trait `core::kinds::Sized` is not implemented
+    let y: X; //~ERROR the trait `core::marker::Sized` is not implemented
+    let y: (int, (X, int)); //~ERROR the trait `core::marker::Sized` is not implemented
 }
 
 fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-    let y: X = *x1; //~ERROR the trait `core::kinds::Sized` is not implemented
-    let y = *x2; //~ERROR the trait `core::kinds::Sized` is not implemented
-    let (y, z) = (*x3, 4i); //~ERROR the trait `core::kinds::Sized` is not implemented
+    let y: X = *x1; //~ERROR the trait `core::marker::Sized` is not implemented
+    let y = *x2; //~ERROR the trait `core::marker::Sized` is not implemented
+    let (y, z) = (*x3, 4i); //~ERROR the trait `core::marker::Sized` is not implemented
 }
 fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-    let y: X = *x1;         //~ERROR the trait `core::kinds::Sized` is not implemented
-    let y = *x2;            //~ERROR the trait `core::kinds::Sized` is not implemented
-    let (y, z) = (*x3, 4i); //~ERROR the trait `core::kinds::Sized` is not implemented
+    let y: X = *x1;         //~ERROR the trait `core::marker::Sized` is not implemented
+    let y = *x2;            //~ERROR the trait `core::marker::Sized` is not implemented
+    let (y, z) = (*x3, 4i); //~ERROR the trait `core::marker::Sized` is not implemented
 }
 
-fn g1<X: ?Sized>(x: X) {} //~ERROR the trait `core::kinds::Sized` is not implemented
-fn g2<X: ?Sized + T>(x: X) {} //~ERROR the trait `core::kinds::Sized` is not implemented
+fn g1<X: ?Sized>(x: X) {} //~ERROR the trait `core::marker::Sized` is not implemented
+fn g2<X: ?Sized + T>(x: X) {} //~ERROR the trait `core::marker::Sized` is not implemented
 
 pub fn main() {
 }

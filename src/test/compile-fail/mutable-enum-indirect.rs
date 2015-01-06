@@ -11,7 +11,7 @@
 // Tests that an `&` pointer to something inherently mutable is itself
 // to be considered mutable.
 
-use std::kinds::marker;
+use std::marker;
 
 enum Foo { A(marker::NoSync) }
 
@@ -19,5 +19,5 @@ fn bar<T: Sync>(_: T) {}
 
 fn main() {
     let x = Foo::A(marker::NoSync);
-    bar(&x); //~ ERROR the trait `core::kinds::Sync` is not implemented
+    bar(&x); //~ ERROR the trait `core::marker::Sync` is not implemented
 }

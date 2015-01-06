@@ -16,7 +16,7 @@ use any;
 use cell::{Cell, RefCell, Ref, RefMut};
 use char::CharExt;
 use iter::{Iterator, IteratorExt, range};
-use kinds::{Copy, Sized};
+use marker::{Copy, Sized};
 use mem;
 use option::Option;
 use option::Option::{Some, None};

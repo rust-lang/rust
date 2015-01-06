@@ -10,7 +10,7 @@
 
 // Verifies that static items can't be moved
 
-use std::kinds::marker;
+use std::marker;
 
 struct Foo {
     foo: int,

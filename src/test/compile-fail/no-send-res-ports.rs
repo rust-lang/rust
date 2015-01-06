@@ -36,8 +36,8 @@ fn main() {
     let x = foo(Port(Rc::new(())));
 
     Thread::spawn(move|| {
-        //~^ ERROR `core::kinds::Send` is not implemented
-        //~^^ ERROR `core::kinds::Send` is not implemented
+        //~^ ERROR `core::marker::Send` is not implemented
+        //~^^ ERROR `core::marker::Send` is not implemented
         let y = x;
         println!("{:?}", y);
     });

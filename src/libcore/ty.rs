@@ -10,4 +10,4 @@
 
 //! Types dealing with unsafe actions.
 
-use kinds::marker;
+use marker;

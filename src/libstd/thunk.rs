@@ -12,7 +12,7 @@
 #![allow(missing_docs)]
 
 use alloc::boxed::Box;
-use core::kinds::Send;
+use core::marker::Send;
 use core::ops::FnOnce;
 
 pub struct Thunk<A=(),R=()> {

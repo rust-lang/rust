@@ -11,6 +11,6 @@
 trait I {}
 type K = I+'static;
 
-fn foo(_x: K) {} //~ ERROR: the trait `core::kinds::Sized` is not implemented
+fn foo(_x: K) {} //~ ERROR: the trait `core::marker::Sized` is not implemented
 
 fn main() {}

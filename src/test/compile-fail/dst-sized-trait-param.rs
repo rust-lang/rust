@@ -14,10 +14,10 @@
 
 trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized
 
-impl Foo<[isize]> for uint { }
-//~^ ERROR the trait `core::kinds::Sized` is not implemented for the type `[isize]`
+impl Foo<[isize]> for usize { }
+//~^ ERROR the trait `core::marker::Sized` is not implemented for the type `[isize]`
 
 impl Foo<isize> for [usize] { }
-//~^ ERROR the trait `core::kinds::Sized` is not implemented for the type `[usize]`
+//~^ ERROR the trait `core::marker::Sized` is not implemented for the type `[usize]`
 
 pub fn main() { }

@@ -10,7 +10,7 @@
 
 pub use self::VarValue::*;
 
-use std::kinds::marker;
+use std::marker;
 
 use middle::ty::{expected_found, IntVarValue};
 use middle::ty::{self, Ty};

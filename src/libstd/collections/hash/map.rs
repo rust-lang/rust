@@ -21,7 +21,7 @@ use default::Default;
 use fmt::{self, Show};
 use hash::{Hash, Hasher, RandomSipHasher};
 use iter::{self, Iterator, IteratorExt, FromIterator, Extend, Map};
-use kinds::Sized;
+use marker::Sized;
 use mem::{self, replace};
 use num::{Int, UnsignedInt};
 use ops::{Deref, FnMut, Index, IndexMut};

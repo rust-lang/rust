@@ -26,7 +26,7 @@ impl<T> Foo<T> for Bar<T> {
 
     fn fails_copy(self) {
         require_copy(self.x);
-        //~^ ERROR the trait `core::kinds::Copy` is not implemented for the type `T`
+        //~^ ERROR the trait `core::marker::Copy` is not implemented for the type `T`
     }
 }
 

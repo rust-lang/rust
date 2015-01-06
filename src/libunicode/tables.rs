@@ -7801,7 +7801,7 @@ pub mod charwidth {
 }
 
 pub mod grapheme {
-    use core::kinds::Copy;
+    use core::marker::Copy;
     use core::slice::SliceExt;
     pub use self::GraphemeCat::*;
     use core::result::Result::{Ok, Err};
