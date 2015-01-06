@@ -16,6 +16,7 @@
 
 #![crate_name = "rustc_driver"]
 #![experimental]
+#![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -46,7 +47,7 @@ pub use syntax::diagnostic;
 
 use rustc_trans::back::link;
 use rustc::session::{config, Session, build_session};
-use rustc::session::config::{Input, PrintRequest};
+use rustc::session::config::{Input, PrintRequest, UnstableFeatures};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::metadata;
@@ -132,7 +133,11 @@ fn run_compiler(args: &[String]) {
         _ => early_error("multiple input filenames provided")
     };
 
+    let mut sopts = sopts;
+    sopts.unstable_features = get_unstable_features_setting();
+
     let mut sess = build_session(sopts, input_file_path, descriptions);
+
     let cfg = config::build_configuration(&sess);
     if print_crate_info(&sess, Some(&input), &odir, &ofile) {
         return
@@ -179,6 +184,21 @@ fn run_compiler(args: &[String]) {
     }
 
     driver::compile_input(sess, cfg, &input, &odir, &ofile, None);
+}
+
+pub fn get_unstable_features_setting() -> UnstableFeatures {
+    // Whether this is a feature-staged build, i.e. on the beta or stable channel
+    let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+    // The secret key needed to get through the rustc build itself by
+    // subverting the unstable features lints
+    let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
+    // The matching key to the above, only known by the build system
+    let bootstrap_provided_key = os::getenv("RUSTC_BOOTSTRAP_KEY");
+    match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
+        (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
+        (true, _, _) => UnstableFeatures::Disallow,
+        (false, _, _) => UnstableFeatures::Default
+    }
 }
 
 /// Returns a version string such as "0.12.0-dev".

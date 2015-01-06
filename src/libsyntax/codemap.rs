@@ -590,7 +590,12 @@ impl CodeMap {
                 Some(ref info) => {
                     // save the parent expn_id for next loop iteration
                     expnid = info.call_site.expn_id;
-                    if info.callee.span.is_none() {
+                    if info.callee.name == "format_args" {
+                        // This is a hack because the format_args builtin calls unstable APIs.
+                        // I spent like 6 hours trying to solve this more generally but am stupid.
+                        is_internal = true;
+                        false
+                    } else if info.callee.span.is_none() {
                         // it's a compiler built-in, we *really* don't want to mess with it
                         // so we skip it, unless it was called by a regular macro, in which case
                         // we will handle the caller macro next turn
