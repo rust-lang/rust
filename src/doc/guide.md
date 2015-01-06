@@ -1377,7 +1377,7 @@ As you can see, `enum` and `match` used together are quite useful!
 
 `match` is also an expression, which means we can use it on the right-hand
 side of a `let` binding or directly where an expression is used. We could
-also implement the previous line like this:
+also implement the previous example like this:
 
 ```{rust}
 use std::cmp::Ordering;
