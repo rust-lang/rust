@@ -1235,8 +1235,10 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             }
           }
 
-          ast::PatBox(ref subpat) | ast::PatRegion(ref subpat) => {
-            // @p1, ~p1, ref p1
+          ast::PatBox(ref subpat) | ast::PatRegion(ref subpat, _) => {
+            // box p1, &p1, &mut p1.  we can ignore the mutability of
+            // PatRegion since that information is already contained
+            // in the type.
             let subcmt = try!(self.cat_deref(pat, cmt, 0, false));
               try!(self.cat_pattern_(subcmt, &**subpat, op));
           }

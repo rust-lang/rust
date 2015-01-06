@@ -3484,8 +3484,9 @@ fn main() {
 
 ```
 
-Patterns can also dereference pointers by using the `&`, `box` symbols,
-as appropriate. For example, these two matches on `x: &int` are equivalent:
+Patterns can also dereference pointers by using the `&`, `&mut` and `box`
+symbols, as appropriate. For example, these two matches on `x: &int` are
+equivalent:
 
 ```
 # let x = &3i;

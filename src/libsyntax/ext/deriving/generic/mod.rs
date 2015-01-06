@@ -937,7 +937,7 @@ impl<'a> MethodDef<'a> {
                                                                          &**variant,
                                                                          self_arg_name,
                                                                          ast::MutImmutable);
-                    (cx.pat(sp, ast::PatRegion(p)), idents)
+                    (cx.pat(sp, ast::PatRegion(p, ast::MutImmutable)), idents)
                 };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK

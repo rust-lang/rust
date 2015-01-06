@@ -192,12 +192,16 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**inner, tcx.types.err);
             }
         }
-        ast::PatRegion(ref inner) => {
+        ast::PatRegion(ref inner, mutbl) => {
             let inner_ty = fcx.infcx().next_ty_var();
 
-            let mutbl =
-                ty::deref(fcx.infcx().shallow_resolve(expected), true).map(|mt| mt.mutbl)
-                                                                      .unwrap_or(ast::MutImmutable);
+            // SNAP c894171 remove this `if`-`else` entirely after next snapshot
+            let mutbl = if mutbl == ast::MutImmutable {
+                ty::deref(fcx.infcx().shallow_resolve(expected), true)
+                   .map(|mt| mt.mutbl).unwrap_or(ast::MutImmutable);
+            } else {
+                mutbl
+            };
 
             let mt = ty::mt { ty: inner_ty, mutbl: mutbl };
             let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
