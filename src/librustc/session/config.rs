@@ -257,6 +257,107 @@ pub enum CrateType {
     CrateTypeStaticlib,
 }
 
+macro_rules! debugging_opts {
+    ([ $opt:ident ] $cnt:expr ) => (
+        pub const $opt: u64 = 1 << $cnt;
+    );
+    ([ $opt:ident, $($rest:ident),* ] $cnt:expr ) => (
+        pub const $opt: u64 = 1 << $cnt;
+        debugging_opts! { [ $($rest),* ] $cnt + 1 }
+    )
+}
+
+debugging_opts! {
+    [
+        VERBOSE,
+        TIME_PASSES,
+        COUNT_LLVM_INSNS,
+        TIME_LLVM_PASSES,
+        TRANS_STATS,
+        ASM_COMMENTS,
+        NO_VERIFY,
+        BORROWCK_STATS,
+        NO_LANDING_PADS,
+        DEBUG_LLVM,
+        COUNT_TYPE_SIZES,
+        META_STATS,
+        GC,
+        PRINT_LINK_ARGS,
+        PRINT_LLVM_PASSES,
+        AST_JSON,
+        AST_JSON_NOEXPAND,
+        LS,
+        SAVE_ANALYSIS,
+        PRINT_MOVE_FRAGMENTS,
+        FLOWGRAPH_PRINT_LOANS,
+        FLOWGRAPH_PRINT_MOVES,
+        FLOWGRAPH_PRINT_ASSIGNS,
+        FLOWGRAPH_PRINT_ALL,
+        PRINT_REGION_GRAPH,
+        PARSE_ONLY,
+        NO_TRANS,
+        NO_ANALYSIS,
+        UNSTABLE_OPTIONS,
+        PRINT_ENUM_SIZES,
+        FORCE_OVERFLOW_CHECKS,
+        FORCE_NO_OVERFLOW_CHECKS,
+    ]
+    0
+}
+
+pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
+    vec![("verbose", "in general, enable more debug printouts", VERBOSE),
+     ("time-passes", "measure time of each rustc pass", TIME_PASSES),
+     ("count-llvm-insns", "count where LLVM \
+                           instrs originate", COUNT_LLVM_INSNS),
+     ("time-llvm-passes", "measure time of each LLVM pass",
+      TIME_LLVM_PASSES),
+     ("trans-stats", "gather trans statistics", TRANS_STATS),
+     ("asm-comments", "generate comments into the assembly (may change behavior)",
+      ASM_COMMENTS),
+     ("no-verify", "skip LLVM verification", NO_VERIFY),
+     ("borrowck-stats", "gather borrowck statistics",  BORROWCK_STATS),
+     ("no-landing-pads", "omit landing pads for unwinding",
+      NO_LANDING_PADS),
+     ("debug-llvm", "enable debug output from LLVM", DEBUG_LLVM),
+     ("count-type-sizes", "count the sizes of aggregate types",
+      COUNT_TYPE_SIZES),
+     ("meta-stats", "gather metadata statistics", META_STATS),
+     ("print-link-args", "Print the arguments passed to the linker",
+      PRINT_LINK_ARGS),
+     ("gc", "Garbage collect shared data (experimental)", GC),
+     ("print-llvm-passes",
+      "Prints the llvm optimization passes being run",
+      PRINT_LLVM_PASSES),
+     ("ast-json", "Print the AST as JSON and halt", AST_JSON),
+     ("ast-json-noexpand", "Print the pre-expansion AST as JSON and halt", AST_JSON_NOEXPAND),
+     ("ls", "List the symbols defined by a library crate", LS),
+     ("save-analysis", "Write syntax and type analysis information \
+                        in addition to normal output", SAVE_ANALYSIS),
+     ("print-move-fragments", "Print out move-fragment data for every fn",
+      PRINT_MOVE_FRAGMENTS),
+     ("flowgraph-print-loans", "Include loan analysis data in \
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_LOANS),
+     ("flowgraph-print-moves", "Include move analysis data in \
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_MOVES),
+     ("flowgraph-print-assigns", "Include assignment analysis data in \
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_ASSIGNS),
+     ("flowgraph-print-all", "Include all dataflow analysis data in \
+                       --pretty flowgraph output", FLOWGRAPH_PRINT_ALL),
+     ("print-region-graph", "Prints region inference graph. \
+                             Use with RUST_REGION_GRAPH=help for more info",
+      PRINT_REGION_GRAPH),
+     ("parse-only", "Parse only; do not compile, assemble, or link", PARSE_ONLY),
+     ("no-trans", "Run all passes except translation; no output", NO_TRANS),
+     ("no-analysis", "Parse and expand the source, but run no analysis and",
+      NO_TRANS),
+     ("unstable-options", "Adds unstable command line options to rustc interface",
+      UNSTABLE_OPTIONS),
+     ("print-enum-sizes", "Print the size of enums and their variants", PRINT_ENUM_SIZES),
+     ("force-overflow-checks", "Force arithmatic overflow checking", FORCE_OVERFLOW_CHECKS),
+     ("force-no-overflow-checks", "Force arithmatic overflow checking", FORCE_NO_OVERFLOW_CHECKS),
+    ]
+}
 
 #[derive(Clone)]
 pub enum Passes {

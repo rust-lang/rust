@@ -547,6 +547,16 @@ extern "rust-intrinsic" {
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
 }
 
+extern "rust-intrinsic" {
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn overflowing_add<T>(a: T, b: T) -> T;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn overflowing_sub<T>(a: T, b: T) -> T;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn overflowing_mul<T>(a: T, b: T) -> T;
+}
+
+#[cfg(not(stage0))]
 
 /// `TypeId` represents a globally unique identifier for a type
 #[lang="type_id"] // This needs to be kept in lockstep with the code in trans/intrinsic.rs and
