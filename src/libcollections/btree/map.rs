@@ -933,7 +933,7 @@ enum StackOp<T> {
 }
 
 impl<K, V, E, T> Iterator for AbsIter<T> where
-    T: DoubleEndedIterator + Iterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
+    T: DoubleEndedIterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
 {
     type Item = (K, V);
 
@@ -1002,7 +1002,7 @@ impl<K, V, E, T> Iterator for AbsIter<T> where
 }
 
 impl<K, V, E, T> DoubleEndedIterator for AbsIter<T> where
-    T: DoubleEndedIterator + Iterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
+    T: DoubleEndedIterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
 {
     // next_back is totally symmetric to next
     fn next_back(&mut self) -> Option<(K, V)> {
