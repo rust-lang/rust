@@ -138,7 +138,7 @@ impl SafeHash {
 /// We need to remove hashes of 0. That's reserved for empty buckets.
 /// This function wraps up `hash_keyed` to be the only way outside this
 /// module to generate a SafeHash.
-pub fn make_hash<Sized? T: Hash<S>, S, H: Hasher<S>>(hasher: &H, t: &T) -> SafeHash {
+pub fn make_hash<T: ?Sized + Hash<S>, S, H: Hasher<S>>(hasher: &H, t: &T) -> SafeHash {
     // We need to avoid 0u64 in order to prevent collisions with
     // EMPTY_HASH. We can maintain our precious uniform distribution
     // of initial indexes by unconditionally setting the MSB,

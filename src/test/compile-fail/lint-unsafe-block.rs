@@ -11,8 +11,6 @@
 #![allow(unused_unsafe)]
 #![allow(dead_code)]
 #![deny(unsafe_blocks)]
-#![feature(macro_rules)]
-
 unsafe fn allowed() {}
 
 #[allow(unsafe_blocks)] fn also_allowed() { unsafe {} }

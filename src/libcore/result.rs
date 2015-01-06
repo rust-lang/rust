@@ -220,9 +220,9 @@
 //!
 //! ```
 //! # #![feature(macro_rules)]
-//! macro_rules! try(
+//! macro_rules! try {
 //!     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-//! );
+//! }
 //! # fn main() { }
 //! ```
 //!
@@ -807,6 +807,7 @@ impl<T, E> AsSlice<T> for Result<T, E> {
 #[stable]
 pub struct Iter<'a, T: 'a> { inner: Option<&'a T> }
 
+#[stable]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
@@ -819,11 +820,13 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> { self.inner.take() }
 }
 
+#[stable]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 impl<'a, T> Clone for Iter<'a, T> {
@@ -834,6 +837,7 @@ impl<'a, T> Clone for Iter<'a, T> {
 #[stable]
 pub struct IterMut<'a, T: 'a> { inner: Option<&'a mut T> }
 
+#[stable]
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
@@ -846,17 +850,20 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
 }
 
+#[stable]
 impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> { self.inner.take() }
 }
 
+#[stable]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// An iterator over the value in a `Ok` variant of a `Result`.
 #[stable]
 pub struct IntoIter<T> { inner: Option<T> }
 
+#[stable]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
@@ -869,11 +876,13 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
+#[stable]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> { self.inner.take() }
 }
 
+#[stable]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /////////////////////////////////////////////////////////////////////////////

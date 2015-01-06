@@ -90,7 +90,7 @@ impl RandomSipHasher {
 
 impl Hasher<sip::SipState> for RandomSipHasher {
     #[inline]
-    fn hash<Sized? T: Hash<sip::SipState>>(&self, value: &T) -> u64 {
+    fn hash<T: ?Sized + Hash<sip::SipState>>(&self, value: &T) -> u64 {
         self.hasher.hash(value)
     }
 }

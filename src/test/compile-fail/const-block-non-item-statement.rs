@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
 static A: uint = { 1u; 2 };
 //~^ ERROR: blocks in constants are limited to items and tail expressions
 

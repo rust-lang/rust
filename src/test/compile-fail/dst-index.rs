@@ -11,8 +11,6 @@
 // Test that overloaded index expressions with DST result types
 // can't be used as rvalues
 
-#![feature(associated_types)]
-
 use std::ops::Index;
 use std::fmt::Show;
 

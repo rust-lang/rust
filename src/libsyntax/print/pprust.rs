@@ -272,6 +272,8 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s.as_str()),
 
+        token::SpecialVarNt(var)    => format!("${}", var.as_str()),
+
         token::Interpolated(ref nt) => match *nt {
             token::NtExpr(ref e)  => expr_to_string(&**e),
             token::NtMeta(ref e)  => meta_item_to_string(&**e),
@@ -1056,7 +1058,6 @@ impl<'a> State<'a> {
                         span: codemap::Span) -> IoResult<()> {
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
-        try!(self.print_where_clause(generics));
         if ast_util::struct_def_is_tuple_like(struct_def) {
             if !struct_def.fields.is_empty() {
                 try!(self.popen());
@@ -1075,10 +1076,12 @@ impl<'a> State<'a> {
                 ));
                 try!(self.pclose());
             }
+            try!(self.print_where_clause(generics));
             try!(word(&mut self.s, ";"));
             try!(self.end());
             self.end() // close the outer-box
         } else {
+            try!(self.print_where_clause(generics));
             try!(self.nbsp());
             try!(self.bopen());
             try!(self.hardbreak_if_not_bol());
@@ -2081,8 +2084,11 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "box "));
                 try!(self.print_pat(&**inner));
             }
-            ast::PatRegion(ref inner) => {
+            ast::PatRegion(ref inner, mutbl) => {
                 try!(word(&mut self.s, "&"));
+                if mutbl == ast::MutMutable {
+                    try!(word(&mut self.s, "mut "));
+                }
                 try!(self.print_pat(&**inner));
             }
             ast::PatLit(ref e) => try!(self.print_expr(&**e)),

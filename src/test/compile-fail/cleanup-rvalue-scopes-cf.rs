@@ -11,8 +11,6 @@
 // Test that the borrow checker prevents pointers to temporaries
 // with statement lifetimes from escaping.
 
-#![feature(macro_rules)]
-
 use std::ops::Drop;
 
 static mut FLAGS: u64 = 0;

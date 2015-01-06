@@ -15,7 +15,7 @@
 use prelude::v1::*;
 
 use os;
-use sync::atomic::{mod, Ordering};
+use sync::atomic::{self, Ordering};
 
 pub use sys::backtrace::write;
 

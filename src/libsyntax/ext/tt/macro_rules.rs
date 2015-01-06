@@ -11,7 +11,7 @@
 use ast::{Ident, TtDelimited, TtSequence, TtToken};
 use ast;
 use codemap::{Span, DUMMY_SP};
-use ext::base::{ExtCtxt, MacResult, MacroDef};
+use ext::base::{ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
@@ -38,8 +38,8 @@ impl<'a> ParserAnyMacro<'a> {
     /// Make sure we don't have any tokens left to parse, so we don't
     /// silently drop anything. `allow_semi` is so that "optional"
     /// semicolons at the end of normal expressions aren't complained
-    /// about e.g. the semicolon in `macro_rules! kapow( () => {
-    /// panic!(); } )` doesn't get picked up by .parse_expr(), but it's
+    /// about e.g. the semicolon in `macro_rules! kapow { () => {
+    /// panic!(); } }` doesn't get picked up by .parse_expr(), but it's
     /// allowed to be there.
     fn ensure_complete_parse(&self, allow_semi: bool) {
         let mut parser = self.parser.borrow_mut();
@@ -110,6 +110,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
 
 struct MacroRulesMacroExpander {
     name: Ident,
+    imported_from: Option<Ident>,
     lhses: Vec<Rc<NamedMatch>>,
     rhses: Vec<Rc<NamedMatch>>,
 }
@@ -123,18 +124,10 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         generic_extension(cx,
                           sp,
                           self.name,
+                          self.imported_from,
                           arg,
                           self.lhses[],
                           self.rhses[])
-    }
-}
-
-struct MacroRulesDefiner {
-    def: Option<MacroDef>
-}
-impl MacResult for MacroRulesDefiner {
-    fn make_def(&mut self) -> Option<MacroDef> {
-        Some(self.def.take().expect("empty MacroRulesDefiner"))
     }
 }
 
@@ -142,6 +135,7 @@ impl MacResult for MacroRulesDefiner {
 fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           sp: Span,
                           name: Ident,
+                          imported_from: Option<Ident>,
                           arg: &[ast::TokenTree],
                           lhses: &[Rc<NamedMatch>],
                           rhses: &[Rc<NamedMatch>])
@@ -166,6 +160,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
             // `None` is because we're not interpolating
             let mut arg_rdr = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                             None,
+                                            None,
                                             arg.iter()
                                                .map(|x| (*x).clone())
                                                .collect());
@@ -186,6 +181,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                            Some(named_matches),
+                                           imported_from,
                                            rhs);
                 let p = Parser::new(cx.parse_sess(), cx.cfg(), box trncbr);
                 // Let the context choose how to interpret the result.
@@ -212,14 +208,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 //
 // Holy self-referential!
 
-/// This procedure performs the expansion of the
-/// macro_rules! macro. It parses the RHS and adds
-/// an extension to the current context.
-pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
-                              sp: Span,
-                              name: Ident,
-                              arg: Vec<ast::TokenTree> )
-                              -> Box<MacResult+'cx> {
+/// Converts a `macro_rules!` invocation into a syntax extension.
+pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
+                    def: &ast::MacroDef) -> SyntaxExtension {
 
     let lhs_nm =  gensym_ident("lhs");
     let rhs_nm =  gensym_ident("rhs");
@@ -256,7 +247,8 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
     // Parse the macro_rules! invocation (`none` is for no interpolations):
     let arg_reader = new_tt_reader(&cx.parse_sess().span_diagnostic,
                                    None,
-                                   arg.clone());
+                                   None,
+                                   def.body.clone());
     let argument_map = parse_or_else(cx.parse_sess(),
                                      cx.cfg(),
                                      arg_reader,
@@ -265,24 +257,20 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
     // Extract the arguments:
     let lhses = match *argument_map[lhs_nm] {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
-        _ => cx.span_bug(sp, "wrong-structured lhs")
+        _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
 
     let rhses = match *argument_map[rhs_nm] {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
-        _ => cx.span_bug(sp, "wrong-structured rhs")
+        _ => cx.span_bug(def.span, "wrong-structured rhs")
     };
 
     let exp = box MacroRulesMacroExpander {
-        name: name,
+        name: def.ident,
+        imported_from: def.imported_from,
         lhses: lhses,
         rhses: rhses,
     };
 
-    box MacroRulesDefiner {
-        def: Some(MacroDef {
-            name: token::get_ident(name).to_string(),
-            ext: NormalTT(exp, Some(sp))
-        })
-    } as Box<MacResult+'cx>
+    NormalTT(exp, Some(def.span))
 }

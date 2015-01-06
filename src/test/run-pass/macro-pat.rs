@@ -8,37 +8,35 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
-macro_rules! mypat(
+macro_rules! mypat {
     () => (
         Some('y')
     )
-);
+}
 
-macro_rules! char_x(
+macro_rules! char_x {
     () => (
         'x'
     )
-);
+}
 
-macro_rules! some(
+macro_rules! some {
     ($x:pat) => (
         Some($x)
     )
-);
+}
 
-macro_rules! indirect(
+macro_rules! indirect {
     () => (
         some!(char_x!())
     )
-);
+}
 
-macro_rules! ident_pat(
+macro_rules! ident_pat {
     ($x:ident) => (
         $x
     )
-);
+}
 
 fn f(c: Option<char>) -> uint {
     match c {

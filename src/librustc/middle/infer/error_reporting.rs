@@ -66,7 +66,8 @@ use super::region_inference::RegionResolutionError;
 use super::region_inference::ConcreteFailure;
 use super::region_inference::SubSupConflict;
 use super::region_inference::SupSupConflict;
-use super::region_inference::ParamBoundFailure;
+use super::region_inference::GenericBoundFailure;
+use super::region_inference::GenericKind;
 use super::region_inference::ProcessedErrors;
 use super::region_inference::SameRegions;
 
@@ -120,11 +121,11 @@ pub trait ErrorReporting<'tcx> {
                                sub: Region,
                                sup: Region);
 
-    fn report_param_bound_failure(&self,
-                                  origin: SubregionOrigin<'tcx>,
-                                  param_ty: ty::ParamTy,
-                                  sub: Region,
-                                  sups: Vec<Region>);
+    fn report_generic_bound_failure(&self,
+                                    origin: SubregionOrigin<'tcx>,
+                                    kind: GenericKind<'tcx>,
+                                    sub: Region,
+                                    sups: Vec<Region>);
 
     fn report_sub_sup_conflict(&self,
                                var_origin: RegionVariableOrigin,
@@ -175,8 +176,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     self.report_concrete_failure(origin, sub, sup);
                 }
 
-                ParamBoundFailure(origin, param_ty, sub, sups) => {
-                    self.report_param_bound_failure(origin, param_ty, sub, sups);
+                GenericBoundFailure(kind, param_ty, sub, sups) => {
+                    self.report_generic_bound_failure(kind, param_ty, sub, sups);
                 }
 
                 SubSupConflict(var_origin,
@@ -421,30 +422,35 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                      found.user_string(self.tcx)))
     }
 
-    fn report_param_bound_failure(&self,
-                                  origin: SubregionOrigin<'tcx>,
-                                  param_ty: ty::ParamTy,
-                                  sub: Region,
-                                  _sups: Vec<Region>) {
-
+    fn report_generic_bound_failure(&self,
+                                    origin: SubregionOrigin<'tcx>,
+                                    bound_kind: GenericKind<'tcx>,
+                                    sub: Region,
+                                    _sups: Vec<Region>)
+    {
         // FIXME: it would be better to report the first error message
         // with the span of the parameter itself, rather than the span
         // where the error was detected. But that span is not readily
         // accessible.
+
+        let labeled_user_string = match bound_kind {
+            GenericKind::Param(ref p) =>
+                format!("the parameter type `{}`", p.user_string(self.tcx)),
+            GenericKind::Projection(ref p) =>
+                format!("the associated type `{}`", p.user_string(self.tcx)),
+        };
 
         match sub {
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
                 // Does the required lifetime have a nice name we can print?
                 self.tcx.sess.span_err(
                     origin.span(),
-                    format!(
-                        "the parameter type `{}` may not live long enough",
-                        param_ty.user_string(self.tcx))[]);
+                    format!("{} may not live long enough", labeled_user_string)[]);
                 self.tcx.sess.span_help(
                     origin.span(),
                     format!(
                         "consider adding an explicit lifetime bound `{}: {}`...",
-                        param_ty.user_string(self.tcx),
+                        bound_kind.user_string(self.tcx),
                         sub.user_string(self.tcx))[]);
             }
 
@@ -452,14 +458,12 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 // Does the required lifetime have a nice name we can print?
                 self.tcx.sess.span_err(
                     origin.span(),
-                    format!(
-                        "the parameter type `{}` may not live long enough",
-                        param_ty.user_string(self.tcx))[]);
+                    format!("{} may not live long enough", labeled_user_string)[]);
                 self.tcx.sess.span_help(
                     origin.span(),
                     format!(
                         "consider adding an explicit lifetime bound `{}: 'static`...",
-                        param_ty.user_string(self.tcx))[]);
+                        bound_kind.user_string(self.tcx))[]);
             }
 
             _ => {
@@ -467,17 +471,16 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.span_err(
                     origin.span(),
                     format!(
-                        "the parameter type `{}` may not live long enough",
-                        param_ty.user_string(self.tcx))[]);
+                        "{} may not live long enough",
+                        labeled_user_string)[]);
                 self.tcx.sess.span_help(
                     origin.span(),
                     format!(
-                        "consider adding an explicit lifetime bound to `{}`",
-                        param_ty.user_string(self.tcx))[]);
+                        "consider adding an explicit lifetime bound for `{}`",
+                        bound_kind.user_string(self.tcx))[]);
                 note_and_explain_region(
                     self.tcx,
-                    format!("the parameter type `{}` must be valid for ",
-                            param_ty.user_string(self.tcx))[],
+                    format!("{} must be valid for ", labeled_user_string)[],
                     sub,
                     "...");
             }

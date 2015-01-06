@@ -239,7 +239,7 @@ impl SipHasher {
 
 impl Hasher<SipState> for SipHasher {
     #[inline]
-    fn hash<Sized? T: Hash<SipState>>(&self, value: &T) -> u64 {
+    fn hash<T: ?Sized + Hash<SipState>>(&self, value: &T) -> u64 {
         let mut state = SipState::new_with_keys(self.k0, self.k1);
         value.hash(&mut state);
         state.result()
@@ -255,7 +255,7 @@ impl Default for SipHasher {
 
 /// Hashes a value using the SipHash algorithm.
 #[inline]
-pub fn hash<Sized? T: Hash<SipState>>(value: &T) -> u64 {
+pub fn hash<T: ?Sized + Hash<SipState>>(value: &T) -> u64 {
     let mut state = SipState::new();
     value.hash(&mut state);
     state.result()
@@ -263,7 +263,7 @@ pub fn hash<Sized? T: Hash<SipState>>(value: &T) -> u64 {
 
 /// Hashes a value with the SipHash algorithm with the provided keys.
 #[inline]
-pub fn hash_with_keys<Sized? T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
+pub fn hash_with_keys<T: ?Sized + Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
     let mut state = SipState::new_with_keys(k0, k1);
     value.hash(&mut state);
     state.result()

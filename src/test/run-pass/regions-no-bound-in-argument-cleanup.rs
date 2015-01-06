@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types, unsafe_destructor)]
+#![feature(unsafe_destructor)]
 
 pub struct Foo<T>;
 

@@ -62,11 +62,24 @@
 #![feature(default_type_params, unboxed_closures, associated_types)]
 #![deny(missing_docs)]
 
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 mod macros;
 
-#[path = "num/float_macros.rs"] mod float_macros;
-#[path = "num/int_macros.rs"]   mod int_macros;
-#[path = "num/uint_macros.rs"]  mod uint_macros;
+#[path = "num/float_macros.rs"]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+mod float_macros;
+
+#[path = "num/int_macros.rs"]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+mod int_macros;
+
+#[path = "num/uint_macros.rs"]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;
 #[path = "num/i8.rs"]   pub mod i8;
@@ -130,6 +143,7 @@ mod array;
 #[doc(hidden)]
 mod core {
     pub use panicking;
+    pub use fmt;
 }
 
 #[doc(hidden)]

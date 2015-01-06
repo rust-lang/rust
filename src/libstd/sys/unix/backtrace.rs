@@ -83,12 +83,13 @@
 /// to symbols. This is a bit of a hokey implementation as-is, but it works for
 /// all unix platforms we support right now, so it at least gets the job done.
 
-use c_str::CString;
-use io::{IoResult, Writer};
+use prelude::v1::*;
+
+use ffi;
+use io::IoResult;
 use libc;
 use mem;
-use option::Option::{self, Some, None};
-use result::Result::{Ok, Err};
+use str;
 use sync::{StaticMutex, MUTEX_INIT};
 
 use sys_common::backtrace::*;
@@ -105,9 +106,7 @@ use sys_common::backtrace::*;
 #[cfg(all(target_os = "ios", target_arch = "arm"))]
 #[inline(never)]
 pub fn write(w: &mut Writer) -> IoResult<()> {
-    use iter::{IteratorExt, range};
     use result;
-    use slice::SliceExt;
 
     extern {
         fn backtrace(buf: *mut *mut libc::c_void,
@@ -234,19 +233,15 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
         output(w, idx,addr, None)
     } else {
         output(w, idx, addr, Some(unsafe {
-            CString::new(info.dli_sname, false)
+            ffi::c_str_to_bytes(&info.dli_sname)
         }))
     }
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
-    use iter::{Iterator, IteratorExt};
     use os;
-    use path::GenericPath;
-    use ptr::PtrExt;
     use ptr;
-    use slice::SliceExt;
 
     ////////////////////////////////////////////////////////////////////////
     // libbacktrace.h API
@@ -368,15 +363,15 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
     if ret == 0 || data.is_null() {
         output(w, idx, addr, None)
     } else {
-        output(w, idx, addr, Some(unsafe { CString::new(data, false) }))
+        output(w, idx, addr, Some(unsafe { ffi::c_str_to_bytes(&data) }))
     }
 }
 
 // Finally, after all that work above, we can emit a symbol.
 fn output(w: &mut Writer, idx: int, addr: *mut libc::c_void,
-          s: Option<CString>) -> IoResult<()> {
+          s: Option<&[u8]>) -> IoResult<()> {
     try!(write!(w, "  {:2}: {:2$} - ", idx, addr, HEX_WIDTH));
-    match s.as_ref().and_then(|c| c.as_str()) {
+    match s.and_then(|s| str::from_utf8(s).ok()) {
         Some(string) => try!(demangle(w, string)),
         None => try!(write!(w, "<unknown>")),
     }

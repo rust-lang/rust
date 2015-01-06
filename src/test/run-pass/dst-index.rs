@@ -11,8 +11,6 @@
 // Test that overloaded index expressions with DST result types
 // work and don't ICE.
 
-#![feature(associated_types)]
-
 use std::ops::Index;
 use std::fmt::Show;
 

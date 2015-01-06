@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 use std::ops::{Index, IndexMut};
 
 struct Foo {
@@ -70,5 +68,3 @@ fn main() {
     s[2] = 20;
     //~^ ERROR cannot assign to immutable dereference (dereference is implicit, due to indexing)
 }
-
-

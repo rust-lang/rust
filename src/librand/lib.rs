@@ -29,11 +29,29 @@
 #![no_std]
 #![experimental]
 
+#[cfg(stage0)]
 #[phase(plugin, link)]
 extern crate core;
 
-#[cfg(test)] #[phase(plugin, link)] extern crate std;
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate core;
+
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate std;
+
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate std;
+
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate log;
 
 use core::prelude::*;
 
@@ -243,7 +261,7 @@ pub trait Rng : Sized {
     /// println!("{}", rng.gen_weighted_bool(3));
     /// ```
     fn gen_weighted_bool(&mut self, n: uint) -> bool {
-        n == 0 || self.gen_range(0, n) == 0
+        n <= 1 || self.gen_range(0, n) == 0
     }
 
     /// Return an iterator of random characters from the set A-Z,a-z,0-9.
@@ -385,22 +403,12 @@ pub trait SeedableRng<Seed>: Rng {
 /// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
 /// Statistical Software*. Vol. 8 (Issue 14).
 #[allow(missing_copy_implementations)]
+#[derive(Clone)]
 pub struct XorShiftRng {
     x: u32,
     y: u32,
     z: u32,
     w: u32,
-}
-
-impl Clone for XorShiftRng {
-    fn clone(&self) -> XorShiftRng {
-        XorShiftRng {
-            x: self.x,
-            y: self.y,
-            z: self.z,
-            w: self.w,
-        }
-    }
 }
 
 impl XorShiftRng {
@@ -507,6 +515,7 @@ pub struct Closed01<F>(pub F);
 #[cfg(not(test))]
 mod std {
     pub use core::{option, fmt}; // panic!()
+    pub use core::clone; // derive Clone
     pub use core::kinds;
 }
 

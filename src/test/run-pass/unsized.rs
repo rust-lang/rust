@@ -12,9 +12,9 @@
 
 // Test syntax checks for `?Sized` syntax.
 
-trait T1 for ?Sized {}
-pub trait T2 for ?Sized {}
-trait T3<X: T1> for ?Sized: T2 {}
+trait T1 {}
+pub trait T2 {}
+trait T3<X: T1> : T2 {}
 trait T4<X: ?Sized> {}
 trait T5<X: ?Sized, Y> {}
 trait T6<Y, X: ?Sized> {}

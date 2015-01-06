@@ -282,9 +282,12 @@ pub mod net;
 pub mod pipe;
 pub mod process;
 pub mod stdio;
-pub mod test;
 pub mod timer;
 pub mod util;
+
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+pub mod test;
 
 /// The default buffer size for various I/O operations
 // libuv recommends 64k buffers to maximize throughput
@@ -1012,12 +1015,12 @@ pub trait Writer {
     fn write_fmt(&mut self, fmt: fmt::Arguments) -> IoResult<()> {
         // Create a shim which translates a Writer to a fmt::Writer and saves
         // off I/O errors. instead of discarding them
-        struct Adaptor<'a, Sized? T:'a> {
+        struct Adaptor<'a, T: ?Sized +'a> {
             inner: &'a mut T,
             error: IoResult<()>,
         }
 
-        impl<'a, Sized? T: Writer> fmt::Writer for Adaptor<'a, T> {
+        impl<'a, T: ?Sized + Writer> fmt::Writer for Adaptor<'a, T> {
             fn write_str(&mut self, s: &str) -> fmt::Result {
                 match self.inner.write(s.as_bytes()) {
                     Ok(()) => Ok(()),
@@ -1597,11 +1600,11 @@ pub trait Acceptor<T> {
 /// `Some`. The `Some` contains the `IoResult` representing whether the
 /// connection attempt was successful.  A successful connection will be wrapped
 /// in `Ok`. A failed connection is represented as an `Err`.
-pub struct IncomingConnections<'a, Sized? A:'a> {
+pub struct IncomingConnections<'a, A: ?Sized +'a> {
     inc: &'a mut A,
 }
 
-impl<'a, T, Sized? A: Acceptor<T>> Iterator for IncomingConnections<'a, A> {
+impl<'a, T, A: ?Sized + Acceptor<T>> Iterator for IncomingConnections<'a, A> {
     type Item = IoResult<T>;
 
     fn next(&mut self) -> Option<IoResult<T>> {

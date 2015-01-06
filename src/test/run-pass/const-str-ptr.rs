@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::{str, string};
-use std::c_str::ToCStr;
 
 const A: [u8; 2] = ['h' as u8, 'i' as u8];
 const B: &'static [u8; 2] = &A;
@@ -19,12 +18,7 @@ pub fn main() {
     unsafe {
         let foo = &A as *const u8;
         assert_eq!(str::from_utf8_unchecked(&A), "hi");
-        assert_eq!(String::from_raw_buf_len(foo, A.len()), "hi".to_string());
-        assert_eq!(String::from_raw_buf_len(C, B.len()), "hi".to_string());
         assert!(*C == A[0]);
         assert!(*(&B[0] as *const u8) == A[0]);
-
-        let bar = str::from_utf8_unchecked(&A).to_c_str();
-        assert_eq!(bar.as_str(), "hi".to_c_str().as_str());
     }
 }

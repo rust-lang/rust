@@ -160,12 +160,12 @@ pub static stringnames: &'static[&'static str] = &[ "cbt", "_", "cr", "csr", "tb
 /// Parse a compiled terminfo entry, using long capability names if `longnames` is true
 pub fn parse(file: &mut io::Reader, longnames: bool)
              -> Result<Box<TermInfo>, String> {
-    macro_rules! try( ($e:expr) => (
+    macro_rules! try { ($e:expr) => (
         match $e {
             Ok(e) => e,
             Err(e) => return Err(format!("{}", e))
         }
-    ) );
+    ) }
 
     let bnames;
     let snames;

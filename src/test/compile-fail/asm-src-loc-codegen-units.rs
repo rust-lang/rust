@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
+// ignore-stage1 (#20184)
 // compile-flags: -C codegen-units=2
 // error-pattern: build without -C codegen-units for more exact errors
 

@@ -31,8 +31,14 @@ Core encoding and decoding interfaces.
 #[cfg(test)]
 extern crate test;
 
+#[cfg(stage0)]
 #[phase(plugin, link)]
 extern crate log;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate log;
+
 extern crate unicode;
 
 extern crate collections;

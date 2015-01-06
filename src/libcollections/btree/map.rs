@@ -130,7 +130,7 @@ pub struct Values<'a, K: 'a, V: 'a> {
 
 #[stable]
 /// A view into a single entry in a map, which may either be vacant or occupied.
-pub enum Entry<'a, Sized? Q:'a, K:'a, V:'a> {
+pub enum Entry<'a, Q: ?Sized +'a, K:'a, V:'a> {
     /// A vacant Entry
     Vacant(VacantEntry<'a, Q, K, V>),
     /// An occupied Entry
@@ -139,7 +139,7 @@ pub enum Entry<'a, Sized? Q:'a, K:'a, V:'a> {
 
 #[stable]
 /// A vacant Entry.
-pub struct VacantEntry<'a, Sized? Q:'a, K:'a, V:'a> {
+pub struct VacantEntry<'a, Q: ?Sized +'a, K:'a, V:'a> {
     key: &'a Q,
     stack: stack::SearchStack<'a, K, V, node::handle::Edge, node::handle::Leaf>,
 }
@@ -214,7 +214,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[stable]
-    pub fn get<Sized? Q>(&self, key: &Q) -> Option<&V> where Q: BorrowFrom<K> + Ord {
+    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V> where Q: BorrowFrom<K> + Ord {
         let mut cur_node = &self.root;
         loop {
             match Node::search(cur_node, key) {
@@ -246,7 +246,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[stable]
-    pub fn contains_key<Sized? Q>(&self, key: &Q) -> bool where Q: BorrowFrom<K> + Ord {
+    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool where Q: BorrowFrom<K> + Ord {
         self.get(key).is_some()
     }
 
@@ -270,7 +270,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     // See `get` for implementation notes, this is basically a copy-paste with mut's added
     #[stable]
-    pub fn get_mut<Sized? Q>(&mut self, key: &Q) -> Option<&mut V> where Q: BorrowFrom<K> + Ord {
+    pub fn get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut V> where Q: BorrowFrom<K> + Ord {
         // temp_node is a Borrowck hack for having a mutable value outlive a loop iteration
         let mut temp_node = &mut self.root;
         loop {
@@ -440,7 +440,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[stable]
-    pub fn remove<Sized? Q>(&mut self, key: &Q) -> Option<V> where Q: BorrowFrom<K> + Ord {
+    pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V> where Q: BorrowFrom<K> + Ord {
         // See `swap` for a more thorough description of the stuff going on in here
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
@@ -878,7 +878,7 @@ impl<K: Show, V: Show> Show for BTreeMap<K, V> {
 }
 
 #[stable]
-impl<K: Ord, Sized? Q, V> Index<Q> for BTreeMap<K, V>
+impl<K: Ord, Q: ?Sized, V> Index<Q> for BTreeMap<K, V>
     where Q: BorrowFrom<K> + Ord
 {
     type Output = V;
@@ -889,7 +889,7 @@ impl<K: Ord, Sized? Q, V> Index<Q> for BTreeMap<K, V>
 }
 
 #[stable]
-impl<K: Ord, Sized? Q, V> IndexMut<Q> for BTreeMap<K, V>
+impl<K: Ord, Q: ?Sized, V> IndexMut<Q> for BTreeMap<K, V>
     where Q: BorrowFrom<K> + Ord
 {
     type Output = V;
@@ -1111,7 +1111,7 @@ impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
 #[stable]
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {}
 
-impl<'a, Sized? Q, K: Ord, V> Entry<'a, Q, K, V> {
+impl<'a, Q: ?Sized, K: Ord, V> Entry<'a, Q, K, V> {
     #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, Q, K, V>> {
@@ -1122,7 +1122,7 @@ impl<'a, Sized? Q, K: Ord, V> Entry<'a, Q, K, V> {
     }
 }
 
-impl<'a, Sized? Q: ToOwned<K>, K: Ord, V> VacantEntry<'a, Q, K, V> {
+impl<'a, Q: ?Sized + ToOwned<K>, K: Ord, V> VacantEntry<'a, Q, K, V> {
     #[stable]
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
@@ -1362,7 +1362,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     /// The key must have the same ordering before or after `.to_owned()` is called.
     #[stable]
-    pub fn entry<'a, Sized? Q>(&'a mut self, mut key: &'a Q) -> Entry<'a, Q, K, V>
+    pub fn entry<'a, Q: ?Sized>(&'a mut self, mut key: &'a Q) -> Entry<'a, Q, K, V>
         where Q: Ord + ToOwned<K>
     {
         // same basic logic of `swap` and `pop`, blended together

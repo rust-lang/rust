@@ -11,7 +11,6 @@
 // Test that import shadowing using globs causes errors
 
 #![no_implicit_prelude]
-#![feature(globs)]
 
 use foo::Baz;
 use bar::Baz; //~ERROR a type named `Baz` has already been imported in this module

@@ -23,10 +23,13 @@ mod imp {
     use path::Path;
     use rand::Rng;
     use rand::reader::ReaderRng;
-    use result::Result::{Ok, Err};
+    use result::Result::Ok;
     use slice::SliceExt;
     use mem;
     use os::errno;
+
+    // NOTE: for old macros; remove after the next snapshot
+    #[cfg(stage0)] use result::Result::Err;
 
     #[cfg(all(target_os = "linux",
               any(target_arch = "x86_64",

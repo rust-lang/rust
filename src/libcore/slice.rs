@@ -64,7 +64,7 @@ use raw::Slice as RawSlice;
 
 /// Extension methods for slices.
 #[allow(missing_docs)] // docs in libcollections
-pub trait SliceExt for Sized? {
+pub trait SliceExt {
     type Item;
 
     fn slice<'a>(&'a self, start: uint, end: uint) -> &'a [Self::Item];
@@ -614,7 +614,7 @@ impl<T> ops::SliceMut<uint, [T]> for [T] {
 
 /// Data that is viewable as a slice.
 #[experimental = "will be replaced by slice syntax"]
-pub trait AsSlice<T> for Sized? {
+pub trait AsSlice<T> {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a [T];
 }
@@ -626,13 +626,13 @@ impl<T> AsSlice<T> for [T] {
 }
 
 #[experimental = "trait is experimental"]
-impl<'a, T, Sized? U: AsSlice<T>> AsSlice<T> for &'a U {
+impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
 #[experimental = "trait is experimental"]
-impl<'a, T, Sized? U: AsSlice<T>> AsSlice<T> for &'a mut U {
+impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a mut U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
@@ -650,7 +650,7 @@ impl<'a, T> Default for &'a [T] {
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
-        #[experimental = "needs review"]
+        #[stable]
         impl<'a, T> Iterator for $name<'a, T> {
             type Item = $elem;
 
@@ -688,7 +688,7 @@ macro_rules! iterator {
             }
         }
 
-        #[experimental = "needs review"]
+        #[stable]
         impl<'a, T> DoubleEndedIterator for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
@@ -771,7 +771,7 @@ impl<'a,T> Copy for Iter<'a,T> {}
 
 iterator!{struct Iter -> *const T, &'a T}
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 #[stable]
@@ -779,7 +779,7 @@ impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { *self }
 }
 
-#[experimental = "needs review"]
+#[experimental = "trait is experimental"]
 impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -865,7 +865,7 @@ impl<'a, T> IterMut<'a, T> {
 
 iterator!{struct IterMut -> *mut T, &'a mut T}
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// An internal abstraction over the splitting iterators, so that
@@ -897,7 +897,7 @@ impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a [T];
 
@@ -925,7 +925,7 @@ impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -970,7 +970,7 @@ impl<'a, T, P> SplitIter for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a mut [T];
 
@@ -1005,7 +1005,7 @@ impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T, P> DoubleEndedIterator for SplitMut<'a, T, P> where
     P: FnMut(&T) -> bool,
 {
@@ -1038,7 +1038,6 @@ struct GenericSplitN<I> {
     invert: bool
 }
 
-#[experimental = "needs review"]
 impl<T, I: SplitIter + Iterator<Item=T>> Iterator for GenericSplitN<I> {
     type Item = T;
 
@@ -1061,6 +1060,7 @@ impl<T, I: SplitIter + Iterator<Item=T>> Iterator for GenericSplitN<I> {
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
+#[stable]
 pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
 }
@@ -1068,12 +1068,14 @@ pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
+#[stable]
 pub struct RSplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
 }
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
+#[stable]
 pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
 }
@@ -1081,12 +1083,14 @@ pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
+#[stable]
 pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
 }
 
 macro_rules! forward_iterator {
     ($name:ident: $elem:ident, $iter_of:ty) => {
+        #[stable]
         impl<'a, $elem, P> Iterator for $name<'a, $elem, P> where
             P: FnMut(&T) -> bool
         {
@@ -1112,12 +1116,13 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
 /// An iterator over overlapping subslices of length `size`.
 #[derive(Clone)]
-#[experimental = "needs review"]
+#[stable]
 pub struct Windows<'a, T:'a> {
     v: &'a [T],
     size: uint
 }
 
+#[stable]
 impl<'a, T> Iterator for Windows<'a, T> {
     type Item = &'a [T];
 
@@ -1149,13 +1154,13 @@ impl<'a, T> Iterator for Windows<'a, T> {
 /// When the slice len is not evenly divided by the chunk size, the last slice
 /// of the iteration will be the remainder.
 #[derive(Clone)]
-#[experimental = "needs review"]
+#[stable]
 pub struct Chunks<'a, T:'a> {
     v: &'a [T],
     size: uint
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> Iterator for Chunks<'a, T> {
     type Item = &'a [T];
 
@@ -1184,7 +1189,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -1200,7 +1205,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     }
 }
 
-#[experimental = "needs review"]
+#[experimental = "trait is experimental"]
 impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1224,13 +1229,13 @@ impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
 /// An iterator over a slice in (non-overlapping) mutable chunks (`size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last slice of the iteration will be the remainder.
-#[experimental = "needs review"]
+#[stable]
 pub struct ChunksMut<'a, T:'a> {
     v: &'a mut [T],
     chunk_size: uint
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> Iterator for ChunksMut<'a, T> {
     type Item = &'a mut [T];
 
@@ -1260,7 +1265,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
     }
 }
 
-#[experimental = "needs review"]
+#[stable]
 impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
@@ -1338,7 +1343,7 @@ pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
 /// not being able to provide a non-aliasing guarantee of the returned mutable
 /// slice.
 #[inline]
-#[unstable = "jshould be renamed to from_raw_parts_mut"]
+#[unstable = "should be renamed to from_raw_parts_mut"]
 pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
     transmute(RawSlice { data: *p as *const T, len: len })
 }
@@ -1350,12 +1355,11 @@ pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
 /// Operations on `[u8]`.
 #[experimental = "needs review"]
 pub mod bytes {
-    use kinds::Sized;
     use ptr;
     use slice::SliceExt;
 
     /// A trait for operations on mutable `[u8]`s.
-    pub trait MutableByteVector for Sized? {
+    pub trait MutableByteVector {
         /// Sets all bytes of the receiver to the given value.
         fn set_memory(&mut self, value: u8);
     }
@@ -1439,7 +1443,7 @@ impl<T: PartialOrd> PartialOrd for [T] {
 
 /// Extension methods for slices containing integers.
 #[experimental]
-pub trait IntSliceExt<U, S> for Sized? {
+pub trait IntSliceExt<U, S> {
     /// Converts the slice to an immutable slice of unsigned integers with the same width.
     fn as_unsigned<'a>(&'a self) -> &'a [U];
     /// Converts the slice to an immutable slice of signed integers with the same width.

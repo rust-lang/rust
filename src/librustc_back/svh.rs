@@ -327,11 +327,11 @@ mod svh_visitor {
 
     impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
 
-        fn visit_mac(&mut self, macro: &Mac) {
+        fn visit_mac(&mut self, mac: &Mac) {
             // macro invocations, namely macro_rules definitions,
             // *can* appear as items, even in the expanded crate AST.
 
-            if macro_name(macro).get() == "macro_rules" {
+            if macro_name(mac).get() == "macro_rules" {
                 // Pretty-printing definition to a string strips out
                 // surface artifacts (currently), such as the span
                 // information, yielding a content-based hash.
@@ -341,7 +341,7 @@ mod svh_visitor {
                 // trees might be faster. Implementing this is far
                 // easier in short term.
                 let macro_defn_as_string = pprust::to_string(|pp_state| {
-                    pp_state.print_mac(macro, token::Paren)
+                    pp_state.print_mac(mac, token::Paren)
                 });
                 macro_defn_as_string.hash(self.st);
             } else {
@@ -349,14 +349,14 @@ mod svh_visitor {
                 // invocation at this stage except `macro_rules!`.
                 panic!("reached macro somehow: {}",
                       pprust::to_string(|pp_state| {
-                          pp_state.print_mac(macro, token::Paren)
+                          pp_state.print_mac(mac, token::Paren)
                       }));
             }
 
-            visit::walk_mac(self, macro);
+            visit::walk_mac(self, mac);
 
-            fn macro_name(macro: &Mac) -> token::InternedString {
-                match &macro.node {
+            fn macro_name(mac: &Mac) -> token::InternedString {
+                match &mac.node {
                     &MacInvocTT(ref path, ref _tts, ref _stx_ctxt) => {
                         let s = path.segments[];
                         assert_eq!(s.len(), 1);

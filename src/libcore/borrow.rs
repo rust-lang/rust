@@ -53,57 +53,61 @@ use option::Option;
 use self::Cow::*;
 
 /// A trait for borrowing data.
-pub trait BorrowFrom<Sized? Owned> for Sized? {
+#[old_orphan_check]
+pub trait BorrowFrom<Owned: ?Sized> {
     /// Immutably borrow from an owned value.
     fn borrow_from(owned: &Owned) -> &Self;
 }
 
 /// A trait for mutably borrowing data.
-pub trait BorrowFromMut<Sized? Owned> for Sized? : BorrowFrom<Owned> {
+#[old_orphan_check]
+pub trait BorrowFromMut<Owned: ?Sized> : BorrowFrom<Owned> {
     /// Mutably borrow from an owned value.
     fn borrow_from_mut(owned: &mut Owned) -> &mut Self;
 }
 
-impl<Sized? T> BorrowFrom<T> for T {
+impl<T: ?Sized> BorrowFrom<T> for T {
     fn borrow_from(owned: &T) -> &T { owned }
 }
 
-impl<Sized? T> BorrowFromMut<T> for T {
+impl<T: ?Sized> BorrowFromMut<T> for T {
     fn borrow_from_mut(owned: &mut T) -> &mut T { owned }
 }
 
-impl<'a, Sized? T> BorrowFrom<&'a T> for T {
+impl<'a, T: ?Sized> BorrowFrom<&'a T> for T {
     fn borrow_from<'b>(owned: &'b &'a T) -> &'b T { &**owned }
 }
 
-impl<'a, Sized? T> BorrowFrom<&'a mut T> for T {
+impl<'a, T: ?Sized> BorrowFrom<&'a mut T> for T {
     fn borrow_from<'b>(owned: &'b &'a mut T) -> &'b T { &**owned }
 }
 
-impl<'a, Sized? T> BorrowFromMut<&'a mut T> for T {
+impl<'a, T: ?Sized> BorrowFromMut<&'a mut T> for T {
     fn borrow_from_mut<'b>(owned: &'b mut &'a mut T) -> &'b mut T { &mut **owned }
 }
 
-impl<'a, T, Sized? B> BorrowFrom<Cow<'a, T, B>> for B where B: ToOwned<T> {
+impl<'a, T, B: ?Sized> BorrowFrom<Cow<'a, T, B>> for B where B: ToOwned<T> {
     fn borrow_from<'b>(owned: &'b Cow<'a, T, B>) -> &'b B {
         &**owned
     }
 }
 
 /// Trait for moving into a `Cow`
-pub trait IntoCow<'a, T, Sized? B> {
+#[old_orphan_check]
+pub trait IntoCow<'a, T, B: ?Sized> {
     /// Moves `self` into `Cow`
     fn into_cow(self) -> Cow<'a, T, B>;
 }
 
-impl<'a, T, Sized? B> IntoCow<'a, T, B> for Cow<'a, T, B> where B: ToOwned<T> {
+impl<'a, T, B: ?Sized> IntoCow<'a, T, B> for Cow<'a, T, B> where B: ToOwned<T> {
     fn into_cow(self) -> Cow<'a, T, B> {
         self
     }
 }
 
 /// A generalization of Clone to borrowed data.
-pub trait ToOwned<Owned> for Sized?: BorrowFrom<Owned> {
+#[old_orphan_check]
+pub trait ToOwned<Owned>: BorrowFrom<Owned> {
     /// Create owned data from borrowed data, usually by copying.
     fn to_owned(&self) -> Owned;
 }
@@ -129,7 +133,7 @@ impl<T> ToOwned<T> for T where T: Clone {
 ///     }
 /// }
 /// ```
-pub enum Cow<'a, T, Sized? B: 'a> where B: ToOwned<T> {
+pub enum Cow<'a, T, B: ?Sized + 'a> where B: ToOwned<T> {
     /// Borrowed data.
     Borrowed(&'a B),
 
@@ -138,7 +142,7 @@ pub enum Cow<'a, T, Sized? B: 'a> where B: ToOwned<T> {
 }
 
 #[stable]
-impl<'a, T, Sized? B> Clone for Cow<'a, T, B> where B: ToOwned<T> {
+impl<'a, T, B: ?Sized> Clone for Cow<'a, T, B> where B: ToOwned<T> {
     fn clone(&self) -> Cow<'a, T, B> {
         match *self {
             Borrowed(b) => Borrowed(b),
@@ -150,7 +154,7 @@ impl<'a, T, Sized? B> Clone for Cow<'a, T, B> where B: ToOwned<T> {
     }
 }
 
-impl<'a, T, Sized? B> Cow<'a, T, B> where B: ToOwned<T> {
+impl<'a, T, B: ?Sized> Cow<'a, T, B> where B: ToOwned<T> {
     /// Acquire a mutable reference to the owned form of the data.
     ///
     /// Copies the data if it is not already owned.
@@ -191,7 +195,8 @@ impl<'a, T, Sized? B> Cow<'a, T, B> where B: ToOwned<T> {
     }
 }
 
-impl<'a, T, Sized? B> Deref for Cow<'a, T, B> where B: ToOwned<T>  {
+#[stable]
+impl<'a, T, B: ?Sized> Deref for Cow<'a, T, B> where B: ToOwned<T>  {
     type Target = B;
 
     fn deref(&self) -> &B {
@@ -203,10 +208,10 @@ impl<'a, T, Sized? B> Deref for Cow<'a, T, B> where B: ToOwned<T>  {
 }
 
 #[stable]
-impl<'a, T, Sized? B> Eq for Cow<'a, T, B> where B: Eq + ToOwned<T> {}
+impl<'a, T, B: ?Sized> Eq for Cow<'a, T, B> where B: Eq + ToOwned<T> {}
 
 #[stable]
-impl<'a, T, Sized? B> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
+impl<'a, T, B: ?Sized> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
     #[inline]
     fn cmp(&self, other: &Cow<'a, T, B>) -> Ordering {
         Ord::cmp(&**self, &**other)
@@ -214,7 +219,7 @@ impl<'a, T, Sized? B> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
 }
 
 #[stable]
-impl<'a, 'b, T, U, Sized? B, Sized? C> PartialEq<Cow<'b, U, C>> for Cow<'a, T, B> where
+impl<'a, 'b, T, U, B: ?Sized, C: ?Sized> PartialEq<Cow<'b, U, C>> for Cow<'a, T, B> where
     B: PartialEq<C> + ToOwned<T>,
     C: ToOwned<U>,
 {
@@ -225,14 +230,14 @@ impl<'a, 'b, T, U, Sized? B, Sized? C> PartialEq<Cow<'b, U, C>> for Cow<'a, T, B
 }
 
 #[stable]
-impl<'a, T, Sized? B> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwned<T> {
+impl<'a, T, B: ?Sized> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwned<T> {
     #[inline]
     fn partial_cmp(&self, other: &Cow<'a, T, B>) -> Option<Ordering> {
         PartialOrd::partial_cmp(&**self, &**other)
     }
 }
 
-impl<'a, T, Sized? B> fmt::Show for Cow<'a, T, B> where B: fmt::Show + ToOwned<T>, T: fmt::Show {
+impl<'a, T, B: ?Sized> fmt::Show for Cow<'a, T, B> where B: fmt::Show + ToOwned<T>, T: fmt::Show {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Borrowed(ref b) => fmt::Show::fmt(b, f),

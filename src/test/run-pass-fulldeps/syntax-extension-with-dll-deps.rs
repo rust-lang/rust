@@ -12,9 +12,9 @@
 // aux-build:syntax-extension-with-dll-deps-2.rs
 // ignore-stage1
 
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
+#[plugin] #[no_link]
 extern crate "syntax-extension-with-dll-deps-2" as extension;
 
 fn main() {

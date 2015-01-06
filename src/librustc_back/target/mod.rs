@@ -239,7 +239,7 @@ impl Target {
             options: Default::default(),
         };
 
-        macro_rules! key (
+        macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(name[]).map(|o| o.as_string()
@@ -257,7 +257,7 @@ impl Target {
                         )
                     );
             } );
-        );
+        }
 
         key!(cpu);
         key!(linker);
@@ -305,7 +305,7 @@ impl Target {
         }
 
         // this would use a match if stringify! were allowed in pattern position
-        macro_rules! load_specific (
+        macro_rules! load_specific {
             ( $($name:ident),+ ) => (
                 {
                     let target = target.replace("-", "_");
@@ -326,7 +326,7 @@ impl Target {
                     }
                 }
             )
-        );
+        }
 
         load_specific!(
             x86_64_unknown_linux_gnu,

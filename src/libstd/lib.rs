@@ -95,7 +95,7 @@
 //! and `format!`, also available to all Rust code.
 
 #![crate_name = "std"]
-#![unstable]
+#![stable]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -117,13 +117,36 @@
 
 #![reexport_test_harness_main = "test_main"]
 
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate log;
 
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate log;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate core;
+
+#[cfg(not(stage0))]
+#[macro_use]
+#[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
+    unreachable, unimplemented, write, writeln)]
+extern crate core;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate "collections" as core_collections;
+
+#[cfg(not(stage0))]
+#[macro_use]
+#[macro_reexport(vec)]
+extern crate "collections" as core_collections;
+
+extern crate "rand" as core_rand;
 extern crate alloc;
 extern crate unicode;
-extern crate core;
-extern crate "collections" as core_collections;
-extern crate "rand" as core_rand;
 extern crate libc;
 
 // Make std testable by not duplicating lang items. See #2912
@@ -167,7 +190,18 @@ pub use unicode::char;
 
 /* Exported macros */
 
+#[cfg(stage0)]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+pub mod macros_stage0;
+
+#[cfg(not(stage0))]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod macros;
+
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod bitflags;
 
 mod rtdeps;
@@ -179,9 +213,20 @@ pub mod prelude;
 
 /* Primitive types */
 
-#[path = "num/float_macros.rs"] mod float_macros;
-#[path = "num/int_macros.rs"]   mod int_macros;
-#[path = "num/uint_macros.rs"]  mod uint_macros;
+#[path = "num/float_macros.rs"]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+mod float_macros;
+
+#[path = "num/int_macros.rs"]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+mod int_macros;
+
+#[path = "num/uint_macros.rs"]
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;
 #[path = "num/i8.rs"]   pub mod i8;
@@ -208,10 +253,12 @@ pub mod num;
 
 /* Runtime and platform support */
 
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod thread_local;
-pub mod c_str;
-pub mod c_vec;
+
 pub mod dynamic_lib;
+pub mod ffi;
 pub mod fmt;
 pub mod io;
 pub mod os;

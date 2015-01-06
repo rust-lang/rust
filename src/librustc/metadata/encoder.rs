@@ -42,6 +42,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
+use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::visit::Visitor;
 use syntax::visit;
@@ -1817,25 +1818,21 @@ fn encode_plugin_registrar_fn(ecx: &EncodeContext, rbml_w: &mut Encoder) {
     }
 }
 
-/// Given a span, write the text of that span into the output stream
-/// as an exported macro
-fn encode_macro_def(ecx: &EncodeContext,
-                    rbml_w: &mut Encoder,
-                    span: &syntax::codemap::Span) {
-    let def = ecx.tcx.sess.codemap().span_to_snippet(*span)
-        .expect("Unable to find source for macro");
-    rbml_w.start_tag(tag_macro_def);
-    rbml_w.wr_str(def[]);
-    rbml_w.end_tag();
-}
-
 /// Serialize the text of the exported macros
-fn encode_macro_defs(ecx: &EncodeContext,
-                     krate: &ast::Crate,
-                     rbml_w: &mut Encoder) {
-    rbml_w.start_tag(tag_exported_macros);
-    for item in krate.exported_macros.iter() {
-        encode_macro_def(ecx, rbml_w, &item.span);
+fn encode_macro_defs(rbml_w: &mut Encoder,
+                     krate: &ast::Crate) {
+    rbml_w.start_tag(tag_macro_defs);
+    for def in krate.exported_macros.iter() {
+        rbml_w.start_tag(tag_macro_def);
+
+        encode_name(rbml_w, def.ident.name);
+        encode_attributes(rbml_w, def.attrs[]);
+
+        rbml_w.start_tag(tag_macro_def_body);
+        rbml_w.wr_str(pprust::tts_to_string(def.body[])[]);
+        rbml_w.end_tag();
+
+        rbml_w.end_tag();
     }
     rbml_w.end_tag();
 }
@@ -2153,7 +2150,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
 
     // Encode macro definitions
     i = rbml_w.writer.tell().unwrap();
-    encode_macro_defs(&ecx, krate, &mut rbml_w);
+    encode_macro_defs(&mut rbml_w, krate);
     stats.macro_defs_bytes = rbml_w.writer.tell().unwrap() - i;
 
     // Encode the types of all unboxed closures in this crate.

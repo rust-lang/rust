@@ -12,9 +12,7 @@
 // ignore-stage1
 // ignore-android
 
-#![feature(phase)]
-
-#[phase(plugin)]
+#[macro_use] #[no_link]
 extern crate macro_crate_test;
 
 fn main() {

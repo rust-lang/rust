@@ -182,7 +182,7 @@ impl String {
             let byte = unsafe_get(v, i);
             i += 1;
 
-            macro_rules! error(() => ({
+            macro_rules! error { () => ({
                 unsafe {
                     if subseqidx != i_ {
                         res.as_mut_vec().push_all(v[subseqidx..i_]);
@@ -190,7 +190,7 @@ impl String {
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
                 }
-            }));
+            })}
 
             if byte < 128u8 {
                 // subseqidx handles this
@@ -318,30 +318,6 @@ impl String {
         String {
             vec: Vec::from_raw_parts(buf, length, capacity),
         }
-    }
-
-    /// Creates a `String` from a null-terminated `*const u8` buffer.
-    ///
-    /// This function is unsafe because we dereference memory until we find the
-    /// NUL character, which is not guaranteed to be present. Additionally, the
-    /// slice is not checked to see whether it contains valid UTF-8
-    #[unstable = "just renamed from `mod raw`"]
-    pub unsafe fn from_raw_buf(buf: *const u8) -> String {
-        String::from_str(str::from_c_str(buf as *const i8))
-    }
-
-    /// Creates a `String` from a `*const u8` buffer of the given length.
-    ///
-    /// This function is unsafe because it blindly assumes the validity of the
-    /// pointer `buf` for `len` bytes of memory. This function will copy the
-    /// memory from `buf` into a new allocation (owned by the returned
-    /// `String`).
-    ///
-    /// This function is also unsafe because it does not validate that the
-    /// buffer is valid UTF-8 encoded data.
-    #[unstable = "just renamed from `mod raw`"]
-    pub unsafe fn from_raw_buf_len(buf: *const u8, len: uint) -> String {
-        String::from_utf8_unchecked(Vec::from_raw_buf(buf, len))
     }
 
     /// Converts a vector of bytes to a new `String` without checking if
@@ -711,7 +687,7 @@ impl fmt::Show for FromUtf16Error {
     }
 }
 
-#[experimental = "waiting on FromIterator stabilization"]
+#[stable]
 impl FromIterator<char> for String {
     fn from_iter<I:Iterator<Item=char>>(iterator: I) -> String {
         let mut buf = String::new();
@@ -720,7 +696,7 @@ impl FromIterator<char> for String {
     }
 }
 
-#[experimental = "waiting on FromIterator stabilization"]
+#[stable]
 impl<'a> FromIterator<&'a str> for String {
     fn from_iter<I:Iterator<Item=&'a str>>(iterator: I) -> String {
         let mut buf = String::new();
@@ -832,7 +808,7 @@ impl<H: hash::Writer> hash::Hash<H> for String {
     }
 }
 
-#[experimental = "waiting on Add stabilization"]
+#[unstable = "recent addition, needs more experience"]
 impl<'a> Add<&'a str> for String {
     type Output = String;
 
@@ -864,7 +840,7 @@ impl ops::Slice<uint, str> for String {
     }
 }
 
-#[experimental = "waiting on Deref stabilization"]
+#[stable]
 impl ops::Deref for String {
     type Target = str;
 
@@ -1124,24 +1100,6 @@ mod tests {
         // general
         assert_eq!(String::from_utf16_lossy(&[0xD800, 0xd801, 0xdc8b, 0xD800]),
                    String::from_str("\u{FFFD}𐒋\u{FFFD}"));
-    }
-
-    #[test]
-    fn test_from_buf_len() {
-        unsafe {
-            let a = vec![65u8, 65, 65, 65, 65, 65, 65, 0];
-            assert_eq!(String::from_raw_buf_len(a.as_ptr(), 3), String::from_str("AAA"));
-        }
-    }
-
-    #[test]
-    fn test_from_buf() {
-        unsafe {
-            let a = vec![65, 65, 65, 65, 65, 65, 65, 0];
-            let b = a.as_ptr();
-            let c = String::from_raw_buf(b);
-            assert_eq!(c, String::from_str("AAAAAAA"));
-        }
     }
 
     #[test]

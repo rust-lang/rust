@@ -38,7 +38,7 @@ use syntax::{ast, ast_util};
 use syntax::owned_slice::OwnedSlice;
 
 /// Produces a string suitable for debugging output.
-pub trait Repr<'tcx> for Sized? {
+pub trait Repr<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String;
 }
 
@@ -601,7 +601,7 @@ impl<'tcx> Repr<'tcx> for () {
     }
 }
 
-impl<'a, 'tcx, Sized? T:Repr<'tcx>> Repr<'tcx> for &'a T {
+impl<'a, 'tcx, T: ?Sized +Repr<'tcx>> Repr<'tcx> for &'a T {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         Repr::repr(*self, tcx)
     }

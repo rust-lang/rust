@@ -30,7 +30,9 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 
 pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
-                           pat: &ast::Pat, expected: Ty<'tcx>) {
+                           pat: &ast::Pat,
+                           expected: Ty<'tcx>)
+{
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -46,6 +48,19 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             check_expr(fcx, &**lt);
             let expr_ty = fcx.expr_ty(&**lt);
             fcx.write_ty(pat.id, expr_ty);
+
+            // somewhat surprising: in this case, the subtyping
+            // relation goes the opposite way as the other
+            // cases. Actually what we really want is not a subtyping
+            // relation at all but rather that there exists a LUB (so
+            // that they can be compared). However, in practice,
+            // constants are always scalars or strings.  For scalars
+            // subtyping is irrelevant, and for strings `expr_ty` is
+            // type is `&'static str`, so if we say that
+            //
+            //     &'static str <: expected
+            //
+            // that's equivalent to there existing a LUB.
             demand::suptype(fcx, pat.span, expected, expr_ty);
         }
         ast::PatRange(ref begin, ref end) => {
@@ -54,10 +69,16 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
             let lhs_ty = fcx.expr_ty(&**begin);
             let rhs_ty = fcx.expr_ty(&**end);
-            if require_same_types(
-                tcx, Some(fcx.infcx()), false, pat.span, lhs_ty, rhs_ty,
-                || "mismatched types in range".to_string())
-                && (ty::type_is_numeric(lhs_ty) || ty::type_is_char(rhs_ty)) {
+
+            let lhs_eq_rhs =
+                require_same_types(
+                    tcx, Some(fcx.infcx()), false, pat.span, lhs_ty, rhs_ty,
+                    || "mismatched types in range".to_string());
+
+            let numeric_or_char =
+                lhs_eq_rhs && (ty::type_is_numeric(lhs_ty) || ty::type_is_char(lhs_ty));
+
+            if numeric_or_char {
                 match valid_range_bounds(fcx.ccx, &**begin, &**end) {
                     Some(false) => {
                         span_err!(tcx.sess, begin.span, E0030,
@@ -71,17 +92,29 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 }
             } else {
                 span_err!(tcx.sess, begin.span, E0029,
-                    "only char and numeric types are allowed in range");
+                          "only char and numeric types are allowed in range");
             }
 
             fcx.write_ty(pat.id, lhs_ty);
+
+            // subtyping doens't matter here, as the value is some kind of scalar
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
         }
         ast::PatEnum(..) | ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
             let const_did = tcx.def_map.borrow()[pat.id].clone().def_id();
             let const_scheme = ty::lookup_item_type(tcx, const_did);
-            fcx.write_ty(pat.id, const_scheme.ty);
-            demand::suptype(fcx, pat.span, expected, const_scheme.ty);
+            assert!(const_scheme.generics.is_empty());
+            let const_ty = pcx.fcx.instantiate_type_scheme(pat.span,
+                                                           &Substs::empty(),
+                                                           &const_scheme.ty);
+            fcx.write_ty(pat.id, const_ty);
+
+            // FIXME(#20489) -- we should limit the types here to scalars or something!
+
+            // As with PatLit, what we really want here is that there
+            // exist a LUB, but for the cases that can occur, subtype
+            // is good enough.
+            demand::suptype(fcx, pat.span, expected, const_ty);
         }
         ast::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
             let typ = fcx.local_ty(pat.span, pat.id);
@@ -89,20 +122,29 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 ast::BindByRef(mutbl) => {
                     // if the binding is like
                     //    ref x | ref const x | ref mut x
-                    // then the type of x is &M T where M is the mutability
-                    // and T is the expected type
+                    // then `x` is assigned a value of type `&M T` where M is the mutability
+                    // and T is the expected type.
                     let region_var = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
                     let mt = ty::mt { ty: expected, mutbl: mutbl };
                     let region_ty = ty::mk_rptr(tcx, tcx.mk_region(region_var), mt);
+
+                    // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)` is
+                    // required. However, we use equality, which is stronger. See (*) for
+                    // an explanation.
                     demand::eqtype(fcx, pat.span, region_ty, typ);
                 }
                 // otherwise the type of x is the expected type T
                 ast::BindByValue(_) => {
+                    // As above, `T <: typeof(x)` is required but we
+                    // use equality, see (*) below.
                     demand::eqtype(fcx, pat.span, expected, typ);
                 }
             }
+
             fcx.write_ty(pat.id, typ);
 
+            // if there are multiple arms, make sure they all agree on
+            // what the type of the binding `x` ought to be
             let canon_id = pcx.map[path.node];
             if canon_id != pat.id {
                 let ct = fcx.local_ty(pat.span, canon_id);
@@ -124,8 +166,9 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             check_pat_struct(pcx, pat, path, fields.as_slice(), etc, expected);
         }
         ast::PatTup(ref elements) => {
-            let element_tys: Vec<_> = range(0, elements.len()).map(|_| fcx.infcx()
-                .next_ty_var()).collect();
+            let element_tys: Vec<_> =
+                range(0, elements.len()).map(|_| fcx.infcx().next_ty_var())
+                                        .collect();
             let pat_ty = ty::mk_tup(tcx, element_tys.clone());
             fcx.write_ty(pat.id, pat_ty);
             demand::eqtype(fcx, pat.span, expected, pat_ty);
@@ -138,7 +181,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let uniq_ty = ty::mk_uniq(tcx, inner_ty);
 
             if check_dereferencable(pcx, pat.span, expected, &**inner) {
-                demand::suptype(fcx, pat.span, expected, uniq_ty);
+                // Here, `demand::subtype` is good enough, but I don't
+                // think any errors can be introduced by using
+                // `demand::eqtype`.
+                demand::eqtype(fcx, pat.span, expected, uniq_ty);
                 fcx.write_ty(pat.id, uniq_ty);
                 check_pat(pcx, &**inner, inner_ty);
             } else {
@@ -146,19 +192,26 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**inner, tcx.types.err);
             }
         }
-        ast::PatRegion(ref inner) => {
+        ast::PatRegion(ref inner, mutbl) => {
             let inner_ty = fcx.infcx().next_ty_var();
 
-            let mutbl =
+            // SNAP b2085d9 remove this `if`-`else` entirely after next snapshot
+            let mutbl = if mutbl == ast::MutImmutable {
                 ty::deref(fcx.infcx().shallow_resolve(expected), true)
-                .map_or(ast::MutImmutable, |mt| mt.mutbl);
+                   .map(|mt| mt.mutbl).unwrap_or(ast::MutImmutable)
+            } else {
+                mutbl
+            };
 
             let mt = ty::mt { ty: inner_ty, mutbl: mutbl };
             let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
             let rptr_ty = ty::mk_rptr(tcx, tcx.mk_region(region), mt);
 
             if check_dereferencable(pcx, pat.span, expected, &**inner) {
-                demand::suptype(fcx, pat.span, expected, rptr_ty);
+                // `demand::subtype` would be good enough, but using
+                // `eqtype` turns out to be equally general. See (*)
+                // below for details.
+                demand::eqtype(fcx, pat.span, expected, rptr_ty);
                 fcx.write_ty(pat.id, rptr_ty);
                 check_pat(pcx, &**inner, inner_ty);
             } else {
@@ -181,14 +234,18 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
                     ty::mk_slice(tcx, tcx.mk_region(region), ty::mt {
                         ty: inner_ty,
-                        mutbl: ty::deref(expected_ty, true)
-                            .map_or(ast::MutImmutable, |mt| mt.mutbl)
+                        mutbl: ty::deref(expected_ty, true).map(|mt| mt.mutbl)
+                                                           .unwrap_or(ast::MutImmutable)
                     })
                 }
             };
 
             fcx.write_ty(pat.id, pat_ty);
-            demand::suptype(fcx, pat.span, expected, pat_ty);
+
+            // `demand::subtype` would be good enough, but using
+            // `eqtype` turns out to be equally general. See (*)
+            // below for details.
+            demand::eqtype(fcx, pat.span, expected, pat_ty);
 
             for elt in before.iter() {
                 check_pat(pcx, &**elt, inner_ty);
@@ -210,6 +267,56 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
         ast::PatMac(_) => tcx.sess.bug("unexpanded macro")
     }
+
+
+    // (*) In most of the cases above (literals and constants being
+    // the exception), we relate types using strict equality, evewn
+    // though subtyping would be sufficient. There are a few reasons
+    // for this, some of which are fairly subtle and which cost me
+    // (nmatsakis) an hour or two debugging to remember, so I thought
+    // I'd write them down this time.
+    //
+    // 1. Most importantly, there is no loss of expressiveness
+    // here. What we are saying is that the type of `x`
+    // becomes *exactly* what is expected. This might seem
+    // like it will cause errors in a case like this:
+    //
+    // ```
+    // fn foo<'x>(x: &'x int) {
+    //    let a = 1;
+    //    let mut z = x;
+    //    z = &a;
+    // }
+    // ```
+    //
+    // The reason we might get an error is that `z` might be
+    // assigned a type like `&'x int`, and then we would have
+    // a problem when we try to assign `&a` to `z`, because
+    // the lifetime of `&a` (i.e., the enclosing block) is
+    // shorter than `'x`.
+    //
+    // HOWEVER, this code works fine. The reason is that the
+    // expected type here is whatever type the user wrote, not
+    // the initializer's type. In this case the user wrote
+    // nothing, so we are going to create a type variable `Z`.
+    // Then we will assign the type of the initializer (`&'x
+    // int`) as a subtype of `Z`: `&'x int <: Z`. And hence we
+    // will instantiate `Z` as a type `&'0 int` where `'0` is
+    // a fresh region variable, with the constraint that `'x :
+    // '0`.  So basically we're all set.
+    //
+    // Note that there are two tests to check that this remains true
+    // (`regions-reassign-{match,let}-bound-pointer.rs`).
+    //
+    // 2. Things go horribly wrong if we use subtype. The reason for
+    // THIS is a fairly subtle case involving bound regions. See the
+    // `givens` field in `region_inference`, as well as the test
+    // `regions-relate-bound-regions-on-closures-to-inference-variables.rs`,
+    // for details. Short version is that we must sometimes detect
+    // relationships between specific region variables and regions
+    // bound in a closure signature, and that detection gets thrown
+    // off when we substitute fresh region variables here to enable
+    // subtyping.
 }
 
 pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,

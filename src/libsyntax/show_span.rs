@@ -13,27 +13,73 @@
 //! This module shows spans for all expressions in the crate
 //! to help with compiler debugging.
 
+use std::str::FromStr;
+
 use ast;
 use diagnostic;
 use visit;
 use visit::Visitor;
 
+enum Mode {
+    Expression,
+    Pattern,
+    Type,
+}
+
+impl FromStr for Mode {
+    fn from_str(s: &str) -> Option<Mode> {
+        let mode = match s {
+            "expr" => Mode::Expression,
+            "pat" => Mode::Pattern,
+            "ty" => Mode::Type,
+            _ => return None
+        };
+        Some(mode)
+    }
+}
+
 struct ShowSpanVisitor<'a> {
     span_diagnostic: &'a diagnostic::SpanHandler,
+    mode: Mode,
 }
 
 impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
     fn visit_expr(&mut self, e: &ast::Expr) {
-        self.span_diagnostic.span_note(e.span, "expression");
+        if let Mode::Expression = self.mode {
+            self.span_diagnostic.span_note(e.span, "expression");
+        }
         visit::walk_expr(self, e);
     }
 
-    fn visit_mac(&mut self, macro: &ast::Mac) {
-        visit::walk_mac(self, macro);
+    fn visit_pat(&mut self, p: &ast::Pat) {
+        if let Mode::Pattern = self.mode {
+            self.span_diagnostic.span_note(p.span, "pattern");
+        }
+        visit::walk_pat(self, p);
+    }
+
+    fn visit_ty(&mut self, t: &ast::Ty) {
+        if let Mode::Type = self.mode {
+            self.span_diagnostic.span_note(t.span, "type");
+        }
+        visit::walk_ty(self, t);
+    }
+
+    fn visit_mac(&mut self, mac: &ast::Mac) {
+        visit::walk_mac(self, mac);
     }
 }
 
-pub fn run(span_diagnostic: &diagnostic::SpanHandler, krate: &ast::Crate) {
-    let mut v = ShowSpanVisitor { span_diagnostic: span_diagnostic };
+pub fn run(span_diagnostic: &diagnostic::SpanHandler,
+           mode: &str,
+           krate: &ast::Crate) {
+    let mode = match mode.parse() {
+        Some(mode) => mode,
+        None => return
+    };
+    let mut v = ShowSpanVisitor {
+        span_diagnostic: span_diagnostic,
+        mode: mode,
+    };
     visit::walk_crate(&mut v, krate);
 }

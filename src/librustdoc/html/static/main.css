@@ -157,6 +157,7 @@ nav.sub {
     left: 0;
     top: 0;
     min-height: 100%;
+    z-index: -1;
 }
 
 .content, nav { max-width: 960px; }
@@ -217,10 +218,18 @@ nav.sub {
     overflow: auto;
     padding-left: 0;
 }
-.content pre.line-numbers { float: left; border: none; }
-.line-numbers span { color: #c67e2d; }
+.content pre.line-numbers {
+    float: left;
+    border: none;
+
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+.line-numbers span { color: #c67e2d; cursor: pointer; }
 .line-numbers .line-highlighted {
-    background-color: #f6fdb0;
+    background-color: #f6fdb0 !important;
 }
 
 .content .highlighted {
@@ -470,6 +479,7 @@ h1 .stability {
 .summary.Unmarked { background-color: #BBBBBB; }
 
 :target { background: #FDFFD3; }
+.line-numbers :target { background-color: transparent; }
 
 /* Code highlighting */
 pre.rust .kw { color: #8959A8; }

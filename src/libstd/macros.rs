@@ -15,7 +15,6 @@
 //! library.
 
 #![experimental]
-#![macro_escape]
 
 /// The entry point for panic of Rust tasks.
 ///
@@ -246,34 +245,6 @@ macro_rules! format {
     ($($arg:tt)*) => (::std::fmt::format(format_args!($($arg)*)))
 }
 
-/// Use the `format!` syntax to write data into a buffer of type `&mut Writer`.
-/// See `std::fmt` for more information.
-///
-/// # Example
-///
-/// ```
-/// # #![allow(unused_must_use)]
-///
-/// let mut w = Vec::new();
-/// write!(&mut w, "test");
-/// write!(&mut w, "formatted {}", "arguments");
-/// ```
-#[macro_export]
-#[stable]
-macro_rules! write {
-    ($dst:expr, $($arg:tt)*) => ((&mut *$dst).write_fmt(format_args!($($arg)*)))
-}
-
-/// Equivalent to the `write!` macro, except that a newline is appended after
-/// the message is written.
-#[macro_export]
-#[stable]
-macro_rules! writeln {
-    ($dst:expr, $fmt:expr $($arg:tt)*) => (
-        write!($dst, concat!($fmt, "\n") $($arg)*)
-    )
-}
-
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
 #[macro_export]
@@ -306,21 +277,13 @@ macro_rules! println {
 #[macro_export]
 macro_rules! try {
     ($expr:expr) => ({
+        use $crate::result::Result::{Ok, Err};
+
         match $expr {
             Ok(val) => val,
-            Err(err) => return Err(::std::error::FromError::from_error(err))
+            Err(err) => return Err($crate::error::FromError::from_error(err)),
         }
     })
-}
-
-/// Create a `std::vec::Vec` containing the arguments.
-#[macro_export]
-macro_rules! vec {
-    ($($x:expr),*) => ({
-        let xs: ::std::boxed::Box<[_]> = box [$($x),*];
-        ::std::slice::SliceExt::into_vec(xs)
-    });
-    ($($x:expr,)*) => (vec![$($x),*])
 }
 
 /// A macro to select an event from a number of receivers.
@@ -358,7 +321,7 @@ macro_rules! select {
     (
         $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
     ) => ({
-        use std::sync::mpsc::Select;
+        use $crate::sync::mpsc::Select;
         let sel = Select::new();
         $( let mut $rx = sel.handle(&$rx); )+
         unsafe {

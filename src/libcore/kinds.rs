@@ -19,19 +19,19 @@
 
 /// Types able to be transferred across task boundaries.
 #[lang="send"]
-pub unsafe trait Send for Sized? : 'static {
+pub unsafe trait Send : 'static {
     // empty.
 }
 
 /// Types with a constant size known at compile-time.
 #[lang="sized"]
-pub trait Sized for Sized? {
+pub trait Sized {
     // Empty.
 }
 
 /// Types that can be copied by simply copying bits (i.e. `memcpy`).
 #[lang="copy"]
-pub trait Copy for Sized? {
+pub trait Copy {
     // Empty.
 }
 
@@ -81,7 +81,7 @@ pub trait Copy for Sized? {
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
 #[lang="sync"]
-pub unsafe trait Sync for Sized? {
+pub unsafe trait Sync {
     // Empty
 }
 
@@ -133,10 +133,10 @@ pub mod marker {
     /// for some lifetime `'a`, but not the other way around).
     #[lang="covariant_type"]
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    pub struct CovariantType<Sized? T>;
+    pub struct CovariantType<T: ?Sized>;
 
-    impl<Sized? T> Copy for CovariantType<T> {}
-    impl<Sized? T> Clone for CovariantType<T> {
+    impl<T: ?Sized> Copy for CovariantType<T> {}
+    impl<T: ?Sized> Clone for CovariantType<T> {
         fn clone(&self) -> CovariantType<T> { *self }
     }
 
@@ -181,10 +181,10 @@ pub mod marker {
     /// arguments of type `U`, hence such a conversion is safe.
     #[lang="contravariant_type"]
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    pub struct ContravariantType<Sized? T>;
+    pub struct ContravariantType<T: ?Sized>;
 
-    impl<Sized? T> Copy for ContravariantType<T> {}
-    impl<Sized? T> Clone for ContravariantType<T> {
+    impl<T: ?Sized> Copy for ContravariantType<T> {}
+    impl<T: ?Sized> Clone for ContravariantType<T> {
         fn clone(&self) -> ContravariantType<T> { *self }
     }
 
@@ -211,10 +211,10 @@ pub mod marker {
     /// interior mutability.
     #[lang="invariant_type"]
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    pub struct InvariantType<Sized? T>;
+    pub struct InvariantType<T: ?Sized>;
 
-    impl<Sized? T> Copy for InvariantType<T> {}
-    impl<Sized? T> Clone for InvariantType<T> {
+    impl<T: ?Sized> Copy for InvariantType<T> {}
+    impl<T: ?Sized> Clone for InvariantType<T> {
         fn clone(&self) -> InvariantType<T> { *self }
     }
 

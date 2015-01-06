@@ -75,14 +75,14 @@ impl<T: Clone> Clone for Box<T> {
 }
 
 #[stable]
-impl<Sized? T: PartialEq> PartialEq for Box<T> {
+impl<T: ?Sized + PartialEq> PartialEq for Box<T> {
     #[inline]
     fn eq(&self, other: &Box<T>) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
     fn ne(&self, other: &Box<T>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 #[stable]
-impl<Sized? T: PartialOrd> PartialOrd for Box<T> {
+impl<T: ?Sized + PartialOrd> PartialOrd for Box<T> {
     #[inline]
     fn partial_cmp(&self, other: &Box<T>) -> Option<Ordering> {
         PartialOrd::partial_cmp(&**self, &**other)
@@ -97,16 +97,16 @@ impl<Sized? T: PartialOrd> PartialOrd for Box<T> {
     fn gt(&self, other: &Box<T>) -> bool { PartialOrd::gt(&**self, &**other) }
 }
 #[stable]
-impl<Sized? T: Ord> Ord for Box<T> {
+impl<T: ?Sized + Ord> Ord for Box<T> {
     #[inline]
     fn cmp(&self, other: &Box<T>) -> Ordering {
         Ord::cmp(&**self, &**other)
     }
 
 #[stable]}
-impl<Sized? T: Eq> Eq for Box<T> {}
+impl<T: ?Sized + Eq> Eq for Box<T> {}
 
-impl<S: hash::Writer, Sized? T: Hash<S>> Hash<S> for Box<T> {
+impl<S: hash::Writer, T: ?Sized + Hash<S>> Hash<S> for Box<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
@@ -143,7 +143,7 @@ impl BoxAny for Box<Any> {
     }
 }
 
-impl<Sized? T: fmt::Show> fmt::Show for Box<T> {
+impl<T: ?Sized + fmt::Show> fmt::Show for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         (**self).fmt(f)
     }
@@ -155,13 +155,15 @@ impl fmt::Show for Box<Any> {
     }
 }
 
-impl<Sized? T> Deref for Box<T> {
+#[stable]
+impl<T: ?Sized> Deref for Box<T> {
     type Target = T;
 
     fn deref(&self) -> &T { &**self }
 }
 
-impl<Sized? T> DerefMut for Box<T> {
+#[stable]
+impl<T: ?Sized> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
 }
 

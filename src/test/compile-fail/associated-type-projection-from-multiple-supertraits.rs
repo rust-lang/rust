@@ -11,8 +11,6 @@
 // Test equality constraints in a where clause where the type being
 // equated appears in a supertrait.
 
-#![feature(associated_types)]
-
 pub trait Vehicle {
     type Color;
 

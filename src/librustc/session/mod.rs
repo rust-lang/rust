@@ -201,8 +201,8 @@ impl Session {
     pub fn no_landing_pads(&self) -> bool {
         self.debugging_opt(config::NO_LANDING_PADS)
     }
-    pub fn show_span(&self) -> bool {
-        self.debugging_opt(config::SHOW_SPAN)
+    pub fn unstable_options(&self) -> bool {
+        self.debugging_opt(config::UNSTABLE_OPTIONS)
     }
     pub fn print_enum_sizes(&self) -> bool {
         self.debugging_opt(config::PRINT_ENUM_SIZES)

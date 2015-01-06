@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
 macro_rules! vec [
     ($($e:expr),*) => ({
         let mut _temp = ::std::vec::Vec::new();

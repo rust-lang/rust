@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(default_type_params)]
-
 struct Foo<A, B, C = (A, B)>;
 
 impl<A, B, C = (A, B)> Foo<A, B, C> {

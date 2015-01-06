@@ -451,7 +451,7 @@ them.
 ~~~no_run
 extern crate libc;
 
-use std::c_str::ToCStr;
+use std::ffi::CString;
 use std::ptr;
 
 #[link(name = "readline")]
@@ -460,11 +460,10 @@ extern {
 }
 
 fn main() {
-    "[my-awesome-shell] $".with_c_str(|buf| {
-        unsafe { rl_prompt = buf; }
-        // get a line, process it
-        unsafe { rl_prompt = ptr::null(); }
-    });
+    let prompt = CString::from_slice(b"[my-awesome-shell] $");
+    unsafe { rl_prompt = prompt.as_ptr(); }
+    // get a line, process it
+    unsafe { rl_prompt = ptr::null(); }
 }
 ~~~
 
@@ -509,23 +508,28 @@ to define a block for all windows systems, not just x86 ones.
 
 # Interoperability with foreign code
 
-Rust guarantees that the layout of a `struct` is compatible with the platform's representation in C
-only if the `#[repr(C)]` attribute is applied to it.  `#[repr(C, packed)]` can be used to lay out
-struct members without padding.  `#[repr(C)]` can also be applied to an enum.
+Rust guarantees that the layout of a `struct` is compatible with the platform's
+representation in C only if the `#[repr(C)]` attribute is applied to it.
+`#[repr(C, packed)]` can be used to lay out struct members without padding.
+`#[repr(C)]` can also be applied to an enum.
 
-Rust's owned boxes (`Box<T>`) use non-nullable pointers as handles which point to the contained
-object. However, they should not be manually created because they are managed by internal
-allocators. References can safely be assumed to be non-nullable pointers directly to the type.
-However, breaking the borrow checking or mutability rules is not guaranteed to be safe, so prefer
-using raw pointers (`*`) if that's needed because the compiler can't make as many assumptions about
-them.
+Rust's owned boxes (`Box<T>`) use non-nullable pointers as handles which point
+to the contained object. However, they should not be manually created because
+they are managed by internal allocators. References can safely be assumed to be
+non-nullable pointers directly to the type.  However, breaking the borrow
+checking or mutability rules is not guaranteed to be safe, so prefer using raw
+pointers (`*`) if that's needed because the compiler can't make as many
+assumptions about them.
 
-Vectors and strings share the same basic memory layout, and utilities are available in the `vec` and
-`str` modules for working with C APIs. However, strings are not terminated with `\0`. If you need a
-NUL-terminated string for interoperability with C, you should use the `c_str::to_c_str` function.
+Vectors and strings share the same basic memory layout, and utilities are
+available in the `vec` and `str` modules for working with C APIs. However,
+strings are not terminated with `\0`. If you need a NUL-terminated string for
+interoperability with C, you should use the `CString` type in the `std::ffi`
+module.
 
-The standard library includes type aliases and function definitions for the C standard library in
-the `libc` module, and Rust links against `libc` and `libm` by default.
+The standard library includes type aliases and function definitions for the C
+standard library in the `libc` module, and Rust links against `libc` and `libm`
+by default.
 
 # The "nullable pointer optimization"
 

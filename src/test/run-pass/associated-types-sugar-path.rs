@@ -10,8 +10,6 @@
 
 // Test paths to associated types using the type-parameter-only sugar.
 
-#![feature(associated_types)]
-
 pub trait Foo {
     type A;
     fn boo(&self) -> Self::A;

@@ -23,8 +23,8 @@ use metadata::loader;
 use util::nodemap::{FnvHashMap, NodeMap};
 
 use std::cell::RefCell;
-use std::c_vec::CVec;
 use std::rc::Rc;
+use flate::Bytes;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::IdentInterner;
@@ -36,7 +36,7 @@ use syntax::parse::token::IdentInterner;
 pub type cnum_map = FnvHashMap<ast::CrateNum, ast::CrateNum>;
 
 pub enum MetadataBlob {
-    MetadataVec(CVec<u8>),
+    MetadataVec(Bytes),
     MetadataArchive(loader::ArchiveMetadata),
 }
 

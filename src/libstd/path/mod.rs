@@ -62,7 +62,7 @@
 #![experimental]
 
 use core::kinds::Sized;
-use c_str::CString;
+use ffi::CString;
 use clone::Clone;
 use fmt;
 use iter::IteratorExt;
@@ -786,7 +786,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 }
 
 /// A trait that represents something bytes-like (e.g. a &[u8] or a &str)
-pub trait BytesContainer for Sized? {
+pub trait BytesContainer {
     /// Returns a &[u8] representing the receiver
     fn container_as_bytes<'a>(&'a self) -> &'a [u8];
     /// Returns the receiver interpreted as a utf-8 string, if possible
@@ -892,11 +892,11 @@ impl BytesContainer for Vec<u8> {
 impl BytesContainer for CString {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes_no_nul()
+        self.as_bytes()
     }
 }
 
-impl<'a, Sized? T: BytesContainer> BytesContainer for &'a T {
+impl<'a, T: ?Sized + BytesContainer> BytesContainer for &'a T {
     #[inline]
     fn container_as_bytes(&self) -> &[u8] {
         (**self).container_as_bytes()
@@ -912,22 +912,4 @@ impl<'a, Sized? T: BytesContainer> BytesContainer for &'a T {
 #[inline(always)]
 fn contains_nul<T: BytesContainer>(v: &T) -> bool {
     v.container_as_bytes().iter().any(|&x| x == 0)
-}
-
-#[cfg(test)]
-mod tests {
-    use prelude::v1::*;
-    use c_str::ToCStr;
-    use path::{WindowsPath, PosixPath};
-
-    #[test]
-    fn test_cstring() {
-        let input = "/foo/bar/baz";
-        let path: PosixPath = PosixPath::new(input.to_c_str());
-        assert_eq!(path.as_vec(), input.as_bytes());
-
-        let input = r"\foo\bar\baz";
-        let path: WindowsPath = WindowsPath::new(input.to_c_str());
-        assert_eq!(path.as_str().unwrap(), input);
-    }
 }

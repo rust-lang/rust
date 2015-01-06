@@ -92,8 +92,8 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                 // Only keep those bounds that we haven't already
                 // seen.  This is necessary to prevent infinite
                 // recursion in some cases.  One common case is when
-                // people define `trait Sized { }` rather than `trait
-                // Sized for Sized? { }`.
+                // people define `trait Sized: Sized { }` rather than `trait
+                // Sized { }`.
                 predicates.retain(|r| self.visited.insert(r.clone()));
 
                 self.stack.push(StackEntry { position: 0,

@@ -10,10 +10,10 @@
 
 // ignore-test #9383
 
-#![feature(macro_rules)]
-
 // shouldn't affect evaluation of $ex:
-macro_rules! bad_macro (($ex:expr) => ({(|_x| { $ex }) (9) }))
+macro_rules! bad_macro {
+    ($ex:expr) => ({(|_x| { $ex }) (9) })
+}
 
 fn takes_x(_x : int) {
     assert_eq!(bad_macro!(_x),8);

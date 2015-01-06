@@ -12,9 +12,9 @@
 // ignore-stage1
 // ignore-pretty
 
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
+#[plugin] #[no_link]
 extern crate lint_group_plugin_test;
 
 fn lintme() { } //~ WARNING item is named 'lintme'

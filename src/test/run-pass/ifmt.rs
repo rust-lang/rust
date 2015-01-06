@@ -11,7 +11,6 @@
 // no-pretty-expanded unnecessary unsafe block generated
 // ignore-lexer-test FIXME #15679
 
-#![feature(macro_rules)]
 #![deny(warnings)]
 #![allow(unused_must_use)]
 
@@ -37,7 +36,9 @@ impl fmt::Show for C {
     }
 }
 
-macro_rules! t(($a:expr, $b:expr) => { assert_eq!($a.as_slice(), $b) });
+macro_rules! t {
+    ($a:expr, $b:expr) => { assert_eq!($a.as_slice(), $b) }
+}
 
 pub fn main() {
     // Various edge cases without formats

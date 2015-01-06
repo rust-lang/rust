@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
 use std::mem;
 
 enum E<T> { Thing(int, T), Nothing((), ((), ()), [i8; 0]) }

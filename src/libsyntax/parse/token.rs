@@ -62,6 +62,21 @@ pub enum IdentStyle {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+pub enum SpecialMacroVar {
+    /// `$crate` will be filled in with the name of the crate a macro was
+    /// imported from, if any.
+    CrateMacroVar,
+}
+
+impl SpecialMacroVar {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            SpecialMacroVar::CrateMacroVar => "crate",
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
@@ -143,6 +158,8 @@ pub enum Token {
     // In right-hand-sides of MBE macros:
     /// A syntactic variable that will be filled in by macro expansion.
     SubstNt(ast::Ident, IdentStyle),
+    /// A macro variable with special meaning.
+    SpecialVarNt(SpecialMacroVar),
 
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for
@@ -262,6 +279,13 @@ impl Token {
         match *self {
             Ident(sid, Plain) => kw.to_name() == sid.name,
             _                      => false,
+        }
+    }
+
+    pub fn is_keyword_allow_following_colon(&self, kw: keywords::Keyword) -> bool {
+        match *self {
+            Ident(sid, _) => { kw.to_name() == sid.name }
+            _ => { false }
         }
     }
 
@@ -550,6 +574,7 @@ declare_special_idents_and_keywords! {
         (56,                         Abstract,   "abstract");
         (57,                         Final,      "final");
         (58,                         Override,   "override");
+        (59,                         Macro,      "macro");
     }
 }
 

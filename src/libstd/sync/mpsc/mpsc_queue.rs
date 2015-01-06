@@ -138,6 +138,7 @@ impl<T: Send> Queue<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {

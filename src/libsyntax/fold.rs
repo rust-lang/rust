@@ -194,13 +194,13 @@ pub trait Folder : Sized {
         noop_fold_local(l, self)
     }
 
-    fn fold_mac(&mut self, _macro: Mac) -> Mac {
+    fn fold_mac(&mut self, _mac: Mac) -> Mac {
         panic!("fold_mac disabled by default");
         // NB: see note about macros above.
         // if you really want a folder that
         // works on macros, use this
         // definition in your trait impl:
-        // fold::noop_fold_mac(_macro, self)
+        // fold::noop_fold_mac(_mac, self)
     }
 
     fn fold_explicit_self(&mut self, es: ExplicitSelf) -> ExplicitSelf {
@@ -1104,7 +1104,7 @@ pub fn noop_fold_mod<T: Folder>(Mod {inner, view_items, items}: Mod, folder: &mu
     }
 }
 
-pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, exported_macros, span}: Crate,
+pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_macros, span}: Crate,
                                   folder: &mut T) -> Crate {
     let config = folder.fold_meta_items(config);
 
@@ -1134,6 +1134,10 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, exported_macros,
             items: Vec::new(),
         }, Vec::new(), span)
     };
+
+    for def in exported_macros.iter_mut() {
+        def.id = folder.new_id(def.id);
+    }
 
     Crate {
         module: module,
@@ -1257,7 +1261,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             }
             PatTup(elts) => PatTup(elts.move_map(|x| folder.fold_pat(x))),
             PatBox(inner) => PatBox(folder.fold_pat(inner)),
-            PatRegion(inner) => PatRegion(folder.fold_pat(inner)),
+            PatRegion(inner, mutbl) => PatRegion(folder.fold_pat(inner), mutbl),
             PatRange(e1, e2) => {
                 PatRange(folder.fold_expr(e1), folder.fold_expr(e2))
             },
@@ -1472,8 +1476,8 @@ mod test {
         fn fold_ident(&mut self, _: ast::Ident) -> ast::Ident {
             token::str_to_ident("zz")
         }
-        fn fold_mac(&mut self, macro: ast::Mac) -> ast::Mac {
-            fold::noop_fold_mac(macro, self)
+        fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+            fold::noop_fold_mac(mac, self)
         }
     }
 

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
 // after fixing #9384 and implementing hygiene for match bindings,
 // this now fails because the insertion of the 'y' into the match
 // doesn't cause capture. Making this macro hygienic (as I've done)
@@ -20,7 +18,7 @@ enum T {
     B(uint)
 }
 
-macro_rules! test(
+macro_rules! test {
     ($id:ident, $e:expr) => (
         fn foo(t: T) -> int {
             match t {
@@ -29,7 +27,7 @@ macro_rules! test(
             }
         }
     )
-);
+}
 
 test!(y, 10 + (y as int));
 

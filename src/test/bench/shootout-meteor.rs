@@ -40,8 +40,6 @@
 
 // no-pretty-expanded FIXME #15189
 
-#![feature(associated_types)]
-
 use std::iter::repeat;
 use std::sync::Arc;
 use std::sync::mpsc::channel;

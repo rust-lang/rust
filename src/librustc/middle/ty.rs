@@ -1776,6 +1776,10 @@ impl<'tcx> Generics<'tcx> {
         !self.regions.is_empty_in(space)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.types.is_empty() && self.regions.is_empty()
+    }
+
     pub fn to_bounds(&self, tcx: &ty::ctxt<'tcx>, substs: &Substs<'tcx>)
                      -> GenericBounds<'tcx> {
         GenericBounds {
@@ -6167,8 +6171,8 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
     return state.result();
 
     fn helper<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh, state: &mut sip::SipState) {
-        macro_rules! byte( ($b:expr) => { ($b as u8).hash(state) } );
-        macro_rules! hash( ($e:expr) => { $e.hash(state) } );
+        macro_rules! byte { ($b:expr) => { ($b as u8).hash(state) } }
+        macro_rules! hash { ($e:expr) => { $e.hash(state) }  }
 
         let region = |&: state: &mut sip::SipState, r: Region| {
             match r {

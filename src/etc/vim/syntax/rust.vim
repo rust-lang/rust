@@ -3,7 +3,7 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  July 18, 2014
+" Last Change:  January 5, 2015
 
 if version < 600
   syntax clear
@@ -56,7 +56,7 @@ syn match rustMacroRepeatCount ".\?[*+]" contained
 syn match rustMacroVariable "$\w\+"
 
 " Reserved (but not yet used) keywords {{{2
-syn keyword   rustReservedKeyword alignof be do offsetof priv pure sizeof typeof unsized yield abstract final override
+syn keyword   rustReservedKeyword alignof be do offsetof priv pure sizeof typeof unsized yield abstract final override macro
 
 " Built-in types {{{2
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
@@ -68,59 +68,37 @@ syn keyword   rustType        f64 i8 i16 i32 i64 str Self
 
 " Reexported core operators {{{3
 syn keyword   rustTrait       Copy Send Sized Sync
-syn keyword   rustTrait       Add Sub Mul Div Rem Neg Not
-syn keyword   rustTrait       BitAnd BitOr BitXor
-syn keyword   rustTrait       Drop Deref DerefMut
-syn keyword   rustTrait       Shl Shr
-syn keyword   rustTrait       Index IndexMut
-syn keyword   rustTrait       Slice SliceMut
-syn keyword   rustTrait       Fn FnMut FnOnce
+syn keyword   rustTrait       Drop Fn FnMut FnOnce
 
 " Reexported functions {{{3
-"syn keyword rustFunction range repeat
-"syn keyword rustFunction drop
-"syn keyword rustFunction from_str
+syn keyword rustFunction drop
 
 " Reexported types and traits {{{3
-syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr
-syn keyword rustTrait IntoBytes
-syn keyword rustTrait ToCStr
-syn keyword rustTrait Char UnicodeChar
+syn keyword rustTrait Box
+syn keyword rustTrait CharExt
 syn keyword rustTrait Clone
 syn keyword rustTrait PartialEq PartialOrd Eq Ord
-syn keyword rustEnum Ordering Equiv
-syn keyword rustEnumVariant Less Equal Greater
-syn keyword rustTrait FromIterator Extend ExactSizeIterator
-syn keyword rustTrait Iterator DoubleEndedIterator
-syn keyword rustTrait RandomAccessIterator CloneableIterator
-syn keyword rustTrait OrdIterator MutableDoubleEndedIterator
-syn keyword rustTrait ToPrimitive FromPrimitive
-syn keyword rustTrait Box
+syn keyword rustTrait DoubleEndedIterator
+syn keyword rustTrait ExactSizeIterator
+syn keyword rustTrait Iterator IteratorExt Extend
 syn keyword rustEnum Option
 syn keyword rustEnumVariant Some None
-syn keyword rustTrait GenericPath Path PosixPath WindowsPath
-syn keyword rustTrait RawPtr RawMutPtr
+syn keyword rustTrait PtrExt MutPtrExt
 syn keyword rustEnum Result
 syn keyword rustEnumVariant Ok Err
-syn keyword rustTrait Buffer Writer Reader Seek BufferPrelude
-syn keyword rustTrait Str StrVector StrPrelude
-syn keyword rustTrait IntoMaybeOwned StrAllocating UnicodeStrPrelude
-syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
-syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
-syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
-syn keyword rustTrait SlicePrelude AsSlice CloneSlicePrelude
-syn keyword rustTrait VectorVector PartialEqSlicePrelude OrdSlicePrelude
-syn keyword rustTrait CloneSliceAllocPrelude OrdSliceAllocPrelude SliceAllocPrelude
-syn keyword rustTrait IntoString String ToString
+syn keyword rustTrait AsSlice
+syn keyword rustTrait SliceExt SliceConcatExt
+syn keyword rustTrait Str StrExt
+syn keyword rustTrait String ToString
 syn keyword rustTrait Vec
-
-" Reexported runtime types {{{3
-"syn keyword rustFunction sync_channel channel
-syn keyword rustTrait SyncSender Sender Receiver
-"syn keyword rustFunction spawn
+" FIXME: remove when path reform lands
+syn keyword rustTrait Path GenericPath
+" FIXME: remove when I/O reform lands
+syn keyword rustTrait Buffer Writer Reader Seek BufferPrelude
+" FIXME: remove when range syntax lands
+syn keyword rustFunction range
 
 " Other syntax {{{2
-
 syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
 
