@@ -979,8 +979,8 @@ pub enum Sign {
     Plus
 }
 
-impl<T> Sign where T: Int {
-    pub fn new(n: T) -> Sign {
+impl Sign {
+    pub fn new<T:Int>(n: T) -> Sign {
         if n < Int::zero() {
             Minus
         } else {

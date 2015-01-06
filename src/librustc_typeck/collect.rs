@@ -35,7 +35,7 @@ use middle::lang_items::SizedTraitLangItem;
 use middle::region;
 use middle::resolve_lifetime;
 use middle::subst;
-use middle::subst::{Substs};
+use middle::subst::{Substs, TypeSpace};
 use middle::ty::{AsPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{self, RegionEscape, Ty, TypeScheme};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
@@ -47,6 +47,7 @@ use util::ppaux;
 use util::ppaux::{Repr,UserString};
 use write_ty_to_tcx;
 
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use syntax::abi;
@@ -644,6 +645,10 @@ fn convert(ccx: &CollectCtxt, it: &ast::Item) {
                                                Some(selfty),
                                                None);
             }
+
+            enforce_impl_ty_params_are_constrained(ccx.tcx,
+                                                   generics,
+                                                   local_def(it.id));
         },
         ast::ItemTrait(_, _, _, ref trait_methods) => {
             let trait_def = trait_def_of_item(ccx, it);
@@ -1603,5 +1608,98 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                 _ => region
             }
         })
+    }
+}
+
+/// Checks that all the type parameters on an impl
+fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                                ast_generics: &ast::Generics,
+                                                impl_def_id: ast::DefId)
+{
+    let impl_scheme = ty::lookup_item_type(tcx, impl_def_id);
+    let impl_trait_ref = ty::impl_trait_ref(tcx, impl_def_id);
+
+    // The trait reference is an input, so find all type parameters
+    // reachable from there, to start (if this is an inherent impl,
+    // then just examine the self type).
+    let mut input_parameters: HashSet<_> =
+        impl_trait_ref.iter()
+                      .flat_map(|t| t.input_types().iter()) // Types in trait ref, if any
+                      .chain(Some(impl_scheme.ty).iter())  // Self type, always
+                      .flat_map(|t| t.walk())
+                      .filter_map(to_opt_param_ty)
+                      .collect();
+
+    loop {
+        let num_inputs = input_parameters.len();
+
+        let mut projection_predicates =
+            impl_scheme.generics.predicates
+            .iter()
+            .filter_map(|predicate| {
+                match *predicate {
+                    // Ignore higher-ranked binders. For the purposes
+                    // of this check, they don't matter because they
+                    // only affect named regions, and we're just
+                    // concerned about type parameters here.
+                    ty::Predicate::Projection(ref data) => Some(data.0.clone()),
+                    _ => None,
+                }
+            });
+
+        for projection in projection_predicates {
+            // Special case: watch out for some kind of sneaky attempt
+            // to project out an associated type defined by this very trait.
+            if Some(projection.projection_ty.trait_ref.clone()) == impl_trait_ref {
+                continue;
+            }
+
+            let relies_only_on_inputs =
+                projection.projection_ty.trait_ref.input_types().iter()
+                .flat_map(|t| t.walk())
+                .filter_map(to_opt_param_ty)
+                .all(|t| input_parameters.contains(&t));
+
+            if relies_only_on_inputs {
+                input_parameters.extend(
+                    projection.ty.walk().filter_map(to_opt_param_ty));
+            }
+        }
+
+        if input_parameters.len() == num_inputs {
+            break;
+        }
+    }
+
+    for (index, ty_param) in ast_generics.ty_params.iter().enumerate() {
+        let param_ty = ty::ParamTy { space: TypeSpace,
+                                     idx: index as u32,
+                                     name: ty_param.ident.name };
+        if !input_parameters.contains(&param_ty) {
+            if ty::has_attr(tcx, impl_def_id, "old_impl_check") {
+                tcx.sess.span_warn(
+                    ty_param.span,
+                    format!("the type parameter `{}` is not constrained by the \
+                             impl trait, self type, or predicates",
+                            param_ty.user_string(tcx)).as_slice());
+            } else {
+                tcx.sess.span_err(
+                    ty_param.span,
+                    format!("the type parameter `{}` is not constrained by the \
+                             impl trait, self type, or predicates",
+                            param_ty.user_string(tcx)).as_slice());
+                tcx.sess.span_help(
+                    ty_param.span,
+                    format!("you can temporarily opt out of this rule by placing \
+                             the `#[old_impl_check]` attribute on the impl").as_slice());
+            }
+        }
+    }
+
+    fn to_opt_param_ty<'tcx>(ty: Ty<'tcx>) -> Option<ty::ParamTy> {
+        match ty.sty {
+            ty::ty_param(ref d) => Some(d.clone()),
+            _ => None,
+        }
     }
 }

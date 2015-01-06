@@ -24,6 +24,7 @@ Core encoding and decoding interfaces.
        html_playground_url = "http://play.rust-lang.org/")]
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
+#![feature(old_impl_check)]
 
 // test harness access
 #[cfg(test)] extern crate test;
