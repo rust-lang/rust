@@ -186,8 +186,11 @@ macro_rules! write {
 #[macro_export]
 #[stable]
 macro_rules! writeln {
-    ($dst:expr, $fmt:expr $($arg:tt)*) => (
+    ($dst:expr, $fmt:expr, $($arg:tt)*) => (
         write!($dst, concat!($fmt, "\n") $($arg)*)
+    );
+    ($dst:expr, $fmt:expr) => (
+        write!($dst, concat!($fmt, "\n"))
     )
 }
 

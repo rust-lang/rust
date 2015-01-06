@@ -292,58 +292,102 @@ fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &NamedMatch, sp: Span) {
         _ => cx.span_bug(sp, "wrong-structured lhs for follow check")
     };
 
-    check_matcher(cx, matcher, &Eof);
+    check_matcher(cx, matcher.iter(), &Eof);
     // we don't abort on errors on rejection, the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
 }
 
-fn check_matcher(cx: &mut ExtCtxt, matcher: &[TokenTree], follow: &Token) {
+// returns the last token that was checked, for TtSequence. this gets used later on.
+fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
+-> Option<(Span, Token)> where I: Iterator<Item=&'a TokenTree> {
     use print::pprust::token_to_string;
 
-    // 1. If there are no tokens in M, accept
-    if matcher.is_empty() {
-        return;
-    }
+    let mut last = None;
 
     // 2. For each token T in M:
-    let mut tokens = matcher.iter().peekable();
+    let mut tokens = matcher.peekable();
     while let Some(token) = tokens.next() {
-        match *token {
+        last = match *token {
             TtToken(sp, MatchNt(ref name, ref frag_spec, _, _)) => {
                 // ii. If T is a simple NT, look ahead to the next token T' in
                 // M.
                 let next_token = match tokens.peek() {
                     // If T' closes a complex NT, replace T' with F
-                    Some(&&TtToken(_, CloseDelim(_))) => follow,
-                    Some(&&TtToken(_, ref tok)) => tok,
-                    // T' is any NT (this catches complex NTs, the next
-                    // iteration will die if it's a TtDelimited).
-                    Some(_) => continue,
+                    Some(&&TtToken(_, CloseDelim(_))) => follow.clone(),
+                    Some(&&TtToken(_, ref tok)) => tok.clone(),
+                    Some(&&TtSequence(sp, _)) => {
+                        cx.span_err(sp, format!("`${0}:{1}` is followed by a sequence \
+                                                 repetition, which is not allowed for `{1}` \
+                                                 fragments", name.as_str(), frag_spec.as_str())[]);
+                        Eof
+                    },
+                    // die next iteration
+                    Some(&&TtDelimited(_, ref delim)) => delim.close_token(),
                     // else, we're at the end of the macro or sequence
-                    None => follow
+                    None => follow.clone()
                 };
 
+                let tok = if let TtToken(_, ref tok) = *token { tok } else { unreachable!() };
                 // If T' is in the set FOLLOW(NT), continue. Else, reject.
-                match *next_token {
-                    Eof | MatchNt(..) => continue,
-                    _ if is_in_follow(cx, next_token, frag_spec.as_str()) => continue,
-                    ref tok => cx.span_err(sp, format!("`${0}:{1}` is followed by `{2}`, which \
-                                                        is not allowed for `{1}` fragments",
-                                                        name.as_str(), frag_spec.as_str(),
-                                                        token_to_string(tok))[])
+                match &next_token {
+                    &Eof => return Some((sp, tok.clone())),
+                    _ if is_in_follow(cx, &next_token, frag_spec.as_str()) => continue,
+                    next => {
+                        cx.span_err(sp, format!("`${0}:{1}` is followed by `{2}`, which \
+                                                 is not allowed for `{1}` fragments",
+                                                 name.as_str(), frag_spec.as_str(),
+                                                 token_to_string(next))[]);
+                        continue
+                    },
                 }
             },
-            TtSequence(_, ref seq) => {
+            TtSequence(sp, ref seq) => {
                 // iii. Else, T is a complex NT.
                 match seq.separator {
                     // If T has the form $(...)U+ or $(...)U* for some token U,
                     // run the algorithm on the contents with F set to U. If it
                     // accepts, continue, else, reject.
-                    Some(ref u) => check_matcher(cx, seq.tts[], u),
-                    // If T has the form $(...)+ or $(...)*, run the algorithm
-                    // on the contents with F set to EOF. If it accepts,
-                    // continue, else, reject.
-                    None => check_matcher(cx, seq.tts[], &Eof)
+                    Some(ref u) => {
+                        let last = check_matcher(cx, seq.tts.iter(), u);
+                        match last {
+                            // Since the delimiter isn't required after the last repetition, make
+                            // sure that the *next* token is sane. This doesn't actually compute
+                            // the FIRST of the rest of the matcher yet, it only considers single
+                            // tokens and simple NTs. This is imprecise, but conservatively
+                            // correct.
+                            Some((span, tok)) => {
+                                let fol = match tokens.peek() {
+                                    Some(&&TtToken(_, ref tok)) => tok.clone(),
+                                    Some(&&TtDelimited(_, ref delim)) => delim.close_token(),
+                                    Some(_) => {
+                                        cx.span_err(sp, "sequence repetition followed by \
+                                                another sequence repetition, which is not allowed");
+                                        Eof
+                                    },
+                                    None => Eof
+                                };
+                                check_matcher(cx, Some(&TtToken(span, tok.clone())).into_iter(),
+                                              &fol)
+                            },
+                            None => last,
+                        }
+                    },
+                    // If T has the form $(...)+ or $(...)*, run the algorithm on the contents with
+                    // F set to the token following the sequence. If it accepts, continue, else,
+                    // reject.
+                    None => {
+                        let fol = match tokens.peek() {
+                            Some(&&TtToken(_, ref tok)) => tok.clone(),
+                            Some(&&TtDelimited(_, ref delim)) => delim.close_token(),
+                            Some(_) => {
+                                cx.span_err(sp, "sequence repetition followed by another \
+                                             sequence repetition, which is not allowed");
+                                Eof
+                            },
+                            None => Eof
+                        };
+                        check_matcher(cx, seq.tts.iter(), &fol)
+                    }
                 }
             },
             TtToken(..) => {
@@ -352,11 +396,12 @@ fn check_matcher(cx: &mut ExtCtxt, matcher: &[TokenTree], follow: &Token) {
             },
             TtDelimited(_, ref tts) => {
                 // if we don't pass in that close delimiter, we'll incorrectly consider the matcher
-                // `{ $foo:ty }` as having a follow that isn't `}`
-                check_matcher(cx, tts.tts[], &tts.close_token())
+                // `{ $foo:ty }` as having a follow that isn't `RBrace`
+                check_matcher(cx, tts.tts.iter(), &tts.close_token())
             }
         }
     }
+    last
 }
 
 fn is_in_follow(cx: &ExtCtxt, tok: &Token, frag: &str) -> bool {
