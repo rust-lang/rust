@@ -1470,12 +1470,12 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 
     pub fn substs(&self) -> &'tcx Substs<'tcx> {
-        // TODO every use of this fn is probably a bug, it should yield Binder<>
+        // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.substs
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
-        // TODO every use of this fn is probably a bug, it should yield Binder<>
+        // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.input_types()
     }
 
