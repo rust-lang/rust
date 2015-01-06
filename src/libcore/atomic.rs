@@ -86,7 +86,7 @@ pub struct AtomicBool {
 unsafe impl Sync for AtomicBool {}
 
 /// A signed integer type which can be safely shared between threads.
-#[stable]
+#[unstable = "awaiting int/uint conventions, may be renamed"]
 pub struct AtomicInt {
     v: UnsafeCell<int>,
 }
@@ -94,7 +94,7 @@ pub struct AtomicInt {
 unsafe impl Sync for AtomicInt {}
 
 /// An unsigned integer type which can be safely shared between threads.
-#[stable]
+#[unstable = "awaiting int/uint conventions, may be renamed"]
 pub struct AtomicUint {
     v: UnsafeCell<uint>,
 }
@@ -146,27 +146,17 @@ pub enum Ordering {
 }
 
 /// An `AtomicBool` initialized to `false`.
-#[unstable = "may be renamed, pending conventions for static initalizers"]
+#[stable]
 pub const ATOMIC_BOOL_INIT: AtomicBool =
         AtomicBool { v: UnsafeCell { value: 0 } };
 /// An `AtomicInt` initialized to `0`.
-#[unstable = "may be renamed, pending conventions for static initalizers"]
+#[unstable = "awaiting int/uint conventions, may be renamed"]
 pub const ATOMIC_INT_INIT: AtomicInt =
         AtomicInt { v: UnsafeCell { value: 0 } };
 /// An `AtomicUint` initialized to `0`.
-#[unstable = "may be renamed, pending conventions for static initalizers"]
+#[unstable = "awaiting int/uint conventions, may be renamed"]
 pub const ATOMIC_UINT_INIT: AtomicUint =
         AtomicUint { v: UnsafeCell { value: 0, } };
-
-/// Deprecated
-#[deprecated = "renamed to ATOMIC_BOOL_INIT"]
-pub const INIT_ATOMIC_BOOL: AtomicBool = ATOMIC_BOOL_INIT;
-/// Deprecated
-#[deprecated = "renamed to ATOMIC_INT_INIT"]
-pub const INIT_ATOMIC_INT: AtomicInt = ATOMIC_INT_INIT;
-/// Deprecated
-#[deprecated = "renamed to ATOMIC_UINT_INIT"]
-pub const INIT_ATOMIC_UINT: AtomicUint = ATOMIC_UINT_INIT;
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
 const UINT_TRUE: uint = -1;
@@ -413,6 +403,7 @@ impl AtomicBool {
     }
 }
 
+#[unstable = "awaiting int/uint conventions, types may change"]
 impl AtomicInt {
     /// Creates a new `AtomicInt`.
     ///
@@ -424,7 +415,6 @@ impl AtomicInt {
     /// let atomic_forty_two  = AtomicInt::new(42);
     /// ```
     #[inline]
-    #[stable]
     pub fn new(v: int) -> AtomicInt {
         AtomicInt {v: UnsafeCell::new(v)}
     }
@@ -447,7 +437,6 @@ impl AtomicInt {
     /// let value = some_int.load(Ordering::Relaxed);
     /// ```
     #[inline]
-    #[stable]
     pub fn load(&self, order: Ordering) -> int {
         unsafe { atomic_load(self.v.get() as *const int, order) }
     }
@@ -470,7 +459,6 @@ impl AtomicInt {
     ///
     /// Panics if `order` is `Acquire` or `AcqRel`.
     #[inline]
-    #[stable]
     pub fn store(&self, val: int, order: Ordering) {
         unsafe { atomic_store(self.v.get(), val, order); }
     }
@@ -489,7 +477,6 @@ impl AtomicInt {
     /// let value = some_int.swap(10, Ordering::Relaxed);
     /// ```
     #[inline]
-    #[stable]
     pub fn swap(&self, val: int, order: Ordering) -> int {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
@@ -511,7 +498,6 @@ impl AtomicInt {
     /// let value = some_int.compare_and_swap(5, 10, Ordering::Relaxed);
     /// ```
     #[inline]
-    #[stable]
     pub fn compare_and_swap(&self, old: int, new: int, order: Ordering) -> int {
         unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
     }
@@ -528,7 +514,6 @@ impl AtomicInt {
     /// assert_eq!(10, foo.load(Ordering::SeqCst));
     /// ```
     #[inline]
-    #[stable]
     pub fn fetch_add(&self, val: int, order: Ordering) -> int {
         unsafe { atomic_add(self.v.get(), val, order) }
     }
@@ -545,7 +530,6 @@ impl AtomicInt {
     /// assert_eq!(-10, foo.load(Ordering::SeqCst));
     /// ```
     #[inline]
-    #[stable]
     pub fn fetch_sub(&self, val: int, order: Ordering) -> int {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
@@ -561,7 +545,6 @@ impl AtomicInt {
     /// assert_eq!(0b101101, foo.fetch_and(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b100001, foo.load(Ordering::SeqCst));
     #[inline]
-    #[stable]
     pub fn fetch_and(&self, val: int, order: Ordering) -> int {
         unsafe { atomic_and(self.v.get(), val, order) }
     }
@@ -577,7 +560,6 @@ impl AtomicInt {
     /// assert_eq!(0b101101, foo.fetch_or(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b111111, foo.load(Ordering::SeqCst));
     #[inline]
-    #[stable]
     pub fn fetch_or(&self, val: int, order: Ordering) -> int {
         unsafe { atomic_or(self.v.get(), val, order) }
     }
@@ -593,12 +575,12 @@ impl AtomicInt {
     /// assert_eq!(0b101101, foo.fetch_xor(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b011110, foo.load(Ordering::SeqCst));
     #[inline]
-    #[stable]
     pub fn fetch_xor(&self, val: int, order: Ordering) -> int {
         unsafe { atomic_xor(self.v.get(), val, order) }
     }
 }
 
+#[unstable = "awaiting int/uint conventions, types may change"]
 impl AtomicUint {
     /// Creates a new `AtomicUint`.
     ///
@@ -610,7 +592,6 @@ impl AtomicUint {
     /// let atomic_forty_two = AtomicUint::new(42u);
     /// ```
     #[inline]
-    #[stable]
     pub fn new(v: uint) -> AtomicUint {
         AtomicUint { v: UnsafeCell::new(v) }
     }
@@ -633,7 +614,6 @@ impl AtomicUint {
     /// let value = some_uint.load(Ordering::Relaxed);
     /// ```
     #[inline]
-    #[stable]
     pub fn load(&self, order: Ordering) -> uint {
         unsafe { atomic_load(self.v.get() as *const uint, order) }
     }
@@ -656,7 +636,6 @@ impl AtomicUint {
     ///
     /// Panics if `order` is `Acquire` or `AcqRel`.
     #[inline]
-    #[stable]
     pub fn store(&self, val: uint, order: Ordering) {
         unsafe { atomic_store(self.v.get(), val, order); }
     }
@@ -675,7 +654,6 @@ impl AtomicUint {
     /// let value = some_uint.swap(10, Ordering::Relaxed);
     /// ```
     #[inline]
-    #[stable]
     pub fn swap(&self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
@@ -697,7 +675,6 @@ impl AtomicUint {
     /// let value = some_uint.compare_and_swap(5, 10, Ordering::Relaxed);
     /// ```
     #[inline]
-    #[stable]
     pub fn compare_and_swap(&self, old: uint, new: uint, order: Ordering) -> uint {
         unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
     }
@@ -714,7 +691,6 @@ impl AtomicUint {
     /// assert_eq!(10, foo.load(Ordering::SeqCst));
     /// ```
     #[inline]
-    #[stable]
     pub fn fetch_add(&self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_add(self.v.get(), val, order) }
     }
@@ -731,7 +707,6 @@ impl AtomicUint {
     /// assert_eq!(0, foo.load(Ordering::SeqCst));
     /// ```
     #[inline]
-    #[stable]
     pub fn fetch_sub(&self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
@@ -747,7 +722,6 @@ impl AtomicUint {
     /// assert_eq!(0b101101, foo.fetch_and(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b100001, foo.load(Ordering::SeqCst));
     #[inline]
-    #[stable]
     pub fn fetch_and(&self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_and(self.v.get(), val, order) }
     }
@@ -763,7 +737,6 @@ impl AtomicUint {
     /// assert_eq!(0b101101, foo.fetch_or(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b111111, foo.load(Ordering::SeqCst));
     #[inline]
-    #[stable]
     pub fn fetch_or(&self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_or(self.v.get(), val, order) }
     }
@@ -779,7 +752,6 @@ impl AtomicUint {
     /// assert_eq!(0b101101, foo.fetch_xor(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b011110, foo.load(Ordering::SeqCst));
     #[inline]
-    #[stable]
     pub fn fetch_xor(&self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_xor(self.v.get(), val, order) }
     }

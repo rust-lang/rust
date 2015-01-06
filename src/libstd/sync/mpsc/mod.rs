@@ -162,6 +162,8 @@
 //! }
 //! ```
 
+#![stable]
+
 // A description of how Rust's channel implementation works
 //
 // Channels are supposed to be the basic building block for all other
@@ -589,8 +591,8 @@ impl<T: Send> Sender<T> {
     /// drop(rx);
     /// assert_eq!(tx.send_opt(1), Err(1));
     /// ```
-    #[unstable = "this function may be renamed to send() in the future"]
-    pub fn send_opt(&self, t: T) -> Result<(), T> {
+    #[stable]
+    pub fn send(&self, t: T) -> Result<(), SendError<T>> {
         let (new_inner, ret) = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
                 unsafe {

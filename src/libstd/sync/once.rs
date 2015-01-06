@@ -121,10 +121,6 @@ impl Once {
             unsafe { self.mutex.destroy() }
         }
     }
-
-    /// Deprecated
-    #[deprecated = "renamed to `call_once`"]
-    pub fn doit<F>(&'static self, f: F) where F: FnOnce() { self.call_once(f) }
 }
 
 #[cfg(test)]
