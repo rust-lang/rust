@@ -89,11 +89,12 @@ The existing constructors can be deprecated, to open a migration
 path towards reusing their shorter names with the new signatures
 when the time to break the API is right.
 
-The current usage can be mechanically changed:
+The current usage can be mechanically changed.
+
 ```rust
 let s = std::slice::from_raw_buf(&ptr, len)
 ```
-to:
+becomes:
 ```rust
 std::slice::from_raw_buf_with_lifetime(ptr, len, &ptr)
 ```
