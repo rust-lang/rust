@@ -442,7 +442,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_extension_candidates_for_trait(&mut self,
                                                trait_def_id: ast::DefId) {
-        debug!("assemble_extension_candidates_for_trait: trait_def_id={}",
+        debug!("assemble_extension_candidates_for_trait(trait_def_id={})",
                trait_def_id.repr(self.tcx()));
 
         // Check whether `trait_def_id` defines a method with suitable name:
@@ -471,8 +471,12 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                            matching_index);
 
         self.assemble_unboxed_closure_candidates(trait_def_id,
-                                                 method,
+                                                 method.clone(),
                                                  matching_index);
+
+        self.assemble_where_clause_candidates(trait_def_id,
+                                              method,
+                                              matching_index);
     }
 
     fn assemble_extension_candidates_for_trait_impls(&mut self,
@@ -595,6 +599,35 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 xform_self_ty: xform_self_ty,
                 method_ty: method_ty.clone(),
                 kind: UnboxedClosureCandidate(trait_def_id, method_index)
+            });
+        }
+    }
+
+    fn assemble_where_clause_candidates(&mut self,
+                                        trait_def_id: ast::DefId,
+                                        method_ty: Rc<ty::Method<'tcx>>,
+                                        method_index: uint)
+    {
+        debug!("assemble_where_clause_candidates(trait_def_id={})",
+               trait_def_id.repr(self.tcx()));
+
+        // Check whether there are any where-clauses pertaining to this trait.
+        let caller_predicates =
+            self.fcx.inh.param_env.caller_bounds.predicates.as_slice().to_vec();
+        for bound in traits::elaborate_predicates(self.tcx(), caller_predicates)
+                     .filter_map(|p| p.to_opt_poly_trait_ref())
+                     .filter(|b| b.def_id() == trait_def_id)
+        {
+            let xform_self_ty = self.xform_self_ty(&method_ty, bound.substs());
+
+            debug!("assemble_where_clause_candidates: bound={} xform_self_ty={}",
+                   bound.repr(self.tcx()),
+                   xform_self_ty.repr(self.tcx()));
+
+            self.extension_candidates.push(Candidate {
+                xform_self_ty: xform_self_ty,
+                method_ty: method_ty.clone(),
+                kind: WhereClauseCandidate(bound, method_index)
             });
         }
     }
@@ -774,26 +807,26 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             match probe.kind {
                 InherentImplCandidate(impl_def_id, ref substs) |
                 ExtensionImplCandidate(impl_def_id, _, ref substs, _) => {
+                    let selcx = &mut traits::SelectionContext::new(self.infcx(), self.fcx);
+                    let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
+
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_generics = ty::lookup_item_type(self.tcx(), impl_def_id).generics;
                     let impl_bounds = impl_generics.to_bounds(self.tcx(), substs);
-                    // FIXME(#20378) assoc type normalization here?
-
-                    // Erase any late-bound regions bound in the impl
-                    // which appear in the bounds.
-                    let impl_bounds = self.erase_late_bound_regions(&ty::Binder(impl_bounds));
+                    let traits::Normalized { value: impl_bounds,
+                                             obligations: norm_obligations } =
+                        traits::normalize(selcx, cause.clone(), &impl_bounds);
 
                     // Convert the bounds into obligations.
                     let obligations =
-                        traits::predicates_for_generics(
-                            self.tcx(),
-                            traits::ObligationCause::misc(self.span, self.fcx.body_id),
-                            &impl_bounds);
+                        traits::predicates_for_generics(self.tcx(),
+                                                        cause.clone(),
+                                                        &impl_bounds);
                     debug!("impl_obligations={}", obligations.repr(self.tcx()));
 
                     // Evaluate those obligations to see if they might possibly hold.
-                    let mut selcx = traits::SelectionContext::new(self.infcx(), self.fcx);
-                    obligations.all(|o| selcx.evaluate_obligation(o))
+                    obligations.all(|o| selcx.evaluate_obligation(o)) &&
+                        norm_obligations.iter().all(|o| selcx.evaluate_obligation(o))
                 }
 
                 ObjectCandidate(..) |
