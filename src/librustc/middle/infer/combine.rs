@@ -427,6 +427,16 @@ impl<'tcx> Combineable<'tcx> for ty::TraitRef<'tcx> {
     }
 }
 
+impl<'tcx> Combineable<'tcx> for Ty<'tcx> {
+    fn combine<C:Combine<'tcx>>(combiner: &C,
+                                a: &Ty<'tcx>,
+                                b: &Ty<'tcx>)
+                                -> cres<'tcx, Ty<'tcx>>
+    {
+        combiner.tys(*a, *b)
+    }
+}
+
 impl<'tcx> Combineable<'tcx> for ty::ProjectionPredicate<'tcx> {
     fn combine<C:Combine<'tcx>>(combiner: &C,
                                 a: &ty::ProjectionPredicate<'tcx>,

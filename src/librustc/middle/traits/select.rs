@@ -835,7 +835,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                bounds.repr(self.tcx()));
 
         let matching_bound =
-            util::elaborate_predicates(self.tcx(), bounds.predicates.to_vec())
+            util::elaborate_predicates(self.tcx(), bounds.predicates.into_vec())
             .filter_to_traits()
             .find(
                 |bound| self.infcx.probe(
