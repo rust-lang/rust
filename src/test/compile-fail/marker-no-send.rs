@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::markers;
 
 fn foo<P:Send>(p: P) { }
 
 fn main()
 {
-    foo(marker::NoSend); //~ ERROR the trait `core::kinds::Send` is not implemented
+    foo(markers::NoSend); //~ ERROR the trait `core::markers::Send` is not implemented
 }

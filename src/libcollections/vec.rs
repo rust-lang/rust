@@ -55,7 +55,7 @@ use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::iter::{repeat, FromIterator};
-use core::kinds::marker::{ContravariantLifetime, InvariantType};
+use core::markers::{ContravariantLifetime, InvariantType};
 use core::mem;
 use core::nonzero::NonZero;
 use core::num::{Int, UnsignedInt};

@@ -61,7 +61,7 @@
 
 #![experimental]
 
-use core::kinds::Sized;
+use core::markers::Sized;
 use ffi::CString;
 use clone::Clone;
 use fmt;

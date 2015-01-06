@@ -319,7 +319,7 @@ use prelude::v1::*;
 
 use sync::Arc;
 use fmt;
-use kinds::marker;
+use markers;
 use mem;
 use cell::UnsafeCell;
 
@@ -373,7 +373,7 @@ unsafe impl<T:Send> Send for Sender<T> { }
 pub struct SyncSender<T> {
     inner: Arc<RacyCell<sync::Packet<T>>>,
     // can't share in an arc
-    _marker: marker::NoSync,
+    _marker: markers::NoSync,
 }
 
 /// An error returned from the `send` function on channels.
@@ -678,7 +678,7 @@ impl<T: Send> Drop for Sender<T> {
 
 impl<T: Send> SyncSender<T> {
     fn new(inner: Arc<RacyCell<sync::Packet<T>>>) -> SyncSender<T> {
-        SyncSender { inner: inner, _marker: marker::NoSync }
+        SyncSender { inner: inner, _marker: markers::NoSync }
     }
 
     /// Sends a value on this synchronous channel.

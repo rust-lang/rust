@@ -20,7 +20,7 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::iter::{self, repeat, FromIterator, RandomAccessIterator};
-use core::kinds::marker;
+use core::markers;
 use core::mem;
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut};
@@ -534,7 +534,7 @@ impl<T> RingBuf<T> {
             head: self.head,
             cap: self.cap,
             ptr: self.ptr,
-            marker: marker::ContravariantLifetime::<'a>,
+            marker: markers::ContravariantLifetime::<'a>,
         }
     }
 
@@ -1414,7 +1414,7 @@ pub struct IterMut<'a, T:'a> {
     tail: uint,
     head: uint,
     cap: uint,
-    marker: marker::ContravariantLifetime<'a>,
+    marker: markers::ContravariantLifetime<'a>,
 }
 
 #[stable]

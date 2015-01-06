@@ -29,7 +29,7 @@ use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::ty::{MethodStatic, MethodStaticUnboxedClosure};
 use util::ppaux::Repr;
 
-use std::kinds;
+use std::markers;
 use syntax::{ast, ast_util};
 use syntax::ptr::P;
 use syntax::codemap::Span;
@@ -135,7 +135,7 @@ enum TrackMatchMode<T> {
     Conflicting,
 }
 
-impl<T> kinds::Copy for TrackMatchMode<T> {}
+impl<T> markers::Copy for TrackMatchMode<T> {}
 
 impl<T> TrackMatchMode<T> {
     // Builds up the whole match mode for a pattern from its constituent

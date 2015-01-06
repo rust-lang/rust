@@ -74,7 +74,7 @@ use core::clone::Clone;
 use core::fmt::{self, Show};
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
 use core::default::Default;
-use core::kinds::{Sync, Send};
+use core::markers::{Sync, Send};
 use core::mem::{min_align_of, size_of, drop};
 use core::mem;
 use core::nonzero::NonZero;

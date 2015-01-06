@@ -703,10 +703,10 @@ Other features provided by lang items include:
   `deref`, and `add` respectively.
 - stack unwinding and general failure; the `eh_personality`, `fail`
   and `fail_bounds_checks` lang items.
-- the traits in `std::kinds` used to indicate types that satisfy
+- the traits in `std::markers` used to indicate types of
   various kinds; lang items `send`, `sync` and `copy`.
 - the marker types and variance indicators found in
-  `std::kinds::markers`; lang items `covariant_type`,
+  `std::markers`; lang items `covariant_type`,
   `contravariant_lifetime`, `no_sync_bound`, etc.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses

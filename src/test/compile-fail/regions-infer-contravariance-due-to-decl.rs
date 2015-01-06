@@ -14,13 +14,13 @@
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
-use std::kinds::marker;
+use std::markers;
 
 // This is contravariant with respect to 'a, meaning that
 // Contravariant<'foo> <: Contravariant<'static> because
 // 'foo <= 'static
 struct Contravariant<'a> {
-    marker: marker::ContravariantLifetime<'a>
+    marker: markers::ContravariantLifetime<'a>
 }
 
 fn use_<'short,'long>(c: Contravariant<'short>,

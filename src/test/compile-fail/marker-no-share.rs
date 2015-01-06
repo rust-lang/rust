@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::markers;
 
 fn foo<P: Sync>(p: P) { }
 
 fn main()
 {
-    foo(marker::NoSync); //~ ERROR the trait `core::kinds::Sync` is not implemented
+    foo(markers::NoSync); //~ ERROR the trait `core::markers::Sync` is not implemented
 }

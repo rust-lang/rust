@@ -29,7 +29,7 @@
 //! ```
 
 // Reexported core operators
-pub use kinds::{Copy, Send, Sized, Sync};
+pub use markers::{Copy, Send, Sized, Sync};
 pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // Reexported functions

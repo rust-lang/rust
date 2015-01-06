@@ -19,7 +19,7 @@
 #[cfg(test)] use fmt::Show;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 
-use kinds::Copy;
+use markers::Copy;
 use clone::Clone;
 use cmp::{PartialOrd, PartialEq};
 

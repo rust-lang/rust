@@ -15,7 +15,7 @@
 
 #![stable]
 
-use kinds::Sized;
+use markers::Sized;
 use intrinsics;
 use ptr;
 
