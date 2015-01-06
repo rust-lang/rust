@@ -128,8 +128,8 @@ pub struct Values<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
 }
 
-#[stable]
 /// A view into a single entry in a map, which may either be vacant or occupied.
+#[unstable = "precise API still under development"]
 pub enum Entry<'a, K:'a, V:'a> {
     /// A vacant Entry
     Vacant(VacantEntry<'a, K, V>),
@@ -137,15 +137,15 @@ pub enum Entry<'a, K:'a, V:'a> {
     Occupied(OccupiedEntry<'a, K, V>),
 }
 
-#[stable]
 /// A vacant Entry.
+#[unstable = "precise API still under development"]
 pub struct VacantEntry<'a, K:'a, V:'a> {
     key: K,
     stack: stack::SearchStack<'a, K, V, node::handle::Edge, node::handle::Leaf>,
 }
 
-#[stable]
 /// An occupied Entry.
+#[unstable = "precise API still under development"]
 pub struct OccupiedEntry<'a, K:'a, V:'a> {
     stack: stack::SearchStack<'a, K, V, node::handle::KV, node::handle::LeafOrInternal>,
 }
@@ -1123,43 +1123,43 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
 }
 
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
-    #[stable]
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn insert(self, value: V) -> &'a mut V {
         self.stack.insert(self.key, value)
     }
 }
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
-    #[stable]
     /// Gets a reference to the value in the entry.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn get(&self) -> &V {
         self.stack.peek()
     }
 
-    #[stable]
     /// Gets a mutable reference to the value in the entry.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn get_mut(&mut self) -> &mut V {
         self.stack.peek_mut()
     }
 
-    #[stable]
     /// Converts the entry into a mutable reference to its value.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn into_mut(self) -> &'a mut V {
         self.stack.into_top()
     }
 
-    #[stable]
     /// Sets the value of the entry with the OccupiedEntry's key,
     /// and returns the entry's old value.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn insert(&mut self, mut value: V) -> V {
         mem::swap(self.stack.peek_mut(), &mut value);
         value
     }
 
-    #[stable]
     /// Takes the value of the entry out of the map, and returns it.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn remove(self) -> V {
         self.stack.remove()
     }
@@ -1361,7 +1361,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(count["a"], 3u);
     /// ```
     /// The key must have the same ordering before or after `.to_owned()` is called.
-    #[stable]
+    #[unstable = "precise API still under development"]
     pub fn entry<'a>(&'a mut self, mut key: K) -> Entry<'a, K, V> {
         // same basic logic of `swap` and `pop`, blended together
         let mut stack = stack::PartialSearchStack::new(self);
