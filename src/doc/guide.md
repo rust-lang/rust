@@ -1653,7 +1653,7 @@ for e in a.iter() {
 You can access a particular element of an array with **subscript notation**:
 
 ```{rust}
-let names = ["Graydon", "Brian", "Niko"]; // names: [&str, 3]
+let names = ["Graydon", "Brian", "Niko"]; // names: [&str; 3]
 
 println!("The second name is: {}", names[1]);
 ```
