@@ -23,10 +23,9 @@
 //! implemented using unsafe code. In that case, you may want to embed
 //! some of the marker types below into your type.
 
-
+#![stable]
 
 use clone::Clone;
-
 
 /// Types able to be transferred across task boundaries.
 #[unstable = "will be overhauled with new lifetime rules; see RFC 458"]
