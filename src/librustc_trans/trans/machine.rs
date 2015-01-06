@@ -43,8 +43,10 @@ pub fn llsize_of_alloc(cx: &CrateContext, ty: Type) -> llsize {
 
 // Returns, as near as we can figure, the "real" size of a type. As in, the
 // bits in this number of bytes actually carry data related to the datum
-// with the type. Not junk, padding, accidentally-damaged words, or
-// whatever. Rounds up to the nearest byte though, so if you have a 1-bit
+// with the type. Not junk, accidentally-damaged words, or whatever.
+// Note that padding of the type will be included for structs, but not for the
+// other types (i.e. SIMD types).
+// Rounds up to the nearest byte though, so if you have a 1-bit
 // value, we return 1 here, not 0. Most of rustc works in bytes. Be warned
 // that LLVM *does* distinguish between e.g. a 1-bit value and an 8-bit value
 // at the codegen level! In general you should prefer `llbitsize_of_real`
