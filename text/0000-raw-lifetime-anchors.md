@@ -46,7 +46,7 @@ impl Outer {
     fn inner_str(&self) -> &[u8] {
         unsafe {
             let p = ffi::outer_get_inner_str(&self.raw);
-	    let s = std::slice::from_raw_buf(p, libc::strlen(p));
+            let s = std::slice::from_raw_buf(p, libc::strlen(p));
             std::mem::copy_lifetime(self, s)
         }
     }
