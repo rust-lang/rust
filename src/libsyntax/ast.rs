@@ -195,28 +195,12 @@ impl Name {
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;
 
-#[cfg(stage0)]
-impl<S: Encoder<E>, E> Encodable<S, E> for Ident {
-    fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(token::get_ident(*self).get())
-    }
-}
-
-#[cfg(not(stage0))]
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_str(token::get_ident(*self).get())
     }
 }
 
-#[cfg(stage0)]
-impl<D: Decoder<E>, E> Decodable<D, E> for Ident {
-    fn decode(d: &mut D) -> Result<Ident, E> {
-        Ok(str_to_ident(try!(d.read_str()).index(&FullRange)))
-    }
-}
-
-#[cfg(not(stage0))]
 impl Decodable for Ident {
     fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
         Ok(str_to_ident(try!(d.read_str()).index(&FullRange)))

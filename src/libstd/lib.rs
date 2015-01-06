@@ -104,42 +104,24 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, globs, linkage, thread_local, asm)]
-#![feature(default_type_params, phase, lang_items, unsafe_destructor)]
+#![feature(linkage, thread_local, asm)]
+#![feature(phase, lang_items, unsafe_destructor)]
 #![feature(slicing_syntax, unboxed_closures)]
-#![feature(old_orphan_check)]
-#![feature(associated_types)]
 
 // Don't link to std. We are std.
 #![no_std]
 
 #![deny(missing_docs)]
 
-#![reexport_test_harness_main = "test_main"]
-
-#[cfg(all(test, stage0))]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(all(test, not(stage0)))]
+#[cfg(test)]
 #[macro_use]
 extern crate log;
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate core;
-
-#[cfg(not(stage0))]
 #[macro_use]
 #[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
-    unreachable, unimplemented, write, writeln)]
+                 unreachable, unimplemented, write, writeln)]
 extern crate core;
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate "collections" as core_collections;
-
-#[cfg(not(stage0))]
 #[macro_use]
 #[macro_reexport(vec)]
 extern crate "collections" as core_collections;
@@ -190,18 +172,10 @@ pub use unicode::char;
 
 /* Exported macros */
 
-#[cfg(stage0)]
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
-pub mod macros_stage0;
-
-#[cfg(not(stage0))]
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod macros;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod bitflags;
 
 mod rtdeps;
@@ -214,18 +188,15 @@ pub mod prelude;
 /* Primitive types */
 
 #[path = "num/float_macros.rs"]
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 mod float_macros;
 
 #[path = "num/int_macros.rs"]
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 mod int_macros;
 
 #[path = "num/uint_macros.rs"]
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;
@@ -253,8 +224,7 @@ pub mod num;
 
 /* Runtime and platform support */
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod thread_local;
 
 pub mod dynamic_lib;

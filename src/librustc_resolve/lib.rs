@@ -16,26 +16,11 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(globs, phase, slicing_syntax)]
+#![feature(slicing_syntax)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(associated_types)]
-#![feature(old_orphan_check)]
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate log;
-
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate syntax;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate syntax;
+#[macro_use] extern crate log;
+#[macro_use] extern crate syntax;
 
 extern crate rustc;
 

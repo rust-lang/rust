@@ -40,8 +40,7 @@ use prelude::v1::*;
 
 use cell::UnsafeCell;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod scoped;
 
 // Sure wish we had macro hygiene, no?

@@ -19,9 +19,6 @@ use option::Option::{Some, None};
 use num::Int;
 use result::Result::Ok;
 
-// NOTE: for old macros; remove after the next snapshot
-#[cfg(stage0)] use result::Result::Err;
-
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
 /// The number of nanoseconds in a millisecond.

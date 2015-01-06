@@ -142,16 +142,9 @@ macro_rules! debug_assert_eq {
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert_eq!($($arg)*); })
 }
 
-#[cfg(stage0)]
-#[macro_export]
-macro_rules! try {
-    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-}
-
 /// Short circuiting evaluation on Err
 ///
 /// `libstd` contains a more general `try!` macro that uses `FromError`.
-#[cfg(not(stage0))]
 #[macro_export]
 macro_rules! try {
     ($e:expr) => ({

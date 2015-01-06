@@ -23,8 +23,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(globs, slicing_syntax)]
-#![feature(associated_types)]
+#![feature(slicing_syntax)]
 
 pub use self::Piece::*;
 pub use self::Position::*;

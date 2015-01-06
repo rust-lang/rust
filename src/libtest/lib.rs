@@ -30,11 +30,7 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-
-#![allow(unknown_features)]
-#![feature(asm, globs, slicing_syntax)]
-#![feature(unboxed_closures, default_type_params)]
-#![feature(old_orphan_check)]
+#![feature(asm, slicing_syntax)]
 
 extern crate getopts;
 extern crate regex;

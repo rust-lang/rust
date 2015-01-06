@@ -44,7 +44,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("non_ascii_idents", Active),
     ("thread_local", Active),
     ("link_args", Active),
-    ("phase", Active),  // NOTE(stage0): switch to Removed after next snapshot
+    ("phase", Removed),
     ("plugin_registrar", Active),
     ("log_syntax", Active),
     ("trace_macros", Active),

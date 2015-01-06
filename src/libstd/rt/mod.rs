@@ -39,8 +39,7 @@ pub use alloc::heap;
 pub mod backtrace;
 
 // Internals
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 mod macros;
 
 // These should be refactored/moved/made private over time

@@ -16,12 +16,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-
-#![allow(unknown_features)]
-#![feature(globs, macro_rules, phase, slicing_syntax)]
-#![feature(unboxed_closures)]
-#![feature(old_orphan_check)]
-#![feature(associated_types)]
+#![feature(slicing_syntax)]
 
 extern crate arena;
 extern crate getopts;
@@ -32,14 +27,7 @@ extern crate rustc_driver;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;
-
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate log;
+#[macro_use] extern crate log;
 
 extern crate "serialize" as rustc_serialize; // used by deriving
 
@@ -56,8 +44,7 @@ use rustc::session::search_paths::SearchPaths;
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod externalfiles;
 
 pub mod clean;
