@@ -211,7 +211,7 @@ fn get_enum_variant_types<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let rs = ExplicitRscope;
                 let input_tys: Vec<_> = args.iter().map(|va| ccx.to_ty(&rs, &*va.ty)).collect();
-                ty::mk_ctor_fn(tcx, variant_def_id, input_tys[], enum_ty)
+                ty::mk_ctor_fn(tcx, variant_def_id, input_tys.index(&FullRange), enum_ty)
             }
 
             ast::TupleVariantKind(_) => {
@@ -258,7 +258,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                                     ccx,
                                     trait_id,
                                     &trait_def.generics,
-                                    trait_items[],
+                                    trait_items.index(&FullRange),
                                     &m.id,
                                     &m.ident.name,
                                     &m.explicit_self,
@@ -272,7 +272,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                                     ccx,
                                     trait_id,
                                     &trait_def.generics,
-                                    trait_items[],
+                                    trait_items.index(&FullRange),
                                     &m.id,
                                     &m.pe_ident().name,
                                     m.pe_explicit_self(),
@@ -774,7 +774,7 @@ fn convert_struct<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                             local_def(field.node.id)].ty).collect();
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx,
                                                 local_def(ctor_id),
-                                                inputs[],
+                                                inputs.index(&FullRange),
                                                 selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
                 tcx.tcache.borrow_mut().insert(local_def(ctor_id),
@@ -815,7 +815,7 @@ fn get_trait_def<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
         ast_map::NodeItem(item) => trait_def_of_item(ccx, &*item),
         _ => {
             ccx.tcx.sess.bug(format!("get_trait_def({}): not an item",
-                                     trait_id.node)[])
+                                     trait_id.node).index(&FullRange))
         }
     }
 }
@@ -840,7 +840,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
         ref s => {
             tcx.sess.span_bug(
                 it.span,
-                format!("trait_def_of_item invoked on {}", s)[]);
+                format!("trait_def_of_item invoked on {}", s).index(&FullRange));
         }
     };
 
@@ -1025,8 +1025,8 @@ fn ty_generics_for_type_or_impl<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                                           -> ty::Generics<'tcx> {
     ty_generics(ccx,
                 subst::TypeSpace,
-                generics.lifetimes[],
-                generics.ty_params[],
+                generics.lifetimes.index(&FullRange),
+                generics.ty_params.index(&FullRange),
                 ty::Generics::empty(),
                 &generics.where_clause)
 }
@@ -1044,8 +1044,8 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
     let mut generics =
         ty_generics(ccx,
                     subst::TypeSpace,
-                    ast_generics.lifetimes[],
-                    ast_generics.ty_params[],
+                    ast_generics.lifetimes.index(&FullRange),
+                    ast_generics.ty_params.index(&FullRange),
                     ty::Generics::empty(),
                     &ast_generics.where_clause);
 
@@ -1130,8 +1130,8 @@ fn ty_generics_for_fn_or_method<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
     let early_lifetimes = resolve_lifetime::early_bound_lifetimes(generics);
     ty_generics(ccx,
                 subst::FnSpace,
-                early_lifetimes[],
-                generics.ty_params[],
+                early_lifetimes.index(&FullRange),
+                generics.ty_params.index(&FullRange),
                 base_generics,
                 &generics.where_clause)
 }
@@ -1318,7 +1318,7 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
     let param_ty = ty::ParamTy::new(space, index, param.ident.name);
     let bounds = compute_bounds(ccx,
                                 param_ty.to_ty(ccx.tcx),
-                                param.bounds[],
+                                param.bounds.index(&FullRange),
                                 SizedByDefault::Yes,
                                 param.span);
     let default = match param.default {
@@ -1399,7 +1399,7 @@ fn check_bounds_compatible<'tcx>(tcx: &ty::ctxt<'tcx>,
     if !param_bounds.builtin_bounds.contains(&ty::BoundSized) {
         ty::each_bound_trait_and_supertraits(
             tcx,
-            param_bounds.trait_bounds[],
+            param_bounds.trait_bounds.index(&FullRange),
             |trait_ref| {
                 let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id());
                 if trait_def.bounds.builtin_bounds.contains(&ty::BoundSized) {

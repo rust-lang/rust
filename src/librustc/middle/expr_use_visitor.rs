@@ -441,28 +441,12 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
 
             ast::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
-                match rhs.node {
-                    ast::ExprRange(ref start, ref end) => {
-                        // Hacked slicing syntax (KILLME).
-                        let args = match (start, end) {
-                            (&Some(ref e1), &Some(ref e2)) => vec![&**e1, &**e2],
-                            (&Some(ref e), &None) => vec![&**e],
-                            (&None, &Some(ref e)) => vec![&**e],
-                            (&None, &None) => Vec::new()
-                        };
-                        let overloaded =
-                            self.walk_overloaded_operator(expr, &**lhs, args, PassArgs::ByRef);
-                        assert!(overloaded);
-                    }
-                    _ => {
-                        if !self.walk_overloaded_operator(expr,
-                                                          &**lhs,
-                                                          vec![&**rhs],
-                                                          PassArgs::ByRef) {
-                            self.select_from_expr(&**lhs);
-                            self.consume_expr(&**rhs);
-                        }
-                    }
+                if !self.walk_overloaded_operator(expr,
+                                                  &**lhs,
+                                                  vec![&**rhs],
+                                                  PassArgs::ByRef) {
+                    self.select_from_expr(&**lhs);
+                    self.consume_expr(&**rhs);
                 }
             }
 
@@ -869,7 +853,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 format!("bad overloaded deref type {}",
-                                    method_ty.repr(self.tcx()))[])
+                                    method_ty.repr(self.tcx())).index(&FullRange))
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
@@ -1174,7 +1158,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                 let msg = format!("Pattern has unexpected type: {} and type {}",
                                                   def,
                                                   cmt_pat.ty.repr(tcx));
-                                tcx.sess.span_bug(pat.span, msg[])
+                                tcx.sess.span_bug(pat.span, msg.as_slice())
                             }
                         }
 
@@ -1191,7 +1175,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                 let msg = format!("Pattern has unexpected def: {} and type {}",
                                                   def,
                                                   cmt_pat.ty.repr(tcx));
-                                tcx.sess.span_bug(pat.span, msg[])
+                                tcx.sess.span_bug(pat.span, msg.index(&FullRange))
                             }
                         }
                     }

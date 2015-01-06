@@ -225,7 +225,7 @@ impl Target {
                 Some(val) => val,
                 None =>
                     handler.fatal((format!("Field {} in target specification is required", name))
-                                  [])
+                                  .index(&FullRange))
             }
         };
 
@@ -242,16 +242,18 @@ impl Target {
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(name[]).map(|o| o.as_string()
+                obj.find(name.index(&FullRange)).map(|o| o.as_string()
                                     .map(|s| base.options.$key_name = s.to_string()));
             } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(name[]).map(|o| o.as_boolean().map(|s| base.options.$key_name = s));
+                obj.find(name.index(&FullRange))
+                    .map(|o| o.as_boolean()
+                         .map(|s| base.options.$key_name = s));
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(name[]).map(|o| o.as_array()
+                obj.find(name.index(&FullRange)).map(|o| o.as_array()
                     .map(|v| base.options.$key_name = v.iter()
                         .map(|a| a.as_string().unwrap().to_string()).collect()
                         )
@@ -367,7 +369,7 @@ impl Target {
 
         let target_path = os::getenv("RUST_TARGET_PATH").unwrap_or(String::new());
 
-        let paths = os::split_paths(target_path[]);
+        let paths = os::split_paths(target_path.index(&FullRange));
         // FIXME 16351: add a sane default search path?
 
         for dir in paths.iter() {

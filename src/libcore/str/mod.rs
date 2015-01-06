@@ -26,7 +26,7 @@ use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
 use kinds::Sized;
 use mem;
 use num::Int;
-use ops::{Fn, FnMut};
+use ops::{Fn, FnMut, Index};
 use option::Option::{self, None, Some};
 use ptr::PtrExt;
 use raw::{Repr, Slice};
@@ -581,7 +581,7 @@ impl NaiveSearcher {
 
     fn next(&mut self, haystack: &[u8], needle: &[u8]) -> Option<(uint, uint)> {
         while self.position + needle.len() <= haystack.len() {
-            if haystack[self.position .. self.position + needle.len()] == needle {
+            if haystack.index(&(self.position .. self.position + needle.len())) == needle {
                 let match_pos = self.position;
                 self.position += needle.len(); // add 1 for all matches
                 return Some((match_pos, match_pos + needle.len()));
@@ -702,10 +702,10 @@ impl TwoWaySearcher {
         //
         // What's going on is we have some critical factorization (u, v) of the
         // needle, and we want to determine whether u is a suffix of
-        // v[..period]. If it is, we use "Algorithm CP1". Otherwise we use
+        // v.index(&(0..period)). If it is, we use "Algorithm CP1". Otherwise we use
         // "Algorithm CP2", which is optimized for when the period of the needle
         // is large.
-        if needle[..crit_pos] == needle[period.. period + crit_pos] {
+        if needle.index(&(0..crit_pos)) == needle.index(&(period.. period + crit_pos)) {
             TwoWaySearcher {
                 crit_pos: crit_pos,
                 period: period,
@@ -1119,25 +1119,32 @@ mod traits {
         }
     }
 
-    impl ops::Slice<uint, str> for str {
+    impl ops::Index<ops::Range<uint>> for str {
+        type Output = str;
         #[inline]
-        fn as_slice_<'a>(&'a self) -> &'a str {
+        fn index(&self, index: &ops::Range<uint>) -> &str {
+            self.slice(index.start, index.end)
+        }
+    }
+    impl ops::Index<ops::RangeTo<uint>> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, index: &ops::RangeTo<uint>) -> &str {
+            self.slice_to(index.end)
+        }
+    }
+    impl ops::Index<ops::RangeFrom<uint>> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
+            self.slice_from(index.start)
+        }
+    }
+    impl ops::Index<ops::FullRange> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, _index: &ops::FullRange) -> &str {
             self
-        }
-
-        #[inline]
-        fn slice_from_or_fail<'a>(&'a self, from: &uint) -> &'a str {
-            self.slice_from(*from)
-        }
-
-        #[inline]
-        fn slice_to_or_fail<'a>(&'a self, to: &uint) -> &'a str {
-            self.slice_to(*to)
-        }
-
-        #[inline]
-        fn slice_or_fail<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
-            self.slice(*from, *to)
         }
     }
 }
@@ -1406,13 +1413,13 @@ impl StrExt for str {
     #[inline]
     fn starts_with(&self, needle: &str) -> bool {
         let n = needle.len();
-        self.len() >= n && needle.as_bytes() == self.as_bytes()[..n]
+        self.len() >= n && needle.as_bytes() == self.as_bytes().index(&(0..n))
     }
 
     #[inline]
     fn ends_with(&self, needle: &str) -> bool {
         let (m, n) = (self.len(), needle.len());
-        m >= n && needle.as_bytes() == self.as_bytes()[m-n..]
+        m >= n && needle.as_bytes() == self.as_bytes().index(&((m-n)..))
     }
 
     #[inline]

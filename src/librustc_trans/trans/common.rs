@@ -218,7 +218,7 @@ pub fn gensym_name(name: &str) -> PathElem {
     let num = token::gensym(name).uint();
     // use one colon which will get translated to a period by the mangler, and
     // we're guaranteed that `num` is globally unique for this crate.
-    PathName(token::gensym(format!("{}:{}", name, num)[]))
+    PathName(token::gensym(format!("{}:{}", name, num).index(&FullRange)))
 }
 
 #[derive(Copy)]
@@ -546,7 +546,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             Some(v) => v.clone(),
             None => {
                 self.tcx().sess.bug(format!(
-                    "no def associated with node id {}", nid)[]);
+                    "no def associated with node id {}", nid).index(&FullRange));
             }
         }
     }
@@ -976,7 +976,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 span,
                 format!("Encountered error `{}` selecting `{}` during trans",
                         e.repr(tcx),
-                        trait_ref.repr(tcx))[])
+                        trait_ref.repr(tcx)).index(&FullRange))
         }
     };
 
@@ -1069,7 +1069,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
                 infcx.tcx.sess.span_bug(
                     span,
                     format!("Encountered errors `{}` fulfilling during trans",
-                            errors.repr(infcx.tcx))[]);
+                            errors.repr(infcx.tcx)).index(&FullRange));
             }
         }
     }
@@ -1109,7 +1109,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     if substs.types.any(|t| ty::type_needs_infer(*t)) {
         tcx.sess.bug(format!("type parameters for node {} include inference types: {}",
-                             node, substs.repr(tcx))[]);
+                             node, substs.repr(tcx)).index(&FullRange));
     }
 
     monomorphize::apply_param_substs(tcx,
@@ -1127,8 +1127,8 @@ pub fn langcall(bcx: Block,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => bcx.tcx().sess.span_fatal(span, msg[]),
-                None => bcx.tcx().sess.fatal(msg[]),
+                Some(span) => bcx.tcx().sess.span_fatal(span, msg.index(&FullRange)),
+                None => bcx.tcx().sess.fatal(msg.index(&FullRange)),
             }
         }
     }

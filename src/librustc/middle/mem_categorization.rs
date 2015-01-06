@@ -482,28 +482,20 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             Ok(self.cat_tup_field(expr, base_cmt, idx.node, expr_ty))
           }
 
-          ast::ExprIndex(ref base, ref idx) => {
-            match idx.node {
-                ast::ExprRange(..) => {
-                    // Slicing syntax special case (KILLME).
-                    Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
+          ast::ExprIndex(ref base, _) => {
+            let method_call = ty::MethodCall::expr(expr.id());
+            match self.typer.node_method_ty(method_call) {
+                Some(method_ty) => {
+                    // If this is an index implemented by a method call, then it will
+                    // include an implicit deref of the result.
+                    let ret_ty = ty::ty_fn_ret(method_ty).unwrap();
+                    self.cat_deref(expr,
+                                   self.cat_rvalue_node(expr.id(),
+                                                        expr.span(),
+                                                        ret_ty), 1, true)
                 }
-                _ => {
-                    let method_call = ty::MethodCall::expr(expr.id());
-                    match self.typer.node_method_ty(method_call) {
-                        Some(method_ty) => {
-                            // If this is an index implemented by a method call, then it will
-                            // include an implicit deref of the result.
-                            let ret_ty = ty::ty_fn_ret(method_ty).unwrap();
-                            self.cat_deref(expr,
-                                           self.cat_rvalue_node(expr.id(),
-                                                                expr.span(),
-                                                                ret_ty), 1, true)
-                        }
-                        None => {
-                            self.cat_index(expr, try!(self.cat_expr(&**base)))
-                        }
-                    }
+                None => {
+                    self.cat_index(expr, try!(self.cat_expr(&**base)))
                 }
             }
           }
@@ -594,7 +586,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           span,
                           format!("Upvar of non-closure {} - {}",
                                   fn_node_id,
-                                  ty.repr(self.tcx()))[]);
+                                  ty.repr(self.tcx())).index(&FullRange));
                   }
               }
           }

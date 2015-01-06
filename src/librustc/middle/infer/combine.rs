@@ -142,7 +142,7 @@ pub trait Combine<'tcx> : Sized {
                             for _ in a_regions.iter() {
                                 invariance.push(ty::Invariant);
                             }
-                            invariance[]
+                            invariance.index(&FullRange)
                         }
                     };
 
@@ -480,7 +480,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             format!("{}: bot and var types should have been handled ({},{})",
                     this.tag(),
                     a.repr(this.infcx().tcx),
-                    b.repr(this.infcx().tcx))[]);
+                    b.repr(this.infcx().tcx)).index(&FullRange));
       }
 
       (&ty::ty_err, _) | (_, &ty::ty_err) => {
@@ -856,7 +856,7 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     self.span,
                     format!("Encountered early bound region when generalizing: {}",
-                            r.repr(self.tcx()))[]);
+                            r.repr(self.tcx())).index(&FullRange));
             }
 
             // Always make a fresh region variable for skolemized regions;

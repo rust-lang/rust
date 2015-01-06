@@ -35,7 +35,7 @@ fn test_rbml<'a, 'b, A:
     let mut rbml_w = EBwriter::Encoder::new(&mut wr);
     a1.encode(&mut rbml_w);
 
-    let d: serialize::rbml::Doc<'a> = EBDoc::new(wr[]);
+    let d: serialize::rbml::Doc<'a> = EBDoc::new(&wr[]);
     let mut decoder: EBReader::Decoder<'a> = EBreader::Decoder::new(d);
     let a2: A = Decodable::decode(&mut decoder);
     assert!(*a1 == a2);

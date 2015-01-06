@@ -82,7 +82,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         while j > i && lines[j - 1].trim().is_empty() {
             j -= 1;
         }
-        return lines[i..j].iter().map(|x| (*x).clone()).collect();
+        return lines.index(&(i..j)).iter().map(|x| (*x).clone()).collect();
     }
 
     /// remove a "[ \t]*\*" block from each line, if possible
@@ -116,7 +116,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
 
         if can_trim {
             lines.iter().map(|line| {
-                line[i + 1..line.len()].to_string()
+                line.index(&((i + 1)..line.len())).to_string()
             }).collect()
         } else {
             lines
@@ -127,12 +127,12 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
     static ONLINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
     for prefix in ONLINERS.iter() {
         if comment.starts_with(*prefix) {
-            return comment[prefix.len()..].to_string();
+            return comment.index(&(prefix.len()..)).to_string();
         }
     }
 
     if comment.starts_with("/*") {
-        let lines = comment[3u..comment.len() - 2u]
+        let lines = comment.index(&(3u..(comment.len() - 2u)))
             .lines_any()
             .map(|s| s.to_string())
             .collect::<Vec<String> >();
@@ -187,7 +187,7 @@ fn read_line_comments(rdr: &mut StringReader, code_to_the_left: bool,
         let line = rdr.read_one_line_comment();
         debug!("{}", line);
         // Doc comments are not put in comments.
-        if is_doc_comment(line[]) {
+        if is_doc_comment(line.index(&FullRange)) {
             break;
         }
         lines.push(line);
@@ -224,10 +224,10 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<uint> {
 fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<String> ,
                                         s: String, col: CharPos) {
     let len = s.len();
-    let s1 = match all_whitespace(s[], col) {
+    let s1 = match all_whitespace(s.index(&FullRange), col) {
         Some(col) => {
             if col < len {
-                s[col..len].to_string()
+                s.index(&(col..len)).to_string()
             } else {
                 "".to_string()
             }
@@ -261,7 +261,7 @@ fn read_block_comment(rdr: &mut StringReader,
             rdr.bump();
             rdr.bump();
         }
-        if is_block_doc_comment(curr_line[]) {
+        if is_block_doc_comment(curr_line.index(&FullRange)) {
             return
         }
         assert!(!curr_line.contains_char('\n'));

@@ -77,7 +77,7 @@ pub fn trans_impl(ccx: &CrateContext,
         match *impl_item {
             ast::MethodImplItem(ref method) => {
                 if method.pe_generics().ty_params.len() == 0u {
-                    let trans_everywhere = attr::requests_inline(method.attrs[]);
+                    let trans_everywhere = attr::requests_inline(method.attrs.index(&FullRange));
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
                         let llfn = get_item_val(ccx, method.id);
                         trans_fn(ccx,
@@ -229,7 +229,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Here, in this call, which I've written with explicit UFCS
     // notation, the set of type parameters will be:
     //
-    //     rcvr_type: [] <-- nothing declared on the trait itself
+    //     rcvr_type: .index(&FullRange) <-- nothing declared on the trait itself
     //     rcvr_self: [Vec<int>] <-- the self type
     //     rcvr_method: [String] <-- method type parameter
     //
@@ -268,11 +268,11 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             //
             // Recall that we matched `<Vec<int> as Convert>`. Trait
             // resolution will have given us a substitution
-            // containing `impl_substs=[[T=int],[],[]]` (the type
+            // containing `impl_substs=[[T=int],.index(&FullRange),.index(&FullRange)]` (the type
             // parameters defined on the impl). We combine
             // that with the `rcvr_method` from before, which tells us
             // the type parameters from the *method*, to yield
-            // `callee_substs=[[T=int],[],[U=String]]`.
+            // `callee_substs=[[T=int],.index(&FullRange),[U=String]]`.
             let subst::SeparateVecsPerParamSpace {
                 types: impl_type,
                 selfs: impl_self,
@@ -290,7 +290,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         _ => {
             tcx.sess.bug(format!("static call to invalid vtable: {}",
-                                 vtbl.repr(tcx))[]);
+                                 vtbl.repr(tcx)).index(&FullRange));
         }
     }
 }
@@ -378,7 +378,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableParam(..) => {
             bcx.sess().bug(
                 format!("resolved vtable bad vtable {} in trans",
-                        vtable.repr(bcx.tcx()))[]);
+                        vtable.repr(bcx.tcx())).index(&FullRange));
         }
     }
 }
@@ -728,7 +728,7 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx.sess().bug(
                     format!("resolved vtable for {} to bad vtable {} in trans",
                             trait_ref.repr(bcx.tcx()),
-                            vtable.repr(bcx.tcx()))[]);
+                            vtable.repr(bcx.tcx())).index(&FullRange));
             }
         }
     });
@@ -760,7 +760,7 @@ pub fn make_vtable<I: Iterator<Item=ValueRef>>(ccx: &CrateContext,
     let components: Vec<_> = head.into_iter().chain(ptrs).collect();
 
     unsafe {
-        let tbl = C_struct(ccx, components[], false);
+        let tbl = C_struct(ccx, components.index(&FullRange), false);
         let sym = token::gensym("vtable");
         let buf = CString::from_vec(format!("vtable{}", sym.uint()).into_bytes());
         let vt_gvar = llvm::LLVMAddGlobal(ccx.llmod(), val_ty(tbl).to_ref(),
