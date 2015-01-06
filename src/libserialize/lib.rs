@@ -25,6 +25,7 @@ Core encoding and decoding interfaces.
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
 #![feature(old_impl_check)]
+#![cfg_attr(stage0, allow(unused_attributes))]
 
 // test harness access
 #[cfg(test)] extern crate test;

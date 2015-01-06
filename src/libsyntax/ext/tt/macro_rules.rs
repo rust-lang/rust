@@ -287,7 +287,7 @@ fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &NamedMatch, sp: Span) {
     // &MatchedNonterminal(NtTT(box TtDelimited(...))) = lhs`
     let matcher = match lhs {
         &MatchedNonterminal(NtTT(ref inner)) => match &**inner {
-            &TtDelimited(_, ref tts) => tts.tts[],
+            &TtDelimited(_, ref tts) => tts.tts.as_slice(),
             _ => cx.span_bug(sp, "wrong-structured lhs for follow check")
         },
         _ => cx.span_bug(sp, "wrong-structured lhs for follow check")
@@ -317,9 +317,12 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                     Some(&&TtToken(_, CloseDelim(_))) => follow.clone(),
                     Some(&&TtToken(_, ref tok)) => tok.clone(),
                     Some(&&TtSequence(sp, _)) => {
-                        cx.span_err(sp, format!("`${0}:{1}` is followed by a sequence \
-                                                 repetition, which is not allowed for `{1}` \
-                                                 fragments", name.as_str(), frag_spec.as_str())[]);
+                        cx.span_err(sp,
+                                    format!("`${0}:{1}` is followed by a \
+                                             sequence repetition, which is not \
+                                             allowed for `{1}` fragments",
+                                            name.as_str(), frag_spec.as_str())
+                                        .as_slice());
                         Eof
                     },
                     // die next iteration
@@ -337,7 +340,7 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                         cx.span_err(sp, format!("`${0}:{1}` is followed by `{2}`, which \
                                                  is not allowed for `{1}` fragments",
                                                  name.as_str(), frag_spec.as_str(),
-                                                 token_to_string(next))[]);
+                                                 token_to_string(next)).as_slice());
                         continue
                     },
                 }
@@ -351,11 +354,12 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                     Some(ref u) => {
                         let last = check_matcher(cx, seq.tts.iter(), u);
                         match last {
-                            // Since the delimiter isn't required after the last repetition, make
-                            // sure that the *next* token is sane. This doesn't actually compute
-                            // the FIRST of the rest of the matcher yet, it only considers single
-                            // tokens and simple NTs. This is imprecise, but conservatively
-                            // correct.
+                            // Since the delimiter isn't required after the last
+                            // repetition, make sure that the *next* token is
+                            // sane. This doesn't actually compute the FIRST of
+                            // the rest of the matcher yet, it only considers
+                            // single tokens and simple NTs. This is imprecise,
+                            // but conservatively correct.
                             Some((span, tok)) => {
                                 let fol = match tokens.peek() {
                                     Some(&&TtToken(_, ref tok)) => tok.clone(),
@@ -373,9 +377,9 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                             None => last,
                         }
                     },
-                    // If T has the form $(...)+ or $(...)*, run the algorithm on the contents with
-                    // F set to the token following the sequence. If it accepts, continue, else,
-                    // reject.
+                    // If T has the form $(...)+ or $(...)*, run the algorithm
+                    // on the contents with F set to the token following the
+                    // sequence. If it accepts, continue, else, reject.
                     None => {
                         let fol = match tokens.peek() {
                             Some(&&TtToken(_, ref tok)) => tok.clone(),
@@ -449,6 +453,7 @@ fn is_in_follow(cx: &ExtCtxt, tok: &Token, frag: &str) -> bool {
             // harmless
             true
         },
-        _ => cx.bug(format!("unrecognized builtin nonterminal {}", frag)[]),
+        _ => cx.bug(format!("unrecognized builtin nonterminal {}",
+                            frag).as_slice()),
     }
 }

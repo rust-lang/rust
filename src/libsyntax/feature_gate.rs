@@ -298,7 +298,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                         "the new orphan check rules will eventually be strictly enforced");
                 }
 
-                if attr::contains_name(i.attrs[],
+                if attr::contains_name(i.attrs.index(&FullRange),
                                        "old_impl_check") {
                     self.gate_feature("old_impl_check",
                                       i.span,

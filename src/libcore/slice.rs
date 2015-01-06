@@ -733,7 +733,7 @@ macro_rules! iterator {
 }
 
 macro_rules! make_slice {
-    ($t: ty -> $result: ty: $start: expr, $end: expr) => {{
+    ($t: ty => $result: ty: $start: expr, $end: expr) => {{
         let diff = $end as uint - $start as uint;
         let len = if mem::size_of::<T>() == 0 {
             diff
@@ -797,7 +797,7 @@ impl<'a, T> Iter<'a, T> {
     /// iterator can continue to be used while this exists.
     #[experimental]
     pub fn as_slice(&self) -> &'a [T] {
-        make_slice!(T -> &'a [T]: self.ptr, self.end)
+        make_slice!(T => &'a [T]: self.ptr, self.end)
     }
 }
 
@@ -876,7 +876,7 @@ impl<'a, T> ops::Index<ops::FullRange> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &[T] {
-        make_slice!(T -> &[T]: self.ptr, self.end)
+        make_slice!(T => &[T]: self.ptr, self.end)
     }
 }
 
@@ -909,7 +909,7 @@ impl<'a, T> ops::IndexMut<ops::FullRange> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
     fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
-        make_slice!(T -> &mut [T]: self.ptr, self.end)
+        make_slice!(T => &mut [T]: self.ptr, self.end)
     }
 }
 
@@ -923,7 +923,7 @@ impl<'a, T> IterMut<'a, T> {
     /// restricted lifetimes that do not consume the iterator.
     #[experimental]
     pub fn into_slice(self) -> &'a mut [T] {
-        make_slice!(T -> &'a mut [T]: self.ptr, self.end)
+        make_slice!(T => &'a mut [T]: self.ptr, self.end)
     }
 }
 

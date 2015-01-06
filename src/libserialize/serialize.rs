@@ -499,7 +499,7 @@ macro_rules! peel {
 /// Evaluates to the number of identifiers passed to it, for example: `count_idents!(a, b, c) == 3
 macro_rules! count_idents {
     () => { 0u };
-    ($_i:ident, $($rest:ident),*) => { 1 + count_idents!($($rest),*) }
+    ($_i:ident, $($rest:ident,)*) => { 1 + count_idents!($($rest,)*) }
 }
 
 macro_rules! tuple {
@@ -508,7 +508,7 @@ macro_rules! tuple {
         impl<$($name:Decodable),*> Decodable for ($($name,)*) {
             #[allow(non_snake_case)]
             fn decode<D: Decoder>(d: &mut D) -> Result<($($name,)*), D::Error> {
-                let len: uint = count_idents!($($name),*);
+                let len: uint = count_idents!($($name,)*);
                 d.read_tuple(len, |d| {
                     let mut i = 0;
                     let ret = ($(try!(d.read_tuple_arg({ i+=1; i-1 },
