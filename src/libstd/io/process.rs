@@ -705,7 +705,7 @@ impl Process {
                     Thread::spawn(move |:| {
                         let mut stream = stream;
                         tx.send(stream.read_to_end()).unwrap();
-                    }).detach();
+                    });
                 }
                 None => tx.send(Ok(Vec::new())).unwrap()
             }

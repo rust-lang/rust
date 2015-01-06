@@ -15,7 +15,7 @@ use std::thread::Thread;
 fn f(n: uint) {
     let mut i = 0u;
     while i < n {
-        let _ = Thread::spawn(move|| g()).join();
+        let _ = Thread::scoped(move|| g()).join();
         i += 1u;
     }
 }
@@ -33,5 +33,5 @@ fn main() {
     };
     let n = args[1].parse().unwrap();
     let mut i = 0u;
-    while i < n { Thread::spawn(move|| f(n) ).detach(); i += 1u; }
+    while i < n { Thread::spawn(move|| f(n) ); i += 1u; }
 }

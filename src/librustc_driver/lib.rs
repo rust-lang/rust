@@ -559,7 +559,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.spawn(move || { std::io::stdio::set_stderr(box w); f() }).join() {
+    match cfg.scoped(move || { std::io::stdio::set_stderr(box w); f() }).join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic

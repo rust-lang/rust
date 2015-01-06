@@ -17,5 +17,5 @@ use std::thread::Builder;
 
 pub fn main() {
     let mut t = Builder::new();
-    t.spawn(move|| ()).detach();
+    t.spawn(move|| ());
 }

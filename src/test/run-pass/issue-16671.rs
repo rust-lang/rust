@@ -24,5 +24,5 @@ pub fn main() {
     let mut stdin = std::io::stdin();
     Thread::spawn(move|| {
         let _ = stdin.read_to_end();
-    }).detach();
+    });
 }

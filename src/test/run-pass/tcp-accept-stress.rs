@@ -52,7 +52,7 @@ fn test() {
                 }
             }
             srv_tx.send(());
-        }).detach();
+        });
     }
 
     for _ in range(0, N) {
@@ -62,7 +62,7 @@ fn test() {
                 let _s = TcpStream::connect(addr).unwrap();
             }
             cli_tx.send(());
-        }).detach();
+        });
     }
     drop((cli_tx, srv_tx));
 

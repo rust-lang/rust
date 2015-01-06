@@ -33,10 +33,9 @@ impl Drop for B {
 }
 
 pub fn main() {
-    let ret = Thread::spawn(move|| {
+    let ret = Thread::scoped(move|| {
         let _a = A { b: B { foo: 3 } };
     }).join();
     assert!(ret.is_err());
     unsafe { assert!(dropped); }
 }
-

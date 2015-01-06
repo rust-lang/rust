@@ -26,7 +26,7 @@ fn periodical(n: int) -> Receiver<bool> {
                 Err(..) => break
             }
         }
-    }).detach();
+    });
     return port;
 }
 
@@ -41,7 +41,7 @@ fn integers() -> Receiver<int> {
             }
             i = i + 1;
         }
-    }).detach();
+    });
     return port;
 }
 
@@ -58,4 +58,3 @@ fn main() {
         }
     }
 }
-

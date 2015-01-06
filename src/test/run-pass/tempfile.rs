@@ -42,7 +42,7 @@ fn test_rm_tempdir() {
         tx.send(tmp.path().clone()).unwrap();
         panic!("panic to unwind past `tmp`");
     };
-    let _ = Thread::spawn(f).join();
+    let _ = Thread::scoped(f).join();
     let path = rx.recv().unwrap();
     assert!(!path.exists());
 
@@ -52,7 +52,7 @@ fn test_rm_tempdir() {
         let _tmp = tmp;
         panic!("panic to unwind past `tmp`");
     };
-    let _ = Thread::spawn(f).join();
+    let _ = Thread::scoped(f).join();
     assert!(!path.exists());
 
     let path;
@@ -60,7 +60,7 @@ fn test_rm_tempdir() {
         let f = move|:| {
             TempDir::new("test_rm_tempdir").unwrap()
         };
-        let tmp = Thread::spawn(f).join().ok().expect("test_rm_tmdir");
+        let tmp = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
         assert!(path.exists());
     }
@@ -84,7 +84,7 @@ fn test_rm_tempdir_close() {
         tmp.close();
         panic!("panic when unwinding past `tmp`");
     };
-    let _ = Thread::spawn(f).join();
+    let _ = Thread::scoped(f).join();
     let path = rx.recv().unwrap();
     assert!(!path.exists());
 
@@ -95,7 +95,7 @@ fn test_rm_tempdir_close() {
         tmp.close();
         panic!("panic when unwinding past `tmp`");
     };
-    let _ = Thread::spawn(f).join();
+    let _ = Thread::scoped(f).join();
     assert!(!path.exists());
 
     let path;
@@ -103,7 +103,7 @@ fn test_rm_tempdir_close() {
         let f = move|:| {
             TempDir::new("test_rm_tempdir").unwrap()
         };
-        let tmp = Thread::spawn(f).join().ok().expect("test_rm_tmdir");
+        let tmp = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
         assert!(path.exists());
         tmp.close();
@@ -177,7 +177,7 @@ pub fn test_rmdir_recursive_ok() {
 }
 
 pub fn dont_double_panic() {
-    let r: Result<(), _> = Thread::spawn(move|| {
+    let r: Result<(), _> = Thread::scoped(move|| {
         let tmpdir = TempDir::new("test").unwrap();
         // Remove the temporary directory so that TempDir sees
         // an error on drop
