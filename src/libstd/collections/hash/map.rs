@@ -920,8 +920,8 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> HashMap<K, V, H> {
         }
     }
 
-    #[stable]
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    #[unstable = "precise API still being fleshed out"]
     pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V>
     {
         // Gotta resize now.
@@ -1320,22 +1320,22 @@ pub struct Drain<'a, K: 'a, V: 'a> {
     >
 }
 
-#[stable]
 /// A view into a single occupied location in a HashMap
+#[unstable = "precise API still being fleshed out"]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
 }
 
-#[stable]
 /// A view into a single empty location in a HashMap
+#[unstable = "precise API still being fleshed out"]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     hash: SafeHash,
     key: K,
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
 }
 
-#[stable]
 /// A view into a single location in a map, which may be vacant or occupied
+#[unstable = "precise API still being fleshed out"]
 pub enum Entry<'a, K: 'a, V: 'a> {
     /// An occupied Entry
     Occupied(OccupiedEntry<'a, K, V>),
@@ -1406,8 +1406,8 @@ impl<'a, K: 'a, V: 'a> Iterator for Drain<'a, K, V> {
     }
 }
 
+#[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
 impl<'a, K, V> Entry<'a, K, V> {
-    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, K, V>> {
         match self {
@@ -1417,27 +1417,24 @@ impl<'a, K, V> Entry<'a, K, V> {
     }
 }
 
+#[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
-    #[stable]
     /// Gets a reference to the value in the entry
     pub fn get(&self) -> &V {
         self.elem.read().1
     }
 
-    #[stable]
     /// Gets a mutable reference to the value in the entry
     pub fn get_mut(&mut self) -> &mut V {
         self.elem.read_mut().1
     }
 
-    #[stable]
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself
     pub fn into_mut(self) -> &'a mut V {
         self.elem.into_mut_refs().1
     }
 
-    #[stable]
     /// Sets the value of the entry, and returns the entry's old value
     pub fn insert(&mut self, mut value: V) -> V {
         let old_value = self.get_mut();
@@ -1445,15 +1442,14 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         value
     }
 
-    #[stable]
     /// Takes the value out of the entry, and returns it
     pub fn remove(self) -> V {
         pop_internal(self.elem).1
     }
 }
 
+#[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
-    #[stable]
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it
     pub fn insert(self, value: V) -> &'a mut V {
