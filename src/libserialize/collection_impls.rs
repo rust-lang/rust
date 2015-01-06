@@ -156,6 +156,7 @@ impl<
     }
 }
 
+#[old_impl_check]
 impl<
     K: Encodable + Hash<X> + Eq,
     V: Encodable,
@@ -175,6 +176,7 @@ impl<
     }
 }
 
+#[old_impl_check]
 impl<
     K: Decodable + Hash<S> + Eq,
     V: Decodable,
@@ -195,6 +197,7 @@ impl<
     }
 }
 
+#[old_impl_check]
 impl<
     T: Encodable + Hash<X> + Eq,
     X,
@@ -212,6 +215,7 @@ impl<
     }
 }
 
+#[old_impl_check]
 impl<
     T: Decodable + Hash<S> + Eq,
     S,

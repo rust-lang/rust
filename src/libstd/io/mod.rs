@@ -1603,6 +1603,7 @@ pub struct IncomingConnections<'a, A: ?Sized +'a> {
     inc: &'a mut A,
 }
 
+#[old_impl_check]
 impl<'a, T, A: ?Sized + Acceptor<T>> Iterator for IncomingConnections<'a, A> {
     type Item = IoResult<T>;
 

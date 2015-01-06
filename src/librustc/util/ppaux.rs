@@ -1350,6 +1350,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for ty::Binder<T> {
     }
 }
 
+#[old_impl_check]
 impl<'tcx, S, H, K, V> Repr<'tcx> for HashMap<K,V,H>
     where K : Hash<S> + Eq + Repr<'tcx>,
           V : Repr<'tcx>,

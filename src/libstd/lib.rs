@@ -107,6 +107,7 @@
 #![feature(linkage, thread_local, asm)]
 #![feature(phase, lang_items, unsafe_destructor)]
 #![feature(slicing_syntax, unboxed_closures)]
+#![feature(old_impl_check)]
 
 // Don't link to std. We are std.
 #![no_std]
