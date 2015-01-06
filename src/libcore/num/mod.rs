@@ -336,7 +336,7 @@ pub trait Int
     /// ```rust
     /// use std::num::Int;
     ///
-    /// assert_eq!(2i.pow(4), 16);
+    /// assert_eq!(2.pow(4), 16);
     /// ```
     #[inline]
     fn pow(self, mut exp: uint) -> Self {

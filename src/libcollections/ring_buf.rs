@@ -184,7 +184,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(3i);
+    /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
     /// assert_eq!(buf.get(1).unwrap(), &4);
@@ -207,7 +207,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(3i);
+    /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
     /// match buf.get_mut(1) {
@@ -241,7 +241,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(3i);
+    /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
     /// buf.swap(0, 2);
@@ -493,7 +493,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(5i);
+    /// buf.push_back(5);
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// let b: &[_] = &[&5, &3, &4];
@@ -516,7 +516,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(5i);
+    /// buf.push_back(5);
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// for num in buf.iter_mut() {
@@ -595,7 +595,7 @@ impl<T> RingBuf<T> {
     ///
     /// let mut v = RingBuf::new();
     /// assert_eq!(v.len(), 0);
-    /// v.push_back(1i);
+    /// v.push_back(1);
     /// assert_eq!(v.len(), 1);
     /// ```
     #[stable]
@@ -610,7 +610,7 @@ impl<T> RingBuf<T> {
     ///
     /// let mut v = RingBuf::new();
     /// assert!(v.is_empty());
-    /// v.push_front(1i);
+    /// v.push_front(1);
     /// assert!(!v.is_empty());
     /// ```
     #[stable]
@@ -625,7 +625,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut v = RingBuf::new();
-    /// v.push_back(1i);
+    /// v.push_back(1);
     /// assert_eq!(v.drain().next(), Some(1));
     /// assert!(v.is_empty());
     /// ```
@@ -645,7 +645,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut v = RingBuf::new();
-    /// v.push_back(1i);
+    /// v.push_back(1);
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
@@ -666,9 +666,9 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
-    /// assert_eq!(d.front(), Some(&1i));
+    /// d.push_back(1);
+    /// d.push_back(2);
+    /// assert_eq!(d.front(), Some(&1));
     /// ```
     #[stable]
     pub fn front(&self) -> Option<&T> {
@@ -686,13 +686,13 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front_mut(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push_back(1);
+    /// d.push_back(2);
     /// match d.front_mut() {
-    ///     Some(x) => *x = 9i,
+    ///     Some(x) => *x = 9,
     ///     None => (),
     /// }
-    /// assert_eq!(d.front(), Some(&9i));
+    /// assert_eq!(d.front(), Some(&9));
     /// ```
     #[stable]
     pub fn front_mut(&mut self) -> Option<&mut T> {
@@ -710,9 +710,9 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
-    /// assert_eq!(d.back(), Some(&2i));
+    /// d.push_back(1);
+    /// d.push_back(2);
+    /// assert_eq!(d.back(), Some(&2));
     /// ```
     #[stable]
     pub fn back(&self) -> Option<&T> {
@@ -730,13 +730,13 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push_back(1);
+    /// d.push_back(2);
     /// match d.back_mut() {
-    ///     Some(x) => *x = 9i,
+    ///     Some(x) => *x = 9,
     ///     None => (),
     /// }
-    /// assert_eq!(d.back(), Some(&9i));
+    /// assert_eq!(d.back(), Some(&9));
     /// ```
     #[stable]
     pub fn back_mut(&mut self) -> Option<&mut T> {
@@ -753,11 +753,11 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut d = RingBuf::new();
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push_back(1);
+    /// d.push_back(2);
     ///
-    /// assert_eq!(d.pop_front(), Some(1i));
-    /// assert_eq!(d.pop_front(), Some(2i));
+    /// assert_eq!(d.pop_front(), Some(1));
+    /// assert_eq!(d.pop_front(), Some(2));
     /// assert_eq!(d.pop_front(), None);
     /// ```
     #[stable]
@@ -779,9 +779,9 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut d = RingBuf::new();
-    /// d.push_front(1i);
-    /// d.push_front(2i);
-    /// assert_eq!(d.front(), Some(&2i));
+    /// d.push_front(1);
+    /// d.push_front(2);
+    /// assert_eq!(d.front(), Some(&2));
     /// ```
     #[stable]
     pub fn push_front(&mut self, t: T) {
@@ -803,7 +803,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(1i);
+    /// buf.push_back(1);
     /// buf.push_back(3);
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
@@ -829,7 +829,7 @@ impl<T> RingBuf<T> {
     ///
     /// let mut buf = RingBuf::new();
     /// assert_eq!(buf.pop_back(), None);
-    /// buf.push_back(1i);
+    /// buf.push_back(1);
     /// buf.push_back(3);
     /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
@@ -926,7 +926,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(10i);
+    /// buf.push_back(10);
     /// buf.push_back(12);
     /// buf.insert(1,11);
     /// assert_eq!(Some(&11), buf.get(1));
@@ -1128,9 +1128,9 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(5i);
-    /// buf.push_back(10i);
-    /// buf.push_back(12i);
+    /// buf.push_back(5);
+    /// buf.push_back(10);
+    /// buf.push_back(12);
     /// buf.push_back(15);
     /// buf.remove(2);
     /// assert_eq!(Some(&15), buf.get(2));
