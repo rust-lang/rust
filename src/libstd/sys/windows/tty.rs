@@ -32,13 +32,15 @@ use iter::repeat;
 use libc::types::os::arch::extra::LPCVOID;
 use libc::{c_int, HANDLE, LPDWORD, DWORD, LPVOID};
 use libc::{get_osfhandle, CloseHandle};
+use mem;
 use ptr;
 use str::from_utf8;
 use super::c::{ENABLE_ECHO_INPUT, ENABLE_EXTENDED_FLAGS};
 use super::c::{ENABLE_INSERT_MODE, ENABLE_LINE_INPUT};
 use super::c::{ENABLE_PROCESSED_INPUT, ENABLE_QUICK_EDIT_MODE};
-use super::c::{ERROR_ILLEGAL_CHARACTER};
+use super::c::{ERROR_ILLEGAL_CHARACTER, CONSOLE_SCREEN_BUFFER_INFO};
 use super::c::{ReadConsoleW, WriteConsoleW, GetConsoleMode, SetConsoleMode};
+use super::c::{GetConsoleScreenBufferInfo};
 
 fn invalid_encoding() -> IoError {
     IoError {
@@ -146,12 +148,12 @@ impl TTY {
     }
 
     pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
-        // FIXME
-        // Get console buffer via CreateFile with CONOUT$
-        // Make a CONSOLE_SCREEN_BUFFER_INFO
-        // Call GetConsoleScreenBufferInfo
-        // Maybe call GetLargestConsoleWindowSize instead?
-        Err(super::unimpl())
+        let mut info: CONSOLE_SCREEN_BUFFER_INFO = unsafe { mem::zeroed() };
+        match unsafe { GetConsoleScreenBufferInfo(self.handle, &mut info as *mut _) } {
+            0 => Err(super::last_error()),
+            _ => Ok(((info.srWindow.Right + 1 - info.srWindow.Left) as int,
+                     (info.srWindow.Bottom + 1 - info.srWindow.Top) as int)),
+        }
     }
 
     // Let us magically declare this as a TTY
