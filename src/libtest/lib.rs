@@ -95,7 +95,11 @@ pub mod stats;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
+<<<<<<< HEAD
 #[derive(Clone, PartialEq, Eq, Hash)]
+=======
+#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+>>>>>>> core: split into fmt::Show and fmt::String
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(String)
@@ -108,9 +112,9 @@ impl TestName {
         }
     }
 }
-impl Show for TestName {
+impl fmt::String for TestName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_slice().fmt(f)
+        fmt::String::fmt(self.as_slice(), f)
     }
 }
 
@@ -257,13 +261,13 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
     let opts =
         match parse_opts(args) {
             Some(Ok(o)) => o,
-            Some(Err(msg)) => panic!("{}", msg),
+            Some(Err(msg)) => panic!("{:?}", msg),
             None => return
         };
     match run_tests_console(&opts, tests) {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
-        Err(e) => panic!("io error when running tests: {}", e),
+        Err(e) => panic!("io error when running tests: {:?}", e),
     }
 }
 
@@ -410,7 +414,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         let s = matches.free[0].as_slice();
         match Regex::new(s) {
             Ok(re) => Some(re),
-            Err(e) => return Some(Err(format!("could not parse /{}/: {}", s, e)))
+            Err(e) => return Some(Err(format!("could not parse /{}/: {:?}", s, e)))
         }
     } else {
         None
@@ -793,7 +797,7 @@ impl<T: Writer> ConsoleTestState<T> {
         let ratchet_success = match *ratchet_metrics {
             None => true,
             Some(ref pth) => {
-                try!(self.write_plain(format!("\nusing metrics ratchet: {}\n",
+                try!(self.write_plain(format!("\nusing metrics ratchet: {:?}\n",
                                               pth.display()).as_slice()));
                 match ratchet_pct {
                     None => (),
@@ -912,7 +916,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
         None => (),
         Some(ref pth) => {
             try!(st.metrics.save(pth));
-            try!(st.write_plain(format!("\nmetrics saved to: {}",
+            try!(st.write_plain(format!("\nmetrics saved to: {:?}",
                                           pth.display()).as_slice()));
         }
     }
@@ -1206,7 +1210,7 @@ impl MetricMap {
         let mut decoder = json::Decoder::new(value);
         MetricMap(match Decodable::decode(&mut decoder) {
             Ok(t) => t,
-            Err(e) => panic!("failure decoding JSON: {}", e)
+            Err(e) => panic!("failure decoding JSON: {:?}", e)
         })
     }
 

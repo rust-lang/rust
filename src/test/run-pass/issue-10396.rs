@@ -15,7 +15,7 @@ enum Foo<'s> {
 
 fn f(arr: &[&Foo]) {
     for &f in arr.iter() {
-        println!("{}", f);
+        println!("{:?}", f);
     }
 }
 

@@ -47,7 +47,7 @@ pub enum Abi {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Copy, PartialEq)]
+#[derive(Copy, PartialEq, Show)]
 pub enum Architecture {
     X86,
     X86_64,
@@ -121,11 +121,23 @@ impl Abi {
 
 impl fmt::Show for Abi {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for Abi {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "\"{}\"", self.name())
     }
 }
 
 impl fmt::Show for Os {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for Os {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             OsLinux => "linux".fmt(f),

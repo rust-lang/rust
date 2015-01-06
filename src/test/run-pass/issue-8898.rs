@@ -11,7 +11,7 @@
 #![feature(slicing_syntax)]
 
 fn assert_repr_eq<T: std::fmt::Show>(obj : T, expected : String) {
-    assert_eq!(expected, format!("{}", obj));
+    assert_eq!(expected, format!("{:?}", obj));
 }
 
 pub fn main() {
@@ -20,7 +20,7 @@ pub fn main() {
     let x  = [(), ()];
     let slice = &x[0..1];
 
-    assert_repr_eq(&abc[], "[1, 2, 3]".to_string());
+    assert_repr_eq(&abc[], "[1i, 2i, 3i]".to_string());
     assert_repr_eq(&tf[], "[true, false]".to_string());
     assert_repr_eq(&x[], "[(), ()]".to_string());
     assert_repr_eq(slice, "[()]".to_string());

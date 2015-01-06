@@ -47,10 +47,10 @@
 //! let version = parse_version(&[1, 2, 3, 4]);
 //! match version {
 //!     Ok(v) => {
-//!         println!("working with version: {}", v);
+//!         println!("working with version: {:?}", v);
 //!     }
 //!     Err(e) => {
-//!         println!("error parsing header: {}", e);
+//!         println!("error parsing header: {:?}", e);
 //!     }
 //! }
 //! ```
@@ -743,7 +743,7 @@ impl<T, E: Show> Result<T, E> {
         match self {
             Ok(t) => t,
             Err(e) =>
-                panic!("called `Result::unwrap()` on an `Err` value: {}", e)
+                panic!("called `Result::unwrap()` on an `Err` value: {:?}", e)
         }
     }
 }
@@ -773,7 +773,7 @@ impl<T: Show, E> Result<T, E> {
     pub fn unwrap_err(self) -> E {
         match self {
             Ok(t) =>
-                panic!("called `Result::unwrap_err()` on an `Ok` value: {}", t),
+                panic!("called `Result::unwrap_err()` on an `Ok` value: {:?}", t),
             Err(e) => e
         }
     }

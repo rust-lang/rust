@@ -1690,7 +1690,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn tag(&self) -> String {
-        format!("{}", self as *const FnCtxt)
+        format!("{:?}", self as *const FnCtxt)
     }
 
     pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> Ty<'tcx> {
@@ -1886,7 +1886,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn register_unsize_obligations(&self,
                                    span: Span,
                                    unsize: &ty::UnsizeKind<'tcx>) {
-        debug!("register_unsize_obligations: unsize={}", unsize);
+        debug!("register_unsize_obligations: unsize={:?}", unsize);
 
         match *unsize {
             ty::UnsizeLength(..) => {}
@@ -2392,7 +2392,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
 {
     let tcx = fcx.tcx();
-    debug!("try_index_step(expr={}, base_expr.id={}, adjusted_ty={}, adjustment={}, index_ty={})",
+    debug!("try_index_step(expr={}, base_expr.id={}, adjusted_ty={}, adjustment={:?}, index_ty={})",
            expr.repr(tcx),
            base_expr.repr(tcx),
            adjusted_ty.repr(tcx),
@@ -2651,7 +2651,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         err_args(fcx.tcx(), supplied_arg_count)
     };
 
-    debug!("check_argument_types: formal_tys={}",
+    debug!("check_argument_types: formal_tys={:?}",
            formal_tys.iter().map(|t| fcx.infcx().ty_to_string(*t)).collect::<Vec<String>>());
 
     // Check the arguments.
@@ -3101,7 +3101,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     }
                 };
 
-                debug!("adjusted_ty={} adjustment={}",
+                debug!("adjusted_ty={} adjustment={:?}",
                        adj_ty.repr(fcx.tcx()),
                        adjustment);
 
@@ -5052,7 +5052,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
     assert_eq!(segment_spaces.len(), path.segments.len());
 
-    debug!("segment_spaces={}", segment_spaces);
+    debug!("segment_spaces={:?}", segment_spaces);
 
     // Next, examine the definition, and determine how many type
     // parameters we expect from each space.
@@ -5276,7 +5276,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               .take_while(|d| d.default.is_none())
                               .count();
 
-        debug!("adjust_type_parameters(space={}, \
+        debug!("adjust_type_parameters(space={:?}, \
                provided_len={}, \
                desired_len={}, \
                required_len={})",

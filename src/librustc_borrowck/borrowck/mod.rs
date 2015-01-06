@@ -586,7 +586,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     }
                     r => {
                         self.tcx.sess.bug(format!("MoveExpr({}) maps to \
-                                                   {}, not Expr",
+                                                   {:?}, not Expr",
                                                   the_move.id,
                                                   r).index(&FullRange))
                     }
@@ -624,7 +624,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     }
                     r => {
                         self.tcx.sess.bug(format!("Captured({}) maps to \
-                                                   {}, not Expr",
+                                                   {:?}, not Expr",
                                                   the_move.id,
                                                   r).index(&FullRange))
                     }
@@ -1005,7 +1005,7 @@ impl DataFlowOperator for LoanDataFlowOperator {
 
 impl<'tcx> Repr<'tcx> for Loan<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("Loan_{}({}, {}, {}-{}, {})",
+        format!("Loan_{}({}, {:?}, {:?}-{:?}, {})",
                  self.index,
                  self.loan_path.repr(tcx),
                  self.kind,

@@ -265,7 +265,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                                  ty::mt{ty: ty, mutbl: mt_b.mutbl});
                             try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
-                                    AutoPtr(AutoUnsize({})))", kind);
+                                    AutoPtr(AutoUnsize({:?})))", kind);
                             Ok(Some(AdjustDerefRef(AutoDerefRef {
                                 autoderefs: 1,
                                 autoref: Some(ty::AutoPtr(r_borrow, mt_b.mutbl,
@@ -288,7 +288,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                                  ty::mt{ty: ty, mutbl: mt_b.mutbl});
                             try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
-                                    AutoPtr(AutoUnsize({})))", kind);
+                                    AutoPtr(AutoUnsize({:?})))", kind);
                             Ok(Some(AdjustDerefRef(AutoDerefRef {
                                 autoderefs: 1,
                                 autoref: Some(ty::AutoUnsafe(mt_b.mutbl,
@@ -306,7 +306,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             let ty = ty::mk_uniq(self.tcx(), ty);
                             try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
-                                    AutoUnsizeUniq({}))", kind);
+                                    AutoUnsizeUniq({:?}))", kind);
                             Ok(Some(AdjustDerefRef(AutoDerefRef {
                                 autoderefs: 1,
                                 autoref: Some(ty::AutoUnsizeUniq(kind))
@@ -328,7 +328,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                  a: Ty<'tcx>,
                  ty_b: Ty<'tcx>)
                  -> Option<(Ty<'tcx>, ty::UnsizeKind<'tcx>)> {
-        debug!("unsize_ty(a={}, ty_b={})", a, ty_b.repr(self.tcx()));
+        debug!("unsize_ty(a={:?}, ty_b={})", a, ty_b.repr(self.tcx()));
 
         let tcx = self.tcx();
 
@@ -406,7 +406,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     {
         let tcx = self.tcx();
 
-        debug!("coerce_borrowed_object(a={}, b={}, b_mutbl={})",
+        debug!("coerce_borrowed_object(a={}, b={}, b_mutbl={:?})",
                a.repr(tcx),
                b.repr(tcx), b_mutbl);
 
@@ -426,7 +426,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     {
         let tcx = self.tcx();
 
-        debug!("coerce_unsafe_object(a={}, b={}, b_mutbl={})",
+        debug!("coerce_unsafe_object(a={}, b={}, b_mutbl={:?})",
                a.repr(tcx),
                b.repr(tcx), b_mutbl);
 
@@ -449,7 +449,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match a.sty {
             ty::ty_rptr(_, ty::mt{ty, mutbl}) => match ty.sty {
                 ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
-                    debug!("mutbl={} b_mutbl={}", mutbl, b_mutbl);
+                    debug!("mutbl={:?} b_mutbl={:?}", mutbl, b_mutbl);
                     let tr = ty::mk_trait(tcx, principal.clone(), bounds.clone());
                     try!(self.subtype(mk_ty(tr), b));
                     Ok(Some(AdjustDerefRef(AutoDerefRef {

@@ -1613,11 +1613,11 @@ impl<A> Extend<A> for RingBuf<A> {
 #[stable]
 impl<T: fmt::Show> fmt::Show for RingBuf<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "["));
+        try!(write!(f, "RingBuf ["));
 
         for (i, e) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}", *e));
+            try!(write!(f, "{:?}", *e));
         }
 
         write!(f, "]")

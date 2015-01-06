@@ -190,14 +190,14 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
                                                   ti: msys_terminfo(),
                                                   num_colors: 8} as Box<Terminal<T>+Send>);
             }
-            debug!("error finding terminfo entry: {}", entry.err().unwrap());
+            debug!("error finding terminfo entry: {:?}", entry.err().unwrap());
             return None;
         }
 
         let mut file = entry.unwrap();
         let ti = parse(&mut file, false);
         if ti.is_err() {
-            debug!("error parsing terminfo entry: {}", ti.unwrap_err());
+            debug!("error parsing terminfo entry: {:?}", ti.unwrap_err());
             return None;
         }
 

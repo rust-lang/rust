@@ -539,7 +539,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                    expr_ty: Ty<'tcx>,
                    def: def::Def)
                    -> McResult<cmt<'tcx>> {
-        debug!("cat_def: id={} expr={} def={}",
+        debug!("cat_def: id={} expr={} def={:?}",
                id, expr_ty.repr(self.tcx()), def);
 
         match def {
@@ -852,7 +852,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         };
         let method_ty = self.typer.node_method_ty(method_call);
 
-        debug!("cat_deref: method_call={} method_ty={}",
+        debug!("cat_deref: method_call={:?} method_ty={:?}",
                method_call, method_ty.map(|ty| ty.repr(self.tcx())));
 
         let base_cmt = match method_ty {
@@ -1447,7 +1447,7 @@ impl<'tcx> cmt_<'tcx> {
 
 impl<'tcx> Repr<'tcx> for cmt_<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("{{{} id:{} m:{} ty:{}}}",
+        format!("{{{} id:{} m:{:?} ty:{}}}",
                 self.cat.repr(tcx),
                 self.id,
                 self.mutbl,
@@ -1462,7 +1462,7 @@ impl<'tcx> Repr<'tcx> for categorization<'tcx> {
             cat_rvalue(..) |
             cat_local(..) |
             cat_upvar(..) => {
-                format!("{}", *self)
+                format!("{:?}", *self)
             }
             cat_deref(ref cmt, derefs, ptr) => {
                 format!("{}-{}{}->", cmt.cat.repr(tcx), ptr_sigil(ptr), derefs)

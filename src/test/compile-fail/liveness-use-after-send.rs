@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn send<T:Send + std::fmt::Show>(ch: _chan<T>, data: T) {
-    println!("{}", ch);
-    println!("{}", data);
+    println!("{:?}", ch);
+    println!("{:?}", data);
     panic!();
 }
 

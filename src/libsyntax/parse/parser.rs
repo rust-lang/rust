@@ -488,7 +488,7 @@ impl<'a> Parser<'a> {
     /// followed by some token from the set edible + inedible.  Recover
     /// from anticipated input errors, discarding erroneous characters.
     pub fn commit_expr(&mut self, e: &Expr, edible: &[token::Token], inedible: &[token::Token]) {
-        debug!("commit_expr {}", e);
+        debug!("commit_expr {:?}", e);
         if let ExprPath(..) = e.node {
             // might be unit-struct construction; check for recoverableinput error.
             let mut expected = edible.iter().map(|x| x.clone()).collect::<Vec<_>>();
@@ -5054,7 +5054,7 @@ impl<'a> Parser<'a> {
                 attrs = tmp;
                 first = false;
             }
-            debug!("parse_mod_items: parse_item_or_view_item(attrs={})",
+            debug!("parse_mod_items: parse_item_or_view_item(attrs={:?})",
                    attrs);
             match self.parse_item_or_view_item(attrs,
                                                true /* macros allowed */) {
@@ -5191,7 +5191,7 @@ impl<'a> Parser<'a> {
                                              format!("file not found for module `{}`",
                                                      mod_name).index(&FullRange),
                                              format!("name the file either {} or {} inside \
-                                                     the directory {}",
+                                                     the directory {:?}",
                                                      default_path_str,
                                                      secondary_path_str,
                                                      dir_path.display()).index(&FullRange));

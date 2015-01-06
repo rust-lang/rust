@@ -214,7 +214,7 @@ use unicode::str::Utf16Item;
 use Encodable;
 
 /// Represents a json value
-#[derive(Clone, PartialEq, PartialOrd)]
+#[derive(Clone, PartialEq, PartialOrd, Show)]
 pub enum Json {
     I64(i64),
     U64(u64),
@@ -331,7 +331,7 @@ fn io_error_to_error(io: io::IoError) -> ParserError {
 
 impl std::error::Error for DecoderError {
     fn description(&self) -> &str { "decoder error" }
-    fn detail(&self) -> Option<std::string::String> { Some(self.to_string()) }
+    fn detail(&self) -> Option<std::string::String> { Some(format!("{:?}", self)) }
 }
 
 pub type EncodeResult = fmt::Result;
@@ -1890,7 +1890,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
         match self.token {
             None => {}
             Some(Error(e)) => { return Err(e); }
-            ref tok => { panic!("unexpected token {}", tok.clone()); }
+            ref tok => { panic!("unexpected token {:?}", tok.clone()); }
         }
         result
     }
@@ -2005,7 +2005,7 @@ macro_rules! expect {
         match $e {
             Json::Null => Ok(()),
             other => Err(ExpectedError("Null".to_string(),
-                                       format!("{}", other)))
+                                       format!("{:?}", other)))
         }
     });
     ($e:expr, $t:ident) => ({
@@ -2013,7 +2013,7 @@ macro_rules! expect {
             Json::$t(v) => Ok(v),
             other => {
                 Err(ExpectedError(stringify!($t).to_string(),
-                                  format!("{}", other)))
+                                  format!("{:?}", other)))
             }
         }
     })
@@ -2025,20 +2025,20 @@ macro_rules! read_primitive {
             match self.pop() {
                 Json::I64(f) => match num::cast(f) {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
+                    None => Err(ExpectedError("Number".to_string(), format!("{:?}", f))),
                 },
                 Json::U64(f) => match num::cast(f) {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
+                    None => Err(ExpectedError("Number".to_string(), format!("{:?}", f))),
                 },
-                Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
+                Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{:?}", f))),
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
                 Json::String(s) => match s.parse() {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_string(), s)),
                 },
-                value => Err(ExpectedError("Number".to_string(), format!("{}", value))),
+                value => Err(ExpectedError("Number".to_string(), format!("{:?}", value))),
             }
         }
     }
@@ -2078,7 +2078,7 @@ impl ::Decoder for Decoder {
                 }
             },
             Json::Null => Ok(f64::NAN),
-            value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
+            value => Err(ExpectedError("Number".to_string(), format!("{:?}", value)))
         }
     }
 
@@ -2096,7 +2096,7 @@ impl ::Decoder for Decoder {
                 _ => ()
             }
         }
-        Err(ExpectedError("single character string".to_string(), format!("{}", s)))
+        Err(ExpectedError("single character string".to_string(), format!("{:?}", s)))
     }
 
     fn read_str(&mut self) -> DecodeResult<string::String> {
@@ -2119,7 +2119,7 @@ impl ::Decoder for Decoder {
                 let n = match o.remove(&"variant".to_string()) {
                     Some(Json::String(s)) => s,
                     Some(val) => {
-                        return Err(ExpectedError("String".to_string(), format!("{}", val)))
+                        return Err(ExpectedError("String".to_string(), format!("{:?}", val)))
                     }
                     None => {
                         return Err(MissingFieldError("variant".to_string()))
@@ -2132,7 +2132,7 @@ impl ::Decoder for Decoder {
                         }
                     },
                     Some(val) => {
-                        return Err(ExpectedError("Array".to_string(), format!("{}", val)))
+                        return Err(ExpectedError("Array".to_string(), format!("{:?}", val)))
                     }
                     None => {
                         return Err(MissingFieldError("fields".to_string()))
@@ -2141,7 +2141,7 @@ impl ::Decoder for Decoder {
                 n
             }
             json => {
-                return Err(ExpectedError("String or Object".to_string(), format!("{}", json)))
+                return Err(ExpectedError("String or Object".to_string(), format!("{:?}", json)))
             }
         };
         let idx = match names.iter().position(|n| *n == name.index(&FullRange)) {
@@ -2440,7 +2440,7 @@ impl<'a, 'b> fmt::Writer for FormatShim<'a, 'b> {
     }
 }
 
-impl fmt::Show for Json {
+impl fmt::String for Json {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2449,7 +2449,7 @@ impl fmt::Show for Json {
     }
 }
 
-impl<'a> fmt::Show for PrettyJson<'a> {
+impl<'a> fmt::String for PrettyJson<'a> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2458,7 +2458,15 @@ impl<'a> fmt::Show for PrettyJson<'a> {
     }
 }
 
+#[cfg(stage0)]
+//NOTE(stage0): remove impl after snapshot
 impl<'a, T: Encodable> fmt::Show for AsJson<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a, T: Encodable> fmt::String for AsJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2475,7 +2483,7 @@ impl<'a, T> AsPrettyJson<'a, T> {
     }
 }
 
-impl<'a, T: Encodable> fmt::Show for AsPrettyJson<'a, T> {
+impl<'a, T: Encodable> fmt::String for AsPrettyJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -3141,9 +3149,9 @@ mod tests {
             Ok(json) => Decodable::decode(&mut Decoder::new(json))
         };
         match res {
-            Ok(_) => panic!("`{}` parsed & decoded ok, expecting error `{}`",
+            Ok(_) => panic!("`{:?}` parsed & decoded ok, expecting error `{:?}`",
                               to_parse, expected),
-            Err(ParseError(e)) => panic!("`{}` is not valid json: {}",
+            Err(ParseError(e)) => panic!("`{:?}` is not valid json: {:?}",
                                            to_parse, e),
             Err(e) => {
                 assert_eq!(e, expected);
@@ -3354,7 +3362,7 @@ mod tests {
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
         let json_str = from_utf8(mem_buf.index(&FullRange)).unwrap();
         match from_str(json_str) {
-            Err(_) => panic!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             _ => {} // it parsed and we are good to go
         }
     }
@@ -3370,7 +3378,7 @@ mod tests {
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
         let json_str = from_utf8(mem_buf.index(&FullRange)).unwrap();
         match from_str(json_str) {
-            Err(_) => panic!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             _ => {} // it parsed and we are good to go
         }
     }
@@ -3433,7 +3441,7 @@ mod tests {
         use Decodable;
         let json_str = "{\"1\":true}";
         let json_obj = match from_str(json_str) {
-            Err(_) => panic!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
@@ -3446,7 +3454,7 @@ mod tests {
         use Decodable;
         let json_str = "{\"a\":true}";
         let json_obj = match from_str(json_str) {
-            Err(_) => panic!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
@@ -3465,7 +3473,7 @@ mod tests {
             };
             let (ref expected_evt, ref expected_stack) = expected[i];
             if !parser.stack().is_equal_to(expected_stack.as_slice()) {
-                panic!("Parser stack is not equal to {}", expected_stack);
+                panic!("Parser stack is not equal to {:?}", expected_stack);
             }
             assert_eq!(&evt, expected_evt);
             i+=1;

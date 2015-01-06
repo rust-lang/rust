@@ -29,7 +29,7 @@ impl fmt::Show for Foo {
 pub fn main() {
     Thread::spawn(move|| {
         let mut f = Foo(Cell::new(0));
-        println!("{}", f);
+        println!("{:?}", f);
         let Foo(ref mut f) = f;
         assert!(f.get() == 1);
     }).join().ok().unwrap();

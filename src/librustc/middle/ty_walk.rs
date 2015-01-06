@@ -95,7 +95,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     type Item = Ty<'tcx>;
 
     fn next(&mut self) -> Option<Ty<'tcx>> {
-        debug!("next(): stack={}", self.stack);
+        debug!("next(): stack={:?}", self.stack);
         match self.stack.pop() {
             None => {
                 return None;
@@ -103,7 +103,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
             Some(ty) => {
                 self.last_subtree = self.stack.len();
                 self.push_subtypes(ty);
-                debug!("next: stack={}", self.stack);
+                debug!("next: stack={:?}", self.stack);
                 Some(ty)
             }
         }

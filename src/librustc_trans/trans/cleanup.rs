@@ -227,7 +227,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                           bcx: Block<'blk, 'tcx>,
                                           custom_scope: CustomScopeIndex)
                                           -> Block<'blk, 'tcx> {
-        debug!("pop_and_trans_custom_cleanup_scope({})", custom_scope);
+        debug!("pop_and_trans_custom_cleanup_scope({:?})", custom_scope);
         assert!(self.is_valid_to_pop_custom_scope(custom_scope));
 
         let scope = self.pop_scope();
@@ -265,7 +265,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             ptr: val,
         };
 
-        debug!("schedule_lifetime_end({}, val={})",
+        debug!("schedule_lifetime_end({:?}, val={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val));
 
@@ -286,7 +286,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             zero: false
         };
 
-        debug!("schedule_drop_mem({}, val={}, ty={})",
+        debug!("schedule_drop_mem({:?}, val={}, ty={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                ty.repr(self.ccx.tcx()));
@@ -308,7 +308,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             zero: true
         };
 
-        debug!("schedule_drop_and_zero_mem({}, val={}, ty={}, zero={})",
+        debug!("schedule_drop_and_zero_mem({:?}, val={}, ty={}, zero={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                ty.repr(self.ccx.tcx()),
@@ -332,7 +332,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             zero: false
         };
 
-        debug!("schedule_drop_immediate({}, val={}, ty={})",
+        debug!("schedule_drop_immediate({:?}, val={}, ty={:?})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                ty.repr(self.ccx.tcx()));
@@ -348,7 +348,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                            content_ty: Ty<'tcx>) {
         let drop = box FreeValue { ptr: val, heap: heap, content_ty: content_ty };
 
-        debug!("schedule_free_value({}, val={}, heap={})",
+        debug!("schedule_free_value({:?}, val={}, heap={:?})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                heap);
@@ -365,7 +365,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                            heap: Heap) {
         let drop = box FreeSlice { ptr: val, size: size, align: align, heap: heap };
 
-        debug!("schedule_free_slice({}, val={}, heap={})",
+        debug!("schedule_free_slice({:?}, val={}, heap={:?})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                heap);
@@ -549,7 +549,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
     fn trans_cleanups_to_exit_scope(&'blk self,
                                     label: EarlyExitLabel)
                                     -> BasicBlockRef {
-        debug!("trans_cleanups_to_exit_scope label={} scopes={}",
+        debug!("trans_cleanups_to_exit_scope label={:?} scopes={}",
                label, self.scopes_len());
 
         let orig_scopes_len = self.scopes_len();
@@ -675,7 +675,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
             self.push_scope(scope);
         }
 
-        debug!("trans_cleanups_to_exit_scope: prev_llbb={}", prev_llbb);
+        debug!("trans_cleanups_to_exit_scope: prev_llbb={:?}", prev_llbb);
 
         assert_eq!(self.scopes_len(), orig_scopes_len);
         prev_llbb
@@ -1018,7 +1018,7 @@ pub fn temporary_scope(tcx: &ty::ctxt,
     match tcx.region_maps.temporary_scope(id) {
         Some(scope) => {
             let r = AstScope(scope.node_id());
-            debug!("temporary_scope({}) = {}", id, r);
+            debug!("temporary_scope({}) = {:?}", id, r);
             r
         }
         None => {
@@ -1032,7 +1032,7 @@ pub fn var_scope(tcx: &ty::ctxt,
                  id: ast::NodeId)
                  -> ScopeId {
     let r = AstScope(tcx.region_maps.var_scope(id).node_id());
-    debug!("var_scope({}) = {}", id, r);
+    debug!("var_scope({}) = {:?}", id, r);
     r
 }
 

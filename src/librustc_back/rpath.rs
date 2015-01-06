@@ -61,10 +61,10 @@ fn get_rpaths<F, G>(mut config: RPathConfig<F, G>, libs: &[Path]) -> Vec<String>
     F: FnOnce() -> Path,
     G: FnMut(&Path) -> Result<Path, IoError>,
 {
-    debug!("output: {}", config.out_filename.display());
+    debug!("output: {:?}", config.out_filename.display());
     debug!("libs:");
     for libpath in libs.iter() {
-        debug!("    {}", libpath.display());
+        debug!("    {:?}", libpath.display());
     }
 
     // Use relative paths to the libraries. Binaries can be moved

@@ -111,7 +111,7 @@ macro_rules! assert_eq {
                 if !((*left_val == *right_val) &&
                      (*right_val == *left_val)) {
                     panic!("assertion failed: `(left == right) && (right == left)` \
-                           (left: `{}`, right: `{}`)", *left_val, *right_val)
+                           (left: `{:?}`, right: `{:?}`)", *left_val, *right_val)
                 }
             }
         }

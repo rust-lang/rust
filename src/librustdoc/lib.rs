@@ -445,7 +445,7 @@ fn json_input(input: &str) -> Result<Output, String> {
         }
     };
     match json::from_reader(&mut input) {
-        Err(s) => Err(s.to_string()),
+        Err(s) => Err(format!("{:?}", s)),
         Ok(Json::Object(obj)) => {
             let mut obj = obj;
             // Make sure the schema is what we expect
@@ -505,7 +505,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     let crate_json_str = format!("{}", json::as_json(&krate));
     let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,
-        Err(e) => panic!("Rust generated JSON is invalid: {}", e)
+        Err(e) => panic!("Rust generated JSON is invalid: {:?}", e)
     };
 
     json.insert("crate".to_string(), crate_json);

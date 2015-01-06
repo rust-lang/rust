@@ -64,7 +64,7 @@ pub fn indent<R, F>(op: F) -> R where
     // to make debug output more readable.
     debug!(">>");
     let r = op();
-    debug!("<< (Result = {})", r);
+    debug!("<< (Result = {:?})", r);
     r
 }
 

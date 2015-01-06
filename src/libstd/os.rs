@@ -93,7 +93,7 @@ pub const TMPBUF_SZ : uint = 1000u;
 ///
 /// // We assume that we are in a valid directory.
 /// let current_working_directory = os::getcwd().unwrap();
-/// println!("The current directory is {}", current_working_directory.display());
+/// println!("The current directory is {:?}", current_working_directory.display());
 /// ```
 pub fn getcwd() -> IoResult<Path> {
     sys::os::getcwd()
@@ -934,7 +934,7 @@ impl fmt::Show for MapError {
 
 impl Error for MapError {
     fn description(&self) -> &str { "memory map error" }
-    fn detail(&self) -> Option<String> { Some(self.to_string()) }
+    fn detail(&self) -> Option<String> { Some(format!("{:?}", self)) }
 }
 
 impl FromError<MapError> for Box<Error> {

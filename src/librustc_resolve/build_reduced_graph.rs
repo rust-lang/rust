@@ -845,7 +845,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                            name: Name,
                            new_parent: &Rc<Module>) {
         debug!("(building reduced graph for \
-                external crate) building external def, priv {}",
+                external crate) building external def, priv {:?}",
                vis);
         let is_public = vis == ast::Public;
         let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
@@ -989,7 +989,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
           DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
           DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
-            panic!("didn't expect `{}`", def);
+            panic!("didn't expect `{:?}`", def);
           }
         }
     }

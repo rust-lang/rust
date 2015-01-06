@@ -120,6 +120,14 @@ impl Svh {
 
 impl fmt::Show for Svh {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        //NOTE(stage0): uncomment after snapshot
+        //write!(f, "Svh {{ {} }}", self.as_str())
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for Svh {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(self.as_str())
     }
 }

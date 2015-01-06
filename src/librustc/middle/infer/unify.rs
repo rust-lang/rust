@@ -129,7 +129,7 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
     pub fn new_key(&mut self, value: V) -> K {
         let index = self.values.push(Root(value, 0));
         let k = UnifyKey::from_index(index);
-        debug!("{}: created new key: {}",
+        debug!("{}: created new key: {:?}",
                UnifyKey::tag(None::<K>),
                k);
         k

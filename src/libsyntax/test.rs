@@ -194,7 +194,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             if !self.cx.path.is_empty() {
                 self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
             } else {
-                debug!("pushing nothing, sym: {}", sym);
+                debug!("pushing nothing, sym: {:?}", sym);
                 self.cx.toplevel_reexport = Some(sym);
             }
         }
