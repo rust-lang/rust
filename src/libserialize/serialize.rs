@@ -499,7 +499,7 @@ macro_rules! peel {
 /// Evaluates to the number of identifiers passed to it, for example: `count_idents!(a, b, c) == 3
 macro_rules! count_idents {
     () => { 0u };
-    ($_i:ident $(, $rest:ident)*) => { 1 + count_idents!($($rest),*) }
+    ($_i:ident, $($rest:ident),*) => { 1 + count_idents!($($rest),*) }
 }
 
 macro_rules! tuple {
