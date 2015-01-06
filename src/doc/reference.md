@@ -4316,73 +4316,28 @@ fine-grained control is desired over the output format of a Rust crate.
 
 *TODO*.
 
-# Appendix: Influences and further references
+# Appendix: Influences
 
-## Influences
+Rust is not a particularly original language, with design elements coming from
+a wide range of sources. Some of these are listed below (including elements
+that have since been removed):
 
->  The essential problem that must be solved in making a fault-tolerant
->  software system is therefore that of fault-isolation. Different programmers
->  will write different modules, some modules will be correct, others will have
->  errors. We do not want the errors in one module to adversely affect the
->  behaviour of a module which does not have any errors.
->
->  &mdash; Joe Armstrong
-
->  In our approach, all data is private to some process, and processes can
->  only communicate through communications channels. *Security*, as used
->  in this paper, is the property which guarantees that processes in a system
->  cannot affect each other except by explicit communication.
->
->  When security is absent, nothing which can be proven about a single module
->  in isolation can be guaranteed to hold when that module is embedded in a
->  system [...]
->
->  &mdash; Robert Strom and Shaula Yemini
-
->  Concurrent and applicative programming complement each other. The
->  ability to send messages on channels provides I/O without side effects,
->  while the avoidance of shared data helps keep concurrent processes from
->  colliding.
->
->  &mdash; Rob Pike
-
-Rust is not a particularly original language. It may however appear unusual by
-contemporary standards, as its design elements are drawn from a number of
-"historical" languages that have, with a few exceptions, fallen out of favour.
-Five prominent lineages contribute the most, though their influences have come
-and gone during the course of Rust's development:
-
-* The NIL (1981) and Hermes (1990) family. These languages were developed by
-  Robert Strom, Shaula Yemini, David Bacon and others in their group at IBM
-  Watson Research Center (Yorktown Heights, NY, USA).
-
-* The Erlang (1987) language, developed by Joe Armstrong, Robert Virding, Claes
-  Wikstr&ouml;m, Mike Williams and others in their group at the Ericsson Computer
-  Science Laboratory (&Auml;lvsj&ouml;, Stockholm, Sweden) .
-
-* The Sather (1990) language, developed by Stephen Omohundro, Chu-Cheow Lim,
-  Heinz Schmidt and others in their group at The International Computer
-  Science Institute of the University of California, Berkeley (Berkeley, CA,
-  USA).
-
-* The Newsqueak (1988), Alef (1995), and Limbo (1996) family. These
-  languages were developed by Rob Pike, Phil Winterbottom, Sean Dorward and
-  others in their group at Bell Labs Computing Sciences Research Center
-  (Murray Hill, NJ, USA).
-
-* The Napier (1985) and Napier88 (1988) family. These languages were
-  developed by Malcolm Atkinson, Ron Morrison and others in their group at
-  the University of St. Andrews (St. Andrews, Fife, UK).
-
-Additional specific influences can be seen from the following languages:
-
-* The structural algebraic types and compilation manager of SML.
-* The attribute and assembly systems of C#.
-* The references and deterministic destructor system of C++.
-* The memory region systems of the ML Kit and Cyclone.
-* The typeclass system of Haskell.
-* The lexical identifier rule of Python.
-* The block syntax of Ruby.
+* SML, OCaml: algebraic datatypes, pattern matching, type inference,
+  semicolon statement separation
+* C++: references, RAII, smart pointers, move semantics, monomorphisation,
+  memory model
+* ML Kit, Cyclone: region based memory management
+* Haskell (GHC): typeclasses, type families
+* Newsqueak, Alef, Limbo: channels, concurrency
+* Erlang: message passing, task failure, ~~linked task failure~~,
+  ~~lightweight concurrency~~
+* Swift: optional bindings
+* Scheme: hygienic macros
+* C#: attributes
+* Ruby: ~~block syntax~~
+* NIL, Hermes: ~~typestate~~
+* [Unicode Annex #31](http://www.unicode.org/reports/tr31/): identifier and
+  pattern syntax
 
 [ffi]: guide-ffi.html
 [plugin]: guide-plugin.html
