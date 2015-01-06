@@ -13,8 +13,8 @@
 use thread::Thread;
 use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 use sync::Arc;
-use kinds::{Sync, Send};
-use kinds::marker::{NoSend, NoSync};
+use markers::{Sync, Send};
+use markers::{NoSend, NoSync};
 use mem;
 use clone::Clone;
 

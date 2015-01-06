@@ -12,7 +12,7 @@ use core::cmp::PartialEq;
 use core::fmt::Show;
 use core::num::{NumCast, cast};
 use core::ops::{Add, Sub, Mul, Div, Rem};
-use core::kinds::Copy;
+use core::markers::Copy;
 
 #[cfg_attr(stage0, macro_escape)]
 #[cfg_attr(not(stage0), macro_use)]

@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::markers;
 
 struct invariant<'a> {
-    marker: marker::InvariantLifetime<'a>
+    marker: markers::InvariantLifetime<'a>
 }
 
 fn to_same_lifetime<'r>(bi: invariant<'r>) {

@@ -10,7 +10,7 @@
 
 pub use self::VarValue::*;
 
-use std::kinds::marker;
+use std::markers;
 
 use middle::ty::{expected_found, IntVarValue};
 use middle::ty::{self, Ty};
@@ -78,7 +78,7 @@ pub struct UnificationTable<K,V> {
 /// made during the snapshot may either be *committed* or *rolled back*.
 pub struct Snapshot<K> {
     // Link snapshot to the key type `K` of the table.
-    marker: marker::CovariantType<K>,
+    marker: markers::CovariantType<K>,
     snapshot: sv::Snapshot,
 }
 
@@ -108,7 +108,7 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
     /// Starts a new snapshot. Each snapshot must be either
     /// rolled back or committed in a "LIFO" (stack) order.
     pub fn snapshot(&mut self) -> Snapshot<K> {
-        Snapshot { marker: marker::CovariantType::<K>,
+        Snapshot { marker: markers::CovariantType::<K>,
                    snapshot: self.values.start_snapshot() }
     }
 

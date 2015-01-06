@@ -16,7 +16,7 @@ use hash;
 use io::Writer;
 use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map};
-use kinds::Sized;
+use markers::Sized;
 use option::Option::{self, Some, None};
 use slice::{AsSlice, Split, SliceExt, SliceConcatExt};
 use str::{self, FromStr, StrExt};

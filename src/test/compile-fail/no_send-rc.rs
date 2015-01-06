@@ -15,6 +15,6 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Rc::new(5i);
     bar(x);
-    //~^ ERROR `core::kinds::Send` is not implemented
-    //~^^ ERROR `core::kinds::Send` is not implemented
+    //~^ ERROR `core::markers::Send` is not implemented
+    //~^^ ERROR `core::markers::Send` is not implemented
 }

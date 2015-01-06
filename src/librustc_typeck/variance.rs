@@ -402,8 +402,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
 struct ConstraintContext<'a, 'tcx: 'a> {
     terms_cx: TermsContext<'a, 'tcx>,
 
-    // These are the def-id of the std::kinds::marker::InvariantType,
-    // std::kinds::marker::InvariantLifetime, and so on. The arrays
+    // These are the def-id of the std::markers::InvariantType,
+    // std::markers::InvariantLifetime, and so on. The arrays
     // are indexed by the `ParamKind` (type, lifetime, self). Note
     // that there are no marker types for self, so the entries for
     // self are always None.

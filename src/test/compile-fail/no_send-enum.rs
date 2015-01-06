@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::markers;
 
 enum Foo {
-    A(marker::NoSend)
+    A(markers::NoSend)
 }
 
 fn bar<T: Send>(_: T) {}
 
 fn main() {
-    let x = Foo::A(marker::NoSend);
+    let x = Foo::A(markers::NoSend);
     bar(x);
-    //~^ ERROR `core::kinds::Send` is not implemented
+    //~^ ERROR `core::markers::Send` is not implemented
 }

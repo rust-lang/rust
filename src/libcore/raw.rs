@@ -18,7 +18,7 @@
 //!
 //! Their definition should always match the ABI defined in `rustc::back::abi`.
 
-use kinds::Copy;
+use markers::Copy;
 use mem;
 
 /// The representation of a Rust slice

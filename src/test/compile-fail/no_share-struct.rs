@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::markers;
 
-struct Foo { a: int, m: marker::NoSync }
+struct Foo { a: int, m: markers::NoSync }
 
 fn bar<T: Sync>(_: T) {}
 
 fn main() {
-    let x = Foo { a: 5, m: marker::NoSync };
+    let x = Foo { a: 5, m: markers::NoSync };
     bar(x);
-    //~^ ERROR the trait `core::kinds::Sync` is not implemented
+    //~^ ERROR the trait `core::markers::Sync` is not implemented
 }

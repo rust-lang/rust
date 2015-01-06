@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use kinds::marker;
+use markers;
 use ops::{Deref, DerefMut};
 use sync::poison::{self, TryLockError, TryLockResult, LockResult};
 use sys_common::mutex as sys;
@@ -166,7 +166,7 @@ pub struct MutexGuard<'a, T: 'a> {
     __lock: &'a StaticMutex,
     __data: &'a UnsafeCell<T>,
     __poison: poison::Guard,
-    __marker: marker::NoSend,
+    __marker: markers::NoSend,
 }
 
 /// Static initialization of a mutex. This constant can be used to initialize
@@ -286,7 +286,7 @@ impl<'mutex, T> MutexGuard<'mutex, T> {
                 __lock: lock,
                 __data: data,
                 __poison: guard,
-                __marker: marker::NoSend,
+                __marker: markers::NoSend,
             }
         })
     }

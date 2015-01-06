@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::markers;
 
-enum Foo { A(marker::NoSync) }
+enum Foo { A(markers::NoSync) }
 
 fn bar<T: Sync>(_: T) {}
 
 fn main() {
-    let x = Foo::A(marker::NoSync);
+    let x = Foo::A(markers::NoSync);
     bar(x);
-    //~^ ERROR the trait `core::kinds::Sync` is not implemented
+    //~^ ERROR the trait `core::markers::Sync` is not implemented
 }

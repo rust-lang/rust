@@ -13,7 +13,7 @@
 #![stable]
 
 // Reexported core operators
-#[stable] #[doc(no_inline)] pub use kinds::{Copy, Send, Sized, Sync};
+#[stable] #[doc(no_inline)] pub use markers::{Copy, Send, Sized, Sync};
 #[stable] #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // Reexported functions

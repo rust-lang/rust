@@ -19,7 +19,7 @@
 #![feature(lang_items, unboxed_closures)]
 #![no_implicit_prelude]
 
-use std::kinds::Sized;
+use std::markers::Sized;
 use std::option::Option::{None, Some, self};
 
 trait Iterator {

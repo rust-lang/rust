@@ -13,14 +13,14 @@
 // ignore-tidy-linelength
 
 use std::cell::UnsafeCell;
-use std::kinds::marker;
+use std::markers;
 
 struct MySync<T> {
     u: UnsafeCell<T>
 }
 
 struct NoSync {
-    m: marker::NoSync
+    m: markers::NoSync
 }
 
 fn test<T: Sync>(s: T){
@@ -30,17 +30,17 @@ fn test<T: Sync>(s: T){
 fn main() {
     let us = UnsafeCell::new(MySync{u: UnsafeCell::new(0i)});
     test(us);
-    //~^ ERROR `core::kinds::Sync` is not implemented
+    //~^ ERROR `core::markers::Sync` is not implemented
 
-    let uns = UnsafeCell::new(NoSync{m: marker::NoSync});
+    let uns = UnsafeCell::new(NoSync{m: markers::NoSync});
     test(uns);
-    //~^ ERROR `core::kinds::Sync` is not implemented
+    //~^ ERROR `core::markers::Sync` is not implemented
 
     let ms = MySync{u: uns};
     test(ms);
-    //~^ ERROR `core::kinds::Sync` is not implemented
+    //~^ ERROR `core::markers::Sync` is not implemented
 
-    let ns = NoSync{m: marker::NoSync};
+    let ns = NoSync{m: markers::NoSync};
     test(ns);
-    //~^ ERROR `core::kinds::Sync` is not implemented
+    //~^ ERROR `core::markers::Sync` is not implemented
 }

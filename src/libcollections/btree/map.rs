@@ -480,7 +480,7 @@ enum Continuation<A, B> {
 /// boilerplate gets cut out.
 mod stack {
     use core::prelude::*;
-    use core::kinds::marker;
+    use core::markers;
     use core::mem;
     use core::ops::{Deref, DerefMut};
     use super::BTreeMap;
@@ -494,7 +494,7 @@ mod stack {
     /// where `&'static` can be used in any function expecting any lifetime reference.
     pub struct IdRef<'id, T: 'id> {
         inner: &'id mut T,
-        marker: marker::InvariantLifetime<'id>
+        marker: markers::InvariantLifetime<'id>
     }
 
     impl<'id, T> Deref for IdRef<'id, T> {
@@ -536,7 +536,7 @@ mod stack {
     pub struct Pusher<'id, 'a, K:'a, V:'a> {
         map: &'a mut BTreeMap<K, V>,
         stack: Stack<K, V>,
-        marker: marker::InvariantLifetime<'id>
+        marker: markers::InvariantLifetime<'id>
     }
 
     impl<'a, K, V> PartialSearchStack<'a, K, V> {
@@ -571,11 +571,11 @@ mod stack {
             let pusher = Pusher {
                 map: self.map,
                 stack: self.stack,
-                marker: marker::InvariantLifetime
+                marker: markers::InvariantLifetime
             };
             let node = IdRef {
                 inner: unsafe { &mut *self.next },
-                marker: marker::InvariantLifetime
+                marker: markers::InvariantLifetime
             };
 
             closure(pusher, node)

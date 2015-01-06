@@ -95,7 +95,7 @@ use core::cmp::Ordering::{self, Greater, Less};
 use core::cmp::{self, Ord, PartialEq};
 use core::iter::{Iterator, IteratorExt};
 use core::iter::{range, range_step, MultiplicativeIterator};
-use core::kinds::Sized;
+use core::markers::Sized;
 use core::mem::size_of;
 use core::mem;
 use core::ops::{FnMut, SliceMut};

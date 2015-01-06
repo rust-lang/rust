@@ -148,7 +148,7 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::kinds::marker;
+use core::markers;
 use core::mem::{transmute, min_align_of, size_of, forget};
 use core::nonzero::NonZero;
 use core::ops::{Deref, Drop};
@@ -175,8 +175,8 @@ pub struct Rc<T> {
     // FIXME #12808: strange names to try to avoid interfering with field accesses of the contained
     // type via Deref
     _ptr: NonZero<*mut RcBox<T>>,
-    _nosend: marker::NoSend,
-    _noshare: marker::NoSync
+    _nosend: markers::NoSend,
+    _noshare: markers::NoSync
 }
 
 impl<T> Rc<T> {
@@ -201,8 +201,8 @@ impl<T> Rc<T> {
                     strong: Cell::new(1),
                     weak: Cell::new(1)
                 })),
-                _nosend: marker::NoSend,
-                _noshare: marker::NoSync
+                _nosend: markers::NoSend,
+                _noshare: markers::NoSync
             }
         }
     }
@@ -223,8 +223,8 @@ impl<T> Rc<T> {
         self.inc_weak();
         Weak {
             _ptr: self._ptr,
-            _nosend: marker::NoSend,
-            _noshare: marker::NoSync
+            _nosend: markers::NoSend,
+            _noshare: markers::NoSync
         }
     }
 }
@@ -431,7 +431,7 @@ impl<T> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
         self.inc_strong();
-        Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync }
+        Rc { _ptr: self._ptr, _nosend: markers::NoSend, _noshare: markers::NoSync }
     }
 }
 
@@ -622,8 +622,8 @@ pub struct Weak<T> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
     _ptr: NonZero<*mut RcBox<T>>,
-    _nosend: marker::NoSend,
-    _noshare: marker::NoSync
+    _nosend: markers::NoSend,
+    _noshare: markers::NoSync
 }
 
 #[experimental = "Weak pointers may not belong in this module."]
@@ -650,7 +650,7 @@ impl<T> Weak<T> {
             None
         } else {
             self.inc_strong();
-            Some(Rc { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync })
+            Some(Rc { _ptr: self._ptr, _nosend: markers::NoSend, _noshare: markers::NoSync })
         }
     }
 }
@@ -717,7 +717,7 @@ impl<T> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
         self.inc_weak();
-        Weak { _ptr: self._ptr, _nosend: marker::NoSend, _noshare: marker::NoSync }
+        Weak { _ptr: self._ptr, _nosend: markers::NoSend, _noshare: markers::NoSync }
     }
 }
 
