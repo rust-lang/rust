@@ -416,6 +416,8 @@ impl<T: Send> JoinGuard<T> {
     }
 
     /// Detaches the child thread, allowing it to outlive its parent.
+    /// The one exception is the main thread:
+    /// if it quits, the whole program terminates.
     pub fn detach(mut self) {
         unsafe { imp::detach(self.native) };
         self.joined = true; // avoid joining in the destructor
