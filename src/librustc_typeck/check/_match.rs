@@ -195,10 +195,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         ast::PatRegion(ref inner, mutbl) => {
             let inner_ty = fcx.infcx().next_ty_var();
 
-            // SNAP c894171 remove this `if`-`else` entirely after next snapshot
+            // SNAP b2085d9 remove this `if`-`else` entirely after next snapshot
             let mutbl = if mutbl == ast::MutImmutable {
                 ty::deref(fcx.infcx().shallow_resolve(expected), true)
-                   .map(|mt| mt.mutbl).unwrap_or(ast::MutImmutable);
+                   .map(|mt| mt.mutbl).unwrap_or(ast::MutImmutable)
             } else {
                 mutbl
             };

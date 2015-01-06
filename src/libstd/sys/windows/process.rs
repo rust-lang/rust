@@ -466,19 +466,17 @@ fn free_handle(handle: *mut ()) {
 
 #[cfg(test)]
 mod tests {
-    use c_str::ToCStr;
+    use prelude::v1::*;
+    use str;
+    use ffi::CString;
+    use super::make_command_line;
 
     #[test]
     fn test_make_command_line() {
-        use prelude::v1::*;
-        use str;
-        use c_str::CString;
-        use super::make_command_line;
-
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
-            make_command_line(&prog.to_c_str(),
+            make_command_line(&CString::from_slice(prog.as_bytes()),
                               args.iter()
-                                  .map(|a| a.to_c_str())
+                                  .map(|a| CString::from_slice(a.as_bytes()))
                                   .collect::<Vec<CString>>()
                                   .as_slice())
         }

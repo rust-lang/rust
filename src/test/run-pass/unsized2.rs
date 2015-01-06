@@ -22,7 +22,7 @@ fn f2<X>(x: &X) {
 }
 
 // Bounded.
-trait T for ?Sized {}
+trait T {}
 fn f3<X: T+?Sized>(x: &X) {
     f3::<X>(x);
 }
@@ -32,7 +32,7 @@ fn f4<X: T>(x: &X) {
 }
 
 // Self type.
-trait T2 for ?Sized {
+trait T2 {
     fn f() -> Box<Self>;
 }
 struct S;
@@ -48,7 +48,7 @@ fn f6<X: T2>(x: &X) {
     let _: Box<X> = T2::f();
 }
 
-trait T3 for ?Sized {
+trait T3 {
     fn f() -> Box<Self>;
 }
 impl T3 for S {

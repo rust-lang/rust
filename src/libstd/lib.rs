@@ -253,8 +253,6 @@ pub mod num;
 
 /* Runtime and platform support */
 
-pub mod thread_local; // first for macros
-
 #[cfg_attr(stage0, macro_escape)]
 #[cfg_attr(not(stage0), macro_use)]
 pub mod thread_local;

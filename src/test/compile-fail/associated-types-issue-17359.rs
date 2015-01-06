@@ -11,8 +11,6 @@
 // Test that we do not ICE when an impl is missing an associated type (and that we report
 // a useful error, of course).
 
-#![feature(associated_types)]
-
 trait Trait {
     type Type;
 }

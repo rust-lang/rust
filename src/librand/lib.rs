@@ -403,7 +403,7 @@ pub trait SeedableRng<Seed>: Rng {
 /// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
 /// Statistical Software*. Vol. 8 (Issue 14).
 #[allow(missing_copy_implementations)]
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct XorShiftRng {
     x: u32,
     y: u32,

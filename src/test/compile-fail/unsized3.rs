@@ -20,7 +20,7 @@ fn f2<X>(x: &X) {
 }
 
 // Bounded.
-trait T for {}
+trait T {}
 fn f3<X: ?Sized + T>(x: &X) {
     f4::<X>(x);
     //~^ ERROR the trait `core::kinds::Sized` is not implemented

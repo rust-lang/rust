@@ -92,7 +92,7 @@ use middle::region::CodeExtent;
 use middle::traits;
 use middle::ty::{ReScope};
 use middle::ty::{self, Ty, MethodCall};
-use middle::infer::{mod, GenericKind};
+use middle::infer::{self, GenericKind};
 use middle::pat_util;
 use util::ppaux::{ty_to_string, Repr};
 

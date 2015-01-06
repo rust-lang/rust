@@ -245,7 +245,7 @@ pub mod reader;
 
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
-#[deriving(Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct StdRng {
     rng: IsaacWordRng,
 }
@@ -322,7 +322,7 @@ static THREAD_RNG_RESEED_THRESHOLD: uint = 32_768;
 type ThreadRngInner = reseeding::ReseedingRng<StdRng, ThreadRngReseeder>;
 
 /// The thread-local RNG.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct ThreadRng {
     rng: Rc<RefCell<ThreadRngInner>>,
 }

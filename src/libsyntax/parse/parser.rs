@@ -1244,7 +1244,7 @@ impl<'a> Parser<'a> {
 
         let _ = self.parse_ret_ty();
 
-        self.obsolete(ty_closure_span, ObsoleteClosureType);
+        self.obsolete(ty_closure_span, ObsoleteSyntax::ClosureType);
 
         TyInfer
     }
@@ -3897,16 +3897,10 @@ impl<'a> Parser<'a> {
                                 _ => {
                                     let e = self.mk_mac_expr(span.lo,
                                                              span.hi,
-<<<<<<< HEAD
-                                                             macro.and_then(|m| m.node));
+                                                             mac.and_then(|m| m.node));
                                     let e = self.parse_dot_or_call_expr_with(e);
                                     let e = self.parse_more_binops(e, 0);
                                     let e = self.parse_assign_expr_with(e);
-=======
-                                                             mac.and_then(|m| m.node));
-                                    let e =
-                                        self.parse_dot_or_call_expr_with(e);
->>>>>>> kmc/macro-reform
                                     self.handle_expression_like_statement(
                                         e,
                                         ast::DUMMY_NODE_ID,
@@ -5082,7 +5076,7 @@ impl<'a> Parser<'a> {
             }
             let _tref = Parser::trait_ref_from_ident(ident, span);
 
-            self.obsolete(span, ObsoleteForSized);
+            self.obsolete(span, ObsoleteSyntax::ForSized);
 
             None
         } else {

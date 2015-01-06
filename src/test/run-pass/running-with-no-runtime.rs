@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ffi;
 use std::io::process::{Command, ProcessOutput};
 use std::os;
 use std::rt::unwind::try;
@@ -34,7 +35,8 @@ fn start(argc: int, argv: *const *const u8) -> int {
 
     let args = unsafe {
         range(0, argc as uint).map(|i| {
-            String::from_raw_buf(*argv.offset(i as int)).into_bytes()
+            let ptr = *argv.offset(i as int) as *const _;
+            ffi::c_str_to_bytes(&ptr).to_vec()
         }).collect::<Vec<_>>()
     };
     let me = args[0].as_slice();

@@ -128,8 +128,8 @@ impl DynamicLibrary {
         // This function should have a lifetime constraint of 'a on
         // T but that feature is still unimplemented
 
+        let raw_string = CString::from_slice(symbol.as_bytes());
         let maybe_symbol_value = dl::check_for_errors_in(|| {
-            let raw_string = CString::from_slice(symbol.as_bytes());
             dl::symbol(self.handle, raw_string.as_ptr())
         });
 
