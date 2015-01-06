@@ -84,6 +84,32 @@ pub fn fd_set(set: &mut fd_set, s: libc::SOCKET) {
     set.fd_count += 1;
 }
 
+pub type SHORT = libc::c_short;
+
+#[repr(C)]
+pub struct COORD {
+    pub X: SHORT,
+    pub Y: SHORT,
+}
+
+#[repr(C)]
+pub struct SMALL_RECT {
+    pub Left: SHORT,
+    pub Top: SHORT,
+    pub Right: SHORT,
+    pub Bottom: SHORT,
+}
+
+#[repr(C)]
+pub struct CONSOLE_SCREEN_BUFFER_INFO {
+    pub dwSize: COORD,
+    pub dwCursorPosition: COORD,
+    pub wAttributes: libc::WORD,
+    pub srWindow: SMALL_RECT,
+    pub dwMaximumWindowSize: COORD,
+}
+pub type PCONSOLE_SCREEN_BUFFER_INFO = *mut CONSOLE_SCREEN_BUFFER_INFO;
+
 #[link(name = "ws2_32")]
 extern "system" {
     pub fn WSAStartup(wVersionRequested: libc::WORD,
@@ -246,4 +272,8 @@ extern "system" {
 
     pub fn SetConsoleMode(hConsoleHandle: libc::HANDLE,
                           lpMode: libc::DWORD) -> libc::BOOL;
+    pub fn GetConsoleScreenBufferInfo(
+        hConsoleOutput: libc::HANDLE,
+        lpConsoleScreenBufferInfo: PCONSOLE_SCREEN_BUFFER_INFO,
+    ) -> libc::BOOL;
 }
