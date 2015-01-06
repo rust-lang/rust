@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![macro_escape]
+#![allow(shadowing_macros)]
 
 /// Entry point of task panic, for details, see std::macros
 #[macro_export]

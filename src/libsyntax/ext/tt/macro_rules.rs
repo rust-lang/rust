@@ -221,8 +221,8 @@ pub fn add_new_extension<'cx>(cx: &'cx mut ExtCtxt,
                               arg: Vec<ast::TokenTree> )
                               -> Box<MacResult+'cx> {
 
-    let lhs_nm =  gensym_ident("lhs");
-    let rhs_nm =  gensym_ident("rhs");
+    let lhs_nm = gensym_ident("lhs");
+    let rhs_nm = gensym_ident("rhs");
 
     // The pattern that macro_rules matches.
     // The grammar for macro_rules! is:

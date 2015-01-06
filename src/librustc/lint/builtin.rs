@@ -1622,6 +1622,52 @@ impl LintPass for MissingCopyImplementations {
 }
 
 declare_lint! {
+    pub SHADOWING_MACROS,
+    Warn,
+    "detects shadowing macro definitions"
+}
+
+#[deriving(Copy)]
+pub struct ShadowingMacrosPass;
+
+impl LintPass for ShadowingMacrosPass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(SHADOWING_MACROS)
+    }
+
+    fn check_crate(&mut self, cx: &Context, krate: &ast::Crate) {
+        // Will map name uints to macro ast::Items. The loop below will then
+        // make a lint warning if a macro use with the name already exists
+        // in the map, or add that macro to the map so that subsequent ones
+        // with the same name will warn.
+        let mut uses = FnvHashMap::new();
+
+        for it in krate.macros.iter() {
+            let name = it.ident.name;
+            match uses.get(&name.uint()) {
+                Some(_) => {
+                    let span = it.span;
+                    // FIXME: Include span-printing of the first use to
+                    //        help users.
+                    cx.span_lint(
+                        SHADOWING_MACROS,
+                        span,
+                        format!(
+                            "shadowing macro definition: {}",
+                            name.as_str()
+                        )[]
+                    );
+                    continue;
+                },
+                None => { }
+            }
+            // Have to put None-case here to dodge the borrow-checker.
+            uses.insert(name.uint(), it);
+        }
+    }
+}
+
+declare_lint! {
     DEPRECATED,
     Warn,
     "detects use of #[deprecated] items"
@@ -1871,7 +1917,8 @@ impl LintPass for HardwiredLints {
             UNKNOWN_FEATURES,
             UNKNOWN_CRATE_TYPES,
             VARIANT_SIZE_DIFFERENCES,
-            FAT_PTR_TRANSMUTES
+            FAT_PTR_TRANSMUTES,
+            SHADOWING_MACROS
         )
     }
 }

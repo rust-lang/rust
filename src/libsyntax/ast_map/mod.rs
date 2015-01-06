@@ -891,6 +891,7 @@ pub fn map_crate<'ast, F: FoldOps>(forest: &'ast mut Forest, fold_ops: F) -> Map
         },
         attrs: vec![],
         config: vec![],
+        macros: vec![],
         exported_macros: vec![],
         span: DUMMY_SP
     });

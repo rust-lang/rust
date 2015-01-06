@@ -640,6 +640,9 @@ pub fn expand_item_mac(it: P<ast::Item>, fld: &mut MacroExpander)
             // need to be marked. Not that it could be marked anyway.
             // create issue to recommend refactoring here?
             fld.cx.syntax_env.insert(intern(name[]), ext);
+            // Keep track of this macro definition both within the crate
+            // context and (if applicable) in its exports.
+            fld.cx.macros.push(it.clone());
             if attr::contains_name(it.attrs[], "macro_export") {
                 fld.cx.exported_macros.push(it);
             }
@@ -1209,7 +1212,10 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
     }
 
     let mut ret = expander.fold_crate(c);
+    // Copy the list of all macro expansions and exported macros into
+    // the crate.
     ret.exported_macros = expander.cx.exported_macros.clone();
+    ret.macros = expander.cx.macros.clone();
     parse_sess.span_diagnostic.handler().abort_if_errors();
     return ret;
 }

@@ -473,9 +473,14 @@ pub struct ExtCtxt<'a> {
     pub backtrace: ExpnId,
     pub ecfg: expand::ExpansionConfig,
 
-    pub mod_path: Vec<ast::Ident> ,
+    pub mod_path: Vec<ast::Ident>,
     pub trace_mac: bool,
+    /// These will eventually be moved into the ast::Crate's .exported_macros
+    /// by libsyntax::fold::noop_fold_crate.
     pub exported_macros: Vec<P<ast::Item>>,
+    /// All macros found during crate expansion. Also moved into the
+    /// ast::Crate so a macro-shadowing LintPass can later check them.
+    pub macros: Vec<P<ast::Item>>,
 
     pub syntax_env: SyntaxEnv,
     pub recursion_count: uint,
@@ -493,6 +498,7 @@ impl<'a> ExtCtxt<'a> {
             ecfg: ecfg,
             trace_mac: false,
             exported_macros: Vec::new(),
+            macros: Vec::new(),
             syntax_env: env,
             recursion_count: 0,
         }
