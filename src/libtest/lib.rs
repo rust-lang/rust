@@ -69,7 +69,7 @@ use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
 use std::io;
 use std::iter::repeat;
-use std::num::{Float, FloatMath, Int};
+use std::num::{Float, Int};
 use std::os;
 use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
