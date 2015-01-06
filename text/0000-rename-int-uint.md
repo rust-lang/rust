@@ -74,9 +74,9 @@ See **Alternatives B to L** for the other alternatives that are rejected.
 
 ## Drawbacks of `isize/usize`:
 
-- the names fail to indicate the precise semantics of the types - *pointer-sized integers*. (And they don't follow the `i32/u32` pattern as faithfully as possible, as `32` indicates the exact size of the types, but `size` in `isize/usize` is vague in this aspect.)
-- the names favour some of the types' use cases over the others.
-- the names remind people of C's `ssize_t/size_t`, but `isize/usize` don't share the exact same semantics with the C types.
+- The names fail to indicate the precise semantics of the types - *pointer-sized integers*. (And they don't follow the `i32/u32` pattern as faithfully as possible, as `32` indicates the exact size of the types, but `size` in `isize/usize` is vague in this aspect.)
+- The names favour some of the types' use cases over the others.
+- The names remind people of C's `ssize_t/size_t`, but `isize/usize` don't share the exact same semantics with the C types.
 
 Familiarity is a double edged sword here. `isize/usize` are chosen not because they are perfect, but because they represent a good compromise between semantic accuracy, familiarity and code readability. Given good documentation, the drawbacks listed here may not matter much in practice, and the combined familiarity and readability advantage outweighs them all.
 
@@ -191,7 +191,7 @@ fn slice_or_fail<'b>(&'b self, from: &uptrsz, to: &uptrsz) -> &'b [T]
 
 ## K. `ipsz/upsz`:
 
-Now (and only now, which is the problem) it is clear where this final pair of alternatives comes from.
+Now (and only now, which is the problem) it is clear where this pair of alternatives comes from.
 
 By shortening `ptr` to `p`, `ipsz/upsz` no longer stress the "pointer" parts in anyway. Instead, the `sz` or "size" parts are (comparatively) stressed. Interestingly, `ipsz/upsz` look similar to `isiz/usiz`.
 
