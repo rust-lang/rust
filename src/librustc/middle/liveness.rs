@@ -112,6 +112,7 @@ use self::VarKind::*;
 use middle::def::*;
 use middle::mem_categorization::Typer;
 use middle::pat_util;
+use middle::region::CodeExtent;
 use middle::ty;
 use middle::ty::UnboxedClosureTyper;
 use lint;
@@ -1149,8 +1150,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           ast::ExprCall(ref f, ref args) => {
             let diverges = !self.ir.tcx.is_method_call(expr.id) && {
-                let t_ret = ty::ty_fn_ret(ty::expr_ty_adjusted(self.ir.tcx, &**f));
-                t_ret == ty::FnDiverging
+                ty::ty_fn_ret(ty::expr_ty_adjusted(self.ir.tcx, &**f)).diverges()
             };
             let succ = if diverges {
                 self.s.exit_ln
@@ -1164,7 +1164,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           ast::ExprMethodCall(_, _, ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.method_map.borrow().get(&method_call).unwrap().ty;
-            let diverges = ty::ty_fn_ret(method_ty) == ty::FnDiverging;
+            let diverges = ty::ty_fn_ret(method_ty).diverges();
             let succ = if diverges {
                 self.s.exit_ln
             } else {
@@ -1514,11 +1514,11 @@ fn check_fn(_v: &Liveness,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn fn_ret(&self, id: NodeId) -> ty::FnOutput<'tcx> {
+    fn fn_ret(&self, id: NodeId) -> ty::PolyFnOutput<'tcx> {
         let fn_ty = ty::node_id_to_type(self.ir.tcx, id);
         match fn_ty.sty {
             ty::ty_unboxed_closure(closure_def_id, _, substs) =>
-                self.ir.tcx.unboxed_closure_type(closure_def_id, substs).sig.0.output,
+                self.ir.tcx.unboxed_closure_type(closure_def_id, substs).sig.output(),
             _ =>
                 ty::ty_fn_ret(fn_ty),
         }
@@ -1529,8 +1529,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                  sp: Span,
                  _fk: FnKind,
                  entry_ln: LiveNode,
-                 body: &ast::Block) {
-        match self.fn_ret(id) {
+                 body: &ast::Block)
+    {
+        // within the fn body, late-bound regions are liberated:
+        let fn_ret =
+            ty::liberate_late_bound_regions(
+                self.ir.tcx,
+                CodeExtent::from_node_id(body.id),
+                &self.fn_ret(id));
+
+        match fn_ret {
             ty::FnConverging(t_ret)
                 if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 

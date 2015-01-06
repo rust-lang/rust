@@ -425,10 +425,14 @@ impl<'tcx> TypeMap<'tcx> {
             ty::ty_trait(ref trait_data) => {
                 unique_type_id.push_str("trait ");
 
+                let principal =
+                    ty::erase_late_bound_regions(cx.tcx(),
+                                                 &trait_data.principal);
+
                 from_def_id_and_substs(self,
                                        cx,
-                                       trait_data.principal_def_id(),
-                                       trait_data.principal.0.substs,
+                                       principal.def_id,
+                                       principal.substs,
                                        &mut unique_type_id);
             },
             ty::ty_bare_fn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
@@ -440,7 +444,9 @@ impl<'tcx> TypeMap<'tcx> {
 
                 unique_type_id.push_str(" fn(");
 
-                for &parameter_type in sig.0.inputs.iter() {
+                let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+
+                for &parameter_type in sig.inputs.iter() {
                     let parameter_type_id =
                         self.get_unique_type_id_of_type(cx, parameter_type);
                     let parameter_type_id =
@@ -449,12 +455,12 @@ impl<'tcx> TypeMap<'tcx> {
                     unique_type_id.push(',');
                 }
 
-                if sig.0.variadic {
+                if sig.variadic {
                     unique_type_id.push_str("...");
                 }
 
                 unique_type_id.push_str(")->");
-                match sig.0.output {
+                match sig.output {
                     ty::FnConverging(ret_ty) => {
                         let return_type_id = self.get_unique_type_id_of_type(cx, ret_ty);
                         let return_type_id = self.get_unique_type_id_as_string(return_type_id);
@@ -568,7 +574,9 @@ impl<'tcx> TypeMap<'tcx> {
             }
         };
 
-        for &parameter_type in sig.0.inputs.iter() {
+        let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+
+        for &parameter_type in sig.inputs.iter() {
             let parameter_type_id =
                 self.get_unique_type_id_of_type(cx, parameter_type);
             let parameter_type_id =
@@ -577,13 +585,13 @@ impl<'tcx> TypeMap<'tcx> {
             unique_type_id.push(',');
         }
 
-        if sig.0.variadic {
+        if sig.variadic {
             unique_type_id.push_str("...");
         }
 
         unique_type_id.push_str("|->");
 
-        match sig.0.output {
+        match sig.output {
             ty::FnConverging(ret_ty) => {
                 let return_type_id = self.get_unique_type_id_of_type(cx, ret_ty);
                 let return_type_id = self.get_unique_type_id_as_string(return_type_id);
@@ -2822,11 +2830,14 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                       unique_type_id: UniqueTypeId,
                                       signature: &ty::PolyFnSig<'tcx>,
                                       span: Span)
-                                      -> MetadataCreationResult {
-    let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.0.inputs.len() + 1);
+                                      -> MetadataCreationResult
+{
+    let signature = ty::erase_late_bound_regions(cx.tcx(), signature);
+
+    let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs.len() + 1);
 
     // return type
-    signature_metadata.push(match signature.0.output {
+    signature_metadata.push(match signature.output {
         ty::FnConverging(ret_ty) => match ret_ty.sty {
             ty::ty_tup(ref tys) if tys.is_empty() => ptr::null_mut(),
             _ => type_metadata(cx, ret_ty, span)
@@ -2835,7 +2846,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     });
 
     // regular arguments
-    for &argument_type in signature.0.inputs.iter() {
+    for &argument_type in signature.inputs.iter() {
         signature_metadata.push(type_metadata(cx, argument_type, span));
     }
 
@@ -3794,8 +3805,9 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push(']');
         },
         ty::ty_trait(ref trait_data) => {
-            push_item_name(cx, trait_data.principal_def_id(), false, output);
-            push_type_params(cx, trait_data.principal.0.substs, output);
+            let principal = ty::erase_late_bound_regions(cx.tcx(), &trait_data.principal);
+            push_item_name(cx, principal.def_id, false, output);
+            push_type_params(cx, principal.substs, output);
         },
         ty::ty_bare_fn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
             if unsafety == ast::Unsafety::Unsafe {
@@ -3810,8 +3822,9 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             output.push_str("fn(");
 
-            if sig.0.inputs.len() > 0 {
-                for &parameter_type in sig.0.inputs.iter() {
+            let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+            if sig.inputs.len() > 0 {
+                for &parameter_type in sig.inputs.iter() {
                     push_debuginfo_type_name(cx, parameter_type, true, output);
                     output.push_str(", ");
                 }
@@ -3819,8 +3832,8 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 output.pop();
             }
 
-            if sig.0.variadic {
-                if sig.0.inputs.len() > 0 {
+            if sig.variadic {
+                if sig.inputs.len() > 0 {
                     output.push_str(", ...");
                 } else {
                     output.push_str("...");
@@ -3829,7 +3842,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             output.push(')');
 
-            match sig.0.output {
+            match sig.output {
                 ty::FnConverging(result_type) if ty::type_is_nil(result_type) => {}
                 ty::FnConverging(result_type) => {
                     output.push_str(" -> ");

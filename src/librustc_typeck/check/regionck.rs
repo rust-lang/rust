@@ -582,7 +582,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 Some(method) => {
                     constrain_call(rcx, expr, Some(&**base),
                                    None::<ast::Expr>.iter(), true);
-                    ty::ty_fn_ret(method.ty).unwrap()
+                    let fn_ret = // late-bound regions in overloaded method calls are instantiated
+                        ty::assert_no_late_bound_regions(rcx.tcx(), &ty::ty_fn_ret(method.ty));
+                    fn_ret.unwrap()
                 }
                 None => rcx.resolve_node_type(base.id)
             };

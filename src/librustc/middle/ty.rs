@@ -1054,11 +1054,23 @@ pub enum FnOutput<'tcx> {
 }
 
 impl<'tcx> FnOutput<'tcx> {
+    pub fn diverges(&self) -> bool {
+        *self == FnDiverging
+    }
+
     pub fn unwrap(self) -> Ty<'tcx> {
         match self {
             ty::FnConverging(t) => t,
             ty::FnDiverging => unreachable!()
         }
+    }
+}
+
+pub type PolyFnOutput<'tcx> = Binder<FnOutput<'tcx>>;
+
+impl<'tcx> PolyFnOutput<'tcx> {
+    pub fn diverges(&self) -> bool {
+        self.0.diverges()
     }
 }
 
@@ -1076,6 +1088,21 @@ pub struct FnSig<'tcx> {
 }
 
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
+
+impl<'tcx> PolyFnSig<'tcx> {
+    pub fn inputs(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
+        ty::Binder(self.0.inputs.clone())
+    }
+    pub fn input(&self, index: uint) -> ty::Binder<Ty<'tcx>> {
+        ty::Binder(self.0.inputs[index])
+    }
+    pub fn output(&self) -> ty::Binder<FnOutput<'tcx>> {
+        ty::Binder(self.0.output.clone())
+    }
+    pub fn variadic(&self) -> bool {
+        self.0.variadic
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
 pub struct ParamTy {
@@ -4146,8 +4173,8 @@ pub fn ty_fn_abi(fty: Ty) -> abi::Abi {
 }
 
 // Type accessors for substructures of types
-pub fn ty_fn_args<'tcx>(fty: Ty<'tcx>) -> &'tcx [Ty<'tcx>] {
-    ty_fn_sig(fty).0.inputs.as_slice()
+pub fn ty_fn_args<'tcx>(fty: Ty<'tcx>) -> ty::Binder<Vec<Ty<'tcx>>> {
+    ty_fn_sig(fty).inputs()
 }
 
 pub fn ty_closure_store(fty: Ty) -> TraitStore {
@@ -4163,9 +4190,9 @@ pub fn ty_closure_store(fty: Ty) -> TraitStore {
     }
 }
 
-pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> FnOutput<'tcx> {
+pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> Binder<FnOutput<'tcx>> {
     match fty.sty {
-        ty_bare_fn(_, ref f) => f.sig.0.output,
+        ty_bare_fn(_, ref f) => f.sig.output(),
         ref s => {
             panic!("ty_fn_ret() called on non-fn type: {:?}", s)
         }
@@ -4320,9 +4347,12 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                             let method_call = MethodCall::autoderef(expr_id, i);
                             match method_type(method_call) {
                                 Some(method_ty) => {
-                                    if let ty::FnConverging(result_type) = ty_fn_ret(method_ty) {
-                                        adjusted_ty = result_type;
-                                    }
+                                    // overloaded deref operators have all late-bound
+                                    // regions fully instantiated and coverge
+                                    let fn_ret =
+                                        ty::assert_no_late_bound_regions(cx,
+                                                                         &ty_fn_ret(method_ty));
+                                    adjusted_ty = fn_ret.unwrap();
                                 }
                                 None => {}
                             }
@@ -5144,7 +5174,9 @@ impl<'tcx> VariantInfo<'tcx> {
         match ast_variant.node.kind {
             ast::TupleVariantKind(ref args) => {
                 let arg_tys = if args.len() > 0 {
-                    ty_fn_args(ctor_ty).iter().map(|a| *a).collect()
+                    // the regions in the argument types come from the
+                    // enum def'n, and hence will all be early bound
+                    ty::assert_no_late_bound_regions(cx, &ty_fn_args(ctor_ty))
                 } else {
                     Vec::new()
                 };
@@ -5160,7 +5192,6 @@ impl<'tcx> VariantInfo<'tcx> {
                 };
             },
             ast::StructVariantKind(ref struct_def) => {
-
                 let fields: &[StructField] = struct_def.fields.index(&FullRange);
 
                 assert!(fields.len() > 0);
@@ -5792,40 +5823,6 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
     return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
 }
 
-/// Returns an equivalent type with all the typedefs and self regions removed.
-pub fn normalize_ty<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let u = TypeNormalizer(cx).fold_ty(ty);
-    return u;
-
-    struct TypeNormalizer<'a, 'tcx: 'a>(&'a ctxt<'tcx>);
-
-    impl<'a, 'tcx> TypeFolder<'tcx> for TypeNormalizer<'a, 'tcx> {
-        fn tcx(&self) -> &ctxt<'tcx> { let TypeNormalizer(c) = *self; c }
-
-        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-            match self.tcx().normalized_cache.borrow().get(&ty).cloned() {
-                None => {}
-                Some(u) => return u
-            }
-
-            let t_norm = ty_fold::super_fold_ty(self, ty);
-            self.tcx().normalized_cache.borrow_mut().insert(ty, t_norm);
-            return t_norm;
-        }
-
-        fn fold_region(&mut self, _: ty::Region) -> ty::Region {
-            ty::ReStatic
-        }
-
-        fn fold_substs(&mut self,
-                       substs: &subst::Substs<'tcx>)
-                       -> subst::Substs<'tcx> {
-            subst::Substs { regions: subst::ErasedRegions,
-                            types: substs.types.fold_with(self) }
-        }
-    }
-}
-
 // Returns the repeat count for a repeating vector expression.
 pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
     match const_eval::eval_const_expr_partial(tcx, count_expr) {
@@ -6205,7 +6202,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
             mt.mutbl.hash(state);
         };
         let fn_sig = |&: state: &mut sip::SipState, sig: &Binder<FnSig<'tcx>>| {
-            let sig = anonymize_late_bound_regions(tcx, sig);
+            let sig = anonymize_late_bound_regions(tcx, sig).0;
             for a in sig.inputs.iter() { helper(tcx, *a, svh, state); }
             if let ty::FnConverging(output) = sig.output {
                 helper(tcx, output, svh, state);
@@ -6266,7 +6263,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                     did(state, data.principal_def_id());
                     hash!(data.bounds);
 
-                    let principal = anonymize_late_bound_regions(tcx, &data.principal);
+                    let principal = anonymize_late_bound_regions(tcx, &data.principal).0;
                     for subty in principal.substs.types.iter() {
                         helper(tcx, *subty, svh, state);
                     }
@@ -6697,6 +6694,16 @@ pub fn binds_late_bound_regions<'tcx, T>(
     count_late_bound_regions(tcx, value) > 0
 }
 
+pub fn assert_no_late_bound_regions<'tcx, T>(
+    tcx: &ty::ctxt<'tcx>,
+    value: &Binder<T>)
+    -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx> + Clone
+{
+    assert!(!binds_late_bound_regions(tcx, value));
+    value.0.clone()
+}
+
 /// Replace any late-bound regions bound in `value` with `'static`. Useful in trans but also
 /// method lookup and a few other places where precise region relationships are not required.
 pub fn erase_late_bound_regions<'tcx, T>(
@@ -6719,14 +6726,14 @@ pub fn erase_late_bound_regions<'tcx, T>(
 pub fn anonymize_late_bound_regions<'tcx, T>(
     tcx: &ctxt<'tcx>,
     sig: &Binder<T>)
-    -> T
+    -> Binder<T>
     where T : TypeFoldable<'tcx> + Repr<'tcx>,
 {
     let mut counter = 0;
-    replace_late_bound_regions(tcx, sig, |_, db| {
+    ty::Binder(replace_late_bound_regions(tcx, sig, |_, db| {
         counter += 1;
         ReLateBound(db, BrAnon(counter))
-    }).0
+    }).0)
 }
 
 /// Replaces the late-bound-regions in `value` that are bound by `value`.
