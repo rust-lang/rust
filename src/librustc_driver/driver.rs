@@ -146,8 +146,8 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         println!("{}", json::as_json(&krate));
     }
 
-    if sess.show_span() {
-        syntax::show_span::run(sess.diagnostic(), &krate);
+    if let Some(ref s) = sess.opts.show_span {
+        syntax::show_span::run(sess.diagnostic(), s.as_slice(), &krate);
     }
 
     krate
@@ -572,7 +572,7 @@ pub fn stop_after_phase_1(sess: &Session) -> bool {
         debug!("invoked with --parse-only, returning early from compile_input");
         return true;
     }
-    if sess.show_span() {
+    if sess.opts.show_span.is_some() {
         return true;
     }
     return sess.opts.debugging_opts & config::AST_JSON_NOEXPAND != 0;
