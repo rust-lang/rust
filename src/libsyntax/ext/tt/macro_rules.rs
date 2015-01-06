@@ -422,7 +422,7 @@ fn is_in_follow(cx: &ExtCtxt, tok: &Token, frag: &str) -> bool {
         },
         "stmt" | "expr"  => {
             match *tok {
-                Comma | Semi => true,
+                FatArrow | Comma | Semi => true,
                 _ => false
             }
         },
@@ -434,7 +434,7 @@ fn is_in_follow(cx: &ExtCtxt, tok: &Token, frag: &str) -> bool {
         },
         "path" | "ty" => {
             match *tok {
-                Comma | RArrow | Colon | Eq | Gt => true,
+                Comma | FatArrow | Colon | Eq | Gt => true,
                 Ident(i, _) if i.as_str() == "as" => true,
                 _ => false
             }
