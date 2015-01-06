@@ -62,6 +62,7 @@ enum CandidateKind<'tcx> {
                            subst::Substs<'tcx>, MethodIndex),
     UnboxedClosureCandidate(/* Trait */ ast::DefId, MethodIndex),
     WhereClauseCandidate(ty::PolyTraitRef<'tcx>, MethodIndex),
+    ProjectionCandidate(ast::DefId, MethodIndex),
 }
 
 pub struct Pick<'tcx> {
@@ -479,6 +480,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                  method.clone(),
                                                  matching_index);
 
+        self.assemble_projection_candidates(trait_def_id,
+                                            method.clone(),
+                                            matching_index);
+
         self.assemble_where_clause_candidates(trait_def_id,
                                               method,
                                               matching_index);
@@ -608,6 +613,64 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
     }
 
+    fn assemble_projection_candidates(&mut self,
+                                      trait_def_id: ast::DefId,
+                                      method: Rc<ty::Method<'tcx>>,
+                                      method_index: uint)
+    {
+        debug!("assemble_projection_candidates(\
+               trait_def_id={}, \
+               method={}, \
+               method_index={})",
+               trait_def_id.repr(self.tcx()),
+               method.repr(self.tcx()),
+               method_index);
+
+        for step in self.steps.iter() {
+            debug!("assemble_projection_candidates: step={}",
+                   step.repr(self.tcx()));
+
+            let projection_trait_ref = match step.self_ty.sty {
+                ty::ty_projection(ref data) => &data.trait_ref,
+                _ => continue,
+            };
+
+            debug!("assemble_projection_candidates: projection_trait_ref={}",
+                   projection_trait_ref.repr(self.tcx()));
+
+            let trait_def = ty::lookup_trait_def(self.tcx(), projection_trait_ref.def_id);
+            let bounds = trait_def.generics.to_bounds(self.tcx(), projection_trait_ref.substs);
+            let predicates = bounds.predicates.into_vec();
+            debug!("assemble_projection_candidates: predicates={}",
+                   predicates.repr(self.tcx()));
+            for poly_bound in
+                traits::elaborate_predicates(self.tcx(), predicates)
+                .filter_map(|p| p.to_opt_poly_trait_ref()) // TODO filter_to_traits()
+                .filter(|b| b.def_id() == trait_def_id)
+            {
+                let bound = self.erase_late_bound_regions(&poly_bound);
+
+                debug!("assemble_projection_candidates: projection_trait_ref={} bound={}",
+                       projection_trait_ref.repr(self.tcx()),
+                       bound.repr(self.tcx()));
+
+                if self.infcx().can_equate(&step.self_ty, &bound.self_ty()).is_ok() {
+                    let xform_self_ty = self.xform_self_ty(&method, bound.substs);
+
+                    debug!("assemble_projection_candidates: bound={} xform_self_ty={}",
+                           bound.repr(self.tcx()),
+                           xform_self_ty.repr(self.tcx()));
+
+                    self.extension_candidates.push(Candidate {
+                        xform_self_ty: xform_self_ty,
+                        method_ty: method.clone(),
+                        kind: ProjectionCandidate(trait_def_id, method_index)
+                    });
+                }
+            }
+        }
+    }
+
     fn assemble_where_clause_candidates(&mut self,
                                         trait_def_id: ast::DefId,
                                         method_ty: Rc<ty::Method<'tcx>>,
@@ -616,7 +679,6 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("assemble_where_clause_candidates(trait_def_id={})",
                trait_def_id.repr(self.tcx()));
 
-        // Check whether there are any where-clauses pertaining to this trait.
         let caller_predicates =
             self.fcx.inh.param_env.caller_bounds.predicates.as_slice().to_vec();
         for poly_bound in traits::elaborate_predicates(self.tcx(), caller_predicates)
@@ -835,6 +897,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                         norm_obligations.iter().all(|o| selcx.evaluate_obligation(o))
                 }
 
+                ProjectionCandidate(..) |
                 ObjectCandidate(..) |
                 UnboxedClosureCandidate(..) |
                 WhereClauseCandidate(..) => {
@@ -1072,6 +1135,9 @@ impl<'tcx> Candidate<'tcx> {
 
                     WhereClausePick((*trait_ref).clone(), index)
                 }
+                ProjectionCandidate(def_id, index) => {
+                    TraitPick(def_id, index)
+                }
             }
         }
     }
@@ -1083,6 +1149,7 @@ impl<'tcx> Candidate<'tcx> {
             ExtensionImplCandidate(def_id, _, _, _) => ImplSource(def_id),
             UnboxedClosureCandidate(trait_def_id, _) => TraitSource(trait_def_id),
             WhereClauseCandidate(ref trait_ref, _) => TraitSource(trait_ref.def_id()),
+            ProjectionCandidate(trait_def_id, _) => TraitSource(trait_def_id),
         }
     }
 
@@ -1100,6 +1167,9 @@ impl<'tcx> Candidate<'tcx> {
             }
             WhereClauseCandidate(ref trait_ref, method_num) => {
                 Some((trait_ref.def_id(), method_num))
+            }
+            ProjectionCandidate(trait_def_id, method_num) => {
+                Some((trait_def_id, method_num))
             }
         }
     }
@@ -1127,6 +1197,8 @@ impl<'tcx> Repr<'tcx> for CandidateKind<'tcx> {
                 format!("UnboxedClosureCandidate({},{})", a.repr(tcx), b),
             WhereClauseCandidate(ref a, ref b) =>
                 format!("WhereClauseCandidate({},{})", a.repr(tcx), b),
+            ProjectionCandidate(ref a, ref b) =>
+                format!("ProjectionCandidate({},{})", a.repr(tcx), b),
         }
     }
 }
