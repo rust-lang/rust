@@ -153,8 +153,8 @@ impl FromHex for str {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use self::test::Bencher;
+    extern crate rustc_bench;
+    use self::rustc_bench::Bencher;
     use hex::{FromHex, ToHex};
 
     #[test]

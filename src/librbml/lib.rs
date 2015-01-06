@@ -29,7 +29,7 @@
 extern crate serialize;
 #[macro_use] extern crate log;
 
-#[cfg(test)] extern crate test;
+#[cfg(test)] extern crate rustc_bench;
 
 pub use self::EbmlEncoderTag::*;
 pub use self::Error::*;
@@ -1161,7 +1161,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     #![allow(non_snake_case)]
-    use test::Bencher;
+    use rustc_bench::Bencher;
     use super::reader;
 
     #[bench]

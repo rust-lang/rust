@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use core::any::*;
-use test::Bencher;
-use test;
+use rustc_bench::{Bencher, black_box};
 
 #[derive(PartialEq, Show)]
 struct Test;
@@ -125,7 +124,7 @@ fn bench_downcast_ref(b: &mut Bencher) {
     b.iter(|| {
         let mut x = 0i;
         let mut y = &mut x as &mut Any;
-        test::black_box(&mut y);
-        test::black_box(y.downcast_ref::<int>() == Some(&0));
+        black_box(&mut y);
+        black_box(y.downcast_ref::<int>() == Some(&0));
     });
 }

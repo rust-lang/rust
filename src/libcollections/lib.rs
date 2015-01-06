@@ -33,7 +33,7 @@ extern crate core;
 extern crate unicode;
 extern crate alloc;
 
-#[cfg(test)] extern crate test;
+#[cfg(test)] extern crate rustc_bench;
 #[cfg(test)] #[macro_use] extern crate std;
 #[cfg(test)] #[macro_use] extern crate log;
 

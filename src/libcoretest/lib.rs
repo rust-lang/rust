@@ -11,7 +11,7 @@
 #![feature(unboxed_closures)]
 
 extern crate core;
-extern crate test;
+extern crate rustc_bench;
 extern crate libc;
 extern crate unicode;
 

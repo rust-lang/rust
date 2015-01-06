@@ -44,7 +44,7 @@ extern crate collections;
 extern crate "serialize" as rustc_serialize; // used by deriving
 
 #[cfg(test)]
-extern crate test;
+extern crate rustc_bench;
 
 pub use rustc_llvm as llvm;
 

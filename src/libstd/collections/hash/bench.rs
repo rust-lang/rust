@@ -10,10 +10,9 @@
 
 #![cfg(test)]
 
-extern crate test;
 use prelude::v1::*;
 
-use self::test::Bencher;
+use rustc_bench::Bencher;
 use iter::{range_inclusive};
 
 #[bench]

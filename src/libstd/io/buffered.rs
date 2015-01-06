@@ -386,13 +386,12 @@ impl<S: Stream> Writer for BufferedStream<S> {
 
 #[cfg(test)]
 mod test {
-    extern crate test;
     use io;
     use prelude::v1::*;
     use super::*;
     use super::super::{IoResult, EndOfFile};
     use super::super::mem::MemReader;
-    use self::test::Bencher;
+    use rustc_bench::Bencher;
 
     /// A type, free to create, primarily intended for benchmarking creation of
     /// wrappers that, just for construction, don't need a Reader/Writer that

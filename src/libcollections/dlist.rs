@@ -690,8 +690,7 @@ mod tests {
     use std::rand;
     use std::hash;
     use std::thread::Thread;
-    use test::Bencher;
-    use test;
+    use rustc_bench::Bencher;
 
     use super::{DList, Node};
 
@@ -1101,7 +1100,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_collect_into(b: &mut test::Bencher) {
+    fn bench_collect_into(b: &mut Bencher) {
         let v = &[0i; 64];
         b.iter(|| {
             let _: DList<int> = v.iter().map(|x| *x).collect();
@@ -1109,7 +1108,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_front(b: &mut test::Bencher) {
+    fn bench_push_front(b: &mut Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
             m.push_front(0);
@@ -1117,7 +1116,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_back(b: &mut test::Bencher) {
+    fn bench_push_back(b: &mut Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
             m.push_back(0);
@@ -1125,7 +1124,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_back_pop_back(b: &mut test::Bencher) {
+    fn bench_push_back_pop_back(b: &mut Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
             m.push_back(0);
@@ -1134,7 +1133,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_front_pop_front(b: &mut test::Bencher) {
+    fn bench_push_front_pop_front(b: &mut Bencher) {
         let mut m: DList<int> = DList::new();
         b.iter(|| {
             m.push_front(0);
@@ -1143,7 +1142,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_iter(b: &mut test::Bencher) {
+    fn bench_iter(b: &mut Bencher) {
         let v = &[0i; 128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
@@ -1151,7 +1150,7 @@ mod tests {
         })
     }
     #[bench]
-    fn bench_iter_mut(b: &mut test::Bencher) {
+    fn bench_iter_mut(b: &mut Bencher) {
         let v = &[0i; 128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
@@ -1159,7 +1158,7 @@ mod tests {
         })
     }
     #[bench]
-    fn bench_iter_rev(b: &mut test::Bencher) {
+    fn bench_iter_rev(b: &mut Bencher) {
         let v = &[0i; 128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
@@ -1167,7 +1166,7 @@ mod tests {
         })
     }
     #[bench]
-    fn bench_iter_mut_rev(b: &mut test::Bencher) {
+    fn bench_iter_mut_rev(b: &mut Bencher) {
         let v = &[0i; 128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {

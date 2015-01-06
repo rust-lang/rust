@@ -297,8 +297,8 @@ impl FromBase64 for [u8] {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use self::test::Bencher;
+    extern crate rustc_bench;
+    use self::rustc_bench::Bencher;
     use base64::{Config, Newline, FromBase64, ToBase64, STANDARD, URL_SAFE};
 
     #[test]

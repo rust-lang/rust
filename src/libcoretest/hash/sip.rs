@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use test::Bencher;
+use rustc_bench::Bencher;
 use std::prelude::*;
 use std::fmt;
 

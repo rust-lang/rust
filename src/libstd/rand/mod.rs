@@ -615,10 +615,9 @@ static RAND_BENCH_N: u64 = 100;
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
     use prelude::v1::*;
 
-    use self::test::Bencher;
+    use rustc_bench::Bencher;
     use super::{XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};
     use super::{OsRng, weak_rng};
     use mem::size_of;

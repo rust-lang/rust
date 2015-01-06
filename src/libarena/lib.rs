@@ -507,8 +507,8 @@ impl<T> Drop for TypedArena<T> {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
-    use self::test::Bencher;
+    extern crate rustc_bench;
+    use self::rustc_bench::Bencher;
     use super::{Arena, TypedArena};
 
     #[allow(dead_code)]

@@ -52,7 +52,7 @@
 TARGET_CRATES := libc std flate arena term \
                  serialize getopts collections test rand \
                  log regex graphviz core rbml alloc \
-                 unicode
+                 unicode rustc_bench
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
@@ -90,11 +90,13 @@ DEPS_term := std log
 DEPS_getopts := std
 DEPS_collections := core alloc unicode
 DEPS_num := std
-DEPS_test := std getopts serialize rbml term regex native:rust_test_helpers
+DEPS_test := std getopts serialize rbml term regex native:rust_test_helpers \
+		rustc_bench
 DEPS_rand := core
 DEPS_log := std regex
 DEPS_regex := std
 DEPS_fmt_macros = std
+DEPS_rustc_bench := std
 
 TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc

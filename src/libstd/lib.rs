@@ -115,9 +115,8 @@
 
 #![deny(missing_docs)]
 
-#[cfg(test)]
-#[macro_use]
-extern crate log;
+#[cfg(test)] extern crate rustc_bench;
+#[cfg(test)] #[macro_use] extern crate log;
 
 #[macro_use]
 #[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,

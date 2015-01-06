@@ -80,7 +80,6 @@
 extern crate core;
 
 #[cfg(test)] extern crate std;
-#[cfg(test)] extern crate test;
 
 pub use self::Nullable::*;
 

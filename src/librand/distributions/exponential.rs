@@ -122,11 +122,11 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
+    extern crate rustc_bench;
 
     use std::prelude::v1::*;
 
-    use self::test::Bencher;
+    use self::rustc_bench::Bencher;
     use std::mem::size_of;
     use super::Exp;
     use distributions::Sample;

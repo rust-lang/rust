@@ -1058,7 +1058,7 @@ mod test_map {
 
 #[cfg(test)]
 mod bench {
-    use test::Bencher;
+    use rustc_bench::Bencher;
     use super::VecMap;
     use bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};
 

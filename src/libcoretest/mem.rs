@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use core::mem::*;
-use test::Bencher;
+use rustc_bench::Bencher;
 
 #[test]
 fn size_of_basic() {

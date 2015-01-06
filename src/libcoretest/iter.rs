@@ -15,7 +15,7 @@ use core::num::SignedInt;
 use core::uint;
 use core::cmp;
 
-use test::Bencher;
+use rustc_bench::Bencher;
 
 #[test]
 fn test_lt() {

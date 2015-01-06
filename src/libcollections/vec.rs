@@ -1816,7 +1816,7 @@ mod tests {
     use core::mem::size_of;
     use core::iter::repeat;
     use core::ops::FullRange;
-    use test::Bencher;
+    use rustc_bench::Bencher;
     use super::as_vec;
 
     struct DropCounter<'a> {

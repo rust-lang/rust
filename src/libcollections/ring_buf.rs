@@ -1632,8 +1632,7 @@ mod tests {
     use core::iter;
     use std::fmt::Show;
     use std::hash;
-    use test::Bencher;
-    use test;
+    use rustc_bench::{Bencher, black_box};
 
     use super::RingBuf;
 
@@ -1750,15 +1749,15 @@ mod tests {
     }
 
     #[bench]
-    fn bench_new(b: &mut test::Bencher) {
+    fn bench_new(b: &mut Bencher) {
         b.iter(|| {
             let ring: RingBuf<u64> = RingBuf::new();
-            test::black_box(ring);
+            black_box(ring);
         })
     }
 
     #[bench]
-    fn bench_push_back_100(b: &mut test::Bencher) {
+    fn bench_push_back_100(b: &mut Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
             for i in range(0i, 100) {
@@ -1770,7 +1769,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_push_front_100(b: &mut test::Bencher) {
+    fn bench_push_front_100(b: &mut Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
             for i in range(0i, 100) {
@@ -1782,44 +1781,44 @@ mod tests {
     }
 
     #[bench]
-    fn bench_pop_back_100(b: &mut test::Bencher) {
+    fn bench_pop_back_100(b: &mut Bencher) {
         let mut deq: RingBuf<int> = RingBuf::with_capacity(101);
 
         b.iter(|| {
             deq.head = 100;
             deq.tail = 0;
             while !deq.is_empty() {
-                test::black_box(deq.pop_back());
+                black_box(deq.pop_back());
             }
         })
     }
 
     #[bench]
-    fn bench_pop_front_100(b: &mut test::Bencher) {
+    fn bench_pop_front_100(b: &mut Bencher) {
         let mut deq: RingBuf<int> = RingBuf::with_capacity(101);
 
         b.iter(|| {
             deq.head = 100;
             deq.tail = 0;
             while !deq.is_empty() {
-                test::black_box(deq.pop_front());
+                black_box(deq.pop_front());
             }
         })
     }
 
     #[bench]
-    fn bench_grow_1025(b: &mut test::Bencher) {
+    fn bench_grow_1025(b: &mut Bencher) {
         b.iter(|| {
             let mut deq = RingBuf::new();
             for i in range(0i, 1025) {
                 deq.push_front(i);
             }
-            test::black_box(deq);
+            black_box(deq);
         })
     }
 
     #[bench]
-    fn bench_iter_1000(b: &mut test::Bencher) {
+    fn bench_iter_1000(b: &mut Bencher) {
         let ring: RingBuf<int> = range(0i, 1000).collect();
 
         b.iter(|| {
@@ -1827,12 +1826,12 @@ mod tests {
             for &i in ring.iter() {
                 sum += i;
             }
-            test::black_box(sum);
+            black_box(sum);
         })
     }
 
     #[bench]
-    fn bench_mut_iter_1000(b: &mut test::Bencher) {
+    fn bench_mut_iter_1000(b: &mut Bencher) {
         let mut ring: RingBuf<int> = range(0i, 1000).collect();
 
         b.iter(|| {
@@ -1840,7 +1839,7 @@ mod tests {
             for i in ring.iter_mut() {
                 sum += *i;
             }
-            test::black_box(sum);
+            black_box(sum);
         })
     }
 
