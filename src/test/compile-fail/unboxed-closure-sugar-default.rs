@@ -18,9 +18,9 @@ trait Foo<T,U,V=T> {
     fn dummy(&self, t: T, u: U, v: V);
 }
 
-trait Eq<Sized? X> { }
-impl<Sized? X> Eq<X> for X { }
-fn eq<Sized? A,Sized? B>() where A : Eq<B> { }
+trait Eq<X: ?Sized> { }
+impl<X: ?Sized> Eq<X> for X { }
+fn eq<A: ?Sized,B: ?Sized>() where A : Eq<B> { }
 
 fn test<'a,'b>() {
     // Parens are equivalent to omitting default in angle.

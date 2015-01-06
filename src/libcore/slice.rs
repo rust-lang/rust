@@ -626,13 +626,13 @@ impl<T> AsSlice<T> for [T] {
 }
 
 #[experimental = "trait is experimental"]
-impl<'a, T, Sized? U: AsSlice<T>> AsSlice<T> for &'a U {
+impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
 #[experimental = "trait is experimental"]
-impl<'a, T, Sized? U: AsSlice<T>> AsSlice<T> for &'a mut U {
+impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a mut U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }

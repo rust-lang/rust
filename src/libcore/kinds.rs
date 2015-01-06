@@ -133,10 +133,10 @@ pub mod marker {
     /// for some lifetime `'a`, but not the other way around).
     #[lang="covariant_type"]
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    pub struct CovariantType<Sized? T>;
+    pub struct CovariantType<T: ?Sized>;
 
-    impl<Sized? T> Copy for CovariantType<T> {}
-    impl<Sized? T> Clone for CovariantType<T> {
+    impl<T: ?Sized> Copy for CovariantType<T> {}
+    impl<T: ?Sized> Clone for CovariantType<T> {
         fn clone(&self) -> CovariantType<T> { *self }
     }
 
@@ -181,10 +181,10 @@ pub mod marker {
     /// arguments of type `U`, hence such a conversion is safe.
     #[lang="contravariant_type"]
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    pub struct ContravariantType<Sized? T>;
+    pub struct ContravariantType<T: ?Sized>;
 
-    impl<Sized? T> Copy for ContravariantType<T> {}
-    impl<Sized? T> Clone for ContravariantType<T> {
+    impl<T: ?Sized> Copy for ContravariantType<T> {}
+    impl<T: ?Sized> Clone for ContravariantType<T> {
         fn clone(&self) -> ContravariantType<T> { *self }
     }
 
@@ -211,10 +211,10 @@ pub mod marker {
     /// interior mutability.
     #[lang="invariant_type"]
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    pub struct InvariantType<Sized? T>;
+    pub struct InvariantType<T: ?Sized>;
 
-    impl<Sized? T> Copy for InvariantType<T> {}
-    impl<Sized? T> Clone for InvariantType<T> {
+    impl<T: ?Sized> Copy for InvariantType<T> {}
+    impl<T: ?Sized> Clone for InvariantType<T> {
         fn clone(&self) -> InvariantType<T> { *self }
     }
 

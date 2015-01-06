@@ -1008,7 +1008,7 @@ impl<T: Ord> OrdSliceExt<T> for [T] {
 
 #[unstable = "U should be an associated type"]
 /// An extension trait for concatenating slices
-pub trait SliceConcatExt<Sized? T, U> {
+pub trait SliceConcatExt<T: ?Sized, U> {
     /// Flattens a slice of `T` into a single value `U`.
     #[stable]
     fn concat(&self) -> U;

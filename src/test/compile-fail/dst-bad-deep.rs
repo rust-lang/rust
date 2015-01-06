@@ -13,7 +13,7 @@
 // because it would require stack allocation of an unsized temporary (*g in the
 // test).
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     ptr: T
 }
 

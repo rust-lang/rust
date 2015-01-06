@@ -896,7 +896,7 @@ impl BytesContainer for CString {
     }
 }
 
-impl<'a, Sized? T: BytesContainer> BytesContainer for &'a T {
+impl<'a, T: ?Sized + BytesContainer> BytesContainer for &'a T {
     #[inline]
     fn container_as_bytes(&self) -> &[u8] {
         (**self).container_as_bytes()

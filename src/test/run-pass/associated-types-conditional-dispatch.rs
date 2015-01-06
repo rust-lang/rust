@@ -16,7 +16,7 @@
 
 use std::ops::Deref;
 
-pub trait MyEq<Sized? U=Self> {
+pub trait MyEq<U: ?Sized=Self> {
     fn eq(&self, u: &U) -> bool;
 }
 

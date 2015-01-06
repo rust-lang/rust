@@ -10,7 +10,7 @@
 
 // Attempt to extend the lifetime as well as unsizing.
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     ptr: T
 }
 

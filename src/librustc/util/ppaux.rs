@@ -601,7 +601,7 @@ impl<'tcx> Repr<'tcx> for () {
     }
 }
 
-impl<'a, 'tcx, Sized? T:Repr<'tcx>> Repr<'tcx> for &'a T {
+impl<'a, 'tcx, T: ?Sized +Repr<'tcx>> Repr<'tcx> for &'a T {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         Repr::repr(*self, tcx)
     }

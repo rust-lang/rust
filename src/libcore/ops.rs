@@ -802,8 +802,8 @@ shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="index"]
-pub trait Index<Sized? Index> {
-    type Sized? Output;
+pub trait Index<Index: ?Sized> {
+    type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index<'a>(&'a self, index: &Index) -> &'a Self::Output;
@@ -839,8 +839,8 @@ pub trait Index<Sized? Index> {
 /// }
 /// ```
 #[lang="index_mut"]
-pub trait IndexMut<Sized? Index> {
-    type Sized? Output;
+pub trait IndexMut<Index: ?Sized> {
+    type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
     fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Self::Output;
@@ -884,7 +884,7 @@ pub trait IndexMut<Sized? Index> {
 /// }
 /// ```
 #[lang="slice"]
-pub trait Slice<Sized? Idx, Sized? Result> {
+pub trait Slice<Idx: ?Sized, Result: ?Sized> {
     /// The method for the slicing operation foo[]
     fn as_slice_<'a>(&'a self) -> &'a Result;
     /// The method for the slicing operation foo[from..]
@@ -933,7 +933,7 @@ pub trait Slice<Sized? Idx, Sized? Result> {
 /// }
 /// ```
 #[lang="slice_mut"]
-pub trait SliceMut<Sized? Idx, Sized? Result> {
+pub trait SliceMut<Idx: ?Sized, Result: ?Sized> {
     /// The method for the slicing operation foo[]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Result;
     /// The method for the slicing operation foo[from..]
@@ -1071,7 +1071,7 @@ pub struct RangeTo<Idx> {
 #[stable]
 pub trait Deref {
     #[stable]
-    type Sized? Target;
+    type Target: ?Sized;
 
     /// The method called to dereference a value
     #[stable]
@@ -1079,14 +1079,14 @@ pub trait Deref {
 }
 
 #[stable]
-impl<'a, Sized? T> Deref for &'a T {
+impl<'a, T: ?Sized> Deref for &'a T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
 }
 
 #[stable]
-impl<'a, Sized? T> Deref for &'a mut T {
+impl<'a, T: ?Sized> Deref for &'a mut T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
@@ -1138,7 +1138,7 @@ pub trait DerefMut: Deref {
 }
 
 #[stable]
-impl<'a, Sized? T> DerefMut for &'a mut T {
+impl<'a, T: ?Sized> DerefMut for &'a mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }
 
@@ -1166,8 +1166,8 @@ pub trait FnOnce<Args,Result> {
     extern "rust-call" fn call_once(self, args: Args) -> Result;
 }
 
-impl<Sized? F,A,R> FnMut<A,R> for F
-    where F : Fn<A,R>
+impl<F: ?Sized, A, R> FnMut<A, R> for F
+    where F : Fn<A, R>
 {
     extern "rust-call" fn call_mut(&mut self, args: A) -> R {
         self.call(args)
