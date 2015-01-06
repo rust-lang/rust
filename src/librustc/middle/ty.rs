@@ -1776,6 +1776,10 @@ impl<'tcx> Generics<'tcx> {
         !self.regions.is_empty_in(space)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.types.is_empty() && self.regions.is_empty()
+    }
+
     pub fn to_bounds(&self, tcx: &ty::ctxt<'tcx>, substs: &Substs<'tcx>)
                      -> GenericBounds<'tcx> {
         GenericBounds {
