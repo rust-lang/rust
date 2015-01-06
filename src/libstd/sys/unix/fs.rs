@@ -12,7 +12,7 @@
 
 use prelude::v1::*;
 
-use c_str::{CString, ToCStr};
+use ffi::{self, CString};
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
 use io::{IoResult, FileStat, SeekStyle};
 use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
@@ -150,6 +150,10 @@ impl Drop for FileDesc {
     }
 }
 
+fn cstr(path: &Path) -> CString {
+    CString::from_slice(path.as_vec())
+}
+
 pub fn open(path: &Path, fm: FileMode, fa: FileAccess) -> IoResult<FileDesc> {
     let flags = match fm {
         Open => 0,
@@ -165,7 +169,7 @@ pub fn open(path: &Path, fm: FileMode, fa: FileAccess) -> IoResult<FileDesc> {
                             libc::S_IRUSR | libc::S_IWUSR),
     };
 
-    let path = path.to_c_str();
+    let path = cstr(path);
     match retry(|| unsafe { libc::open(path.as_ptr(), flags, mode) }) {
         -1 => Err(super::last_error()),
         fd => Ok(FileDesc::new(fd, true)),
@@ -173,7 +177,7 @@ pub fn open(path: &Path, fm: FileMode, fa: FileAccess) -> IoResult<FileDesc> {
 }
 
 pub fn mkdir(p: &Path, mode: uint) -> IoResult<()> {
-    let p = p.to_c_str();
+    let p = cstr(p);
     mkerr_libc(unsafe { libc::mkdir(p.as_ptr(), mode as libc::mode_t) })
 }
 
@@ -182,7 +186,6 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
     use libc::{opendir, readdir_r, closedir};
 
     fn prune(root: &CString, dirs: Vec<Path>) -> Vec<Path> {
-        let root = unsafe { CString::new(root.as_ptr(), false) };
         let root = Path::new(root);
 
         dirs.into_iter().filter(|path| {
@@ -199,7 +202,7 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
     let mut buf = Vec::<u8>::with_capacity(size as uint);
     let ptr = buf.as_mut_ptr() as *mut dirent_t;
 
-    let p = p.to_c_str();
+    let p = CString::from_slice(p.as_vec());
     let dir_ptr = unsafe {opendir(p.as_ptr())};
 
     if dir_ptr as uint != 0 {
@@ -207,10 +210,9 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
         let mut entry_ptr = 0 as *mut dirent_t;
         while unsafe { readdir_r(dir_ptr, ptr, &mut entry_ptr) == 0 } {
             if entry_ptr.is_null() { break }
-            let cstr = unsafe {
-                CString::new(rust_list_dir_val(entry_ptr), false)
-            };
-            paths.push(Path::new(cstr));
+            paths.push(unsafe {
+                Path::new(ffi::c_str_to_bytes(&rust_list_dir_val(entry_ptr)))
+            });
         }
         assert_eq!(unsafe { closedir(dir_ptr) }, 0);
         Ok(prune(&p, paths))
@@ -220,39 +222,39 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
 }
 
 pub fn unlink(p: &Path) -> IoResult<()> {
-    let p = p.to_c_str();
+    let p = cstr(p);
     mkerr_libc(unsafe { libc::unlink(p.as_ptr()) })
 }
 
 pub fn rename(old: &Path, new: &Path) -> IoResult<()> {
-    let old = old.to_c_str();
-    let new = new.to_c_str();
+    let old = cstr(old);
+    let new = cstr(new);
     mkerr_libc(unsafe {
         libc::rename(old.as_ptr(), new.as_ptr())
     })
 }
 
 pub fn chmod(p: &Path, mode: uint) -> IoResult<()> {
-    let p = p.to_c_str();
+    let p = cstr(p);
     mkerr_libc(retry(|| unsafe {
         libc::chmod(p.as_ptr(), mode as libc::mode_t)
     }))
 }
 
 pub fn rmdir(p: &Path) -> IoResult<()> {
-    let p = p.to_c_str();
+    let p = cstr(p);
     mkerr_libc(unsafe { libc::rmdir(p.as_ptr()) })
 }
 
 pub fn chown(p: &Path, uid: int, gid: int) -> IoResult<()> {
-    let p = p.to_c_str();
+    let p = cstr(p);
     mkerr_libc(retry(|| unsafe {
         libc::chown(p.as_ptr(), uid as libc::uid_t, gid as libc::gid_t)
     }))
 }
 
 pub fn readlink(p: &Path) -> IoResult<Path> {
-    let c_path = p.to_c_str();
+    let c_path = cstr(p);
     let p = c_path.as_ptr();
     let mut len = unsafe { libc::pathconf(p as *mut _, libc::_PC_NAME_MAX) };
     if len == -1 {
@@ -273,14 +275,14 @@ pub fn readlink(p: &Path) -> IoResult<Path> {
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> IoResult<()> {
-    let src = src.to_c_str();
-    let dst = dst.to_c_str();
+    let src = cstr(src);
+    let dst = cstr(dst);
     mkerr_libc(unsafe { libc::symlink(src.as_ptr(), dst.as_ptr()) })
 }
 
 pub fn link(src: &Path, dst: &Path) -> IoResult<()> {
-    let src = src.to_c_str();
-    let dst = dst.to_c_str();
+    let src = cstr(src);
+    let dst = cstr(dst);
     mkerr_libc(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) })
 }
 
@@ -328,7 +330,7 @@ fn mkstat(stat: &libc::stat) -> FileStat {
 }
 
 pub fn stat(p: &Path) -> IoResult<FileStat> {
-    let p = p.to_c_str();
+    let p = cstr(p);
     let mut stat: libc::stat = unsafe { mem::zeroed() };
     match unsafe { libc::stat(p.as_ptr(), &mut stat) } {
         0 => Ok(mkstat(&stat)),
@@ -337,7 +339,7 @@ pub fn stat(p: &Path) -> IoResult<FileStat> {
 }
 
 pub fn lstat(p: &Path) -> IoResult<FileStat> {
-    let p = p.to_c_str();
+    let p = cstr(p);
     let mut stat: libc::stat = unsafe { mem::zeroed() };
     match unsafe { libc::lstat(p.as_ptr(), &mut stat) } {
         0 => Ok(mkstat(&stat)),
@@ -346,7 +348,7 @@ pub fn lstat(p: &Path) -> IoResult<FileStat> {
 }
 
 pub fn utime(p: &Path, atime: u64, mtime: u64) -> IoResult<()> {
-    let p = p.to_c_str();
+    let p = cstr(p);
     let buf = libc::utimbuf {
         actime: (atime / 1000) as libc::time_t,
         modtime: (mtime / 1000) as libc::time_t,

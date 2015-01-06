@@ -20,7 +20,8 @@ use trans::machine::llalign_of_pref;
 use trans::type_::Type;
 use util::nodemap::FnvHashMap;
 use libc::{c_uint, c_char};
-use std::c_str::ToCStr;
+
+use std::ffi::CString;
 use syntax::codemap::Span;
 
 pub struct Builder<'a, 'tcx: 'a> {
@@ -429,9 +430,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), noname())
             } else {
-                name.with_c_str(|c| {
-                    llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), c)
-                })
+                let name = CString::from_slice(name.as_bytes());
+                llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(),
+                                      name.as_ptr())
             }
         }
     }
@@ -774,12 +775,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let comment_text = format!("{} {}", "#",
                                        sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
-            let asm = comment_text.with_c_str(|c| {
-                unsafe {
-                    llvm::LLVMConstInlineAsm(Type::func(&[], &Type::void(self.ccx)).to_ref(),
-                                             c, noname(), False, False)
-                }
-            });
+            let comment_text = CString::from_vec(comment_text.into_bytes());
+            let asm = unsafe {
+                llvm::LLVMConstInlineAsm(Type::func(&[], &Type::void(self.ccx)).to_ref(),
+                                         comment_text.as_ptr(), noname(), False,
+                                         False)
+            };
             self.call(asm, &[], None);
         }
     }
@@ -926,9 +927,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let bb: BasicBlockRef = llvm::LLVMGetInsertBlock(self.llbuilder);
             let fn_: ValueRef = llvm::LLVMGetBasicBlockParent(bb);
             let m: ModuleRef = llvm::LLVMGetGlobalParent(fn_);
-            let t: ValueRef = "llvm.trap".with_c_str(|buf| {
-                llvm::LLVMGetNamedFunction(m, buf)
-            });
+            let p = "llvm.trap\0".as_ptr();
+            let t: ValueRef = llvm::LLVMGetNamedFunction(m, p as *const _);
             assert!((t as int != 0));
             let args: &[ValueRef] = &[];
             self.count_insn("trap");

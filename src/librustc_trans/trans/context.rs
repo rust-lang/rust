@@ -29,8 +29,8 @@ use util::ppaux::Repr;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
+use std::ffi::CString;
 use std::cell::{Cell, RefCell};
-use std::c_str::ToCStr;
 use std::ptr;
 use std::rc::Rc;
 use syntax::ast;
@@ -221,21 +221,16 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
 
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
-    let llmod = mod_name.with_c_str(|buf| {
-        llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
-    });
-    sess.target
-        .target
-        .data_layout
-        .with_c_str(|buf| {
-        llvm::LLVMSetDataLayout(llmod, buf);
-    });
-    sess.target
-        .target
-        .llvm_target
-        .with_c_str(|buf| {
-        llvm::LLVMRustSetNormalizedTarget(llmod, buf);
-    });
+    let mod_name = CString::from_slice(mod_name.as_bytes());
+    let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
+
+    let data_layout = sess.target.target.data_layout.as_slice();
+    let data_layout = CString::from_slice(data_layout.as_bytes());
+    llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
+
+    let llvm_target = sess.target.target.llvm_target.as_slice();
+    let llvm_target = CString::from_slice(llvm_target.as_bytes());
+    llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
     (llcx, llmod)
 }
 

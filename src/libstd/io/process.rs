@@ -18,8 +18,8 @@ pub use self::ProcessExit::*;
 
 use prelude::v1::*;
 
-use c_str::{CString, ToCStr};
 use collections::HashMap;
+use ffi::CString;
 use fmt;
 use hash::Hash;
 use io::pipe::{PipeStream, PipePair};
@@ -35,6 +35,7 @@ use sys;
 use thread::Thread;
 
 #[cfg(windows)] use std::hash::sip::SipState;
+#[cfg(windows)] use str;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
@@ -109,11 +110,11 @@ struct EnvKey(CString);
 impl Hash for EnvKey {
     fn hash(&self, state: &mut SipState) {
         let &EnvKey(ref x) = self;
-        match x.as_str() {
-            Some(s) => for ch in s.chars() {
+        match str::from_utf8(x.as_bytes()) {
+            Ok(s) => for ch in s.chars() {
                 (ch as u8 as char).to_lowercase().hash(state);
             },
-            None => x.hash(state)
+            Err(..) => x.hash(state)
         }
     }
 }
@@ -123,8 +124,8 @@ impl PartialEq for EnvKey {
     fn eq(&self, other: &EnvKey) -> bool {
         let &EnvKey(ref x) = self;
         let &EnvKey(ref y) = other;
-        match (x.as_str(), y.as_str()) {
-            (Some(xs), Some(ys)) => {
+        match (str::from_utf8(x.as_bytes()), str::from_utf8(y.as_bytes())) {
+            (Ok(xs), Ok(ys)) => {
                 if xs.len() != ys.len() {
                     return false
                 } else {
@@ -185,10 +186,10 @@ pub struct Command {
 }
 
 // FIXME (#12938): Until DST lands, we cannot decompose &str into & and str, so
-// we cannot usefully take ToCStr arguments by reference (without forcing an
+// we cannot usefully take BytesContainer arguments by reference (without forcing an
 // additional & around &str). So we are instead temporarily adding an instance
-// for &Path, so that we can take ToCStr as owned. When DST lands, the &Path
-// instance should be removed, and arguments bound by ToCStr should be passed by
+// for &Path, so that we can take BytesContainer as owned. When DST lands, the &Path
+// instance should be removed, and arguments bound by BytesContainer should be passed by
 // reference. (Here: {new, arg, args, env}.)
 
 impl Command {
@@ -203,9 +204,9 @@ impl Command {
     ///
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
-    pub fn new<T:ToCStr>(program: T) -> Command {
+    pub fn new<T: BytesContainer>(program: T) -> Command {
         Command {
-            program: program.to_c_str(),
+            program: CString::from_slice(program.container_as_bytes()),
             args: Vec::new(),
             env: None,
             cwd: None,
@@ -219,27 +220,29 @@ impl Command {
     }
 
     /// Add an argument to pass to the program.
-    pub fn arg<'a, T: ToCStr>(&'a mut self, arg: T) -> &'a mut Command {
-        self.args.push(arg.to_c_str());
+    pub fn arg<'a, T: BytesContainer>(&'a mut self, arg: T) -> &'a mut Command {
+        self.args.push(CString::from_slice(arg.container_as_bytes()));
         self
     }
 
     /// Add multiple arguments to pass to the program.
-    pub fn args<'a, T: ToCStr>(&'a mut self, args: &[T]) -> &'a mut Command {
-        self.args.extend(args.iter().map(|arg| arg.to_c_str()));;
+    pub fn args<'a, T: BytesContainer>(&'a mut self, args: &[T]) -> &'a mut Command {
+        self.args.extend(args.iter().map(|arg| {
+            CString::from_slice(arg.container_as_bytes())
+        }));
         self
     }
     // Get a mutable borrow of the environment variable map for this `Command`.
-    fn get_env_map<'a>(&'a mut self) -> &'a mut  EnvMap {
+    fn get_env_map<'a>(&'a mut self) -> &'a mut EnvMap {
         match self.env {
             Some(ref mut map) => map,
             None => {
                 // if the env is currently just inheriting from the parent's,
                 // materialize the parent's env into a hashtable.
-                self.env = Some(os::env_as_bytes().into_iter()
-                                   .map(|(k, v)| (EnvKey(k.to_c_str()),
-                                                  v.to_c_str()))
-                                   .collect());
+                self.env = Some(os::env_as_bytes().into_iter().map(|(k, v)| {
+                    (EnvKey(CString::from_slice(k.as_slice())),
+                     CString::from_slice(v.as_slice()))
+                }).collect());
                 self.env.as_mut().unwrap()
             }
         }
@@ -249,15 +252,20 @@ impl Command {
     ///
     /// Note that environment variable names are case-insensitive (but case-preserving) on Windows,
     /// and case-sensitive on all other platforms.
-    pub fn env<'a, T: ToCStr, U: ToCStr>(&'a mut self, key: T, val: U)
-                                         -> &'a mut Command {
-        self.get_env_map().insert(EnvKey(key.to_c_str()), val.to_c_str());
+    pub fn env<'a, T, U>(&'a mut self, key: T, val: U)
+                         -> &'a mut Command
+                         where T: BytesContainer, U: BytesContainer {
+        let key = EnvKey(CString::from_slice(key.container_as_bytes()));
+        let val = CString::from_slice(val.container_as_bytes());
+        self.get_env_map().insert(key, val);
         self
     }
 
     /// Removes an environment variable mapping.
-    pub fn env_remove<'a, T: ToCStr>(&'a mut self, key: T) -> &'a mut Command {
-        self.get_env_map().remove(&EnvKey(key.to_c_str()));
+    pub fn env_remove<'a, T>(&'a mut self, key: T) -> &'a mut Command
+                             where T: BytesContainer {
+        let key = EnvKey(CString::from_slice(key.container_as_bytes()));
+        self.get_env_map().remove(&key);
         self
     }
 
@@ -265,16 +273,19 @@ impl Command {
     ///
     /// If the given slice contains multiple instances of an environment
     /// variable, the *rightmost* instance will determine the value.
-    pub fn env_set_all<'a, T: ToCStr, U: ToCStr>(&'a mut self, env: &[(T,U)])
-                                                 -> &'a mut Command {
-        self.env = Some(env.iter().map(|&(ref k, ref v)| (EnvKey(k.to_c_str()), v.to_c_str()))
-                                  .collect());
+    pub fn env_set_all<'a, T, U>(&'a mut self, env: &[(T,U)])
+                                 -> &'a mut Command
+                                 where T: BytesContainer, U: BytesContainer {
+        self.env = Some(env.iter().map(|&(ref k, ref v)| {
+            (EnvKey(CString::from_slice(k.container_as_bytes())),
+             CString::from_slice(v.container_as_bytes()))
+        }).collect());
         self
     }
 
     /// Set the working directory for the child process.
     pub fn cwd<'a>(&'a mut self, dir: &Path) -> &'a mut Command {
-        self.cwd = Some(dir.to_c_str());
+        self.cwd = Some(CString::from_slice(dir.as_vec()));
         self
     }
 
@@ -389,9 +400,9 @@ impl fmt::Show for Command {
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{}", String::from_utf8_lossy(self.program.as_bytes_no_nul())));
+        try!(write!(f, "{}", String::from_utf8_lossy(self.program.as_bytes())));
         for arg in self.args.iter() {
-            try!(write!(f, " '{}'", String::from_utf8_lossy(arg.as_bytes_no_nul())));
+            try!(write!(f, " '{}'", String::from_utf8_lossy(arg.as_bytes())));
         }
         Ok(())
     }
@@ -1208,13 +1219,13 @@ mod tests {
     #[test]
     #[cfg(windows)]
     fn env_map_keys_ci() {
-        use c_str::ToCStr;
+        use ffi::CString;
         use super::EnvKey;
         let mut cmd = Command::new("");
         cmd.env("path", "foo");
         cmd.env("Path", "bar");
         let env = &cmd.env.unwrap();
-        let val = env.get(&EnvKey("PATH".to_c_str()));
-        assert!(val.unwrap() == &"bar".to_c_str());
+        let val = env.get(&EnvKey(CString::from_slice(b"PATH")));
+        assert!(val.unwrap() == &CString::from_slice(b"bar"));
     }
 }

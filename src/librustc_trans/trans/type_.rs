@@ -19,7 +19,7 @@ use util::nodemap::FnvHashMap;
 
 use syntax::ast;
 
-use std::c_str::ToCStr;
+use std::ffi::CString;
 use std::mem;
 use std::cell::RefCell;
 use std::iter::repeat;
@@ -157,7 +157,8 @@ impl Type {
     }
 
     pub fn named_struct(ccx: &CrateContext, name: &str) -> Type {
-        ty!(name.with_c_str(|s| llvm::LLVMStructCreateNamed(ccx.llcx(), s)))
+        let name = CString::from_slice(name.as_bytes());
+        ty!(llvm::LLVMStructCreateNamed(ccx.llcx(), name.as_ptr()))
     }
 
     pub fn empty_struct(ccx: &CrateContext) -> Type {

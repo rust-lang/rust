@@ -29,7 +29,7 @@
 
 use libc;
 use std::ascii::AsciiExt;
-use std::c_str::ToCStr;
+use std::ffi::CString;
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
 use std::fmt;
@@ -215,7 +215,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 let id = id.as_ref().map(|a| a.as_slice());
                 s.push_str(highlight::highlight(text.as_slice(), None, id)
                                      .as_slice());
-                let output = s.to_c_str();
+                let output = CString::from_vec(s.into_bytes());
                 hoedown_buffer_puts(ob, output.as_ptr());
             })
         }
@@ -224,15 +224,16 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn header(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
                      level: libc::c_int, opaque: *mut libc::c_void) {
         // hoedown does this, we may as well too
-        "\n".with_c_str(|p| unsafe { hoedown_buffer_puts(ob, p) });
+        unsafe { hoedown_buffer_puts(ob, "\n\0".as_ptr() as *const _); }
 
         // Extract the text provided
         let s = if text.is_null() {
             "".to_string()
         } else {
-            unsafe {
-                String::from_raw_buf_len((*text).data, (*text).size as uint)
-            }
+            let s = unsafe {
+                slice::from_raw_buf(&(*text).data, (*text).size as uint)
+            };
+            str::from_utf8(s).unwrap().to_string()
         };
 
         // Transform the contents of the header into a hyphenated string
@@ -273,7 +274,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                                format!("{} ", sec)
                            });
 
-        text.with_c_str(|p| unsafe { hoedown_buffer_puts(ob, p) });
+        let text = CString::from_vec(text.into_bytes());
+        unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
     }
 
     reset_headers();

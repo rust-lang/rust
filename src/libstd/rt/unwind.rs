@@ -67,7 +67,7 @@ use fmt;
 use intrinsics;
 use libc::c_void;
 use mem;
-use sync::atomic::{mod, Ordering};
+use sync::atomic::{self, Ordering};
 use sync::{Once, ONCE_INIT};
 
 use rt::libunwind as uw;
