@@ -802,7 +802,7 @@ shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="index"]
-pub trait Index<Sized? Index> for Sized? {
+pub trait Index<Sized? Index> {
     type Sized? Output;
 
     /// The method for the indexing (`Foo[Bar]`) operation
@@ -839,7 +839,7 @@ pub trait Index<Sized? Index> for Sized? {
 /// }
 /// ```
 #[lang="index_mut"]
-pub trait IndexMut<Sized? Index> for Sized? {
+pub trait IndexMut<Sized? Index> {
     type Sized? Output;
 
     /// The method for the indexing (`Foo[Bar]`) operation
@@ -884,7 +884,7 @@ pub trait IndexMut<Sized? Index> for Sized? {
 /// }
 /// ```
 #[lang="slice"]
-pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
+pub trait Slice<Sized? Idx, Sized? Result> {
     /// The method for the slicing operation foo[]
     fn as_slice_<'a>(&'a self) -> &'a Result;
     /// The method for the slicing operation foo[from..]
@@ -933,7 +933,7 @@ pub trait Slice<Sized? Idx, Sized? Result> for Sized? {
 /// }
 /// ```
 #[lang="slice_mut"]
-pub trait SliceMut<Sized? Idx, Sized? Result> for Sized? {
+pub trait SliceMut<Sized? Idx, Sized? Result> {
     /// The method for the slicing operation foo[]
     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Result;
     /// The method for the slicing operation foo[from..]
@@ -1069,7 +1069,7 @@ pub struct RangeTo<Idx> {
 /// ```
 #[lang="deref"]
 #[stable]
-pub trait Deref for Sized? {
+pub trait Deref {
     #[stable]
     type Sized? Target;
 
@@ -1131,7 +1131,7 @@ impl<'a, Sized? T> Deref for &'a mut T {
 /// ```
 #[lang="deref_mut"]
 #[stable]
-pub trait DerefMut for Sized? : Deref {
+pub trait DerefMut: Deref {
     /// The method called to mutably dereference a value
     #[stable]
     fn deref_mut<'a>(&'a mut self) -> &'a mut <Self as Deref>::Target;
@@ -1145,7 +1145,7 @@ impl<'a, Sized? T> DerefMut for &'a mut T {
 /// A version of the call operator that takes an immutable receiver.
 #[lang="fn"]
 #[unstable = "uncertain about variadic generics, input versus associated types"]
-pub trait Fn<Args,Result> for Sized? {
+pub trait Fn<Args,Result> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call(&self, args: Args) -> Result;
 }
@@ -1153,7 +1153,7 @@ pub trait Fn<Args,Result> for Sized? {
 /// A version of the call operator that takes a mutable receiver.
 #[lang="fn_mut"]
 #[unstable = "uncertain about variadic generics, input versus associated types"]
-pub trait FnMut<Args,Result> for Sized? {
+pub trait FnMut<Args,Result> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Result;
 }

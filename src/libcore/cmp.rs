@@ -70,7 +70,7 @@ use option::Option::{self, Some, None};
 #[lang="eq"]
 #[stable]
 #[old_orphan_check]
-pub trait PartialEq<Sized? Rhs = Self> for Sized? {
+pub trait PartialEq<Sized? Rhs = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
     #[stable]
     fn eq(&self, other: &Rhs) -> bool;
@@ -91,7 +91,7 @@ pub trait PartialEq<Sized? Rhs = Self> for Sized? {
 /// - symmetric: `a == b` implies `b == a`; and
 /// - transitive: `a == b` and `b == c` implies `a == c`.
 #[stable]
-pub trait Eq for Sized?: PartialEq<Self> {
+pub trait Eq: PartialEq<Self> {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
     // itself, the current deriving infrastructure means doing this
@@ -165,7 +165,7 @@ impl Ordering {
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
 ///   both `==` and `>`.
 #[stable]
-pub trait Ord for Sized?: Eq + PartialOrd<Self> {
+pub trait Ord: Eq + PartialOrd<Self> {
     /// This method returns an ordering between `self` and `other` values.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching
@@ -225,7 +225,7 @@ impl PartialOrd for Ordering {
 /// 5.11).
 #[lang="ord"]
 #[stable]
-pub trait PartialOrd<Sized? Rhs = Self> for Sized?: PartialEq<Rhs> {
+pub trait PartialOrd<Sized? Rhs = Self>: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values
     /// if one exists.
     #[stable]

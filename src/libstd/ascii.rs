@@ -14,7 +14,6 @@
 
 #![unstable = "unsure about placement and naming"]
 
-use core::kinds::Sized;
 use iter::IteratorExt;
 use ops::FnMut;
 use slice::SliceExt;
@@ -38,7 +37,7 @@ pub trait OwnedAsciiExt {
 
 /// Extension methods for ASCII-subset only operations on string slices
 #[experimental = "would prefer to do this in a more general way"]
-pub trait AsciiExt<T = Self> for Sized? {
+pub trait AsciiExt<T = Self> {
     /// Check if within the ASCII range.
     fn is_ascii(&self) -> bool;
 

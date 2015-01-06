@@ -2302,7 +2302,7 @@ impl ::Decoder for Decoder {
 }
 
 /// A trait for converting values to JSON
-pub trait ToJson for Sized? {
+pub trait ToJson {
     /// Converts the value of `self` to an instance of JSON
     fn to_json(&self) -> Json;
 }
