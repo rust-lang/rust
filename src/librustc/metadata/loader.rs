@@ -215,6 +215,7 @@
 use back::archive::{METADATA_FILENAME};
 use back::svh::Svh;
 use session::Session;
+use session::search_paths::PathKind;
 use llvm;
 use llvm::{False, ObjectFile, mk_section_iter};
 use llvm::archive_ro::ArchiveRO;
@@ -229,7 +230,7 @@ use rustc_back::target::Target;
 
 use std::ffi::CString;
 use std::cmp;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::fs::PathExtensions;
 use std::io;
 use std::ptr;
@@ -260,8 +261,8 @@ pub struct Context<'a> {
 }
 
 pub struct Library {
-    pub dylib: Option<Path>,
-    pub rlib: Option<Path>,
+    pub dylib: Option<(Path, PathKind)>,
+    pub rlib: Option<(Path, PathKind)>,
     pub metadata: MetadataBlob,
 }
 
@@ -384,7 +385,7 @@ impl<'a> Context<'a> {
         // of the crate id (path/name/id).
         //
         // The goal of this step is to look at as little metadata as possible.
-        self.filesearch.search(|path| {
+        self.filesearch.search(|path, kind| {
             let file = match path.filename_str() {
                 None => return FileDoesntMatch,
                 Some(file) => file,
@@ -404,12 +405,12 @@ impl<'a> Context<'a> {
 
             let hash_str = hash.to_string();
             let slot = candidates.entry(hash_str).get().unwrap_or_else(
-                |vacant_entry| vacant_entry.insert((HashSet::new(), HashSet::new())));
+                |vacant_entry| vacant_entry.insert((HashMap::new(), HashMap::new())));
             let (ref mut rlibs, ref mut dylibs) = *slot;
             if rlib {
-                rlibs.insert(fs::realpath(path).unwrap());
+                rlibs.insert(fs::realpath(path).unwrap(), kind);
             } else {
-                dylibs.insert(fs::realpath(path).unwrap());
+                dylibs.insert(fs::realpath(path).unwrap(), kind);
             }
 
             FileMatches
@@ -453,16 +454,16 @@ impl<'a> Context<'a> {
                 self.sess.note("candidates:");
                 for lib in libraries.iter() {
                     match lib.dylib {
-                        Some(ref p) => {
+                        Some((ref p, _)) => {
                             self.sess.note(&format!("path: {}",
                                                    p.display())[]);
                         }
                         None => {}
                     }
                     match lib.rlib {
-                        Some(ref p) => {
+                        Some((ref p, _)) => {
                             self.sess.note(&format!("path: {}",
-                                                   p.display())[]);
+                                                    p.display())[]);
                         }
                         None => {}
                     }
@@ -483,9 +484,9 @@ impl<'a> Context<'a> {
     // read the metadata from it if `*slot` is `None`. If the metadata couldn't
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
-    fn extract_one(&mut self, m: HashSet<Path>, flavor: &str,
-                   slot: &mut Option<MetadataBlob>) -> Option<Path> {
-        let mut ret = None::<Path>;
+    fn extract_one(&mut self, m: HashMap<Path, PathKind>, flavor: &str,
+                   slot: &mut Option<MetadataBlob>) -> Option<(Path, PathKind)> {
+        let mut ret = None::<(Path, PathKind)>;
         let mut error = 0u;
 
         if slot.is_some() {
@@ -500,7 +501,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        for lib in m.into_iter() {
+        for (lib, kind) in m.into_iter() {
             info!("{} reading metadata from: {}", flavor, lib.display());
             let metadata = match get_metadata_section(self.target.options.is_like_osx,
                                                       &lib) {
@@ -525,7 +526,7 @@ impl<'a> Context<'a> {
                                            self.crate_name)[]);
                 self.sess.span_note(self.span,
                                     &format!(r"candidate #1: {}",
-                                            ret.as_ref().unwrap()
+                                            ret.as_ref().unwrap().0
                                                .display())[]);
                 error = 1;
                 ret = None;
@@ -538,7 +539,7 @@ impl<'a> Context<'a> {
                 continue
             }
             *slot = Some(metadata);
-            ret = Some(lib);
+            ret = Some((lib, kind));
         }
         return if error > 0 {None} else {ret}
     }
@@ -606,8 +607,8 @@ impl<'a> Context<'a> {
         // rlibs/dylibs.
         let sess = self.sess;
         let dylibname = self.dylibname();
-        let mut rlibs = HashSet::new();
-        let mut dylibs = HashSet::new();
+        let mut rlibs = HashMap::new();
+        let mut dylibs = HashMap::new();
         {
             let mut locs = locs.iter().map(|l| Path::new(&l[])).filter(|loc| {
                 if !loc.exists() {
@@ -637,13 +638,15 @@ impl<'a> Context<'a> {
                 false
             });
 
-            // Now that we have an iterator of good candidates, make sure there's at
-            // most one rlib and at most one dylib.
+            // Now that we have an iterator of good candidates, make sure
+            // there's at most one rlib and at most one dylib.
             for loc in locs {
                 if loc.filename_str().unwrap().ends_with(".rlib") {
-                    rlibs.insert(fs::realpath(&loc).unwrap());
+                    rlibs.insert(fs::realpath(&loc).unwrap(),
+                                 PathKind::ExternFlag);
                 } else {
-                    dylibs.insert(fs::realpath(&loc).unwrap());
+                    dylibs.insert(fs::realpath(&loc).unwrap(),
+                                  PathKind::ExternFlag);
                 }
             }
         };

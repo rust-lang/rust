@@ -13,7 +13,7 @@
 
 extern crate a;
 
-static FOO: uint = 3;
+static FOO: usize = 3;
 
-pub fn token() -> &'static uint { &FOO }
-pub fn a_token() -> &'static uint { a::token() }
+pub fn token() -> &'static usize { &FOO }
+pub fn a_token() -> &'static usize { a::token() }

@@ -507,7 +507,7 @@ fn link_binary_output(sess: &Session,
 
 fn archive_search_paths(sess: &Session) -> Vec<Path> {
     let mut search = Vec::new();
-    sess.target_filesearch(PathKind::Native).for_each_lib_search_path(|path| {
+    sess.target_filesearch(PathKind::Native).for_each_lib_search_path(|path, _| {
         search.push(path.clone());
         FileDoesntMatch
     });
@@ -1043,7 +1043,7 @@ fn link_args(cmd: &mut Command,
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
 fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
-    sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path| {
+    sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, _| {
         cmd.arg("-L").arg(path);
         FileDoesntMatch
     });
@@ -1146,10 +1146,10 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         let src = sess.cstore.get_used_crate_source(cnum).unwrap();
         match kind {
             cstore::RequireDynamic => {
-                add_dynamic_crate(cmd, sess, src.dylib.unwrap())
+                add_dynamic_crate(cmd, sess, src.dylib.unwrap().0)
             }
             cstore::RequireStatic => {
-                add_static_crate(cmd, sess, tmpdir, src.rlib.unwrap())
+                add_static_crate(cmd, sess, tmpdir, src.rlib.unwrap().0)
             }
         }
 
