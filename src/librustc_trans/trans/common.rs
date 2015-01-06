@@ -58,6 +58,61 @@ use util::nodemap::FnvHashSet;
 
 pub use trans::context::CrateContext;
 
+/// Returns an equivalent type with all the typedefs and self regions removed.
+pub fn normalize_ty<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    let u = TypeNormalizer(cx).fold_ty(ty);
+    debug!("normalize_ty({}) = {}",
+           ty.repr(cx), u.repr(cx));
+    return u;
+
+    struct TypeNormalizer<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
+
+    impl<'a, 'tcx> TypeFolder<'tcx> for TypeNormalizer<'a, 'tcx> {
+        fn tcx(&self) -> &ty::ctxt<'tcx> { self.0 }
+
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            match self.tcx().normalized_cache.borrow().get(&ty).cloned() {
+                None => {}
+                Some(u) => return u
+            }
+
+            let t_norm = ty_fold::super_fold_ty(self, ty);
+            self.tcx().normalized_cache.borrow_mut().insert(ty, t_norm);
+            return t_norm;
+        }
+
+        fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+            where T : TypeFoldable<'tcx> + Repr<'tcx>
+        {
+            // FIXME(#20526) this should replace `enter_region_binder`/`exit_region_binder`.
+            let u = ty::anonymize_late_bound_regions(self.tcx(), t);
+            ty_fold::super_fold_binder(self, &u)
+        }
+
+        fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+            // because late-bound regions affect subtyping, we can't
+            // erase the bound/free distinction, but we can replace
+            // all free regions with 'static.
+            //
+            // Note that we *CAN* replace early-bound regions -- the
+            // type system never "sees" those, they get substituted
+            // away. In trans, they will always be erased to 'static
+            // whenever a substitution occurs.
+            match r {
+                ty::ReLateBound(..) => r,
+                _ => ty::ReStatic
+            }
+        }
+
+        fn fold_substs(&mut self,
+                       substs: &subst::Substs<'tcx>)
+                       -> subst::Substs<'tcx> {
+            subst::Substs { regions: subst::ErasedRegions,
+                            types: substs.types.fold_with(self) }
+        }
+    }
+}
+
 // Is the type's representation size known at compile time?
 pub fn type_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     ty::type_contents(cx, ty).is_sized(cx)

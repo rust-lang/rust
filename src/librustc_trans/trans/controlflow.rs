@@ -265,7 +265,8 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              pat: &ast::Pat,
                              head: &ast::Expr,
                              body: &ast::Block)
-                             -> Block<'blk, 'tcx> {
+                             -> Block<'blk, 'tcx>
+{
     let _icx = push_ctxt("trans_for");
 
     //            bcx
@@ -306,7 +307,9 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                      .borrow())[method_call]
                                      .ty;
     let method_type = monomorphize_type(loopback_bcx_in, method_type);
-    let method_result_type = ty::ty_fn_ret(method_type).unwrap();
+    let method_result_type =
+        ty::assert_no_late_bound_regions( // LB regions are instantiated in invoked methods
+            loopback_bcx_in.tcx(), &ty::ty_fn_ret(method_type)).unwrap();
     let option_cleanup_scope = body_bcx_in.fcx.push_custom_cleanup_scope();
     let option_cleanup_scope_id = cleanup::CustomScope(option_cleanup_scope);
 

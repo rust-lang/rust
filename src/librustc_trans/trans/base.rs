@@ -283,34 +283,39 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               fn_ty: Ty<'tcx>, name: &str) -> ValueRef {
     let fn_ty = monomorphize::normalize_associated_type(ccx.tcx(), &fn_ty);
 
-    let (inputs, output, abi, env) = match fn_ty.sty {
+    let function_type; // placeholder so that the memory ownership works out ok
+
+    let (sig, abi, env) = match fn_ty.sty {
         ty::ty_bare_fn(_, ref f) => {
-            (f.sig.0.inputs.clone(), f.sig.0.output, f.abi, None)
+            (&f.sig, f.abi, None)
         }
         ty::ty_unboxed_closure(closure_did, _, substs) => {
             let typer = common::NormalizingUnboxedClosureTyper::new(ccx.tcx());
-            let function_type = typer.unboxed_closure_type(closure_did, substs);
+            function_type = typer.unboxed_closure_type(closure_did, substs);
             let self_type = self_type_for_unboxed_closure(ccx, closure_did, fn_ty);
             let llenvironment_type = type_of_explicit_arg(ccx, self_type);
             debug!("decl_rust_fn: function_type={} self_type={}",
                    function_type.repr(ccx.tcx()),
                    self_type.repr(ccx.tcx()));
-            (function_type.sig.0.inputs,
-             function_type.sig.0.output,
-             RustCall,
-             Some(llenvironment_type))
+            (&function_type.sig, RustCall, Some(llenvironment_type))
         }
         _ => panic!("expected closure or fn")
     };
 
-    let llfty = type_of_rust_fn(ccx, env, inputs[], output, abi);
-    debug!("decl_rust_fn(input count={},type={})",
-           inputs.len(),
+    let sig = ty::erase_late_bound_regions(ccx.tcx(), sig);
+    let sig = ty::Binder(sig);
+
+    let llfty = type_of_rust_fn(ccx, env, &sig, abi);
+
+    debug!("decl_rust_fn(sig={}, type={})",
+           sig.repr(ccx.tcx()),
            ccx.tn().type_to_string(llfty));
 
-    let llfn = decl_fn(ccx, name, llvm::CCallConv, llfty, output);
+    let llfn = decl_fn(ccx, name, llvm::CCallConv, llfty, sig.0.output /* (1) */);
     let attrs = get_fn_llvm_attributes(ccx, fn_ty);
     attrs.apply_llfn(llfn);
+
+    // (1) it's ok to directly access sig.0.output because we erased all late-bound-regions above
 
     llfn
 }
@@ -1938,7 +1943,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx()));
     let _icx = push_ctxt("trans_fn");
     let fn_ty = ty::node_id_to_type(ccx.tcx(), id);
-    let output_type = ty::ty_fn_ret(fn_ty);
+    let output_type = ty::erase_late_bound_regions(ccx.tcx(), &ty::ty_fn_ret(fn_ty));
     let abi = ty::ty_fn_abi(fn_ty);
     trans_closure(ccx,
                   decl,
@@ -1981,7 +1986,9 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     let result_ty = match ctor_ty.sty {
-        ty::ty_bare_fn(_, ref bft) => bft.sig.0.output.unwrap(),
+        ty::ty_bare_fn(_, ref bft) => {
+            ty::erase_late_bound_regions(bcx.tcx(), &bft.sig.output()).unwrap()
+        }
         _ => ccx.sess().bug(
             format!("trans_enum_variant_constructor: \
                      unexpected ctor return type {}",
@@ -2053,7 +2060,9 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
     let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
 
     let result_ty = match ctor_ty.sty {
-        ty::ty_bare_fn(_, ref bft) => bft.sig.0.output,
+        ty::ty_bare_fn(_, ref bft) => {
+            ty::erase_late_bound_regions(ccx.tcx(), &bft.sig.output())
+        }
         _ => ccx.sess().bug(
             format!("trans_enum_variant_or_tuple_like_struct: \
                      unexpected ctor return type {}",
@@ -2067,7 +2076,9 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
 
     assert!(!fcx.needs_ret_allocas);
 
-    let arg_tys = ty::ty_fn_args(ctor_ty);
+    let arg_tys =
+        ty::erase_late_bound_regions(
+            ccx.tcx(), &ty::ty_fn_args(ctor_ty));
 
     let arg_datums = create_datums_for_fn_args(&fcx, arg_tys[]);
 
@@ -2426,25 +2437,28 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>)
-                                        -> llvm::AttrBuilder {
+                                        -> llvm::AttrBuilder
+{
     use middle::ty::{BrAnon, ReLateBound};
 
+    let function_type;
     let (fn_sig, abi, has_env) = match fn_ty.sty {
-        ty::ty_bare_fn(_, ref f) => (f.sig.clone(), f.abi, false),
+        ty::ty_bare_fn(_, ref f) => (&f.sig, f.abi, false),
         ty::ty_unboxed_closure(closure_did, _, substs) => {
             let typer = common::NormalizingUnboxedClosureTyper::new(ccx.tcx());
-            let function_type = typer.unboxed_closure_type(closure_did, substs);
-            (function_type.sig, RustCall, true)
+            function_type = typer.unboxed_closure_type(closure_did, substs);
+            (&function_type.sig, RustCall, true)
         }
         _ => ccx.sess().bug("expected closure or function.")
     };
 
+    let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
 
     // Since index 0 is the return value of the llvm func, we start
     // at either 1 or 2 depending on whether there's an env slot or not
     let mut first_arg_offset = if has_env { 2 } else { 1 };
     let mut attrs = llvm::AttrBuilder::new();
-    let ret_ty = fn_sig.0.output;
+    let ret_ty = fn_sig.output;
 
     // These have an odd calling convention, so we need to manually
     // unpack the input ty's
@@ -2452,15 +2466,15 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
         ty::ty_unboxed_closure(_, _, _) => {
             assert!(abi == RustCall);
 
-            match fn_sig.0.inputs[0].sty {
+            match fn_sig.inputs[0].sty {
                 ty::ty_tup(ref inputs) => inputs.clone(),
                 _ => ccx.sess().bug("expected tuple'd inputs")
             }
         },
         ty::ty_bare_fn(..) if abi == RustCall => {
-            let mut inputs = vec![fn_sig.0.inputs[0]];
+            let mut inputs = vec![fn_sig.inputs[0]];
 
-            match fn_sig.0.inputs[1].sty {
+            match fn_sig.inputs[1].sty {
                 ty::ty_tup(ref t_in) => {
                     inputs.push_all(t_in[]);
                     inputs
@@ -2468,7 +2482,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
                 _ => ccx.sess().bug("expected tuple'd inputs")
             }
         }
-        _ => fn_sig.0.inputs.clone()
+        _ => fn_sig.inputs.clone()
     };
 
     if let ty::FnConverging(ret_ty) = ret_ty {

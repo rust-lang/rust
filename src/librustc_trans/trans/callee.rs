@@ -265,7 +265,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let _icx = push_ctxt("trans_fn_pointer_shim");
     let tcx = ccx.tcx();
 
-    let bare_fn_ty = ty::normalize_ty(tcx, bare_fn_ty);
+    let bare_fn_ty = normalize_ty(tcx, bare_fn_ty);
     match ccx.fn_pointer_shims().borrow().get(&bare_fn_ty) {
         Some(&llval) => { return llval; }
         None => { }
@@ -279,16 +279,13 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.
-    let (opt_def_id, input_tys, output_ty) =
+    let (opt_def_id, sig) =
         match bare_fn_ty.sty {
             ty::ty_bare_fn(opt_def_id,
                            &ty::BareFnTy { unsafety: ast::Unsafety::Normal,
-                                          abi: synabi::Rust,
-                                          sig: ty::Binder(ty::FnSig { inputs: ref input_tys,
-                                                                      output: output_ty,
-                                                                      variadic: false })}) =>
-            {
-                (opt_def_id, input_tys, output_ty)
+                                           abi: synabi::Rust,
+                                           ref sig }) => {
+                (opt_def_id, sig)
             }
 
             _ => {
@@ -296,7 +293,8 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                                            bare_fn_ty.repr(tcx))[]);
             }
         };
-    let tuple_input_ty = ty::mk_tup(tcx, input_tys.to_vec());
+    let sig = ty::erase_late_bound_regions(tcx, sig);
+    let tuple_input_ty = ty::mk_tup(tcx, sig.inputs.to_vec());
     let tuple_fn_ty = ty::mk_bare_fn(tcx,
                                      opt_def_id,
                                      tcx.mk_bare_fn(ty::BareFnTy {
@@ -305,7 +303,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                                          sig: ty::Binder(ty::FnSig {
                                              inputs: vec![bare_fn_ty_ref,
                                                           tuple_input_ty],
-                                             output: output_ty,
+                                             output: sig.output,
                                              variadic: false
                                          })}));
     debug!("tuple_fn_ty: {}", tuple_fn_ty.repr(tcx));
@@ -326,11 +324,11 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                           llfn,
                           ast::DUMMY_NODE_ID,
                           false,
-                          output_ty,
+                          sig.output,
                           &empty_substs,
                           None,
                           &block_arena);
-    let mut bcx = init_function(&fcx, false, output_ty);
+    let mut bcx = init_function(&fcx, false, sig.output);
 
     // the first argument (`self`) will be ptr to the the fn pointer
     let llfnpointer =
@@ -338,14 +336,14 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
     // the remaining arguments will be the untupled values
     let llargs: Vec<_> =
-        input_tys.iter()
+        sig.inputs.iter()
         .enumerate()
         .map(|(i, _)| get_param(fcx.llfn, fcx.arg_pos(i+1) as u32))
         .collect();
     assert!(!fcx.needs_ret_allocas);
 
     let dest = fcx.llretslotptr.get().map(|_|
-        expr::SaveIn(fcx.get_ret_slot(bcx, output_ty, "ret_slot"))
+        expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot"))
     );
 
     bcx = trans_call_inner(bcx,
@@ -355,7 +353,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            ArgVals(llargs[]),
                            dest).bcx;
 
-    finish_fn(&fcx, bcx, output_ty);
+    finish_fn(&fcx, bcx, sig.output);
 
     ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty, llfn);
 
@@ -668,7 +666,10 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let mut bcx = callee.bcx;
 
     let (abi, ret_ty) = match callee_ty.sty {
-        ty::ty_bare_fn(_, ref f) => (f.abi, f.sig.0.output),
+        ty::ty_bare_fn(_, ref f) => {
+            let output = ty::erase_late_bound_regions(bcx.tcx(), &f.sig.output());
+            (f.abi, output)
+        }
         _ => panic!("expected bare rust fn or closure in trans_call_inner")
     };
 
@@ -865,13 +866,18 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
                              llargs: &mut Vec<ValueRef>,
                              arg_cleanup_scope: cleanup::ScopeId,
                              ignore_self: bool)
-                             -> Block<'blk, 'tcx> {
+                             -> Block<'blk, 'tcx>
+{
+    let args =
+        ty::erase_late_bound_regions(
+            bcx.tcx(), &ty::ty_fn_args(fn_ty));
+
     // Translate the `self` argument first.
     if !ignore_self {
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, &*arg_exprs[0]));
         llargs.push(unpack_result!(bcx, {
             trans_arg_datum(bcx,
-                            ty::ty_fn_args(fn_ty)[0],
+                            args[0],
                             arg_datum,
                             arg_cleanup_scope,
                             DontAutorefArg)
@@ -926,7 +932,7 @@ fn trans_overloaded_call_args<'blk, 'tcx>(
                               ignore_self: bool)
                               -> Block<'blk, 'tcx> {
     // Translate the `self` argument first.
-    let arg_tys = ty::ty_fn_args(fn_ty);
+    let arg_tys = ty::erase_late_bound_regions(bcx.tcx(),  &ty::ty_fn_args(fn_ty));
     if !ignore_self {
         let arg_datum = unpack_datum!(bcx, expr::trans(bcx, arg_exprs[0]));
         llargs.push(unpack_result!(bcx, {
@@ -974,7 +980,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     debug!("trans_args(abi={})", abi);
 
     let _icx = push_ctxt("trans_args");
-    let arg_tys = ty::ty_fn_args(fn_ty);
+    let arg_tys = ty::erase_late_bound_regions(cx.tcx(), &ty::ty_fn_args(fn_ty));
     let variadic = ty::fn_is_variadic(fn_ty);
 
     let mut bcx = cx;
