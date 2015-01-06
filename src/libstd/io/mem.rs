@@ -13,7 +13,7 @@
 //! Readers and Writers for in-memory buffers
 
 use cmp::min;
-use prelude::v1::Index;
+use ops::Index;
 use option::Option::None;
 use result::Result::{Err, Ok};
 use io;

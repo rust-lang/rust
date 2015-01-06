@@ -25,7 +25,7 @@ use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map, repeat};
 use mem;
 use option::Option::{self, Some, None};
-use prelude::v1::{FullRange, Index};
+use ops::{FullRange, Index};
 use slice::{SliceExt, SliceConcatExt};
 use str::{SplitTerminator, FromStr, StrExt};
 use string::{String, ToString};

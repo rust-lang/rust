@@ -108,6 +108,7 @@
 #![feature(phase, lang_items, unsafe_destructor)]
 #![feature(slicing_syntax, unboxed_closures)]
 #![feature(old_impl_check)]
+#![cfg_attr(stage0, allow(unused_attributes))]
 
 // Don't link to std. We are std.
 #![no_std]

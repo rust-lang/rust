@@ -171,7 +171,7 @@ impl<'a, 'tcx> AstConv<'tcx> for CollectCtxt<'a, 'tcx> {
             x => {
                 self.tcx.sess.bug(format!("unexpected sort of node \
                                            in get_item_type_scheme(): {:?}",
-                                          x)[]);
+                                          x).as_slice());
             }
         }
     }

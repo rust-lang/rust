@@ -2613,7 +2613,7 @@ impl<'a> Parser<'a> {
                         |p| p.parse_token_tree()
                     );
                     let (sep, repeat) = self.parse_sep_and_kleene_op();
-                    let name_num = macro_parser::count_names(seq[]);
+                    let name_num = macro_parser::count_names(seq.as_slice());
                     return TtSequence(mk_sp(sp.lo, seq_span.hi),
                                       Rc::new(SequenceRepetition {
                                           tts: seq,
@@ -2656,7 +2656,7 @@ impl<'a> Parser<'a> {
             match self.token {
                 token::SubstNt(name, _) =>
                     self.fatal(format!("unknown macro variable `{}`",
-                                       token::get_ident(name))[]),
+                                       token::get_ident(name)).index(&FullRange)),
                 _ => {}
             }
         }

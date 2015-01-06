@@ -486,9 +486,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             let method_call = ty::MethodCall::expr(expr.id());
             match self.typer.node_method_ty(method_call) {
                 Some(method_ty) => {
-                    // If this is an index implemented by a method call, then it will
-                    // include an implicit deref of the result.
-                    let ret_ty = ty::ty_fn_ret(method_ty).unwrap();
+                    // If this is an index implemented by a method call, then it
+                    // will include an implicit deref of the result.
+                    let ret_ty = self.overloaded_method_return_ty(method_ty);
                     self.cat_deref(expr,
                                    self.cat_rvalue_node(expr.id(),
                                                         expr.span(),
