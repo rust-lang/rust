@@ -65,19 +65,23 @@ pub mod string;
 pub mod vec;
 pub mod vec_map;
 
+#[stable]
 pub mod bitv {
     pub use bit::{Bitv, Iter};
 }
 
+#[stable]
 pub mod bitv_set {
     pub use bit::{BitvSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
 }
 
+#[stable]
 pub mod btree_map {
     pub use btree::map::*;
 }
 
+#[stable]
 pub mod btree_set {
     pub use btree::set::*;
 }
@@ -109,8 +113,7 @@ mod prelude {
     pub use core::iter::range;
     pub use core::iter::{FromIterator, Extend, IteratorExt};
     pub use core::iter::{Iterator, DoubleEndedIterator, RandomAccessIterator};
-    pub use core::iter::{IteratorCloneExt, CloneIteratorExt};
-    pub use core::iter::{IteratorOrdExt, MutableDoubleEndedIterator, ExactSizeIterator};
+    pub use core::iter::{ExactSizeIterator};
     pub use core::kinds::{Copy, Send, Sized, Sync};
     pub use core::mem::drop;
     pub use core::ops::{Drop, Fn, FnMut, FnOnce};

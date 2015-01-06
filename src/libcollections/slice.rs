@@ -86,6 +86,7 @@
 //! * Further iterators exist that split, chunk or permute the slice.
 
 #![doc(primitive = "slice")]
+#![stable]
 
 use alloc::boxed::Box;
 use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
@@ -121,8 +122,10 @@ pub type MutItems<'a, T:'a> = IterMut<'a, T>;
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Allocating extension methods for slices.
-#[unstable = "needs associated types, may merge with other traits"]
-pub trait SliceExt<T> for Sized? {
+pub trait SliceExt for Sized? {
+    #[stable]
+    type Item;
+
     /// Sorts the slice, in place, using `compare` to compare
     /// elements.
     ///
@@ -561,8 +564,10 @@ pub trait SliceExt<T> for Sized? {
     fn as_mut_ptr(&mut self) -> *mut T;
 }
 
-#[unstable = "trait is unstable"]
-impl<T> SliceExt<T> for [T] {
+#[stable]
+impl<T> SliceExt for [T] {
+    type Item = T;
+
     #[inline]
     fn sort_by<F>(&mut self, compare: F) where F: FnMut(&T, &T) -> Ordering {
         merge_sort(self, compare)
@@ -1113,7 +1118,10 @@ struct SizeDirection {
     dir: Direction,
 }
 
-impl Iterator<(uint, uint)> for ElementSwaps {
+#[stable]
+impl Iterator for ElementSwaps {
+    type Item = (uint, uint);
+
     #[inline]
     fn next(&mut self) -> Option<(uint, uint)> {
         fn new_pos(i: uint, s: Direction) -> uint {

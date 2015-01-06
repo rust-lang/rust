@@ -155,12 +155,14 @@ impl fmt::Show for Box<Any> {
     }
 }
 
+#[stable]
 impl<Sized? T> Deref for Box<T> {
     type Target = T;
 
     fn deref(&self) -> &T { &**self }
 }
 
+#[stable]
 impl<Sized? T> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
 }

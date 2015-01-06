@@ -59,6 +59,8 @@
 //! See the documentation for each trait for a minimum implementation that prints
 //! something to the screen.
 
+#![stable]
+
 use clone::Clone;
 use iter::{Step, Iterator,DoubleEndedIterator,ExactSizeIterator};
 use kinds::Sized;
@@ -86,8 +88,10 @@ use option::Option::{self, Some, None};
 /// }
 /// ```
 #[lang="drop"]
+#[stable]
 pub trait Drop {
     /// The `drop` method, called when the value goes out of scope.
+    #[stable]
     fn drop(&mut self);
 }
 
@@ -120,15 +124,19 @@ pub trait Drop {
 /// }
 /// ```
 #[lang="add"]
+#[stable]
 pub trait Add<RHS=Self> {
+    #[stable]
     type Output;
 
     /// The method for the `+` operator
+    #[stable]
     fn add(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! add_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl Add for $t {
             type Output = $t;
 
@@ -169,15 +177,19 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="sub"]
+#[stable]
 pub trait Sub<RHS=Self> {
+    #[stable]
     type Output;
 
     /// The method for the `-` operator
+    #[stable]
     fn sub(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! sub_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl Sub for $t {
             type Output = $t;
 
@@ -218,15 +230,19 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="mul"]
+#[stable]
 pub trait Mul<RHS=Self> {
+    #[stable]
     type Output;
 
     /// The method for the `*` operator
+    #[stable]
     fn mul(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! mul_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl Mul for $t {
             type Output = $t;
 
@@ -267,15 +283,19 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="div"]
+#[stable]
 pub trait Div<RHS=Self> {
+    #[stable]
     type Output;
 
     /// The method for the `/` operator
+    #[stable]
     fn div(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! div_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl Div for $t {
             type Output = $t;
 
@@ -316,15 +336,19 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="rem"]
+#[stable]
 pub trait Rem<RHS=Self> {
+    #[stable]
     type Output = Self;
 
     /// The method for the `%` operator
+    #[stable]
     fn rem(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! rem_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl Rem for $t {
             type Output = $t;
 
@@ -336,6 +360,7 @@ macro_rules! rem_impl {
 
 macro_rules! rem_float_impl {
     ($t:ty, $fmod:ident) => {
+        #[stable]
         impl Rem for $t {
             type Output = $t;
 
@@ -382,19 +407,25 @@ rem_float_impl! { f64, fmod }
 /// }
 /// ```
 #[lang="neg"]
+#[stable]
 pub trait Neg {
+    #[stable]
     type Output;
 
     /// The method for the unary `-` operator
+    #[stable]
     fn neg(self) -> Self::Output;
 }
 
 macro_rules! neg_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl Neg for $t {
+            #[stable]
             type Output = $t;
 
             #[inline]
+            #[stable]
             fn neg(self) -> $t { -self }
         }
     )*)
@@ -402,6 +433,7 @@ macro_rules! neg_impl {
 
 macro_rules! neg_uint_impl {
     ($t:ty, $t_signed:ty) => {
+        #[stable]
         impl Neg for $t {
             type Output = $t;
 
@@ -450,15 +482,19 @@ neg_uint_impl! { u64, i64 }
 /// }
 /// ```
 #[lang="not"]
+#[stable]
 pub trait Not {
+    #[stable]
     type Output;
 
     /// The method for the unary `!` operator
+    #[stable]
     fn not(self) -> Self::Output;
 }
 
 macro_rules! not_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl Not for $t {
             type Output = $t;
 
@@ -499,15 +535,19 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitand"]
+#[stable]
 pub trait BitAnd<RHS=Self> {
+    #[stable]
     type Output;
 
     /// The method for the `&` operator
+    #[stable]
     fn bitand(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitand_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl BitAnd for $t {
             type Output = $t;
 
@@ -548,15 +588,19 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitor"]
+#[stable]
 pub trait BitOr<RHS=Self> {
+    #[stable]
     type Output;
 
     /// The method for the `|` operator
+    #[stable]
     fn bitor(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitor_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl BitOr for $t {
             type Output = $t;
 
@@ -597,15 +641,19 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitxor"]
+#[stable]
 pub trait BitXor<RHS=Self> {
+    #[stable]
     type Output;
 
     /// The method for the `^` operator
+    #[stable]
     fn bitxor(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitxor_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl BitXor for $t {
             type Output = $t;
 
@@ -646,15 +694,19 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="shl"]
+#[stable]
 pub trait Shl<RHS> {
+    #[stable]
     type Output;
 
     /// The method for the `<<` operator
+    #[stable]
     fn shl(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! shl_impl {
     ($($t:ty)*) => ($(
+        #[stable]
         impl Shl<uint> for $t {
             type Output = $t;
 
@@ -697,10 +749,13 @@ shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="shr"]
+#[stable]
 pub trait Shr<RHS> {
+    #[stable]
     type Output;
 
     /// The method for the `>>` operator
+    #[stable]
     fn shr(self, rhs: RHS) -> Self::Output;
 }
 
@@ -893,11 +948,13 @@ pub trait SliceMut<Sized? Idx, Sized? Result> for Sized? {
 /// An unbounded range.
 #[derive(Copy)]
 #[lang="full_range"]
+#[unstable = "API still in development"]
 pub struct FullRange;
 
 /// A (half-open) range which is bounded at both ends.
 #[derive(Copy)]
 #[lang="range"]
+#[unstable = "API still in development"]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
@@ -907,6 +964,7 @@ pub struct Range<Idx> {
 
 // FIXME(#19391) needs a snapshot
 //impl<Idx: Clone + Step<T=uint>> Iterator<Idx> for Range<Idx> {
+#[unstable = "API still in development"]
 impl<Idx: Clone + Step> Iterator for Range<Idx> {
     type Item = Idx;
 
@@ -931,6 +989,7 @@ impl<Idx: Clone + Step> Iterator for Range<Idx> {
     }
 }
 
+#[unstable = "API still in development"]
 impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
     #[inline]
     fn next_back(&mut self) -> Option<Idx> {
@@ -943,16 +1002,19 @@ impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
     }
 }
 
+#[unstable = "API still in development"]
 impl<Idx: Clone + Step> ExactSizeIterator for Range<Idx> {}
 
 /// A range which is only bounded below.
 #[derive(Copy)]
 #[lang="range_from"]
+#[unstable = "API still in development"]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
 }
 
+#[unstable = "API still in development"]
 impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
     type Item = Idx;
 
@@ -968,6 +1030,7 @@ impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
 /// A range which is only bounded above.
 #[derive(Copy)]
 #[lang="range_to"]
+#[unstable = "API still in development"]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
     pub end: Idx,
@@ -1005,19 +1068,24 @@ pub struct RangeTo<Idx> {
 /// }
 /// ```
 #[lang="deref"]
+#[stable]
 pub trait Deref for Sized? {
+    #[stable]
     type Sized? Target;
 
     /// The method called to dereference a value
+    #[stable]
     fn deref<'a>(&'a self) -> &'a Self::Target;
 }
 
+#[stable]
 impl<'a, Sized? T> Deref for &'a T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
 }
 
+#[stable]
 impl<'a, Sized? T> Deref for &'a mut T {
     type Target = T;
 
@@ -1062,17 +1130,21 @@ impl<'a, Sized? T> Deref for &'a mut T {
 /// }
 /// ```
 #[lang="deref_mut"]
+#[stable]
 pub trait DerefMut for Sized? : Deref {
     /// The method called to mutably dereference a value
+    #[stable]
     fn deref_mut<'a>(&'a mut self) -> &'a mut <Self as Deref>::Target;
 }
 
+#[stable]
 impl<'a, Sized? T> DerefMut for &'a mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }
 
 /// A version of the call operator that takes an immutable receiver.
 #[lang="fn"]
+#[unstable = "uncertain about variadic generics, input versus associated types"]
 pub trait Fn<Args,Result> for Sized? {
     /// This is called when the call operator is used.
     extern "rust-call" fn call(&self, args: Args) -> Result;
@@ -1080,6 +1152,7 @@ pub trait Fn<Args,Result> for Sized? {
 
 /// A version of the call operator that takes a mutable receiver.
 #[lang="fn_mut"]
+#[unstable = "uncertain about variadic generics, input versus associated types"]
 pub trait FnMut<Args,Result> for Sized? {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Result;
@@ -1087,6 +1160,7 @@ pub trait FnMut<Args,Result> for Sized? {
 
 /// A version of the call operator that takes a by-value receiver.
 #[lang="fn_once"]
+#[unstable = "uncertain about variadic generics, input versus associated types"]
 pub trait FnOnce<Args,Result> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_once(self, args: Args) -> Result;
