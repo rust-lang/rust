@@ -40,7 +40,12 @@ pub unsafe fn destroy(key: Key) {
 #[cfg(target_os = "macos")]
 type pthread_key_t = ::libc::c_ulong;
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+type pthread_key_t = ::libc::c_int;
+
+#[cfg(all(not(target_os = "macos"),
+          not(target_os = "freebsd"),
+          not(target_os = "dragonfly")))]
 type pthread_key_t = ::libc::c_uint;
 
 extern {
