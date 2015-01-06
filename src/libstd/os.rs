@@ -646,6 +646,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 // res
 #[cfg(target_os = "ios")]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
+    use ffi::c_str_to_bytes;
     use iter::range;
     use mem;
 
@@ -680,8 +681,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
             let tmp = objc_msgSend(args, objectAtSel, i);
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8Sel));
-            let s = CString::new(utf_c_str, false);
-            res.push(s.as_bytes_no_nul().to_vec())
+            res.push(c_str_to_bytes(&utf_c_str).to_vec());
         }
     }
 
