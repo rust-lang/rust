@@ -255,7 +255,7 @@
 //! let message = "she sells sea shells by the sea shore";
 //!
 //! for c in message.chars() {
-//!     match count.entry(&c) {
+//!     match count.entry(c) {
 //!         Vacant(entry) => { entry.insert(1u); },
 //!         Occupied(mut entry) => *entry.get_mut() += 1,
 //!     }
@@ -290,7 +290,7 @@
 //! for id in orders.into_iter() {
 //!     // If this is the first time we've seen this customer, initialize them
 //!     // with no blood alcohol. Otherwise, just retrieve them.
-//!     let person = match blood_alcohol.entry(&id) {
+//!     let person = match blood_alcohol.entry(id) {
 //!         Vacant(entry) => entry.insert(Person{id: id, blood_alcohol: 0.0}),
 //!         Occupied(entry) => entry.into_mut(),
 //!     };
