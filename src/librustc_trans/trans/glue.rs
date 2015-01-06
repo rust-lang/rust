@@ -212,7 +212,8 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  dtor_did: ast::DefId,
                                  class_did: ast::DefId,
                                  substs: &subst::Substs<'tcx>)
-                                 -> Block<'blk, 'tcx> {
+                                 -> Block<'blk, 'tcx>
+{
     let repr = adt::represent_type(bcx.ccx(), t);
 
     // Find and call the actual destructor
@@ -228,8 +229,9 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let fty = ty::lookup_item_type(bcx.tcx(), dtor_did).ty.subst(bcx.tcx(), substs);
     let self_ty = match fty.sty {
         ty::ty_bare_fn(_, ref f) => {
-            assert!(f.sig.0.inputs.len() == 1);
-            f.sig.0.inputs[0]
+            let sig = ty::erase_late_bound_regions(bcx.tcx(), &f.sig);
+            assert!(sig.inputs.len() == 1);
+            sig.inputs[0]
         }
         _ => bcx.sess().bug(format!("Expected function type, found {}",
                                     bcx.ty_to_string(fty)).index(&FullRange))

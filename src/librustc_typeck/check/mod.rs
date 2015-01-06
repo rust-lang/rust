@@ -2317,7 +2317,9 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     match method {
         Some(method) => {
-            let ref_ty = ty::ty_fn_ret(method.ty);
+            let ref_ty = // invoked methods have all LB regions instantiated
+                ty::assert_no_late_bound_regions(
+                    fcx.tcx(), &ty::ty_fn_ret(method.ty));
             match method_call {
                 Some(method_call) => {
                     fcx.inh.method_map.borrow_mut().insert(method_call,

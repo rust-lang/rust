@@ -514,7 +514,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        if return_ty == ty::FnDiverging {
+        if return_ty.diverges() {
             self.add_node(ast::DUMMY_NODE_ID, &[])
         } else {
             ret

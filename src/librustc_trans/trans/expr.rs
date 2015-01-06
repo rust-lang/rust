@@ -699,12 +699,16 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                        .map(|method| method.ty);
     let elt_datum = match method_ty {
         Some(method_ty) => {
+            let method_ty = monomorphize_type(bcx, method_ty);
+
             let base_datum = unpack_datum!(bcx, trans(bcx, base));
 
             // Translate index expression.
             let ix_datum = unpack_datum!(bcx, trans(bcx, idx));
 
-            let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty)).unwrap();
+            let ref_ty = // invoked methods have LB regions instantiated:
+                ty::assert_no_late_bound_regions(
+                    bcx.tcx(), &ty::ty_fn_ret(method_ty)).unwrap();
             let elt_ty = match ty::deref(ref_ty, true) {
                 None => {
                     bcx.tcx().sess.span_bug(index_expr.span,
@@ -2149,6 +2153,8 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                        .get(&method_call).map(|method| method.ty);
     let datum = match method_ty {
         Some(method_ty) => {
+            let method_ty = monomorphize_type(bcx, method_ty);
+
             // Overloaded. Evaluate `trans_overloaded_op`, which will
             // invoke the user's deref() method, which basically
             // converts from the `Smaht<T>` pointer that we have into
@@ -2160,7 +2166,9 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 _ => datum
             };
 
-            let ref_ty = ty::ty_fn_ret(monomorphize_type(bcx, method_ty)).unwrap();
+            let ref_ty = // invoked methods have their LB regions instantiated
+                ty::assert_no_late_bound_regions(
+                    ccx.tcx(), &ty::ty_fn_ret(method_ty)).unwrap();
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
 
             unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,

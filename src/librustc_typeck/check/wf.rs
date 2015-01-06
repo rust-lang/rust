@@ -449,7 +449,13 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             match variant.node.kind {
                 ast::TupleVariantKind(ref args) if args.len() > 0 => {
                     let ctor_ty = ty::node_id_to_type(fcx.tcx(), variant.node.id);
-                    let arg_tys = ty::ty_fn_args(ctor_ty);
+
+                    // the regions in the argument types come from the
+                    // enum def'n, and hence will all be early bound
+                    let arg_tys =
+                        ty::assert_no_late_bound_regions(
+                            fcx.tcx(), &ty::ty_fn_args(ctor_ty));
+
                     AdtVariant {
                         fields: args.iter().enumerate().map(|(index, arg)| {
                             let arg_ty = arg_tys[index];
