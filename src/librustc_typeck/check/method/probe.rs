@@ -18,7 +18,7 @@ use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
-use middle::ty::{self, Ty, ToPolyTraitRef};
+use middle::ty::{self, RegionEscape, Ty, ToPolyTraitRef};
 use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
@@ -309,18 +309,20 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // argument type like `&Trait`.
         let trait_ref = data.principal_trait_ref_with_self_ty(self.tcx(), self_ty);
         self.elaborate_bounds(&[trait_ref.clone()], false, |this, new_trait_ref, m, method_num| {
+            let new_trait_ref = this.erase_late_bound_regions(&new_trait_ref);
+
             let vtable_index =
                 traits::get_vtable_index_of_object_method(tcx,
                                                           trait_ref.clone(),
-                                                          new_trait_ref.def_id(),
+                                                          new_trait_ref.def_id,
                                                           method_num);
 
-            let xform_self_ty = this.xform_self_ty(&m, new_trait_ref.substs());
+            let xform_self_ty = this.xform_self_ty(&m, new_trait_ref.substs);
 
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 method_ty: m,
-                kind: ObjectCandidate(new_trait_ref.def_id(), method_num, vtable_index)
+                kind: ObjectCandidate(new_trait_ref.def_id, method_num, vtable_index)
             });
         });
     }
@@ -353,34 +355,37 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             })
             .collect();
 
-        self.elaborate_bounds(bounds.as_slice(), true, |this, trait_ref, m, method_num| {
+        self.elaborate_bounds(bounds.as_slice(), true, |this, poly_trait_ref, m, method_num| {
+            let trait_ref =
+                this.erase_late_bound_regions(&poly_trait_ref);
+
             let xform_self_ty =
-                this.xform_self_ty(&m, trait_ref.substs());
+                this.xform_self_ty(&m, trait_ref.substs);
 
             debug!("found match: trait_ref={} substs={} m={}",
                    trait_ref.repr(this.tcx()),
-                   trait_ref.substs().repr(this.tcx()),
+                   trait_ref.substs.repr(this.tcx()),
                    m.repr(this.tcx()));
             assert_eq!(m.generics.types.get_slice(subst::TypeSpace).len(),
-                       trait_ref.substs().types.get_slice(subst::TypeSpace).len());
+                       trait_ref.substs.types.get_slice(subst::TypeSpace).len());
             assert_eq!(m.generics.regions.get_slice(subst::TypeSpace).len(),
-                       trait_ref.substs().regions().get_slice(subst::TypeSpace).len());
+                       trait_ref.substs.regions().get_slice(subst::TypeSpace).len());
             assert_eq!(m.generics.types.get_slice(subst::SelfSpace).len(),
-                       trait_ref.substs().types.get_slice(subst::SelfSpace).len());
+                       trait_ref.substs.types.get_slice(subst::SelfSpace).len());
             assert_eq!(m.generics.regions.get_slice(subst::SelfSpace).len(),
-                       trait_ref.substs().regions().get_slice(subst::SelfSpace).len());
+                       trait_ref.substs.regions().get_slice(subst::SelfSpace).len());
 
             // Because this trait derives from a where-clause, it
             // should not contain any inference variables or other
             // artifacts. This means it is safe to put into the
             // `WhereClauseCandidate` and (eventually) into the
             // `WhereClausePick`.
-            assert!(trait_ref.substs().types.iter().all(|&t| !ty::type_needs_infer(t)));
+            assert!(trait_ref.substs.types.iter().all(|&t| !ty::type_needs_infer(t)));
 
             this.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 method_ty: m,
-                kind: WhereClauseCandidate(trait_ref, method_num)
+                kind: WhereClauseCandidate(poly_trait_ref, method_num)
             });
         });
     }
@@ -614,11 +619,12 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // Check whether there are any where-clauses pertaining to this trait.
         let caller_predicates =
             self.fcx.inh.param_env.caller_bounds.predicates.as_slice().to_vec();
-        for bound in traits::elaborate_predicates(self.tcx(), caller_predicates)
-                     .filter_map(|p| p.to_opt_poly_trait_ref())
-                     .filter(|b| b.def_id() == trait_def_id)
+        for poly_bound in traits::elaborate_predicates(self.tcx(), caller_predicates)
+                          .filter_map(|p| p.to_opt_poly_trait_ref())
+                          .filter(|b| b.def_id() == trait_def_id)
         {
-            let xform_self_ty = self.xform_self_ty(&method_ty, bound.substs());
+            let bound = self.erase_late_bound_regions(&poly_bound);
+            let xform_self_ty = self.xform_self_ty(&method_ty, bound.substs);
 
             debug!("assemble_where_clause_candidates: bound={} xform_self_ty={}",
                    bound.repr(self.tcx()),
@@ -627,7 +633,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             self.extension_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 method_ty: method_ty.clone(),
-                kind: WhereClauseCandidate(bound, method_index)
+                kind: WhereClauseCandidate(poly_bound, method_index)
             });
         }
     }
@@ -920,6 +926,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                method.fty.sig.0.inputs[0].repr(self.tcx()),
                substs.repr(self.tcx()));
 
+        assert!(!substs.has_escaping_regions());
+
         // It is possible for type parameters or early-bound lifetimes
         // to appear in the signature of `self`. The substitutions we
         // are given do not include type/lifetime parameters for the
@@ -949,14 +957,13 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             substs = &placeholder;
         }
 
-        // Replace early-bound regions and types.
-        let xform_self_ty = method.fty.sig.0.inputs[0].subst(self.tcx(), substs);
+        // Erase any late-bound regions from the method and substitute
+        // in the values from the substitution.
+        let xform_self_ty = method.fty.sig.input(0);
+        let xform_self_ty = self.erase_late_bound_regions(&xform_self_ty);
+        let xform_self_ty = xform_self_ty.subst(self.tcx(), substs);
 
-        // Replace late-bound regions bound in the impl or
-        // where-clause (2 levels of binding) and method (1 level of binding).
-        self.erase_late_bound_regions(
-            &self.erase_late_bound_regions(
-                &ty::Binder(ty::Binder(xform_self_ty))))
+        xform_self_ty
     }
 
     fn impl_substs(&self,
