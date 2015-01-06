@@ -311,7 +311,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
 
         ast::ExprCall(ref callee, ref args) => {
             let def = tcx.def_map.borrow()[callee.id].clone();
-            if let Vacant(entry) = tcx.def_map.borrow_mut().entry(&expr.id) {
+            if let Vacant(entry) = tcx.def_map.borrow_mut().entry(expr.id) {
                entry.insert(def);
             }
             let path = match def {

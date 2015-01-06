@@ -400,7 +400,7 @@ impl<'a> Context<'a> {
             info!("lib candidate: {}", path.display());
 
             let hash_str = hash.to_string();
-            let slot = candidates.entry(&hash_str).get().unwrap_or_else(
+            let slot = candidates.entry(hash_str).get().unwrap_or_else(
                 |vacant_entry| vacant_entry.insert((HashSet::new(), HashSet::new())));
             let (ref mut rlibs, ref mut dylibs) = *slot;
             if rlib {

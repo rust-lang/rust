@@ -1328,7 +1328,7 @@ impl UnusedMut {
                 let ident = path1.node;
                 if let ast::BindByValue(ast::MutMutable) = mode {
                     if !token::get_ident(ident).get().starts_with("_") {
-                        match mutables.entry(&ident.name.uint()) {
+                        match mutables.entry(ident.name.uint()) {
                             Vacant(entry) => { entry.insert(vec![id]); },
                             Occupied(mut entry) => { entry.get_mut().push(id); },
                         }

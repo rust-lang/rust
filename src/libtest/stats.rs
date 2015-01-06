@@ -444,7 +444,7 @@ pub fn freq_count<T, U>(mut iter: T) -> hash_map::HashMap<U, uint>
 {
     let mut map: hash_map::HashMap<U,uint> = hash_map::HashMap::new();
     for elem in iter {
-        match map.entry(&elem) {
+        match map.entry(elem) {
             Occupied(mut entry) => { *entry.get_mut() += 1; },
             Vacant(entry) => { entry.insert(1); },
         }
