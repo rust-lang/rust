@@ -66,7 +66,7 @@ pub fn apply_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
 /// Extend a syntax context with a given mark and sctable (explicit memoization)
 fn apply_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
     let key = (ctxt, m);
-    * table.mark_memo.borrow_mut().entry(&key).get().unwrap_or_else(
+    * table.mark_memo.borrow_mut().entry(key).get().unwrap_or_else(
           |vacant_entry|
               vacant_entry.insert(idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt))))
 }
@@ -84,7 +84,7 @@ fn apply_rename_internal(id: Ident,
                        table: &SCTable) -> SyntaxContext {
     let key = (ctxt, id, to);
 
-    * table.rename_memo.borrow_mut().entry(&key).get().unwrap_or_else(
+    * table.rename_memo.borrow_mut().entry(key).get().unwrap_or_else(
           |vacant_entry|
               vacant_entry.insert(idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt))))
 }
