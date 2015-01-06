@@ -120,8 +120,7 @@
 extern crate log;
 
 #[macro_use]
-#[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
-                 unreachable, unimplemented, write, writeln)]
+#[macro_reexport(write, writeln)]
 extern crate core;
 
 #[macro_use]
@@ -176,7 +175,7 @@ pub use unicode::char;
 /* Exported macros */
 
 #[macro_use]
-pub mod macros;
+mod macros;
 
 #[macro_use]
 pub mod bitflags;

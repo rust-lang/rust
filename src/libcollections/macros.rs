@@ -10,6 +10,7 @@
 
 /// Creates a `Vec` containing the arguments.
 #[macro_export]
+#[stable]
 macro_rules! vec {
     ($($x:expr),*) => ({
         let xs: $crate::boxed::Box<[_]> = box [$($x),*];
