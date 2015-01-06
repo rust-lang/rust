@@ -666,6 +666,9 @@ impl LintPass for UnusedAttributes {
             "must_use",
             "stable",
             "unstable",
+
+            // FIXME: #19470 this shouldn't be needed forever
+            "old_orphan_check",
         ];
 
         static CRATE_ATTRS: &'static [&'static str] = &[

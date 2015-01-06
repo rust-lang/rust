@@ -13,6 +13,6 @@
 extern crate "coherence-lib" as lib;
 use lib::Remote;
 
-impl<T> Remote for T { } //~ ERROR E0117
+impl<T> Remote for T { } //~ ERROR type parameter `T` is not constrained
 
 fn main() { }
