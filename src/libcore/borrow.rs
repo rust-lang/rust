@@ -53,12 +53,14 @@ use option::Option;
 use self::Cow::*;
 
 /// A trait for borrowing data.
+#[old_orphan_check]
 pub trait BorrowFrom<Sized? Owned> for Sized? {
     /// Immutably borrow from an owned value.
     fn borrow_from(owned: &Owned) -> &Self;
 }
 
 /// A trait for mutably borrowing data.
+#[old_orphan_check]
 pub trait BorrowFromMut<Sized? Owned> for Sized? : BorrowFrom<Owned> {
     /// Mutably borrow from an owned value.
     fn borrow_from_mut(owned: &mut Owned) -> &mut Self;
@@ -91,6 +93,7 @@ impl<'a, T, Sized? B> BorrowFrom<Cow<'a, T, B>> for B where B: ToOwned<T> {
 }
 
 /// Trait for moving into a `Cow`
+#[old_orphan_check]
 pub trait IntoCow<'a, T, Sized? B> {
     /// Moves `self` into `Cow`
     fn into_cow(self) -> Cow<'a, T, B>;
@@ -103,6 +106,7 @@ impl<'a, T, Sized? B> IntoCow<'a, T, B> for Cow<'a, T, B> where B: ToOwned<T> {
 }
 
 /// A generalization of Clone to borrowed data.
+#[old_orphan_check]
 pub trait ToOwned<Owned> for Sized?: BorrowFrom<Owned> {
     /// Create owned data from borrowed data, usually by copying.
     fn to_owned(&self) -> Owned;

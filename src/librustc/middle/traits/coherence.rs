@@ -14,7 +14,7 @@ use super::SelectionContext;
 use super::{Obligation, ObligationCause};
 use super::util;
 
-use middle::subst::Subst;
+use middle::subst::{Subst};
 use middle::ty::{self, Ty};
 use middle::infer::InferCtxt;
 use std::collections::HashSet;
@@ -53,20 +53,20 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
 }
 
 #[allow(missing_copy_implementations)]
-pub enum OrphanCheckErr {
+pub enum OrphanCheckErr<'tcx> {
     NoLocalInputType,
-    UncoveredTypeParameter(ty::ParamTy),
+    UncoveredTy(Ty<'tcx>),
 }
 
 /// Checks the coherence orphan rules. `impl_def_id` should be the
 /// def-id of a trait impl. To pass, either the trait must be local, or else
 /// two conditions must be satisfied:
 ///
-/// 1. At least one of the input types must involve a local type.
-/// 2. All type parameters must be covered by a local type.
-pub fn orphan_check(tcx: &ty::ctxt,
-                    impl_def_id: ast::DefId)
-                    -> Result<(), OrphanCheckErr>
+/// 1. All type parameters in `Self` must be "covered" by some local type constructor.
+/// 2. Some local type must appear in `Self`.
+pub fn orphan_check<'tcx>(tcx: &ty::ctxt<'tcx>,
+                          impl_def_id: ast::DefId)
+                          -> Result<(), OrphanCheckErr<'tcx>>
 {
     debug!("impl_is_local({})", impl_def_id.repr(tcx));
 
@@ -82,29 +82,19 @@ pub fn orphan_check(tcx: &ty::ctxt,
         return Ok(());
     }
 
-    // Check condition 1: at least one type must be local.
-    if !trait_ref.input_types().iter().any(|&t| ty_reaches_local(tcx, t)) {
+    // Otherwise, check that (1) all type parameters are covered.
+    let covered_params = type_parameters_covered_by_ty(tcx, trait_ref.self_ty());
+    let all_params = type_parameters_reachable_from_ty(trait_ref.self_ty());
+    for &param in all_params.difference(&covered_params) {
+        return Err(OrphanCheckErr::UncoveredTy(param));
+    }
+
+    // And (2) some local type appears.
+    if !trait_ref.self_ty().walk().any(|t| ty_is_local_constructor(tcx, t)) {
         return Err(OrphanCheckErr::NoLocalInputType);
     }
 
-    // Check condition 2: type parameters must be "covered" by a local type.
-    let covered_params: HashSet<_> =
-        trait_ref.input_types().iter()
-                               .flat_map(|&t| type_parameters_covered_by_ty(tcx, t).into_iter())
-                               .collect();
-    let all_params: HashSet<_> =
-        trait_ref.input_types().iter()
-                               .flat_map(|&t| type_parameters_reachable_from_ty(t).into_iter())
-                               .collect();
-    for &param in all_params.difference(&covered_params) {
-        return Err(OrphanCheckErr::UncoveredTypeParameter(param));
-    }
-
     return Ok(());
-}
-
-fn ty_reaches_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.walk().any(|t| ty_is_local_constructor(tcx, t))
 }
 
 fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -153,8 +143,8 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 fn type_parameters_covered_by_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 ty: Ty<'tcx>)
-                                 -> HashSet<ty::ParamTy>
+                                       ty: Ty<'tcx>)
+                                       -> HashSet<Ty<'tcx>>
 {
     if ty_is_local_constructor(tcx, ty) {
         type_parameters_reachable_from_ty(ty)
@@ -164,14 +154,14 @@ fn type_parameters_covered_by_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 /// All type parameters reachable from `ty`
-fn type_parameters_reachable_from_ty<'tcx>(ty: Ty<'tcx>) -> HashSet<ty::ParamTy> {
+fn type_parameters_reachable_from_ty<'tcx>(ty: Ty<'tcx>) -> HashSet<Ty<'tcx>> {
     ty.walk()
-        .filter_map(|t| {
+        .filter(|&t| {
             match t.sty {
-                ty::ty_param(ref param_ty) => Some(param_ty.clone()),
-                _ => None,
+                // FIXME(#20590) straighten story about projection types
+                ty::ty_projection(..) | ty::ty_param(..) => true,
+                _ => false,
             }
         })
         .collect()
 }
-

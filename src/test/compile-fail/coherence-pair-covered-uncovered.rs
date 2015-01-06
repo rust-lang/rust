@@ -16,6 +16,6 @@ use lib::{Remote, Pair};
 struct Local<T>(T);
 
 impl<T,U> Remote for Pair<T,Local<U>> { }
-//~^ ERROR type parameter `T` must also appear
+//~^ ERROR type parameter `T` is not constrained
 
 fn main() { }

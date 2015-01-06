@@ -69,6 +69,7 @@ use option::Option::{self, Some, None};
 /// only if `a != b`.
 #[lang="eq"]
 #[stable]
+#[old_orphan_check]
 pub trait PartialEq<Sized? Rhs = Self> for Sized? {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
     #[stable]
