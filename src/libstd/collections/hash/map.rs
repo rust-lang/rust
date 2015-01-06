@@ -1448,10 +1448,16 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         value
     }
 
+    /// Takes the key and the value out of the entry, and returns it
+    #[unstable]
+    pub fn remove_entry(self) -> (K, V) {
+        pop_internal(self.elem)
+    }
+
     #[stable]
     /// Takes the value out of the entry, and returns it
     pub fn remove(self) -> V {
-        pop_internal(self.elem).1
+        self.remove_entry().1
     }
 }
 
@@ -2125,6 +2131,15 @@ mod test_map {
         assert_eq!(map.get(&3), None);
         assert_eq!(map.len(), 5);
 
+        // Existing key (take entry)
+        match map.entry(&4) {
+            Vacant(_) => unreachable!(),
+            Occupied(view) => {
+                assert_eq!(view.remove_entry(), (4, 40));
+            }
+        }
+        assert_eq!(map.get(&4), None);
+        assert_eq!(map.len(), 4);
 
         // Inexistent key (insert)
         match map.entry(&10) {
@@ -2134,7 +2149,7 @@ mod test_map {
             }
         }
         assert_eq!(map.get(&10).unwrap(), &1000);
-        assert_eq!(map.len(), 6);
+        assert_eq!(map.len(), 5);
     }
 
     #[test]
