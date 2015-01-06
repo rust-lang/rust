@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase)]
-
-#[phase(plugin, link)]
+#[macro_use]
 extern crate foo;
 
 fn main() {

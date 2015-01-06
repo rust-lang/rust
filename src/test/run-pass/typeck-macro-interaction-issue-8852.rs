@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
 enum T {
     A(int),
     B(f64)
@@ -20,7 +18,7 @@ enum T {
 // doesn't cause capture. Making this macro hygienic (as I've done)
 // could very well make this test case completely pointless....
 
-macro_rules! test(
+macro_rules! test {
     ($id1:ident, $id2:ident, $e:expr) => (
         fn foo(a:T, b:T) -> T {
             match (a, b) {
@@ -30,7 +28,7 @@ macro_rules! test(
             }
         }
     )
-);
+}
 
 test!(x,y,x + y);
 

@@ -38,7 +38,6 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(macro_rules)]
 #![feature(simd)]
 #![allow(experimental)]
 

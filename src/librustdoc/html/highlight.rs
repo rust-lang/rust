@@ -166,6 +166,9 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                 }
             }
 
+            // Special macro vars are like keywords
+            token::SpecialVarNt(_) => "kw-2",
+
             token::Lifetime(..) => "lifetime",
             token::DocComment(..) => "doccomment",
             token::Underscore | token::Eof | token::Interpolated(..) |

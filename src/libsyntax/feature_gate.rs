@@ -37,14 +37,14 @@ use std::ascii::AsciiExt;
 // if you change this list without updating src/doc/reference.md, @cmr will be sad
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("globs", Accepted),
-    ("macro_rules", Active),
+    ("macro_rules", Accepted),
     ("struct_variant", Accepted),
     ("asm", Active),
     ("managed_boxes", Removed),
     ("non_ascii_idents", Active),
     ("thread_local", Active),
     ("link_args", Active),
-    ("phase", Active),
+    ("phase", Active),  // NOTE(stage0): switch to Removed after next snapshot
     ("plugin_registrar", Active),
     ("log_syntax", Active),
     ("trace_macros", Active),
@@ -73,6 +73,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
 
     ("if_let", Accepted),
     ("while_let", Accepted),
+
+    ("plugin", Active),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
@@ -161,32 +163,11 @@ struct MacroVisitor<'a> {
 }
 
 impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
-    fn visit_view_item(&mut self, i: &ast::ViewItem) {
-        match i.node {
-            ast::ViewItemExternCrate(..) => {
-                for attr in i.attrs.iter() {
-                    if attr.name().get() == "phase"{
-                        self.context.gate_feature("phase", attr.span,
-                                          "compile time crate loading is \
-                                           experimental and possibly buggy");
-                    }
-                }
-            },
-            _ => { }
-        }
-        visit::walk_view_item(self, i)
-    }
-
-    fn visit_mac(&mut self, macro: &ast::Mac) {
-        let ast::MacInvocTT(ref path, _, _) = macro.node;
+    fn visit_mac(&mut self, mac: &ast::Mac) {
+        let ast::MacInvocTT(ref path, _, _) = mac.node;
         let id = path.segments.last().unwrap().identifier;
 
-        if id == token::str_to_ident("macro_rules") {
-            self.context.gate_feature("macro_rules", path.span, "macro definitions are \
-                not stable enough for use and are subject to change");
-        }
-
-        else if id == token::str_to_ident("asm") {
+        if id == token::str_to_ident("asm") {
             self.context.gate_feature("asm", path.span, "inline assembly is not \
                 stable enough for use and is subject to change");
         }
@@ -233,10 +214,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             ast::ViewItemUse(..) => {}
             ast::ViewItemExternCrate(..) => {
                 for attr in i.attrs.iter() {
-                    if attr.name().get() == "phase"{
-                        self.gate_feature("phase", attr.span,
-                                          "compile time crate loading is \
-                                           experimental and possibly buggy");
+                    if attr.check_name("plugin") {
+                        self.gate_feature("plugin", attr.span,
+                                          "compiler plugins are experimental \
+                                           and possibly buggy");
                     }
                 }
             }

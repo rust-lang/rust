@@ -15,7 +15,7 @@ use codemap::{Span, DUMMY_SP};
 use diagnostic::SpanHandler;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{Eof, DocComment, Interpolated, MatchNt, SubstNt};
-use parse::token::{Token, NtIdent};
+use parse::token::{Token, NtIdent, SpecialMacroVar};
 use parse::token;
 use parse::lexer::TokenAndSpan;
 
@@ -39,6 +39,10 @@ pub struct TtReader<'a> {
     stack: Vec<TtFrame>,
     /* for MBE-style macro transcription */
     interpolations: HashMap<Ident, Rc<NamedMatch>>,
+    imported_from: Option<Ident>,
+
+    // Some => return imported_from as the next token
+    crate_name_next: Option<Span>,
     repeat_idx: Vec<uint>,
     repeat_len: Vec<uint>,
     /* cached: */
@@ -53,6 +57,7 @@ pub struct TtReader<'a> {
 /// should) be none.
 pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
                          interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
+                         imported_from: Option<Ident>,
                          src: Vec<ast::TokenTree> )
                          -> TtReader<'a> {
     let mut r = TtReader {
@@ -71,6 +76,8 @@ pub fn new_tt_reader<'a>(sp_diag: &'a SpanHandler,
             None => HashMap::new(),
             Some(x) => x,
         },
+        imported_from: imported_from,
+        crate_name_next: None,
         repeat_idx: Vec::new(),
         repeat_len: Vec::new(),
         desugar_doc_comments: false,
@@ -162,6 +169,14 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         sp: r.cur_span.clone(),
     };
     loop {
+        match r.crate_name_next.take() {
+            None => (),
+            Some(sp) => {
+                r.cur_span = sp;
+                r.cur_tok = token::Ident(r.imported_from.unwrap(), token::Plain);
+                return ret_val;
+            },
+        }
         let should_pop = match r.stack.last() {
             None => {
                 assert_eq!(ret_val.tok, token::Eof);
@@ -306,6 +321,18 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                    dotdotdoted: false,
                    sep: None
                 });
+            }
+            TtToken(sp, token::SpecialVarNt(SpecialMacroVar::CrateMacroVar)) => {
+                r.stack.last_mut().unwrap().idx += 1;
+
+                if r.imported_from.is_some() {
+                    r.cur_span = sp;
+                    r.cur_tok = token::ModSep;
+                    r.crate_name_next = Some(sp);
+                    return ret_val;
+                }
+
+                // otherwise emit nothing and proceed to the next token
             }
             TtToken(sp, tok) => {
                 r.cur_span = sp;

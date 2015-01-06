@@ -10,9 +10,7 @@
 
 // ignore-pretty - token trees can't pretty print
 
-#![feature(macro_rules)]
-
-macro_rules! make_foo(
+macro_rules! make_foo {
     () => (
         struct Foo;
 
@@ -20,7 +18,7 @@ macro_rules! make_foo(
             fn bar(&self) {}
         }
     )
-);
+}
 
 make_foo!();
 

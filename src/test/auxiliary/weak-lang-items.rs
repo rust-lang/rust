@@ -14,10 +14,9 @@
 // it hasn't been defined just yet. Make sure we don't explode.
 
 #![no_std]
-#![feature(phase)]
 #![crate_type = "rlib"]
 
-#[phase(plugin, link)]
+#[macro_use]
 extern crate core;
 
 struct A;

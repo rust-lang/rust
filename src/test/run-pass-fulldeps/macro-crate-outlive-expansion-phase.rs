@@ -11,9 +11,9 @@
 // aux-build:plugin_crate_outlive_expansion_phase.rs
 // ignore-stage1
 
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
+#[plugin] #[no_link]
 extern crate plugin_crate_outlive_expansion_phase;
 
 pub fn main() {}

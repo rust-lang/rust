@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase)]
 #![deny(dead_code)]
 #![allow(unreachable_code)]
 
-#[phase(link, plugin)] extern crate core;
+#[macro_use] extern crate core;
 
 
 fn foo() { //~ ERROR function is never used

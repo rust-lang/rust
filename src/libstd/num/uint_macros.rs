@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![experimental]
-#![macro_escape]
 #![doc(hidden)]
 #![allow(unsigned_negation)]
 

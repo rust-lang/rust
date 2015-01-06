@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
-
 pub use self::PathParsingMode::*;
 use self::ItemOrViewItem::*;
 
@@ -74,8 +72,8 @@ use parse::classify;
 use parse::common::{SeqSep, seq_sep_none, seq_sep_trailing_allowed};
 use parse::lexer::{Reader, TokenAndSpan};
 use parse::obsolete::*;
-use parse::token::{self, MatchNt, SubstNt, InternedString};
-use parse::token::{keywords, special_idents};
+use parse::token::{self, MatchNt, SubstNt, SpecialVarNt, InternedString};
+use parse::token::{keywords, special_idents, SpecialMacroVar};
 use parse::{new_sub_parser_from_file, ParseSess};
 use print::pprust;
 use ptr::P;
@@ -2739,6 +2737,9 @@ impl<'a> Parser<'a> {
                                    op: repeat,
                                    num_captures: name_num
                                }))
+                } else if p.token.is_keyword_allow_following_colon(keywords::Crate) {
+                    p.bump();
+                    TtToken(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar))
                 } else {
                     // A nonterminal that matches or not
                     let namep = match p.token { token::Ident(_, p) => p, _ => token::Plain };
@@ -3881,13 +3882,13 @@ impl<'a> Parser<'a> {
                                                                   &mut stmts,
                                                                   &mut expr);
                         }
-                        StmtMac(macro, MacStmtWithoutBraces) => {
+                        StmtMac(mac, MacStmtWithoutBraces) => {
                             // statement macro without braces; might be an
                             // expr depending on whether a semicolon follows
                             match self.token {
                                 token::Semi => {
                                     stmts.push(P(Spanned {
-                                        node: StmtMac(macro,
+                                        node: StmtMac(mac,
                                                       MacStmtWithSemicolon),
                                         span: span,
                                     }));
@@ -3896,10 +3897,16 @@ impl<'a> Parser<'a> {
                                 _ => {
                                     let e = self.mk_mac_expr(span.lo,
                                                              span.hi,
+<<<<<<< HEAD
                                                              macro.and_then(|m| m.node));
                                     let e = self.parse_dot_or_call_expr_with(e);
                                     let e = self.parse_more_binops(e, 0);
                                     let e = self.parse_assign_expr_with(e);
+=======
+                                                             mac.and_then(|m| m.node));
+                                    let e =
+                                        self.parse_dot_or_call_expr_with(e);
+>>>>>>> kmc/macro-reform
                                     self.handle_expression_like_statement(
                                         e,
                                         ast::DUMMY_NODE_ID,
@@ -6025,6 +6032,10 @@ impl<'a> Parser<'a> {
     /// | MOD? non_global_path
     fn parse_view_path(&mut self) -> P<ViewPath> {
         let lo = self.span.lo;
+
+        // Allow a leading :: because the paths are absolute either way.
+        // This occurs with "use $crate::..." in macros.
+        self.eat(&token::ModSep);
 
         if self.check(&token::OpenDelim(token::Brace)) {
             // use {foo,bar}

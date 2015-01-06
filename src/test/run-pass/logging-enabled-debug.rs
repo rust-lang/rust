@@ -11,8 +11,7 @@
 // compile-flags:--cfg ndebug
 // exec-env:RUST_LOG=logging-enabled-debug=debug
 
-#![feature(phase)]
-#[phase(plugin, link)]
+#[macro_use]
 extern crate log;
 
 pub fn main() {

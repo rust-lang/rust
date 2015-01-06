@@ -39,10 +39,24 @@ extern crate rustc_borrowck;
 extern crate rustc_resolve;
 extern crate rustc_trans;
 extern crate rustc_typeck;
-#[phase(plugin, link)] extern crate log;
-#[phase(plugin, link)] extern crate syntax;
 extern crate serialize;
 extern crate "rustc_llvm" as llvm;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate log;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate syntax;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate syntax;
 
 pub use syntax::diagnostic;
 

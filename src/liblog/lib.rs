@@ -13,8 +13,7 @@
 //! # Examples
 //!
 //! ```
-//! #![feature(phase)]
-//! #[phase(plugin, link)] extern crate log;
+//! #[macro_use] extern crate log;
 //!
 //! fn main() {
 //!     debug!("this is a debug {}", "message");
@@ -183,7 +182,10 @@ use regex::Regex;
 
 use directive::LOG_LEVEL_NAMES;
 
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod macros;
+
 mod directive;
 
 /// Maximum logging level of a module that can be specified. Common logging

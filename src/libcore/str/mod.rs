@@ -964,17 +964,18 @@ fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
         let old = *iter;
 
         // restore the iterator we had at the start of this codepoint.
-        macro_rules! err (() => { {
+        macro_rules! err { () => {{
             *iter = old;
             return Err(Utf8Error::InvalidByte(whole.len() - iter.as_slice().len()))
-        } });
-        macro_rules! next ( () => {
+        }}}
+
+        macro_rules! next { () => {
             match iter.next() {
                 Some(a) => *a,
                 // we needed data, but there was none: error!
                 None => return Err(Utf8Error::TooShort),
             }
-        });
+        }}
 
         let first = match iter.next() {
             Some(&b) => b,

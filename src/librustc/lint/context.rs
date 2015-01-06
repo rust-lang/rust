@@ -167,21 +167,27 @@ impl LintStore {
     }
 
     pub fn register_builtin(&mut self, sess: Option<&Session>) {
-        macro_rules! add_builtin ( ( $sess:ident, $($name:ident),*, ) => (
-            {$(
-                self.register_pass($sess, false, box builtin::$name as LintPassObject);
-            )*}
-        ));
+        macro_rules! add_builtin {
+            ($sess:ident, $($name:ident),*,) => (
+                {$(
+                    self.register_pass($sess, false, box builtin::$name as LintPassObject);
+                )*}
+            )
+        }
 
-        macro_rules! add_builtin_with_new ( ( $sess:ident, $($name:ident),*, ) => (
-            {$(
-                self.register_pass($sess, false, box builtin::$name::new() as LintPassObject);
-            )*}
-        ));
+        macro_rules! add_builtin_with_new {
+            ($sess:ident, $($name:ident),*,) => (
+                {$(
+                    self.register_pass($sess, false, box builtin::$name::new() as LintPassObject);
+                )*}
+            )
+        }
 
-        macro_rules! add_lint_group ( ( $sess:ident, $name:expr, $($lint:ident),* ) => (
-            self.register_group($sess, false, $name, vec![$(LintId::of(builtin::$lint)),*]);
-        ));
+        macro_rules! add_lint_group {
+            ($sess:ident, $name:expr, $($lint:ident),*) => (
+                self.register_group($sess, false, $name, vec![$(LintId::of(builtin::$lint)),*]);
+            )
+        }
 
         add_builtin!(sess,
                      HardwiredLints,

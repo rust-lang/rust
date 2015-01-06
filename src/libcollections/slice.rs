@@ -2598,13 +2598,13 @@ mod tests {
 
     #[test]
     fn test_show() {
-        macro_rules! test_show_vec(
+        macro_rules! test_show_vec {
             ($x:expr, $x_str:expr) => ({
                 let (x, x_str) = ($x, $x_str);
                 assert_eq!(format!("{}", x), x_str);
                 assert_eq!(format!("{}", x.as_slice()), x_str);
             })
-        );
+        }
         let empty: Vec<int> = vec![];
         test_show_vec!(empty, "[]");
         test_show_vec!(vec![1i], "[1]");
@@ -2624,12 +2624,12 @@ mod tests {
 
     #[test]
     fn test_vec_default() {
-        macro_rules! t (
+        macro_rules! t {
             ($ty:ty) => {{
                 let v: $ty = Default::default();
                 assert!(v.is_empty());
             }}
-        );
+        }
 
         t!(&[int]);
         t!(Vec<int>);

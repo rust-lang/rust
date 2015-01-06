@@ -34,8 +34,14 @@
 #![feature(unboxed_closures)]
 #![feature(old_orphan_check)]
 
+#[cfg(stage0)]
 #[phase(plugin, link)]
 extern crate log;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate log;
+
 extern crate syntax;
 extern crate serialize;
 

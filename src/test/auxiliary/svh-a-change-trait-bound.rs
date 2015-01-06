@@ -13,8 +13,6 @@
 //! should not affect the strict version hash (SVH) computation
 //! (#14132).
 
-#![feature(macro_rules)]
-
 #![crate_name = "a"]
 
 macro_rules! three {

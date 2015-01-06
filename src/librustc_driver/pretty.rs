@@ -484,8 +484,8 @@ impl fold::Folder for ReplaceBodyWithLoop {
 
     // in general the pretty printer processes unexpanded code, so
     // we override the default `fold_mac` method which panics.
-    fn fold_mac(&mut self, _macro: ast::Mac) -> ast::Mac {
-        fold::noop_fold_mac(_macro, self)
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+        fold::noop_fold_mac(mac, self)
     }
 }
 
