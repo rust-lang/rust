@@ -35,10 +35,10 @@ impl<T> E<T> {
 }
 
 macro_rules! check_option {
-    ($e:expr: $T:ty) => {{
-        check_option!($e: $T, |ptr| assert!(*ptr == $e));
+    ($e:expr, $T:ty) => {{
+        check_option!($e, $T, |ptr| assert!(*ptr == $e));
     }};
-    ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{
+    ($e:expr, $T:ty, |$v:ident| $chk:expr) => {{
         assert!(option::Option::None::<$T>.is_none());
         let e = $e;
         let s_ = option::Option::Some::<$T>(e);
@@ -48,10 +48,10 @@ macro_rules! check_option {
 }
 
 macro_rules! check_fancy {
-    ($e:expr: $T:ty) => {{
-        check_fancy!($e: $T, |ptr| assert!(*ptr == $e));
+    ($e:expr, $T:ty) => {{
+        check_fancy!($e, $T, |ptr| assert!(*ptr == $e));
     }};
-    ($e:expr: $T:ty, |$v:ident| $chk:expr) => {{
+    ($e:expr, $T:ty, |$v:ident| $chk:expr) => {{
         assert!(E::Nothing::<$T>((), ((), ()), [23i8; 0]).is_none());
         let e = $e;
         let t_ = E::Thing::<$T>(23, e);
@@ -71,12 +71,12 @@ macro_rules! check_type {
 }
 
 pub fn main() {
-    check_type!(&17: &int);
-    check_type!(box 18: Box<int>);
-    check_type!("foo".to_string(): String);
-    check_type!(vec!(20, 22): Vec<int> );
+    check_type!(&17, &int);
+    check_type!(box 18, Box<int>);
+    check_type!("foo".to_string(), String);
+    check_type!(vec!(20, 22), Vec<int> );
     let mint: uint = unsafe { mem::transmute(main) };
-    check_type!(main: fn(), |pthing| {
+    check_type!(main, fn(), |pthing| {
         assert!(mint == unsafe { mem::transmute(*pthing) })
     });
 }
