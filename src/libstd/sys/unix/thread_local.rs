@@ -37,10 +37,18 @@ pub unsafe fn destroy(key: Key) {
     debug_assert_eq!(r, 0);
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos",
+          target_os = "ios"))]
 type pthread_key_t = ::libc::c_ulong;
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(any(target_os = "freebsd",
+          target_os = "dragonfly"))]
+type pthread_key_t = ::libc::c_int;
+
+#[cfg(not(any(target_os = "macos",
+              target_os = "ios",
+              target_os = "freebsd",
+              target_os = "dragonfly")))]
 type pthread_key_t = ::libc::c_uint;
 
 extern {
