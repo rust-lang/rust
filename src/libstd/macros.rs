@@ -32,7 +32,7 @@
 /// # #![allow(unreachable_code)]
 /// panic!();
 /// panic!("this is a terrible mistake!");
-/// panic!(4); // panic with the value of 4 to be collected elsewhere
+/// panic!(4i); // panic with the value of 4 to be collected elsewhere
 /// panic!("this is a {} {message}", "fancy", message = "message");
 /// ```
 #[macro_export]
@@ -73,7 +73,7 @@ macro_rules! panic {
 /// // assert with a custom message
 /// # let x = true;
 /// assert!(x, "x wasn't true!");
-/// # let a = 3; let b = 27;
+/// # let a = 3i; let b = 27i;
 /// assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
@@ -98,8 +98,8 @@ macro_rules! assert {
 /// # Example
 ///
 /// ```
-/// let a = 3;
-/// let b = 1 + 2;
+/// let a = 3i;
+/// let b = 1i + 2i;
 /// assert_eq!(a, b);
 /// ```
 #[macro_export]
@@ -140,7 +140,7 @@ macro_rules! assert_eq {
 /// // assert with a custom message
 /// # let x = true;
 /// debug_assert!(x, "x wasn't true!");
-/// # let a = 3; let b = 27;
+/// # let a = 3i; let b = 27i;
 /// debug_assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
@@ -161,8 +161,8 @@ macro_rules! debug_assert {
 /// # Example
 ///
 /// ```
-/// let a = 3;
-/// let b = 1 + 2;
+/// let a = 3i;
+/// let b = 1i + 2i;
 /// debug_assert_eq!(a, b);
 /// ```
 #[macro_export]
@@ -237,7 +237,7 @@ macro_rules! unimplemented {
 /// ```
 /// format!("test");
 /// format!("hello {}", "world!");
-/// format!("x = {}, y = {y}", 10, y = 30);
+/// format!("x = {}, y = {y}", 10i, y = 30i);
 /// ```
 #[macro_export]
 #[stable]
@@ -301,7 +301,7 @@ macro_rules! try {
 /// let (tx1, rx1) = channel();
 /// let (tx2, rx2) = channel();
 /// # fn long_running_task() {}
-/// # fn calculate_the_answer() -> int { 42 }
+/// # fn calculate_the_answer() -> int { 42i }
 ///
 /// Thread::spawn(move|| { long_running_task(); tx1.send(()) }).detach();
 /// Thread::spawn(move|| { tx2.send(calculate_the_answer()) }).detach();
@@ -470,7 +470,7 @@ pub mod builtin {
     /// # Example
     ///
     /// ```
-    /// let s = concat!("test", 10, 'b', true);
+    /// let s = concat!("test", 10i, 'b', true);
     /// assert_eq!(s, "test10btrue");
     /// ```
     #[macro_export]

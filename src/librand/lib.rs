@@ -287,7 +287,7 @@ pub trait Rng : Sized {
     /// ```
     /// use std::rand::{thread_rng, Rng};
     ///
-    /// let choices = [1, 2, 4, 8, 16, 32];
+    /// let choices = [1i, 2, 4, 8, 16, 32];
     /// let mut rng = thread_rng();
     /// println!("{}", rng.choose(&choices));
     /// # // replace with slicing syntax when it's stable!
@@ -309,7 +309,7 @@ pub trait Rng : Sized {
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
-    /// let mut y = [1, 2, 3];
+    /// let mut y = [1i, 2, 3];
     /// rng.shuffle(&mut y);
     /// println!("{}", y.as_slice());
     /// rng.shuffle(&mut y);

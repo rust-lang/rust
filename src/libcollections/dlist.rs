@@ -232,9 +232,9 @@ impl<T> DList<T> {
     ///
     /// let mut a = DList::new();
     /// let mut b = DList::new();
-    /// a.push_back(1);
+    /// a.push_back(1i);
     /// a.push_back(2);
-    /// b.push_back(3);
+    /// b.push_back(3i);
     /// b.push_back(4);
     ///
     /// a.append(b);
@@ -377,7 +377,7 @@ impl<T> DList<T> {
     /// use std::collections::DList;
     ///
     /// let mut d = DList::new();
-    /// d.push_back(1);
+    /// d.push_back(1i);
     /// d.push_back(3);
     /// assert_eq!(3, *d.back().unwrap());
     /// ```
@@ -396,7 +396,7 @@ impl<T> DList<T> {
     ///
     /// let mut d = DList::new();
     /// assert_eq!(d.pop_back(), None);
-    /// d.push_back(1);
+    /// d.push_back(1i);
     /// d.push_back(3);
     /// assert_eq!(d.pop_back(), Some(3));
     /// ```
@@ -553,7 +553,7 @@ impl<'a, A> IterMut<'a, A> {
     /// }
     /// {
     ///     let vec: Vec<int> = list.into_iter().collect();
-    ///     assert_eq!(vec, vec![1, 2, 3, 4]);
+    ///     assert_eq!(vec, vec![1i, 2, 3, 4]);
     /// }
     /// ```
     #[inline]

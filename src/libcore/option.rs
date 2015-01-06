@@ -470,10 +470,10 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let x = Some("foo");
-    /// assert_eq!(x.ok_or(0), Ok("foo"));
+    /// assert_eq!(x.ok_or(0i), Ok("foo"));
     ///
     /// let x: Option<&str> = None;
-    /// assert_eq!(x.ok_or(0), Err(0));
+    /// assert_eq!(x.ok_or(0i), Err(0i));
     /// ```
     #[inline]
     #[experimental]
@@ -491,10 +491,10 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let x = Some("foo");
-    /// assert_eq!(x.ok_or_else(|| 0), Ok("foo"));
+    /// assert_eq!(x.ok_or_else(|| 0i), Ok("foo"));
     ///
     /// let x: Option<&str> = None;
-    /// assert_eq!(x.ok_or_else(|| 0), Err(0));
+    /// assert_eq!(x.ok_or_else(|| 0i), Err(0i));
     /// ```
     #[inline]
     #[experimental]
@@ -728,8 +728,8 @@ impl<T: Default> Option<T> {
     /// let good_year = good_year_from_input.parse().unwrap_or_default();
     /// let bad_year = bad_year_from_input.parse().unwrap_or_default();
     ///
-    /// assert_eq!(1909, good_year);
-    /// assert_eq!(0, bad_year);
+    /// assert_eq!(1909i, good_year);
+    /// assert_eq!(0i, bad_year);
     /// ```
     #[inline]
     #[stable]
