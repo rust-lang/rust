@@ -645,7 +645,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                    predicates.repr(self.tcx()));
             for poly_bound in
                 traits::elaborate_predicates(self.tcx(), predicates)
-                .filter_map(|p| p.to_opt_poly_trait_ref()) // TODO filter_to_traits()
+                .filter_map(|p| p.to_opt_poly_trait_ref())
                 .filter(|b| b.def_id() == trait_def_id)
             {
                 let bound = self.erase_late_bound_regions(&poly_bound);
