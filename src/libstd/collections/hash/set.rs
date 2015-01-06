@@ -22,9 +22,6 @@ use iter::{Iterator, IteratorExt, FromIterator, Map, Chain, Extend};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
 
-// NOTE: for old macros; remove after the next snapshot
-#[cfg(stage0)] use result::Result::{Ok, Err};
-
 use super::map::{self, HashMap, Keys, INITIAL_CAPACITY};
 
 // Future Optimization (FIXME!)

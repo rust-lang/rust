@@ -23,9 +23,6 @@ use slice::{SliceExt};
 use slice;
 use vec::Vec;
 
-// NOTE: for old macros; remove after the next snapshot
-#[cfg(stage0)] use result::Result::Err;
-
 /// Wraps a Reader and buffers input from it
 ///
 /// It can be excessively inefficient to work directly with a `Reader`. For

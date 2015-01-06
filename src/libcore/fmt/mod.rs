@@ -27,9 +27,6 @@ use slice::SliceExt;
 use slice;
 use str::{self, StrExt, Utf8Error};
 
-// NOTE: for old macros; remove after the next snapshot
-#[cfg(stage0)] use result::Result::Err;
-
 pub use self::num::radix;
 pub use self::num::Radix;
 pub use self::num::RadixFmt;

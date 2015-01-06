@@ -602,7 +602,7 @@ impl<'a> MethodDef<'a> {
         };
         let mut f = self.combine_substructure.borrow_mut();
         let f: &mut CombineSubstructureFunc = &mut *f;
-        f.call_mut((cx, trait_.span, &substructure))
+        f(cx, trait_.span, &substructure)
     }
 
     fn get_ret_ty(&self,
@@ -1365,8 +1365,8 @@ pub fn cs_fold<F>(use_foldl: bool,
             }
         },
         EnumNonMatchingCollapsed(ref all_args, _, tuple) =>
-            enum_nonmatch_f.call_mut((cx, trait_span, (all_args.index(&FullRange), tuple),
-                                      substructure.nonself_args)),
+            enum_nonmatch_f(cx, trait_span, (all_args.index(&FullRange), tuple),
+                            substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "static function in `derive`")
         }
@@ -1405,8 +1405,8 @@ pub fn cs_same_method<F>(f: F,
             f(cx, trait_span, called)
         },
         EnumNonMatchingCollapsed(ref all_self_args, _, tuple) =>
-            enum_nonmatch_f.call_mut((cx, trait_span, (all_self_args.index(&FullRange), tuple),
-                                     substructure.nonself_args)),
+            enum_nonmatch_f(cx, trait_span, (all_self_args.index(&FullRange), tuple),
+                            substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "static function in `derive`")
         }

@@ -16,14 +16,8 @@
 extern crate test;
 extern crate getopts;
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(not(stage0))]
 #[macro_use]
 extern crate log;
-
 extern crate regex;
 
 use std::os;

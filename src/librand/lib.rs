@@ -23,35 +23,14 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, phase, globs)]
-#![feature(unboxed_closures)]
-#![feature(associated_types)]
 #![no_std]
 #![experimental]
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate core;
-
-#[cfg(not(stage0))]
 #[macro_use]
 extern crate core;
 
-#[cfg(all(test, stage0))]
-#[phase(plugin, link)]
-extern crate std;
-
-#[cfg(all(test, not(stage0)))]
-#[macro_use]
-extern crate std;
-
-#[cfg(all(test, stage0))]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(all(test, not(stage0)))]
-#[macro_use]
-extern crate log;
+#[cfg(test)] #[macro_use] extern crate std;
+#[cfg(test)] #[macro_use] extern crate log;
 
 use core::prelude::*;
 

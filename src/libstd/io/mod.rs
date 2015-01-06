@@ -285,8 +285,7 @@ pub mod stdio;
 pub mod timer;
 pub mod util;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod test;
 
 /// The default buffer size for various I/O operations

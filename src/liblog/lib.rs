@@ -163,7 +163,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(macro_rules, unboxed_closures, slicing_syntax)]
+#![feature(slicing_syntax)]
 #![deny(missing_docs)]
 
 extern crate regex;
@@ -182,8 +182,7 @@ use regex::Regex;
 
 use directive::LOG_LEVEL_NAMES;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod macros;
 
 mod directive;

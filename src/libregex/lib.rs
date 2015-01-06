@@ -23,9 +23,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, slicing_syntax, globs)]
-#![feature(unboxed_closures)]
-#![feature(associated_types)]
+#![feature(slicing_syntax)]
 #![deny(missing_docs)]
 
 #[cfg(test)]

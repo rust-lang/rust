@@ -28,8 +28,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![no_std]
-#![feature(globs, macro_rules, slicing_syntax, unboxed_closures)]
-#![feature(associated_types)]
+#![feature(slicing_syntax)]
 
 extern crate core;
 

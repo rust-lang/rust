@@ -16,8 +16,7 @@ pub use self::base::trans_crate;
 pub use self::context::CrateContext;
 pub use self::common::gensym_name;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 mod macros;
 
 mod doc;

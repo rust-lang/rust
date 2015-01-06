@@ -953,7 +953,7 @@ fn encode_inlined_item(ecx: &EncodeContext,
                        ii: InlinedItemRef) {
     let mut eii = ecx.encode_inlined_item.borrow_mut();
     let eii: &mut EncodeInlinedItem = &mut *eii;
-    eii.call_mut((ecx, rbml_w, ii))
+    eii(ecx, rbml_w, ii)
 }
 
 const FN_FAMILY: char = 'f';

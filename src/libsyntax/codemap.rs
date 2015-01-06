@@ -120,15 +120,6 @@ impl PartialEq for Span {
 
 impl Eq for Span {}
 
-#[cfg(stage0)]
-impl<S:Encoder<E>, E> Encodable<S, E> for Span {
-    /* Note #1972 -- spans are encoded but not decoded */
-    fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_nil()
-    }
-}
-
-#[cfg(not(stage0))]
 impl Encodable for Span {
     /* Note #1972 -- spans are encoded but not decoded */
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
@@ -136,14 +127,6 @@ impl Encodable for Span {
     }
 }
 
-#[cfg(stage0)]
-impl<D:Decoder<E>, E> Decodable<D, E> for Span {
-    fn decode(_d: &mut D) -> Result<Span, E> {
-        Ok(DUMMY_SP)
-    }
-}
-
-#[cfg(not(stage0))]
 impl Decodable for Span {
     fn decode<D: Decoder>(_d: &mut D) -> Result<Span, D::Error> {
         Ok(DUMMY_SP)

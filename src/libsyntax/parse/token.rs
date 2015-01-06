@@ -684,29 +684,12 @@ impl<'a> PartialEq<InternedString > for &'a str {
     }
 }
 
-#[cfg(stage0)]
-impl<D:Decoder<E>, E> Decodable<D, E> for InternedString {
-    fn decode(d: &mut D) -> Result<InternedString, E> {
-        Ok(get_name(get_ident_interner().intern(
-                    try!(d.read_str()).index(&FullRange))))
-    }
-}
-
-#[cfg(not(stage0))]
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
         Ok(get_name(get_ident_interner().intern(try!(d.read_str()).index(&FullRange))))
     }
 }
 
-#[cfg(stage0)]
-impl<S:Encoder<E>, E> Encodable<S, E> for InternedString {
-    fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(self.string.index(&FullRange))
-    }
-}
-
-#[cfg(not(stage0))]
 impl Encodable for InternedString {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_str(self.string.index(&FullRange))
