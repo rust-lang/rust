@@ -187,13 +187,13 @@ pub unsafe fn uninitialized<T>() -> T {
 /// ```
 /// use std::mem;
 ///
-/// let x = &mut 5;
-/// let y = &mut 42;
+/// let x = &mut 5i;
+/// let y = &mut 42i;
 ///
 /// mem::swap(x, y);
 ///
-/// assert_eq!(42, *x);
-/// assert_eq!(5, *y);
+/// assert_eq!(42i, *x);
+/// assert_eq!(5i, *y);
 /// ```
 #[inline]
 #[stable]

@@ -33,7 +33,7 @@
 //! translated to the `loop` below.
 //!
 //! ```rust
-//! let values = vec![1, 2, 3];
+//! let values = vec![1i, 2, 3];
 //!
 //! // "Syntactical sugar" taking advantage of an iterator
 //! for &x in values.iter() {
@@ -176,8 +176,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [0];
-    /// let b = [1];
+    /// let a = [0i];
+    /// let b = [1i];
     /// let mut it = a.iter().chain(b.iter());
     /// assert_eq!(it.next().unwrap(), &0);
     /// assert_eq!(it.next().unwrap(), &1);
@@ -199,10 +199,10 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [0];
-    /// let b = [1];
+    /// let a = [0i];
+    /// let b = [1i];
     /// let mut it = a.iter().zip(b.iter());
-    /// let (x0, x1) = (0, 1);
+    /// let (x0, x1) = (0i, 1i);
     /// assert_eq!(it.next().unwrap(), (&x0, &x1));
     /// assert!(it.next().is_none());
     /// ```
@@ -220,7 +220,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2];
+    /// let a = [1i, 2];
     /// let mut it = a.iter().map(|&x| 2 * x);
     /// assert_eq!(it.next().unwrap(), 2);
     /// assert_eq!(it.next().unwrap(), 4);
@@ -241,7 +241,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2];
+    /// let a = [1i, 2];
     /// let mut it = a.iter().filter(|&x| *x > 1);
     /// assert_eq!(it.next().unwrap(), &2);
     /// assert!(it.next().is_none());
@@ -261,7 +261,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2];
+    /// let a = [1i, 2];
     /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
     /// assert_eq!(it.next().unwrap(), 4);
     /// assert!(it.next().is_none());
@@ -280,9 +280,9 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [100, 200];
+    /// let a = [100i, 200];
     /// let mut it = a.iter().enumerate();
-    /// let (x100, x200) = (100, 200);
+    /// let (x100, x200) = (100i, 200i);
     /// assert_eq!(it.next().unwrap(), (0, &x100));
     /// assert_eq!(it.next().unwrap(), (1, &x200));
     /// assert!(it.next().is_none());
@@ -299,7 +299,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let xs = [100, 200, 300];
+    /// let xs = [100i, 200, 300];
     /// let mut it = xs.iter().map(|x| *x).peekable();
     /// assert_eq!(*it.peek().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 100);
@@ -323,7 +323,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2, 3, 2, 1];
+    /// let a = [1i, 2, 3, 2, 1];
     /// let mut it = a.iter().skip_while(|&a| *a < 3);
     /// assert_eq!(it.next().unwrap(), &3);
     /// assert_eq!(it.next().unwrap(), &2);
@@ -345,7 +345,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2, 3, 2, 1];
+    /// let a = [1i, 2, 3, 2, 1];
     /// let mut it = a.iter().take_while(|&a| *a < 3);
     /// assert_eq!(it.next().unwrap(), &1);
     /// assert_eq!(it.next().unwrap(), &2);
@@ -365,7 +365,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
+    /// let a = [1i, 2, 3, 4, 5];
     /// let mut it = a.iter().skip(3);
     /// assert_eq!(it.next().unwrap(), &4);
     /// assert_eq!(it.next().unwrap(), &5);
@@ -383,7 +383,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
+    /// let a = [1i, 2, 3, 4, 5];
     /// let mut it = a.iter().take(3);
     /// assert_eq!(it.next().unwrap(), &1);
     /// assert_eq!(it.next().unwrap(), &2);
@@ -404,7 +404,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
+    /// let a = [1i, 2, 3, 4, 5];
     /// let mut it = a.iter().scan(1, |fac, &x| {
     ///   *fac = *fac * x;
     ///   Some(*fac)
@@ -477,9 +477,9 @@ pub trait IteratorExt: Iterator + Sized {
     ///     }
     ///     sum
     /// }
-    /// let x = vec![1,2,3,7,8,9];
+    /// let x = vec![1i,2,3,7,8,9];
     /// assert_eq!(process(x.into_iter()), 6);
-    /// let x = vec![1,2,3];
+    /// let x = vec![1i,2,3];
     /// assert_eq!(process(x.into_iter()), 1006);
     /// ```
     #[inline]
@@ -540,7 +540,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
+    /// let a = [1i, 2, 3, 4, 5];
     /// let b: Vec<int> = a.iter().map(|&x| x).collect();
     /// assert!(a.as_slice() == b.as_slice());
     /// ```
@@ -556,7 +556,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// do not.
     ///
     /// ```
-    /// let vec = vec![1, 2, 3, 4];
+    /// let vec = vec![1i, 2i, 3i, 4i];
     /// let (even, odd): (Vec<int>, Vec<int>) = vec.into_iter().partition(|&n| n % 2 == 0);
     /// assert_eq!(even, vec![2, 4]);
     /// assert_eq!(odd, vec![1, 3]);
@@ -586,7 +586,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
+    /// let a = [1i, 2, 3, 4, 5];
     /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
     /// ```
     #[inline]
@@ -606,7 +606,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
+    /// let a = [1i, 2, 3, 4, 5];
     /// assert!(a.iter().all(|x| *x > 0));
     /// assert!(!a.iter().all(|x| *x > 2));
     /// ```
@@ -623,7 +623,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1, 2, 3, 4, 5];
+    /// let a = [1i, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.any(|x| *x == 3));
     /// assert!(!it.any(|x| *x == 3));
@@ -812,7 +812,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```rust
     /// use core::num::SignedInt;
     ///
-    /// let xs = [-3, 0, 1, 5, -10];
+    /// let xs = [-3i, 0, 1, 5, -10];
     /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
@@ -841,7 +841,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```rust
     /// use core::num::SignedInt;
     ///
-    /// let xs = [-3, 0, 1, 5, -10];
+    /// let xs = [-3i, 0, 1, 5, -10];
     /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
@@ -1096,7 +1096,7 @@ pub trait AdditiveIterator<A> {
     /// ```rust
     /// use std::iter::AdditiveIterator;
     ///
-    /// let a: [i32] = [1, 2, 3, 4, 5];
+    /// let a = [1i, 2, 3, 4, 5];
     /// let mut it = a.iter().map(|&x| x);
     /// assert!(it.sum() == 15);
     /// ```
@@ -1171,6 +1171,134 @@ impl_multiplicative! { uint, 1 }
 impl_multiplicative! { f32,  1.0 }
 impl_multiplicative! { f64,  1.0 }
 
+<<<<<<< HEAD
+=======
+/// A trait for iterators over elements which can be compared to one another.
+#[unstable = "recently renamed for new extension trait conventions"]
+pub trait IteratorOrdExt<A> {
+    /// Consumes the entire iterator to return the maximum element.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let a = [1i, 2, 3, 4, 5];
+    /// assert!(a.iter().max().unwrap() == &5);
+    /// ```
+    fn max(self) -> Option<A>;
+
+    /// Consumes the entire iterator to return the minimum element.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let a = [1i, 2, 3, 4, 5];
+    /// assert!(a.iter().min().unwrap() == &1);
+    /// ```
+    fn min(self) -> Option<A>;
+
+    /// `min_max` finds the minimum and maximum elements in the iterator.
+    ///
+    /// The return type `MinMaxResult` is an enum of three variants:
+    ///
+    /// - `NoElements` if the iterator is empty.
+    /// - `OneElement(x)` if the iterator has exactly one element.
+    /// - `MinMax(x, y)` is returned otherwise, where `x <= y`. Two
+    ///    values are equal if and only if there is more than one
+    ///    element in the iterator and all elements are equal.
+    ///
+    /// On an iterator of length `n`, `min_max` does `1.5 * n` comparisons,
+    /// and so is faster than calling `min` and `max` separately which does `2 * n` comparisons.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
+    ///
+    /// let v: [int; 0] = [];
+    /// assert_eq!(v.iter().min_max(), NoElements);
+    ///
+    /// let v = [1i];
+    /// assert!(v.iter().min_max() == OneElement(&1));
+    ///
+    /// let v = [1i, 2, 3, 4, 5];
+    /// assert!(v.iter().min_max() == MinMax(&1, &5));
+    ///
+    /// let v = [1i, 2, 3, 4, 5, 6];
+    /// assert!(v.iter().min_max() == MinMax(&1, &6));
+    ///
+    /// let v = [1i, 1, 1, 1];
+    /// assert!(v.iter().min_max() == MinMax(&1, &1));
+    /// ```
+    fn min_max(self) -> MinMaxResult<A>;
+}
+
+#[unstable = "trait is unstable"]
+impl<T, I> IteratorOrdExt<T> for I where I: Iterator<Item=T>, T: Ord {
+    #[inline]
+    fn max(self) -> Option<T> {
+        self.fold(None, |max, x| {
+            match max {
+                None    => Some(x),
+                Some(y) => Some(cmp::max(x, y))
+            }
+        })
+    }
+
+    #[inline]
+    fn min(self) -> Option<T> {
+        self.fold(None, |min, x| {
+            match min {
+                None    => Some(x),
+                Some(y) => Some(cmp::min(x, y))
+            }
+        })
+    }
+
+    fn min_max(mut self) -> MinMaxResult<T> {
+        let (mut min, mut max) = match self.next() {
+            None => return NoElements,
+            Some(x) => {
+                match self.next() {
+                    None => return OneElement(x),
+                    Some(y) => if x < y {(x, y)} else {(y,x)}
+                }
+            }
+        };
+
+        loop {
+            // `first` and `second` are the two next elements we want to look at.
+            // We first compare `first` and `second` (#1). The smaller one is then compared to
+            // current minimum (#2). The larger one is compared to current maximum (#3). This
+            // way we do 3 comparisons for 2 elements.
+            let first = match self.next() {
+                None => break,
+                Some(x) => x
+            };
+            let second = match self.next() {
+                None => {
+                    if first < min {
+                        min = first;
+                    } else if first > max {
+                        max = first;
+                    }
+                    break;
+                }
+                Some(x) => x
+            };
+            if first < second {
+                if first < min {min = first;}
+                if max < second {max = second;}
+            } else {
+                if second < min {min = second;}
+                if max < first {max = first;}
+            }
+        }
+
+        MinMax(min, max)
+    }
+}
+
+>>>>>>> parent of f031671... Remove i suffix in docs
 /// `MinMaxResult` is an enum returned by `min_max`. See `IteratorOrdExt::min_max` for more detail.
 #[derive(Clone, PartialEq, Show)]
 #[unstable = "unclear whether such a fine-grained result is widely useful"]
@@ -1199,10 +1327,10 @@ impl<T: Clone> MinMaxResult<T> {
     /// let r: MinMaxResult<int> = NoElements;
     /// assert_eq!(r.into_option(), None);
     ///
-    /// let r = OneElement(1);
+    /// let r = OneElement(1i);
     /// assert_eq!(r.into_option(), Some((1,1)));
     ///
-    /// let r = MinMax(1, 2);
+    /// let r = MinMax(1i,2i);
     /// assert_eq!(r.into_option(), Some((1,2)));
     /// ```
     #[unstable = "type is unstable"]
@@ -1258,6 +1386,35 @@ impl<T, D, I> ExactSizeIterator for Cloned<I> where
     I: ExactSizeIterator + Iterator<Item=D>,
 {}
 
+<<<<<<< HEAD
+=======
+#[unstable = "recently renamed for extension trait conventions"]
+/// An extension trait for cloneable iterators.
+pub trait CloneIteratorExt {
+    /// Repeats an iterator endlessly
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::iter::{CloneIteratorExt, count};
+    ///
+    /// let a = count(1i,1i).take(1);
+    /// let mut cy = a.cycle();
+    /// assert_eq!(cy.next(), Some(1));
+    /// assert_eq!(cy.next(), Some(1));
+    /// ```
+    #[stable]
+    fn cycle(self) -> Cycle<Self>;
+}
+
+impl<I> CloneIteratorExt for I where I: Iterator + Clone {
+    #[inline]
+    fn cycle(self) -> Cycle<I> {
+        Cycle{orig: self.clone(), iter: self}
+    }
+}
+
+>>>>>>> parent of f031671... Remove i suffix in docs
 /// An iterator that repeats endlessly
 #[derive(Clone, Copy)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
