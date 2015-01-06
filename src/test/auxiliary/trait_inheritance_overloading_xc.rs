@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 use std::cmp::PartialEq;
 use std::ops::{Add, Sub, Mul};
 

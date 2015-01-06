@@ -13,7 +13,7 @@
 // aux-build:stability_cfg1.rs
 // aux-build:stability_cfg2.rs
 
-#![feature(globs, phase)]
+#![feature(phase)]
 #![deny(unstable)]
 #![deny(deprecated)]
 #![deny(experimental)]

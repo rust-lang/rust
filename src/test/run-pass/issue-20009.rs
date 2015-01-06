@@ -10,8 +10,6 @@
 
 // Check that associated types are `Sized`
 
-#![feature(associated_types)]
-
 trait Trait {
     type Output;
 

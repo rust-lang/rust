@@ -36,7 +36,7 @@ use std::ascii::AsciiExt;
 
 // if you change this list without updating src/doc/reference.md, @cmr will be sad
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
-    ("globs", Active),
+    ("globs", Accepted),
     ("macro_rules", Active),
     ("struct_variant", Accepted),
     ("asm", Active),
@@ -54,7 +54,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("lang_items", Active),
 
     ("simd", Active),
-    ("default_type_params", Active),
+    ("default_type_params", Accepted),
     ("quote", Active),
     ("link_llvm_intrinsics", Active),
     ("linkage", Active),
@@ -67,7 +67,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("import_shadowing", Active),
     ("advanced_slice_patterns", Active),
     ("tuple_indexing", Accepted),
-    ("associated_types", Active),
+    ("associated_types", Accepted),
     ("visible_private_types", Active),
     ("slicing_syntax", Active),
 
@@ -112,7 +112,6 @@ enum Status {
 /// A set of features to be used by later passes.
 #[derive(Copy)]
 pub struct Features {
-    pub default_type_params: bool,
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub import_shadowing: bool,
@@ -125,7 +124,6 @@ pub struct Features {
 impl Features {
     pub fn new() -> Features {
         Features {
-            default_type_params: false,
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
             import_shadowing: false,
@@ -232,13 +230,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_view_item(&mut self, i: &ast::ViewItem) {
         match i.node {
-            ast::ViewItemUse(ref path) => {
-                if let ast::ViewPathGlob(..) = path.node {
-                    self.gate_feature("globs", path.span,
-                                      "glob import statements are \
-                                       experimental and possibly buggy");
-                }
-            }
+            ast::ViewItemUse(..) => {}
             ast::ViewItemExternCrate(..) => {
                 for attr in i.attrs.iter() {
                     if attr.name().get() == "phase"{
@@ -313,35 +305,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        many unsafe patterns and may be \
                                        removed in the future");
                 }
-
-                for item in items.iter() {
-                    match *item {
-                        ast::MethodImplItem(_) => {}
-                        ast::TypeImplItem(ref typedef) => {
-                            self.gate_feature("associated_types",
-                                              typedef.span,
-                                              "associated types are \
-                                               experimental")
-                        }
-                    }
-                }
             }
 
             _ => {}
         }
 
         visit::walk_item(self, i);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
-        match *trait_item {
-            ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {}
-            ast::TypeTraitItem(ref ti) => {
-                self.gate_feature("associated_types",
-                                  ti.ty_param.span,
-                                  "associated types are experimental")
-            }
-        }
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
@@ -377,20 +346,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_expr(self, e);
-    }
-
-    fn visit_generics(&mut self, generics: &ast::Generics) {
-        for type_parameter in generics.ty_params.iter() {
-            match type_parameter.default {
-                Some(ref ty) => {
-                    self.gate_feature("default_type_params", ty.span,
-                                      "default type parameters are \
-                                       experimental and possibly buggy");
-                }
-                None => {}
-            }
-        }
-        visit::walk_generics(self, generics);
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
@@ -498,7 +453,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
     check(&mut cx, krate);
 
     (Features {
-        default_type_params: cx.has_feature("default_type_params"),
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         import_shadowing: cx.has_feature("import_shadowing"),

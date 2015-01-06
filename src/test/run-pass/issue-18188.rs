@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(default_type_params, unboxed_closures)]
+#![feature(unboxed_closures)]
 
 use std::thunk::Thunk;
 

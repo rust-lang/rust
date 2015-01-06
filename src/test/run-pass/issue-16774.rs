@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types, unboxed_closures)]
+#![feature(unboxed_closures)]
 
 use std::ops::{Deref, DerefMut};
 

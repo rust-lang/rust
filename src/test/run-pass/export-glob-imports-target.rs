@@ -1,4 +1,3 @@
-
 // Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -13,8 +12,6 @@
 // when referenced within its own local scope.
 
 // Modified to not use export since it's going away. --pcw
-
-#![feature(globs)]
 
 mod foo {
     use foo::bar::*;

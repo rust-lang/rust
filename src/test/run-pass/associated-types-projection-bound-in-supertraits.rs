@@ -13,8 +13,6 @@
 // this case, the `Result=Self` binding in the supertrait listing of
 // `Int` was being ignored.
 
-#![feature(associated_types)]
-
 trait Not {
     type Result;
 

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(unboxed_closures)]
-#![feature(associated_types)]
 
 use std::any::Any;
 use std::intrinsics::TypeId;

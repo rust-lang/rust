@@ -10,8 +10,6 @@
 
 // Test that a custom deref with a fat pointer return type does not ICE
 
-#![feature(associated_types)]
-
 use std::ops::{Deref, DerefMut};
 
 pub struct Arr {

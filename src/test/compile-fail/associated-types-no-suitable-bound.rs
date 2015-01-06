@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 trait Get {
     type Value;
     fn get(&self) -> <Self as Get>::Value;
@@ -26,4 +24,3 @@ impl Struct {
 
 fn main() {
 }
-

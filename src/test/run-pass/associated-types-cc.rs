@@ -13,8 +13,6 @@
 // Test that we are able to reference cross-crate traits that employ
 // associated types.
 
-#![feature(associated_types)]
-
 extern crate "associated-types-cc-lib" as bar;
 
 use bar::Bar;

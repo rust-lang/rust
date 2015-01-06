@@ -11,8 +11,6 @@
 // Test equality constraints on associated types. Check that unsupported syntax
 // does not ICE.
 
-#![feature(associated_types)]
-
 pub trait Foo {
     type A;
     fn boo(&self) -> <Self as Foo>::A;
