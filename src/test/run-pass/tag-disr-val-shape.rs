@@ -18,9 +18,9 @@ enum color {
 }
 
 pub fn main() {
-    let act = format!("{}", color::red);
+    let act = format!("{:?}", color::red);
     println!("{}", act);
     assert_eq!("red".to_string(), act);
-    assert_eq!("green".to_string(), format!("{}", color::green));
-    assert_eq!("white".to_string(), format!("{}", color::white));
+    assert_eq!("green".to_string(), format!("{:?}", color::green));
+    assert_eq!("white".to_string(), format!("{:?}", color::white));
 }

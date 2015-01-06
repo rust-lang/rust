@@ -845,7 +845,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                     parent_id: NodeId,
                                     ast_item_opt: Option<&ast::ImplItem>) {
 
-    debug!("encode_info_for_method: {} {}", m.def_id,
+    debug!("encode_info_for_method: {:?} {:?}", m.def_id,
            token::get_name(m.name));
     rbml_w.start_tag(tag_items_data_item);
 
@@ -887,7 +887,7 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
                                    impl_path: PathElems,
                                    parent_id: NodeId,
                                    typedef_opt: Option<P<ast::Typedef>>) {
-    debug!("encode_info_for_associated_type({},{})",
+    debug!("encode_info_for_associated_type({:?},{:?})",
            associated_type.def_id,
            token::get_name(associated_type.name));
 

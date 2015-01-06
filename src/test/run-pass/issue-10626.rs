@@ -30,5 +30,5 @@ pub fn main () {
 
     let mut p = process::Command::new(args[0].as_slice());
     p.arg("child").stdout(process::Ignored).stderr(process::Ignored);
-    println!("{}", p.spawn().unwrap().wait());
+    println!("{:?}", p.spawn().unwrap().wait());
 }

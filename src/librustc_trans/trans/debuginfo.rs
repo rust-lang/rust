@@ -473,7 +473,7 @@ impl<'tcx> TypeMap<'tcx> {
                                                         &mut unique_type_id);
             },
             _ => {
-                cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {}",
+                cx.sess().bug(format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
                                       ppaux::ty_to_string(cx.tcx(), type_).index(&FullRange),
                                       type_.sty).index(&FullRange))
             }
@@ -798,14 +798,14 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                                 format!("debuginfo::\
                                          create_global_var_metadata() -
                                          Captured var-id refers to \
-                                         unexpected ast_item variant: {}",
+                                         unexpected ast_item variant: {:?}",
                                         var_item).index(&FullRange))
                 }
             }
         },
         _ => cx.sess().bug(format!("debuginfo::create_global_var_metadata() \
                                     - Captured var-id refers to unexpected \
-                                    ast_map variant: {}",
+                                    ast_map variant: {:?}",
                                    var_item).index(&FullRange))
     };
 
@@ -914,7 +914,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 format!(
                                 "debuginfo::create_captured_var_metadata() - \
                                  Captured var-id refers to unexpected \
-                                 ast_map variant: {}",
+                                 ast_map variant: {:?}",
                                  ast_item).index(&FullRange));
                 }
             }
@@ -924,7 +924,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
               .span_bug(span,
                         format!("debuginfo::create_captured_var_metadata() - \
                                  Captured var-id refers to unexpected \
-                                 ast_map variant: {}",
+                                 ast_map variant: {:?}",
                                 ast_item).index(&FullRange));
         }
     };
@@ -1321,7 +1321,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 _ => {
                     cx.sess()
                       .bug(format!("create_function_debug_context: \
-                                    unexpected sort of node: {}",
+                                    unexpected sort of node: {:?}",
                                     fnitem).index(&FullRange))
                 }
             }
@@ -1332,7 +1332,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             return FunctionDebugContext::FunctionWithoutDebugInfo;
         }
         _ => cx.sess().bug(format!("create_function_debug_context: \
-                                    unexpected sort of node: {}",
+                                    unexpected sort of node: {:?}",
                                    fnitem).index(&FullRange))
     };
 
@@ -1615,7 +1615,7 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
         }
     };
 
-    debug!("compile_unit_metadata: {}", compile_unit_name);
+    debug!("compile_unit_metadata: {:?}", compile_unit_name);
     let producer = format!("rustc version {}",
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
@@ -1769,7 +1769,7 @@ fn scope_metadata(fcx: &FunctionContext,
             let node = fcx.ccx.tcx().map.get(node_id);
 
             fcx.ccx.sess().span_bug(error_reporting_span,
-                format!("debuginfo: Could not find scope info for node {}",
+                format!("debuginfo: Could not find scope info for node {:?}",
                         node).index(&FullRange));
         }
     }
@@ -1789,7 +1789,7 @@ fn diverging_type_metadata(cx: &CrateContext) -> DIType {
 fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  t: Ty<'tcx>) -> DIType {
 
-    debug!("basic_type_metadata: {}", t);
+    debug!("basic_type_metadata: {:?}", t);
 
     let (name, encoding) = match t.sty {
         ty::ty_tup(ref elements) if elements.is_empty() =>
@@ -2931,7 +2931,7 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    debug!("type_metadata: {}", t);
+    debug!("type_metadata: {:?}", t);
 
     let sty = &t.sty;
     let MetadataCreationResult { metadata, already_stored_in_typemap } = match *sty {
@@ -3011,7 +3011,7 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    usage_site_span).finalize(cx)
         }
         _ => {
-            cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {}",
+            cx.sess().bug(format!("debuginfo: unexpected type in type_metadata: {:?}",
                                   sty).index(&FullRange))
         }
     };
@@ -4022,7 +4022,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
             Some(node) => node,
             None => {
                 cx.sess().bug(format!("debuginfo::namespace_for_item(): \
-                                       path too short for {}",
+                                       path too short for {:?}",
                                       def_id).index(&FullRange));
             }
         }

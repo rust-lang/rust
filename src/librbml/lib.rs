@@ -147,7 +147,7 @@ pub mod reader {
             match $e {
                 Ok(e) => e,
                 Err(e) => {
-                    debug!("ignored error: {}", e);
+                    debug!("ignored error: {:?}", e);
                     return $r
                 }
             }
@@ -256,7 +256,7 @@ pub mod reader {
         match maybe_get_doc(d, tg) {
             Some(d) => d,
             None => {
-                error!("failed to find block with tag {}", tg);
+                error!("failed to find block with tag {:?}", tg);
                 panic!();
             }
         }
@@ -351,8 +351,8 @@ pub mod reader {
                     self.pos = r_doc.end;
                     let str = r_doc.as_str_slice();
                     if lbl != str {
-                        return Err(Expected(format!("Expected label {} but \
-                                                     found {}", lbl, str)));
+                        return Err(Expected(format!("Expected label {:?} but \
+                                                     found {:?}", lbl, str)));
                     }
                 }
             }
@@ -360,14 +360,14 @@ pub mod reader {
         }
 
         fn next_doc(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<Doc<'doc>> {
-            debug!(". next_doc(exp_tag={})", exp_tag);
+            debug!(". next_doc(exp_tag={:?})", exp_tag);
             if self.pos >= self.parent.end {
                 return Err(Expected(format!("no more documents in \
                                              current node!")));
             }
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 try!(doc_at(self.parent.data, self.pos));
-            debug!("self.parent={}-{} self.pos={} r_tag={} r_doc={}-{}",
+            debug!("self.parent={:?}-{:?} self.pos={:?} r_tag={:?} r_doc={:?}-{:?}",
                    self.parent.start,
                    self.parent.end,
                    self.pos,
@@ -375,8 +375,8 @@ pub mod reader {
                    r_doc.start,
                    r_doc.end);
             if r_tag != (exp_tag as uint) {
-                return Err(Expected(format!("expected EBML doc with tag {} but \
-                                             found tag {}", exp_tag, r_tag)));
+                return Err(Expected(format!("expected EBML doc with tag {:?} but \
+                                             found tag {:?}", exp_tag, r_tag)));
             }
             if r_doc.end > self.parent.end {
                 return Err(Expected(format!("invalid EBML, child extends to \
@@ -403,7 +403,7 @@ pub mod reader {
 
         fn _next_uint(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<uint> {
             let r = doc_as_u32(try!(self.next_doc(exp_tag)));
-            debug!("_next_uint exp_tag={} result={}", exp_tag, r);
+            debug!("_next_uint exp_tag={:?} result={:?}", exp_tag, r);
             Ok(r as uint)
         }
 
@@ -486,7 +486,7 @@ pub mod reader {
         fn read_enum<T, F>(&mut self, name: &str, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_enum({})", name);
+            debug!("read_enum({:?})", name);
             try!(self._check_label(name));
 
             let doc = try!(self.next_doc(EsEnum));
@@ -508,7 +508,7 @@ pub mod reader {
         {
             debug!("read_enum_variant()");
             let idx = try!(self._next_uint(EsEnumVid));
-            debug!("  idx={}", idx);
+            debug!("  idx={:?}", idx);
 
             let doc = try!(self.next_doc(EsEnumBody));
 
@@ -526,7 +526,7 @@ pub mod reader {
         fn read_enum_variant_arg<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_enum_variant_arg(idx={})", idx);
+            debug!("read_enum_variant_arg(idx={:?})", idx);
             f(self)
         }
 
@@ -536,7 +536,7 @@ pub mod reader {
         {
             debug!("read_enum_struct_variant()");
             let idx = try!(self._next_uint(EsEnumVid));
-            debug!("  idx={}", idx);
+            debug!("  idx={:?}", idx);
 
             let doc = try!(self.next_doc(EsEnumBody));
 
@@ -558,21 +558,21 @@ pub mod reader {
                                                 -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-                debug!("read_enum_struct_variant_arg(name={}, idx={})", name, idx);
+                debug!("read_enum_struct_variant_arg(name={:?}, idx={:?})", name, idx);
             f(self)
         }
 
         fn read_struct<T, F>(&mut self, name: &str, _: uint, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_struct(name={})", name);
+            debug!("read_struct(name={:?})", name);
             f(self)
         }
 
         fn read_struct_field<T, F>(&mut self, name: &str, idx: uint, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_struct_field(name={}, idx={})", name, idx);
+            debug!("read_struct_field(name={:?}, idx={:?})", name, idx);
             try!(self._check_label(name));
             f(self)
         }
@@ -594,14 +594,14 @@ pub mod reader {
         fn read_tuple_arg<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_tuple_arg(idx={})", idx);
+            debug!("read_tuple_arg(idx={:?})", idx);
             self.read_seq_elt(idx, f)
         }
 
         fn read_tuple_struct<T, F>(&mut self, name: &str, len: uint, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_tuple_struct(name={})", name);
+            debug!("read_tuple_struct(name={:?})", name);
             self.read_tuple(len, f)
         }
 
@@ -611,7 +611,7 @@ pub mod reader {
                                        -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_tuple_struct_arg(idx={})", idx);
+            debug!("read_tuple_struct_arg(idx={:?})", idx);
             self.read_tuple_arg(idx, f)
         }
 
@@ -638,7 +638,7 @@ pub mod reader {
             debug!("read_seq()");
             self.push_doc(EsVec, move |d| {
                 let len = try!(d._next_uint(EsVecLen));
-                debug!("  len={}", len);
+                debug!("  len={:?}", len);
                 f(d, len)
             })
         }
@@ -646,7 +646,7 @@ pub mod reader {
         fn read_seq_elt<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_seq_elt(idx={})", idx);
+            debug!("read_seq_elt(idx={:?})", idx);
             self.push_doc(EsVecElt, f)
         }
 
@@ -656,7 +656,7 @@ pub mod reader {
             debug!("read_map()");
             self.push_doc(EsMap, move |d| {
                 let len = try!(d._next_uint(EsMapLen));
-                debug!("  len={}", len);
+                debug!("  len={:?}", len);
                 f(d, len)
             })
         }
@@ -664,14 +664,14 @@ pub mod reader {
         fn read_map_elt_key<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_map_elt_key(idx={})", idx);
+            debug!("read_map_elt_key(idx={:?})", idx);
             self.push_doc(EsMapKey, f)
         }
 
         fn read_map_elt_val<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
-            debug!("read_map_elt_val(idx={})", idx);
+            debug!("read_map_elt_val(idx={:?})", idx);
             self.push_doc(EsMapVal, f)
         }
 
@@ -1007,7 +1007,7 @@ pub mod writer {
         }
 
         pub fn start_tag(&mut self, tag_id: uint) -> EncodeResult {
-            debug!("Start tag {}", tag_id);
+            debug!("Start tag {:?}", tag_id);
 
             // Write the enum ID:
             try!(write_vuint(self.writer, tag_id));
@@ -1026,7 +1026,7 @@ pub mod writer {
             try!(write_sized_vuint(self.writer, size, 4u));
             let r = try!(self.writer.seek(cur_pos as i64, io::SeekSet));
 
-            debug!("End tag (size = {})", size);
+            debug!("End tag (size = {:?})", size);
             Ok(r)
         }
 
@@ -1093,12 +1093,12 @@ pub mod writer {
         }
 
         pub fn wr_bytes(&mut self, b: &[u8]) -> EncodeResult {
-            debug!("Write {} bytes", b.len());
+            debug!("Write {:?} bytes", b.len());
             self.writer.write(b)
         }
 
         pub fn wr_str(&mut self, s: &str) -> EncodeResult {
-            debug!("Write str: {}", s);
+            debug!("Write str: {:?}", s);
             self.writer.write(s.as_bytes())
         }
     }
@@ -1608,7 +1608,7 @@ mod tests {
     #[test]
     fn test_option_int() {
         fn test_v(v: Option<int>) {
-            debug!("v == {}", v);
+            debug!("v == {:?}", v);
             let mut wr = SeekableMemWriter::new();
             {
                 let mut rbml_w = writer::Encoder::new(&mut wr);
@@ -1617,7 +1617,7 @@ mod tests {
             let rbml_doc = Doc::new(wr.get_ref());
             let mut deser = reader::Decoder::new(rbml_doc);
             let v1 = Decodable::decode(&mut deser).unwrap();
-            debug!("v1 == {}", v1);
+            debug!("v1 == {:?}", v1);
             assert_eq!(v, v1);
         }
 

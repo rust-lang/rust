@@ -33,13 +33,13 @@ impl<E> Copy for EnumSet<E> {}
 
 impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "{{"));
+        try!(write!(fmt, "EnumSet {{"));
         let mut first = true;
         for e in self.iter() {
             if !first {
                 try!(write!(fmt, ", "));
             }
-            try!(write!(fmt, "{}", e));
+            try!(write!(fmt, "{:?}", e));
             first = false;
         }
         write!(fmt, "}}")
@@ -287,11 +287,11 @@ mod test {
     #[test]
     fn test_show() {
         let mut e = EnumSet::new();
-        assert_eq!("{}", e.to_string());
+        assert!(format!("{:?}", e) == "EnumSet {}");
         e.insert(A);
-        assert_eq!("{A}", e.to_string());
+        assert!(format!("{:?}", e) == "EnumSet {A}");
         e.insert(C);
-        assert_eq!("{A, C}", e.to_string());
+        assert!(format!("{:?}", e) == "EnumSet {A, C}");
     }
 
     #[test]

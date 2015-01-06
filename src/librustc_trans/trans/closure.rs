@@ -108,7 +108,7 @@ pub struct EnvValue<'tcx> {
 
 impl<'tcx> EnvValue<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        format!("{}({})", self.action, self.datum.to_string(ccx))
+        format!("{:?}({})", self.action, self.datum.to_string(ccx))
     }
 }
 
@@ -495,7 +495,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
     set_inline_hint(llfn);
 
     debug!("get_or_create_declaration_if_unboxed_closure(): inserting new \
-            closure {} (type {})",
+            closure {:?} (type {})",
            mono_id,
            ccx.tn().type_to_string(val_ty(llfn)));
     ccx.unboxed_closure_vals().borrow_mut().insert(mono_id, llfn);

@@ -12,5 +12,5 @@
 struct Foo(Box<[u8]>);
 
 pub fn main() {
-    println!("{}", Foo(box [0, 1, 2]));
+    println!("{:?}", Foo(box [0, 1, 2]));
 }

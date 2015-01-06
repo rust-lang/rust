@@ -88,7 +88,7 @@ use super::map::{self, HashMap, Keys, INITIAL_CAPACITY};
 ///
 /// // Use derived implementation to print the vikings.
 /// for x in vikings.iter() {
-///     println!("{}", x);
+///     println!("{:?}", x);
 /// }
 /// ```
 #[derive(Clone)]
@@ -585,11 +585,11 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {}
 #[stable]
 impl<T: Eq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
+        try!(write!(f, "HashSet {{"));
 
         for (i, x) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}", *x));
+            try!(write!(f, "{:?}", *x));
         }
 
         write!(f, "}}")
@@ -1116,10 +1116,10 @@ mod test_set {
         set.insert(1i);
         set.insert(2);
 
-        let set_str = format!("{}", set);
+        let set_str = format!("{:?}", set);
 
-        assert!(set_str == "{1, 2}" || set_str == "{2, 1}");
-        assert_eq!(format!("{}", empty), "{}");
+        assert!(set_str == "HashSet {1i, 2i}" || set_str == "{2i, 1i}");
+        assert_eq!(format!("{:?}", empty), "HashSet {}");
     }
 
     #[test]

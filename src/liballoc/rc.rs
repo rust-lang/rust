@@ -607,7 +607,7 @@ impl<S: hash::Writer, T: Hash<S>> Hash<S> for Rc<T> {
 #[experimental = "Show is experimental."]
 impl<T: fmt::Show> fmt::Show for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (**self).fmt(f)
+        write!(f, "Rc({:?})", **self)
     }
 }
 
@@ -960,6 +960,12 @@ mod tests {
 
         assert!(76 == *cow0);
         assert!(cow1_weak.upgrade().is_none());
+    }
+
+    #[test]
+    fn test_show() {
+        let foo = Rc::new(75u);
+        assert!(format!("{:?}", foo) == "Rc(75u)")
     }
 
 }

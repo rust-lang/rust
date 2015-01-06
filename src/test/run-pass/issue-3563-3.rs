@@ -104,7 +104,7 @@ impl AsciiArt {
 
 // Allows AsciiArt to be converted to a string using the libcore ToString trait.
 // Note that the %s fmt! specifier will not call this automatically.
-impl fmt::Show for AsciiArt {
+impl fmt::String for AsciiArt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Convert each line into a string.
         let lines = self.lines.iter()

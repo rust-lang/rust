@@ -135,7 +135,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let bytes = match File::open(&file).read_to_end() {
         Err(e) => {
             cx.span_err(sp,
-                        format!("couldn't read {}: {}",
+                        format!("couldn't read {:?}: {}",
                                 file.display(),
                                 e).index(&FullRange));
             return DummyResult::expr(sp);
@@ -146,7 +146,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Ok(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
-            let filename = file.display().to_string();
+            let filename = format!("{:?}", file.display());
             let interned = token::intern_and_get_ident(src.index(&FullRange));
             cx.codemap().new_filemap(filename, src);
 
@@ -154,7 +154,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
         Err(_) => {
             cx.span_err(sp,
-                        format!("{} wasn't a utf-8 file",
+                        format!("{:?} wasn't a utf-8 file",
                                 file.display()).index(&FullRange));
             return DummyResult::expr(sp);
         }
@@ -177,7 +177,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     match File::open(&file).read_to_end() {
         Err(e) => {
             cx.span_err(sp,
-                        format!("couldn't read {}: {}", file.display(), e).index(&FullRange));
+                        format!("couldn't read {:?}: {}", file.display(), e).index(&FullRange));
             return DummyResult::expr(sp);
         }
         Ok(bytes) => {

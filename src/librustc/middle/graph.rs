@@ -55,7 +55,7 @@ pub struct Edge<E> {
 
 impl<E: Show> Show for Edge<E> {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        write!(f, "Edge {{ next_edge: [{}, {}], source: {}, target: {}, data: {} }}",
+        write!(f, "Edge {{ next_edge: [{:?}, {:?}], source: {:?}, target: {:?}, data: {:?} }}",
                self.next_edge[0], self.next_edge[1], self.source,
                self.target, self.data)
     }

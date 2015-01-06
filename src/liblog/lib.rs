@@ -16,12 +16,12 @@
 //! #[macro_use] extern crate log;
 //!
 //! fn main() {
-//!     debug!("this is a debug {}", "message");
+//!     debug!("this is a debug {:?}", "message");
 //!     error!("this is printed by default");
 //!
 //!     if log_enabled!(log::INFO) {
 //!         let x = 3i * 4i; // expensive computation
-//!         info!("the answer was: {}", x);
+//!         info!("the answer was: {:?}", x);
 //!     }
 //! }
 //! ```
@@ -239,10 +239,16 @@ pub struct LogLevel(pub u32);
 
 impl fmt::Show for LogLevel {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, fmt)
+    }
+}
+
+impl fmt::String for LogLevel {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let LogLevel(level) = *self;
         match LOG_LEVEL_NAMES.get(level as uint - 1) {
-            Some(name) => name.fmt(fmt),
-            None => level.fmt(fmt)
+            Some(ref name) => fmt::String::fmt(name, fmt),
+            None => fmt::String::fmt(&level, fmt)
         }
     }
 }
@@ -254,7 +260,7 @@ impl Logger for DefaultLogger {
                        record.level,
                        record.module_path,
                        record.args) {
-            Err(e) => panic!("failed to log: {}", e),
+            Err(e) => panic!("failed to log: {:?}", e),
             Ok(()) => {}
         }
     }
@@ -264,7 +270,7 @@ impl Drop for DefaultLogger {
     fn drop(&mut self) {
         // FIXME(#12628): is panicking the right thing to do?
         match self.handle.flush() {
-            Err(e) => panic!("failed to flush a logger: {}", e),
+            Err(e) => panic!("failed to flush a logger: {:?}", e),
             Ok(()) => {}
         }
     }

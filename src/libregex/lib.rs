@@ -13,7 +13,6 @@
 //! Regular expressions implemented in Rust
 //!
 //! For official documentation, see the rust-lang/regex crate
-
 #![crate_name = "regex"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

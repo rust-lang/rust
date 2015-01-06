@@ -53,9 +53,9 @@ fn state_iter() -> StateMachineIter<'static> {
 
 fn main() {
     let mut it = state_iter();
-    println!("{}",it.next());
-    println!("{}",it.next());
-    println!("{}",it.next());
-    println!("{}",it.next());
-    println!("{}",it.next());
+    println!("{:?}",it.next());
+    println!("{:?}",it.next());
+    println!("{:?}",it.next());
+    println!("{:?}",it.next());
+    println!("{:?}",it.next());
 }

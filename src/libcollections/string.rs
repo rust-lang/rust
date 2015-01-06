@@ -677,13 +677,25 @@ impl FromUtf8Error {
 
 impl fmt::Show for FromUtf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.error.fmt(f)
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for FromUtf8Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(&self.error, f)
     }
 }
 
 impl fmt::Show for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        "invalid utf-16: lone surrogate found".fmt(f)
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for FromUtf16Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt("invalid utf-16: lone surrogate found", f)
     }
 }
 
@@ -793,10 +805,17 @@ impl Default for String {
     }
 }
 
-#[experimental = "waiting on Show stabilization"]
+#[experimental = "waiting on fmt stabilization"]
+impl fmt::String for String {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(&**self, f)
+    }
+}
+
+#[experimental = "waiting on fmt stabilization"]
 impl fmt::Show for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (**self).fmt(f)
+        fmt::Show::fmt(&**self, f)
     }
 }
 
@@ -902,7 +921,20 @@ pub trait ToString {
     fn to_string(&self) -> String;
 }
 
+#[cfg(stage0)]
+//NOTE(stage0): remove after stage0 snapshot
 impl<T: fmt::Show> ToString for T {
+    fn to_string(&self) -> String {
+        use core::fmt::Writer;
+        let mut buf = String::new();
+        let _ = buf.write_fmt(format_args!("{}", self));
+        buf.shrink_to_fit();
+        buf
+    }
+}
+
+#[cfg(not(stage0))]
+impl<T: fmt::String> ToString for T {
     fn to_string(&self) -> String {
         use core::fmt::Writer;
         let mut buf = String::new();

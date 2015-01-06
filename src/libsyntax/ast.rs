@@ -100,13 +100,26 @@ impl Ident {
     }
 }
 
-impl Show for Ident {
+//NOTE(stage0): remove after snapshot
+impl fmt::Show for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}#{}", self.name, self.ctxt)
     }
 }
 
-impl Show for Name {
+impl fmt::Show for Name {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Name(nm) = *self;
         write!(f, "\"{}\"({})", token::get_name(*self).get(), nm)
@@ -1094,7 +1107,14 @@ pub enum IntTy {
     TyI64,
 }
 
+//NOTE(stage0): remove after snapshot
 impl fmt::Show for IntTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::int_ty_to_string(*self, None))
     }
@@ -1129,7 +1149,14 @@ impl UintTy {
     }
 }
 
+//NOTE(stage0): remove after snapshot
 impl fmt::Show for UintTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::uint_ty_to_string(*self, None))
     }
@@ -1141,7 +1168,14 @@ pub enum FloatTy {
     TyF64,
 }
 
+//NOTE(stage0): remove after snapshot
 impl fmt::Show for FloatTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::float_ty_to_string(*self))
     }
@@ -1192,10 +1226,19 @@ pub enum Onceness {
 
 impl fmt::Show for Onceness {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Once => "once".fmt(f),
-            Many => "many".fmt(f),
-        }
+        fmt::String::fmt(match *self {
+            Once => "once",
+            Many => "many",
+        }, f)
+    }
+}
+
+impl fmt::String for Onceness {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(match *self {
+            Once => "once",
+            Many => "many",
+        }, f)
     }
 }
 
@@ -1305,18 +1348,18 @@ pub struct FnDecl {
     pub variadic: bool
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum Unsafety {
     Unsafe,
     Normal,
 }
 
-impl fmt::Show for Unsafety {
+impl fmt::String for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Unsafety::Normal => "normal".fmt(f),
-            Unsafety::Unsafe => "unsafe".fmt(f),
-        }
+        fmt::String::fmt(match *self {
+            Unsafety::Normal => "normal",
+            Unsafety::Unsafe => "unsafe",
+        }, f)
     }
 }
 

@@ -368,7 +368,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let result = self.evaluate_stack(&stack);
 
-        debug!("result: {}", result);
+        debug!("result: {:?}", result);
         result
     }
 
@@ -944,14 +944,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => { return Ok(()); }
         };
 
-        debug!("assemble_unboxed_candidates: self_ty={} kind={} obligation={}",
+        debug!("assemble_unboxed_candidates: self_ty={} kind={:?} obligation={}",
                self_ty.repr(self.tcx()),
                kind,
                obligation.repr(self.tcx()));
 
         let closure_kind = self.closure_typer.unboxed_closure_kind(closure_def_id);
 
-        debug!("closure_kind = {}", closure_kind);
+        debug!("closure_kind = {:?}", closure_kind);
 
         if closure_kind == kind {
             candidates.vec.push(UnboxedClosureCandidate(closure_def_id, substs.clone()));
@@ -1102,7 +1102,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Err(error) => EvaluatedToErr(error),
             }
         });
-        debug!("winnow_candidate depth={} result={}",
+        debug!("winnow_candidate depth={} result={:?}",
                stack.obligation.recursion_depth, result);
         result
     }
@@ -1716,7 +1716,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let substs =
                 self.rematch_impl(impl_def_id, obligation,
                                   snapshot, &skol_map, skol_obligation_trait_ref.trait_ref);
-            debug!("confirm_impl_candidate substs={}", substs);
+            debug!("confirm_impl_candidate substs={:?}", substs);
             Ok(self.vtable_impl(impl_def_id, substs, obligation.cause.clone(),
                                 obligation.recursion_depth + 1, skol_map, snapshot))
         })
@@ -2225,7 +2225,7 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             ErrorCandidate => format!("ErrorCandidate"),
-            BuiltinCandidate(b) => format!("BuiltinCandidate({})", b),
+            BuiltinCandidate(b) => format!("BuiltinCandidate({:?})", b),
             ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
             ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
             ProjectionCandidate => format!("ProjectionCandidate"),
@@ -2234,7 +2234,7 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
                 format!("ObjectCandidate")
             }
             UnboxedClosureCandidate(c, ref s) => {
-                format!("UnboxedClosureCandidate({},{})", c, s.repr(tcx))
+                format!("UnboxedClosureCandidate({:?},{})", c, s.repr(tcx))
             }
         }
     }

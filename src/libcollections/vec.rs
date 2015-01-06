@@ -1450,7 +1450,14 @@ impl<T> Default for Vec<T> {
 #[experimental = "waiting on Show stability"]
 impl<T:fmt::Show> fmt::Show for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_slice().fmt(f)
+        fmt::Show::fmt(self.as_slice(), f)
+    }
+}
+
+#[experimental = "waiting on Show stability"]
+impl<T:fmt::String> fmt::String for Vec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self.as_slice(), f)
     }
 }
 

@@ -32,9 +32,9 @@ pub fn main() {
     add_int(&mut *ints, 44);
 
     iter_ints(&*ints, |i| {
-        println!("int = {}", *i);
+        println!("int = {:?}", *i);
         true
     });
 
-    println!("ints={}", ints);
+    println!("ints={:?}", ints);
 }

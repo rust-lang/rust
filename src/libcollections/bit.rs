@@ -1729,13 +1729,13 @@ impl BitvSet {
 
 impl fmt::Show for BitvSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "{{"));
+        try!(write!(fmt, "BitvSet {{"));
         let mut first = true;
         for n in self.iter() {
             if !first {
                 try!(write!(fmt, ", "));
             }
-            try!(write!(fmt, "{}", n));
+            try!(write!(fmt, "{:?}", n));
             first = false;
         }
         write!(fmt, "}}")

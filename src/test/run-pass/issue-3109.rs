@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    println!("{}", ("hi there!", "you"));
+    println!("{:?}", ("hi there!", "you"));
 }

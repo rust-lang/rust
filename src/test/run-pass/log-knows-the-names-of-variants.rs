@@ -21,7 +21,7 @@ enum bar {
 }
 
 pub fn main() {
-    assert_eq!("a(22)".to_string(), format!("{}", foo::a(22u)));
-    assert_eq!("c".to_string(), format!("{}", foo::c));
-    assert_eq!("d".to_string(), format!("{}", bar::d));
+    assert_eq!("a(22u)".to_string(), format!("{:?}", foo::a(22u)));
+    assert_eq!("c".to_string(), format!("{:?}", foo::c));
+    assert_eq!("d".to_string(), format!("{:?}", bar::d));
 }

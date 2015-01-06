@@ -301,8 +301,8 @@ impl Target {
         use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
-            let mut f = try!(File::open(path).map_err(|e| e.to_string()));
-            let obj = try!(json::from_reader(&mut f).map_err(|e| e.to_string()));
+            let mut f = try!(File::open(path).map_err(|e| format!("{:?}", e)));
+            let obj = try!(json::from_reader(&mut f).map_err(|e| format!("{:?}", e)));
             Ok(Target::from_json(obj))
         }
 
@@ -315,7 +315,7 @@ impl Target {
                     $(
                         else if target == stringify!($name) {
                             let t = $name::target();
-                            debug!("Got builtin target: {}", t);
+                            debug!("Got builtin target: {:?}", t);
                             return Ok(t);
                         }
                     )*
@@ -379,6 +379,6 @@ impl Target {
             }
         }
 
-        Err(format!("Could not find specification for target {}", target))
+        Err(format!("Could not find specification for target {:?}", target))
     }
 }

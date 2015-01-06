@@ -32,13 +32,13 @@ use vec::Vec;
 
 pub type Port = u16;
 
-#[derive(Copy, PartialEq, Eq, Clone, Hash)]
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Show)]
 pub enum IpAddr {
     Ipv4Addr(u8, u8, u8, u8),
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
 }
 
-impl fmt::Show for IpAddr {
+impl fmt::String for IpAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Ipv4Addr(a, b, c, d) =>
@@ -63,13 +63,13 @@ impl fmt::Show for IpAddr {
     }
 }
 
-#[derive(Copy, PartialEq, Eq, Clone, Hash)]
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Show)]
 pub struct SocketAddr {
     pub ip: IpAddr,
     pub port: Port,
 }
 
-impl fmt::Show for SocketAddr {
+impl fmt::String for SocketAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.ip {
             Ipv4Addr(..) => write!(f, "{}:{}", self.ip, self.port),

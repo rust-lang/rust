@@ -90,10 +90,19 @@ impl Clone for ExNative {
     }
 }
 
+#[cfg(stage0)]
+//FIXME: remove after stage0 snapshot
 impl fmt::Show for Regex {
     /// Shows the original regular expression.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        fmt::String::fmt(self.as_str(), f)
+    }
+}
+
+impl fmt::String for Regex {
+    /// Shows the original regular expression.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self.as_str(), f)
     }
 }
 

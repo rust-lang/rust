@@ -39,6 +39,6 @@ fn main() {
     f(clone(&r1), clone(&r2));
     //~^ ERROR the trait `core::clone::Clone` is not implemented for the type
     //~^^ ERROR the trait `core::clone::Clone` is not implemented for the type
-    println!("{}", (r2, i1.get()));
-    println!("{}", (r1, i2.get()));
+    println!("{:?}", (r2, i1.get()));
+    println!("{:?}", (r1, i2.get()));
 }

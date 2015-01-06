@@ -33,6 +33,6 @@ fn main() {
     let foo = Foo { bar: 1, baz: 10 };
     unsafe {
         let oof: Oof = mem::transmute(foo);
-        println!("{}", oof);
+        println!("{:?}", oof);
     }
 }

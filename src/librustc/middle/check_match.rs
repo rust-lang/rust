@@ -574,7 +574,7 @@ fn is_useful(cx: &MatchCheckCtxt,
              witness: WitnessPreference)
              -> Usefulness {
     let &Matrix(ref rows) = matrix;
-    debug!("{:}", matrix);
+    debug!("{:?}", matrix);
     if rows.len() == 0u {
         return match witness {
             ConstructWitness => UsefulWithWitness(vec!()),
@@ -1042,7 +1042,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                         cx.tcx.sess.span_bug(
                             p.span,
                             format!("binding pattern {} is not an \
-                                     identifier: {}",
+                                     identifier: {:?}",
                                     p.id,
                                     p.node).index(&FullRange));
                     }
