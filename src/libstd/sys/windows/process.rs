@@ -25,12 +25,18 @@ use path::BytesContainer;
 use ptr;
 use str;
 use sys::fs::FileDesc;
+use sync::{StaticMutex, MUTEX_INIT};
+
 use sys::fs;
 use sys::{self, retry, c, wouldblock, set_nonblocking, ms_to_timeval, timer};
 use sys_common::helper_thread::Helper;
 use sys_common::{AsInner, mkerr_libc, timeout};
 
 pub use sys_common::ProcessConfig;
+
+// `CreateProcess` is racy!
+// http://support.microsoft.com/kb/315939
+static CREATE_PROCESS_LOCK: StaticMutex = MUTEX_INIT;
 
 /// A value representing a child process.
 ///
@@ -224,6 +230,7 @@ impl Process {
                 with_dirp(cfg.cwd(), |dirp| {
                     let mut cmd_str: Vec<u16> = cmd_str.utf16_units().collect();
                     cmd_str.push(0);
+                    let _lock = CREATE_PROCESS_LOCK.lock().unwrap();
                     let created = CreateProcessW(ptr::null(),
                                                  cmd_str.as_mut_ptr(),
                                                  ptr::null_mut(),
