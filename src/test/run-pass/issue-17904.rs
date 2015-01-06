@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test syntax checks for `type` keyword.
-
-struct S1 for type; //~ ERROR expected `where`, `{`, `(`, or `;` after struct name, found `for`
-
-pub fn main() {
+struct Foo<T> where T: Copy;
+struct Bar<T>(T) where T: Copy;
+struct Bleh<T, U>(T, U) where T: Copy, U: Sized;
+struct Baz<T> where T: Copy {
+    field: T
 }
+
+fn main() {}
