@@ -928,7 +928,7 @@ fn run_work_multithreaded(sess: &Session,
             }
 
             tx.take().unwrap().send(()).unwrap();
-        }).detach();
+        });
     }
 
     let mut panicked = false;

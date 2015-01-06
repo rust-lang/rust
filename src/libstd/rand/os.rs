@@ -394,7 +394,7 @@ mod test {
                     r.fill_bytes(&mut v);
                     Thread::yield_now();
                 }
-            }).detach();
+            });
         }
 
         // start all the tasks

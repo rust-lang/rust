@@ -157,7 +157,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
             None => box io::stderr() as Box<Writer>,
         };
         io::util::copy(&mut p, &mut err).unwrap();
-    }).detach();
+    });
     let emitter = diagnostic::EmitterWriter::new(box w2, None);
 
     // Compile the code

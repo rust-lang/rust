@@ -173,7 +173,7 @@ mod test {
           tx.send(vec![3u8, 4u8]).unwrap();
           tx.send(vec![5u8, 6u8]).unwrap();
           tx.send(vec![7u8, 8u8]).unwrap();
-        }).detach();
+        });
 
         let mut reader = ChanReader::new(rx);
         let mut buf = [0u8; 3];
@@ -216,7 +216,7 @@ mod test {
           tx.send(b"rld\nhow ".to_vec()).unwrap();
           tx.send(b"are you?".to_vec()).unwrap();
           tx.send(b"".to_vec()).unwrap();
-        }).detach();
+        });
 
         let mut reader = ChanReader::new(rx);
 
@@ -235,7 +235,7 @@ mod test {
         writer.write_be_u32(42).unwrap();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
-        let got = match Thread::spawn(move|| { rx.recv().unwrap() }).join() {
+        let got = match Thread::scoped(move|| { rx.recv().unwrap() }).join() {
             Ok(got) => got,
             Err(_) => panic!(),
         };

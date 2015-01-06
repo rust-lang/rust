@@ -22,13 +22,13 @@ fn test_ret() { let _x: Box<int> = return; }
 
 fn test_panic() {
     fn f() { let _x: Box<int> = panic!(); }
-    Thread::spawn(move|| f() ).join().err().unwrap();
+    Thread::scoped(move|| f() ).join().err().unwrap();
 }
 
 fn test_panic_indirect() {
     fn f() -> ! { panic!(); }
     fn g() { let _x: Box<int> = f(); }
-    Thread::spawn(move|| g() ).join().err().unwrap();
+    Thread::scoped(move|| g() ).join().err().unwrap();
 }
 
 pub fn main() {

@@ -321,7 +321,7 @@ fn par_search(masks: Vec<Vec<Vec<u64>>>) -> Data {
             let mut data = Data::new();
             search(&*masks, m, 1, List::Cons(m, &List::Nil), &mut data);
             tx.send(data).unwrap();
-        }).detach();
+        });
     }
 
     // collecting the results

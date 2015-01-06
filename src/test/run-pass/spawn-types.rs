@@ -25,6 +25,6 @@ fn iotask(_tx: &ctx, ip: String) {
 
 pub fn main() {
     let (tx, _rx) = channel::<int>();
-    let t = Thread::spawn(move|| iotask(&tx, "localhost".to_string()) );
+    let t = Thread::scoped(move|| iotask(&tx, "localhost".to_string()) );
     t.join().ok().unwrap();
 }

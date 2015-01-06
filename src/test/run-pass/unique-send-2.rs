@@ -23,7 +23,7 @@ pub fn main() {
         let tx = tx.clone();
         Thread::spawn(move|| {
             child(&tx, i)
-        }).detach();
+        });
         expected += i;
     }
 

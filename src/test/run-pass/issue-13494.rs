@@ -22,7 +22,7 @@ fn helper(rx: Receiver<Sender<()>>) {
 
 fn main() {
     let (tx, rx) = channel();
-    let _t = Thread::spawn(move|| { helper(rx) }).detach();
+    let _t = Thread::spawn(move|| { helper(rx) });
     let (snd, rcv) = channel::<int>();
     for _ in range(1i, 100000i) {
         snd.send(1i).unwrap();

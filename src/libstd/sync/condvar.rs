@@ -48,7 +48,7 @@ use sync::{mutex, MutexGuard};
 ///     let mut started = lock.lock().unwrap();
 ///     *started = true;
 ///     cvar.notify_one();
-/// }).detach();
+/// });
 ///
 /// // wait for the thread to start up
 /// let &(ref lock, ref cvar) = &*pair;
@@ -338,7 +338,7 @@ mod tests {
                     cnt = cond.wait(cnt).unwrap();
                 }
                 tx.send(()).unwrap();
-            }).detach();
+            });
         }
         drop(tx);
 

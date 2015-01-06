@@ -22,7 +22,7 @@ impl Drop for A {
 }
 
 fn main() {
-    Thread::spawn(move|| {
+    Thread::scoped(move|| {
         let _a = A;
         lib::callback(|| panic!());
         1i

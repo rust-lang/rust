@@ -26,7 +26,7 @@ use sync::{Mutex, Condvar};
 ///         println!("before wait");
 ///         c.wait();
 ///         println!("after wait");
-///     }).detach();
+///     });
 /// }
 /// ```
 #[stable]
@@ -126,7 +126,7 @@ mod tests {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 tx.send(c.wait().is_leader()).unwrap();
-            }).detach();
+            });
         }
 
         // At this point, all spawned tasks should be blocked,
