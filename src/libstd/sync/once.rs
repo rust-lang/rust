@@ -159,7 +159,7 @@ mod test {
                     assert!(run);
                 }
                 tx.send(()).unwrap();
-            }).detach();
+            });
         }
 
         unsafe {

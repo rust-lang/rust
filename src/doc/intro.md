@@ -395,7 +395,7 @@ fn main() {
     for _ in range(0u, 10u) {
         Thread::spawn(move || {
             println!("Hello, world!");
-        }).detach();
+        });
     }
 }
 ```
@@ -405,8 +405,7 @@ This program creates ten threads, who all print `Hello, world!`. The
 double bars `||`. (The `move` keyword indicates that the closure takes
 ownership of any data it uses; we'll have more on the significance of
 this shortly.) This closure is executed in a new thread created by
-`spawn`. The `detach` method means that the child thread is allowed to
-outlive its parent.
+`spawn`.
 
 One common form of problem in concurrent programs is a 'data race.'
 This occurs when two different threads attempt to access the same
@@ -429,7 +428,7 @@ fn main() {
     for i in range(0u, 3u) {
         Thread::spawn(move || {
             for j in range(0, 3) { numbers[j] += 1 }
-        }).detach();
+        });
     }
 }
 ```
@@ -488,7 +487,7 @@ fn main() {
             (*array)[i] += 1;
 
             println!("numbers[{}] is {}", i, (*array)[i]);
-        }).detach();
+        });
     }
 }
 ```

@@ -35,7 +35,7 @@ fn child_generation(gens_left: uint, tx: Sender<()>) {
         } else {
             tx.send(()).unwrap()
         }
-    }).detach();
+    });
 }
 
 fn main() {

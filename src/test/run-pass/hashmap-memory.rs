@@ -1,4 +1,3 @@
-
 // Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -37,7 +36,7 @@ mod map_reduce {
         for i in inputs.iter() {
             let ctrl = ctrl.clone();
             let i = i.clone();
-            Thread::spawn(move|| map_task(ctrl.clone(), i.clone()) ).detach();
+            Thread::spawn(move|| map_task(ctrl.clone(), i.clone()) );
         }
     }
 

@@ -304,11 +304,11 @@ fn main() {
 
     let nb_freqs: Vec<_> = range(1u, 3).map(|i| {
         let input = input.clone();
-        (i, Thread::spawn(move|| generate_frequencies(input.as_slice(), i)))
+        (i, Thread::scoped(move|| generate_frequencies(input.as_slice(), i)))
     }).collect();
     let occ_freqs: Vec<_> = OCCURRENCES.iter().map(|&occ| {
         let input = input.clone();
-        Thread::spawn(move|| generate_frequencies(input.as_slice(), occ.len()))
+        Thread::scoped(move|| generate_frequencies(input.as_slice(), occ.len()))
     }).collect();
 
     for (i, freq) in nb_freqs.into_iter() {

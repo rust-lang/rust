@@ -77,7 +77,7 @@ pub fn main() {
 
                 let v = main.clone();
 
-                let _ = Thread::spawn(move|| {
+                let _ = Thread::scoped(move|| {
                     let mut v = v;
                     let mut panic_countdown = panic_countdown;
                     v.as_mut_slice().sort_by(|a, b| {

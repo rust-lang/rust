@@ -188,7 +188,7 @@ mod tests {
                     q.push(i);
                 }
                 tx.send(()).unwrap();
-            }).detach();
+            });
         }
 
         let mut i = 0u;

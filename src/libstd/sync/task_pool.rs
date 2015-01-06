@@ -132,7 +132,7 @@ fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
         }
 
         sentinel.cancel();
-    }).detach();
+    });
 }
 
 #[cfg(test)]

@@ -99,7 +99,7 @@ impl<M: Send> Helper<M> {
                     let _g = self.lock.lock().unwrap();
                     *self.shutdown.get() = true;
                     self.cond.notify_one()
-                }).detach();
+                });
 
                 rt::at_exit(move|:| { self.shutdown() });
                 *self.initialized.get() = true;

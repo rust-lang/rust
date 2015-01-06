@@ -24,7 +24,7 @@ fn test00() {
     let (tx, rx) = channel();
     let number_of_messages: int = 10;
 
-    let result = Thread::spawn(move|| {
+    let result = Thread::scoped(move|| {
         test00_start(&tx, number_of_messages);
     });
 

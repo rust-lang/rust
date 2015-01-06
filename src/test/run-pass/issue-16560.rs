@@ -20,7 +20,7 @@ fn main() {
     // Check that both closures are capturing by value
     assert_eq!(1, mem::size_of_val(&closure));
 
-    Thread::spawn(move|| {
+    Thread::scoped(move|| {
         let ok = closure;
     }).join().ok().unwrap();
 }
