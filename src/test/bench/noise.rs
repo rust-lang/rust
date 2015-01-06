@@ -13,7 +13,7 @@
 // ignore-lexer-test FIXME #15679
 
 use std::f32::consts::PI;
-use std::num::{Float, FloatMath};
+use std::num::Float;
 use std::rand::{Rng, StdRng};
 
 struct Vec2 {

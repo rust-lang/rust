@@ -16,10 +16,12 @@
 #![stable]
 #![allow(missing_docs)]
 
-#[cfg(test)] use cmp::PartialEq;
 #[cfg(test)] use fmt::Show;
-#[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
-#[cfg(test)] use kinds::Copy;
+use ops::{Add, Sub, Mul, Div, Rem, Neg};
+
+use kinds::Copy;
+use clone::Clone;
+use cmp::{PartialOrd, PartialEq};
 
 pub use core::num::{Int, SignedInt, UnsignedInt};
 pub use core::num::{cast, FromPrimitive, NumCast, ToPrimitive};
@@ -27,16 +29,195 @@ pub use core::num::{from_int, from_i8, from_i16, from_i32, from_i64};
 pub use core::num::{from_uint, from_u8, from_u16, from_u32, from_u64};
 pub use core::num::{from_f32, from_f64};
 pub use core::num::{FromStrRadix, from_str_radix};
-pub use core::num::{FpCategory, Float};
+pub use core::num::{FpCategory};
+
+use option::Option;
 
 #[experimental = "may be removed or relocated"]
 pub mod strconv;
 
 /// Mathematical operations on primitive floating point numbers.
-#[unstable = "may be altered to inline the Float trait"]
-pub trait FloatMath: Float {
+#[stable]
+pub trait Float
+    : Copy + Clone
+    + NumCast
+    + PartialOrd
+    + PartialEq
+    + Neg<Output=Self>
+    + Add<Output=Self>
+    + Sub<Output=Self>
+    + Mul<Output=Self>
+    + Div<Output=Self>
+    + Rem<Output=Self>
+{
+    // inlined methods from `num::Float`
+    /// Returns the NaN value.
+    #[unstable = "unsure about its place in the world"]
+    fn nan() -> Self;
+    /// Returns the infinite value.
+    #[unstable = "unsure about its place in the world"]
+    fn infinity() -> Self;
+    /// Returns the negative infinite value.
+    #[unstable = "unsure about its place in the world"]
+    fn neg_infinity() -> Self;
+    /// Returns the `0` value.
+    #[unstable = "unsure about its place in the world"]
+    fn zero() -> Self;
+    /// Returns -0.0.
+    #[unstable = "unsure about its place in the world"]
+    fn neg_zero() -> Self;
+    /// Returns the `1` value.
+    #[unstable = "unsure about its place in the world"]
+    fn one() -> Self;
+
+    // FIXME (#5527): These should be associated constants
+
+    /// Returns the number of binary digits of mantissa that this type supports.
+    #[deprecated = "use `std::f32::MANTISSA_DIGITS` or `std::f64::MANTISSA_DIGITS` as appropriate"]
+    fn mantissa_digits(unused_self: Option<Self>) -> uint;
+    /// Returns the number of base-10 digits of precision that this type supports.
+    #[deprecated = "use `std::f32::DIGITS` or `std::f64::DIGITS` as appropriate"]
+    fn digits(unused_self: Option<Self>) -> uint;
+    /// Returns the difference between 1.0 and the smallest representable number larger than 1.0.
+    #[deprecated = "use `std::f32::EPSILON` or `std::f64::EPSILON` as appropriate"]
+    fn epsilon() -> Self;
+    /// Returns the minimum binary exponent that this type can represent.
+    #[deprecated = "use `std::f32::MIN_EXP` or `std::f64::MIN_EXP` as appropriate"]
+    fn min_exp(unused_self: Option<Self>) -> int;
+    /// Returns the maximum binary exponent that this type can represent.
+    #[deprecated = "use `std::f32::MAX_EXP` or `std::f64::MAX_EXP` as appropriate"]
+    fn max_exp(unused_self: Option<Self>) -> int;
+    /// Returns the minimum base-10 exponent that this type can represent.
+    #[deprecated = "use `std::f32::MIN_10_EXP` or `std::f64::MIN_10_EXP` as appropriate"]
+    fn min_10_exp(unused_self: Option<Self>) -> int;
+    /// Returns the maximum base-10 exponent that this type can represent.
+    #[deprecated = "use `std::f32::MAX_10_EXP` or `std::f64::MAX_10_EXP` as appropriate"]
+    fn max_10_exp(unused_self: Option<Self>) -> int;
+
+    /// Returns the smallest finite value that this type can represent.
+    #[unstable = "unsure about its place in the world"]
+    fn min_value() -> Self;
+    /// Returns the smallest normalized positive number that this type can represent.
+    #[unstable = "unsure about its place in the world"]
+    fn min_pos_value(unused_self: Option<Self>) -> Self;
+    /// Returns the largest finite value that this type can represent.
+    #[unstable = "unsure about its place in the world"]
+    fn max_value() -> Self;
+
+    /// Returns true if this value is NaN and false otherwise.
+    #[unstable = "position is undecided"]
+    fn is_nan(self) -> bool;
+    /// Returns true if this value is positive infinity or negative infinity and
+    /// false otherwise.
+    #[unstable = "position is undecided"]
+    fn is_infinite(self) -> bool;
+    /// Returns true if this number is neither infinite nor NaN.
+    #[unstable = "position is undecided"]
+    fn is_finite(self) -> bool;
+    /// Returns true if this number is neither zero, infinite, denormal, or NaN.
+    #[unstable = "position is undecided"]
+    fn is_normal(self) -> bool;
+    /// Returns the category that this number falls into.
+    #[stable]
+    fn classify(self) -> FpCategory;
+
+    /// Returns the mantissa, exponent and sign as integers, respectively.
+    #[unstable = "signature is undecided"]
+    fn integer_decode(self) -> (u64, i16, i8);
+
+    /// Return the largest integer less than or equal to a number.
+    #[stable]
+    fn floor(self) -> Self;
+    /// Return the smallest integer greater than or equal to a number.
+    #[stable]
+    fn ceil(self) -> Self;
+    /// Return the nearest integer to a number. Round half-way cases away from
+    /// `0.0`.
+    #[stable]
+    fn round(self) -> Self;
+    /// Return the integer part of a number.
+    #[stable]
+    fn trunc(self) -> Self;
+    /// Return the fractional part of a number.
+    #[stable]
+    fn fract(self) -> Self;
+
+    /// Computes the absolute value of `self`. Returns `Float::nan()` if the
+    /// number is `Float::nan()`.
+    #[stable]
+    fn abs(self) -> Self;
+    /// Returns a number that represents the sign of `self`.
+    ///
+    /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
+    /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
+    /// - `Float::nan()` if the number is `Float::nan()`
+    #[stable]
+    fn signum(self) -> Self;
+    /// Returns `true` if `self` is positive, including `+0.0` and
+    /// `Float::infinity()`.
+    #[stable]
+    fn is_positive(self) -> bool;
+    /// Returns `true` if `self` is negative, including `-0.0` and
+    /// `Float::neg_infinity()`.
+    #[stable]
+    fn is_negative(self) -> bool;
+
+    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
+    /// error. This produces a more accurate result with better performance than
+    /// a separate multiplication operation followed by an add.
+    #[unstable = "unsure about its place in the world"]
+    fn mul_add(self, a: Self, b: Self) -> Self;
+    /// Take the reciprocal (inverse) of a number, `1/x`.
+    #[unstable = "unsure about its place in the world"]
+    fn recip(self) -> Self;
+
+    /// Raise a number to an integer power.
+    ///
+    /// Using this function is generally faster than using `powf`
+    #[stable]
+    fn powi(self, n: i32) -> Self;
+    /// Raise a number to a floating point power.
+    #[stable]
+    fn powf(self, n: Self) -> Self;
+
+    /// Take the square root of a number.
+    ///
+    /// Returns NaN if `self` is a negative number.
+    #[stable]
+    fn sqrt(self) -> Self;
+    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
+    #[unstable = "unsure about its place in the world"]
+    fn rsqrt(self) -> Self;
+
+    /// Returns `e^(self)`, (the exponential function).
+    #[stable]
+    fn exp(self) -> Self;
+    /// Returns 2 raised to the power of the number, `2^(self)`.
+    #[stable]
+    fn exp2(self) -> Self;
+    /// Returns the natural logarithm of the number.
+    #[stable]
+    fn ln(self) -> Self;
+    /// Returns the logarithm of the number with respect to an arbitrary base.
+    #[stable]
+    fn log(self, base: Self) -> Self;
+    /// Returns the base 2 logarithm of the number.
+    #[stable]
+    fn log2(self) -> Self;
+    /// Returns the base 10 logarithm of the number.
+    #[stable]
+    fn log10(self) -> Self;
+
+    /// Convert radians to degrees.
+    #[unstable = "desirability is unclear"]
+    fn to_degrees(self) -> Self;
+    /// Convert degrees to radians.
+    #[unstable = "desirability is unclear"]
+    fn to_radians(self) -> Self;
+
     /// Constructs a floating point number created by multiplying `x` by 2
     /// raised to the power of `exp`.
+    #[unstable = "pending integer conventions"]
     fn ldexp(x: Self, exp: int) -> Self;
     /// Breaks the number into a normalized fraction and a base-2 exponent,
     /// satisfying:
@@ -44,75 +225,96 @@ pub trait FloatMath: Float {
     ///  * `self = x * pow(2, exp)`
     ///
     ///  * `0.5 <= abs(x) < 1.0`
+    #[unstable = "pending integer conventions"]
     fn frexp(self) -> (Self, int);
 
     /// Returns the next representable floating-point value in the direction of
     /// `other`.
+    #[unstable = "unsure about its place in the world"]
     fn next_after(self, other: Self) -> Self;
 
     /// Returns the maximum of the two numbers.
+    #[stable]
     fn max(self, other: Self) -> Self;
     /// Returns the minimum of the two numbers.
+    #[stable]
     fn min(self, other: Self) -> Self;
 
     /// The positive difference of two numbers. Returns `0.0` if the number is
     /// less than or equal to `other`, otherwise the difference between`self`
     /// and `other` is returned.
+    #[unstable = "may be renamed"]
     fn abs_sub(self, other: Self) -> Self;
 
     /// Take the cubic root of a number.
+    #[unstable = "may be renamed"]
     fn cbrt(self) -> Self;
     /// Calculate the length of the hypotenuse of a right-angle triangle given
     /// legs of length `x` and `y`.
+    #[unstable = "unsure about its place in the world"]
     fn hypot(self, other: Self) -> Self;
 
     /// Computes the sine of a number (in radians).
+    #[stable]
     fn sin(self) -> Self;
     /// Computes the cosine of a number (in radians).
+    #[stable]
     fn cos(self) -> Self;
     /// Computes the tangent of a number (in radians).
+    #[stable]
     fn tan(self) -> Self;
 
     /// Computes the arcsine of a number. Return value is in radians in
     /// the range [-pi/2, pi/2] or NaN if the number is outside the range
     /// [-1, 1].
+    #[stable]
     fn asin(self) -> Self;
     /// Computes the arccosine of a number. Return value is in radians in
     /// the range [0, pi] or NaN if the number is outside the range
     /// [-1, 1].
+    #[stable]
     fn acos(self) -> Self;
     /// Computes the arctangent of a number. Return value is in radians in the
     /// range [-pi/2, pi/2];
+    #[stable]
     fn atan(self) -> Self;
     /// Computes the four quadrant arctangent of a number, `y`, and another
     /// number `x`. Return value is in radians in the range [-pi, pi].
+    #[stable]
     fn atan2(self, other: Self) -> Self;
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
     /// `(sin(x), cos(x))`.
+    #[stable]
     fn sin_cos(self) -> (Self, Self);
 
     /// Returns the exponential of the number, minus 1, in a way that is
     /// accurate even if the number is close to zero.
+    #[unstable = "may be renamed"]
     fn exp_m1(self) -> Self;
     /// Returns the natural logarithm of the number plus 1 (`ln(1+n)`) more
     /// accurately than if the operations were performed separately.
+    #[unstable = "may be renamed"]
     fn ln_1p(self) -> Self;
 
     /// Hyperbolic sine function.
+    #[stable]
     fn sinh(self) -> Self;
     /// Hyperbolic cosine function.
+    #[stable]
     fn cosh(self) -> Self;
     /// Hyperbolic tangent function.
+    #[stable]
     fn tanh(self) -> Self;
     /// Inverse hyperbolic sine function.
+    #[stable]
     fn asinh(self) -> Self;
     /// Inverse hyperbolic cosine function.
+    #[stable]
     fn acosh(self) -> Self;
     /// Inverse hyperbolic tangent function.
+    #[stable]
     fn atanh(self) -> Self;
 }
-
-// DEPRECATED
 
 /// Helper function for testing numeric operations
 #[cfg(test)]

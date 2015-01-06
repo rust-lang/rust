@@ -17,7 +17,7 @@ use std::fmt::Show;
 use std::hash::Hash;
 use std::io;
 use std::mem;
-use std::num::{Float, FloatMath, FromPrimitive};
+use std::num::{Float, FromPrimitive};
 
 fn local_cmp<T:Float>(x: T, y: T) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -39,7 +39,7 @@ fn local_sort<T: Float>(v: &mut [T]) {
 }
 
 /// Trait that provides simple descriptive statistics on a univariate set of numeric samples.
-pub trait Stats <T: FloatMath + FromPrimitive> {
+pub trait Stats <T: Float + FromPrimitive> {
 
     /// Sum of the samples.
     ///
@@ -144,7 +144,7 @@ pub struct Summary<T> {
     pub iqr: T,
 }
 
-impl<T: FloatMath + FromPrimitive> Summary<T> {
+impl<T: Float + FromPrimitive> Summary<T> {
     /// Construct a new summary of a sample set.
     pub fn new(samples: &[T]) -> Summary<T> {
         Summary {
@@ -164,7 +164,7 @@ impl<T: FloatMath + FromPrimitive> Summary<T> {
     }
 }
 
-impl<T: FloatMath + FromPrimitive> Stats<T> for [T] {
+impl<T: Float + FromPrimitive> Stats<T> for [T] {
     // FIXME #11059 handle NaN, inf and overflow
     fn sum(&self) -> T {
         let mut partials = vec![];

@@ -30,7 +30,7 @@ use option::Option::{Some, None};
 use str::{FromStr, StrExt};
 
 /// A built-in signed or unsigned integer.
-#[unstable = "recently settled as part of numerics reform"]
+#[stable]
 pub trait Int
     : Copy + Clone
     + NumCast
@@ -50,18 +50,22 @@ pub trait Int
 {
     /// Returns the `0` value of this integer type.
     // FIXME (#5527): Should be an associated constant
+    #[unstable = "unsure about its place in the world"]
     fn zero() -> Self;
 
     /// Returns the `1` value of this integer type.
     // FIXME (#5527): Should be an associated constant
+    #[unstable = "unsure about its place in the world"]
     fn one() -> Self;
 
     /// Returns the smallest value that can be represented by this integer type.
     // FIXME (#5527): Should be and associated constant
+    #[unstable = "unsure about its place in the world"]
     fn min_value() -> Self;
 
     /// Returns the largest value that can be represented by this integer type.
     // FIXME (#5527): Should be and associated constant
+    #[unstable = "unsure about its place in the world"]
     fn max_value() -> Self;
 
     /// Returns the number of ones in the binary representation of `self`.
@@ -75,6 +79,7 @@ pub trait Int
     ///
     /// assert_eq!(n.count_ones(), 3);
     /// ```
+    #[unstable = "pending integer conventions"]
     fn count_ones(self) -> uint;
 
     /// Returns the number of zeros in the binary representation of `self`.
@@ -88,6 +93,7 @@ pub trait Int
     ///
     /// assert_eq!(n.count_zeros(), 5);
     /// ```
+    #[unstable = "pending integer conventions"]
     #[inline]
     fn count_zeros(self) -> uint {
         (!self).count_ones()
@@ -105,6 +111,7 @@ pub trait Int
     ///
     /// assert_eq!(n.leading_zeros(), 10);
     /// ```
+    #[unstable = "pending integer conventions"]
     fn leading_zeros(self) -> uint;
 
     /// Returns the number of trailing zeros in the binary representation
@@ -119,6 +126,7 @@ pub trait Int
     ///
     /// assert_eq!(n.trailing_zeros(), 3);
     /// ```
+    #[unstable = "pending integer conventions"]
     fn trailing_zeros(self) -> uint;
 
     /// Shifts the bits to the left by a specified amount amount, `n`, wrapping
@@ -134,6 +142,7 @@ pub trait Int
     ///
     /// assert_eq!(n.rotate_left(12), m);
     /// ```
+    #[unstable = "pending integer conventions"]
     fn rotate_left(self, n: uint) -> Self;
 
     /// Shifts the bits to the right by a specified amount amount, `n`, wrapping
@@ -149,6 +158,7 @@ pub trait Int
     ///
     /// assert_eq!(n.rotate_right(12), m);
     /// ```
+    #[unstable = "pending integer conventions"]
     fn rotate_right(self, n: uint) -> Self;
 
     /// Reverses the byte order of the integer.
@@ -163,6 +173,7 @@ pub trait Int
     ///
     /// assert_eq!(n.swap_bytes(), m);
     /// ```
+    #[stable]
     fn swap_bytes(self) -> Self;
 
     /// Convert an integer from big endian to the target's endianness.
@@ -182,6 +193,7 @@ pub trait Int
     ///     assert_eq!(Int::from_be(n), n.swap_bytes())
     /// }
     /// ```
+    #[stable]
     #[inline]
     fn from_be(x: Self) -> Self {
         if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
@@ -204,6 +216,7 @@ pub trait Int
     ///     assert_eq!(Int::from_le(n), n.swap_bytes())
     /// }
     /// ```
+    #[stable]
     #[inline]
     fn from_le(x: Self) -> Self {
         if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
@@ -226,6 +239,7 @@ pub trait Int
     ///     assert_eq!(n.to_be(), n.swap_bytes())
     /// }
     /// ```
+    #[stable]
     #[inline]
     fn to_be(self) -> Self { // or not to be?
         if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
@@ -248,6 +262,7 @@ pub trait Int
     ///     assert_eq!(n.to_le(), n.swap_bytes())
     /// }
     /// ```
+    #[stable]
     #[inline]
     fn to_le(self) -> Self {
         if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
@@ -264,6 +279,7 @@ pub trait Int
     /// assert_eq!(5u16.checked_add(65530), Some(65535));
     /// assert_eq!(6u16.checked_add(65530), None);
     /// ```
+    #[stable]
     fn checked_add(self, other: Self) -> Option<Self>;
 
     /// Checked integer subtraction. Computes `self - other`, returning `None`
@@ -277,6 +293,7 @@ pub trait Int
     /// assert_eq!((-127i8).checked_sub(1), Some(-128));
     /// assert_eq!((-128i8).checked_sub(1), None);
     /// ```
+    #[stable]
     fn checked_sub(self, other: Self) -> Option<Self>;
 
     /// Checked integer multiplication. Computes `self * other`, returning
@@ -290,6 +307,7 @@ pub trait Int
     /// assert_eq!(5u8.checked_mul(51), Some(255));
     /// assert_eq!(5u8.checked_mul(52), None);
     /// ```
+    #[stable]
     fn checked_mul(self, other: Self) -> Option<Self>;
 
     /// Checked integer division. Computes `self / other`, returning `None` if
@@ -304,11 +322,12 @@ pub trait Int
     /// assert_eq!((-128i8).checked_div(-1), None);
     /// assert_eq!((1i8).checked_div(0), None);
     /// ```
-    #[inline]
+    #[stable]
     fn checked_div(self, other: Self) -> Option<Self>;
 
     /// Saturating integer addition. Computes `self + other`, saturating at
     /// the numeric bounds instead of overflowing.
+    #[stable]
     #[inline]
     fn saturating_add(self, other: Self) -> Self {
         match self.checked_add(other) {
@@ -320,6 +339,7 @@ pub trait Int
 
     /// Saturating integer subtraction. Computes `self - other`, saturating at
     /// the numeric bounds instead of overflowing.
+    #[stable]
     #[inline]
     fn saturating_sub(self, other: Self) -> Self {
         match self.checked_sub(other) {
@@ -338,6 +358,7 @@ pub trait Int
     ///
     /// assert_eq!(2i.pow(4), 16);
     /// ```
+    #[unstable = "pending integer conventions"]
     #[inline]
     fn pow(self, mut exp: uint) -> Self {
         let mut base = self;
@@ -369,7 +390,7 @@ macro_rules! uint_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
-        #[unstable = "trait is unstable"]
+        #[stable]
         impl Int for $T {
             #[inline]
             fn zero() -> $T { 0 }
@@ -500,7 +521,7 @@ macro_rules! int_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
-        #[unstable = "trait is unstable"]
+        #[stable]
         impl Int for $T {
             #[inline]
             fn zero() -> $T { 0 }
@@ -593,13 +614,14 @@ int_impl! { int = i64, u64, 64,
     intrinsics::i64_mul_with_overflow }
 
 /// A built-in two's complement integer.
-#[unstable = "recently settled as part of numerics reform"]
+#[stable]
 pub trait SignedInt
     : Int
     + Neg<Output=Self>
 {
     /// Computes the absolute value of `self`. `Int::min_value()` will be
     /// returned if the number is `Int::min_value()`.
+    #[unstable = "overflow in debug builds?"]
     fn abs(self) -> Self;
 
     /// Returns a number representing sign of `self`.
@@ -607,19 +629,23 @@ pub trait SignedInt
     /// - `0` if the number is zero
     /// - `1` if the number is positive
     /// - `-1` if the number is negative
+    #[stable]
     fn signum(self) -> Self;
 
     /// Returns `true` if `self` is positive and `false` if the number
     /// is zero or negative.
+    #[stable]
     fn is_positive(self) -> bool;
 
     /// Returns `true` if `self` is negative and `false` if the number
     /// is zero or positive.
+    #[stable]
     fn is_negative(self) -> bool;
 }
 
 macro_rules! signed_int_impl {
     ($T:ty) => {
+        #[stable]
         impl SignedInt for $T {
             #[inline]
             fn abs(self) -> $T {
@@ -651,9 +677,10 @@ signed_int_impl! { i64 }
 signed_int_impl! { int }
 
 /// A built-in unsigned integer.
-#[unstable = "recently settled as part of numerics reform"]
+#[stable]
 pub trait UnsignedInt: Int {
     /// Returns `true` iff `self == 2^k` for some `k`.
+    #[stable]
     #[inline]
     fn is_power_of_two(self) -> bool {
         (self - Int::one()) & self == Int::zero() && !(self == Int::zero())
@@ -661,6 +688,7 @@ pub trait UnsignedInt: Int {
 
     /// Returns the smallest power of two greater than or equal to `self`.
     /// Unspecified behavior on overflow.
+    #[stable]
     #[inline]
     fn next_power_of_two(self) -> Self {
         let bits = size_of::<Self>() * 8;
@@ -671,6 +699,7 @@ pub trait UnsignedInt: Int {
     /// Returns the smallest power of two greater than or equal to `n`. If the
     /// next power of two is greater than the type's maximum value, `None` is
     /// returned, otherwise the power of two is wrapped in `Some`.
+    #[stable]
     fn checked_next_power_of_two(self) -> Option<Self> {
         let npot = self.next_power_of_two();
         if npot >= self {
@@ -681,19 +710,19 @@ pub trait UnsignedInt: Int {
     }
 }
 
-#[unstable = "trait is unstable"]
+#[stable]
 impl UnsignedInt for uint {}
 
-#[unstable = "trait is unstable"]
+#[stable]
 impl UnsignedInt for u8 {}
 
-#[unstable = "trait is unstable"]
+#[stable]
 impl UnsignedInt for u16 {}
 
-#[unstable = "trait is unstable"]
+#[stable]
 impl UnsignedInt for u32 {}
 
-#[unstable = "trait is unstable"]
+#[stable]
 impl UnsignedInt for u64 {}
 
 /// A generic trait for converting a value to a number.
@@ -910,12 +939,12 @@ impl_to_primitive_uint! { u32 }
 impl_to_primitive_uint! { u64 }
 
 macro_rules! impl_to_primitive_float_to_float {
-    ($SrcT:ty, $DstT:ty, $slf:expr) => (
+    ($SrcT:ident, $DstT:ident, $slf:expr) => (
         if size_of::<$SrcT>() <= size_of::<$DstT>() {
             Some($slf as $DstT)
         } else {
             let n = $slf as f64;
-            let max_value: $SrcT = Float::max_value();
+            let max_value: $SrcT = ::$SrcT::MAX_VALUE;
             if -max_value as f64 <= n && n <= max_value as f64 {
                 Some($slf as $DstT)
             } else {
@@ -926,7 +955,7 @@ macro_rules! impl_to_primitive_float_to_float {
 }
 
 macro_rules! impl_to_primitive_float {
-    ($T:ty) => (
+    ($T:ident) => (
         impl ToPrimitive for $T {
             #[inline]
             fn to_int(&self) -> Option<int> { Some(*self as int) }
@@ -1222,7 +1251,7 @@ pub enum FpCategory {
 //
 // FIXME(#8888): Several of these functions have a parameter named
 //               `unused_self`. Removing it requires #8888 to be fixed.
-#[unstable = "recently settled as part of numerics reform"]
+#[unstable = "distribution of methods between core/std is unclear"]
 pub trait Float
     : Copy + Clone
     + NumCast
@@ -1248,6 +1277,39 @@ pub trait Float
     /// Returns the `1` value.
     fn one() -> Self;
 
+    // FIXME (#5527): These should be associated constants
+
+    /// Returns the number of binary digits of mantissa that this type supports.
+    #[deprecated = "use `std::f32::MANTISSA_DIGITS` or `std::f64::MANTISSA_DIGITS` as appropriate"]
+    fn mantissa_digits(unused_self: Option<Self>) -> uint;
+    /// Returns the number of base-10 digits of precision that this type supports.
+    #[deprecated = "use `std::f32::DIGITS` or `std::f64::DIGITS` as appropriate"]
+    fn digits(unused_self: Option<Self>) -> uint;
+    /// Returns the difference between 1.0 and the smallest representable number larger than 1.0.
+    #[deprecated = "use `std::f32::EPSILON` or `std::f64::EPSILON` as appropriate"]
+    fn epsilon() -> Self;
+    /// Returns the minimum binary exponent that this type can represent.
+    #[deprecated = "use `std::f32::MIN_EXP` or `std::f64::MIN_EXP` as appropriate"]
+    fn min_exp(unused_self: Option<Self>) -> int;
+    /// Returns the maximum binary exponent that this type can represent.
+    #[deprecated = "use `std::f32::MAX_EXP` or `std::f64::MAX_EXP` as appropriate"]
+    fn max_exp(unused_self: Option<Self>) -> int;
+    /// Returns the minimum base-10 exponent that this type can represent.
+    #[deprecated = "use `std::f32::MIN_10_EXP` or `std::f64::MIN_10_EXP` as appropriate"]
+    fn min_10_exp(unused_self: Option<Self>) -> int;
+    /// Returns the maximum base-10 exponent that this type can represent.
+    #[deprecated = "use `std::f32::MAX_10_EXP` or `std::f64::MAX_10_EXP` as appropriate"]
+    fn max_10_exp(unused_self: Option<Self>) -> int;
+    /// Returns the smallest finite value that this type can represent.
+    #[deprecated = "use `std::f32::MIN_VALUE` or `std::f64::MIN_VALUE` as appropriate"]
+    fn min_value() -> Self;
+    /// Returns the smallest normalized positive number that this type can represent.
+    #[deprecated = "use `std::f32::MIN_POS_VALUE` or `std::f64::MIN_POS_VALUE` as appropriate"]
+    fn min_pos_value(unused_self: Option<Self>) -> Self;
+    /// Returns the largest finite value that this type can represent.
+    #[deprecated = "use `std::f32::MAX_VALUE` or `std::f64::MAX_VALUE` as appropriate"]
+    fn max_value() -> Self;
+
     /// Returns true if this value is NaN and false otherwise.
     fn is_nan(self) -> bool;
     /// Returns true if this value is positive infinity or negative infinity and
@@ -1259,29 +1321,6 @@ pub trait Float
     fn is_normal(self) -> bool;
     /// Returns the category that this number falls into.
     fn classify(self) -> FpCategory;
-
-    // FIXME (#5527): These should be associated constants
-
-    /// Returns the number of binary digits of mantissa that this type supports.
-    fn mantissa_digits(unused_self: Option<Self>) -> uint;
-    /// Returns the number of base-10 digits of precision that this type supports.
-    fn digits(unused_self: Option<Self>) -> uint;
-    /// Returns the difference between 1.0 and the smallest representable number larger than 1.0.
-    fn epsilon() -> Self;
-    /// Returns the minimum binary exponent that this type can represent.
-    fn min_exp(unused_self: Option<Self>) -> int;
-    /// Returns the maximum binary exponent that this type can represent.
-    fn max_exp(unused_self: Option<Self>) -> int;
-    /// Returns the minimum base-10 exponent that this type can represent.
-    fn min_10_exp(unused_self: Option<Self>) -> int;
-    /// Returns the maximum base-10 exponent that this type can represent.
-    fn max_10_exp(unused_self: Option<Self>) -> int;
-    /// Returns the smallest finite value that this type can represent.
-    fn min_value() -> Self;
-    /// Returns the smallest normalized positive number that this type can represent.
-    fn min_pos_value(unused_self: Option<Self>) -> Self;
-    /// Returns the largest finite value that this type can represent.
-    fn max_value() -> Self;
 
     /// Returns the mantissa, exponent and sign as integers, respectively.
     fn integer_decode(self) -> (u64, i16, i8);
