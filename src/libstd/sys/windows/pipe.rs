@@ -87,16 +87,21 @@
 use prelude::v1::*;
 
 use libc;
-use c_str::CString;
+use ffi::CString;
+use io::{self, IoError, IoResult};
 use mem;
 use ptr;
-use sync::{Arc, Mutex};
+use str;
 use sync::atomic::{AtomicBool, Ordering};
-use io::{self, IoError, IoResult};
+use sync::{Arc, Mutex};
 
 use sys_common::{self, eof};
 
-use super::{c, os, timer, to_utf16, decode_error_detailed};
+use super::{c, os, timer, decode_error_detailed};
+
+fn to_utf16(c: &CString) -> IoResult<Vec<u16>> {
+    super::to_utf16(str::from_utf8(c.as_bytes()).ok())
+}
 
 struct Event(libc::HANDLE);
 
@@ -270,7 +275,7 @@ impl UnixStream {
     }
 
     pub fn connect(addr: &CString, timeout: Option<u64>) -> IoResult<UnixStream> {
-        let addr = try!(to_utf16(addr.as_str()));
+        let addr = try!(to_utf16(addr));
         let start = timer::now();
         loop {
             match UnixStream::try_connect(addr.as_ptr()) {
@@ -571,7 +576,7 @@ impl UnixListener {
         // Although we technically don't need the pipe until much later, we
         // create the initial handle up front to test the validity of the name
         // and such.
-        let addr_v = try!(to_utf16(addr.as_str()));
+        let addr_v = try!(to_utf16(addr));
         let ret = unsafe { pipe(addr_v.as_ptr(), true) };
         if ret == libc::INVALID_HANDLE_VALUE {
             Err(super::last_error())
@@ -661,7 +666,7 @@ impl UnixAcceptor {
         // proceed in accepting new clients in the future
         if self.inner.closed.load(Ordering::SeqCst) { return Err(eof()) }
 
-        let name = try!(to_utf16(self.listener.name.as_str()));
+        let name = try!(to_utf16(&self.listener.name));
 
         // Once we've got a "server handle", we need to wait for a client to
         // connect. The ConnectNamedPipe function will block this thread until
@@ -753,7 +758,7 @@ impl UnixAcceptor {
 
 impl Clone for UnixAcceptor {
     fn clone(&self) -> UnixAcceptor {
-        let name = to_utf16(self.listener.name.as_str()).ok().unwrap();
+        let name = to_utf16(&self.listener.name).ok().unwrap();
         UnixAcceptor {
             inner: self.inner.clone(),
             event: Event::new(true, false).ok().unwrap(),

@@ -208,10 +208,10 @@ pub mod num;
 
 /* Runtime and platform support */
 
-pub mod thread_local;
-pub mod c_str;
-pub mod c_vec;
+pub mod thread_local; // first for macros
+
 pub mod dynamic_lib;
+pub mod ffi;
 pub mod fmt;
 pub mod io;
 pub mod os;

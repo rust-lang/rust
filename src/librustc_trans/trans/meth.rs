@@ -34,7 +34,7 @@ use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::ppaux::Repr;
 
-use std::c_str::ToCStr;
+use std::ffi::CString;
 use std::rc::Rc;
 use syntax::abi::{Rust, RustCall};
 use syntax::parse::token;
@@ -762,9 +762,9 @@ pub fn make_vtable<I: Iterator<Item=ValueRef>>(ccx: &CrateContext,
     unsafe {
         let tbl = C_struct(ccx, components[], false);
         let sym = token::gensym("vtable");
-        let vt_gvar = format!("vtable{}", sym.uint()).with_c_str(|buf| {
-            llvm::LLVMAddGlobal(ccx.llmod(), val_ty(tbl).to_ref(), buf)
-        });
+        let buf = CString::from_vec(format!("vtable{}", sym.uint()).into_bytes());
+        let vt_gvar = llvm::LLVMAddGlobal(ccx.llmod(), val_ty(tbl).to_ref(),
+                                          buf.as_ptr());
         llvm::LLVMSetInitializer(vt_gvar, tbl);
         llvm::LLVMSetGlobalConstant(vt_gvar, llvm::True);
         llvm::SetLinkage(vt_gvar, llvm::InternalLinkage);

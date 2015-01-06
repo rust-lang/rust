@@ -12,17 +12,17 @@
 
 use prelude::v1::*;
 
-use c_str::ToCStr;
 use error::{FromError, Error};
+use ffi::{self, CString};
 use fmt;
 use io::{IoError, IoResult};
 use libc::{self, c_int, c_char, c_void};
+use os::TMPBUF_SZ;
 use os;
 use path::{BytesContainer};
 use ptr;
+use str;
 use sys::fs::FileDesc;
-
-use os::TMPBUF_SZ;
 
 const BUF_BYTES : uint = 2048u;
 
@@ -108,7 +108,8 @@ pub fn error_string(errno: i32) -> String {
             panic!("strerror_r failure");
         }
 
-        String::from_raw_buf(p as *const u8)
+        let p = p as *const _;
+        str::from_utf8(ffi::c_str_to_bytes(&p)).unwrap().to_string()
     }
 }
 
@@ -122,21 +123,17 @@ pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
 }
 
 pub fn getcwd() -> IoResult<Path> {
-    use c_str::CString;
-
     let mut buf = [0 as c_char; BUF_BYTES];
     unsafe {
         if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
             Err(IoError::last_error())
         } else {
-            Ok(Path::new(CString::new(buf.as_ptr(), false)))
+            Ok(Path::new(ffi::c_str_to_bytes(&buf.as_ptr())))
         }
     }
 }
 
 pub unsafe fn get_env_pairs() -> Vec<Vec<u8>> {
-    use c_str::CString;
-
     extern {
         fn rust_env_pairs() -> *const *const c_char;
     }
@@ -147,8 +144,7 @@ pub unsafe fn get_env_pairs() -> Vec<Vec<u8>> {
     }
     let mut result = Vec::new();
     while *environ != 0 as *const _ {
-        let env_pair =
-            CString::new(*environ, false).as_bytes_no_nul().to_vec();
+        let env_pair = ffi::c_str_to_bytes(&*environ).to_vec();
         result.push(env_pair);
         environ = environ.offset(1);
     }
@@ -234,14 +230,13 @@ pub fn load_self() -> Option<Vec<u8>> {
 }
 
 pub fn chdir(p: &Path) -> IoResult<()> {
-    p.with_c_str(|buf| {
-        unsafe {
-            match libc::chdir(buf) == (0 as c_int) {
-                true => Ok(()),
-                false => Err(IoError::last_error()),
-            }
+    let p = CString::from_slice(p.as_vec());
+    unsafe {
+        match libc::chdir(p.as_ptr()) == (0 as c_int) {
+            true => Ok(()),
+            false => Err(IoError::last_error()),
         }
-    })
+    }
 }
 
 pub fn page_size() -> uint {
