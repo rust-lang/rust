@@ -10,14 +10,14 @@
 
 // Verifies that static items can't be moved
 
-use std::markers;
+use std::marker;
 
 struct Foo {
     foo: int,
-    nocopy: markers::NoCopy
+    nocopy: marker::NoCopy
 }
 
-static BAR: Foo = Foo{foo: 5, nocopy: markers::NoCopy};
+static BAR: Foo = Foo{foo: 5, nocopy: marker::NoCopy};
 
 
 fn test(f: Foo) {

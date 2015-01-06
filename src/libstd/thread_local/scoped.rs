@@ -108,7 +108,7 @@ macro_rules! __scoped_thread_local_inner {
         const _INIT: __Key<$t> = __Key {
             inner: ::std::thread_local::scoped::__impl::KeyInner {
                 inner: ::std::thread_local::scoped::__impl::OS_INIT,
-                marker: ::std::markers::InvariantType,
+                marker: ::std::marker::InvariantType,
             }
         };
 
@@ -211,7 +211,7 @@ mod imp {
     #[doc(hidden)]
     pub struct KeyInner<T> { pub inner: UnsafeCell<*mut T> }
 
-    unsafe impl<T> ::markers::Sync for KeyInner<T> { }
+    unsafe impl<T> ::marker::Sync for KeyInner<T> { }
 
     #[doc(hidden)]
     impl<T> KeyInner<T> {
@@ -224,16 +224,16 @@ mod imp {
 
 #[cfg(any(windows, target_os = "android", target_os = "ios", target_arch = "aarch64"))]
 mod imp {
-    use markers;
+    use marker;
     use sys_common::thread_local::StaticKey as OsStaticKey;
 
     #[doc(hidden)]
     pub struct KeyInner<T> {
         pub inner: OsStaticKey,
-        pub marker: markers::InvariantType<T>,
+        pub marker: marker::InvariantType<T>,
     }
 
-    unsafe impl<T> ::markers::Sync for KeyInner<T> { }
+    unsafe impl<T> ::marker::Sync for KeyInner<T> { }
 
     #[doc(hidden)]
     impl<T> KeyInner<T> {

@@ -16,7 +16,7 @@ use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, count};
-use markers::{Copy, Sized, self};
+use marker::{Copy, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
 use num::{Int, UnsignedInt};
@@ -72,7 +72,7 @@ pub struct RawTable<K, V> {
     hashes:   Unique<u64>,
     // Because K/V do not appear directly in any of the types in the struct,
     // inform rustc that in fact instances of K and V are reachable from here.
-    marker:   markers::CovariantType<(K,V)>,
+    marker:   marker::CovariantType<(K,V)>,
 }
 
 struct RawBucket<K, V> {
@@ -562,7 +562,7 @@ impl<K, V> RawTable<K, V> {
                 size: 0,
                 capacity: 0,
                 hashes: Unique::null(),
-                marker: markers::CovariantType,
+                marker: marker::CovariantType,
             };
         }
         // No need for `checked_mul` before a more restrictive check performed
@@ -601,7 +601,7 @@ impl<K, V> RawTable<K, V> {
             capacity: capacity,
             size:     0,
             hashes:   Unique(hashes),
-            marker:   markers::CovariantType,
+            marker:   marker::CovariantType,
         }
     }
 
@@ -651,7 +651,7 @@ impl<K, V> RawTable<K, V> {
             hashes_end: unsafe {
                 self.hashes.0.offset(self.capacity as int)
             },
-            marker: markers::ContravariantLifetime,
+            marker: marker::ContravariantLifetime,
         }
     }
 
@@ -676,7 +676,7 @@ impl<K, V> RawTable<K, V> {
             iter: RawBuckets {
                 raw: raw,
                 hashes_end: hashes_end,
-                marker: markers::ContravariantLifetime,
+                marker: marker::ContravariantLifetime,
             },
             table: self,
         }
@@ -689,7 +689,7 @@ impl<K, V> RawTable<K, V> {
             iter: RawBuckets {
                 raw: raw,
                 hashes_end: hashes_end,
-                marker: markers::ContravariantLifetime::<'static>,
+                marker: marker::ContravariantLifetime::<'static>,
             },
             table: self,
         }
@@ -703,7 +703,7 @@ impl<K, V> RawTable<K, V> {
             raw: raw_bucket.offset(self.capacity as int),
             hashes_end: raw_bucket.hash,
             elems_left: self.size,
-            marker:     markers::ContravariantLifetime,
+            marker:     marker::ContravariantLifetime,
         }
     }
 }
@@ -713,7 +713,7 @@ impl<K, V> RawTable<K, V> {
 struct RawBuckets<'a, K, V> {
     raw: RawBucket<K, V>,
     hashes_end: *mut u64,
-    marker: markers::ContravariantLifetime<'a>,
+    marker: marker::ContravariantLifetime<'a>,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -722,7 +722,7 @@ impl<'a, K, V> Clone for RawBuckets<'a, K, V> {
         RawBuckets {
             raw: self.raw,
             hashes_end: self.hashes_end,
-            marker: markers::ContravariantLifetime,
+            marker: marker::ContravariantLifetime,
         }
     }
 }
@@ -754,7 +754,7 @@ struct RevMoveBuckets<'a, K, V> {
     raw: RawBucket<K, V>,
     hashes_end: *mut u64,
     elems_left: uint,
-    marker: markers::ContravariantLifetime<'a>,
+    marker: marker::ContravariantLifetime<'a>,
 }
 
 impl<'a, K, V> Iterator for RevMoveBuckets<'a, K, V> {

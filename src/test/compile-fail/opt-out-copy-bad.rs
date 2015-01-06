@@ -30,7 +30,7 @@ impl Copy for IWantToCopyThis {}
 
 enum CantCopyThisEither {
     A,
-    B(::std::markers::NoCopy),
+    B(::std::marker::NoCopy),
 }
 
 enum IWantToCopyThisToo {

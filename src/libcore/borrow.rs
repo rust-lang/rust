@@ -47,7 +47,7 @@
 use clone::Clone;
 use cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use fmt;
-use markers::Sized;
+use marker::Sized;
 use ops::Deref;
 use option::Option;
 use self::Cow::*;

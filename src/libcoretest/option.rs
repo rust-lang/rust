@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::option::*;
-use core::markers;
+use core::marker;
 use core::mem;
 use core::clone::Clone;
 
@@ -82,7 +82,7 @@ fn test_option_dance() {
 
 #[test] #[should_fail]
 fn test_option_too_much_dance() {
-    let mut y = Some(markers::NoCopy);
+    let mut y = Some(marker::NoCopy);
     let _y2 = y.take().unwrap();
     let _y3 = y.take().unwrap();
 }

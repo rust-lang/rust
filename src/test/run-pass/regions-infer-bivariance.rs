@@ -11,7 +11,7 @@
 // Test that a type whose lifetime parameters is never used is
 // inferred to be bivariant.
 
-use std::markers;
+use std::marker;
 
 struct Bivariant<'a>;
 

@@ -232,7 +232,7 @@ use error::{FromError, Error};
 use fmt;
 use int;
 use iter::{Iterator, IteratorExt};
-use markers::Sized;
+use marker::Sized;
 use mem::transmute;
 use ops::FnOnce;
 use option::Option;

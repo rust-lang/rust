@@ -37,7 +37,7 @@ use error::{FromError, Error};
 use fmt;
 use io::{IoResult, IoError};
 use iter::{Iterator, IteratorExt};
-use markers::Copy;
+use marker::Copy;
 use libc::{c_void, c_int, c_char};
 use libc;
 use boxed::Box;

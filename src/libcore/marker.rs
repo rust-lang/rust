@@ -87,7 +87,7 @@ pub trait Copy {
 ///
 /// Users writing their own types with interior mutability (or anything
 /// else that is not thread-safe) should use the `NoSync` marker type
-/// (from `std::markers`) to ensure that the compiler doesn't
+/// (from `std::marker`) to ensure that the compiler doesn't
 /// consider the user-defined type to be `Sync`.  Any types with
 /// interior mutability must also use the `std::cell::UnsafeCell` wrapper
 /// around the value(s) which can be mutated when behind a `&`
@@ -140,10 +140,10 @@ pub unsafe trait Sync {
 #[unstable = "likely to change with new variance strategy"]
 #[lang="covariant_type"]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub struct CovariantType<Sized? T>;
+pub struct CovariantType<T: ?Sized>;
 
-impl<Sized? T> Copy for CovariantType<T> {}
-impl<Sized? T> Clone for CovariantType<T> {
+impl<T: ?Sized> Copy for CovariantType<T> {}
+impl<T: ?Sized> Clone for CovariantType<T> {
     fn clone(&self) -> CovariantType<T> { *self }
 }
 

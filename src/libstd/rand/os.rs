@@ -185,7 +185,7 @@ mod imp {
     extern crate libc;
 
     use io::{IoResult};
-    use markers::Sync;
+    use marker::Sync;
     use mem;
     use os;
     use rand::Rng;

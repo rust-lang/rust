@@ -13,7 +13,7 @@
 use borrow::BorrowFrom;
 use clone::Clone;
 use cmp::{Eq, PartialEq};
-use core::markers::Sized;
+use core::marker::Sized;
 use default::Default;
 use fmt::Show;
 use fmt;

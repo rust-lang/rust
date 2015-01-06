@@ -57,7 +57,7 @@
 use core::prelude::*;
 
 use core::cell::Cell;
-use core::markers;
+use core::marker;
 use core::mem;
 use core::uint;
 
@@ -70,7 +70,7 @@ pub struct Select {
     head: *mut Handle<'static, ()>,
     tail: *mut Handle<'static, ()>,
     next_id: Cell<uint>,
-    marker1: markers::NoSend,
+    marker1: marker::NoSend,
 }
 
 /// A handle to a receiver which is currently a member of a `Select` set of
@@ -115,7 +115,7 @@ impl Select {
     /// rather much easier through the `select!` macro.
     pub fn new() -> Select {
         Select {
-            marker1: markers::NoSend,
+            marker1: marker::NoSend,
             head: 0 as *mut Handle<'static, ()>,
             tail: 0 as *mut Handle<'static, ()>,
             next_id: Cell::new(1),

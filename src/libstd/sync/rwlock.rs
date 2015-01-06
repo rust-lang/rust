@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use markers;
+use marker;
 use ops::{Deref, DerefMut};
 use sync::poison::{self, LockResult, TryLockError, TryLockResult};
 use sys_common::rwlock as sys;
@@ -113,7 +113,7 @@ pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock {
 pub struct RwLockReadGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
-    __marker: markers::NoSend,
+    __marker: marker::NoSend,
 }
 
 /// RAII structure used to release the exclusive write access of a lock when
@@ -124,7 +124,7 @@ pub struct RwLockWriteGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
     __poison: poison::Guard,
-    __marker: markers::NoSend,
+    __marker: marker::NoSend,
 }
 
 impl<T: Send + Sync> RwLock<T> {
@@ -309,7 +309,7 @@ impl<'rwlock, T> RwLockReadGuard<'rwlock, T> {
             RwLockReadGuard {
                 __lock: lock,
                 __data: data,
-                __marker: markers::NoSend,
+                __marker: marker::NoSend,
             }
         })
     }
@@ -322,7 +322,7 @@ impl<'rwlock, T> RwLockWriteGuard<'rwlock, T> {
                 __lock: lock,
                 __data: data,
                 __poison: guard,
-                __marker: markers::NoSend,
+                __marker: marker::NoSend,
             }
         })
     }

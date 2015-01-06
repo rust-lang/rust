@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::markers;
+use std::marker;
 
-enum Foo { A(markers::NoSync) }
+enum Foo { A(marker::NoSync) }
 
 fn bar<T: Sync>(_: T) {}
 
 fn main() {
-    let x = Foo::A(markers::NoSync);
+    let x = Foo::A(marker::NoSync);
     bar(x);
-    //~^ ERROR the trait `core::markers::Sync` is not implemented
+    //~^ ERROR the trait `core::marker::Sync` is not implemented
 }

@@ -14,10 +14,10 @@
 // Note: see variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
-use std::markers;
+use std::marker;
 
 struct Covariant<'a> {
-    marker: markers::CovariantLifetime<'a>
+    marker: marker::CovariantLifetime<'a>
 }
 
 fn use_<'short,'long>(c: Covariant<'long>,

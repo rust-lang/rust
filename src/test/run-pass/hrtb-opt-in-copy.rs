@@ -18,7 +18,7 @@
 
 #![allow(dead_code)]
 
-use std::markers;
+use std::marker;
 
 #[derive(Copy)]
 struct Foo<T> { x: T }
@@ -26,7 +26,7 @@ struct Foo<T> { x: T }
 type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 enum TyS<'tcx> {
-    Boop(markers::InvariantLifetime<'tcx>)
+    Boop(marker::InvariantLifetime<'tcx>)
 }
 
 enum Bar<'tcx> {

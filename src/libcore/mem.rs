@@ -15,7 +15,7 @@
 
 #![stable]
 
-use markers::Sized;
+use marker::Sized;
 use intrinsics;
 use ptr;
 

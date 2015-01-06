@@ -165,8 +165,8 @@ mod signal {
         sa_restorer: *mut libc::c_void,
     }
 
-    unsafe impl ::markers::Send for sigaction { }
-    unsafe impl ::markers::Sync for sigaction { }
+    unsafe impl ::marker::Send for sigaction { }
+    unsafe impl ::marker::Sync for sigaction { }
 
     #[repr(C)]
     #[cfg(target_word_size = "32")]
@@ -217,8 +217,8 @@ mod signal {
         sa_resv: [libc::c_int; 1],
     }
 
-    unsafe impl ::markers::Send for sigaction { }
-    unsafe impl ::markers::Sync for sigaction { }
+    unsafe impl ::marker::Send for sigaction { }
+    unsafe impl ::marker::Sync for sigaction { }
 
     #[repr(C)]
     pub struct sigset_t {

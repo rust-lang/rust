@@ -10,7 +10,7 @@
 
 // Verifies all possible restrictions for statics values.
 
-use std::markers;
+use std::marker;
 
 struct WithDtor;
 

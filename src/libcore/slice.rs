@@ -41,7 +41,7 @@ use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
-use markers::Copy;
+use marker::Copy;
 use num::Int;
 use ops::{FnMut, self};
 use option::Option;
@@ -52,7 +52,7 @@ use ptr;
 use ptr::PtrExt;
 use mem;
 use mem::size_of;
-use markers::{Sized, self};
+use marker::{Sized, self};
 use raw::Repr;
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
 use raw::Slice as RawSlice;
@@ -169,11 +169,11 @@ impl<T> SliceExt for [T] {
             if mem::size_of::<T>() == 0 {
                 Iter {ptr: p,
                       end: (p as uint + self.len()) as *const T,
-                      marker: markers::ContravariantLifetime::<'a>}
+                      marker: marker::ContravariantLifetime::<'a>}
             } else {
                 Iter {ptr: p,
                       end: p.offset(self.len() as int),
-                      marker: markers::ContravariantLifetime::<'a>}
+                      marker: marker::ContravariantLifetime::<'a>}
             }
         }
     }
@@ -322,11 +322,11 @@ impl<T> SliceExt for [T] {
             if mem::size_of::<T>() == 0 {
                 IterMut {ptr: p,
                          end: (p as uint + self.len()) as *mut T,
-                         marker: markers::ContravariantLifetime::<'a>}
+                         marker: marker::ContravariantLifetime::<'a>}
             } else {
                 IterMut {ptr: p,
                          end: p.offset(self.len() as int),
-                         marker: markers::ContravariantLifetime::<'a>}
+                         marker: marker::ContravariantLifetime::<'a>}
             }
         }
     }
@@ -734,7 +734,7 @@ macro_rules! make_slice {
 pub struct Iter<'a, T: 'a> {
     ptr: *const T,
     end: *const T,
-    marker: markers::ContravariantLifetime<'a>
+    marker: marker::ContravariantLifetime<'a>
 }
 
 #[experimental]
@@ -809,7 +809,7 @@ impl<'a, T> RandomAccessIterator for Iter<'a, T> {
 pub struct IterMut<'a, T: 'a> {
     ptr: *mut T,
     end: *mut T,
-    marker: markers::ContravariantLifetime<'a>,
+    marker: marker::ContravariantLifetime<'a>,
 }
 
 #[experimental]
