@@ -821,7 +821,7 @@ impl DocFolder for Cache {
         if let clean::ImplItem(ref i) = item.inner {
             match i.trait_ {
                 Some(clean::ResolvedPath{ did, .. }) => {
-                    let v = self.implementors.entry(&did).get().unwrap_or_else(
+                    let v = self.implementors.entry(did).get().unwrap_or_else(
                         |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
                     v.push(Implementor {
                         def_id: item.def_id,
@@ -1011,7 +1011,7 @@ impl DocFolder for Cache {
                         };
 
                         if let Some(did) = did {
-                            let v = self.impls.entry(&did).get().unwrap_or_else(
+                            let v = self.impls.entry(did).get().unwrap_or_else(
                                 |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
                             v.push(Impl {
                                 impl_: i,
@@ -1260,7 +1260,7 @@ impl Context {
                 Some(ref s) => s.to_string(),
             };
             let short = short.to_string();
-            let v = map.entry(&short).get().unwrap_or_else(
+            let v = map.entry(short).get().unwrap_or_else(
                 |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
             v.push(myname);
         }

@@ -604,7 +604,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     // Typecheck each field.
     for &Spanned { node: ref field, span } in fields.iter() {
-        let field_type = match used_fields.entry(&field.ident.name) {
+        let field_type = match used_fields.entry(field.ident.name) {
             Occupied(occupied) => {
                 span_err!(tcx.sess, span, E0025,
                     "field `{}` bound multiple times in the pattern",

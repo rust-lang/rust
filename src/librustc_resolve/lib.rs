@@ -1688,7 +1688,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let is_public = import_directive.is_public;
 
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
-        let dest_import_resolution = import_resolutions.entry(&name).get().unwrap_or_else(
+        let dest_import_resolution = import_resolutions.entry(name).get().unwrap_or_else(
             |vacant_entry| {
                 // Create a new import resolution from this child.
                 vacant_entry.insert(ImportResolution::new(id, is_public))
@@ -2626,14 +2626,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             def = DefUpvar(node_id, function_id, last_proc_body_id);
 
                             let mut seen = self.freevars_seen.borrow_mut();
-                            let seen = match seen.entry(&function_id) {
+                            let seen = match seen.entry(function_id) {
                                 Occupied(v) => v.into_mut(),
                                 Vacant(v) => v.insert(NodeSet::new()),
                             };
                             if seen.contains(&node_id) {
                                 continue;
                             }
-                            match self.freevars.borrow_mut().entry(&function_id) {
+                            match self.freevars.borrow_mut().entry(function_id) {
                                 Occupied(v) => v.into_mut(),
                                 Vacant(v) => v.insert(vec![]),
                             }.push(Freevar { def: prev_def, span: span });
@@ -4710,7 +4710,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 "Import should only be used for `use` directives");
         self.last_private.insert(node_id, lp);
 
-        match self.def_map.borrow_mut().entry(&node_id) {
+        match self.def_map.borrow_mut().entry(node_id) {
             // Resolve appears to "resolve" the same ID multiple
             // times, so here is a sanity check it at least comes to
             // the same conclusion! - nmatsakis

@@ -66,7 +66,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             None => { }
         }
 
-        match self.freshen_map.entry(&key) {
+        match self.freshen_map.entry(key) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 let index = self.freshen_count;
