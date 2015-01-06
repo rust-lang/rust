@@ -2966,14 +2966,17 @@ impl<'a> Parser<'a> {
     /// actually, this seems to be the main entry point for
     /// parsing an arbitrary expression.
     pub fn parse_assign_expr(&mut self) -> P<Expr> {
-        let lo = self.span.lo;
         let lhs = self.parse_binops();
+        self.parse_assign_expr_with(lhs)
+    }
+
+    pub fn parse_assign_expr_with(&mut self, lhs: P<Expr>) -> P<Expr> {
         let restrictions = self.restrictions & RESTRICTION_NO_STRUCT_LITERAL;
         match self.token {
           token::Eq => {
               self.bump();
               let rhs = self.parse_expr_res(restrictions);
-              self.mk_expr(lo, rhs.span.hi, ExprAssign(lhs, rhs))
+              self.mk_expr(lhs.span.lo, rhs.span.hi, ExprAssign(lhs, rhs))
           }
           token::BinOpEq(op) => {
               self.bump();
@@ -2991,8 +2994,9 @@ impl<'a> Parser<'a> {
                   token::Shr =>     BiShr
               };
               let rhs_span = rhs.span;
+              let span = lhs.span;
               let assign_op = self.mk_assign_op(aop, lhs, rhs);
-              self.mk_expr(lo, rhs_span.hi, assign_op)
+              self.mk_expr(span.lo, rhs_span.hi, assign_op)
           }
           _ => {
               lhs
@@ -3886,8 +3890,9 @@ impl<'a> Parser<'a> {
                                     let e = self.mk_mac_expr(span.lo,
                                                              span.hi,
                                                              macro.and_then(|m| m.node));
-                                    let e =
-                                        self.parse_dot_or_call_expr_with(e);
+                                    let e = self.parse_dot_or_call_expr_with(e);
+                                    let e = self.parse_more_binops(e, 0);
+                                    let e = self.parse_assign_expr_with(e);
                                     self.handle_expression_like_statement(
                                         e,
                                         ast::DUMMY_NODE_ID,
