@@ -69,6 +69,7 @@ pub struct SharedCrateContext<'tcx> {
     symbol_hasher: RefCell<Sha256>,
     tcx: ty::ctxt<'tcx>,
     stats: Stats,
+    check_overflow: bool,
 
     available_monomorphizations: RefCell<FnvHashSet<String>>,
     available_drop_glues: RefCell<FnvHashMap<Ty<'tcx>, String>>,
@@ -245,7 +246,8 @@ impl<'tcx> SharedCrateContext<'tcx> {
                export_map: ExportMap,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
-               reachable: NodeSet)
+               reachable: NodeSet,
+               check_overflow: bool)
                -> SharedCrateContext<'tcx> {
         let (metadata_llcx, metadata_llmod) = unsafe {
             create_context_and_module(&tcx.sess, "metadata")
@@ -274,6 +276,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
                 llvm_insns: RefCell::new(FnvHashMap()),
                 fn_stats: RefCell::new(Vec::new()),
             },
+            check_overflow: check_overflow,
             available_monomorphizations: RefCell::new(FnvHashSet()),
             available_drop_glues: RefCell::new(FnvHashMap()),
         };
@@ -742,6 +745,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.sess().fatal(
             &format!("the type `{}` is too big for the current architecture",
                     obj.repr(self.tcx())))
+    }
+
+    pub fn check_overflow(&self) -> bool {
+        self.shared.check_overflow
     }
 }
 
