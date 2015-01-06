@@ -211,6 +211,7 @@ use std::string;
 use std::ops;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
+use std::ops::Index as IndexOp;
 
 use Encodable;
 
@@ -386,7 +387,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
         };
 
         if start < i {
-            try!(wr.write_str(v[start..i]));
+            try!(wr.write_str(v.index(&(start..i))));
         }
 
         try!(wr.write_str(escaped));
@@ -395,7 +396,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
     }
 
     if start != v.len() {
-        try!(wr.write_str(v[start..]));
+        try!(wr.write_str(v.index(&(start..))));
     }
 
     wr.write_str("\"")
@@ -404,7 +405,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
 fn escape_char(writer: &mut fmt::Writer, v: char) -> fmt::Result {
     let mut buf = [0; 4];
     let n = v.encode_utf8(&mut buf).unwrap();
-    let buf = unsafe { str::from_utf8_unchecked(buf[0..n]) };
+    let buf = unsafe { str::from_utf8_unchecked(buf.index(&(0..n))) };
     escape_str(writer, buf)
 }
 
@@ -417,7 +418,7 @@ fn spaces(wr: &mut fmt::Writer, mut n: uint) -> fmt::Result {
     }
 
     if n > 0 {
-        wr.write_str(BUF[..n])
+        wr.write_str(BUF.index(&(..n)))
     } else {
         Ok(())
     }
@@ -624,7 +625,7 @@ impl<'a> ::Encoder<fmt::Error> for Encoder<'a> {
             let mut check_encoder = Encoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf[]).unwrap();
+        let out = str::from_utf8(buf.index(&FullRange)).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -893,7 +894,7 @@ impl<'a> ::Encoder<fmt::Error> for PrettyEncoder<'a> {
             let mut check_encoder = PrettyEncoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf[]).unwrap();
+        let out = str::from_utf8(buf.index(&FullRange)).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -1026,7 +1027,7 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_string<'a>(&'a self) -> Option<&'a str> {
         match *self {
-            Json::String(ref s) => Some(s[]),
+            Json::String(ref s) => Some(s.index(&FullRange)),
             _ => None
         }
     }
@@ -1220,7 +1221,8 @@ impl Stack {
             InternalIndex(i) => Index(i),
             InternalKey(start, size) => {
                 Key(str::from_utf8(
-                    self.str_buffer[start as uint .. start as uint + size as uint]).unwrap())
+                    self.str_buffer.index(
+                        &((start as uint) .. (start as uint + size as uint)))).unwrap())
             }
         }
     }
@@ -1262,7 +1264,7 @@ impl Stack {
             Some(&InternalIndex(i)) => Some(Index(i)),
             Some(&InternalKey(start, size)) => {
                 Some(Key(str::from_utf8(
-                    self.str_buffer[start as uint .. (start+size) as uint]
+                    self.str_buffer.index(&(start as uint) .. ((start+size) as uint))
                 ).unwrap()))
             }
         }
@@ -2139,7 +2141,7 @@ impl ::Decoder<DecoderError> for Decoder {
                 return Err(ExpectedError("String or Object".to_string(), format!("{}", json)))
             }
         };
-        let idx = match names.iter().position(|n| *n == name[]) {
+        let idx = match names.iter().position(|n| *n == name.index(&FullRange)) {
             Some(idx) => idx,
             None => return Err(UnknownVariantError(name))
         };
@@ -3352,7 +3354,7 @@ mod tests {
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
-        let json_str = from_utf8(mem_buf[]).unwrap();
+        let json_str = from_utf8(&mem_buf.index(&FullRange)).unwrap();
         match from_str(json_str) {
             Err(_) => panic!("Unable to parse json_str: {}", json_str),
             _ => {} // it parsed and we are good to go
@@ -3368,7 +3370,7 @@ mod tests {
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
-        let json_str = from_utf8(mem_buf[]).unwrap();
+        let json_str = from_utf8(&mem_buf.index(&FullRange)).unwrap();
         match from_str(json_str) {
             Err(_) => panic!("Unable to parse json_str: {}", json_str),
             _ => {} // it parsed and we are good to go
@@ -3408,7 +3410,7 @@ mod tests {
             write!(&mut writer, "{}",
                    super::as_pretty_json(&json).indent(i)).unwrap();
 
-            let printed = from_utf8(writer[]).unwrap();
+            let printed = from_utf8(&writer.index(&FullRange)).unwrap();
 
             // Check for indents at each line
             let lines: Vec<&str> = printed.lines().collect();

@@ -404,7 +404,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
                     search_index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
-                        path: fqp[..fqp.len() - 1].connect("::"),
+                        path: fqp[..(fqp.len() - 1)].connect("::"),
                         desc: shorter(item.doc_value()).to_string(),
                         parent: Some(did),
                     });
@@ -559,7 +559,7 @@ fn write_shared(cx: &Context,
         };
 
         let mut mydst = dst.clone();
-        for part in remote_path[..remote_path.len() - 1].iter() {
+        for part in remote_path[..(remote_path.len() - 1)].iter() {
             mydst.push(part.as_slice());
             try!(mkdir(&mydst));
         }
@@ -842,7 +842,7 @@ impl DocFolder for Cache {
                 clean::StructFieldItem(..) |
                 clean::VariantItem(..) => {
                     ((Some(*self.parent_stack.last().unwrap()),
-                      Some(self.stack[..self.stack.len() - 1])),
+                      Some(&self.stack[..(self.stack.len() - 1)])),
                      false)
                 }
                 clean::MethodItem(..) => {
@@ -853,13 +853,13 @@ impl DocFolder for Cache {
                         let did = *last;
                         let path = match self.paths.get(&did) {
                             Some(&(_, ItemType::Trait)) =>
-                                Some(self.stack[..self.stack.len() - 1]),
+                                Some(&self.stack[..(self.stack.len() - 1)]),
                             // The current stack not necessarily has correlation for
                             // where the type was defined. On the other hand,
                             // `paths` always has the right information if present.
                             Some(&(ref fqp, ItemType::Struct)) |
                             Some(&(ref fqp, ItemType::Enum)) =>
-                                Some(fqp[..fqp.len() - 1]),
+                                Some(&fqp[..(fqp.len() - 1)]),
                             Some(..) => Some(self.stack.as_slice()),
                             None => None
                         };
@@ -1185,7 +1185,7 @@ impl Context {
                                            .collect::<String>();
                 match cache().paths.get(&it.def_id) {
                     Some(&(ref names, _)) => {
-                        for name in names[..names.len() - 1].iter() {
+                        for name in (&names[..(names.len() - 1)]).iter() {
                             url.push_str(name.as_slice());
                             url.push_str("/");
                         }
@@ -2267,7 +2267,7 @@ fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
     try!(w.write_str(highlight::highlight(t.source.as_slice(),
                                           Some("macro"),
-                                          None)[]));
+                                          None).as_slice()));
     document(w, it)
 }
 

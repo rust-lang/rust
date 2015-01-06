@@ -525,7 +525,7 @@ impl<T> RingBuf<T> {
     ///     *num = *num - 2;
     /// }
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
-    /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
+    /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
     #[stable]
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
@@ -556,7 +556,7 @@ impl<T> RingBuf<T> {
             let buf = self.buffer_as_slice();
             if contiguous {
                 let (empty, buf) = buf.split_at(0);
-                (buf[self.tail..self.head], empty)
+                (buf.index(&(self.tail..self.head)), empty)
             } else {
                 let (mid, right) = buf.split_at(self.tail);
                 let (left, _) = mid.split_at(self.head);

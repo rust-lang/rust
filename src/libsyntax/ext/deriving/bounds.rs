@@ -29,12 +29,13 @@ pub fn expand_deriving_bound<F>(cx: &mut ExtCtxt,
                 "Send" | "Sync" => {
                     return cx.span_err(span,
                                        format!("{} is an unsafe trait and it \
-                                               should be implemented explicitly", *tname)[])
+                                                should be implemented explicitly",
+                                               *tname).as_slice())
                 }
                 ref tname => {
                     cx.span_bug(span,
                                 format!("expected built-in trait name but \
-                                         found {}", *tname)[])
+                                         found {}", *tname).as_slice())
                 }
             }
         },

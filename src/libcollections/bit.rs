@@ -330,7 +330,7 @@ impl Bitv {
 
         if extra_bytes > 0 {
             let mut last_word = 0u32;
-            for (i, &byte) in bytes[complete_words*4..].iter().enumerate() {
+            for (i, &byte) in bytes.index(&((complete_words*4)..)).iter().enumerate() {
                 last_word |= (reverse_bits(byte) as u32) << (i * 8);
             }
             bitv.storage.push(last_word);

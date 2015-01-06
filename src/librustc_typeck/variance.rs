@@ -564,7 +564,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             None => {
                 self.tcx().sess.bug(format!(
                         "no inferred index entry for {}",
-                        self.tcx().map.node_to_string(param_id))[]);
+                        self.tcx().map.node_to_string(param_id)).index(&FullRange));
             }
         }
     }
@@ -839,7 +839,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.tcx().sess.bug(
                     format!("unexpected type encountered in \
                             variance inference: {}",
-                            ty.repr(self.tcx()))[]);
+                            ty.repr(self.tcx())).index(&FullRange));
             }
         }
     }
@@ -919,7 +919,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     .sess
                     .bug(format!("unexpected region encountered in variance \
                                   inference: {}",
-                                 region.repr(self.tcx()))[]);
+                                 region.repr(self.tcx())).index(&FullRange));
             }
         }
     }
@@ -1055,7 +1055,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
                 let found = item_variances.repr(tcx);
-                tcx.sess.span_err(tcx.map.span(item_id), found[]);
+                tcx.sess.span_err(tcx.map.span(item_id), found.index(&FullRange));
             }
 
             let newly_added = tcx.item_variance_map.borrow_mut()

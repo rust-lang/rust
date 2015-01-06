@@ -22,7 +22,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{self, Deref, Add};
+use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
@@ -168,7 +168,7 @@ impl String {
 
         if i > 0 {
             unsafe {
-                res.as_mut_vec().push_all(v[..i])
+                res.as_mut_vec().push_all(v.index(&(0..i)))
             };
         }
 
@@ -185,7 +185,7 @@ impl String {
             macro_rules! error { () => ({
                 unsafe {
                     if subseqidx != i_ {
-                        res.as_mut_vec().push_all(v[subseqidx..i_]);
+                        res.as_mut_vec().push_all(v.index(&(subseqidx..i_)));
                     }
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
@@ -254,7 +254,7 @@ impl String {
         }
         if subseqidx < total {
             unsafe {
-                res.as_mut_vec().push_all(v[subseqidx..total])
+                res.as_mut_vec().push_all(v.index(&(subseqidx..total)))
             };
         }
         Cow::Owned(res)
@@ -818,25 +818,32 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
-impl ops::Slice<uint, str> for String {
+impl ops::Index<ops::Range<uint>> for String {
+    type Output = str;
     #[inline]
-    fn as_slice_<'a>(&'a self) -> &'a str {
+    fn index(&self, index: &ops::Range<uint>) -> &str {
+        &self.index(&FullRange)[*index]
+    }
+}
+impl ops::Index<ops::RangeTo<uint>> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &str {
+        &self.index(&FullRange)[*index]
+    }
+}
+impl ops::Index<ops::RangeFrom<uint>> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
+        &self.index(&FullRange)[*index]
+    }
+}
+impl ops::Index<ops::FullRange> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, _index: &ops::FullRange) -> &str {
         unsafe { mem::transmute(self.vec.as_slice()) }
-    }
-
-    #[inline]
-    fn slice_from_or_fail<'a>(&'a self, from: &uint) -> &'a str {
-        self[][*from..]
-    }
-
-    #[inline]
-    fn slice_to_or_fail<'a>(&'a self, to: &uint) -> &'a str {
-        self[][..*to]
-    }
-
-    #[inline]
-    fn slice_or_fail<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
-        self[][*from..*to]
     }
 }
 
@@ -845,7 +852,7 @@ impl ops::Deref for String {
     type Target = str;
 
     fn deref<'a>(&'a self) -> &'a str {
-        unsafe { mem::transmute(self.vec[]) }
+        unsafe { mem::transmute(self.vec.index(&FullRange)) }
     }
 }
 
@@ -943,6 +950,7 @@ mod tests {
     use str::Utf8Error;
     use core::iter::repeat;
     use super::{as_string, CowString};
+    use core::ops::FullRange;
 
     #[test]
     fn test_as_string() {
@@ -1224,10 +1232,10 @@ mod tests {
     #[test]
     fn test_slicing() {
         let s = "foobar".to_string();
-        assert_eq!("foobar", s[]);
-        assert_eq!("foo", s[..3]);
-        assert_eq!("bar", s[3..]);
-        assert_eq!("oob", s[1..4]);
+        assert_eq!("foobar", &s[]);
+        assert_eq!("foo", &s[..3]);
+        assert_eq!("bar", &s[3..]);
+        assert_eq!("oob", &s[1..4]);
     }
 
     #[test]

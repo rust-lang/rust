@@ -127,13 +127,13 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
               kind_str: &str,
               desc: &str) {
         self.span_err(sp,
-                      format!("obsolete syntax: {}", kind_str)[]);
+                      format!("obsolete syntax: {}", kind_str).index(&FullRange));
 
         if !self.obsolete_set.contains(&kind) {
             self.sess
                 .span_diagnostic
                 .handler()
-                .note(format!("{}", desc)[]);
+                .note(format!("{}", desc).index(&FullRange));
             self.obsolete_set.insert(kind);
         }
     }

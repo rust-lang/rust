@@ -159,7 +159,7 @@ macro_rules! mat {
             // actual capture groups to match test set.
             let mut sgot = got.as_slice();
             if sgot.len() > expected.len() {
-                sgot = sgot[0..expected.len()]
+                sgot = &sgot[..expected.len()]
             }
             if expected != sgot {
                 panic!("For RE '{}' against '{}', expected '{}' but got '{}'",

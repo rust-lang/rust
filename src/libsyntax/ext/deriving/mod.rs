@@ -123,7 +123,7 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
                                 cx.span_err(titem.span,
                                             format!("unknown `derive` \
                                                      trait: `{}`",
-                                                    *tname)[]);
+                                                    *tname).index(&FullRange));
                             }
                         };
                     }

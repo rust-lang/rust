@@ -114,7 +114,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     expr.span,
                     format!("type of callee is neither bare-fn nor closure: \
                              {}",
-                            bcx.ty_to_string(datum.ty))[]);
+                            bcx.ty_to_string(datum.ty)).index(&FullRange));
             }
         }
     }
@@ -207,7 +207,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     format!("cannot translate def {} \
-                             to a callable thing!", def)[]);
+                             to a callable thing!", def).index(&FullRange));
             }
         }
     }
@@ -293,7 +293,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
             _ => {
                 tcx.sess.bug(format!("trans_fn_pointer_shim invoked on invalid type: {}",
-                                           bare_fn_ty.repr(tcx))[]);
+                                           bare_fn_ty.repr(tcx)).index(&FullRange));
             }
         };
     let tuple_input_ty = ty::mk_tup(tcx, input_tys.to_vec());
@@ -317,7 +317,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn =
         decl_internal_rust_fn(ccx,
                               tuple_fn_ty,
-                              function_name[]);
+                              function_name.index(&FullRange));
 
     //
     let block_arena = TypedArena::new();
@@ -352,7 +352,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            None,
                            bare_fn_ty,
                            |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
-                           ArgVals(llargs[]),
+                           ArgVals(llargs.index(&FullRange)),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, output_ty);
@@ -775,7 +775,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         // Invoke the actual rust fn and update bcx/llresult.
         let (llret, b) = base::invoke(bcx,
                                       llfn,
-                                      llargs[],
+                                      llargs.index(&FullRange),
                                       callee_ty,
                                       call_info);
         bcx = b;
@@ -814,7 +814,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
         bcx = foreign::trans_native_call(bcx, callee_ty,
                                          llfn, opt_llretslot.unwrap(),
-                                         llargs[], arg_tys);
+                                         llargs.index(&FullRange), arg_tys);
     }
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_cleanup_scope);

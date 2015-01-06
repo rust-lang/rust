@@ -152,7 +152,7 @@ impl<'r, 't> Nfa<'r, 't> {
                 // out early.
                 if self.prog.prefix.len() > 0 && clist.size == 0 {
                     let needle = self.prog.prefix.as_bytes();
-                    let haystack = self.input.as_bytes()[self.ic..];
+                    let haystack = self.input.as_bytes().index(&(self.ic..));
                     match find_prefix(needle, haystack) {
                         None => break,
                         Some(i) => {
@@ -503,7 +503,8 @@ impl Threads {
 
     #[inline]
     fn groups<'r>(&'r mut self, i: uint) -> &'r mut [Option<uint>] {
-        self.queue[i].groups.as_mut_slice()
+        let q = &mut self.queue[i];
+        q.groups.as_mut_slice()
     }
 }
 
