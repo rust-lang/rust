@@ -610,8 +610,8 @@ impl<T:Decodable+Send+Sync> Decodable for Arc<T> {
 
 pub trait EncoderHelpers: Encoder {
     fn emit_from_vec<T, F>(&mut self, v: &[T], f: F)
-                           -> Result<(), <Self as Encoder>::Error>
-        where F: FnMut(&mut Self, &T) -> Result<(), <Self as Encoder>::Error>;
+                           -> Result<(), Self::Error>
+        where F: FnMut(&mut Self, &T) -> Result<(), Self::Error>;
 }
 
 impl<S:Encoder> EncoderHelpers for S {
@@ -631,8 +631,8 @@ impl<S:Encoder> EncoderHelpers for S {
 
 pub trait DecoderHelpers: Decoder {
     fn read_to_vec<T, F>(&mut self, f: F)
-                         -> Result<Vec<T>, <Self as Decoder>::Error> where
-        F: FnMut(&mut Self) -> Result<T, <Self as Decoder>::Error>;
+                         -> Result<Vec<T>, Self::Error> where
+        F: FnMut(&mut Self) -> Result<T, Self::Error>;
 }
 
 impl<D: Decoder> DecoderHelpers for D {
