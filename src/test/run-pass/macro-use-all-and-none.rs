@@ -13,6 +13,7 @@
 
 #[macro_use]
 #[macro_use()]
+#[no_link]
 extern crate two_macros;
 
 pub fn main() {
