@@ -248,6 +248,9 @@ pub enum LintSource {
 
     /// Lint level was set by a command-line flag.
     CommandLine,
+
+    /// Lint level was set by the release channel.
+    ReleaseChannel
 }
 
 pub type LevelSource = (Level, LintSource);

@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(globs)]
 #[macro_use]
 extern crate "std" as std;
 #[prelude_import]

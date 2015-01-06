@@ -189,3 +189,19 @@ pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
         }
     })
 }
+
+pub fn is_staged_api(tcx: &ty::ctxt, id: DefId) -> bool {
+    match ty::trait_item_of_item(tcx, id) {
+        Some(ty::MethodTraitItemId(trait_method_id))
+            if trait_method_id != id => {
+                is_staged_api(tcx, trait_method_id)
+            }
+        _ if is_local(id) => {
+            // Unused case
+            unreachable!()
+        }
+        _ => {
+            csearch::is_staged_api(&tcx.sess.cstore, id)
+        }
+    }
+}

@@ -25,6 +25,7 @@
 
 #![no_std]
 #![experimental]
+#![staged_api]
 
 #[macro_use]
 extern crate core;

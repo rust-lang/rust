@@ -22,6 +22,7 @@ use std::collections::{HashSet, HashMap};
 use testing;
 use rustc::session::{self, config};
 use rustc::session::search_paths::{SearchPaths, PathKind};
+use rustc_driver::get_unstable_features_setting;
 use rustc_driver::driver;
 use syntax::ast;
 use syntax::codemap::{CodeMap, dummy_spanned};
@@ -52,6 +53,7 @@ pub fn run(input: &str,
         search_paths: libs.clone(),
         crate_types: vec!(config::CrateTypeDylib),
         externs: externs.clone(),
+        unstable_features: get_unstable_features_setting(),
         ..config::basic_options().clone()
     };
 
@@ -128,6 +130,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
             .. config::basic_codegen_options()
         },
         test: as_test_harness,
+        unstable_features: get_unstable_features_setting(),
         ..config::basic_options().clone()
     };
 

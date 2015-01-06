@@ -111,7 +111,24 @@ pub struct Options {
     /// An optional name to use as the crate for std during std injection,
     /// written `extern crate std = "name"`. Default to "std". Used by
     /// out-of-tree drivers.
-    pub alt_std_name: Option<String>
+    pub alt_std_name: Option<String>,
+    /// Indicates how the compiler should treat unstable features
+    pub unstable_features: UnstableFeatures
+}
+
+#[deriving(Clone, Copy)]
+pub enum UnstableFeatures {
+    /// Hard errors for unstable features are active, as on
+    /// beta/stable channels.
+    Disallow,
+    /// Use the default lint levels
+    Default,
+    /// Errors are bypassed for bootstrapping. This is required any time
+    /// during the build that feature-related lints are set to warn or above
+    /// because the build turns on warnings-as-errors and uses lots of unstable
+    /// features. As a result, this this is always required for building Rust
+    /// itself.
+    Cheat
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -217,6 +234,7 @@ pub fn basic_options() -> Options {
         crate_name: None,
         alt_std_name: None,
         libs: Vec::new(),
+        unstable_features: UnstableFeatures::Disallow
     }
 }
 
@@ -1149,6 +1167,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         crate_name: crate_name,
         alt_std_name: None,
         libs: libs,
+        unstable_features: UnstableFeatures::Disallow
     }
 }
 
