@@ -28,13 +28,13 @@
 // gdb-check:$3 = {RUST$ENCODED$ENUM$1$Empty = {454545, 0x87654321, 9988}}
 
 // gdb-command:print empty_gdb->discr
-// gdb-check:$4 = (int *) 0x0
+// gdb-check:$4 = (isize *) 0x0
 
 // gdb-command:print droid
 // gdb-check:$5 = {RUST$ENCODED$ENUM$2$Void = {id = 675675, range = 10000001, internals = 0x43218765}}
 
 // gdb-command:print void_droid_gdb->internals
-// gdb-check:$6 = (int *) 0x0
+// gdb-check:$6 = (isize *) 0x0
 
 // gdb-command:continue
 
@@ -81,25 +81,25 @@
 // this case (by casting the value to a memory-equivalent struct).
 
 enum MoreFields<'a> {
-    Full(u32, &'a int, i16),
+    Full(u32, &'a isize, i16),
     Empty
 }
 
 struct MoreFieldsRepr<'a> {
     a: u32,
-    discr: &'a int,
+    discr: &'a isize,
     b: i16
 }
 
 enum NamedFields<'a> {
-    Droid { id: i32, range: i64, internals: &'a int },
+    Droid { id: i32, range: i64, internals: &'a isize },
     Void
 }
 
 struct NamedFieldsRepr<'a> {
     id: i32,
     range: i64,
-    internals: &'a int
+    internals: &'a isize
 }
 
 fn main() {

@@ -21,6 +21,6 @@ impl<'a> T+'a {
 impl T for int {}
 
 fn main() {
-    let x = &42i;
-    x.foo(); //~ERROR: type `&int` does not implement any method in scope named `foo`
+    let x = &42is;
+    x.foo(); //~ERROR: type `&isize` does not implement any method in scope named `foo`
 }

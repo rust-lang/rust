@@ -11,7 +11,7 @@
 // Test that we use fully-qualified type names in error messages.
 
 fn main() {
-    let x: Option<uint>;
+    let x: Option<usize>;
     x = 5;
-    //~^ ERROR mismatched types: expected `core::option::Option<uint>`
+    //~^ ERROR mismatched types: expected `core::option::Option<usize>`
 }

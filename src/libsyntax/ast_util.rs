@@ -120,8 +120,8 @@ pub fn is_path(e: P<Expr>) -> bool {
 /// We want to avoid "45int" and "-3int" in favor of "45" and "-3"
 pub fn int_ty_to_string(t: IntTy, val: Option<i64>) -> String {
     let s = match t {
-        TyI if val.is_some() => "i",
-        TyI => "int",
+        TyIs if val.is_some() => "is",
+        TyIs => "isize",
         TyI8 => "i8",
         TyI16 => "i16",
         TyI32 => "i32",
@@ -141,7 +141,7 @@ pub fn int_ty_max(t: IntTy) -> u64 {
     match t {
         TyI8 => 0x80u64,
         TyI16 => 0x8000u64,
-        TyI | TyI32 => 0x80000000u64, // actually ni about TyI
+        TyIs | TyI32 => 0x80000000u64, // actually ni about TyIs
         TyI64 => 0x8000000000000000u64
     }
 }
@@ -150,8 +150,8 @@ pub fn int_ty_max(t: IntTy) -> u64 {
 /// We want to avoid "42uint" in favor of "42u"
 pub fn uint_ty_to_string(t: UintTy, val: Option<u64>) -> String {
     let s = match t {
-        TyU if val.is_some() => "u",
-        TyU => "uint",
+        TyUs if val.is_some() => "us",
+        TyUs => "usize",
         TyU8 => "u8",
         TyU16 => "u16",
         TyU32 => "u32",
@@ -168,7 +168,7 @@ pub fn uint_ty_max(t: UintTy) -> u64 {
     match t {
         TyU8 => 0xffu64,
         TyU16 => 0xffffu64,
-        TyU | TyU32 => 0xffffffffu64, // actually ni about TyU
+        TyUs | TyU32 => 0xffffffffu64, // actually ni about TyUs
         TyU64 => 0xffffffffffffffffu64
     }
 }

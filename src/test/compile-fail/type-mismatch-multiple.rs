@@ -10,6 +10,6 @@
 
 // Checking that the compiler reports multiple type errors at once
 // error-pattern:mismatched types: expected `bool`
-// error-pattern:mismatched types: expected `int`
+// error-pattern:mismatched types: expected `isize`
 
-fn main() { let a: bool = 1i; let b: int = true; }
+fn main() { let a: bool = 1is; let b: isize = true; }

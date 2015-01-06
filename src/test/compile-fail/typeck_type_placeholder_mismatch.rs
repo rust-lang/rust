@@ -18,12 +18,12 @@ pub fn main() {
 }
 
 fn test1() {
-    let x: Foo<_> = Bar::<uint>;
-    //~^ ERROR mismatched types: expected `Foo<_>`, found `Bar<uint>`
-    let y: Foo<uint> = x;
+    let x: Foo<_> = Bar::<usize>;
+    //~^ ERROR mismatched types: expected `Foo<_>`, found `Bar<usize>`
+    let y: Foo<usize> = x;
 }
 
 fn test2() {
-    let x: Foo<_> = Bar::<uint>;
-    //~^ ERROR mismatched types: expected `Foo<_>`, found `Bar<uint>`
+    let x: Foo<_> = Bar::<usize>;
+    //~^ ERROR mismatched types: expected `Foo<_>`, found `Bar<usize>`
 }

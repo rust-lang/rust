@@ -16,7 +16,7 @@
 // gdb-command:whatis 'basic-types-globals-metadata::B'
 // gdb-check:type = bool
 // gdb-command:whatis 'basic-types-globals-metadata::I'
-// gdb-check:type = int
+// gdb-check:type = isize
 // gdb-command:whatis 'basic-types-globals-metadata::C'
 // gdb-check:type = char
 // gdb-command:whatis 'basic-types-globals-metadata::I8'
@@ -28,7 +28,7 @@
 // gdb-command:whatis 'basic-types-globals-metadata::I64'
 // gdb-check:type = i64
 // gdb-command:whatis 'basic-types-globals-metadata::U'
-// gdb-check:type = uint
+// gdb-check:type = usize
 // gdb-command:whatis 'basic-types-globals-metadata::U8'
 // gdb-check:type = u8
 // gdb-command:whatis 'basic-types-globals-metadata::U16'

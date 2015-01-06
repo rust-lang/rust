@@ -18,10 +18,10 @@ fn main() {
         _ => ()
     }
 
-    match &Some(42i) {
-        Some(x) => (), //~ ERROR expected `&core::option::Option<int>`,
+    match &Some(42is) {
+        Some(x) => (), //~ ERROR expected `&core::option::Option<isize>`,
                        //        found `core::option::Option<_>`
-        None => ()     //~ ERROR expected `&core::option::Option<int>`,
+        None => ()     //~ ERROR expected `&core::option::Option<isize>`,
                        //        found `core::option::Option<_>`
     }
 }

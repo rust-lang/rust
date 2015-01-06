@@ -273,13 +273,13 @@ pub mod rt {
         );
     }
 
-    impl_to_source_int! { signed, int, TyI }
+    impl_to_source_int! { signed, int, TyIs }
     impl_to_source_int! { signed, i8,  TyI8 }
     impl_to_source_int! { signed, i16, TyI16 }
     impl_to_source_int! { signed, i32, TyI32 }
     impl_to_source_int! { signed, i64, TyI64 }
 
-    impl_to_source_int! { unsigned, uint, TyU }
+    impl_to_source_int! { unsigned, uint, TyUs }
     impl_to_source_int! { unsigned, u8,   TyU8 }
     impl_to_source_int! { unsigned, u16,  TyU16 }
     impl_to_source_int! { unsigned, u32,  TyU32 }

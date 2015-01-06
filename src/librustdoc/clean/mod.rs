@@ -1238,8 +1238,8 @@ pub enum Type {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Copy)]
 pub enum PrimitiveType {
-    Int, I8, I16, I32, I64,
-    Uint, U8, U16, U32, U64,
+    Isize, I8, I16, I32, I64,
+    Usize, U8, U16, U32, U64,
     F32, F64,
     Char,
     Bool,
@@ -1264,12 +1264,12 @@ pub enum TypeKind {
 impl PrimitiveType {
     fn from_str(s: &str) -> Option<PrimitiveType> {
         match s.as_slice() {
-            "int" => Some(Int),
+            "isize" | "int" => Some(Isize),
             "i8" => Some(I8),
             "i16" => Some(I16),
             "i32" => Some(I32),
             "i64" => Some(I64),
-            "uint" => Some(Uint),
+            "usize" | "uint" => Some(Usize),
             "u8" => Some(U8),
             "u16" => Some(U16),
             "u32" => Some(U32),
@@ -1308,12 +1308,12 @@ impl PrimitiveType {
 
     pub fn to_string(&self) -> &'static str {
         match *self {
-            Int => "int",
+            Isize => "isize",
             I8 => "i8",
             I16 => "i16",
             I32 => "i32",
             I64 => "i64",
-            Uint => "uint",
+            Usize => "usize",
             U8 => "u8",
             U16 => "u16",
             U32 => "u32",
@@ -1387,12 +1387,12 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
         match self.sty {
             ty::ty_bool => Primitive(Bool),
             ty::ty_char => Primitive(Char),
-            ty::ty_int(ast::TyI) => Primitive(Int),
+            ty::ty_int(ast::TyIs) => Primitive(Isize),
             ty::ty_int(ast::TyI8) => Primitive(I8),
             ty::ty_int(ast::TyI16) => Primitive(I16),
             ty::ty_int(ast::TyI32) => Primitive(I32),
             ty::ty_int(ast::TyI64) => Primitive(I64),
-            ty::ty_uint(ast::TyU) => Primitive(Uint),
+            ty::ty_uint(ast::TyUs) => Primitive(Usize),
             ty::ty_uint(ast::TyU8) => Primitive(U8),
             ty::ty_uint(ast::TyU16) => Primitive(U16),
             ty::ty_uint(ast::TyU32) => Primitive(U32),
@@ -2265,12 +2265,12 @@ fn resolve_type(cx: &DocContext,
             ast::TyStr => return Primitive(Str),
             ast::TyBool => return Primitive(Bool),
             ast::TyChar => return Primitive(Char),
-            ast::TyInt(ast::TyI) => return Primitive(Int),
+            ast::TyInt(ast::TyIs) => return Primitive(Isize),
             ast::TyInt(ast::TyI8) => return Primitive(I8),
             ast::TyInt(ast::TyI16) => return Primitive(I16),
             ast::TyInt(ast::TyI32) => return Primitive(I32),
             ast::TyInt(ast::TyI64) => return Primitive(I64),
-            ast::TyUint(ast::TyU) => return Primitive(Uint),
+            ast::TyUint(ast::TyUs) => return Primitive(Usize),
             ast::TyUint(ast::TyU8) => return Primitive(U8),
             ast::TyUint(ast::TyU16) => return Primitive(U16),
             ast::TyUint(ast::TyU32) => return Primitive(U32),

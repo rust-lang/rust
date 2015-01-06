@@ -17,7 +17,7 @@ trait Foo<X> {
 }
 
 fn want_foo<T>()
-    where T : for<'a> Foo<&'a int>
+    where T : for<'a> Foo<&'a isize>
 {
 }
 
@@ -28,7 +28,7 @@ struct SomeStruct<X> {
     x: X
 }
 
-impl<'a,X> Foo<&'a int> for SomeStruct<X>
+impl<'a,X> Foo<&'a isize> for SomeStruct<X>
     where X : 'a
 {
 }
@@ -36,8 +36,8 @@ impl<'a,X> Foo<&'a int> for SomeStruct<X>
 fn one() {
     // In fact there is no good reason for this to be an error, but
     // whatever, I'm mostly concerned it doesn't ICE right now:
-    want_foo::<SomeStruct<uint>>();
-    //~^ ERROR requirement `for<'a> uint : 'a` is not satisfied
+    want_foo::<SomeStruct<usize>>();
+    //~^ ERROR requirement `for<'a> usize : 'a` is not satisfied
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -47,13 +47,13 @@ struct AnotherStruct<X> {
     x: X
 }
 
-impl<'a,X:'a> Foo<&'a int> for AnotherStruct<X>
+impl<'a,X:'a> Foo<&'a isize> for AnotherStruct<X>
 {
 }
 
 fn two() {
-    want_foo::<AnotherStruct<uint>>();
-    //~^ ERROR requirement `for<'a> uint : 'a` is not satisfied
+    want_foo::<AnotherStruct<usize>>();
+    //~^ ERROR requirement `for<'a> usize : 'a` is not satisfied
 }
 
 fn main() { }
