@@ -10,23 +10,21 @@
 
 // ignore-pretty - token trees can't pretty print
 
-#![feature(macro_rules)]
-
-macro_rules! myfn(
+macro_rules! myfn {
     ( $f:ident, ( $( $x:ident ),* ), $body:block ) => (
         fn $f( $( $x : int),* ) -> int $body
     )
-);
+}
 
 myfn!(add, (a,b), { return a+b; } );
 
 pub fn main() {
 
-    macro_rules! mylet(
+    macro_rules! mylet {
         ($x:ident, $val:expr) => (
             let $x = $val;
         )
-    );
+    }
 
     mylet!(y, 8i*2);
     assert_eq!(y, 16i);
@@ -35,9 +33,9 @@ pub fn main() {
 
     assert_eq!(mult(2, add(4,4)), 16);
 
-    macro_rules! actually_an_expr_macro (
+    macro_rules! actually_an_expr_macro {
         () => ( 16i )
-    );
+    }
 
     assert_eq!({ actually_an_expr_macro!() }, 16i);
 

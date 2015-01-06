@@ -282,9 +282,12 @@ pub mod net;
 pub mod pipe;
 pub mod process;
 pub mod stdio;
-pub mod test;
 pub mod timer;
 pub mod util;
+
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+pub mod test;
 
 /// The default buffer size for various I/O operations
 // libuv recommends 64k buffers to maximize throughput

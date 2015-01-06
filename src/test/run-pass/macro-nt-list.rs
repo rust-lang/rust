@@ -8,17 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
-macro_rules! list (
+macro_rules! list {
     ( ($($id:ident),*) ) => (());
     ( [$($id:ident),*] ) => (());
     ( {$($id:ident),*} ) => (());
-);
+}
 
-macro_rules! tt_list (
+macro_rules! tt_list {
     ( ($($tt:tt),*) ) => (());
-);
+}
 
 pub fn main() {
     list!( () );

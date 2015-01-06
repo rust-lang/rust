@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro_crate_test.rs
+// aux-build:two_macros.rs
 // ignore-stage1
-// ignore-android
 
-#![feature(phase)]
+extern crate two_macros;
 
-#[phase(plugin)]
-extern crate macro_crate_test;
-
-fn main() {
-    macro_crate_test::foo();
-    //~^ ERROR failed to resolve. Use of undeclared type or module `macro_crate_test`
-    //~^^ ERROR unresolved name `macro_crate_test::foo`
+pub fn main() {
+    macro_two!();  //~ ERROR macro undefined
 }

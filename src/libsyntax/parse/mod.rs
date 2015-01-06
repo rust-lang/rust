@@ -24,8 +24,11 @@ use std::num::Int;
 use std::str;
 use std::iter;
 
-pub mod lexer;
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
 pub mod parser;
+
+pub mod lexer;
 pub mod token;
 pub mod attr;
 
@@ -166,6 +169,8 @@ pub fn parse_stmt_from_source_str(name: String,
 
 // Note: keep in sync with `with_hygiene::parse_tts_from_source_str`
 // until #16472 is resolved.
+//
+// Warning: This parses with quote_depth > 0, which is not the default.
 pub fn parse_tts_from_source_str(name: String,
                                  source: String,
                                  cfg: ast::CrateConfig,
@@ -291,7 +296,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
 pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<ast::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
-    let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, tts);
+    let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, None, tts);
     Parser::new(sess, cfg, box trdr)
 }
 
@@ -307,6 +312,8 @@ pub mod with_hygiene {
 
     // Note: keep this in sync with `super::parse_tts_from_source_str` until
     // #16472 is resolved.
+    //
+    // Warning: This parses with quote_depth > 0, which is not the default.
     pub fn parse_tts_from_source_str(name: String,
                                      source: String,
                                      cfg: ast::CrateConfig,

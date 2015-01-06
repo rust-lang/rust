@@ -20,9 +20,9 @@
 // editors, so instead he made a macro that expands into the embedded
 // ident form.
 
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
+#[plugin] #[no_link]
 extern crate macro_crate_test;
 
 fn main() {

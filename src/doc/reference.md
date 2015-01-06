@@ -193,12 +193,12 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 | break    | const    | continue | crate    | do      |
 | else     | enum     | extern   | false    | final   |
 | fn       | for      | if       | impl     | in      |
-| let      | loop     | match    | mod      | move    |
-| mut      | offsetof | override | priv     | pub     |
-| pure     | ref      | return   | sizeof   | static  |
-| self     | struct   | super    | true     | trait   |
-| type     | typeof   | unsafe   | unsized  | use     |
-| virtual  | where    | while    | yield    |
+| let      | loop     | macro    | match    | mod     |
+| move     | mut      | offsetof | override | priv    |
+| pub      | pure     | ref      | return   | sizeof  |
+| static   | self     | struct   | super    | true    |
+| trait    | type     | typeof   | unsafe   | unsized |
+| use      | virtual  | where    | while    | yield   |
 
 
 Each of these keywords has special meaning in its grammar, and all of them are
@@ -668,9 +668,11 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
             | non_special_token ;
 ```
 
-User-defined syntax extensions are called "macros", and the `macro_rules`
-syntax extension defines them. Currently, user-defined macros can expand to
-expressions, statements, items, or patterns.
+`macro_rules` allows users to define syntax extension in a declarative way.  We
+call such extensions "macros by example" or simply "macros" — to be distinguished
+from the "procedural macros" defined in [compiler plugins][plugin].
+
+Currently, macros can expand to expressions, statements, items, or patterns.
 
 (A `sep_token` is any token other than `*` and `+`. A `non_special_token` is
 any token other than a delimiter or `$`.)
@@ -2002,8 +2004,6 @@ type int8_t = i8;
 
 ### Module-only attributes
 
-- `macro_escape` - macros defined in this module will be visible in the
-  module's parent, after this module has been included.
 - `no_implicit_prelude` - disable injecting `use std::prelude::*` in this
   module.
 - `path` - specifies the file to load the module from. `#[path="foo.rs"] mod
@@ -2066,23 +2066,43 @@ On `struct`s:
   remove any padding between fields (note that this is very fragile and may
   break platforms which require aligned access).
 
+### Macro- and plugin-related attributes
+
+- `macro_use` on a `mod` — macros defined in this module will be visible in the
+  module's parent, after this module has been included.
+
+- `macro_use` on an `extern crate` — load macros from this crate.  An optional
+  list of names `#[macro_use(foo, bar)]` restricts the import to just those
+  macros named.  The `extern crate` must appear at the crate root, not inside
+  `mod`, which ensures proper function of the [`$crate` macro
+  variable](guide-macros.html#the-variable-$crate).
+
+- `macro_reexport` on an `extern crate` — re-export the named macros.
+
+- `macro_export` - export a macro for cross-crate usage.
+
+- `plugin` on an `extern crate` — load this crate as a [compiler
+  plugin][plugin].  The `plugin` feature gate is required.  Any arguments to
+  the attribute, e.g. `#[plugin=...]` or `#[plugin(...)]`, are provided to the
+  plugin.
+
+- `no_link` on an `extern crate` — even if we load this crate for macros or
+  compiler plugins, don't link it into the output.
+
+See the [macros guide](guide-macros.html#scoping-and-macro-import/export) for
+more information on macro scope.
+
+
 ### Miscellaneous attributes
 
 - `export_name` - on statics and functions, this determines the name of the
   exported symbol.
 - `link_section` - on statics and functions, this specifies the section of the
   object file that this item's contents will be placed into.
-- `macro_export` - export a macro for cross-crate usage.
 - `no_mangle` - on any item, do not apply the standard name mangling. Set the
   symbol for this item to its identifier.
 - `packed` - on structs or enums, eliminate any padding that would be used to
   align fields.
-- `phase` - on `extern crate` statements, allows specifying which "phase" of
-  compilation the crate should be loaded for. Currently, there are two
-  choices: `link` and `plugin`. `link` is the default. `plugin` will [load the
-  crate at compile-time][plugin] and use any syntax extensions or lints that the crate
-  defines. They can both be specified, `#[phase(link, plugin)]` to use a crate
-  both at runtime and compiletime.
 - `simd` - on certain tuple structs, derive the arithmetic operators, which
   lower to the target's SIMD instructions, if any; the `simd` feature gate
   is necessary to use this attribute.
@@ -2569,15 +2589,6 @@ The currently implemented features of the reference compiler are:
 * `log_syntax` - Allows use of the `log_syntax` macro attribute, which is a
                  nasty hack that will certainly be removed.
 
-* `macro_rules` - The definition of new macros. This does not encompass
-                  macro-invocation, that is always enabled by default, this
-                  only covers the definition of new macros. There are currently
-                  various problems with invoking macros, how they interact with
-                  their environment, and possibly how they are used outside of
-                  location in which they are defined. Macro definitions are
-                  likely to change slightly in the future, so they are
-                  currently hidden behind this feature.
-
 * `non_ascii_idents` - The compiler supports the use of non-ascii identifiers,
                        but the implementation is a little rough around the
                        edges, so this can be seen as an experimental feature
@@ -2588,15 +2599,10 @@ The currently implemented features of the reference compiler are:
                closure as `once` is unlikely to be supported going forward. So
                they are hidden behind this feature until they are to be removed.
 
-* `phase` - Usage of the `#[phase]` attribute allows loading compiler plugins
-            for custom lints or syntax extensions. The implementation is
-            considered unwholesome and in need of overhaul, and it is not clear
-            what they will look like moving forward.
+* `plugin` - Usage of [compiler plugins][plugin] for custom lints or syntax extensions.
+             These depend on compiler internals and are subject to change.
 
-* `plugin_registrar` - Indicates that a crate has [compiler plugins][plugin] that it
-                       wants to load. As with `phase`, the implementation is
-                       in need of an overhaul, and it is not clear that plugins
-                       defined using this will continue to work.
+* `plugin_registrar` - Indicates that a crate provides [compiler plugins][plugin].
 
 * `quote` - Allows use of the `quote_*!` family of macros, which are
             implemented very poorly and will likely change significantly

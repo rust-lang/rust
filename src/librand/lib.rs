@@ -29,11 +29,29 @@
 #![no_std]
 #![experimental]
 
+#[cfg(stage0)]
 #[phase(plugin, link)]
 extern crate core;
 
-#[cfg(test)] #[phase(plugin, link)] extern crate std;
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate core;
+
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate std;
+
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate std;
+
+#[cfg(all(test, stage0))]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(all(test, not(stage0)))]
+#[macro_use]
+extern crate log;
 
 use core::prelude::*;
 

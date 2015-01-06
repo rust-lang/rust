@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
-macro_rules! four (
+macro_rules! four {
     () => (4)
-);
+}
 
 fn main() {
     let _x: [u16; four!()];

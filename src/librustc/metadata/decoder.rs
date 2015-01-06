@@ -1353,15 +1353,16 @@ pub fn get_plugin_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
         .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).unwrap())
 }
 
-pub fn get_exported_macros(data: &[u8]) -> Vec<String> {
-    let macros = reader::get_doc(rbml::Doc::new(data),
-                                 tag_exported_macros);
-    let mut result = Vec::new();
+pub fn each_exported_macro<F>(data: &[u8], intr: &IdentInterner, mut f: F) where
+    F: FnMut(ast::Name, Vec<ast::Attribute>, String) -> bool,
+{
+    let macros = reader::get_doc(rbml::Doc::new(data), tag_macro_defs);
     reader::tagged_docs(macros, tag_macro_def, |macro_doc| {
-        result.push(macro_doc.as_str().to_string());
-        true
+        let name = item_name(intr, macro_doc);
+        let attrs = get_attributes(macro_doc);
+        let body = reader::get_doc(macro_doc, tag_macro_def_body);
+        f(name, attrs, body.as_str().to_string())
     });
-    result
 }
 
 pub fn get_dylib_dependency_formats(cdata: Cmd)

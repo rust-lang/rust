@@ -8,47 +8,46 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Used by `rustc` when loading a plugin.
+//! Used by `rustc` when loading a plugin, or a crate with exported macros.
 
 use session::Session;
-use metadata::creader::PluginMetadataReader;
+use metadata::creader::CrateReader;
 use plugin::registry::Registry;
 
 use std::mem;
 use std::os;
 use std::dynamic_lib::DynamicLibrary;
+use std::collections::HashSet;
 use syntax::ast;
 use syntax::attr;
+use syntax::codemap::Span;
+use syntax::parse::token;
+use syntax::ptr::P;
 use syntax::visit;
 use syntax::visit::Visitor;
-use syntax::ext::expand::ExportedMacros;
 use syntax::attr::AttrMetaMethods;
-
-/// Plugin-related crate metadata.
-pub struct PluginMetadata {
-    /// Source code of macros exported by the crate.
-    pub macros: Vec<String>,
-    /// Path to the shared library file.
-    pub lib: Option<Path>,
-    /// Symbol name of the plugin registrar function.
-    pub registrar_symbol: Option<String>,
-}
 
 /// Pointer to a registrar function.
 pub type PluginRegistrarFun =
     fn(&mut Registry);
 
+pub struct PluginRegistrar {
+    pub fun: PluginRegistrarFun,
+    pub args: P<ast::MetaItem>,
+}
+
 /// Information about loaded plugins.
 pub struct Plugins {
-    /// Source code of exported macros.
-    pub macros: Vec<ExportedMacros>,
+    /// Imported macros.
+    pub macros: Vec<ast::MacroDef>,
     /// Registrars, as function pointers.
-    pub registrars: Vec<PluginRegistrarFun>,
+    pub registrars: Vec<PluginRegistrar>,
 }
 
 struct PluginLoader<'a> {
     sess: &'a Session,
-    reader: PluginMetadataReader<'a>,
+    span_whitelist: HashSet<Span>,
+    reader: CrateReader<'a>,
     plugins: Plugins,
 }
 
@@ -56,7 +55,8 @@ impl<'a> PluginLoader<'a> {
     fn new(sess: &'a Session) -> PluginLoader<'a> {
         PluginLoader {
             sess: sess,
-            reader: PluginMetadataReader::new(sess),
+            reader: CrateReader::new(sess),
+            span_whitelist: HashSet::new(),
             plugins: Plugins {
                 macros: vec!(),
                 registrars: vec!(),
@@ -69,6 +69,14 @@ impl<'a> PluginLoader<'a> {
 pub fn load_plugins(sess: &Session, krate: &ast::Crate,
                     addl_plugins: Option<Plugins>) -> Plugins {
     let mut loader = PluginLoader::new(sess);
+
+    // We need to error on `#[macro_use] extern crate` when it isn't at the
+    // crate root, because `$crate` won't work properly. Identify these by
+    // spans, because the crate map isn't set up yet.
+    for vi in krate.module.view_items.iter() {
+        loader.span_whitelist.insert(vi.span);
+    }
+
     visit::walk_crate(&mut loader, krate);
 
     let mut plugins = loader.plugins;
@@ -89,41 +97,112 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 // note that macros aren't expanded yet, and therefore macros can't add plugins.
 impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
     fn visit_view_item(&mut self, vi: &ast::ViewItem) {
+        // We're only interested in `extern crate`.
         match vi.node {
-            ast::ViewItemExternCrate(name, _, _) => {
-                let mut plugin_phase = false;
+            ast::ViewItemExternCrate(..) => (),
+            _ => return,
+        }
 
-                for attr in vi.attrs.iter().filter(|a| a.check_name("phase")) {
-                    let phases = attr.meta_item_list().unwrap_or(&[]);
-                    if attr::contains_name(phases, "plugin") {
-                        plugin_phase = true;
+        // Parse the attributes relating to macro / plugin loading.
+        let mut plugin_attr = None;
+        let mut macro_selection = Some(HashSet::new());  // None => load all
+        let mut reexport = HashSet::new();
+        for attr in vi.attrs.iter() {
+            let mut used = true;
+            match attr.name().get() {
+                "phase" => {
+                    self.sess.span_err(attr.span, "#[phase] is deprecated; use \
+                                       #[macro_use], #[plugin], and/or #[no_link]");
+                }
+                "plugin" => {
+                    if plugin_attr.is_some() {
+                        self.sess.span_err(attr.span, "#[plugin] specified multiple times");
                     }
-                    if attr::contains_name(phases, "syntax") {
-                        plugin_phase = true;
-                        self.sess.span_warn(attr.span,
-                            "phase(syntax) is a deprecated synonym for phase(plugin)");
+                    plugin_attr = Some(attr.node.value.clone());
+                }
+                "macro_use" => {
+                    let names = attr.meta_item_list();
+                    if names.is_none() {
+                        // no names => load all
+                        macro_selection = None;
+                    }
+                    if let (Some(sel), Some(names)) = (macro_selection.as_mut(), names) {
+                        for name in names.iter() {
+                            if let ast::MetaWord(ref name) = name.node {
+                                sel.insert(name.clone());
+                            } else {
+                                self.sess.span_err(name.span, "bad macro import");
+                            }
+                        }
                     }
                 }
+                "macro_reexport" => {
+                    let names = match attr.meta_item_list() {
+                        Some(names) => names,
+                        None => {
+                            self.sess.span_err(attr.span, "bad macro reexport");
+                            continue;
+                        }
+                    };
 
-                if !plugin_phase { return; }
-
-                let PluginMetadata { macros, lib, registrar_symbol } =
-                    self.reader.read_plugin_metadata(vi);
-
-                self.plugins.macros.push(ExportedMacros {
-                    crate_name: name,
-                    macros: macros,
-                });
-
-                match (lib, registrar_symbol) {
-                    (Some(lib), Some(symbol))
-                        => self.dylink_registrar(vi, lib, symbol),
-                    _ => (),
+                    for name in names.iter() {
+                        if let ast::MetaWord(ref name) = name.node {
+                            reexport.insert(name.clone());
+                        } else {
+                            self.sess.span_err(name.span, "bad macro reexport");
+                        }
+                    }
                 }
+                _ => used = false,
             }
-            _ => (),
+            if used {
+                attr::mark_used(attr);
+            }
+        }
+
+        let mut macros = vec![];
+        let mut registrar = None;
+
+        let load_macros = match macro_selection.as_ref() {
+            Some(sel) => sel.len() != 0 || reexport.len() != 0,
+            None => true,
+        };
+        let load_registrar = plugin_attr.is_some();
+
+        if load_macros && !self.span_whitelist.contains(&vi.span) {
+            self.sess.span_err(vi.span, "an `extern crate` loading macros must be at \
+                                         the crate root");
+        }
+
+        if load_macros || load_registrar {
+            let pmd = self.reader.read_plugin_metadata(vi);
+            if load_macros {
+                macros = pmd.exported_macros();
+            }
+            if load_registrar {
+                registrar = pmd.plugin_registrar();
+            }
+        }
+
+        for mut def in macros.into_iter() {
+            let name = token::get_ident(def.ident);
+            def.use_locally = match macro_selection.as_ref() {
+                None => true,
+                Some(sel) => sel.contains(&name),
+            };
+            def.export = reexport.contains(&name);
+            self.plugins.macros.push(def);
+        }
+
+        if let Some((lib, symbol)) = registrar {
+            let fun = self.dylink_registrar(vi, lib, symbol);
+            self.plugins.registrars.push(PluginRegistrar {
+                fun: fun,
+                args: plugin_attr.unwrap(),
+            });
         }
     }
+
     fn visit_mac(&mut self, _: &ast::Mac) {
         // bummer... can't see plugins inside macros.
         // do nothing.
@@ -132,7 +211,10 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
 
 impl<'a> PluginLoader<'a> {
     // Dynamically link a registrar function into the compiler process.
-    fn dylink_registrar(&mut self, vi: &ast::ViewItem, path: Path, symbol: String) {
+    fn dylink_registrar(&mut self,
+                        vi: &ast::ViewItem,
+                        path: Path,
+                        symbol: String) -> PluginRegistrarFun {
         // Make sure the path contains a / or the linker will search for it.
         let path = os::make_absolute(&path).unwrap();
 
@@ -154,13 +236,12 @@ impl<'a> PluginLoader<'a> {
                     Err(err) => self.sess.span_fatal(vi.span, err[])
                 };
 
-            self.plugins.registrars.push(registrar);
-
             // Intentionally leak the dynamic library. We can't ever unload it
             // since the library can make things that will live arbitrarily long
             // (e.g. an @-box cycle or a task).
             mem::forget(lib);
 
+            registrar
         }
     }
 }

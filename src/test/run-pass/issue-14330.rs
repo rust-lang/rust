@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase)]
-
-#[phase(plugin, link)] extern crate "std" as std2;
+#[macro_use] extern crate "std" as std2;
 
 fn main() {}

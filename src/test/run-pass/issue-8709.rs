@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
-macro_rules! sty(
+macro_rules! sty {
     ($t:ty) => (stringify!($t))
-);
+}
 
-macro_rules! spath(
+macro_rules! spath {
     ($t:path) => (stringify!($t))
-);
+}
 
 fn main() {
     assert_eq!(sty!(int), "int");

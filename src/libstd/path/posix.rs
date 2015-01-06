@@ -535,7 +535,7 @@ mod tests {
         t!(b"foo/\xFFbar", filename_display, "\u{FFFD}bar");
         t!(b"/", filename_display, "");
 
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -550,7 +550,7 @@ mod tests {
                     assert!(mo.as_slice() == $exp);
                 }
             )
-        );
+        }
 
         t!("foo", "foo");
         t!(b"foo\x80", "foo\u{FFFD}");
@@ -562,7 +562,7 @@ mod tests {
 
     #[test]
     fn test_display() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $exp:expr, $expf:expr) => (
                 {
                     let path = Path::new($path);
@@ -572,7 +572,7 @@ mod tests {
                     assert!(f == $expf);
                 }
             )
-        );
+        }
 
         t!(b"foo", "foo", "foo");
         t!(b"foo/bar", "foo/bar", "bar");
@@ -585,7 +585,7 @@ mod tests {
 
     #[test]
     fn test_components() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -606,7 +606,7 @@ mod tests {
                     assert!(path.$op() == $exp);
                 }
             );
-        );
+        }
 
         t!(v: b"a/b/c", filename, Some(b"c"));
         t!(v: b"a/b/c\xFF", filename, Some(b"c\xFF"));
@@ -669,7 +669,7 @@ mod tests {
 
     #[test]
     fn test_push() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $join:expr) => (
                 {
                     let path = $path;
@@ -680,7 +680,7 @@ mod tests {
                     assert!(p1 == p2.join(join));
                 }
             )
-        );
+        }
 
         t!(s: "a/b/c", "..");
         t!(s: "/a/b/c", "d");
@@ -690,7 +690,7 @@ mod tests {
 
     #[test]
     fn test_push_path() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = Path::new($path);
@@ -699,7 +699,7 @@ mod tests {
                     assert!(p.as_str() == Some($exp));
                 }
             )
-        );
+        }
 
         t!(s: "a/b/c", "d", "a/b/c/d");
         t!(s: "/a/b/c", "d", "/a/b/c/d");
@@ -711,7 +711,7 @@ mod tests {
 
     #[test]
     fn test_push_many() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = Path::new($path);
@@ -726,7 +726,7 @@ mod tests {
                     assert!(p.as_vec() == $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
         t!(s: "a/b/c", ["d", "/e"], "/e");
@@ -739,7 +739,7 @@ mod tests {
 
     #[test]
     fn test_pop() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $left:expr, $right:expr) => (
                 {
                     let mut p = Path::new($path);
@@ -756,7 +756,7 @@ mod tests {
                     assert!(result == $right);
                 }
             )
-        );
+        }
 
         t!(b: b"a/b/c", b"a/b", true);
         t!(b: b"a", b".", true);
@@ -795,7 +795,7 @@ mod tests {
 
     #[test]
     fn test_join_path() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -804,7 +804,7 @@ mod tests {
                     assert!(res.as_str() == Some($exp));
                 }
             )
-        );
+        }
 
         t!(s: "a/b/c", "..", "a/b");
         t!(s: "/a/b/c", "d", "/a/b/c/d");
@@ -816,7 +816,7 @@ mod tests {
 
     #[test]
     fn test_join_many() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -831,7 +831,7 @@ mod tests {
                     assert!(res.as_vec() == $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a/b/c", ["d", "e"], "a/b/c/d/e");
         t!(s: "a/b/c", ["..", "d"], "a/b/d");
@@ -894,7 +894,7 @@ mod tests {
 
     #[test]
     fn test_setters() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $set:ident, $with:ident, $arg:expr) => (
                 {
                     let path = $path;
@@ -915,7 +915,7 @@ mod tests {
                     assert!(p1 == p2.$with(arg));
                 }
             )
-        );
+        }
 
         t!(v: b"a/b/c", set_filename, with_filename, b"d");
         t!(v: b"/", set_filename, with_filename, b"foo");
@@ -938,7 +938,7 @@ mod tests {
 
     #[test]
     fn test_getters() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
                     let path = $path;
@@ -969,7 +969,7 @@ mod tests {
                     assert!(path.extension() == $ext);
                 }
             )
-        );
+        }
 
         t!(v: Path::new(b"a/b/c"), Some(b"c"), b"a/b", Some(b"c"), None);
         t!(v: Path::new(b"a/b/\xFF"), Some(b"\xFF"), b"a/b", Some(b"\xFF"), None);
@@ -1008,7 +1008,7 @@ mod tests {
 
     #[test]
     fn test_is_absolute() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $abs:expr, $rel:expr) => (
                 {
                     let path = Path::new($path);
@@ -1016,7 +1016,7 @@ mod tests {
                     assert_eq!(path.is_relative(), $rel);
                 }
             )
-        );
+        }
         t!(s: "a/b/c", false, true);
         t!(s: "/a/b/c", true, false);
         t!(s: "a", false, true);
@@ -1029,7 +1029,7 @@ mod tests {
 
     #[test]
     fn test_is_ancestor_of() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $dest:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -1037,7 +1037,7 @@ mod tests {
                     assert_eq!(path.is_ancestor_of(&dest), $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a/b/c", "a/b/c/d", true);
         t!(s: "a/b/c", "a/b/c", true);
@@ -1063,7 +1063,7 @@ mod tests {
 
     #[test]
     fn test_ends_with_path() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $child:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -1078,7 +1078,7 @@ mod tests {
                     assert_eq!(path.ends_with_path(&child), $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a/b/c", "c", true);
         t!(s: "a/b/c", "d", false);
@@ -1102,7 +1102,7 @@ mod tests {
 
     #[test]
     fn test_path_relative_from() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $other:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -1111,7 +1111,7 @@ mod tests {
                     assert_eq!(res.as_ref().and_then(|x| x.as_str()), $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a/b/c", "a/b", Some("c"));
         t!(s: "a/b/c", "a/b/d", Some("../c"));
@@ -1147,7 +1147,7 @@ mod tests {
 
     #[test]
     fn test_components_iter() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -1173,7 +1173,7 @@ mod tests {
                     assert_eq!(comps, exp)
                 }
             )
-        );
+        }
 
         t!(b: b"a/b/c", [b"a", b"b", b"c"]);
         t!(b: b"/\xFF/a/\x80", [b"\xFF", b"a", b"\x80"]);
@@ -1193,7 +1193,7 @@ mod tests {
 
     #[test]
     fn test_str_components() {
-        macro_rules! t(
+        macro_rules! t {
             (b: $arg:expr, $exp:expr) => (
                 {
                     let path = Path::new($arg);
@@ -1205,7 +1205,7 @@ mod tests {
                     assert_eq!(comps, exp);
                 }
             )
-        );
+        }
 
         t!(b: b"a/b/c", [Some("a"), Some("b"), Some("c")]);
         t!(b: b"/\xFF/a/\x80", [None, Some("a"), None]);

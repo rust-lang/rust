@@ -61,7 +61,7 @@ pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
             cx, span, substr)
     }
 
-    macro_rules! md (
+    macro_rules! md {
         ($name:expr, $f:ident) => { {
             let inline = cx.meta_word(span, InternedString::new("inline"));
             let attrs = vec!(cx.attribute(span, inline));
@@ -77,7 +77,7 @@ pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
                 })
             }
         } }
-    );
+    }
 
     let trait_def = TraitDef {
         span: span,

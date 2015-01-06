@@ -32,7 +32,14 @@ extern crate rustc_driver;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;
-#[phase(plugin, link)] extern crate log;
+
+#[cfg(stage0)]
+#[phase(plugin, link)]
+extern crate log;
+
+#[cfg(not(stage0))]
+#[macro_use]
+extern crate log;
 
 extern crate "serialize" as rustc_serialize; // used by deriving
 
@@ -49,11 +56,13 @@ use rustc::session::search_paths::SearchPaths;
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
 
+#[cfg_attr(stage0, macro_escape)]
+#[cfg_attr(not(stage0), macro_use)]
+pub mod externalfiles;
+
 pub mod clean;
 pub mod core;
 pub mod doctree;
-#[macro_escape]
-pub mod externalfiles;
 pub mod fold;
 pub mod html {
     pub mod highlight;

@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(phase)]
-
-#[phase(plugin)]
-use std::mem;
+#[phase(blah)]
+//~^ ERROR #[phase] is deprecated
+extern crate foo;
 
 fn main() {}
-
