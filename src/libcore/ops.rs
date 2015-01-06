@@ -1134,7 +1134,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 pub trait DerefMut: Deref {
     /// The method called to mutably dereference a value
     #[stable]
-    fn deref_mut<'a>(&'a mut self) -> &'a mut <Self as Deref>::Target;
+    fn deref_mut<'a>(&'a mut self) -> &'a mut Self::Target;
 }
 
 #[stable]

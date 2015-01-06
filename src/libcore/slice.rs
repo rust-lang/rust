@@ -873,7 +873,7 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 trait SplitIter: DoubleEndedIterator {
     /// Mark the underlying iterator as complete, extracting the remaining
     /// portion of the slice.
-    fn finish(&mut self) -> Option< <Self as Iterator>::Item>;
+    fn finish(&mut self) -> Option<Self::Item>;
 }
 
 /// An iterator over subslices separated by elements that match a predicate
@@ -1038,7 +1038,7 @@ struct GenericSplitN<I> {
     invert: bool
 }
 
-impl<T, I: SplitIter + Iterator<Item=T>> Iterator for GenericSplitN<I> {
+impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
     type Item = T;
 
     #[inline]
