@@ -243,7 +243,7 @@ pub trait Rng : Sized {
     /// println!("{}", rng.gen_weighted_bool(3));
     /// ```
     fn gen_weighted_bool(&mut self, n: uint) -> bool {
-        n == 0 || self.gen_range(0, n) == 0
+        n <= 1 || self.gen_range(0, n) == 0
     }
 
     /// Return an iterator of random characters from the set A-Z,a-z,0-9.
