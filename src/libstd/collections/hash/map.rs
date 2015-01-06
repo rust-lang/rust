@@ -1482,7 +1482,7 @@ impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for Has
 }
 
 #[stable]
-impl<K: Eq + Hash<S>, V, S, H: Hasher<S> + Default> Extend<(K, V)> for HashMap<K, V, H> {
+impl<K: Eq + Hash<S>, V, S, H: Hasher<S>> Extend<(K, V)> for HashMap<K, V, H> {
     fn extend<T: Iterator<Item=(K, V)>>(&mut self, mut iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
