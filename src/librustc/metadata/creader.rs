@@ -20,16 +20,13 @@ use metadata::cstore::{CStore, CrateSource, MetadataBlob};
 use metadata::decoder;
 use metadata::loader;
 use metadata::loader::CratePaths;
-use util::nodemap::FnvHashMap;
 
 use std::rc::Rc;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{Span, mk_sp};
-use syntax::diagnostic::SpanHandler;
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -65,27 +62,6 @@ fn dump_crates(cstore: &CStore) {
             rlib.map(|rl|  debug!("   rlib: {}", rl.display()));
         });
     })
-}
-
-fn warn_if_multiple_versions(diag: &SpanHandler, cstore: &CStore) {
-    let mut map = FnvHashMap::new();
-    cstore.iter_crate_data(|cnum, data| {
-        match map.entry(&data.name()) {
-            Vacant(entry) => { entry.insert(vec![cnum]); },
-            Occupied(mut entry) => { entry.get_mut().push(cnum); },
-        }
-    });
-
-    for (name, dupes) in map.into_iter() {
-        if dupes.len() == 1 { continue }
-        diag.handler().warn(
-            format!("using multiple versions of crate `{}`", name)[]);
-        for dupe in dupes.into_iter() {
-            let data = cstore.get_crate_data(dupe);
-            diag.span_note(data.span, "used here");
-            loader::note_crate_name(diag, data.name()[]);
-        }
-    }
 }
 
 fn should_link(i: &ast::ViewItem) -> bool {
@@ -188,7 +164,6 @@ impl<'a> CrateReader<'a> {
         if log_enabled!(log::DEBUG) {
             dump_crates(&self.sess.cstore);
         }
-        warn_if_multiple_versions(self.sess.diagnostic(), &self.sess.cstore);
 
         for &(ref name, kind) in self.sess.opts.libs.iter() {
             register_native_lib(self.sess, None, name.clone(), kind);
