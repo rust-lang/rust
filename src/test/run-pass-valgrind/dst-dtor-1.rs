@@ -20,7 +20,7 @@ impl Drop for Foo {
 trait Trait {}
 impl Trait for Foo {}
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     f: T
 }
 

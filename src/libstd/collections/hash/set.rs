@@ -451,7 +451,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[stable]
-    pub fn contains<Sized? Q>(&self, value: &Q) -> bool
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
         where Q: BorrowFrom<T> + Hash<S> + Eq
     {
         self.map.contains_key(value)
@@ -561,7 +561,7 @@ impl<T: Eq + Hash<S>, S, H: Hasher<S>> HashSet<T, H> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[stable]
-    pub fn remove<Sized? Q>(&mut self, value: &Q) -> bool
+    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
         where Q: BorrowFrom<T> + Hash<S> + Eq
     {
         self.map.remove(value).is_some()

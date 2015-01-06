@@ -16,8 +16,8 @@ trait T {}
 // impl - bounded
 trait T1<Z: T> {
 }
-struct S3<Sized? Y>;
-impl<Sized? X: T> T1<X> for S3<X> {
+struct S3<Y: ?Sized>;
+impl<X: ?Sized + T> T1<X> for S3<X> {
     //~^ ERROR `core::kinds::Sized` is not implemented for the type `X`
 }
 

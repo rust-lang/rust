@@ -517,7 +517,7 @@ impl<K: Ord, V> Node<K, V> {
     /// Searches for the given key in the node. If it finds an exact match,
     /// `Found` will be yielded with the matching index. If it doesn't find an exact match,
     /// `GoDown` will be yielded with the index of the subtree the key must lie in.
-    pub fn search<Sized? Q, NodeRef: Deref<Target=Node<K, V>>>(node: NodeRef, key: &Q)
+    pub fn search<Q: ?Sized, NodeRef: Deref<Target=Node<K, V>>>(node: NodeRef, key: &Q)
                   -> SearchResult<NodeRef> where Q: BorrowFrom<K> + Ord {
         // FIXME(Gankro): Tune when to search linear or binary based on B (and maybe K/V).
         // For the B configured as of this writing (B = 6), binary search was *significantly*
@@ -536,7 +536,7 @@ impl<K: Ord, V> Node<K, V> {
         }
     }
 
-    fn search_linear<Sized? Q>(&self, key: &Q) -> (bool, uint) where Q: BorrowFrom<K> + Ord {
+    fn search_linear<Q: ?Sized>(&self, key: &Q) -> (bool, uint) where Q: BorrowFrom<K> + Ord {
         for (i, k) in self.keys().iter().enumerate() {
             match key.cmp(BorrowFrom::borrow_from(k)) {
                 Greater => {},
