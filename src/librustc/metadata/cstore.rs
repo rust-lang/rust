@@ -20,6 +20,7 @@ pub use self::NativeLibraryKind::*;
 use back::svh::Svh;
 use metadata::decoder;
 use metadata::loader;
+use session::search_paths::PathKind;
 use util::nodemap::{FnvHashMap, NodeMap};
 
 use std::cell::RefCell;
@@ -65,8 +66,8 @@ pub enum NativeLibraryKind {
 // must be non-None.
 #[derive(PartialEq, Clone)]
 pub struct CrateSource {
-    pub dylib: Option<Path>,
-    pub rlib: Option<Path>,
+    pub dylib: Option<(Path, PathKind)>,
+    pub rlib: Option<(Path, PathKind)>,
     pub cnum: ast::CrateNum,
 }
 
@@ -178,10 +179,10 @@ impl CStore {
         let mut libs = self.used_crate_sources.borrow()
             .iter()
             .map(|src| (src.cnum, match prefer {
-                RequireDynamic => src.dylib.clone(),
-                RequireStatic => src.rlib.clone(),
+                RequireDynamic => src.dylib.clone().map(|p| p.0),
+                RequireStatic => src.rlib.clone().map(|p| p.0),
             }))
-            .collect::<Vec<(ast::CrateNum, Option<Path>)>>();
+            .collect::<Vec<_>>();
         libs.sort_by(|&(a, _), &(b, _)| {
             ordering.position_elem(&a).cmp(&ordering.position_elem(&b))
         });

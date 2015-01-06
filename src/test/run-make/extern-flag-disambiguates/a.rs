@@ -11,6 +11,6 @@
 #![crate_name = "a"]
 #![crate_type = "rlib"]
 
-static FOO: uint = 3;
+static FOO: usize = 3;
 
-pub fn token() -> &'static uint { &FOO }
+pub fn token() -> &'static usize { &FOO }
