@@ -5491,6 +5491,9 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                 (0, vec!(tcx.types.u64, tcx.types.u64),
                 ty::mk_tup(tcx, vec!(tcx.types.u64, tcx.types.bool))),
 
+            "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
+                (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
+
             "return_address" => (0, vec![], ty::mk_imm_ptr(tcx, tcx.types.u8)),
 
             "assume" => (0, vec![tcx.types.bool], ty::mk_nil(tcx)),

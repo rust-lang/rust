@@ -259,7 +259,6 @@ pub enum CrateType {
     CrateTypeStaticlib,
 }
 
-
 #[derive(Clone)]
 pub enum Passes {
     SomePasses(Vec<String>),
@@ -585,6 +584,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "Adds unstable command line options to rustc interface"),
     print_enum_sizes: bool = (false, parse_bool,
           "Print the size of enums and their variants"),
+    force_overflow_checks: Option<bool> = (None, parse_opt_bool,
+          "Force overflow checks on or off"),
 }
 
 pub fn default_lib_output() -> CrateType {
