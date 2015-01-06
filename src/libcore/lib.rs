@@ -111,7 +111,7 @@ pub mod ptr;
 
 /* Core language traits */
 
-pub mod markers;
+pub mod marker;
 pub mod ops;
 pub mod cmp;
 pub mod clone;
@@ -151,8 +151,8 @@ mod std {
     pub use clone;
     pub use cmp;
     #[cfg(stage0)]
-    pub use markers as kinds;
-    pub use markers;
+    pub use marker as kinds;
+    pub use marker;
     pub use option;
     pub use fmt;
     pub use hash;

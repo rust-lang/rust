@@ -23,7 +23,7 @@ use default::Default;
 use iter::range;
 use iter::ExactSizeIterator;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
-use markers::Sized;
+use marker::Sized;
 use mem;
 use num::Int;
 use ops::{Fn, FnMut};

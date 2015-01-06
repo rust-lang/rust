@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::markers;
+use std::marker;
 
 enum Foo {
-    A(markers::NoSend)
+    A(marker::NoSend)
 }
 
 fn bar<T: Send>(_: T) {}
 
 fn main() {
-    let x = Foo::A(markers::NoSend);
+    let x = Foo::A(marker::NoSend);
     bar(x);
-    //~^ ERROR `core::markers::Send` is not implemented
+    //~^ ERROR `core::marker::Send` is not implemented
 }

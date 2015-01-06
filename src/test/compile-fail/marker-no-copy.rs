@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::markers;
+use std::marker;
 
 fn foo<P:Copy>(p: P) { }
 
 fn main()
 {
-    foo(markers::NoCopy); //~ ERROR the trait `core::markers::Copy` is not implemented
+    foo(marker::NoCopy); //~ ERROR the trait `core::marker::Copy` is not implemented
 }

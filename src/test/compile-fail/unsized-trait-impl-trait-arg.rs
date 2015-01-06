@@ -15,7 +15,7 @@ trait T2<Z> {
 }
 struct S4<Y: ?Sized>;
 impl<X: ?Sized> T2<X> for S4<X> {
-    //~^ ERROR `core::markers::Sized` is not implemented for the type `X`
+    //~^ ERROR `core::marker::Sized` is not implemented for the type `X`
 }
 
 fn main() { }

@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::markers;
+use std::marker;
 
-struct Foo { marker: markers::NoSync }
+struct Foo { marker: marker::NoSync }
 
 static FOO: uint = 3;
-static BAR: Foo = Foo { marker: markers::NoSync };
-//~^ ERROR: the trait `core::markers::Sync` is not implemented
+static BAR: Foo = Foo { marker: marker::NoSync };
+//~^ ERROR: the trait `core::marker::Sync` is not implemented
 
 fn main() {}

@@ -5082,6 +5082,6 @@ pub fn issue_14344_workaround() {} // FIXME #14344 force linkage to happen corre
 #[cfg(not(test))]
 mod std {
     #[cfg(stage0)]
-    pub use core::markers as kinds;
-    pub use core::markers;
+    pub use core::marker as kinds;
+    pub use core::marker;
 }

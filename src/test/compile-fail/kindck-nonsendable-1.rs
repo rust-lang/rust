@@ -18,7 +18,7 @@ fn bar<F:FnOnce() + Send>(_: F) { }
 fn main() {
     let x = Rc::new(3u);
     bar(move|| foo(x));
-    //~^ ERROR `core::markers::Send` is not implemented
-    //~^^ ERROR `core::markers::Send` is not implemented
+    //~^ ERROR `core::marker::Send` is not implemented
+    //~^^ ERROR `core::marker::Send` is not implemented
 }
 

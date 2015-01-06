@@ -21,7 +21,7 @@ use cmp::{PartialEq, Eq};
 use cmp::{PartialOrd, Ord};
 use intrinsics;
 use iter::IteratorExt;
-use markers::Copy;
+use marker::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
@@ -992,7 +992,7 @@ impl_to_primitive_float! { f64 }
 
 /// A generic trait for converting a number to a value.
 #[experimental = "trait is likely to be removed"]
-pub trait FromPrimitive : ::markers::Sized {
+pub trait FromPrimitive : ::marker::Sized {
     /// Convert an `int` to return an optional value of this type. If the
     /// value cannot be represented by this value, the `None` is returned.
     #[inline]

@@ -124,8 +124,8 @@ mod std {
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
     #[cfg(stage0)]
-    pub use core::markers as kinds;
-    pub use core::markers;  // deriving(Copy)
+    pub use core::marker as kinds;
+    pub use core::marker;  // deriving(Copy)
     pub use core::hash;     // deriving(Hash)
 }
 
@@ -140,7 +140,7 @@ mod prelude {
     pub use core::iter::{FromIterator, Extend, IteratorExt};
     pub use core::iter::{Iterator, DoubleEndedIterator, RandomAccessIterator};
     pub use core::iter::{ExactSizeIterator};
-    pub use core::markers::{Copy, Send, Sized, Sync};
+    pub use core::marker::{Copy, Send, Sized, Sync};
     pub use core::mem::drop;
     pub use core::ops::{Drop, Fn, FnMut, FnOnce};
     pub use core::option::Option;

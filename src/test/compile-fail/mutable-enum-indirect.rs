@@ -11,13 +11,13 @@
 // Tests that an `&` pointer to something inherently mutable is itself
 // to be considered mutable.
 
-use std::markers;
+use std::marker;
 
-enum Foo { A(markers::NoSync) }
+enum Foo { A(marker::NoSync) }
 
 fn bar<T: Sync>(_: T) {}
 
 fn main() {
-    let x = Foo::A(markers::NoSync);
-    bar(&x); //~ ERROR the trait `core::markers::Sync` is not implemented
+    let x = Foo::A(marker::NoSync);
+    bar(&x); //~ ERROR the trait `core::marker::Sync` is not implemented
 }

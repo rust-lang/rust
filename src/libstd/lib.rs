@@ -151,7 +151,7 @@ extern crate libc;
 
 // Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern crate "std" as realstd;
-#[cfg(test)] pub use realstd::markers;
+#[cfg(test)] pub use realstd::marker;
 #[cfg(test)] pub use realstd::ops;
 #[cfg(test)] pub use realstd::cmp;
 #[cfg(test)] pub use realstd::boxed;
@@ -168,8 +168,8 @@ pub use core::default;
 pub use core::finally;
 pub use core::intrinsics;
 pub use core::iter;
-#[cfg(stage0)] #[cfg(not(test))] pub use core::markers as kinds;
-#[cfg(not(test))] pub use core::markers;
+#[cfg(stage0)] #[cfg(not(test))] pub use core::marker as kinds;
+#[cfg(not(test))] pub use core::marker;
 pub use core::mem;
 #[cfg(not(test))] pub use core::ops;
 pub use core::ptr;
@@ -313,8 +313,8 @@ mod std {
     pub use cell; // used for tls!
     pub use thread_local; // used for thread_local!
     #[cfg(stage0)]
-    pub use markers as kinds;
-    pub use markers;  // used for tls!
+    pub use marker as kinds;
+    pub use marker;  // used for tls!
     pub use ops; // used for bitflags!
 
     // The test runner calls ::std::os::args() but really wants realstd

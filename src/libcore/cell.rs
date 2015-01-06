@@ -161,7 +161,7 @@ use clone::Clone;
 use cmp::PartialEq;
 use default::Default;
 use fmt;
-use markers::{Copy, Send};
+use marker::{Copy, Send};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{None, Some};
@@ -520,11 +520,11 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 ///
 /// ```rust
 /// use std::cell::UnsafeCell;
-/// use std::markers;
+/// use std::marker;
 ///
 /// struct NotThreadSafe<T> {
 ///     value: UnsafeCell<T>,
-///     marker: markers::NoSync
+///     marker: marker::NoSync
 /// }
 /// ```
 ///

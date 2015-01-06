@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::markers;
+use std::marker;
 
-struct Foo { nc: markers::NoCopy }
-const INIT: Foo = Foo { nc: markers::NoCopy };
+struct Foo { nc: marker::NoCopy }
+const INIT: Foo = Foo { nc: marker::NoCopy };
 static FOO: Foo = INIT;
 
 fn main() {

@@ -128,7 +128,7 @@ use any::Any;
 use boxed::Box;
 use cell::UnsafeCell;
 use clone::Clone;
-use markers::{Send, Sync};
+use marker::{Send, Sync};
 use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
 use result::Result::{Err, Ok};

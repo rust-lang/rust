@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::markers;
+use std::marker;
 
 struct Foo {
     a: int,
-    ns: markers::NoSend
+    ns: marker::NoSend
 }
 
 fn bar<T: Send>(_: T) {}
 
 fn main() {
-    let x = Foo { a: 5, ns: markers::NoSend };
+    let x = Foo { a: 5, ns: marker::NoSend };
     bar(x);
-    //~^ ERROR the trait `core::markers::Send` is not implemented
+    //~^ ERROR the trait `core::marker::Send` is not implemented
 }
