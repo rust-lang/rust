@@ -10,8 +10,6 @@
 
 // Test overloaded indexing combined with autoderef.
 
-#![feature(associated_types)]
-
 use std::ops::{Index, IndexMut};
 
 struct Foo {
@@ -84,4 +82,3 @@ fn main() {
     assert_eq!(f[1].get(), 5);
     assert_eq!(f[1].get_from_ref(), 5);
 }
-

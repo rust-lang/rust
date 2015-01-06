@@ -10,7 +10,6 @@
 
 // aux-build:issue_20389.rs
 
-#![feature(associated_types)]
 extern crate issue_20389;
 
 struct Foo;

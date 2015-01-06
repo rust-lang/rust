@@ -361,14 +361,6 @@ fn create_substs_for_ast_path<'tcx>(
                                            supplied_ty_param_count)[]);
     }
 
-    if supplied_ty_param_count > required_ty_param_count
-        && !this.tcx().sess.features.borrow().default_type_params {
-        span_err!(this.tcx().sess, span, E0108,
-            "default type parameters are experimental and possibly buggy");
-        span_help!(this.tcx().sess, span,
-            "add #![feature(default_type_params)] to the crate attributes to enable");
-    }
-
     let mut substs = Substs::new_type(types, regions);
 
     match self_ty {

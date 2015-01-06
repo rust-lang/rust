@@ -11,8 +11,6 @@
 // Test that `<Type as Trait>::Output` and `Self::Output` are accepted as type annotations in let
 // bindings
 
-#![feature(associated_types)]
-
 trait Int {
     fn one() -> Self;
     fn leading_zeros(self) -> uint;
