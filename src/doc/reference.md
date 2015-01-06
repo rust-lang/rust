@@ -1259,8 +1259,8 @@ We call such functions "diverging" because they never return a value to the
 caller. Every control path in a diverging function must end with a `panic!()` or
 a call to another diverging function on every control path. The `!` annotation
 does *not* denote a type. Rather, the result type of a diverging function is a
-special type called $\bot$ ("bottom") that unifies with any type. Rust has no
-syntax for $\bot$.
+special type called ⊥ ("bottom") that unifies with any type. Rust has no
+syntax for ⊥.
 
 It might be necessary to declare a diverging function because as mentioned
 previously, the typechecker checks that every control path in a function ends
