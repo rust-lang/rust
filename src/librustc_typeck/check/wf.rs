@@ -77,6 +77,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                     enum_variants(fcx, enum_def)
                 });
             }
+            ast::ItemTrait(..) => {
+                let trait_def =
+                    ty::lookup_trait_def(ccx.tcx, local_def(item.id));
+                reject_non_type_param_bounds(
+                    ccx.tcx,
+                    item.span,
+                    &trait_def.generics);
+            }
             _ => {}
         }
     }
@@ -237,21 +245,32 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 fn reject_non_type_param_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
                                       span: Span,
                                       generics: &ty::Generics<'tcx>) {
+
     for predicate in generics.predicates.iter() {
         match predicate {
             &ty::Predicate::Trait(ty::Binder(ref tr)) => {
-                let self_ty = tr.self_ty();
-                if !self_ty.walk().any(|t| is_ty_param(t)) {
-                    tcx.sess.span_err(
-                        span,
-                        format!("cannot bound type `{}`, where clause \
-                                 bounds may only be attached to types involving \
-                                 type parameters",
-                                 self_ty.repr(tcx)).as_slice())
-                }
+                let found_param = tr.input_types().iter()
+                                    .flat_map(|ty| ty.walk())
+                                    .any(is_ty_param);
+                if !found_param { report_bound_error(tcx, span, tr.self_ty() )}
+            }
+            &ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(ty, _))) => {
+                let found_param = ty.walk().any(|t| is_ty_param(t));
+                if !found_param { report_bound_error(tcx, span, ty) }
             }
             _ => {}
-        }
+        };
+    }
+
+    fn report_bound_error<'t>(tcx: &ty::ctxt<'t>,
+                          span: Span,
+                          bounded_ty: ty::Ty<'t>) {
+        tcx.sess.span_err(
+            span,
+            format!("cannot bound type `{}`, where clause \
+                bounds may only be attached to types involving \
+                type parameters",
+                bounded_ty.repr(tcx)).as_slice())
     }
 
     fn is_ty_param(ty: ty::Ty) -> bool {
@@ -266,6 +285,24 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         self.check_item_well_formed(i);
         visit::walk_item(self, i);
+    }
+
+    fn visit_trait_item(&mut self, t: &'v ast::TraitItem) {
+        match t {
+            &ast::TraitItem::ProvidedMethod(_) |
+            &ast::TraitItem::TypeTraitItem(_) => {},
+            &ast::TraitItem::RequiredMethod(ref method) => {
+                match ty::impl_or_trait_item(self.ccx.tcx, local_def(method.id)) {
+                    ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
+                        reject_non_type_param_bounds(
+                            self.ccx.tcx,
+                            method.span,
+                            &ty_method.generics)
+                    }
+                    _ => {}
+                }
+            }
+        }
     }
 }
 
@@ -455,7 +492,6 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     let arg_tys =
                         ty::assert_no_late_bound_regions(
                             fcx.tcx(), &ty::ty_fn_args(ctor_ty));
-
                     AdtVariant {
                         fields: args.iter().enumerate().map(|(index, arg)| {
                             let arg_ty = arg_tys[index];
