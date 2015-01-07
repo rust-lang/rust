@@ -90,7 +90,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::pat_util::{self, pat_id_map};
 use middle::region::CodeExtent;
-use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
+use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits;
 use middle::ty::{FnSig, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
@@ -1947,6 +1947,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Returns the type that this AST path refers to. If the path has no type
+    /// parameters and the corresponding type has type parameters, fresh type
+    /// and/or region variables are substituted.
+    ///
+    /// This is used when checking the constructor in struct literals.
+    fn instantiate_struct_literal_ty(&self,
+                                     did: ast::DefId,
+                                     path: &ast::Path)
+                                     -> TypeAndSubsts<'tcx>
+    {
+        let tcx = self.tcx();
+
+        let ty::TypeScheme { generics, ty: decl_ty } = ty::lookup_item_type(tcx, did);
+
+        let wants_params =
+            generics.has_type_params(TypeSpace) || generics.has_region_params(TypeSpace);
+
+        let needs_defaults =
+            wants_params &&
+            path.segments.iter().all(|s| s.parameters.is_empty());
+
+        let substs = if needs_defaults {
+            let tps =
+                self.infcx().next_ty_vars(generics.types.len(TypeSpace));
+            let rps =
+                self.infcx().region_vars_for_defs(path.span,
+                                                  generics.regions.get_slice(TypeSpace));
+            Substs::new_type(tps, rps)
+        } else {
+            astconv::ast_path_substs_for_ty(self, self, &generics, path)
+        };
+
+        let ty = self.instantiate_type_scheme(path.span, &substs, &decl_ty);
+
+        TypeAndSubsts { substs: substs, ty: ty }
+    }
+
     pub fn write_nil(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, ty::mk_nil(self.tcx()));
     }
@@ -3490,17 +3527,18 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     expected_field_type =
                         ty::lookup_field_type(
                             tcx, class_id, field_id, substitutions);
+                    expected_field_type =
+                        fcx.normalize_associated_types_in(
+                            field.span, &expected_field_type);
                     class_field_map.insert(
                         field.ident.node.name, (field_id, true));
                     fields_found += 1;
                 }
             }
+
             // Make sure to give a type to the field even if there's
             // an error, so we can continue typechecking
-            check_expr_coercable_to_type(
-                    fcx,
-                    &*field.expr,
-                    expected_field_type);
+            check_expr_coercable_to_type(fcx, &*field.expr, expected_field_type);
         }
 
         if error_happened {
@@ -4149,10 +4187,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         // parameters correctly.
         let actual_structure_type = fcx.expr_ty(&*expr);
         if !ty::type_is_error(actual_structure_type) {
-            let type_and_substs = astconv::ast_path_to_ty_relaxed(fcx,
-                                                                  fcx,
-                                                                  struct_id,
-                                                                  path);
+            let type_and_substs = fcx.instantiate_struct_literal_ty(struct_id, path);
             match fcx.mk_subty(false,
                                infer::Misc(path.span),
                                actual_structure_type,
