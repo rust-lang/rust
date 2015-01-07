@@ -1783,9 +1783,8 @@ pub struct UnstableFileStat {
 }
 
 
-// NOTE(stage0): change this one last #[doc=..] to /// after the next snapshot
 bitflags! {
-    #[doc = "A set of permissions for a file or directory is represented by a set of"]
+    /// A set of permissions for a file or directory is represented by a set of
     /// flags which are or'd together.
     flags FilePermission: u32 {
         const USER_READ     = 0o400,

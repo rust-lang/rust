@@ -108,7 +108,6 @@
 #![feature(lang_items, unsafe_destructor)]
 #![feature(slicing_syntax, unboxed_closures)]
 #![feature(old_impl_check)]
-#![cfg_attr(stage0, allow(unused_attributes))]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -152,7 +151,6 @@ pub use core::default;
 pub use core::finally;
 pub use core::intrinsics;
 pub use core::iter;
-#[cfg(stage0)] #[cfg(not(test))] pub use core::marker as kinds;
 #[cfg(not(test))] pub use core::marker;
 pub use core::mem;
 #[cfg(not(test))] pub use core::ops;
@@ -284,8 +282,6 @@ mod std {
     pub use vec; // used for vec![]
     pub use cell; // used for tls!
     pub use thread_local; // used for thread_local!
-    #[cfg(stage0)]
-    pub use marker as kinds;
     pub use marker;  // used for tls!
     pub use ops; // used for bitflags!
 
