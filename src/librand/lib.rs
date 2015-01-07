@@ -23,16 +23,14 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, phase, globs)]
-#![feature(unboxed_closures)]
 #![no_std]
 #![experimental]
 
-#[phase(plugin, link)]
+#[macro_use]
 extern crate core;
 
-#[cfg(test)] #[phase(plugin, link)] extern crate std;
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
+#[cfg(test)] #[macro_use] extern crate std;
+#[cfg(test)] #[macro_use] extern crate log;
 
 use core::prelude::*;
 
@@ -142,7 +140,7 @@ pub trait Rng : Sized {
     ///
     /// let mut v = [0u8; 13579];
     /// thread_rng().fill_bytes(&mut v);
-    /// println!("{}", v.as_slice());
+    /// println!("{:?}", v.as_slice());
     /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         // this could, in theory, be done by transmuting dest to a
@@ -178,7 +176,7 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// let x: uint = rng.gen();
     /// println!("{}", x);
-    /// println!("{}", rng.gen::<(f64, bool)>());
+    /// println!("{:?}", rng.gen::<(f64, bool)>());
     /// ```
     #[inline(always)]
     fn gen<T: Rand>(&mut self) -> T {
@@ -196,8 +194,8 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// let x = rng.gen_iter::<uint>().take(10).collect::<Vec<uint>>();
     /// println!("{}", x);
-    /// println!("{}", rng.gen_iter::<(f64, bool)>().take(5)
-    ///                   .collect::<Vec<(f64, bool)>>());
+    /// println!("{:?}", rng.gen_iter::<(f64, bool)>().take(5)
+    ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
     fn gen_iter<'a, T: Rand>(&'a mut self) -> Generator<'a, T, Self> {
         Generator { rng: self }
@@ -242,7 +240,7 @@ pub trait Rng : Sized {
     /// println!("{}", rng.gen_weighted_bool(3));
     /// ```
     fn gen_weighted_bool(&mut self, n: uint) -> bool {
-        n == 0 || self.gen_range(0, n) == 0
+        n <= 1 || self.gen_range(0, n) == 0
     }
 
     /// Return an iterator of random characters from the set A-Z,a-z,0-9.
@@ -270,9 +268,9 @@ pub trait Rng : Sized {
     ///
     /// let choices = [1i, 2, 4, 8, 16, 32];
     /// let mut rng = thread_rng();
-    /// println!("{}", rng.choose(&choices));
-    /// # // replace with slicing syntax when it's stable!
-    /// assert_eq!(rng.choose(choices.slice_to(0)), None);
+    /// println!("{:?}", rng.choose(&choices));
+    /// # // uncomment when slicing syntax is stable
+    /// //assert_eq!(rng.choose(choices.index(&(0..0))), None);
     /// ```
     fn choose<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
         if values.is_empty() {
@@ -314,7 +312,9 @@ pub struct Generator<'a, T, R:'a> {
     rng: &'a mut R,
 }
 
-impl<'a, T: Rand, R: Rng> Iterator<T> for Generator<'a, T, R> {
+impl<'a, T: Rand, R: Rng> Iterator for Generator<'a, T, R> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         Some(self.rng.gen())
     }
@@ -327,7 +327,9 @@ pub struct AsciiGenerator<'a, R:'a> {
     rng: &'a mut R,
 }
 
-impl<'a, R: Rng> Iterator<char> for AsciiGenerator<'a, R> {
+impl<'a, R: Rng> Iterator for AsciiGenerator<'a, R> {
+    type Item = char;
+
     fn next(&mut self) -> Option<char> {
         static GEN_ASCII_STR_CHARSET: &'static [u8] =
             b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
@@ -380,22 +382,12 @@ pub trait SeedableRng<Seed>: Rng {
 /// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
 /// Statistical Software*. Vol. 8 (Issue 14).
 #[allow(missing_copy_implementations)]
+#[derive(Clone)]
 pub struct XorShiftRng {
     x: u32,
     y: u32,
     z: u32,
     w: u32,
-}
-
-impl Clone for XorShiftRng {
-    fn clone(&self) -> XorShiftRng {
-        XorShiftRng {
-            x: self.x,
-            y: self.y,
-            z: self.z,
-            w: self.w,
-        }
-    }
 }
 
 impl XorShiftRng {
@@ -502,7 +494,10 @@ pub struct Closed01<F>(pub F);
 #[cfg(not(test))]
 mod std {
     pub use core::{option, fmt}; // panic!()
-    pub use core::kinds;
+    pub use core::clone; // derive Clone
+    #[cfg(stage0)]
+    pub use core::marker as kinds;
+    pub use core::marker;
 }
 
 #[cfg(test)]

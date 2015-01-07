@@ -46,7 +46,7 @@ fn main() {
 
     // bad syntax of the format string
 
-    format!("{"); //~ ERROR: expected `}` but string was terminated
+    format!("{"); //~ ERROR: expected `'}'` but string was terminated
 
     format!("foo } bar"); //~ ERROR: unmatched `}` found
     format!("foo }"); //~ ERROR: unmatched `}` found

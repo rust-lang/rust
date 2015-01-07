@@ -14,7 +14,7 @@ use trans::basic_block::BasicBlock;
 use trans::common::Block;
 use libc::c_uint;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Value(pub ValueRef);
 
 macro_rules! opt_val { ($e:expr) => (
@@ -125,7 +125,7 @@ impl Value {
 }
 
 /// Wrapper for LLVM UseRef
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Use(UseRef);
 
 impl Use {
@@ -155,7 +155,9 @@ pub struct Users {
     next: Option<Use>
 }
 
-impl Iterator<Value> for Users {
+impl Iterator for Users {
+    type Item = Value;
+
     fn next(&mut self) -> Option<Value> {
         let current = self.next;
 

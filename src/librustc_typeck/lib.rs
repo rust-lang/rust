@@ -71,14 +71,13 @@ This API is completely unstable and subject to change.
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(default_type_params, globs, macro_rules, phase, quote)]
+#![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(unboxed_closures)]
 #![allow(non_camel_case_types)]
 
-#[phase(plugin, link)] extern crate log;
-#[phase(plugin, link)] extern crate syntax;
+#[macro_use] extern crate log;
+#[macro_use] extern crate syntax;
 
 extern crate arena;
 extern crate rustc;
@@ -93,7 +92,7 @@ use middle::def;
 use middle::infer;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use session::config;
 use util::common::time;
 use util::ppaux::Repr;
@@ -103,9 +102,6 @@ use syntax::codemap::Span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
 use syntax::ast_util::local_def;
-
-#[cfg(stage0)]
-mod diagnostics;
 
 mod check;
 mod rscope;
@@ -122,7 +118,7 @@ struct TypeAndSubsts<'tcx> {
 struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.
     trait_map: ty::TraitMap,
-    tcx: &'a ty::ctxt<'tcx>
+    tcx: &'a ty::ctxt<'tcx>,
 }
 
 // Functions that write types into the node type table
@@ -197,7 +193,7 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
                               format!("{}: {}",
                                       msg(),
                                       ty::type_err_to_str(tcx,
-                                                          terr))[]);
+                                                          terr)).index(&FullRange));
             ty::note_and_explain_type_err(tcx, terr);
             false
         }
@@ -246,7 +242,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                               format!("main has a non-function type: found \
                                        `{}`",
                                       ppaux::ty_to_string(tcx,
-                                                       main_t))[]);
+                                                       main_t)).index(&FullRange));
         }
     }
 }
@@ -297,7 +293,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             tcx.sess.span_bug(start_span,
                               format!("start has a non-function type: found \
                                        `{}`",
-                                      ppaux::ty_to_string(tcx, start_t))[]);
+                                      ppaux::ty_to_string(tcx, start_t)).index(&FullRange));
         }
     }
 }
@@ -323,7 +319,7 @@ pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) {
     };
 
     time(time_passes, "type collecting", (), |_|
-        collect::collect_item_types(&ccx));
+         collect::collect_item_types(tcx));
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error

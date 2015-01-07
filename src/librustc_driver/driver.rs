@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use rustc::session::Session;
-use rustc::session::config::{mod, Input, OutputFilenames};
+use rustc::session::config::{self, Input, OutputFilenames};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
-use rustc::metadata::creader;
+use rustc::metadata::creader::CrateReader;
 use rustc::middle::{stability, ty, reachable};
 use rustc::middle::dependency_format;
 use rustc::middle;
@@ -58,12 +58,12 @@ pub fn compile_input(sess: Session,
             let outputs = build_output_filenames(input,
                                                  outdir,
                                                  output,
-                                                 krate.attrs[],
+                                                 krate.attrs.index(&FullRange),
                                                  &sess);
-            let id = link::find_crate_name(Some(&sess), krate.attrs[],
+            let id = link::find_crate_name(Some(&sess), krate.attrs.index(&FullRange),
                                            input);
             let expanded_crate
-                = match phase_2_configure_and_expand(&sess, krate, id[],
+                = match phase_2_configure_and_expand(&sess, krate, id.index(&FullRange),
                                                      addl_plugins) {
                     None => return,
                     Some(k) => k
@@ -75,7 +75,7 @@ pub fn compile_input(sess: Session,
         let mut forest = ast_map::Forest::new(expanded_crate);
         let ast_map = assign_node_ids_and_map(&sess, &mut forest);
 
-        write_out_deps(&sess, input, &outputs, id[]);
+        write_out_deps(&sess, input, &outputs, id.index(&FullRange));
 
         if stop_after_phase_2(&sess) { return; }
 
@@ -146,8 +146,8 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         println!("{}", json::as_json(&krate));
     }
 
-    if sess.show_span() {
-        syntax::show_span::run(sess.diagnostic(), &krate);
+    if let Some(ref s) = sess.opts.show_span {
+        syntax::show_span::run(sess.diagnostic(), s.as_slice(), &krate);
     }
 
     krate
@@ -171,9 +171,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let time_passes = sess.time_passes();
 
     *sess.crate_types.borrow_mut() =
-        collect_crate_types(sess, krate.attrs[]);
+        collect_crate_types(sess, krate.attrs.index(&FullRange));
     *sess.crate_metadata.borrow_mut() =
-        collect_crate_metadata(sess, krate.attrs[]);
+        collect_crate_metadata(sess, krate.attrs.index(&FullRange));
 
     time(time_passes, "recursion limit", (), |_| {
         middle::recursion_limit::update_recursion_limit(sess, &krate);
@@ -182,7 +182,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
     //
-    //   #[macro_escape] #[cfg(foo)]
+    //   #[macro_use] #[cfg(foo)]
     //   mod bar { macro_rules! baz!(() => {{}}) }
     //
     // baz! should not use this definition unless foo is enabled.
@@ -216,9 +216,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         = time(time_passes, "plugin loading", (), |_|
                plugin::load::load_plugins(sess, &krate, addl_plugins.take().unwrap()));
 
-    let mut registry = Registry::new(&krate);
+    let mut registry = Registry::new(sess, &krate);
 
-    time(time_passes, "plugin registration", (), |_| {
+    time(time_passes, "plugin registration", registrars, |registrars| {
         if sess.features.borrow().rustc_diagnostic_macros {
             registry.register_macro("__diagnostic_used",
                 diagnostics::plugin::expand_diagnostic_used);
@@ -228,8 +228,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 diagnostics::plugin::expand_build_diagnostic_array);
         }
 
-        for &registrar in registrars.iter() {
-            registrar(&mut registry);
+        for registrar in registrars.into_iter() {
+            registry.args_hidden = Some(registrar.args);
+            (registrar.fun)(&mut registry);
         }
     });
 
@@ -267,12 +268,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             if cfg!(windows) {
                 _old_path = os::getenv("PATH").unwrap_or(_old_path);
                 let mut new_path = sess.host_filesearch(PathKind::All).get_dylib_search_paths();
-                new_path.extend(os::split_paths(_old_path[]).into_iter());
-                os::setenv("PATH", os::join_paths(new_path[]).unwrap());
+                new_path.extend(os::split_paths(_old_path.index(&FullRange)).into_iter());
+                os::setenv("PATH", os::join_paths(new_path.index(&FullRange)).unwrap());
             }
             let cfg = syntax::ext::expand::ExpansionConfig {
                 crate_name: crate_name.to_string(),
-                deriving_hash_type_parameter: sess.features.borrow().default_type_params,
                 enable_quotes: sess.features.borrow().quote,
                 recursion_limit: sess.recursion_limit.get(),
             };
@@ -352,7 +352,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let krate = ast_map.krate();
 
     time(time_passes, "external crate/lib resolution", (), |_|
-         creader::read_crates(&sess, krate));
+         CrateReader::new(&sess).read_crates(krate));
 
     let lang_items = time(time_passes, "language item collection", (), |_|
                           middle::lang_items::collect_language_items(krate, &sess));
@@ -533,7 +533,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
         time(sess.time_passes(), "LLVM passes", (), |_|
             write::run_passes(sess,
                               trans,
-                              sess.opts.output_types[],
+                              sess.opts.output_types.index(&FullRange),
                               outputs));
     }
 
@@ -547,14 +547,14 @@ pub fn phase_6_link_output(sess: &Session,
                            outputs: &OutputFilenames) {
     let old_path = os::getenv("PATH").unwrap_or_else(||String::new());
     let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths();
-    new_path.extend(os::split_paths(old_path[]).into_iter());
-    os::setenv("PATH", os::join_paths(new_path[]).unwrap());
+    new_path.extend(os::split_paths(old_path.index(&FullRange)).into_iter());
+    os::setenv("PATH", os::join_paths(new_path.index(&FullRange)).unwrap());
 
     time(sess.time_passes(), "linking", (), |_|
          link::link_binary(sess,
                            trans,
                            outputs,
-                           trans.link.crate_name[]));
+                           trans.link.crate_name.index(&FullRange)));
 
     os::setenv("PATH", old_path);
 }
@@ -572,7 +572,7 @@ pub fn stop_after_phase_1(sess: &Session) -> bool {
         debug!("invoked with --parse-only, returning early from compile_input");
         return true;
     }
-    if sess.show_span() {
+    if sess.opts.show_span.is_some() {
         return true;
     }
     return sess.opts.debugging_opts & config::AST_JSON_NOEXPAND != 0;
@@ -638,12 +638,12 @@ fn write_out_deps(sess: &Session,
         _ => return,
     };
 
-    let result = (|| -> io::IoResult<()> {
+    let result = (|&:| -> io::IoResult<()> {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
         let files: Vec<String> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
-                                   .map(|fmap| escape_dep_filename(fmap.name[]))
+                                   .map(|fmap| escape_dep_filename(fmap.name.index(&FullRange)))
                                    .collect();
         let mut file = try!(io::File::create(&deps_filename));
         for path in out_filenames.iter() {
@@ -657,7 +657,7 @@ fn write_out_deps(sess: &Session,
         Ok(()) => {}
         Err(e) => {
             sess.fatal(format!("error writing dependencies to `{}`: {}",
-                               deps_filename.display(), e)[]);
+                               deps_filename.display(), e).index(&FullRange));
         }
     }
 }
@@ -726,9 +726,9 @@ pub fn collect_crate_types(session: &Session,
         let res = !link::invalid_output_for_target(session, *crate_type);
 
         if !res {
-            session.warn(format!("dropping unsupported crate type `{}` \
+            session.warn(format!("dropping unsupported crate type `{:?}` \
                                    for target `{}`",
-                                 *crate_type, session.opts.target_triple)[]);
+                                 *crate_type, session.opts.target_triple).index(&FullRange));
         }
 
         res

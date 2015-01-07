@@ -89,7 +89,7 @@ use core::fmt;
 use core::hash;
 use core::iter::RandomAccessIterator;
 use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
-use core::iter::{mod, FromIterator};
+use core::iter::{self, FromIterator};
 use core::num::Int;
 use core::ops::Index;
 use core::slice;
@@ -143,17 +143,17 @@ static FALSE: bool = false;
 /// bv.set(3, true);
 /// bv.set(5, true);
 /// bv.set(7, true);
-/// println!("{}", bv.to_string());
+/// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 ///
 /// // flip all values in bitvector, producing non-primes less than 10
 /// bv.negate();
-/// println!("{}", bv.to_string());
+/// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 ///
 /// // reset bitvector to empty
 /// bv.clear();
-/// println!("{}", bv.to_string());
+/// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 /// ```
 #[stable]
@@ -165,7 +165,9 @@ pub struct Bitv {
 }
 
 // FIXME(Gankro): NopeNopeNopeNopeNope (wait for IndexGet to be a thing)
-impl Index<uint,bool> for Bitv {
+impl Index<uint> for Bitv {
+    type Output = bool;
+
     #[inline]
     fn index(&self, i: &uint) -> &bool {
         if self.get(*i).expect("index out of bounds") {
@@ -328,7 +330,7 @@ impl Bitv {
 
         if extra_bytes > 0 {
             let mut last_word = 0u32;
-            for (i, &byte) in bytes[complete_words*4..].iter().enumerate() {
+            for (i, &byte) in bytes.index(&((complete_words*4)..)).iter().enumerate() {
                 last_word |= (reverse_bits(byte) as u32) << (i * 8);
             }
             bitv.storage.push(last_word);
@@ -668,12 +670,6 @@ impl Bitv {
         ).collect()
     }
 
-    /// Deprecated: Use `iter().collect()`.
-    #[deprecated = "Use `iter().collect()`"]
-    pub fn to_bools(&self) -> Vec<bool> {
-        self.iter().collect()
-    }
-
     /// Compares a `Bitv` to a slice of `bool`s.
     /// Both the `Bitv` and slice must have the same length.
     ///
@@ -918,18 +914,6 @@ impl Bitv {
     }
 }
 
-/// Deprecated: Now a static method on Bitv.
-#[deprecated = "Now a static method on Bitv"]
-pub fn from_bytes(bytes: &[u8]) -> Bitv {
-    Bitv::from_bytes(bytes)
-}
-
-/// Deprecated: Now a static method on Bitv.
-#[deprecated = "Now a static method on Bitv"]
-pub fn from_fn<F>(len: uint, f: F) -> Bitv where F: FnMut(uint) -> bool {
-    Bitv::from_fn(len, f)
-}
-
 #[stable]
 impl Default for Bitv {
     #[inline]
@@ -938,7 +922,7 @@ impl Default for Bitv {
 
 #[stable]
 impl FromIterator<bool> for Bitv {
-    fn from_iter<I:Iterator<bool>>(iterator: I) -> Bitv {
+    fn from_iter<I:Iterator<Item=bool>>(iterator: I) -> Bitv {
         let mut ret = Bitv::new();
         ret.extend(iterator);
         ret
@@ -948,7 +932,7 @@ impl FromIterator<bool> for Bitv {
 #[stable]
 impl Extend<bool> for Bitv {
     #[inline]
-    fn extend<I: Iterator<bool>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=bool>>(&mut self, mut iterator: I) {
         let (min, _) = iterator.size_hint();
         self.reserve(min);
         for element in iterator {
@@ -1023,7 +1007,7 @@ impl cmp::Eq for Bitv {}
 
 /// An iterator for `Bitv`.
 #[stable]
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Iter<'a> {
     bitv: &'a Bitv,
     next_idx: uint,
@@ -1031,7 +1015,9 @@ pub struct Iter<'a> {
 }
 
 #[stable]
-impl<'a> Iterator<bool> for Iter<'a> {
+impl<'a> Iterator for Iter<'a> {
+    type Item = bool;
+
     #[inline]
     fn next(&mut self) -> Option<bool> {
         if self.next_idx != self.end_idx {
@@ -1050,7 +1036,7 @@ impl<'a> Iterator<bool> for Iter<'a> {
 }
 
 #[stable]
-impl<'a> DoubleEndedIterator<bool> for Iter<'a> {
+impl<'a> DoubleEndedIterator for Iter<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<bool> {
         if self.next_idx != self.end_idx {
@@ -1063,10 +1049,10 @@ impl<'a> DoubleEndedIterator<bool> for Iter<'a> {
 }
 
 #[stable]
-impl<'a> ExactSizeIterator<bool> for Iter<'a> {}
+impl<'a> ExactSizeIterator for Iter<'a> {}
 
 #[stable]
-impl<'a> RandomAccessIterator<bool> for Iter<'a> {
+impl<'a> RandomAccessIterator for Iter<'a> {
     #[inline]
     fn indexable(&self) -> uint {
         self.end_idx - self.next_idx
@@ -1120,7 +1106,7 @@ impl<'a> RandomAccessIterator<bool> for Iter<'a> {
 /// let bv: Bitv = s.into_bitv();
 /// assert!(bv[3]);
 /// ```
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct BitvSet {
     bitv: Bitv,
@@ -1134,7 +1120,7 @@ impl Default for BitvSet {
 
 #[stable]
 impl FromIterator<uint> for BitvSet {
-    fn from_iter<I:Iterator<uint>>(iterator: I) -> BitvSet {
+    fn from_iter<I:Iterator<Item=uint>>(iterator: I) -> BitvSet {
         let mut ret = BitvSet::new();
         ret.extend(iterator);
         ret
@@ -1144,7 +1130,7 @@ impl FromIterator<uint> for BitvSet {
 #[stable]
 impl Extend<uint> for BitvSet {
     #[inline]
-    fn extend<I: Iterator<uint>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=uint>>(&mut self, mut iterator: I) {
         for i in iterator {
             self.insert(i);
         }
@@ -1743,13 +1729,13 @@ impl BitvSet {
 
 impl fmt::Show for BitvSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "{{"));
+        try!(write!(fmt, "BitvSet {{"));
         let mut first = true;
         for n in self.iter() {
             if !first {
                 try!(write!(fmt, ", "));
             }
-            try!(write!(fmt, "{}", n));
+            try!(write!(fmt, "{:?}", n));
             first = false;
         }
         write!(fmt, "}}")
@@ -1765,7 +1751,7 @@ impl<S: hash::Writer> hash::Hash<S> for BitvSet {
 }
 
 /// An iterator for `BitvSet`.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[stable]
 pub struct SetIter<'a> {
     set: &'a BitvSet,
@@ -1773,7 +1759,7 @@ pub struct SetIter<'a> {
 }
 
 /// An iterator combining two `BitvSet` iterators.
-#[deriving(Clone)]
+#[derive(Clone)]
 struct TwoBitPositions<'a> {
     set: &'a BitvSet,
     other: &'a BitvSet,
@@ -1792,7 +1778,9 @@ pub struct Difference<'a>(TwoBitPositions<'a>);
 pub struct SymmetricDifference<'a>(TwoBitPositions<'a>);
 
 #[stable]
-impl<'a> Iterator<uint> for SetIter<'a> {
+impl<'a> Iterator for SetIter<'a> {
+    type Item = uint;
+
     fn next(&mut self) -> Option<uint> {
         while self.next_idx < self.set.bitv.len() {
             let idx = self.next_idx;
@@ -1813,7 +1801,9 @@ impl<'a> Iterator<uint> for SetIter<'a> {
 }
 
 #[stable]
-impl<'a> Iterator<uint> for TwoBitPositions<'a> {
+impl<'a> Iterator for TwoBitPositions<'a> {
+    type Item = uint;
+
     fn next(&mut self) -> Option<uint> {
         while self.next_idx < self.set.bitv.len() ||
               self.next_idx < self.other.bitv.len() {
@@ -1849,25 +1839,33 @@ impl<'a> Iterator<uint> for TwoBitPositions<'a> {
 }
 
 #[stable]
-impl<'a> Iterator<uint> for Union<'a> {
+impl<'a> Iterator for Union<'a> {
+    type Item = uint;
+
     #[inline] fn next(&mut self) -> Option<uint> { self.0.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
 #[stable]
-impl<'a> Iterator<uint> for Intersection<'a> {
+impl<'a> Iterator for Intersection<'a> {
+    type Item = uint;
+
     #[inline] fn next(&mut self) -> Option<uint> { self.0.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
 #[stable]
-impl<'a> Iterator<uint> for Difference<'a> {
+impl<'a> Iterator for Difference<'a> {
+    type Item = uint;
+
     #[inline] fn next(&mut self) -> Option<uint> { self.0.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
 #[stable]
-impl<'a> Iterator<uint> for SymmetricDifference<'a> {
+impl<'a> Iterator for SymmetricDifference<'a> {
+    type Item = uint;
+
     #[inline] fn next(&mut self) -> Option<uint> { self.0.next() }
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
@@ -1876,28 +1874,23 @@ impl<'a> Iterator<uint> for SymmetricDifference<'a> {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use core::iter::range_step;
     use core::u32;
-    use std::rand;
-    use std::rand::Rng;
-    use test::{Bencher, black_box};
 
-    use super::{Bitv, BitvSet, from_fn, from_bytes};
-    use bitv;
+    use super::Bitv;
 
     #[test]
     fn test_to_str() {
         let zerolen = Bitv::new();
-        assert_eq!(zerolen.to_string(), "");
+        assert_eq!(format!("{:?}", zerolen), "");
 
         let eightbits = Bitv::from_elem(8u, false);
-        assert_eq!(eightbits.to_string(), "00000000")
+        assert_eq!(format!("{:?}", eightbits), "00000000")
     }
 
     #[test]
     fn test_0_elements() {
         let act = Bitv::new();
-        let exp = Vec::from_elem(0u, false);
+        let exp = Vec::new();
         assert!(act.eq_vec(exp.as_slice()));
         assert!(act.none() && act.all());
     }
@@ -1917,7 +1910,7 @@ mod tests {
         let mut b = Bitv::from_elem(2, false);
         b.set(0, true);
         b.set(1, false);
-        assert_eq!(b.to_string(), "10");
+        assert_eq!(format!("{:?}", b), "10");
         assert!(!b.none() && !b.all());
     }
 
@@ -2252,7 +2245,7 @@ mod tests {
     fn test_from_bytes() {
         let bitv = Bitv::from_bytes(&[0b10110110, 0b00000000, 0b11111111]);
         let str = concat!("10110110", "00000000", "11111111");
-        assert_eq!(bitv.to_string(), str);
+        assert_eq!(format!("{:?}", bitv), str);
     }
 
     #[test]
@@ -2271,7 +2264,7 @@ mod tests {
     fn test_from_bools() {
         let bools = vec![true, false, true, true];
         let bitv: Bitv = bools.iter().map(|n| *n).collect();
-        assert_eq!(bitv.to_string(), "1011");
+        assert_eq!(format!("{:?}", bitv), "1011");
     }
 
     #[test]
@@ -2287,7 +2280,7 @@ mod tests {
 
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), bools);
 
-        let long = Vec::from_fn(10000, |i| i % 2 == 0);
+        let long = range(0, 10000).map(|i| i % 2 == 0).collect::<Vec<_>>();
         let bitv: Bitv = long.iter().map(|n| *n).collect();
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), long)
     }
@@ -2629,7 +2622,7 @@ mod bitv_set_test {
         s.insert(10);
         s.insert(50);
         s.insert(2);
-        assert_eq!("{1, 2, 10, 50}", s.to_string());
+        assert_eq!("BitvSet {1u, 2u, 10u, 50u}", format!("{:?}", s));
     }
 
     #[test]

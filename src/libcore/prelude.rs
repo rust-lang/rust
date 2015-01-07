@@ -29,8 +29,8 @@
 //! ```
 
 // Reexported core operators
-pub use kinds::{Copy, Send, Sized, Sync};
-pub use ops::{Drop, Fn, FnMut, FnOnce};
+pub use marker::{Copy, Send, Sized, Sync};
+pub use ops::{Drop, Fn, FnMut, FnOnce, FullRange};
 
 // Reexported functions
 pub use iter::range;
@@ -38,15 +38,14 @@ pub use mem::drop;
 
 // Reexported types and traits
 
-pub use char::Char;
+pub use char::CharExt;
 pub use clone::Clone;
 pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 pub use iter::{Extend, IteratorExt};
-pub use iter::{Iterator, DoubleEndedIterator, DoubleEndedIteratorExt};
-pub use iter::{IteratorCloneExt, CloneIteratorExt};
-pub use iter::{IteratorOrdExt, ExactSizeIterator, IteratorPairExt};
-pub use option::Option::{mod, Some, None};
+pub use iter::{Iterator, DoubleEndedIterator};
+pub use iter::{ExactSizeIterator};
+pub use option::Option::{self, Some, None};
 pub use ptr::{PtrExt, MutPtrExt};
-pub use result::Result::{mod, Ok, Err};
+pub use result::Result::{self, Ok, Err};
 pub use slice::{AsSlice, SliceExt};
 pub use str::{Str, StrExt};

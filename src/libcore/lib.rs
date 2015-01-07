@@ -56,17 +56,26 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![no_std]
-#![allow(unknown_features, raw_pointer_deriving)]
-#![feature(globs, intrinsics, lang_items, macro_rules, phase)]
+#![allow(unknown_features, raw_pointer_derive)]
+#![feature(intrinsics, lang_items)]
 #![feature(simd, unsafe_destructor, slicing_syntax)]
-#![feature(default_type_params, unboxed_closures, associated_types)]
+#![feature(unboxed_closures)]
 #![deny(missing_docs)]
 
+#[macro_use]
 mod macros;
 
-#[path = "num/float_macros.rs"] mod float_macros;
-#[path = "num/int_macros.rs"]   mod int_macros;
-#[path = "num/uint_macros.rs"]  mod uint_macros;
+#[path = "num/float_macros.rs"]
+#[macro_use]
+mod float_macros;
+
+#[path = "num/int_macros.rs"]
+#[macro_use]
+mod int_macros;
+
+#[path = "num/uint_macros.rs"]
+#[macro_use]
+mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;
 #[path = "num/i8.rs"]   pub mod i8;
@@ -98,7 +107,7 @@ pub mod ptr;
 
 /* Core language traits */
 
-pub mod kinds;
+pub mod marker;
 pub mod ops;
 pub mod cmp;
 pub mod clone;
@@ -130,13 +139,16 @@ mod array;
 #[doc(hidden)]
 mod core {
     pub use panicking;
+    pub use fmt;
 }
 
 #[doc(hidden)]
 mod std {
     pub use clone;
     pub use cmp;
-    pub use kinds;
+    #[cfg(stage0)]
+    pub use marker as kinds;
+    pub use marker;
     pub use option;
     pub use fmt;
     pub use hash;

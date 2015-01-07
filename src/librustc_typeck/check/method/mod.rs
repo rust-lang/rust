@@ -45,7 +45,7 @@ pub enum MethodError {
 
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
-#[deriving(Copy, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Copy, PartialOrd, Ord, PartialEq, Eq)]
 pub enum CandidateSource {
     ImplSource(ast::DefId),
     TraitSource(/* trait id */ ast::DefId),
@@ -169,9 +169,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                               poly_trait_ref.as_predicate());
 
     // Now we want to know if this can be matched
-    let mut selcx = traits::SelectionContext::new(fcx.infcx(),
-                                                  &fcx.inh.param_env,
-                                                  fcx);
+    let mut selcx = traits::SelectionContext::new(fcx.infcx(), fcx);
     if !selcx.evaluate_obligation(&obligation) {
         debug!("--> Cannot match obligation");
         return None; // Cannot be matched, no such method resolution is possible.
@@ -233,7 +231,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
         Some(self_expr) => {
             debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
-                   (self-id={}, base adjustment={}, explicit_self={})",
+                   (self-id={}, base adjustment={:?}, explicit_self={:?})",
                    self_expr.id, autoderefref, method_ty.explicit_self);
 
             match method_ty.explicit_self {
@@ -268,7 +266,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                 span,
                                 format!(
                                     "trait method is &self but first arg is: {}",
-                                    transformed_self_ty.repr(fcx.tcx()))[]);
+                                    transformed_self_ty.repr(fcx.tcx())).index(&FullRange));
                         }
                     }
                 }
@@ -277,8 +275,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                     fcx.tcx().sess.span_bug(
                         span,
                         format!(
-                            "unexpected explicit self type in operator method: {}",
-                            method_ty.explicit_self)[]);
+                            "unexpected explicit self type in operator method: {:?}",
+                            method_ty.explicit_self).index(&FullRange));
                 }
             }
         }
@@ -332,7 +330,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if is_field {
                 cx.sess.span_note(span,
                     format!("use `(s.{0})(...)` if you meant to call the \
-                            function stored in the `{0}` field", method_ustring)[]);
+                            function stored in the `{0}` field", method_ustring).index(&FullRange));
             }
 
             if static_sources.len() > 0 {

@@ -48,7 +48,7 @@ use alloc::boxed::Box;
 use core::mem;
 use core::cell::UnsafeCell;
 
-use sync::atomic::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
+use sync::atomic::{AtomicPtr, Ordering};
 
 /// A result of the `pop` function.
 pub enum PopResult<T> {
@@ -103,8 +103,8 @@ impl<T: Send> Queue<T> {
     pub fn push(&self, t: T) {
         unsafe {
             let n = Node::new(Some(t));
-            let prev = self.head.swap(n, AcqRel);
-            (*prev).next.store(n, Release);
+            let prev = self.head.swap(n, Ordering::AcqRel);
+            (*prev).next.store(n, Ordering::Release);
         }
     }
 
@@ -121,7 +121,7 @@ impl<T: Send> Queue<T> {
     pub fn pop(&self) -> PopResult<T> {
         unsafe {
             let tail = *self.tail.get();
-            let next = (*tail).next.load(Acquire);
+            let next = (*tail).next.load(Ordering::Acquire);
 
             if !next.is_null() {
                 *self.tail.get() = next;
@@ -132,18 +132,19 @@ impl<T: Send> Queue<T> {
                 return Data(ret);
             }
 
-            if self.head.load(Acquire) == tail {Empty} else {Inconsistent}
+            if self.head.load(Ordering::Acquire) == tail {Empty} else {Inconsistent}
         }
     }
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {
             let mut cur = *self.tail.get();
             while !cur.is_null() {
-                let next = (*cur).next.load(Relaxed);
+                let next = (*cur).next.load(Ordering::Relaxed);
                 let _: Box<Node<T>> = mem::transmute(cur);
                 cur = next;
             }
@@ -187,7 +188,7 @@ mod tests {
                     q.push(i);
                 }
                 tx.send(()).unwrap();
-            }).detach();
+            });
         }
 
         let mut i = 0u;

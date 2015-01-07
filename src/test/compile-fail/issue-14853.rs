@@ -27,5 +27,5 @@ impl Something for X {
 
 fn main() {
     let arr = &["one", "two", "three"];
-    println!("{}", Something::yay(None::<X>, arr));
+    println!("{:?}", Something::yay(None::<X>, arr));
 }

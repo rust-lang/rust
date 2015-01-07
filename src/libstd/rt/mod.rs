@@ -23,7 +23,7 @@
 
 #![allow(dead_code)]
 
-use kinds::Send;
+use marker::Send;
 use ops::FnOnce;
 use sys;
 use thunk::Thunk;
@@ -39,6 +39,7 @@ pub use alloc::heap;
 pub mod backtrace;
 
 // Internals
+#[macro_use]
 mod macros;
 
 // These should be refactored/moved/made private over time
@@ -66,7 +67,7 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     use mem;
     use os;
     use rt;
-    use sys_common::thread_info::{mod, NewThread};
+    use sys_common::thread_info::{self, NewThread};
     use sys_common;
     use thread::Thread;
 

@@ -10,10 +10,10 @@
 
 pub use self::VarValue::*;
 
-use std::kinds::marker;
+use std::marker;
 
 use middle::ty::{expected_found, IntVarValue};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::infer::{uok, ures};
 use middle::infer::InferCtxt;
 use std::cell::RefCell;
@@ -62,7 +62,7 @@ pub trait UnifyValue<'tcx> : Clone + Repr<'tcx> + PartialEq {
 /// to keep the DAG relatively balanced, which helps keep the running
 /// time of the algorithm under control. For more information, see
 /// <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>.
-#[deriving(PartialEq,Clone)]
+#[derive(PartialEq,Clone)]
 pub enum VarValue<K,V> {
     Redirect(K),
     Root(V, uint),
@@ -90,7 +90,7 @@ pub struct Node<K,V> {
     pub rank: uint,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Delegate;
 
 // We can't use V:LatticeValue, much as I would like to,
@@ -129,7 +129,7 @@ impl<'tcx, V:PartialEq+Clone+Repr<'tcx>, K:UnifyKey<'tcx, V>> UnificationTable<K
     pub fn new_key(&mut self, value: V) -> K {
         let index = self.values.push(Root(value, 0));
         let k = UnifyKey::from_index(index);
-        debug!("{}: created new key: {}",
+        debug!("{}: created new key: {:?}",
                UnifyKey::tag(None::<K>),
                k);
         k

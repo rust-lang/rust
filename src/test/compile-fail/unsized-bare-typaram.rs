@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn bar<T: Sized>() { }
-fn foo<Sized? T>() { bar::<T>() } //~ ERROR the trait `core::kinds::Sized` is not implemented
+fn foo<T: ?Sized>() { bar::<T>() } //~ ERROR the trait `core::marker::Sized` is not implemented
 fn main() { }

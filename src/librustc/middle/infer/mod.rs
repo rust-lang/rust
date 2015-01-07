@@ -20,12 +20,13 @@ pub use self::ValuePairs::*;
 pub use self::fixup_err::*;
 pub use middle::ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
+pub use self::region_inference::GenericKind;
 
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::replace_late_bound_regions;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use std::cell::{RefCell};
 use std::rc::Rc;
@@ -97,7 +98,7 @@ pub type SkolemizationMap = FnvHashMap<ty::BoundRegion,ty::Region>;
 /// Why did we require that the two types be related?
 ///
 /// See `error_reporting.rs` for more details
-#[deriving(Clone, Copy, Show)]
+#[derive(Clone, Copy, Show)]
 pub enum TypeOrigin {
     // Not yet categorized in a better way
     Misc(Span),
@@ -135,7 +136,7 @@ pub enum TypeOrigin {
 }
 
 /// See `error_reporting.rs` for more details
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub enum ValuePairs<'tcx> {
     Types(ty::expected_found<Ty<'tcx>>),
     TraitRefs(ty::expected_found<Rc<ty::TraitRef<'tcx>>>),
@@ -146,7 +147,7 @@ pub enum ValuePairs<'tcx> {
 /// encounter an error or subtyping constraint.
 ///
 /// See `error_reporting.rs` for more details.
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct TypeTrace<'tcx> {
     origin: TypeOrigin,
     values: ValuePairs<'tcx>,
@@ -155,7 +156,7 @@ pub struct TypeTrace<'tcx> {
 /// The origin of a `r1 <= r2` constraint.
 ///
 /// See `error_reporting.rs` for more details
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub enum SubregionOrigin<'tcx> {
     // Arose from a subtyping relation
     Subtype(TypeTrace<'tcx>),
@@ -224,7 +225,7 @@ pub enum SubregionOrigin<'tcx> {
 }
 
 /// Times when we replace late-bound regions with variables:
-#[deriving(Clone, Copy, Show)]
+#[derive(Clone, Copy, Show)]
 pub enum LateBoundRegionConversionTime {
     /// when a fn is called
     FnCall,
@@ -239,7 +240,7 @@ pub enum LateBoundRegionConversionTime {
 /// Reasons to create a region inference variable
 ///
 /// See `error_reporting.rs` for more details
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub enum RegionVariableOrigin<'tcx> {
     // Region variables created for ill-categorized reasons,
     // mostly indicates places in need of refactoring
@@ -272,7 +273,7 @@ pub enum RegionVariableOrigin<'tcx> {
     BoundRegionInCoherence(ast::Name),
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum fixup_err {
     unresolved_int_ty(IntVid),
     unresolved_float_ty(FloatVid),
@@ -380,19 +381,6 @@ pub fn mk_subr<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
     let snapshot = cx.region_vars.start_snapshot();
     cx.region_vars.make_subregion(origin, a, b);
     cx.region_vars.commit(snapshot);
-}
-
-pub fn verify_param_bound<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                    origin: SubregionOrigin<'tcx>,
-                                    param_ty: ty::ParamTy,
-                                    a: ty::Region,
-                                    bs: Vec<ty::Region>) {
-    debug!("verify_param_bound({}, {} <: {})",
-           param_ty.repr(cx.tcx),
-           a.repr(cx.tcx),
-           bs.repr(cx.tcx));
-
-    cx.region_vars.verify_param_bound(origin, param_ty, a, bs);
 }
 
 pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -1001,7 +989,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                    err: Option<&ty::type_err<'tcx>>) where
         M: FnOnce(Option<String>, String) -> String,
     {
-        debug!("hi! expected_ty = {}, actual_ty = {}", expected_ty, actual_ty);
+        debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
 
         let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
 
@@ -1014,7 +1002,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                 self.tcx.sess.span_err(sp, format!("{}{}",
                     mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
-                    error_str)[]);
+                    error_str).index(&FullRange));
 
                 for err in err.iter() {
                     ty::note_and_explain_type_err(self.tcx, *err)
@@ -1069,6 +1057,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             self.tcx,
             value,
             |br, _| self.next_region_var(LateBoundRegion(span, br, lbrct)))
+    }
+
+    /// See `verify_generic_bound` method in `region_inference`
+    pub fn verify_generic_bound(&self,
+                                origin: SubregionOrigin<'tcx>,
+                                kind: GenericKind<'tcx>,
+                                a: ty::Region,
+                                bs: Vec<ty::Region>) {
+        debug!("verify_generic_bound({}, {} <: {})",
+               kind.repr(self.tcx),
+               a.repr(self.tcx),
+               bs.repr(self.tcx));
+
+        self.region_vars.verify_generic_bound(origin, kind, a, bs);
     }
 }
 
@@ -1217,7 +1219,7 @@ impl<'tcx> Repr<'tcx> for SubregionOrigin<'tcx> {
             }
             Reborrow(a) => format!("Reborrow({})", a.repr(tcx)),
             ReborrowUpvar(a, b) => {
-                format!("ReborrowUpvar({},{})", a.repr(tcx), b)
+                format!("ReborrowUpvar({},{:?})", a.repr(tcx), b)
             }
             ReferenceOutlivesReferent(_, a) => {
                 format!("ReferenceOutlivesReferent({})", a.repr(tcx))
@@ -1275,7 +1277,7 @@ impl<'tcx> Repr<'tcx> for RegionVariableOrigin<'tcx> {
                 format!("EarlyBoundRegion({},{})", a.repr(tcx), b.repr(tcx))
             }
             LateBoundRegion(a, b, c) => {
-                format!("LateBoundRegion({},{},{})", a.repr(tcx), b.repr(tcx), c)
+                format!("LateBoundRegion({},{},{:?})", a.repr(tcx), b.repr(tcx), c)
             }
             BoundRegionInCoherence(a) => {
                 format!("bound_regionInCoherence({})", a.repr(tcx))

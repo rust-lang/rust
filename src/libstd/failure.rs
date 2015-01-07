@@ -12,7 +12,7 @@
 
 use prelude::v1::*;
 
-use any::{Any, AnyRefExt};
+use any::Any;
 use cell::RefCell;
 use io::IoResult;
 use rt::{backtrace, unwind};
@@ -37,7 +37,7 @@ pub fn on_fail(obj: &(Any+Send), file: &'static str, line: uint) {
     let msg = match obj.downcast_ref::<&'static str>() {
         Some(s) => *s,
         None => match obj.downcast_ref::<String>() {
-            Some(s) => s[],
+            Some(s) => s.index(&FullRange),
             None => "Box<Any>",
         }
     };

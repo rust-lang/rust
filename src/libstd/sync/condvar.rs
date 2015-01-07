@@ -10,8 +10,8 @@
 
 use prelude::v1::*;
 
-use sync::atomic::{mod, AtomicUint};
-use sync::poison::{mod, LockResult};
+use sync::atomic::{AtomicUint, Ordering, ATOMIC_UINT_INIT};
+use sync::poison::{self, LockResult};
 use sys_common::condvar as sys;
 use sys_common::mutex as sys_mutex;
 use time::Duration;
@@ -48,7 +48,7 @@ use sync::{mutex, MutexGuard};
 ///     let mut started = lock.lock().unwrap();
 ///     *started = true;
 ///     cvar.notify_one();
-/// }).detach();
+/// });
 ///
 /// // wait for the thread to start up
 /// let &(ref lock, ref cvar) = &*pair;
@@ -88,7 +88,7 @@ unsafe impl Sync for StaticCondvar {}
 #[unstable = "may be merged with Condvar in the future"]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
     inner: sys::CONDVAR_INIT,
-    mutex: atomic::ATOMIC_UINT_INIT,
+    mutex: ATOMIC_UINT_INIT,
 };
 
 impl Condvar {
@@ -188,6 +188,7 @@ impl Condvar {
     pub fn notify_all(&self) { unsafe { self.inner.inner.notify_all() } }
 }
 
+#[stable]
 impl Drop for Condvar {
     fn drop(&mut self) {
         unsafe { self.inner.inner.destroy() }
@@ -260,7 +261,7 @@ impl StaticCondvar {
 
     fn verify(&self, mutex: &sys_mutex::Mutex) {
         let addr = mutex as *const _ as uint;
-        match self.mutex.compare_and_swap(0, addr, atomic::SeqCst) {
+        match self.mutex.compare_and_swap(0, addr, Ordering::SeqCst) {
             // If we got out 0, then we have successfully bound the mutex to
             // this cvar.
             0 => {}
@@ -337,7 +338,7 @@ mod tests {
                     cnt = cond.wait(cnt).unwrap();
                 }
                 tx.send(()).unwrap();
-            }).detach();
+            });
         }
         drop(tx);
 

@@ -19,8 +19,6 @@
 
 use std::sync::mpsc::{channel, Sender};
 use std::os;
-use std::str::from_str;
-use std::task;
 use std::thread::Thread;
 use std::uint;
 
@@ -30,14 +28,14 @@ fn child_generation(gens_left: uint, tx: Sender<()>) {
     // alive at a time,
     Thread::spawn(move|| {
         if gens_left & 1 == 1 {
-            task::deschedule(); // shake things up a bit
+            Thread::yield_now(); // shake things up a bit
         }
         if gens_left > 0 {
             child_generation(gens_left - 1, tx); // recurse
         } else {
             tx.send(()).unwrap()
         }
-    }).detach();
+    });
 }
 
 fn main() {
@@ -51,7 +49,7 @@ fn main() {
     };
 
     let (tx, rx) = channel();
-    child_generation(from_str::<uint>(args[1].as_slice()).unwrap(), tx);
+    child_generation(args[1].parse().unwrap(), tx);
     if rx.recv().is_err() {
         panic!("it happened when we slumbered");
     }

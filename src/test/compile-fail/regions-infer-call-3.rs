@@ -10,7 +10,7 @@
 
 fn select<'r>(x: &'r int, y: &'r int) -> &'r int { x }
 
-fn with<T>(f: |x: &int| -> T) -> T {
+fn with<T, F>(f: F) -> T where F: FnOnce(&int) -> T {
     f(&20)
 }
 

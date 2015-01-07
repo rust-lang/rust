@@ -19,19 +19,18 @@ use trans::base::*;
 use trans::build::*;
 use trans::cleanup::{CleanupMethods, ScopeId};
 use trans::common::*;
-use trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
+use trans::datum::{Datum, Lvalue, rvalue_scratch_datum};
+use trans::datum::{Rvalue, ByValue};
 use trans::debuginfo;
 use trans::expr;
-use trans::monomorphize::{mod, MonoId};
+use trans::monomorphize::{self, MonoId};
 use trans::type_of::*;
 use trans::type_::Type;
-use middle::ty::{mod, Ty, UnboxedClosureTyper};
+use middle::ty::{self, Ty, UnboxedClosureTyper};
 use middle::subst::{Substs};
 use session::config::FullDebugInfo;
-use util::ppaux::Repr;
 use util::ppaux::ty_to_string;
 
-use arena::TypedArena;
 use syntax::ast;
 use syntax::ast_util;
 
@@ -101,7 +100,7 @@ use syntax::ast_util;
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct EnvValue<'tcx> {
     action: ast::CaptureClause,
     datum: Datum<'tcx, Lvalue>
@@ -109,7 +108,7 @@ pub struct EnvValue<'tcx> {
 
 impl<'tcx> EnvValue<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        format!("{}({})", self.action, self.datum.to_string(ccx))
+        format!("{:?}({})", self.action, self.datum.to_string(ccx))
     }
 }
 
@@ -155,7 +154,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     // compute the type of the closure
-    let cdata_ty = mk_closure_tys(tcx, bound_values[]);
+    let cdata_ty = mk_closure_tys(tcx, bound_values.index(&FullRange));
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
     // tuple.  This could be a ptr in uniq or a box or on stack,
@@ -184,7 +183,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         if ccx.sess().asm_comments() {
             add_comment(bcx, format!("Copy {} into closure",
-                                     bv.to_string(ccx))[]);
+                                     bv.to_string(ccx)).index(&FullRange));
         }
 
         let bound_data = GEPi(bcx, llbox, &[0u, abi::BOX_FIELD_BODY, i]);
@@ -348,7 +347,7 @@ fn fill_fn_pair(bcx: Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef) 
     Store(bcx, llenvptr, GEPi(bcx, pair, &[0u, abi::FAT_PTR_EXTRA]));
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub enum ClosureKind<'tcx> {
     NotClosure,
     // See load_environment.
@@ -421,7 +420,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let s = tcx.map.with_path(id, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
-    let llfn = decl_internal_rust_fn(ccx, fty, s[]);
+    let llfn = decl_internal_rust_fn(ccx, fty, s.index(&FullRange));
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -443,9 +442,9 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   bcx.fcx.param_substs,
                   id,
                   &[],
-                  ty::ty_fn_ret(fty),
+                  ty::erase_late_bound_regions(ccx.tcx(), &ty::ty_fn_ret(fty)),
                   ty::ty_fn_abi(fty),
-                  ClosureEnv::new(freevars[],
+                  ClosureEnv::new(freevars.index(&FullRange),
                                   BoxedClosure(cdata_ty, store)));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
     bcx
@@ -453,22 +452,21 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Returns the LLVM function declaration for an unboxed closure, creating it
 /// if necessary. If the ID does not correspond to a closure ID, returns None.
-pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                                closure_id: ast::DefId,
-                                                                substs: &Substs<'tcx>)
-                                                                -> Option<ValueRef> {
-    let ccx = bcx.ccx();
+pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                              closure_id: ast::DefId,
+                                                              substs: &Substs<'tcx>)
+                                                              -> Option<Datum<'tcx, Rvalue>> {
     if !ccx.tcx().unboxed_closures.borrow().contains_key(&closure_id) {
         // Not an unboxed closure.
         return None
     }
 
-    let function_type = ty::node_id_to_type(bcx.tcx(), closure_id.node);
-    let function_type = monomorphize::apply_param_substs(bcx.tcx(), substs, &function_type);
+    let function_type = ty::node_id_to_type(ccx.tcx(), closure_id.node);
+    let function_type = monomorphize::apply_param_substs(ccx.tcx(), substs, &function_type);
 
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
-    let function_type = ty::normalize_ty(bcx.tcx(), function_type);
+    let function_type = normalize_ty(ccx.tcx(), function_type);
     let params = match function_type.sty {
         ty::ty_unboxed_closure(_, _, ref substs) => substs.types.clone(),
         _ => unreachable!()
@@ -479,10 +477,10 @@ pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk,
     };
 
     match ccx.unboxed_closure_vals().borrow().get(&mono_id) {
-        Some(llfn) => {
+        Some(&llfn) => {
             debug!("get_or_create_declaration_if_unboxed_closure(): found \
                     closure");
-            return Some(*llfn)
+            return Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
         }
         None => {}
     }
@@ -491,18 +489,18 @@ pub fn get_or_create_declaration_if_unboxed_closure<'blk, 'tcx>(bcx: Block<'blk,
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
 
-    let llfn = decl_internal_rust_fn(ccx, function_type, symbol[]);
+    let llfn = decl_internal_rust_fn(ccx, function_type, symbol.index(&FullRange));
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
 
     debug!("get_or_create_declaration_if_unboxed_closure(): inserting new \
-            closure {} (type {})",
+            closure {:?} (type {})",
            mono_id,
            ccx.tn().type_to_string(val_ty(llfn)));
     ccx.unboxed_closure_vals().borrow_mut().insert(mono_id, llfn);
 
-    Some(llfn)
+    Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
 }
 
 pub fn trans_unboxed_closure<'blk, 'tcx>(
@@ -519,7 +517,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
 
     let closure_id = ast_util::local_def(id);
     let llfn = get_or_create_declaration_if_unboxed_closure(
-        bcx,
+        bcx.ccx(),
         closure_id,
         bcx.fcx.param_substs).unwrap();
 
@@ -530,22 +528,23 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     // of the closure expression.
     let typer = NormalizingUnboxedClosureTyper::new(bcx.tcx());
     let function_type = typer.unboxed_closure_type(closure_id, bcx.fcx.param_substs);
-    let function_type = ty::mk_closure(bcx.tcx(), function_type);
 
     let freevars: Vec<ty::Freevar> =
         ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
     let freevar_mode = bcx.tcx().capture_mode(id);
 
+    let sig = ty::erase_late_bound_regions(bcx.tcx(), &function_type.sig);
+
     trans_closure(bcx.ccx(),
                   decl,
                   body,
-                  llfn,
+                  llfn.val,
                   bcx.fcx.param_substs,
                   id,
                   &[],
-                  ty::ty_fn_ret(function_type),
-                  ty::ty_fn_abi(function_type),
-                  ClosureEnv::new(freevars[],
+                  sig.output,
+                  function_type.abi,
+                  ClosureEnv::new(freevars.index(&FullRange),
                                   UnboxedClosure(freevar_mode)));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
@@ -583,97 +582,3 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     bcx
 }
 
-pub fn get_wrapper_for_bare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                         closure_ty: Ty<'tcx>,
-                                         def_id: ast::DefId,
-                                         fn_ptr: ValueRef,
-                                         is_local: bool) -> ValueRef {
-
-    match ccx.closure_bare_wrapper_cache().borrow().get(&fn_ptr) {
-        Some(&llval) => return llval,
-        None => {}
-    }
-
-    let tcx = ccx.tcx();
-
-    debug!("get_wrapper_for_bare_fn(closure_ty={})", closure_ty.repr(tcx));
-
-    let f = match closure_ty.sty {
-        ty::ty_closure(ref f) => f,
-        _ => {
-            ccx.sess().bug(format!("get_wrapper_for_bare_fn: \
-                                    expected a closure ty, got {}",
-                                    closure_ty.repr(tcx))[]);
-        }
-    };
-
-    let name = ty::with_path(tcx, def_id, |path| {
-        mangle_internal_name_by_path_and_seq(path, "as_closure")
-    });
-    let llfn = if is_local {
-        decl_internal_rust_fn(ccx, closure_ty, name[])
-    } else {
-        decl_rust_fn(ccx, closure_ty, name[])
-    };
-
-    ccx.closure_bare_wrapper_cache().borrow_mut().insert(fn_ptr, llfn);
-
-    // This is only used by statics inlined from a different crate.
-    if !is_local {
-        // Don't regenerate the wrapper, just reuse the original one.
-        return llfn;
-    }
-
-    let _icx = push_ctxt("closure::get_wrapper_for_bare_fn");
-
-    let arena = TypedArena::new();
-    let empty_param_substs = Substs::trans_empty();
-    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, true, f.sig.0.output,
-                          &empty_param_substs, None, &arena);
-    let bcx = init_function(&fcx, true, f.sig.0.output);
-
-    let args = create_datums_for_fn_args(&fcx,
-                                         ty::ty_fn_args(closure_ty)
-                                            []);
-    let mut llargs = Vec::new();
-    match fcx.llretslotptr.get() {
-        Some(llretptr) => {
-            assert!(!fcx.needs_ret_allocas);
-            llargs.push(llretptr);
-        }
-        None => {}
-    }
-    llargs.extend(args.iter().map(|arg| arg.val));
-
-    let retval = Call(bcx, fn_ptr, llargs.as_slice(), None);
-    match f.sig.0.output {
-        ty::FnConverging(output_type) => {
-            if return_type_is_void(ccx, output_type) || fcx.llretslotptr.get().is_some() {
-                RetVoid(bcx);
-            } else {
-                Ret(bcx, retval);
-            }
-        }
-        ty::FnDiverging => {
-            RetVoid(bcx);
-        }
-    }
-
-    // HACK(eddyb) finish_fn cannot be used here, we returned directly.
-    debuginfo::clear_source_location(&fcx);
-    fcx.cleanup();
-
-    llfn
-}
-
-pub fn make_closure_from_bare_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                             closure_ty: Ty<'tcx>,
-                                             def_id: ast::DefId,
-                                             fn_ptr: ValueRef)
-                                             -> DatumBlock<'blk, 'tcx, Expr>  {
-    let scratch = rvalue_scratch_datum(bcx, closure_ty, "__adjust");
-    let wrapper = get_wrapper_for_bare_fn(bcx.ccx(), closure_ty, def_id, fn_ptr, true);
-    fill_fn_pair(bcx, scratch.val, wrapper, C_null(Type::i8p(bcx.ccx())));
-
-    DatumBlock::new(bcx, scratch.to_expr_datum())
-}

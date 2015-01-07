@@ -16,12 +16,12 @@ use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;
 
-#[deriving(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum Context {
     Normal, Loop, Closure
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct CheckLoopVisitor<'a> {
     sess: &'a Session,
     cx: Context
@@ -74,11 +74,11 @@ impl<'a> CheckLoopVisitor<'a> {
             Loop => {}
             Closure => {
                 self.sess.span_err(span,
-                                   format!("`{}` inside of a closure", name)[]);
+                                   format!("`{}` inside of a closure", name).index(&FullRange));
             }
             Normal => {
                 self.sess.span_err(span,
-                                   format!("`{}` outside of loop", name)[]);
+                                   format!("`{}` outside of loop", name).index(&FullRange));
             }
         }
     }

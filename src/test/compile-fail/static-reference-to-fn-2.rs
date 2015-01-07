@@ -14,7 +14,9 @@ struct StateMachineIter<'a> {
 
 type StateMachineFunc<'a> = fn(&mut StateMachineIter<'a>) -> Option<&'static str>;
 
-impl<'a> Iterator<&'static str> for StateMachineIter<'a> {
+impl<'a> Iterator for StateMachineIter<'a> {
+    type Item = &'static str;
+
     fn next(&mut self) -> Option<&'static str> {
         return  (*self.statefn)(self);
     }
@@ -51,10 +53,9 @@ fn state_iter() -> StateMachineIter<'static> {
 
 fn main() {
     let mut it = state_iter();
-    println!("{}",it.next());
-    println!("{}",it.next());
-    println!("{}",it.next());
-    println!("{}",it.next());
-    println!("{}",it.next());
+    println!("{:?}",it.next());
+    println!("{:?}",it.next());
+    println!("{:?}",it.next());
+    println!("{:?}",it.next());
+    println!("{:?}",it.next());
 }
-

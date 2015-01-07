@@ -68,14 +68,14 @@ pub mod DefIdSet {
 ///
 /// This uses FNV hashing, as described here:
 /// http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-#[deriving(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default)]
 pub struct FnvHasher;
 
 #[allow(missing_copy_implementations)]
 pub struct FnvState(u64);
 
 impl Hasher<FnvState> for FnvHasher {
-    fn hash<Sized? T: Hash<FnvState>>(&self, t: &T) -> u64 {
+    fn hash<T: ?Sized + Hash<FnvState>>(&self, t: &T) -> u64 {
         let mut state = FnvState(0xcbf29ce484222325);
         t.hash(&mut state);
         let FnvState(ret) = state;

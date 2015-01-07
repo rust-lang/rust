@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
-macro_rules! quote_tokens ( () => (()) );
+macro_rules! quote_tokens { () => (()) }
 
 pub fn main() {
     quote_tokens!();

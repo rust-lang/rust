@@ -34,7 +34,7 @@ pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
          class,
          id,
          &mut out).unwrap();
-    String::from_utf8_lossy(out[]).into_owned()
+    String::from_utf8_lossy(out.index(&FullRange)).into_owned()
 }
 
 /// Exhausts the `lexer` writing the output into `out`.
@@ -165,6 +165,9 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                     }
                 }
             }
+
+            // Special macro vars are like keywords
+            token::SpecialVarNt(_) => "kw-2",
 
             token::Lifetime(..) => "lifetime",
             token::DocComment(..) => "doccomment",

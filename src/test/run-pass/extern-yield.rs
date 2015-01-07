@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern crate libc;
-use std::task;
+use std::thread::Thread;
 
 mod rustrt {
     extern crate libc;
@@ -32,17 +32,17 @@ extern fn cb(data: libc::uintptr_t) -> libc::uintptr_t {
 
 fn count(n: libc::uintptr_t) -> libc::uintptr_t {
     unsafe {
-        task::deschedule();
+        Thread::yield_now();
         rustrt::rust_dbg_call(cb, n)
     }
 }
 
 pub fn main() {
-    for _ in range(0, 10u) {
-        task::spawn(move|| {
+    range(0, 10u).map(|i| {
+        Thread::spawn(move|| {
             let result = count(5);
             println!("result = {}", result);
             assert_eq!(result, 16);
-        });
-    }
+        })
+    }).collect::<Vec<_>>();
 }

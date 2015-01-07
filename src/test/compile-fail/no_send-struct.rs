@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::marker;
 
 struct Foo {
     a: int,
@@ -20,5 +20,5 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Foo { a: 5, ns: marker::NoSend };
     bar(x);
-    //~^ ERROR the trait `core::kinds::Send` is not implemented
+    //~^ ERROR the trait `core::marker::Send` is not implemented
 }

@@ -18,7 +18,7 @@
 // gdb-command:whatis b
 // gdb-check:type = bool
 // gdb-command:whatis i
-// gdb-check:type = int
+// gdb-check:type = isize
 // gdb-command:whatis c
 // gdb-check:type = char
 // gdb-command:whatis i8
@@ -30,7 +30,7 @@
 // gdb-command:whatis i64
 // gdb-check:type = i64
 // gdb-command:whatis u
-// gdb-check:type = uint
+// gdb-check:type = usize
 // gdb-command:whatis u8
 // gdb-check:type = u8
 // gdb-command:whatis u16
@@ -53,13 +53,13 @@
 fn main() {
     let unit: () = ();
     let b: bool = false;
-    let i: int = -1;
+    let i: isize = -1;
     let c: char = 'a';
     let i8: i8 = 68;
     let i16: i16 = -16;
     let i32: i32 = -32;
     let i64: i64 = -64;
-    let u: uint = 1;
+    let u: usize = 1;
     let u8: u8 = 100;
     let u16: u16 = 16;
     let u32: u32 = 32;

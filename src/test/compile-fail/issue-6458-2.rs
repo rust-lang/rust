@@ -10,6 +10,6 @@
 
 fn main() {
     // Unconstrained type:
-    format!("{}", None);
+    format!("{:?}", None);
     //~^ ERROR type annotations required
 }

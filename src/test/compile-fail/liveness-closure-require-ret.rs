@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn force(f: || -> int) -> int { f() }
+fn force<F>(f: F) -> int where F: FnOnce() -> int { f() }
 fn main() { println!("{}", force(|| {})); } //~ ERROR mismatched types

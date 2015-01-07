@@ -41,14 +41,15 @@ use self::Blocker::*;
 use vec::Vec;
 use core::mem;
 
-use sync::{atomic, Mutex, MutexGuard};
-use sync::mpsc::blocking::{mod, WaitToken, SignalToken};
-use sync::mpsc::select::StartResult::{mod, Installed, Abort};
+use sync::atomic::{Ordering, AtomicUint};
+use sync::mpsc::blocking::{self, WaitToken, SignalToken};
+use sync::mpsc::select::StartResult::{self, Installed, Abort};
+use sync::{Mutex, MutexGuard};
 
 pub struct Packet<T> {
     /// Only field outside of the mutex. Just done for kicks, but mainly because
     /// the other shared channel already had the code implemented
-    channels: atomic::AtomicUint,
+    channels: AtomicUint,
 
     lock: Mutex<State<T>>,
 }
@@ -103,7 +104,7 @@ struct Buffer<T> {
     size: uint,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum Failure {
     Empty,
     Disconnected,
@@ -137,7 +138,7 @@ fn wakeup<T>(token: SignalToken, guard: MutexGuard<State<T>>) {
 impl<T: Send> Packet<T> {
     pub fn new(cap: uint) -> Packet<T> {
         Packet {
-            channels: atomic::AtomicUint::new(1),
+            channels: AtomicUint::new(1),
             lock: Mutex::new(State {
                 disconnected: false,
                 blocker: NoneBlocked,
@@ -304,12 +305,12 @@ impl<T: Send> Packet<T> {
     // Prepares this shared packet for a channel clone, essentially just bumping
     // a refcount.
     pub fn clone_chan(&self) {
-        self.channels.fetch_add(1, atomic::SeqCst);
+        self.channels.fetch_add(1, Ordering::SeqCst);
     }
 
     pub fn drop_chan(&self) {
         // Only flag the channel as disconnected if we're the last channel
-        match self.channels.fetch_sub(1, atomic::SeqCst) {
+        match self.channels.fetch_sub(1, Ordering::SeqCst) {
             1 => {}
             _ => return
         }
@@ -412,7 +413,7 @@ impl<T: Send> Packet<T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Packet<T> {
     fn drop(&mut self) {
-        assert_eq!(self.channels.load(atomic::SeqCst), 0);
+        assert_eq!(self.channels.load(Ordering::SeqCst), 0);
         let mut guard = self.lock.lock().unwrap();
         assert!(guard.queue.dequeue().is_none());
         assert!(guard.canceled.is_none());
@@ -436,7 +437,8 @@ impl<T> Buffer<T> {
         let start = self.start;
         self.size -= 1;
         self.start = (self.start + 1) % self.buf.len();
-        self.buf[start].take().unwrap()
+        let result = &mut self.buf[start];
+        result.take().unwrap()
     }
 
     fn size(&self) -> uint { self.size }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn borrow(x: &int, f: |x: &int|) {
+fn borrow<F>(x: &int, f: F) where F: FnOnce(&int) {
     f(x)
 }
 

@@ -16,7 +16,7 @@ use self::ResolveReason::*;
 use astconv::AstConv;
 use check::FnCtxt;
 use middle::pat_util;
-use middle::ty::{mod, Ty, MethodCall, MethodCallee};
+use middle::ty::{self, Ty, MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
 use middle::infer;
 use write_substs_to_tcx;
@@ -266,10 +266,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             Some(adjustment) => {
                 let adj_object = ty::adjust_is_object(&adjustment);
                 let resolved_adjustment = match adjustment {
-                    ty::AdjustAddEnv(def_id, store) => {
-                        ty::AdjustAddEnv(def_id, self.resolve(&store, reason))
-                    }
-
                     ty::AdjustReifyFnPointer(def_id) => {
                         ty::AdjustReifyFnPointer(def_id)
                     }
@@ -291,7 +287,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         })
                     }
                 };
-                debug!("Adjustments for node {}: {}", id, resolved_adjustment);
+                debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);
                 self.tcx().adjustments.borrow_mut().insert(
                     id, resolved_adjustment);
             }
@@ -304,7 +300,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // Resolve any method map entry
         match self.fcx.inh.method_map.borrow_mut().remove(&method_call) {
             Some(method) => {
-                debug!("writeback::resolve_method_map_entry(call={}, entry={})",
+                debug!("writeback::resolve_method_map_entry(call={:?}, entry={})",
                        method_call,
                        method.repr(self.tcx()));
                 let new_method = MethodCallee {
@@ -329,7 +325,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Resolution reason.
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum ResolveReason {
     ResolvingExpr(Span),
     ResolvingLocal(Span),

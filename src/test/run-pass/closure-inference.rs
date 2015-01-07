@@ -11,9 +11,9 @@
 
 fn foo(i: int) -> int { i + 1 }
 
-fn apply<A>(f: |A| -> A, v: A) -> A { f(v) }
+fn apply<A, F>(f: F, v: A) -> A where F: FnOnce(A) -> A { f(v) }
 
 pub fn main() {
-    let f = {|i| foo(i)};
+    let f = {|: i| foo(i)};
     assert_eq!(apply(f, 2), 3);
 }

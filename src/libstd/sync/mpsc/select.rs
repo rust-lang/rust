@@ -57,12 +57,12 @@
 use core::prelude::*;
 
 use core::cell::Cell;
-use core::kinds::marker;
+use core::marker;
 use core::mem;
 use core::uint;
 
 use sync::mpsc::{Receiver, RecvError};
-use sync::mpsc::blocking::{mod, SignalToken};
+use sync::mpsc::blocking::{self, SignalToken};
 
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.
@@ -94,7 +94,7 @@ pub struct Handle<'rx, T:'rx> {
 struct Packets { cur: *mut Handle<'static, ()> }
 
 #[doc(hidden)]
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub enum StartResult {
     Installed,
     Abort,
@@ -319,7 +319,9 @@ impl<'rx, T: Send> Drop for Handle<'rx, T> {
     }
 }
 
-impl Iterator<*mut Handle<'static, ()>> for Packets {
+impl Iterator for Packets {
+    type Item = *mut Handle<'static, ()>;
+
     fn next(&mut self) -> Option<*mut Handle<'static, ()>> {
         if self.cur.is_null() {
             None

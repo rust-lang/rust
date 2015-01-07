@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
-macro_rules! higher_order (
+macro_rules! higher_order {
     (subst $lhs:tt => $rhs:tt) => ({
-            macro_rules! anon ( $lhs => $rhs );
+            macro_rules! anon { $lhs => $rhs }
             anon!(1u, 2u, "foo")
     });
-);
+}
 
 fn main() {
     let val = higher_order!(subst ($x:expr, $y:expr, $foo:expr) => (($x + $y, $foo)));

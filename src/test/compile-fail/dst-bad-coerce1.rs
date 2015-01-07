@@ -10,7 +10,7 @@
 
 // Attempt to change the type as well as unsizing.
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     ptr: T
 }
 
@@ -18,11 +18,11 @@ struct Foo;
 trait Bar {}
 
 pub fn main() {
-    // With a vec of ints.
+    // With a vec of isize.
     let f1 = Fat { ptr: [1, 2, 3] };
-    let f2: &Fat<[int; 3]> = &f1;
-    let f3: &Fat<[uint]> = f2;
-    //~^ ERROR mismatched types: expected `&Fat<[uint]>`, found `&Fat<[int; 3]>`
+    let f2: &Fat<[isize; 3]> = &f1;
+    let f3: &Fat<[usize]> = f2;
+    //~^ ERROR mismatched types: expected `&Fat<[usize]>`, found `&Fat<[isize; 3]>`
 
     // With a trait.
     let f1 = Fat { ptr: Foo };

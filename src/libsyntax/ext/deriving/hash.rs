@@ -25,20 +25,14 @@ pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
     F: FnOnce(P<Item>),
 {
 
-    let (path, generics, args) = if cx.ecfg.deriving_hash_type_parameter {
-        (Path::new_(vec!("std", "hash", "Hash"), None,
-                    vec!(box Literal(Path::new_local("__S"))), true),
-         LifetimeBounds {
-             lifetimes: Vec::new(),
-             bounds: vec!(("__S",
-                           vec!(Path::new(vec!("std", "hash", "Writer"))))),
-         },
-         Path::new_local("__S"))
-    } else {
-        (Path::new(vec!("std", "hash", "Hash")),
-         LifetimeBounds::empty(),
-         Path::new(vec!("std", "hash", "sip", "SipState")))
+    let path = Path::new_(vec!("std", "hash", "Hash"), None,
+                          vec!(box Literal(Path::new_local("__S"))), true);
+    let generics = LifetimeBounds {
+        lifetimes: Vec::new(),
+        bounds: vec!(("__S",
+                      vec!(Path::new(vec!("std", "hash", "Writer"))))),
     };
+    let args = Path::new_local("__S");
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let hash_trait_def = TraitDef {
@@ -55,7 +49,7 @@ pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
                 args: vec!(Ptr(box Literal(args), Borrowed(None, MutMutable))),
                 ret_ty: nil_ty(),
                 attributes: attrs,
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(box |a, b, c| {
                     hash_substructure(a, b, c)
                 })
             }
@@ -99,7 +93,7 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
     }
 
     if stmts.len() == 0 {
-        cx.span_bug(trait_span, "#[deriving(Hash)] needs at least one field");
+        cx.span_bug(trait_span, "#[derive(Hash)] needs at least one field");
     }
 
     cx.expr_block(cx.block(trait_span, stmts, None))

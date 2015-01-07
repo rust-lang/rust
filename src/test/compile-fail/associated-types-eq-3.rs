@@ -11,8 +11,6 @@
 // Test equality constraints on associated types. Check we get type errors
 // where we should.
 
-#![feature(associated_types)]
-
 pub trait Foo {
     type A;
     fn boo(&self) -> <Self as Foo>::A;
@@ -43,6 +41,6 @@ pub fn baz(x: &Foo<A=Bar>) {
 
 pub fn main() {
     let a = 42i;
-    foo1(a); //~ERROR expected uint, found struct Bar
-    baz(&a); //~ERROR expected uint, found struct Bar
+    foo1(a); //~ERROR expected usize, found struct Bar
+    baz(&a); //~ERROR expected usize, found struct Bar
 }

@@ -23,17 +23,18 @@ use trans::cleanup::CleanupMethods;
 use trans::expr;
 use trans::tvec;
 use trans::type_of;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux::{ty_to_string};
 
 use std::fmt;
 use syntax::ast;
+use syntax::codemap::DUMMY_SP;
 
 /// A `Datum` encapsulates the result of evaluating an expression.  It
 /// describes where the value is stored, what Rust type the value has,
 /// whether it is addressed by reference, and so forth. Please refer
 /// the section on datums in `doc.rs` for more details.
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Datum<'tcx, K> {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `kind` below.
@@ -51,7 +52,7 @@ pub struct DatumBlock<'blk, 'tcx: 'blk, K> {
     pub datum: Datum<'tcx, K>,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum Expr {
     /// a fresh value that was produced and which has no cleanup yet
     /// because it has not yet "landed" into its permanent home
@@ -63,10 +64,10 @@ pub enum Expr {
     LvalueExpr,
 }
 
-#[deriving(Clone, Copy, Show)]
+#[derive(Clone, Copy, Show)]
 pub struct Lvalue;
 
-#[deriving(Show)]
+#[derive(Show)]
 pub struct Rvalue {
     pub mode: RvalueMode
 }
@@ -82,7 +83,7 @@ impl Drop for Rvalue {
     fn drop(&mut self) { }
 }
 
-#[deriving(Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Hash, Show)]
 pub enum RvalueMode {
     /// `val` is a pointer to the actual value (and thus has type *T)
     ByRef,
@@ -463,7 +464,7 @@ impl<'tcx> Datum<'tcx, Lvalue> {
             }
             _ => bcx.tcx().sess.bug(
                 format!("Unexpected unsized type in get_element: {}",
-                        bcx.ty_to_string(self.ty))[])
+                        bcx.ty_to_string(self.ty)).index(&FullRange))
         };
         Datum {
             val: val,
@@ -543,14 +544,15 @@ impl<'tcx, K: KindOps + fmt::Show> Datum<'tcx, K> {
          * affine values (since they must never be duplicated).
          */
 
-        let param_env = ty::empty_parameter_environment();
-        assert!(!ty::type_moves_by_default(bcx.tcx(), self.ty, &param_env));
+        assert!(!ty::type_moves_by_default(&ty::empty_parameter_environment(bcx.tcx()),
+                                           DUMMY_SP,
+                                           self.ty));
         self.shallow_copy_raw(bcx, dst)
     }
 
     #[allow(dead_code)] // useful for debugging
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        format!("Datum({}, {}, {})",
+        format!("Datum({}, {}, {:?})",
                 ccx.tn().val_to_string(self.val),
                 ty_to_string(ccx.tcx(), self.ty),
                 self.kind)

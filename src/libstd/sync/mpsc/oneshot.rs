@@ -40,9 +40,9 @@ use self::MyUpgrade::*;
 use core::prelude::*;
 
 use sync::mpsc::Receiver;
-use sync::mpsc::blocking::{mod, SignalToken};
+use sync::mpsc::blocking::{self, SignalToken};
 use core::mem;
-use sync::atomic;
+use sync::atomic::{AtomicUint, Ordering};
 
 // Various states you can find a port in.
 const EMPTY: uint = 0;          // initial state: no data, no blocked reciever
@@ -56,7 +56,7 @@ const DISCONNECTED: uint = 2;   // channel is disconnected OR upgraded
 
 pub struct Packet<T> {
     // Internal state of the chan/port pair (stores the blocked task as well)
-    state: atomic::AtomicUint,
+    state: AtomicUint,
     // One-shot data slot location
     data: Option<T>,
     // when used for the second time, a oneshot channel must be upgraded, and
@@ -93,7 +93,7 @@ impl<T: Send> Packet<T> {
         Packet {
             data: None,
             upgrade: NothingSent,
-            state: atomic::AtomicUint::new(EMPTY),
+            state: AtomicUint::new(EMPTY),
         }
     }
 
@@ -107,7 +107,7 @@ impl<T: Send> Packet<T> {
         self.data = Some(t);
         self.upgrade = SendUsed;
 
-        match self.state.swap(DATA, atomic::SeqCst) {
+        match self.state.swap(DATA, Ordering::SeqCst) {
             // Sent the data, no one was waiting
             EMPTY => Ok(()),
 
@@ -141,14 +141,14 @@ impl<T: Send> Packet<T> {
     pub fn recv(&mut self) -> Result<T, Failure<T>> {
         // Attempt to not block the task (it's a little expensive). If it looks
         // like we're not empty, then immediately go through to `try_recv`.
-        if self.state.load(atomic::SeqCst) == EMPTY {
+        if self.state.load(Ordering::SeqCst) == EMPTY {
             let (wait_token, signal_token) = blocking::tokens();
             let ptr = unsafe { signal_token.cast_to_uint() };
 
             // race with senders to enter the blocking state
-            if self.state.compare_and_swap(EMPTY, ptr, atomic::SeqCst) == EMPTY {
+            if self.state.compare_and_swap(EMPTY, ptr, Ordering::SeqCst) == EMPTY {
                 wait_token.wait();
-                debug_assert!(self.state.load(atomic::SeqCst) != EMPTY);
+                debug_assert!(self.state.load(Ordering::SeqCst) != EMPTY);
             } else {
                 // drop the signal token, since we never blocked
                 drop(unsafe { SignalToken::cast_from_uint(ptr) });
@@ -159,7 +159,7 @@ impl<T: Send> Packet<T> {
     }
 
     pub fn try_recv(&mut self) -> Result<T, Failure<T>> {
-        match self.state.load(atomic::SeqCst) {
+        match self.state.load(Ordering::SeqCst) {
             EMPTY => Err(Empty),
 
             // We saw some data on the channel, but the channel can be used
@@ -169,7 +169,7 @@ impl<T: Send> Packet<T> {
             // the state changes under our feet we'd rather just see that state
             // change.
             DATA => {
-                self.state.compare_and_swap(DATA, EMPTY, atomic::SeqCst);
+                self.state.compare_and_swap(DATA, EMPTY, Ordering::SeqCst);
                 match self.data.take() {
                     Some(data) => Ok(data),
                     None => unreachable!(),
@@ -209,7 +209,7 @@ impl<T: Send> Packet<T> {
         };
         self.upgrade = GoUp(up);
 
-        match self.state.swap(DISCONNECTED, atomic::SeqCst) {
+        match self.state.swap(DISCONNECTED, Ordering::SeqCst) {
             // If the channel is empty or has data on it, then we're good to go.
             // Senders will check the data before the upgrade (in case we
             // plastered over the DATA state).
@@ -225,7 +225,7 @@ impl<T: Send> Packet<T> {
     }
 
     pub fn drop_chan(&mut self) {
-        match self.state.swap(DISCONNECTED, atomic::SeqCst) {
+        match self.state.swap(DISCONNECTED, Ordering::SeqCst) {
             DATA | DISCONNECTED | EMPTY => {}
 
             // If someone's waiting, we gotta wake them up
@@ -236,7 +236,7 @@ impl<T: Send> Packet<T> {
     }
 
     pub fn drop_port(&mut self) {
-        match self.state.swap(DISCONNECTED, atomic::SeqCst) {
+        match self.state.swap(DISCONNECTED, Ordering::SeqCst) {
             // An empty channel has nothing to do, and a remotely disconnected
             // channel also has nothing to do b/c we're about to run the drop
             // glue
@@ -259,7 +259,7 @@ impl<T: Send> Packet<T> {
     // If Ok, the value is whether this port has data, if Err, then the upgraded
     // port needs to be checked instead of this one.
     pub fn can_recv(&mut self) -> Result<bool, Receiver<T>> {
-        match self.state.load(atomic::SeqCst) {
+        match self.state.load(Ordering::SeqCst) {
             EMPTY => Ok(false), // Welp, we tried
             DATA => Ok(true),   // we have some un-acquired data
             DISCONNECTED if self.data.is_some() => Ok(true), // we have data
@@ -284,7 +284,7 @@ impl<T: Send> Packet<T> {
     // because there is data, or fail because there is an upgrade pending.
     pub fn start_selection(&mut self, token: SignalToken) -> SelectionResult<T> {
         let ptr = unsafe { token.cast_to_uint() };
-        match self.state.compare_and_swap(EMPTY, ptr, atomic::SeqCst) {
+        match self.state.compare_and_swap(EMPTY, ptr, Ordering::SeqCst) {
             EMPTY => SelSuccess,
             DATA => {
                 drop(unsafe { SignalToken::cast_from_uint(ptr) });
@@ -322,7 +322,7 @@ impl<T: Send> Packet<T> {
     //
     // The return value indicates whether there's data on this port.
     pub fn abort_selection(&mut self) -> Result<bool, Receiver<T>> {
-        let state = match self.state.load(atomic::SeqCst) {
+        let state = match self.state.load(Ordering::SeqCst) {
             // Each of these states means that no further activity will happen
             // with regard to abortion selection
             s @ EMPTY |
@@ -331,7 +331,7 @@ impl<T: Send> Packet<T> {
 
             // If we've got a blocked task, then use an atomic to gain ownership
             // of it (may fail)
-            ptr => self.state.compare_and_swap(ptr, EMPTY, atomic::SeqCst)
+            ptr => self.state.compare_and_swap(ptr, EMPTY, Ordering::SeqCst)
         };
 
         // Now that we've got ownership of our state, figure out what to do
@@ -370,6 +370,6 @@ impl<T: Send> Packet<T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Packet<T> {
     fn drop(&mut self) {
-        assert_eq!(self.state.load(atomic::SeqCst), DISCONNECTED);
+        assert_eq!(self.state.load(Ordering::SeqCst), DISCONNECTED);
     }
 }

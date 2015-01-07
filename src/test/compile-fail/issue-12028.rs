@@ -22,27 +22,28 @@ trait Stream {
     fn result(&self) -> u64;
 }
 
-trait StreamHasher<S: Stream> {
-    fn stream(&self) -> S;
+trait StreamHasher {
+    type S : Stream;
+    fn stream(&self) -> Self::S;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
-trait StreamHash<S: Stream, H: StreamHasher<S>>: Hash<H> {
-    fn input_stream(&self, stream: &mut S);
+trait StreamHash<H: StreamHasher>: Hash<H> {
+    fn input_stream(&self, stream: &mut H::S);
 }
 
-impl<S: Stream, H: StreamHasher<S>> Hash<H> for u8 {
+impl<H: StreamHasher> Hash<H> for u8 {
     fn hash2(&self, hasher: &H) -> u64 {
         let mut stream = hasher.stream();
         self.input_stream(&mut stream); //~ ERROR type annotations required
-        stream.result()
+        Stream::result(&stream)
     }
 }
 
-impl<S: Stream, H: StreamHasher<S>> StreamHash<S, H> for u8 {
-    fn input_stream(&self, stream: &mut S) {
-        stream.input(&[*self]);
+impl<H: StreamHasher> StreamHash<H> for u8 {
+    fn input_stream(&self, stream: &mut H::S) {
+        Stream::input(&*stream, &[*self]);
     }
 }
 

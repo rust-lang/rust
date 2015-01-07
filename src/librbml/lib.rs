@@ -24,13 +24,11 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![allow(unknown_features)]
-#![feature(macro_rules, phase, slicing_syntax, globs)]
-#![feature(unboxed_closures)]
-#![allow(missing_docs)]
+#![feature(slicing_syntax)]
 
 extern crate serialize;
+#[macro_use] extern crate log;
 
-#[phase(plugin, link)] extern crate log;
 #[cfg(test)] extern crate test;
 
 pub use self::EbmlEncoderTag::*;
@@ -41,7 +39,7 @@ use std::str;
 pub mod io;
 
 /// Common data structures
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Doc<'a> {
     pub data: &'a [u8],
     pub start: uint,
@@ -58,7 +56,7 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn as_str_slice<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.data[self.start..self.end]).unwrap()
+        str::from_utf8(self.data.index(&(self.start..self.end))).unwrap()
     }
 
     pub fn as_str(&self) -> String {
@@ -71,7 +69,7 @@ pub struct TaggedDoc<'a> {
     pub doc: Doc<'a>,
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum EbmlEncoderTag {
     EsUint,     // 0
     EsU64,      // 1
@@ -105,7 +103,7 @@ pub enum EbmlEncoderTag {
     EsLabel, // Used only when debugging
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum Error {
     IntTooBig(uint),
     Expected(String),
@@ -140,14 +138,14 @@ pub mod reader {
             match $e {
                 Ok(e) => e,
                 Err(e) => {
-                    debug!("ignored error: {}", e);
+                    debug!("ignored error: {:?}", e);
                     return $r
                 }
             }
         )
     }
 
-    #[deriving(Copy)]
+    #[derive(Copy)]
     pub struct Res {
         pub val: uint,
         pub next: uint
@@ -249,7 +247,7 @@ pub mod reader {
         match maybe_get_doc(d, tg) {
             Some(d) => d,
             None => {
-                error!("failed to find block with tag {}", tg);
+                error!("failed to find block with tag {:?}", tg);
                 panic!();
             }
         }
@@ -293,7 +291,7 @@ pub mod reader {
     pub fn with_doc_data<T, F>(d: Doc, f: F) -> T where
         F: FnOnce(&[u8]) -> T,
     {
-        f(d.data[d.start..d.end])
+        f(d.data.index(&(d.start..d.end)))
     }
 
 
@@ -344,8 +342,8 @@ pub mod reader {
                     self.pos = r_doc.end;
                     let str = r_doc.as_str_slice();
                     if lbl != str {
-                        return Err(Expected(format!("Expected label {} but \
-                                                     found {}", lbl, str)));
+                        return Err(Expected(format!("Expected label {:?} but \
+                                                     found {:?}", lbl, str)));
                     }
                 }
             }
@@ -353,14 +351,14 @@ pub mod reader {
         }
 
         fn next_doc(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<Doc<'doc>> {
-            debug!(". next_doc(exp_tag={})", exp_tag);
+            debug!(". next_doc(exp_tag={:?})", exp_tag);
             if self.pos >= self.parent.end {
                 return Err(Expected(format!("no more documents in \
                                              current node!")));
             }
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 try!(doc_at(self.parent.data, self.pos));
-            debug!("self.parent={}-{} self.pos={} r_tag={} r_doc={}-{}",
+            debug!("self.parent={:?}-{:?} self.pos={:?} r_tag={:?} r_doc={:?}-{:?}",
                    self.parent.start,
                    self.parent.end,
                    self.pos,
@@ -368,8 +366,8 @@ pub mod reader {
                    r_doc.start,
                    r_doc.end);
             if r_tag != (exp_tag as uint) {
-                return Err(Expected(format!("expected EBML doc with tag {} but \
-                                             found tag {}", exp_tag, r_tag)));
+                return Err(Expected(format!("expected EBML doc with tag {:?} but \
+                                             found tag {:?}", exp_tag, r_tag)));
             }
             if r_doc.end > self.parent.end {
                 return Err(Expected(format!("invalid EBML, child extends to \
@@ -396,7 +394,7 @@ pub mod reader {
 
         fn _next_uint(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<uint> {
             let r = doc_as_u32(try!(self.next_doc(exp_tag)));
-            debug!("_next_uint exp_tag={} result={}", exp_tag, r);
+            debug!("_next_uint exp_tag={:?} result={:?}", exp_tag, r);
             Ok(r as uint)
         }
 
@@ -417,7 +415,8 @@ pub mod reader {
         }
     }
 
-    impl<'doc> serialize::Decoder<Error> for Decoder<'doc> {
+    impl<'doc> serialize::Decoder for Decoder<'doc> {
+        type Error = Error;
         fn read_nil(&mut self) -> DecodeResult<()> { Ok(()) }
 
         fn read_u64(&mut self) -> DecodeResult<u64> { Ok(doc_as_u64(try!(self.next_doc(EsU64)))) }
@@ -742,7 +741,7 @@ pub mod writer {
         }
 
         pub fn start_tag(&mut self, tag_id: uint) -> EncodeResult {
-            debug!("Start tag {}", tag_id);
+            debug!("Start tag {:?}", tag_id);
 
             // Write the enum ID:
             try!(write_vuint(self.writer, tag_id));
@@ -761,7 +760,7 @@ pub mod writer {
             try!(write_sized_vuint(self.writer, size, 4u));
             let r = try!(self.writer.seek(cur_pos as i64, io::SeekSet));
 
-            debug!("End tag (size = {})", size);
+            debug!("End tag (size = {:?})", size);
             Ok(r)
         }
 
@@ -828,12 +827,12 @@ pub mod writer {
         }
 
         pub fn wr_bytes(&mut self, b: &[u8]) -> EncodeResult {
-            debug!("Write {} bytes", b.len());
+            debug!("Write {:?} bytes", b.len());
             self.writer.write(b)
         }
 
         pub fn wr_str(&mut self, s: &str) -> EncodeResult {
-            debug!("Write str: {}", s);
+            debug!("Write str: {:?}", s);
             self.writer.write(s.as_bytes())
         }
     }
@@ -872,7 +871,9 @@ pub mod writer {
         }
     }
 
-    impl<'a, W: Writer + Seek> serialize::Encoder<io::IoError> for Encoder<'a, W> {
+    impl<'a, W: Writer + Seek> serialize::Encoder for Encoder<'a, W> {
+        type Error = io::IoError;
+
         fn emit_nil(&mut self) -> EncodeResult {
             Ok(())
         }
@@ -1138,7 +1139,7 @@ mod tests {
     #[test]
     fn test_option_int() {
         fn test_v(v: Option<int>) {
-            debug!("v == {}", v);
+            debug!("v == {:?}", v);
             let mut wr = SeekableMemWriter::new();
             {
                 let mut rbml_w = writer::Encoder::new(&mut wr);
@@ -1147,7 +1148,7 @@ mod tests {
             let rbml_doc = Doc::new(wr.get_ref());
             let mut deser = reader::Decoder::new(rbml_doc);
             let v1 = Decodable::decode(&mut deser).unwrap();
-            debug!("v1 == {}", v1);
+            debug!("v1 == {:?}", v1);
             assert_eq!(v, v1);
         }
 
@@ -1165,12 +1166,12 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_A_aligned(b: &mut Bencher) {
-        let data = Vec::from_fn(4*100, |i| {
+        let data = range(0, 4*100).map(|i| {
             match i % 2 {
               0 => 0x80u8,
               _ => i as u8,
             }
-        });
+        }).collect::<Vec<_>>();
         let mut sum = 0u;
         b.iter(|| {
             let mut i = 0;
@@ -1183,12 +1184,12 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_A_unaligned(b: &mut Bencher) {
-        let data = Vec::from_fn(4*100+1, |i| {
+        let data = range(0, 4*100+1).map(|i| {
             match i % 2 {
               1 => 0x80u8,
               _ => i as u8
             }
-        });
+        }).collect::<Vec<_>>();
         let mut sum = 0u;
         b.iter(|| {
             let mut i = 1;
@@ -1201,13 +1202,13 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_D_aligned(b: &mut Bencher) {
-        let data = Vec::from_fn(4*100, |i| {
+        let data = range(0, 4*100).map(|i| {
             match i % 4 {
               0 => 0x10u8,
               3 => i as u8,
               _ => 0u8
             }
-        });
+        }).collect::<Vec<_>>();
         let mut sum = 0u;
         b.iter(|| {
             let mut i = 0;
@@ -1220,13 +1221,13 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_D_unaligned(b: &mut Bencher) {
-        let data = Vec::from_fn(4*100+1, |i| {
+        let data = range(0, 4*100+1).map(|i| {
             match i % 4 {
               1 => 0x10u8,
               0 => i as u8,
               _ => 0u8
             }
-        });
+        }).collect::<Vec<_>>();
         let mut sum = 0u;
         b.iter(|| {
             let mut i = 1;

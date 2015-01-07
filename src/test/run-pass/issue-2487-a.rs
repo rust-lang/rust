@@ -29,7 +29,7 @@ fn socket() -> socket {
     }
 }
 
-fn closure(f: ||) { f() }
+fn closure<F>(f: F) where F: FnOnce() { f() }
 
 fn setsockopt_bytes(_sock: int) { }
 

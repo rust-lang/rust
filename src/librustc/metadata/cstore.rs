@@ -23,8 +23,8 @@ use metadata::loader;
 use util::nodemap::{FnvHashMap, NodeMap};
 
 use std::cell::RefCell;
-use std::c_vec::CVec;
 use std::rc::Rc;
+use flate::Bytes;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::IdentInterner;
@@ -36,7 +36,7 @@ use syntax::parse::token::IdentInterner;
 pub type cnum_map = FnvHashMap<ast::CrateNum, ast::CrateNum>;
 
 pub enum MetadataBlob {
-    MetadataVec(CVec<u8>),
+    MetadataVec(Bytes),
     MetadataArchive(loader::ArchiveMetadata),
 }
 
@@ -48,13 +48,13 @@ pub struct crate_metadata {
     pub span: Span,
 }
 
-#[deriving(Copy, Show, PartialEq, Clone)]
+#[derive(Copy, Show, PartialEq, Clone)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,
 }
 
-#[deriving(Copy, Clone, PartialEq, FromPrimitive)]
+#[derive(Copy, Clone, PartialEq, FromPrimitive)]
 pub enum NativeLibraryKind {
     NativeStatic,    // native static library (.a archive)
     NativeFramework, // OSX-specific
@@ -63,7 +63,7 @@ pub enum NativeLibraryKind {
 
 // Where a crate came from on the local filesystem. One of these two options
 // must be non-None.
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct CrateSource {
     pub dylib: Option<Path>,
     pub rlib: Option<Path>,

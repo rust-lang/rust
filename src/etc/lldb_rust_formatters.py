@@ -79,11 +79,11 @@ def print_struct_val_starting_from(field_start_index, val, internal_dict):
   has_field_names = type_has_field_names(t)
 
   if has_field_names:
-      template = "%(type_name)s {\n%(body)s\n}"
-      separator = ", \n"
+    template = "%(type_name)s {\n%(body)s\n}"
+    separator = ", \n"
   else:
-      template = "%(type_name)s(%(body)s)"
-      separator = ", "
+    template = "%(type_name)s(%(body)s)"
+    separator = ", "
 
   if type_name.startswith("("):
     # this is a tuple, so don't print the type name
@@ -125,25 +125,25 @@ def print_enum_val(val, internal_dict):
       if last_separator_index == -1:
         return "<invalid enum encoding: %s>" % first_variant_name
 
-      second_last_separator_index = first_variant_name.rfind("$", 0, last_separator_index)
-      if second_last_separator_index == -1:
-        return "<invalid enum encoding: %s>" % first_variant_name
+      start_index = len("RUST$ENCODED$ENUM$")
 
-      # Extract index of the discriminator field
+      # Extract indices of the discriminator field
       try:
-        disr_field_index = first_variant_name[second_last_separator_index + 1 :
-                                              last_separator_index]
-        disr_field_index = int(disr_field_index)
+        disr_field_indices = first_variant_name[start_index :
+                                              last_separator_index].split("$")
+        disr_field_indices = [int(index) for index in disr_field_indices]
       except:
         return "<invalid enum encoding: %s>" % first_variant_name
 
       # Read the discriminant
-      disr_val = val.GetChildAtIndex(0).GetChildAtIndex(disr_field_index)
+      disr_val = val.GetChildAtIndex(0)
+      for index in disr_field_indices:
+        disr_val = disr_val.GetChildAtIndex(index)
 
       # If the discriminant field is a fat pointer we have to consider the
       # first word as the true discriminant
       if disr_val.GetType().GetTypeClass() == lldb.eTypeClassStruct:
-          disr_val = disr_val.GetChildAtIndex(0)
+        disr_val = disr_val.GetChildAtIndex(0)
 
       if disr_val.GetValueAsUnsigned() == 0:
         # Null case: Print the name of the null-variant

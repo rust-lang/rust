@@ -20,7 +20,6 @@ use std::collections::BitvSet;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::os;
-use std::str::from_str;
 use std::time::Duration;
 use std::uint;
 
@@ -62,12 +61,14 @@ impl MutableSet<uint> for BitvSet {
 
 impl Results {
     pub fn bench_int<T:MutableSet<uint>,
-                     R: rand::Rng>(
+                     R:rand::Rng,
+                     F:FnMut() -> T>(
                      &mut self,
                      rng: &mut R,
                      num_keys: uint,
                      rand_cap: uint,
-                     f: || -> T) { {
+                     mut f: F) {
+        {
             let mut set = f();
             timed(&mut self.sequential_ints, || {
                 for i in range(0u, num_keys) {
@@ -104,11 +105,12 @@ impl Results {
     }
 
     pub fn bench_str<T:MutableSet<String>,
-                     R:rand::Rng>(
+                     R:rand::Rng,
+                     F:FnMut() -> T>(
                      &mut self,
                      rng: &mut R,
                      num_keys: uint,
-                     f: || -> T) {
+                     mut f: F) {
         {
             let mut set = f();
             timed(&mut self.sequential_strings, || {
@@ -181,7 +183,7 @@ fn main() {
     let args = args.as_slice();
     let num_keys = {
         if args.len() == 2 {
-            from_str::<uint>(args[1].as_slice()).unwrap()
+            args[1].parse::<uint>().unwrap()
         } else {
             100 // woefully inadequate for any real measurement
         }

@@ -14,7 +14,7 @@
 //! (bundled into the rust runtime). This module self-contains the C bindings
 //! and necessary legwork to render markdown, and exposes all of the
 //! functionality through a unit-struct, `Markdown`, which has an implementation
-//! of `fmt::Show`. Example usage:
+//! of `fmt::String`. Example usage:
 //!
 //! ```rust,ignore
 //! use rustdoc::html::markdown::Markdown;
@@ -29,7 +29,7 @@
 
 use libc;
 use std::ascii::AsciiExt;
-use std::c_str::ToCStr;
+use std::ffi::CString;
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
 use std::fmt;
@@ -41,7 +41,7 @@ use html::highlight;
 use html::escape::Escape;
 use test;
 
-/// A unit struct which has the `fmt::Show` trait implemented. When
+/// A unit struct which has the `fmt::String` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 pub struct Markdown<'a>(pub &'a str);
@@ -172,7 +172,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             let text = slice::from_raw_buf(&(*orig_text).data,
                                            (*orig_text).size as uint);
             let origtext = str::from_utf8(text).unwrap();
-            debug!("docblock: ==============\n{}\n=======", text);
+            debug!("docblock: ==============\n{:?}\n=======", text);
             let rendered = if lang.is_null() {
                 false
             } else {
@@ -215,7 +215,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 let id = id.as_ref().map(|a| a.as_slice());
                 s.push_str(highlight::highlight(text.as_slice(), None, id)
                                      .as_slice());
-                let output = s.to_c_str();
+                let output = CString::from_vec(s.into_bytes());
                 hoedown_buffer_puts(ob, output.as_ptr());
             })
         }
@@ -224,15 +224,16 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn header(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
                      level: libc::c_int, opaque: *mut libc::c_void) {
         // hoedown does this, we may as well too
-        "\n".with_c_str(|p| unsafe { hoedown_buffer_puts(ob, p) });
+        unsafe { hoedown_buffer_puts(ob, "\n\0".as_ptr() as *const _); }
 
         // Extract the text provided
         let s = if text.is_null() {
             "".to_string()
         } else {
-            unsafe {
-                String::from_raw_buf_len((*text).data, (*text).size as uint)
-            }
+            let s = unsafe {
+                slice::from_raw_buf(&(*text).data, (*text).size as uint)
+            };
+            str::from_utf8(s).unwrap().to_string()
         };
 
         // Transform the contents of the header into a hyphenated string
@@ -273,7 +274,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                                format!("{} ", sec)
                            });
 
-        text.with_c_str(|p| unsafe { hoedown_buffer_puts(ob, p) });
+        let text = CString::from_vec(text.into_bytes());
+        unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
     }
 
     reset_headers();
@@ -373,7 +375,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     }
 }
 
-#[deriving(Eq, PartialEq, Clone, Show)]
+#[derive(Eq, PartialEq, Clone, Show)]
 struct LangString {
     should_fail: bool,
     no_run: bool,
@@ -433,7 +435,15 @@ pub fn reset_headers() {
     TEST_IDX.with(|s| s.set(0));
 }
 
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Markdown<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Markdown(md) = *self;
         // This is actually common enough to special-case
@@ -442,7 +452,15 @@ impl<'a> fmt::Show for Markdown<'a> {
     }
 }
 
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for MarkdownWithToc<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let MarkdownWithToc(md) = *self;
         render(fmt, md.as_slice(), true)

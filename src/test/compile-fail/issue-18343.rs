@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Obj<'a> {
-    closure: ||: 'a -> u32
+struct Obj<F> where F: FnMut() -> u32 {
+    closure: F,
 }
 
 fn main() {
     let o = Obj { closure: || 42 };
-    o.closure(); //~ ERROR type `Obj<'_>` does not implement any method in scope named `closure`
+    o.closure(); //~ ERROR does not implement any method in scope named `closure`
     //~^ NOTE use `(s.closure)(...)` if you meant to call the function stored in the `closure` field
 }

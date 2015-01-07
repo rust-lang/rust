@@ -36,7 +36,7 @@
 //!   implementation changes (using a special thread-local heap, for example).
 //!   Moreover, a switch to, e.g. `P<'a, T>` would be easy and mostly automated.
 
-use std::fmt::{mod, Show};
+use std::fmt::{self, Show};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::ptr;
@@ -111,14 +111,14 @@ impl<S, T: Hash<S>> Hash<S> for P<T> {
     }
 }
 
-impl<E, D: Decoder<E>, T: 'static + Decodable<D, E>> Decodable<D, E> for P<T> {
-    fn decode(d: &mut D) -> Result<P<T>, E> {
+impl<T: 'static + Decodable> Decodable for P<T> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<P<T>, D::Error> {
         Decodable::decode(d).map(P)
     }
 }
 
-impl<E, S: Encoder<E>, T: Encodable<S, E>> Encodable<S, E> for P<T> {
-    fn encode(&self, s: &mut S) -> Result<(), E> {
+impl<T: Encodable> Encodable for P<T> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }
 }

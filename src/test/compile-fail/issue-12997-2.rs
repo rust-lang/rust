@@ -12,6 +12,6 @@
 
 //! Test that makes sure wrongly-typed bench functions are rejected
 
-// error-pattern:expected &-ptr, found int
+// error-pattern:expected &-ptr, found isize
 #[bench]
-fn bar(x: int) { }
+fn bar(x: isize) { }

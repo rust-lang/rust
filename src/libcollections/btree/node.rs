@@ -210,7 +210,9 @@ impl<T> RawItems<T> {
     }
 }
 
-impl<T> Iterator<T> for RawItems<T> {
+impl<T> Iterator for RawItems<T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         if self.head == self.tail {
             None
@@ -230,7 +232,7 @@ impl<T> Iterator<T> for RawItems<T> {
     }
 }
 
-impl<T> DoubleEndedIterator<T> for RawItems<T> {
+impl<T> DoubleEndedIterator for RawItems<T> {
     fn next_back(&mut self) -> Option<T> {
         if self.head == self.tail {
             None
@@ -491,10 +493,10 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
 ///     // Now the handle still points at index 75, but on the small node, which has no index 75.
 ///     flag.set(true);
 ///
-///     println!("Uninitialized memory: {}", handle.into_kv());
+///     println!("Uninitialized memory: {:?}", handle.into_kv());
 /// }
 /// ```
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Handle<NodeRef, Type, NodeType> {
     node: NodeRef,
     index: uint
@@ -515,7 +517,7 @@ impl<K: Ord, V> Node<K, V> {
     /// Searches for the given key in the node. If it finds an exact match,
     /// `Found` will be yielded with the matching index. If it doesn't find an exact match,
     /// `GoDown` will be yielded with the index of the subtree the key must lie in.
-    pub fn search<Sized? Q, NodeRef: Deref<Target=Node<K, V>>>(node: NodeRef, key: &Q)
+    pub fn search<Q: ?Sized, NodeRef: Deref<Target=Node<K, V>>>(node: NodeRef, key: &Q)
                   -> SearchResult<NodeRef> where Q: BorrowFrom<K> + Ord {
         // FIXME(Gankro): Tune when to search linear or binary based on B (and maybe K/V).
         // For the B configured as of this writing (B = 6), binary search was *significantly*
@@ -534,7 +536,7 @@ impl<K: Ord, V> Node<K, V> {
         }
     }
 
-    fn search_linear<Sized? Q>(&self, key: &Q) -> (bool, uint) where Q: BorrowFrom<K> + Ord {
+    fn search_linear<Q: ?Sized>(&self, key: &Q) -> (bool, uint) where Q: BorrowFrom<K> + Ord {
         for (i, k) in self.keys().iter().enumerate() {
             match key.cmp(BorrowFrom::borrow_from(k)) {
                 Greater => {},
@@ -1321,8 +1323,10 @@ trait TraversalImpl<K, V, E> {
 /// as no deallocation needs to be done.
 struct ElemsAndEdges<Elems, Edges>(Elems, Edges);
 
-impl<K, V, E, Elems: DoubleEndedIterator<(K, V)>, Edges: DoubleEndedIterator<E>>
-        TraversalImpl<K, V, E> for ElemsAndEdges<Elems, Edges> {
+impl<K, V, E, Elems: DoubleEndedIterator, Edges: DoubleEndedIterator>
+        TraversalImpl<K, V, E> for ElemsAndEdges<Elems, Edges>
+    where Elems : Iterator<Item=(K, V)>, Edges : Iterator<Item=E>
+{
 
     fn next_kv(&mut self) -> Option<(K, V)> { self.0.next() }
     fn next_kv_back(&mut self) -> Option<(K, V)> { self.0.next_back() }
@@ -1413,9 +1417,9 @@ pub type MutTraversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Iter<'a,
 /// An owning traversal over a node's entries and edges
 pub type MoveTraversal<K, V> = AbsTraversal<MoveTraversalImpl<K, V>>;
 
-
-impl<K, V, E, Impl: TraversalImpl<K, V, E>>
-        Iterator<TraversalItem<K, V, E>> for AbsTraversal<Impl> {
+#[old_impl_check]
+impl<K, V, E, Impl: TraversalImpl<K, V, E>> Iterator for AbsTraversal<Impl> {
+    type Item = TraversalItem<K, V, E>;
 
     fn next(&mut self) -> Option<TraversalItem<K, V, E>> {
         let head_is_edge = self.head_is_edge;
@@ -1429,9 +1433,8 @@ impl<K, V, E, Impl: TraversalImpl<K, V, E>>
     }
 }
 
-impl<K, V, E, Impl: TraversalImpl<K, V, E>>
-        DoubleEndedIterator<TraversalItem<K, V, E>> for AbsTraversal<Impl> {
-
+#[old_impl_check]
+impl<K, V, E, Impl: TraversalImpl<K, V, E>> DoubleEndedIterator for AbsTraversal<Impl> {
     fn next_back(&mut self) -> Option<TraversalItem<K, V, E>> {
         let tail_is_edge = self.tail_is_edge;
         self.tail_is_edge = !tail_is_edge;

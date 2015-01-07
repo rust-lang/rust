@@ -11,7 +11,7 @@
 //! Generic hashing support.
 //!
 //! This module provides a generic way to compute the hash of a value. The
-//! simplest way to make a type hashable is to use `#[deriving(Hash)]`:
+//! simplest way to make a type hashable is to use `#[derive(Hash)]`:
 //!
 //! # Example
 //!
@@ -19,7 +19,7 @@
 //! use std::hash;
 //! use std::hash::Hash;
 //!
-//! #[deriving(Hash)]
+//! #[derive(Hash)]
 //! struct Person {
 //!     id: uint,
 //!     name: String,
@@ -63,14 +63,14 @@
 
 pub use core::hash::{Hash, Hasher, Writer, hash, sip};
 
-use core::kinds::Sized;
+use core::marker::Sized;
 use default::Default;
 use rand::Rng;
 use rand;
 
 /// `RandomSipHasher` computes the SipHash algorithm from a stream of bytes
 /// initialized with random keys.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct RandomSipHasher {
     hasher: sip::SipHasher,
 }
@@ -90,7 +90,7 @@ impl RandomSipHasher {
 
 impl Hasher<sip::SipState> for RandomSipHasher {
     #[inline]
-    fn hash<Sized? T: Hash<sip::SipState>>(&self, value: &T) -> u64 {
+    fn hash<T: ?Sized + Hash<sip::SipState>>(&self, value: &T) -> u64 {
         self.hasher.hash(value)
     }
 }

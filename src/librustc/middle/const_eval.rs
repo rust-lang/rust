@@ -17,14 +17,14 @@ pub use self::constness::*;
 use metadata::csearch;
 use middle::{astencode, def};
 use middle::pat_util::def_to_path;
-use middle::ty::{mod};
+use middle::ty::{self};
 use middle::astconv_util::{ast_ty_to_prim_ty};
 use util::nodemap::DefIdMap;
 
-use syntax::ast::{mod, Expr};
+use syntax::ast::{self, Expr};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::visit::{mod, Visitor};
+use syntax::visit::{self, Visitor};
 use syntax::{ast_map, ast_util, codemap};
 
 use std::collections::hash_map::Entry::Vacant;
@@ -48,7 +48,7 @@ use std::rc::Rc;
 //     target uses". This _includes_ integer-constants, plus the following
 //     constructors:
 //
-//        fixed-size vectors and strings: [] and ""/_
+//        fixed-size vectors and strings: .index(&FullRange) and ""/_
 //        vector and string slices: &[] and &""
 //        tuples: (,)
 //        enums: foo(...)
@@ -62,7 +62,7 @@ use std::rc::Rc;
 //   - Non-constants: everything else.
 //
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum constness {
     integral_const,
     general_const,
@@ -81,7 +81,7 @@ pub fn join(a: constness, b: constness) -> constness {
     }
 }
 
-pub fn join_all<It: Iterator<constness>>(cs: It) -> constness {
+pub fn join_all<It: Iterator<Item=constness>>(cs: It) -> constness {
     cs.fold(integral_const, |a, b| join(a, b))
 }
 
@@ -117,7 +117,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
                 ast::ItemEnum(ast::EnumDef { ref variants }, _) => {
-                    variant_expr(variants[], variant_def.node)
+                    variant_expr(variants.index(&FullRange), variant_def.node)
                 }
                 _ => None
             },
@@ -132,13 +132,13 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
             None => {}
         }
         let expr_id = match csearch::maybe_get_item_ast(tcx, enum_def,
-            |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
+            box |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
             csearch::found(&ast::IIItem(ref item)) => match item.node {
                 ast::ItemEnum(ast::EnumDef { ref variants }, _) => {
                     // NOTE this doesn't do the right thing, it compares inlined
                     // NodeId's to the original variant_def's NodeId, but they
                     // come from different crates, so they will likely never match.
-                    variant_expr(variants[], variant_def.node).map(|e| e.id)
+                    variant_expr(variants.index(&FullRange), variant_def.node).map(|e| e.id)
                 }
                 _ => None
             },
@@ -172,7 +172,7 @@ pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
             None => {}
         }
         let expr_id = match csearch::maybe_get_item_ast(tcx, def_id,
-            |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
+            box |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
             csearch::found(&ast::IIItem(ref item)) => match item.node {
                 ast::ItemConst(_, ref const_expr) => Some(const_expr.id),
                 _ => None
@@ -294,7 +294,7 @@ pub fn process_crate(tcx: &ty::ctxt) {
 
 // FIXME (#33): this doesn't handle big integer/float literals correctly
 // (nor does the rest of our literal handling).
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum const_val {
     const_float(f64),
     const_int(i64),
@@ -312,7 +312,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
         ast::ExprCall(ref callee, ref args) => {
             let def = tcx.def_map.borrow()[callee.id].clone();
             if let Vacant(entry) = tcx.def_map.borrow_mut().entry(expr.id) {
-               entry.set(def);
+               entry.insert(def);
             }
             let path = match def {
                 def::DefStruct(def_id) => def_to_path(tcx, def_id),
@@ -364,7 +364,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
         Ok(r) => r,
-        Err(s) => tcx.sess.span_fatal(e.span, s[])
+        Err(s) => tcx.sess.span_fatal(e.span, s.index(&FullRange))
     }
 }
 
@@ -503,7 +503,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                                         "target type not found for const cast")
                 });
 
-        macro_rules! define_casts(
+        macro_rules! define_casts {
             ($val:ident, {
                 $($ty_pat:pat => (
                     $intermediate_ty:ty,
@@ -524,16 +524,16 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                 },)*
                 _ => Err("can't cast this type".to_string())
             })
-        );
+        }
 
         eval_const_expr_partial(tcx, &**base)
             .and_then(|val| define_casts!(val, {
-                ty::ty_int(ast::TyI) => (int, const_int, i64),
+                ty::ty_int(ast::TyIs) => (int, const_int, i64),
                 ty::ty_int(ast::TyI8) => (i8, const_int, i64),
                 ty::ty_int(ast::TyI16) => (i16, const_int, i64),
                 ty::ty_int(ast::TyI32) => (i32, const_int, i64),
                 ty::ty_int(ast::TyI64) => (i64, const_int, i64),
-                ty::ty_uint(ast::TyU) => (uint, const_uint, u64),
+                ty::ty_uint(ast::TyUs) => (uint, const_uint, u64),
                 ty::ty_uint(ast::TyU8) => (u8, const_uint, u64),
                 ty::ty_uint(ast::TyU16) => (u16, const_uint, u64),
                 ty::ty_uint(ast::TyU32) => (u32, const_uint, u64),

@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
-
-/// Creates a `std::vec::Vec` containing the arguments.
+/// Creates a `Vec` containing the arguments.
+#[macro_export]
 macro_rules! vec {
-    ($($e:expr),*) => ({
-        // leading _ to allow empty construction without a warning.
-        let mut _temp = ::vec::Vec::new();
-        $(_temp.push($e);)*
-        _temp
+    ($($x:expr),*) => ({
+        let xs: $crate::boxed::Box<[_]> = box [$($x),*];
+        $crate::slice::SliceExt::into_vec(xs)
     });
-    ($($e:expr),+,) => (vec!($($e),+))
+    ($($x:expr,)*) => (vec![$($x),*])
 }
-

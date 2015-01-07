@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase)]
-#[phase(plugin, link)] extern crate log;
+#[macro_use] extern crate log;
 
 pub fn foo<T>() {
     fn death() -> int { panic!() }
-    debug!("{}", (||{ death() })());
+    debug!("{}", (|&:|{ death() })());
 }

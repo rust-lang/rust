@@ -113,7 +113,7 @@ pub const tag_items_data_item_reexport_def_id: uint = 0x39;
 pub const tag_items_data_item_reexport_name: uint = 0x3a;
 
 // used to encode crate_ctxt side tables
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 #[repr(uint)]
 pub enum astencode_tag { // Reserves 0x40 -- 0x5f
     tag_ast = 0x40,
@@ -206,8 +206,8 @@ pub const tag_native_libraries_name: uint = 0x89;
 pub const tag_native_libraries_kind: uint = 0x8a;
 
 pub const tag_plugin_registrar_fn: uint = 0x8b;
-pub const tag_exported_macros: uint = 0x8c;
-pub const tag_macro_def: uint = 0x8d;
+
+// GAP 0x8c, 0x8d
 
 pub const tag_method_argument_names: uint = 0x8e;
 pub const tag_method_argument_name: uint = 0x8f;
@@ -219,7 +219,7 @@ pub const tag_items_data_item_stability: uint = 0x92;
 
 pub const tag_items_data_item_repr: uint = 0x93;
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct LinkMeta {
     pub crate_name: String,
     pub crate_hash: Svh,
@@ -259,3 +259,9 @@ pub const tag_unsafety: uint = 0xb1;
 
 pub const tag_associated_type_names: uint = 0xb2;
 pub const tag_associated_type_name: uint = 0xb3;
+
+pub const tag_polarity: uint = 0xb4;
+
+pub const tag_macro_defs: uint = 0xb5;
+pub const tag_macro_def: uint = 0xb6;
+pub const tag_macro_def_body: uint = 0xb7;

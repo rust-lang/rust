@@ -67,7 +67,7 @@ impl<R: Reader> Rng for ReaderRng<R> {
         if v.len() == 0 { return }
         match self.reader.read_at_least(v.len(), v) {
             Ok(_) => {}
-            Err(e) => panic!("ReaderRng.fill_bytes error: {}", e)
+            Err(e) => panic!("ReaderRng.fill_bytes error: {:?}", e)
         }
     }
 }

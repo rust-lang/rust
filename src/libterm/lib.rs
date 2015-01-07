@@ -48,11 +48,10 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, phase, slicing_syntax, globs)]
-
+#![feature(slicing_syntax)]
 #![deny(missing_docs)]
 
-#[phase(plugin, link)] extern crate log;
+#[macro_use] extern crate log;
 
 pub use terminfo::TerminfoTerminal;
 #[cfg(windows)]
@@ -171,7 +170,7 @@ pub mod attr {
     /// Most attributes can only be turned on and must be turned off with term.reset().
     /// The ones that can be turned off explicitly take a boolean value.
     /// Color is also represented as an attribute for convenience.
-    #[deriving(Copy)]
+    #[derive(Copy)]
     pub enum Attr {
         /// Bold (or possibly bright) mode
         Bold,

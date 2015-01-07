@@ -10,14 +10,12 @@
 
 // Test equality constraints on associated types in a where clause.
 
-#![feature(associated_types)]
-
 pub trait Foo {
     type A;
     fn boo(&self) -> <Self as Foo>::A;
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 struct Bar;
 
 impl Foo for int {

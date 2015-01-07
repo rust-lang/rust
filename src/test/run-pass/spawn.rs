@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
 pub fn main() {
-    task::spawn(move|| child(10) );
+    Thread::scoped(move|| child(10)).join().ok().unwrap();
 }
 
 fn child(i: int) { println!("{}", i); assert!((i == 10)); }

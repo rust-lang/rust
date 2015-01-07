@@ -51,9 +51,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
 
     {
-        let mut euv = euv::ExprUseVisitor::new(&mut glcx,
-                                               bccx.tcx,
-                                               &param_env);
+        let mut euv = euv::ExprUseVisitor::new(&mut glcx, &param_env);
         euv.walk_fn(decl, body);
     }
 
@@ -78,7 +76,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                _consume_span: Span,
                cmt: mc::cmt<'tcx>,
                mode: euv::ConsumeMode) {
-        debug!("consume(consume_id={}, cmt={}, mode={})",
+        debug!("consume(consume_id={}, cmt={}, mode={:?})",
                consume_id, cmt.repr(self.tcx()), mode);
 
         match mode {
@@ -95,7 +93,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                    matched_pat: &ast::Pat,
                    cmt: mc::cmt<'tcx>,
                    mode: euv::MatchMode) {
-        debug!("matched_pat(matched_pat={}, cmt={}, mode={})",
+        debug!("matched_pat(matched_pat={}, cmt={}, mode={:?})",
                matched_pat.repr(self.tcx()),
                cmt.repr(self.tcx()),
                mode);
@@ -111,7 +109,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                    consume_pat: &ast::Pat,
                    cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode) {
-        debug!("consume_pat(consume_pat={}, cmt={}, mode={})",
+        debug!("consume_pat(consume_pat={}, cmt={}, mode={:?})",
                consume_pat.repr(self.tcx()),
                cmt.repr(self.tcx()),
                mode);
@@ -134,8 +132,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
     {
-        debug!("borrow(borrow_id={}, cmt={}, loan_region={}, \
-               bk={}, loan_cause={})",
+        debug!("borrow(borrow_id={}, cmt={}, loan_region={:?}, \
+               bk={:?}, loan_cause={:?})",
                borrow_id, cmt.repr(self.tcx()), loan_region,
                bk, loan_cause);
 
@@ -237,7 +235,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                        loan_region: ty::Region,
                        cause: euv::LoanCause) {
         debug!("guarantee_valid(borrow_id={}, cmt={}, \
-                req_mutbl={}, loan_region={})",
+                req_mutbl={:?}, loan_region={:?})",
                borrow_id,
                cmt.repr(self.tcx()),
                req_kind,
@@ -275,7 +273,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             self.bccx, borrow_span, cause,
             cmt.clone(), loan_region);
 
-        debug!("guarantee_valid(): restrictions={}", restr);
+        debug!("guarantee_valid(): restrictions={:?}", restr);
 
         // Create the loan record (if needed).
         let loan = match restr {
@@ -308,18 +306,18 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     ty::ReInfer(..) => {
                         self.tcx().sess.span_bug(
                             cmt.span,
-                            format!("invalid borrow lifetime: {}",
-                                    loan_region)[]);
+                            format!("invalid borrow lifetime: {:?}",
+                                    loan_region).index(&FullRange));
                     }
                 };
-                debug!("loan_scope = {}", loan_scope);
+                debug!("loan_scope = {:?}", loan_scope);
 
                 let borrow_scope = region::CodeExtent::from_node_id(borrow_id);
                 let gen_scope = self.compute_gen_scope(borrow_scope, loan_scope);
-                debug!("gen_scope = {}", gen_scope);
+                debug!("gen_scope = {:?}", gen_scope);
 
                 let kill_scope = self.compute_kill_scope(loan_scope, &*loan_path);
-                debug!("kill_scope = {}", kill_scope);
+                debug!("kill_scope = {:?}", kill_scope);
 
                 if req_kind == ty::MutBorrow {
                     self.mark_loan_path_as_mutated(&*loan_path);
@@ -485,13 +483,15 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 /// This visitor walks static initializer's expressions and makes
 /// sure the loans being taken are sound.
 struct StaticInitializerCtxt<'a, 'tcx: 'a> {
-    bccx: &'a BorrowckCtxt<'a, 'tcx>
+    bccx: &'a BorrowckCtxt<'a, 'tcx>,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         if let ast::ExprAddrOf(mutbl, ref base) = ex.node {
-            let base_cmt = self.bccx.cat_expr(&**base);
+            let param_env = ty::empty_parameter_environment(self.bccx.tcx);
+            let mc = mc::MemCategorizationContext::new(&param_env);
+            let base_cmt = mc.cat_expr(&**base).unwrap();
             let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
             // Check that we don't allow borrows of unsafe static items.
             if check_aliasability(self.bccx, ex.span, euv::AddrOf,

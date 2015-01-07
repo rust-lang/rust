@@ -9,27 +9,27 @@
 // except according to those terms.
 
 use std::{int, i8, i16, i32, i64};
-use std::task;
+use std::thread::Thread;
 
 fn main() {
-    assert!(task::try(move|| int::MIN / -1).is_err());
-    assert!(task::try(move|| i8::MIN / -1).is_err());
-    assert!(task::try(move|| i16::MIN / -1).is_err());
-    assert!(task::try(move|| i32::MIN / -1).is_err());
-    assert!(task::try(move|| i64::MIN / -1).is_err());
-    assert!(task::try(move|| 1i / 0).is_err());
-    assert!(task::try(move|| 1i8 / 0).is_err());
-    assert!(task::try(move|| 1i16 / 0).is_err());
-    assert!(task::try(move|| 1i32 / 0).is_err());
-    assert!(task::try(move|| 1i64 / 0).is_err());
-    assert!(task::try(move|| int::MIN % -1).is_err());
-    assert!(task::try(move|| i8::MIN % -1).is_err());
-    assert!(task::try(move|| i16::MIN % -1).is_err());
-    assert!(task::try(move|| i32::MIN % -1).is_err());
-    assert!(task::try(move|| i64::MIN % -1).is_err());
-    assert!(task::try(move|| 1i % 0).is_err());
-    assert!(task::try(move|| 1i8 % 0).is_err());
-    assert!(task::try(move|| 1i16 % 0).is_err());
-    assert!(task::try(move|| 1i32 % 0).is_err());
-    assert!(task::try(move|| 1i64 % 0).is_err());
+    assert!(Thread::scoped(move|| int::MIN / -1).join().is_err());
+    assert!(Thread::scoped(move|| i8::MIN / -1).join().is_err());
+    assert!(Thread::scoped(move|| i16::MIN / -1).join().is_err());
+    assert!(Thread::scoped(move|| i32::MIN / -1).join().is_err());
+    assert!(Thread::scoped(move|| i64::MIN / -1).join().is_err());
+    assert!(Thread::scoped(move|| 1i / 0).join().is_err());
+    assert!(Thread::scoped(move|| 1i8 / 0).join().is_err());
+    assert!(Thread::scoped(move|| 1i16 / 0).join().is_err());
+    assert!(Thread::scoped(move|| 1i32 / 0).join().is_err());
+    assert!(Thread::scoped(move|| 1i64 / 0).join().is_err());
+    assert!(Thread::scoped(move|| int::MIN % -1).join().is_err());
+    assert!(Thread::scoped(move|| i8::MIN % -1).join().is_err());
+    assert!(Thread::scoped(move|| i16::MIN % -1).join().is_err());
+    assert!(Thread::scoped(move|| i32::MIN % -1).join().is_err());
+    assert!(Thread::scoped(move|| i64::MIN % -1).join().is_err());
+    assert!(Thread::scoped(move|| 1i % 0).join().is_err());
+    assert!(Thread::scoped(move|| 1i8 % 0).join().is_err());
+    assert!(Thread::scoped(move|| 1i16 % 0).join().is_err());
+    assert!(Thread::scoped(move|| 1i32 % 0).join().is_err());
+    assert!(Thread::scoped(move|| 1i64 % 0).join().is_err());
 }

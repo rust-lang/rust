@@ -15,7 +15,9 @@ struct Foo {
     y: int,
 }
 
-impl Index<String,int> for Foo {
+impl Index<String> for Foo {
+    type Output = int;
+
     fn index<'a>(&'a self, z: &String) -> &'a int {
         if z.as_slice() == "x" {
             &self.x
@@ -25,7 +27,9 @@ impl Index<String,int> for Foo {
     }
 }
 
-impl IndexMut<String,int> for Foo {
+impl IndexMut<String> for Foo {
+    type Output = int;
+
     fn index_mut<'a>(&'a mut self, z: &String) -> &'a mut int {
         if z.as_slice() == "x" {
             &mut self.x
@@ -39,7 +43,9 @@ struct Bar {
     x: int,
 }
 
-impl Index<int,int> for Bar {
+impl Index<int> for Bar {
+    type Output = int;
+
     fn index<'a>(&'a self, z: &int) -> &'a int {
         &self.x
     }
@@ -62,5 +68,3 @@ fn main() {
     s[2] = 20;
     //~^ ERROR cannot assign to immutable dereference (dereference is implicit, due to indexing)
 }
-
-

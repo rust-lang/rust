@@ -10,7 +10,7 @@
 
 extern crate lib;
 
-use std::task;
+use std::thread::Thread;
 
 static mut statik: int = 0;
 
@@ -22,11 +22,11 @@ impl Drop for A {
 }
 
 fn main() {
-    task::try(move|| {
+    Thread::scoped(move|| {
         let _a = A;
         lib::callback(|| panic!());
         1i
-    });
+    }).join().err().unwrap();
 
     unsafe {
         assert!(lib::statik == 1);

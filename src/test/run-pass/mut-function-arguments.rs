@@ -15,7 +15,7 @@ fn f(mut y: Box<int>) {
 }
 
 fn g() {
-    let frob: |Box<int>| = |mut q| { *q = 2; assert!(*q == 2); };
+    let frob = |&: mut q: Box<int>| { *q = 2; assert!(*q == 2); };
     let w = box 37;
     frob(w);
 

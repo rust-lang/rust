@@ -12,7 +12,7 @@ struct X {
     repr: int
 }
 
-fn apply<T>(x: T, f: |T|) {
+fn apply<T, F>(x: T, f: F) where F: FnOnce(T) {
     f(x);
 }
 

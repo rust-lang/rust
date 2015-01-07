@@ -17,7 +17,7 @@ pub fn main() {
 
     tx.send("hello, world").unwrap();
 
-    Thread::spawn(move|| {
+    Thread::scoped(move|| {
         println(rx.recv().unwrap());
     }).join().ok().unwrap();
 }

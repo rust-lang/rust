@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
 static mut dropped: bool = false;
 
@@ -33,10 +33,9 @@ impl Drop for B {
 }
 
 pub fn main() {
-    let ret = task::try(move|| {
+    let ret = Thread::scoped(move|| {
         let _a = A { b: B { foo: 3 } };
-    });
+    }).join();
     assert!(ret.is_err());
     unsafe { assert!(dropped); }
 }
-

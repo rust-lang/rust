@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
 pub fn main() {
-    task::spawn(move|| child("Hello".to_string()) );
+    let _t = Thread::spawn(move|| child("Hello".to_string()) );
 }
 
 fn child(_s: String) {

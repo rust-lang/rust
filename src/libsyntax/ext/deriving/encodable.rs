@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The compiler code necessary to implement the `#[deriving(Encodable)]`
+//! The compiler code necessary to implement the `#[derive(Encodable)]`
 //! (and `Decodable`, in decodable.rs) extension.  The idea here is that
-//! type-defining items may be tagged with `#[deriving(Encodable, Decodable)]`.
+//! type-defining items may be tagged with `#[derive(Encodable, Decodable)]`.
 //!
 //! For example, a type like:
 //!
 //! ```ignore
-//! #[deriving(Encodable, Decodable)]
+//! #[derive(Encodable, Decodable)]
 //! struct Node { id: uint }
 //! ```
 //!
@@ -49,7 +49,7 @@
 //! references other non-built-in types.  A type definition like:
 //!
 //! ```ignore
-//! #[deriving(Encodable, Decodable)]
+//! #[derive(Encodable, Decodable)]
 //! struct Spanned<T> { node: T, span: Span }
 //! ```
 //!
@@ -128,31 +128,31 @@ fn expand_deriving_encodable_imp<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new_(vec!(krate, "Encodable"), None,
-                         vec!(box Literal(Path::new_local("__S")),
-                              box Literal(Path::new_local("__E"))), true),
+        path: Path::new_(vec!(krate, "Encodable"), None, vec!(), true),
         additional_bounds: Vec::new(),
-        generics: LifetimeBounds {
-            lifetimes: Vec::new(),
-            bounds: vec!(("__S", vec!(Path::new_(
-                            vec!(krate, "Encoder"), None,
-                            vec!(box Literal(Path::new_local("__E"))), true))),
-                         ("__E", vec!()))
-        },
+        generics: LifetimeBounds::empty(),
         methods: vec!(
             MethodDef {
                 name: "encode",
-                generics: LifetimeBounds::empty(),
+                generics: LifetimeBounds {
+                    lifetimes: Vec::new(),
+                    bounds: vec!(("__S", vec!(Path::new_(
+                                    vec!(krate, "Encoder"), None,
+                                    vec!(), true))))
+                },
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(Ptr(box Literal(Path::new_local("__S")),
                             Borrowed(None, MutMutable))),
-                ret_ty: Literal(Path::new_(vec!("std", "result", "Result"),
-                                           None,
-                                           vec!(box Tuple(Vec::new()),
-                                                box Literal(Path::new_local("__E"))),
-                                           true)),
+                ret_ty: Literal(Path::new_(
+                    vec!("std", "result", "Result"),
+                    None,
+                    vec!(box Tuple(Vec::new()), box Literal(Path::new_(
+                        vec!["__S", "Error"], None, vec![], false
+                    ))),
+                    true
+                )),
                 attributes: Vec::new(),
-                combine_substructure: combine_substructure(|a, b, c| {
+                combine_substructure: combine_substructure(box |a, b, c| {
                     encodable_substructure(a, b, c)
                 }),
             })
@@ -183,7 +183,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 let name = match name {
                     Some(id) => token::get_ident(id),
                     None => {
-                        token::intern_and_get_ident(format!("_field{}", i)[])
+                        token::intern_and_get_ident(format!("_field{}", i).index(&FullRange))
                     }
                 };
                 let enc = cx.expr_method_call(span, self_.clone(),

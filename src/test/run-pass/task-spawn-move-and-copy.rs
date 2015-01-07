@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 use std::sync::mpsc::channel;
 
 pub fn main() {
@@ -17,7 +17,7 @@ pub fn main() {
     let x = box 1;
     let x_in_parent = &(*x) as *const int as uint;
 
-    task::spawn(move || {
+    let _t = Thread::spawn(move || {
         let x_in_child = &(*x) as *const int as uint;
         tx.send(x_in_child).unwrap();
     });

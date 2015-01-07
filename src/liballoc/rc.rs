@@ -147,14 +147,14 @@ use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
-use core::hash::{mod, Hash};
-use core::kinds::marker;
+use core::hash::{self, Hash};
+use core::marker;
 use core::mem::{transmute, min_align_of, size_of, forget};
 use core::nonzero::NonZero;
 use core::ops::{Deref, Drop};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::{mod, PtrExt};
+use core::ptr::{self, PtrExt};
 use core::result::Result;
 use core::result::Result::{Ok, Err};
 
@@ -264,7 +264,7 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// # Example
 ///
 /// ```
-/// use std::rc::{mod, Rc};
+/// use std::rc::{self, Rc};
 ///
 /// let x = Rc::new(3u);
 /// assert_eq!(rc::try_unwrap(x), Ok(3u));
@@ -298,7 +298,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// # Example
 ///
 /// ```
-/// use std::rc::{mod, Rc};
+/// use std::rc::{self, Rc};
 ///
 /// let mut x = Rc::new(3u);
 /// *rc::get_mut(&mut x).unwrap() = 4u;
@@ -354,7 +354,7 @@ impl<T> BorrowFrom<Rc<T>> for T {
     }
 }
 
-#[experimental = "Deref is experimental."]
+#[stable]
 impl<T> Deref for Rc<T> {
     type Target = T;
 
@@ -365,7 +365,7 @@ impl<T> Deref for Rc<T> {
 }
 
 #[unsafe_destructor]
-#[experimental = "Drop is experimental."]
+#[stable]
 impl<T> Drop for Rc<T> {
     /// Drops the `Rc<T>`.
     ///
@@ -607,7 +607,7 @@ impl<S: hash::Writer, T: Hash<S>> Hash<S> for Rc<T> {
 #[experimental = "Show is experimental."]
 impl<T: fmt::Show> fmt::Show for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (**self).fmt(f)
+        write!(f, "Rc({:?})", **self)
     }
 }
 
@@ -656,7 +656,7 @@ impl<T> Weak<T> {
 }
 
 #[unsafe_destructor]
-#[experimental = "Weak pointers may not belong in this module."]
+#[stable]
 impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///
@@ -960,6 +960,12 @@ mod tests {
 
         assert!(76 == *cow0);
         assert!(cow1_weak.upgrade().is_none());
+    }
+
+    #[test]
+    fn test_show() {
+        let foo = Rc::new(75u);
+        assert!(format!("{:?}", foo) == "Rc(75u)")
     }
 
 }

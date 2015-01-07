@@ -11,8 +11,7 @@
 // no-prefer-dynamic
 
 #![crate_type = "rlib"]
-#![feature(phase)]
 
-#[phase(plugin)] extern crate "issue-13560-1" as t1;
-#[phase(plugin, link)] extern crate "issue-13560-2" as t2;
+#[macro_use] #[no_link] extern crate "issue-13560-1" as t1;
+#[macro_use] extern crate "issue-13560-2" as t2;
 

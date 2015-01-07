@@ -20,15 +20,15 @@ impl<T: Send + Copy> Gettable<T> for S<T> {}
 fn f<T>(val: T) {
     let t: S<T> = S;
     let a = &t as &Gettable<T>;
-    //~^ ERROR the trait `core::kinds::Send` is not implemented
-    //~^^ ERROR the trait `core::kinds::Copy` is not implemented
+    //~^ ERROR the trait `core::marker::Send` is not implemented
+    //~^^ ERROR the trait `core::marker::Copy` is not implemented
 }
 
 fn g<T>(val: T) {
     let t: S<T> = S;
     let a: &Gettable<T> = &t;
-    //~^ ERROR the trait `core::kinds::Send` is not implemented
-    //~^^ ERROR the trait `core::kinds::Copy` is not implemented
+    //~^ ERROR the trait `core::marker::Send` is not implemented
+    //~^^ ERROR the trait `core::marker::Copy` is not implemented
 }
 
 fn foo<'a>() {
@@ -40,13 +40,13 @@ fn foo<'a>() {
 fn foo2<'a>() {
     let t: Box<S<String>> = box S;
     let a = t as Box<Gettable<String>>;
-    //~^ ERROR the trait `core::kinds::Copy` is not implemented
+    //~^ ERROR the trait `core::marker::Copy` is not implemented
 }
 
 fn foo3<'a>() {
     let t: Box<S<String>> = box S;
     let a: Box<Gettable<String>> = t;
-    //~^ ERROR the trait `core::kinds::Copy` is not implemented
+    //~^ ERROR the trait `core::marker::Copy` is not implemented
 }
 
 fn main() { }

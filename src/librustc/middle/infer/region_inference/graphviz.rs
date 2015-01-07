@@ -27,9 +27,9 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
 use std::collections::hash_map::Entry::Vacant;
-use std::io::{mod, File};
+use std::io::{self, File};
 use std::os;
-use std::sync::atomic;
+use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 use syntax::ast;
 
 fn print_help_message() {
@@ -67,16 +67,16 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
     }
 
     let requested_output = os::getenv("RUST_REGION_GRAPH");
-    debug!("requested_output: {} requested_node: {}",
+    debug!("requested_output: {:?} requested_node: {:?}",
            requested_output, requested_node);
 
     let output_path = {
         let output_template = match requested_output {
             Some(ref s) if s.as_slice() == "help" => {
-                static PRINTED_YET : atomic::AtomicBool = atomic::ATOMIC_BOOL_INIT;
-                if !PRINTED_YET.load(atomic::SeqCst) {
+                static PRINTED_YET: AtomicBool = ATOMIC_BOOL_INIT;
+                if !PRINTED_YET.load(Ordering::SeqCst) {
                     print_help_message();
-                    PRINTED_YET.store(true, atomic::SeqCst);
+                    PRINTED_YET.store(true, Ordering::SeqCst);
                 }
                 return;
             }
@@ -121,7 +121,7 @@ struct ConstraintGraph<'a, 'tcx: 'a> {
     node_ids: FnvHashMap<Node, uint>,
 }
 
-#[deriving(Clone, Hash, PartialEq, Eq, Show)]
+#[derive(Clone, Hash, PartialEq, Eq, Show)]
 enum Node {
     RegionVid(ty::RegionVid),
     Region(ty::Region),
@@ -138,7 +138,7 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
         {
             let mut add_node = |&mut : node| {
                 if let Vacant(e) = node_ids.entry(node) {
-                    e.set(i);
+                    e.insert(i);
                     i += 1;
                 }
             };
@@ -166,7 +166,7 @@ impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
     fn node_label(&self, n: &Node) -> dot::LabelText {
         match *n {
             Node::RegionVid(n_vid) =>
-                dot::LabelText::label(format!("{}", n_vid)),
+                dot::LabelText::label(format!("{:?}", n_vid)),
             Node::Region(n_rgn) =>
                 dot::LabelText::label(format!("{}", n_rgn.repr(self.tcx))),
         }
@@ -204,12 +204,12 @@ impl<'a, 'tcx> dot::GraphWalk<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
     }
     fn source(&self, edge: &Edge) -> Node {
         let (n1, _) = constraint_to_nodes(edge);
-        debug!("edge {} has source {}", edge, n1);
+        debug!("edge {:?} has source {:?}", edge, n1);
         n1
     }
     fn target(&self, edge: &Edge) -> Node {
         let (_, n2) = constraint_to_nodes(edge);
-        debug!("edge {} has target {}", edge, n2);
+        debug!("edge {:?} has target {:?}", edge, n2);
         n2
     }
 }

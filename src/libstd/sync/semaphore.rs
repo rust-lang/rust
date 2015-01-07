@@ -99,6 +99,7 @@ impl Semaphore {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<'a> Drop for SemaphoreGuard<'a> {
     fn drop(&mut self) {
         self.sem.release();
@@ -192,7 +193,7 @@ mod tests {
                 tx.send(()).unwrap();
                 drop(s2.access());
                 tx.send(()).unwrap();
-            }).detach();
+            });
             rx.recv().unwrap(); // wait for child to come alive
         }
         rx.recv().unwrap(); // wait for child to be done

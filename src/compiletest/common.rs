@@ -13,7 +13,7 @@ use std::fmt;
 use std::str::FromStr;
 use regex::Regex;
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Mode {
     CompileFail,
     RunFail,
@@ -43,9 +43,9 @@ impl FromStr for Mode {
     }
 }
 
-impl fmt::Show for Mode {
+impl fmt::String for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let msg = match *self {
+        fmt::String::fmt(match *self {
             CompileFail => "compile-fail",
             RunFail => "run-fail",
             RunPass => "run-pass",
@@ -54,12 +54,17 @@ impl fmt::Show for Mode {
             DebugInfoGdb => "debuginfo-gdb",
             DebugInfoLldb => "debuginfo-lldb",
             Codegen => "codegen",
-        };
-        msg.fmt(f)
+        }, f)
     }
 }
 
-#[deriving(Clone)]
+impl fmt::Show for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+#[derive(Clone)]
 pub struct Config {
     // The library paths required for running the compiler
     pub compile_lib_path: String,

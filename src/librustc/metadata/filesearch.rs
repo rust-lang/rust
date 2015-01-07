@@ -20,7 +20,7 @@ use std::os;
 use util::fs as myfs;
 use session::search_paths::{SearchPaths, PathKind};
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum FileMatch {
     FileMatches,
     FileDoesntMatch,

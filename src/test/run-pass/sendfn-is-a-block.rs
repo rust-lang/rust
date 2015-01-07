@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn test(f: |uint| -> uint) -> uint {
+fn test<F>(f: F) -> uint where F: FnOnce(uint) -> uint {
     return f(22u);
 }
 

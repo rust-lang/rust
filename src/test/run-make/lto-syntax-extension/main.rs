@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase)]
-
 extern crate lib;
-extern crate regex;
-#[phase(plugin)] extern crate regex_macros;
+#[macro_use] extern crate log;
 
-fn main() {
-    regex!("1234");
-}
+fn main() {}

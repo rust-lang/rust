@@ -15,7 +15,8 @@
 #![allow(unsigned_negation)]
 
 use fmt;
-use iter::DoubleEndedIteratorExt;
+use iter::IteratorExt;
+use ops::Index;
 use num::{Int, cast};
 use slice::SliceExt;
 use str;
@@ -61,29 +62,29 @@ trait GenericRadix {
                 if x == zero { break };                   // No more digits left to accumulate.
             }
         }
-        let buf = unsafe { str::from_utf8_unchecked(buf[curr..]) };
+        let buf = unsafe { str::from_utf8_unchecked(buf.index(&(curr..))) };
         f.pad_integral(is_positive, self.prefix(), buf)
     }
 }
 
 /// A binary (base 2) radix
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Binary;
 
 /// An octal (base 8) radix
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Octal;
 
 /// A decimal (base 10) radix
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Decimal;
 
 /// A hexadecimal (base 16) radix, formatted with lower-case characters
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct LowerHex;
 
 /// A hexadecimal (base 16) radix, formatted with upper-case characters
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct UpperHex;
 
 macro_rules! radix {
@@ -110,7 +111,7 @@ radix! { UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
                              x @ 10 ... 15 => b'A' + (x - 10) }
 
 /// A radix with in the range of `2..36`.
-#[deriving(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[unstable = "may be renamed or move to a different module"]
 pub struct Radix {
     base: u8,
@@ -136,7 +137,7 @@ impl GenericRadix for Radix {
 
 /// A helper type for formatting radixes.
 #[unstable = "may be renamed or move to a different module"]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct RadixFmt<T, R>(T, R);
 
 /// Constructs a radix formatter in the range of `2..36`.
@@ -153,8 +154,22 @@ pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
 }
 
 macro_rules! radix_fmt {
-    ($T:ty as $U:ty, $fmt:ident) => {
+    ($T:ty as $U:ty, $fmt:ident, $S:expr) => {
+        #[cfg(stage0)]
         impl fmt::Show for RadixFmt<$T, Radix> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::String::fmt(self, f)
+            }
+        }
+
+        #[cfg(not(stage0))]
+        impl fmt::Show for RadixFmt<$T, Radix> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                try!(fmt::String::fmt(self, f));
+                f.write_str($S)
+            }
+        }
+        impl fmt::String for RadixFmt<$T, Radix> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 match *self { RadixFmt(ref x, radix) => radix.$fmt(*x as $U, f) }
             }
@@ -170,24 +185,48 @@ macro_rules! int_base {
         }
     }
 }
+
+macro_rules! show {
+    ($T:ident with $S:expr) => {
+        #[cfg(stage0)]
+        impl fmt::Show for $T {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::String::fmt(self, f)
+            }
+        }
+
+        #[cfg(not(stage0))]
+        impl fmt::Show for $T {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                try!(fmt::String::fmt(self, f));
+                f.write_str($S)
+            }
+        }
+    }
+}
 macro_rules! integer {
     ($Int:ident, $Uint:ident) => {
-        int_base! { Show     for $Int as $Int   -> Decimal }
+        integer! { $Int, $Uint, stringify!($Int), stringify!($Uint) }
+    };
+    ($Int:ident, $Uint:ident, $SI:expr, $SU:expr) => {
+        int_base! { String   for $Int as $Int   -> Decimal }
         int_base! { Binary   for $Int as $Uint  -> Binary }
         int_base! { Octal    for $Int as $Uint  -> Octal }
         int_base! { LowerHex for $Int as $Uint  -> LowerHex }
         int_base! { UpperHex for $Int as $Uint  -> UpperHex }
-        radix_fmt! { $Int as $Int, fmt_int }
+        radix_fmt! { $Int as $Int, fmt_int, $SI }
+        show! { $Int with $SI }
 
-        int_base! { Show     for $Uint as $Uint -> Decimal }
+        int_base! { String   for $Uint as $Uint -> Decimal }
         int_base! { Binary   for $Uint as $Uint -> Binary }
         int_base! { Octal    for $Uint as $Uint -> Octal }
         int_base! { LowerHex for $Uint as $Uint -> LowerHex }
         int_base! { UpperHex for $Uint as $Uint -> UpperHex }
-        radix_fmt! { $Uint as $Uint, fmt_int }
+        radix_fmt! { $Uint as $Uint, fmt_int, $SU }
+        show! { $Uint with $SU }
     }
 }
-integer! { int, uint }
+integer! { int, uint, "i", "u" }
 integer! { i8, u8 }
 integer! { i16, u16 }
 integer! { i32, u32 }

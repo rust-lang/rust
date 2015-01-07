@@ -1,11 +1,11 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="expr 3i"];
+    N2[label="expr 3is"];
     N3[label="expr 4"];
-    N4[label="expr 3i + 4"];
-    N5[label="stmt 3i + 4;"];
-    N6[label="block { 3i + 4; }"];
+    N4[label="expr 3is + 4"];
+    N5[label="stmt 3is + 4;"];
+    N6[label="block { 3is + 4; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::marker;
 
 struct Foo { marker: marker::NoSync }
 
 static FOO: uint = 3;
 static BAR: Foo = Foo { marker: marker::NoSync };
-//~^ ERROR: the trait `core::kinds::Sync` is not implemented
+//~^ ERROR: the trait `core::marker::Sync` is not implemented
 
 fn main() {}

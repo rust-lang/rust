@@ -11,7 +11,10 @@
 
 fn borrow<T>(x: &T) -> &T {x}
 
-fn foo(cond: || -> bool, make_box: || -> Box<int>) {
+fn foo<C, M>(mut cond: C, mut make_box: M) where
+    C: FnMut() -> bool,
+    M: FnMut() -> Box<int>,
+{
     let mut y: &int;
     loop {
         let x = make_box();

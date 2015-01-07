@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 trait Foo {
     type T;
 }
@@ -23,4 +21,3 @@ fn main() {
     let y: int = 44;
     assert_eq!(x * 2, y);
 }
-

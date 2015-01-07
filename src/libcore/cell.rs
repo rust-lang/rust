@@ -160,8 +160,7 @@
 use clone::Clone;
 use cmp::PartialEq;
 use default::Default;
-use fmt;
-use kinds::{Copy, Send};
+use marker::{Copy, Send};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{None, Some};
@@ -267,10 +266,6 @@ impl<T> RefCell<T> {
         unsafe { self.value.into_inner() }
     }
 
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub fn unwrap(self) -> T { self.into_inner() }
-
     /// Attempts to immutably borrow the wrapped value.
     ///
     /// The borrow lasts until the returned `Ref` exits scope. Multiple
@@ -368,16 +363,6 @@ impl<T: PartialEq> PartialEq for RefCell<T> {
     }
 }
 
-#[unstable]
-impl<T:fmt::Show> fmt::Show for RefCell<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.try_borrow() {
-            Some(val) => write!(f, "{}", val),
-            None => write!(f, "<borrowed RefCell>")
-        }
-    }
-}
-
 struct BorrowRef<'b> {
     _borrow: &'b Cell<BorrowFlag>,
 }
@@ -423,7 +408,7 @@ pub struct Ref<'b, T:'b> {
     _borrow: BorrowRef<'b>,
 }
 
-#[unstable = "waiting for `Deref` to become stable"]
+#[stable]
 impl<'b, T> Deref for Ref<'b, T> {
     type Target = T;
 
@@ -481,7 +466,7 @@ pub struct RefMut<'b, T:'b> {
     _borrow: BorrowRefMut<'b>,
 }
 
-#[unstable = "waiting for `Deref` to become stable"]
+#[stable]
 impl<'b, T> Deref for RefMut<'b, T> {
     type Target = T;
 
@@ -491,7 +476,7 @@ impl<'b, T> Deref for RefMut<'b, T> {
     }
 }
 
-#[unstable = "waiting for `DerefMut` to become stable"]
+#[stable]
 impl<'b, T> DerefMut for RefMut<'b, T> {
     #[inline]
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
@@ -524,7 +509,7 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 ///
 /// ```rust
 /// use std::cell::UnsafeCell;
-/// use std::kinds::marker;
+/// use std::marker;
 ///
 /// struct NotThreadSafe<T> {
 ///     value: UnsafeCell<T>,
@@ -569,8 +554,4 @@ impl<T> UnsafeCell<T> {
     #[inline]
     #[stable]
     pub unsafe fn into_inner(self) -> T { self.value }
-
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub unsafe fn unwrap(self) -> T { self.into_inner() }
 }

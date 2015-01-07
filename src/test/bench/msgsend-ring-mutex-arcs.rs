@@ -19,7 +19,6 @@
 // ignore-lexer-test FIXME #15679
 
 use std::os;
-use std::str::from_str;
 use std::sync::{Arc, Future, Mutex, Condvar};
 use std::time::Duration;
 use std::uint;
@@ -74,8 +73,8 @@ fn main() {
         args.clone().into_iter().collect()
     };
 
-    let num_tasks = from_str::<uint>(args[1].as_slice()).unwrap();
-    let msg_per_task = from_str::<uint>(args[2].as_slice()).unwrap();
+    let num_tasks = args[1].parse::<uint>().unwrap();
+    let msg_per_task = args[2].parse::<uint>().unwrap();
 
     let (mut num_chan, num_port) = init();
 

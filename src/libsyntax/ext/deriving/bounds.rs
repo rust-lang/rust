@@ -29,12 +29,13 @@ pub fn expand_deriving_bound<F>(cx: &mut ExtCtxt,
                 "Send" | "Sync" => {
                     return cx.span_err(span,
                                        format!("{} is an unsafe trait and it \
-                                               should be implemented explicitly", *tname)[])
+                                                should be implemented explicitly",
+                                               *tname).as_slice())
                 }
                 ref tname => {
                     cx.span_bug(span,
                                 format!("expected built-in trait name but \
-                                         found {}", *tname)[])
+                                         found {}", *tname).as_slice())
                 }
             }
         },
@@ -47,7 +48,7 @@ pub fn expand_deriving_bound<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "kinds", name)),
+        path: Path::new(vec!("std", "marker", name)),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!()

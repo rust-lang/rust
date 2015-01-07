@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -25,7 +25,7 @@ use libc;
 
 #[cfg(any(not(target_arch = "arm"), target_os = "ios"))]
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum _Unwind_Action {
     _UA_SEARCH_PHASE = 1,
     _UA_CLEANUP_PHASE = 2,
@@ -74,6 +74,9 @@ pub const unwinder_private_data_size: uint = 20;
 
 #[cfg(all(target_arch = "arm", target_os = "ios"))]
 pub const unwinder_private_data_size: uint = 5;
+
+#[cfg(target_arch = "aarch64")]
+pub const unwinder_private_data_size: uint = 2;
 
 #[cfg(any(target_arch = "mips", target_arch = "mipsel"))]
 pub const unwinder_private_data_size: uint = 2;

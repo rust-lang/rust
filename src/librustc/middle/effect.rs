@@ -13,7 +13,7 @@
 use self::UnsafeContext::*;
 
 use middle::def;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::ppaux;
 
@@ -23,7 +23,7 @@ use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 enum UnsafeContext {
     SafeContext,
     UnsafeFn,
@@ -33,7 +33,6 @@ enum UnsafeContext {
 fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {
         ty::ty_bare_fn(_, ref f) => f.unsafety == ast::Unsafety::Unsafe,
-        ty::ty_closure(ref f) => f.unsafety == ast::Unsafety::Unsafe,
         _ => false,
     }
 }

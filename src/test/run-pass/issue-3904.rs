@@ -8,21 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type ErrPrinter<'a> = |&str, &str|: 'a;
-
 fn example_err(prog: &str, arg: &str) {
     println!("{}: {}", prog, arg)
 }
 
-fn exit(print: ErrPrinter, prog: &str, arg: &str) {
+fn exit<F>(print: F, prog: &str, arg: &str) where F: FnOnce(&str, &str) {
     print(prog, arg);
 }
 
-struct X<'a> {
-    err: ErrPrinter<'a>
+struct X<F> where F: FnOnce(&str, &str) {
+    err: F,
 }
 
-impl<'a> X<'a> {
+impl<F> X<F> where F: FnOnce(&str, &str) {
     pub fn boom(self) {
         exit(self.err, "prog", "arg");
     }

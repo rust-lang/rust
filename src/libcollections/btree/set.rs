@@ -14,7 +14,7 @@
 use core::prelude::*;
 
 use core::borrow::BorrowFrom;
-use core::cmp::Ordering::{mod, Less, Greater, Equal};
+use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
 use core::fmt::Show;
 use core::fmt;
@@ -30,7 +30,7 @@ use btree_map::{BTreeMap, Keys};
 ///
 /// See BTreeMap's documentation for a detailed discussion of this collection's performance
 /// benefits and drawbacks.
-#[deriving(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[stable]
 pub struct BTreeSet<T>{
     map: BTreeMap<T, ()>,
@@ -299,7 +299,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[stable]
-    pub fn contains<Sized? Q>(&self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
         self.map.contains_key(value)
     }
 
@@ -429,14 +429,14 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[stable]
-    pub fn remove<Sized? Q>(&mut self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
+    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
         self.map.remove(value).is_some()
     }
 }
 
 #[stable]
 impl<T: Ord> FromIterator<T> for BTreeSet<T> {
-    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> BTreeSet<T> {
+    fn from_iter<Iter: Iterator<Item=T>>(iter: Iter) -> BTreeSet<T> {
         let mut set = BTreeSet::new();
         set.extend(iter);
         set
@@ -446,7 +446,7 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
 #[stable]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
-    fn extend<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
+    fn extend<Iter: Iterator<Item=T>>(&mut self, mut iter: Iter) {
         for elem in iter {
             self.insert(elem);
         }
@@ -462,7 +462,9 @@ impl<T: Ord> Default for BTreeSet<T> {
 }
 
 #[stable]
-impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
+impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>> for &'a BTreeSet<T> {
+    type Output = BTreeSet<T>;
+
     /// Returns the difference of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
     /// # Examples
@@ -483,7 +485,9 @@ impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<
 }
 
 #[stable]
-impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
+impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>> for &'a BTreeSet<T> {
+    type Output = BTreeSet<T>;
+
     /// Returns the symmetric difference of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
     /// # Examples
@@ -504,7 +508,9 @@ impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeS
 }
 
 #[stable]
-impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
+impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>> for &'a BTreeSet<T> {
+    type Output = BTreeSet<T>;
+
     /// Returns the intersection of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
     /// # Examples
@@ -525,7 +531,9 @@ impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeS
 }
 
 #[stable]
-impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSet<T> {
+impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
+    type Output = BTreeSet<T>;
+
     /// Returns the union of `self` and `rhs` as a new `BTreeSet<T>`.
     ///
     /// # Examples
@@ -548,11 +556,11 @@ impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>, BTreeSet<T>> for &'a BTreeSe
 #[stable]
 impl<T: Show> Show for BTreeSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
+        try!(write!(f, "BTreeSet {{"));
 
         for (i, x) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}", *x));
+            try!(write!(f, "{:?}", *x));
         }
 
         write!(f, "}}")
@@ -560,28 +568,33 @@ impl<T: Show> Show for BTreeSet<T> {
 }
 
 #[stable]
-impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
+impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
 }
 #[stable]
-impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
+impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
+
 
 #[stable]
-impl<T> Iterator<T> for IntoIter<T> {
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<T> DoubleEndedIterator<T> for IntoIter<T> {
+impl<T> DoubleEndedIterator for IntoIter<T> {
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
 #[stable]
-impl<T> ExactSizeIterator<T> for IntoIter<T> {}
+impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
 fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
@@ -594,7 +607,9 @@ fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
 }
 
 #[stable]
-impl<'a, T: Ord> Iterator<&'a T> for Difference<'a, T> {
+impl<'a, T: Ord> Iterator for Difference<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Less, Less) {
@@ -607,7 +622,9 @@ impl<'a, T: Ord> Iterator<&'a T> for Difference<'a, T> {
 }
 
 #[stable]
-impl<'a, T: Ord> Iterator<&'a T> for SymmetricDifference<'a, T> {
+impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
@@ -620,7 +637,9 @@ impl<'a, T: Ord> Iterator<&'a T> for SymmetricDifference<'a, T> {
 }
 
 #[stable]
-impl<'a, T: Ord> Iterator<&'a T> for Intersection<'a, T> {
+impl<'a, T: Ord> Iterator for Intersection<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             let o_cmp = match (self.a.peek(), self.b.peek()) {
@@ -639,7 +658,9 @@ impl<'a, T: Ord> Iterator<&'a T> for Intersection<'a, T> {
 }
 
 #[stable]
-impl<'a, T: Ord> Iterator<&'a T> for Union<'a, T> {
+impl<'a, T: Ord> Iterator for Union<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
@@ -821,9 +842,9 @@ mod test {
         set.insert(1);
         set.insert(2);
 
-        let set_str = format!("{}", set);
+        let set_str = format!("{:?}", set);
 
-        assert!(set_str == "{1, 2}");
-        assert_eq!(format!("{}", empty), "{}");
+        assert_eq!(set_str, "BTreeSet {1i, 2i}");
+        assert_eq!(format!("{:?}", empty), "BTreeSet {}");
     }
 }

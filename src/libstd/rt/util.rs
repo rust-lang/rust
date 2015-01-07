@@ -15,11 +15,11 @@ use prelude::v1::*;
 use cmp;
 use fmt;
 use intrinsics;
-use libc::{mod, uintptr_t};
+use libc::{self, uintptr_t};
 use os;
 use slice;
 use str;
-use sync::atomic;
+use sync::atomic::{self, Ordering};
 
 /// Dynamically inquire about whether we're running under V.
 /// You should usually not use this unless your test definitely
@@ -47,7 +47,7 @@ pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
 
 pub fn min_stack() -> uint {
     static MIN: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
-    match MIN.load(atomic::SeqCst) {
+    match MIN.load(Ordering::SeqCst) {
         0 => {}
         n => return n - 1,
     }
@@ -55,7 +55,7 @@ pub fn min_stack() -> uint {
     let amt = amt.unwrap_or(2 * 1024 * 1024);
     // 0 is our sentinel value, so ensure that we'll never see 0 after
     // initialization has run
-    MIN.store(amt + 1, atomic::SeqCst);
+    MIN.store(amt + 1, Ordering::SeqCst);
     return amt;
 }
 
@@ -131,7 +131,7 @@ pub fn abort(args: fmt::Arguments) -> ! {
     impl<'a> fmt::Writer for BufWriter<'a> {
         fn write_str(&mut self, bytes: &str) -> fmt::Result {
             let left = self.buf.slice_from_mut(self.pos);
-            let to_write = bytes.as_bytes()[..cmp::min(bytes.len(), left.len())];
+            let to_write = bytes.as_bytes().index(&(0..cmp::min(bytes.len(), left.len())));
             slice::bytes::copy_memory(left, to_write);
             self.pos += to_write.len();
             Ok(())
@@ -142,7 +142,7 @@ pub fn abort(args: fmt::Arguments) -> ! {
     let mut msg = [0u8; 512];
     let mut w = BufWriter { buf: &mut msg, pos: 0 };
     let _ = write!(&mut w, "{}", args);
-    let msg = str::from_utf8(w.buf[mut ..w.pos]).unwrap_or("aborted");
+    let msg = str::from_utf8(w.buf.index_mut(&(0..w.pos))).unwrap_or("aborted");
     let msg = if msg.is_empty() {"aborted"} else {msg};
 
     // Give some context to the message

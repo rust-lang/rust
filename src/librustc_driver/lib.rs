@@ -22,10 +22,9 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(default_type_params, globs, macro_rules, phase, quote)]
+#![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate flate;
@@ -38,10 +37,10 @@ extern crate rustc_borrowck;
 extern crate rustc_resolve;
 extern crate rustc_trans;
 extern crate rustc_typeck;
-#[phase(plugin, link)] extern crate log;
-#[phase(plugin, link)] extern crate syntax;
 extern crate serialize;
 extern crate "rustc_llvm" as llvm;
+#[macro_use] extern crate log;
+#[macro_use] extern crate syntax;
 
 pub use syntax::diagnostic;
 
@@ -53,7 +52,6 @@ use rustc::lint;
 use rustc::metadata;
 use rustc::DIAGNOSTICS;
 
-use std::any::AnyRefExt;
 use std::cmp::Ordering::Equal;
 use std::io;
 use std::iter::repeat;
@@ -91,12 +89,12 @@ fn run_compiler(args: &[String]) {
     let descriptions = diagnostics::registry::Registry::new(&DIAGNOSTICS);
     match matches.opt_str("explain") {
         Some(ref code) => {
-            match descriptions.find_description(code[]) {
+            match descriptions.find_description(code.index(&FullRange)) {
                 Some(ref description) => {
                     println!("{}", description);
                 }
                 None => {
-                    early_error(format!("no extended information for {}", code)[]);
+                    early_error(format!("no extended information for {}", code).index(&FullRange));
                 }
             }
             return;
@@ -122,7 +120,7 @@ fn run_compiler(args: &[String]) {
             early_error("no input filename given");
         }
         1u => {
-            let ifile = matches.free[0][];
+            let ifile = matches.free[0].index(&FullRange);
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
                 let src = String::from_utf8(contents).unwrap();
@@ -134,7 +132,7 @@ fn run_compiler(args: &[String]) {
         _ => early_error("multiple input filenames provided")
     };
 
-    let sess = build_session(sopts, input_file_path, descriptions);
+    let mut sess = build_session(sopts, input_file_path, descriptions);
     let cfg = config::build_configuration(&sess);
     if print_crate_info(&sess, Some(&input), &odir, &ofile) {
         return
@@ -145,7 +143,7 @@ fn run_compiler(args: &[String]) {
         pretty::parse_pretty(&sess, a.as_slice(), false)
     });
     let pretty = if pretty.is_none() &&
-        sess.debugging_opt(config::UNSTABLE_OPTIONS) {
+        sess.unstable_options() {
             matches.opt_str("xpretty").map(|a| {
                 // extended with unstable pretty-print variants
                 pretty::parse_pretty(&sess, a.as_slice(), true)
@@ -160,6 +158,10 @@ fn run_compiler(args: &[String]) {
             return;
         }
         None => {/* continue */ }
+    }
+
+    if sess.unstable_options() {
+        sess.opts.show_span = matches.opt_str("show-span");
     }
 
     let r = matches.opt_strs("Z");
@@ -295,7 +297,7 @@ Available lint options:
         for lint in lints.into_iter() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
-                     padded(name[]), lint.default_level.as_str(), lint.desc);
+                     padded(name.index(&FullRange)), lint.default_level.as_str(), lint.desc);
         }
         println!("\n");
     };
@@ -325,7 +327,7 @@ Available lint options:
             let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
                          .collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",
-                     padded(name[]), desc);
+                     padded(name.index(&FullRange)), desc);
         }
         println!("\n");
     };
@@ -391,7 +393,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     let matches =
-        match getopts::getopts(args[], config::optgroups()[]) {
+        match getopts::getopts(args.index(&FullRange), config::optgroups().index(&FullRange)) {
             Ok(m) => m,
             Err(f_stable_attempt) => {
                 // redo option parsing, including unstable options this time,
@@ -541,7 +543,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.spawn(move || { std::io::stdio::set_stderr(box w); f() }).join() {
+    match cfg.scoped(move || { std::io::stdio::set_stderr(box w); f() }).join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
@@ -565,7 +567,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in xs.iter() {
-                    emitter.emit(None, note[], None, diagnostic::Note)
+                    emitter.emit(None, note.index(&FullRange), None, diagnostic::Note)
                 }
 
                 match r.read_to_string() {
@@ -573,7 +575,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                     Err(e) => {
                         emitter.emit(None,
                                      format!("failed to read internal \
-                                              stderr: {}", e)[],
+                                              stderr: {}", e).index(&FullRange),
                                      None,
                                      diagnostic::Error)
                     }

@@ -14,7 +14,7 @@
 // wrong arity.
 
 fn _foo<F: Fn()> (f: F) {
-    |t| f(t); //~ ERROR E0057
+    |&: t| f(t); //~ ERROR E0057
 }
 
 fn main() {}

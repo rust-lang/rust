@@ -14,7 +14,9 @@ struct MyVec<T> {
     data: Vec<T>,
 }
 
-impl<T> Index<uint, T> for MyVec<T> {
+impl<T> Index<uint> for MyVec<T> {
+    type Output = T;
+
     fn index(&self, &i: &uint) -> &T {
         &self.data[i]
     }

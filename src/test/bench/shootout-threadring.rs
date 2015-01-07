@@ -39,7 +39,6 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::sync::mpsc::{channel, Sender, Receiver};
-use std::str::from_str;
 use std::thread::Thread;
 
 fn start(n_tasks: int, token: int) {
@@ -47,10 +46,10 @@ fn start(n_tasks: int, token: int) {
     tx.send(token);
     for i in range(2, n_tasks + 1) {
         let (tx, next_rx) = channel();
-        Thread::spawn(move|| roundtrip(i, tx, rx)).detach();
+        Thread::spawn(move|| roundtrip(i, tx, rx));
         rx = next_rx;
     }
-    Thread::spawn(move|| roundtrip(1, tx, rx)).detach();
+    Thread::spawn(move|| roundtrip(1, tx, rx));
 }
 
 fn roundtrip(id: int, tx: Sender<int>, rx: Receiver<int>) {
@@ -69,10 +68,10 @@ fn main() {
     let token = if std::os::getenv("RUST_BENCH").is_some() {
         2000000
     } else {
-        args.get(1).and_then(|arg| from_str(arg.as_slice())).unwrap_or(1000)
+        args.get(1).and_then(|arg| arg.parse()).unwrap_or(1000)
     };
     let n_tasks = args.get(2)
-                      .and_then(|arg| from_str(arg.as_slice()))
+                      .and_then(|arg| arg.parse())
                       .unwrap_or(503);
 
     start(n_tasks, token);

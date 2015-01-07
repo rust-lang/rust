@@ -30,11 +30,7 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-
-#![allow(unknown_features)]
-#![feature(asm, macro_rules, phase, globs, slicing_syntax)]
-#![feature(unboxed_closures, default_type_params)]
-#![feature(old_orphan_check)]
+#![feature(asm, slicing_syntax)]
 
 extern crate getopts;
 extern crate regex;
@@ -58,7 +54,7 @@ use serialize::{json, Decodable, Encodable};
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
-use std::any::{Any, AnyRefExt};
+use std::any::Any;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::f64;
@@ -69,11 +65,11 @@ use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
 use std::io;
 use std::iter::repeat;
-use std::num::{Float, FloatMath, Int};
+use std::num::{Float, Int};
 use std::os;
-use std::str::{FromStr, from_str};
+use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
-use std::thread::{mod, Thread};
+use std::thread::{self, Thread};
 use std::thunk::{Thunk, Invoke};
 use std::time::Duration;
 
@@ -95,7 +91,7 @@ pub mod stats;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Show)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(String)
@@ -108,13 +104,13 @@ impl TestName {
         }
     }
 }
-impl Show for TestName {
+impl fmt::String for TestName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_slice().fmt(f)
+        fmt::String::fmt(self.as_slice(), f)
     }
 }
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 enum NamePadding {
     PadNone,
     PadOnLeft,
@@ -189,14 +185,14 @@ impl fmt::Show for TestFn {
 /// This is feed into functions marked with `#[bench]` to allow for
 /// set-up & tear-down before running a piece of code repeatedly via a
 /// call to `iter`.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Bencher {
     iterations: u64,
     dur: Duration,
     pub bytes: u64,
 }
 
-#[deriving(Copy, Clone, Show, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Show, PartialEq, Eq, Hash)]
 pub enum ShouldFail {
     No,
     Yes(Option<&'static str>)
@@ -204,20 +200,20 @@ pub enum ShouldFail {
 
 // The definition of a single test. A test runner will run a list of
 // these.
-#[deriving(Clone, Show, PartialEq, Eq, Hash)]
+#[derive(Clone, Show, PartialEq, Eq, Hash)]
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
     pub should_fail: ShouldFail,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub struct TestDescAndFn {
     pub desc: TestDesc,
     pub testfn: TestFn,
 }
 
-#[deriving(Clone, RustcEncodable, RustcDecodable, PartialEq, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show, Copy)]
 pub struct Metric {
     value: f64,
     noise: f64
@@ -229,7 +225,7 @@ impl Metric {
     }
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 pub struct MetricMap(BTreeMap<String,Metric>);
 
 impl Clone for MetricMap {
@@ -240,7 +236,7 @@ impl Clone for MetricMap {
 }
 
 /// Analysis of a single change in metric
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub enum MetricChange {
     LikelyNoise,
     MetricAdded,
@@ -257,13 +253,13 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
     let opts =
         match parse_opts(args) {
             Some(Ok(o)) => o,
-            Some(Err(msg)) => panic!("{}", msg),
+            Some(Err(msg)) => panic!("{:?}", msg),
             None => return
         };
     match run_tests_console(&opts, tests) {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
-        Err(e) => panic!("io error when running tests: {}", e),
+        Err(e) => panic!("io error when running tests: {:?}", e),
     }
 }
 
@@ -285,7 +281,7 @@ pub fn test_main_static(args: &[String], tests: &[TestDescAndFn]) {
     test_main(args, owned_tests)
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum ColorConfig {
     AutoColor,
     AlwaysColor,
@@ -410,7 +406,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         let s = matches.free[0].as_slice();
         match Regex::new(s) {
             Ok(re) => Some(re),
-            Err(e) => return Some(Err(format!("could not parse /{}/: {}", s, e)))
+            Err(e) => return Some(Err(format!("could not parse /{}/: {:?}", s, e)))
         }
     } else {
         None
@@ -510,13 +506,13 @@ pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
 }
 
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct BenchSamples {
     ns_iter_summ: stats::Summary<f64>,
     mb_s: uint,
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum TestResult {
     TrOk,
     TrFailed,
@@ -793,7 +789,7 @@ impl<T: Writer> ConsoleTestState<T> {
         let ratchet_success = match *ratchet_metrics {
             None => true,
             Some(ref pth) => {
-                try!(self.write_plain(format!("\nusing metrics ratchet: {}\n",
+                try!(self.write_plain(format!("\nusing metrics ratchet: {:?}\n",
                                               pth.display()).as_slice()));
                 match ratchet_pct {
                     None => (),
@@ -912,7 +908,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
         None => (),
         Some(ref pth) => {
             try!(st.metrics.save(pth));
-            try!(st.write_plain(format!("\nmetrics saved to: {}",
+            try!(st.write_plain(format!("\nmetrics saved to: {:?}",
                                           pth.display()).as_slice()));
         }
     }
@@ -952,7 +948,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures().unwrap();
     let s = match st.out {
-        Raw(ref m) => String::from_utf8_lossy(m[]),
+        Raw(ref m) => String::from_utf8_lossy(m.index(&FullRange)),
         Pretty(_) => unreachable!()
     };
 
@@ -969,7 +965,7 @@ fn use_color(opts: &TestOpts) -> bool {
     }
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 enum TestEvent {
     TeFiltered(Vec<TestDesc> ),
     TeWait(TestDesc, NamePadding),
@@ -1137,11 +1133,11 @@ pub fn run_test(opts: &TestOpts,
                 cfg = cfg.stderr(box stderr as Box<Writer + Send>);
             }
 
-            let result_guard = cfg.spawn(move || { testfn.invoke(()) });
+            let result_guard = cfg.scoped(move || { testfn.invoke(()) });
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
             let test_result = calc_result(&desc, result_guard.join());
             monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
-        }).detach();
+        });
     }
 
     match testfn {
@@ -1206,7 +1202,7 @@ impl MetricMap {
         let mut decoder = json::Decoder::new(value);
         MetricMap(match Decodable::decode(&mut decoder) {
             Ok(t) => t,
-            Err(e) => panic!("failure decoding JSON: {}", e)
+            Err(e) => panic!("failure decoding JSON: {:?}", e)
         })
     }
 

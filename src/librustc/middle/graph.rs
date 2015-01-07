@@ -55,24 +55,24 @@ pub struct Edge<E> {
 
 impl<E: Show> Show for Edge<E> {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        write!(f, "Edge {{ next_edge: [{}, {}], source: {}, target: {}, data: {} }}",
+        write!(f, "Edge {{ next_edge: [{:?}, {:?}], source: {:?}, target: {:?}, data: {:?} }}",
                self.next_edge[0], self.next_edge[1], self.source,
                self.target, self.data)
     }
 }
 
-#[deriving(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Show)]
 pub struct NodeIndex(pub uint);
 #[allow(non_upper_case_globals)]
 pub const InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
-#[deriving(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub struct EdgeIndex(pub uint);
 #[allow(non_upper_case_globals)]
 pub const InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
 // Use a private field here to guarantee no more instances are created:
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub struct Direction { repr: uint }
 #[allow(non_upper_case_globals)]
 pub const Outgoing: Direction = Direction { repr: 0 };
@@ -305,7 +305,9 @@ pub struct DepthFirstTraversal<'g, N:'g, E:'g> {
     visited: BitvSet
 }
 
-impl<'g, N, E> Iterator<&'g N> for DepthFirstTraversal<'g, N, E> {
+impl<'g, N, E> Iterator for DepthFirstTraversal<'g, N, E> {
+    type Item = &'g N;
+
     fn next(&mut self) -> Option<&'g N> {
         while let Some(idx) = self.stack.pop() {
             if !self.visited.insert(idx.node_id()) {
@@ -417,7 +419,7 @@ mod test {
         graph.each_incoming_edge(start_index, |edge_index, edge| {
             assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_incoming.len());
-            debug!("counter={} expected={} edge_index={} edge={}",
+            debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_incoming[counter], edge_index, edge);
             match expected_incoming[counter] {
                 (ref e, ref n) => {
@@ -435,7 +437,7 @@ mod test {
         graph.each_outgoing_edge(start_index, |edge_index, edge| {
             assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_outgoing.len());
-            debug!("counter={} expected={} edge_index={} edge={}",
+            debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_outgoing[counter], edge_index, edge);
             match expected_outgoing[counter] {
                 (ref e, ref n) => {

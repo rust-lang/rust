@@ -10,11 +10,11 @@
 
 use super::probe;
 
-use check::{mod, FnCtxt, NoPreference, PreferMutLvalue, callee, demand};
+use check::{self, FnCtxt, NoPreference, PreferMutLvalue, callee, demand};
 use middle::mem_categorization::Typer;
-use middle::subst::{mod};
+use middle::subst::{self};
 use middle::traits;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::{MethodCall, MethodCallee, MethodObject, MethodOrigin,
                  MethodParam, MethodStatic, MethodTraitObject, MethodTypeParam};
 use middle::ty_fold::TypeFoldable;
@@ -200,7 +200,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         match pick.kind {
             probe::InherentImplPick(impl_def_id) => {
                 assert!(ty::impl_trait_ref(self.tcx(), impl_def_id).is_none(),
-                        "impl {} is not an inherent impl", impl_def_id);
+                        "impl {:?} is not an inherent impl", impl_def_id);
                 let impl_polytype = check::impl_self_ty(self.fcx, self.span, impl_def_id);
 
                 (impl_polytype.substs, MethodStatic(pick.method_ty.def_id))
@@ -315,7 +315,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 self.tcx().sess.span_bug(
                     self.span,
                     format!("self-type `{}` for ObjectPick never dereferenced to an object",
-                            self_ty.repr(self.tcx()))[])
+                            self_ty.repr(self.tcx())).index(&FullRange))
             }
         }
     }
@@ -370,7 +370,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     format!(
                         "{} was a subtype of {} but now is not?",
                         self_ty.repr(self.tcx()),
-                        method_self_ty.repr(self.tcx()))[]);
+                        method_self_ty.repr(self.tcx())).index(&FullRange));
             }
         }
     }
@@ -462,7 +462,6 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                     method_callee: &MethodCallee) {
         let sig = match method_callee.ty.sty {
             ty::ty_bare_fn(_, ref f) => f.sig.clone(),
-            ty::ty_closure(ref f) => f.sig.clone(),
             _ => return,
         };
 
@@ -563,6 +562,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             self.fcx.adjust_expr_ty(
                                 &**base_expr,
                                 Some(&ty::AdjustDerefRef(base_adjustment.clone())));
+                        let index_expr_ty = self.fcx.expr_ty(&**index_expr);
 
                         let result = check::try_index_step(
                             self.fcx,
@@ -571,10 +571,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             &**base_expr,
                             adjusted_base_ty,
                             base_adjustment,
-                            PreferMutLvalue);
+                            PreferMutLvalue,
+                            index_expr_ty);
 
                         if let Some((input_ty, return_ty)) = result {
-                            let index_expr_ty = self.fcx.expr_ty(&**index_expr);
                             demand::suptype(self.fcx, index_expr.span, input_ty, index_expr_ty);
 
                             let expr_ty = self.fcx.expr_ty(&**expr);
@@ -640,7 +640,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     self.span,
                     format!("cannot upcast `{}` to `{}`",
                             source_trait_ref.repr(self.tcx()),
-                            target_trait_def_id.repr(self.tcx()))[]);
+                            target_trait_def_id.repr(self.tcx())).as_slice());
             }
         }
     }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules, trace_macros)]
+#![feature(trace_macros)]
 
 fn main() {
     trace_macros!(); //~ ERROR trace_macros! accepts only `true` or `false`

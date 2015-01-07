@@ -146,7 +146,7 @@ impl TcpStream {
     ///     timer::sleep(Duration::seconds(1));
     ///     let mut stream = stream2;
     ///     stream.close_read();
-    /// }).detach();
+    /// });
     ///
     /// // wait for some data, will get canceled after one second
     /// let mut buf = [0];
@@ -295,10 +295,12 @@ impl sys_common::AsInner<TcpStreamImp> for TcpStream {
 /// for stream in acceptor.incoming() {
 ///     match stream {
 ///         Err(e) => { /* connection failed */ }
-///         Ok(stream) => Thread::spawn(move|| {
-///             // connection succeeded
-///             handle_client(stream)
-///         }).detach()
+///         Ok(stream) => {
+///             Thread::spawn(move|| {
+///                 // connection succeeded
+///                 handle_client(stream)
+///             });
+///         }
 ///     }
 /// }
 ///
@@ -432,7 +434,7 @@ impl TcpAcceptor {
     ///             Err(e) => panic!("unexpected error: {}", e),
     ///         }
     ///     }
-    /// }).detach();
+    /// });
     ///
     /// # fn wait_for_sigint() {}
     /// // Now that our accept loop is running, wait for the program to be
@@ -660,7 +662,7 @@ mod test {
             Ok(..) => panic!(),
             Err(ref e) => {
                 assert!(e.kind == NotConnected || e.kind == EndOfFile,
-                        "unknown kind: {}", e.kind);
+                        "unknown kind: {:?}", e.kind);
             }
         }
     }
@@ -684,7 +686,7 @@ mod test {
             Ok(..) => panic!(),
             Err(ref e) => {
                 assert!(e.kind == NotConnected || e.kind == EndOfFile,
-                        "unknown kind: {}", e.kind);
+                        "unknown kind: {:?}", e.kind);
             }
         }
     }
@@ -997,7 +999,7 @@ mod test {
             Ok(..) => panic!(),
             Err(e) => {
                 assert!(e.kind == ConnectionRefused || e.kind == OtherIoError,
-                        "unknown error: {} {}", e, e.kind);
+                        "unknown error: {} {:?}", e, e.kind);
             }
         }
     }
@@ -1186,7 +1188,7 @@ mod test {
             let mut a = a;
             let _s = a.accept().unwrap();
             let _ = rx.recv().unwrap();
-        }).detach();
+        });
 
         let mut b = [0];
         let mut s = TcpStream::connect(addr).unwrap();
@@ -1223,7 +1225,7 @@ mod test {
             let mut a = a;
             let _s = a.accept().unwrap();
             let _ = rx.recv().unwrap();
-        }).detach();
+        });
 
         let mut s = TcpStream::connect(addr).unwrap();
         let s2 = s.clone();
@@ -1250,7 +1252,7 @@ mod test {
             rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         s.set_timeout(Some(20));
@@ -1289,7 +1291,7 @@ mod test {
                 }
             }
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         s.set_read_timeout(Some(20));
@@ -1312,7 +1314,7 @@ mod test {
             rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         s.set_write_timeout(Some(20));
@@ -1340,7 +1342,7 @@ mod test {
             rx.recv().unwrap();
             assert_eq!(s.write(&[0]), Ok(()));
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         let s2 = s.clone();

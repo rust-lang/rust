@@ -10,8 +10,7 @@
 
 // A test of the macro system. Can we do HTML literals?
 
-#![feature(macro_rules)]
-
+// ignore-test FIXME #20673
 
 /*
 
@@ -27,13 +26,13 @@ left.
 */
 use HTMLFragment::{tag, text};
 
-macro_rules! html (
+macro_rules! html {
     ( $($body:tt)* ) => (
         parse_node!( []; []; $($body)* )
     )
-);
+}
 
-macro_rules! parse_node (
+macro_rules! parse_node {
     (
         [:$head:ident ($(:$head_nodes:expr),*)
          $(:$tags:ident ($(:$tag_nodes:expr),*))*];
@@ -85,7 +84,7 @@ macro_rules! parse_node (
     );
 
     ( []; [:$e:expr]; ) => ( $e );
-);
+}
 
 pub fn main() {
     let _page = html! (

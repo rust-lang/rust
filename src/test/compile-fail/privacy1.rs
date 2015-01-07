@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs, lang_items)]
+#![feature(lang_items)]
 #![no_std] // makes debugging this test *a lot* easier (during resolve)
 
 #[lang="sized"]
 pub trait Sized {}
+
+#[lang="copy"]
+pub trait Copy {}
 
 mod bar {
     // shouldn't bring in too much

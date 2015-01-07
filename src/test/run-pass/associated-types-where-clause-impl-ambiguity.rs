@@ -16,11 +16,11 @@
 
 // ignore-pretty -- FIXME(#17362) pretty prints with `<<` which lexes wrong
 
-#![feature(associated_types, lang_items, unboxed_closures)]
+#![feature(lang_items, unboxed_closures)]
 #![no_implicit_prelude]
 
-use std::kinds::Sized;
-use std::option::Option::{None, Some, mod};
+use std::marker::Sized;
+use std::option::Option::{None, Some, self};
 
 trait Iterator {
     type Item;

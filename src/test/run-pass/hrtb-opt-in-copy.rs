@@ -18,7 +18,7 @@
 
 #![allow(dead_code)]
 
-use std::kinds::marker;
+use std::marker;
 
 #[derive(Copy)]
 struct Foo<T> { x: T }

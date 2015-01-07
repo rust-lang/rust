@@ -15,19 +15,19 @@ use diagnostic::Emitter;
 use driver;
 use rustc_resolve as resolve;
 use rustc_typeck::middle::lang_items;
-use rustc_typeck::middle::region::{mod, CodeExtent};
+use rustc_typeck::middle::region::{self, CodeExtent};
 use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;
 use rustc_typeck::middle::subst::Subst;
-use rustc_typeck::middle::ty::{mod, Ty};
+use rustc_typeck::middle::ty::{self, Ty};
 use rustc_typeck::middle::infer::combine::Combine;
 use rustc_typeck::middle::infer;
 use rustc_typeck::middle::infer::lub::Lub;
 use rustc_typeck::middle::infer::glb::Glb;
 use rustc_typeck::middle::infer::sub::Sub;
 use rustc_typeck::util::ppaux::{ty_to_string, Repr, UserString};
-use rustc::session::{mod,config};
+use rustc::session::{self,config};
 use syntax::{abi, ast, ast_map};
 use syntax::codemap;
 use syntax::codemap::{Span, CodeMap, DUMMY_SP};
@@ -277,29 +277,9 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         ty::mk_tup(self.infcx.tcx, vec![ty1, ty2])
     }
 
-    pub fn t_closure(&self,
-                     input_tys: &[Ty<'tcx>],
-                     output_ty: Ty<'tcx>,
-                     region_bound: ty::Region)
-                     -> Ty<'tcx>
-    {
-        ty::mk_closure(self.infcx.tcx, ty::ClosureTy {
-            unsafety: ast::Unsafety::Normal,
-            onceness: ast::Many,
-            store: ty::RegionTraitStore(region_bound, ast::MutMutable),
-            bounds: ty::region_existential_bound(region_bound),
-            sig: ty::Binder(ty::FnSig {
-                inputs: input_tys.to_vec(),
-                output: ty::FnConverging(output_ty),
-                variadic: false,
-            }),
-            abi: abi::Rust,
-        })
-    }
-
     pub fn t_param(&self, space: subst::ParamSpace, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
-        ty::mk_param(self.infcx.tcx, space, index, token::intern(name[]))
+        ty::mk_param(self.infcx.tcx, space, index, token::intern(name.index(&FullRange)))
     }
 
     pub fn re_early_bound(&self,
@@ -438,7 +418,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                self.ty_to_string(t_glb));
         match self.glb().tys(t1, t2) {
             Err(e) => {
-                panic!("unexpected error computing LUB: {}", e)
+                panic!("unexpected error computing LUB: {:?}", e)
             }
             Ok(t) => {
                 self.assert_eq(t, t_glb);
@@ -780,19 +760,6 @@ fn escaping() {
         assert!(!ty::type_has_escaping_regions(t_param));
         let t_fn = env.t_fn(&[t_param], env.t_nil());
         assert!(!ty::type_has_escaping_regions(t_fn));
-
-        // t_fn = |&int|+'a
-        let t_fn = env.t_closure(&[t_rptr_bound1], env.t_nil(), env.re_free(0, 1));
-        assert!(!ty::type_has_escaping_regions(t_fn));
-
-        // t_fn = |&int|+'a (where &int has depth 2)
-        let t_fn = env.t_closure(&[t_rptr_bound2], env.t_nil(), env.re_free(0, 1));
-        assert!(ty::type_has_escaping_regions(t_fn));
-
-        // t_fn = |&int|+&int
-        let t_fn = env.t_closure(&[t_rptr_bound1], env.t_nil(),
-                                 env.re_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1)));
-        assert!(ty::type_has_escaping_regions(t_fn));
     })
 }
 
@@ -874,7 +841,7 @@ fn walk_ty_skip_subtree() {
 
         let mut walker = uniq_ty.walk();
         while let Some(t) = walker.next() {
-            debug!("walked to {}", t);
+            debug!("walked to {:?}", t);
             let (expected_ty, skip) = expected.pop().unwrap();
             assert_eq!(t, expected_ty);
             if skip { walker.skip_current_subtree(); }

@@ -12,8 +12,9 @@
 
 pub use self::WfConstraint::*;
 
+use middle::infer::GenericKind;
 use middle::subst::{ParamSpace, Subst, Substs};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder};
 
 use syntax::ast;
@@ -24,7 +25,7 @@ use util::ppaux::Repr;
 
 pub enum WfConstraint<'tcx> {
     RegionSubRegionConstraint(Option<Ty<'tcx>>, ty::Region, ty::Region),
-    RegionSubParamConstraint(Option<Ty<'tcx>>, ty::Region, ty::ParamTy),
+    RegionSubGenericConstraint(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
 }
 
 struct Wf<'a, 'tcx: 'a> {
@@ -65,10 +66,6 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             ty::ty_err |
             ty::ty_str => {
                 // No borrowed content reachable here.
-            }
-
-            ty::ty_closure(box ref c) => {
-                self.accumulate_from_closure_ty(ty, c);
             }
 
             ty::ty_unboxed_closure(_, region, _) => {
@@ -125,8 +122,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             ty::ty_projection(ref data) => {
                 // `<T as TraitRef<..>>::Name`
 
-                // FIXME(#20303) -- gain ability to require that ty_projection : in-scope region,
-                // like a type parameter
+                self.push_projection_constraint_from_top(data);
 
                 // this seems like a minimal requirement:
                 let trait_def = ty::lookup_trait_def(self.tcx, data.trait_ref.def_id);
@@ -151,7 +147,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             ty::ty_open(_) => {
                 self.tcx.sess.bug(
                     format!("Unexpected type encountered while doing wf check: {}",
-                            ty.repr(self.tcx))[]);
+                            ty.repr(self.tcx)).index(&FullRange));
             }
         }
     }
@@ -215,12 +211,21 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         self.push_param_constraint(region, opt_ty, param_ty);
     }
 
+    /// Pushes a constraint that `projection_ty` must outlive the top region on the stack.
+    fn push_projection_constraint_from_top(&mut self,
+                                           projection_ty: &ty::ProjectionTy<'tcx>) {
+        let &(region, opt_ty) = self.stack.last().unwrap();
+        self.out.push(RegionSubGenericConstraint(
+            opt_ty, region, GenericKind::Projection(projection_ty.clone())));
+    }
+
     /// Pushes a constraint that `region <= param_ty`, due to `opt_ty`
     fn push_param_constraint(&mut self,
                              region: ty::Region,
                              opt_ty: Option<Ty<'tcx>>,
                              param_ty: ty::ParamTy) {
-        self.out.push(RegionSubParamConstraint(opt_ty, region, param_ty));
+        self.out.push(RegionSubGenericConstraint(
+            opt_ty, region, GenericKind::Param(param_ty)));
     }
 
     fn accumulate_from_adt(&mut self,
@@ -323,22 +328,6 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         }
     }
 
-    fn accumulate_from_closure_ty(&mut self,
-                                  ty: Ty<'tcx>,
-                                  c: &ty::ClosureTy<'tcx>)
-    {
-        match c.store {
-            ty::RegionTraitStore(r_b, _) => {
-                self.push_region_constraint_from_top(r_b);
-            }
-            ty::UniqTraitStore => { }
-        }
-
-        let required_region_bounds =
-            ty::object_region_bounds(self.tcx, None, c.bounds.builtin_bounds);
-        self.accumulate_from_object_ty(ty, c.bounds.region_bound, required_region_bounds);
-    }
-
     fn accumulate_from_object_ty(&mut self,
                                  ty: Ty<'tcx>,
                                  region_bound: ty::Region,
@@ -393,16 +382,16 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 }
 
 impl<'tcx> Repr<'tcx> for WfConstraint<'tcx> {
-    fn repr(&self, tcx: &ty::ctxt) -> String {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
-            RegionSubRegionConstraint(_, r_a, r_b) => {
+            RegionSubRegionConstraint(_, ref r_a, ref r_b) => {
                 format!("RegionSubRegionConstraint({}, {})",
                         r_a.repr(tcx),
                         r_b.repr(tcx))
             }
 
-            RegionSubParamConstraint(_, r, p) => {
-                format!("RegionSubParamConstraint({}, {})",
+            RegionSubGenericConstraint(_, ref r, ref p) => {
+                format!("RegionSubGenericConstraint({}, {})",
                         r.repr(tcx),
                         p.repr(tcx))
             }

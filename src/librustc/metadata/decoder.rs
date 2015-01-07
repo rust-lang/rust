@@ -29,7 +29,7 @@ use middle::def;
 use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::astencode::vtable_decoder_helpers;
 
 use std::collections::HashMap;
@@ -75,7 +75,7 @@ fn lookup_hash<'a, F>(d: rbml::Doc<'a>, mut eq_fn: F, hash: u64) -> Option<rbml:
     let mut ret = None;
     reader::tagged_docs(tagged_doc.doc, belt, |elt| {
         let pos = u64_from_be_bytes(elt.data, elt.start, 4) as uint;
-        if eq_fn(elt.data[elt.start + 4 .. elt.end]) {
+        if eq_fn(elt.data.index(&((elt.start + 4) .. elt.end))) {
             ret = Some(reader::doc_at(d.data, pos).unwrap().doc);
             false
         } else {
@@ -89,7 +89,7 @@ pub fn maybe_find_item<'a>(item_id: ast::NodeId,
                            items: rbml::Doc<'a>) -> Option<rbml::Doc<'a>> {
     fn eq_item(bytes: &[u8], item_id: ast::NodeId) -> bool {
         return u64_from_be_bytes(
-            bytes[0u..4u], 0u, 4u) as ast::NodeId
+            bytes.index(&(0u..4u)), 0u, 4u) as ast::NodeId
             == item_id;
     }
     lookup_hash(items,
@@ -111,7 +111,7 @@ fn lookup_item<'a>(item_id: ast::NodeId, data: &'a [u8]) -> rbml::Doc<'a> {
     find_item(item_id, items)
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum Family {
     ImmStatic,             // c
     MutStatic,             // b
@@ -471,7 +471,7 @@ pub fn get_symbol(data: &[u8], id: ast::NodeId) -> String {
 }
 
 // Something that a name can resolve to.
-#[deriving(Copy, Clone, Show)]
+#[derive(Copy, Clone, Show)]
 pub enum DefLike {
     DlDef(def::Def),
     DlImpl(ast::DefId),
@@ -662,15 +662,15 @@ pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<ast_map::PathElem> {
     item_path(lookup_item(id, cdata.data()))
 }
 
-pub type DecodeInlinedItem<'a> = for<'tcx> |cdata: Cmd,
-                                            tcx: &ty::ctxt<'tcx>,
-                                            path: Vec<ast_map::PathElem>,
-                                            par_doc: rbml::Doc|: 'a
-                                            -> Result<&'tcx ast::InlinedItem,
-                                                      Vec<ast_map::PathElem>>;
+pub type DecodeInlinedItem<'a> =
+    Box<for<'tcx> FnMut(Cmd,
+                        &ty::ctxt<'tcx>,
+                        Vec<ast_map::PathElem>,
+                        rbml::Doc)
+                        -> Result<&'tcx ast::InlinedItem, Vec<ast_map::PathElem>> + 'a>;
 
 pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeId,
-                                decode_inlined_item: DecodeInlinedItem)
+                                mut decode_inlined_item: DecodeInlinedItem)
                                 -> csearch::found_ast<'tcx> {
     debug!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data());
@@ -1173,7 +1173,7 @@ pub fn get_crate_attributes(data: &[u8]) -> Vec<ast::Attribute> {
     get_attributes(rbml::Doc::new(data))
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct CrateDep {
     pub cnum: ast::CrateNum,
     pub name: String,
@@ -1191,7 +1191,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
         let name = docstr(depdoc, tag_crate_dep_crate_name);
-        let hash = Svh::new(docstr(depdoc, tag_crate_dep_hash)[]);
+        let hash = Svh::new(docstr(depdoc, tag_crate_dep_hash).index(&FullRange));
         deps.push(CrateDep {
             cnum: crate_num,
             name: name,
@@ -1353,15 +1353,16 @@ pub fn get_plugin_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
         .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).unwrap())
 }
 
-pub fn get_exported_macros(data: &[u8]) -> Vec<String> {
-    let macros = reader::get_doc(rbml::Doc::new(data),
-                                 tag_exported_macros);
-    let mut result = Vec::new();
+pub fn each_exported_macro<F>(data: &[u8], intr: &IdentInterner, mut f: F) where
+    F: FnMut(ast::Name, Vec<ast::Attribute>, String) -> bool,
+{
+    let macros = reader::get_doc(rbml::Doc::new(data), tag_macro_defs);
     reader::tagged_docs(macros, tag_macro_def, |macro_doc| {
-        result.push(macro_doc.as_str().to_string());
-        true
+        let name = item_name(intr, macro_doc);
+        let attrs = get_attributes(macro_doc);
+        let body = reader::get_doc(macro_doc, tag_macro_def_body);
+        f(name, attrs, body.as_str().to_string())
     });
-    result
 }
 
 pub fn get_dylib_dependency_formats(cdata: Cmd)

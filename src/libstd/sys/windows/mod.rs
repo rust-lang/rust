@@ -22,7 +22,7 @@ use prelude::v1::*;
 
 use num;
 use mem;
-use io::{mod, IoResult, IoError};
+use io::{self, IoResult, IoError};
 use sync::{Once, ONCE_INIT};
 
 macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (

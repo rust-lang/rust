@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![experimental]
-#![macro_escape]
 
 //! A typesafe bitmask flag generator.
 
@@ -72,7 +71,7 @@
 ///     let mut flags = FLAG_A | FLAG_B;
 ///     flags.clear();
 ///     assert!(flags.is_empty());
-///     assert_eq!(format!("{}", flags).as_slice(), "hi!");
+///     assert_eq!(format!("{:?}", flags).as_slice(), "hi!");
 /// }
 /// ```
 ///
@@ -121,7 +120,7 @@ macro_rules! bitflags {
     ($(#[$attr:meta])* flags $BitFlags:ident: $T:ty {
         $($(#[$Flag_attr:meta])* const $Flag:ident = $value:expr),+
     }) => {
-        #[deriving(Copy, PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
+        #[derive(Copy, PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
         $(#[$attr])*
         pub struct $BitFlags {
             bits: $T,
@@ -209,7 +208,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl ::std::ops::BitOr<$BitFlags, $BitFlags> for $BitFlags {
+        impl ::std::ops::BitOr for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the union of the two sets of flags.
             #[inline]
             fn bitor(self, other: $BitFlags) -> $BitFlags {
@@ -217,7 +218,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl ::std::ops::BitXor<$BitFlags, $BitFlags> for $BitFlags {
+        impl ::std::ops::BitXor for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the left flags, but with all the right flags toggled.
             #[inline]
             fn bitxor(self, other: $BitFlags) -> $BitFlags {
@@ -225,7 +228,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl ::std::ops::BitAnd<$BitFlags, $BitFlags> for $BitFlags {
+        impl ::std::ops::BitAnd for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the intersection between the two sets of flags.
             #[inline]
             fn bitand(self, other: $BitFlags) -> $BitFlags {
@@ -233,7 +238,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl ::std::ops::Sub<$BitFlags, $BitFlags> for $BitFlags {
+        impl ::std::ops::Sub for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the set difference of the two sets of flags.
             #[inline]
             fn sub(self, other: $BitFlags) -> $BitFlags {
@@ -241,7 +248,9 @@ macro_rules! bitflags {
             }
         }
 
-        impl ::std::ops::Not<$BitFlags> for $BitFlags {
+        impl ::std::ops::Not for $BitFlags {
+            type Output = $BitFlags;
+
             /// Returns the complement of this set of flags.
             #[inline]
             fn not(self) -> $BitFlags {

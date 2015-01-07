@@ -18,7 +18,9 @@ struct Rows<M: MatrixRow> {
     mat: M,
 }
 
-impl<'a> Iterator<()> for Rows<&'a Mat> {
+impl<'a> Iterator for Rows<&'a Mat> {
+    type Item = ();
+
     fn next(&mut self) -> Option<()> {
         unimplemented!()
     }

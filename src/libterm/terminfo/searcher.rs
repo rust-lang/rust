@@ -61,13 +61,13 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
     for p in dirs_to_search.iter() {
         if p.exists() {
             let f = first_char.to_string();
-            let newp = p.join_many(&[f[], term]);
+            let newp = p.join_many(&[f.index(&FullRange), term]);
             if newp.exists() {
                 return Some(box newp);
             }
             // on some installations the dir is named after the hex of the char (e.g. OS X)
             let f = format!("{:x}", first_char as uint);
-            let newp = p.join_many(&[f[], term]);
+            let newp = p.join_many(&[f.index(&FullRange), term]);
             if newp.exists() {
                 return Some(box newp);
             }
@@ -82,11 +82,11 @@ pub fn open(term: &str) -> Result<File, String> {
         Some(x) => {
             match File::open(&*x) {
                 Ok(file) => Ok(file),
-                Err(e) => Err(format!("error opening file: {}", e)),
+                Err(e) => Err(format!("error opening file: {:?}", e)),
             }
         }
         None => {
-            Err(format!("could not find terminfo entry for {}", term))
+            Err(format!("could not find terminfo entry for {:?}", term))
         }
     }
 }

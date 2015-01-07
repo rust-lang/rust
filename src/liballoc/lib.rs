@@ -65,23 +65,16 @@
 
 #![no_std]
 #![allow(unknown_features)]
-#![feature(lang_items, phase, unsafe_destructor, default_type_params, old_orphan_check)]
-#![feature(associated_types)]
+#![feature(lang_items, unsafe_destructor)]
 
-#[phase(plugin, link)]
+#[macro_use]
 extern crate core;
 extern crate libc;
 
 // Allow testing this library
 
-#[cfg(test)] #[phase(plugin, link)] extern crate std;
-#[cfg(test)] #[phase(plugin, link)] extern crate log;
-
-// The deprecated name of the boxed module
-
-#[deprecated = "use boxed instead"]
-#[cfg(not(test))]
-pub use boxed as owned;
+#[cfg(test)] #[macro_use] extern crate std;
+#[cfg(test)] #[macro_use] extern crate log;
 
 // Heaps provided for low-level allocation strategies
 

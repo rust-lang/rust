@@ -26,6 +26,7 @@ use trans::build::*;
 use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
+use trans::consts;
 use trans::common::*;
 use trans::datum;
 use trans::debuginfo;
@@ -34,13 +35,13 @@ use trans::machine::*;
 use trans::tvec;
 use trans::type_::Type;
 use trans::type_of::{type_of, sizing_type_of, align_of};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux::{ty_to_short_str, Repr};
 use util::ppaux;
 
 use arena::TypedArena;
-use std::c_str::ToCStr;
 use libc::c_uint;
+use std::ffi::CString;
 use syntax::ast;
 use syntax::parse::token;
 
@@ -160,7 +161,7 @@ pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Val
 
     let (glue, new_sym) = match ccx.available_drop_glues().borrow().get(&t) {
         Some(old_sym) => {
-            let glue = decl_cdecl_fn(ccx, old_sym[], llfnty, ty::mk_nil(ccx.tcx()));
+            let glue = decl_cdecl_fn(ccx, old_sym.index(&FullRange), llfnty, ty::mk_nil(ccx.tcx()));
             (glue, None)
         },
         None => {
@@ -211,7 +212,8 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  dtor_did: ast::DefId,
                                  class_did: ast::DefId,
                                  substs: &subst::Substs<'tcx>)
-                                 -> Block<'blk, 'tcx> {
+                                 -> Block<'blk, 'tcx>
+{
     let repr = adt::represent_type(bcx.ccx(), t);
 
     // Find and call the actual destructor
@@ -227,11 +229,12 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let fty = ty::lookup_item_type(bcx.tcx(), dtor_did).ty.subst(bcx.tcx(), substs);
     let self_ty = match fty.sty {
         ty::ty_bare_fn(_, ref f) => {
-            assert!(f.sig.0.inputs.len() == 1);
-            f.sig.0.inputs[0]
+            let sig = ty::erase_late_bound_regions(bcx.tcx(), &f.sig);
+            assert!(sig.inputs.len() == 1);
+            sig.inputs[0]
         }
         _ => bcx.sess().bug(format!("Expected function type, found {}",
-                                    bcx.ty_to_string(fty))[])
+                                    bcx.ty_to_string(fty)).index(&FullRange))
     };
 
     let (struct_data, info) = if type_is_sized(bcx.tcx(), t) {
@@ -292,7 +295,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      class_did,
                                      &[get_drop_glue_type(bcx.ccx(), t)],
                                      ty::mk_nil(bcx.tcx()));
-        let (_, variant_cx) = invoke(variant_cx, dtor_addr, args[], dtor_ty, None);
+        let (_, variant_cx) = invoke(variant_cx, dtor_addr, args.index(&FullRange), dtor_ty, None);
 
         variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope);
         variant_cx
@@ -351,7 +354,7 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             (Mul(bcx, info, C_uint(bcx.ccx(), unit_size)), C_uint(bcx.ccx(), 8u))
         }
         _ => bcx.sess().bug(format!("Unexpected unsized type, found {}",
-                                    bcx.ty_to_string(t))[])
+                                    bcx.ty_to_string(t)).index(&FullRange))
     }
 }
 
@@ -423,7 +426,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                         bcx.sess().warn(format!("Ignoring drop flag in destructor for {}\
                                                  because the struct is unsized. See issue\
                                                  #16758",
-                                                bcx.ty_to_string(t))[]);
+                                                bcx.ty_to_string(t)).index(&FullRange));
                         trans_struct_drop(bcx, t, v0, dtor, did, substs)
                     }
                 }
@@ -440,18 +443,6 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                                                          v0,
                                                          t,
                                                          |bb, vv, tt| drop_ty(bb, vv, tt, None)),
-        ty::ty_closure(ref f) if f.store == ty::UniqTraitStore => {
-            let box_cell_v = GEPi(bcx, v0, &[0u, abi::FAT_PTR_EXTRA]);
-            let env = Load(bcx, box_cell_v);
-            let env_ptr_ty = Type::at_box(bcx.ccx(), Type::i8(bcx.ccx())).ptr_to();
-            let env = PointerCast(bcx, env, env_ptr_ty);
-            with_cond(bcx, IsNotNull(bcx, env), |bcx| {
-                let dtor_ptr = GEPi(bcx, env, &[0u, abi::BOX_FIELD_DROP_GLUE]);
-                let dtor = Load(bcx, dtor_ptr);
-                Call(bcx, dtor, &[PointerCast(bcx, box_cell_v, Type::i8p(bcx.ccx()))], None);
-                bcx
-            })
-        }
         ty::ty_trait(..) => {
             // No need to do a null check here (as opposed to the Box<trait case
             // above), because this happens for a trait field in an unsized
@@ -497,15 +488,15 @@ pub fn declare_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_string(ccx.tcx(), t), name);
-    let gvar = name.with_c_str(|buf| {
-        unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod(), ccx.tydesc_type().to_ref(), buf)
-        }
-    });
+    let buf = CString::from_slice(name.as_bytes());
+    let gvar = unsafe {
+        llvm::LLVMAddGlobal(ccx.llmod(), ccx.tydesc_type().to_ref(),
+                            buf.as_ptr())
+    };
     note_unique_llvm_symbol(ccx, name);
 
     let ty_name = token::intern_and_get_ident(
-        ppaux::ty_to_string(ccx.tcx(), t)[]);
+        ppaux::ty_to_string(ccx.tcx(), t).index(&FullRange));
     let ty_name = C_str_slice(ccx, ty_name);
 
     debug!("--- declare_tydesc {}", ppaux::ty_to_string(ccx.tcx(), t));
@@ -524,19 +515,20 @@ fn declare_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
     let fn_nm = mangle_internal_name_by_type_and_seq(
         ccx,
         t,
-        format!("glue_{}", name)[]);
-    let llfn = decl_cdecl_fn(ccx, fn_nm[], llfnty, ty::mk_nil(ccx.tcx()));
+        format!("glue_{}", name).index(&FullRange));
+    let llfn = decl_cdecl_fn(ccx, fn_nm.index(&FullRange), llfnty, ty::mk_nil(ccx.tcx()));
     note_unique_llvm_symbol(ccx, fn_nm.clone());
     return (fn_nm, llfn);
 }
 
-fn make_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               t: Ty<'tcx>,
-                               llfn: ValueRef,
-                               helper: for<'blk> |Block<'blk, 'tcx>, ValueRef, Ty<'tcx>|
-                                                  -> Block<'blk, 'tcx>,
-                               name: &str)
-                               -> ValueRef {
+fn make_generic_glue<'a, 'tcx, F>(ccx: &CrateContext<'a, 'tcx>,
+                                  t: Ty<'tcx>,
+                                  llfn: ValueRef,
+                                  helper: F,
+                                  name: &str)
+                                  -> ValueRef where
+    F: for<'blk> FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+{
     let _icx = push_ctxt("make_generic_glue");
     let glue_name = format!("glue {} {}", name, ty_to_short_str(ccx.tcx(), t));
     let _s = StatRecorder::new(ccx, glue_name);
@@ -577,9 +569,7 @@ pub fn emit_tydescs(ccx: &CrateContext) {
         // before being put into the tydesc because we only have a singleton
         // tydesc type. Then we'll recast each function to its real type when
         // calling it.
-        let drop_glue = unsafe {
-            llvm::LLVMConstPointerCast(get_drop_glue(ccx, ti.ty), glue_fn_ty.to_ref())
-        };
+        let drop_glue = consts::ptrcast(get_drop_glue(ccx, ti.ty), glue_fn_ty);
         ccx.stats().n_real_glues.set(ccx.stats().n_real_glues.get() + 1);
 
         let tydesc = C_named_struct(ccx.tydesc_type(),

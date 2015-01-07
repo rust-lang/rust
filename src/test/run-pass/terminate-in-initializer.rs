@@ -12,7 +12,7 @@
 // Issue #787
 // Don't try to clean up uninitialized locals
 
-use std::task;
+use std::thread::Thread;
 
 fn test_break() { loop { let _x: Box<int> = break; } }
 
@@ -22,13 +22,13 @@ fn test_ret() { let _x: Box<int> = return; }
 
 fn test_panic() {
     fn f() { let _x: Box<int> = panic!(); }
-    task::try(move|| f() );
+    Thread::scoped(move|| f() ).join().err().unwrap();
 }
 
 fn test_panic_indirect() {
     fn f() -> ! { panic!(); }
     fn g() { let _x: Box<int> = f(); }
-    task::try(move|| g() );
+    Thread::scoped(move|| g() ).join().err().unwrap();
 }
 
 pub fn main() {

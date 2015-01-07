@@ -11,7 +11,7 @@
 #![feature(lang_items)]
 #![no_std]
 
-#[lang="sized"] pub trait Sized for Sized? {}
+#[lang="sized"] pub trait Sized {}
 
 // error-pattern:requires `start` lang_item
 

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -16,7 +16,7 @@ use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, count};
-use kinds::{Copy, Sized, marker};
+use marker::{Copy, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
 use num::{Int, UnsignedInt};
@@ -124,7 +124,7 @@ struct GapThenFull<K, V, M> {
 
 /// A hash that is not zero, since we use a hash of zero to represent empty
 /// buckets.
-#[deriving(PartialEq, Copy)]
+#[derive(PartialEq, Copy)]
 pub struct SafeHash {
     hash: u64,
 }
@@ -138,14 +138,12 @@ impl SafeHash {
 /// We need to remove hashes of 0. That's reserved for empty buckets.
 /// This function wraps up `hash_keyed` to be the only way outside this
 /// module to generate a SafeHash.
-pub fn make_hash<Sized? T: Hash<S>, S, H: Hasher<S>>(hasher: &H, t: &T) -> SafeHash {
-    match hasher.hash(t) {
-        // This constant is exceedingly likely to hash to the same
-        // bucket, but it won't be counted as empty! Just so we can maintain
-        // our precious uniform distribution of initial indexes.
-        EMPTY_BUCKET => SafeHash { hash: 0x8000_0000_0000_0000 },
-        h            => SafeHash { hash: h },
-    }
+pub fn make_hash<T: ?Sized + Hash<S>, S, H: Hasher<S>>(hasher: &H, t: &T) -> SafeHash {
+    // We need to avoid 0u64 in order to prevent collisions with
+    // EMPTY_HASH. We can maintain our precious uniform distribution
+    // of initial indexes by unconditionally setting the MSB,
+    // effectively reducing 64-bits hashes to 63 bits.
+    SafeHash { hash: 0x8000_0000_0000_0000 | hasher.hash(t) }
 }
 
 // `replace` casts a `*u64` to a `*SafeHash`. Since we statically
@@ -718,7 +716,7 @@ struct RawBuckets<'a, K, V> {
     marker: marker::ContravariantLifetime<'a>,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for RawBuckets<'a, K, V> {
     fn clone(&self) -> RawBuckets<'a, K, V> {
         RawBuckets {
@@ -730,7 +728,9 @@ impl<'a, K, V> Clone for RawBuckets<'a, K, V> {
 }
 
 
-impl<'a, K, V> Iterator<RawBucket<K, V>> for RawBuckets<'a, K, V> {
+impl<'a, K, V> Iterator for RawBuckets<'a, K, V> {
+    type Item = RawBucket<K, V>;
+
     fn next(&mut self) -> Option<RawBucket<K, V>> {
         while self.raw.hash != self.hashes_end {
             unsafe {
@@ -757,7 +757,9 @@ struct RevMoveBuckets<'a, K, V> {
     marker: marker::ContravariantLifetime<'a>,
 }
 
-impl<'a, K, V> Iterator<(K, V)> for RevMoveBuckets<'a, K, V> {
+impl<'a, K, V> Iterator for RevMoveBuckets<'a, K, V> {
+    type Item = (K, V);
+
     fn next(&mut self) -> Option<(K, V)> {
         if self.elems_left == 0 {
             return None;
@@ -787,7 +789,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     elems_left: uint,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for Iter<'a, K, V> {
     fn clone(&self) -> Iter<'a, K, V> {
         Iter {
@@ -816,7 +818,9 @@ pub struct Drain<'a, K: 'a, V: 'a> {
     iter: RawBuckets<'static, K, V>,
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a V)> for Iter<'a, K, V> {
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = (&'a K, &'a V);
+
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
         self.iter.next().map(|bucket| {
             self.elems_left -= 1;
@@ -832,7 +836,9 @@ impl<'a, K, V> Iterator<(&'a K, &'a V)> for Iter<'a, K, V> {
     }
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for IterMut<'a, K, V> {
+impl<'a, K, V> Iterator for IterMut<'a, K, V> {
+    type Item = (&'a K, &'a mut V);
+
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
         self.iter.next().map(|bucket| {
             self.elems_left -= 1;
@@ -848,7 +854,9 @@ impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for IterMut<'a, K, V> {
     }
 }
 
-impl<K, V> Iterator<(SafeHash, K, V)> for IntoIter<K, V> {
+impl<K, V> Iterator for IntoIter<K, V> {
+    type Item = (SafeHash, K, V);
+
     fn next(&mut self) -> Option<(SafeHash, K, V)> {
         self.iter.next().map(|bucket| {
             self.table.size -= 1;
@@ -870,7 +878,9 @@ impl<K, V> Iterator<(SafeHash, K, V)> for IntoIter<K, V> {
     }
 }
 
-impl<'a, K: 'a, V: 'a> Iterator<(SafeHash, K, V)> for Drain<'a, K, V> {
+impl<'a, K: 'a, V: 'a> Iterator for Drain<'a, K, V> {
+    type Item = (SafeHash, K, V);
+
     #[inline]
     fn next(&mut self) -> Option<(SafeHash, K, V)> {
         self.iter.next().map(|bucket| {

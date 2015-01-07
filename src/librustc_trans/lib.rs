@@ -22,12 +22,9 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![allow(unknown_features)]
-#![feature(default_type_params, globs, macro_rules, phase, quote)]
+#![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(unboxed_closures)]
-#![feature(old_orphan_check)]
 
 extern crate arena;
 extern crate flate;
@@ -36,10 +33,11 @@ extern crate graphviz;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
-#[phase(plugin, link)] extern crate log;
-#[phase(plugin, link)] extern crate syntax;
 extern crate serialize;
 extern crate "rustc_llvm" as llvm;
+
+#[macro_use] extern crate log;
+#[macro_use] extern crate syntax;
 
 pub use rustc::session;
 pub use rustc::metadata;

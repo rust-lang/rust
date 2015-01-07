@@ -45,7 +45,7 @@
 pub type GlueFn = extern "Rust" fn(*const i8);
 
 #[lang="ty_desc"]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct TyDesc {
     // sizeof(T)
     pub size: uint,
@@ -201,7 +201,6 @@ extern "rust-intrinsic" {
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
     pub fn type_id<T: 'static>() -> TypeId;
-
 
     /// Create a value initialized to zero.
     ///
@@ -545,7 +544,7 @@ extern "rust-intrinsic" {
 /// `TypeId` represents a globally unique identifier for a type
 #[lang="type_id"] // This needs to be kept in lockstep with the code in trans/intrinsic.rs and
                   // middle/lang_items.rs
-#[deriving(Clone, Copy, PartialEq, Eq, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Show)]
 pub struct TypeId {
     t: u64,
 }

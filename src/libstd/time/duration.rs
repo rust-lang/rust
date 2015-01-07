@@ -17,8 +17,7 @@ use ops::{Add, Sub, Mul, Div, Neg, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
 use num::Int;
-use result::Result;
-use result::Result::{Ok, Err};
+use result::Result::Ok;
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
@@ -46,7 +45,7 @@ macro_rules! try_opt {
 
 /// ISO 8601 time duration with nanosecond precision.
 /// This also allows for the negative duration; see individual methods for details.
-#[deriving(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Show)]
 pub struct Duration {
     secs: i64,
     nanos: i32, // Always 0 <= nanos < NANOS_PER_SEC
@@ -262,7 +261,9 @@ impl Duration {
     }
 }
 
-impl Neg<Duration> for Duration {
+impl Neg for Duration {
+    type Output = Duration;
+
     #[inline]
     fn neg(self) -> Duration {
         if self.nanos == 0 {
@@ -273,7 +274,9 @@ impl Neg<Duration> for Duration {
     }
 }
 
-impl Add<Duration, Duration> for Duration {
+impl Add for Duration {
+    type Output = Duration;
+
     fn add(self, rhs: Duration) -> Duration {
         let mut secs = self.secs + rhs.secs;
         let mut nanos = self.nanos + rhs.nanos;
@@ -285,7 +288,9 @@ impl Add<Duration, Duration> for Duration {
     }
 }
 
-impl Sub<Duration, Duration> for Duration {
+impl Sub for Duration {
+    type Output = Duration;
+
     fn sub(self, rhs: Duration) -> Duration {
         let mut secs = self.secs - rhs.secs;
         let mut nanos = self.nanos - rhs.nanos;
@@ -297,7 +302,9 @@ impl Sub<Duration, Duration> for Duration {
     }
 }
 
-impl Mul<i32, Duration> for Duration {
+impl Mul<i32> for Duration {
+    type Output = Duration;
+
     fn mul(self, rhs: i32) -> Duration {
         // Multiply nanoseconds as i64, because it cannot overflow that way.
         let total_nanos = self.nanos as i64 * rhs as i64;
@@ -307,7 +314,9 @@ impl Mul<i32, Duration> for Duration {
     }
 }
 
-impl Div<i32, Duration> for Duration {
+impl Div<i32> for Duration {
+    type Output = Duration;
+
     fn div(self, rhs: i32) -> Duration {
         let mut secs = self.secs / rhs as i64;
         let carry = self.secs - secs * rhs as i64;
@@ -325,7 +334,7 @@ impl Div<i32, Duration> for Duration {
     }
 }
 
-impl fmt::Show for Duration {
+impl fmt::String for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // technically speaking, negative duration is not valid ISO 8601,
         // but we need to print it anyway.

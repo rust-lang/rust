@@ -13,8 +13,11 @@
 #![stable]
 
 // Reexported core operators
-#[stable] #[doc(no_inline)] pub use kinds::{Copy, Send, Sized, Sync};
+#[stable] #[doc(no_inline)] pub use marker::{Copy, Send, Sized, Sync};
 #[stable] #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
+
+// TEMPORARY
+#[unstable] #[doc(no_inline)] pub use ops::{Index, IndexMut, FullRange};
 
 // Reexported functions
 #[stable] #[doc(no_inline)] pub use mem::drop;
@@ -22,19 +25,15 @@
 // Reexported types and traits
 
 #[stable] #[doc(no_inline)] pub use boxed::Box;
-#[stable] #[doc(no_inline)] pub use char::{Char, UnicodeChar};
+#[stable] #[doc(no_inline)] pub use char::CharExt;
 #[stable] #[doc(no_inline)] pub use clone::Clone;
 #[stable] #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
-#[stable] #[doc(no_inline)] pub use iter::CloneIteratorExt;
 #[stable] #[doc(no_inline)] pub use iter::DoubleEndedIterator;
-#[stable] #[doc(no_inline)] pub use iter::DoubleEndedIteratorExt;
 #[stable] #[doc(no_inline)] pub use iter::ExactSizeIterator;
 #[stable] #[doc(no_inline)] pub use iter::{Iterator, IteratorExt, Extend};
-#[stable] #[doc(no_inline)] pub use iter::{IteratorCloneExt, IteratorOrdExt};
-#[stable] #[doc(no_inline)] pub use iter::IteratorPairExt;
-#[stable] #[doc(no_inline)] pub use option::Option::{mod, Some, None};
+#[stable] #[doc(no_inline)] pub use option::Option::{self, Some, None};
 #[stable] #[doc(no_inline)] pub use ptr::{PtrExt, MutPtrExt};
-#[stable] #[doc(no_inline)] pub use result::Result::{mod, Ok, Err};
+#[stable] #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
 #[stable] #[doc(no_inline)] pub use slice::AsSlice;
 #[stable] #[doc(no_inline)] pub use slice::{SliceExt, SliceConcatExt};
 #[stable] #[doc(no_inline)] pub use str::{Str, StrExt};

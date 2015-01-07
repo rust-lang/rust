@@ -8,29 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(not(stage1))]
-#[phase(plugin)]
-extern crate regex_macros;
-
-#[cfg(not(stage1))]
-#[path = "bench.rs"]
-mod native_bench;
-
-#[cfg(not(stage1))]
-#[path = "tests.rs"]
-mod native_tests;
-
-#[cfg(not(stage1))]
-mod native_static;
-
-// Due to macro scoping rules, this definition only applies for the modules
-// defined below. Effectively, it allows us to use the same tests for both
-// native and dynamic regexes.
 macro_rules! regex {
     ($re:expr) => (
         match ::regex::Regex::new($re) {
             Ok(re) => re,
-            Err(err) => panic!("{}", err),
+            Err(err) => panic!("{:?}", err),
         }
     );
 }

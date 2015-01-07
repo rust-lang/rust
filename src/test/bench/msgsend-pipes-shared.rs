@@ -20,7 +20,6 @@
 
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::os;
-use std::str::from_str;
 use std::thread::Thread;
 use std::time::Duration;
 use std::uint;
@@ -55,8 +54,8 @@ fn run(args: &[String]) {
     let (to_parent, from_child) = channel();
     let (to_child, from_parent) = channel();
 
-    let size = from_str::<uint>(args[1].as_slice()).unwrap();
-    let workers = from_str::<uint>(args[2].as_slice()).unwrap();
+    let size = args[1].parse::<uint>().unwrap();
+    let workers = args[2].parse::<uint>().unwrap();
     let num_bytes = 100;
     let mut result = None;
     let mut p = Some((to_child, to_parent, from_parent));
@@ -65,7 +64,7 @@ fn run(args: &[String]) {
         let mut worker_results = Vec::new();
         for _ in range(0u, workers) {
             let to_child = to_child.clone();
-            worker_results.push(Thread::spawn(move|| {
+            worker_results.push(Thread::scoped(move|| {
                 for _ in range(0u, size / workers) {
                     //println!("worker {}: sending {} bytes", i, num_bytes);
                     to_child.send(request::bytes(num_bytes)).unwrap();
@@ -75,7 +74,7 @@ fn run(args: &[String]) {
         }
         Thread::spawn(move|| {
             server(&from_parent, &to_parent);
-        }).detach();
+        });
 
         for r in worker_results.into_iter() {
             let _ = r.join();

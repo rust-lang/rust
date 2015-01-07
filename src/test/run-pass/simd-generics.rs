@@ -17,11 +17,13 @@ use std::ops;
 
 impl Copy for f32x4 {}
 
-fn add<T: ops::Add<T, T>>(lhs: T, rhs: T) -> T {
+fn add<T: ops::Add<Output=T>>(lhs: T, rhs: T) -> T {
     lhs + rhs
 }
 
-impl ops::Add<f32x4, f32x4> for f32x4 {
+impl ops::Add for f32x4 {
+    type Output = f32x4;
+
     fn add(self, rhs: f32x4) -> f32x4 {
         self + rhs
     }

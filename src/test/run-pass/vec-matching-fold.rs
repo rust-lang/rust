@@ -10,10 +10,13 @@
 
 #![feature(advanced_slice_patterns)]
 
-fn foldl<T,U:Clone>(values: &[T],
-                    initial: U,
-                    function: |partial: U, element: &T| -> U)
-                    -> U {
+fn foldl<T, U, F>(values: &[T],
+                  initial: U,
+                  mut function: F)
+                  -> U where
+    U: Clone,
+    F: FnMut(U, &T) -> U,
+{
     match values {
         [ref head, tail..] =>
             foldl(tail, function(initial, head), function),
@@ -21,10 +24,13 @@ fn foldl<T,U:Clone>(values: &[T],
     }
 }
 
-fn foldr<T,U:Clone>(values: &[T],
-                    initial: U,
-                    function: |element: &T, partial: U| -> U)
-                    -> U {
+fn foldr<T, U, F>(values: &[T],
+                  initial: U,
+                  mut function: F)
+                  -> U where
+    U: Clone,
+    F: FnMut(&T, U) -> U,
+{
     match values {
         [head.., ref tail] =>
             foldr(head, function(tail, initial), function),

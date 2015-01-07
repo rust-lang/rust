@@ -20,7 +20,7 @@ enum E {
     Baz
 }
 
-fn f(s: &S, g: |&S|) {
+fn f<G>(s: &S, g: G) where G: FnOnce(&S) {
     g(s)
 }
 

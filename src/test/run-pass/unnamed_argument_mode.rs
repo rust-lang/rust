@@ -13,7 +13,7 @@ fn good(_a: &int) {
 
 // unnamed argument &int is now parse x: &int
 
-fn called(_f: |&int|) {
+fn called<F>(_f: F) where F: FnOnce(&int) {
 }
 
 pub fn main() {

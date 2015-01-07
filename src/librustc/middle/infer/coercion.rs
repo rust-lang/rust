@@ -67,11 +67,10 @@ use super::sub::Sub;
 use middle::subst;
 use middle::ty::{AutoPtr, AutoDerefRef, AdjustDerefRef, AutoUnsize, AutoUnsafe};
 use middle::ty::{mt};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use util::ppaux;
 use util::ppaux::Repr;
 
-use syntax::abi;
 use syntax::ast;
 
 // Note: Coerce is not actually a combiner, in that it does not
@@ -158,15 +157,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         });
                     }
                 };
-            }
-
-            ty::ty_closure(box ty::ClosureTy {
-                    store: ty::RegionTraitStore(..),
-                    ..
-                }) => {
-                return self.unpack_actual_value(a, |a| {
-                    self.coerce_borrowed_fn(a, b)
-                });
             }
 
             _ => {}
@@ -275,7 +265,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                                  ty::mt{ty: ty, mutbl: mt_b.mutbl});
                             try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
-                                    AutoPtr(AutoUnsize({})))", kind);
+                                    AutoPtr(AutoUnsize({:?})))", kind);
                             Ok(Some(AdjustDerefRef(AutoDerefRef {
                                 autoderefs: 1,
                                 autoref: Some(ty::AutoPtr(r_borrow, mt_b.mutbl,
@@ -298,7 +288,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                                  ty::mt{ty: ty, mutbl: mt_b.mutbl});
                             try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
-                                    AutoPtr(AutoUnsize({})))", kind);
+                                    AutoPtr(AutoUnsize({:?})))", kind);
                             Ok(Some(AdjustDerefRef(AutoDerefRef {
                                 autoderefs: 1,
                                 autoref: Some(ty::AutoUnsafe(mt_b.mutbl,
@@ -316,7 +306,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             let ty = ty::mk_uniq(self.tcx(), ty);
                             try!(self.get_ref().infcx.try(|_| sub.tys(ty, b)));
                             debug!("Success, coerced with AutoDerefRef(1, \
-                                    AutoUnsizeUniq({}))", kind);
+                                    AutoUnsizeUniq({:?}))", kind);
                             Ok(Some(AdjustDerefRef(AutoDerefRef {
                                 autoderefs: 1,
                                 autoref: Some(ty::AutoUnsizeUniq(kind))
@@ -338,7 +328,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                  a: Ty<'tcx>,
                  ty_b: Ty<'tcx>)
                  -> Option<(Ty<'tcx>, ty::UnsizeKind<'tcx>)> {
-        debug!("unsize_ty(a={}, ty_b={})", a, ty_b.repr(self.tcx()));
+        debug!("unsize_ty(a={:?}, ty_b={})", a, ty_b.repr(self.tcx()));
 
         let tcx = self.tcx();
 
@@ -416,7 +406,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     {
         let tcx = self.tcx();
 
-        debug!("coerce_borrowed_object(a={}, b={}, b_mutbl={})",
+        debug!("coerce_borrowed_object(a={}, b={}, b_mutbl={:?})",
                a.repr(tcx),
                b.repr(tcx), b_mutbl);
 
@@ -436,7 +426,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     {
         let tcx = self.tcx();
 
-        debug!("coerce_unsafe_object(a={}, b={}, b_mutbl={})",
+        debug!("coerce_unsafe_object(a={}, b={}, b_mutbl={:?})",
                a.repr(tcx),
                b.repr(tcx), b_mutbl);
 
@@ -459,7 +449,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match a.sty {
             ty::ty_rptr(_, ty::mt{ty, mutbl}) => match ty.sty {
                 ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
-                    debug!("mutbl={} b_mutbl={}", mutbl, b_mutbl);
+                    debug!("mutbl={:?} b_mutbl={:?}", mutbl, b_mutbl);
                     let tr = ty::mk_trait(tcx, principal.clone(), bounds.clone());
                     try!(self.subtype(mk_ty(tr), b));
                     Ok(Some(AdjustDerefRef(AutoDerefRef {
@@ -511,21 +501,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                    a.repr(self.tcx()), b.repr(self.tcx()));
 
             match b.sty {
-                ty::ty_closure(ref f) => {
-                    if fn_ty_a.abi != abi::Rust || fn_ty_a.unsafety != ast::Unsafety::Normal {
-                        return self.subtype(a, b);
-                    }
-
-                    let fn_ty_b = (*f).clone();
-                    let adj = ty::AdjustAddEnv(fn_def_id_a, fn_ty_b.store);
-                    let a_closure = ty::mk_closure(self.tcx(),
-                                                   ty::ClosureTy {
-                                                       sig: fn_ty_a.sig.clone(),
-                                                       .. *fn_ty_b
-                                                   });
-                    try!(self.subtype(a_closure, b));
-                    Ok(Some(adj))
-                }
                 ty::ty_bare_fn(None, _) => {
                     let a_fn_pointer = ty::mk_bare_fn(self.tcx(), None, fn_ty_a);
                     try!(self.subtype(a_fn_pointer, b));

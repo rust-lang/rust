@@ -16,7 +16,9 @@ use std::fmt::Show;
 
 struct S;
 
-impl Index<uint, str> for S {
+impl Index<uint> for S {
+    type Output = str;
+
     fn index<'a>(&'a self, _: &uint) -> &'a str {
         "hello"
     }
@@ -24,14 +26,17 @@ impl Index<uint, str> for S {
 
 struct T;
 
-impl Index<uint, Show + 'static> for T {
+impl Index<uint> for T {
+    type Output = Show + 'static;
+
     fn index<'a>(&'a self, idx: &uint) -> &'a (Show + 'static) {
-        static x: uint = 42;
-        &x
+        static X: uint = 42;
+        &X as &(Show + 'static)
     }
 }
 
 fn main() {
     assert_eq!(&S[0], "hello");
-    assert_eq!(format!("{}", &T[0]).as_slice(), "42");
+    &T[0];
+    // let x = &x as &Show;
 }

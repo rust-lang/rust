@@ -36,15 +36,15 @@ use std::ascii::AsciiExt;
 
 // if you change this list without updating src/doc/reference.md, @cmr will be sad
 static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
-    ("globs", Active),
-    ("macro_rules", Active),
+    ("globs", Accepted),
+    ("macro_rules", Accepted),
     ("struct_variant", Accepted),
     ("asm", Active),
     ("managed_boxes", Removed),
     ("non_ascii_idents", Active),
     ("thread_local", Active),
     ("link_args", Active),
-    ("phase", Active),
+    ("phase", Removed),
     ("plugin_registrar", Active),
     ("log_syntax", Active),
     ("trace_macros", Active),
@@ -54,7 +54,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("lang_items", Active),
 
     ("simd", Active),
-    ("default_type_params", Active),
+    ("default_type_params", Accepted),
     ("quote", Active),
     ("link_llvm_intrinsics", Active),
     ("linkage", Active),
@@ -67,12 +67,14 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("import_shadowing", Active),
     ("advanced_slice_patterns", Active),
     ("tuple_indexing", Accepted),
-    ("associated_types", Active),
+    ("associated_types", Accepted),
     ("visible_private_types", Active),
     ("slicing_syntax", Active),
 
     ("if_let", Accepted),
     ("while_let", Accepted),
+
+    ("plugin", Active),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
@@ -83,6 +85,12 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
 
     // A way to temporarily opt out of the new orphan rules. This will *never* be accepted.
     ("old_orphan_check", Deprecated),
+
+    // A way to temporarily opt out of the new impl rules. This will *never* be accepted.
+    ("old_impl_check", Deprecated),
+
+    // OIBIT specific features
+    ("optin_builtin_traits", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -107,9 +115,8 @@ enum Status {
 }
 
 /// A set of features to be used by later passes.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Features {
-    pub default_type_params: bool,
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub import_shadowing: bool,
@@ -122,7 +129,6 @@ pub struct Features {
 impl Features {
     pub fn new() -> Features {
         Features {
-            default_type_params: false,
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
             import_shadowing: false,
@@ -146,7 +152,7 @@ impl<'a> Context<'a> {
             self.span_handler.span_err(span, explain);
             self.span_handler.span_help(span, format!("add #![feature({})] to the \
                                                        crate attributes to enable",
-                                                      feature)[]);
+                                                      feature).index(&FullRange));
         }
     }
 
@@ -160,32 +166,11 @@ struct MacroVisitor<'a> {
 }
 
 impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
-    fn visit_view_item(&mut self, i: &ast::ViewItem) {
-        match i.node {
-            ast::ViewItemExternCrate(..) => {
-                for attr in i.attrs.iter() {
-                    if attr.name().get() == "phase"{
-                        self.context.gate_feature("phase", attr.span,
-                                          "compile time crate loading is \
-                                           experimental and possibly buggy");
-                    }
-                }
-            },
-            _ => { }
-        }
-        visit::walk_view_item(self, i)
-    }
-
-    fn visit_mac(&mut self, macro: &ast::Mac) {
-        let ast::MacInvocTT(ref path, _, _) = macro.node;
+    fn visit_mac(&mut self, mac: &ast::Mac) {
+        let ast::MacInvocTT(ref path, _, _) = mac.node;
         let id = path.segments.last().unwrap().identifier;
 
-        if id == token::str_to_ident("macro_rules") {
-            self.context.gate_feature("macro_rules", path.span, "macro definitions are \
-                not stable enough for use and are subject to change");
-        }
-
-        else if id == token::str_to_ident("asm") {
+        if id == token::str_to_ident("asm") {
             self.context.gate_feature("asm", path.span, "inline assembly is not \
                 stable enough for use and is subject to change");
         }
@@ -229,19 +214,13 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_view_item(&mut self, i: &ast::ViewItem) {
         match i.node {
-            ast::ViewItemUse(ref path) => {
-                if let ast::ViewPathGlob(..) = path.node {
-                    self.gate_feature("globs", path.span,
-                                      "glob import statements are \
-                                       experimental and possibly buggy");
-                }
-            }
+            ast::ViewItemUse(..) => {}
             ast::ViewItemExternCrate(..) => {
                 for attr in i.attrs.iter() {
-                    if attr.name().get() == "phase"{
-                        self.gate_feature("phase", attr.span,
-                                          "compile time crate loading is \
-                                           experimental and possibly buggy");
+                    if attr.check_name("plugin") {
+                        self.gate_feature("plugin", attr.span,
+                                          "compiler plugins are experimental \
+                                           and possibly buggy");
                     }
                 }
             }
@@ -264,7 +243,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         }
         match i.node {
             ast::ItemForeignMod(ref foreign_module) => {
-                if attr::contains_name(i.attrs[], "link_args") {
+                if attr::contains_name(i.attrs.index(&FullRange), "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
@@ -278,21 +257,31 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemFn(..) => {
-                if attr::contains_name(i.attrs[], "plugin_registrar") {
+                if attr::contains_name(i.attrs.index(&FullRange), "plugin_registrar") {
                     self.gate_feature("plugin_registrar", i.span,
                                       "compiler plugins are experimental and possibly buggy");
                 }
             }
 
             ast::ItemStruct(..) => {
-                if attr::contains_name(i.attrs[], "simd") {
+                if attr::contains_name(i.attrs.index(&FullRange), "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
                 }
             }
 
-            ast::ItemImpl(_, _, _, _, ref items) => {
-                if attr::contains_name(i.attrs[],
+            ast::ItemImpl(_, polarity, _, _, _, _) => {
+                match polarity {
+                    ast::ImplPolarity::Negative => {
+                        self.gate_feature("optin_builtin_traits",
+                                          i.span,
+                                          "negative trait bounds are not yet fully implemented; \
+                                          use marker types for now");
+                    },
+                    _ => {}
+                }
+
+                if attr::contains_name(i.attrs.as_slice(),
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",
                                       i.span,
@@ -301,16 +290,19 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        removed in the future");
                 }
 
-                for item in items.iter() {
-                    match *item {
-                        ast::MethodImplItem(_) => {}
-                        ast::TypeImplItem(ref typedef) => {
-                            self.gate_feature("associated_types",
-                                              typedef.span,
-                                              "associated types are \
-                                               experimental")
-                        }
-                    }
+                if attr::contains_name(i.attrs.index(&FullRange),
+                                       "old_orphan_check") {
+                    self.gate_feature(
+                        "old_orphan_check",
+                        i.span,
+                        "the new orphan check rules will eventually be strictly enforced");
+                }
+
+                if attr::contains_name(i.attrs.index(&FullRange),
+                                       "old_impl_check") {
+                    self.gate_feature("old_impl_check",
+                                      i.span,
+                                      "`#[old_impl_check]` will be removed in the future");
                 }
             }
 
@@ -320,25 +312,15 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_item(self, i);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
-        match *trait_item {
-            ast::RequiredMethod(_) | ast::ProvidedMethod(_) => {}
-            ast::TypeTraitItem(ref ti) => {
-                self.gate_feature("associated_types",
-                                  ti.ty_param.span,
-                                  "associated types are experimental")
-            }
-        }
-    }
-
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
-        if attr::contains_name(i.attrs[], "linkage") {
+        if attr::contains_name(i.attrs.index(&FullRange), "linkage") {
             self.gate_feature("linkage", i.span,
                               "the `linkage` attribute is experimental \
                                and not portable across platforms")
         }
 
-        let links_to_llvm = match attr::first_attr_value_str_by_name(i.attrs[], "link_name") {
+        let links_to_llvm = match attr::first_attr_value_str_by_name(i.attrs.as_slice(),
+                                                                     "link_name") {
             Some(val) => val.get().starts_with("llvm."),
             _ => false
         };
@@ -351,12 +333,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
-        if let ast::TyClosure(ref closure) =  t.node {
-            // this used to be blocked by a feature gate, but it should just
-            // be plain impossible right now
-            assert!(closure.onceness != ast::Once);
-        }
-
         visit::walk_ty(self, t);
     }
 
@@ -370,20 +346,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_expr(self, e);
-    }
-
-    fn visit_generics(&mut self, generics: &ast::Generics) {
-        for type_parameter in generics.ty_params.iter() {
-            match type_parameter.default {
-                Some(ref ty) => {
-                    self.gate_feature("default_type_params", ty.span,
-                                      "default type parameters are \
-                                       experimental and possibly buggy");
-                }
-                None => {}
-            }
-        }
-        visit::walk_generics(self, generics);
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
@@ -491,7 +453,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
     check(&mut cx, krate);
 
     (Features {
-        default_type_params: cx.has_feature("default_type_params"),
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         import_shadowing: cx.has_feature("import_shadowing"),

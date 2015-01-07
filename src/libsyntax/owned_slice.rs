@@ -17,7 +17,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// A non-growable owned slice. This is a separate type to allow the
 /// representation to change.
-#[deriving(Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OwnedSlice<T> {
     data: Box<[T]>
 }
@@ -77,19 +77,19 @@ impl<T: Clone> Clone for OwnedSlice<T> {
 }
 
 impl<T> FromIterator<T> for OwnedSlice<T> {
-    fn from_iter<I: Iterator<T>>(iter: I) -> OwnedSlice<T> {
+    fn from_iter<I: Iterator<Item=T>>(iter: I) -> OwnedSlice<T> {
         OwnedSlice::from_vec(iter.collect())
     }
 }
 
-impl<S: Encoder<E>, T: Encodable<S, E>, E> Encodable<S, E> for OwnedSlice<T> {
-    fn encode(&self, s: &mut S) -> Result<(), E> {
+impl<T: Encodable> Encodable for OwnedSlice<T> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
        self.as_slice().encode(s)
     }
 }
 
-impl<D: Decoder<E>, T: Decodable<D, E>, E> Decodable<D, E> for OwnedSlice<T> {
-    fn decode(d: &mut D) -> Result<OwnedSlice<T>, E> {
+impl<T: Decodable> Decodable for OwnedSlice<T> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<OwnedSlice<T>, D::Error> {
         Ok(OwnedSlice::from_vec(match Decodable::decode(d) {
             Ok(t) => t,
             Err(e) => return Err(e)

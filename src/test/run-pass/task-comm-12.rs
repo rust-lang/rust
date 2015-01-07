@@ -16,7 +16,7 @@ fn start(_task_number: int) { println!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
-    let mut result = Thread::spawn(move|| {
+    let mut result = Thread::scoped(move|| {
         start(i)
     });
 

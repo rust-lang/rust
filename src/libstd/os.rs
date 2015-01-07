@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -37,7 +37,7 @@ use error::{FromError, Error};
 use fmt;
 use io::{IoResult, IoError};
 use iter::{Iterator, IteratorExt};
-use kinds::Copy;
+use marker::Copy;
 use libc::{c_void, c_int, c_char};
 use libc;
 use boxed::Box;
@@ -54,15 +54,13 @@ use result::Result::{Err, Ok};
 use slice::{AsSlice, SliceExt};
 use str::{Str, StrExt};
 use string::{String, ToString};
-use sync::atomic::{AtomicInt, ATOMIC_INT_INIT, SeqCst};
+use sync::atomic::{AtomicInt, ATOMIC_INT_INIT, Ordering};
 use vec::Vec;
 
-#[cfg(unix)] use c_str::ToCStr;
+#[cfg(unix)] use ffi::{self, CString};
 
-#[cfg(unix)]
-pub use sys::ext as unix;
-#[cfg(windows)]
-pub use sys::ext as windows;
+#[cfg(unix)] pub use sys::ext as unix;
+#[cfg(windows)] pub use sys::ext as windows;
 
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
@@ -95,7 +93,7 @@ pub const TMPBUF_SZ : uint = 1000u;
 ///
 /// // We assume that we are in a valid directory.
 /// let current_working_directory = os::getcwd().unwrap();
-/// println!("The current directory is {}", current_working_directory.display());
+/// println!("The current directory is {:?}", current_working_directory.display());
 /// ```
 pub fn getcwd() -> IoResult<Path> {
     sys::os::getcwd()
@@ -196,15 +194,14 @@ pub fn getenv(n: &str) -> Option<String> {
 ///
 /// Panics if `n` has any interior NULs.
 pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
-    use c_str::CString;
-
     unsafe {
         with_env_lock(|| {
-            let s = n.with_c_str(|buf| libc::getenv(buf));
+            let s = CString::from_slice(n.as_bytes());
+            let s = libc::getenv(s.as_ptr()) as *const _;
             if s.is_null() {
                 None
             } else {
-                Some(CString::new(s as *const libc::c_char, false).as_bytes_no_nul().to_vec())
+                Some(ffi::c_str_to_bytes(&s).to_vec())
             }
         })
     }
@@ -253,13 +250,12 @@ pub fn setenv<T: BytesContainer>(n: &str, v: T) {
     fn _setenv(n: &str, v: &[u8]) {
         unsafe {
             with_env_lock(|| {
-                n.with_c_str(|nbuf| {
-                    v.with_c_str(|vbuf| {
-                        if libc::funcs::posix01::unistd::setenv(nbuf, vbuf, 1) != 0 {
-                            panic!(IoError::last_error());
-                        }
-                    })
-                })
+                let k = CString::from_slice(n.as_bytes());
+                let v = CString::from_slice(v);
+                if libc::funcs::posix01::unistd::setenv(k.as_ptr(),
+                                                        v.as_ptr(), 1) != 0 {
+                    panic!(IoError::last_error());
+                }
             })
         }
     }
@@ -289,11 +285,10 @@ pub fn unsetenv(n: &str) {
     fn _unsetenv(n: &str) {
         unsafe {
             with_env_lock(|| {
-                n.with_c_str(|nbuf| {
-                    if libc::funcs::posix01::unistd::unsetenv(nbuf) != 0 {
-                        panic!(IoError::last_error());
-                    }
-                })
+                let nbuf = CString::from_slice(n.as_bytes());
+                if libc::funcs::posix01::unistd::unsetenv(nbuf.as_ptr()) != 0 {
+                    panic!(IoError::last_error());
+                }
             })
         }
     }
@@ -361,7 +356,7 @@ pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static st
 }
 
 /// A low-level OS in-memory pipe.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Pipe {
     /// A file descriptor representing the reading end of the pipe. Data written
     /// on the `out` file descriptor can be read from this file descriptor.
@@ -606,23 +601,22 @@ static EXIT_STATUS: AtomicInt = ATOMIC_INT_INIT;
 ///
 /// Note that this is not synchronized against modifications of other threads.
 pub fn set_exit_status(code: int) {
-    EXIT_STATUS.store(code, SeqCst)
+    EXIT_STATUS.store(code, Ordering::SeqCst)
 }
 
 /// Fetches the process's current exit code. This defaults to 0 and can change
 /// by calling `set_exit_status`.
 pub fn get_exit_status() -> int {
-    EXIT_STATUS.load(SeqCst)
+    EXIT_STATUS.load(Ordering::SeqCst)
 }
 
 #[cfg(target_os = "macos")]
 unsafe fn load_argc_and_argv(argc: int,
                              argv: *const *const c_char) -> Vec<Vec<u8>> {
-    use c_str::CString;
     use iter::range;
 
     range(0, argc as uint).map(|i| {
-        CString::new(*argv.offset(i as int), false).as_bytes_no_nul().to_vec()
+        ffi::c_str_to_bytes(&*argv.offset(i as int)).to_vec()
     }).collect()
 }
 
@@ -652,7 +646,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 // res
 #[cfg(target_os = "ios")]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
-    use c_str::CString;
+    use ffi::c_str_to_bytes;
     use iter::range;
     use mem;
 
@@ -687,8 +681,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
             let tmp = objc_msgSend(args, objectAtSel, i);
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8Sel));
-            let s = CString::new(utf_c_str, false);
-            res.push(s.as_bytes_no_nul().to_vec())
+            res.push(c_str_to_bytes(&utf_c_str).to_vec());
         }
     }
 
@@ -862,7 +855,7 @@ pub enum MapOption {
 impl Copy for MapOption {}
 
 /// Possible errors when creating a map.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum MapError {
     /// # The following are POSIX-specific
     ///
@@ -941,7 +934,7 @@ impl fmt::Show for MapError {
 
 impl Error for MapError {
     fn description(&self) -> &str { "memory map error" }
-    fn detail(&self) -> Option<String> { Some(self.to_string()) }
+    fn detail(&self) -> Option<String> { Some(format!("{:?}", self)) }
 }
 
 impl FromError<MapError> for Box<Error> {
@@ -1414,6 +1407,11 @@ mod arch_consts {
     pub const ARCH: &'static str = "arm";
 }
 
+#[cfg(target_arch = "aarch64")]
+mod arch_consts {
+    pub const ARCH: &'static str = "aarch64";
+}
+
 #[cfg(target_arch = "mips")]
 mod arch_consts {
     pub const ARCH: &'static str = "mips";
@@ -1624,7 +1622,7 @@ mod tests {
             os::MapOption::MapWritable
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => panic!("{}", msg)
+            Err(msg) => panic!("{:?}", msg)
         };
         assert!(chunk.len >= 16);
 

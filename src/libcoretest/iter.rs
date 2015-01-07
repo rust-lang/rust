@@ -14,7 +14,6 @@ use core::iter::MinMaxResult::*;
 use core::num::SignedInt;
 use core::uint;
 use core::cmp;
-use core::ops::Slice;
 
 use test::Bencher;
 
@@ -103,7 +102,7 @@ fn test_iterator_chain() {
 
 #[test]
 fn test_filter_map() {
-    let mut it = count(0u, 1u).take(10)
+    let it = count(0u, 1u).take(10)
         .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
     assert!(it.collect::<Vec<uint>>() == vec![0*0, 2*2, 4*4, 6*6, 8*8]);
 }
@@ -230,7 +229,7 @@ fn test_inspect() {
                .collect::<Vec<uint>>();
 
     assert_eq!(n, xs.len());
-    assert_eq!(xs[], ys[]);
+    assert_eq!(&xs[], &ys[]);
 }
 
 #[test]
@@ -281,21 +280,21 @@ fn test_iterator_nth() {
 fn test_iterator_last() {
     let v: &[_] = &[0i, 1, 2, 3, 4];
     assert_eq!(v.iter().last().unwrap(), &4);
-    assert_eq!(v[0..1].iter().last().unwrap(), &0);
+    assert_eq!(v[..1].iter().last().unwrap(), &0);
 }
 
 #[test]
 fn test_iterator_len() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().count(), 4);
-    assert_eq!(v[0..10].iter().count(), 10);
+    assert_eq!(v[..4].iter().count(), 4);
+    assert_eq!(v[..10].iter().count(), 10);
     assert_eq!(v[0..0].iter().count(), 0);
 }
 
 #[test]
 fn test_iterator_sum() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).sum(), 6);
+    assert_eq!(v[..4].iter().map(|&x| x).sum(), 6);
     assert_eq!(v.iter().map(|&x| x).sum(), 55);
     assert_eq!(v[0..0].iter().map(|&x| x).sum(), 0);
 }
@@ -374,7 +373,7 @@ fn test_all() {
     assert!(v.iter().all(|&x| x < 10));
     assert!(!v.iter().all(|&x| x % 2 == 0));
     assert!(!v.iter().all(|&x| x > 100));
-    assert!(v.slice_or_fail(&0, &0).iter().all(|_| panic!()));
+    assert!(v[0..0].iter().all(|_| panic!()));
 }
 
 #[test]
@@ -383,7 +382,7 @@ fn test_any() {
     assert!(v.iter().any(|&x| x < 10));
     assert!(v.iter().any(|&x| x % 2 == 0));
     assert!(!v.iter().any(|&x| x > 100));
-    assert!(!v.slice_or_fail(&0, &0).iter().any(|_| panic!()));
+    assert!(!v[0..0].iter().any(|_| panic!()));
 }
 
 #[test]
@@ -561,7 +560,9 @@ fn test_rposition_panic() {
 
 
 #[cfg(test)]
-fn check_randacc_iter<A: PartialEq, T: Clone + RandomAccessIterator<A>>(a: T, len: uint)
+fn check_randacc_iter<A, T>(a: T, len: uint) where
+    A: PartialEq,
+    T: Clone + RandomAccessIterator + Iterator<Item=A>,
 {
     let mut b = a.clone();
     assert_eq!(len, b.indexable());
@@ -584,7 +585,7 @@ fn check_randacc_iter<A: PartialEq, T: Clone + RandomAccessIterator<A>>(a: T, le
 fn test_double_ended_flat_map() {
     let u = [0u,1];
     let v = [5u,6,7,8];
-    let mut it = u.iter().flat_map(|x| v[*x..v.len()].iter());
+    let mut it = u.iter().flat_map(|x| v[(*x)..v.len()].iter());
     assert_eq!(it.next_back().unwrap(), &8);
     assert_eq!(it.next().unwrap(),      &5);
     assert_eq!(it.next_back().unwrap(), &7);
@@ -767,7 +768,7 @@ fn test_range_step_inclusive() {
 #[test]
 fn test_reverse() {
     let mut ys = [1i, 2, 3, 4, 5];
-    ys.iter_mut().reverse_();
+    ys.iter_mut().reverse_in_place();
     assert!(ys == [5, 4, 3, 2, 1]);
 }
 

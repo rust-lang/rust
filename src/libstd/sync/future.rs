@@ -65,10 +65,6 @@ impl<A> Future<A> {
         }
     }
 
-    /// Deprecated, use into_inner() instead
-    #[deprecated = "renamed to into_inner()"]
-    pub fn unwrap(self) -> A { self.into_inner() }
-
     pub fn get_ref<'a>(&'a mut self) -> &'a A {
         /*!
         * Executes the future's closure and then returns a reference
@@ -145,7 +141,7 @@ impl<A:Send> Future<A> {
         Thread::spawn(move |:| {
             // Don't panic if the other end has hung up
             let _ = tx.send(blk());
-        }).detach();
+        });
 
         Future::from_receiver(rx)
     }

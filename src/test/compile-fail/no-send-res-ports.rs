@@ -10,7 +10,7 @@
 
 #![feature(unsafe_destructor)]
 
-use std::task;
+use std::thread::Thread;
 use std::rc::Rc;
 
 #[derive(Show)]
@@ -35,10 +35,10 @@ fn main() {
 
     let x = foo(Port(Rc::new(())));
 
-    task::spawn(move|| {
-        //~^ ERROR `core::kinds::Send` is not implemented
-        //~^^ ERROR `core::kinds::Send` is not implemented
+    Thread::spawn(move|| {
+        //~^ ERROR `core::marker::Send` is not implemented
+        //~^^ ERROR `core::marker::Send` is not implemented
         let y = x;
-        println!("{}", y);
+        println!("{:?}", y);
     });
 }

@@ -11,7 +11,6 @@
 // Test that Copy bounds inherited by trait are checked.
 
 use std::any::Any;
-use std::any::AnyRefExt;
 
 trait Foo : Copy {
 }
@@ -23,13 +22,13 @@ fn take_param<T:Foo>(foo: &T) { }
 
 fn a() {
     let x = box 3i;
-    take_param(&x); //~ ERROR `core::kinds::Copy` is not implemented
+    take_param(&x); //~ ERROR `core::marker::Copy` is not implemented
 }
 
 fn b() {
     let x = box 3i;
     let y = &x;
-    let z = &x as &Foo; //~ ERROR `core::kinds::Copy` is not implemented
+    let z = &x as &Foo; //~ ERROR `core::marker::Copy` is not implemented
 }
 
 fn main() { }

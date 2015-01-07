@@ -503,6 +503,8 @@ Advice on writing benchmarks:
 * Make the code in the `iter` loop do something simple, to assist in pinpointing
   performance improvements (or regressions)
 
+## Gotcha: optimizations
+
 There's another tricky part to writing benchmarks: benchmarks compiled with
 optimizations activated can be dramatically changed by the optimizer so that
 the benchmark is no longer benchmarking what one expects. For example, the
@@ -537,7 +539,8 @@ computation entirely. This could be done for the example above by adjusting the
 `b.iter` call to
 
 ```rust
-# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
+# struct X;
+# impl X { fn iter<T, F>(&self, _: F) where F: FnMut() -> T {} } let b = X;
 b.iter(|| {
     // note lack of `;` (could also use an explicit `return`).
     range(0u, 1000).fold(0, |old, new| old ^ new)
@@ -552,10 +555,15 @@ argument as used.
 extern crate test;
 
 # fn main() {
-# struct X; impl X { fn iter<T>(&self, _: || -> T) {} } let b = X;
+# struct X;
+# impl X { fn iter<T, F>(&self, _: F) where F: FnMut() -> T {} } let b = X;
 b.iter(|| {
-    test::black_box(range(0u, 1000).fold(0, |old, new| old ^ new));
-});
+    let mut n = 1000_u32;
+
+    test::black_box(&mut n); // pretend to modify `n`
+
+    range(0, n).fold(0, |a, b| a ^ b)
+})
 # }
 ```
 
@@ -571,3 +579,6 @@ test bench_xor_1000_ints ... bench:       1 ns/iter (+/- 0)
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 1 measured
 ```
+
+However, the optimizer can still modify a testcase in an undesirable manner
+even when using either of the above.

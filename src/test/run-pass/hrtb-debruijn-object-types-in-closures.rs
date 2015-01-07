@@ -13,8 +13,7 @@ trait Typer<'tcx> {
     fn dummy(&self) { }
 }
 
-fn g(_: |&Typer|) {
-}
+fn g<F>(_: F) where F: FnOnce(&Typer) {}
 
 fn h() {
     g(|typer| typer.dummy())

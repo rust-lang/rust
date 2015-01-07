@@ -14,6 +14,6 @@ struct Foo;
 
 fn main() {
     let x = Foo;
-    x[..]; //~ ERROR incorrect slicing expression: `[..]`
-    //~^ NOTE use `expr[]` to construct a slice of the whole of expr
+    &x[..]; //~ ERROR incorrect slicing expression: `[..]`
+    //~^ NOTE use `&expr[]` to construct a slice of the whole of expr
 }

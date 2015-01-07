@@ -14,11 +14,11 @@ fn assert_send<T:Send>() { }
 trait Dummy { }
 
 fn test50() {
-    assert_send::<&'static Dummy>(); //~ ERROR the trait `core::kinds::Send` is not implemented
+    assert_send::<&'static Dummy>(); //~ ERROR the trait `core::marker::Send` is not implemented
 }
 
 fn test53() {
-    assert_send::<Box<Dummy>>(); //~ ERROR the trait `core::kinds::Send` is not implemented
+    assert_send::<Box<Dummy>>(); //~ ERROR the trait `core::marker::Send` is not implemented
 }
 
 // ...unless they are properly bounded

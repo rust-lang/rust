@@ -13,7 +13,7 @@ use std::io;
 
 use externalfiles::ExternalHtml;
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Layout {
     pub logo: String,
     pub favicon: String,
@@ -30,7 +30,7 @@ pub struct Page<'a> {
     pub keywords: &'a str
 }
 
-pub fn render<T: fmt::Show, S: fmt::Show>(
+pub fn render<T: fmt::String, S: fmt::String>(
     dst: &mut io::Writer, layout: &Layout, page: &Page, sidebar: &S, t: &T)
     -> io::IoResult<()>
 {

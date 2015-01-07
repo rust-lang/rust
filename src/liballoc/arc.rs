@@ -41,8 +41,8 @@
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
-//!         println!("{}", five);
-//!     }).detach();
+//!         println!("{:?}", five);
+//!     });
 //! }
 //! ```
 //!
@@ -63,7 +63,7 @@
 //!         *number += 1;
 //!
 //!         println!("{}", *number); // prints 6
-//!     }).detach();
+//!     });
 //! }
 //! ```
 
@@ -71,17 +71,17 @@ use core::atomic;
 use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
 use core::borrow::BorrowFrom;
 use core::clone::Clone;
-use core::fmt::{mod, Show};
+use core::fmt::{self, Show};
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
 use core::default::Default;
-use core::kinds::{Sync, Send};
+use core::marker::{Sync, Send};
 use core::mem::{min_align_of, size_of, drop};
 use core::mem;
 use core::nonzero::NonZero;
 use core::ops::{Drop, Deref};
 use core::option::Option;
 use core::option::Option::{Some, None};
-use core::ptr::{mod, PtrExt};
+use core::ptr::{self, PtrExt};
 use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
@@ -106,7 +106,7 @@ use heap::deallocate;
 ///             let local_numbers = child_numbers.as_slice();
 ///
 ///             // Work with the local numbers
-///         }).detach();
+///         });
 ///     }
 /// }
 /// ```
@@ -246,7 +246,7 @@ impl<T> BorrowFrom<Arc<T>> for T {
     }
 }
 
-#[experimental = "Deref is experimental."]
+#[stable]
 impl<T> Deref for Arc<T> {
     type Target = T;
 
@@ -290,7 +290,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
 }
 
 #[unsafe_destructor]
-#[experimental = "waiting on stability of Drop"]
+#[stable]
 impl<T: Sync + Send> Drop for Arc<T> {
     /// Drops the `Arc<T>`.
     ///
@@ -418,7 +418,7 @@ impl<T: Sync + Send> Clone for Weak<T> {
 }
 
 #[unsafe_destructor]
-#[experimental = "Weak pointers may not belong in this module."]
+#[stable]
 impl<T: Sync + Send> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///
@@ -581,7 +581,7 @@ impl<T: Eq> Eq for Arc<T> {}
 
 impl<T: fmt::Show> fmt::Show for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (**self).fmt(f)
+        write!(f, "Arc({:?})", (**self))
     }
 }
 
@@ -600,11 +600,9 @@ mod tests {
     use std::ops::Drop;
     use std::option::Option;
     use std::option::Option::{Some, None};
-    use std::str::Str;
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
-    use std::task;
-    use std::kinds::Send;
+    use std::thread::Thread;
     use std::vec::Vec;
     use super::{Arc, Weak, weak_count, strong_count};
     use std::sync::Mutex;
@@ -631,7 +629,7 @@ mod tests {
 
         let (tx, rx) = channel();
 
-        task::spawn(move || {
+        let _t = Thread::spawn(move || {
             let arc_v: Arc<Vec<int>> = rx.recv().unwrap();
             assert_eq!((*arc_v)[3], 4);
         });
@@ -796,10 +794,10 @@ mod tests {
     #[test]
     fn show_arc() {
         let a = Arc::new(5u32);
-        assert!(format!("{}", a) == "5")
+        assert!(format!("{:?}", a) == "Arc(5u32)")
     }
 
     // Make sure deriving works with Arc<T>
-    #[deriving(Eq, Ord, PartialEq, PartialOrd, Clone, Show, Default)]
+    #[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Show, Default)]
     struct Foo { inner: Arc<int> }
 }

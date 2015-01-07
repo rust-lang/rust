@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
-
-macro_rules! int_module (($T:ty, $T_i:ident) => (
+macro_rules! int_module { ($T:ty, $T_i:ident) => (
 #[cfg(test)]
 mod tests {
     use core::$T_i::*;
     use core::int;
     use core::num::{FromStrRadix, Int, SignedInt};
-    use core::str::from_str;
     use core::ops::{Shl, Shr, Not, BitXor, BitAnd, BitOr};
     use num;
 
@@ -161,6 +158,9 @@ mod tests {
 
     #[test]
     fn test_from_str() {
+        fn from_str<T: ::std::str::FromStr>(t: &str) -> Option<T> {
+            ::std::str::FromStr::from_str(t)
+        }
         assert_eq!(from_str::<$T>("0"), Some(0 as $T));
         assert_eq!(from_str::<$T>("3"), Some(3 as $T));
         assert_eq!(from_str::<$T>("10"), Some(10 as $T));
@@ -203,4 +203,4 @@ mod tests {
     }
 }
 
-));
+)}

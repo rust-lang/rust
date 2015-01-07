@@ -27,14 +27,14 @@ use std::fmt;
 use std::iter::{range_inclusive, AdditiveIterator, FromIterator, repeat};
 use std::num::Float;
 use std::slice;
-use syntax::ast::{mod, DUMMY_NODE_ID, NodeId, Pat};
+use syntax::ast::{self, DUMMY_NODE_ID, NodeId, Pat};
 use syntax::ast_util::walk_pat;
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use syntax::fold::{Folder, noop_fold_pat};
 use syntax::print::pprust::pat_to_string;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::visit::{mod, Visitor, FnKind};
+use syntax::visit::{self, Visitor, FnKind};
 use util::ppaux::ty_to_string;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
@@ -47,7 +47,7 @@ struct Matrix<'a>(Vec<Vec<&'a Pat>>);
 
 /// Pretty-printer for matrices of patterns, example:
 /// ++++++++++++++++++++++++++
-/// + _     + []             +
+/// + _     + .index(&FullRange)             +
 /// ++++++++++++++++++++++++++
 /// + true  + [First]        +
 /// ++++++++++++++++++++++++++
@@ -92,17 +92,17 @@ impl<'a> fmt::Show for Matrix<'a> {
 }
 
 impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
-    fn from_iter<T: Iterator<Vec<&'a Pat>>>(iterator: T) -> Matrix<'a> {
+    fn from_iter<T: Iterator<Item=Vec<&'a Pat>>>(iterator: T) -> Matrix<'a> {
         Matrix(iterator.collect())
     }
 }
 
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub param_env: ParameterEnvironment<'tcx>,
+    pub param_env: ParameterEnvironment<'a, 'tcx>,
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum Constructor {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g. struct patterns and fixed-length arrays.
@@ -119,14 +119,14 @@ pub enum Constructor {
     SliceWithSubslice(uint, uint)
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 enum Usefulness {
     Useful,
     UsefulWithWitness(Vec<P<Pat>>),
     NotUseful
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness
@@ -148,7 +148,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
 pub fn check_crate(tcx: &ty::ctxt) {
     visit::walk_crate(&mut MatchCheckCtxt {
         tcx: tcx,
-        param_env: ty::empty_parameter_environment(),
+        param_env: ty::empty_parameter_environment(tcx),
     }, tcx.map.krate());
     tcx.sess.abort_if_errors();
 }
@@ -161,7 +161,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                 // First, check legality of move bindings.
                 check_legality_of_move_bindings(cx,
                                                 arm.guard.is_some(),
-                                                arm.pats[]);
+                                                arm.pats.index(&FullRange));
 
                 // Second, if there is a guard on each arm, make sure it isn't
                 // assigning or borrowing anything mutably.
@@ -198,7 +198,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
             }
 
             // Fourth, check for unreachable arms.
-            check_arms(cx, inlined_arms[], source);
+            check_arms(cx, inlined_arms.index(&FullRange), source);
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
@@ -230,7 +230,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                     pat.span,
                     format!("refutable pattern in `for` loop binding: \
                             `{}` not covered",
-                            pat_to_string(uncovered_pat))[]);
+                            pat_to_string(uncovered_pat)).index(&FullRange));
             });
 
             // Check legality of move bindings.
@@ -303,7 +303,7 @@ fn check_arms(cx: &MatchCheckCtxt,
         for pat in pats.iter() {
             let v = vec![&**pat];
 
-            match is_useful(cx, &seen, v[], LeaveOutWitness) {
+            match is_useful(cx, &seen, v.index(&FullRange), LeaveOutWitness) {
                 NotUseful => {
                     match source {
                         ast::MatchSource::IfLetDesugar { .. } => {
@@ -355,7 +355,7 @@ fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
     match is_useful(cx, matrix, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
-            let witness = match pats[] {
+            let witness = match pats.index(&FullRange) {
                 [ref witness] => &**witness,
                 [] => DUMMY_WILD_PAT,
                 _ => unreachable!()
@@ -473,7 +473,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
             }
         }
 
-        ty::ty_rptr(_, ty::mt { ty, .. }) => {
+        ty::ty_rptr(_, ty::mt { ty, mutbl }) => {
             match ty.sty {
                ty::ty_vec(_, Some(n)) => match ctor {
                     &Single => {
@@ -493,7 +493,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 
                 _ => {
                     assert_eq!(pats_len, 1);
-                    ast::PatRegion(pats.nth(0).unwrap())
+                    ast::PatRegion(pats.nth(0).unwrap(), mutbl)
                 }
             }
         }
@@ -574,7 +574,7 @@ fn is_useful(cx: &MatchCheckCtxt,
              witness: WitnessPreference)
              -> Usefulness {
     let &Matrix(ref rows) = matrix;
-    debug!("{:}", matrix);
+    debug!("{:?}", matrix);
     if rows.len() == 0u {
         return match witness {
             ConstructWitness => UsefulWithWitness(vec!()),
@@ -609,7 +609,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                         UsefulWithWitness(pats) => UsefulWithWitness({
                             let arity = constructor_arity(cx, &c, left_ty);
                             let mut result = {
-                                let pat_slice = pats[];
+                                let pat_slice = pats.index(&FullRange);
                                 let subpats: Vec<_> = range(0, arity).map(|i| {
                                     pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
                                 }).collect();
@@ -656,10 +656,10 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
                          witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
     let matrix = Matrix(m.iter().filter_map(|r| {
-        specialize(cx, r[], &ctor, 0u, arity)
+        specialize(cx, r.index(&FullRange), &ctor, 0u, arity)
     }).collect());
     match specialize(cx, v, &ctor, 0u, arity) {
-        Some(v) => is_useful(cx, &matrix, v[], witness),
+        Some(v) => is_useful(cx, &matrix, v.index(&FullRange), witness),
         None => NotUseful
     }
 }
@@ -729,7 +729,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 /// This computes the arity of a constructor. The arity of a constructor
 /// is how many subpattern patterns of that constructor should be expanded to.
 ///
-/// For instance, a tuple pattern (_, 42u, Some([])) has the arity of 3.
+/// For instance, a tuple pattern (_, 42u, Some(.index(&FullRange))) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
 pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uint {
     match ty.sty {
@@ -860,7 +860,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         ast::PatTup(ref args) =>
             Some(args.iter().map(|p| &**p).collect()),
 
-        ast::PatBox(ref inner) | ast::PatRegion(ref inner) =>
+        ast::PatBox(ref inner) | ast::PatRegion(ref inner, _) =>
             Some(vec![&**inner]),
 
         ast::PatLit(ref expr) => {
@@ -926,8 +926,8 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
     };
     head.map(|mut head| {
-        head.push_all(r[..col]);
-        head.push_all(r[col + 1..]);
+        head.push_all(r.index(&(0..col)));
+        head.push_all(r.index(&((col + 1)..)));
         head
     })
 }
@@ -1032,9 +1032,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                 match p.node {
                     ast::PatIdent(ast::BindByValue(_), _, ref sub) => {
                         let pat_ty = ty::node_id_to_type(tcx, p.id);
-                        if ty::type_moves_by_default(tcx,
-                                                      pat_ty,
-                                                      &cx.param_env) {
+                        if ty::type_moves_by_default(&cx.param_env, pat.span, pat_ty) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
                     }
@@ -1044,9 +1042,9 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                         cx.tcx.sess.span_bug(
                             p.span,
                             format!("binding pattern {} is not an \
-                                     identifier: {}",
+                                     identifier: {:?}",
                                     p.id,
-                                    p.node)[]);
+                                    p.node).index(&FullRange));
                     }
                 }
             }
@@ -1063,8 +1061,7 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
         cx: cx,
     };
     let mut visitor = ExprUseVisitor::new(&mut checker,
-                                          checker.cx.tcx,
-                                          &cx.param_env);
+                                          &checker.cx.param_env);
     visitor.walk_expr(guard);
 }
 

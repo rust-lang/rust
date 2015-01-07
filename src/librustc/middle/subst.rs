@@ -13,8 +13,8 @@
 pub use self::ParamSpace::*;
 pub use self::RegionSubsts::*;
 
-use middle::ty::{mod, Ty};
-use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
+use middle::ty::{self, Ty};
+use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use util::ppaux::Repr;
 
 use std::fmt;
@@ -28,7 +28,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 /// identify each in-scope parameter by an *index* and a *parameter
 /// space* (which indices where the parameter is defined; see
 /// `ParamSpace`).
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Show)]
 pub struct Substs<'tcx> {
     pub types: VecPerParamSpace<Ty<'tcx>>,
     pub regions: RegionSubsts,
@@ -37,7 +37,7 @@ pub struct Substs<'tcx> {
 /// Represents the values to use when substituting lifetime parameters.
 /// If the value is `ErasedRegions`, then this subst is occurring during
 /// trans, and all region parameters will be replaced with `ty::ReStatic`.
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Show)]
 pub enum RegionSubsts {
     ErasedRegions,
     NonerasedRegions(VecPerParamSpace<ty::Region>)
@@ -179,7 +179,7 @@ impl RegionSubsts {
 ///////////////////////////////////////////////////////////////////////////
 // ParamSpace
 
-#[deriving(PartialOrd, Ord, PartialEq, Eq, Copy,
+#[derive(PartialOrd, Ord, PartialEq, Eq, Copy,
            Clone, Hash, RustcEncodable, RustcDecodable, Show)]
 pub enum ParamSpace {
     TypeSpace,  // Type parameters attached to a type definition, trait, or impl
@@ -213,7 +213,7 @@ impl ParamSpace {
 /// Vector of things sorted by param space. Used to keep
 /// the set of things declared on the type, self, or method
 /// distinct.
-#[deriving(PartialEq, Eq, Clone, Hash, RustcEncodable, RustcDecodable)]
+#[derive(PartialEq, Eq, Clone, Hash, RustcEncodable, RustcDecodable)]
 pub struct VecPerParamSpace<T> {
     // This was originally represented as a tuple with one Vec<T> for
     // each variant of ParamSpace, and that remains the abstraction
@@ -242,7 +242,7 @@ impl<T:fmt::Show> fmt::Show for VecPerParamSpace<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "VecPerParamSpace {{"));
         for space in ParamSpace::all().iter() {
-            try!(write!(fmt, "{}: {}, ", *space, self.get_slice(*space)));
+            try!(write!(fmt, "{:?}: {:?}, ", *space, self.get_slice(*space)));
         }
         try!(write!(fmt, "}}"));
         Ok(())
@@ -468,7 +468,7 @@ impl<T> VecPerParamSpace<T> {
     }
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct EnumeratedItems<'a,T:'a> {
     vec: &'a VecPerParamSpace<T>,
     space_index: uint,
@@ -494,7 +494,9 @@ impl<'a,T> EnumeratedItems<'a,T> {
     }
 }
 
-impl<'a,T> Iterator<(ParamSpace, uint, &'a T)> for EnumeratedItems<'a,T> {
+impl<'a,T> Iterator for EnumeratedItems<'a,T> {
+    type Item = (ParamSpace, uint, &'a T);
+
     fn next(&mut self) -> Option<(ParamSpace, uint, &'a T)> {
         let spaces = ParamSpace::all();
         if self.space_index < spaces.len() {
@@ -599,10 +601,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                                     span,
                                     format!("Type parameter out of range \
                                      when substituting in region {} (root type={}) \
-                                     (space={}, index={})",
+                                     (space={:?}, index={})",
                                     region_name.as_str(),
                                     self.root_ty.repr(self.tcx()),
-                                    space, i)[]);
+                                    space, i).index(&FullRange));
                             }
                         }
                 }
@@ -652,14 +654,14 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
                 let span = self.span.unwrap_or(DUMMY_SP);
                 self.tcx().sess.span_bug(
                     span,
-                    format!("Type parameter `{}` ({}/{}/{}) out of range \
+                    format!("Type parameter `{}` ({}/{:?}/{}) out of range \
                                  when substituting (root type={}) substs={}",
                             p.repr(self.tcx()),
                             source_ty.repr(self.tcx()),
                             p.space,
                             p.idx,
                             self.root_ty.repr(self.tcx()),
-                            self.substs.repr(self.tcx()))[]);
+                            self.substs.repr(self.tcx())).index(&FullRange));
             }
         };
 
@@ -709,7 +711,7 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
     /// first case we do not increase the Debruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
     fn shift_regions_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        debug!("shift_regions(ty={}, region_binders_passed={}, type_has_escaping_regions={})",
+        debug!("shift_regions(ty={:?}, region_binders_passed={:?}, type_has_escaping_regions={:?})",
                ty.repr(self.tcx()), self.region_binders_passed, ty::type_has_escaping_regions(ty));
 
         if self.region_binders_passed == 0 || !ty::type_has_escaping_regions(ty) {
@@ -717,7 +719,7 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
         }
 
         let result = ty_fold::shift_regions(self.tcx(), self.region_binders_passed, &ty);
-        debug!("shift_regions: shifted result = {}", result.repr(self.tcx()));
+        debug!("shift_regions: shifted result = {:?}", result.repr(self.tcx()));
 
         result
     }

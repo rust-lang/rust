@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Foo for Sized? { fn foo<T>(&self, ext_thing: &T); }
-pub trait Bar for Sized?: Foo { }
+pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
+pub trait Bar: Foo { }
 impl<T: Foo> Bar for T { }
 
 pub struct Thing;

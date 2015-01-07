@@ -12,7 +12,7 @@ use regex::Regex;
 use std::ascii::AsciiExt;
 use std::cmp;
 
-#[deriving(Show, Clone)]
+#[derive(Show, Clone)]
 pub struct LogDirective {
     pub name: Option<String>,
     pub level: u32,
@@ -84,7 +84,7 @@ pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<Regex>) {
         match Regex::new(filter) {
             Ok(re) => Some(re),
             Err(e) => {
-                println!("warning: invalid regex filter - {}", e);
+                println!("warning: invalid regex filter - {:?}", e);
                 None
             }
         }

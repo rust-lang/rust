@@ -13,9 +13,9 @@
 // impl - unbounded
 trait T2<Z> {
 }
-struct S4<Sized? Y>;
-impl<Sized? X> T2<X> for S4<X> {
-    //~^ ERROR `core::kinds::Sized` is not implemented for the type `X`
+struct S4<Y: ?Sized>;
+impl<X: ?Sized> T2<X> for S4<X> {
+    //~^ ERROR `core::marker::Sized` is not implemented for the type `X`
 }
 
 fn main() { }

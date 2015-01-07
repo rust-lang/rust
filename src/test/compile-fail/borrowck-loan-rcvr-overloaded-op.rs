@@ -16,7 +16,9 @@ struct Point {
     y: int,
 }
 
-impl Add<int, int> for Point {
+impl Add<int> for Point {
+    type Output = int;
+
     fn add(self, z: int) -> int {
         self.x + self.y + z
     }

@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -16,8 +16,10 @@ pub use self::base::trans_crate;
 pub use self::context::CrateContext;
 pub use self::common::gensym_name;
 
-mod doc;
+#[macro_use]
 mod macros;
+
+mod doc;
 mod inline;
 mod monomorphize;
 mod controlflow;
@@ -41,6 +43,7 @@ mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;
 mod cabi_arm;
+mod cabi_aarch64;
 mod cabi_mips;
 mod foreign;
 mod intrinsic;
@@ -54,7 +57,7 @@ mod basic_block;
 mod llrepr;
 mod cleanup;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct ModuleTranslation {
     pub llcx: ContextRef,
     pub llmod: ModuleRef,

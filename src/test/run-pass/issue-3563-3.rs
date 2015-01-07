@@ -8,20 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ASCII art shape renderer.
-// Demonstrates traits, impls, operator overloading, non-copyable struct, unit testing.
-// To run execute: rustc --test shapes.rs && ./shapes
+// ASCII art shape renderer.  Demonstrates traits, impls, operator overloading,
+// non-copyable struct, unit testing.  To run execute: rustc --test shapes.rs &&
+// ./shapes
 
-// Rust's std library is tightly bound to the language itself so it is automatically linked in.
-// However the extra library is designed to be optional (for code that must run on constrained
-//  environments like embedded devices or special environments like kernel code) so it must
-// be explicitly linked in.
+// Rust's std library is tightly bound to the language itself so it is
+// automatically linked in.  However the extra library is designed to be
+// optional (for code that must run on constrained environments like embedded
+// devices or special environments like kernel code) so it must be explicitly
+// linked in.
 
-// Extern mod controls linkage. Use controls the visibility of names to modules that are
-// already linked in. Using WriterUtil allows us to use the write_line method.
+// Extern mod controls linkage. Use controls the visibility of names to modules
+// that are already linked in. Using WriterUtil allows us to use the write_line
+// method.
 
-use std::slice;
 use std::fmt;
+use std::iter::repeat;
+use std::slice;
 
 // Represents a position on a canvas.
 struct Point {
@@ -70,7 +73,7 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
     // blank characters for each position in our canvas.
     let mut lines = Vec::new();
     for _ in range(0, height) {
-        lines.push(Vec::from_elem(width, '.'));
+        lines.push(repeat('.').take(width).collect::<Vec<_>>());
     }
 
     // Rust code often returns values by omitting the trailing semi-colon
@@ -101,11 +104,11 @@ impl AsciiArt {
 
 // Allows AsciiArt to be converted to a string using the libcore ToString trait.
 // Note that the %s fmt! specifier will not call this automatically.
-impl fmt::Show for AsciiArt {
+impl fmt::String for AsciiArt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Convert each line into a string.
         let lines = self.lines.iter()
-                              .map(|line| String::from_chars(line.as_slice()))
+                              .map(|line| line.iter().cloned().collect())
                               .collect::<Vec<String>>();
 
         // Concatenate the lines together using a new-line.

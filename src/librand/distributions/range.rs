@@ -12,7 +12,7 @@
 
 // this is surprisingly complicated to be both generic & correct
 
-use core::prelude::*;
+use core::prelude::{PartialOrd};
 use core::num::Int;
 
 use Rng;
@@ -166,7 +166,7 @@ mod tests {
     use std::num::Int;
     use std::prelude::v1::*;
     use distributions::{Sample, IndependentSample};
-    use super::Range;
+    use super::Range as Range;
 
     #[should_fail]
     #[test]
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn test_integers() {
         let mut rng = ::test::rng();
-        macro_rules! t (
+        macro_rules! t {
             ($($ty:ty),*) => {{
                 $(
                    let v: &[($ty, $ty)] = &[(0, 10),
@@ -199,7 +199,7 @@ mod tests {
                     }
                  )*
             }}
-        );
+        }
         t!(i8, i16, i32, i64, int,
            u8, u16, u32, u64, uint)
     }
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn test_floats() {
         let mut rng = ::test::rng();
-        macro_rules! t (
+        macro_rules! t {
             ($($ty:ty),*) => {{
                 $(
                    let v: &[($ty, $ty)] = &[(0.0, 100.0),
@@ -225,7 +225,7 @@ mod tests {
                     }
                  )*
             }}
-        );
+        }
 
         t!(f32, f64)
     }

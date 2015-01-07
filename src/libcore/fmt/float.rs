@@ -15,15 +15,15 @@ pub use self::SignificantDigits::*;
 pub use self::SignFormat::*;
 
 use char;
-use char::Char;
+use char::CharExt;
 use fmt;
-use iter::{range, DoubleEndedIteratorExt};
+use iter::{IteratorExt, range};
 use num::{cast, Float, ToPrimitive};
 use num::FpCategory as Fp;
-use ops::FnOnce;
+use ops::{FnOnce, Index};
 use result::Result::Ok;
-use slice::{mod, SliceExt};
-use str::{mod, StrExt};
+use slice::{self, SliceExt};
+use str::{self, StrExt};
 
 /// A flag that specifies whether to use exponential (scientific) notation.
 pub enum ExponentFormat {
@@ -332,5 +332,5 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
         }
     }
 
-    f(unsafe { str::from_utf8_unchecked(buf[..end]) })
+    f(unsafe { str::from_utf8_unchecked(buf.index(&(0..end))) })
 }

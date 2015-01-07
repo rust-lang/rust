@@ -10,7 +10,6 @@
 
 // aux-build:issue-2526.rs
 
-#![feature(globs)]
 #![allow(unused_imports)]
 
 extern crate issue_2526;

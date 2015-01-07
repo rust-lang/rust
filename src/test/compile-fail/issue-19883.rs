@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_types)]
-
 trait From<Src> {
     type Output;
 
@@ -20,13 +18,13 @@ trait To {
     // This is a typo, the return type should be `<Dst as From<Self>>::Output`
     fn to<Dst: From<Self>>(
         self
-        //~^ error: the trait `core::kinds::Sized` is not implemented
+        //~^ error: the trait `core::marker::Sized` is not implemented
     ) ->
         <Dst as From<Self>>::Dst
-        //~^ error: the trait `core::kinds::Sized` is not implemented
+        //~^ error: the trait `core::marker::Sized` is not implemented
     {
         From::from(
-            //~^ error: the trait `core::kinds::Sized` is not implemented
+            //~^ error: the trait `core::marker::Sized` is not implemented
             self
         )
     }

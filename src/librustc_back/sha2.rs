@@ -140,7 +140,7 @@ impl FixedBuffer for FixedBuffer64 {
             if input.len() >= buffer_remaining {
                     copy_memory(
                         self.buffer.slice_mut(self.buffer_idx, size),
-                        input[..buffer_remaining]);
+                        input.index(&(0..buffer_remaining)));
                 self.buffer_idx = 0;
                 func(&self.buffer);
                 i += buffer_remaining;
@@ -156,7 +156,7 @@ impl FixedBuffer for FixedBuffer64 {
         // While we have at least a full buffer size chunk's worth of data, process that data
         // without copying it into the buffer
         while input.len() - i >= size {
-            func(input[i..i + size]);
+            func(input.index(&(i..(i + size))));
             i += size;
         }
 
@@ -166,7 +166,7 @@ impl FixedBuffer for FixedBuffer64 {
         let input_remaining = input.len() - i;
         copy_memory(
             self.buffer.slice_to_mut(input_remaining),
-            input[i..]);
+            input.index(&(i..)));
         self.buffer_idx += input_remaining;
     }
 
@@ -188,7 +188,7 @@ impl FixedBuffer for FixedBuffer64 {
     fn full_buffer<'s>(&'s mut self) -> &'s [u8] {
         assert!(self.buffer_idx == 64);
         self.buffer_idx = 0;
-        return self.buffer[..64];
+        return self.buffer.index(&(0..64));
     }
 
     fn position(&self) -> uint { self.buffer_idx }
@@ -346,12 +346,12 @@ impl Engine256State {
 
         // Sha-512 and Sha-256 use basically the same calculations which are implemented
         // by these macros. Inlining the calculations seems to result in better generated code.
-        macro_rules! schedule_round( ($t:expr) => (
+        macro_rules! schedule_round { ($t:expr) => (
                 w[$t] = sigma1(w[$t - 2]) + w[$t - 7] + sigma0(w[$t - 15]) + w[$t - 16];
                 )
-        );
+        }
 
-        macro_rules! sha2_round(
+        macro_rules! sha2_round {
             ($A:ident, $B:ident, $C:ident, $D:ident,
              $E:ident, $F:ident, $G:ident, $H:ident, $K:ident, $t:expr) => (
                 {
@@ -360,7 +360,7 @@ impl Engine256State {
                     $H += sum0($A) + maj($A, $B, $C);
                 }
              )
-        );
+        }
 
         read_u32v_be(w.slice_mut(0, 16), data);
 

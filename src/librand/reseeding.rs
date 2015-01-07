@@ -133,7 +133,7 @@ pub trait Reseeder<R> {
 
 /// Reseed an RNG using a `Default` instance. This reseeds by
 /// replacing the RNG with the result of a `Default::default` call.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct ReseedWithDefault;
 
 impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
@@ -151,7 +151,7 @@ impl Default for ReseedWithDefault {
 mod test {
     use std::prelude::v1::*;
 
-    use core::iter::order;
+    use core::iter::{order, repeat};
     use super::{ReseedingRng, ReseedWithDefault};
     use std::default::Default;
     use {SeedableRng, Rng};
@@ -215,7 +215,7 @@ mod test {
     static FILL_BYTES_V_LEN: uint = 13579;
     #[test]
     fn test_rng_fill_bytes() {
-        let mut v = Vec::from_elem(FILL_BYTES_V_LEN, 0u8);
+        let mut v = repeat(0u8).take(FILL_BYTES_V_LEN).collect::<Vec<_>>();
         ::test::rng().fill_bytes(v.as_mut_slice());
 
         // Sanity test: if we've gotten here, `fill_bytes` has not infinitely

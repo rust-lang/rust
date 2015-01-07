@@ -25,7 +25,6 @@ pub mod decodable;
 pub mod hash;
 pub mod rand;
 pub mod show;
-pub mod zero;
 pub mod default;
 pub mod primitive;
 
@@ -72,9 +71,11 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
                     MetaNameValue(ref tname, _) |
                     MetaList(ref tname, _) |
                     MetaWord(ref tname) => {
-                        macro_rules! expand(($func:path) => ($func(cx, titem.span,
-                                                                   &**titem, item,
-                                                                   |i| push.call_mut((i,)))));
+                        macro_rules! expand {
+                            ($func:path) => ($func(cx, titem.span, &**titem, item,
+                                                   |i| push(i)))
+                        }
+
                         match tname.get() {
                             "Clone" => expand!(clone::expand_deriving_clone),
 
@@ -110,7 +111,6 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
 
                             "Show" => expand!(show::expand_deriving_show),
 
-                            "Zero" => expand!(zero::expand_deriving_zero),
                             "Default" => expand!(default::expand_deriving_default),
 
                             "FromPrimitive" => expand!(primitive::expand_deriving_from_primitive),
@@ -123,7 +123,7 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
                                 cx.span_err(titem.span,
                                             format!("unknown `derive` \
                                                      trait: `{}`",
-                                                    *tname)[]);
+                                                    *tname).index(&FullRange));
                             }
                         };
                     }

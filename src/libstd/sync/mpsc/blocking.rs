@@ -13,8 +13,8 @@
 use thread::Thread;
 use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 use sync::Arc;
-use kinds::{Sync, Send};
-use kinds::marker::{NoSend, NoSync};
+use marker::{Sync, Send};
+use marker::{NoSend, NoSync};
 use mem;
 use clone::Clone;
 
@@ -26,7 +26,7 @@ struct Inner {
 unsafe impl Send for Inner {}
 unsafe impl Sync for Inner {}
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct SignalToken {
     inner: Arc<Inner>,
 }

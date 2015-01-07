@@ -8,25 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs, phase, macro_rules)]
+#![feature(globs, plugin)]
 
 extern crate syntax;
 extern crate rustc;
 
-#[phase(link)]
 extern crate regex;
 
-#[phase(link, plugin)]
+#[macro_use]
 extern crate log;
-
-#[phase(plugin)] extern crate regex_macros;
 
 use std::collections::HashMap;
 use std::io::File;
+use regex::Regex;
 
 use syntax::parse;
 use syntax::parse::lexer;
-use rustc::session::{mod, config};
+use rustc::session::{self, config};
 
 use syntax::ast;
 use syntax::ast::Name;
@@ -168,9 +166,9 @@ fn count(lit: &str) -> uint {
 }
 
 fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>) -> TokenAndSpan {
-    let re = regex!(
+    let re = Regex::new(
       r"\[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?)',<(?P<toknum>-?\d+)>,\d+:\d+]"
-    );
+    ).unwrap();
 
     let m = re.captures(s).expect(format!("The regex didn't match {}", s).as_slice());
     let start = m.name("start").unwrap_or("");
@@ -270,7 +268,7 @@ fn main() {
         assert!(rustc_tok.sp == antlr_tok.sp, "{} and {} have different spans", rustc_tok,
                 antlr_tok);
 
-        macro_rules! matches (
+        macro_rules! matches {
             ( $($x:pat),+ ) => (
                 match rustc_tok.tok {
                     $($x => match antlr_tok.tok {
@@ -286,7 +284,7 @@ fn main() {
                     ref c => assert!(c == &antlr_tok.tok, "{} is not {}", rustc_tok, antlr_tok)
                 }
             )
-        );
+        }
 
         matches!(
             token::Literal(token::Byte(..), _),

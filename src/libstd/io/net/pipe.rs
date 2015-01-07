@@ -22,7 +22,8 @@
 
 use prelude::v1::*;
 
-use c_str::ToCStr;
+use ffi::CString;
+use path::BytesContainer;
 use io::{Listener, Acceptor, IoResult, TimedOut, standard_error};
 use sys::pipe::UnixAcceptor as UnixAcceptorImp;
 use sys::pipe::UnixListener as UnixListenerImp;
@@ -53,8 +54,9 @@ impl UnixStream {
     /// let mut stream = UnixStream::connect(&server);
     /// stream.write(&[1, 2, 3]);
     /// ```
-    pub fn connect<P: ToCStr>(path: &P) -> IoResult<UnixStream> {
-        UnixStreamImp::connect(&path.to_c_str(), None)
+    pub fn connect<P: BytesContainer>(path: P) -> IoResult<UnixStream> {
+        let path = CString::from_slice(path.container_as_bytes());
+        UnixStreamImp::connect(&path, None)
             .map(|inner| UnixStream { inner: inner })
     }
 
@@ -67,13 +69,15 @@ impl UnixStream {
     /// If a `timeout` with zero or negative duration is specified then
     /// the function returns `Err`, with the error kind set to `TimedOut`.
     #[experimental = "the timeout argument is likely to change types"]
-    pub fn connect_timeout<P: ToCStr>(path: &P,
-                                      timeout: Duration) -> IoResult<UnixStream> {
+    pub fn connect_timeout<P>(path: P, timeout: Duration)
+                              -> IoResult<UnixStream>
+                              where P: BytesContainer {
         if timeout <= Duration::milliseconds(0) {
             return Err(standard_error(TimedOut));
         }
 
-        UnixStreamImp::connect(&path.to_c_str(), Some(timeout.num_milliseconds() as u64))
+        let path = CString::from_slice(path.container_as_bytes());
+        UnixStreamImp::connect(&path, Some(timeout.num_milliseconds() as u64))
             .map(|inner| UnixStream { inner: inner })
     }
 
@@ -177,8 +181,9 @@ impl UnixListener {
     /// }
     /// # }
     /// ```
-    pub fn bind<P: ToCStr>(path: &P) -> IoResult<UnixListener> {
-        UnixListenerImp::bind(&path.to_c_str())
+    pub fn bind<P: BytesContainer>(path: P) -> IoResult<UnixListener> {
+        let path = CString::from_slice(path.container_as_bytes());
+        UnixListenerImp::bind(&path)
             .map(|inner| UnixListener { inner: inner })
     }
 }
@@ -603,7 +608,7 @@ mod tests {
             let mut a = a;
             let _s = a.accept().unwrap();
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut b = [0];
         let mut s = UnixStream::connect(&addr).unwrap();
@@ -640,7 +645,7 @@ mod tests {
             let mut a = a;
             let _s = a.accept().unwrap();
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = UnixStream::connect(&addr).unwrap();
         let s2 = s.clone();
@@ -667,7 +672,7 @@ mod tests {
             rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         s.set_timeout(Some(20));
@@ -711,7 +716,7 @@ mod tests {
                 }
             }
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         s.set_read_timeout(Some(20));
@@ -734,7 +739,7 @@ mod tests {
             rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         s.set_write_timeout(Some(20));
@@ -761,7 +766,7 @@ mod tests {
             rx.recv().unwrap();
             assert!(s.write(&[0]).is_ok());
             let _ = rx.recv();
-        }).detach();
+        });
 
         let mut s = a.accept().unwrap();
         let s2 = s.clone();

@@ -11,9 +11,8 @@
 //! Blocking Windows-based file I/O
 
 use alloc::arc::Arc;
-use libc::{mod, c_int};
+use libc::{self, c_int};
 
-use c_str::CString;
 use mem;
 use sys::os::fill_utf16_buf_and_decode;
 use path;

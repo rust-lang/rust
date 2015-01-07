@@ -10,9 +10,9 @@
 
 // Tests for the new |args| expr lambda syntax
 
-fn f(i: int, f: |int| -> int) -> int { f(i) }
+fn f<F>(i: int, f: F) -> int where F: FnOnce(int) -> int { f(i) }
 
-fn g(_g: ||) { }
+fn g<G>(_g: G) where G: FnOnce() { }
 
 pub fn main() {
     assert_eq!(f(10, |a| a), 10);

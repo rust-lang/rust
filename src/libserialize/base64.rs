@@ -19,7 +19,7 @@ use std::fmt;
 use std::error;
 
 /// Available encoding character sets
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum CharacterSet {
     /// The standard character set (uses `+` and `/`)
     Standard,
@@ -28,7 +28,7 @@ pub enum CharacterSet {
 }
 
 /// Available newline types
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Newline {
     /// A linefeed (i.e. Unix-style newline)
     LF,
@@ -37,7 +37,7 @@ pub enum Newline {
 }
 
 /// Contains configuration parameters for `to_base64`.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Config {
     /// Character set to use
     pub char_set: CharacterSet,
@@ -70,7 +70,7 @@ static URLSAFE_CHARS: &'static[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
                                        0123456789-_";
 
 /// A trait for converting a value to base64 encoding.
-pub trait ToBase64 for Sized? {
+pub trait ToBase64 {
     /// Converts the value of `self` to a base64 value following the specified
     /// format configuration, returning the owned string.
     fn to_base64(&self, config: Config) -> String;
@@ -170,14 +170,14 @@ impl ToBase64 for [u8] {
 }
 
 /// A trait for converting from base64 encoded values.
-pub trait FromBase64 for Sized? {
+pub trait FromBase64 {
     /// Converts the value of `self`, interpreted as base64 encoded data, into
     /// an owned vector of bytes, returning the vector.
     fn from_base64(&self) -> Result<Vec<u8>, FromBase64Error>;
 }
 
 /// Errors that can occur when decoding a base64 encoded string
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum FromBase64Error {
     /// The input contained a character not part of the base64 format
     InvalidBase64Byte(u8, uint),
@@ -204,7 +204,7 @@ impl error::Error for FromBase64Error {
     }
 
     fn detail(&self) -> Option<String> {
-        Some(self.to_string())
+        Some(format!("{:?}", self))
     }
 }
 
@@ -396,7 +396,7 @@ mod tests {
 
         for _ in range(0u, 1000) {
             let times = thread_rng().gen_range(1u, 100);
-            let v = Vec::from_fn(times, |_| random::<u8>());
+            let v = thread_rng().gen_iter::<u8>().take(times).collect::<Vec<_>>();
             assert_eq!(v.to_base64(STANDARD)
                         .from_base64()
                         .unwrap(),

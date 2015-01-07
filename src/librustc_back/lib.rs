@@ -28,16 +28,11 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
+#![feature(slicing_syntax)]
 
-#![allow(unknown_features)]
-#![feature(globs, phase, macro_rules, slicing_syntax)]
-#![feature(unboxed_closures)]
-#![feature(old_orphan_check)]
-
-#[phase(plugin, link)]
-extern crate log;
 extern crate syntax;
 extern crate serialize;
+#[macro_use] extern crate log;
 
 pub mod abi;
 pub mod archive;

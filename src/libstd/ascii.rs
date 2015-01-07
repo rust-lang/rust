@@ -13,9 +13,7 @@
 //! Operations on ASCII strings and characters
 
 #![unstable = "unsure about placement and naming"]
-#![allow(deprecated)]
 
-use core::kinds::Sized;
 use iter::IteratorExt;
 use ops::FnMut;
 use slice::SliceExt;
@@ -39,7 +37,7 @@ pub trait OwnedAsciiExt {
 
 /// Extension methods for ASCII-subset only operations on string slices
 #[experimental = "would prefer to do this in a more general way"]
-pub trait AsciiExt<T = Self> for Sized? {
+pub trait AsciiExt<T = Self> {
     /// Check if within the ASCII range.
     fn is_ascii(&self) -> bool;
 
@@ -54,7 +52,7 @@ pub trait AsciiExt<T = Self> for Sized? {
     fn to_ascii_lowercase(&self) -> T;
 
     /// Check that two strings are an ASCII case-insensitive match.
-    /// Same as `to_ascii_lowercase(a) == to_ascii_lower(b)`,
+    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporary strings.
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
 }

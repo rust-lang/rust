@@ -13,7 +13,7 @@
 // because it would require stack allocation of an unsized temporary (*g in the
 // test).
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     ptr: T
 }
 
@@ -21,5 +21,5 @@ pub fn main() {
     let f: Fat<[int; 3]> = Fat { ptr: [5i, 6, 7] };
     let g: &Fat<[int]> = &f;
     let h: &Fat<Fat<[int]>> = &Fat { ptr: *g };
-    //~^ ERROR the trait `core::kinds::Sized` is not implemented
+    //~^ ERROR the trait `core::marker::Sized` is not implemented
 }

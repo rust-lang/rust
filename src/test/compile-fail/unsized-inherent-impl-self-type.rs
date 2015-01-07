@@ -14,7 +14,7 @@
 
 struct S5<Y>;
 
-impl<Sized? X> S5<X> { //~ ERROR not implemented
+impl<X: ?Sized> S5<X> { //~ ERROR not implemented
 }
 
 fn main() { }

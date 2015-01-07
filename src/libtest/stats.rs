@@ -10,14 +10,14 @@
 
 #![allow(missing_docs)]
 
-use std::cmp::Ordering::{mod, Less, Greater, Equal};
+use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::hash_map;
-use std::fmt::Show;
+use std::fmt;
 use std::hash::Hash;
 use std::io;
 use std::mem;
-use std::num::{Float, FloatMath, FromPrimitive};
+use std::num::{Float, FromPrimitive};
 
 fn local_cmp<T:Float>(x: T, y: T) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -39,7 +39,7 @@ fn local_sort<T: Float>(v: &mut [T]) {
 }
 
 /// Trait that provides simple descriptive statistics on a univariate set of numeric samples.
-pub trait Stats <T: FloatMath + FromPrimitive> for Sized? {
+pub trait Stats <T: Float + FromPrimitive> {
 
     /// Sum of the samples.
     ///
@@ -127,7 +127,7 @@ pub trait Stats <T: FloatMath + FromPrimitive> for Sized? {
 }
 
 /// Extracted collection of all the summary statistics of a sample set.
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 #[allow(missing_docs)]
 pub struct Summary<T> {
     pub sum: T,
@@ -144,7 +144,7 @@ pub struct Summary<T> {
     pub iqr: T,
 }
 
-impl<T: FloatMath + FromPrimitive> Summary<T> {
+impl<T: Float + FromPrimitive> Summary<T> {
     /// Construct a new summary of a sample set.
     pub fn new(samples: &[T]) -> Summary<T> {
         Summary {
@@ -164,12 +164,13 @@ impl<T: FloatMath + FromPrimitive> Summary<T> {
     }
 }
 
-impl<T: FloatMath + FromPrimitive> Stats<T> for [T] {
+impl<T: Float + FromPrimitive> Stats<T> for [T] {
     // FIXME #11059 handle NaN, inf and overflow
     fn sum(&self) -> T {
         let mut partials = vec![];
 
-        for &mut x in self.iter() {
+        for &x in self.iter() {
+            let mut x = x;
             let mut j = 0;
             // This inner loop applies `hi`/`lo` summation to each
             // partial so that the list of partial sums remains exact.
@@ -332,7 +333,7 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
 }
 
 /// Render writes the min, max and quartiles of the provided `Summary` to the provided `Writer`.
-pub fn write_5_number_summary<W: Writer, T: Float + Show>(w: &mut W,
+pub fn write_5_number_summary<W: Writer, T: Float + fmt::String + fmt::Show>(w: &mut W,
                                                           s: &Summary<T>) -> io::IoResult<()> {
     let (q1,q2,q3) = s.quartiles;
     write!(w, "(min={}, q1={}, med={}, q3={}, max={})",
@@ -354,7 +355,7 @@ pub fn write_5_number_summary<W: Writer, T: Float + Show>(w: &mut W,
 /// ```{.ignore}
 ///   10 |        [--****#******----------]          | 40
 /// ```
-pub fn write_boxplot<W: Writer, T: Float + Show + FromPrimitive>(
+pub fn write_boxplot<W: Writer, T: Float + fmt::String + fmt::Show + FromPrimitive>(
                      w: &mut W,
                      s: &Summary<T>,
                      width_hint: uint)
@@ -438,12 +439,14 @@ pub fn write_boxplot<W: Writer, T: Float + Show + FromPrimitive>(
 
 /// Returns a HashMap with the number of occurrences of every element in the
 /// sequence that the iterator exposes.
-pub fn freq_count<T: Iterator<U>, U: Eq+Hash>(mut iter: T) -> hash_map::HashMap<U, uint> {
+pub fn freq_count<T, U>(mut iter: T) -> hash_map::HashMap<U, uint>
+  where T: Iterator<Item=U>, U: Eq + Clone + Hash
+{
     let mut map: hash_map::HashMap<U,uint> = hash_map::HashMap::new();
     for elem in iter {
         match map.entry(elem) {
             Occupied(mut entry) => { *entry.get_mut() += 1; },
-            Vacant(entry) => { entry.set(1); },
+            Vacant(entry) => { entry.insert(1); },
         }
     }
     map
@@ -1066,7 +1069,7 @@ mod bench {
     #[bench]
     pub fn sum_many_f64(b: &mut Bencher) {
         let nums = [-1e30f64, 1e60, 1e30, 1.0, -1e60];
-        let v = Vec::from_fn(500, |i| nums[i%5]);
+        let v = range(0, 500).map(|i| nums[i%5]).collect::<Vec<_>>();
 
         b.iter(|| {
             v.as_slice().sum();

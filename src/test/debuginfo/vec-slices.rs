@@ -93,7 +93,7 @@ fn main() {
     let empty: &[i64] = &[];
     let singleton: &[i64] = &[1];
     let multiple: &[i64] = &[2, 3, 4, 5];
-    let slice_of_slice = multiple[1..3];
+    let slice_of_slice = &multiple[1..3];
 
     let padded_tuple: &[(i32, i16)] = &[(6, 7), (8, 9)];
 

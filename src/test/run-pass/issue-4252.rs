@@ -13,7 +13,7 @@
 trait X {
     fn call<T: std::fmt::Show>(&self, x: &T);
     fn default_method<T: std::fmt::Show>(&self, x: &T) {
-        println!("X::default_method {}", x);
+        println!("X::default_method {:?}", x);
     }
 }
 
@@ -27,7 +27,7 @@ struct Z<T> {
 
 impl X for Y {
     fn call<T: std::fmt::Show>(&self, x: &T) {
-        println!("X::call {} {}", self, x);
+        println!("X::call {:?} {:?}", self, x);
     }
 }
 

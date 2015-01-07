@@ -14,7 +14,7 @@ struct S<T> {
     b: uint,
 }
 
-fn range_(lo: uint, hi: uint, it: |uint|) {
+fn range_<F>(lo: uint, hi: uint, mut it: F) where F: FnMut(uint) {
     let mut lo_ = lo;
     while lo_ < hi { it(lo_); lo_ += 1u; }
 }

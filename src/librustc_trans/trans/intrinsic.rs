@@ -28,7 +28,7 @@ use trans::type_of;
 use trans::machine;
 use trans::machine::llsize_of;
 use trans::type_::Type;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use syntax::abi::RustIntrinsic;
 use syntax::ast;
 use syntax::parse::token;
@@ -150,14 +150,16 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                             dest: expr::Dest,
                                             substs: subst::Substs<'tcx>,
                                             call_info: NodeInfo)
-                                            -> Result<'blk, 'tcx> {
-
+                                            -> Result<'blk, 'tcx>
+{
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
     let tcx = bcx.tcx();
 
     let ret_ty = match callee_ty.sty {
-        ty::ty_bare_fn(_, ref f) => f.sig.0.output,
+        ty::ty_bare_fn(_, ref f) => {
+            ty::erase_late_bound_regions(bcx.tcx(), &f.sig.output())
+        }
         _ => panic!("expected bare_fn in trans_intrinsic_call")
     };
     let foreign_item = tcx.map.expect_foreign_item(node);

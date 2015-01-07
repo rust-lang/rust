@@ -10,7 +10,7 @@
 
 // compile-flags: -Z no-landing-pads
 
-use std::task;
+use std::thread::Thread;
 
 static mut HIT: bool = false;
 
@@ -23,9 +23,9 @@ impl Drop for A {
 }
 
 fn main() {
-    task::try(move|| -> () {
+    Thread::scoped(move|| -> () {
         let _a = A;
         panic!();
-    });
+    }).join().unwrap_err();
     assert!(unsafe { !HIT });
 }

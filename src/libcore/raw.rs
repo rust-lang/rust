@@ -18,9 +18,8 @@
 //!
 //! Their definition should always match the ABI defined in `rustc::back::abi`.
 
-use kinds::Copy;
+use marker::Copy;
 use mem;
-use kinds::Sized;
 
 /// The representation of a Rust slice
 #[repr(C)]
@@ -33,7 +32,7 @@ impl<T> Copy for Slice<T> {}
 
 /// The representation of a Rust closure
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Closure {
     pub code: *mut (),
     pub env: *mut (),
@@ -44,7 +43,7 @@ pub struct Closure {
 /// This struct does not have a `Repr` implementation
 /// because there is no way to refer to all trait objects generically.
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct TraitObject {
     pub data: *mut (),
     pub vtable: *mut (),
@@ -52,7 +51,7 @@ pub struct TraitObject {
 
 /// This trait is meant to map equivalences between raw structs and their
 /// corresponding rust values.
-pub trait Repr<T> for Sized? {
+pub trait Repr<T> {
     /// This function "unwraps" a rust value (without consuming it) into its raw
     /// struct representation. This can be used to read/write different values
     /// for the struct. This is a safe method because by default it does not

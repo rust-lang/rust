@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -47,7 +47,7 @@ mod m {
         pub fn size() -> uint { 12u }
     }
 
-    #[cfg(any(target_arch = "x86_64", target_arch = "arm"))]
+    #[cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "aarch64"))]
     pub mod m {
         pub fn align() -> uint { 8u }
         pub fn size() -> uint { 16u }
@@ -82,11 +82,11 @@ pub fn main() {
     unsafe {
         let x = Outer {c8: 22u8, t: Inner {c64: 44u64}};
 
-        let y = format!("{}", x);
+        let y = format!("{:?}", x);
 
-        println!("align inner = {}", rusti::min_align_of::<Inner>());
-        println!("size outer = {}", mem::size_of::<Outer>());
-        println!("y = {}", y);
+        println!("align inner = {:?}", rusti::min_align_of::<Inner>());
+        println!("size outer = {:?}", mem::size_of::<Outer>());
+        println!("y = {:?}", y);
 
         // per clang/gcc the alignment of `Inner` is 4 on x86.
         assert_eq!(rusti::min_align_of::<Inner>(), m::m::align());
@@ -95,6 +95,6 @@ pub fn main() {
         // because `Inner`s alignment was 4.
         assert_eq!(mem::size_of::<Outer>(), m::m::size());
 
-        assert_eq!(y, "Outer { c8: 22, t: Inner { c64: 44 } }".to_string());
+        assert_eq!(y, "Outer { c8: 22u8, t: Inner { c64: 44u64 } }".to_string());
     }
 }

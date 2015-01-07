@@ -10,7 +10,7 @@
 
 use middle::subst::{Substs, VecPerParamSpace};
 use middle::infer::InferCtxt;
-use middle::ty::{mod, Ty, AsPredicate, ToPolyTraitRef};
+use middle::ty::{self, Ty, AsPredicate, ToPolyTraitRef};
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
@@ -92,8 +92,8 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                 // Only keep those bounds that we haven't already
                 // seen.  This is necessary to prevent infinite
                 // recursion in some cases.  One common case is when
-                // people define `trait Sized { }` rather than `trait
-                // Sized for Sized? { }`.
+                // people define `trait Sized: Sized { }` rather than `trait
+                // Sized { }`.
                 predicates.retain(|r| self.visited.insert(r.clone()));
 
                 self.stack.push(StackEntry { position: 0,
@@ -133,7 +133,9 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> Iterator<ty::Predicate<'tcx>> for Elaborator<'cx, 'tcx> {
+impl<'cx, 'tcx> Iterator for Elaborator<'cx, 'tcx> {
+    type Item = ty::Predicate<'tcx>;
+
     fn next(&mut self) -> Option<ty::Predicate<'tcx>> {
         loop {
             // Extract next item from top-most stack frame, if any.
@@ -197,7 +199,9 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
 }
 
-impl<'cx, 'tcx> Iterator<ty::PolyTraitRef<'tcx>> for Supertraits<'cx, 'tcx> {
+impl<'cx, 'tcx> Iterator for Supertraits<'cx, 'tcx> {
+    type Item = ty::PolyTraitRef<'tcx>;
+
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         loop {
             match self.elaborator.next() {
@@ -234,7 +238,7 @@ pub fn fresh_substs_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
 impl<'tcx, N> fmt::Show for VtableImplData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableImpl({})", self.impl_def_id)
+        write!(f, "VtableImpl({:?})", self.impl_def_id)
     }
 }
 
@@ -447,8 +451,8 @@ impl<'tcx> Repr<'tcx> for super::FulfillmentErrorCode<'tcx> {
 impl<'tcx> fmt::Show for super::FulfillmentErrorCode<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            super::CodeSelectionError(ref e) => write!(f, "{}", e),
-            super::CodeProjectionError(ref e) => write!(f, "{}", e),
+            super::CodeSelectionError(ref e) => write!(f, "{:?}", e),
+            super::CodeProjectionError(ref e) => write!(f, "{:?}", e),
             super::CodeAmbiguity => write!(f, "Ambiguity")
         }
     }

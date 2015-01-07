@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use check::{FnCtxt, structurally_resolved_type};
-use middle::traits::{mod, ObjectSafetyViolation, MethodViolationCode};
+use middle::traits::{self, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
-use middle::ty::{mod, Ty, AsPredicate};
+use middle::ty::{self, Ty, AsPredicate};
 use middle::infer;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -74,7 +74,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 source_expr.span,
                 format!("can only cast an boxed pointer \
                          to a boxed object, not a {}",
-                        ty::ty_sort_string(fcx.tcx(), source_ty))[]);
+                        ty::ty_sort_string(fcx.tcx(), source_ty)).index(&FullRange));
         }
 
         (_, &ty::ty_rptr(..)) => {
@@ -82,7 +82,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 source_expr.span,
                 format!("can only cast a &-pointer \
                          to an &-object, not a {}",
-                        ty::ty_sort_string(fcx.tcx(), source_ty))[]);
+                        ty::ty_sort_string(fcx.tcx(), source_ty)).index(&FullRange));
         }
 
         _ => {
@@ -287,9 +287,7 @@ pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {
     fcx.default_type_parameters();
 
     let mut fulfillment_cx = fcx.inh.fulfillment_cx.borrow_mut();
-    let r = fulfillment_cx.select_all_or_error(fcx.infcx(),
-                                               &fcx.inh.param_env,
-                                               fcx);
+    let r = fulfillment_cx.select_all_or_error(fcx.infcx(), fcx);
     match r {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
@@ -302,7 +300,7 @@ pub fn select_fcx_obligations_where_possible(fcx: &FnCtxt)
     match
         fcx.inh.fulfillment_cx
         .borrow_mut()
-        .select_where_possible(fcx.infcx(), &fcx.inh.param_env, fcx)
+        .select_where_possible(fcx.infcx(), fcx)
     {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
@@ -316,7 +314,7 @@ pub fn select_new_fcx_obligations(fcx: &FnCtxt) {
     match
         fcx.inh.fulfillment_cx
         .borrow_mut()
-        .select_new_obligations(fcx.infcx(), &fcx.inh.param_env, fcx)
+        .select_new_obligations(fcx.infcx(), fcx)
     {
         Ok(()) => { }
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }

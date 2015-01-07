@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::task;
+use std::thread::Thread;
 
-pub fn main() { task::spawn(move|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) ); }
+pub fn main() {
+    let t = Thread::scoped(move|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) );
+    t.join().ok().unwrap();
+}
 
 fn child(args: (int, int, int, int, int, int, int, int, int)) {
     let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;

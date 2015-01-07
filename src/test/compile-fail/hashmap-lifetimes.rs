@@ -13,5 +13,5 @@ fn main() {
     my_stuff.insert(0i, 42i);
 
     let mut it = my_stuff.iter();
-    my_stuff.swap(1, 43); //~ ERROR cannot borrow
+    my_stuff.insert(1, 43); //~ ERROR cannot borrow
 }

@@ -11,8 +11,6 @@
 // Test how overloaded deref interacts with borrows when DerefMut
 // is implemented.
 
-#![feature(associated_types)]
-
 use std::ops::{Deref, DerefMut};
 
 struct Own<T> {

@@ -10,7 +10,7 @@
 
 
 
-fn pairs(it: |(int, int)|) {
+fn pairs<F>(mut it: F) where F: FnMut((int, int)) {
     let mut i: int = 0;
     let mut j: int = 0;
     while i < 10 { it((i, j)); i += 1; j += i; }

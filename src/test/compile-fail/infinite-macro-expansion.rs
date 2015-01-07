@@ -8,13 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
-macro_rules! recursive(
-      () => (
-                recursive!() //~ ERROR recursion limit reached while expanding the macro `recursive`
-              )
-      );
+macro_rules! recursive {
+    () => (recursive!()) //~ ERROR recursion limit reached while expanding the macro `recursive`
+}
 
 fn main() {
     recursive!()

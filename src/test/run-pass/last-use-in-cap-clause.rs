@@ -10,16 +10,17 @@
 
 // Make sure #1399 stays fixed
 
+#![feature(unboxed_closures)]
 
 struct A { a: Box<int> }
 
-fn foo() -> ||: 'static -> int {
+fn foo() -> Box<FnMut() -> int + 'static> {
     let k = box 22i;
     let _u = A {a: k.clone()};
-    let result: ||: 'static -> int = || 22;
-    result
+    let result  = |&mut:| 22;
+    box result
 }
 
 pub fn main() {
-    assert_eq!(foo()(), 22);
+    assert_eq!(foo().call_mut(()), 22);
 }

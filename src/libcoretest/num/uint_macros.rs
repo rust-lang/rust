@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
-
-macro_rules! uint_module (($T:ty, $T_i:ident) => (
+macro_rules! uint_module { ($T:ty, $T_i:ident) => (
 #[cfg(test)]
 mod tests {
     use core::$T_i::*;
@@ -125,4 +123,5 @@ mod tests {
         assert!(5u.checked_div(0) == None);
     }
 }
-));
+
+)}

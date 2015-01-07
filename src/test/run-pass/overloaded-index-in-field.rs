@@ -22,7 +22,9 @@ struct Bar {
     foo: Foo
 }
 
-impl Index<int,int> for Foo {
+impl Index<int> for Foo {
+    type Output = int;
+
     fn index(&self, z: &int) -> &int {
         if *z == 0 {
             &self.x
@@ -51,4 +53,3 @@ fn main() {
     } };
     assert_eq!(f.foo[1].get(), 2);
 }
-

@@ -48,7 +48,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     debug!("trans_stmt({})", s.repr(cx.tcx()));
 
     if cx.sess().asm_comments() {
-        add_span_comment(cx, s.span, s.repr(cx.tcx())[]);
+        add_span_comment(cx, s.span, s.repr(cx.tcx()).index(&FullRange));
     }
 
     let mut bcx = cx;
@@ -188,7 +188,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let name = format!("then-block-{}-", thn.id);
-    let then_bcx_in = bcx.fcx.new_id_block(name[], thn.id);
+    let then_bcx_in = bcx.fcx.new_id_block(name.index(&FullRange), thn.id);
     let then_bcx_out = trans_block(then_bcx_in, &*thn, dest);
     trans::debuginfo::clear_source_location(bcx.fcx);
 
@@ -265,7 +265,8 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              pat: &ast::Pat,
                              head: &ast::Expr,
                              body: &ast::Block)
-                             -> Block<'blk, 'tcx> {
+                             -> Block<'blk, 'tcx>
+{
     let _icx = push_ctxt("trans_for");
 
     //            bcx
@@ -306,7 +307,9 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                      .borrow())[method_call]
                                      .ty;
     let method_type = monomorphize_type(loopback_bcx_in, method_type);
-    let method_result_type = ty::ty_fn_ret(method_type).unwrap();
+    let method_result_type =
+        ty::assert_no_late_bound_regions( // LB regions are instantiated in invoked methods
+            loopback_bcx_in.tcx(), &ty::ty_fn_ret(method_type)).unwrap();
     let option_cleanup_scope = body_bcx_in.fcx.push_custom_cleanup_scope();
     let option_cleanup_scope_id = cleanup::CustomScope(option_cleanup_scope);
 
@@ -436,8 +439,8 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match bcx.tcx().def_map.borrow().get(&expr_id) {
                 Some(&def::DefLabel(loop_id)) => loop_id,
                 ref r => {
-                    bcx.tcx().sess.bug(format!("{} in def-map for label",
-                                               r)[])
+                    bcx.tcx().sess.bug(format!("{:?} in def-map for label",
+                                               r).index(&FullRange))
                 }
             }
         }
@@ -501,7 +504,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let v_str = C_str_slice(ccx, fail_str);
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let filename = token::intern_and_get_ident(loc.file.name[]);
+    let filename = token::intern_and_get_ident(loc.file.name.index(&FullRange));
     let filename = C_str_slice(ccx, filename);
     let line = C_uint(ccx, loc.line);
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
@@ -510,7 +513,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let did = langcall(bcx, Some(sp), "", PanicFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
-                                      args[],
+                                      args.index(&FullRange),
                                       Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
@@ -526,7 +529,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Extract the file/line from the span
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let filename = token::intern_and_get_ident(loc.file.name[]);
+    let filename = token::intern_and_get_ident(loc.file.name.index(&FullRange));
 
     // Invoke the lang item
     let filename = C_str_slice(ccx,  filename);
@@ -537,7 +540,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let did = langcall(bcx, Some(sp), "", PanicBoundsCheckFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
-                                      args[],
+                                      args.index(&FullRange),
                                       Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;

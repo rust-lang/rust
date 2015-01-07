@@ -19,7 +19,7 @@
 // processing.
 
 use {Module, NameBindings, Resolver};
-use Namespace::{mod, TypeNS, ValueNS};
+use Namespace::{self, TypeNS, ValueNS};
 
 use build_reduced_graph;
 
@@ -117,7 +117,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
                                    ns: Namespace) {
         match namebindings.def_for_namespace(ns) {
             Some(d) => {
-                debug!("(computing exports) YES: export '{}' => {}",
+                debug!("(computing exports) YES: export '{}' => {:?}",
                        name, d.def_id());
                 exports.push(Export {
                     name: name,
@@ -125,7 +125,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
                 });
             }
             d_opt => {
-                debug!("(computing exports) NO: {}", d_opt);
+                debug!("(computing exports) NO: {:?}", d_opt);
             }
         }
     }

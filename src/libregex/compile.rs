@@ -25,7 +25,7 @@ use parse::{
 
 type InstIdx = uint;
 
-#[deriving(Show, Clone)]
+#[derive(Show, Clone)]
 pub enum Inst {
     // When a Match instruction is executed, the current thread is successful.
     Match,
@@ -78,7 +78,7 @@ pub enum Inst {
 /// All of the data in a compiled expression is wrapped in "MaybeStatic" or
 /// "MaybeOwned" types so that a `Program` can be represented as static data.
 /// (This makes it convenient and efficient for use with the `regex!` macro.)
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Program {
     /// A sequence of instructions.
     pub insts: Vec<Inst>,
@@ -105,7 +105,7 @@ impl Program {
         // This is a bit hacky since we have to skip over the initial
         // 'Save' instruction.
         let mut pre = String::with_capacity(5);
-        for inst in c.insts[1..].iter() {
+        for inst in c.insts.index(&(1..)).iter() {
             match *inst {
                 OneChar(c, FLAG_EMPTY) => pre.push(c),
                 _ => break

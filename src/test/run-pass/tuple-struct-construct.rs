@@ -13,5 +13,5 @@ struct Foo(int, int);
 
 pub fn main() {
     let x = Foo(1, 2);
-    println!("{}", x);
+    println!("{:?}", x);
 }

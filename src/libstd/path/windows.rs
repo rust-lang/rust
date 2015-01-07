@@ -15,20 +15,20 @@
 use self::PathPrefix::*;
 
 use ascii::AsciiExt;
-use c_str::{CString, ToCStr};
+use char::CharExt;
 use clone::Clone;
-use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+use cmp::{Ordering, Eq, Ord, PartialEq, PartialOrd};
+use fmt;
 use hash;
 use io::Writer;
-use iter::{AdditiveIterator, DoubleEndedIteratorExt, Extend};
+use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map, repeat};
 use mem;
-use option::Option;
-use option::Option::{Some, None};
+use option::Option::{self, Some, None};
+use ops::{FullRange, Index};
 use slice::{SliceExt, SliceConcatExt};
 use str::{SplitTerminator, FromStr, StrExt};
 use string::{String, ToString};
-use unicode::char::UnicodeChar;
 use vec::Vec;
 
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
@@ -78,11 +78,17 @@ pub type Components<'a> =
 //
 // The only error condition imposed here is valid utf-8. All other invalid paths are simply
 // preserved by the data structure; let the Windows API error out on them.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Path {
     repr: String, // assumed to never be empty
     prefix: Option<PathPrefix>,
     sepidx: Option<uint> // index of the final separator in the non-prefix portion of repr
+}
+
+impl fmt::Show for Path {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Path {{ {} }}", self.display())
+    }
 }
 
 impl PartialEq for Path {
@@ -109,26 +115,6 @@ impl Ord for Path {
 impl FromStr for Path {
     fn from_str(s: &str) -> Option<Path> {
         Path::new_opt(s)
-    }
-}
-
-// FIXME (#12938): Until DST lands, we cannot decompose &str into & and str, so
-// we cannot usefully take ToCStr arguments by reference (without forcing an
-// additional & around &str). So we are instead temporarily adding an instance
-// for &Path, so that we can take ToCStr as owned. When DST lands, the &Path
-// instance should be removed, and arguments bound by ToCStr should be passed by
-// reference.
-
-impl ToCStr for Path {
-    #[inline]
-    fn to_c_str(&self) -> CString {
-        // The Path impl guarantees no internal NUL
-        unsafe { self.to_c_str_unchecked() }
-    }
-
-    #[inline]
-    unsafe fn to_c_str_unchecked(&self) -> CString {
-        self.as_vec().to_c_str_unchecked()
     }
 }
 
@@ -187,30 +173,30 @@ impl GenericPathUnsafe for Path {
                 s.push_str("..");
                 s.push(SEP);
                 s.push_str(filename);
-                self.update_normalized(s[]);
+                self.update_normalized(s.index(&FullRange));
             }
             None => {
                 self.update_normalized(filename);
             }
-            Some((_,idxa,end)) if self.repr[idxa..end] == ".." => {
+            Some((_,idxa,end)) if self.repr.index(&(idxa..end)) == ".." => {
                 let mut s = String::with_capacity(end + 1 + filename.len());
-                s.push_str(self.repr[0..end]);
+                s.push_str(self.repr.index(&(0..end)));
                 s.push(SEP);
                 s.push_str(filename);
-                self.update_normalized(s[]);
+                self.update_normalized(s.index(&FullRange));
             }
             Some((idxb,idxa,_)) if self.prefix == Some(DiskPrefix) && idxa == self.prefix_len() => {
                 let mut s = String::with_capacity(idxb + filename.len());
-                s.push_str(self.repr[0..idxb]);
+                s.push_str(self.repr.index(&(0..idxb)));
                 s.push_str(filename);
-                self.update_normalized(s[]);
+                self.update_normalized(s.index(&FullRange));
             }
             Some((idxb,_,_)) => {
                 let mut s = String::with_capacity(idxb + 1 + filename.len());
-                s.push_str(self.repr[0..idxb]);
+                s.push_str(self.repr.index(&(0..idxb)));
                 s.push(SEP);
                 s.push_str(filename);
-                self.update_normalized(s[]);
+                self.update_normalized(s.index(&FullRange));
             }
         }
     }
@@ -229,12 +215,12 @@ impl GenericPathUnsafe for Path {
         let path = path.container_as_str().unwrap();
         fn is_vol_abs(path: &str, prefix: Option<PathPrefix>) -> bool {
             // assume prefix is Some(DiskPrefix)
-            let rest = path[prefix_len(prefix)..];
+            let rest = path.index(&(prefix_len(prefix)..));
             !rest.is_empty() && rest.as_bytes()[0].is_ascii() && is_sep(rest.as_bytes()[0] as char)
         }
         fn shares_volume(me: &Path, path: &str) -> bool {
             // path is assumed to have a prefix of Some(DiskPrefix)
-            let repr = me.repr[];
+            let repr = me.repr.index(&FullRange);
             match me.prefix {
                 Some(DiskPrefix) => {
                     repr.as_bytes()[0] == path.as_bytes()[0].to_ascii_uppercase()
@@ -266,7 +252,7 @@ impl GenericPathUnsafe for Path {
                         else { None };
             let pathlen = path_.as_ref().map_or(path.len(), |p| p.len());
             let mut s = String::with_capacity(me.repr.len() + 1 + pathlen);
-            s.push_str(me.repr[]);
+            s.push_str(me.repr.index(&FullRange));
             let plen = me.prefix_len();
             // if me is "C:" we don't want to add a path separator
             match me.prefix {
@@ -278,9 +264,9 @@ impl GenericPathUnsafe for Path {
             }
             match path_ {
                 None => s.push_str(path),
-                Some(p) => s.push_str(p[]),
+                Some(p) => s.push_str(p.index(&FullRange)),
             };
-            me.update_normalized(s[])
+            me.update_normalized(s.index(&FullRange))
         }
 
         if !path.is_empty() {
@@ -288,7 +274,7 @@ impl GenericPathUnsafe for Path {
             match prefix {
                 Some(DiskPrefix) if !is_vol_abs(path, prefix) && shares_volume(self, path) => {
                     // cwd-relative path, self is on the same volume
-                    append_path(self, path[prefix_len(prefix)..]);
+                    append_path(self, path.index(&(prefix_len(prefix)..)));
                 }
                 Some(_) => {
                     // absolute path, or cwd-relative and self is not same volume
@@ -334,7 +320,7 @@ impl GenericPath for Path {
     /// Always returns a `Some` value.
     #[inline]
     fn as_str<'a>(&'a self) -> Option<&'a str> {
-        Some(self.repr[])
+        Some(self.repr.index(&FullRange))
     }
 
     #[inline]
@@ -356,17 +342,21 @@ impl GenericPath for Path {
     /// Always returns a `Some` value.
     fn dirname_str<'a>(&'a self) -> Option<&'a str> {
         Some(match self.sepidx_or_prefix_len() {
-            None if ".." == self.repr => self.repr[],
+            None if ".." == self.repr => self.repr.index(&FullRange),
             None => ".",
-            Some((_,idxa,end)) if self.repr[idxa..end] == ".." => self.repr[],
-            Some((idxb,_,end)) if self.repr[idxb..end] == "\\" => self.repr[],
-            Some((0,idxa,_)) => self.repr[0..idxa],
+            Some((_,idxa,end)) if self.repr.index(&(idxa..end)) == ".." => {
+                self.repr.index(&FullRange)
+            }
+            Some((idxb,_,end)) if self.repr.index(&(idxb..end)) == "\\" => {
+                self.repr.index(&FullRange)
+            }
+            Some((0,idxa,_)) => self.repr.index(&(0..idxa)),
             Some((idxb,idxa,_)) => {
                 match self.prefix {
                     Some(DiskPrefix) | Some(VerbatimDiskPrefix) if idxb == self.prefix_len() => {
-                        self.repr[0..idxa]
+                        self.repr.index(&(0..idxa))
                     }
-                    _ => self.repr[0..idxb]
+                    _ => self.repr.index(&(0..idxb))
                 }
             }
         })
@@ -380,13 +370,13 @@ impl GenericPath for Path {
     /// See `GenericPath::filename_str` for info.
     /// Always returns a `Some` value if `filename` returns a `Some` value.
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
-        let repr = self.repr[];
+        let repr = self.repr.index(&FullRange);
         match self.sepidx_or_prefix_len() {
             None if "." == repr || ".." == repr => None,
             None => Some(repr),
-            Some((_,idxa,end)) if repr[idxa..end] == ".." => None,
+            Some((_,idxa,end)) if repr.index(&(idxa..end)) == ".." => None,
             Some((_,idxa,end)) if idxa == end => None,
-            Some((_,idxa,end)) => Some(repr[idxa..end])
+            Some((_,idxa,end)) => Some(repr.index(&(idxa..end)))
         }
     }
 
@@ -418,7 +408,7 @@ impl GenericPath for Path {
                 true
             }
             Some((idxb,idxa,end)) if idxb == idxa && idxb == end => false,
-            Some((idxb,_,end)) if self.repr[idxb..end] == "\\" => false,
+            Some((idxb,_,end)) if self.repr.index(&(idxb..end)) == "\\" => false,
             Some((idxb,idxa,_)) => {
                 let trunc = match self.prefix {
                     Some(DiskPrefix) | Some(VerbatimDiskPrefix) | None => {
@@ -438,15 +428,15 @@ impl GenericPath for Path {
         if self.prefix.is_some() {
             Some(Path::new(match self.prefix {
                 Some(DiskPrefix) if self.is_absolute() => {
-                    self.repr[0..self.prefix_len()+1]
+                    self.repr.index(&(0..(self.prefix_len()+1)))
                 }
                 Some(VerbatimDiskPrefix) => {
-                    self.repr[0..self.prefix_len()+1]
+                    self.repr.index(&(0..(self.prefix_len()+1)))
                 }
-                _ => self.repr[0..self.prefix_len()]
+                _ => self.repr.index(&(0..self.prefix_len()))
             }))
         } else if is_vol_relative(self) {
-            Some(Path::new(self.repr[0..1]))
+            Some(Path::new(self.repr.index(&(0..1))))
         } else {
             None
         }
@@ -465,7 +455,7 @@ impl GenericPath for Path {
     fn is_absolute(&self) -> bool {
         match self.prefix {
             Some(DiskPrefix) => {
-                let rest = self.repr[self.prefix_len()..];
+                let rest = self.repr.index(&(self.prefix_len()..));
                 rest.len() > 0 && rest.as_bytes()[0] == SEP_BYTE
             }
             Some(_) => true,
@@ -640,15 +630,15 @@ impl Path {
     /// Does not distinguish between absolute and cwd-relative paths, e.g.
     /// C:\foo and C:foo.
     pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
-        let repr = self.repr[];
+        let repr = self.repr.index(&FullRange);
         let s = match self.prefix {
             Some(_) => {
                 let plen = self.prefix_len();
                 if repr.len() > plen && repr.as_bytes()[plen] == SEP_BYTE {
-                    repr[plen+1..]
-                } else { repr[plen..] }
+                    repr.index(&((plen+1)..))
+                } else { repr.index(&(plen..)) }
             }
-            None if repr.as_bytes()[0] == SEP_BYTE => repr[1..],
+            None if repr.as_bytes()[0] == SEP_BYTE => repr.index(&(1..)),
             None => repr
         };
         let some: fn(&'a str) -> Option<&'a str> = Some; // coerce to fn ptr
@@ -668,8 +658,8 @@ impl Path {
     }
 
     fn equiv_prefix(&self, other: &Path) -> bool {
-        let s_repr = self.repr[];
-        let o_repr = other.repr[];
+        let s_repr = self.repr.index(&FullRange);
+        let o_repr = other.repr.index(&FullRange);
         match (self.prefix, other.prefix) {
             (Some(DiskPrefix), Some(VerbatimDiskPrefix)) => {
                 self.is_absolute() &&
@@ -686,14 +676,14 @@ impl Path {
                     o_repr.as_bytes()[4].to_ascii_lowercase()
             }
             (Some(UNCPrefix(_,_)), Some(VerbatimUNCPrefix(_,_))) => {
-                s_repr[2..self.prefix_len()] == o_repr[8..other.prefix_len()]
+                s_repr.index(&(2..self.prefix_len())) == o_repr.index(&(8..other.prefix_len()))
             }
             (Some(VerbatimUNCPrefix(_,_)), Some(UNCPrefix(_,_))) => {
-                s_repr[8..self.prefix_len()] == o_repr[2..other.prefix_len()]
+                s_repr.index(&(8..self.prefix_len())) == o_repr.index(&(2..other.prefix_len()))
             }
             (None, None) => true,
             (a, b) if a == b => {
-                s_repr[0..self.prefix_len()] == o_repr[0..other.prefix_len()]
+                s_repr.index(&(0..self.prefix_len())) == o_repr.index(&(0..other.prefix_len()))
             }
             _ => false
         }
@@ -747,7 +737,7 @@ impl Path {
                         match prefix.unwrap() {
                             DiskPrefix => {
                                 let len = prefix_len(prefix) + is_abs as uint;
-                                let mut s = String::from_str(s[0..len]);
+                                let mut s = String::from_str(s.index(&(0..len)));
                                 unsafe {
                                     let v = s.as_mut_vec();
                                     v[0] = (*v)[0].to_ascii_uppercase();
@@ -762,7 +752,7 @@ impl Path {
                             }
                             VerbatimDiskPrefix => {
                                 let len = prefix_len(prefix) + is_abs as uint;
-                                let mut s = String::from_str(s[0..len]);
+                                let mut s = String::from_str(s.index(&(0..len)));
                                 unsafe {
                                     let v = s.as_mut_vec();
                                     v[4] = (*v)[4].to_ascii_uppercase();
@@ -772,14 +762,14 @@ impl Path {
                             _ => {
                                 let plen = prefix_len(prefix);
                                 if s.len() > plen {
-                                    Some(String::from_str(s[0..plen]))
+                                    Some(String::from_str(s.index(&(0..plen))))
                                 } else { None }
                             }
                         }
                     } else if is_abs && comps.is_empty() {
                         Some(repeat(SEP).take(1).collect())
                     } else {
-                        let prefix_ = s[0..prefix_len(prefix)];
+                        let prefix_ = s.index(&(0..prefix_len(prefix)));
                         let n = prefix_.len() +
                                 if is_abs { comps.len() } else { comps.len() - 1} +
                                 comps.iter().map(|v| v.len()).sum();
@@ -790,15 +780,15 @@ impl Path {
                                 s.push(':');
                             }
                             Some(VerbatimDiskPrefix) => {
-                                s.push_str(prefix_[0..4]);
+                                s.push_str(prefix_.index(&(0..4)));
                                 s.push(prefix_.as_bytes()[4].to_ascii_uppercase() as char);
-                                s.push_str(prefix_[5..]);
+                                s.push_str(prefix_.index(&(5..)));
                             }
                             Some(UNCPrefix(a,b)) => {
                                 s.push_str("\\\\");
-                                s.push_str(prefix_[2..a+2]);
+                                s.push_str(prefix_.index(&(2..(a+2))));
                                 s.push(SEP);
-                                s.push_str(prefix_[3+a..3+a+b]);
+                                s.push_str(prefix_.index(&((3+a)..(3+a+b))));
                             }
                             Some(_) => s.push_str(prefix_),
                             None => ()
@@ -823,8 +813,8 @@ impl Path {
 
     fn update_sepidx(&mut self) {
         let s = if self.has_nonsemantic_trailing_slash() {
-                    self.repr[0..self.repr.len()-1]
-                } else { self.repr[] };
+                    self.repr.index(&(0..(self.repr.len()-1)))
+                } else { self.repr.index(&FullRange) };
         let sep_test: fn(char) -> bool = if !prefix_is_verbatim(self.prefix) {
             is_sep
         } else {
@@ -903,17 +893,17 @@ pub fn is_verbatim(path: &Path) -> bool {
 /// non-verbatim, the non-verbatim version is returned.
 /// Otherwise, None is returned.
 pub fn make_non_verbatim(path: &Path) -> Option<Path> {
-    let repr = path.repr[];
+    let repr = path.repr.index(&FullRange);
     let new_path = match path.prefix {
         Some(VerbatimPrefix(_)) | Some(DeviceNSPrefix(_)) => return None,
         Some(UNCPrefix(_,_)) | Some(DiskPrefix) | None => return Some(path.clone()),
         Some(VerbatimDiskPrefix) => {
             // \\?\D:\
-            Path::new(repr[4..])
+            Path::new(repr.index(&(4..)))
         }
         Some(VerbatimUNCPrefix(_,_)) => {
             // \\?\UNC\server\share
-            Path::new(format!(r"\{}", repr[7..]))
+            Path::new(format!(r"\{}", repr.index(&(7..))))
         }
     };
     if new_path.prefix.is_none() {
@@ -922,8 +912,8 @@ pub fn make_non_verbatim(path: &Path) -> Option<Path> {
         return None;
     }
     // now ensure normalization didn't change anything
-    if repr[path.prefix_len()..] ==
-        new_path.repr[new_path.prefix_len()..] {
+    if repr.index(&(path.prefix_len()..)) ==
+        new_path.repr.index(&(new_path.prefix_len()..)) {
         Some(new_path)
     } else {
         None
@@ -969,7 +959,7 @@ pub fn is_sep_byte_verbatim(u: &u8) -> bool {
 }
 
 /// Prefix types for Path
-#[deriving(Copy, PartialEq, Clone, Show)]
+#[derive(Copy, PartialEq, Clone, Show)]
 pub enum PathPrefix {
     /// Prefix `\\?\`, uint is the length of the following component
     VerbatimPrefix(uint),
@@ -988,13 +978,13 @@ pub enum PathPrefix {
 fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     if path.starts_with("\\\\") {
         // \\
-        path = path[2..];
+        path = path.index(&(2..));
         if path.starts_with("?\\") {
             // \\?\
-            path = path[2..];
+            path = path.index(&(2..));
             if path.starts_with("UNC\\") {
                 // \\?\UNC\server\share
-                path = path[4..];
+                path = path.index(&(4..));
                 let (idx_a, idx_b) = match parse_two_comps(path, is_sep_verbatim) {
                     Some(x) => x,
                     None => (path.len(), 0)
@@ -1015,7 +1005,7 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
             }
         } else if path.starts_with(".\\") {
             // \\.\path
-            path = path[2..];
+            path = path.index(&(2..));
             let idx = path.find('\\').unwrap_or(path.len());
             return Some(DeviceNSPrefix(idx));
         }
@@ -1040,7 +1030,7 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
             None => return None,
             Some(x) => x
         };
-        path = path[idx_a+1..];
+        path = path.index(&((idx_a+1)..));
         let idx_b = path.find(f).unwrap_or(path.len());
         Some((idx_a, idx_b))
     }
@@ -1054,8 +1044,8 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool, Option
         is_sep_verbatim
     };
     let is_abs = s.len() > prefix_len(prefix) && f(s.char_at(prefix_len(prefix)));
-    let s_ = s[prefix_len(prefix)..];
-    let s_ = if is_abs { s_[1..] } else { s_ };
+    let s_ = s.index(&(prefix_len(prefix)..));
+    let s_ = if is_abs { s_.index(&(1..)) } else { s_ };
 
     if is_abs && s_.is_empty() {
         return (is_abs, match prefix {
@@ -1124,8 +1114,8 @@ mod tests {
     use super::*;
 
     use clone::Clone;
-    use iter::{IteratorExt, DoubleEndedIteratorExt};
-    use option::Option::{mod, Some, None};
+    use iter::IteratorExt;
+    use option::Option::{self, Some, None};
     use path::GenericPath;
     use slice::{AsSlice, SliceExt};
     use str::Str;
@@ -1136,30 +1126,29 @@ mod tests {
         (s: $path:expr, $exp:expr) => (
             {
                 let path = $path;
-                assert!(path.as_str() == Some($exp));
+                assert_eq!(path.as_str(), Some($exp));
             }
         );
         (v: $path:expr, $exp:expr) => (
             {
                 let path = $path;
-                assert!(path.as_vec() == $exp);
+                assert_eq!(path.as_vec(), $exp);
             }
         )
     }
 
     #[test]
     fn test_parse_prefix() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $exp:expr) => (
                 {
                     let path = $path;
                     let exp = $exp;
                     let res = parse_prefix(path);
-                    assert!(res == exp,
-                            "parse_prefix(\"{}\"): expected {}, found {}", path, exp, res);
+                    assert_eq!(res, exp);
                 }
             )
-        );
+        }
 
         t!("\\\\SERVER\\share\\foo", Some(UNCPrefix(6,5)));
         t!("\\\\", None);
@@ -1309,17 +1298,17 @@ mod tests {
     #[test]
     fn test_null_byte() {
         use thread::Thread;
-        let result = Thread::spawn(move|| {
+        let result = Thread::scoped(move|| {
             Path::new(b"foo/bar\0")
         }).join();
         assert!(result.is_err());
 
-        let result = Thread::spawn(move|| {
+        let result = Thread::scoped(move|| {
             Path::new("test").set_filename(b"f\0o")
         }).join();
         assert!(result.is_err());
 
-        let result = Thread::spawn(move || {
+        let result = Thread::scoped(move || {
             Path::new("test").push(b"f\0o");
         }).join();
         assert!(result.is_err());
@@ -1348,7 +1337,7 @@ mod tests {
 
     #[test]
     fn test_display() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $exp:expr, $expf:expr) => (
                 {
                     let path = Path::new($path);
@@ -1358,7 +1347,7 @@ mod tests {
                     assert_eq!(f, $expf);
                 }
             )
-        );
+        }
 
         t!("foo", "foo", "foo");
         t!("foo\\bar", "foo\\bar", "bar");
@@ -1367,12 +1356,12 @@ mod tests {
 
     #[test]
     fn test_components() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
                     let path = $path;
                     let path = Path::new(path);
-                    assert!(path.$op() == Some($exp));
+                    assert_eq!(path.$op(), Some($exp));
                 }
             );
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
@@ -1380,17 +1369,17 @@ mod tests {
                     let path = $path;
                     let path = Path::new(path);
                     let left = path.$op();
-                    assert!(left == $exp);
+                    assert_eq!(left, $exp);
                 }
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
                     let path = $path;
                     let path = Path::new(path);
-                    assert!(path.$op() == $exp);
+                    assert_eq!(path.$op(), $exp);
                 }
             )
-        );
+        }
 
         t!(v: b"a\\b\\c", filename, Some(b"c"));
         t!(s: "a\\b\\c", filename_str, "c");
@@ -1490,7 +1479,7 @@ mod tests {
 
     #[test]
     fn test_push() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $join:expr) => (
                 {
                     let path = $path;
@@ -1498,10 +1487,10 @@ mod tests {
                     let mut p1 = Path::new(path);
                     let p2 = p1.clone();
                     p1.push(join);
-                    assert!(p1 == p2.join(join));
+                    assert_eq!(p1, p2.join(join));
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "..");
         t!(s: "\\a\\b\\c", "d");
@@ -1512,9 +1501,9 @@ mod tests {
 
         // we do want to check one odd case though to ensure the prefix is re-parsed
         let mut p = Path::new("\\\\?\\C:");
-        assert!(prefix(&p) == Some(VerbatimPrefix(2)));
+        assert_eq!(prefix(&p), Some(VerbatimPrefix(2)));
         p.push("foo");
-        assert!(prefix(&p) == Some(VerbatimDiskPrefix));
+        assert_eq!(prefix(&p), Some(VerbatimDiskPrefix));
         assert_eq!(p.as_str(), Some("\\\\?\\C:\\foo"));
 
         // and another with verbatim non-normalized paths
@@ -1525,7 +1514,7 @@ mod tests {
 
     #[test]
     fn test_push_path() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = Path::new($path);
@@ -1534,7 +1523,7 @@ mod tests {
                     assert_eq!(p.as_str(), Some($exp));
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "d", "a\\b\\c\\d");
         t!(s: "\\a\\b\\c", "d", "\\a\\b\\c\\d");
@@ -1577,7 +1566,7 @@ mod tests {
 
     #[test]
     fn test_push_many() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $push:expr, $exp:expr) => (
                 {
                     let mut p = Path::new($path);
@@ -1592,7 +1581,7 @@ mod tests {
                     assert_eq!(p.as_vec(), $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["d", "\\e"], "\\e");
@@ -1606,17 +1595,15 @@ mod tests {
 
     #[test]
     fn test_pop() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $left:expr, $right:expr) => (
                 {
                     let pstr = $path;
                     let mut p = Path::new(pstr);
                     let result = p.pop();
                     let left = $left;
-                    assert!(p.as_str() == Some(left),
-                        "`{}`.pop() failed; expected remainder `{}`, found `{}`",
-                        pstr, left, p.as_str().unwrap());
-                    assert!(result == $right);
+                    assert_eq!(p.as_str(), Some(left));
+                    assert_eq!(result, $right);
                 }
             );
             (b: $path:expr, $left:expr, $right:expr) => (
@@ -1624,10 +1611,10 @@ mod tests {
                     let mut p = Path::new($path);
                     let result = p.pop();
                     assert_eq!(p.as_vec(), $left);
-                    assert!(result == $right);
+                    assert_eq!(result, $right);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "a\\b", true);
         t!(s: "a", ".", true);
@@ -1667,16 +1654,16 @@ mod tests {
 
     #[test]
     fn test_root_path() {
-        assert!(Path::new("a\\b\\c").root_path() == None);
-        assert!(Path::new("\\a\\b\\c").root_path() == Some(Path::new("\\")));
-        assert!(Path::new("C:a").root_path() == Some(Path::new("C:")));
-        assert!(Path::new("C:\\a").root_path() == Some(Path::new("C:\\")));
-        assert!(Path::new("\\\\a\\b\\c").root_path() == Some(Path::new("\\\\a\\b")));
-        assert!(Path::new("\\\\?\\a\\b").root_path() == Some(Path::new("\\\\?\\a")));
-        assert!(Path::new("\\\\?\\C:\\a").root_path() == Some(Path::new("\\\\?\\C:\\")));
-        assert!(Path::new("\\\\?\\UNC\\a\\b\\c").root_path() ==
+        assert_eq!(Path::new("a\\b\\c").root_path(),  None);
+        assert_eq!(Path::new("\\a\\b\\c").root_path(), Some(Path::new("\\")));
+        assert_eq!(Path::new("C:a").root_path(), Some(Path::new("C:")));
+        assert_eq!(Path::new("C:\\a").root_path(), Some(Path::new("C:\\")));
+        assert_eq!(Path::new("\\\\a\\b\\c").root_path(), Some(Path::new("\\\\a\\b")));
+        assert_eq!(Path::new("\\\\?\\a\\b").root_path(), Some(Path::new("\\\\?\\a")));
+        assert_eq!(Path::new("\\\\?\\C:\\a").root_path(), Some(Path::new("\\\\?\\C:\\")));
+        assert_eq!(Path::new("\\\\?\\UNC\\a\\b\\c").root_path(),
                 Some(Path::new("\\\\?\\UNC\\a\\b")));
-        assert!(Path::new("\\\\.\\a\\b").root_path() == Some(Path::new("\\\\.\\a")));
+        assert_eq!(Path::new("\\\\.\\a\\b").root_path(), Some(Path::new("\\\\.\\a")));
     }
 
     #[test]
@@ -1695,7 +1682,7 @@ mod tests {
 
     #[test]
     fn test_join_path() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -1704,7 +1691,7 @@ mod tests {
                     assert_eq!(res.as_str(), Some($exp));
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "..", "a\\b");
         t!(s: "\\a\\b\\c", "d", "\\a\\b\\c\\d");
@@ -1718,7 +1705,7 @@ mod tests {
 
     #[test]
     fn test_join_many() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $join:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -1733,7 +1720,7 @@ mod tests {
                     assert_eq!(res.as_vec(), $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", ["d", "e"], "a\\b\\c\\d\\e");
         t!(s: "a\\b\\c", ["..", "d"], "a\\b\\d");
@@ -1746,20 +1733,18 @@ mod tests {
 
     #[test]
     fn test_with_helpers() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $op:ident, $arg:expr, $res:expr) => (
                 {
                     let pstr = $path;
                     let path = Path::new(pstr);
                     let arg = $arg;
                     let res = path.$op(arg);
-                    let exp = $res;
-                    assert!(res.as_str() == Some(exp),
-                            "`{}`.{}(\"{}\"): Expected `{}`, found `{}`",
-                            pstr, stringify!($op), arg, exp, res.as_str().unwrap());
+                    let exp = Path::new($res);
+                    assert_eq!(res, exp);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", with_filename, "d", "a\\b\\d");
         t!(s: ".", with_filename, "foo", "foo");
@@ -1831,7 +1816,7 @@ mod tests {
 
     #[test]
     fn test_setters() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $set:ident, $with:ident, $arg:expr) => (
                 {
                     let path = $path;
@@ -1839,7 +1824,7 @@ mod tests {
                     let mut p1 = Path::new(path);
                     p1.$set(arg);
                     let p2 = Path::new(path);
-                    assert!(p1 == p2.$with(arg));
+                    assert_eq!(p1, p2.$with(arg));
                 }
             );
             (v: $path:expr, $set:ident, $with:ident, $arg:expr) => (
@@ -1849,10 +1834,10 @@ mod tests {
                     let mut p1 = Path::new(path);
                     p1.$set(arg);
                     let p2 = Path::new(path);
-                    assert!(p1 == p2.$with(arg));
+                    assert_eq!(p1, p2.$with(arg));
                 }
             )
-        );
+        }
 
         t!(v: b"a\\b\\c", set_filename, with_filename, b"d");
         t!(v: b"\\", set_filename, with_filename, b"foo");
@@ -1876,38 +1861,26 @@ mod tests {
 
     #[test]
     fn test_getters() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
                     let path = $path;
-                    let filename = $filename;
-                    assert!(path.filename_str() == filename,
-                            "`{}`.filename_str(): Expected `{}`, found `{}`",
-                            path.as_str().unwrap(), filename, path.filename_str());
-                    let dirname = $dirname;
-                    assert!(path.dirname_str() == dirname,
-                            "`{}`.dirname_str(): Expected `{}`, found `{}`",
-                            path.as_str().unwrap(), dirname, path.dirname_str());
-                    let filestem = $filestem;
-                    assert!(path.filestem_str() == filestem,
-                            "`{}`.filestem_str(): Expected `{}`, found `{}`",
-                            path.as_str().unwrap(), filestem, path.filestem_str());
-                    let ext = $ext;
-                    assert!(path.extension_str() == ext,
-                            "`{}`.extension_str(): Expected `{}`, found `{}`",
-                            path.as_str().unwrap(), ext, path.extension_str());
+                    assert_eq!(path.filename_str(), $filename);
+                    assert_eq!(path.dirname_str(), $dirname);
+                    assert_eq!(path.filestem_str(), $filestem);
+                    assert_eq!(path.extension_str(), $ext);
                 }
             );
             (v: $path:expr, $filename:expr, $dirname:expr, $filestem:expr, $ext:expr) => (
                 {
                     let path = $path;
-                    assert!(path.filename() == $filename);
-                    assert!(path.dirname() == $dirname);
-                    assert!(path.filestem() == $filestem);
-                    assert!(path.extension() == $ext);
+                    assert_eq!(path.filename(), $filename);
+                    assert_eq!(path.dirname(), $dirname);
+                    assert_eq!(path.filestem(), $filestem);
+                    assert_eq!(path.extension(), $ext);
                 }
             )
-        );
+        }
 
         t!(v: Path::new(b"a\\b\\c"), Some(b"c"), b"a\\b", Some(b"c"), None);
         t!(s: Path::new("a\\b\\c"), Some("c"), Some("a\\b"), Some("c"), None);
@@ -1942,26 +1915,18 @@ mod tests {
 
     #[test]
     fn test_is_absolute() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $abs:expr, $vol:expr, $cwd:expr, $rel:expr) => (
                 {
                     let path = Path::new($path);
                     let (abs, vol, cwd, rel) = ($abs, $vol, $cwd, $rel);
-                    let b = path.is_absolute();
-                    assert!(b == abs, "Path '{}'.is_absolute(): expected {}, found {}",
-                            path.as_str().unwrap(), abs, b);
-                    let b = is_vol_relative(&path);
-                    assert!(b == vol, "is_vol_relative('{}'): expected {}, found {}",
-                            path.as_str().unwrap(), vol, b);
-                    let b = is_cwd_relative(&path);
-                    assert!(b == cwd, "is_cwd_relative('{}'): expected {}, found {}",
-                            path.as_str().unwrap(), cwd, b);
-                    let b = path.is_relative();
-                    assert!(b == rel, "Path '{}'.is_relativf(): expected {}, found {}",
-                            path.as_str().unwrap(), rel, b);
+                    assert_eq!(path.is_absolute(), abs);
+                    assert_eq!(is_vol_relative(&path), vol);
+                    assert_eq!(is_cwd_relative(&path), cwd);
+                    assert_eq!(path.is_relative(), rel);
                 }
             )
-        );
+        }
         t!("a\\b\\c", false, false, false, true);
         t!("\\a\\b\\c", false, true, false, false);
         t!("a", false, false, false, true);
@@ -1982,19 +1947,17 @@ mod tests {
 
     #[test]
     fn test_is_ancestor_of() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $dest:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
                     let dest = Path::new($dest);
                     let exp = $exp;
                     let res = path.is_ancestor_of(&dest);
-                    assert!(res == exp,
-                            "`{}`.is_ancestor_of(`{}`): Expected {}, found {}",
-                            path.as_str().unwrap(), dest.as_str().unwrap(), exp, res);
+                    assert_eq!(res, exp);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "a\\b\\c\\d", true);
         t!(s: "a\\b\\c", "a\\b\\c", true);
@@ -2085,7 +2048,7 @@ mod tests {
 
     #[test]
     fn test_ends_with_path() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $child:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -2093,7 +2056,7 @@ mod tests {
                     assert_eq!(path.ends_with_path(&child), $exp);
                 }
             );
-        );
+        }
 
         t!(s: "a\\b\\c", "c", true);
         t!(s: "a\\b\\c", "d", false);
@@ -2117,20 +2080,14 @@ mod tests {
 
     #[test]
     fn test_path_relative_from() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $other:expr, $exp:expr) => (
                 {
-                    let path = Path::new($path);
-                    let other = Path::new($other);
-                    let res = path.path_relative_from(&other);
-                    let exp = $exp;
-                    assert!(res.as_ref().and_then(|x| x.as_str()) == exp,
-                            "`{}`.path_relative_from(`{}`): Expected {}, got {}",
-                            path.as_str().unwrap(), other.as_str().unwrap(), exp,
-                            res.as_ref().and_then(|x| x.as_str()));
+                    assert_eq!(Path::new($path).path_relative_from(&Path::new($other))
+                              .as_ref().and_then(|x| x.as_str()), $exp);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", "a\\b", Some("c"));
         t!(s: "a\\b\\c", "a\\b\\d", Some("..\\c"));
@@ -2251,7 +2208,7 @@ mod tests {
 
     #[test]
     fn test_str_components() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -2265,7 +2222,7 @@ mod tests {
                     assert_eq!(comps, exp);
                 }
             );
-        );
+        }
 
         t!(s: b"a\\b\\c", ["a", "b", "c"]);
         t!(s: "a\\b\\c", ["a", "b", "c"]);
@@ -2309,7 +2266,7 @@ mod tests {
 
     #[test]
     fn test_components_iter() {
-        macro_rules! t(
+        macro_rules! t {
             (s: $path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
@@ -2321,7 +2278,7 @@ mod tests {
                     assert_eq!(comps, exp);
                 }
             )
-        );
+        }
 
         t!(s: "a\\b\\c", [b"a", b"b", b"c"]);
         t!(s: ".", [b"."]);
@@ -2330,16 +2287,16 @@ mod tests {
 
     #[test]
     fn test_make_non_verbatim() {
-        macro_rules! t(
+        macro_rules! t {
             ($path:expr, $exp:expr) => (
                 {
                     let path = Path::new($path);
                     let exp: Option<&str> = $exp;
                     let exp = exp.map(|s| Path::new(s));
-                    assert!(make_non_verbatim(&path) == exp);
+                    assert_eq!(make_non_verbatim(&path), exp);
                 }
             )
-        );
+        }
 
         t!(r"\a\b\c", Some(r"\a\b\c"));
         t!(r"a\b\c", Some(r"a\b\c"));

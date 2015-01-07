@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -30,7 +30,7 @@ use default::Default;
 use super::{Hash, Hasher, Writer};
 
 /// `SipState` computes a SipHash 2-4 hash over a stream of bytes.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct SipState {
     k0: u64,
     k1: u64,
@@ -213,7 +213,7 @@ impl Default for SipState {
 }
 
 /// `SipHasher` computes the SipHash algorithm from a stream of bytes.
-#[deriving(Clone)]
+#[derive(Clone)]
 #[allow(missing_copy_implementations)]
 pub struct SipHasher {
     k0: u64,
@@ -239,7 +239,7 @@ impl SipHasher {
 
 impl Hasher<SipState> for SipHasher {
     #[inline]
-    fn hash<Sized? T: Hash<SipState>>(&self, value: &T) -> u64 {
+    fn hash<T: ?Sized + Hash<SipState>>(&self, value: &T) -> u64 {
         let mut state = SipState::new_with_keys(self.k0, self.k1);
         value.hash(&mut state);
         state.result()
@@ -255,7 +255,7 @@ impl Default for SipHasher {
 
 /// Hashes a value using the SipHash algorithm.
 #[inline]
-pub fn hash<Sized? T: Hash<SipState>>(value: &T) -> u64 {
+pub fn hash<T: ?Sized + Hash<SipState>>(value: &T) -> u64 {
     let mut state = SipState::new();
     value.hash(&mut state);
     state.result()
@@ -263,7 +263,7 @@ pub fn hash<Sized? T: Hash<SipState>>(value: &T) -> u64 {
 
 /// Hashes a value with the SipHash algorithm with the provided keys.
 #[inline]
-pub fn hash_with_keys<Sized? T: Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
+pub fn hash_with_keys<T: ?Sized + Hash<SipState>>(k0: u64, k1: u64, value: &T) -> u64 {
     let mut state = SipState::new_with_keys(k0, k1);
     value.hash(&mut state);
     state.result()
@@ -419,6 +419,12 @@ mod tests {
         }
     }
 
+    #[test] #[cfg(target_arch = "aarch64")]
+    fn test_hash_uint() {
+        let val = 0xdeadbeef_deadbeef_u64;
+        assert_eq!(hash(&(val as u64)), hash(&(val as uint)));
+        assert!(hash(&(val as u32)) != hash(&(val as uint)));
+    }
     #[test] #[cfg(target_arch = "arm")]
     fn test_hash_uint() {
         let val = 0xdeadbeef_deadbeef_u64;

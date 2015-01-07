@@ -11,9 +11,9 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use kinds::marker;
+use marker;
 use ops::{Deref, DerefMut};
-use sync::poison::{mod, TryLockError, TryLockResult, LockResult};
+use sync::poison::{self, TryLockError, TryLockResult, LockResult};
 use sys_common::mutex as sys;
 
 /// A mutual exclusion primitive useful for protecting shared data
@@ -75,7 +75,7 @@ use sys_common::mutex as sys;
 ///             tx.send(()).unwrap();
 ///         }
 ///         // the lock is unlocked here when `data` goes out of scope.
-///     }).detach();
+///     });
 /// }
 ///
 /// rx.recv().unwrap();
@@ -90,7 +90,7 @@ use sys_common::mutex as sys;
 /// let lock = Arc::new(Mutex::new(0u));
 /// let lock2 = lock.clone();
 ///
-/// let _ = Thread::spawn(move || -> () {
+/// let _ = Thread::scoped(move || -> () {
 ///     // This thread will acquire the mutex first, unwrapping the result of
 ///     // `lock` because the lock has not been poisoned.
 ///     let _lock = lock2.lock().unwrap();
@@ -228,6 +228,7 @@ impl<T: Send> Mutex<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Mutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
@@ -291,6 +292,7 @@ impl<'mutex, T> MutexGuard<'mutex, T> {
     }
 }
 
+#[stable]
 impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
     type Target = T;
 
@@ -298,6 +300,7 @@ impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
         unsafe { &*self.__data.get() }
     }
 }
+#[stable]
 impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut *self.__data.get() }
@@ -305,6 +308,7 @@ impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<'a, T> Drop for MutexGuard<'a, T> {
     #[inline]
     fn drop(&mut self) {
@@ -372,9 +376,9 @@ mod test {
         let (tx, rx) = channel();
         for _ in range(0, K) {
             let tx2 = tx.clone();
-            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); }).detach();
+            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); });
             let tx2 = tx.clone();
-            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); }).detach();
+            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); });
         }
 
         drop(tx);
@@ -449,7 +453,7 @@ mod test {
     fn test_mutex_arc_poison() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        let _ = Thread::spawn(move|| {
+        let _ = Thread::scoped(move|| {
             let lock = arc2.lock().unwrap();
             assert_eq!(*lock, 2);
         }).join();
@@ -476,7 +480,7 @@ mod test {
     fn test_mutex_arc_access_in_unwind() {
         let arc = Arc::new(Mutex::new(1i));
         let arc2 = arc.clone();
-        let _ = Thread::spawn(move|| -> () {
+        let _ = Thread::scoped(move|| -> () {
             struct Unwinder {
                 i: Arc<Mutex<int>>,
             }

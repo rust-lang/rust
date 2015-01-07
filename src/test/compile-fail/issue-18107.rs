@@ -14,7 +14,7 @@ pub trait AbstractRenderer {}
 
 fn _create_render(_: &()) ->
     AbstractRenderer
-//~^ ERROR: the trait `core::kinds::Sized` is not implemented
+//~^ ERROR: the trait `core::marker::Sized` is not implemented
 {
     match 0u {
         _ => unimplemented!()

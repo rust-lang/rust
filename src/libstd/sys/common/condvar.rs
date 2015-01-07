@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use time::Duration;
-use sys_common::mutex::{mod, Mutex};
+use sys_common::mutex::{self, Mutex};
 use sys::condvar as imp;
 
 /// An OS-based condition variable.

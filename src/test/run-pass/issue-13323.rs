@@ -14,7 +14,7 @@ struct StrWrap {
 
 impl StrWrap {
     fn new(s: &str) -> StrWrap {
-        StrWrap { s: s.into_string() }
+        StrWrap { s: s.to_string() }
     }
 
     fn get_s<'a>(&'a self) -> &'a str {

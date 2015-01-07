@@ -21,9 +21,9 @@ use super::VtableImplData;
 
 use middle::infer;
 use middle::subst::Subst;
-use middle::ty::{mod, AsPredicate, ReferencesError, RegionEscape,
+use middle::ty::{self, AsPredicate, ReferencesError, RegionEscape,
                  HasProjectionTypes, ToPolyTraitRef, Ty};
-use middle::ty_fold::{mod, TypeFoldable, TypeFolder};
+use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use std::rc::Rc;
 use util::ppaux::Repr;
 
@@ -45,7 +45,7 @@ pub enum ProjectionTyError<'tcx> {
     TraitSelectionError(SelectionError<'tcx>),
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::type_err<'tcx>
 }
@@ -490,7 +490,7 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
                 format!("assemble_candidates_from_object_type called with non-object: {}",
-                        object_ty.repr(selcx.tcx()))[]);
+                        object_ty.repr(selcx.tcx())).as_slice());
         }
     };
     let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
@@ -643,11 +643,12 @@ fn confirm_candidate<'cx,'tcx>(
             match impl_ty {
                 Some(ty) => (ty, impl_vtable.nested.to_vec()),
                 None => {
-                    selcx.tcx().sess.span_bug(
-                        obligation.cause.span,
-                        format!("impl `{}` did not contain projection for `{}`",
-                                impl_vtable.repr(selcx.tcx()),
-                                obligation.repr(selcx.tcx())).as_slice());
+                    // This means that the impl is missing a
+                    // definition for the associated type. This error
+                    // ought to be reported by the type checker method
+                    // `check_impl_items_against_trait`, so here we
+                    // just return ty_err.
+                    (selcx.tcx().types.err, vec!())
                 }
             }
         }

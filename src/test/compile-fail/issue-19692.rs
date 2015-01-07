@@ -12,7 +12,7 @@ struct Homura;
 
 fn akemi(homura: Homura) {
     let Some(ref madoka) = Some(homura.kaname()); //~ ERROR does not implement any method
-    madoka.clone(); //~ ERROR the type of this value must be known
+    madoka.clone();
 }
 
 fn main() { }

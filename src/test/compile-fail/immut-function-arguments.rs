@@ -14,7 +14,7 @@ fn f(y: Box<int>) {
 }
 
 fn g() {
-    let _frob: |Box<int>| = |q| { *q = 2; }; //~ ERROR cannot assign
+    let _frob = |&: q: Box<int>| { *q = 2; }; //~ ERROR cannot assign
 
 }
 

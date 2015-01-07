@@ -61,17 +61,18 @@
 
 #![experimental]
 
-use core::kinds::Sized;
-use c_str::CString;
+use core::marker::Sized;
+use ffi::CString;
 use clone::Clone;
 use fmt;
 use iter::IteratorExt;
 use option::Option;
 use option::Option::{None, Some};
+use ops::{FullRange, Index};
 use str;
-use str::{CowString, MaybeOwned, Str, StrExt};
-use string::String;
-use slice::{AsSlice, SliceExt};
+use str::StrExt;
+use string::{String, CowString};
+use slice::SliceExt;
 use vec::Vec;
 
 /// Typedef for POSIX file paths.
@@ -351,7 +352,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                 match name.rposition_elem(&dot) {
                     None | Some(0) => name,
                     Some(1) if name == b".." => name,
-                    Some(pos) => name[..pos]
+                    Some(pos) => name.index(&(0..pos))
                 }
             })
         }
@@ -398,7 +399,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                 match name.rposition_elem(&dot) {
                     None | Some(0) => None,
                     Some(1) if name == b".." => None,
-                    Some(pos) => Some(name[pos+1..])
+                    Some(pos) => Some(name.index(&((pos+1)..)))
                 }
             }
         }
@@ -459,7 +460,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
     /// p.set_extension("csv");
-    /// assert!(p == Path::new("abc/def.csv"));
+    /// assert_eq!(p, Path::new("abc/def.csv"));
     /// # }
     /// ```
     ///
@@ -474,7 +475,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             let extlen = extension.container_as_bytes().len();
             match (name.rposition_elem(&dot), extlen) {
                 (None, 0) | (Some(0), 0) => None,
-                (Some(idx), 0) => Some(name[..idx].to_vec()),
+                (Some(idx), 0) => Some(name.index(&(0..idx)).to_vec()),
                 (idx, extlen) => {
                     let idx = match idx {
                         None | Some(0) => name.len(),
@@ -483,7 +484,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
                     let mut v;
                     v = Vec::with_capacity(idx + extlen + 1);
-                    v.push_all(name[..idx]);
+                    v.push_all(name.index(&(0..idx)));
                     v.push(dot);
                     v.push_all(extension.container_as_bytes());
                     Some(v)
@@ -508,7 +509,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
-    /// assert!(p.with_filename("foo.dat") == Path::new("abc/foo.dat"));
+    /// assert_eq!(p.with_filename("foo.dat"), Path::new("abc/foo.dat"));
     /// # }
     /// ```
     ///
@@ -533,7 +534,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("abc/def.txt");
-    /// assert!(p.with_extension("csv") == Path::new("abc/def.csv"));
+    /// assert_eq!(p.with_extension("csv"), Path::new("abc/def.csv"));
     /// # }
     /// ```
     ///
@@ -557,7 +558,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("abc/def/ghi");
-    /// assert!(p.dir_path() == Path::new("abc/def"));
+    /// assert_eq!(p.dir_path(), Path::new("abc/def"));
     /// # }
     /// ```
     fn dir_path(&self) -> Self {
@@ -575,8 +576,8 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # foo();
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
-    /// assert!(Path::new("abc/def").root_path() == None);
-    /// assert!(Path::new("/abc/def").root_path() == Some(Path::new("/")));
+    /// assert_eq!(Path::new("abc/def").root_path(), None);
+    /// assert_eq!(Path::new("/abc/def").root_path(), Some(Path::new("/")));
     /// # }
     /// ```
     fn root_path(&self) -> Option<Self>;
@@ -592,7 +593,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("foo/bar");
     /// p.push("baz.txt");
-    /// assert!(p == Path::new("foo/bar/baz.txt"));
+    /// assert_eq!(p, Path::new("foo/bar/baz.txt"));
     /// # }
     /// ```
     ///
@@ -616,7 +617,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("foo");
     /// p.push_many(&["bar", "baz.txt"]);
-    /// assert!(p == Path::new("foo/bar/baz.txt"));
+    /// assert_eq!(p, Path::new("foo/bar/baz.txt"));
     /// # }
     /// ```
     #[inline]
@@ -645,7 +646,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let mut p = Path::new("foo/bar/baz.txt");
     /// p.pop();
-    /// assert!(p == Path::new("foo/bar"));
+    /// assert_eq!(p, Path::new("foo/bar"));
     /// # }
     /// ```
     fn pop(&mut self) -> bool;
@@ -661,7 +662,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(windows)] fn foo() {}
     /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("/foo");
-    /// assert!(p.join("bar.txt") == Path::new("/foo/bar.txt"));
+    /// assert_eq!(p.join("bar.txt"), Path::new("/foo/bar.txt"));
     /// # }
     /// ```
     ///
@@ -687,7 +688,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// # #[cfg(unix)] fn foo() {
     /// let p = Path::new("foo");
     /// let fbbq = Path::new("foo/bar/baz/quux.txt");
-    /// assert!(p.join_many(&["bar", "baz", "quux.txt"]) == fbbq);
+    /// assert_eq!(p.join_many(&["bar", "baz", "quux.txt"]), fbbq);
     /// # }
     /// ```
     #[inline]
@@ -764,7 +765,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// let p = Path::new("foo/bar/baz/quux.txt");
     /// let fb = Path::new("foo/bar");
     /// let bq = Path::new("baz/quux.txt");
-    /// assert!(p.path_relative_from(&fb) == Some(bq));
+    /// assert_eq!(p.path_relative_from(&fb), Some(bq));
     /// # }
     /// ```
     fn path_relative_from(&self, base: &Self) -> Option<Self>;
@@ -786,7 +787,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 }
 
 /// A trait that represents something bytes-like (e.g. a &[u8] or a &str)
-pub trait BytesContainer for Sized? {
+pub trait BytesContainer {
     /// Returns a &[u8] representing the receiver
     fn container_as_bytes<'a>(&'a self) -> &'a [u8];
     /// Returns the receiver interpreted as a utf-8 string, if possible
@@ -822,7 +823,14 @@ pub struct Display<'a, P:'a> {
     filename: bool
 }
 
+//NOTE(stage0): replace with deriving(Show) after snapshot
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a, P: GenericPath> fmt::String for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_cow().fmt(f)
     }
@@ -869,7 +877,7 @@ impl BytesContainer for String {
     }
     #[inline]
     fn container_as_str(&self) -> Option<&str> {
-        Some(self[])
+        Some(self.index(&FullRange))
     }
     #[inline]
     fn is_str(_: Option<&String>) -> bool { true }
@@ -885,32 +893,18 @@ impl BytesContainer for [u8] {
 impl BytesContainer for Vec<u8> {
     #[inline]
     fn container_as_bytes(&self) -> &[u8] {
-        self[]
+        self.index(&FullRange)
     }
 }
 
 impl BytesContainer for CString {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes_no_nul()
+        self.as_bytes()
     }
 }
 
-#[allow(deprecated)]
-impl<'a> BytesContainer for str::MaybeOwned<'a> {
-    #[inline]
-    fn container_as_bytes<'b>(&'b self) -> &'b [u8] {
-        self.as_slice().as_bytes()
-    }
-    #[inline]
-    fn container_as_str<'b>(&'b self) -> Option<&'b str> {
-        Some(self.as_slice())
-    }
-    #[inline]
-    fn is_str(_: Option<&str::MaybeOwned>) -> bool { true }
-}
-
-impl<'a, Sized? T: BytesContainer> BytesContainer for &'a T {
+impl<'a, T: ?Sized + BytesContainer> BytesContainer for &'a T {
     #[inline]
     fn container_as_bytes(&self) -> &[u8] {
         (**self).container_as_bytes()
@@ -926,22 +920,4 @@ impl<'a, Sized? T: BytesContainer> BytesContainer for &'a T {
 #[inline(always)]
 fn contains_nul<T: BytesContainer>(v: &T) -> bool {
     v.container_as_bytes().iter().any(|&x| x == 0)
-}
-
-#[cfg(test)]
-mod tests {
-    use prelude::v1::*;
-    use c_str::ToCStr;
-    use path::{WindowsPath, PosixPath};
-
-    #[test]
-    fn test_cstring() {
-        let input = "/foo/bar/baz";
-        let path: PosixPath = PosixPath::new(input.to_c_str());
-        assert_eq!(path.as_vec(), input.as_bytes());
-
-        let input = r"\foo\bar\baz";
-        let path: WindowsPath = WindowsPath::new(input.to_c_str());
-        assert_eq!(path.as_str().unwrap(), input);
-    }
 }

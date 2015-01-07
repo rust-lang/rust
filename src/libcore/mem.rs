@@ -15,7 +15,7 @@
 
 #![stable]
 
-use kinds::Sized;
+use marker::Sized;
 use intrinsics;
 use ptr;
 
@@ -320,7 +320,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 #[inline]
 #[unstable = "this function may be removed in the future due to its \
               questionable utility"]
-pub unsafe fn copy_lifetime<'a, Sized? S, Sized? T: 'a>(_ptr: &'a S,
+pub unsafe fn copy_lifetime<'a, S: ?Sized, T: ?Sized + 'a>(_ptr: &'a S,
                                                         ptr: &T) -> &'a T {
     transmute(ptr)
 }
@@ -329,7 +329,7 @@ pub unsafe fn copy_lifetime<'a, Sized? S, Sized? T: 'a>(_ptr: &'a S,
 #[inline]
 #[unstable = "this function may be removed in the future due to its \
               questionable utility"]
-pub unsafe fn copy_mut_lifetime<'a, Sized? S, Sized? T: 'a>(_ptr: &'a mut S,
+pub unsafe fn copy_mut_lifetime<'a, S: ?Sized, T: ?Sized + 'a>(_ptr: &'a mut S,
                                                             ptr: &mut T)
                                                             -> &'a mut T {
     transmute(ptr)

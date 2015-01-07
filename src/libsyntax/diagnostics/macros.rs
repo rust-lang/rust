@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![macro_escape]
-
 #[macro_export]
 macro_rules! register_diagnostic {
     ($code:tt, $description:tt) => (__register_diagnostic! { $code, $description });

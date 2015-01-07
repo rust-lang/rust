@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn asBlock(f: || -> uint) -> uint {
+fn asBlock<F>(f: F) -> uint where F: FnOnce() -> uint {
    return f();
 }
 

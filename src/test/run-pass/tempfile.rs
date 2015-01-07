@@ -22,14 +22,14 @@ use std::io::fs::PathExtensions;
 use std::io::{fs, TempDir};
 use std::io;
 use std::os;
-use std::task;
 use std::sync::mpsc::channel;
+use std::thread::Thread;
 
 fn test_tempdir() {
     let path = {
         let p = TempDir::new_in(&Path::new("."), "foobar").unwrap();
         let p = p.path();
-        assert!(p.as_vec().ends_with(b"foobar"));
+        assert!(p.as_str().unwrap().contains("foobar"));
         p.clone()
     };
     assert!(!path.exists());
@@ -42,7 +42,7 @@ fn test_rm_tempdir() {
         tx.send(tmp.path().clone()).unwrap();
         panic!("panic to unwind past `tmp`");
     };
-    task::try(f);
+    let _ = Thread::scoped(f).join();
     let path = rx.recv().unwrap();
     assert!(!path.exists());
 
@@ -52,7 +52,7 @@ fn test_rm_tempdir() {
         let _tmp = tmp;
         panic!("panic to unwind past `tmp`");
     };
-    task::try(f);
+    let _ = Thread::scoped(f).join();
     assert!(!path.exists());
 
     let path;
@@ -60,7 +60,7 @@ fn test_rm_tempdir() {
         let f = move|:| {
             TempDir::new("test_rm_tempdir").unwrap()
         };
-        let tmp = task::try(f).ok().expect("test_rm_tmdir");
+        let tmp = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
         assert!(path.exists());
     }
@@ -69,7 +69,7 @@ fn test_rm_tempdir() {
     let path;
     {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
-        path = tmp.unwrap();
+        path = tmp.into_inner();
     }
     assert!(path.exists());
     fs::rmdir_recursive(&path);
@@ -84,7 +84,7 @@ fn test_rm_tempdir_close() {
         tmp.close();
         panic!("panic when unwinding past `tmp`");
     };
-    task::try(f);
+    let _ = Thread::scoped(f).join();
     let path = rx.recv().unwrap();
     assert!(!path.exists());
 
@@ -95,7 +95,7 @@ fn test_rm_tempdir_close() {
         tmp.close();
         panic!("panic when unwinding past `tmp`");
     };
-    task::try(f);
+    let _ = Thread::scoped(f).join();
     assert!(!path.exists());
 
     let path;
@@ -103,7 +103,7 @@ fn test_rm_tempdir_close() {
         let f = move|:| {
             TempDir::new("test_rm_tempdir").unwrap()
         };
-        let tmp = task::try(f).ok().expect("test_rm_tmdir");
+        let tmp = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
         assert!(path.exists());
         tmp.close();
@@ -113,7 +113,7 @@ fn test_rm_tempdir_close() {
     let path;
     {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
-        path = tmp.unwrap();
+        path = tmp.into_inner();
     }
     assert!(path.exists());
     fs::rmdir_recursive(&path);
@@ -177,7 +177,7 @@ pub fn test_rmdir_recursive_ok() {
 }
 
 pub fn dont_double_panic() {
-    let r: Result<(), _> = task::try(move|| {
+    let r: Result<(), _> = Thread::scoped(move|| {
         let tmpdir = TempDir::new("test").unwrap();
         // Remove the temporary directory so that TempDir sees
         // an error on drop
@@ -185,11 +185,11 @@ pub fn dont_double_panic() {
         // Panic. If TempDir panics *again* due to the rmdir
         // error then the process will abort.
         panic!();
-    });
+    }).join();
     assert!(r.is_err());
 }
 
-fn in_tmpdir(f: ||) {
+fn in_tmpdir<F>(f: F) where F: FnOnce() {
     let tmpdir = TempDir::new("test").ok().expect("can't make tmpdir");
     assert!(os::change_dir(tmpdir.path()).is_ok());
 

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -28,7 +28,8 @@ pub const FIONBIO: libc::c_ulong = 0x8004667e;
 #[cfg(any(all(target_os = "linux",
               any(target_arch = "x86",
                   target_arch = "x86_64",
-                  target_arch = "arm")),
+                  target_arch = "arm",
+                  target_arch = "aarch64")),
           target_os = "android"))]
 pub const FIONBIO: libc::c_ulong = 0x5421;
 #[cfg(all(target_os = "linux",
@@ -43,7 +44,8 @@ pub const FIOCLEX: libc::c_ulong = 0x20006601;
 #[cfg(any(all(target_os = "linux",
               any(target_arch = "x86",
                   target_arch = "x86_64",
-                  target_arch = "arm")),
+                  target_arch = "arm",
+                  target_arch = "aarch64")),
           target_os = "android"))]
 pub const FIOCLEX: libc::c_ulong = 0x5451;
 #[cfg(all(target_os = "linux",
@@ -127,7 +129,8 @@ mod select {
 #[cfg(any(all(target_os = "linux",
               any(target_arch = "x86",
                   target_arch = "x86_64",
-                  target_arch = "arm")),
+                  target_arch = "arm",
+                  target_arch = "aarch64")),
           target_os = "android"))]
 mod signal {
     use libc;
@@ -162,8 +165,8 @@ mod signal {
         sa_restorer: *mut libc::c_void,
     }
 
-    unsafe impl ::kinds::Send for sigaction { }
-    unsafe impl ::kinds::Sync for sigaction { }
+    unsafe impl ::marker::Send for sigaction { }
+    unsafe impl ::marker::Sync for sigaction { }
 
     #[repr(C)]
     #[cfg(target_word_size = "32")]
@@ -214,8 +217,8 @@ mod signal {
         sa_resv: [libc::c_int; 1],
     }
 
-    unsafe impl ::kinds::Send for sigaction { }
-    unsafe impl ::kinds::Sync for sigaction { }
+    unsafe impl ::marker::Send for sigaction { }
+    unsafe impl ::marker::Sync for sigaction { }
 
     #[repr(C)]
     pub struct sigset_t {

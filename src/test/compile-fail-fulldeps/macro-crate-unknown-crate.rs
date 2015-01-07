@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(phase)]
-
-#[phase(plugin)]
+#[macro_use] #[no_link]
 extern crate doesnt_exist; //~ ERROR can't find crate
 
 fn main() {}

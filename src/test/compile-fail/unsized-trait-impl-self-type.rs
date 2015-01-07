@@ -11,12 +11,12 @@
 // Test sized-ness checking in substitution in impls.
 
 // impl - struct
-trait T3<Sized? Z> {
+trait T3<Z: ?Sized> {
 }
 
 struct S5<Y>;
 
-impl<Sized? X> T3<X> for S5<X> { //~ ERROR not implemented
+impl<X: ?Sized> T3<X> for S5<X> { //~ ERROR not implemented
 }
 
 fn main() { }

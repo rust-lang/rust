@@ -12,8 +12,7 @@
 // ignore-android needs extra network permissions
 // exec-env:RUST_LOG=debug
 
-#![feature(phase)]
-#[phase(plugin, link)]
+#[macro_use]
 extern crate log;
 extern crate libc;
 
@@ -30,7 +29,7 @@ fn main() {
         timer::sleep(Duration::milliseconds(30 * 1000));
         println!("timed out!");
         unsafe { libc::exit(1) }
-    }).detach();
+    });
 
     let (tx, rx) = channel();
     Thread::spawn(move || -> () {
@@ -48,7 +47,7 @@ fn main() {
             stream.read_byte();
             stream.write(&[2]);
         }
-    }).detach();
+    });
     let addr = rx.recv().unwrap();
 
     let (tx, rx) = channel();
@@ -65,7 +64,7 @@ fn main() {
                 Err(e) => debug!("{}", e)
             }
             tx.send(()).unwrap();
-        }).detach();
+        });
     }
 
     // Wait for all clients to exit, but don't wait for the server to exit. The

@@ -71,7 +71,7 @@
 //! use std::rand;
 //!
 //! let tuple = rand::random::<(f64, char)>();
-//! println!("{}", tuple)
+//! println!("{:?}", tuple)
 //! ```
 //!
 //! ## Monte Carlo estimation of π
@@ -245,7 +245,7 @@ pub mod reader;
 
 /// The standard RNG. This is designed to be efficient on the current
 /// platform.
-#[deriving(Copy)]
+#[derive(Copy, Clone)]
 pub struct StdRng {
     rng: IsaacWordRng,
 }
@@ -303,7 +303,7 @@ impl<'a> SeedableRng<&'a [uint]> for StdRng {
 pub fn weak_rng() -> XorShiftRng {
     match OsRng::new() {
         Ok(mut r) => r.gen(),
-        Err(e) => panic!("weak_rng: failed to create seeded RNG: {}", e)
+        Err(e) => panic!("weak_rng: failed to create seeded RNG: {:?}", e)
     }
 }
 
@@ -322,6 +322,7 @@ static THREAD_RNG_RESEED_THRESHOLD: uint = 32_768;
 type ThreadRngInner = reseeding::ReseedingRng<StdRng, ThreadRngReseeder>;
 
 /// The thread-local RNG.
+#[derive(Clone)]
 pub struct ThreadRng {
     rng: Rc<RefCell<ThreadRngInner>>,
 }
@@ -404,7 +405,7 @@ pub fn random<T: Rand>() -> T {
 /// let sample = sample(&mut rng, range(1i, 100), 5);
 /// println!("{}", sample);
 /// ```
-pub fn sample<T, I: Iterator<T>, R: Rng>(rng: &mut R,
+pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
                                          mut iter: I,
                                          amount: uint) -> Vec<T> {
     let mut reservoir: Vec<T> = iter.by_ref().take(amount).collect();
@@ -421,7 +422,7 @@ pub fn sample<T, I: Iterator<T>, R: Rng>(rng: &mut R,
 mod test {
     use prelude::v1::*;
     use super::{Rng, thread_rng, random, SeedableRng, StdRng, sample};
-    use iter::order;
+    use iter::{order, repeat};
 
     struct ConstRng { i: u64 }
     impl Rng for ConstRng {
@@ -439,7 +440,7 @@ mod test {
         let lengths = [0, 1, 2, 3, 4, 5, 6, 7,
                        80, 81, 82, 83, 84, 85, 86, 87];
         for &n in lengths.iter() {
-            let mut v = Vec::from_elem(n, 0u8);
+            let mut v = repeat(0u8).take(n).collect::<Vec<_>>();
             r.fill_bytes(v.as_mut_slice());
 
             // use this to get nicer error messages.
@@ -489,7 +490,7 @@ mod test {
         let mut r = thread_rng();
         let a = r.gen::<f64>();
         let b = r.gen::<f64>();
-        debug!("{}", (a, b));
+        debug!("{:?}", (a, b));
     }
 
     #[test]

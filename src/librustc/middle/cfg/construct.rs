@@ -26,7 +26,7 @@ struct CFGBuilder<'a, 'tcx: 'a> {
     loop_scopes: Vec<LoopScope>,
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 struct LoopScope {
     loop_id: ast::NodeId,     // id of loop/while node
     continue_index: CFGIndex, // where to go on a `loop`
@@ -119,7 +119,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             ast::PatBox(ref subpat) |
-            ast::PatRegion(ref subpat) |
+            ast::PatRegion(ref subpat, _) |
             ast::PatIdent(_, _, Some(ref subpat)) => {
                 let subpat_exit = self.pat(&**subpat, pred);
                 self.add_node(pat.id, &[subpat_exit])
@@ -150,7 +150,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn pats_all<'b, I: Iterator<&'b P<ast::Pat>>>(&mut self,
+    fn pats_all<'b, I: Iterator<Item=&'b P<ast::Pat>>>(&mut self,
                                           pats: I,
                                           pred: CFGIndex) -> CFGIndex {
         //! Handles case where all of the patterns must match.
@@ -362,7 +362,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 let mut cond_exit = discr_exit;
                 for arm in arms.iter() {
                     cond_exit = self.add_dummy_node(&[cond_exit]);        // 2
-                    let pats_exit = self.pats_any(arm.pats[],
+                    let pats_exit = self.pats_any(arm.pats.index(&FullRange),
                                                   cond_exit);            // 3
                     let guard_exit = self.opt_expr(&arm.guard,
                                                    pats_exit);           // 4
@@ -480,12 +480,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 let inputs = inline_asm.inputs.iter();
                 let outputs = inline_asm.outputs.iter();
                 let post_inputs = self.exprs(inputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} input:{}", expr.id, a);
+                    debug!("cfg::construct InlineAsm id:{} input:{:?}", expr.id, a);
                     let &(_, ref expr) = a;
                     &**expr
                 }), pred);
                 let post_outputs = self.exprs(outputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} output:{}", expr.id, a);
+                    debug!("cfg::construct InlineAsm id:{} output:{:?}", expr.id, a);
                     let &(_, ref expr, _) = a;
                     &**expr
                 }), post_inputs);
@@ -501,7 +501,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn call<'b, I: Iterator<&'b ast::Expr>>(&mut self,
+    fn call<'b, I: Iterator<Item=&'b ast::Expr>>(&mut self,
             call_expr: &ast::Expr,
             pred: CFGIndex,
             func_or_rcvr: &ast::Expr,
@@ -509,19 +509,19 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         let method_call = ty::MethodCall::expr(call_expr.id);
         let return_ty = ty::ty_fn_ret(match self.tcx.method_map.borrow().get(&method_call) {
             Some(method) => method.ty,
-            None => ty::expr_ty(self.tcx, func_or_rcvr)
+            None => ty::expr_ty_adjusted(self.tcx, func_or_rcvr)
         });
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        if return_ty == ty::FnDiverging {
+        if return_ty.diverges() {
             self.add_node(ast::DUMMY_NODE_ID, &[])
         } else {
             ret
         }
     }
 
-    fn exprs<'b, I: Iterator<&'b ast::Expr>>(&mut self,
+    fn exprs<'b, I: Iterator<Item=&'b ast::Expr>>(&mut self,
                                              exprs: I,
                                              pred: CFGIndex) -> CFGIndex {
         //! Constructs graph for `exprs` evaluated in order
@@ -535,7 +535,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         opt_expr.iter().fold(pred, |p, e| self.expr(&**e, p))
     }
 
-    fn straightline<'b, I: Iterator<&'b ast::Expr>>(&mut self,
+    fn straightline<'b, I: Iterator<Item=&'b ast::Expr>>(&mut self,
                     expr: &ast::Expr,
                     pred: CFGIndex,
                     subexprs: I) -> CFGIndex {
@@ -616,14 +616,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         self.tcx.sess.span_bug(
                             expr.span,
                             format!("no loop scope for id {}",
-                                    loop_id)[]);
+                                    loop_id).index(&FullRange));
                     }
 
                     r => {
                         self.tcx.sess.span_bug(
                             expr.span,
-                            format!("bad entry `{}` in def_map for label",
-                                    r)[]);
+                            format!("bad entry `{:?}` in def_map for label",
+                                    r).index(&FullRange));
                     }
                 }
             }

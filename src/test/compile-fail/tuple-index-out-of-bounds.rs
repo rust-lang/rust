@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Point(int, int);
+struct Point(isize, isize);
 
 fn main() {
     let origin = Point(0, 0);
@@ -16,9 +16,9 @@ fn main() {
     origin.1;
     origin.2;
     //~^ ERROR attempted out-of-bounds tuple index `2` on type `Point`
-    let tuple = (0i, 0i);
+    let tuple = (0is, 0is);
     tuple.0;
     tuple.1;
     tuple.2;
-    //~^ ERROR attempted out-of-bounds tuple index `2` on type `(int, int)`
+    //~^ ERROR attempted out-of-bounds tuple index `2` on type `(isize, isize)`
 }

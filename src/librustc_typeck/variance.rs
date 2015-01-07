@@ -196,7 +196,7 @@ use arena::Arena;
 use middle::resolve_lifetime as rl;
 use middle::subst;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use std::fmt;
 use std::rc::Rc;
 use std::iter::repeat;
@@ -230,10 +230,10 @@ pub fn infer_variance(tcx: &ty::ctxt) {
 
 type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 struct InferredIndex(uint);
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum VarianceTerm<'a> {
     ConstantTerm(ty::Variance),
     TransformTerm(VarianceTermPtr<'a>, VarianceTermPtr<'a>),
@@ -243,8 +243,8 @@ enum VarianceTerm<'a> {
 impl<'a> fmt::Show for VarianceTerm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ConstantTerm(c1) => write!(f, "{}", c1),
-            TransformTerm(v1, v2) => write!(f, "({} \u{00D7} {})", v1, v2),
+            ConstantTerm(c1) => write!(f, "{:?}", c1),
+            TransformTerm(v1, v2) => write!(f, "({:?} \u{00D7} {:?})", v1, v2),
             InferredTerm(id) => write!(f, "[{}]", { let InferredIndex(i) = id; i })
         }
     }
@@ -266,7 +266,7 @@ struct TermsContext<'a, 'tcx: 'a> {
     inferred_infos: Vec<InferredInfo<'a>> ,
 }
 
-#[deriving(Copy, Show, PartialEq)]
+#[derive(Copy, Show, PartialEq)]
 enum ParamKind {
     TypeParam,
     RegionParam
@@ -323,10 +323,10 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         assert!(newly_added);
 
         debug!("add_inferred(item_id={}, \
-                kind={}, \
+                kind={:?}, \
                 index={}, \
                 param_id={},
-                inf_index={})",
+                inf_index={:?})",
                 item_id, kind, index, param_id, inf_index);
     }
 
@@ -402,8 +402,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
 struct ConstraintContext<'a, 'tcx: 'a> {
     terms_cx: TermsContext<'a, 'tcx>,
 
-    // These are the def-id of the std::kinds::marker::InvariantType,
-    // std::kinds::marker::InvariantLifetime, and so on. The arrays
+    // These are the def-id of the std::marker::InvariantType,
+    // std::marker::InvariantLifetime, and so on. The arrays
     // are indexed by the `ParamKind` (type, lifetime, self). Note
     // that there are no marker types for self, so the entries for
     // self are always None.
@@ -423,7 +423,7 @@ struct ConstraintContext<'a, 'tcx: 'a> {
 
 /// Declares that the variable `decl_id` appears in a location with
 /// variance `variance`.
-#[deriving(Copy)]
+#[derive(Copy)]
 struct Constraint<'a> {
     inferred: InferredIndex,
     variance: &'a VarianceTerm<'a>,
@@ -564,7 +564,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             None => {
                 self.tcx().sess.bug(format!(
                         "no inferred index entry for {}",
-                        self.tcx().map.node_to_string(param_id))[]);
+                        self.tcx().map.node_to_string(param_id)).index(&FullRange));
             }
         }
     }
@@ -673,8 +673,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn add_constraint(&mut self,
                       InferredIndex(index): InferredIndex,
                       variance: VarianceTermPtr<'a>) {
-        debug!("add_constraint(index={}, variance={})",
-                index, variance.to_string());
+        debug!("add_constraint(index={}, variance={:?})",
+                index, variance);
         self.constraints.push(Constraint { inferred: InferredIndex(index),
                                            variance: variance });
     }
@@ -831,20 +831,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ty_bare_fn(_, &ty::BareFnTy { ref sig, .. }) |
-            ty::ty_closure(box ty::ClosureTy {
-                    ref sig,
-                    store: ty::UniqTraitStore,
-                    ..
-                }) =>
-            {
-                self.add_constraints_from_sig(generics, sig, variance);
-            }
-
-            ty::ty_closure(box ty::ClosureTy { ref sig,
-                    store: ty::RegionTraitStore(region, _), .. }) => {
-                let contra = self.contravariant(variance);
-                self.add_constraints_from_region(generics, region, contra);
+            ty::ty_bare_fn(_, &ty::BareFnTy { ref sig, .. }) => {
                 self.add_constraints_from_sig(generics, sig, variance);
             }
 
@@ -852,7 +839,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.tcx().sess.bug(
                     format!("unexpected type encountered in \
                             variance inference: {}",
-                            ty.repr(self.tcx()))[]);
+                            ty.repr(self.tcx())).index(&FullRange));
             }
         }
     }
@@ -867,7 +854,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    region_param_defs: &[ty::RegionParameterDef],
                                    substs: &subst::Substs<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
-        debug!("add_constraints_from_substs(def_id={})", def_id);
+        debug!("add_constraints_from_substs(def_id={:?})", def_id);
 
         for p in type_param_defs.iter() {
             let variance_decl =
@@ -932,7 +919,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     .sess
                     .bug(format!("unexpected region encountered in variance \
                                   inference: {}",
-                                 region.repr(self.tcx()))[]);
+                                 region.repr(self.tcx())).index(&FullRange));
             }
         }
     }
@@ -1001,14 +988,14 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 let new_value = glb(variance, old_value);
                 if old_value != new_value {
                     debug!("Updating inferred {} (node {}) \
-                            from {} to {} due to {}",
+                            from {:?} to {:?} due to {:?}",
                             inferred,
                             self.terms_cx
                                 .inferred_infos[inferred]
                                 .param_id,
                             old_value,
                             new_value,
-                            term.to_string());
+                            term);
 
                     self.solutions[inferred] = new_value;
                     changed = true;
@@ -1041,7 +1028,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                   inferred_infos[index].item_id == item_id {
                 let info = &inferred_infos[index];
                 let variance = solutions[index];
-                debug!("Index {} Info {} / {} / {} Variance {}",
+                debug!("Index {} Info {} / {:?} / {:?} Variance {:?}",
                        index, info.index, info.kind, info.space, variance);
                 match info.kind {
                     TypeParam => {
@@ -1068,7 +1055,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
                 let found = item_variances.repr(tcx);
-                tcx.sess.span_err(tcx.map.span(item_id), found[]);
+                tcx.sess.span_err(tcx.map.span(item_id), found.index(&FullRange));
             }
 
             let newly_added = tcx.item_variance_map.borrow_mut()

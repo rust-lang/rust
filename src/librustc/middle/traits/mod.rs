@@ -15,16 +15,18 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
 
+use middle::mem_categorization::Typer;
 use middle::subst;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::infer::InferCtxt;
 use std::slice::Iter;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
-use util::ppaux::Repr;
+use util::ppaux::{Repr, UserString};
 
 pub use self::error_reporting::report_fulfillment_errors;
+pub use self::error_reporting::suggest_new_overflow_limit;
 pub use self::coherence::orphan_check;
 pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
@@ -61,7 +63,7 @@ mod util;
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
 /// provides the required vtable, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Obligation<'tcx, T> {
     pub cause: ObligationCause<'tcx>,
     pub recursion_depth: uint,
@@ -72,7 +74,7 @@ pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 /// Why did we incur this obligation? Used for error reporting.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
@@ -87,7 +89,7 @@ pub struct ObligationCause<'tcx> {
     pub code: ObligationCauseCode<'tcx>
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
@@ -124,7 +126,7 @@ pub enum ObligationCauseCode<'tcx> {
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct DerivedObligationCause<'tcx> {
     /// The trait reference of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
@@ -142,7 +144,7 @@ pub type TraitObligations<'tcx> = subst::VecPerParamSpace<TraitObligation<'tcx>>
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 
-#[deriving(Clone,Show)]
+#[derive(Clone,Show)]
 pub enum SelectionError<'tcx> {
     Unimplemented,
     Overflow,
@@ -156,7 +158,7 @@ pub struct FulfillmentError<'tcx> {
     pub code: FulfillmentErrorCode<'tcx>
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
@@ -210,7 +212,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[deriving(Show,Clone)]
+#[derive(Show,Clone)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -245,21 +247,21 @@ pub enum Vtable<'tcx, N> {
 /// is `Obligation`, as one might expect. During trans, however, this
 /// is `()`, because trans only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: ast::DefId,
     pub substs: subst::Substs<'tcx>,
     pub nested: subst::VecPerParamSpace<N>
 }
 
-#[deriving(Show,Clone)]
+#[derive(Show,Clone)]
 pub struct VtableBuiltinData<N> {
     pub nested: subst::VecPerParamSpace<N>
 }
 
 /// A vtable for some object-safe trait `Foo` automatically derived
 /// for the object type `Foo`.
-#[deriving(PartialEq,Eq,Clone)]
+#[derive(PartialEq,Eq,Clone)]
 pub struct VtableObjectData<'tcx> {
     pub object_ty: Ty<'tcx>,
 }
@@ -288,36 +290,103 @@ pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                                                 param_env: &ty::ParameterEnvironment<'tcx>,
-                                                 ty: Ty<'tcx>,
-                                                 bound: ty::BuiltinBound)
-                                                 -> bool
+pub fn evaluate_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                                       typer: &ty::UnboxedClosureTyper<'tcx>,
+                                       ty: Ty<'tcx>,
+                                       bound: ty::BuiltinBound,
+                                       span: Span)
+                                       -> SelectionResult<'tcx, ()>
 {
-    debug!("type_known_to_meet_builtin_bound(ty={}, bound={})",
+    debug!("type_known_to_meet_builtin_bound(ty={}, bound={:?})",
            ty.repr(infcx.tcx),
            bound);
 
     let mut fulfill_cx = FulfillmentContext::new();
 
-    // We can use dummy values here because we won't report any errors
-    // that result nor will we pay any mind to region obligations that arise
-    // (there shouldn't really be any anyhow).
-    let cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
+    // We can use a dummy node-id here because we won't pay any mind
+    // to region obligations that arise (there shouldn't really be any
+    // anyhow).
+    let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
 
     fulfill_cx.register_builtin_bound(infcx, ty, bound, cause);
 
     // Note: we only assume something is `Copy` if we can
     // *definitively* show that it implements `Copy`. Otherwise,
     // assume it is move; linear is always ok.
-    let result = fulfill_cx.select_all_or_error(infcx, param_env, infcx.tcx).is_ok();
+    let result = match fulfill_cx.select_all_or_error(infcx, typer) {
+        Ok(()) => Ok(Some(())), // Success, we know it implements Copy.
+        Err(errors) => {
+            // Check if overflow occurred anywhere and propagate that.
+            if errors.iter().any(
+                |err| match err.code { CodeSelectionError(Overflow) => true, _ => false })
+            {
+                return Err(Overflow);
+            }
 
-    debug!("type_known_to_meet_builtin_bound: ty={} bound={} result={}",
+            // Otherwise, if there were any hard errors, propagate an
+            // arbitrary one of those. If no hard errors at all,
+            // report ambiguity.
+            let sel_error =
+                errors.iter()
+                      .filter_map(|err| {
+                          match err.code {
+                              CodeAmbiguity => None,
+                              CodeSelectionError(ref e) => Some(e.clone()),
+                              CodeProjectionError(_) => {
+                                  infcx.tcx.sess.span_bug(
+                                      span,
+                                      "projection error while selecting?")
+                              }
+                          }
+                      })
+                      .next();
+            match sel_error {
+                None => { Ok(None) }
+                Some(e) => { Err(e) }
+            }
+        }
+    };
+
+    debug!("type_known_to_meet_builtin_bound: ty={} bound={:?} result={:?}",
            ty.repr(infcx.tcx),
            bound,
            result);
 
     result
+}
+
+pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+                                                 typer: &ty::UnboxedClosureTyper<'tcx>,
+                                                 ty: Ty<'tcx>,
+                                                 bound: ty::BuiltinBound,
+                                                 span: Span)
+                                                 -> bool
+{
+    match evaluate_builtin_bound(infcx, typer, ty, bound, span) {
+        Ok(Some(())) => {
+            // definitely impl'd
+            true
+        }
+        Ok(None) => {
+            // ambiguous: if coherence check was successful, shouldn't
+            // happen, but we might have reported an error and been
+            // soldering on, so just treat this like not implemented
+            false
+        }
+        Err(Overflow) => {
+            infcx.tcx.sess.span_err(
+                span,
+                format!("overflow evaluating whether `{}` is `{}`",
+                        ty.user_string(infcx.tcx),
+                        bound.user_string(infcx.tcx)).as_slice());
+            suggest_new_overflow_limit(infcx.tcx, span);
+            false
+        }
+        Err(_) => {
+            // other errors: not implemented.
+            false
+        }
+    }
 }
 
 impl<'tcx,O> Obligation<'tcx,O> {

@@ -21,7 +21,7 @@ use core::ops::{Sub, BitOr, BitAnd, BitXor};
 
 // FIXME(contentions): implement union family of methods? (general design may be wrong here)
 
-#[deriving(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// A specialized set implementation to use enum types.
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
@@ -33,13 +33,13 @@ impl<E> Copy for EnumSet<E> {}
 
 impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "{{"));
+        try!(write!(fmt, "EnumSet {{"));
         let mut first = true;
         for e in self.iter() {
             if !first {
                 try!(write!(fmt, ", "));
             }
-            try!(write!(fmt, "{}", e));
+            try!(write!(fmt, "{:?}", e));
             first = false;
         }
         write!(fmt, "}}")
@@ -81,12 +81,6 @@ fn bit<E:CLike>(e: &E) -> uint {
 }
 
 impl<E:CLike> EnumSet<E> {
-    /// Deprecated: Renamed to `new`.
-    #[deprecated = "Renamed to `new`"]
-    pub fn empty() -> EnumSet<E> {
-        EnumSet::new()
-    }
-
     /// Returns an empty `EnumSet`.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn new() -> EnumSet<E> {
@@ -107,13 +101,6 @@ impl<E:CLike> EnumSet<E> {
 
     pub fn clear(&mut self) {
         self.bits = 0;
-    }
-
-    /// Returns `true` if the `EnumSet` contains any enum of the given `EnumSet`.
-    /// Deprecated: Use `is_disjoint`.
-    #[deprecated = "Use `is_disjoint`"]
-    pub fn intersects(&self, e: EnumSet<E>) -> bool {
-        !self.is_disjoint(&e)
     }
 
     /// Returns `false` if the `EnumSet` contains any enum of the given `EnumSet`.
@@ -144,12 +131,6 @@ impl<E:CLike> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }
 
-    /// Deprecated: Use `insert`.
-    #[deprecated = "Use `insert`"]
-    pub fn add(&mut self, e: E) {
-        self.insert(e);
-    }
-
     /// Adds an enum to the `EnumSet`, and returns `true` if it wasn't there before
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn insert(&mut self, e: E) -> bool {
@@ -166,12 +147,6 @@ impl<E:CLike> EnumSet<E> {
         result
     }
 
-    /// Deprecated: use `contains`.
-    #[deprecated = "use `contains"]
-    pub fn contains_elem(&self, e: E) -> bool {
-        self.contains(&e)
-    }
-
     /// Returns `true` if an `EnumSet` contains a given enum.
     #[unstable = "matches collection reform specification, waiting for dust to settle"]
     pub fn contains(&self, e: &E) -> bool {
@@ -185,25 +160,33 @@ impl<E:CLike> EnumSet<E> {
     }
 }
 
-impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> Sub for EnumSet<E> {
+    type Output = EnumSet<E>;
+
     fn sub(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & !e.bits}
     }
 }
 
-impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> BitOr for EnumSet<E> {
+    type Output = EnumSet<E>;
+
     fn bitor(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits | e.bits}
     }
 }
 
-impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> BitAnd for EnumSet<E> {
+    type Output = EnumSet<E>;
+
     fn bitand(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }
 }
 
-impl<E:CLike> BitXor<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> BitXor for EnumSet<E> {
+    type Output = EnumSet<E>;
+
     fn bitxor(self, e: EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits ^ e.bits}
     }
@@ -215,7 +198,7 @@ pub struct Iter<E> {
     bits: uint,
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<E> Clone for Iter<E> {
     fn clone(&self) -> Iter<E> {
         Iter {
@@ -231,7 +214,9 @@ impl<E:CLike> Iter<E> {
     }
 }
 
-impl<E:CLike> Iterator<E> for Iter<E> {
+impl<E:CLike> Iterator for Iter<E> {
+    type Item = E;
+
     fn next(&mut self) -> Option<E> {
         if self.bits == 0 {
             return None;
@@ -254,7 +239,7 @@ impl<E:CLike> Iterator<E> for Iter<E> {
 }
 
 impl<E:CLike> FromIterator<E> for EnumSet<E> {
-    fn from_iter<I:Iterator<E>>(iterator: I) -> EnumSet<E> {
+    fn from_iter<I:Iterator<Item=E>>(iterator: I) -> EnumSet<E> {
         let mut ret = EnumSet::new();
         ret.extend(iterator);
         ret
@@ -262,7 +247,7 @@ impl<E:CLike> FromIterator<E> for EnumSet<E> {
 }
 
 impl<E:CLike> Extend<E> for EnumSet<E> {
-    fn extend<I: Iterator<E>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=E>>(&mut self, mut iterator: I) {
         for element in iterator {
             self.insert(element);
         }
@@ -277,7 +262,7 @@ mod test {
 
     use super::{EnumSet, CLike};
 
-    #[deriving(Copy, PartialEq, Show)]
+    #[derive(Copy, PartialEq, Show)]
     #[repr(uint)]
     enum Foo {
         A, B, C
@@ -302,11 +287,11 @@ mod test {
     #[test]
     fn test_show() {
         let mut e = EnumSet::new();
-        assert_eq!("{}", e.to_string());
+        assert!(format!("{:?}", e) == "EnumSet {}");
         e.insert(A);
-        assert_eq!("{A}", e.to_string());
+        assert!(format!("{:?}", e) == "EnumSet {A}");
         e.insert(C);
-        assert_eq!("{A, C}", e.to_string());
+        assert!(format!("{:?}", e) == "EnumSet {A, C}");
     }
 
     #[test]
@@ -481,7 +466,7 @@ mod test {
     #[should_fail]
     fn test_overflow() {
         #[allow(dead_code)]
-        #[deriving(Copy)]
+        #[derive(Copy)]
         #[repr(uint)]
         enum Bar {
             V00, V01, V02, V03, V04, V05, V06, V07, V08, V09,

@@ -20,8 +20,8 @@ impl<'a, I, O: 'a> Parser<'a, I, O> {
     fn compose<K: 'a>(mut self, mut rhs: Parser<'a, O, K>) -> Parser<'a, I, K> {
         Parser {
             parse: box move |&mut: x: I| {
-                match (*self.parse).call_mut((x,)) {
-                    Ok(r) => (*rhs.parse).call_mut((r,)),
+                match (self.parse)(x) {
+                    Ok(r) => (rhs.parse)(r),
                     Err(e) => Err(e)
                 }
             }

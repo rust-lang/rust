@@ -18,7 +18,7 @@ use std::ascii::OwnedAsciiExt;
 use std::mem::replace;
 use std::iter::repeat;
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 enum States {
     Nothing,
     Percent,
@@ -35,7 +35,7 @@ enum States {
     SeekIfEndPercent(int)
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 enum FormatState {
     FormatStateFlags,
     FormatStateWidth,
@@ -44,7 +44,7 @@ enum FormatState {
 
 /// Types of parameters a capability can use
 #[allow(missing_docs)]
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum Param {
     Words(String),
     Number(int)
@@ -290,7 +290,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     ';' => (),
 
                     _ => {
-                        return Err(format!("unrecognized format option {}", cur))
+                        return Err(format!("unrecognized format option {:?}", cur))
                     }
                 }
             },
@@ -444,7 +444,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     Ok(output)
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 struct Flags {
     width: uint,
     precision: uint,
@@ -461,7 +461,7 @@ impl Flags {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum FormatOp {
     FormatDigit,
     FormatOctal,
@@ -552,7 +552,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
                     s
                 }
                 _ => {
-                    return Err(format!("non-string on stack with %{}",
+                    return Err(format!("non-string on stack with %{:?}",
                                        op.to_char()))
                 }
             }
@@ -636,7 +636,7 @@ mod test {
                     "Binop {} succeeded incorrectly with 1 stack entry", cap);
             let res = get_res("%{1}%{2}", cap, &[], vars);
             assert!(res.is_ok(),
-                    "Binop {} failed with 2 stack entries: {}", cap, res.unwrap_err());
+                    "Binop {} failed with 2 stack entries: {:?}", cap, res.unwrap_err());
         }
     }
 

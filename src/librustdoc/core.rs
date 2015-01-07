@@ -10,7 +10,7 @@
 pub use self::MaybeTyped::*;
 
 use rustc_driver::driver;
-use rustc::session::{mod, config};
+use rustc::session::{self, config};
 use rustc::session::search_paths::SearchPaths;
 use rustc::middle::{privacy, ty};
 use rustc::lint;
@@ -136,7 +136,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
         inlined: RefCell::new(Some(HashSet::new())),
         populated_crate_impls: RefCell::new(HashSet::new()),
     };
-    debug!("crate: {}", ctxt.krate);
+    debug!("crate: {:?}", ctxt.krate);
 
     let analysis = CrateAnalysis {
         exported_items: exported_items,

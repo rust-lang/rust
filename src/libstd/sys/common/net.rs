@@ -12,26 +12,27 @@ use prelude::v1::*;
 use self::SocketStatus::*;
 use self::InAddr::*;
 
-use c_str::ToCStr;
+use ffi::CString;
+use ffi;
 use io::net::addrinfo;
 use io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 use io::{IoResult, IoError};
-use libc::{mod, c_char, c_int};
-use c_str::CString;
+use libc::{self, c_char, c_int};
 use mem;
 use num::Int;
-use ptr::{mod, null, null_mut};
-use sys::{mod, retry, c, sock_t, last_error, last_net_error, last_gai_error, close_sock,
+use ptr::{self, null, null_mut};
+use str;
+use sys::{self, retry, c, sock_t, last_error, last_net_error, last_gai_error, close_sock,
           wrlen, msglen_t, os, wouldblock, set_nonblocking, timer, ms_to_timeval,
           decode_error_detailed};
 use sync::{Arc, Mutex, MutexGuard};
-use sys_common::{mod, keep_going, short_write, timeout};
+use sys_common::{self, keep_going, short_write, timeout};
 use cmp;
 use io;
 
 // FIXME: move uses of Arc and deadline tracking to std::io
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum SocketStatus {
     Readable,
     Writable,
@@ -234,9 +235,9 @@ pub fn get_host_addresses(host: Option<&str>, servname: Option<&str>,
 
     assert!(host.is_some() || servname.is_some());
 
-    let c_host = host.map(|x| x.to_c_str());
+    let c_host = host.map(|x| CString::from_slice(x.as_bytes()));
     let c_host = c_host.as_ref().map(|x| x.as_ptr()).unwrap_or(null());
-    let c_serv = servname.map(|x| x.to_c_str());
+    let c_serv = servname.map(|x| CString::from_slice(x.as_bytes()));
     let c_serv = c_serv.as_ref().map(|x| x.as_ptr()).unwrap_or(null());
 
     let hint = hint.map(|hint| {
@@ -324,7 +325,8 @@ pub fn get_address_name(addr: IpAddr) -> Result<String, IoError> {
     }
 
     unsafe {
-        Ok(CString::new(hostbuf.as_ptr(), false).as_str().unwrap().to_string())
+        Ok(str::from_utf8(ffi::c_str_to_bytes(&hostbuf.as_ptr()))
+               .unwrap().to_string())
     }
 }
 
@@ -467,7 +469,7 @@ pub fn write<T, L, W>(fd: sock_t,
             // Also as with read(), we use MSG_DONTWAIT to guard ourselves
             // against unforeseen circumstances.
             let _guard = lock();
-            let ptr = buf[written..].as_ptr();
+            let ptr = buf.index(&(written..)).as_ptr();
             let len = buf.len() - written;
             match retry(|| write(deadline.is_some(), ptr, len)) {
                 -1 if wouldblock() => {}

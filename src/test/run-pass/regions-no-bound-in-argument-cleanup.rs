@@ -12,7 +12,9 @@
 
 pub struct Foo<T>;
 
-impl<T> Iterator<T> for Foo<T> {
+impl<T> Iterator for Foo<T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         None
     }

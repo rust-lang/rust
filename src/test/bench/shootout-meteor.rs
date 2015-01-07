@@ -40,8 +40,9 @@
 
 // no-pretty-expanded FIXME #15189
 
-use std::sync::mpsc::channel;
+use std::iter::repeat;
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 use std::thread::Thread;
 
 //
@@ -50,14 +51,16 @@ use std::thread::Thread;
 
 // returns an infinite iterator of repeated applications of f to x,
 // i.e. [x, f(x), f(f(x)), ...], as haskell iterate function.
-fn iterate<'a, T>(x: T, f: |&T|: 'a -> T) -> Iterate<'a, T> {
+fn iterate<T, F>(x: T, f: F) -> Iterate<T, F> where F: FnMut(&T) -> T {
     Iterate {f: f, next: x}
 }
-struct Iterate<'a, T> {
-    f: |&T|: 'a -> T,
+struct Iterate<T, F> where F: FnMut(&T) -> T {
+    f: F,
     next: T
 }
-impl<'a, T> Iterator<T> for Iterate<'a, T> {
+impl<T, F> Iterator for Iterate<T, F> where F: FnMut(&T) -> T {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> {
         let mut res = (self.f)(&self.next);
         std::mem::swap(&mut res, &mut self.next);
@@ -78,7 +81,9 @@ impl<'a, T> List<'a, T> {
         ListIterator{cur: self}
     }
 }
-impl<'a, T> Iterator<&'a T> for ListIterator<'a, T> {
+impl<'a, T> Iterator for ListIterator<'a, T> {
+    type Item = &'a T;
+
     fn next(&mut self) -> Option<&'a T> {
         match *self.cur {
             List::Nil => None,
@@ -214,7 +219,7 @@ fn get_id(m: u64) -> u8 {
 
 // Converts a list of mask to a Vec<u8>.
 fn to_vec(raw_sol: &List<u64>) -> Vec<u8> {
-    let mut sol = Vec::from_elem(50, '.' as u8);
+    let mut sol = repeat('.' as u8).take(50).collect::<Vec<_>>();
     for &m in raw_sol.iter() {
         let id = '0' as u8 + get_id(m);
         for i in range(0u, 50) {
@@ -316,7 +321,7 @@ fn par_search(masks: Vec<Vec<Vec<u64>>>) -> Data {
             let mut data = Data::new();
             search(&*masks, m, 1, List::Cons(m, &List::Nil), &mut data);
             tx.send(data).unwrap();
-        }).detach();
+        });
     }
 
     // collecting the results

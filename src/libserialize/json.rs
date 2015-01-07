@@ -60,7 +60,7 @@
 //! To be able to encode a piece of data, it must implement the `serialize::RustcEncodable` trait.
 //! To be able to decode a piece of data, it must implement the `serialize::RustcDecodable` trait.
 //! The Rust compiler provides an annotation to automatically generate the code for these traits:
-//! `#[deriving(RustcDecodable, RustcEncodable)]`
+//! `#[derive(RustcDecodable, RustcEncodable)]`
 //!
 //! The JSON API provides an enum `json::Json` and a trait `ToJson` to encode objects.
 //! The `ToJson` trait provides a `to_json` method to convert an object into a `json::Json` value.
@@ -82,7 +82,7 @@
 //! use serialize::json;
 //!
 //! // Automatically generate `Decodable` and `Encodable` trait implementations
-//! #[deriving(RustcDecodable, RustcEncodable)]
+//! #[derive(RustcDecodable, RustcEncodable)]
 //! pub struct TestStruct  {
 //!     data_int: u8,
 //!     data_str: String,
@@ -114,7 +114,7 @@
 //! ```notrust
 //! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
-//! use serialize::json::{mod, ToJson, Json};
+//! use serialize::json::{self, ToJson, Json};
 //!
 //! // A custom data structure
 //! struct ComplexNum {
@@ -130,7 +130,7 @@
 //! }
 //!
 //! // Only generate `RustcEncodable` trait implementation
-//! #[deriving(Encodable)]
+//! #[derive(Encodable)]
 //! pub struct ComplexNumRecord {
 //!     uid: u8,
 //!     dsc: String,
@@ -155,10 +155,10 @@
 //! // FIXME(#19470): this cannot be ```rust``` because it fails orphan checking at the moment
 //! extern crate serialize;
 //! use std::collections::BTreeMap;
-//! use serialize::json::{mod, Json, ToJson};
+//! use serialize::json::{self, Json, ToJson};
 //!
 //! // Only generate `Decodable` trait implementation
-//! #[deriving(Decodable)]
+//! #[derive(Decodable)]
 //! pub struct TestStruct {
 //!     data_int: u8,
 //!     data_str: String,
@@ -193,7 +193,6 @@
 //! ```
 
 use self::JsonEvent::*;
-use self::StackElement::*;
 use self::ErrorCode::*;
 use self::ParserError::*;
 use self::DecoderError::*;
@@ -208,14 +207,14 @@ use std::num::{Float, Int};
 use std::num::FpCategory as Fp;
 use std::str::FromStr;
 use std::string;
-use std::ops;
+use std::ops::Index;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
 use Encodable;
 
 /// Represents a json value
-#[deriving(Clone, PartialEq, PartialOrd)]
+#[derive(Clone, PartialEq, PartialOrd, Show)]
 pub enum Json {
     I64(i64),
     U64(u64),
@@ -236,7 +235,7 @@ pub struct AsJson<'a, T: 'a> { inner: &'a T }
 pub struct AsPrettyJson<'a, T: 'a> { inner: &'a T, indent: Option<uint> }
 
 /// The errors that can arise while parsing a JSON stream.
-#[deriving(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum ErrorCode {
     InvalidSyntax,
     InvalidNumber,
@@ -257,7 +256,7 @@ pub enum ErrorCode {
     NotUtf8,
 }
 
-#[deriving(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Show)]
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, uint, uint),
@@ -267,7 +266,7 @@ pub enum ParserError {
 // Builder and Parser have the same errors.
 pub type BuilderError = ParserError;
 
-#[deriving(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Show)]
 pub enum DecoderError {
     ParseError(ParserError),
     ExpectedError(string::String, string::String),
@@ -300,7 +299,7 @@ pub fn error_str(error: ErrorCode) -> &'static str {
 }
 
 /// Shortcut function to decode a JSON `&str` into an object
-pub fn decode<T: ::Decodable<Decoder, DecoderError>>(s: &str) -> DecodeResult<T> {
+pub fn decode<T: ::Decodable>(s: &str) -> DecodeResult<T> {
     let json = match from_str(s) {
         Ok(x) => x,
         Err(e) => return Err(ParseError(e))
@@ -311,9 +310,7 @@ pub fn decode<T: ::Decodable<Decoder, DecoderError>>(s: &str) -> DecodeResult<T>
 }
 
 /// Shortcut function to encode a `T` into a JSON `String`
-pub fn encode<T>(object: &T) -> string::String
-                 where T: for<'a> Encodable<Encoder<'a>, fmt::Error>
-{
+pub fn encode<T: ::Encodable>(object: &T) -> string::String {
     let mut s = String::new();
     {
         let mut encoder = Encoder::new(&mut s);
@@ -334,7 +331,7 @@ fn io_error_to_error(io: io::IoError) -> ParserError {
 
 impl std::error::Error for DecoderError {
     fn description(&self) -> &str { "decoder error" }
-    fn detail(&self) -> Option<std::string::String> { Some(self.to_string()) }
+    fn detail(&self) -> Option<std::string::String> { Some(format!("{:?}", self)) }
 }
 
 pub type EncodeResult = fmt::Result;
@@ -386,7 +383,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
         };
 
         if start < i {
-            try!(wr.write_str(v[start..i]));
+            try!(wr.write_str(v.index(&(start..i))));
         }
 
         try!(wr.write_str(escaped));
@@ -395,7 +392,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
     }
 
     if start != v.len() {
-        try!(wr.write_str(v[start..]));
+        try!(wr.write_str(v.index(&(start..))));
     }
 
     wr.write_str("\"")
@@ -404,7 +401,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
 fn escape_char(writer: &mut fmt::Writer, v: char) -> fmt::Result {
     let mut buf = [0; 4];
     let n = v.encode_utf8(&mut buf).unwrap();
-    let buf = unsafe { str::from_utf8_unchecked(buf[0..n]) };
+    let buf = unsafe { str::from_utf8_unchecked(buf.index(&(0..n))) };
     escape_str(writer, buf)
 }
 
@@ -417,7 +414,7 @@ fn spaces(wr: &mut fmt::Writer, mut n: uint) -> fmt::Result {
     }
 
     if n > 0 {
-        wr.write_str(BUF[..n])
+        wr.write_str(BUF.index(&(0..n)))
     } else {
         Ok(())
     }
@@ -444,7 +441,9 @@ impl<'a> Encoder<'a> {
     }
 }
 
-impl<'a> ::Encoder<fmt::Error> for Encoder<'a> {
+impl<'a> ::Encoder for Encoder<'a> {
+    type Error = fmt::Error;
+
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
@@ -624,7 +623,7 @@ impl<'a> ::Encoder<fmt::Error> for Encoder<'a> {
             let mut check_encoder = Encoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf[]).unwrap();
+        let out = str::from_utf8(buf.index(&FullRange)).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -664,7 +663,9 @@ impl<'a> PrettyEncoder<'a> {
     }
 }
 
-impl<'a> ::Encoder<fmt::Error> for PrettyEncoder<'a> {
+impl<'a> ::Encoder for PrettyEncoder<'a> {
+    type Error = fmt::Error;
+
     fn emit_nil(&mut self) -> EncodeResult { write!(self.writer, "null") }
 
     fn emit_uint(&mut self, v: uint) -> EncodeResult { write!(self.writer, "{}", v) }
@@ -893,7 +894,7 @@ impl<'a> ::Encoder<fmt::Error> for PrettyEncoder<'a> {
             let mut check_encoder = PrettyEncoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf[]).unwrap();
+        let out = str::from_utf8(buf.index(&FullRange)).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -909,8 +910,8 @@ impl<'a> ::Encoder<fmt::Error> for PrettyEncoder<'a> {
     }
 }
 
-impl<E: ::Encoder<S>, S> Encodable<E, S> for Json {
-    fn encode(&self, e: &mut E) -> Result<(), S> {
+impl Encodable for Json {
+    fn encode<E: ::Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         match *self {
             Json::I64(v) => v.encode(e),
             Json::U64(v) => v.encode(e),
@@ -1026,7 +1027,7 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_string<'a>(&'a self) -> Option<&'a str> {
         match *self {
-            Json::String(ref s) => Some(s[]),
+            Json::String(ref s) => Some(s.index(&FullRange)),
             _ => None
         }
     }
@@ -1123,13 +1124,17 @@ impl Json {
     }
 }
 
-impl<'a> ops::Index<&'a str, Json>  for Json {
+impl<'a> Index<&'a str>  for Json {
+    type Output = Json;
+
     fn index(&self, idx: & &str) -> &Json {
         self.find(*idx).unwrap()
     }
 }
 
-impl ops::Index<uint, Json> for Json {
+impl Index<uint> for Json {
+    type Output = Json;
+
     fn index<'a>(&'a self, idx: &uint) -> &'a Json {
         match self {
             &Json::Array(ref v) => v.index(idx),
@@ -1139,7 +1144,7 @@ impl ops::Index<uint, Json> for Json {
 }
 
 /// The output of the streaming parser.
-#[deriving(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Show)]
 pub enum JsonEvent {
     ObjectStart,
     ObjectEnd,
@@ -1154,7 +1159,7 @@ pub enum JsonEvent {
     Error(ParserError),
 }
 
-#[deriving(PartialEq, Show)]
+#[derive(PartialEq, Show)]
 enum ParserState {
     // Parse a value in an array, true means first element.
     ParseArray(bool),
@@ -1181,9 +1186,10 @@ pub struct Stack {
 }
 
 /// StackElements compose a Stack.
-/// For example, Key("foo"), Key("bar"), Index(3) and Key("x") are the
+/// For example, StackElement::Key("foo"), StackElement::Key("bar"),
+/// StackElement::Index(3) and StackElement::Key("x") are the
 /// StackElements compositing the stack that represents foo.bar[3].x
-#[deriving(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Show)]
 pub enum StackElement<'l> {
     Index(u32),
     Key(&'l str),
@@ -1191,7 +1197,7 @@ pub enum StackElement<'l> {
 
 // Internally, Key elements are stored as indices in a buffer to avoid
 // allocating a string for every member of an object.
-#[deriving(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Show)]
 enum InternalStackElement {
     InternalIndex(u32),
     InternalKey(u16, u16), // start, size
@@ -1213,10 +1219,11 @@ impl Stack {
     /// at the top.
     pub fn get<'l>(&'l self, idx: uint) -> StackElement<'l> {
         match self.stack[idx] {
-            InternalIndex(i) => Index(i),
+            InternalIndex(i) => StackElement::Index(i),
             InternalKey(start, size) => {
-                Key(str::from_utf8(
-                    self.str_buffer[start as uint .. start as uint + size as uint]).unwrap())
+                StackElement::Key(str::from_utf8(
+                    self.str_buffer.index(&((start as uint) .. (start as uint + size as uint))))
+                        .unwrap())
             }
         }
     }
@@ -1255,16 +1262,16 @@ impl Stack {
     pub fn top<'l>(&'l self) -> Option<StackElement<'l>> {
         return match self.stack.last() {
             None => None,
-            Some(&InternalIndex(i)) => Some(Index(i)),
+            Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
             Some(&InternalKey(start, size)) => {
-                Some(Key(str::from_utf8(
-                    self.str_buffer[start as uint .. (start+size) as uint]
+                Some(StackElement::Key(str::from_utf8(
+                    self.str_buffer.index(&((start as uint) .. (start+size) as uint))
                 ).unwrap()))
             }
         }
     }
 
-    // Used by Parser to insert Key elements at the top of the stack.
+    // Used by Parser to insert StackElement::Key elements at the top of the stack.
     fn push_key(&mut self, key: string::String) {
         self.stack.push(InternalKey(self.str_buffer.len() as u16, key.len() as u16));
         for c in key.as_bytes().iter() {
@@ -1272,7 +1279,7 @@ impl Stack {
         }
     }
 
-    // Used by Parser to insert Index elements at the top of the stack.
+    // Used by Parser to insert StackElement::Index elements at the top of the stack.
     fn push_index(&mut self, index: u32) {
         self.stack.push(InternalIndex(index));
     }
@@ -1324,7 +1331,9 @@ pub struct Parser<T> {
     state: ParserState,
 }
 
-impl<T: Iterator<char>> Iterator<JsonEvent> for Parser<T> {
+impl<T: Iterator<Item=char>> Iterator for Parser<T> {
+    type Item = JsonEvent;
+
     fn next(&mut self) -> Option<JsonEvent> {
         if self.state == ParseFinished {
             return None;
@@ -1345,7 +1354,7 @@ impl<T: Iterator<char>> Iterator<JsonEvent> for Parser<T> {
     }
 }
 
-impl<T: Iterator<char>> Parser<T> {
+impl<T: Iterator<Item=char>> Parser<T> {
     /// Creates the JSON parser.
     pub fn new(rdr: T) -> Parser<T> {
         let mut p = Parser {
@@ -1867,7 +1876,7 @@ pub struct Builder<T> {
     token: Option<JsonEvent>,
 }
 
-impl<T: Iterator<char>> Builder<T> {
+impl<T: Iterator<Item=char>> Builder<T> {
     /// Create a JSON Builder.
     pub fn new(src: T) -> Builder<T> {
         Builder { parser: Parser::new(src), token: None, }
@@ -1881,7 +1890,7 @@ impl<T: Iterator<char>> Builder<T> {
         match self.token {
             None => {}
             Some(Error(e)) => { return Err(e); }
-            ref tok => { panic!("unexpected token {}", tok.clone()); }
+            ref tok => { panic!("unexpected token {:?}", tok.clone()); }
         }
         result
     }
@@ -1940,7 +1949,7 @@ impl<T: Iterator<char>> Builder<T> {
                 _ => {}
             }
             let key = match self.parser.stack().top() {
-                Some(Key(k)) => { k.to_string() }
+                Some(StackElement::Key(k)) => { k.to_string() }
                 _ => { panic!("invalid state"); }
             };
             match self.build_value() {
@@ -2025,7 +2034,7 @@ macro_rules! read_primitive {
                 Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
-                Json::String(s) => match std::str::from_str(s.as_slice()) {
+                Json::String(s) => match s.parse() {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_string(), s)),
                 },
@@ -2035,7 +2044,9 @@ macro_rules! read_primitive {
     }
 }
 
-impl ::Decoder<DecoderError> for Decoder {
+impl ::Decoder for Decoder {
+    type Error = DecoderError;
+
     fn read_nil(&mut self) -> DecodeResult<()> {
         expect!(self.pop(), Null)
     }
@@ -2133,7 +2144,7 @@ impl ::Decoder<DecoderError> for Decoder {
                 return Err(ExpectedError("String or Object".to_string(), format!("{}", json)))
             }
         };
-        let idx = match names.iter().position(|n| *n == name[]) {
+        let idx = match names.iter().position(|n| *n == name.index(&FullRange)) {
             Some(idx) => idx,
             None => return Err(UnknownVariantError(name))
         };
@@ -2292,7 +2303,7 @@ impl ::Decoder<DecoderError> for Decoder {
 }
 
 /// A trait for converting values to JSON
-pub trait ToJson for Sized? {
+pub trait ToJson {
     /// Converts the value of `self` to an instance of JSON
     fn to_json(&self) -> Json;
 }
@@ -2429,7 +2440,7 @@ impl<'a, 'b> fmt::Writer for FormatShim<'a, 'b> {
     }
 }
 
-impl fmt::Show for Json {
+impl fmt::String for Json {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2438,7 +2449,7 @@ impl fmt::Show for Json {
     }
 }
 
-impl<'a> fmt::Show for PrettyJson<'a> {
+impl<'a> fmt::String for PrettyJson<'a> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2447,9 +2458,15 @@ impl<'a> fmt::Show for PrettyJson<'a> {
     }
 }
 
-impl<'a, T> fmt::Show for AsJson<'a, T>
-    where T: for<'b> Encodable<Encoder<'b>, fmt::Error>
-{
+#[cfg(stage0)]
+//NOTE(stage0): remove impl after snapshot
+impl<'a, T: Encodable> fmt::Show for AsJson<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a, T: Encodable> fmt::String for AsJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2466,9 +2483,7 @@ impl<'a, T> AsPrettyJson<'a, T> {
     }
 }
 
-impl<'a, T> fmt::Show for AsPrettyJson<'a, T>
-    where T: for<'b> Encodable<PrettyEncoder<'b>, fmt::Error>
-{
+impl<'a, T: Encodable> fmt::String for AsPrettyJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2499,15 +2514,15 @@ mod tests {
     use super::ParserError::*;
     use super::DecoderError::*;
     use super::JsonEvent::*;
-    use super::StackElement::*;
     use super::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
                 StackElement, Stack, Decoder};
-    use std::{i64, u64, f32, f64};
+    use std::{i64, u64, f32, f64, io};
     use std::collections::BTreeMap;
     use std::num::Float;
+    use std::ops::Index;
     use std::string;
 
-    #[deriving(RustcDecodable, Eq, PartialEq, Show)]
+    #[derive(RustcDecodable, Eq, PartialEq, Show)]
     struct OptionData {
         opt: Option<uint>,
     }
@@ -2534,20 +2549,20 @@ mod tests {
                                 ExpectedError("Number".to_string(), "false".to_string()));
     }
 
-    #[deriving(PartialEq, RustcEncodable, RustcDecodable, Show)]
+    #[derive(PartialEq, RustcEncodable, RustcDecodable, Show)]
     enum Animal {
         Dog,
         Frog(string::String, int)
     }
 
-    #[deriving(PartialEq, RustcEncodable, RustcDecodable, Show)]
+    #[derive(PartialEq, RustcEncodable, RustcDecodable, Show)]
     struct Inner {
         a: (),
         b: uint,
         c: Vec<string::String>,
     }
 
-    #[deriving(PartialEq, RustcEncodable, RustcDecodable, Show)]
+    #[derive(PartialEq, RustcEncodable, RustcDecodable, Show)]
     struct Outer {
         inner: Vec<Inner>,
     }
@@ -2896,7 +2911,8 @@ mod tests {
         assert_eq!(v, i64::MAX);
 
         let res: DecodeResult<i64> = super::decode("765.25252");
-        assert_eq!(res, Err(ExpectedError("Integer".to_string(), "765.25252".to_string())));
+        assert_eq!(res, Err(ExpectedError("Integer".to_string(),
+                                          "765.25252".to_string())));
     }
 
     #[test]
@@ -3066,7 +3082,7 @@ mod tests {
         );
     }
 
-    #[deriving(RustcDecodable)]
+    #[derive(RustcDecodable)]
     struct FloatStruct {
         f: f64,
         a: Vec<f64>
@@ -3115,7 +3131,7 @@ mod tests {
             Err(SyntaxError(EOFWhileParsingObject, 3u, 8u)));
     }
 
-    #[deriving(RustcDecodable)]
+    #[derive(RustcDecodable)]
     #[allow(dead_code)]
     struct DecodeStruct {
         x: f64,
@@ -3123,21 +3139,20 @@ mod tests {
         z: string::String,
         w: Vec<DecodeStruct>
     }
-    #[deriving(RustcDecodable)]
+    #[derive(RustcDecodable)]
     enum DecodeEnum {
         A(f64),
         B(string::String)
     }
-    fn check_err<T: Decodable<Decoder, DecoderError>>(to_parse: &'static str,
-                                                      expected: DecoderError) {
+    fn check_err<T: Decodable>(to_parse: &'static str, expected: DecoderError) {
         let res: DecodeResult<T> = match from_str(to_parse) {
             Err(e) => Err(ParseError(e)),
             Ok(json) => Decodable::decode(&mut Decoder::new(json))
         };
         match res {
-            Ok(_) => panic!("`{}` parsed & decoded ok, expecting error `{}`",
+            Ok(_) => panic!("`{:?}` parsed & decoded ok, expecting error `{:?}`",
                               to_parse, expected),
-            Err(ParseError(e)) => panic!("`{}` is not valid json: {}",
+            Err(ParseError(e)) => panic!("`{:?}` is not valid json: {:?}",
                                            to_parse, e),
             Err(e) => {
                 assert_eq!(e, expected);
@@ -3346,9 +3361,9 @@ mod tests {
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
-        let json_str = from_utf8(mem_buf[]).unwrap();
+        let json_str = from_utf8(mem_buf.index(&FullRange)).unwrap();
         match from_str(json_str) {
-            Err(_) => panic!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             _ => {} // it parsed and we are good to go
         }
     }
@@ -3362,9 +3377,9 @@ mod tests {
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
-        let json_str = from_utf8(mem_buf[]).unwrap();
+        let json_str = from_utf8(mem_buf.index(&FullRange)).unwrap();
         match from_str(json_str) {
-            Err(_) => panic!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             _ => {} // it parsed and we are good to go
         }
     }
@@ -3402,7 +3417,7 @@ mod tests {
             write!(&mut writer, "{}",
                    super::as_pretty_json(&json).indent(i)).unwrap();
 
-            let printed = from_utf8(writer[]).unwrap();
+            let printed = from_utf8(writer.index(&FullRange)).unwrap();
 
             // Check for indents at each line
             let lines: Vec<&str> = printed.lines().collect();
@@ -3427,7 +3442,7 @@ mod tests {
         use Decodable;
         let json_str = "{\"1\":true}";
         let json_obj = match from_str(json_str) {
-            Err(_) => panic!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
@@ -3440,7 +3455,7 @@ mod tests {
         use Decodable;
         let json_str = "{\"a\":true}";
         let json_obj = match from_str(json_str) {
-            Err(_) => panic!("Unable to parse json_str: {}", json_str),
+            Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
@@ -3459,7 +3474,7 @@ mod tests {
             };
             let (ref expected_evt, ref expected_stack) = expected[i];
             if !parser.stack().is_equal_to(expected_stack.as_slice()) {
-                panic!("Parser stack is not equal to {}", expected_stack);
+                panic!("Parser stack is not equal to {:?}", expected_stack);
             }
             assert_eq!(&evt, expected_evt);
             i+=1;
@@ -3472,20 +3487,23 @@ mod tests {
             r#"{ "foo":"bar", "array" : [0, 1, 2, 3, 4, 5], "idents":[null,true,false]}"#,
             vec![
                 (ObjectStart,             vec![]),
-                  (StringValue("bar".to_string()),   vec![Key("foo")]),
-                  (ArrayStart,            vec![Key("array")]),
-                    (U64Value(0),         vec![Key("array"), Index(0)]),
-                    (U64Value(1),         vec![Key("array"), Index(1)]),
-                    (U64Value(2),         vec![Key("array"), Index(2)]),
-                    (U64Value(3),         vec![Key("array"), Index(3)]),
-                    (U64Value(4),         vec![Key("array"), Index(4)]),
-                    (U64Value(5),         vec![Key("array"), Index(5)]),
-                  (ArrayEnd,              vec![Key("array")]),
-                  (ArrayStart,            vec![Key("idents")]),
-                    (NullValue,           vec![Key("idents"), Index(0)]),
-                    (BooleanValue(true),  vec![Key("idents"), Index(1)]),
-                    (BooleanValue(false), vec![Key("idents"), Index(2)]),
-                  (ArrayEnd,              vec![Key("idents")]),
+                  (StringValue("bar".to_string()),   vec![StackElement::Key("foo")]),
+                  (ArrayStart,            vec![StackElement::Key("array")]),
+                    (U64Value(0),         vec![StackElement::Key("array"), StackElement::Index(0)]),
+                    (U64Value(1),         vec![StackElement::Key("array"), StackElement::Index(1)]),
+                    (U64Value(2),         vec![StackElement::Key("array"), StackElement::Index(2)]),
+                    (U64Value(3),         vec![StackElement::Key("array"), StackElement::Index(3)]),
+                    (U64Value(4),         vec![StackElement::Key("array"), StackElement::Index(4)]),
+                    (U64Value(5),         vec![StackElement::Key("array"), StackElement::Index(5)]),
+                  (ArrayEnd,              vec![StackElement::Key("array")]),
+                  (ArrayStart,            vec![StackElement::Key("idents")]),
+                    (NullValue,           vec![StackElement::Key("idents"),
+                                               StackElement::Index(0)]),
+                    (BooleanValue(true),  vec![StackElement::Key("idents"),
+                                               StackElement::Index(1)]),
+                    (BooleanValue(false), vec![StackElement::Key("idents"),
+                                               StackElement::Index(2)]),
+                  (ArrayEnd,              vec![StackElement::Key("idents")]),
                 (ObjectEnd,               vec![]),
             ]
         );
@@ -3525,7 +3543,7 @@ mod tests {
             "{\"a\": 3}",
             vec![
                 (ObjectStart,        vec![]),
-                  (U64Value(3),      vec![Key("a")]),
+                  (U64Value(3),      vec![StackElement::Key("a")]),
                 (ObjectEnd,          vec![]),
             ]
         );
@@ -3533,8 +3551,8 @@ mod tests {
             "{ \"a\": null, \"b\" : true }",
             vec![
                 (ObjectStart,           vec![]),
-                  (NullValue,           vec![Key("a")]),
-                  (BooleanValue(true),  vec![Key("b")]),
+                  (NullValue,           vec![StackElement::Key("a")]),
+                  (BooleanValue(true),  vec![StackElement::Key("b")]),
                 (ObjectEnd,             vec![]),
             ]
         );
@@ -3542,10 +3560,10 @@ mod tests {
             "{\"a\" : 1.0 ,\"b\": [ true ]}",
             vec![
                 (ObjectStart,           vec![]),
-                  (F64Value(1.0),       vec![Key("a")]),
-                  (ArrayStart,          vec![Key("b")]),
-                    (BooleanValue(true),vec![Key("b"), Index(0)]),
-                  (ArrayEnd,            vec![Key("b")]),
+                  (F64Value(1.0),       vec![StackElement::Key("a")]),
+                  (ArrayStart,          vec![StackElement::Key("b")]),
+                    (BooleanValue(true),vec![StackElement::Key("b"), StackElement::Index(0)]),
+                  (ArrayEnd,            vec![StackElement::Key("b")]),
                 (ObjectEnd,             vec![]),
             ]
         );
@@ -3560,16 +3578,27 @@ mod tests {
             }"#,
             vec![
                 (ObjectStart,                   vec![]),
-                  (F64Value(1.0),               vec![Key("a")]),
-                  (ArrayStart,                  vec![Key("b")]),
-                    (BooleanValue(true),        vec![Key("b"), Index(0)]),
-                    (StringValue("foo\nbar".to_string()),  vec![Key("b"), Index(1)]),
-                    (ObjectStart,               vec![Key("b"), Index(2)]),
-                      (ObjectStart,             vec![Key("b"), Index(2), Key("c")]),
-                        (NullValue,             vec![Key("b"), Index(2), Key("c"), Key("d")]),
-                      (ObjectEnd,               vec![Key("b"), Index(2), Key("c")]),
-                    (ObjectEnd,                 vec![Key("b"), Index(2)]),
-                  (ArrayEnd,                    vec![Key("b")]),
+                  (F64Value(1.0),               vec![StackElement::Key("a")]),
+                  (ArrayStart,                  vec![StackElement::Key("b")]),
+                    (BooleanValue(true),        vec![StackElement::Key("b"),
+                                                     StackElement::Index(0)]),
+                    (StringValue("foo\nbar".to_string()),  vec![StackElement::Key("b"),
+                                                                StackElement::Index(1)]),
+                    (ObjectStart,               vec![StackElement::Key("b"),
+                                                     StackElement::Index(2)]),
+                      (ObjectStart,             vec![StackElement::Key("b"),
+                                                     StackElement::Index(2),
+                                                     StackElement::Key("c")]),
+                        (NullValue,             vec![StackElement::Key("b"),
+                                                     StackElement::Index(2),
+                                                     StackElement::Key("c"),
+                                                     StackElement::Key("d")]),
+                      (ObjectEnd,               vec![StackElement::Key("b"),
+                                                     StackElement::Index(2),
+                                                     StackElement::Key("c")]),
+                    (ObjectEnd,                 vec![StackElement::Key("b"),
+                                                     StackElement::Index(2)]),
+                  (ArrayEnd,                    vec![StackElement::Key("b")]),
                 (ObjectEnd,                     vec![]),
             ]
         );
@@ -3595,7 +3624,7 @@ mod tests {
             "[true]",
             vec![
                 (ArrayStart,             vec![]),
-                    (BooleanValue(true), vec![Index(0)]),
+                    (BooleanValue(true), vec![StackElement::Index(0)]),
                 (ArrayEnd,               vec![]),
             ]
         );
@@ -3603,7 +3632,7 @@ mod tests {
             "[ false ]",
             vec![
                 (ArrayStart,              vec![]),
-                    (BooleanValue(false), vec![Index(0)]),
+                    (BooleanValue(false), vec![StackElement::Index(0)]),
                 (ArrayEnd,                vec![]),
             ]
         );
@@ -3611,7 +3640,7 @@ mod tests {
             "[null]",
             vec![
                 (ArrayStart,    vec![]),
-                    (NullValue, vec![Index(0)]),
+                    (NullValue, vec![StackElement::Index(0)]),
                 (ArrayEnd,      vec![]),
             ]
         );
@@ -3619,8 +3648,8 @@ mod tests {
             "[3, 1]",
             vec![
                 (ArrayStart,      vec![]),
-                    (U64Value(3), vec![Index(0)]),
-                    (U64Value(1), vec![Index(1)]),
+                    (U64Value(3), vec![StackElement::Index(0)]),
+                    (U64Value(1), vec![StackElement::Index(1)]),
                 (ArrayEnd,        vec![]),
             ]
         );
@@ -3628,8 +3657,8 @@ mod tests {
             "\n[3, 2]\n",
             vec![
                 (ArrayStart,      vec![]),
-                    (U64Value(3), vec![Index(0)]),
-                    (U64Value(2), vec![Index(1)]),
+                    (U64Value(3), vec![StackElement::Index(0)]),
+                    (U64Value(2), vec![StackElement::Index(1)]),
                 (ArrayEnd,        vec![]),
             ]
         );
@@ -3637,11 +3666,11 @@ mod tests {
             "[2, [4, 1]]",
             vec![
                 (ArrayStart,           vec![]),
-                    (U64Value(2),      vec![Index(0)]),
-                    (ArrayStart,       vec![Index(1)]),
-                        (U64Value(4),  vec![Index(1), Index(0)]),
-                        (U64Value(1),  vec![Index(1), Index(1)]),
-                    (ArrayEnd,         vec![Index(1)]),
+                    (U64Value(2),      vec![StackElement::Index(0)]),
+                    (ArrayStart,       vec![StackElement::Index(1)]),
+                        (U64Value(4),  vec![StackElement::Index(1), StackElement::Index(0)]),
+                        (U64Value(1),  vec![StackElement::Index(1), StackElement::Index(1)]),
+                    (ArrayEnd,         vec![StackElement::Index(1)]),
                 (ArrayEnd,             vec![]),
             ]
         );
@@ -3690,50 +3719,56 @@ mod tests {
         stack.bump_index();
 
         assert!(stack.len() == 1);
-        assert!(stack.is_equal_to(&[Index(1)]));
-        assert!(stack.starts_with(&[Index(1)]));
-        assert!(stack.ends_with(&[Index(1)]));
+        assert!(stack.is_equal_to(&[StackElement::Index(1)]));
+        assert!(stack.starts_with(&[StackElement::Index(1)]));
+        assert!(stack.ends_with(&[StackElement::Index(1)]));
         assert!(stack.last_is_index());
-        assert!(stack.get(0) == Index(1));
+        assert!(stack.get(0) == StackElement::Index(1));
 
         stack.push_key("foo".to_string());
 
         assert!(stack.len() == 2);
-        assert!(stack.is_equal_to(&[Index(1), Key("foo")]));
-        assert!(stack.starts_with(&[Index(1), Key("foo")]));
-        assert!(stack.starts_with(&[Index(1)]));
-        assert!(stack.ends_with(&[Index(1), Key("foo")]));
-        assert!(stack.ends_with(&[Key("foo")]));
+        assert!(stack.is_equal_to(&[StackElement::Index(1), StackElement::Key("foo")]));
+        assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
+        assert!(stack.starts_with(&[StackElement::Index(1)]));
+        assert!(stack.ends_with(&[StackElement::Index(1), StackElement::Key("foo")]));
+        assert!(stack.ends_with(&[StackElement::Key("foo")]));
         assert!(!stack.last_is_index());
-        assert!(stack.get(0) == Index(1));
-        assert!(stack.get(1) == Key("foo"));
+        assert!(stack.get(0) == StackElement::Index(1));
+        assert!(stack.get(1) == StackElement::Key("foo"));
 
         stack.push_key("bar".to_string());
 
         assert!(stack.len() == 3);
-        assert!(stack.is_equal_to(&[Index(1), Key("foo"), Key("bar")]));
-        assert!(stack.starts_with(&[Index(1)]));
-        assert!(stack.starts_with(&[Index(1), Key("foo")]));
-        assert!(stack.starts_with(&[Index(1), Key("foo"), Key("bar")]));
-        assert!(stack.ends_with(&[Key("bar")]));
-        assert!(stack.ends_with(&[Key("foo"), Key("bar")]));
-        assert!(stack.ends_with(&[Index(1), Key("foo"), Key("bar")]));
+        assert!(stack.is_equal_to(&[StackElement::Index(1),
+                                    StackElement::Key("foo"),
+                                    StackElement::Key("bar")]));
+        assert!(stack.starts_with(&[StackElement::Index(1)]));
+        assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
+        assert!(stack.starts_with(&[StackElement::Index(1),
+                                    StackElement::Key("foo"),
+                                    StackElement::Key("bar")]));
+        assert!(stack.ends_with(&[StackElement::Key("bar")]));
+        assert!(stack.ends_with(&[StackElement::Key("foo"), StackElement::Key("bar")]));
+        assert!(stack.ends_with(&[StackElement::Index(1),
+                                  StackElement::Key("foo"),
+                                  StackElement::Key("bar")]));
         assert!(!stack.last_is_index());
-        assert!(stack.get(0) == Index(1));
-        assert!(stack.get(1) == Key("foo"));
-        assert!(stack.get(2) == Key("bar"));
+        assert!(stack.get(0) == StackElement::Index(1));
+        assert!(stack.get(1) == StackElement::Key("foo"));
+        assert!(stack.get(2) == StackElement::Key("bar"));
 
         stack.pop();
 
         assert!(stack.len() == 2);
-        assert!(stack.is_equal_to(&[Index(1), Key("foo")]));
-        assert!(stack.starts_with(&[Index(1), Key("foo")]));
-        assert!(stack.starts_with(&[Index(1)]));
-        assert!(stack.ends_with(&[Index(1), Key("foo")]));
-        assert!(stack.ends_with(&[Key("foo")]));
+        assert!(stack.is_equal_to(&[StackElement::Index(1), StackElement::Key("foo")]));
+        assert!(stack.starts_with(&[StackElement::Index(1), StackElement::Key("foo")]));
+        assert!(stack.starts_with(&[StackElement::Index(1)]));
+        assert!(stack.ends_with(&[StackElement::Index(1), StackElement::Key("foo")]));
+        assert!(stack.ends_with(&[StackElement::Key("foo")]));
         assert!(!stack.last_is_index());
-        assert!(stack.get(0) == Index(1));
-        assert!(stack.get(1) == Key("foo"));
+        assert!(stack.get(0) == StackElement::Index(1));
+        assert!(stack.get(1) == StackElement::Key("foo"));
     }
 
     #[test]

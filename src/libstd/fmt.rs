@@ -31,7 +31,7 @@
 //! format!("Hello");                  // => "Hello"
 //! format!("Hello, {}!", "world");    // => "Hello, world!"
 //! format!("The number is {}", 1i);   // => "The number is 1"
-//! format!("{}", (3i, 4i));           // => "(3, 4)"
+//! format!("{:?}", (3i, 4i));         // => "(3i, 4i)"
 //! format!("{value}", value=4i);      // => "4"
 //! format!("{} {}", 1i, 2u);          // => "1 2"
 //! # }
@@ -87,7 +87,7 @@
 //! # fn main() {
 //! format!("{argument}", argument = "test");   // => "test"
 //! format!("{name} {}", 1i, name = 2i);        // => "2 1"
-//! format!("{a} {c} {b}", a="a", b=(), c=3i);  // => "a 3 ()"
+//! format!("{a} {c} {b}", a="a", b='b', c=3i);  // => "a 3 b"
 //! # }
 //! ```
 //!
@@ -127,7 +127,8 @@
 //! This allows multiple actual types to be formatted via `{:x}` (like `i8` as
 //! well as `int`).  The current mapping of types to traits is:
 //!
-//! * *nothing* ⇒ `Show`
+//! * *nothing* ⇒ `String`
+//! * `?` ⇒ `Show`
 //! * `o` ⇒ `Octal`
 //! * `x` ⇒ `LowerHex`
 //! * `X` ⇒ `UpperHex`
@@ -140,8 +141,7 @@
 //! `std::fmt::Binary` trait can then be formatted with `{:b}`. Implementations
 //! are provided for these traits for a number of primitive types by the
 //! standard library as well. If no format is specified (as in `{}` or `{:6}`),
-//! then the format trait used is the `Show` trait. This is one of the more
-//! commonly implemented traits when formatting a custom type.
+//! then the format trait used is the `String` trait.
 //!
 //! When implementing a format trait for your own type, you will have to
 //! implement a method of the signature:
@@ -175,12 +175,13 @@
 //! use std::f64;
 //! use std::num::Float;
 //!
+//! #[deriving(Show)]
 //! struct Vector2D {
 //!     x: int,
 //!     y: int,
 //! }
 //!
-//! impl fmt::Show for Vector2D {
+//! impl fmt::String for Vector2D {
 //!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //!         // The `f` value implements the `Writer` trait, which is what the
 //!         // write! macro is expecting. Note that this formatting ignores the
@@ -209,8 +210,29 @@
 //!     let myvector = Vector2D { x: 3, y: 4 };
 //!
 //!     println!("{}", myvector);       // => "(3, 4)"
+//!     println!("{:?}", myvector);     // => "Vector2D {x: 3i, y:4i}"
 //!     println!("{:10.3b}", myvector); // => "     5.000"
 //! }
+//! ```
+//!
+//! #### fmt::String vs fmt::Show
+//!
+//! These two formatting traits have distinct purposes:
+//!
+//! - `fmt::String` implementations assert that the type can be faithfully
+//!   represented as a UTF-8 string at all times. It is **not** expected that
+//!   all types implement the `String` trait.
+//! - `fmt::Show` implementations should be implemented for **all** public types.
+//!   Output will typically represent the internal state as faithfully as possible.
+//!   The purpose of the `Show` trait is to facilitate debugging Rust code. In
+//!   most cases, using `#[deriving(Show)]` is sufficient and recommended.
+//!
+//! Some examples of the output from both traits:
+//!
+//! ```
+//! assert_eq!(format!("{} {:?}", 3i32, 4i32), "3 4i32");
+//! assert_eq!(format!("{} {:?}", 'a', 'b'), "a 'b'");
+//! assert_eq!(format!("{} {:?}", "foo\n", "bar\n"), "foo\n \"bar\\n\"");
 //! ```
 //!
 //! ### Related macros
@@ -393,7 +415,7 @@
 use string;
 
 pub use core::fmt::{Formatter, Result, Writer, rt};
-pub use core::fmt::{Show, Octal, Binary};
+pub use core::fmt::{Show, String, Octal, Binary};
 pub use core::fmt::{LowerHex, UpperHex, Pointer};
 pub use core::fmt::{LowerExp, UpperExp};
 pub use core::fmt::Error;

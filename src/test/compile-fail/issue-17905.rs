@@ -13,15 +13,15 @@ struct Pair<T, V> (T, V);
 
 impl Pair<
     &str, //~ ERROR missing lifetime specifier
-    int
+    isize
 > {
-    fn say(self: &Pair<&str, int>) {
-//~^ ERROR mismatched types: expected `Pair<&'static str, int>`, found `Pair<&str, int>`
+    fn say(self: &Pair<&str, isize>) {
+//~^ ERROR mismatched types: expected `Pair<&'static str, isize>`, found `Pair<&str, isize>`
         println!("{}", self);
     }
 }
 
 fn main() {
-    let result = &Pair("shane", 1i);
+    let result = &Pair("shane", 1is);
     result.say();
 }

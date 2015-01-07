@@ -19,7 +19,7 @@
 //!
 //! A `Sender` or `SyncSender` is used to send data to a `Receiver`. Both
 //! senders are clone-able (multi-producer) such that many threads can send
-//! simultaneously to one receiver (single-consumer).  These channels are
+//! simultaneously to one receiver (single-consumer).
 //!
 //! These channels come in two flavors:
 //!
@@ -60,7 +60,7 @@
 //! let (tx, rx) = channel();
 //! Thread::spawn(move|| {
 //!     tx.send(10i).unwrap();
-//! }).detach();
+//! });
 //! assert_eq!(rx.recv().unwrap(), 10i);
 //! ```
 //!
@@ -78,7 +78,7 @@
 //!     let tx = tx.clone();
 //!     Thread::spawn(move|| {
 //!         tx.send(i).unwrap();
-//!     }).detach()
+//!     });
 //! }
 //!
 //! for _ in range(0i, 10i) {
@@ -109,7 +109,7 @@
 //! Thread::spawn(move|| {
 //!     // This will wait for the parent task to start receiving
 //!     tx.send(53).unwrap();
-//! }).detach();
+//! });
 //! rx.recv().unwrap();
 //! ```
 //!
@@ -162,6 +162,8 @@
 //!     }
 //! }
 //! ```
+
+#![stable]
 
 // A description of how Rust's channel implementation works
 //
@@ -317,7 +319,7 @@ use prelude::v1::*;
 
 use sync::Arc;
 use fmt;
-use kinds::marker;
+use marker;
 use mem;
 use cell::UnsafeCell;
 
@@ -379,7 +381,7 @@ pub struct SyncSender<T> {
 /// A `send` operation can only fail if the receiving end of a channel is
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
-#[deriving(PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 #[stable]
 pub struct SendError<T>(pub T);
 
@@ -387,13 +389,13 @@ pub struct SendError<T>(pub T);
 ///
 /// The `recv` operation can only fail if the sending half of a channel is
 /// disconnected, implying that no further messages will ever be received.
-#[deriving(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 #[stable]
 pub struct RecvError;
 
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
-#[deriving(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 #[stable]
 pub enum TryRecvError {
     /// This channel is currently empty, but the sender(s) have not yet
@@ -409,7 +411,7 @@ pub enum TryRecvError {
 
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 #[stable]
 pub enum TrySendError<T> {
     /// The data could not be sent on the channel because it would require that
@@ -474,12 +476,12 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// Thread::spawn(move|| {
 /// #   fn expensive_computation() {}
 ///     tx.send(expensive_computation()).unwrap();
-/// }).detach();
+/// });
 ///
 /// // Do some useful work for awhile
 ///
 /// // Let's see what that answer was
-/// println!("{}", rx.recv().unwrap());
+/// println!("{:?}", rx.recv().unwrap());
 /// ```
 #[stable]
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
@@ -516,7 +518,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// Thread::spawn(move|| {
 ///     // this will block until the previous message has been received
 ///     tx.send(2i).unwrap();
-/// }).detach();
+/// });
 ///
 /// assert_eq!(rx.recv().unwrap(), 1i);
 /// assert_eq!(rx.recv().unwrap(), 2i);
@@ -565,6 +567,7 @@ impl<T: Send> Sender<T> {
     /// drop(rx);
     /// assert_eq!(tx.send(1i).err().unwrap().0, 1);
     /// ```
+    #[stable]
     pub fn send(&self, t: T) -> Result<(), SendError<T>> {
         let (new_inner, ret) = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
@@ -587,7 +590,7 @@ impl<T: Send> Sender<T> {
                                 // asleep (we're looking at it), so the receiver
                                 // can't go away.
                                 (*a.get()).send(t).ok().unwrap();
-                                token.signal();
+                        token.signal();
                                 (a, Ok(()))
                             }
                         }
@@ -657,6 +660,7 @@ impl<T: Send> Clone for Sender<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Sender<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
@@ -720,6 +724,7 @@ impl<T: Send> Clone for SyncSender<T> {
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for SyncSender<T> {
     fn drop(&mut self) {
         unsafe { (*self.inner.get()).drop_chan(); }
@@ -935,12 +940,15 @@ impl<T: Send> select::Packet for Receiver<T> {
     }
 }
 
-#[unstable]
-impl<'a, T: Send> Iterator<T> for Iter<'a, T> {
+#[stable]
+impl<'a, T: Send> Iterator for Iter<'a, T> {
+    type Item = T;
+
     fn next(&mut self) -> Option<T> { self.rx.recv().ok() }
 }
 
 #[unsafe_destructor]
+#[stable]
 impl<T: Send> Drop for Receiver<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
@@ -1136,7 +1144,7 @@ mod test {
     #[test]
     fn stress() {
         let (tx, rx) = channel::<int>();
-        let t = Thread::spawn(move|| {
+        let t = Thread::scoped(move|| {
             for _ in range(0u, 10000) { tx.send(1i).unwrap(); }
         });
         for _ in range(0u, 10000) {
@@ -1151,7 +1159,7 @@ mod test {
         static NTHREADS: uint = 8;
         let (tx, rx) = channel::<int>();
 
-        let t = Thread::spawn(move|| {
+        let t = Thread::scoped(move|| {
             for _ in range(0, AMT * NTHREADS) {
                 assert_eq!(rx.recv().unwrap(), 1);
             }
@@ -1165,7 +1173,7 @@ mod test {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 for _ in range(0, AMT) { tx.send(1).unwrap(); }
-            }).detach();
+            });
         }
         drop(tx);
         t.join().ok().unwrap();
@@ -1175,14 +1183,14 @@ mod test {
     fn send_from_outside_runtime() {
         let (tx1, rx1) = channel::<()>();
         let (tx2, rx2) = channel::<int>();
-        let t1 = Thread::spawn(move|| {
+        let t1 = Thread::scoped(move|| {
             tx1.send(()).unwrap();
             for _ in range(0i, 40) {
                 assert_eq!(rx2.recv().unwrap(), 1);
             }
         });
         rx1.recv().unwrap();
-        let t2 = Thread::spawn(move|| {
+        let t2 = Thread::scoped(move|| {
             for _ in range(0i, 40) {
                 tx2.send(1).unwrap();
             }
@@ -1194,7 +1202,7 @@ mod test {
     #[test]
     fn recv_from_outside_runtime() {
         let (tx, rx) = channel::<int>();
-        let t = Thread::spawn(move|| {
+        let t = Thread::scoped(move|| {
             for _ in range(0i, 40) {
                 assert_eq!(rx.recv().unwrap(), 1);
             }
@@ -1209,11 +1217,11 @@ mod test {
     fn no_runtime() {
         let (tx1, rx1) = channel::<int>();
         let (tx2, rx2) = channel::<int>();
-        let t1 = Thread::spawn(move|| {
+        let t1 = Thread::scoped(move|| {
             assert_eq!(rx1.recv().unwrap(), 1);
             tx2.send(2).unwrap();
         });
-        let t2 = Thread::spawn(move|| {
+        let t2 = Thread::scoped(move|| {
             tx1.send(1).unwrap();
             assert_eq!(rx2.recv().unwrap(), 2);
         });
@@ -1246,7 +1254,7 @@ mod test {
     #[test]
     fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
-        let res = Thread::spawn(move|| {
+        let res = Thread::scoped(move|| {
             let (tx, rx) = channel::<int>();
             drop(tx);
             rx.recv().unwrap();
@@ -1328,7 +1336,7 @@ mod test {
         let _t = Thread::spawn(move|| {
             drop(tx);
         });
-        let res = Thread::spawn(move|| {
+        let res = Thread::scoped(move|| {
             assert!(rx.recv().unwrap() == box 10);
         }).join();
         assert!(res.is_err());
@@ -1352,7 +1360,7 @@ mod test {
             let _t = Thread::spawn(move|| {
                 drop(rx);
             });
-            let _ = Thread::spawn(move|| {
+            let _ = Thread::scoped(move|| {
                 tx.send(1).unwrap();
             }).join();
         }
@@ -1363,15 +1371,15 @@ mod test {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = channel::<int>();
             Thread::spawn(move|| {
-                let res = Thread::spawn(move|| {
+                let res = Thread::scoped(move|| {
                     rx.recv().unwrap();
                 }).join();
                 assert!(res.is_err());
-            }).detach();
+            });
             let _t = Thread::spawn(move|| {
                 Thread::spawn(move|| {
                     drop(tx);
-                }).detach();
+                });
             });
         }
     }
@@ -1401,7 +1409,7 @@ mod test {
                 Thread::spawn(move|| {
                     tx.send(box i).unwrap();
                     send(tx, i + 1);
-                }).detach();
+                });
             }
 
             fn recv(rx: Receiver<Box<int>>, i: int) {
@@ -1410,7 +1418,7 @@ mod test {
                 Thread::spawn(move|| {
                     assert!(rx.recv().unwrap() == box i);
                     recv(rx, i + 1);
-                }).detach();
+                });
             }
         }
     }
@@ -1431,7 +1439,7 @@ mod test {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 tx.send(()).unwrap();
-            }).detach();
+            });
         }
 
         for _ in range(0, total) {
@@ -1636,7 +1644,7 @@ mod sync_tests {
         Thread::spawn(move|| {
             tx.send(1).unwrap();
             tx.send(1).unwrap();
-        }).detach();
+        });
         while rx.recv().is_ok() {}
     }
 
@@ -1645,7 +1653,7 @@ mod sync_tests {
         let (tx, rx) = sync_channel::<int>(0);
         Thread::spawn(move|| {
             for _ in range(0u, 10000) { tx.send(1).unwrap(); }
-        }).detach();
+        });
         for _ in range(0u, 10000) {
             assert_eq!(rx.recv().unwrap(), 1);
         }
@@ -1667,13 +1675,13 @@ mod sync_tests {
                 _ => {}
             }
             dtx.send(()).unwrap();
-        }).detach();
+        });
 
         for _ in range(0, NTHREADS) {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 for _ in range(0, AMT) { tx.send(1).unwrap(); }
-            }).detach();
+            });
         }
         drop(tx);
         drx.recv().unwrap();
@@ -1704,7 +1712,7 @@ mod sync_tests {
     #[test]
     fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will panic
-        let res = Thread::spawn(move|| {
+        let res = Thread::scoped(move|| {
             let (tx, rx) = sync_channel::<int>(0);
             drop(tx);
             rx.recv().unwrap();
@@ -1792,7 +1800,7 @@ mod sync_tests {
         let _t = Thread::spawn(move|| {
             drop(tx);
         });
-        let res = Thread::spawn(move|| {
+        let res = Thread::scoped(move|| {
             assert!(rx.recv().unwrap() == box 10);
         }).join();
         assert!(res.is_err());
@@ -1816,7 +1824,7 @@ mod sync_tests {
             let _t = Thread::spawn(move|| {
                 drop(rx);
             });
-            let _ = Thread::spawn(move || {
+            let _ = Thread::scoped(move || {
                 tx.send(1).unwrap();
             }).join();
         }
@@ -1827,7 +1835,7 @@ mod sync_tests {
         for _ in range(0, stress_factor()) {
             let (tx, rx) = sync_channel::<int>(0);
             let _t = Thread::spawn(move|| {
-                let res = Thread::spawn(move|| {
+                let res = Thread::scoped(move|| {
                     rx.recv().unwrap();
                 }).join();
                 assert!(res.is_err());
@@ -1835,7 +1843,7 @@ mod sync_tests {
             let _t = Thread::spawn(move|| {
                 Thread::spawn(move|| {
                     drop(tx);
-                }).detach();
+                });
             });
         }
     }
@@ -1865,7 +1873,7 @@ mod sync_tests {
                 Thread::spawn(move|| {
                     tx.send(box i).unwrap();
                     send(tx, i + 1);
-                }).detach();
+                });
             }
 
             fn recv(rx: Receiver<Box<int>>, i: int) {
@@ -1874,7 +1882,7 @@ mod sync_tests {
                 Thread::spawn(move|| {
                     assert!(rx.recv().unwrap() == box i);
                     recv(rx, i + 1);
-                }).detach();
+                });
             }
         }
     }
@@ -1895,7 +1903,7 @@ mod sync_tests {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 tx.send(()).unwrap();
-            }).detach();
+            });
         }
 
         for _ in range(0, total) {

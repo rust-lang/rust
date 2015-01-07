@@ -11,10 +11,10 @@
 #![allow(missing_docs)]
 #![allow(dead_code)]
 
-use io::{mod, IoError, IoResult};
+use io::{self, IoError, IoResult};
 use prelude::v1::*;
 use sys::{last_error, retry};
-use c_str::CString;
+use ffi::CString;
 use num::Int;
 use path::BytesContainer;
 use collections;

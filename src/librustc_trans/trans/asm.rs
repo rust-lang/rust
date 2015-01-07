@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -20,9 +20,8 @@ use trans::expr;
 use trans::type_of;
 use trans::type_::Type;
 
-use std::c_str::ToCStr;
-use std::string::String;
 use syntax::ast;
+use std::ffi::CString;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -72,7 +71,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                     callee::DontAutorefArg)
         })
     }).collect::<Vec<_>>();
-    inputs.push_all(ext_inputs[]);
+    inputs.push_all(ext_inputs.index(&FullRange));
 
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);
@@ -92,18 +91,18 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         if !clobbers.is_empty() {
             clobbers.push(',');
         }
-        clobbers.push_str(more_clobbers[]);
+        clobbers.push_str(more_clobbers.index(&FullRange));
     }
 
     // Add the clobbers to our constraints list
     if clobbers.len() != 0 && constraints.len() != 0 {
         constraints.push(',');
-        constraints.push_str(clobbers[]);
+        constraints.push_str(clobbers.index(&FullRange));
     } else {
-        constraints.push_str(clobbers[]);
+        constraints.push_str(clobbers.index(&FullRange));
     }
 
-    debug!("Asm Constraints: {}", constraints[]);
+    debug!("Asm Constraints: {}", constraints.index(&FullRange));
 
     let num_outputs = outputs.len();
 
@@ -113,7 +112,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     } else if num_outputs == 1 {
         output_types[0]
     } else {
-        Type::struct_(bcx.ccx(), output_types[], false)
+        Type::struct_(bcx.ccx(), output_types.index(&FullRange), false)
     };
 
     let dialect = match ia.dialect {
@@ -121,18 +120,16 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         ast::AsmIntel => llvm::AD_Intel
     };
 
-    let r = ia.asm.get().with_c_str(|a| {
-        constraints.with_c_str(|c| {
-            InlineAsmCall(bcx,
-                          a,
-                          c,
-                          inputs[],
+    let asm = CString::from_slice(ia.asm.get().as_bytes());
+    let constraints = CString::from_slice(constraints.as_bytes());
+    let r = InlineAsmCall(bcx,
+                          asm.as_ptr(),
+                          constraints.as_ptr(),
+                          inputs.as_slice(),
                           output_type,
                           ia.volatile,
                           ia.alignstack,
-                          dialect)
-        })
-    });
+                          dialect);
 
     // Again, based on how many outputs we have
     if num_outputs == 1 {
@@ -165,6 +162,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
 // Basically what clang does
 
 #[cfg(any(target_arch = "arm",
+          target_arch = "aarch64",
           target_arch = "mips",
           target_arch = "mipsel"))]
 fn get_clobbers() -> String {

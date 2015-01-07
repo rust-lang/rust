@@ -14,7 +14,7 @@ use CrateCtxt;
 use middle::region;
 use middle::subst;
 use middle::traits;
-use middle::ty::{mod, Ty};
+use middle::ty::{self, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty_fold::{TypeFolder, TypeFoldable, super_fold_ty};
 use util::ppaux::Repr;
@@ -81,29 +81,27 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         }
     }
 
-    fn with_fcx(&mut self,
-                item: &ast::Item,
-                f: for<'fcx> |&mut CheckTypeWellFormedVisitor<'ccx, 'tcx>,
-                              &FnCtxt<'fcx, 'tcx>|) {
+    fn with_fcx<F>(&mut self, item: &ast::Item, mut f: F) where
+        F: for<'fcx> FnMut(&mut CheckTypeWellFormedVisitor<'ccx, 'tcx>, &FnCtxt<'fcx, 'tcx>),
+    {
         let ccx = self.ccx;
         let item_def_id = local_def(item.id);
-        let polytype = ty::lookup_item_type(ccx.tcx, item_def_id);
+        let type_scheme = ty::lookup_item_type(ccx.tcx, item_def_id);
+        reject_non_type_param_bounds(ccx.tcx, item.span, &type_scheme.generics);
         let param_env =
             ty::construct_parameter_environment(ccx.tcx,
-                                                &polytype.generics,
+                                                &type_scheme.generics,
                                                 item.id);
         let inh = Inherited::new(ccx.tcx, param_env);
-        let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(polytype.ty), item.id);
+        let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(type_scheme.ty), item.id);
         f(self, &fcx);
         vtable::select_all_fcx_obligations_or_error(&fcx);
         regionck::regionck_item(&fcx, item);
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
-    fn check_type_defn(&mut self,
-                       item: &ast::Item,
-                       lookup_fields: for<'fcx> |&FnCtxt<'fcx, 'tcx>|
-                                                 -> Vec<AdtVariant<'tcx>>)
+    fn check_type_defn<F>(&mut self, item: &ast::Item, mut lookup_fields: F) where
+        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>) -> Vec<AdtVariant<'tcx>>,
     {
         self.with_fcx(item, |this, fcx| {
             let variants = lookup_fields(fcx);
@@ -146,10 +144,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         region::CodeExtent::from_node_id(item.id),
                                                         Some(&mut this.cache));
+
             let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
                                                       &fcx.inh.param_env.free_substs,
                                                       &type_scheme.ty);
+
             bounds_checker.check_traits_in_ty(item_ty);
         });
     }
@@ -181,6 +181,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 None => { return; }
                 Some(t) => { t }
             };
+
             let trait_ref = fcx.instantiate_type_scheme(item.span,
                                                         &fcx.inh.param_env.free_substs,
                                                         &trait_ref);
@@ -229,6 +230,35 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 fcx.register_predicate(traits::Obligation::new(cause.clone(), predicate));
             }
         });
+    }
+}
+
+// Reject any predicates that do not involve a type parameter.
+fn reject_non_type_param_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                      span: Span,
+                                      generics: &ty::Generics<'tcx>) {
+    for predicate in generics.predicates.iter() {
+        match predicate {
+            &ty::Predicate::Trait(ty::Binder(ref tr)) => {
+                let self_ty = tr.self_ty();
+                if !self_ty.walk().any(|t| is_ty_param(t)) {
+                    tcx.sess.span_err(
+                        span,
+                        format!("cannot bound type `{}`, where clause \
+                                 bounds may only be attached to types involving \
+                                 type parameters",
+                                 self_ty.repr(tcx)).as_slice())
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn is_ty_param(ty: ty::Ty) -> bool {
+        match &ty.sty {
+            &ty::sty::ty_param(_) => true,
+            _ => false
+        }
     }
 }
 
@@ -301,6 +331,18 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         self.fcx.tcx()
     }
 
+    fn fold_binder<T>(&mut self, binder: &ty::Binder<T>) -> ty::Binder<T>
+        where T : TypeFoldable<'tcx> + Repr<'tcx>
+    {
+        self.binding_count += 1;
+        let value = liberate_late_bound_regions(self.fcx.tcx(), self.scope, binder);
+        debug!("BoundsChecker::fold_binder: late-bound regions replaced: {}",
+               value.repr(self.tcx()));
+        let value = value.fold_with(self);
+        self.binding_count -= 1;
+        ty::Binder(value)
+    }
+
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         debug!("BoundsChecker t={}",
                t.repr(self.tcx()));
@@ -361,19 +403,6 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
 
                 self.fold_substs(substs);
             }
-            ty::ty_bare_fn(_, &ty::BareFnTy{sig: ref fn_sig, ..}) |
-            ty::ty_closure(box ty::ClosureTy{sig: ref fn_sig, ..}) => {
-                self.binding_count += 1;
-
-                let fn_sig = liberate_late_bound_regions(self.fcx.tcx(), self.scope, fn_sig);
-
-                debug!("late-bound regions replaced: {}",
-                       fn_sig.repr(self.tcx()));
-
-                self.fold_fn_sig(&fn_sig);
-
-                self.binding_count -= 1;
-            }
             _ => {
                 super_fold_ty(self, t);
             }
@@ -420,7 +449,13 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             match variant.node.kind {
                 ast::TupleVariantKind(ref args) if args.len() > 0 => {
                     let ctor_ty = ty::node_id_to_type(fcx.tcx(), variant.node.id);
-                    let arg_tys = ty::ty_fn_args(ctor_ty);
+
+                    // the regions in the argument types come from the
+                    // enum def'n, and hence will all be early bound
+                    let arg_tys =
+                        ty::assert_no_late_bound_regions(
+                            fcx.tcx(), &ty::ty_fn_args(ctor_ty));
+
                     AdtVariant {
                         fields: args.iter().enumerate().map(|(index, arg)| {
                             let arg_ty = arg_tys[index];

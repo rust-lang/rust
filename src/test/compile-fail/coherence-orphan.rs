@@ -18,7 +18,7 @@ struct TheType;
 
 impl TheTrait<uint> for int { } //~ ERROR E0117
 
-impl TheTrait<TheType> for int { }
+impl TheTrait<TheType> for int { } //~ ERROR E0117
 
 impl TheTrait<int> for TheType { }
 

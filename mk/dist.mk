@@ -17,8 +17,6 @@
 # * dist - make all distribution artifacts
 # * distcheck - sanity check dist artifacts
 # * dist-tar-src - source tarballs
-# * dist-win - Windows exe installers
-# * dist-osx - OS X .pkg installers
 # * dist-tar-bins - Ad-hoc Unix binary installers
 # * dist-docs - Stage docs for upload
 
@@ -104,108 +102,6 @@ distcheck-tar-src: dist-tar-src
 	$(Q)+make -C tmp/distcheck/srccheck clean
 	$(Q)rm -Rf tmp/distcheck/$(PKG_NAME)
 	$(Q)rm -Rf tmp/distcheck/srccheck
-
-
-######################################################################
-# Windows .exe installer
-######################################################################
-
-# FIXME Needs to support all hosts, but making rust.iss compatible looks like a chore
-
-ifdef CFG_ISCC
-
-PKG_EXE = dist/$(PKG_NAME)-$(CFG_BUILD).exe
-
-%.iss: $(S)src/etc/pkg/%.iss
-	cp $< $@
-
-%.ico: $(S)src/etc/pkg/%.ico
-	cp $< $@
-
-$(PKG_EXE): rust.iss modpath.iss upgrade.iss LICENSE.txt rust-logo.ico \
-            $(CSREQ3_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
-            dist-prepare-win
-	$(Q)rm -rf tmp/dist/win/gcc
-	$(CFG_PYTHON) $(S)src/etc/make-win-dist.py tmp/dist/win/rust tmp/dist/win/gcc $(CFG_BUILD)
-	@$(call E, ISCC: $@)
-	$(Q)$(CFG_ISCC) $<
-
-$(eval $(call DEF_PREPARE,win))
-
-dist-prepare-win: PREPARE_HOST=$(CFG_BUILD)
-dist-prepare-win: PREPARE_TARGETS=$(CFG_BUILD)
-dist-prepare-win: PREPARE_DEST_DIR=tmp/dist/win/rust
-dist-prepare-win: PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
-dist-prepare-win: PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
-dist-prepare-win: PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
-dist-prepare-win: PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
-dist-prepare-win: PREPARE_CLEAN=true
-dist-prepare-win: prepare-base-win
-
-endif
-
-dist-win: $(PKG_EXE)
-
-distcheck-win: dist-win
-
-######################################################################
-# OS X .pkg installer
-######################################################################
-
-ifeq ($(CFG_OSTYPE), apple-darwin)
-
-define DEF_OSX_PKG
-
-$$(eval $$(call DEF_PREPARE,osx-$(1)))
-
-dist-prepare-osx-$(1): PREPARE_HOST=$(1)
-dist-prepare-osx-$(1): PREPARE_TARGETS=$(2)
-dist-prepare-osx-$(1): PREPARE_DEST_DIR=tmp/dist/pkgroot-$(1)
-dist-prepare-osx-$(1): PREPARE_DIR_CMD=$(DEFAULT_PREPARE_DIR_CMD)
-dist-prepare-osx-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
-dist-prepare-osx-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
-dist-prepare-osx-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
-dist-prepare-osx-$(1): prepare-base-osx-$(1)
-
-dist/$(PKG_NAME)-$(1).pkg: $(S)src/etc/pkg/Distribution.xml LICENSE.txt \
-		dist-prepare-osx-$(1) \
-		tmp/dist/pkgres-$(1)/LICENSE.txt \
-		tmp/dist/pkgres-$(1)/welcome.rtf \
-		tmp/dist/pkgres-$(1)/rust-logo.png
-	@$$(call E, making OS X pkg)
-	$(Q)pkgbuild --identifier org.rust-lang.rust --root tmp/dist/pkgroot-$(1) rust.pkg
-	$(Q)productbuild --distribution $(S)src/etc/pkg/Distribution.xml \
-	      --resources tmp/dist/pkgres-$(1) dist/$(PKG_NAME)-$(1).pkg
-	$(Q)rm -rf tmp rust.pkg
-
-tmp/dist/pkgres-$(1)/LICENSE.txt: LICENSE.txt
-	@$$(call E,pkg resource LICENSE.txt)
-	$(Q)mkdir -p $$(@D)
-	$(Q)cp $$< $$@
-
-tmp/dist/pkgres-$(1)/%: $(S)src/etc/pkg/%
-	@$$(call E,pkg resource $$*)
-	$(Q)mkdir -p $$(@D)
-	$(Q)cp -r $$< $$@
-
-endef
-
-ifneq ($(CFG_ENABLE_DIST_HOST_ONLY),)
-$(foreach host,$(CFG_HOST),$(eval $(call DEF_OSX_PKG,$(host),$(host))))
-else
-$(foreach host,$(CFG_HOST),$(eval $(call DEF_OSX_PKG,$(host),$(TARGET))))
-endif
-
-dist-osx: $(foreach host,$(CFG_HOST),dist/$(PKG_NAME)-$(host).pkg)
-
-else
-
-dist-osx:
-
-endif
-
-# FIXME should do something
-distcheck-osx: dist-osx
 
 
 ######################################################################
@@ -377,9 +273,9 @@ MAYBE_DIST_DOCS=dist-docs
 MAYBE_DISTCHECK_DOCS=distcheck-docs
 endif
 
-dist: $(MAYBE_DIST_TAR_SRC) dist-osx dist-win dist-tar-bins $(MAYBE_DIST_DOCS)
+dist: $(MAYBE_DIST_TAR_SRC) dist-tar-bins $(MAYBE_DIST_DOCS)
 
-distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-osx distcheck-win distcheck-tar-bins $(MAYBE_DISTCHECK_DOCS)
+distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-tar-bins $(MAYBE_DISTCHECK_DOCS)
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------

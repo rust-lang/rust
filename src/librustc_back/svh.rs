@@ -53,7 +53,7 @@ use std::iter::range_step;
 use syntax::ast;
 use syntax::visit;
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Svh {
     hash: String,
 }
@@ -65,7 +65,7 @@ impl Svh {
     }
 
     pub fn as_str<'a>(&'a self) -> &'a str {
-        self.hash[]
+        self.hash.index(&FullRange)
     }
 
     pub fn calculate(metadata: &Vec<String>, krate: &ast::Crate) -> Svh {
@@ -120,6 +120,14 @@ impl Svh {
 
 impl fmt::Show for Svh {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        //NOTE(stage0): uncomment after snapshot
+        //write!(f, "Svh {{ {} }}", self.as_str())
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for Svh {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(self.as_str())
     }
 }
@@ -172,7 +180,7 @@ mod svh_visitor {
     // This enum represents the different potential bits of code the
     // visitor could encounter that could affect the ABI for the crate,
     // and assigns each a distinct tag to feed into the hash computation.
-    #[deriving(Hash)]
+    #[derive(Hash)]
     enum SawAbiComponent<'a> {
 
         // FIXME (#14132): should we include (some function of)
@@ -220,7 +228,7 @@ mod svh_visitor {
     /// because the SVH is just a developer convenience; there is no
     /// guarantee of collision-freedom, hash collisions are just
     /// (hopefully) unlikely.)
-    #[deriving(Hash)]
+    #[derive(Hash)]
     pub enum SawExprComponent<'a> {
 
         SawExprLoop(Option<token::InternedString>),
@@ -299,7 +307,7 @@ mod svh_visitor {
     }
 
     /// SawStmtComponent is analogous to SawExprComponent, but for statements.
-    #[deriving(Hash)]
+    #[derive(Hash)]
     pub enum SawStmtComponent {
         SawStmtDecl,
         SawStmtExpr,
@@ -327,11 +335,11 @@ mod svh_visitor {
 
     impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
 
-        fn visit_mac(&mut self, macro: &Mac) {
+        fn visit_mac(&mut self, mac: &Mac) {
             // macro invocations, namely macro_rules definitions,
             // *can* appear as items, even in the expanded crate AST.
 
-            if macro_name(macro).get() == "macro_rules" {
+            if macro_name(mac).get() == "macro_rules" {
                 // Pretty-printing definition to a string strips out
                 // surface artifacts (currently), such as the span
                 // information, yielding a content-based hash.
@@ -341,7 +349,7 @@ mod svh_visitor {
                 // trees might be faster. Implementing this is far
                 // easier in short term.
                 let macro_defn_as_string = pprust::to_string(|pp_state| {
-                    pp_state.print_mac(macro, token::Paren)
+                    pp_state.print_mac(mac, token::Paren)
                 });
                 macro_defn_as_string.hash(self.st);
             } else {
@@ -349,16 +357,16 @@ mod svh_visitor {
                 // invocation at this stage except `macro_rules!`.
                 panic!("reached macro somehow: {}",
                       pprust::to_string(|pp_state| {
-                          pp_state.print_mac(macro, token::Paren)
+                          pp_state.print_mac(mac, token::Paren)
                       }));
             }
 
-            visit::walk_mac(self, macro);
+            visit::walk_mac(self, mac);
 
-            fn macro_name(macro: &Mac) -> token::InternedString {
-                match &macro.node {
+            fn macro_name(mac: &Mac) -> token::InternedString {
+                match &mac.node {
                     &MacInvocTT(ref path, ref _tts, ref _stx_ctxt) => {
-                        let s = path.segments[];
+                        let s = path.segments.index(&FullRange);
                         assert_eq!(s.len(), 1);
                         content(s[0].identifier)
                     }

@@ -10,17 +10,17 @@
 
 use prelude::v1::*;
 
-use sync::atomic;
-use alloc::{mod, heap};
+use sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Ordering};
+use alloc::{self, heap};
 
 use libc::DWORD;
 use sys::sync as ffi;
 
 const SPIN_COUNT: DWORD = 4000;
 
-pub struct Mutex { inner: atomic::AtomicUint }
+pub struct Mutex { inner: AtomicUint }
 
-pub const MUTEX_INIT: Mutex = Mutex { inner: atomic::ATOMIC_UINT_INIT };
+pub const MUTEX_INIT: Mutex = Mutex { inner: ATOMIC_UINT_INIT };
 
 unsafe impl Sync for Mutex {}
 
@@ -32,7 +32,7 @@ pub unsafe fn raw(m: &Mutex) -> ffi::LPCRITICAL_SECTION {
 impl Mutex {
     #[inline]
     pub unsafe fn new() -> Mutex {
-        Mutex { inner: atomic::AtomicUint::new(init_lock() as uint) }
+        Mutex { inner: AtomicUint::new(init_lock() as uint) }
     }
     #[inline]
     pub unsafe fn lock(&self) {
@@ -47,22 +47,22 @@ impl Mutex {
         ffi::LeaveCriticalSection(self.get())
     }
     pub unsafe fn destroy(&self) {
-        let lock = self.inner.swap(0, atomic::SeqCst);
+        let lock = self.inner.swap(0, Ordering::SeqCst);
         if lock != 0 { free_lock(lock as ffi::LPCRITICAL_SECTION) }
     }
 
     unsafe fn get(&self) -> ffi::LPCRITICAL_SECTION {
-        match self.inner.load(atomic::SeqCst) {
+        match self.inner.load(Ordering::SeqCst) {
             0 => {}
             n => return n as ffi::LPCRITICAL_SECTION
         }
         let lock = init_lock();
-        match self.inner.compare_and_swap(0, lock as uint, atomic::SeqCst) {
+        match self.inner.compare_and_swap(0, lock as uint, Ordering::SeqCst) {
             0 => return lock as ffi::LPCRITICAL_SECTION,
             _ => {}
         }
         free_lock(lock);
-        return self.inner.load(atomic::SeqCst) as ffi::LPCRITICAL_SECTION;
+        return self.inner.load(Ordering::SeqCst) as ffi::LPCRITICAL_SECTION;
     }
 }
 

@@ -16,8 +16,8 @@ use self::ExponentFormat::*;
 use self::SignificantDigits::*;
 use self::SignFormat::*;
 
-use char::{mod, Char};
-use num::{mod, Int, Float, ToPrimitive};
+use char::{self, CharExt};
+use num::{self, Int, Float, ToPrimitive};
 use num::FpCategory as Fp;
 use ops::FnMut;
 use slice::SliceExt;
@@ -26,7 +26,7 @@ use string::String;
 use vec::Vec;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum ExponentFormat {
     /// Do not use exponential notation.
     ExpNone,
@@ -41,7 +41,7 @@ pub enum ExponentFormat {
 
 /// The number of digits used for emitting the fractional part of a number, if
 /// any.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum SignificantDigits {
     /// All calculable digits will be printed.
     ///
@@ -58,7 +58,7 @@ pub enum SignificantDigits {
 }
 
 /// How to emit the sign of a number.
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum SignFormat {
     /// No sign will be printed. The exponent sign will also be emitted.
     SignNone,

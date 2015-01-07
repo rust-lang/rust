@@ -10,7 +10,7 @@
 
 impl Drop for int {
     //~^ ERROR the Drop trait may only be implemented on structures
-    //~^^ ERROR cannot provide an extension implementation
+    //~^^ ERROR E0117
     fn drop(&mut self) {
         println!("kaboom");
     }

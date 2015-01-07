@@ -343,12 +343,6 @@ impl<V> VecMap<V> {
     #[stable]
     pub fn clear(&mut self) { self.v.clear() }
 
-    /// Deprecated: Renamed to `get`.
-    #[deprecated = "Renamed to `get`"]
-    pub fn find(&self, key: &uint) -> Option<&V> {
-        self.get(key)
-    }
-
     /// Returns a reference to the value corresponding to the key.
     ///
     /// # Examples
@@ -391,12 +385,6 @@ impl<V> VecMap<V> {
         self.get(key).is_some()
     }
 
-    /// Deprecated: Renamed to `get_mut`.
-    #[deprecated = "Renamed to `get_mut`"]
-    pub fn find_mut(&mut self, key: &uint) -> Option<&mut V> {
-        self.get_mut(key)
-    }
-
     /// Returns a mutable reference to the value corresponding to the key.
     ///
     /// # Examples
@@ -424,12 +412,6 @@ impl<V> VecMap<V> {
         }
     }
 
-    /// Deprecated: Renamed to `insert`.
-    #[deprecated = "Renamed to `insert`"]
-    pub fn swap(&mut self, key: uint, value: V) -> Option<V> {
-        self.insert(key, value)
-    }
-
     /// Inserts a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise, `None` is returned.
     ///
@@ -455,12 +437,6 @@ impl<V> VecMap<V> {
         replace(&mut self.v[key], Some(value))
     }
 
-    /// Deprecated: Renamed to `remove`.
-    #[deprecated = "Renamed to `remove`"]
-    pub fn pop(&mut self, key: &uint) -> Option<V> {
-        self.remove(key)
-    }
-
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
@@ -479,28 +455,8 @@ impl<V> VecMap<V> {
         if *key >= self.v.len() {
             return None;
         }
-        self.v[*key].take()
-    }
-}
-
-impl<V:Clone> VecMap<V> {
-    /// Deprecated: Use the entry API when available; shouldn't matter anyway, access is cheap.
-    #[deprecated = "Use the entry API when available; shouldn't matter anyway, access is cheap"]
-    #[allow(deprecated)]
-    pub fn update<F>(&mut self, key: uint, newval: V, ff: F) -> bool where F: FnOnce(V, V) -> V {
-        self.update_with_key(key, newval, move |_k, v, v1| ff(v,v1))
-    }
-
-    /// Deprecated: Use the entry API when available; shouldn't matter anyway, access is cheap.
-    #[deprecated = "Use the entry API when available; shouldn't matter anyway, access is cheap"]
-    pub fn update_with_key<F>(&mut self, key: uint, val: V, ff: F) -> bool where
-        F: FnOnce(uint, V, V) -> V
-    {
-        let new_val = match self.get(&key) {
-            None => val,
-            Some(orig) => ff(key, (*orig).clone(), val)
-        };
-        self.insert(key, new_val).is_none()
+        let result = &mut self.v[*key];
+        result.take()
     }
 }
 
@@ -533,11 +489,11 @@ impl<V: Ord> Ord for VecMap<V> {
 #[stable]
 impl<V: fmt::Show> fmt::Show for VecMap<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
+        try!(write!(f, "VecMap {{"));
 
         for (i, (k, v)) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}: {}", k, *v));
+            try!(write!(f, "{}: {:?}", k, *v));
         }
 
         write!(f, "}}")
@@ -546,7 +502,7 @@ impl<V: fmt::Show> fmt::Show for VecMap<V> {
 
 #[stable]
 impl<V> FromIterator<(uint, V)> for VecMap<V> {
-    fn from_iter<Iter: Iterator<(uint, V)>>(iter: Iter) -> VecMap<V> {
+    fn from_iter<Iter: Iterator<Item=(uint, V)>>(iter: Iter) -> VecMap<V> {
         let mut map = VecMap::new();
         map.extend(iter);
         map
@@ -555,15 +511,16 @@ impl<V> FromIterator<(uint, V)> for VecMap<V> {
 
 #[stable]
 impl<V> Extend<(uint, V)> for VecMap<V> {
-    fn extend<Iter: Iterator<(uint, V)>>(&mut self, mut iter: Iter) {
+    fn extend<Iter: Iterator<Item=(uint, V)>>(&mut self, mut iter: Iter) {
         for (k, v) in iter {
             self.insert(k, v);
         }
     }
 }
 
-#[stable]
-impl<V> Index<uint, V> for VecMap<V> {
+impl<V> Index<uint> for VecMap<V> {
+    type Output = V;
+
     #[inline]
     fn index<'a>(&'a self, i: &uint) -> &'a V {
         self.get(i).expect("key not present")
@@ -571,7 +528,9 @@ impl<V> Index<uint, V> for VecMap<V> {
 }
 
 #[stable]
-impl<V> IndexMut<uint, V> for VecMap<V> {
+impl<V> IndexMut<uint> for VecMap<V> {
+    type Output = V;
+
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut V {
         self.get_mut(i).expect("key not present")
@@ -581,7 +540,9 @@ impl<V> IndexMut<uint, V> for VecMap<V> {
 macro_rules! iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
         #[stable]
-        impl<'a, V> Iterator<$elem> for $name<'a, V> {
+        impl<'a, V> Iterator for $name<'a, V> {
+            type Item = $elem;
+
             #[inline]
             fn next(&mut self) -> Option<$elem> {
                 while self.front < self.back {
@@ -614,7 +575,7 @@ macro_rules! iterator {
 macro_rules! double_ended_iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
         #[stable]
-        impl<'a, V> DoubleEndedIterator<$elem> for $name<'a, V> {
+        impl<'a, V> DoubleEndedIterator for $name<'a, V> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
                 while self.front < self.back {
@@ -646,7 +607,7 @@ pub struct Iter<'a, V:'a> {
     iter: slice::Iter<'a, Option<V>>
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, V> Clone for Iter<'a, V> {
     fn clone(&self) -> Iter<'a, V> {
         Iter {
@@ -678,7 +639,7 @@ pub struct Keys<'a, V: 'a> {
     iter: Map<(uint, &'a V), uint, Iter<'a, V>, fn((uint, &'a V)) -> uint>
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, V> Clone for Keys<'a, V> {
     fn clone(&self) -> Keys<'a, V> {
         Keys {
@@ -693,7 +654,7 @@ pub struct Values<'a, V: 'a> {
     iter: Map<(uint, &'a V), &'a V, Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
 }
 
-// FIXME(#19839) Remove in favor of `#[deriving(Clone)]`
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, V> Clone for Values<'a, V> {
     fn clone(&self) -> Values<'a, V> {
         Values {
@@ -713,32 +674,38 @@ pub struct IntoIter<V> {
 }
 
 #[stable]
-impl<'a, V> Iterator<uint> for Keys<'a, V> {
+impl<'a, V> Iterator for Keys<'a, V> {
+    type Item = uint;
+
     fn next(&mut self) -> Option<uint> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<'a, V> DoubleEndedIterator<uint> for Keys<'a, V> {
+impl<'a, V> DoubleEndedIterator for Keys<'a, V> {
     fn next_back(&mut self) -> Option<uint> { self.iter.next_back() }
 }
 
 #[stable]
-impl<'a, V> Iterator<&'a V> for Values<'a, V> {
+impl<'a, V> Iterator for Values<'a, V> {
+    type Item = &'a V;
+
     fn next(&mut self) -> Option<(&'a V)> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<'a, V> DoubleEndedIterator<&'a V> for Values<'a, V> {
+impl<'a, V> DoubleEndedIterator for Values<'a, V> {
     fn next_back(&mut self) -> Option<(&'a V)> { self.iter.next_back() }
 }
 
 #[stable]
-impl<V> Iterator<(uint, V)> for IntoIter<V> {
+impl<V> Iterator for IntoIter<V> {
+    type Item = (uint, V);
+
     fn next(&mut self) -> Option<(uint, V)> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<V> DoubleEndedIterator<(uint, V)> for IntoIter<V> {
+impl<V> DoubleEndedIterator for IntoIter<V> {
     fn next_back(&mut self) -> Option<(uint, V)> { self.iter.next_back() }
 }
 
@@ -789,36 +756,6 @@ mod test_map {
         assert!(map.get(&5).is_none());
         assert!(map.get(&11).is_none());
         assert!(map.get(&14).is_none());
-    }
-
-    #[test]
-    fn test_insert_with_key() {
-        let mut map = VecMap::new();
-
-        // given a new key, initialize it with this new count,
-        // given an existing key, add more to its count
-        fn add_more_to_count(_k: uint, v0: uint, v1: uint) -> uint {
-            v0 + v1
-        }
-
-        fn add_more_to_count_simple(v0: uint, v1: uint) -> uint {
-            v0 + v1
-        }
-
-        // count integers
-        map.update(3, 1, add_more_to_count_simple);
-        map.update_with_key(9, 1, add_more_to_count);
-        map.update(3, 7, add_more_to_count_simple);
-        map.update_with_key(5, 3, add_more_to_count);
-        map.update_with_key(3, 2, add_more_to_count);
-
-        // check the total counts
-        assert_eq!(map.get(&3).unwrap(), &10);
-        assert_eq!(map.get(&5).unwrap(), &3);
-        assert_eq!(map.get(&9).unwrap(), &1);
-
-        // sadly, no sevens were counted
-        assert!(map.get(&7).is_none());
     }
 
     #[test]
@@ -992,9 +929,9 @@ mod test_map {
         map.insert(1, 2i);
         map.insert(3, 4i);
 
-        let map_str = map.to_string();
-        assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-        assert_eq!(format!("{}", empty), "{}");
+        let map_str = format!("{:?}", map);
+        assert!(map_str == "VecMap {1: 2i, 3: 4i}" || map_str == "{3: 4i, 1: 2i}");
+        assert_eq!(format!("{:?}", empty), "VecMap {}");
     }
 
     #[test]

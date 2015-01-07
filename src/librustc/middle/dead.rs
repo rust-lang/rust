@@ -19,8 +19,8 @@ use util::nodemap::NodeSet;
 use std::collections::HashSet;
 use syntax::{ast, ast_map, codemap};
 use syntax::ast_util::{local_def, is_local, PostExpansionMethod};
-use syntax::attr::{mod, AttrMetaMethods};
-use syntax::visit::{mod, Visitor};
+use syntax::attr::{self, AttrMetaMethods};
+use syntax::visit::{self, Visitor};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live NodeItem that is a
@@ -355,7 +355,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
             ast::ItemEnum(ref enum_def, _) if allow_dead_code => {
                 self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.id));
             }
-            ast::ItemImpl(_, _, Some(ref _trait_ref), _, ref impl_items) => {
+            ast::ItemImpl(_, _, _, Some(ref _trait_ref), _, ref impl_items) => {
                 for impl_item in impl_items.iter() {
                     match *impl_item {
                         ast::MethodImplItem(ref method) => {

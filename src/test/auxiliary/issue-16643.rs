@@ -20,7 +20,9 @@ impl<H> TreeBuilder<H> {
     }
 }
 
-impl<H> Iterator<H> for TreeBuilder<H> {
+impl<H> Iterator for TreeBuilder<H> {
+    type Item = H;
+
     fn next(&mut self) -> Option<H> {
         None
     }

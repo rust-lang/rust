@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(default_type_params)]
-
 struct Heap;
 
 struct Vec<A = Heap, T>; //~ ERROR type parameters with a default must be trailing

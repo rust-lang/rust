@@ -25,15 +25,15 @@ impl Fn<(int,),int> for S {
 }
 
 fn call_it<F:Fn(int)->int>(f: &F, x: int) -> int {
-    f.call((x,))
+    f(x)
 }
 
 fn call_it_mut<F:FnMut(int)->int>(f: &mut F, x: int) -> int {
-    f.call_mut((x,))
+    f(x)
 }
 
 fn call_it_once<F:FnOnce(int)->int>(f: F, x: int) -> int {
-    f.call_once((x,))
+    f(x)
 }
 
 fn main() {

@@ -14,13 +14,13 @@ fn nested<'x>(x: &'x int) {
     let y = 3;
     let mut ay = &y;
 
-    ignore::< for<'z>|&'z int|>(|z| {
+    ignore::<Box<for<'z> FnMut(&'z int)>>(box |z| {
         ay = x; //~ ERROR cannot infer
         ay = &y;
         ay = z;
     });
 
-    ignore::< for<'z>|&'z int| -> &'z int>(|z| {
+    ignore::< Box<for<'z> FnMut(&'z int) -> &'z int>>(box |z| {
         if false { return x; }  //~ ERROR cannot infer an appropriate lifetime for automatic
         if false { return ay; }
         return z;

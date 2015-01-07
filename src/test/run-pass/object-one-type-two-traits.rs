@@ -12,7 +12,6 @@
 // traits.
 
 use std::any::Any;
-use std::any::AnyRefExt;
 
 trait Wrap {
     fn get(&self) -> int;

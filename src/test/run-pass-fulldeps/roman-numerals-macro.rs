@@ -11,9 +11,9 @@
 // aux-build:roman_numerals.rs
 // ignore-stage1
 
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
+#[plugin] #[no_link]
 extern crate roman_numerals;
 
 pub fn main() {

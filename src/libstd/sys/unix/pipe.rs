@@ -10,13 +10,14 @@
 
 use prelude::v1::*;
 
+use ffi::CString;
 use libc;
-use c_str::CString;
 use mem;
-use sync::{atomic, Arc, Mutex};
-use io::{mod, IoResult, IoError};
+use sync::{Arc, Mutex};
+use sync::atomic::{AtomicBool, Ordering};
+use io::{self, IoResult, IoError};
 
-use sys::{mod, timer, retry, c, set_nonblocking, wouldblock};
+use sys::{self, timer, retry, c, set_nonblocking, wouldblock};
 use sys::fs::{fd_t, FileDesc};
 use sys_common::net::*;
 use sys_common::net::SocketStatus::*;
@@ -47,7 +48,7 @@ fn addr_to_sockaddr_un(addr: &CString,
     }
     s.sun_family = libc::AF_UNIX as libc::sa_family_t;
     for (slot, value) in s.sun_path.iter_mut().zip(addr.iter()) {
-        *slot = value;
+        *slot = *value;
     }
 
     // count the null terminator
@@ -242,7 +243,7 @@ impl UnixListener {
                         listener: self,
                         reader: reader,
                         writer: writer,
-                        closed: atomic::AtomicBool::new(false),
+                        closed: AtomicBool::new(false),
                     }),
                     deadline: 0,
                 })
@@ -260,7 +261,7 @@ struct AcceptorInner {
     listener: UnixListener,
     reader: FileDesc,
     writer: FileDesc,
-    closed: atomic::AtomicBool,
+    closed: AtomicBool,
 }
 
 impl UnixAcceptor {
@@ -269,7 +270,7 @@ impl UnixAcceptor {
     pub fn accept(&mut self) -> IoResult<UnixStream> {
         let deadline = if self.deadline == 0 {None} else {Some(self.deadline)};
 
-        while !self.inner.closed.load(atomic::SeqCst) {
+        while !self.inner.closed.load(Ordering::SeqCst) {
             unsafe {
                 let mut storage: libc::sockaddr_storage = mem::zeroed();
                 let storagep = &mut storage as *mut libc::sockaddr_storage;
@@ -297,7 +298,7 @@ impl UnixAcceptor {
     }
 
     pub fn close_accept(&mut self) -> IoResult<()> {
-        self.inner.closed.store(true, atomic::SeqCst);
+        self.inner.closed.store(true, Ordering::SeqCst);
         let fd = FileDesc::new(self.inner.writer.fd(), false);
         match fd.write(&[0]) {
             Ok(..) => Ok(()),

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
-
 mod foo {
     pub trait Value {
         fn value(&self) -> uint;

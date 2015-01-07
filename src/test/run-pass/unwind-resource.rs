@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::sync::mpsc::{channel, Sender};
-use std::task;
+use std::thread::Thread;
 
 struct complainer {
     tx: Sender<bool>,
@@ -37,7 +37,7 @@ fn f(tx: Sender<bool>) {
 
 pub fn main() {
     let (tx, rx) = channel();
-    task::spawn(move|| f(tx.clone()));
+    let _t = Thread::spawn(move|| f(tx.clone()));
     println!("hiiiiiiiii");
     assert!(rx.recv().unwrap());
 }

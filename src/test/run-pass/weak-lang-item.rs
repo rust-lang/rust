@@ -12,10 +12,10 @@
 
 extern crate "weak-lang-items" as other;
 
-use std::task;
+use std::thread::Thread;
 
 fn main() {
-    let _ = task::try(move|| {
+    let _ = Thread::spawn(move|| {
         other::foo()
     });
 }

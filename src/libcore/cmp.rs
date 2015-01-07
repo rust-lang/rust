@@ -43,8 +43,8 @@
 
 use self::Ordering::*;
 
-use kinds::Sized;
-use option::Option::{mod, Some, None};
+use marker::Sized;
+use option::Option::{self, Some, None};
 
 /// Trait for equality comparisons which are [partial equivalence relations](
 /// http://en.wikipedia.org/wiki/Partial_equivalence_relation).
@@ -69,7 +69,8 @@ use option::Option::{mod, Some, None};
 /// only if `a != b`.
 #[lang="eq"]
 #[stable]
-pub trait PartialEq<Sized? Rhs = Self> for Sized? {
+#[old_orphan_check]
+pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
     #[stable]
     fn eq(&self, other: &Rhs) -> bool;
@@ -90,7 +91,7 @@ pub trait PartialEq<Sized? Rhs = Self> for Sized? {
 /// - symmetric: `a == b` implies `b == a`; and
 /// - transitive: `a == b` and `b == c` implies `a == c`.
 #[stable]
-pub trait Eq for Sized?: PartialEq<Self> {
+pub trait Eq: PartialEq<Self> {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
     // itself, the current deriving infrastructure means doing this
@@ -104,7 +105,7 @@ pub trait Eq for Sized?: PartialEq<Self> {
 }
 
 /// An ordering is, e.g, a result of a comparison between two values.
-#[deriving(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Show)]
 #[stable]
 pub enum Ordering {
     /// An ordering where a compared value is less [than another].
@@ -164,7 +165,7 @@ impl Ordering {
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
 ///   both `==` and `>`.
 #[stable]
-pub trait Ord for Sized?: Eq + PartialOrd<Self> {
+pub trait Ord: Eq + PartialOrd<Self> {
     /// This method returns an ordering between `self` and `other` values.
     ///
     /// By convention, `self.cmp(&other)` returns the ordering matching
@@ -224,7 +225,7 @@ impl PartialOrd for Ordering {
 /// 5.11).
 #[lang="ord"]
 #[stable]
-pub trait PartialOrd<Sized? Rhs = Self> for Sized?: PartialEq<Rhs> {
+pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values
     /// if one exists.
     #[stable]
@@ -271,16 +272,6 @@ pub trait PartialOrd<Sized? Rhs = Self> for Sized?: PartialEq<Rhs> {
     }
 }
 
-/// The equivalence relation. Two values may be equivalent even if they are
-/// of different types. The most common use case for this relation is
-/// container types; e.g. it is often desirable to be able to use `&str`
-/// values to look up entries in a container with `String` keys.
-#[deprecated = "Use overloaded core::cmp::PartialEq"]
-pub trait Equiv<Sized? T> for Sized? {
-    /// Implement this function to decide equivalent values.
-    fn equiv(&self, other: &T) -> bool;
-}
-
 /// Compare and return the minimum of two values.
 #[inline]
 #[stable]
@@ -325,7 +316,7 @@ pub fn partial_max<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
 mod impls {
     use cmp::{PartialOrd, Ord, PartialEq, Eq, Ordering};
     use cmp::Ordering::{Less, Greater, Equal};
-    use kinds::Sized;
+    use marker::Sized;
     use option::Option;
     use option::Option::{Some, None};
 
@@ -438,14 +429,14 @@ mod impls {
     // & pointers
 
     #[stable]
-    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b B> for &'a A where A: PartialEq<B> {
+    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b B> for &'a A where A: PartialEq<B> {
         #[inline]
         fn eq(&self, other: & &'b B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
         fn ne(&self, other: & &'b B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[stable]
-    impl<'a, 'b, Sized? A, Sized? B> PartialOrd<&'b B> for &'a A where A: PartialOrd<B> {
+    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialOrd<&'b B> for &'a A where A: PartialOrd<B> {
         #[inline]
         fn partial_cmp(&self, other: &&'b B) -> Option<Ordering> {
             PartialOrd::partial_cmp(*self, *other)
@@ -460,24 +451,24 @@ mod impls {
         fn gt(&self, other: & &'b B) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[stable]
-    impl<'a, Sized? A> Ord for &'a A where A: Ord {
+    impl<'a, A: ?Sized> Ord for &'a A where A: Ord {
         #[inline]
         fn cmp(&self, other: & &'a A) -> Ordering { Ord::cmp(*self, *other) }
     }
     #[stable]
-    impl<'a, Sized? A> Eq for &'a A where A: Eq {}
+    impl<'a, A: ?Sized> Eq for &'a A where A: Eq {}
 
     // &mut pointers
 
     #[stable]
-    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b mut B> for &'a mut A where A: PartialEq<B> {
+    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b mut B> for &'a mut A where A: PartialEq<B> {
         #[inline]
         fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
         fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
     }
     #[stable]
-    impl<'a, 'b, Sized? A, Sized? B> PartialOrd<&'b mut B> for &'a mut A where A: PartialOrd<B> {
+    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialOrd<&'b mut B> for &'a mut A where A: PartialOrd<B> {
         #[inline]
         fn partial_cmp(&self, other: &&'b mut B) -> Option<Ordering> {
             PartialOrd::partial_cmp(*self, *other)
@@ -492,15 +483,15 @@ mod impls {
         fn gt(&self, other: &&'b mut B) -> bool { PartialOrd::gt(*self, *other) }
     }
     #[stable]
-    impl<'a, Sized? A> Ord for &'a mut A where A: Ord {
+    impl<'a, A: ?Sized> Ord for &'a mut A where A: Ord {
         #[inline]
         fn cmp(&self, other: &&'a mut A) -> Ordering { Ord::cmp(*self, *other) }
     }
     #[stable]
-    impl<'a, Sized? A> Eq for &'a mut A where A: Eq {}
+    impl<'a, A: ?Sized> Eq for &'a mut A where A: Eq {}
 
     #[stable]
-    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b mut B> for &'a A where A: PartialEq<B> {
+    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b mut B> for &'a A where A: PartialEq<B> {
         #[inline]
         fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
@@ -508,7 +499,7 @@ mod impls {
     }
 
     #[stable]
-    impl<'a, 'b, Sized? A, Sized? B> PartialEq<&'b B> for &'a mut A where A: PartialEq<B> {
+    impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b B> for &'a mut A where A: PartialEq<B> {
         #[inline]
         fn eq(&self, other: &&'b B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]

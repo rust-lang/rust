@@ -18,11 +18,11 @@
 
 use metadata::csearch::{each_impl, get_impl_trait};
 use metadata::csearch;
-use middle::subst::{mod, Subst};
+use middle::subst::{self, Subst};
 use middle::ty::RegionEscape;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, MethodTraitItemId};
 use middle::ty::{ParameterEnvironment, TypeTraitItemId, lookup_item_type};
-use middle::ty::{Ty, ty_bool, ty_char, ty_closure, ty_enum, ty_err};
+use middle::ty::{Ty, ty_bool, ty_char, ty_enum, ty_err};
 use middle::ty::{ty_param, TypeScheme, ty_ptr};
 use middle::ty::{ty_rptr, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_open};
@@ -69,7 +69,7 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         }
 
         ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
-        ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
+        ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_tup(..) |
         ty_param(..) | ty_err | ty_open(..) | ty_uniq(_) |
         ty_ptr(_) | ty_rptr(_, _) | ty_projection(..) => {
             None
@@ -81,7 +81,7 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
             inference_context.tcx.sess.span_bug(
                 span,
                 format!("coherence encountered unexpected type searching for base type: {}",
-                        ty.repr(inference_context.tcx))[]);
+                        ty.repr(inference_context.tcx)).index(&FullRange));
         }
     }
 }
@@ -102,7 +102,7 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
         //debug!("(checking coherence) item '{}'", token::get_ident(item.ident));
 
         match item.node {
-            ItemImpl(_, _, ref opt_trait, _, _) => {
+            ItemImpl(_, _, _, ref opt_trait, _, _) => {
                 match opt_trait.clone() {
                     Some(opt_trait) => {
                         self.cc.check_implementation(item, &[opt_trait]);
@@ -204,7 +204,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             trait_ref: &ty::TraitRef<'tcx>,
             all_impl_items: &mut Vec<ImplOrTraitItemId>) {
         let tcx = self.crate_context.tcx;
-        debug!("instantiate_default_methods(impl_id={}, trait_ref={})",
+        debug!("instantiate_default_methods(impl_id={:?}, trait_ref={})",
                impl_id, trait_ref.repr(tcx));
 
         let impl_type_scheme = ty::lookup_item_type(tcx, impl_id);
@@ -215,7 +215,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let new_id = tcx.sess.next_node_id();
             let new_did = local_def(new_id);
 
-            debug!("new_did={} trait_method={}", new_did, trait_method.repr(tcx));
+            debug!("new_did={:?} trait_method={}", new_did, trait_method.repr(tcx));
 
             // Create substitutions for the various trait parameters.
             let new_method_ty =
@@ -268,7 +268,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     }
 
     fn add_trait_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
-        debug!("add_trait_impl: base_def_id={} impl_def_id={}",
+        debug!("add_trait_impl: base_def_id={:?} impl_def_id={:?}",
                base_def_id, impl_def_id);
         ty::record_trait_implementation(self.crate_context.tcx,
                                         base_def_id,
@@ -283,7 +283,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     // Converts an implementation in the AST to a vector of items.
     fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
-            ItemImpl(_, _, ref trait_refs, _, ref ast_items) => {
+            ItemImpl(_, _, _, ref trait_refs, _, ref ast_items) => {
                 let mut items: Vec<ImplOrTraitItemId> =
                         ast_items.iter()
                                  .map(|ast_item| {
@@ -482,7 +482,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_copy: self_type={} (free)",
                    self_type.repr(tcx));
 
-            match ty::can_type_implement_copy(tcx, self_type, &param_env) {
+            match ty::can_type_implement_copy(&param_env, span, self_type) {
                 Ok(()) => {}
                 Err(ty::FieldDoesNotImplementCopy(name)) => {
                     tcx.sess
@@ -490,7 +490,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                  format!("the trait `Copy` may not be \
                                           implemented for this type; field \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name))[])
+                                         token::get_name(name)).index(&FullRange))
                 }
                 Err(ty::VariantDoesNotImplementCopy(name)) => {
                     tcx.sess
@@ -498,7 +498,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                  format!("the trait `Copy` may not be \
                                           implemented for this type; variant \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name))[])
+                                         token::get_name(name)).index(&FullRange))
                 }
                 Err(ty::TypeIsStructural) => {
                     tcx.sess

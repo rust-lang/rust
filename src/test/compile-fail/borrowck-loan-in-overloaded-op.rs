@@ -13,7 +13,9 @@ use std::ops::Add;
 #[derive(Clone)]
 struct foo(Box<uint>);
 
-impl Add<foo, foo> for foo {
+impl Add for foo {
+    type Output = foo;
+
     fn add(self, f: foo) -> foo {
         let foo(box i) = self;
         let foo(box j) = f;

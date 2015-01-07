@@ -12,7 +12,6 @@
 
 use core::prelude::*;
 use core::num::Int;
-
 use {Rng, SeedableRng, Rand};
 
 const KEY_WORDS    : uint =  8; // 8 words for the 256-bit key
@@ -28,8 +27,7 @@ const CHACHA_ROUNDS: uint = 20; // Cryptographically secure from 8 upwards as of
 ///
 /// [1]: D. J. Bernstein, [*ChaCha, a variant of
 /// Salsa20*](http://cr.yp.to/chacha.html)
-
-#[deriving(Copy)]
+#[derive(Copy, Clone)]
 pub struct ChaChaRng {
     buffer:  [u32; STATE_WORDS], // Internal buffer of output
     state:   [u32; STATE_WORDS], // Initial state
@@ -249,14 +247,14 @@ mod test {
         let seed : &[_] = &[0u32; 8];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
 
-        let v = Vec::from_fn(16, |_| ra.next_u32());
+        let v = range(0, 16).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(0xade0b876, 0x903df1a0, 0xe56a5d40, 0x28bd8653,
                         0xb819d2bd, 0x1aed8da0, 0xccef36a8, 0xc70d778b,
                         0x7c5941da, 0x8d485751, 0x3fe02477, 0x374ad8b8,
                         0xf4b8436a, 0x1ca11815, 0x69b687c3, 0x8665eeb2));
 
-        let v = Vec::from_fn(16, |_| ra.next_u32());
+        let v = range(0, 16).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(0xbee7079f, 0x7a385155, 0x7c97ba98, 0x0d082d73,
                         0xa0290fcb, 0x6965e348, 0x3e53c612, 0xed7aee32,
@@ -282,6 +280,16 @@ mod test {
                         0x49884684, 0x64efec72, 0x4be2d186, 0x3615b384,
                         0x11cfa18e, 0xd3c50049, 0x75c775f6, 0x434c6530,
                         0x2c5bad8f, 0x898881dc, 0x5f1c86d9, 0xc1f8e7f4));
+    }
+
+    #[test]
+    fn test_rng_clone() {
+        let seed : &[_] = &[0u32; 8];
+        let mut rng: ChaChaRng = SeedableRng::from_seed(seed);
+        let mut clone = rng.clone();
+        for _ in range(0u, 16) {
+            assert_eq!(rng.next_u64(), clone.next_u64());
+        }
     }
 }
 

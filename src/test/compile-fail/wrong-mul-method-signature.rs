@@ -20,7 +20,9 @@ struct Vec1 {
 }
 
 // Expecting value in input signature
-impl Mul<f64, Vec1> for Vec1 {
+impl Mul<f64> for Vec1 {
+    type Output = Vec1;
+
     fn mul(self, s: &f64) -> Vec1 {
     //~^ ERROR: method `mul` has an incompatible type for trait: expected f64, found &-ptr
         Vec1 {
@@ -35,7 +37,9 @@ struct Vec2 {
 }
 
 // Wrong type parameter ordering
-impl Mul<Vec2, f64> for Vec2 {
+impl Mul<Vec2> for Vec2 {
+    type Output = f64;
+
     fn mul(self, s: f64) -> Vec2 {
     //~^ ERROR: method `mul` has an incompatible type for trait: expected struct Vec2, found f64
         Vec2 {
@@ -52,7 +56,9 @@ struct Vec3 {
 }
 
 // Unexpected return type
-impl Mul<f64, i32> for Vec3 {
+impl Mul<f64> for Vec3 {
+    type Output = i32;
+
     fn mul(self, s: f64) -> f64 {
     //~^ ERROR: method `mul` has an incompatible type for trait: expected i32, found f64
         s

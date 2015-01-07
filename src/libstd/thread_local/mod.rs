@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -34,13 +34,13 @@
 //! will want to make use of some form of **interior mutability** through the
 //! `Cell` or `RefCell` types.
 
-#![macro_escape]
 #![stable]
 
 use prelude::v1::*;
 
 use cell::UnsafeCell;
 
+#[macro_use]
 pub mod scoped;
 
 // Sure wish we had macro hygiene, no?
@@ -86,7 +86,7 @@ pub mod __impl {
 ///         assert_eq!(*f.borrow(), 1);
 ///         *f.borrow_mut() = 3;
 ///     });
-/// }).detach();
+/// });
 ///
 /// // we retain our original value of 2 despite the child thread
 /// FOO.with(|f| {
@@ -175,17 +175,21 @@ macro_rules! thread_local {
 #[doc(hidden)]
 macro_rules! __thread_local_inner {
     (static $name:ident: $t:ty = $init:expr) => (
-        #[cfg_attr(any(target_os = "macos", target_os = "linux"), thread_local)]
+        #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                       not(target_arch = "aarch64")),
+                   thread_local)]
         static $name: ::std::thread_local::__impl::KeyInner<$t> =
             __thread_local_inner!($init, $t);
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
-        #[cfg_attr(any(target_os = "macos", target_os = "linux"), thread_local)]
+        #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                       not(target_arch = "aarch64")),
+                   thread_local)]
         pub static $name: ::std::thread_local::__impl::KeyInner<$t> =
             __thread_local_inner!($init, $t);
     );
     ($init:expr, $t:ty) => ({
-        #[cfg(any(target_os = "macos", target_os = "linux"))]
+        #[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
         const _INIT: ::std::thread_local::__impl::KeyInner<$t> = {
             ::std::thread_local::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: $init },
@@ -194,7 +198,7 @@ macro_rules! __thread_local_inner {
             }
         };
 
-        #[cfg(all(not(any(target_os = "macos", target_os = "linux"))))]
+        #[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
         const _INIT: ::std::thread_local::__impl::KeyInner<$t> = {
             unsafe extern fn __destroy(ptr: *mut u8) {
                 ::std::thread_local::__impl::destroy_value::<$t>(ptr);
@@ -215,7 +219,7 @@ macro_rules! __thread_local_inner {
 
 /// Indicator of the state of a thread local storage key.
 #[unstable = "state querying was recently added"]
-#[deriving(Eq, PartialEq, Copy)]
+#[derive(Eq, PartialEq, Copy)]
 pub enum State {
     /// All keys are in this state whenever a thread starts. Keys will
     /// transition to the `Valid` state once the first call to `with` happens
@@ -317,7 +321,7 @@ impl<T: 'static> Key<T> {
     pub fn destroyed(&'static self) -> bool { self.state() == State::Destroyed }
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
 mod imp {
     use prelude::v1::*;
 
@@ -341,7 +345,7 @@ mod imp {
         pub dtor_running: UnsafeCell<bool>, // should be Cell
     }
 
-    unsafe impl<T> ::kinds::Sync for Key<T> { }
+    unsafe impl<T> ::marker::Sync for Key<T> { }
 
     #[doc(hidden)]
     impl<T> Key<T> {
@@ -449,7 +453,7 @@ mod imp {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+#[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
 mod imp {
     use prelude::v1::*;
 
@@ -467,7 +471,7 @@ mod imp {
         pub os: OsStaticKey,
     }
 
-    unsafe impl<T> ::kinds::Sync for Key<T> { }
+    unsafe impl<T> ::marker::Sync for Key<T> { }
 
     struct Value<T: 'static> {
         key: &'static Key<T>,
@@ -576,7 +580,7 @@ mod tests {
         }
         thread_local!(static FOO: Foo = foo());
 
-        Thread::spawn(|| {
+        Thread::scoped(|| {
             assert!(FOO.state() == State::Uninitialized);
             FOO.with(|_| {
                 assert!(FOO.state() == State::Valid);
@@ -640,7 +644,7 @@ mod tests {
             }
         }
 
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             drop(S1);
         }).join().ok().unwrap();
     }
@@ -658,7 +662,7 @@ mod tests {
             }
         }
 
-        Thread::spawn(move|| unsafe {
+        Thread::scoped(move|| unsafe {
             K1.with(|s| *s.get() = Some(S1));
         }).join().ok().unwrap();
     }

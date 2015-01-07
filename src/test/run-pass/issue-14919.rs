@@ -14,7 +14,7 @@ trait Matcher {
 
 struct CharPredMatcher<'a, 'b> {
     str: &'a str,
-    pred: |char|:'b -> bool
+    pred: Box<FnMut(char) -> bool + 'b>,
 }
 
 impl<'a, 'b> Matcher for CharPredMatcher<'a, 'b> {
@@ -27,11 +27,11 @@ trait IntoMatcher<'a, T> {
     fn into_matcher(self, &'a str) -> T;
 }
 
-impl<'a, 'b> IntoMatcher<'a, CharPredMatcher<'a, 'b>> for |char|:'b -> bool {
+impl<'a, 'b, F> IntoMatcher<'a, CharPredMatcher<'a, 'b>> for F where F: FnMut(char) -> bool + 'b {
     fn into_matcher(self, s: &'a str) -> CharPredMatcher<'a, 'b> {
         CharPredMatcher {
             str: s,
-            pred: self
+            pred: box self,
         }
     }
 }
@@ -40,7 +40,9 @@ struct MatchIndices<M> {
     matcher: M
 }
 
-impl<M: Matcher> Iterator<(uint, uint)> for MatchIndices<M> {
+impl<M: Matcher> Iterator for MatchIndices<M> {
+    type Item = (uint, uint);
+
     fn next(&mut self) -> Option<(uint, uint)> {
         self.matcher.next_match()
     }
@@ -53,6 +55,6 @@ fn match_indices<'a, M, T: IntoMatcher<'a, M>>(s: &'a str, from: T) -> MatchIndi
 
 fn main() {
     let s = "abcbdef";
-    match_indices(s, |c: char| c == 'b')
+    match_indices(s, |&mut: c: char| c == 'b')
         .collect::<Vec<(uint, uint)>>();
 }

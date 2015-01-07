@@ -30,7 +30,7 @@
 //! defined and used like so:
 //!
 //! ```
-//! #[deriving(Show)]
+//! #[derive(Show)]
 //! enum Version { Version1, Version2 }
 //!
 //! fn parse_version(header: &[u8]) -> Result<Version, &'static str> {
@@ -47,10 +47,10 @@
 //! let version = parse_version(&[1, 2, 3, 4]);
 //! match version {
 //!     Ok(v) => {
-//!         println!("working with version: {}", v);
+//!         println!("working with version: {:?}", v);
 //!     }
 //!     Err(e) => {
-//!         println!("error parsing header: {}", e);
+//!         println!("error parsing header: {:?}", e);
 //!     }
 //! }
 //! ```
@@ -220,9 +220,9 @@
 //!
 //! ```
 //! # #![feature(macro_rules)]
-//! macro_rules! try(
+//! macro_rules! try {
 //!     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-//! );
+//! }
 //! # fn main() { }
 //! ```
 //!
@@ -236,14 +236,14 @@ use clone::Clone;
 use fmt::Show;
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
 use ops::{FnMut, FnOnce};
-use option::Option::{mod, None, Some};
+use option::Option::{self, None, Some};
 use slice::AsSlice;
 use slice;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-#[deriving(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
 #[must_use]
 #[stable]
 pub enum Result<T, E> {
@@ -743,7 +743,7 @@ impl<T, E: Show> Result<T, E> {
         match self {
             Ok(t) => t,
             Err(e) =>
-                panic!("called `Result::unwrap()` on an `Err` value: {}", e)
+                panic!("called `Result::unwrap()` on an `Err` value: {:?}", e)
         }
     }
 }
@@ -773,7 +773,7 @@ impl<T: Show, E> Result<T, E> {
     pub fn unwrap_err(self) -> E {
         match self {
             Ok(t) =>
-                panic!("called `Result::unwrap_err()` on an `Ok` value: {}", t),
+                panic!("called `Result::unwrap_err()` on an `Ok` value: {:?}", t),
             Err(e) => e
         }
     }
@@ -807,7 +807,10 @@ impl<T, E> AsSlice<T> for Result<T, E> {
 #[stable]
 pub struct Iter<'a, T: 'a> { inner: Option<&'a T> }
 
-impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
+#[stable]
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
     #[inline]
     fn next(&mut self) -> Option<&'a T> { self.inner.take() }
     #[inline]
@@ -817,12 +820,14 @@ impl<'a, T> Iterator<&'a T> for Iter<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a T> for Iter<'a, T> {
+#[stable]
+impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> { self.inner.take() }
 }
 
-impl<'a, T> ExactSizeIterator<&'a T> for Iter<'a, T> {}
+#[stable]
+impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { Iter { inner: self.inner } }
@@ -832,7 +837,10 @@ impl<'a, T> Clone for Iter<'a, T> {
 #[stable]
 pub struct IterMut<'a, T: 'a> { inner: Option<&'a mut T> }
 
-impl<'a, T> Iterator<&'a mut T> for IterMut<'a, T> {
+#[stable]
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> { self.inner.take() }
     #[inline]
@@ -842,18 +850,23 @@ impl<'a, T> Iterator<&'a mut T> for IterMut<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a mut T> for IterMut<'a, T> {
+#[stable]
+impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> { self.inner.take() }
 }
 
-impl<'a, T> ExactSizeIterator<&'a mut T> for IterMut<'a, T> {}
+#[stable]
+impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// An iterator over the value in a `Ok` variant of a `Result`.
 #[stable]
 pub struct IntoIter<T> { inner: Option<T> }
 
-impl<T> Iterator<T> for IntoIter<T> {
+#[stable]
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+
     #[inline]
     fn next(&mut self) -> Option<T> { self.inner.take() }
     #[inline]
@@ -863,12 +876,14 @@ impl<T> Iterator<T> for IntoIter<T> {
     }
 }
 
-impl<T> DoubleEndedIterator<T> for IntoIter<T> {
+#[stable]
+impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> { self.inner.take() }
 }
 
-impl<T> ExactSizeIterator<T> for IntoIter<T> {}
+#[stable]
+impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // FromIterator
@@ -894,7 +909,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// assert!(res == Ok(vec!(2u, 3u)));
     /// ```
     #[inline]
-    fn from_iter<I: Iterator<Result<A, E>>>(iter: I) -> Result<V, E> {
+    fn from_iter<I: Iterator<Item=Result<A, E>>>(iter: I) -> Result<V, E> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
@@ -903,7 +918,9 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
             err: Option<E>,
         }
 
-        impl<T, E, Iter: Iterator<Result<T, E>>> Iterator<T> for Adapter<Iter, E> {
+        impl<T, E, Iter: Iterator<Item=Result<T, E>>> Iterator for Adapter<Iter, E> {
+            type Item = T;
+
             #[inline]
             fn next(&mut self) -> Option<T> {
                 match self.iter.next() {
@@ -941,7 +958,7 @@ pub fn fold<T,
             V,
             E,
             F: FnMut(V, T) -> V,
-            Iter: Iterator<Result<T, E>>>(
+            Iter: Iterator<Item=Result<T, E>>>(
             mut iterator: Iter,
             mut init: V,
             mut f: F)

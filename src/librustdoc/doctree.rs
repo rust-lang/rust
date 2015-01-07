@@ -70,7 +70,7 @@ impl Module {
     }
 }
 
-#[deriving(Show, Clone, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Show, Clone, RustcEncodable, RustcDecodable, Copy)]
 pub enum StructType {
     /// A normal struct
     Plain,
@@ -143,7 +143,7 @@ pub struct Typedef {
     pub stab: Option<attr::Stability>,
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub struct Static {
     pub type_: P<ast::Ty>,
     pub mutability: ast::Mutability,
@@ -182,6 +182,7 @@ pub struct Trait {
 
 pub struct Impl {
     pub unsafety: ast::Unsafety,
+    pub polarity: ast::ImplPolarity,
     pub generics: ast::Generics,
     pub trait_: Option<ast::TraitRef>,
     pub for_: P<ast::Ty>,

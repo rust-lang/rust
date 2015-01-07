@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -38,7 +38,6 @@
 //! });
 //! ```
 
-#![macro_escape]
 #![unstable = "scoped TLS has yet to have wide enough use to fully consider \
                stabilizing its interface"]
 
@@ -78,13 +77,19 @@ macro_rules! scoped_thread_local {
 #[doc(hidden)]
 macro_rules! __scoped_thread_local_inner {
     (static $name:ident: $t:ty) => (
-        #[cfg_attr(not(any(windows, target_os = "android", target_os = "ios")),
+        #[cfg_attr(not(any(windows,
+                           target_os = "android",
+                           target_os = "ios",
+                           target_arch = "aarch64")),
                    thread_local)]
         static $name: ::std::thread_local::scoped::Key<$t> =
             __scoped_thread_local_inner!($t);
     );
     (pub static $name:ident: $t:ty) => (
-        #[cfg_attr(not(any(windows, target_os = "android", target_os = "ios")),
+        #[cfg_attr(not(any(windows,
+                           target_os = "android",
+                           target_os = "ios",
+                           target_arch = "aarch64")),
                    thread_local)]
         pub static $name: ::std::thread_local::scoped::Key<$t> =
             __scoped_thread_local_inner!($t);
@@ -92,18 +97,18 @@ macro_rules! __scoped_thread_local_inner {
     ($t:ty) => ({
         use std::thread_local::scoped::Key as __Key;
 
-        #[cfg(not(any(windows, target_os = "android", target_os = "ios")))]
+        #[cfg(not(any(windows, target_os = "android", target_os = "ios", target_arch = "aarch64")))]
         const _INIT: __Key<$t> = __Key {
             inner: ::std::thread_local::scoped::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: 0 as *mut _ },
             }
         };
 
-        #[cfg(any(windows, target_os = "android", target_os = "ios"))]
+        #[cfg(any(windows, target_os = "android", target_os = "ios", target_arch = "aarch64"))]
         const _INIT: __Key<$t> = __Key {
             inner: ::std::thread_local::scoped::__impl::KeyInner {
                 inner: ::std::thread_local::scoped::__impl::OS_INIT,
-                marker: ::std::kinds::marker::InvariantType,
+                marker: ::std::marker::InvariantType,
             }
         };
 
@@ -199,14 +204,14 @@ impl<T> Key<T> {
     }
 }
 
-#[cfg(not(any(windows, target_os = "android", target_os = "ios")))]
+#[cfg(not(any(windows, target_os = "android", target_os = "ios", target_arch = "aarch64")))]
 mod imp {
     use std::cell::UnsafeCell;
 
     #[doc(hidden)]
     pub struct KeyInner<T> { pub inner: UnsafeCell<*mut T> }
 
-    unsafe impl<T> ::kinds::Sync for KeyInner<T> { }
+    unsafe impl<T> ::marker::Sync for KeyInner<T> { }
 
     #[doc(hidden)]
     impl<T> KeyInner<T> {
@@ -217,9 +222,9 @@ mod imp {
     }
 }
 
-#[cfg(any(windows, target_os = "android", target_os = "ios"))]
+#[cfg(any(windows, target_os = "android", target_os = "ios", target_arch = "aarch64"))]
 mod imp {
-    use kinds::marker;
+    use marker;
     use sys_common::thread_local::StaticKey as OsStaticKey;
 
     #[doc(hidden)]
@@ -228,7 +233,7 @@ mod imp {
         pub marker: marker::InvariantType<T>,
     }
 
-    unsafe impl<T> ::kinds::Sync for KeyInner<T> { }
+    unsafe impl<T> ::marker::Sync for KeyInner<T> { }
 
     #[doc(hidden)]
     impl<T> KeyInner<T> {

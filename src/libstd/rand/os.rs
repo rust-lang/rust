@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -23,13 +23,16 @@ mod imp {
     use path::Path;
     use rand::Rng;
     use rand::reader::ReaderRng;
-    use result::Result::{Ok, Err};
+    use result::Result::Ok;
     use slice::SliceExt;
     use mem;
     use os::errno;
 
     #[cfg(all(target_os = "linux",
-              any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm")))]
+              any(target_arch = "x86_64",
+                  target_arch = "x86",
+                  target_arch = "arm",
+                  target_arch = "aarch64")))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
         extern "C" {
             fn syscall(number: libc::c_long, ...) -> libc::c_long;
@@ -39,7 +42,7 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 318;
         #[cfg(target_arch = "x86")]
         const NR_GETRANDOM: libc::c_long = 355;
-        #[cfg(target_arch = "arm")]
+        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
         const NR_GETRANDOM: libc::c_long = 384;
 
         unsafe {
@@ -48,7 +51,10 @@ mod imp {
     }
 
     #[cfg(not(all(target_os = "linux",
-                  any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm"))))]
+                  any(target_arch = "x86_64",
+                      target_arch = "x86",
+                      target_arch = "arm",
+                      target_arch = "aarch64"))))]
     fn getrandom(_buf: &mut [u8]) -> libc::c_long { -1 }
 
     fn getrandom_fill_bytes(v: &mut [u8]) {
@@ -82,14 +88,17 @@ mod imp {
     }
 
     #[cfg(all(target_os = "linux",
-              any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm")))]
+              any(target_arch = "x86_64",
+                  target_arch = "x86",
+                  target_arch = "arm",
+                  target_arch = "aarch64")))]
     fn is_getrandom_available() -> bool {
-        use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Relaxed};
+        use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 
         static GETRANDOM_CHECKED: AtomicBool = ATOMIC_BOOL_INIT;
         static GETRANDOM_AVAILABLE: AtomicBool = ATOMIC_BOOL_INIT;
 
-        if !GETRANDOM_CHECKED.load(Relaxed) {
+        if !GETRANDOM_CHECKED.load(Ordering::Relaxed) {
             let mut buf: [u8; 0] = [];
             let result = getrandom(&mut buf);
             let available = if result == -1 {
@@ -98,16 +107,19 @@ mod imp {
             } else {
                 true
             };
-            GETRANDOM_AVAILABLE.store(available, Relaxed);
-            GETRANDOM_CHECKED.store(true, Relaxed);
+            GETRANDOM_AVAILABLE.store(available, Ordering::Relaxed);
+            GETRANDOM_CHECKED.store(true, Ordering::Relaxed);
             available
         } else {
-            GETRANDOM_AVAILABLE.load(Relaxed)
+            GETRANDOM_AVAILABLE.load(Ordering::Relaxed)
         }
     }
 
     #[cfg(not(all(target_os = "linux",
-                  any(target_arch = "x86_64", target_arch = "x86", target_arch = "arm"))))]
+                  any(target_arch = "x86_64",
+                      target_arch = "x86",
+                      target_arch = "arm",
+                      target_arch = "aarch64"))))]
     fn is_getrandom_available() -> bool { false }
 
     /// A random number generator that retrieves randomness straight from
@@ -170,7 +182,7 @@ mod imp {
     extern crate libc;
 
     use io::{IoResult};
-    use kinds::Sync;
+    use marker::Sync;
     use mem;
     use os;
     use rand::Rng;
@@ -382,7 +394,7 @@ mod test {
                     r.fill_bytes(&mut v);
                     Thread::yield_now();
                 }
-            }).detach();
+            });
         }
 
         // start all the tasks

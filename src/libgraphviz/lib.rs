@@ -168,10 +168,10 @@
 //!         dot::Id::new(format!("N{}", n)).unwrap()
 //!     }
 //!     fn node_label<'b>(&'b self, n: &Nd) -> dot::LabelText<'b> {
-//!         dot::LabelStr(self.nodes[*n].as_slice().into_cow())
+//!         dot::LabelText::LabelStr(self.nodes[*n].as_slice().into_cow())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed) -> dot::LabelText<'b> {
-//!         dot::LabelStr("&sube;".into_cow())
+//!         dot::LabelText::LabelStr("&sube;".into_cow())
 //!     }
 //! }
 //!
@@ -225,10 +225,10 @@
 //!     }
 //!     fn node_label<'b>(&'b self, n: &Nd<'b>) -> dot::LabelText<'b> {
 //!         let &(i, _) = n;
-//!         dot::LabelStr(self.nodes[i].as_slice().into_cow())
+//!         dot::LabelText::LabelStr(self.nodes[i].as_slice().into_cow())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed<'b>) -> dot::LabelText<'b> {
-//!         dot::LabelStr("&sube;".into_cow())
+//!         dot::LabelText::LabelStr("&sube;".into_cow())
 //!     }
 //! }
 //!
@@ -271,14 +271,13 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-#![feature(globs, slicing_syntax)]
-#![feature(unboxed_closures)]
+#![feature(slicing_syntax)]
 
-pub use self::LabelText::*;
+use self::LabelText::*;
 
 use std::borrow::IntoCow;
 use std::io;
-use std::str::CowString;
+use std::string::CowString;
 use std::vec::CowVec;
 
 pub mod maybe_owned_vec;
@@ -453,7 +452,7 @@ impl<'a> LabelText<'a> {
     pub fn escape(&self) -> String {
         match self {
             &LabelStr(ref s) => s.escape_default(),
-            &EscStr(ref s) => LabelText::escape_str(s[]),
+            &EscStr(ref s) => LabelText::escape_str(s.index(&FullRange)),
         }
     }
 
@@ -482,7 +481,7 @@ impl<'a> LabelText<'a> {
         let mut prefix = self.pre_escaped_content().into_owned();
         let suffix = suffix.pre_escaped_content();
         prefix.push_str(r"\n\n");
-        prefix.push_str(suffix[]);
+        prefix.push_str(suffix.index(&FullRange));
         EscStr(prefix.into_cow())
     }
 }
@@ -517,7 +516,7 @@ pub trait GraphWalk<'a, N, E> {
     fn target(&'a self, edge: &E) -> N;
 }
 
-#[deriving(Copy, PartialEq, Eq, Show)]
+#[derive(Copy, PartialEq, Eq, Show)]
 pub enum RenderOption {
     NoEdgeLabels,
     NoNodeLabels,
@@ -586,11 +585,11 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
 #[cfg(test)]
 mod tests {
     use self::NodeLabels::*;
-    use super::{Id, LabelText, LabelStr, EscStr, Labeller};
-    use super::{Nodes, Edges, GraphWalk, render};
+    use super::{Id, Labeller, Nodes, Edges, GraphWalk, render};
+    use super::LabelText::{self, LabelStr, EscStr};
     use std::io::IoResult;
-    use std::str;
     use std::borrow::IntoCow;
+    use std::iter::repeat;
 
     /// each node is an index in a vector in the graph.
     type Node = uint;
@@ -638,7 +637,7 @@ mod tests {
         fn to_opt_strs(self) -> Vec<Option<&'static str>> {
             match self {
                 UnlabelledNodes(len)
-                    => Vec::from_elem(len, None).into_iter().collect(),
+                    => repeat(None).take(len).collect(),
                 AllNodesLabelled(lbls)
                     => lbls.into_iter().map(
                         |l|Some(l)).collect(),
@@ -676,7 +675,7 @@ mod tests {
 
     impl<'a> Labeller<'a, Node, &'a Edge> for LabelledGraph {
         fn graph_id(&'a self) -> Id<'a> {
-            Id::new(self.name[]).unwrap()
+            Id::new(self.name.index(&FullRange)).unwrap()
         }
         fn node_id(&'a self, n: &Node) -> Id<'a> {
             id_name(n)

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cell::UnsafeCell;
-use kinds::Sync;
+use marker::Sync;
 use sys::sync as ffi;
 use sys_common::mutex;
 

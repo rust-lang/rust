@@ -10,12 +10,12 @@
 
 // error-pattern:Ensure that the child task runs by panicking
 
-use std::task;
+use std::thread::Thread;
 
 fn main() {
     // the purpose of this test is to make sure that task::spawn()
     // works when provided with a bare function:
-    let r = task::try(startfn);
+    let r = Thread::scoped(startfn).join();
     if r.is_err() {
         panic!()
     }

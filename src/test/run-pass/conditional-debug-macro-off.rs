@@ -11,11 +11,10 @@
 // compile-flags: --cfg ndebug
 // exec-env:RUST_LOG=conditional-debug-macro-off=4
 
-#![feature(phase)]
-#[phase(plugin, link)]
+#[macro_use]
 extern crate log;
 
 pub fn main() {
     // only panics if println! evaluates its argument.
-    debug!("{}", { if true { panic!() } });
+    debug!("{:?}", { if true { panic!() } });
 }

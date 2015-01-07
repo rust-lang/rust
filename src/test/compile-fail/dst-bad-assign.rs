@@ -10,7 +10,7 @@
 
 // Forbid assignment into a dynamically sized type.
 
-struct Fat<Sized? T> {
+struct Fat<T: ?Sized> {
     f1: int,
     f2: &'static str,
     ptr: T
@@ -43,5 +43,5 @@ pub fn main() {
     let f5: &mut Fat<ToBar> = &mut Fat { f1: 5, f2: "some str", ptr: Bar1 {f :42} };
     let z: Box<ToBar> = box Bar1 {f: 36};
     f5.ptr = Bar1 {f: 36}; //~ ERROR mismatched types: expected `ToBar`, found `Bar1`
-    //~^ ERROR the trait `core::kinds::Sized` is not implemented for the type `ToBar`
+    //~^ ERROR the trait `core::marker::Sized` is not implemented for the type `ToBar`
 }

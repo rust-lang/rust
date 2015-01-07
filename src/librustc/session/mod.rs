@@ -17,7 +17,7 @@ use util::nodemap::NodeMap;
 
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
-use syntax::diagnostic::{mod, Emitter};
+use syntax::diagnostic::{self, Emitter};
 use syntax::diagnostics;
 use syntax::feature_gate;
 use syntax::parse;
@@ -174,7 +174,7 @@ impl Session {
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp,
-                      format!("impossible case reached: {}", msg)[]);
+                      format!("impossible case reached: {}", msg).index(&FullRange));
     }
     pub fn verbose(&self) -> bool { self.debugging_opt(config::VERBOSE) }
     pub fn time_passes(&self) -> bool { self.debugging_opt(config::TIME_PASSES) }
@@ -201,8 +201,8 @@ impl Session {
     pub fn no_landing_pads(&self) -> bool {
         self.debugging_opt(config::NO_LANDING_PADS)
     }
-    pub fn show_span(&self) -> bool {
-        self.debugging_opt(config::SHOW_SPAN)
+    pub fn unstable_options(&self) -> bool {
+        self.debugging_opt(config::UNSTABLE_OPTIONS)
     }
     pub fn print_enum_sizes(&self) -> bool {
         self.debugging_opt(config::PRINT_ENUM_SIZES)
@@ -216,7 +216,7 @@ impl Session {
     }
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch {
         filesearch::FileSearch::new(self.sysroot(),
-                                    self.opts.target_triple[],
+                                    self.opts.target_triple.index(&FullRange),
                                     &self.opts.search_paths,
                                     kind)
     }

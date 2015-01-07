@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use core::kinds::Sized;
+use core::marker::Sized;
 use std::mem;
 
 use core::slice::SliceExt;
@@ -16,7 +16,7 @@ use core::hash::{Hash, Hasher, Writer};
 struct MyWriterHasher;
 
 impl Hasher<MyWriter> for MyWriterHasher {
-    fn hash<Sized? T: Hash<MyWriter>>(&self, value: &T) -> u64 {
+    fn hash<T: ?Sized + Hash<MyWriter>>(&self, value: &T) -> u64 {
         let mut state = MyWriter { hash: 0 };
         value.hash(&mut state);
         state.hash

@@ -12,16 +12,20 @@ use core::cmp::PartialEq;
 use core::fmt::Show;
 use core::num::{NumCast, cast};
 use core::ops::{Add, Sub, Mul, Div, Rem};
-use core::kinds::Copy;
-use std::str::from_str;
+use core::marker::Copy;
 
+#[macro_use]
 mod int_macros;
+
 mod i8;
 mod i16;
 mod i32;
 mod i64;
 mod int;
+
+#[macro_use]
 mod uint_macros;
+
 mod u8;
 mod u16;
 mod u32;
@@ -31,9 +35,9 @@ mod uint;
 /// Helper function for testing numeric operations
 pub fn test_num<T>(ten: T, two: T) where
     T: PartialEq + NumCast
-     + Add<T, T> + Sub<T, T>
-     + Mul<T, T> + Div<T, T>
-     + Rem<T, T> + Show
+     + Add<Output=T> + Sub<Output=T>
+     + Mul<Output=T> + Div<Output=T>
+     + Rem<Output=T> + Show
      + Copy
 {
     assert_eq!(ten.add(two),  cast(12i).unwrap());
@@ -55,7 +59,6 @@ mod test {
     use core::option::Option::{Some, None};
     use core::num::Float;
     use core::num::from_str_radix;
-    use core::str::from_str;
 
     #[test]
     fn from_str_issue7588() {
@@ -88,35 +91,35 @@ mod test {
     #[test]
     fn test_int_from_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!(from_str::<i8>("127"), Some(i8_val));
-        assert_eq!(from_str::<i8>("128"), None);
+        assert_eq!("127".parse::<i8>(), Some(i8_val));
+        assert_eq!("128".parse::<i8>(), None);
 
         i8_val += 1 as i8;
-        assert_eq!(from_str::<i8>("-128"), Some(i8_val));
-        assert_eq!(from_str::<i8>("-129"), None);
+        assert_eq!("-128".parse::<i8>(), Some(i8_val));
+        assert_eq!("-129".parse::<i8>(), None);
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!(from_str::<i16>("32767"), Some(i16_val));
-        assert_eq!(from_str::<i16>("32768"), None);
+        assert_eq!("32767".parse::<i16>(), Some(i16_val));
+        assert_eq!("32768".parse::<i16>(), None);
 
         i16_val += 1 as i16;
-        assert_eq!(from_str::<i16>("-32768"), Some(i16_val));
-        assert_eq!(from_str::<i16>("-32769"), None);
+        assert_eq!("-32768".parse::<i16>(), Some(i16_val));
+        assert_eq!("-32769".parse::<i16>(), None);
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!(from_str::<i32>("2147483647"), Some(i32_val));
-        assert_eq!(from_str::<i32>("2147483648"), None);
+        assert_eq!("2147483647".parse::<i32>(), Some(i32_val));
+        assert_eq!("2147483648".parse::<i32>(), None);
 
         i32_val += 1 as i32;
-        assert_eq!(from_str::<i32>("-2147483648"), Some(i32_val));
-        assert_eq!(from_str::<i32>("-2147483649"), None);
+        assert_eq!("-2147483648".parse::<i32>(), Some(i32_val));
+        assert_eq!("-2147483649".parse::<i32>(), None);
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!(from_str::<i64>("9223372036854775807"), Some(i64_val));
-        assert_eq!(from_str::<i64>("9223372036854775808"), None);
+        assert_eq!("9223372036854775807".parse::<i64>(), Some(i64_val));
+        assert_eq!("9223372036854775808".parse::<i64>(), None);
 
         i64_val += 1 as i64;
-        assert_eq!(from_str::<i64>("-9223372036854775808"), Some(i64_val));
-        assert_eq!(from_str::<i64>("-9223372036854775809"), None);
+        assert_eq!("-9223372036854775808".parse::<i64>(), Some(i64_val));
+        assert_eq!("-9223372036854775809".parse::<i64>(), None);
     }
 }
