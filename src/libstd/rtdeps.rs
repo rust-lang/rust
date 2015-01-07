@@ -12,7 +12,7 @@
 //! the standard library This varies per-platform, but these libraries are
 //! necessary for running libstd.
 
-#![experimental]
+#![unstable]
 
 // All platforms need to link to rustrt
 #[cfg(not(test))]

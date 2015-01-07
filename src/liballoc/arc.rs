@@ -126,7 +126,7 @@ unsafe impl<T: Sync + Send> Sync for Arc<T> { }
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be used to break cycles
 /// between `Arc` pointers.
 #[unsafe_no_drop_flag]
-#[experimental = "Weak pointers may not belong in this module."]
+#[unstable = "Weak pointers may not belong in this module."]
 pub struct Weak<T> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -179,7 +179,7 @@ impl<T> Arc<T> {
     ///
     /// let weak_five = five.downgrade();
     /// ```
-    #[experimental = "Weak pointers may not belong in this module."]
+    #[unstable = "Weak pointers may not belong in this module."]
     pub fn downgrade(&self) -> Weak<T> {
         // See the clone() impl for why this is relaxed
         self.inner().weak.fetch_add(1, Relaxed);
@@ -200,12 +200,12 @@ impl<T> Arc<T> {
 
 /// Get the number of weak references to this value.
 #[inline]
-#[experimental]
+#[unstable]
 pub fn weak_count<T>(this: &Arc<T>) -> uint { this.inner().weak.load(SeqCst) - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
-#[experimental]
+#[unstable]
 pub fn strong_count<T>(this: &Arc<T>) -> uint { this.inner().strong.load(SeqCst) }
 
 #[stable]
@@ -271,7 +271,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
     /// let mut_five = five.make_unique();
     /// ```
     #[inline]
-    #[experimental]
+    #[unstable]
     pub fn make_unique(&mut self) -> &mut T {
         // Note that we hold a strong reference, which also counts as a weak reference, so we only
         // clone if there is an additional reference of either kind.
@@ -355,7 +355,7 @@ impl<T: Sync + Send> Drop for Arc<T> {
     }
 }
 
-#[experimental = "Weak pointers may not belong in this module."]
+#[unstable = "Weak pointers may not belong in this module."]
 impl<T: Sync + Send> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
@@ -393,7 +393,7 @@ impl<T: Sync + Send> Weak<T> {
     }
 }
 
-#[experimental = "Weak pointers may not belong in this module."]
+#[unstable = "Weak pointers may not belong in this module."]
 impl<T: Sync + Send> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
     ///
@@ -604,7 +604,7 @@ impl<H: Hasher, T: Hash<H>> Hash<H> for Arc<T> {
 }
 
 #[cfg(test)]
-#[allow(experimental)]
+#[allow(unstable)]
 mod tests {
     use std::clone::Clone;
     use std::sync::mpsc::channel;

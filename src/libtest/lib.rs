@@ -24,7 +24,7 @@
 // build off of.
 
 #![crate_name = "test"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

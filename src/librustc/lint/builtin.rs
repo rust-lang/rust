@@ -1630,36 +1630,29 @@ declare_lint! {
     Warn,
     "detects use of #[deprecated] items"
 }
-// FIXME #6875: Change to Warn after std library stabilization is complete
-declare_lint! {
-    EXPERIMENTAL,
-    Allow,
-    "detects use of #[experimental] items"
-}
 
 declare_lint! {
     UNSTABLE,
-    Allow,
+    Warn,
     "detects use of #[unstable] items (incl. items with no stability attribute)"
 }
 
-declare_lint!(STAGED_EXPERIMENTAL, Warn,
-              "detects use of #[experimental] items in staged builds");
-
-declare_lint!(STAGED_UNSTABLE, Warn,
-              "detects use of #[unstable] items (incl. items with no stability attribute) \
-               in staged builds");
-
-/// Checks for use of items with `#[deprecated]`, `#[experimental]` and
+/// Checks for use of items with `#[deprecated]`, `#[unstable]` and
 /// `#[unstable]` attributes, or no stability attribute.
 #[derive(Copy)]
-pub struct Stability;
+pub struct Stability { this_crate_staged: bool }
 
 impl Stability {
+    pub fn new() -> Stability { Stability { this_crate_staged: false } }
+
     fn lint(&self, cx: &Context, id: ast::DefId, span: Span) {
 
         let ref stability = stability::lookup(cx.tcx, id);
         let cross_crate = !ast_util::is_local(id);
+        let staged = (!cross_crate && self.this_crate_staged)
+            || (cross_crate && stability::is_staged_api(cx.tcx, id));
+
+        if !staged { return }
 
         // stability attributes are promises made across crates; only
         // check DEPRECATED for crate-local usage.
@@ -1668,21 +1661,12 @@ impl Stability {
             None if cross_crate => (UNSTABLE, "unmarked"),
             Some(attr::Stability { level: attr::Unstable, .. }) if cross_crate =>
                 (UNSTABLE, "unstable"),
-            Some(attr::Stability { level: attr::Experimental, .. }) if cross_crate =>
-                (EXPERIMENTAL, "experimental"),
             Some(attr::Stability { level: attr::Deprecated, .. }) =>
                 (DEPRECATED, "deprecated"),
             _ => return
         };
 
         output(cx, span, stability, lint, label);
-        if cross_crate && stability::is_staged_api(cx.tcx, id) {
-            if lint.name == UNSTABLE.name {
-                output(cx, span, stability, STAGED_UNSTABLE, label);
-            } else if lint.name == EXPERIMENTAL.name {
-                output(cx, span, stability, STAGED_EXPERIMENTAL, label);
-            }
-        }
 
         fn output(cx: &Context, span: Span, stability: &Option<attr::Stability>,
                   lint: &'static Lint, label: &'static str) {
@@ -1706,7 +1690,7 @@ impl Stability {
 
 impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
-        lint_array!(DEPRECATED, EXPERIMENTAL, UNSTABLE, STAGED_EXPERIMENTAL, STAGED_UNSTABLE)
+        lint_array!(DEPRECATED, UNSTABLE)
     }
 
     fn check_crate(&mut self, _: &Context, c: &ast::Crate) {
@@ -1717,6 +1701,7 @@ impl LintPass for Stability {
                 match attr.node.value.node {
                     ast::MetaWord(_) => {
                         attr::mark_used(attr);
+                        self.this_crate_staged = true;
                     }
                     _ => (/*pass*/)
                 }

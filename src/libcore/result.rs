@@ -953,7 +953,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 /// If an `Err` is encountered, it is immediately returned.
 /// Otherwise, the folded value is returned.
 #[inline]
-#[experimental]
+#[unstable]
 pub fn fold<T,
             V,
             E,

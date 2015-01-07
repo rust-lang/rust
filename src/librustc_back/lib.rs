@@ -22,7 +22,7 @@
 //! build speedups.
 
 #![crate_name = "rustc_back"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

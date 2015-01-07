@@ -24,7 +24,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![no_std]
-#![experimental]
+#![unstable]
 #![staged_api]
 
 #[macro_use]
