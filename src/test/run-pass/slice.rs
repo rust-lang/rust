@@ -10,7 +10,6 @@
 
 // Test slicing sugar.
 
-#![feature(slicing_syntax)]
 #![feature(associated_types)]
 
 extern crate core;

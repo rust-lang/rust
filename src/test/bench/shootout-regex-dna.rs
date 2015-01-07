@@ -41,8 +41,6 @@
 // ignore-stage1
 // ignore-cross-compile #12102
 
-#![feature(plugin, slicing_syntax)]
-
 extern crate regex;
 
 use std::io;

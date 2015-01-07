@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slicing_syntax)]
-
 fn main() {
     let s: &[int] = &[0, 1, 2, 3, 4];
     let ss: &&[int] = &s;

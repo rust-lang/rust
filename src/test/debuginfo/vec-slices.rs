@@ -77,7 +77,6 @@
 // lldb-check:[...]$5 = &[AStruct { x: 10, y: 11, z: 12 }, AStruct { x: 13, y: 14, z: 15 }]
 
 #![allow(unused_variables)]
-#![feature(slicing_syntax)]
 #![omit_gdb_pretty_printer_section]
 
 struct AStruct {

@@ -13,8 +13,6 @@
 
 // multi tasking k-nucleotide
 
-#![feature(slicing_syntax)]
-
 use std::ascii::{AsciiExt, OwnedAsciiExt};
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::HashMap;
