@@ -37,7 +37,7 @@
 //!
 //! let five = Arc::new(5i);
 //!
-//! for i in range(0u, 10) {
+//! for _ in range(0u, 10) {
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
