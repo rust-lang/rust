@@ -25,6 +25,10 @@ Styleguides like Misra-C require the use of parentheses in this case.
 By requiring the use of parentheses, we avoid potential confusion now,
 and open up the possibility for python-like chained comparisons post-1.0.
 
+Additionally, making the chain `f < b > (c)` invalid allows us to easily produce
+a diagnostic message: "Use `::<` instead of `<` if you meant to specify type arguments.",
+which would be a vast improvement over the current diagnostics for this mistake.
+
 # Detailed design
 
 Emit a syntax error when a comparison operator appears as an operand of another comparison operator
@@ -46,6 +50,9 @@ and will require the use of parentheses:
 if a < 0 == b < 0 { /* both negative or both non-negative */ }
 ```
 
+However, I don't think this kind of code sees much use.
+The rustc codebase doesn't seem to have any occurrences of chained comparisons.
+
 # Alternatives
 
 As this RFC just makes the chained comparison syntax available for post-1.0 language features,
@@ -60,6 +67,6 @@ This minimizes the breaking changes, but does not allow full python-style chaine
 
 # Unresolved questions
 
-I did not yet check how much code breaks as a result of this change.
-I will implement both alternatives and report the amount of breakage.
+Is there real code that would get broken by this change?
+So far, I've been unable to find any.
 
