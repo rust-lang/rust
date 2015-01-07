@@ -4702,7 +4702,7 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         }
         ty_tup(ref tys) if tys.is_empty() => ::util::ppaux::ty_to_string(cx, ty),
 
-        ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
+        ty_enum(id, _) => format!("enum `{}`", item_path_str(cx, id)),
         ty_uniq(_) => "box".to_string(),
         ty_vec(_, Some(n)) => format!("array of {} elements", n),
         ty_vec(_, None) => "slice".to_string(),
@@ -4714,7 +4714,7 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
             format!("trait {}", item_path_str(cx, inner.principal_def_id()))
         }
         ty_struct(id, _) => {
-            format!("struct {}", item_path_str(cx, id))
+            format!("struct `{}`", item_path_str(cx, id))
         }
         ty_unboxed_closure(..) => "closure".to_string(),
         ty_tup(_) => "tuple".to_string(),
