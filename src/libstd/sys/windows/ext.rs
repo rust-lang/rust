@@ -14,7 +14,7 @@
 //! descriptors, and sockets, but its functionality will grow over
 //! time.
 
-#![experimental]
+#![unstable]
 
 use sys_common::AsInner;
 use libc;

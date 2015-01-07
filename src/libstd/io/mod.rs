@@ -219,7 +219,7 @@
 //! concerned with error handling; instead its caller is responsible for
 //! responding to errors that may occur while attempting to read the numbers.
 
-#![experimental]
+#![unstable]
 #![deny(unused_must_use)]
 
 pub use self::SeekStyle::*;

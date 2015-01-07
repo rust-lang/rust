@@ -219,7 +219,7 @@
 //! }
 //! ```
 
-#![experimental]
+#![unstable]
 
 use cell::RefCell;
 use clone::Clone;

@@ -10,3 +10,4 @@
 
 #![cfg_attr(foo, experimental)]
 #![cfg_attr(not(foo), stable)]
+#![staged_api]

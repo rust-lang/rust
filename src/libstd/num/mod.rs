@@ -33,7 +33,7 @@ pub use core::num::{FpCategory};
 
 use option::Option;
 
-#[experimental = "may be removed or relocated"]
+#[unstable = "may be removed or relocated"]
 pub mod strconv;
 
 /// Mathematical operations on primitive floating point numbers.

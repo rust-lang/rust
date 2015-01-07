@@ -10,7 +10,7 @@
 
 //! Temporal quantification
 
-#![experimental]
+#![unstable]
 
 use {fmt, i64};
 use ops::{Add, Sub, Mul, Div, Neg, FnOnce};

@@ -20,7 +20,7 @@
 //! more complex, slower arena which can hold objects of any type.
 
 #![crate_name = "arena"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

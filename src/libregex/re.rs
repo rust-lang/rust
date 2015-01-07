@@ -255,7 +255,7 @@ impl Regex {
     }
 
     #[doc(hidden)]
-    #[experimental]
+    #[unstable]
     pub fn names_iter<'a>(&'a self) -> NamesIter<'a> {
         match *self {
             Native(ref n) => NamesIterNative(n.names.iter()),
@@ -410,7 +410,7 @@ pub struct Captures<'t> {
 }
 
 impl<'t> Captures<'t> {
-    #[allow(experimental)]
+    #[allow(unstable)]
     fn new(re: &Regex, search: &'t str, locs: CaptureLocs)
           -> Option<Captures<'t>> {
         if !has_match(&locs) {

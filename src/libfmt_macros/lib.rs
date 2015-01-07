@@ -15,7 +15,7 @@
 //! generated instead.
 
 #![crate_name = "fmt_macros"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

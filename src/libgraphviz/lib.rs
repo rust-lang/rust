@@ -265,7 +265,7 @@
 //! * [DOT language](http://www.graphviz.org/doc/info/lang.html)
 
 #![crate_name = "graphviz"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

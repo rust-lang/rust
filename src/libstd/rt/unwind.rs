@@ -582,7 +582,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
 /// Only a limited number of callbacks can be registered, and this function
 /// returns whether the callback was successfully registered or not. It is not
 /// currently possible to unregister a callback once it has been registered.
-#[experimental]
+#[unstable]
 pub unsafe fn register(f: Callback) -> bool {
     match CALLBACK_CNT.fetch_add(1, Ordering::SeqCst) {
         // The invocation code has knowledge of this window where the count has

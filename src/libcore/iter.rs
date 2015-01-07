@@ -942,7 +942,7 @@ pub trait IteratorExt: Iterator + Sized {
     }
 
     /// Use an iterator to reverse a container in place.
-    #[experimental = "uncertain about placement or widespread use"]
+    #[unstable = "uncertain about placement or widespread use"]
     fn reverse_in_place<'a, T: 'a>(&mut self) where
         Self: Iterator<Item=&'a mut T> + DoubleEndedIterator
     {
@@ -974,7 +974,7 @@ pub trait DoubleEndedIterator: Iterator {
 /// Calling `next()` or `next_back()` on a `RandomAccessIterator`
 /// reduces the indexable range accordingly. That is, `it.idx(1)` will become `it.idx(0)`
 /// after `it.next()` is called.
-#[experimental = "not widely used, may be better decomposed into Index and ExactSizeIterator"]
+#[unstable = "not widely used, may be better decomposed into Index and ExactSizeIterator"]
 pub trait RandomAccessIterator: Iterator {
     /// Return the number of indexable elements. At most `std::uint::MAX`
     /// elements are indexable, even if the iterator represents a longer range.
@@ -1049,7 +1049,7 @@ impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Rev<I> where I: DoubleEndedIterator + RandomAccessIterator {
     #[inline]
     fn indexable(&self) -> uint { self.iter.indexable() }
@@ -1084,7 +1084,7 @@ impl<'a, I> DoubleEndedIterator for ByRef<'a, I> where I: 'a + DoubleEndedIterat
 }
 
 /// A trait for iterators over elements which can be added together
-#[experimental = "needs to be re-evaluated as part of numerics reform"]
+#[unstable = "needs to be re-evaluated as part of numerics reform"]
 pub trait AdditiveIterator<A> {
     /// Iterates over the entire iterator, summing up all the elements
     ///
@@ -1102,7 +1102,7 @@ pub trait AdditiveIterator<A> {
 
 macro_rules! impl_additive {
     ($A:ty, $init:expr) => {
-        #[experimental = "trait is experimental"]
+        #[unstable = "trait is experimental"]
         impl<T: Iterator<Item=$A>> AdditiveIterator<$A> for T {
             #[inline]
             fn sum(self) -> $A {
@@ -1125,7 +1125,7 @@ impl_additive! { f32,  0.0 }
 impl_additive! { f64,  0.0 }
 
 /// A trait for iterators over elements which can be multiplied together.
-#[experimental = "needs to be re-evaluated as part of numerics reform"]
+#[unstable = "needs to be re-evaluated as part of numerics reform"]
 pub trait MultiplicativeIterator<A> {
     /// Iterates over the entire iterator, multiplying all the elements
     ///
@@ -1146,7 +1146,7 @@ pub trait MultiplicativeIterator<A> {
 
 macro_rules! impl_multiplicative {
     ($A:ty, $init:expr) => {
-        #[experimental = "trait is experimental"]
+        #[unstable = "trait is experimental"]
         impl<T: Iterator<Item=$A>> MultiplicativeIterator<$A> for T {
             #[inline]
             fn product(self) -> $A {
@@ -1287,7 +1287,7 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
     }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Cycle<I> where
     I: Clone + RandomAccessIterator,
 {
@@ -1372,7 +1372,7 @@ impl<T, A, B> DoubleEndedIterator for Chain<A, B> where
     }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<T, A, B> RandomAccessIterator for Chain<A, B> where
     A: RandomAccessIterator<Item=T>,
     B: RandomAccessIterator<Item=T>,
@@ -1464,7 +1464,7 @@ impl<T, U, A, B> DoubleEndedIterator for Zip<A, B> where
     }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<T, U, A, B> RandomAccessIterator for Zip<A, B> where
     A: RandomAccessIterator<Item=T>,
     B: RandomAccessIterator<Item=U>,
@@ -1546,7 +1546,7 @@ impl<A, B, I, F> DoubleEndedIterator for Map<A, B, I, F> where
     }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<A, B, I, F> RandomAccessIterator for Map<A, B, I, F> where
     I: RandomAccessIterator<Item=A>,
     F: FnMut(A) -> B,
@@ -1735,7 +1735,7 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
     }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1961,7 +1961,7 @@ impl<I> Iterator for Skip<I> where I: Iterator {
     }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
     #[inline]
     fn indexable(&self) -> uint {
@@ -2016,7 +2016,7 @@ impl<I> Iterator for Take<I> where I: Iterator{
     }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Take<I> where I: RandomAccessIterator{
     #[inline]
     fn indexable(&self) -> uint {
@@ -2229,7 +2229,7 @@ impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
 }
 
 // Allow RandomAccessIterators to be fused without affecting random-access behavior
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Fuse<I> where I: RandomAccessIterator {
     #[inline]
     fn indexable(&self) -> uint {
@@ -2246,7 +2246,7 @@ impl<I> Fuse<I> {
     /// Resets the fuse such that the next call to .next() or .next_back() will
     /// call the underlying iterator again even if it previously returned None.
     #[inline]
-    #[experimental = "seems marginal"]
+    #[unstable = "seems marginal"]
     pub fn reset_fuse(&mut self) {
         self.done = false
     }
@@ -2315,7 +2315,7 @@ impl<A, I, F> DoubleEndedIterator for Inspect<A, I, F> where
     }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<A, I, F> RandomAccessIterator for Inspect<A, I, F> where
     I: RandomAccessIterator<Item=A>,
     F: FnMut(&A),
@@ -2364,7 +2364,7 @@ impl<A, I, F> RandomAccessIterator for Inspect<A, I, F> where
 ///     println!("{}", i);
 /// }
 /// ```
-#[experimental]
+#[unstable]
 pub struct Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     f: F,
     /// Internal state that will be passed to the closure on the next iteration
@@ -2385,7 +2385,7 @@ impl<A, St, F> Clone for Unfold<A, St, F> where
     }
 }
 
-#[experimental]
+#[unstable]
 impl<A, St, F> Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the closure
@@ -2778,7 +2778,7 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     fn next_back(&mut self) -> Option<A> { self.idx(0) }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<A: Clone> RandomAccessIterator for Repeat<A> {
     #[inline]
     fn indexable(&self) -> uint { uint::MAX }
@@ -2790,12 +2790,12 @@ type IterateState<T, F> = (F, Option<T>, bool);
 
 /// An iterator that repeatedly applies a given function, starting
 /// from a given seed value.
-#[experimental]
+#[unstable]
 pub type Iterate<T, F> = Unfold<T, IterateState<T, F>, fn(&mut IterateState<T, F>) -> Option<T>>;
 
 /// Create a new iterator that produces an infinite sequence of
 /// repeated applications of the given function `f`.
-#[experimental]
+#[unstable]
 pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
     T: Clone,
     F: FnMut(T) -> T,
