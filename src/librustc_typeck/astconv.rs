@@ -193,11 +193,11 @@ pub fn opt_ast_region_to_region<'tcx>(
                                     format!("`{}`", name)
                                 };
 
-                                m.push_str(if n == 1 {
+                                m.push_str(&(if n == 1 {
                                     help_name
                                 } else {
                                     format!("one of {}'s {} elided lifetimes", help_name, n)
-                                }.index(&FullRange));
+                                })[]);
 
                                 if len == 2 && i == 0 {
                                     m.push_str(" or ");
@@ -344,10 +344,10 @@ fn create_substs_for_ast_path<'tcx>(
             "expected"
         };
         this.tcx().sess.span_fatal(span,
-                                   format!("wrong number of type arguments: {} {}, found {}",
+                                   &format!("wrong number of type arguments: {} {}, found {}",
                                            expected,
                                            required_ty_param_count,
-                                           supplied_ty_param_count).index(&FullRange));
+                                           supplied_ty_param_count)[]);
     } else if supplied_ty_param_count > formal_ty_param_count {
         let expected = if required_ty_param_count < formal_ty_param_count {
             "expected at most"
@@ -355,10 +355,10 @@ fn create_substs_for_ast_path<'tcx>(
             "expected"
         };
         this.tcx().sess.span_fatal(span,
-                                   format!("wrong number of type arguments: {} {}, found {}",
+                                   &format!("wrong number of type arguments: {} {}, found {}",
                                            expected,
                                            formal_ty_param_count,
-                                           supplied_ty_param_count).index(&FullRange));
+                                           supplied_ty_param_count)[]);
     }
 
     let mut substs = Substs::new_type(types, regions);
@@ -377,7 +377,7 @@ fn create_substs_for_ast_path<'tcx>(
         }
     }
 
-    for param in ty_param_defs.index(&(supplied_ty_param_count..)).iter() {
+    for param in ty_param_defs[supplied_ty_param_count..].iter() {
         match param.default {
             Some(default) => {
                 // This is a default type parameter.
@@ -556,8 +556,8 @@ pub fn instantiate_trait_ref<'tcx>(
         _ => {
             this.tcx().sess.span_fatal(
                 ast_trait_ref.path.span,
-                format!("`{}` is not a trait",
-                        ast_trait_ref.path.user_string(this.tcx())).index(&FullRange));
+                &format!("`{}` is not a trait",
+                        ast_trait_ref.path.user_string(this.tcx()))[]);
         }
     }
 }
@@ -825,8 +825,8 @@ pub fn ast_ty_to_builtin_ty<'tcx>(
                     this.tcx()
                         .sess
                         .span_bug(ast_ty.span,
-                                  format!("unbound path {}",
-                                          path.repr(this.tcx())).index(&FullRange))
+                                  &format!("unbound path {}",
+                                          path.repr(this.tcx()))[])
                 }
                 Some(&d) => d
             };
@@ -847,8 +847,8 @@ pub fn ast_ty_to_builtin_ty<'tcx>(
                         _ => {
                             this.tcx().sess.span_bug(
                                 path.span,
-                                format!("converting `Box` to `{}`",
-                                        ty.repr(this.tcx())).index(&FullRange));
+                                &format!("converting `Box` to `{}`",
+                                        ty.repr(this.tcx()))[]);
                         }
                     }
                 }
@@ -1068,14 +1068,14 @@ pub fn ast_ty_to_ty<'tcx>(
                 ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty), None)
             }
             ast::TyObjectSum(ref ty, ref bounds) => {
-                match ast_ty_to_trait_ref(this, rscope, &**ty, bounds.index(&FullRange)) {
+                match ast_ty_to_trait_ref(this, rscope, &**ty, &bounds[]) {
                     Ok((trait_ref, projection_bounds)) => {
                         trait_ref_to_object_type(this,
                                                  rscope,
                                                  ast_ty.span,
                                                  trait_ref,
                                                  projection_bounds,
-                                                 bounds.index(&FullRange))
+                                                 &bounds[])
                     }
                     Err(ErrorReported) => {
                         this.tcx().types.err
@@ -1110,15 +1110,15 @@ pub fn ast_ty_to_ty<'tcx>(
                 ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(bare_fn))
             }
             ast::TyPolyTraitRef(ref bounds) => {
-                conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds.index(&FullRange))
+                conv_ty_poly_trait_ref(this, rscope, ast_ty.span, &bounds[])
             }
             ast::TyPath(ref path, id) => {
                 let a_def = match tcx.def_map.borrow().get(&id) {
                     None => {
                         tcx.sess
                            .span_bug(ast_ty.span,
-                                     format!("unbound path {}",
-                                             path.repr(tcx)).index(&FullRange))
+                                     &format!("unbound path {}",
+                                             path.repr(tcx))[])
                     }
                     Some(&d) => d
                 };
@@ -1156,8 +1156,8 @@ pub fn ast_ty_to_ty<'tcx>(
                     }
                     def::DefMod(id) => {
                         tcx.sess.span_fatal(ast_ty.span,
-                            format!("found module name used as a type: {}",
-                                    tcx.map.node_to_string(id.node)).index(&FullRange));
+                            &format!("found module name used as a type: {}",
+                                    tcx.map.node_to_string(id.node))[]);
                     }
                     def::DefPrimTy(_) => {
                         panic!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
@@ -1166,7 +1166,7 @@ pub fn ast_ty_to_ty<'tcx>(
                         let path_str = tcx.map.path_to_string(
                             tcx.map.get_parent(trait_type_id.node));
                         tcx.sess.span_err(ast_ty.span,
-                                          format!("ambiguous associated \
+                                          &format!("ambiguous associated \
                                                    type; specify the type \
                                                    using the syntax `<Type \
                                                    as {}>::{}`",
@@ -1176,7 +1176,7 @@ pub fn ast_ty_to_ty<'tcx>(
                                                           .last()
                                                           .unwrap()
                                                           .identifier)
-                                                  .get()).index(&FullRange));
+                                                  .get())[]);
                         this.tcx().types.err
                     }
                     def::DefAssociatedPath(provenance, assoc_ident) => {
@@ -1184,9 +1184,9 @@ pub fn ast_ty_to_ty<'tcx>(
                     }
                     _ => {
                         tcx.sess.span_fatal(ast_ty.span,
-                                            format!("found value name used \
+                                            &format!("found value name used \
                                                      as a type: {:?}",
-                                                    a_def).index(&FullRange));
+                                                    a_def)[]);
                     }
                 }
             }
@@ -1212,9 +1212,9 @@ pub fn ast_ty_to_ty<'tcx>(
                     Err(ref r) => {
                         tcx.sess.span_fatal(
                             ast_ty.span,
-                            format!("expected constant expr for array \
+                            &format!("expected constant expr for array \
                                      length: {}",
-                                    *r).index(&FullRange));
+                                    *r)[]);
                     }
                 }
             }
@@ -1336,7 +1336,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     let input_params = if self_ty.is_some() {
         decl.inputs.slice_from(1)
     } else {
-        decl.inputs.index(&FullRange)
+        &decl.inputs[]
     };
     let input_tys = input_params.iter().map(|a| ty_of_arg(this, &rb, a, None));
     let input_pats: Vec<String> = input_params.iter()
@@ -1551,7 +1551,7 @@ fn conv_ty_poly_trait_ref<'tcx>(
     ast_bounds: &[ast::TyParamBound])
     -> Ty<'tcx>
 {
-    let mut partitioned_bounds = partition_bounds(this.tcx(), span, ast_bounds.index(&FullRange));
+    let mut partitioned_bounds = partition_bounds(this.tcx(), span, &ast_bounds[]);
 
     let mut projection_bounds = Vec::new();
     let main_trait_bound = if !partitioned_bounds.trait_bounds.is_empty() {
@@ -1600,8 +1600,8 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
         let b = &trait_bounds[0];
         this.tcx().sess.span_err(
             b.trait_ref.path.span,
-            format!("only the builtin traits can be used \
-                     as closure or object bounds").index(&FullRange));
+            &format!("only the builtin traits can be used \
+                     as closure or object bounds")[]);
     }
 
     let region_bound = compute_region_bound(this,
@@ -1673,8 +1673,8 @@ fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
     if derived_region_bounds.slice_from(1).iter().any(|r1| r != *r1) {
         tcx.sess.span_err(
             span,
-            format!("ambiguous lifetime bound, \
-                     explicit lifetime bound required").index(&FullRange));
+            &format!("ambiguous lifetime bound, \
+                     explicit lifetime bound required")[]);
     }
     return Some(r);
 }
@@ -1700,7 +1700,7 @@ fn compute_region_bound<'tcx>(
                 None => {
                     this.tcx().sess.span_err(
                         span,
-                        format!("explicit lifetime bound required").index(&FullRange));
+                        &format!("explicit lifetime bound required")[]);
                     ty::ReStatic
                 }
             }

@@ -44,15 +44,15 @@ pub fn get_rpath_flags<F, G>(config: RPathConfig<F, G>) -> Vec<String> where
         l.map(|p| p.clone())
     }).collect::<Vec<_>>();
 
-    let rpaths = get_rpaths(config, libs.index(&FullRange));
-    flags.push_all(rpaths_to_flags(rpaths.index(&FullRange)).index(&FullRange));
+    let rpaths = get_rpaths(config, &libs[]);
+    flags.push_all(&rpaths_to_flags(&rpaths[])[]);
     flags
 }
 
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     let mut ret = Vec::new();
     for rpath in rpaths.iter() {
-        ret.push(format!("-Wl,-rpath,{}", (*rpath).index(&FullRange)));
+        ret.push(format!("-Wl,-rpath,{}", &(*rpath)[]));
     }
     return ret;
 }
@@ -82,14 +82,14 @@ fn get_rpaths<F, G>(mut config: RPathConfig<F, G>, libs: &[Path]) -> Vec<String>
         }
     }
 
-    log_rpaths("relative", rel_rpaths.index(&FullRange));
-    log_rpaths("fallback", fallback_rpaths.index(&FullRange));
+    log_rpaths("relative", &rel_rpaths[]);
+    log_rpaths("fallback", &fallback_rpaths[]);
 
     let mut rpaths = rel_rpaths;
-    rpaths.push_all(fallback_rpaths.index(&FullRange));
+    rpaths.push_all(&fallback_rpaths[]);
 
     // Remove duplicates
-    let rpaths = minimize_rpaths(rpaths.index(&FullRange));
+    let rpaths = minimize_rpaths(&rpaths[]);
     return rpaths;
 }
 
@@ -140,7 +140,7 @@ fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
     let mut set = HashSet::new();
     let mut minimized = Vec::new();
     for rpath in rpaths.iter() {
-        if set.insert(rpath.index(&FullRange)) {
+        if set.insert(&rpath[]) {
             minimized.push(rpath.clone());
         }
     }

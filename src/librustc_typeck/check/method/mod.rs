@@ -264,9 +264,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                         _ => {
                             fcx.tcx().sess.span_bug(
                                 span,
-                                format!(
+                                &format!(
                                     "trait method is &self but first arg is: {}",
-                                    transformed_self_ty.repr(fcx.tcx())).index(&FullRange));
+                                    transformed_self_ty.repr(fcx.tcx()))[]);
                         }
                     }
                 }
@@ -274,9 +274,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                 _ => {
                     fcx.tcx().sess.span_bug(
                         span,
-                        format!(
+                        &format!(
                             "unexpected explicit self type in operator method: {:?}",
-                            method_ty.explicit_self).index(&FullRange));
+                            method_ty.explicit_self)[]);
                 }
             }
         }
@@ -329,8 +329,8 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // If the method has the name of a field, give a help note
             if is_field {
                 cx.sess.span_note(span,
-                    format!("use `(s.{0})(...)` if you meant to call the \
-                            function stored in the `{0}` field", method_ustring).index(&FullRange));
+                    &format!("use `(s.{0})(...)` if you meant to call the \
+                            function stored in the `{0}` field", method_ustring)[]);
             }
 
             if static_sources.len() > 0 {

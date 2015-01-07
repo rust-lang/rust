@@ -24,7 +24,7 @@ use iter::IteratorExt;
 use marker::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
-use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr, Index};
+use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
 use option::Option::{Some, None};
 use str::{FromStr, StrExt};
@@ -1577,7 +1577,7 @@ macro_rules! from_str_radix_float_impl {
                         };
 
                         // Parse the exponent as decimal integer
-                        let src = src.index(&(offset..));
+                        let src = &src[offset..];
                         let (is_positive, exp) = match src.slice_shift_char() {
                             Some(('-', src)) => (false, src.parse::<uint>()),
                             Some(('+', src)) => (true,  src.parse::<uint>()),

@@ -362,7 +362,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 let mut cond_exit = discr_exit;
                 for arm in arms.iter() {
                     cond_exit = self.add_dummy_node(&[cond_exit]);        // 2
-                    let pats_exit = self.pats_any(arm.pats.index(&FullRange),
+                    let pats_exit = self.pats_any(&arm.pats[],
                                                   cond_exit);            // 3
                     let guard_exit = self.opt_expr(&arm.guard,
                                                    pats_exit);           // 4
@@ -615,15 +615,15 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         }
                         self.tcx.sess.span_bug(
                             expr.span,
-                            format!("no loop scope for id {}",
-                                    loop_id).index(&FullRange));
+                            &format!("no loop scope for id {}",
+                                    loop_id)[]);
                     }
 
                     r => {
                         self.tcx.sess.span_bug(
                             expr.span,
-                            format!("bad entry `{:?}` in def_map for label",
-                                    r).index(&FullRange));
+                            &format!("bad entry `{:?}` in def_map for label",
+                                    r)[]);
                     }
                 }
             }

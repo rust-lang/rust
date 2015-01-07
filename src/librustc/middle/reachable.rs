@@ -50,7 +50,7 @@ fn generics_require_inlining(generics: &ast::Generics) -> bool {
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
 fn item_might_be_inlined(item: &ast::Item) -> bool {
-    if attributes_specify_inlining(item.attrs.index(&FullRange)) {
+    if attributes_specify_inlining(&item.attrs[]) {
         return true
     }
 
@@ -65,7 +65,7 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
 
 fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
                            impl_src: ast::DefId) -> bool {
-    if attributes_specify_inlining(method.attrs.index(&FullRange)) ||
+    if attributes_specify_inlining(&method.attrs[]) ||
         generics_require_inlining(method.pe_generics()) {
         return true
     }
@@ -202,7 +202,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     ast::MethodImplItem(ref method) => {
                         if generics_require_inlining(method.pe_generics()) ||
                                 attributes_specify_inlining(
-                                    method.attrs.index(&FullRange)) {
+                                    &method.attrs[]) {
                             true
                         } else {
                             let impl_did = self.tcx
@@ -247,9 +247,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 Some(ref item) => self.propagate_node(item, search_item),
                 None if search_item == ast::CRATE_NODE_ID => {}
                 None => {
-                    self.tcx.sess.bug(format!("found unmapped ID in worklist: \
+                    self.tcx.sess.bug(&format!("found unmapped ID in worklist: \
                                                {}",
-                                              search_item).index(&FullRange))
+                                              search_item)[])
                 }
             }
         }
@@ -338,10 +338,10 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             _ => {
                 self.tcx
                     .sess
-                    .bug(format!("found unexpected thingy in worklist: {}",
+                    .bug(&format!("found unexpected thingy in worklist: {}",
                                  self.tcx
                                      .map
-                                     .node_to_string(search_item)).index(&FullRange))
+                                     .node_to_string(search_item))[])
             }
         }
     }

@@ -223,17 +223,17 @@ impl<'a> PluginLoader<'a> {
             // this is fatal: there are almost certainly macros we need
             // inside this crate, so continue would spew "macro undefined"
             // errors
-            Err(err) => self.sess.span_fatal(vi.span, err.index(&FullRange))
+            Err(err) => self.sess.span_fatal(vi.span, &err[])
         };
 
         unsafe {
             let registrar =
-                match lib.symbol(symbol.index(&FullRange)) {
+                match lib.symbol(&symbol[]) {
                     Ok(registrar) => {
                         mem::transmute::<*mut u8,PluginRegistrarFun>(registrar)
                     }
                     // again fatal if we can't register macros
-                    Err(err) => self.sess.span_fatal(vi.span, err.index(&FullRange))
+                    Err(err) => self.sess.span_fatal(vi.span, &err[])
                 };
 
             // Intentionally leak the dynamic library. We can't ever unload it

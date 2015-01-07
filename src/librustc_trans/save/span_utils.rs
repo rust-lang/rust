@@ -217,8 +217,8 @@ impl<'a> SpanUtils<'a> {
         if bracket_count != 0 {
             let loc = self.sess.codemap().lookup_char_pos(span.lo);
             self.sess.span_bug(span,
-                format!("Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
-                        self.snippet(span), loc.file.name, loc.line).index(&FullRange));
+                &format!("Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
+                        self.snippet(span), loc.file.name, loc.line)[]);
         }
         if result.is_none() && prev.tok.is_ident() && bracket_count == 0 {
             return self.make_sub_span(span, Some(prev.sp));
@@ -242,9 +242,9 @@ impl<'a> SpanUtils<'a> {
             if ts.tok == token::Eof {
                 if bracket_count != 0 {
                     let loc = self.sess.codemap().lookup_char_pos(span.lo);
-                    self.sess.span_bug(span, format!(
+                    self.sess.span_bug(span, &format!(
                         "Mis-counted brackets when breaking path? Parsing '{}' in {}, line {}",
-                         self.snippet(span), loc.file.name, loc.line).index(&FullRange));
+                         self.snippet(span), loc.file.name, loc.line)[]);
                 }
                 return result
             }

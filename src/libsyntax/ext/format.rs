@@ -112,8 +112,8 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
                 _ => {
                     ecx.span_err(p.span,
-                                 format!("expected ident for named argument, found `{}`",
-                                         p.this_token_to_string()).index(&FullRange));
+                                 &format!("expected ident for named argument, found `{}`",
+                                         p.this_token_to_string())[]);
                     return None;
                 }
             };
@@ -125,8 +125,8 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 None => {}
                 Some(prev) => {
                     ecx.span_err(e.span,
-                                 format!("duplicate argument named `{}`",
-                                         name).index(&FullRange));
+                                 &format!("duplicate argument named `{}`",
+                                         name)[]);
                     ecx.parse_sess.span_diagnostic.span_note(prev.span, "previously here");
                     continue
                 }
@@ -217,7 +217,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     let msg = format!("invalid reference to argument `{}` ({})",
                                       arg, self.describe_num_args());
 
-                    self.ecx.span_err(self.fmtsp, msg.index(&FullRange));
+                    self.ecx.span_err(self.fmtsp, &msg[]);
                     return;
                 }
                 {
@@ -237,7 +237,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     Some(e) => e.span,
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
-                        self.ecx.span_err(self.fmtsp, msg.index(&FullRange));
+                        self.ecx.span_err(self.fmtsp, &msg[]);
                         return;
                     }
                 };
@@ -277,22 +277,22 @@ impl<'a, 'b> Context<'a, 'b> {
         match (cur, ty) {
             (&Known(ref cur), &Known(ref ty)) => {
                 self.ecx.span_err(sp,
-                                  format!("argument redeclared with type `{}` when \
+                                  &format!("argument redeclared with type `{}` when \
                                            it was previously `{}`",
                                           *ty,
-                                          *cur).index(&FullRange));
+                                          *cur)[]);
             }
             (&Known(ref cur), _) => {
                 self.ecx.span_err(sp,
-                                  format!("argument used to format with `{}` was \
+                                  &format!("argument used to format with `{}` was \
                                            attempted to not be used for formatting",
-                                           *cur).index(&FullRange));
+                                           *cur)[]);
             }
             (_, &Known(ref ty)) => {
                 self.ecx.span_err(sp,
-                                  format!("argument previously used as a format \
+                                  &format!("argument previously used as a format \
                                            argument attempted to be used as `{}`",
-                                           *ty).index(&FullRange));
+                                           *ty)[]);
             }
             (_, _) => {
                 self.ecx.span_err(sp, "argument declared with multiple formats");
@@ -357,7 +357,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Translate the accumulated string literals to a literal expression
     fn trans_literal_string(&mut self) -> P<ast::Expr> {
         let sp = self.fmtsp;
-        let s = token::intern_and_get_ident(self.literal.index(&FullRange));
+        let s = token::intern_and_get_ident(&self.literal[]);
         self.literal.clear();
         self.ecx.expr_str(sp, s)
     }
@@ -509,7 +509,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 None => continue // error already generated
             };
 
-            let name = self.ecx.ident_of(format!("__arg{}", i).index(&FullRange));
+            let name = self.ecx.ident_of(&format!("__arg{}", i)[]);
             pats.push(self.ecx.pat_ident(e.span, name));
             locals.push(Context::format_arg(self.ecx, e.span, arg_ty,
                                             self.ecx.expr_ident(e.span, name)));
@@ -525,8 +525,8 @@ impl<'a, 'b> Context<'a, 'b> {
                 None => continue
             };
 
-            let lname = self.ecx.ident_of(format!("__arg{}",
-                                                  *name).index(&FullRange));
+            let lname = self.ecx.ident_of(&format!("__arg{}",
+                                                  *name)[]);
             pats.push(self.ecx.pat_ident(e.span, lname));
             names[self.name_positions[*name]] =
                 Some(Context::format_arg(self.ecx, e.span, arg_ty,
@@ -606,7 +606,7 @@ impl<'a, 'b> Context<'a, 'b> {
                   -> P<ast::Expr> {
         let trait_ = match *ty {
             Known(ref tyname) => {
-                match tyname.index(&FullRange) {
+                match &tyname[] {
                     ""  => "String",
                     "?" => "Show",
                     "e" => "LowerExp",
@@ -618,8 +618,8 @@ impl<'a, 'b> Context<'a, 'b> {
                     "X" => "UpperHex",
                     _ => {
                         ecx.span_err(sp,
-                                     format!("unknown format trait `{}`",
-                                             *tyname).index(&FullRange));
+                                     &format!("unknown format trait `{}`",
+                                             *tyname)[]);
                         "Dummy"
                     }
                 }
@@ -709,8 +709,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         }
     }
     if !parser.errors.is_empty() {
-        cx.ecx.span_err(cx.fmtsp, format!("invalid format string: {}",
-                                          parser.errors.remove(0)).index(&FullRange));
+        cx.ecx.span_err(cx.fmtsp, &format!("invalid format string: {}",
+                                          parser.errors.remove(0))[]);
         return DummyResult::raw_expr(sp);
     }
     if !cx.literal.is_empty() {

@@ -48,7 +48,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     debug!("trans_stmt({})", s.repr(cx.tcx()));
 
     if cx.sess().asm_comments() {
-        add_span_comment(cx, s.span, s.repr(cx.tcx()).index(&FullRange));
+        add_span_comment(cx, s.span, &s.repr(cx.tcx())[]);
     }
 
     let mut bcx = cx;
@@ -188,7 +188,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     let name = format!("then-block-{}-", thn.id);
-    let then_bcx_in = bcx.fcx.new_id_block(name.index(&FullRange), thn.id);
+    let then_bcx_in = bcx.fcx.new_id_block(&name[], thn.id);
     let then_bcx_out = trans_block(then_bcx_in, &*thn, dest);
     trans::debuginfo::clear_source_location(bcx.fcx);
 
@@ -439,8 +439,8 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match bcx.tcx().def_map.borrow().get(&expr_id) {
                 Some(&def::DefLabel(loop_id)) => loop_id,
                 ref r => {
-                    bcx.tcx().sess.bug(format!("{:?} in def-map for label",
-                                               r).index(&FullRange))
+                    bcx.tcx().sess.bug(&format!("{:?} in def-map for label",
+                                               r)[])
                 }
             }
         }
@@ -504,7 +504,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let v_str = C_str_slice(ccx, fail_str);
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let filename = token::intern_and_get_ident(loc.file.name.index(&FullRange));
+    let filename = token::intern_and_get_ident(&loc.file.name[]);
     let filename = C_str_slice(ccx, filename);
     let line = C_uint(ccx, loc.line);
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
@@ -513,7 +513,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let did = langcall(bcx, Some(sp), "", PanicFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
-                                      args.index(&FullRange),
+                                      &args[],
                                       Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;
@@ -529,7 +529,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Extract the file/line from the span
     let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
-    let filename = token::intern_and_get_ident(loc.file.name.index(&FullRange));
+    let filename = token::intern_and_get_ident(&loc.file.name[]);
 
     // Invoke the lang item
     let filename = C_str_slice(ccx,  filename);
@@ -540,7 +540,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let did = langcall(bcx, Some(sp), "", PanicBoundsCheckFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
-                                      args.index(&FullRange),
+                                      &args[],
                                       Some(expr::Ignore)).bcx;
     Unreachable(bcx);
     return bcx;

@@ -13,7 +13,6 @@ use cmp;
 use sync::mpsc::{Sender, Receiver};
 use io;
 use option::Option::{None, Some};
-use ops::Index;
 use result::Result::{Ok, Err};
 use slice::{bytes, SliceExt};
 use super::{Buffer, Reader, Writer, IoResult};
@@ -91,7 +90,7 @@ impl Reader for ChanReader {
                 Some(src) => {
                     let dst = buf.slice_from_mut(num_read);
                     let count = cmp::min(src.len(), dst.len());
-                    bytes::copy_memory(dst, src.index(&(0..count)));
+                    bytes::copy_memory(dst, &src[0..count]);
                     count
                 },
                 None => 0,

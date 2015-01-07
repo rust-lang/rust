@@ -137,7 +137,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
     check_loans::check_loans(this,
                              &loan_dfcx,
                              flowed_moves,
-                             all_loans.index(&FullRange),
+                             &all_loans[],
                              id,
                              decl,
                              body);
@@ -505,7 +505,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn report(&self, err: BckError<'tcx>) {
         self.span_err(
             err.span,
-            self.bckerr_to_string(&err).index(&FullRange));
+            &self.bckerr_to_string(&err)[]);
         self.note_and_explain_bckerr(err);
     }
 
@@ -525,9 +525,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             move_data::Declared => {
                 self.tcx.sess.span_err(
                     use_span,
-                    format!("{} of possibly uninitialized variable: `{}`",
+                    &format!("{} of possibly uninitialized variable: `{}`",
                             verb,
-                            self.loan_path_to_string(lp)).index(&FullRange));
+                            self.loan_path_to_string(lp))[]);
                 (self.loan_path_to_string(moved_lp),
                  String::new())
             }
@@ -566,10 +566,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                           else { "" };
                 self.tcx.sess.span_err(
                     use_span,
-                    format!("{} of {}moved value: `{}`",
+                    &format!("{} of {}moved value: `{}`",
                             verb,
                             msg,
-                            nl).index(&FullRange));
+                            nl)[]);
                 (ol, moved_lp_msg)
             }
         };
@@ -585,32 +585,32 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         (ty::expr_ty_adjusted(self.tcx, &*expr), expr.span)
                     }
                     r => {
-                        self.tcx.sess.bug(format!("MoveExpr({}) maps to \
+                        self.tcx.sess.bug(&format!("MoveExpr({}) maps to \
                                                    {:?}, not Expr",
                                                   the_move.id,
-                                                  r).index(&FullRange))
+                                                  r)[])
                     }
                 };
                 let (suggestion, _) =
                     move_suggestion(param_env, expr_span, expr_ty, ("moved by default", ""));
                 self.tcx.sess.span_note(
                     expr_span,
-                    format!("`{}` moved here{} because it has type `{}`, which is {}",
+                    &format!("`{}` moved here{} because it has type `{}`, which is {}",
                             ol,
                             moved_lp_msg,
                             expr_ty.user_string(self.tcx),
-                            suggestion).index(&FullRange));
+                            suggestion)[]);
             }
 
             move_data::MovePat => {
                 let pat_ty = ty::node_id_to_type(self.tcx, the_move.id);
                 let span = self.tcx.map.span(the_move.id);
                 self.tcx.sess.span_note(span,
-                    format!("`{}` moved here{} because it has type `{}`, \
+                    &format!("`{}` moved here{} because it has type `{}`, \
                              which is moved by default",
                             ol,
                             moved_lp_msg,
-                            pat_ty.user_string(self.tcx)).index(&FullRange));
+                            pat_ty.user_string(self.tcx))[]);
                 self.tcx.sess.span_help(span,
                     "use `ref` to override");
             }
@@ -623,10 +623,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         (ty::expr_ty_adjusted(self.tcx, &*expr), expr.span)
                     }
                     r => {
-                        self.tcx.sess.bug(format!("Captured({}) maps to \
+                        self.tcx.sess.bug(&format!("Captured({}) maps to \
                                                    {:?}, not Expr",
                                                   the_move.id,
-                                                  r).index(&FullRange))
+                                                  r)[])
                     }
                 };
                 let (suggestion, help) =
@@ -637,12 +637,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                      "make a copy and capture that instead to override"));
                 self.tcx.sess.span_note(
                     expr_span,
-                    format!("`{}` moved into closure environment here{} because it \
+                    &format!("`{}` moved into closure environment here{} because it \
                             has type `{}`, which is {}",
                             ol,
                             moved_lp_msg,
                             expr_ty.user_string(self.tcx),
-                            suggestion).index(&FullRange));
+                            suggestion)[]);
                 self.tcx.sess.span_help(expr_span, help);
             }
         }
@@ -672,8 +672,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                 &move_data::Assignment) {
         self.tcx.sess.span_err(
             span,
-            format!("re-assignment of immutable variable `{}`",
-                    self.loan_path_to_string(lp)).index(&FullRange));
+            &format!("re-assignment of immutable variable `{}`",
+                    self.loan_path_to_string(lp))[]);
         self.tcx.sess.span_note(assign.span, "prior assignment occurs here");
     }
 
@@ -798,8 +798,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             mc::AliasableOther => {
                 self.tcx.sess.span_err(
                     span,
-                    format!("{} in an aliasable location",
-                             prefix).index(&FullRange));
+                    &format!("{} in an aliasable location",
+                             prefix)[]);
             }
             mc::AliasableClosure(id) => {
                 self.tcx.sess.span_err(span,
@@ -812,12 +812,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             mc::AliasableStaticMut(..) => {
                 self.tcx.sess.span_err(
                     span,
-                    format!("{} in a static location", prefix).index(&FullRange));
+                    &format!("{} in a static location", prefix)[]);
             }
             mc::AliasableBorrowed => {
                 self.tcx.sess.span_err(
                     span,
-                    format!("{} in a `&` reference", prefix).index(&FullRange));
+                    &format!("{} in a `&` reference", prefix)[]);
             }
         }
 
@@ -884,13 +884,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
                 note_and_explain_region(
                     self.tcx,
-                    format!("{} would have to be valid for ",
-                            descr).index(&FullRange),
+                    &format!("{} would have to be valid for ",
+                            descr)[],
                     loan_scope,
                     "...");
                 note_and_explain_region(
                     self.tcx,
-                    format!("...but {} is only valid for ", descr).index(&FullRange),
+                    &format!("...but {} is only valid for ", descr)[],
                     ptr_scope,
                     "");
             }
@@ -910,7 +910,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 out.push('(');
                 self.append_loan_path_to_string(&**lp_base, out);
                 out.push_str(DOWNCAST_PRINTED_OPERATOR);
-                out.push_str(ty::item_path_str(self.tcx, variant_def_id).index(&FullRange));
+                out.push_str(&ty::item_path_str(self.tcx, variant_def_id)[]);
                 out.push(')');
             }
 
@@ -924,7 +924,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     }
                     mc::PositionalField(idx) => {
                         out.push('.');
-                        out.push_str(idx.to_string().index(&FullRange));
+                        out.push_str(&idx.to_string()[]);
                     }
                 }
             }
@@ -956,7 +956,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 out.push('(');
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out);
                 out.push(':');
-                out.push_str(ty::item_path_str(self.tcx, variant_def_id).index(&FullRange));
+                out.push_str(&ty::item_path_str(self.tcx, variant_def_id)[]);
                 out.push(')');
             }
 

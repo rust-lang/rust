@@ -21,7 +21,7 @@ use mem;
 use option::Option;
 use option::Option::{Some, None};
 use result::Result::Ok;
-use ops::{Deref, FnOnce, Index};
+use ops::{Deref, FnOnce};
 use result;
 use slice::SliceExt;
 use slice;
@@ -424,7 +424,7 @@ impl<'a> Formatter<'a> {
             for c in sign.into_iter() {
                 let mut b = [0; 4];
                 let n = c.encode_utf8(&mut b).unwrap_or(0);
-                let b = unsafe { str::from_utf8_unchecked(b.index(&(0..n))) };
+                let b = unsafe { str::from_utf8_unchecked(&b[0..n]) };
                 try!(f.buf.write_str(b));
             }
             if prefixed { f.buf.write_str(prefix) }
@@ -532,7 +532,7 @@ impl<'a> Formatter<'a> {
 
         let mut fill = [0u8; 4];
         let len = self.fill.encode_utf8(&mut fill).unwrap_or(0);
-        let fill = unsafe { str::from_utf8_unchecked(fill.index(&(..len))) };
+        let fill = unsafe { str::from_utf8_unchecked(&fill[..len]) };
 
         for _ in range(0, pre_pad) {
             try!(self.buf.write_str(fill));
@@ -666,7 +666,7 @@ impl String for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8; 4];
         let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
-        let s: &str = unsafe { mem::transmute(utf8.index(&(0..amt))) };
+        let s: &str = unsafe { mem::transmute(&utf8[0..amt]) };
         String::fmt(s, f)
     }
 }

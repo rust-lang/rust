@@ -28,7 +28,7 @@ pub struct Interner<T> {
     vect: RefCell<Vec<T> >,
 }
 
-// when traits can extend traits, we should extend index<Name,T> to get .index(&FullRange)
+// when traits can extend traits, we should extend index<Name,T> to get []
 impl<T: Eq + Hash + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
@@ -109,27 +109,27 @@ impl Eq for RcStr {}
 
 impl Ord for RcStr {
     fn cmp(&self, other: &RcStr) -> Ordering {
-        self.index(&FullRange).cmp(other.index(&FullRange))
+        self[].cmp(&other[])
     }
 }
 
 impl fmt::Show for RcStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use std::fmt::Show;
-        self.index(&FullRange).fmt(f)
+        self[].fmt(f)
     }
 }
 
 impl BorrowFrom<RcStr> for str {
     fn borrow_from(owned: &RcStr) -> &str {
-        owned.string.index(&FullRange)
+        &owned.string[]
     }
 }
 
 impl Deref for RcStr {
     type Target = str;
 
-    fn deref(&self) -> &str { self.string.index(&FullRange) }
+    fn deref(&self) -> &str { &self.string[] }
 }
 
 /// A StrInterner differs from Interner<String> in that it accepts
@@ -139,7 +139,7 @@ pub struct StrInterner {
     vect: RefCell<Vec<RcStr> >,
 }
 
-/// When traits can extend traits, we should extend index<Name,T> to get .index(&FullRange)
+/// When traits can extend traits, we should extend index<Name,T> to get []
 impl StrInterner {
     pub fn new() -> StrInterner {
         StrInterner {
