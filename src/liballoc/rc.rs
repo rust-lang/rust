@@ -611,6 +611,13 @@ impl<T: fmt::Show> fmt::Show for Rc<T> {
     }
 }
 
+#[stable]
+impl<T: fmt::String> fmt::String for Rc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(&**self, f)
+    }
+}
+
 /// A weak version of `Rc<T>`.
 ///
 /// Weak references do not count when determining if the inner value should be dropped.

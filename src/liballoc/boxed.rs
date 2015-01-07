@@ -149,6 +149,7 @@ impl<T: ?Sized + fmt::Show> fmt::Show for Box<T> {
     }
 }
 
+#[stable]
 impl<T: ?Sized + fmt::String> fmt::String for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(&**self, f)
