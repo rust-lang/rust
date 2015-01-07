@@ -452,7 +452,9 @@ fn assemble_candidates_from_predicates<'cx,'tcx>(
     for predicate in elaborate_predicates(selcx.tcx(), env_predicates) {
         match predicate {
             ty::Predicate::Projection(ref data) => {
-                let is_match = infcx.probe(|_| {
+                let same_name = data.item_name() == obligation.predicate.item_name;
+
+                let is_match = same_name && infcx.probe(|_| {
                     let origin = infer::Misc(obligation.cause.span);
                     let obligation_poly_trait_ref =
                         obligation_trait_ref.to_poly_trait_ref();
@@ -465,6 +467,9 @@ fn assemble_candidates_from_predicates<'cx,'tcx>(
                 });
 
                 if is_match {
+                    debug!("assemble_candidates_from_predicates: candidate {}",
+                           data.repr(selcx.tcx()));
+
                     candidate_set.vec.push(
                         ProjectionTyCandidate::ParamEnv(data.clone()));
                 }
@@ -527,6 +532,9 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
 
     match vtable {
         super::VtableImpl(data) => {
+            debug!("assemble_candidates_from_impls: impl candidate {}",
+                   data.repr(selcx.tcx()));
+
             candidate_set.vec.push(
                 ProjectionTyCandidate::Impl(data));
         }
