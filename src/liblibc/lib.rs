@@ -9,10 +9,9 @@
 // except according to those terms.
 
 #![crate_name = "libc"]
-#![experimental]
-#![no_std] // we don't need std, and we can't have std, since it doesn't exist
-           // yet. std depends on us.
 #![crate_type = "rlib"]
+#![cfg_attr(not(feature = "cargo-build"), experimental)]
+#![no_std]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
@@ -70,19 +69,13 @@
 //! in multiple derived systems. This is the 4.4BSD r2 / 1995 release, the final
 //! one from Berkeley after the lawsuits died down and the CSRG dissolved.
 
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-#![allow(non_upper_case_globals)]
-#![allow(missing_docs)]
-#![allow(non_snake_case)]
-#![allow(raw_pointer_derive)]
+#![allow(bad_style, raw_pointer_derive)]
 
-extern crate core;
+#[cfg(feature = "cargo-build")] extern crate "std" as core;
+#[cfg(not(feature = "cargo-build"))] extern crate core;
 
 #[cfg(test)] extern crate std;
 #[cfg(test)] extern crate test;
-
-pub use self::Nullable::*;
 
 // Explicit export lists for the intersection (provided here) mean that
 // you can write more-platform-agnostic code if you stick to just these
@@ -310,14 +303,6 @@ pub use types::os::arch::extra::{mach_timebase_info};
 #[link(name = "c")]
 #[link(name = "m")]
 extern {}
-
-/// A wrapper for a nullable pointer. Don't use this except for interacting
-/// with libc. Basically Option, but without the dependence on libstd.
-// If/when libprim happens, this can be removed in favor of that
-pub enum Nullable<T> {
-    Null,
-    NotNull(T)
-}
 
 pub mod types {
 
@@ -4648,7 +4633,7 @@ pub mod funcs {
             extern {
                 pub fn glob(pattern: *const c_char,
                             flags: c_int,
-                            errfunc: ::Nullable<extern "C" fn(epath: *const c_char,
+                            errfunc: ::core::option::Option<extern "C" fn(epath: *const c_char,
                                                               errno: c_int) -> c_int>,
                             pglob: *mut glob_t);
                 pub fn globfree(pglob: *mut glob_t);
