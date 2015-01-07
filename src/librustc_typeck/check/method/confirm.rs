@@ -122,7 +122,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // If this is an `&mut self` method, bias the receiver
         // expression towards mutability (this will switch
-        // e.g. `Deref` to `DerefMut` in oveloaded derefs and so on).
+        // e.g. `Deref` to `DerefMut` in overloaded derefs and so on).
         self.fixup_derefs_on_method_receiver_if_necessary(&callee);
 
         callee

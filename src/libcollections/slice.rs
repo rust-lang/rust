@@ -987,7 +987,7 @@ impl<T> SliceExt for [T] {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Extension traits for slices over specifc kinds of data
+// Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
 #[unstable = "U should be an associated type"]
 /// An extension trait for concatenating slices
@@ -997,7 +997,7 @@ pub trait SliceConcatExt<T: ?Sized, U> {
     fn concat(&self) -> U;
 
     /// Flattens a slice of `T` into a single value `U`, placing a
-    /// given seperator between each.
+    /// given separator between each.
     #[stable]
     fn connect(&self, sep: &T) -> U;
 }

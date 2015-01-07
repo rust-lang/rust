@@ -198,7 +198,7 @@
 //!
 //! So the way we solve this is to add a fourth step that examines the
 //! constraints that refer to skolemized names. Basically, consider a
-//! non-directed verison of the constraint graph. Let `Tainted(x)` be the
+//! non-directed version of the constraint graph. Let `Tainted(x)` be the
 //! set of all things reachable from a skolemized variable `x`.
 //! `Tainted(x)` should not contain any regions that existed before the
 //! step at which the skolemization was performed. So this case here

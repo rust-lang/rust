@@ -1067,7 +1067,7 @@ impl<'tcx> FnOutput<'tcx> {
 ///
 /// - `inputs` is the list of arguments and their modes.
 /// - `output` is the return type.
-/// - `variadic` indicates whether this is a varidic function. (only true for foreign fns)
+/// - `variadic` indicates whether this is a variadic function. (only true for foreign fns)
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FnSig<'tcx> {
     pub inputs: Vec<Ty<'tcx>>,

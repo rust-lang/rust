@@ -104,7 +104,7 @@ impl CString {
         unsafe { mem::transmute(self.as_slice()) }
     }
 
-    /// Equivalend to `as_slice_with_nul` except that the type returned is a
+    /// Equivalent to `as_slice_with_nul` except that the type returned is a
     /// `u8` slice instead of a `libc::c_char` slice.
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         unsafe { mem::transmute(self.as_slice_with_nul()) }

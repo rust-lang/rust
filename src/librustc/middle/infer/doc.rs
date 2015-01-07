@@ -125,7 +125,7 @@
 //! Another option is to keep A and B as distinct variables but set their
 //! bounds in such a way that, whatever happens, we know that A <: B will hold.
 //! This can be achieved by ensuring that A.ub <: B.lb.  In practice there
-//! are two ways to do that, depicted pictorally here:
+//! are two ways to do that, depicted pictorially here:
 //!
 //! ```text
 //!     Before                Option #1            Option #2
