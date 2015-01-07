@@ -19,10 +19,6 @@ enum List<T> {
     Nil, Cons(T, Box<List<T>>)
 }
 
-enum UniqueList {
-    ULNil, ULCons(Box<UniqueList>)
-}
-
 fn main() {
     let (repeat, depth) = if os::getenv("RUST_BENCH").is_some() {
         (50, 1000)
