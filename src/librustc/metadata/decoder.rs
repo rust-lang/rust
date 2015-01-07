@@ -371,6 +371,15 @@ fn parse_unsafety(item_doc: rbml::Doc) -> ast::Unsafety {
     }
 }
 
+fn parse_polarity(item_doc: rbml::Doc) -> ast::ImplPolarity {
+    let polarity_doc = reader::get_doc(item_doc, tag_polarity);
+    if reader::doc_as_u8(polarity_doc) != 0 {
+        ast::ImplPolarity::Negative
+    } else {
+        ast::ImplPolarity::Positive
+    }
+}
+
 fn parse_associated_type_names(item_doc: rbml::Doc) -> Vec<ast::Name> {
     let names_doc = reader::get_doc(item_doc, tag_associated_type_names);
     let mut names = Vec::new();
@@ -433,6 +442,20 @@ pub fn get_repr_attrs(cdata: Cmd, id: ast::NodeId) -> Vec<attr::ReprAttr> {
     }) {
         Some(attrs) => attrs,
         None => Vec::new(),
+    }
+}
+
+pub fn get_impl_polarity<'tcx>(cdata: Cmd,
+                               id: ast::NodeId)
+                               -> Option<ast::ImplPolarity>
+{
+    let item_doc = lookup_item(id, cdata.data());
+    let fam = item_family(item_doc);
+    match fam {
+        Family::Impl => {
+            Some(parse_polarity(item_doc))
+        }
+        _ => None
     }
 }
 

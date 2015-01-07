@@ -750,6 +750,9 @@ pub struct ctxt<'tcx> {
     /// Maps a trait onto a list of impls of that trait.
     pub trait_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
 
+    /// Maps a trait onto a list of negative impls of that trait.
+    pub trait_negative_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
+
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
@@ -2412,6 +2415,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         destructor_for_type: RefCell::new(DefIdMap::new()),
         destructors: RefCell::new(DefIdSet::new()),
         trait_impls: RefCell::new(DefIdMap::new()),
+        trait_negative_impls: RefCell::new(DefIdMap::new()),
         inherent_impls: RefCell::new(DefIdMap::new()),
         impl_items: RefCell::new(DefIdMap::new()),
         used_unsafe: RefCell::new(NodeSet::new()),
@@ -5035,6 +5039,23 @@ pub fn trait_items<'tcx>(cx: &ctxt<'tcx>, trait_did: ast::DefId)
     }
 }
 
+pub fn trait_impl_polarity<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
+                            -> Option<ast::ImplPolarity> {
+     if id.krate == ast::LOCAL_CRATE {
+         match cx.map.find(id.node) {
+             Some(ast_map::NodeItem(item)) => {
+                 match item.node {
+                     ast::ItemImpl(_, polarity, _, _, _, _) => Some(polarity),
+                     _ => None
+                 }
+             }
+             _ => None
+         }
+     } else {
+         csearch::get_impl_polarity(cx, id)
+     }
+}
+
 pub fn impl_or_trait_item<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                 -> ImplOrTraitItem<'tcx> {
     lookup_locally_or_in_crate_store("impl_or_trait_items",
@@ -5984,14 +6005,23 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
 pub fn record_trait_implementation(tcx: &ctxt,
                                    trait_def_id: DefId,
                                    impl_def_id: DefId) {
-    match tcx.trait_impls.borrow().get(&trait_def_id) {
+
+    let trait_impls = match trait_impl_polarity(tcx, impl_def_id)  {
+        Some(ast::ImplPolarity::Positive) => &tcx.trait_impls,
+        Some(ast::ImplPolarity::Negative) => &tcx.trait_negative_impls,
+        _ => tcx.sess.bug(&format!("tried to record a non-impl item with id {:?}",
+                                  impl_def_id)[])
+    };
+
+    match trait_impls.borrow().get(&trait_def_id) {
         Some(impls_for_trait) => {
             impls_for_trait.borrow_mut().push(impl_def_id);
             return;
         }
         None => {}
     }
-    tcx.trait_impls.borrow_mut().insert(trait_def_id, Rc::new(RefCell::new(vec!(impl_def_id))));
+
+    trait_impls.borrow_mut().insert(trait_def_id, Rc::new(RefCell::new(vec!(impl_def_id))));
 }
 
 /// Populates the type context with all the implementations for the given type
