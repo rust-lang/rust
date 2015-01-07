@@ -426,6 +426,24 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                       representation annotation in foreign module, consider \
                                       adding a #[repr(...)] attribute to the type");
                 }
+
+                // FIXME: DO THIS CORRECTLY
+                if let ty_struct(...) = tty.sty {
+                    let ty_fields = ty::ty_to_def_id(tty).map(|ty_id| {
+                        ty::lookup_struct_fields(self.cx.tcx, ty_id)
+                    });
+                    match ty_fields {
+                        Some(ty_fields_really) => {
+                            if ty_fields_really.is_empty() {
+                                self.cx.span_lint(IMPROPER_CTYPES, sp,
+                                        "found struct with zero fields in foreign \
+                                        module, invalid C struct unless GCC extensions \
+                                        enabled");
+                            }
+                        },
+                        _ => unreachable!("struct should have fields!");
+                    }
+                }
             }
             _ => ()
         }
