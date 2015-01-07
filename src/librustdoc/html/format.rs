@@ -64,14 +64,6 @@ impl UnsafetySpace {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for TyParamBounds<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl<'a> fmt::String for TyParamBounds<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let &TyParamBounds(bounds) = self;
@@ -82,14 +74,6 @@ impl<'a> fmt::String for TyParamBounds<'a> {
             try!(write!(f, "{}", *bound));
         }
         Ok(())
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::Generic {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -130,14 +114,6 @@ impl fmt::String for clean::Generics {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for WhereClause<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl<'a> fmt::String for WhereClause<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let &WhereClause(gens) = self;
@@ -175,26 +151,10 @@ impl<'a> fmt::String for WhereClause<'a> {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::Lifetime {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for clean::Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(f.write_str(self.get_ref()));
         Ok(())
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::PolyTrait {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -214,14 +174,6 @@ impl fmt::String for clean::PolyTrait {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::TyParamBound {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for clean::TyParamBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -236,14 +188,6 @@ impl fmt::String for clean::TyParamBound {
                 write!(f, "{}{}", modifier_str, *ty)
             }
         }
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::PathParameters {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -292,26 +236,10 @@ impl fmt::String for clean::PathParameters {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::PathSegment {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for clean::PathSegment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(f.write_str(self.name.as_slice()));
         write!(f, "{}", self.params)
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::Path {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -501,14 +429,6 @@ fn tybounds(w: &mut fmt::Formatter,
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::Type {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -650,15 +570,6 @@ impl fmt::String for clean::Type {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::Arguments {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
-
 impl fmt::String for clean::Arguments {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, input) in self.values.iter().enumerate() {
@@ -672,14 +583,6 @@ impl fmt::String for clean::Arguments {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::FunctionRetTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for clean::FunctionRetTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -690,25 +593,9 @@ impl fmt::String for clean::FunctionRetTy {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::FnDecl {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for clean::FnDecl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({args}){arrow}", args = self.inputs, arrow = self.output)
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for Method<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -742,14 +629,6 @@ impl<'a> fmt::String for Method<'a> {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for VisSpace {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for VisSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
@@ -759,28 +638,12 @@ impl fmt::String for VisSpace {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for UnsafetySpace {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for UnsafetySpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
             ast::Unsafety::Unsafe => write!(f, "unsafe "),
             ast::Unsafety::Normal => Ok(())
         }
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::ViewPath {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -811,14 +674,6 @@ impl fmt::String for clean::ViewPath {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::ImportSource {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for clean::ImportSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.did {
@@ -833,14 +688,6 @@ impl fmt::String for clean::ImportSource {
                 Ok(())
             }
         }
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for clean::ViewListIdent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -865,14 +712,6 @@ impl fmt::String for clean::ViewListIdent {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for MutableSpace {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for MutableSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -882,28 +721,12 @@ impl fmt::String for MutableSpace {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for RawMutableSpace {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for RawMutableSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             RawMutableSpace(clean::Immutable) => write!(f, "const "),
             RawMutableSpace(clean::Mutable) => write!(f, "mut "),
         }
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for Stability<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -921,14 +744,6 @@ impl<'a> fmt::String for Stability<'a> {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for ConciseStability<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl<'a> fmt::String for ConciseStability<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let ConciseStability(stab) = *self;
@@ -943,14 +758,6 @@ impl<'a> fmt::String for ConciseStability<'a> {
                 write!(f, "<a class='stability Unmarked' title='No stability level'></a>")
             }
         }
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl fmt::Show for ModuleSummary {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 

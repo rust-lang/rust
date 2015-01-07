@@ -1351,14 +1351,6 @@ impl<'a> Item<'a> {
 }
 
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for Item<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl<'a> fmt::String for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Write the breadcrumb trail header for the top
@@ -1633,14 +1625,6 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 }
 
 struct Initializer<'a>(&'a str);
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for Initializer<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
 
 impl<'a> fmt::String for Initializer<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2204,14 +2188,6 @@ fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
     document(w, it)
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for Sidebar<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl<'a> fmt::String for Sidebar<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = self.cx;
@@ -2264,14 +2240,6 @@ impl<'a> fmt::String for Sidebar<'a> {
         try!(block(fmt, "fn", "Functions", it, cx));
         try!(block(fmt, "macro", "Macros", it, cx));
         Ok(())
-    }
-}
-
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for Source<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 

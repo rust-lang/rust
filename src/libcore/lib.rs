@@ -146,8 +146,6 @@ mod core {
 mod std {
     pub use clone;
     pub use cmp;
-    #[cfg(stage0)]
-    pub use marker as kinds;
     pub use marker;
     pub use option;
     pub use fmt;
