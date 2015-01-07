@@ -57,7 +57,7 @@ impl LintPass for TypePass {
             use std::boxed::Box;
             use std::vec::Vec;
         }
-        match_ty_unwrap(ty, &["std", "boxed", "Box"]).and_then(|t| t.head())
+        match_ty_unwrap(ty, &["std", "boxed", "Box"]).and_then(|t| t.first())
           .map(|t| match_ty_unwrap(&**t, &["std", "vec", "Vec"]))
           .map(|_| {
             span_note_and_lint(cx, BOX_VEC, ty.span,

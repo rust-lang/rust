@@ -3,7 +3,7 @@ use syntax::ast;
 use syntax::ast::*;
 use syntax::visit::{FnKind};
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
-use rustc::middle::ty::{mod, expr_ty, ty_str, ty_ptr, ty_rptr};
+use rustc::middle::ty::{self, expr_ty, ty_str, ty_ptr, ty_rptr};
 use syntax::codemap::Span;
 
 use types::span_note_and_lint;
