@@ -24,6 +24,7 @@
 
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
+#![feature(box_syntax)]
 #![feature(quote, unsafe_destructor)]
 
 extern crate arena;

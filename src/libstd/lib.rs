@@ -107,6 +107,7 @@
 #![feature(linkage, thread_local, asm)]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(slicing_syntax, unboxed_closures)]
+#![feature(box_syntax)]
 #![feature(old_impl_check)]
 #![cfg_attr(stage0, allow(unused_attributes))]
 

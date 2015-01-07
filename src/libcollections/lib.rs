@@ -24,6 +24,7 @@
 #![allow(unknown_features)]
 #![feature(unsafe_destructor, slicing_syntax)]
 #![feature(old_impl_check)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 #![no_std]
 
