@@ -1049,13 +1049,16 @@ fn type_of_node_must_outlive<'a, 'tcx>(
 /// Computes the guarantor for an expression `&base` and then ensures that the lifetime of the
 /// resulting pointer is linked to the lifetime of its guarantor (if any).
 fn link_addr_of(rcx: &mut Rcx, expr: &ast::Expr,
-               mutability: ast::Mutability, base: &ast::Expr) {
-    debug!("link_addr_of(base=?)");
+                mutability: ast::Mutability, base: &ast::Expr) {
+    debug!("link_addr_of(expr={}, base={})", expr.repr(rcx.tcx()), base.repr(rcx.tcx()));
 
     let cmt = {
         let mc = mc::MemCategorizationContext::new(rcx.fcx);
         ignore_err!(mc.cat_expr(base))
     };
+
+    debug!("link_addr_of: cmt={}", cmt.repr(rcx.tcx()));
+
     link_region_from_node_type(rcx, expr.span, expr.id, mutability, cmt);
 }
 
@@ -1182,6 +1185,9 @@ fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                         id: ast::NodeId,
                                         mutbl: ast::Mutability,
                                         cmt_borrowed: mc::cmt<'tcx>) {
+    debug!("link_region_from_node_type(id={}, mutbl={}, cmt_borrowed={})",
+           id, mutbl, cmt_borrowed.repr(rcx.tcx()));
+
     let rptr_ty = rcx.resolve_node_type(id);
     if !ty::type_is_error(rptr_ty) {
         let tcx = rcx.fcx.ccx.tcx;
