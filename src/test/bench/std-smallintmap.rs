@@ -13,7 +13,6 @@
 use std::collections::VecMap;
 use std::os;
 use std::time::Duration;
-use std::uint;
 
 fn append_sequential(min: uint, max: uint, map: &mut VecMap<uint>) {
     for i in range(min, max) {

@@ -43,7 +43,7 @@ use std::thread::Thread;
 
 fn start(n_tasks: int, token: int) {
     let (tx, mut rx) = channel();
-    tx.send(token);
+    tx.send(token).unwrap();
     for i in range(2, n_tasks + 1) {
         let (tx, next_rx) = channel();
         Thread::spawn(move|| roundtrip(i, tx, rx));
@@ -58,7 +58,7 @@ fn roundtrip(id: int, tx: Sender<int>, rx: Receiver<int>) {
             println!("{}", id);
             break;
         }
-        tx.send(token - 1);
+        tx.send(token - 1).unwrap();
     }
 }
 

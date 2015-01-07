@@ -21,7 +21,6 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::os;
 use std::time::Duration;
-use std::uint;
 
 struct Results {
     sequential_ints: Duration,

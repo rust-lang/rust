@@ -229,7 +229,7 @@ unsafe impl<T: 'static> Send for Racy<T> {}
 
 /// Executes a closure in parallel over the given iterator over mutable slice.
 /// The closure `f` is run in parallel with an element of `iter`.
-fn parallel<'a, I, T, F>(mut iter: I, f: F)
+fn parallel<'a, I, T, F>(iter: I, f: F)
         where T: 'a+Send + Sync,
               I: Iterator<Item=&'a mut [T]>,
               F: Fn(&mut [T]) + Sync {

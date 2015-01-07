@@ -21,7 +21,6 @@
 use std::os;
 use std::sync::{Arc, Future, Mutex, Condvar};
 use std::time::Duration;
-use std::uint;
 
 // A poor man's pipe.
 type pipe = Arc<(Mutex<Vec<uint>>, Condvar)>;
@@ -76,7 +75,7 @@ fn main() {
     let num_tasks = args[1].parse::<uint>().unwrap();
     let msg_per_task = args[2].parse::<uint>().unwrap();
 
-    let (mut num_chan, num_port) = init();
+    let (num_chan, num_port) = init();
 
     let mut p = Some((num_chan, num_port));
     let dur = Duration::span(|| {
