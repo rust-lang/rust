@@ -121,11 +121,9 @@ CFG_JEMALLOC_FLAGS += $(JEMALLOC_FLAGS)
 
 ifdef CFG_DISABLE_DEBUG
   CFG_RUSTC_FLAGS += --cfg ndebug
-  CFG_GCCISH_CFLAGS += -DRUST_NDEBUG
 else
   $(info cfg: enabling more debugging (CFG_ENABLE_DEBUG))
   CFG_RUSTC_FLAGS += --cfg debug
-  CFG_GCCISH_CFLAGS += -DRUST_DEBUG
 endif
 
 ifdef SAVE_TEMPS
