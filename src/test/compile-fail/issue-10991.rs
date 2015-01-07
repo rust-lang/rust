@@ -10,5 +10,5 @@
 
 fn main() {
     let nil = ();
-    let _t = nil as uint; //~ ERROR: cast from nil: `()` as `uint`
+    let _t = nil as usize; //~ ERROR: cast from nil: `()` as `usize`
 }

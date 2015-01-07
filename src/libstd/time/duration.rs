@@ -19,9 +19,6 @@ use option::Option::{Some, None};
 use num::Int;
 use result::Result::Ok;
 
-// NOTE: for old macros; remove after the next snapshot
-#[cfg(stage0)] use result::Result::Err;
-
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;
 /// The number of nanoseconds in a millisecond.
@@ -48,7 +45,7 @@ macro_rules! try_opt {
 
 /// ISO 8601 time duration with nanosecond precision.
 /// This also allows for the negative duration; see individual methods for details.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Show)]
 pub struct Duration {
     secs: i64,
     nanos: i32, // Always 0 <= nanos < NANOS_PER_SEC
@@ -337,7 +334,7 @@ impl Div<i32> for Duration {
     }
 }
 
-impl fmt::Show for Duration {
+impl fmt::String for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // technically speaking, negative duration is not valid ISO 8601,
         // but we need to print it anyway.

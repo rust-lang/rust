@@ -82,7 +82,7 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                   expected_sig: Option<ty::FnSig<'tcx>>) {
     let expr_def_id = ast_util::local_def(expr.id);
 
-    debug!("check_unboxed_closure kind={} expected_sig={}",
+    debug!("check_unboxed_closure kind={:?} expected_sig={}",
            kind,
            expected_sig.repr(fcx.tcx()));
 
@@ -134,7 +134,7 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     // the `unboxed_closures` table.
     fn_ty.sig.0.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.0.inputs)];
 
-    debug!("unboxed_closure for {} --> sig={} kind={}",
+    debug!("unboxed_closure for {} --> sig={} kind={:?}",
            expr_def_id.repr(fcx.tcx()),
            fn_ty.sig.repr(fcx.tcx()),
            kind);
@@ -186,7 +186,7 @@ fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
         None => { return None; }
     };
 
-    debug!("found object type {}", kind);
+    debug!("found object type {:?}", kind);
 
     let arg_param_ty = *trait_ref.substs().types.get(subst::TypeSpace, 0);
     let arg_param_ty = fcx.infcx().resolve_type_vars_if_possible(&arg_param_ty);

@@ -30,36 +30,36 @@ impl<'a,X,F> Bar<X> for &'a mut F
 }
 
 fn no_hrtb<'b,T>(mut t: T)
-    where T : Bar<&'b int>
+    where T : Bar<&'b isize>
 {
-    // OK -- `T : Bar<&'b int>`, and thus the impl above ensures that
-    // `&mut T : Bar<&'b int>`.
+    // OK -- `T : Bar<&'b isize>`, and thus the impl above ensures that
+    // `&mut T : Bar<&'b isize>`.
     no_hrtb(&mut t);
 }
 
 fn bar_hrtb<T>(mut t: T)
-    where T : for<'b> Bar<&'b int>
+    where T : for<'b> Bar<&'b isize>
 {
-    // OK -- `T : for<'b> Bar<&'b int>`, and thus the impl above
-    // ensures that `&mut T : for<'b> Bar<&'b int>`.  This is an
+    // OK -- `T : for<'b> Bar<&'b isize>`, and thus the impl above
+    // ensures that `&mut T : for<'b> Bar<&'b isize>`.  This is an
     // example of a "perfect forwarding" impl.
     bar_hrtb(&mut t);
 }
 
 fn foo_hrtb_bar_not<'b,T>(mut t: T)
-    where T : for<'a> Foo<&'a int> + Bar<&'b int>
+    where T : for<'a> Foo<&'a isize> + Bar<&'b isize>
 {
     // Not OK -- The forwarding impl for `Foo` requires that `Bar` also
     // be implemented. Thus to satisfy `&mut T : for<'a> Foo<&'a
-    // int>`, we require `T : for<'a> Bar<&'a int>`, but the where
-    // clause only specifies `T : Bar<&'b int>`.
-    foo_hrtb_bar_not(&mut t); //~ ERROR `for<'a> Bar<&'a int>` is not implemented for the type `T`
+    // isize>`, we require `T : for<'a> Bar<&'a isize>`, but the where
+    // clause only specifies `T : Bar<&'b isize>`.
+    foo_hrtb_bar_not(&mut t); //~ ERROR `for<'a> Bar<&'a isize>` is not implemented for the type `T`
 }
 
 fn foo_hrtb_bar_hrtb<T>(mut t: T)
-    where T : for<'a> Foo<&'a int> + for<'b> Bar<&'b int>
+    where T : for<'a> Foo<&'a isize> + for<'b> Bar<&'b isize>
 {
-    // OK -- now we have `T : for<'b> Bar&'b int>`.
+    // OK -- now we have `T : for<'b> Bar&'b isize>`.
     foo_hrtb_bar_hrtb(&mut t);
 }
 

@@ -11,7 +11,7 @@
 #![allow(dead_code)]
 #![allow(unused_unsafe)]
 
-use std::kinds::Sync;
+use std::marker::Sync;
 
 struct Foo {
     a: uint,

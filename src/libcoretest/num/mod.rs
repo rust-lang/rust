@@ -12,10 +12,9 @@ use core::cmp::PartialEq;
 use core::fmt::Show;
 use core::num::{NumCast, cast};
 use core::ops::{Add, Sub, Mul, Div, Rem};
-use core::kinds::Copy;
+use core::marker::Copy;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 mod int_macros;
 
 mod i8;
@@ -24,8 +23,7 @@ mod i32;
 mod i64;
 mod int;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 mod uint_macros;
 
 mod u8;

@@ -241,7 +241,7 @@ fn parallel<'a, I, T, F>(mut iter: I, f: F)
         // boundary.
         let f = Racy(&f as *const F as *const uint);
         let raw = Racy(chunk.repr());
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             let f = f.0 as *const F;
             unsafe { (*f)(mem::transmute(raw.0)) }
         })

@@ -32,7 +32,7 @@ impl<'a> ParserAttr for Parser<'a> {
     fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         loop {
-            debug!("parse_outer_attributes: self.token={}",
+            debug!("parse_outer_attributes: self.token={:?}",
                    self.token);
             match self.token {
               token::Pound => {
@@ -62,7 +62,7 @@ impl<'a> ParserAttr for Parser<'a> {
     /// If permit_inner is true, then a leading `!` indicates an inner
     /// attribute
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute {
-        debug!("parse_attributes: permit_inner={} self.token={}",
+        debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
         let (span, value, mut style) = match self.token {
             token::Pound => {
@@ -92,7 +92,7 @@ impl<'a> ParserAttr for Parser<'a> {
             }
             _ => {
                 let token_str = self.this_token_to_string();
-                self.fatal(format!("expected `#`, found `{}`", token_str)[]);
+                self.fatal(format!("expected `#`, found `{}`", token_str).index(&FullRange));
             }
         };
 

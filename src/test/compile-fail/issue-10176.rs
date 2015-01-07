@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() -> int {
+fn f() -> isize {
     (return 1, return 2)
-//~^ ERROR mismatched types: expected `int`, found `(_, _)` (expected int, found tuple)
+//~^ ERROR mismatched types: expected `isize`, found `(_, _)` (expected isize, found tuple)
 }
 
 fn main() {}

@@ -25,5 +25,5 @@ impl Trait for int {}
 fn main() {
     let a = Foo { foo: 12i };
     let b = Bar { bar: 12i };
-    println!("{} {}", a, b);
+    println!("{:?} {:?}", a, b);
 }

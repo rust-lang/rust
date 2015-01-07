@@ -620,7 +620,7 @@ enum List<T> {
 
 fn main() {
     let list: List<int> = List::Cons(1, box List::Cons(2, box List::Cons(3, box List::Nil)));
-    println!("{}", list);
+    println!("{:?}", list);
 }
 ```
 

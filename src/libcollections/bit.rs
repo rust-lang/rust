@@ -143,17 +143,17 @@ static FALSE: bool = false;
 /// bv.set(3, true);
 /// bv.set(5, true);
 /// bv.set(7, true);
-/// println!("{}", bv.to_string());
+/// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 ///
 /// // flip all values in bitvector, producing non-primes less than 10
 /// bv.negate();
-/// println!("{}", bv.to_string());
+/// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 ///
 /// // reset bitvector to empty
 /// bv.clear();
-/// println!("{}", bv.to_string());
+/// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 /// ```
 #[stable]
@@ -330,7 +330,7 @@ impl Bitv {
 
         if extra_bytes > 0 {
             let mut last_word = 0u32;
-            for (i, &byte) in bytes[complete_words*4..].iter().enumerate() {
+            for (i, &byte) in bytes.index(&((complete_words*4)..)).iter().enumerate() {
                 last_word |= (reverse_bits(byte) as u32) << (i * 8);
             }
             bitv.storage.push(last_word);
@@ -1729,13 +1729,13 @@ impl BitvSet {
 
 impl fmt::Show for BitvSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "{{"));
+        try!(write!(fmt, "BitvSet {{"));
         let mut first = true;
         for n in self.iter() {
             if !first {
                 try!(write!(fmt, ", "));
             }
-            try!(write!(fmt, "{}", n));
+            try!(write!(fmt, "{:?}", n));
             first = false;
         }
         write!(fmt, "}}")
@@ -1881,10 +1881,10 @@ mod tests {
     #[test]
     fn test_to_str() {
         let zerolen = Bitv::new();
-        assert_eq!(zerolen.to_string(), "");
+        assert_eq!(format!("{:?}", zerolen), "");
 
         let eightbits = Bitv::from_elem(8u, false);
-        assert_eq!(eightbits.to_string(), "00000000")
+        assert_eq!(format!("{:?}", eightbits), "00000000")
     }
 
     #[test]
@@ -1910,7 +1910,7 @@ mod tests {
         let mut b = Bitv::from_elem(2, false);
         b.set(0, true);
         b.set(1, false);
-        assert_eq!(b.to_string(), "10");
+        assert_eq!(format!("{:?}", b), "10");
         assert!(!b.none() && !b.all());
     }
 
@@ -2245,7 +2245,7 @@ mod tests {
     fn test_from_bytes() {
         let bitv = Bitv::from_bytes(&[0b10110110, 0b00000000, 0b11111111]);
         let str = concat!("10110110", "00000000", "11111111");
-        assert_eq!(bitv.to_string(), str);
+        assert_eq!(format!("{:?}", bitv), str);
     }
 
     #[test]
@@ -2264,7 +2264,7 @@ mod tests {
     fn test_from_bools() {
         let bools = vec![true, false, true, true];
         let bitv: Bitv = bools.iter().map(|n| *n).collect();
-        assert_eq!(bitv.to_string(), "1011");
+        assert_eq!(format!("{:?}", bitv), "1011");
     }
 
     #[test]
@@ -2622,7 +2622,7 @@ mod bitv_set_test {
         s.insert(10);
         s.insert(50);
         s.insert(2);
-        assert_eq!("{1, 2, 10, 50}", s.to_string());
+        assert_eq!("BitvSet {1u, 2u, 10u, 50u}", format!("{:?}", s));
     }
 
     #[test]

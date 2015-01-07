@@ -17,7 +17,7 @@ use trans::adt;
 use trans::common::*;
 use trans::foreign;
 use trans::machine;
-use middle::ty::{self, Ty};
+use middle::ty::{self, RegionEscape, Ty};
 use util::ppaux;
 use util::ppaux::Repr;
 
@@ -99,18 +99,21 @@ pub fn untuple_arguments_if_necessary<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  llenvironment_type: Option<Type>,
-                                 inputs: &[Ty<'tcx>],
-                                 output: ty::FnOutput<'tcx>,
+                                 sig: &ty::Binder<ty::FnSig<'tcx>>,
                                  abi: abi::Abi)
-                                 -> Type {
+                                 -> Type
+{
+    let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+    assert!(!sig.variadic); // rust fns are never variadic
+
     let mut atys: Vec<Type> = Vec::new();
 
     // First, munge the inputs, if this has the `rust-call` ABI.
-    let inputs = untuple_arguments_if_necessary(cx, inputs, abi);
+    let inputs = untuple_arguments_if_necessary(cx, sig.inputs.as_slice(), abi);
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)
-    let lloutputtype = match output {
+    let lloutputtype = match sig.output {
         ty::FnConverging(output) => {
             let use_out_pointer = return_uses_outptr(cx, output);
             let lloutputtype = arg_type_of(cx, output);
@@ -137,7 +140,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let input_tys = inputs.iter().map(|&arg_ty| type_of_explicit_arg(cx, arg_ty));
     atys.extend(input_tys);
 
-    Type::func(atys[], &lloutputtype)
+    Type::func(atys.index(&FullRange), &lloutputtype)
 }
 
 // Given a function type and a count of ty params, construct an llvm type
@@ -147,11 +150,7 @@ pub fn type_of_fn_from_ty<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fty: Ty<'tcx>) 
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
             if f.abi == abi::Rust || f.abi == abi::RustCall {
-                type_of_rust_fn(cx,
-                                None,
-                                f.sig.0.inputs.as_slice(),
-                                f.sig.0.output,
-                                f.abi)
+                type_of_rust_fn(cx, None, &f.sig, f.abi)
             } else {
                 foreign::lltype_for_foreign_fn(cx, fty)
             }
@@ -182,7 +181,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     let llsizingty = match t.sty {
         _ if !lltype_is_sized(cx.tcx(), t) => {
             cx.sess().bug(format!("trying to take the sizing type of {}, an unsized type",
-                                  ppaux::ty_to_string(cx.tcx(), t))[])
+                                  ppaux::ty_to_string(cx.tcx(), t)).index(&FullRange))
         }
 
         ty::ty_bool => Type::bool(cx),
@@ -235,7 +234,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
         ty::ty_projection(..) | ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
             cx.sess().bug(format!("fictitious type {} in sizing_type_of()",
-                                  ppaux::ty_to_string(cx.tcx(), t))[])
+                                  ppaux::ty_to_string(cx.tcx(), t)).index(&FullRange))
         }
         ty::ty_vec(_, None) | ty::ty_trait(..) | ty::ty_str => panic!("unreachable")
     };
@@ -264,7 +263,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         }
 
         match unsized_part_of_type(cx.tcx(), t).sty {
-            ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyU),
+            ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyUs),
             ty::ty_trait(_) => Type::vtable_ptr(cx),
             _ => panic!("Unexpected type returned from unsized_part_of_type : {}",
                        t.repr(cx.tcx()))
@@ -277,18 +276,20 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         None => ()
     }
 
-    debug!("type_of {} {}", t.repr(cx.tcx()), t.sty);
+    debug!("type_of {} {:?}", t.repr(cx.tcx()), t.sty);
+
+    assert!(!t.has_escaping_regions());
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
     // Rust types are defined as the same LLVM types.  If we don't do
     // this then, e.g. `Option<{myfield: bool}>` would be a different
     // type than `Option<myrec>`.
-    let t_norm = ty::normalize_ty(cx.tcx(), t);
+    let t_norm = normalize_ty(cx.tcx(), t);
 
     if t != t_norm {
         let llty = type_of(cx, t_norm);
-        debug!("--> normalized {} {} to {} {} llty={}",
+        debug!("--> normalized {} {:?} to {} {:?} llty={}",
                 t.repr(cx.tcx()),
                 t,
                 t_norm.repr(cx.tcx()),
@@ -312,7 +313,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           let repr = adt::represent_type(cx, t);
           let tps = substs.types.get_slice(subst::TypeSpace);
           let name = llvm_type_name(cx, an_enum, did, tps);
-          adt::incomplete_type_of(cx, &*repr, name[])
+          adt::incomplete_type_of(cx, &*repr, name.index(&FullRange))
       }
       ty::ty_unboxed_closure(did, _, ref substs) => {
           // Only create the named struct, but don't fill it in. We
@@ -323,7 +324,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           // contents of the VecPerParamSpace to to construct the llvm
           // name
           let name = llvm_type_name(cx, an_unboxed_closure, did, substs.types.as_slice());
-          adt::incomplete_type_of(cx, &*repr, name[])
+          adt::incomplete_type_of(cx, &*repr, name.index(&FullRange))
       }
 
       ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
@@ -379,7 +380,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
               let repr = adt::represent_type(cx, t);
               let tps = substs.types.get_slice(subst::TypeSpace);
               let name = llvm_type_name(cx, a_struct, did, tps);
-              adt::incomplete_type_of(cx, &*repr, name[])
+              adt::incomplete_type_of(cx, &*repr, name.index(&FullRange))
           }
       }
 
@@ -398,7 +399,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           }
           ty::ty_trait(..) => Type::opaque_trait(cx),
           _ => cx.sess().bug(format!("ty_open with sized type: {}",
-                                     ppaux::ty_to_string(cx.tcx(), t))[])
+                                     ppaux::ty_to_string(cx.tcx(), t)).index(&FullRange))
       },
 
       ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),
@@ -407,7 +408,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
       ty::ty_err(..) => cx.sess().bug("type_of with ty_err"),
     };
 
-    debug!("--> mapped t={} {} to llty={}",
+    debug!("--> mapped t={} {:?} to llty={}",
             t.repr(cx.tcx()),
             t,
             cx.tn().type_to_string(llty));
@@ -457,7 +458,7 @@ pub fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let tstr = if strings.is_empty() {
         base
     } else {
-        format!("{}<{}>", base, strings)
+        format!("{}<{:?}>", base, strings)
     };
 
     if did.krate == 0 {

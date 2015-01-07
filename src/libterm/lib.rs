@@ -48,17 +48,10 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, phase, slicing_syntax, globs)]
-
+#![feature(slicing_syntax)]
 #![deny(missing_docs)]
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate log;
+#[macro_use] extern crate log;
 
 pub use terminfo::TerminfoTerminal;
 #[cfg(windows)]

@@ -435,28 +435,28 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     fn def_privacy(&self, did: ast::DefId) -> PrivacyResult {
         if !is_local(did) {
             if self.external_exports.contains(&did) {
-                debug!("privacy - {} was externally exported", did);
+                debug!("privacy - {:?} was externally exported", did);
                 return Allowable;
             }
-            debug!("privacy - is {} a public method", did);
+            debug!("privacy - is {:?} a public method", did);
 
             return match self.tcx.impl_or_trait_items.borrow().get(&did) {
                 Some(&ty::MethodTraitItem(ref meth)) => {
-                    debug!("privacy - well at least it's a method: {}",
+                    debug!("privacy - well at least it's a method: {:?}",
                            *meth);
                     match meth.container {
                         ty::TraitContainer(id) => {
-                            debug!("privacy - recursing on trait {}", id);
+                            debug!("privacy - recursing on trait {:?}", id);
                             self.def_privacy(id)
                         }
                         ty::ImplContainer(id) => {
                             match ty::impl_trait_ref(self.tcx, id) {
                                 Some(t) => {
-                                    debug!("privacy - impl of trait {}", id);
+                                    debug!("privacy - impl of trait {:?}", id);
                                     self.def_privacy(t.def_id)
                                 }
                                 None => {
-                                    debug!("privacy - found a method {}",
+                                    debug!("privacy - found a method {:?}",
                                             meth.vis);
                                     if meth.vis == ast::Public {
                                         Allowable
@@ -471,17 +471,17 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 Some(&ty::TypeTraitItem(ref typedef)) => {
                     match typedef.container {
                         ty::TraitContainer(id) => {
-                            debug!("privacy - recursing on trait {}", id);
+                            debug!("privacy - recursing on trait {:?}", id);
                             self.def_privacy(id)
                         }
                         ty::ImplContainer(id) => {
                             match ty::impl_trait_ref(self.tcx, id) {
                                 Some(t) => {
-                                    debug!("privacy - impl of trait {}", id);
+                                    debug!("privacy - impl of trait {:?}", id);
                                     self.def_privacy(t.def_id)
                                 }
                                 None => {
-                                    debug!("privacy - found a typedef {}",
+                                    debug!("privacy - found a typedef {:?}",
                                             typedef.vis);
                                     if typedef.vis == ast::Public {
                                         Allowable
@@ -615,10 +615,10 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         match result {
             None => true,
             Some((span, msg, note)) => {
-                self.tcx.sess.span_err(span, msg[]);
+                self.tcx.sess.span_err(span, msg.index(&FullRange));
                 match note {
                     Some((span, msg)) => {
-                        self.tcx.sess.span_note(span, msg[])
+                        self.tcx.sess.span_note(span, msg.index(&FullRange))
                     }
                     None => {},
                 }
@@ -696,7 +696,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         let fields = ty::lookup_struct_fields(self.tcx, id);
         let field = match name {
             NamedField(ident) => {
-                debug!("privacy - check named field {} in struct {}", ident.name, id);
+                debug!("privacy - check named field {} in struct {:?}", ident.name, id);
                 fields.iter().find(|f| f.name == ident.name).unwrap()
             }
             UnnamedField(idx) => &fields[idx]
@@ -720,7 +720,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             UnnamedField(idx) => format!("field #{} of {} is private",
                                          idx + 1, struct_desc),
         };
-        self.tcx.sess.span_err(span, msg[]);
+        self.tcx.sess.span_err(span, msg.index(&FullRange));
     }
 
     // Given the ID of a method, checks to ensure it's in scope.
@@ -742,7 +742,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                                              method_id,
                                              None,
                                              format!("method `{}`",
-                                                     string)[]));
+                                                     string).index(&FullRange)));
     }
 
     // Checks that a path is in scope.
@@ -756,7 +756,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 self.ensure_public(span,
                                    def,
                                    Some(origdid),
-                                   format!("{} `{}`", tyname, name)[])
+                                   format!("{} `{}`", tyname, name).index(&FullRange))
             };
 
             match self.last_private_map[path_id] {

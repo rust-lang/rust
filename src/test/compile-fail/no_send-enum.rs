@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::marker;
+use std::marker;
 
 enum Foo {
     A(marker::NoSend)
@@ -19,5 +19,5 @@ fn bar<T: Send>(_: T) {}
 fn main() {
     let x = Foo::A(marker::NoSend);
     bar(x);
-    //~^ ERROR `core::kinds::Send` is not implemented
+    //~^ ERROR `core::marker::Send` is not implemented
 }

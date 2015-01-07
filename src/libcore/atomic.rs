@@ -50,7 +50,7 @@
 //!     let spinlock_clone = spinlock.clone();
 //!     Thread::spawn(move|| {
 //!         spinlock_clone.store(0, Ordering::SeqCst);
-//!     }).detach();
+//!     });
 //!
 //!     // Wait for the other task to release the lock
 //!     while spinlock.load(Ordering::SeqCst) != 0 {}
@@ -72,7 +72,7 @@
 
 use self::Ordering::*;
 
-use kinds::Sync;
+use marker::Sync;
 
 use intrinsics;
 use cell::UnsafeCell;

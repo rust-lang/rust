@@ -24,29 +24,29 @@ pub fn f2<T: Foo>(a: T) -> T::A {
 }
 
 pub fn f1_int_int() {
-    f1(2i, 4i);
-    //~^ ERROR expected uint, found int
+    f1(2is, 4is);
+    //~^ ERROR expected usize, found isize
 }
 
 pub fn f1_int_uint() {
-    f1(2i, 4u);
+    f1(2is, 4us);
 }
 
 pub fn f1_uint_uint() {
-    f1(2u, 4u);
+    f1(2us, 4us);
     //~^ ERROR the trait `Foo` is not implemented
     //~| ERROR the trait `Foo` is not implemented
 }
 
 pub fn f1_uint_int() {
-    f1(2u, 4i);
+    f1(2us, 4is);
     //~^ ERROR the trait `Foo` is not implemented
     //~| ERROR the trait `Foo` is not implemented
 }
 
 pub fn f2_int() {
-    let _: int = f2(2i);
-    //~^ ERROR expected `int`, found `uint`
+    let _: int = f2(2is);
+    //~^ ERROR expected `isize`, found `usize`
 }
 
 pub fn main() { }

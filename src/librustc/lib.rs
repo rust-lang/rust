@@ -23,12 +23,10 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![allow(unknown_features)]
-#![feature(default_type_params, globs, macro_rules, phase, quote)]
+#![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(unboxed_closures)]
-#![feature(old_orphan_check)]
-#![feature(associated_types)]
+#![feature(old_impl_check)]
 
 extern crate arena;
 extern crate flate;
@@ -40,22 +38,8 @@ extern crate rustc_back;
 extern crate serialize;
 extern crate rbml;
 extern crate collections;
-
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate log;
-
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate syntax;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate syntax;
+#[macro_use] extern crate log;
+#[macro_use] extern crate syntax;
 
 extern crate "serialize" as rustc_serialize; // used by deriving
 

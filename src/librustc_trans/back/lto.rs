@@ -54,21 +54,21 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             Some(p) => p,
             None => {
                 sess.fatal(format!("could not find rlib for: `{}`",
-                                   name)[]);
+                                   name).index(&FullRange));
             }
         };
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         let file = path.filename_str().unwrap();
-        let file = file[3..file.len() - 5]; // chop off lib/.rlib
+        let file = file.index(&(3..(file.len() - 5))); // chop off lib/.rlib
         debug!("reading {}", file);
         for i in iter::count(0u, 1) {
             let bc_encoded = time(sess.time_passes(),
-                                  format!("check for {}.{}.bytecode.deflate", name, i)[],
+                                  format!("check for {}.{}.bytecode.deflate", name, i).as_slice(),
                                   (),
                                   |_| {
                                       archive.read(format!("{}.{}.bytecode.deflate",
-                                                           file, i)[])
+                                                           file, i).index(&FullRange))
                                   });
             let bc_encoded = match bc_encoded {
                 Some(data) => data,
@@ -76,7 +76,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                     if i == 0 {
                         // No bitcode was found at all.
                         sess.fatal(format!("missing compressed bytecode in {}",
-                                           path.display())[]);
+                                           path.display()).index(&FullRange));
                     }
                     // No more bitcode files to read.
                     break;
@@ -91,20 +91,20 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                     if version == 1 {
                         // The only version existing so far
                         let data_size = extract_compressed_bytecode_size_v1(bc_encoded);
-                        let compressed_data = bc_encoded[
+                        let compressed_data = bc_encoded.index(&(
                             link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET..
-                            link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as uint];
+                            (link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as uint)));
 
                         match flate::inflate_bytes(compressed_data) {
                             Some(inflated) => inflated,
                             None => {
                                 sess.fatal(format!("failed to decompress bc of `{}`",
-                                                   name)[])
+                                                   name).index(&FullRange))
                             }
                         }
                     } else {
                         sess.fatal(format!("Unsupported bytecode format version {}",
-                                           version)[])
+                                           version).index(&FullRange))
                     }
                 })
             } else {
@@ -115,7 +115,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                         Some(bc) => bc,
                         None => {
                             sess.fatal(format!("failed to decompress bc of `{}`",
-                                               name)[])
+                                               name).index(&FullRange))
                         }
                     }
                 })
@@ -124,7 +124,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             let ptr = bc_decoded.as_slice().as_ptr();
             debug!("linking {}, part {}", name, i);
             time(sess.time_passes(),
-                 format!("ll link {}.{}", name, i)[],
+                 format!("ll link {}.{}", name, i).index(&FullRange),
                  (),
                  |()| unsafe {
                 if !llvm::LLVMRustLinkInExternalBitcode(llmod,
@@ -132,7 +132,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                                                         bc_decoded.len() as libc::size_t) {
                     write::llvm_err(sess.diagnostic().handler(),
                                     format!("failed to load bc of `{}`",
-                                            name[]));
+                                            name.index(&FullRange)));
                 }
             });
         }
@@ -186,7 +186,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 fn is_versioned_bytecode_format(bc: &[u8]) -> bool {
     let magic_id_byte_count = link::RLIB_BYTECODE_OBJECT_MAGIC.len();
     return bc.len() > magic_id_byte_count &&
-           bc[..magic_id_byte_count] == link::RLIB_BYTECODE_OBJECT_MAGIC;
+           bc.index(&(0..magic_id_byte_count)) == link::RLIB_BYTECODE_OBJECT_MAGIC;
 }
 
 fn extract_bytecode_format_version(bc: &[u8]) -> u32 {
@@ -198,8 +198,8 @@ fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
 }
 
 fn read_from_le_bytes<T: Int>(bytes: &[u8], position_in_bytes: uint) -> T {
-    let byte_data = bytes[position_in_bytes..
-                          position_in_bytes + mem::size_of::<T>()];
+    let byte_data = bytes.index(&(position_in_bytes..
+                                  (position_in_bytes + mem::size_of::<T>())));
     let data = unsafe {
         *(byte_data.as_ptr() as *const T)
     };

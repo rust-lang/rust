@@ -23,35 +23,14 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(macro_rules, phase, globs)]
-#![feature(unboxed_closures)]
-#![feature(associated_types)]
 #![no_std]
 #![experimental]
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate core;
-
-#[cfg(not(stage0))]
 #[macro_use]
 extern crate core;
 
-#[cfg(all(test, stage0))]
-#[phase(plugin, link)]
-extern crate std;
-
-#[cfg(all(test, not(stage0)))]
-#[macro_use]
-extern crate std;
-
-#[cfg(all(test, stage0))]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(all(test, not(stage0)))]
-#[macro_use]
-extern crate log;
+#[cfg(test)] #[macro_use] extern crate std;
+#[cfg(test)] #[macro_use] extern crate log;
 
 use core::prelude::*;
 
@@ -161,7 +140,7 @@ pub trait Rng : Sized {
     ///
     /// let mut v = [0u8; 13579];
     /// thread_rng().fill_bytes(&mut v);
-    /// println!("{}", v.as_slice());
+    /// println!("{:?}", v.as_slice());
     /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         // this could, in theory, be done by transmuting dest to a
@@ -197,7 +176,7 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// let x: uint = rng.gen();
     /// println!("{}", x);
-    /// println!("{}", rng.gen::<(f64, bool)>());
+    /// println!("{:?}", rng.gen::<(f64, bool)>());
     /// ```
     #[inline(always)]
     fn gen<T: Rand>(&mut self) -> T {
@@ -215,8 +194,8 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// let x = rng.gen_iter::<uint>().take(10).collect::<Vec<uint>>();
     /// println!("{}", x);
-    /// println!("{}", rng.gen_iter::<(f64, bool)>().take(5)
-    ///                   .collect::<Vec<(f64, bool)>>());
+    /// println!("{:?}", rng.gen_iter::<(f64, bool)>().take(5)
+    ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
     fn gen_iter<'a, T: Rand>(&'a mut self) -> Generator<'a, T, Self> {
         Generator { rng: self }
@@ -289,9 +268,9 @@ pub trait Rng : Sized {
     ///
     /// let choices = [1i, 2, 4, 8, 16, 32];
     /// let mut rng = thread_rng();
-    /// println!("{}", rng.choose(&choices));
-    /// # // replace with slicing syntax when it's stable!
-    /// assert_eq!(rng.choose(choices.slice_to(0)), None);
+    /// println!("{:?}", rng.choose(&choices));
+    /// # // uncomment when slicing syntax is stable
+    /// //assert_eq!(rng.choose(choices.index(&(0..0))), None);
     /// ```
     fn choose<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
         if values.is_empty() {
@@ -516,7 +495,9 @@ pub struct Closed01<F>(pub F);
 mod std {
     pub use core::{option, fmt}; // panic!()
     pub use core::clone; // derive Clone
-    pub use core::kinds;
+    #[cfg(stage0)]
+    pub use core::marker as kinds;
+    pub use core::marker;
 }
 
 #[cfg(test)]

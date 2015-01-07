@@ -47,7 +47,7 @@
 use clone::Clone;
 use cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use fmt;
-use kinds::Sized;
+use marker::Sized;
 use ops::Deref;
 use option::Option;
 use self::Cow::*;
@@ -133,12 +133,23 @@ impl<T> ToOwned<T> for T where T: Clone {
 ///     }
 /// }
 /// ```
+//#[deriving(Show)] NOTE(stage0): uncomment after snapshot
 pub enum Cow<'a, T, B: ?Sized + 'a> where B: ToOwned<T> {
     /// Borrowed data.
     Borrowed(&'a B),
 
     /// Owned data.
     Owned(T)
+}
+
+//NOTE(stage0): replace with deriving(Show) after snapshot
+impl<'a, T, B: ?Sized> fmt::Show for Cow<'a, T, B> where
+    B: fmt::String + ToOwned<T>,
+    T: fmt::String
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
 }
 
 #[stable]
@@ -237,11 +248,14 @@ impl<'a, T, B: ?Sized> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwne
     }
 }
 
-impl<'a, T, B: ?Sized> fmt::Show for Cow<'a, T, B> where B: fmt::Show + ToOwned<T>, T: fmt::Show {
+impl<'a, T, B: ?Sized> fmt::String for Cow<'a, T, B> where
+    B: fmt::String + ToOwned<T>,
+    T: fmt::String,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Borrowed(ref b) => fmt::Show::fmt(b, f),
-            Owned(ref o) => fmt::Show::fmt(o, f),
+            Borrowed(ref b) => fmt::String::fmt(b, f),
+            Owned(ref o) => fmt::String::fmt(o, f),
         }
     }
 }

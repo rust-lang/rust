@@ -202,7 +202,6 @@ extern "rust-intrinsic" {
     /// crate it is invoked in.
     pub fn type_id<T: 'static>() -> TypeId;
 
-
     /// Create a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,

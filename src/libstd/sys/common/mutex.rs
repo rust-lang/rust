@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use kinds::Sync;
+use marker::Sync;
 use sys::mutex as imp;
 
 /// An OS-based mutual exclusion lock.

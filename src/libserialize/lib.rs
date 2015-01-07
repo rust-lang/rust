@@ -23,48 +23,25 @@ Core encoding and decoding interfaces.
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![allow(unknown_features)]
-#![feature(macro_rules, default_type_params, phase, slicing_syntax, globs)]
-#![feature(unboxed_closures)]
-#![feature(associated_types)]
+#![feature(slicing_syntax)]
+#![feature(old_impl_check)]
+#![cfg_attr(stage0, allow(unused_attributes))]
 
 // test harness access
-#[cfg(test)]
-extern crate test;
-
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate log;
+#[cfg(test)] extern crate test;
+#[macro_use] extern crate log;
 
 extern crate unicode;
-
 extern crate collections;
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
                           DecoderHelpers, EncoderHelpers};
 
-#[cfg(stage0)]
-#[path = "serialize_stage0.rs"]
 mod serialize;
-#[cfg(not(stage0))]
-mod serialize;
-
-#[cfg(stage0)]
-#[path = "collection_impls_stage0.rs"]
-mod collection_impls;
-#[cfg(not(stage0))]
 mod collection_impls;
 
 pub mod base64;
 pub mod hex;
-
-#[cfg(stage0)]
-#[path = "json_stage0.rs"]
-pub mod json;
-#[cfg(not(stage0))]
 pub mod json;
 
 mod rustc_serialize {

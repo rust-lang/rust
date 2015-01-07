@@ -279,7 +279,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     pub fn t_param(&self, space: subst::ParamSpace, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
-        ty::mk_param(self.infcx.tcx, space, index, token::intern(name[]))
+        ty::mk_param(self.infcx.tcx, space, index, token::intern(name.index(&FullRange)))
     }
 
     pub fn re_early_bound(&self,
@@ -418,7 +418,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                self.ty_to_string(t_glb));
         match self.glb().tys(t1, t2) {
             Err(e) => {
-                panic!("unexpected error computing LUB: {}", e)
+                panic!("unexpected error computing LUB: {:?}", e)
             }
             Ok(t) => {
                 self.assert_eq(t, t_glb);
@@ -841,7 +841,7 @@ fn walk_ty_skip_subtree() {
 
         let mut walker = uniq_ty.walk();
         while let Some(t) = walker.next() {
-            debug!("walked to {}", t);
+            debug!("walked to {:?}", t);
             let (expected_ty, skip) = expected.pop().unwrap();
             assert_eq!(t, expected_ty);
             if skip { walker.skip_current_subtree(); }

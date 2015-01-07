@@ -18,7 +18,7 @@ trait T1<Z: T> {
 }
 struct S3<Y: ?Sized>;
 impl<X: ?Sized + T> T1<X> for S3<X> {
-    //~^ ERROR `core::kinds::Sized` is not implemented for the type `X`
+    //~^ ERROR `core::marker::Sized` is not implemented for the type `X`
 }
 
 fn main() { }

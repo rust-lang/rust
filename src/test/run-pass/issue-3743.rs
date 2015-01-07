@@ -30,17 +30,23 @@ impl Vec2 {
 }
 
 // Right-hand-side operator visitor pattern
-trait RhsOfVec2Mul<Result> { fn mul_vec2_by(&self, lhs: &Vec2) -> Result; }
+trait RhsOfVec2Mul {
+    type Result;
+
+    fn mul_vec2_by(&self, lhs: &Vec2) -> Self::Result;
+}
 
 // Vec2's implementation of Mul "from the other side" using the above trait
-impl<Res, Rhs: RhsOfVec2Mul<Res>> Mul<Rhs> for Vec2 {
+impl<Res, Rhs: RhsOfVec2Mul<Result=Res>> Mul<Rhs> for Vec2 {
     type Output = Res;
 
     fn mul(self, rhs: Rhs) -> Res { rhs.mul_vec2_by(&self) }
 }
 
 // Implementation of 'f64 as right-hand-side of Vec2::Mul'
-impl RhsOfVec2Mul<Vec2> for f64 {
+impl RhsOfVec2Mul for f64 {
+    type Result = Vec2;
+
     fn mul_vec2_by(&self, lhs: &Vec2) -> Vec2 { lhs.vmul(*self) }
 }
 

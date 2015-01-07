@@ -100,16 +100,29 @@ impl Ident {
     }
 }
 
-impl Show for Ident {
+//NOTE(stage0): remove after snapshot
+impl fmt::Show for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}#{}", self.name, self.ctxt)
     }
 }
 
-impl Show for Name {
+impl fmt::String for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(&self.name, f)
+    }
+}
+
+impl fmt::Show for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Name(nm) = *self;
-        write!(f, "\"{}\"({})", token::get_name(*self).get(), nm)
+        write!(f, "{:?}({})", token::get_name(*self).get(), nm)
+    }
+}
+
+impl fmt::String for Name {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(token::get_name(*self).get(), f)
     }
 }
 
@@ -182,31 +195,15 @@ impl Name {
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;
 
-#[cfg(stage0)]
-impl<S: Encoder<E>, E> Encodable<S, E> for Ident {
-    fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_str(token::get_ident(*self).get())
-    }
-}
-
-#[cfg(not(stage0))]
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_str(token::get_ident(*self).get())
     }
 }
 
-#[cfg(stage0)]
-impl<D: Decoder<E>, E> Decodable<D, E> for Ident {
-    fn decode(d: &mut D) -> Result<Ident, E> {
-        Ok(str_to_ident(try!(d.read_str())[]))
-    }
-}
-
-#[cfg(not(stage0))]
 impl Decodable for Ident {
     fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(str_to_ident(try!(d.read_str())[]))
+        Ok(str_to_ident(try!(d.read_str()).index(&FullRange)))
     }
 }
 
@@ -883,7 +880,6 @@ impl TokenTree {
     pub fn len(&self) -> uint {
         match *self {
             TtToken(_, token::DocComment(_)) => 2,
-            TtToken(_, token::SubstNt(..)) => 2,
             TtToken(_, token::SpecialVarNt(..)) => 2,
             TtToken(_, token::MatchNt(..)) => 3,
             TtDelimited(_, ref delimed) => {
@@ -920,11 +916,6 @@ impl TokenTree {
                     return delimed.close_tt();
                 }
                 delimed.tts[index - 1].clone()
-            }
-            (&TtToken(sp, token::SubstNt(name, name_st)), _) => {
-                let v = [TtToken(sp, token::Dollar),
-                         TtToken(sp, token::Ident(name, name_st))];
-                v[index]
             }
             (&TtToken(sp, token::SpecialVarNt(var)), _) => {
                 let v = [TtToken(sp, token::Dollar),
@@ -982,8 +973,8 @@ pub enum Sign {
     Plus
 }
 
-impl<T> Sign where T: Int {
-    pub fn new(n: T) -> Sign {
+impl Sign {
+    pub fn new<T:Int>(n: T) -> Sign {
         if n < Int::zero() {
             Minus
         } else {
@@ -1087,14 +1078,21 @@ pub struct Typedef {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum IntTy {
-    TyI,
+    TyIs,
     TyI8,
     TyI16,
     TyI32,
     TyI64,
 }
 
+//NOTE(stage0): remove after snapshot
 impl fmt::Show for IntTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::int_ty_to_string(*self, None))
     }
@@ -1103,7 +1101,7 @@ impl fmt::Show for IntTy {
 impl IntTy {
     pub fn suffix_len(&self) -> uint {
         match *self {
-            TyI => 1,
+            TyIs => 1,
             TyI8 => 2,
             TyI16 | TyI32 | TyI64  => 3,
         }
@@ -1112,7 +1110,7 @@ impl IntTy {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum UintTy {
-    TyU,
+    TyUs,
     TyU8,
     TyU16,
     TyU32,
@@ -1122,14 +1120,21 @@ pub enum UintTy {
 impl UintTy {
     pub fn suffix_len(&self) -> uint {
         match *self {
-            TyU => 1,
+            TyUs => 1,
             TyU8 => 2,
             TyU16 | TyU32 | TyU64  => 3,
         }
     }
 }
 
+//NOTE(stage0): remove after snapshot
 impl fmt::Show for UintTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::uint_ty_to_string(*self, None))
     }
@@ -1141,7 +1146,14 @@ pub enum FloatTy {
     TyF64,
 }
 
+//NOTE(stage0): remove after snapshot
 impl fmt::Show for FloatTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::float_ty_to_string(*self))
     }
@@ -1192,10 +1204,19 @@ pub enum Onceness {
 
 impl fmt::Show for Onceness {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Once => "once".fmt(f),
-            Many => "many".fmt(f),
-        }
+        fmt::String::fmt(match *self {
+            Once => "once",
+            Many => "many",
+        }, f)
+    }
+}
+
+impl fmt::String for Onceness {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(match *self {
+            Once => "once",
+            Many => "many",
+        }, f)
     }
 }
 
@@ -1305,18 +1326,18 @@ pub struct FnDecl {
     pub variadic: bool
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum Unsafety {
     Unsafe,
     Normal,
 }
 
-impl fmt::Show for Unsafety {
+impl fmt::String for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Unsafety::Normal => "normal".fmt(f),
-            Unsafety::Unsafe => "unsafe".fmt(f),
-        }
+        fmt::String::fmt(match *self {
+            Unsafety::Normal => "normal",
+            Unsafety::Unsafe => "unsafe",
+        }, f)
     }
 }
 

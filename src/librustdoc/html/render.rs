@@ -404,7 +404,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
                     search_index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
-                        path: fqp[..fqp.len() - 1].connect("::"),
+                        path: fqp[..(fqp.len() - 1)].connect("::"),
                         desc: shorter(item.doc_value()).to_string(),
                         parent: Some(did),
                     });
@@ -559,7 +559,7 @@ fn write_shared(cx: &Context,
         };
 
         let mut mydst = dst.clone();
-        for part in remote_path[..remote_path.len() - 1].iter() {
+        for part in remote_path[..(remote_path.len() - 1)].iter() {
             mydst.push(part.as_slice());
             try!(mkdir(&mydst));
         }
@@ -821,7 +821,7 @@ impl DocFolder for Cache {
         if let clean::ImplItem(ref i) = item.inner {
             match i.trait_ {
                 Some(clean::ResolvedPath{ did, .. }) => {
-                    let v = self.implementors.entry(&did).get().unwrap_or_else(
+                    let v = self.implementors.entry(did).get().unwrap_or_else(
                         |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
                     v.push(Implementor {
                         def_id: item.def_id,
@@ -842,7 +842,7 @@ impl DocFolder for Cache {
                 clean::StructFieldItem(..) |
                 clean::VariantItem(..) => {
                     ((Some(*self.parent_stack.last().unwrap()),
-                      Some(self.stack[..self.stack.len() - 1])),
+                      Some(&self.stack[..(self.stack.len() - 1)])),
                      false)
                 }
                 clean::MethodItem(..) => {
@@ -853,13 +853,13 @@ impl DocFolder for Cache {
                         let did = *last;
                         let path = match self.paths.get(&did) {
                             Some(&(_, ItemType::Trait)) =>
-                                Some(self.stack[..self.stack.len() - 1]),
+                                Some(&self.stack[..(self.stack.len() - 1)]),
                             // The current stack not necessarily has correlation for
                             // where the type was defined. On the other hand,
                             // `paths` always has the right information if present.
                             Some(&(ref fqp, ItemType::Struct)) |
                             Some(&(ref fqp, ItemType::Enum)) =>
-                                Some(fqp[..fqp.len() - 1]),
+                                Some(&fqp[..(fqp.len() - 1)]),
                             Some(..) => Some(self.stack.as_slice()),
                             None => None
                         };
@@ -1011,7 +1011,7 @@ impl DocFolder for Cache {
                         };
 
                         if let Some(did) = did {
-                            let v = self.impls.entry(&did).get().unwrap_or_else(
+                            let v = self.impls.entry(did).get().unwrap_or_else(
                                 |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
                             v.push(Impl {
                                 impl_: i,
@@ -1051,7 +1051,7 @@ impl Context {
         F: FnOnce(&mut Context) -> T,
     {
         if s.len() == 0 {
-            panic!("Unexpected empty destination: {}", self.current);
+            panic!("Unexpected empty destination: {:?}", self.current);
         }
         let prev = self.dst.clone();
         self.dst.push(s.as_slice());
@@ -1185,7 +1185,7 @@ impl Context {
                                            .collect::<String>();
                 match cache().paths.get(&it.def_id) {
                     Some(&(ref names, _)) => {
-                        for name in names[..names.len() - 1].iter() {
+                        for name in (&names[..(names.len() - 1)]).iter() {
                             url.push_str(name.as_slice());
                             url.push_str("/");
                         }
@@ -1260,7 +1260,7 @@ impl Context {
                 Some(ref s) => s.to_string(),
             };
             let short = short.to_string();
-            let v = map.entry(&short).get().unwrap_or_else(
+            let v = map.entry(short).get().unwrap_or_else(
                 |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
             v.push(myname);
         }
@@ -1351,8 +1351,15 @@ impl<'a> Item<'a> {
 }
 
 
-
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Item<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Write the breadcrumb trail header for the top
         try!(write!(fmt, "\n<h1 class='fqn'><span class='in-band'>"));
@@ -1542,7 +1549,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
     indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
 
-    debug!("{}", indices);
+    debug!("{:?}", indices);
     let mut curty = None;
     for &idx in indices.iter() {
         let myitem = &items[idx];
@@ -1626,7 +1633,16 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 }
 
 struct Initializer<'a>(&'a str);
+
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Initializer<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Initializer<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Initializer(s) = *self;
         if s.len() == 0 { return Ok(()); }
@@ -2127,7 +2143,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                 try!(assoc_type(w, item, typaram));
                 try!(write!(w, "</code></h4>\n"));
             }
-            _ => panic!("can't make docs for trait item with name {}", item.name)
+            _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
         match item.doc_value() {
             Some(s) if dox => {
@@ -2188,7 +2204,15 @@ fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
     document(w, it)
 }
 
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Sidebar<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Sidebar<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = self.cx;
         let it = self.item;
@@ -2243,7 +2267,15 @@ impl<'a> fmt::Show for Sidebar<'a> {
     }
 }
 
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Source<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Source<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Source(s) = *self;
         let lines = s.lines().count();
@@ -2267,7 +2299,7 @@ fn item_macro(w: &mut fmt::Formatter, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
     try!(w.write_str(highlight::highlight(t.source.as_slice(),
                                           Some("macro"),
-                                          None)[]));
+                                          None).as_slice()));
     document(w, it)
 }
 

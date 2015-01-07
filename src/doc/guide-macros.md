@@ -42,7 +42,7 @@ the pattern in the above code:
 # let input_1 = T::SpecialA(0);
 # let input_2 = T::SpecialA(0);
 macro_rules! early_return {
-    ($inp:expr $sp:path) => ( // invoke it like `(input_5 SpecialE)`
+    ($inp:expr, $sp:path) => ( // invoke it like `(input_5 SpecialE)`
         match $inp {
             $sp(x) => { return x; }
             _ => {}
@@ -50,9 +50,9 @@ macro_rules! early_return {
     );
 }
 // ...
-early_return!(input_1 T::SpecialA);
+early_return!(input_1, T::SpecialA);
 // ...
-early_return!(input_2 T::SpecialB);
+early_return!(input_2, T::SpecialB);
 # return 0;
 # }
 # fn main() {}
@@ -161,7 +161,7 @@ instead of `*` to mean "at least one".
 # let input_1 = T::SpecialA(0);
 # let input_2 = T::SpecialA(0);
 macro_rules! early_return {
-    ($inp:expr, [ $($sp:path)|+ ]) => (
+    ($inp:expr, [ $($sp:path),+ ]) => (
         match $inp {
             $(
                 $sp(x) => { return x; }
@@ -171,7 +171,7 @@ macro_rules! early_return {
     )
 }
 // ...
-early_return!(input_1, [T::SpecialA|T::SpecialC|T::SpecialD]);
+early_return!(input_1, [T::SpecialA,T::SpecialC,T::SpecialD]);
 // ...
 early_return!(input_2, [T::SpecialB]);
 # return 0;
@@ -245,7 +245,7 @@ can solve the problem:
 ~~~~
 macro_rules! biased_match {
     // special case: `let (x) = ...` is illegal, so use `let x = ...` instead
-    ( ($e:expr) ~ ($p:pat) else $err:stmt ;
+    ( ($e:expr) -> ($p:pat) else $err:stmt ;
       binds $bind_res:ident
     ) => (
         let $bind_res = match $e {
@@ -254,7 +254,7 @@ macro_rules! biased_match {
         };
     );
     // more than one name; use a tuple
-    ( ($e:expr) ~ ($p:pat) else $err:stmt ;
+    ( ($e:expr) -> ($p:pat) else $err:stmt ;
       binds $( $bind_res:ident ),*
     ) => (
         let ( $( $bind_res ),* ) = match $e {
@@ -268,9 +268,9 @@ macro_rules! biased_match {
 # struct T2 { body: T3 }
 # enum T3 { Good2(uint), Bad2}
 # fn f(x: T1) -> uint {
-biased_match!((x)       ~ (T1::Good1(g1, val)) else { return 0 };
+biased_match!((x)       -> (T1::Good1(g1, val)) else { return 0 };
               binds g1, val );
-biased_match!((g1.body) ~ (T3::Good2(result) )
+biased_match!((g1.body) -> (T3::Good2(result) )
                   else { panic!("Didn't get good_2") };
               binds result );
 // complicated stuff goes here
@@ -286,7 +286,7 @@ pattern we want is clear:
 ~~~~
 # fn main() {}
 # macro_rules! b {
-    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
+    ( $( ($e:expr) -> ($p:pat) else $err:stmt ; )*
       binds $( $bind_res:ident ),*
     )
 # => (0) }
@@ -317,8 +317,8 @@ input patterns:
 ~~~~
 # fn main() {}
 # macro_rules! b {
-    (    ($e     :expr) ~ ($p     :pat) else $err     :stmt ;
-      $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*
+    (    ($e     :expr) -> ($p     :pat) else $err     :stmt ;
+      $( ($e_rest:expr) -> ($p_rest:pat) else $err_rest:stmt ; )*
       binds  $( $bind_res:ident ),*
     )
 # => (0) }
@@ -333,14 +333,14 @@ piece of syntax (the `let`) which we only want to transcribe once.
 
 macro_rules! biased_match_rec {
     // Handle the first layer
-    (   ($e     :expr) ~ ($p     :pat) else $err     :stmt ;
-     $( ($e_rest:expr) ~ ($p_rest:pat) else $err_rest:stmt ; )*
+    (   ($e     :expr) -> ($p     :pat) else $err     :stmt ;
+     $( ($e_rest:expr) -> ($p_rest:pat) else $err_rest:stmt ; )*
      binds $( $bind_res:ident ),*
     ) => (
         match $e {
             $p => {
                 // Recursively handle the next layer
-                biased_match_rec!($( ($e_rest) ~ ($p_rest) else $err_rest ; )*
+                biased_match_rec!($( ($e_rest) -> ($p_rest) else $err_rest ; )*
                                   binds $( $bind_res ),*
                 )
             }
@@ -354,20 +354,20 @@ macro_rules! biased_match_rec {
 // Wrap the whole thing in a `let`.
 macro_rules! biased_match {
     // special case: `let (x) = ...` is illegal, so use `let x = ...` instead
-    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
+    ( $( ($e:expr) -> ($p:pat) else $err:stmt ; )*
       binds $bind_res:ident
     ) => (
         let $bind_res = biased_match_rec!(
-            $( ($e) ~ ($p) else $err ; )*
+            $( ($e) -> ($p) else $err ; )*
             binds $bind_res
         );
     );
     // more than one name: use a tuple
-    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
+    ( $( ($e:expr) -> ($p:pat) else $err:stmt ; )*
       binds  $( $bind_res:ident ),*
     ) => (
         let ( $( $bind_res ),* ) = biased_match_rec!(
-            $( ($e) ~ ($p) else $err ; )*
+            $( ($e) -> ($p) else $err ; )*
             binds $( $bind_res ),*
         );
     )
@@ -379,8 +379,8 @@ macro_rules! biased_match {
 # enum T3 { Good2(uint), Bad2}
 # fn f(x: T1) -> uint {
 biased_match!(
-    (x)       ~ (T1::Good1(g1, val)) else { return 0 };
-    (g1.body) ~ (T3::Good2(result) ) else { panic!("Didn't get Good2") };
+    (x)       -> (T1::Good1(g1, val)) else { return 0 };
+    (g1.body) -> (T3::Good2(result) ) else { panic!("Didn't get Good2") };
     binds val, result );
 // complicated stuff goes here
 return result + val;

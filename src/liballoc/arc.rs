@@ -41,8 +41,8 @@
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
-//!         println!("{}", five);
-//!     }).detach();
+//!         println!("{:?}", five);
+//!     });
 //! }
 //! ```
 //!
@@ -63,7 +63,7 @@
 //!         *number += 1;
 //!
 //!         println!("{}", *number); // prints 6
-//!     }).detach();
+//!     });
 //! }
 //! ```
 
@@ -74,7 +74,7 @@ use core::clone::Clone;
 use core::fmt::{self, Show};
 use core::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
 use core::default::Default;
-use core::kinds::{Sync, Send};
+use core::marker::{Sync, Send};
 use core::mem::{min_align_of, size_of, drop};
 use core::mem;
 use core::nonzero::NonZero;
@@ -106,7 +106,7 @@ use heap::deallocate;
 ///             let local_numbers = child_numbers.as_slice();
 ///
 ///             // Work with the local numbers
-///         }).detach();
+///         });
 ///     }
 /// }
 /// ```
@@ -581,7 +581,7 @@ impl<T: Eq> Eq for Arc<T> {}
 
 impl<T: fmt::Show> fmt::Show for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (**self).fmt(f)
+        write!(f, "Arc({:?})", (**self))
     }
 }
 
@@ -794,7 +794,7 @@ mod tests {
     #[test]
     fn show_arc() {
         let a = Arc::new(5u32);
-        assert!(format!("{}", a) == "5")
+        assert!(format!("{:?}", a) == "Arc(5u32)")
     }
 
     // Make sure deriving works with Arc<T>

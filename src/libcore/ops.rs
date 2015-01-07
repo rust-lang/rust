@@ -51,8 +51,8 @@
 //!     }
 //! }
 //! fn main() {
-//!     println!("{}", Point {x: 1, y: 0} + Point {x: 2, y: 3});
-//!     println!("{}", Point {x: 1, y: 0} - Point {x: 2, y: 3});
+//!     println!("{:?}", Point {x: 1, y: 0} + Point {x: 2, y: 3});
+//!     println!("{:?}", Point {x: 1, y: 0} - Point {x: 2, y: 3});
 //! }
 //! ```
 //!
@@ -63,7 +63,7 @@
 
 use clone::Clone;
 use iter::{Step, Iterator,DoubleEndedIterator,ExactSizeIterator};
-use kinds::Sized;
+use marker::Sized;
 use option::Option::{self, Some, None};
 
 /// The `Drop` trait is used to run some code when a value goes out of scope. This
@@ -846,105 +846,6 @@ pub trait IndexMut<Index: ?Sized> {
     fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Self::Output;
 }
 
-/// The `Slice` trait is used to specify the functionality of slicing operations
-/// like `arr[from..to]` when used in an immutable context.
-///
-/// # Example
-///
-/// A trivial implementation of `Slice`. When `Foo[..Foo]` happens, it ends up
-/// calling `slice_to`, and therefore, `main` prints `Slicing!`.
-///
-/// ```ignore
-/// use std::ops::Slice;
-///
-/// #[derive(Copy)]
-/// struct Foo;
-///
-/// impl Slice<Foo, Foo> for Foo {
-///     fn as_slice_<'a>(&'a self) -> &'a Foo {
-///         println!("Slicing!");
-///         self
-///     }
-///     fn slice_from_or_fail<'a>(&'a self, _from: &Foo) -> &'a Foo {
-///         println!("Slicing!");
-///         self
-///     }
-///     fn slice_to_or_fail<'a>(&'a self, _to: &Foo) -> &'a Foo {
-///         println!("Slicing!");
-///         self
-///     }
-///     fn slice_or_fail<'a>(&'a self, _from: &Foo, _to: &Foo) -> &'a Foo {
-///         println!("Slicing!");
-///         self
-///     }
-/// }
-///
-/// fn main() {
-///     Foo[..Foo];
-/// }
-/// ```
-#[lang="slice"]
-pub trait Slice<Idx: ?Sized, Result: ?Sized> {
-    /// The method for the slicing operation foo[]
-    fn as_slice_<'a>(&'a self) -> &'a Result;
-    /// The method for the slicing operation foo[from..]
-    fn slice_from_or_fail<'a>(&'a self, from: &Idx) -> &'a Result;
-    /// The method for the slicing operation foo[..to]
-    fn slice_to_or_fail<'a>(&'a self, to: &Idx) -> &'a Result;
-    /// The method for the slicing operation foo[from..to]
-    fn slice_or_fail<'a>(&'a self, from: &Idx, to: &Idx) -> &'a Result;
-}
-
-/// The `SliceMut` trait is used to specify the functionality of slicing
-/// operations like `arr[from..to]`, when used in a mutable context.
-///
-/// # Example
-///
-/// A trivial implementation of `SliceMut`. When `Foo[Foo..]` happens, it ends up
-/// calling `slice_from_mut`, and therefore, `main` prints `Slicing!`.
-///
-/// ```ignore
-/// use std::ops::SliceMut;
-///
-/// #[derive(Copy)]
-/// struct Foo;
-///
-/// impl SliceMut<Foo, Foo> for Foo {
-///     fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Foo {
-///         println!("Slicing!");
-///         self
-///     }
-///     fn slice_from_or_fail_mut<'a>(&'a mut self, _from: &Foo) -> &'a mut Foo {
-///         println!("Slicing!");
-///         self
-///     }
-///     fn slice_to_or_fail_mut<'a>(&'a mut self, _to: &Foo) -> &'a mut Foo {
-///         println!("Slicing!");
-///         self
-///     }
-///     fn slice_or_fail_mut<'a>(&'a mut self, _from: &Foo, _to: &Foo) -> &'a mut Foo {
-///         println!("Slicing!");
-///         self
-///     }
-/// }
-///
-/// pub fn main() {
-///     Foo[mut Foo..];
-/// }
-/// ```
-#[lang="slice_mut"]
-pub trait SliceMut<Idx: ?Sized, Result: ?Sized> {
-    /// The method for the slicing operation foo[]
-    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut Result;
-    /// The method for the slicing operation foo[from..]
-    fn slice_from_or_fail_mut<'a>(&'a mut self, from: &Idx) -> &'a mut Result;
-    /// The method for the slicing operation foo[..to]
-    fn slice_to_or_fail_mut<'a>(&'a mut self, to: &Idx) -> &'a mut Result;
-    /// The method for the slicing operation foo[from..to]
-    fn slice_or_fail_mut<'a>(&'a mut self, from: &Idx, to: &Idx) -> &'a mut Result;
-}
-
-
 /// An unbounded range.
 #[derive(Copy)]
 #[lang="full_range"]
@@ -962,8 +863,6 @@ pub struct Range<Idx> {
     pub end: Idx,
 }
 
-// FIXME(#19391) needs a snapshot
-//impl<Idx: Clone + Step<T=uint>> Iterator<Idx> for Range<Idx> {
 #[unstable = "API still in development"]
 impl<Idx: Clone + Step> Iterator for Range<Idx> {
     type Item = Idx;
@@ -1134,7 +1033,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 pub trait DerefMut: Deref {
     /// The method called to mutably dereference a value
     #[stable]
-    fn deref_mut<'a>(&'a mut self) -> &'a mut <Self as Deref>::Target;
+    fn deref_mut<'a>(&'a mut self) -> &'a mut Self::Target;
 }
 
 #[stable]

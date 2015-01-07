@@ -57,7 +57,7 @@
 use core::prelude::*;
 
 use core::cell::Cell;
-use core::kinds::marker;
+use core::marker;
 use core::mem;
 use core::uint;
 

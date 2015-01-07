@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn equal<T>(_: &T, _: &T) -> bool where int : Eq {
-    true
+// error-pattern: unknown macro variable `nonexistent`
+
+macro_rules! e {
+    ($inp:ident) => (
+        $nonexistent
+    );
 }
 
 fn main() {
-    equal(&0i, &0i);
+    e!(foo);
 }

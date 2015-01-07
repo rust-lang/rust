@@ -20,5 +20,5 @@ fn main() {
     let x = Foo;
     Foo::bar(x); //~ERROR mismatched types: expected `&Foo`, found `Foo`
     Foo::bar(&&x); //~ERROR mismatched types: expected `&Foo`, found `&&Foo`
-    Foo::bar(&42i); //~ERROR mismatched types: expected `&Foo`, found `&int`
+    Foo::bar(&42is); //~ERROR mismatched types: expected `&Foo`, found `&isize`
 }

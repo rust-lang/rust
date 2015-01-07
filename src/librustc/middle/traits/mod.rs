@@ -297,7 +297,7 @@ pub fn evaluate_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                        span: Span)
                                        -> SelectionResult<'tcx, ()>
 {
-    debug!("type_known_to_meet_builtin_bound(ty={}, bound={})",
+    debug!("type_known_to_meet_builtin_bound(ty={}, bound={:?})",
            ty.repr(infcx.tcx),
            bound);
 
@@ -347,7 +347,7 @@ pub fn evaluate_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
         }
     };
 
-    debug!("type_known_to_meet_builtin_bound: ty={} bound={} result={}",
+    debug!("type_known_to_meet_builtin_bound: ty={} bound={:?} result={:?}",
            ty.repr(infcx.tcx),
            bound,
            result);
@@ -378,7 +378,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                 span,
                 format!("overflow evaluating whether `{}` is `{}`",
                         ty.user_string(infcx.tcx),
-                        bound.user_string(infcx.tcx))[]);
+                        bound.user_string(infcx.tcx)).as_slice());
             suggest_new_overflow_limit(infcx.tcx, span);
             false
         }

@@ -118,7 +118,7 @@ fn calculate_type(sess: &session::Session,
                 let src = sess.cstore.get_used_crate_source(cnum).unwrap();
                 if src.rlib.is_some() { return }
                 sess.err(format!("dependency `{}` not found in rlib format",
-                                 data.name)[]);
+                                 data.name).index(&FullRange));
             });
             return Vec::new();
         }
@@ -149,7 +149,7 @@ fn calculate_type(sess: &session::Session,
             add_library(sess, cnum, cstore::RequireDynamic, &mut formats);
             let deps = csearch::get_dylib_dependency_formats(&sess.cstore, cnum);
             for &(depnum, style) in deps.iter() {
-                debug!("adding {}: {}", style,
+                debug!("adding {:?}: {}", style,
                        sess.cstore.get_crate_data(depnum).name.clone());
                 add_library(sess, depnum, style, &mut formats);
             }
@@ -197,7 +197,7 @@ fn calculate_type(sess: &session::Session,
                                  match kind {
                                      cstore::RequireStatic => "rlib",
                                      cstore::RequireDynamic => "dylib",
-                                 })[]);
+                                 }).index(&FullRange));
             }
         }
     }
@@ -222,7 +222,7 @@ fn add_library(sess: &session::Session,
                 let data = sess.cstore.get_crate_data(cnum);
                 sess.err(format!("cannot satisfy dependencies so `{}` only \
                                   shows up once",
-                                 data.name)[]);
+                                 data.name).index(&FullRange));
                 sess.help("having upstream crates all available in one format \
                            will likely make this go away");
             }

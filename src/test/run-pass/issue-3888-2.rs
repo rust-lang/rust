@@ -11,7 +11,7 @@
 #![feature(slicing_syntax)]
 
 fn vec_peek<'r, T>(v: &'r [T]) -> &'r [T] {
-    v[1..5]
+    &v[1..5]
 }
 
 pub fn main() {}

@@ -16,12 +16,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-
-#![allow(unknown_features)]
-#![feature(globs, macro_rules, phase, slicing_syntax)]
-#![feature(unboxed_closures)]
-#![feature(old_orphan_check)]
-#![feature(associated_types)]
+#![feature(slicing_syntax)]
 
 extern crate arena;
 extern crate getopts;
@@ -32,14 +27,7 @@ extern crate rustc_driver;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;
-
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate log;
+#[macro_use] extern crate log;
 
 extern crate "serialize" as rustc_serialize; // used by deriving
 
@@ -56,8 +44,7 @@ use rustc::session::search_paths::SearchPaths;
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod externalfiles;
 
 pub mod clean;
@@ -116,7 +103,7 @@ struct Output {
 
 pub fn main() {
     static STACK_SIZE: uint = 32000000; // 32MB
-    let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
+    let res = std::thread::Builder::new().stack_size(STACK_SIZE).scoped(move || {
         main_args(std::os::args().as_slice())
     }).join();
     std::os::set_exit_status(res.map_err(|_| ()).unwrap());
@@ -330,7 +317,7 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
             }
         };
         let name = name.to_string();
-        let locs = externs.entry(&name).get().unwrap_or_else(
+        let locs = externs.entry(name).get().unwrap_or_else(
             |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
         locs.push(location.to_string());
     }
@@ -358,7 +345,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
 
-    let (mut krate, analysis) = std::thread::Thread::spawn(move |:| {
+    let (mut krate, analysis) = std::thread::Thread::scoped(move |:| {
         let cr = cr;
         core::run_core(paths, cfgs, externs, &cr, triple)
     }).join().map_err(|_| "rustc failed").unwrap();
@@ -445,7 +432,7 @@ fn json_input(input: &str) -> Result<Output, String> {
         }
     };
     match json::from_reader(&mut input) {
-        Err(s) => Err(s.to_string()),
+        Err(s) => Err(format!("{:?}", s)),
         Ok(Json::Object(obj)) => {
             let mut obj = obj;
             // Make sure the schema is what we expect
@@ -505,7 +492,7 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     let crate_json_str = format!("{}", json::as_json(&krate));
     let crate_json = match json::from_str(crate_json_str.as_slice()) {
         Ok(j) => j,
-        Err(e) => panic!("Rust generated JSON is invalid: {}", e)
+        Err(e) => panic!("Rust generated JSON is invalid: {:?}", e)
     };
 
     json.insert("crate".to_string(), crate_json);

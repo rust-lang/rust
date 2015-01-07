@@ -55,7 +55,7 @@ use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::iter::{repeat, FromIterator};
-use core::kinds::marker::{ContravariantLifetime, InvariantType};
+use core::marker::{ContravariantLifetime, InvariantType};
 use core::mem;
 use core::nonzero::NonZero;
 use core::num::{Int, UnsignedInt};
@@ -1178,7 +1178,7 @@ impl<T:Clone> Clone for Vec<T> {
 
         // self.len <= other.len due to the truncate above, so the
         // slice here is always in-bounds.
-        let slice = other[self.len()..];
+        let slice = other.index(&(self.len()..));
         self.push_all(slice);
     }
 }
@@ -1209,47 +1209,65 @@ impl<T> IndexMut<uint> for Vec<T> {
     }
 }
 
-impl<T> ops::Slice<uint, [T]> for Vec<T> {
+
+impl<T> ops::Index<ops::Range<uint>> for Vec<T> {
+    type Output = [T];
     #[inline]
-    fn as_slice_<'a>(&'a self) -> &'a [T] {
+    fn index(&self, index: &ops::Range<uint>) -> &[T] {
+        self.as_slice().index(index)
+    }
+}
+impl<T> ops::Index<ops::RangeTo<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
+        self.as_slice().index(index)
+    }
+}
+impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
+        self.as_slice().index(index)
+    }
+}
+impl<T> ops::Index<ops::FullRange> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, _index: &ops::FullRange) -> &[T] {
         self.as_slice()
     }
-
-    #[inline]
-    fn slice_from_or_fail<'a>(&'a self, start: &uint) -> &'a [T] {
-        self.as_slice().slice_from_or_fail(start)
-    }
-
-    #[inline]
-    fn slice_to_or_fail<'a>(&'a self, end: &uint) -> &'a [T] {
-        self.as_slice().slice_to_or_fail(end)
-    }
-    #[inline]
-    fn slice_or_fail<'a>(&'a self, start: &uint, end: &uint) -> &'a [T] {
-        self.as_slice().slice_or_fail(start, end)
-    }
 }
 
-impl<T> ops::SliceMut<uint, [T]> for Vec<T> {
+impl<T> ops::IndexMut<ops::Range<uint>> for Vec<T> {
+    type Output = [T];
     #[inline]
-    fn as_mut_slice_<'a>(&'a mut self) -> &'a mut [T] {
+    fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
+        self.as_mut_slice().index_mut(index)
+    }
+}
+impl<T> ops::IndexMut<ops::RangeTo<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
+        self.as_mut_slice().index_mut(index)
+    }
+}
+impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
+        self.as_mut_slice().index_mut(index)
+    }
+}
+impl<T> ops::IndexMut<ops::FullRange> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
         self.as_mut_slice()
     }
-
-    #[inline]
-    fn slice_from_or_fail_mut<'a>(&'a mut self, start: &uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_from_or_fail_mut(start)
-    }
-
-    #[inline]
-    fn slice_to_or_fail_mut<'a>(&'a mut self, end: &uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_to_or_fail_mut(end)
-    }
-    #[inline]
-    fn slice_or_fail_mut<'a>(&'a mut self, start: &uint, end: &uint) -> &'a mut [T] {
-        self.as_mut_slice().slice_or_fail_mut(start, end)
-    }
 }
+
 
 #[stable]
 impl<T> ops::Deref for Vec<T> {
@@ -1430,9 +1448,25 @@ impl<T> Default for Vec<T> {
 }
 
 #[experimental = "waiting on Show stability"]
-impl<T:fmt::Show> fmt::Show for Vec<T> {
+impl<T: fmt::Show> fmt::Show for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_slice().fmt(f)
+        fmt::Show::fmt(self.as_slice(), f)
+    }
+}
+
+#[cfg(stage0)]
+#[experimental = "waiting on Show stability"]
+impl<T: fmt::Show> fmt::String for Vec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self.as_slice(), f)
+    }
+}
+
+#[cfg(not(stage0))]
+#[experimental = "waiting on Show stability"]
+impl<T: fmt::String> fmt::String for Vec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self.as_slice(), f)
     }
 }
 
@@ -1781,6 +1815,7 @@ mod tests {
     use prelude::*;
     use core::mem::size_of;
     use core::iter::repeat;
+    use core::ops::FullRange;
     use test::Bencher;
     use super::as_vec;
 
@@ -1918,7 +1953,7 @@ mod tests {
             let (left, right) = values.split_at_mut(2);
             {
                 let left: &[_] = left;
-                assert!(left[0..left.len()] == [1, 2][]);
+                assert!(&left[..left.len()] == &[1, 2][]);
             }
             for p in left.iter_mut() {
                 *p += 1;
@@ -1926,7 +1961,7 @@ mod tests {
 
             {
                 let right: &[_] = right;
-                assert!(right[0..right.len()] == [3, 4, 5][]);
+                assert!(&right[..right.len()] == &[3, 4, 5][]);
             }
             for p in right.iter_mut() {
                 *p += 2;
@@ -2097,35 +2132,35 @@ mod tests {
     #[should_fail]
     fn test_slice_out_of_bounds_1() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[-1..];
+        &x[(-1)..];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_2() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[..6];
+        &x[..6];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_3() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[-1..4];
+        &x[(-1)..4];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_4() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[1..6];
+        &x[1..6];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_5() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        x[3..2];
+        &x[3..2];
     }
 
     #[test]
@@ -2371,7 +2406,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst = src.clone().as_slice().to_vec();
+            let dst = src.clone()[].to_vec();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });

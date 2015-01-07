@@ -22,18 +22,11 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![allow(unknown_features)]
-#![feature(macro_rules, default_type_params, phase, globs)]
 #![feature(unsafe_destructor, slicing_syntax)]
+#![feature(old_impl_check)]
 #![feature(unboxed_closures)]
-#![feature(old_orphan_check)]
-#![feature(associated_types)]
 #![no_std]
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate core;
-
-#[cfg(not(stage0))]
 #[macro_use]
 extern crate core;
 
@@ -41,22 +34,8 @@ extern crate unicode;
 extern crate alloc;
 
 #[cfg(test)] extern crate test;
-
-#[cfg(all(test, stage0))]
-#[phase(plugin, link)]
-extern crate std;
-
-#[cfg(all(test, not(stage0)))]
-#[macro_use]
-extern crate std;
-
-#[cfg(all(test, stage0))]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(all(test, not(stage0)))]
-#[macro_use]
-extern crate log;
+#[cfg(test)] #[macro_use] extern crate std;
+#[cfg(test)] #[macro_use] extern crate log;
 
 pub use binary_heap::BinaryHeap;
 pub use bitv::Bitv;
@@ -73,8 +52,7 @@ pub use vec_map::VecMap;
 // Needed for the vec! macro
 pub use alloc::boxed;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 mod macros;
 
 pub mod binary_heap;
@@ -123,7 +101,9 @@ mod std {
     pub use core::option;   // necessary for panic!()
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
-    pub use core::kinds;    // deriving(Copy)
+    #[cfg(stage0)]
+    pub use core::marker as kinds;
+    pub use core::marker;  // deriving(Copy)
     pub use core::hash;     // deriving(Hash)
 }
 
@@ -138,7 +118,7 @@ mod prelude {
     pub use core::iter::{FromIterator, Extend, IteratorExt};
     pub use core::iter::{Iterator, DoubleEndedIterator, RandomAccessIterator};
     pub use core::iter::{ExactSizeIterator};
-    pub use core::kinds::{Copy, Send, Sized, Sync};
+    pub use core::marker::{Copy, Send, Sized, Sync};
     pub use core::mem::drop;
     pub use core::ops::{Drop, Fn, FnMut, FnOnce};
     pub use core::option::Option;

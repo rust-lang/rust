@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs)]
 #![crate_name = "libc"]
 #![experimental]
 #![no_std] // we don't need std, and we can't have std, since it doesn't exist
@@ -76,7 +75,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(missing_docs)]
 #![allow(non_snake_case)]
-#![allow(raw_pointer_deriving)]
+#![allow(raw_pointer_derive)]
 
 extern crate core;
 
@@ -5081,5 +5080,7 @@ pub fn issue_14344_workaround() {} // FIXME #14344 force linkage to happen corre
 #[doc(hidden)]
 #[cfg(not(test))]
 mod std {
-    pub use core::kinds;
+    #[cfg(stage0)]
+    pub use core::marker as kinds;
+    pub use core::marker;
 }

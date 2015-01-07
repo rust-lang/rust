@@ -86,13 +86,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         let ccx = self.ccx;
         let item_def_id = local_def(item.id);
-        let polytype = ty::lookup_item_type(ccx.tcx, item_def_id);
+        let type_scheme = ty::lookup_item_type(ccx.tcx, item_def_id);
+        reject_non_type_param_bounds(ccx.tcx, item.span, &type_scheme.generics);
         let param_env =
             ty::construct_parameter_environment(ccx.tcx,
-                                                &polytype.generics,
+                                                &type_scheme.generics,
                                                 item.id);
         let inh = Inherited::new(ccx.tcx, param_env);
-        let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(polytype.ty), item.id);
+        let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(type_scheme.ty), item.id);
         f(self, &fcx);
         vtable::select_all_fcx_obligations_or_error(&fcx);
         regionck::regionck_item(&fcx, item);
@@ -143,10 +144,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         region::CodeExtent::from_node_id(item.id),
                                                         Some(&mut this.cache));
+
             let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
                                                       &fcx.inh.param_env.free_substs,
                                                       &type_scheme.ty);
+
             bounds_checker.check_traits_in_ty(item_ty);
         });
     }
@@ -178,6 +181,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 None => { return; }
                 Some(t) => { t }
             };
+
             let trait_ref = fcx.instantiate_type_scheme(item.span,
                                                         &fcx.inh.param_env.free_substs,
                                                         &trait_ref);
@@ -226,6 +230,35 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 fcx.register_predicate(traits::Obligation::new(cause.clone(), predicate));
             }
         });
+    }
+}
+
+// Reject any predicates that do not involve a type parameter.
+fn reject_non_type_param_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                      span: Span,
+                                      generics: &ty::Generics<'tcx>) {
+    for predicate in generics.predicates.iter() {
+        match predicate {
+            &ty::Predicate::Trait(ty::Binder(ref tr)) => {
+                let self_ty = tr.self_ty();
+                if !self_ty.walk().any(|t| is_ty_param(t)) {
+                    tcx.sess.span_err(
+                        span,
+                        format!("cannot bound type `{}`, where clause \
+                                 bounds may only be attached to types involving \
+                                 type parameters",
+                                 self_ty.repr(tcx)).as_slice())
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn is_ty_param(ty: ty::Ty) -> bool {
+        match &ty.sty {
+            &ty::sty::ty_param(_) => true,
+            _ => false
+        }
     }
 }
 
@@ -416,7 +449,13 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             match variant.node.kind {
                 ast::TupleVariantKind(ref args) if args.len() > 0 => {
                     let ctor_ty = ty::node_id_to_type(fcx.tcx(), variant.node.id);
-                    let arg_tys = ty::ty_fn_args(ctor_ty);
+
+                    // the regions in the argument types come from the
+                    // enum def'n, and hence will all be early bound
+                    let arg_tys =
+                        ty::assert_no_late_bound_regions(
+                            fcx.tcx(), &ty::ty_fn_args(ctor_ty));
+
                     AdtVariant {
                         fields: args.iter().enumerate().map(|(index, arg)| {
                             let arg_ty = arg_tys[index];

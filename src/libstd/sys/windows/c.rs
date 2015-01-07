@@ -84,6 +84,32 @@ pub fn fd_set(set: &mut fd_set, s: libc::SOCKET) {
     set.fd_count += 1;
 }
 
+pub type SHORT = libc::c_short;
+
+#[repr(C)]
+pub struct COORD {
+    pub X: SHORT,
+    pub Y: SHORT,
+}
+
+#[repr(C)]
+pub struct SMALL_RECT {
+    pub Left: SHORT,
+    pub Top: SHORT,
+    pub Right: SHORT,
+    pub Bottom: SHORT,
+}
+
+#[repr(C)]
+pub struct CONSOLE_SCREEN_BUFFER_INFO {
+    pub dwSize: COORD,
+    pub dwCursorPosition: COORD,
+    pub wAttributes: libc::WORD,
+    pub srWindow: SMALL_RECT,
+    pub dwMaximumWindowSize: COORD,
+}
+pub type PCONSOLE_SCREEN_BUFFER_INFO = *mut CONSOLE_SCREEN_BUFFER_INFO;
+
 #[link(name = "ws2_32")]
 extern "system" {
     pub fn WSAStartup(wVersionRequested: libc::WORD,
@@ -170,7 +196,7 @@ pub mod compat {
     /// they are used to be passed to the real function if available.
     macro_rules! compat_fn {
         ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*)
-                                      -> $rettype:ty $fallback:block) => (
+                                      -> $rettype:ty { $fallback:expr }) => (
             #[inline(always)]
             pub unsafe fn $symbol($($argname: $argtype),*) -> $rettype {
                 static mut ptr: extern "system" fn($($argname: $argtype),*) -> $rettype = thunk;
@@ -185,14 +211,11 @@ pub mod compat {
                     }
                 }
 
-                extern "system" fn fallback($($argname: $argtype),*) -> $rettype $fallback
+                extern "system" fn fallback($($argname: $argtype),*)
+                                            -> $rettype { $fallback }
 
                 ::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
             }
-        );
-
-        ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*) $fallback:block) => (
-            compat_fn!($module::$symbol($($argname: $argtype),*) -> () $fallback)
         )
     }
 
@@ -210,20 +233,22 @@ pub mod compat {
             fn SetLastError(dwErrCode: DWORD);
         }
 
-        compat_fn! { kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
-                                                 _lpTargetFileName: LPCWSTR,
-                                                 _dwFlags: DWORD) -> BOOLEAN {
-            unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
-            0
-        } }
+        compat_fn! {
+            kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
+                                          _lpTargetFileName: LPCWSTR,
+                                          _dwFlags: DWORD) -> BOOLEAN {
+                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0 }
+            }
+        }
 
-        compat_fn! { kernel32::GetFinalPathNameByHandleW(_hFile: HANDLE,
-                                                       _lpszFilePath: LPCWSTR,
-                                                       _cchFilePath: DWORD,
-                                                       _dwFlags: DWORD) -> DWORD {
-            unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
-            0
-        } }
+        compat_fn! {
+            kernel32::GetFinalPathNameByHandleW(_hFile: HANDLE,
+                                                _lpszFilePath: LPCWSTR,
+                                                _cchFilePath: DWORD,
+                                                _dwFlags: DWORD) -> DWORD {
+                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0 }
+            }
+        }
     }
 }
 
@@ -246,4 +271,8 @@ extern "system" {
 
     pub fn SetConsoleMode(hConsoleHandle: libc::HANDLE,
                           lpMode: libc::DWORD) -> libc::BOOL;
+    pub fn GetConsoleScreenBufferInfo(
+        hConsoleOutput: libc::HANDLE,
+        lpConsoleScreenBufferInfo: PCONSOLE_SCREEN_BUFFER_INFO,
+    ) -> libc::BOOL;
 }

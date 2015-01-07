@@ -65,7 +65,7 @@ impl Svh {
     }
 
     pub fn as_str<'a>(&'a self) -> &'a str {
-        self.hash[]
+        self.hash.index(&FullRange)
     }
 
     pub fn calculate(metadata: &Vec<String>, krate: &ast::Crate) -> Svh {
@@ -119,6 +119,14 @@ impl Svh {
 }
 
 impl fmt::Show for Svh {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        //NOTE(stage0): uncomment after snapshot
+        //write!(f, "Svh {{ {} }}", self.as_str())
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for Svh {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(self.as_str())
     }
@@ -358,7 +366,7 @@ mod svh_visitor {
             fn macro_name(mac: &Mac) -> token::InternedString {
                 match &mac.node {
                     &MacInvocTT(ref path, ref _tts, ref _stx_ctxt) => {
-                        let s = path.segments[];
+                        let s = path.segments.index(&FullRange);
                         assert_eq!(s.len(), 1);
                         content(s[0].identifier)
                     }

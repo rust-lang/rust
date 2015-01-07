@@ -15,6 +15,6 @@ pub fn foo<T:Send + Clone>(x: T) -> Receiver<T> {
     let (tx, rx) = channel();
     Thread::spawn(move|| {
         tx.send(x.clone());
-    }).detach();
+    });
     rx
 }

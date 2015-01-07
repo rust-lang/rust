@@ -23,10 +23,10 @@ use default::Default;
 use iter::range;
 use iter::ExactSizeIterator;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
-use kinds::Sized;
+use marker::Sized;
 use mem;
 use num::Int;
-use ops::{Fn, FnMut};
+use ops::{Fn, FnMut, Index};
 use option::Option::{self, None, Some};
 use ptr::PtrExt;
 use raw::{Repr, Slice};
@@ -35,9 +35,8 @@ use slice::{self, SliceExt};
 use uint;
 
 macro_rules! delegate_iter {
-    (exact $te:ty in $ti:ty) => {
-        delegate_iter!{$te in $ti}
-        #[stable]
+    (exact $te:ty : $ti:ty) => {
+        delegate_iter!{$te : $ti}
         impl<'a> ExactSizeIterator for $ti {
             #[inline]
             fn len(&self) -> uint {
@@ -45,7 +44,7 @@ macro_rules! delegate_iter {
             }
         }
     };
-    ($te:ty in $ti:ty) => {
+    ($te:ty : $ti:ty) => {
         #[stable]
         impl<'a> Iterator for $ti {
             type Item = $te;
@@ -67,7 +66,7 @@ macro_rules! delegate_iter {
             }
         }
     };
-    (pattern $te:ty in $ti:ty) => {
+    (pattern $te:ty : $ti:ty) => {
         #[stable]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
@@ -89,7 +88,7 @@ macro_rules! delegate_iter {
             }
         }
     };
-    (pattern forward $te:ty in $ti:ty) => {
+    (pattern forward $te:ty : $ti:ty) => {
         #[stable]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
@@ -143,7 +142,7 @@ Section: Creating a string
 */
 
 /// Errors which can occur when attempting to interpret a byte slice as a `str`.
-#[derive(Copy, Eq, PartialEq, Clone)]
+#[derive(Copy, Eq, PartialEq, Clone, Show)]
 #[unstable = "error enumeration recently added and definitions may be refined"]
 pub enum Utf8Error {
     /// An invalid byte was detected at the byte offset given.
@@ -415,7 +414,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 #[stable]
 #[derive(Clone)]
 pub struct Bytes<'a>(Map<&'a u8, u8, slice::Iter<'a, u8>, BytesDeref>);
-delegate_iter!{exact u8 in Bytes<'a>}
+delegate_iter!{exact u8 : Bytes<'a>}
 
 /// A temporary fn new type that ensures that the `Bytes` iterator
 /// is cloneable.
@@ -581,7 +580,7 @@ impl NaiveSearcher {
 
     fn next(&mut self, haystack: &[u8], needle: &[u8]) -> Option<(uint, uint)> {
         while self.position + needle.len() <= haystack.len() {
-            if haystack[self.position .. self.position + needle.len()] == needle {
+            if haystack.index(&(self.position .. self.position + needle.len())) == needle {
                 let match_pos = self.position;
                 self.position += needle.len(); // add 1 for all matches
                 return Some((match_pos, match_pos + needle.len()));
@@ -702,10 +701,10 @@ impl TwoWaySearcher {
         //
         // What's going on is we have some critical factorization (u, v) of the
         // needle, and we want to determine whether u is a suffix of
-        // v[..period]. If it is, we use "Algorithm CP1". Otherwise we use
+        // v.index(&(0..period)). If it is, we use "Algorithm CP1". Otherwise we use
         // "Algorithm CP2", which is optimized for when the period of the needle
         // is large.
-        if needle[..crit_pos] == needle[period.. period + crit_pos] {
+        if needle.index(&(0..crit_pos)) == needle.index(&(period.. period + crit_pos)) {
             TwoWaySearcher {
                 crit_pos: crit_pos,
                 period: period,
@@ -1119,25 +1118,32 @@ mod traits {
         }
     }
 
-    impl ops::Slice<uint, str> for str {
+    impl ops::Index<ops::Range<uint>> for str {
+        type Output = str;
         #[inline]
-        fn as_slice_<'a>(&'a self) -> &'a str {
+        fn index(&self, index: &ops::Range<uint>) -> &str {
+            self.slice(index.start, index.end)
+        }
+    }
+    impl ops::Index<ops::RangeTo<uint>> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, index: &ops::RangeTo<uint>) -> &str {
+            self.slice_to(index.end)
+        }
+    }
+    impl ops::Index<ops::RangeFrom<uint>> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
+            self.slice_from(index.start)
+        }
+    }
+    impl ops::Index<ops::FullRange> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, _index: &ops::FullRange) -> &str {
             self
-        }
-
-        #[inline]
-        fn slice_from_or_fail<'a>(&'a self, from: &uint) -> &'a str {
-            self.slice_from(*from)
-        }
-
-        #[inline]
-        fn slice_to_or_fail<'a>(&'a self, to: &uint) -> &'a str {
-            self.slice_to(*to)
-        }
-
-        #[inline]
-        fn slice_or_fail<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
-            self.slice(*from, *to)
         }
     }
 }
@@ -1165,25 +1171,25 @@ impl<'a, S: ?Sized> Str for &'a S where S: Str {
 #[derive(Clone)]
 #[stable]
 pub struct Split<'a, P>(CharSplits<'a, P>);
-delegate_iter!{pattern &'a str in Split<'a, P>}
+delegate_iter!{pattern &'a str : Split<'a, P>}
 
 /// Return type of `StrExt::split_terminator`
 #[derive(Clone)]
 #[unstable = "might get removed in favour of a constructor method on Split"]
 pub struct SplitTerminator<'a, P>(CharSplits<'a, P>);
-delegate_iter!{pattern &'a str in SplitTerminator<'a, P>}
+delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}
 
 /// Return type of `StrExt::splitn`
 #[derive(Clone)]
 #[stable]
 pub struct SplitN<'a, P>(CharSplitsN<'a, P>);
-delegate_iter!{pattern forward &'a str in SplitN<'a, P>}
+delegate_iter!{pattern forward &'a str : SplitN<'a, P>}
 
 /// Return type of `StrExt::rsplitn`
 #[derive(Clone)]
 #[stable]
 pub struct RSplitN<'a, P>(CharSplitsN<'a, P>);
-delegate_iter!{pattern forward &'a str in RSplitN<'a, P>}
+delegate_iter!{pattern forward &'a str : RSplitN<'a, P>}
 
 /// Methods for string slices
 #[allow(missing_docs)]
@@ -1406,13 +1412,13 @@ impl StrExt for str {
     #[inline]
     fn starts_with(&self, needle: &str) -> bool {
         let n = needle.len();
-        self.len() >= n && needle.as_bytes() == self.as_bytes()[..n]
+        self.len() >= n && needle.as_bytes() == self.as_bytes().index(&(0..n))
     }
 
     #[inline]
     fn ends_with(&self, needle: &str) -> bool {
         let (m, n) = (self.len(), needle.len());
-        m >= n && needle.as_bytes() == self.as_bytes()[m-n..]
+        m >= n && needle.as_bytes() == self.as_bytes().index(&((m-n)..))
     }
 
     #[inline]

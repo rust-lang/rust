@@ -231,7 +231,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
         Some(self_expr) => {
             debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
-                   (self-id={}, base adjustment={}, explicit_self={})",
+                   (self-id={}, base adjustment={:?}, explicit_self={:?})",
                    self_expr.id, autoderefref, method_ty.explicit_self);
 
             match method_ty.explicit_self {
@@ -266,7 +266,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                                 span,
                                 format!(
                                     "trait method is &self but first arg is: {}",
-                                    transformed_self_ty.repr(fcx.tcx()))[]);
+                                    transformed_self_ty.repr(fcx.tcx())).index(&FullRange));
                         }
                     }
                 }
@@ -275,8 +275,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                     fcx.tcx().sess.span_bug(
                         span,
                         format!(
-                            "unexpected explicit self type in operator method: {}",
-                            method_ty.explicit_self)[]);
+                            "unexpected explicit self type in operator method: {:?}",
+                            method_ty.explicit_self).index(&FullRange));
                 }
             }
         }
@@ -330,7 +330,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if is_field {
                 cx.sess.span_note(span,
                     format!("use `(s.{0})(...)` if you meant to call the \
-                            function stored in the `{0}` field", method_ustring)[]);
+                            function stored in the `{0}` field", method_ustring).index(&FullRange));
             }
 
             if static_sources.len() > 0 {

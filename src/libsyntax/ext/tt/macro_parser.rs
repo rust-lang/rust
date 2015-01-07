@@ -153,7 +153,7 @@ pub fn count_names(ms: &[TokenTree]) -> uint {
                 seq.num_captures
             }
             &TtDelimited(_, ref delim) => {
-                count_names(delim.tts[])
+                count_names(delim.tts.index(&FullRange))
             }
             &TtToken(_, MatchNt(..)) => {
                 1
@@ -165,7 +165,7 @@ pub fn count_names(ms: &[TokenTree]) -> uint {
 
 pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: BytePos)
                            -> Box<MatcherPos> {
-    let match_idx_hi = count_names(ms[]);
+    let match_idx_hi = count_names(ms.index(&FullRange));
     let matches: Vec<_> = range(0, match_idx_hi).map(|_| Vec::new()).collect();
     box MatcherPos {
         stack: vec![],
@@ -219,7 +219,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                 }
             }
             &TtToken(sp, MatchNt(bind_name, _, _, _)) => {
-                match ret_val.entry(&bind_name) {
+                match ret_val.entry(bind_name) {
                     Vacant(spot) => {
                         spot.insert(res[*idx].clone());
                         *idx += 1;
@@ -229,7 +229,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                         p_s.span_diagnostic
                            .span_fatal(sp,
                                        format!("duplicated bind name: {}",
-                                               string.get())[])
+                                               string.get()).index(&FullRange))
                     }
                 }
             }
@@ -254,13 +254,13 @@ pub fn parse_or_else(sess: &ParseSess,
                      rdr: TtReader,
                      ms: Vec<TokenTree> )
                      -> HashMap<Ident, Rc<NamedMatch>> {
-    match parse(sess, cfg, rdr, ms[]) {
+    match parse(sess, cfg, rdr, ms.index(&FullRange)) {
         Success(m) => m,
         Failure(sp, str) => {
-            sess.span_diagnostic.span_fatal(sp, str[])
+            sess.span_diagnostic.span_fatal(sp, str.index(&FullRange))
         }
         Error(sp, str) => {
-            sess.span_diagnostic.span_fatal(sp, str[])
+            sess.span_diagnostic.span_fatal(sp, str.index(&FullRange))
         }
     }
 }
@@ -341,7 +341,7 @@ pub fn parse(sess: &ParseSess,
                         // Only touch the binders we have actually bound
                         for idx in range(ei.match_lo, ei.match_hi) {
                             let sub = (ei.matches[idx]).clone();
-                            new_pos.matches[idx]
+                            (&mut new_pos.matches[idx])
                                    .push(Rc::new(MatchedSeq(sub, mk_sp(ei.sp_lo,
                                                                        sp.hi))));
                         }
@@ -386,7 +386,7 @@ pub fn parse(sess: &ParseSess,
                             new_ei.idx += 1u;
                             //we specifically matched zero repeats.
                             for idx in range(ei.match_cur, ei.match_cur + seq.num_captures) {
-                                new_ei.matches[idx].push(Rc::new(MatchedSeq(Vec::new(), sp)));
+                                (&mut new_ei.matches[idx]).push(Rc::new(MatchedSeq(vec![], sp)));
                             }
 
                             cur_eis.push(new_ei);
@@ -444,10 +444,10 @@ pub fn parse(sess: &ParseSess,
         if token_name_eq(&tok, &token::Eof) {
             if eof_eis.len() == 1u {
                 let mut v = Vec::new();
-                for dv in eof_eis[0].matches.iter_mut() {
+                for dv in (&mut eof_eis[0]).matches.iter_mut() {
                     v.push(dv.pop().unwrap());
                 }
-                return Success(nameize(sess, ms, v[]));
+                return Success(nameize(sess, ms, v.index(&FullRange)));
             } else if eof_eis.len() > 1u {
                 return Error(sp, "ambiguity: multiple successful parses".to_string());
             } else {
@@ -486,7 +486,7 @@ pub fn parse(sess: &ParseSess,
                   TtToken(_, MatchNt(_, name, _, _)) => {
                     let name_string = token::get_ident(name);
                     let match_cur = ei.match_cur;
-                    ei.matches[match_cur].push(Rc::new(MatchedNonterminal(
+                    (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
                         parse_nt(&mut rust_parser, name_string.get()))));
                     ei.idx += 1u;
                     ei.match_cur += 1;
@@ -507,6 +507,17 @@ pub fn parse(sess: &ParseSess,
 
 pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
     match name {
+        "tt" => {
+            p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
+            let res = token::NtTT(P(p.parse_token_tree()));
+            p.quote_depth -= 1u;
+            return res;
+        }
+        _ => {}
+    }
+    // check at the beginning and the parser checks after each bump
+    p.check_unknown_macro_variable();
+    match name {
       "item" => match p.parse_item(Vec::new()) {
         Some(i) => token::NtItem(i),
         None => p.fatal("expected an item keyword")
@@ -522,21 +533,15 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         _ => {
             let token_str = pprust::token_to_string(&p.token);
             p.fatal((format!("expected ident, found {}",
-                             token_str[]))[])
+                             token_str.index(&FullRange))).index(&FullRange))
         }
       },
       "path" => {
         token::NtPath(box p.parse_path(LifetimeAndTypesWithoutColons))
       }
       "meta" => token::NtMeta(p.parse_meta_item()),
-      "tt" => {
-        p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
-        let res = token::NtTT(P(p.parse_token_tree()));
-        p.quote_depth -= 1u;
-        res
-      }
       _ => {
-          p.fatal(format!("unsupported builtin nonterminal parser: {}", name)[])
+          p.fatal(format!("unsupported builtin nonterminal parser: {}", name).index(&FullRange))
       }
     }
 }

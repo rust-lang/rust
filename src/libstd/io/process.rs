@@ -395,7 +395,14 @@ impl Command {
     }
 }
 
+#[cfg(stage0)]
 impl fmt::Show for Command {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for Command {
     /// Format the program and arguments of a Command for display. Any
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
@@ -504,6 +511,14 @@ pub enum ProcessExit {
 }
 
 impl fmt::Show for ProcessExit {
+    /// Format a ProcessExit enum, to nicely present the information.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+
+impl fmt::String for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -705,7 +720,7 @@ impl Process {
                     Thread::spawn(move |:| {
                         let mut stream = stream;
                         tx.send(stream.read_to_end()).unwrap();
-                    }).detach();
+                    });
                 }
                 None => tx.send(Ok(Vec::new())).unwrap()
             }
@@ -752,12 +767,12 @@ impl Drop for Process {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
+    use io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
+    use prelude::v1::{Ok, Err, range, drop, Some, None, Vec};
+    use prelude::v1::{Path, String, Reader, Writer, Clone};
+    use prelude::v1::{SliceExt, Str, StrExt, AsSlice, ToString, GenericPath};
     use io::fs::PathExtensions;
-    use io::process;
     use io::timer::*;
-    use io::{Truncate, Write, TimedOut, timer, FileNotFound};
     use rt::running_on_valgrind;
     use str;
     use super::{CreatePipe};

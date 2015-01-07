@@ -184,7 +184,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                         let escaping_type = self.probe(vid).unwrap();
                         escaping_types.push(escaping_type);
                     }
-                    debug!("SpecifyVar({}) new_elem_threshold={}", vid, new_elem_threshold);
+                    debug!("SpecifyVar({:?}) new_elem_threshold={}", vid, new_elem_threshold);
                 }
 
                 _ => { }

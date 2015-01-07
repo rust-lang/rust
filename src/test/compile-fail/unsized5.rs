@@ -8,30 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test `Sized?` types not allowed in fields (except the last one).
+// Test `?Sized` types not allowed in fields (except the last one).
 
 struct S1<X: ?Sized> {
-    f1: X, //~ ERROR `core::kinds::Sized` is not implemented
+    f1: X, //~ ERROR `core::marker::Sized` is not implemented
     f2: int,
 }
 struct S2<X: ?Sized> {
     f: int,
-    g: X, //~ ERROR `core::kinds::Sized` is not implemented
+    g: X, //~ ERROR `core::marker::Sized` is not implemented
     h: int,
 }
 struct S3 {
-    f: str, //~ ERROR `core::kinds::Sized` is not implemented
+    f: str, //~ ERROR `core::marker::Sized` is not implemented
     g: [uint]
 }
 struct S4 {
-    f: str, //~ ERROR `core::kinds::Sized` is not implemented
+    f: str, //~ ERROR `core::marker::Sized` is not implemented
     g: uint
 }
 enum E<X: ?Sized> {
-    V1(X, int), //~ERROR `core::kinds::Sized` is not implemented
+    V1(X, int), //~ERROR `core::marker::Sized` is not implemented
 }
 enum F<X: ?Sized> {
-    V2{f1: X, f: int}, //~ERROR `core::kinds::Sized` is not implemented
+    V2{f1: X, f: int}, //~ERROR `core::marker::Sized` is not implemented
 }
 
 pub fn main() {

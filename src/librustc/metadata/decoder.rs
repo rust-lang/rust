@@ -75,7 +75,7 @@ fn lookup_hash<'a, F>(d: rbml::Doc<'a>, mut eq_fn: F, hash: u64) -> Option<rbml:
     let mut ret = None;
     reader::tagged_docs(tagged_doc.doc, belt, |elt| {
         let pos = u64_from_be_bytes(elt.data, elt.start, 4) as uint;
-        if eq_fn(elt.data[elt.start + 4 .. elt.end]) {
+        if eq_fn(elt.data.index(&((elt.start + 4) .. elt.end))) {
             ret = Some(reader::doc_at(d.data, pos).unwrap().doc);
             false
         } else {
@@ -89,7 +89,7 @@ pub fn maybe_find_item<'a>(item_id: ast::NodeId,
                            items: rbml::Doc<'a>) -> Option<rbml::Doc<'a>> {
     fn eq_item(bytes: &[u8], item_id: ast::NodeId) -> bool {
         return u64_from_be_bytes(
-            bytes[0u..4u], 0u, 4u) as ast::NodeId
+            bytes.index(&(0u..4u)), 0u, 4u) as ast::NodeId
             == item_id;
     }
     lookup_hash(items,
@@ -675,14 +675,14 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
     debug!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data());
     let path = item_path(item_doc).init().to_vec();
-    match decode_inlined_item.call_mut((cdata, tcx, path, item_doc)) {
+    match decode_inlined_item(cdata, tcx, path, item_doc) {
         Ok(ii) => csearch::found(ii),
         Err(path) => {
             match item_parent_item(item_doc) {
                 Some(did) => {
                     let did = translate_def_id(cdata, did);
                     let parent_item = lookup_item(did.node, cdata.data());
-                    match decode_inlined_item.call_mut((cdata, tcx, path, parent_item)) {
+                    match decode_inlined_item(cdata, tcx, path, parent_item) {
                         Ok(ii) => csearch::found_parent(did, ii),
                         Err(_) => csearch::not_found
                     }
@@ -1191,7 +1191,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
         let name = docstr(depdoc, tag_crate_dep_crate_name);
-        let hash = Svh::new(docstr(depdoc, tag_crate_dep_hash)[]);
+        let hash = Svh::new(docstr(depdoc, tag_crate_dep_hash).index(&FullRange));
         deps.push(CrateDep {
             cnum: crate_num,
             name: name,

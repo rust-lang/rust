@@ -16,22 +16,22 @@ trait Foo<X> {
 }
 
 fn want_hrtb<T>()
-    where T : for<'a> Foo<&'a int>
+    where T : for<'a> Foo<&'a isize>
 {
 }
 
-// AnyInt implements Foo<&'a int> for any 'a, so it is a match.
+// AnyInt implements Foo<&'a isize> for any 'a, so it is a match.
 struct AnyInt;
-impl<'a> Foo<&'a int> for AnyInt { }
+impl<'a> Foo<&'a isize> for AnyInt { }
 fn give_any() {
     want_hrtb::<AnyInt>()
 }
 
-// StaticInt only implements Foo<&'static int>, so it is an error.
+// StaticInt only implements Foo<&'static isize>, so it is an error.
 struct StaticInt;
-impl Foo<&'static int> for StaticInt { }
+impl Foo<&'static isize> for StaticInt { }
 fn give_static() {
-    want_hrtb::<StaticInt>() //~ ERROR `for<'a> Foo<&'a int>` is not implemented
+    want_hrtb::<StaticInt>() //~ ERROR `for<'a> Foo<&'a isize>` is not implemented
 }
 
 fn main() { }

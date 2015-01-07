@@ -134,7 +134,7 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
                         let var_node_id = freevar.def.local_node_id();
                         let upvar_id = ty::UpvarId { var_id: var_node_id,
                                                      closure_expr_id: expr.id };
-                        debug!("seed upvar_id {}", upvar_id);
+                        debug!("seed upvar_id {:?}", upvar_id);
                         let origin = UpvarRegion(upvar_id, expr.span);
                         let freevar_region = self.infcx().next_region_var(origin);
                         let upvar_borrow = ty::UpvarBorrow { kind: ty::ImmBorrow,
@@ -269,7 +269,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx>{
                                 upvar_id: ty::UpvarId,
                                 upvar_borrow: &mut ty::UpvarBorrow,
                                 kind: ty::BorrowKind) {
-        debug!("adjust_upvar_borrow_kind: id={} kind=({} -> {})",
+        debug!("adjust_upvar_borrow_kind: id={:?} kind=({:?} -> {:?})",
                upvar_id, upvar_borrow.kind, kind);
 
         match (upvar_borrow.kind, kind) {
@@ -337,7 +337,7 @@ impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
               bk: ty::BorrowKind,
               _loan_cause: euv::LoanCause)
     {
-        debug!("borrow(borrow_id={}, cmt={}, bk={})",
+        debug!("borrow(borrow_id={}, cmt={}, bk={:?})",
                borrow_id, cmt.repr(self.tcx()), bk);
 
         match bk {

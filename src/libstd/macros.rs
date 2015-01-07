@@ -111,7 +111,7 @@ macro_rules! assert_eq {
                 if !((*left_val == *right_val) &&
                      (*right_val == *left_val)) {
                     panic!("assertion failed: `(left == right) && (right == left)` \
-                           (left: `{}`, right: `{}`)", *left_val, *right_val)
+                           (left: `{:?}`, right: `{:?}`)", *left_val, *right_val)
                 }
             }
         }
@@ -303,8 +303,8 @@ macro_rules! try {
 /// # fn long_running_task() {}
 /// # fn calculate_the_answer() -> int { 42i }
 ///
-/// Thread::spawn(move|| { long_running_task(); tx1.send(()) }).detach();
-/// Thread::spawn(move|| { tx2.send(calculate_the_answer()) }).detach();
+/// Thread::spawn(move|| { long_running_task(); tx1.send(()).unwrap(); });
+/// Thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
 ///
 /// select! (
 ///     _ = rx1.recv() => println!("the long running task finished first"),
@@ -371,7 +371,7 @@ pub mod builtin {
     ///
     /// ```
     #[macro_export]
-    macro_rules! format_args { ($fmt:expr $($args:tt)*) => ({
+    macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
         /* compiler built-in */
     }) }
 
@@ -407,7 +407,7 @@ pub mod builtin {
     ///
     /// ```rust
     /// let key: Option<&'static str> = option_env!("SECRET_KEY");
-    /// println!("the secret key might be: {}", key);
+    /// println!("the secret key might be: {:?}", key);
     /// ```
     #[macro_export]
     macro_rules! option_env { ($name:expr) => ({ /* compiler built-in */ }) }

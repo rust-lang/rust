@@ -28,6 +28,7 @@ use ptr::P;
 use std::cell::{RefCell, Cell};
 use std::collections::BitvSet;
 use std::collections::HashSet;
+use std::fmt;
 
 thread_local! { static USED_ATTRS: RefCell<BitvSet> = RefCell::new(BitvSet::new()) }
 
@@ -97,7 +98,7 @@ impl AttrMetaMethods for MetaItem {
 
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]> {
         match self.node {
-            MetaList(_, ref l) => Some(l[]),
+            MetaList(_, ref l) => Some(l.index(&FullRange)),
             _ => None
         }
     }
@@ -136,7 +137,7 @@ impl AttributeMethods for Attribute {
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
                 token::intern_and_get_ident(strip_doc_comment_decoration(
-                        comment.get())[]));
+                        comment.get()).index(&FullRange)));
             if self.node.style == ast::AttrOuter {
                 f(&mk_attr_outer(self.node.id, meta))
             } else {
@@ -296,9 +297,9 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
             }
             MetaList(ref n, ref items) if *n == "inline" => {
                 mark_used(attr);
-                if contains_name(items[], "always") {
+                if contains_name(items.index(&FullRange), "always") {
                     InlineAlways
-                } else if contains_name(items[], "never") {
+                } else if contains_name(items.index(&FullRange), "never") {
                     InlineNever
                 } else {
                     InlineHint
@@ -332,7 +333,7 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
             !cfg_matches(diagnostic, cfgs, &*mis[0])
         }
         ast::MetaList(ref pred, _) => {
-            diagnostic.span_err(cfg.span, format!("invalid predicate `{}`", pred)[]);
+            diagnostic.span_err(cfg.span, format!("invalid predicate `{}`", pred).as_slice());
             false
         },
         ast::MetaWord(_) | ast::MetaNameValue(..) => contains(cfgs, cfg),
@@ -355,6 +356,12 @@ pub enum StabilityLevel {
     Stable,
     Frozen,
     Locked
+}
+
+impl fmt::String for StabilityLevel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Show::fmt(self, f)
+    }
 }
 
 pub fn find_stability_generic<'a,
@@ -396,7 +403,7 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {
 
         if !set.insert(name.clone()) {
             diagnostic.span_fatal(meta.span,
-                                  format!("duplicate meta item `{}`", name)[]);
+                                  format!("duplicate meta item `{}`", name).index(&FullRange));
         }
     }
 }
@@ -457,8 +464,10 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
         "u32" => Some(UnsignedInt(ast::TyU32)),
         "i64" => Some(SignedInt(ast::TyI64)),
         "u64" => Some(UnsignedInt(ast::TyU64)),
-        "int" => Some(SignedInt(ast::TyI)),
-        "uint" => Some(UnsignedInt(ast::TyU)),
+        "int" => Some(SignedInt(ast::TyIs)),
+        "uint" => Some(UnsignedInt(ast::TyUs)),
+        "isize" => Some(SignedInt(ast::TyIs)),
+        "usize" => Some(UnsignedInt(ast::TyUs)),
         _ => None
     }
 }
@@ -502,7 +511,7 @@ impl IntType {
             SignedInt(ast::TyI16) | UnsignedInt(ast::TyU16) |
             SignedInt(ast::TyI32) | UnsignedInt(ast::TyU32) |
             SignedInt(ast::TyI64) | UnsignedInt(ast::TyU64) => true,
-            SignedInt(ast::TyI) | UnsignedInt(ast::TyU) => false
+            SignedInt(ast::TyIs) | UnsignedInt(ast::TyUs) => false
         }
     }
 }

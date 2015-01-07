@@ -22,7 +22,7 @@ fn test05() {
         println!("{}", *three + n); // will copy x into the closure
         assert_eq!(*three, 3);
     };
-    Thread::spawn(move|| {
+    Thread::scoped(move|| {
         test05_start(fn_to_send);
     }).join().ok().unwrap();
 }

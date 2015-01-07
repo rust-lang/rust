@@ -455,7 +455,8 @@ impl<V> VecMap<V> {
         if *key >= self.v.len() {
             return None;
         }
-        self.v[*key].take()
+        let result = &mut self.v[*key];
+        result.take()
     }
 }
 
@@ -488,11 +489,11 @@ impl<V: Ord> Ord for VecMap<V> {
 #[stable]
 impl<V: fmt::Show> fmt::Show for VecMap<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
+        try!(write!(f, "VecMap {{"));
 
         for (i, (k, v)) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}: {}", k, *v));
+            try!(write!(f, "{}: {:?}", k, *v));
         }
 
         write!(f, "}}")
@@ -928,9 +929,9 @@ mod test_map {
         map.insert(1, 2i);
         map.insert(3, 4i);
 
-        let map_str = map.to_string();
-        assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-        assert_eq!(format!("{}", empty), "{}");
+        let map_str = format!("{:?}", map);
+        assert!(map_str == "VecMap {1: 2i, 3: 4i}" || map_str == "{3: 4i, 1: 2i}");
+        assert_eq!(format!("{:?}", empty), "VecMap {}");
     }
 
     #[test]

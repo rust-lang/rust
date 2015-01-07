@@ -34,7 +34,7 @@ use failure::LOCAL_STDERR;
 use fmt;
 use io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
-use kinds::{Sync, Send};
+use marker::{Sync, Send};
 use libc;
 use mem;
 use option::Option;
@@ -349,7 +349,7 @@ fn with_task_stdout<F>(f: F) where F: FnOnce(&mut Writer) -> IoResult<()> {
     });
     match result {
         Ok(()) => {}
-        Err(e) => panic!("failed printing to stdout: {}", e),
+        Err(e) => panic!("failed printing to stdout: {:?}", e),
     }
 }
 

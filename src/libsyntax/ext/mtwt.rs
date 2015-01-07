@@ -66,7 +66,7 @@ pub fn apply_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
 /// Extend a syntax context with a given mark and sctable (explicit memoization)
 fn apply_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
     let key = (ctxt, m);
-    * table.mark_memo.borrow_mut().entry(&key).get().unwrap_or_else(
+    * table.mark_memo.borrow_mut().entry(key).get().unwrap_or_else(
           |vacant_entry|
               vacant_entry.insert(idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt))))
 }
@@ -84,7 +84,7 @@ fn apply_rename_internal(id: Ident,
                        table: &SCTable) -> SyntaxContext {
     let key = (ctxt, id, to);
 
-    * table.rename_memo.borrow_mut().entry(&key).get().unwrap_or_else(
+    * table.rename_memo.borrow_mut().entry(key).get().unwrap_or_else(
           |vacant_entry|
               vacant_entry.insert(idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt))))
 }
@@ -121,7 +121,7 @@ fn new_sctable_internal() -> SCTable {
 pub fn display_sctable(table: &SCTable) {
     error!("SC table:");
     for (idx,val) in table.table.borrow().iter().enumerate() {
-        error!("{:4} : {}",idx,val);
+        error!("{:4} : {:?}",idx,val);
     }
 }
 
@@ -223,7 +223,7 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name) -> Vec<Mrk> {
 }
 
 // the internal function for computing marks
-// it's not clear to me whether it's better to use a [] mutable
+// it's not clear to me whether it's better to use a .index(&FullRange) mutable
 // vector or a cons-list for this.
 fn marksof_internal(ctxt: SyntaxContext,
                     stopname: Name,

@@ -58,7 +58,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     // public or private item, we will check the correct thing, dependent on how the import
     // is used.
     fn finalize_import(&mut self, id: ast::NodeId, span: Span) {
-        debug!("finalizing import uses for {}",
+        debug!("finalizing import uses for {:?}",
                 self.session.codemap().span_to_snippet(span));
 
         if !self.used_imports.contains(&(id, TypeNS)) &&

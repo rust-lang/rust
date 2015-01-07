@@ -14,16 +14,24 @@
 //! they aren't defined anywhere outside of the `rt` module.
 
 macro_rules! rterrln {
-    ($fmt:expr $($arg:tt)*) => ( {
-        ::rt::util::dumb_print(format_args!(concat!($fmt, "\n") $($arg)*))
+    ($fmt:expr) => ( {
+        ::rt::util::dumb_print(format_args!(concat!($fmt, "\n")))
+    } );
+    ($fmt:expr, $($arg:expr),*) => ( {
+        ::rt::util::dumb_print(format_args!(concat!($fmt, "\n"), $($arg)*))
     } )
 }
 
 // Some basic logging. Enabled by passing `--cfg rtdebug` to the libstd build.
 macro_rules! rtdebug {
-    ($($arg:tt)*) => ( {
+    ($arg:expr) => ( {
         if cfg!(rtdebug) {
-            rterrln!($($arg)*)
+            rterrln!($arg)
+        }
+    } );
+    ($str:expr, $($arg:expr),*) => ( {
+        if cfg!(rtdebug) {
+            rterrln!($str, $($arg)*)
         }
     })
 }

@@ -112,6 +112,7 @@ use self::VarKind::*;
 use middle::def::*;
 use middle::mem_categorization::Typer;
 use middle::pat_util;
+use middle::region::CodeExtent;
 use middle::ty;
 use middle::ty::UnboxedClosureTyper;
 use lint;
@@ -289,7 +290,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
         self.lnks.push(lnk);
         self.num_live_nodes += 1;
 
-        debug!("{} is of kind {}", ln.to_string(),
+        debug!("{:?} is of kind {}", ln,
                live_node_kind_to_string(lnk, self.tcx));
 
         ln
@@ -299,7 +300,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
         let ln = self.add_live_node(lnk);
         self.live_node_map.insert(node_id, ln);
 
-        debug!("{} is node {}", ln.to_string(), node_id);
+        debug!("{:?} is node {}", ln, node_id);
     }
 
     fn add_variable(&mut self, vk: VarKind) -> Variable {
@@ -314,7 +315,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             ImplicitRet | CleanExit => {}
         }
 
-        debug!("{} is {}", v.to_string(), vk);
+        debug!("{:?} is {:?}", v, vk);
 
         v
     }
@@ -326,7 +327,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             self.tcx
                 .sess
                 .span_bug(span, format!("no variable registered for id {}",
-                                        node_id)[]);
+                                        node_id).index(&FullRange));
           }
         }
     }
@@ -377,7 +378,7 @@ fn visit_fn(ir: &mut IrMaps,
     // swap in a new set of IR maps for this function body:
     let mut fn_maps = IrMaps::new(ir.tcx);
 
-    debug!("creating fn_maps: {}", &fn_maps as *const IrMaps);
+    debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps);
 
     for arg in decl.inputs.iter() {
         pat_util::pat_bindings(&ir.tcx.def_map,
@@ -430,7 +431,7 @@ fn visit_local(ir: &mut IrMaps, local: &ast::Local) {
 fn visit_arm(ir: &mut IrMaps, arm: &ast::Arm) {
     for pat in arm.pats.iter() {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
-            debug!("adding local variable {} from match with bm {}",
+            debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
             let name = path1.node;
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -448,7 +449,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       // live nodes required for uses or definitions of variables:
       ast::ExprPath(_) => {
         let def = ir.tcx.def_map.borrow()[expr.id].clone();
-        debug!("expr {}: path that leads to {}", expr.id, def);
+        debug!("expr {}: path that leads to {:?}", expr.id, def);
         if let DefLocal(..) = def {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
@@ -491,7 +492,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       }
       ast::ExprForLoop(ref pat, _, _, _) => {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
-            debug!("adding local variable {} from for loop with bm {}",
+            debug!("adding local variable {} from for loop with bm {:?}",
                    p_id, bm);
             let name = path1.node;
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
@@ -597,7 +598,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.ir.tcx.sess.span_bug(
                 span,
                 format!("no live node registered for node {}",
-                        node_id)[]);
+                        node_id).index(&FullRange));
           }
         }
     }
@@ -702,7 +703,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         for var_idx in range(0u, self.ir.num_vars) {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                try!(write!(wr, " {}", Variable(var_idx).to_string()));
+                try!(write!(wr, " {:?}", Variable(var_idx)));
             }
         }
         Ok(())
@@ -740,11 +741,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let mut wr = Vec::new();
         {
             let wr = &mut wr as &mut io::Writer;
-            write!(wr, "[ln({}) of kind {} reads", ln.get(), self.ir.lnk(ln));
+            write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
             self.write_vars(wr, ln, |idx| self.users[idx].reader);
             write!(wr, "  writes");
             self.write_vars(wr, ln, |idx| self.users[idx].writer);
-            write!(wr, "  precedes {}]", self.successors[ln.get()].to_string());
+            write!(wr, "  precedes {:?}]", self.successors[ln.get()]);
         }
         String::from_utf8(wr).unwrap()
     }
@@ -792,8 +793,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         });
 
-        debug!("merge_from_succ(ln={}, succ={}, first_merge={}, changed={})",
-               ln.to_string(), self.ln_str(succ_ln), first_merge, changed);
+        debug!("merge_from_succ(ln={:?}, succ={}, first_merge={}, changed={})",
+               ln, self.ln_str(succ_ln), first_merge, changed);
         return changed;
 
         fn copy_if_invalid(src: LiveNode, dst: &mut LiveNode) -> bool {
@@ -814,14 +815,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.users[idx].reader = invalid_node();
         self.users[idx].writer = invalid_node();
 
-        debug!("{} defines {} (idx={}): {}", writer.to_string(), var.to_string(),
+        debug!("{:?} defines {:?} (idx={}): {}", writer, var,
                idx, self.ln_str(writer));
     }
 
     // Either read, write, or both depending on the acc bitset
     fn acc(&mut self, ln: LiveNode, var: Variable, acc: uint) {
-        debug!("{} accesses[{:x}] {}: {}",
-               ln.to_string(), acc, var.to_string(), self.ln_str(ln));
+        debug!("{:?} accesses[{:x}] {:?}: {}",
+               ln, acc, var, self.ln_str(ln));
 
         let idx = self.idx(ln, var);
         let user = &mut self.users[idx];
@@ -857,14 +858,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               |this| this.propagate_through_fn_block(decl, body));
 
         // hack to skip the loop unless debug! is enabled:
-        debug!("^^ liveness computation results for body {} (entry={})",
+        debug!("^^ liveness computation results for body {} (entry={:?})",
                {
                    for ln_idx in range(0u, self.ir.num_live_nodes) {
-                       debug!("{}", self.ln_str(LiveNode(ln_idx)));
+                       debug!("{:?}", self.ln_str(LiveNode(ln_idx)));
                    }
                    body.id
                },
-               entry_ln.to_string());
+               entry_ln);
 
         entry_ln
     }
@@ -1132,7 +1133,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           // Uninteresting cases: just propagate in rev exec order
 
           ast::ExprVec(ref exprs) => {
-            self.propagate_through_exprs(exprs[], succ)
+            self.propagate_through_exprs(exprs.index(&FullRange), succ)
           }
 
           ast::ExprRepeat(ref element, ref count) => {
@@ -1149,32 +1150,31 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           ast::ExprCall(ref f, ref args) => {
             let diverges = !self.ir.tcx.is_method_call(expr.id) && {
-                let t_ret = ty::ty_fn_ret(ty::expr_ty_adjusted(self.ir.tcx, &**f));
-                t_ret == ty::FnDiverging
+                ty::ty_fn_ret(ty::expr_ty_adjusted(self.ir.tcx, &**f)).diverges()
             };
             let succ = if diverges {
                 self.s.exit_ln
             } else {
                 succ
             };
-            let succ = self.propagate_through_exprs(args[], succ);
+            let succ = self.propagate_through_exprs(args.index(&FullRange), succ);
             self.propagate_through_expr(&**f, succ)
           }
 
           ast::ExprMethodCall(_, _, ref args) => {
             let method_call = ty::MethodCall::expr(expr.id);
             let method_ty = self.ir.tcx.method_map.borrow().get(&method_call).unwrap().ty;
-            let diverges = ty::ty_fn_ret(method_ty) == ty::FnDiverging;
+            let diverges = ty::ty_fn_ret(method_ty).diverges();
             let succ = if diverges {
                 self.s.exit_ln
             } else {
                 succ
             };
-            self.propagate_through_exprs(args[], succ)
+            self.propagate_through_exprs(args.index(&FullRange), succ)
           }
 
           ast::ExprTup(ref exprs) => {
-            self.propagate_through_exprs(exprs[], succ)
+            self.propagate_through_exprs(exprs.index(&FullRange), succ)
           }
 
           ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op) => {
@@ -1514,11 +1514,11 @@ fn check_fn(_v: &Liveness,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn fn_ret(&self, id: NodeId) -> ty::FnOutput<'tcx> {
+    fn fn_ret(&self, id: NodeId) -> ty::PolyFnOutput<'tcx> {
         let fn_ty = ty::node_id_to_type(self.ir.tcx, id);
         match fn_ty.sty {
             ty::ty_unboxed_closure(closure_def_id, _, substs) =>
-                self.ir.tcx.unboxed_closure_type(closure_def_id, substs).sig.0.output,
+                self.ir.tcx.unboxed_closure_type(closure_def_id, substs).sig.output(),
             _ =>
                 ty::ty_fn_ret(fn_ty),
         }
@@ -1529,8 +1529,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                  sp: Span,
                  _fk: FnKind,
                  entry_ln: LiveNode,
-                 body: &ast::Block) {
-        match self.fn_ret(id) {
+                 body: &ast::Block)
+    {
+        // within the fn body, late-bound regions are liberated:
+        let fn_ret =
+            ty::liberate_late_bound_regions(
+                self.ir.tcx,
+                CodeExtent::from_node_id(body.id),
+                &self.fn_ret(id));
+
+        match fn_ret {
             ty::FnConverging(t_ret)
                 if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 

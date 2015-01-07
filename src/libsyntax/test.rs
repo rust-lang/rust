@@ -73,14 +73,14 @@ pub fn modify_for_testing(sess: &ParseSess,
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains_name(krate.config[], "test");
+    let should_test = attr::contains_name(krate.config.index(&FullRange), "test");
 
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use some_name = __test::main;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
     // non-test builds.
     let reexport_test_harness_main =
-        attr::first_attr_value_str_by_name(krate.attrs[],
+        attr::first_attr_value_str_by_name(krate.attrs.index(&FullRange),
                                            "reexport_test_harness_main");
 
     if should_test {
@@ -119,7 +119,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             self.cx.path.push(ident);
         }
         debug!("current path: {}",
-               ast_util::path_name_i(self.cx.path[]));
+               ast_util::path_name_i(self.cx.path.index(&FullRange)));
 
         if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
             match i.node {
@@ -194,7 +194,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             if !self.cx.path.is_empty() {
                 self.tested_submods.push((self.cx.path[self.cx.path.len()-1], sym));
             } else {
-                debug!("pushing nothing, sym: {}", sym);
+                debug!("pushing nothing, sym: {:?}", sym);
                 self.cx.toplevel_reexport = Some(sym);
             }
         }
@@ -277,8 +277,8 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     config::strip_items(krate, |attrs| {
-        !attr::contains_name(attrs[], "test") &&
-        !attr::contains_name(attrs[], "bench")
+        !attr::contains_name(attrs.index(&FullRange), "test") &&
+        !attr::contains_name(attrs.index(&FullRange), "bench")
     })
 }
 
@@ -291,7 +291,7 @@ enum HasTestSignature {
 
 
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
-    let has_test_attr = attr::contains_name(i.attrs[], "test");
+    let has_test_attr = attr::contains_name(i.attrs.index(&FullRange), "test");
 
     fn has_test_signature(i: &ast::Item) -> HasTestSignature {
         match &i.node {
@@ -329,7 +329,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 }
 
 fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
-    let has_bench_attr = attr::contains_name(i.attrs[], "bench");
+    let has_bench_attr = attr::contains_name(i.attrs.index(&FullRange), "bench");
 
     fn has_test_signature(i: &ast::Item) -> bool {
         match i.node {
@@ -384,7 +384,7 @@ We're going to be building a module that looks more or less like:
 mod __test {
   extern crate test (name = "test", vers = "...");
   fn main() {
-    test::test_main_static(::os::args()[], tests)
+    test::test_main_static(::os::args().index(&FullRange), tests)
   }
 
   static tests : &'static [test::TestDescAndFn] = &[
@@ -510,8 +510,8 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 }
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
-    match attr::find_crate_name(krate.attrs[]) {
-        Some(ref s) if "test" == s.get()[] => true,
+    match attr::find_crate_name(krate.attrs.index(&FullRange)) {
+        Some(ref s) if "test" == s.get().index(&FullRange) => true,
         _ => false
     }
 }
@@ -551,11 +551,11 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     // creates $name: $expr
     let field = |&: name, expr| ecx.field_imm(span, ecx.ident_of(name), expr);
 
-    debug!("encoding {}", ast_util::path_name_i(path[]));
+    debug!("encoding {}", ast_util::path_name_i(path.index(&FullRange)));
 
     // path to the #[test] function: "foo::bar::baz"
-    let path_string = ast_util::path_name_i(path[]);
-    let name_expr = ecx.expr_str(span, token::intern_and_get_ident(path_string[]));
+    let path_string = ast_util::path_name_i(path.index(&FullRange));
+    let name_expr = ecx.expr_str(span, token::intern_and_get_ident(path_string.index(&FullRange)));
 
     // self::test::StaticTestName($name_expr)
     let name_expr = ecx.expr_call(span,

@@ -103,7 +103,7 @@ impl Type {
     }
 
     pub fn int(ccx: &CrateContext) -> Type {
-        match ccx.tcx().sess.target.target.target_word_size[] {
+        match ccx.tcx().sess.target.target.target_word_size.index(&FullRange) {
             "32" => Type::i32(ccx),
             "64" => Type::i64(ccx),
             tws => panic!("Unsupported target word size for int: {}", tws),
@@ -112,7 +112,7 @@ impl Type {
 
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::TyI => ccx.int_type(),
+            ast::TyIs => ccx.int_type(),
             ast::TyI8 => Type::i8(ccx),
             ast::TyI16 => Type::i16(ccx),
             ast::TyI32 => Type::i32(ccx),
@@ -122,7 +122,7 @@ impl Type {
 
     pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::TyU => ccx.int_type(),
+            ast::TyUs => ccx.int_type(),
             ast::TyU8 => Type::i8(ccx),
             ast::TyU16 => Type::i16(ccx),
             ast::TyU32 => Type::i32(ccx),

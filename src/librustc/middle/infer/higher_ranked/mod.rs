@@ -154,7 +154,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
                 assert!(!r0.is_bound());
-                debug!("generalize_region(r0={}): not new variable", r0);
+                debug!("generalize_region(r0={:?}): not new variable", r0);
                 return r0;
             }
 
@@ -164,8 +164,8 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
             // *related* to regions that pre-date the LUB computation
             // stay as they are.
             if !tainted.iter().all(|r| is_var_in_set(new_vars, *r)) {
-                debug!("generalize_region(r0={}): \
-                        non-new-variables found in {}",
+                debug!("generalize_region(r0={:?}): \
+                        non-new-variables found in {:?}",
                        r0, tainted);
                 assert!(!r0.is_bound());
                 return r0;
@@ -178,8 +178,8 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
             // with.
             for (a_br, a_r) in a_map.iter() {
                 if tainted.iter().any(|x| x == a_r) {
-                    debug!("generalize_region(r0={}): \
-                            replacing with {}, tainted={}",
+                    debug!("generalize_region(r0={:?}): \
+                            replacing with {:?}, tainted={:?}",
                            r0, *a_br, tainted);
                     return ty::ReLateBound(debruijn, *a_br);
                 }
@@ -187,9 +187,9 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
             infcx.tcx.sess.span_bug(
                 span,
-                format!("region {} is not associated with \
+                format!("region {:?} is not associated with \
                          any bound region from A!",
-                        r0)[])
+                        r0).index(&FullRange))
         }
     }
 
@@ -322,7 +322,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
             }
             infcx.tcx.sess.span_bug(
                 span,
-                format!("could not find original bound region for {}", r)[]);
+                format!("could not find original bound region for {:?}", r).index(&FullRange));
         }
 
         fn fresh_bound_variable(infcx: &InferCtxt, debruijn: ty::DebruijnIndex) -> ty::Region {
@@ -339,7 +339,7 @@ fn var_ids<'tcx, T: Combine<'tcx>>(combiner: &T,
             r => {
                 combiner.infcx().tcx.sess.span_bug(
                     combiner.trace().origin.span(),
-                    format!("found non-region-vid: {}", r)[]);
+                    format!("found non-region-vid: {:?}", r).index(&FullRange));
             }
         }).collect()
 }

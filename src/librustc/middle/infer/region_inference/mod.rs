@@ -273,7 +273,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     pub fn rollback_to(&self, snapshot: RegionSnapshot) {
-        debug!("RegionVarBindings: rollback_to({})", snapshot);
+        debug!("RegionVarBindings: rollback_to({:?})", snapshot);
         let mut undo_log = self.undo_log.borrow_mut();
         assert!(undo_log.len() > snapshot.length);
         assert!((*undo_log)[snapshot.length] == OpenSnapshot);
@@ -325,7 +325,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         if self.in_snapshot() {
             self.undo_log.borrow_mut().push(AddVar(vid));
         }
-        debug!("created new region variable {} with origin {}",
+        debug!("created new region variable {:?} with origin {}",
                vid, origin.repr(self.tcx));
         return vid;
     }
@@ -427,7 +427,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         let mut givens = self.givens.borrow_mut();
         if givens.insert((sub, sup)) {
-            debug!("add_given({} <= {})",
+            debug!("add_given({} <= {:?})",
                    sub.repr(self.tcx),
                    sup);
 
@@ -475,7 +475,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 origin.span(),
                 format!("cannot relate bound region: {} <= {}",
                         sub.repr(self.tcx),
-                        sup.repr(self.tcx))[]);
+                        sup.repr(self.tcx)).index(&FullRange));
           }
           (_, ReStatic) => {
             // all regions are subregions of static, so we can ignore this
@@ -565,7 +565,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
             Some(ref values) => {
                 let r = lookup(values, rid);
-                debug!("resolve_var({}) = {}", rid, r.repr(self.tcx));
+                debug!("resolve_var({:?}) = {}", rid, r.repr(self.tcx));
                 r
             }
         }
@@ -602,7 +602,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
         relate(self, a, ReInfer(ReVar(c)));
         relate(self, b, ReInfer(ReVar(c)));
-        debug!("combine_vars() c={}", c);
+        debug!("combine_vars() c={:?}", c);
         ReInfer(ReVar(c))
     }
 
@@ -623,7 +623,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     /// made---`r0` itself will be the first entry. This is used when checking whether skolemized
     /// regions are being improperly related to other regions.
     pub fn tainted(&self, mark: &RegionSnapshot, r0: Region) -> Vec<Region> {
-        debug!("tainted(mark={}, r0={})", mark, r0.repr(self.tcx));
+        debug!("tainted(mark={:?}, r0={})", mark, r0.repr(self.tcx));
         let _indenter = indenter();
 
         // `result_set` acts as a worklist: we explore all outgoing
@@ -634,7 +634,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         while result_index < result_set.len() {
             // nb: can't use uint::range() here because result_set grows
             let r = result_set[result_index];
-            debug!("result_index={}, r={}", result_index, r);
+            debug!("result_index={}, r={:?}", result_index, r);
 
             for undo_entry in
                 self.undo_log.borrow().slice_from(mark.length).iter()
@@ -736,7 +736,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             self.tcx.sess.bug(
                 format!("cannot relate bound region: LUB({}, {})",
                         a.repr(self.tcx),
-                        b.repr(self.tcx))[]);
+                        b.repr(self.tcx)).index(&FullRange));
           }
 
           (ReStatic, _) | (_, ReStatic) => {
@@ -751,9 +751,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             self.tcx.sess.span_bug(
                 (*self.var_origins.borrow())[v_id.index as uint].span(),
                 format!("lub_concrete_regions invoked with \
-                         non-concrete regions: {}, {}",
+                         non-concrete regions: {:?}, {:?}",
                         a,
-                        b)[]);
+                        b).index(&FullRange));
           }
 
           (ReFree(ref fr), ReScope(s_id)) |
@@ -827,7 +827,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                             a: Region,
                             b: Region)
                          -> cres<'tcx, Region> {
-        debug!("glb_concrete_regions({}, {})", a, b);
+        debug!("glb_concrete_regions({:?}, {:?})", a, b);
         match (a, b) {
             (ReLateBound(..), _) |
             (_, ReLateBound(..)) |
@@ -836,7 +836,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
               self.tcx.sess.bug(
                   format!("cannot relate bound region: GLB({}, {})",
                           a.repr(self.tcx),
-                          b.repr(self.tcx))[]);
+                          b.repr(self.tcx)).index(&FullRange));
             }
 
             (ReStatic, r) | (r, ReStatic) => {
@@ -854,9 +854,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 self.tcx.sess.span_bug(
                     (*self.var_origins.borrow())[v_id.index as uint].span(),
                     format!("glb_concrete_regions invoked with \
-                             non-concrete regions: {}, {}",
+                             non-concrete regions: {:?}, {:?}",
                             a,
-                            b)[]);
+                            b).index(&FullRange));
             }
 
             (ReFree(ref fr), ReScope(s_id)) |
@@ -932,7 +932,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // scopes or two free regions.  So, if one of
         // these scopes is a subscope of the other, return
         // it. Otherwise fail.
-        debug!("intersect_scopes(scope_a={}, scope_b={}, region_a={}, region_b={})",
+        debug!("intersect_scopes(scope_a={:?}, scope_b={:?}, region_a={:?}, region_b={:?})",
                scope_a, scope_b, region_a, region_b);
         match self.tcx.region_maps.nearest_common_ancestor(scope_a, scope_b) {
             Some(r_id) if scope_a == r_id => Ok(ReScope(scope_b)),
@@ -971,13 +971,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         // Dorky hack to cause `dump_constraints` to only get called
         // if debug mode is enabled:
-        debug!("----() End constraint listing {}---", self.dump_constraints());
+        debug!("----() End constraint listing {:?}---", self.dump_constraints());
         graphviz::maybe_print_constraints_for(self, subject);
 
         self.expansion(var_data.as_mut_slice());
         self.contraction(var_data.as_mut_slice());
         let values =
-            self.extract_values_and_collect_conflicts(var_data[],
+            self.extract_values_and_collect_conflicts(var_data.index(&FullRange),
                                                       errors);
         self.collect_concrete_region_errors(&values, errors);
         values
@@ -1039,7 +1039,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                    b_data: &mut VarData)
                    -> bool
     {
-        debug!("expand_node({}, {} == {})",
+        debug!("expand_node({}, {:?} == {})",
                a_region.repr(self.tcx),
                b_vid,
                b_data.value.repr(self.tcx));
@@ -1058,7 +1058,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         b_data.classification = Expanding;
         match b_data.value {
           NoValue => {
-            debug!("Setting initial value of {} to {}",
+            debug!("Setting initial value of {:?} to {}",
                    b_vid, a_region.repr(self.tcx));
 
             b_data.value = Value(a_region);
@@ -1071,7 +1071,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 return false;
             }
 
-            debug!("Expanding value of {} from {} to {}",
+            debug!("Expanding value of {:?} from {} to {}",
                    b_vid,
                    cur_region.repr(self.tcx),
                    lub.repr(self.tcx));
@@ -1122,7 +1122,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                      a_data: &mut VarData,
                      b_region: Region)
                      -> bool {
-        debug!("contract_node({} == {}/{}, {})",
+        debug!("contract_node({:?} == {}/{:?}, {})",
                a_vid, a_data.value.repr(self.tcx),
                a_data.classification, b_region.repr(self.tcx));
 
@@ -1156,7 +1156,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                       b_region: Region)
                    -> bool {
             if !this.is_subregion_of(a_region, b_region) {
-                debug!("Setting {} to ErrorValue: {} not subregion of {}",
+                debug!("Setting {:?} to ErrorValue: {} not subregion of {}",
                        a_vid,
                        a_region.repr(this.tcx),
                        b_region.repr(this.tcx));
@@ -1176,7 +1176,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     if glb == a_region {
                         false
                     } else {
-                        debug!("Contracting value of {} from {} to {}",
+                        debug!("Contracting value of {:?} from {} to {}",
                                a_vid,
                                a_region.repr(this.tcx),
                                glb.repr(this.tcx));
@@ -1185,7 +1185,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     }
                 }
                 Err(_) => {
-                    debug!("Setting {} to ErrorValue: no glb of {}, {}",
+                    debug!("Setting {:?} to ErrorValue: no glb of {}, {}",
                            a_vid,
                            a_region.repr(this.tcx),
                            b_region.repr(this.tcx));
@@ -1412,10 +1412,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         self.tcx.sess.span_bug(
             (*self.var_origins.borrow())[node_idx.index as uint].span(),
             format!("collect_error_for_expanding_node() could not find error \
-                    for var {}, lower_bounds={}, upper_bounds={}",
+                    for var {:?}, lower_bounds={}, upper_bounds={}",
                     node_idx,
                     lower_bounds.repr(self.tcx),
-                    upper_bounds.repr(self.tcx))[]);
+                    upper_bounds.repr(self.tcx)).index(&FullRange));
     }
 
     fn collect_error_for_contracting_node(
@@ -1457,9 +1457,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         self.tcx.sess.span_bug(
             (*self.var_origins.borrow())[node_idx.index as uint].span(),
             format!("collect_error_for_contracting_node() could not find error \
-                     for var {}, upper_bounds={}",
+                     for var {:?}, upper_bounds={}",
                     node_idx,
-                    upper_bounds.repr(self.tcx))[]);
+                    upper_bounds.repr(self.tcx)).index(&FullRange));
     }
 
     fn collect_concrete_regions(&self,
@@ -1498,8 +1498,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 state.dup_found = true;
             }
 
-            debug!("collect_concrete_regions(orig_node_idx={}, node_idx={}, \
-                    classification={})",
+            debug!("collect_concrete_regions(orig_node_idx={:?}, node_idx={:?}, \
+                    classification={:?})",
                    orig_node_idx, node_idx, classification);
 
             // figure out the direction from which this node takes its
@@ -1520,7 +1520,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                          graph: &RegionGraph,
                          source_vid: RegionVid,
                          dir: Direction) {
-            debug!("process_edges(source_vid={}, dir={})", source_vid, dir);
+            debug!("process_edges(source_vid={:?}, dir={:?})", source_vid, dir);
 
             let source_node_index = NodeIndex(source_vid.index as uint);
             graph.each_adjacent_edge(source_node_index, dir, |_, edge| {

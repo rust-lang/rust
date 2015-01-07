@@ -11,7 +11,7 @@
 use std::thread::Thread;
 
 pub fn main() {
-    Thread::spawn(move|| child(10)).join().ok().unwrap();
+    Thread::scoped(move|| child(10)).join().ok().unwrap();
 }
 
 fn child(i: int) { println!("{}", i); assert!((i == 10)); }

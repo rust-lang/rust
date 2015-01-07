@@ -123,8 +123,8 @@ fn str_to_direction(to_parse: &str) -> RoomDirection {
 fn main() {
     let mut player = Player::new("Test player");
     let mut room = Room::new("A test room");
-    println!("Made a player: {}", player);
-    println!("Direction parse: {}", str_to_direction("east"));
+    println!("Made a player: {:?}", player);
+    println!("Direction parse: {:?}", str_to_direction("east"));
     match player.attemptTraverse(&room, "west") {
         Ok(_) => println!("Was able to move west"),
         Err(msg) => println!("Not able to move west: {}", msg)

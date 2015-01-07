@@ -83,7 +83,7 @@ macro_rules! assert_eq {
                 if !((*left_val == *right_val) &&
                      (*right_val == *left_val)) {
                     panic!("assertion failed: `(left == right) && (right == left)` \
-                           (left: `{}`, right: `{}`)", *left_val, *right_val)
+                           (left: `{:?}`, right: `{:?}`)", *left_val, *right_val)
                 }
             }
         }
@@ -142,16 +142,9 @@ macro_rules! debug_assert_eq {
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert_eq!($($arg)*); })
 }
 
-#[cfg(stage0)]
-#[macro_export]
-macro_rules! try {
-    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-}
-
 /// Short circuiting evaluation on Err
 ///
 /// `libstd` contains a more general `try!` macro that uses `FromError`.
-#[cfg(not(stage0))]
 #[macro_export]
 macro_rules! try {
     ($e:expr) => ({
@@ -186,9 +179,12 @@ macro_rules! write {
 #[macro_export]
 #[stable]
 macro_rules! writeln {
-    ($dst:expr, $fmt:expr $($arg:tt)*) => (
-        write!($dst, concat!($fmt, "\n") $($arg)*)
-    )
+    ($dst:expr, $fmt:expr) => (
+        write!($dst, concat!($fmt, "\n"))
+    );
+    ($dst:expr, $fmt:expr, $($arg:tt)*) => (
+        write!($dst, concat!($fmt, "\n"), $($arg)*)
+    );
 }
 
 /// A utility macro for indicating unreachable code.

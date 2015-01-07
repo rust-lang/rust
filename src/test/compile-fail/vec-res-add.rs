@@ -25,5 +25,5 @@ fn main() {
     let j = vec!(r(1));
     let k = i + j;
     //~^ ERROR binary operation `+` cannot be applied to type
-    println!("{}", j);
+    println!("{:?}", j);
 }

@@ -326,7 +326,7 @@ impl Encodable for str {
 
 impl Encodable for String {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self[])
+        s.emit_str(self.index(&FullRange))
     }
 }
 
@@ -499,7 +499,7 @@ macro_rules! peel {
 /// Evaluates to the number of identifiers passed to it, for example: `count_idents!(a, b, c) == 3
 macro_rules! count_idents {
     () => { 0u };
-    ($_i:ident $(, $rest:ident)*) => { 1 + count_idents!($($rest),*) }
+    ($_i:ident, $($rest:ident,)*) => { 1 + count_idents!($($rest,)*) }
 }
 
 macro_rules! tuple {
@@ -508,7 +508,7 @@ macro_rules! tuple {
         impl<$($name:Decodable),*> Decodable for ($($name,)*) {
             #[allow(non_snake_case)]
             fn decode<D: Decoder>(d: &mut D) -> Result<($($name,)*), D::Error> {
-                let len: uint = count_idents!($($name),*);
+                let len: uint = count_idents!($($name,)*);
                 d.read_tuple(len, |d| {
                     let mut i = 0;
                     let ret = ($(try!(d.read_tuple_arg({ i+=1; i-1 },
@@ -610,8 +610,8 @@ impl<T:Decodable+Send+Sync> Decodable for Arc<T> {
 
 pub trait EncoderHelpers: Encoder {
     fn emit_from_vec<T, F>(&mut self, v: &[T], f: F)
-                           -> Result<(), <Self as Encoder>::Error>
-        where F: FnMut(&mut Self, &T) -> Result<(), <Self as Encoder>::Error>;
+                           -> Result<(), Self::Error>
+        where F: FnMut(&mut Self, &T) -> Result<(), Self::Error>;
 }
 
 impl<S:Encoder> EncoderHelpers for S {
@@ -631,8 +631,8 @@ impl<S:Encoder> EncoderHelpers for S {
 
 pub trait DecoderHelpers: Decoder {
     fn read_to_vec<T, F>(&mut self, f: F)
-                         -> Result<Vec<T>, <Self as Decoder>::Error> where
-        F: FnMut(&mut Self) -> Result<T, <Self as Decoder>::Error>;
+                         -> Result<Vec<T>, Self::Error> where
+        F: FnMut(&mut Self) -> Result<T, Self::Error>;
 }
 
 impl<D: Decoder> DecoderHelpers for D {

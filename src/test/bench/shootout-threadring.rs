@@ -46,10 +46,10 @@ fn start(n_tasks: int, token: int) {
     tx.send(token);
     for i in range(2, n_tasks + 1) {
         let (tx, next_rx) = channel();
-        Thread::spawn(move|| roundtrip(i, tx, rx)).detach();
+        Thread::spawn(move|| roundtrip(i, tx, rx));
         rx = next_rx;
     }
-    Thread::spawn(move|| roundtrip(1, tx, rx)).detach();
+    Thread::spawn(move|| roundtrip(1, tx, rx));
 }
 
 fn roundtrip(id: int, tx: Sender<int>, rx: Receiver<int>) {

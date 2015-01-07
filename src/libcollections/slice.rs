@@ -55,7 +55,7 @@
 //! #![feature(slicing_syntax)]
 //! fn main() {
 //!     let numbers = [0i, 1i, 2i];
-//!     let last_numbers = numbers[1..3];
+//!     let last_numbers = numbers.index(&(1..3));
 //!     // last_numbers is now &[1i, 2i]
 //! }
 //! ```
@@ -95,10 +95,10 @@ use core::cmp::Ordering::{self, Greater, Less};
 use core::cmp::{self, Ord, PartialEq};
 use core::iter::{Iterator, IteratorExt};
 use core::iter::{range, range_step, MultiplicativeIterator};
-use core::kinds::Sized;
+use core::marker::Sized;
 use core::mem::size_of;
 use core::mem;
-use core::ops::{FnMut, SliceMut};
+use core::ops::{FnMut, FullRange, Index, IndexMut};
 use core::option::Option::{self, Some, None};
 use core::ptr::PtrExt;
 use core::ptr;
@@ -1065,12 +1065,12 @@ impl ElementSwaps {
 
 #[unstable = "trait is unstable"]
 impl<T> BorrowFrom<Vec<T>> for [T] {
-    fn borrow_from(owned: &Vec<T>) -> &[T] { owned[] }
+    fn borrow_from(owned: &Vec<T>) -> &[T] { owned.index(&FullRange) }
 }
 
 #[unstable = "trait is unstable"]
 impl<T> BorrowFromMut<Vec<T>> for [T] {
-    fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { owned.as_mut_slice_() }
+    fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { owned.index_mut(&FullRange) }
 }
 
 #[unstable = "trait is unstable"]
@@ -1393,15 +1393,20 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
 
 #[cfg(test)]
 mod tests {
-    use prelude::{Some, None, range, Vec, ToString, Clone, Greater, Less, Equal};
-    use prelude::{SliceExt, Iterator, IteratorExt};
-    use prelude::AsSlice;
-    use prelude::{RandomAccessIterator, Ord, SliceConcatExt};
+    use core::cmp::Ordering::{Greater, Less, Equal};
+    use core::prelude::{Some, None, range, Clone};
+    use core::prelude::{Iterator, IteratorExt};
+    use core::prelude::{AsSlice};
+    use core::prelude::{Ord, FullRange};
     use core::default::Default;
     use core::mem;
+    use core::ops::Index;
+    use std::iter::RandomAccessIterator;
     use std::rand::{Rng, thread_rng};
     use std::rc::Rc;
-    use super::ElementSwaps;
+    use string::ToString;
+    use vec::Vec;
+    use super::{ElementSwaps, SliceConcatExt, SliceExt};
 
     fn square(n: uint) -> uint { n * n }
 
@@ -1606,7 +1611,7 @@ mod tests {
 
         // Test on stack.
         let vec_stack: &[_] = &[1i, 2, 3];
-        let v_b = vec_stack[1u..3u].to_vec();
+        let v_b = vec_stack.index(&(1u..3u)).to_vec();
         assert_eq!(v_b.len(), 2u);
         let v_b = v_b.as_slice();
         assert_eq!(v_b[0], 2);
@@ -1614,7 +1619,7 @@ mod tests {
 
         // Test `Box<[T]>`
         let vec_unique = vec![1i, 2, 3, 4, 5, 6];
-        let v_d = vec_unique[1u..6u].to_vec();
+        let v_d = vec_unique.index(&(1u..6u)).to_vec();
         assert_eq!(v_d.len(), 5u);
         let v_d = v_d.as_slice();
         assert_eq!(v_d[0], 2);
@@ -1627,21 +1632,21 @@ mod tests {
     #[test]
     fn test_slice_from() {
         let vec: &[int] = &[1, 2, 3, 4];
-        assert_eq!(vec[0..], vec);
+        assert_eq!(vec.index(&(0..)), vec);
         let b: &[int] = &[3, 4];
-        assert_eq!(vec[2..], b);
+        assert_eq!(vec.index(&(2..)), b);
         let b: &[int] = &[];
-        assert_eq!(vec[4..], b);
+        assert_eq!(vec.index(&(4..)), b);
     }
 
     #[test]
     fn test_slice_to() {
         let vec: &[int] = &[1, 2, 3, 4];
-        assert_eq!(vec[..4], vec);
+        assert_eq!(vec.index(&(0..4)), vec);
         let b: &[int] = &[1, 2];
-        assert_eq!(vec[..2], b);
+        assert_eq!(vec.index(&(0..2)), b);
         let b: &[int] = &[];
-        assert_eq!(vec[..0], b);
+        assert_eq!(vec.index(&(0..0)), b);
     }
 
 
@@ -2466,25 +2471,25 @@ mod tests {
         macro_rules! test_show_vec {
             ($x:expr, $x_str:expr) => ({
                 let (x, x_str) = ($x, $x_str);
-                assert_eq!(format!("{}", x), x_str);
-                assert_eq!(format!("{}", x.as_slice()), x_str);
+                assert_eq!(format!("{:?}", x), x_str);
+                assert_eq!(format!("{:?}", x.as_slice()), x_str);
             })
         }
         let empty: Vec<int> = vec![];
         test_show_vec!(empty, "[]");
-        test_show_vec!(vec![1i], "[1]");
-        test_show_vec!(vec![1i, 2, 3], "[1, 2, 3]");
+        test_show_vec!(vec![1i], "[1i]");
+        test_show_vec!(vec![1i, 2, 3], "[1i, 2i, 3i]");
         test_show_vec!(vec![vec![], vec![1u], vec![1u, 1u]],
-                       "[[], [1], [1, 1]]");
+                       "[[], [1u], [1u, 1u]]");
 
         let empty_mut: &mut [int] = &mut[];
         test_show_vec!(empty_mut, "[]");
         let v: &mut[int] = &mut[1];
-        test_show_vec!(v, "[1]");
+        test_show_vec!(v, "[1i]");
         let v: &mut[int] = &mut[1, 2, 3];
-        test_show_vec!(v, "[1, 2, 3]");
+        test_show_vec!(v, "[1i, 2i, 3i]");
         let v: &mut [&mut[uint]] = &mut[&mut[], &mut[1u], &mut[1u, 1u]];
-        test_show_vec!(v, "[[], [1], [1, 1]]");
+        test_show_vec!(v, "[[], [1u], [1u, 1u]]");
     }
 
     #[test]
@@ -2567,7 +2572,7 @@ mod tests {
         }
         assert_eq!(cnt, 3);
 
-        for f in v[1..3].iter() {
+        for f in v.index(&(1..3)).iter() {
             assert!(*f == Foo);
             cnt += 1;
         }

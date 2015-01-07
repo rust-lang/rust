@@ -223,7 +223,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     fn visit_poly_trait_ref(&mut self, trait_ref:
                             &ast::PolyTraitRef,
                             _modifier: &ast::TraitBoundModifier) {
-        debug!("visit_poly_trait_ref trait_ref={}", trait_ref);
+        debug!("visit_poly_trait_ref trait_ref={:?}", trait_ref);
 
         self.with(LateScope(&trait_ref.bound_lifetimes, self.scope), |old_scope, this| {
             this.check_lifetime_defs(old_scope, &trait_ref.bound_lifetimes);
@@ -250,9 +250,9 @@ impl<'a> LifetimeContext<'a> {
             scope: &wrap_scope,
             def_map: self.def_map,
         };
-        debug!("entering scope {}", this.scope);
+        debug!("entering scope {:?}", this.scope);
         f(self.scope, &mut this);
-        debug!("exiting scope {}", this.scope);
+        debug!("exiting scope {:?}", this.scope);
     }
 
     /// Visits self by adding a scope and handling recursive walk over the contents with `walk`.
@@ -281,7 +281,7 @@ impl<'a> LifetimeContext<'a> {
     {
         let referenced_idents = early_bound_lifetime_names(generics);
 
-        debug!("visit_early_late: referenced_idents={}",
+        debug!("visit_early_late: referenced_idents={:?}",
                referenced_idents);
 
         let (early, late): (Vec<_>, _) = generics.lifetimes.iter().cloned().partition(
@@ -399,7 +399,7 @@ impl<'a> LifetimeContext<'a> {
         self.sess.span_err(
             lifetime_ref.span,
             format!("use of undeclared lifetime name `{}`",
-                    token::get_name(lifetime_ref.name))[]);
+                    token::get_name(lifetime_ref.name)).index(&FullRange));
     }
 
     fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &Vec<ast::LifetimeDef>) {
@@ -413,7 +413,7 @@ impl<'a> LifetimeContext<'a> {
                         lifetime.lifetime.span,
                         format!("illegal lifetime parameter name: `{}`",
                                 token::get_name(lifetime.lifetime.name))
-                            []);
+                            .index(&FullRange));
                 }
             }
 
@@ -427,7 +427,7 @@ impl<'a> LifetimeContext<'a> {
                         format!("lifetime name `{}` declared twice in \
                                 the same scope",
                                 token::get_name(lifetime_j.lifetime.name))
-                            []);
+                            .index(&FullRange));
                 }
             }
 
@@ -488,7 +488,7 @@ impl<'a> LifetimeContext<'a> {
                                probably a bug in syntax::fold");
         }
 
-        debug!("lifetime_ref={} id={} resolved to {}",
+        debug!("lifetime_ref={:?} id={:?} resolved to {:?}",
                 lifetime_to_string(lifetime_ref),
                 lifetime_ref.id,
                 def);
@@ -605,9 +605,9 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
 impl<'a> fmt::Show for ScopeChain<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            EarlyScope(space, defs, _) => write!(fmt, "EarlyScope({}, {})", space, defs),
-            LateScope(defs, _) => write!(fmt, "LateScope({})", defs),
-            BlockScope(id, _) => write!(fmt, "BlockScope({})", id),
+            EarlyScope(space, defs, _) => write!(fmt, "EarlyScope({:?}, {:?})", space, defs),
+            LateScope(defs, _) => write!(fmt, "LateScope({:?})", defs),
+            BlockScope(id, _) => write!(fmt, "BlockScope({:?})", id),
             RootScope => write!(fmt, "RootScope"),
         }
     }

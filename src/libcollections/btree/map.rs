@@ -19,7 +19,7 @@ pub use self::Entry::*;
 
 use core::prelude::*;
 
-use core::borrow::{BorrowFrom, ToOwned};
+use core::borrow::BorrowFrom;
 use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt::Show;
@@ -128,24 +128,24 @@ pub struct Values<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
 }
 
-#[stable]
 /// A view into a single entry in a map, which may either be vacant or occupied.
-pub enum Entry<'a, Q: ?Sized +'a, K:'a, V:'a> {
+#[unstable = "precise API still under development"]
+pub enum Entry<'a, K:'a, V:'a> {
     /// A vacant Entry
-    Vacant(VacantEntry<'a, Q, K, V>),
+    Vacant(VacantEntry<'a, K, V>),
     /// An occupied Entry
     Occupied(OccupiedEntry<'a, K, V>),
 }
 
-#[stable]
 /// A vacant Entry.
-pub struct VacantEntry<'a, Q: ?Sized +'a, K:'a, V:'a> {
-    key: &'a Q,
+#[unstable = "precise API still under development"]
+pub struct VacantEntry<'a, K:'a, V:'a> {
+    key: K,
     stack: stack::SearchStack<'a, K, V, node::handle::Edge, node::handle::Leaf>,
 }
 
-#[stable]
 /// An occupied Entry.
+#[unstable = "precise API still under development"]
 pub struct OccupiedEntry<'a, K:'a, V:'a> {
     stack: stack::SearchStack<'a, K, V, node::handle::KV, node::handle::LeafOrInternal>,
 }
@@ -480,7 +480,7 @@ enum Continuation<A, B> {
 /// boilerplate gets cut out.
 mod stack {
     use core::prelude::*;
-    use core::kinds::marker;
+    use core::marker;
     use core::mem;
     use core::ops::{Deref, DerefMut};
     use super::BTreeMap;
@@ -866,11 +866,11 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
 #[stable]
 impl<K: Show, V: Show> Show for BTreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
+        try!(write!(f, "BTreeMap {{"));
 
         for (i, (k, v)) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}: {}", *k, *v));
+            try!(write!(f, "{:?}: {:?}", *k, *v));
         }
 
         write!(f, "}}")
@@ -933,7 +933,7 @@ enum StackOp<T> {
 }
 
 impl<K, V, E, T> Iterator for AbsIter<T> where
-    T: DoubleEndedIterator + Iterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
+    T: DoubleEndedIterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
 {
     type Item = (K, V);
 
@@ -1002,7 +1002,7 @@ impl<K, V, E, T> Iterator for AbsIter<T> where
 }
 
 impl<K, V, E, T> DoubleEndedIterator for AbsIter<T> where
-    T: DoubleEndedIterator + Iterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
+    T: DoubleEndedIterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
 {
     // next_back is totally symmetric to next
     fn next_back(&mut self) -> Option<(K, V)> {
@@ -1111,10 +1111,10 @@ impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
 #[stable]
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {}
 
-impl<'a, Q: ?Sized, K: Ord, V> Entry<'a, Q, K, V> {
+impl<'a, K: Ord, V> Entry<'a, K, V> {
     #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
-    pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, Q, K, V>> {
+    pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, K, V>> {
         match self {
             Occupied(entry) => Ok(entry.into_mut()),
             Vacant(entry) => Err(entry),
@@ -1122,44 +1122,44 @@ impl<'a, Q: ?Sized, K: Ord, V> Entry<'a, Q, K, V> {
     }
 }
 
-impl<'a, Q: ?Sized + ToOwned<K>, K: Ord, V> VacantEntry<'a, Q, K, V> {
-    #[stable]
+impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn insert(self, value: V) -> &'a mut V {
-        self.stack.insert(self.key.to_owned(), value)
+        self.stack.insert(self.key, value)
     }
 }
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
-    #[stable]
     /// Gets a reference to the value in the entry.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn get(&self) -> &V {
         self.stack.peek()
     }
 
-    #[stable]
     /// Gets a mutable reference to the value in the entry.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn get_mut(&mut self) -> &mut V {
         self.stack.peek_mut()
     }
 
-    #[stable]
     /// Converts the entry into a mutable reference to its value.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn into_mut(self) -> &'a mut V {
         self.stack.into_top()
     }
 
-    #[stable]
     /// Sets the value of the entry with the OccupiedEntry's key,
     /// and returns the entry's old value.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn insert(&mut self, mut value: V) -> V {
         mem::swap(self.stack.peek_mut(), &mut value);
         value
     }
 
-    #[stable]
     /// Takes the value of the entry out of the map, and returns it.
+    #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
     pub fn remove(self) -> V {
         self.stack.remove()
     }
@@ -1347,7 +1347,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// // count the number of occurrences of letters in the vec
     /// for x in vec!["a","b","a","c","a","b"].iter() {
-    ///     match count.entry(x) {
+    ///     match count.entry(*x) {
     ///         Entry::Vacant(view) => {
     ///             view.insert(1);
     ///         },
@@ -1361,15 +1361,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(count["a"], 3u);
     /// ```
     /// The key must have the same ordering before or after `.to_owned()` is called.
-    #[stable]
-    pub fn entry<'a, Q: ?Sized>(&'a mut self, mut key: &'a Q) -> Entry<'a, Q, K, V>
-        where Q: Ord + ToOwned<K>
-    {
+    #[unstable = "precise API still under development"]
+    pub fn entry<'a>(&'a mut self, mut key: K) -> Entry<'a, K, V> {
         // same basic logic of `swap` and `pop`, blended together
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
             let result = stack.with(move |pusher, node| {
-                return match Node::search(node, key) {
+                return match Node::search(node, &key) {
                     Found(handle) => {
                         // Perfect match
                         Finished(Occupied(OccupiedEntry {
@@ -1412,7 +1410,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 #[cfg(test)]
 mod test {
     use prelude::*;
-    use std::borrow::{ToOwned, BorrowFrom};
+    use std::borrow::BorrowFrom;
 
     use super::{BTreeMap, Occupied, Vacant};
 
@@ -1562,7 +1560,7 @@ mod test {
         let mut map: BTreeMap<int, int> = xs.iter().map(|&x| x).collect();
 
         // Existing key (insert)
-        match map.entry(&1) {
+        match map.entry(1) {
             Vacant(_) => unreachable!(),
             Occupied(mut view) => {
                 assert_eq!(view.get(), &10);
@@ -1574,7 +1572,7 @@ mod test {
 
 
         // Existing key (update)
-        match map.entry(&2) {
+        match map.entry(2) {
             Vacant(_) => unreachable!(),
             Occupied(mut view) => {
                 let v = view.get_mut();
@@ -1585,7 +1583,7 @@ mod test {
         assert_eq!(map.len(), 6);
 
         // Existing key (take)
-        match map.entry(&3) {
+        match map.entry(3) {
             Vacant(_) => unreachable!(),
             Occupied(view) => {
                 assert_eq!(view.remove(), 30);
@@ -1596,7 +1594,7 @@ mod test {
 
 
         // Inexistent key (insert)
-        match map.entry(&10) {
+        match map.entry(10) {
             Occupied(_) => unreachable!(),
             Vacant(view) => {
                 assert_eq!(*view.insert(1000), 1000);
