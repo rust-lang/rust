@@ -8,6 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//~^^^^^^^^^^ ERROR overflow
+//
+// We also get a second error message at the top of file (dummy
+// span). This is not helpful, but also kind of annoying to prevent,
+// so for now just live with it, since we also get a second message
+// that is more helpful.
+
 enum Nil {NilValue}
 struct Cons<T> {head:int, tail:T}
 trait Dot {fn dot(&self, other:Self) -> int;}
