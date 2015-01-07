@@ -9,7 +9,8 @@ Version 1.0.0-alpha (January 2015)
       though there is a significant amount of cleanup and bugfixes
       remaining.
     * Nearly 50% of the public API surface of the standard library has
-      been declared 'stable'. Those interfaces will not change.
+      been declared 'stable'. Those interfaces are unlikely to change
+      before 1.0.
     * Most crates that are not `std` have been moved out of the Rust
       distribution into the Cargo ecosystem so they can evolve
       separately and don't need to be stabilized as quickly, including
