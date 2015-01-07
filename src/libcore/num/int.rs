@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for architecture-sized signed integers (`int` type)
+//! Deprecated: replaced by `isize`.
+//!
+//! The rollout of the new type will gradually take place over the
+//! alpha cycle along with the development of clearer conventions
+//! around integer types.
 
-#![stable]
-#![doc(primitive = "int")]
+#![deprecated = "replaced by isize"]
 
 #[cfg(target_word_size = "32")] int_module! { int, 32 }
 #[cfg(target_word_size = "64")] int_module! { int, 64 }
