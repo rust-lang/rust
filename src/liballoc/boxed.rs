@@ -186,27 +186,27 @@ impl<T: ?Sized> DerefMut for Box<T> {
 mod test {
     #[test]
     fn test_owned_clone() {
-        let a = box 5i;
+        let a = Box::new(5i);
         let b: Box<int> = a.clone();
         assert!(a == b);
     }
 
     #[test]
     fn any_move() {
-        let a = box 8u as Box<Any>;
-        let b = box Test as Box<Any>;
+        let a = Box::new(8u) as Box<Any>;
+        let b = Box::new(Test) as Box<Any>;
 
         match a.downcast::<uint>() {
-            Ok(a) => { assert!(a == box 8u); }
+            Ok(a) => { assert!(a == Box::new(8u)); }
             Err(..) => panic!()
         }
         match b.downcast::<Test>() {
-            Ok(a) => { assert!(a == box Test); }
+            Ok(a) => { assert!(a == Box::new(Test)); }
             Err(..) => panic!()
         }
 
-        let a = box 8u as Box<Any>;
-        let b = box Test as Box<Any>;
+        let a = Box::new(8u) as Box<Any>;
+        let b = Box::new(Test) as Box<Any>;
 
         assert!(a.downcast::<Box<Test>>().is_err());
         assert!(b.downcast::<Box<uint>>().is_err());
@@ -214,8 +214,8 @@ mod test {
 
     #[test]
     fn test_show() {
-        let a = box 8u as Box<Any>;
-        let b = box Test as Box<Any>;
+        let a = Box::new(8u) as Box<Any>;
+        let b = Box::new(Test) as Box<Any>;
         let a_str = a.to_str();
         let b_str = b.to_str();
         assert_eq!(a_str, "Box<Any>");
@@ -232,6 +232,6 @@ mod test {
     #[test]
     fn deref() {
         fn homura<T: Deref<Target=i32>>(_: T) { }
-        homura(box 765i32);
+        homura(Box::new(765i32));
     }
 }
