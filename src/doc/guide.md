@@ -4789,7 +4789,7 @@ of `Option`, we need to provide a concrete type in place of the type
 parameter. For example, if we wanted something like our `OptionalInt`, we would
 need to instantiate an `Option<i32>`. Inside the declaration of our enum,
 wherever we see a `T`, we replace it with the type specified (or inferred by the
-the compiler).
+compiler).
 
 ```{rust}
 let x: Option<i32> = Some(5);
