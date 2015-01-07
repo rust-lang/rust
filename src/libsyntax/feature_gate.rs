@@ -69,7 +69,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("tuple_indexing", Accepted),
     ("associated_types", Accepted),
     ("visible_private_types", Active),
-    ("slicing_syntax", Active),
+    ("slicing_syntax", Accepted),
 
     ("if_let", Accepted),
     ("while_let", Accepted),
@@ -337,14 +337,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {
-        match e.node {
-            ast::ExprRange(..) => {
-                self.gate_feature("slicing_syntax",
-                                  e.span,
-                                  "range syntax is experimental");
-            }
-            _ => {}
-        }
         visit::walk_expr(self, e);
     }
 
