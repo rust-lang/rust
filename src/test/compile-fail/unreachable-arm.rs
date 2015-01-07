@@ -10,6 +10,7 @@
 
 // error-pattern:unreachable pattern
 
+#![feature(box_syntax)]
 
 enum foo { a(Box<foo>, int), b(uint), }
 
