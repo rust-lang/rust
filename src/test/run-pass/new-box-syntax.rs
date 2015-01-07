@@ -11,6 +11,8 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
+#![feature(box_syntax)]
+
 // Tests that the new `box` syntax works with unique pointers.
 
 use std::boxed::{Box, HEAP};

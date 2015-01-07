@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(unboxed_closures)]
+#![feature(box_syntax)]
 
 use std::ops::{Deref, DerefMut};
 
