@@ -12,7 +12,7 @@
 
 struct Foo;
 
-// Test uses on inherant impl.
+// Test uses on inherent impl.
 impl Foo {
     fn foo(_x: Self, _y: &Self, _z: Box<Self>) -> Self {
         Foo
