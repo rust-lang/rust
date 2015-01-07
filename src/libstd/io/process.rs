@@ -395,13 +395,6 @@ impl Command {
     }
 }
 
-#[cfg(stage0)]
-impl fmt::Show for Command {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl fmt::String for Command {
     /// Format the program and arguments of a Command for display. Any
     /// non-utf8 data is lossily converted using the utf8 replacement
