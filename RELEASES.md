@@ -1,7 +1,7 @@
 Version 1.0.0-alpha (January 2015)
 ----------------------------------
 
-  * ~2300 changes, numerous bugfixes
+  * ~2400 changes, numerous bugfixes
 
   * Highlights
 
@@ -93,6 +93,7 @@ Version 1.0.0-alpha (January 2015)
     * Importing the containing module or enum at the same time as
       items or variants they contain is [now done with `self` instead
       of `mod`][self], as in use `foo::{self, bar}`
+    * Glob imports are no longer feature-gated.
 
 * Libraries
 
