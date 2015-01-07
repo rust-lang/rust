@@ -25,11 +25,13 @@ ifeq ($(CFG_RELEASE_CHANNEL),stable)
 CFG_RELEASE=$(CFG_RELEASE_NUM)
 # This is the string used in dist artifact file names, e.g. "0.12.0", "nightly"
 CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)
+CFG_DISABLE_DEBUG=1
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),beta)
 # The beta channel is temporarily called 'alpha'
 CFG_RELEASE=$(CFG_RELEASE_NUM)-alpha$(CFG_BETA_CYCLE)
 CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)-alpha$(CFG_BETA_CYCLE)
+CFG_DISABLE_DEBUG=1
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),nightly)
 CFG_RELEASE=$(CFG_RELEASE_NUM)-nightly
@@ -38,6 +40,7 @@ CFG_RELEASE=$(CFG_RELEASE_NUM)-nightly
 # doesn't actually impact the version reported by rustc - it's just
 # for file naming.
 CFG_PACKAGE_VERS=nightly
+CFG_DISABLE_DEBUG=1
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),dev)
 CFG_RELEASE=$(CFG_RELEASE_NUM)-dev
@@ -120,6 +123,7 @@ endif
 CFG_JEMALLOC_FLAGS += $(JEMALLOC_FLAGS)
 
 ifdef CFG_DISABLE_DEBUG
+  $(info cfg: disabling extra debugging (CFG_DISABLE_DEBUG))
   CFG_RUSTC_FLAGS += --cfg ndebug
   CFG_GCCISH_CFLAGS += -DRUST_NDEBUG
 else
