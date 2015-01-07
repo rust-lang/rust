@@ -6,11 +6,15 @@ Version 1.0.0-alpha (January 2015)
   * Highlights
 
     * The language itself is considered feature complete for 1.0,
-      though there is a significant amount of cleanup and bugfixes
-      remaining.
+      though there will be many usability improvements and bugfixes
+      before the final release.
     * Nearly 50% of the public API surface of the standard library has
       been declared 'stable'. Those interfaces are unlikely to change
       before 1.0.
+    * The long-running debate over integer types has been
+      [settled][ints]: Rust will ship with types named `isize` and
+      `usize`, rather than `int` and `uint`, for pointer-sized
+      integers. Guidelines will be rolled out during the alpha cycle.
     * Most crates that are not `std` have been moved out of the Rust
       distribution into the Cargo ecosystem so they can evolve
       separately and don't need to be stabilized as quickly, including
@@ -174,6 +178,7 @@ Version 1.0.0-alpha (January 2015)
 [fb]: https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md
 [objsafe]: https://github.com/rust-lang/rfcs/blob/master/text/0255-object-safety.md
 [assoc]: https://github.com/rust-lang/rfcs/blob/master/text/0195-associated-items.md
+[ints]: https://github.com/rust-lang/rfcs/pull/544#issuecomment-68760871
 
 Version 0.12.0 (October 2014)
 -----------------------------
