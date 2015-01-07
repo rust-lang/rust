@@ -1339,6 +1339,12 @@ pub trait StrExt: Index<FullRange, Output = str> {
     fn trim_left(&self) -> &str {
         UnicodeStr::trim_left(self.index(&FullRange))
     }
+
+    /// Returns a string with trailing whitespace removed.
+    #[stable]
+    fn trim_right(&self) -> &str {
+        UnicodeStr::trim_right(self.index(&FullRange))
+    }
 }
 
 #[stable]
@@ -1349,8 +1355,7 @@ mod tests {
     use prelude::*;
 
     use core::iter::AdditiveIterator;
-    use super::from_utf8;
-    use super::Utf8Error;
+    use super::{from_utf8, Utf8Error};
 
     #[test]
     fn test_le() {
