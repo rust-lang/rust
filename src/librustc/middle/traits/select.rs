@@ -392,7 +392,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // `$1`), on the condition that `$1 : Eq`. We will then wind
         // up with many candidates (since that are other `Eq` impls
         // that apply) and try to winnow things down. This results in
-        // a recurssive evaluation that `$1 : Eq` -- as you can
+        // a recursive evaluation that `$1 : Eq` -- as you can
         // imagine, this is just where we started. To avoid that, we
         // check for unbound variables and return an ambiguous (hence possible)
         // match if we've seen this trait before.
@@ -604,7 +604,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // If there are *STILL* multiple candidates, give up and
-        // report ambiguiuty.
+        // report ambiguity.
         if candidates.len() > 1 {
             debug!("multiple matches, ambig");
             return Ok(None);
@@ -1119,7 +1119,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///
     /// This is generally true if either:
     /// - candidate i and candidate j are equivalent; or,
-    /// - candidate i is a conrete impl and candidate j is a where clause bound,
+    /// - candidate i is a concrete impl and candidate j is a where clause bound,
     ///   and the concrete impl is applicable to the types in the where clause bound.
     ///
     /// The last case refers to cases where there are blanket impls (often conditional

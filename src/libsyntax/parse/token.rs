@@ -43,7 +43,7 @@ pub enum BinOpToken {
     Shr,
 }
 
-/// A delimeter token
+/// A delimiter token
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
@@ -134,9 +134,9 @@ pub enum Token {
     Pound,
     Dollar,
     Question,
-    /// An opening delimeter, eg. `{`
+    /// An opening delimiter, eg. `{`
     OpenDelim(DelimToken),
-    /// A closing delimeter, eg. `}`
+    /// A closing delimiter, eg. `}`
     CloseDelim(DelimToken),
 
     /* Literals */

@@ -37,7 +37,7 @@
 //!
 //! # Subtype Trace
 //!
-//! Determing whether `T1 <: T2` often involves a number of subtypes and
+//! Determining whether `T1 <: T2` often involves a number of subtypes and
 //! subconstraints along the way. A "TypeTrace" is an extended version
 //! of an origin that traces the types and other values that were being
 //! compared. It is not necessarily comprehensive (in fact, at the time of

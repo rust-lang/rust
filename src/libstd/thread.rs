@@ -164,7 +164,7 @@ use thunk::Thunk;
 use sys::thread as imp;
 use sys_common::{stack, thread_info};
 
-/// Thread configuation. Provides detailed control over the properties
+/// Thread configuration. Provides detailed control over the properties
 /// and behavior of new threads.
 #[stable]
 pub struct Builder {

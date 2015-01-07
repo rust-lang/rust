@@ -14,7 +14,7 @@
 //!
 //! This vector is intended to be used as part of an abstraction, not serve as a complete
 //! abstraction on its own. As such, while it will roll back most changes on its own, it also
-//! supports a `get_mut` operation that gives you an abitrary mutable pointer into the vector. To
+//! supports a `get_mut` operation that gives you an arbitrary mutable pointer into the vector. To
 //! ensure that any changes you make this with this pointer are rolled back, you must invoke
 //! `record` to record any changes you make and also supplying a delegate capable of reversing
 //! those changes.

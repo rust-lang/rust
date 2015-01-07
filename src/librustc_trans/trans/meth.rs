@@ -567,7 +567,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     let object_substs = upcast_trait_ref.substs.clone().erase_regions();
     debug!("trans_object_shim: object_substs={}", object_substs.repr(tcx));
 
-    // Lookup the type of this method as deeclared in the trait and apply substitutions.
+    // Lookup the type of this method as declared in the trait and apply substitutions.
     let method_ty = match ty::trait_item(tcx, trait_id, method_offset_in_trait) {
         ty::MethodTraitItem(method) => method,
         ty::TypeTraitItem(_) => {

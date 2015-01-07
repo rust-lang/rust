@@ -254,7 +254,7 @@ we only need to do a "shallow" selection for an obligation. That is, we wish to
 identify which impl applies, but we do not (yet) need to decide how to select
 any nested obligations. Nonetheless, we *do* currently do a complete resolution,
 and that is because it can sometimes inform the results of type inference. That is,
-we do not have the full substitutions in terms of the type varibales of the impl available
+we do not have the full substitutions in terms of the type variables of the impl available
 to us, so we must run trait selection to figure everything out.
 
 Here is an example:
