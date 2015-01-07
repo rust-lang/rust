@@ -798,7 +798,7 @@ impl Clean<Item> for ast::Method {
         let all_inputs = &self.pe_fn_decl().inputs;
         let inputs = match self.pe_explicit_self().node {
             ast::SelfStatic => all_inputs.as_slice(),
-            _ => all_inputs.index(&(1..))
+            _ => &all_inputs[1..]
         };
         let decl = FnDecl {
             inputs: Arguments {
@@ -836,7 +836,7 @@ impl Clean<Item> for ast::TypeMethod {
     fn clean(&self, cx: &DocContext) -> Item {
         let inputs = match self.explicit_self.node {
             ast::SelfStatic => self.decl.inputs.as_slice(),
-            _ => self.decl.inputs.index(&(1..))
+            _ => &self.decl.inputs[1..]
         };
         let decl = FnDecl {
             inputs: Arguments {
@@ -1132,7 +1132,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
                                                self.fty.sig.clone()),
             s => {
                 let sig = ty::Binder(ty::FnSig {
-                    inputs: self.fty.sig.0.inputs.index(&(1..)).to_vec(),
+                    inputs: self.fty.sig.0.inputs[1..].to_vec(),
                     ..self.fty.sig.0.clone()
                 });
                 let s = match s {

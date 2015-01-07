@@ -161,7 +161,7 @@ pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Val
 
     let (glue, new_sym) = match ccx.available_drop_glues().borrow().get(&t) {
         Some(old_sym) => {
-            let glue = decl_cdecl_fn(ccx, old_sym.index(&FullRange), llfnty, ty::mk_nil(ccx.tcx()));
+            let glue = decl_cdecl_fn(ccx, &old_sym[], llfnty, ty::mk_nil(ccx.tcx()));
             (glue, None)
         },
         None => {
@@ -233,8 +233,8 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             assert!(sig.inputs.len() == 1);
             sig.inputs[0]
         }
-        _ => bcx.sess().bug(format!("Expected function type, found {}",
-                                    bcx.ty_to_string(fty)).index(&FullRange))
+        _ => bcx.sess().bug(&format!("Expected function type, found {}",
+                                    bcx.ty_to_string(fty))[])
     };
 
     let (struct_data, info) = if type_is_sized(bcx.tcx(), t) {
@@ -295,7 +295,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      class_did,
                                      &[get_drop_glue_type(bcx.ccx(), t)],
                                      ty::mk_nil(bcx.tcx()));
-        let (_, variant_cx) = invoke(variant_cx, dtor_addr, args.index(&FullRange), dtor_ty, None);
+        let (_, variant_cx) = invoke(variant_cx, dtor_addr, &args[], dtor_ty, None);
 
         variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope);
         variant_cx
@@ -353,8 +353,8 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
             (Mul(bcx, info, C_uint(bcx.ccx(), unit_size)), C_uint(bcx.ccx(), 8u))
         }
-        _ => bcx.sess().bug(format!("Unexpected unsized type, found {}",
-                                    bcx.ty_to_string(t)).index(&FullRange))
+        _ => bcx.sess().bug(&format!("Unexpected unsized type, found {}",
+                                    bcx.ty_to_string(t))[])
     }
 }
 
@@ -423,10 +423,10 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                     } else {
                         // Give the user a heads up that we are doing something
                         // stupid and dangerous.
-                        bcx.sess().warn(format!("Ignoring drop flag in destructor for {}\
+                        bcx.sess().warn(&format!("Ignoring drop flag in destructor for {}\
                                                  because the struct is unsized. See issue\
                                                  #16758",
-                                                bcx.ty_to_string(t)).index(&FullRange));
+                                                bcx.ty_to_string(t))[]);
                         trans_struct_drop(bcx, t, v0, dtor, did, substs)
                     }
                 }
@@ -496,7 +496,7 @@ pub fn declare_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
     note_unique_llvm_symbol(ccx, name);
 
     let ty_name = token::intern_and_get_ident(
-        ppaux::ty_to_string(ccx.tcx(), t).index(&FullRange));
+        &ppaux::ty_to_string(ccx.tcx(), t)[]);
     let ty_name = C_str_slice(ccx, ty_name);
 
     debug!("--- declare_tydesc {}", ppaux::ty_to_string(ccx.tcx(), t));
@@ -515,8 +515,8 @@ fn declare_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
     let fn_nm = mangle_internal_name_by_type_and_seq(
         ccx,
         t,
-        format!("glue_{}", name).index(&FullRange));
-    let llfn = decl_cdecl_fn(ccx, fn_nm.index(&FullRange), llfnty, ty::mk_nil(ccx.tcx()));
+        &format!("glue_{}", name)[]);
+    let llfn = decl_cdecl_fn(ccx, &fn_nm[], llfnty, ty::mk_nil(ccx.tcx()));
     note_unique_llvm_symbol(ccx, fn_nm.clone());
     return (fn_nm, llfn);
 }

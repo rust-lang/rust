@@ -398,8 +398,8 @@ impl<'a> LifetimeContext<'a> {
     fn unresolved_lifetime_ref(&self, lifetime_ref: &ast::Lifetime) {
         self.sess.span_err(
             lifetime_ref.span,
-            format!("use of undeclared lifetime name `{}`",
-                    token::get_name(lifetime_ref.name)).index(&FullRange));
+            &format!("use of undeclared lifetime name `{}`",
+                    token::get_name(lifetime_ref.name))[]);
     }
 
     fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &Vec<ast::LifetimeDef>) {
@@ -411,9 +411,9 @@ impl<'a> LifetimeContext<'a> {
                 if special_idents.iter().any(|&i| i.name == lifetime.lifetime.name) {
                     self.sess.span_err(
                         lifetime.lifetime.span,
-                        format!("illegal lifetime parameter name: `{}`",
+                        &format!("illegal lifetime parameter name: `{}`",
                                 token::get_name(lifetime.lifetime.name))
-                            .index(&FullRange));
+                        []);
                 }
             }
 
@@ -424,10 +424,10 @@ impl<'a> LifetimeContext<'a> {
                 if lifetime_i.lifetime.name == lifetime_j.lifetime.name {
                     self.sess.span_err(
                         lifetime_j.lifetime.span,
-                        format!("lifetime name `{}` declared twice in \
+                        &format!("lifetime name `{}` declared twice in \
                                 the same scope",
                                 token::get_name(lifetime_j.lifetime.name))
-                            .index(&FullRange));
+                        []);
                 }
             }
 

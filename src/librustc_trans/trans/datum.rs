@@ -463,8 +463,8 @@ impl<'tcx> Datum<'tcx, Lvalue> {
                 gep(base)
             }
             _ => bcx.tcx().sess.bug(
-                format!("Unexpected unsized type in get_element: {}",
-                        bcx.ty_to_string(self.ty)).index(&FullRange))
+                &format!("Unexpected unsized type in get_element: {}",
+                        bcx.ty_to_string(self.ty))[])
         };
         Datum {
             val: val,

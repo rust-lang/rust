@@ -253,19 +253,19 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     let bytes = match File::open(path).read_to_end() {
         Ok(bytes) => bytes,
         Err(e) => {
-            err(format!("couldn't read {:?}: {:?}",
+            err(&format!("couldn't read {:?}: {:?}",
                         path.display(),
-                        e).index(&FullRange));
+                        e)[]);
             unreachable!()
         }
     };
-    match str::from_utf8(bytes.index(&FullRange)).ok() {
+    match str::from_utf8(&bytes[]).ok() {
         Some(s) => {
             return string_to_filemap(sess, s.to_string(),
                                      path.as_str().unwrap().to_string())
         }
         None => {
-            err(format!("{:?} is not UTF-8 encoded", path.display()).index(&FullRange))
+            err(&format!("{:?} is not UTF-8 encoded", path.display())[])
         }
     }
     unreachable!()
@@ -399,10 +399,10 @@ pub fn char_lit(lit: &str) -> (char, int) {
     }
 
     let msg = format!("lexer should have rejected a bad character escape {}", lit);
-    let msg2 = msg.index(&FullRange);
+    let msg2 = &msg[];
 
     fn esc(len: uint, lit: &str) -> Option<(char, int)> {
-        num::from_str_radix(lit.index(&(2..len)), 16)
+        num::from_str_radix(&lit[2..len], 16)
         .and_then(char::from_u32)
         .map(|x| (x, len as int))
     }
@@ -410,7 +410,7 @@ pub fn char_lit(lit: &str) -> (char, int) {
     let unicode_escape = |&: | -> Option<(char, int)>
         if lit.as_bytes()[2] == b'{' {
             let idx = lit.find('}').expect(msg2);
-            let subslice = lit.index(&(3..idx));
+            let subslice = &lit[3..idx];
             num::from_str_radix(subslice, 16)
                 .and_then(char::from_u32)
                 .map(|x| (x, subslice.chars().count() as int + 4))
@@ -472,7 +472,7 @@ pub fn str_lit(lit: &str) -> String {
                             eat(&mut chars);
                         } else {
                             // otherwise, a normal escape
-                            let (c, n) = char_lit(lit.index(&(i..)));
+                            let (c, n) = char_lit(&lit[i..]);
                             for _ in range(0, n - 1) { // we don't need to move past the first \
                                 chars.next();
                             }
@@ -535,7 +535,7 @@ pub fn raw_str_lit(lit: &str) -> String {
 fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
     s.len() > 1 &&
         first_chars.contains(&s.char_at(0)) &&
-        s.index(&(1..)).chars().all(|c| '0' <= c && c <= '9')
+        s[1..].chars().all(|c| '0' <= c && c <= '9')
 }
 
 fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
@@ -548,7 +548,7 @@ fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
             if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
                 // if it looks like a width, lets try to be helpful.
                 sd.span_err(sp, &*format!("illegal width `{}` for float literal, \
-                                          valid widths are 32 and 64", suf.index(&(1..))));
+                                          valid widths are 32 and 64", &suf[1..]));
             } else {
                 sd.span_err(sp, &*format!("illegal suffix `{}` for float literal, \
                                           valid suffixes are `f32` and `f64`", suf));
@@ -584,7 +584,7 @@ pub fn byte_lit(lit: &str) -> (u8, uint) {
             b'\'' => b'\'',
             b'0' => b'\0',
             _ => {
-                match ::std::num::from_str_radix::<u64>(lit.index(&(2..4)), 16) {
+                match ::std::num::from_str_radix::<u64>(&lit[2..4], 16) {
                     Some(c) =>
                         if c > 0xFF {
                             panic!(err(2))
@@ -634,7 +634,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
                     }
                     _ => {
                         // otherwise, a normal escape
-                        let (c, n) = byte_lit(lit.index(&(i..)));
+                        let (c, n) = byte_lit(&lit[i..]);
                         // we don't need to move past the first \
                         for _ in range(0, n - 1) {
                             chars.next();
@@ -663,7 +663,7 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     // s can only be ascii, byte indexing is fine
 
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
-    let mut s = s2.index(&FullRange);
+    let mut s = &s2[];
 
     debug!("integer_lit: {}, {:?}", s, suffix);
 
@@ -696,7 +696,7 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     }
 
     if base != 10 {
-        s = s.index(&(2..));
+        s = &s[2..];
     }
 
     if let Some(suf) = suffix {
@@ -720,7 +720,7 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
                 if looks_like_width_suffix(&['i', 'u'], suf) {
                     sd.span_err(sp, &*format!("illegal width `{}` for integer literal; \
                                               valid widths are 8, 16, 32 and 64",
-                                              suf.index(&(1..))));
+                                              &suf[1..]));
                 } else {
                     sd.span_err(sp, &*format!("illegal suffix `{}` for numeric literal", suf));
                 }
@@ -818,7 +818,7 @@ mod test {
     #[test]
     fn string_to_tts_macro () {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
-        let tts: &[ast::TokenTree] = tts.index(&FullRange);
+        let tts: &[ast::TokenTree] = &tts[];
         match tts {
             [ast::TtToken(_, token::Ident(name_macro_rules, token::Plain)),
              ast::TtToken(_, token::Not),
@@ -826,19 +826,19 @@ mod test {
              ast::TtDelimited(_, ref macro_delimed)]
             if name_macro_rules.as_str() == "macro_rules"
             && name_zip.as_str() == "zip" => {
-                match macro_delimed.tts.index(&FullRange) {
+                match &macro_delimed.tts[] {
                     [ast::TtDelimited(_, ref first_delimed),
                      ast::TtToken(_, token::FatArrow),
                      ast::TtDelimited(_, ref second_delimed)]
                     if macro_delimed.delim == token::Paren => {
-                        match first_delimed.tts.index(&FullRange) {
+                        match &first_delimed.tts[] {
                             [ast::TtToken(_, token::Dollar),
                              ast::TtToken(_, token::Ident(name, token::Plain))]
                             if first_delimed.delim == token::Paren
                             && name.as_str() == "a" => {},
                             _ => panic!("value 3: {:?}", **first_delimed),
                         }
-                        match second_delimed.tts.index(&FullRange) {
+                        match &second_delimed.tts[] {
                             [ast::TtToken(_, token::Dollar),
                              ast::TtToken(_, token::Ident(name, token::Plain))]
                             if second_delimed.delim == token::Paren
@@ -1116,24 +1116,24 @@ mod test {
         let use_s = "use foo::bar::baz;";
         let vitem = string_to_view_item(use_s.to_string());
         let vitem_s = view_item_to_string(&vitem);
-        assert_eq!(vitem_s.index(&FullRange), use_s);
+        assert_eq!(&vitem_s[], use_s);
 
         let use_s = "use foo::bar as baz;";
         let vitem = string_to_view_item(use_s.to_string());
         let vitem_s = view_item_to_string(&vitem);
-        assert_eq!(vitem_s.index(&FullRange), use_s);
+        assert_eq!(&vitem_s[], use_s);
     }
 
     #[test] fn parse_extern_crate() {
         let ex_s = "extern crate foo;";
         let vitem = string_to_view_item(ex_s.to_string());
         let vitem_s = view_item_to_string(&vitem);
-        assert_eq!(vitem_s.index(&FullRange), ex_s);
+        assert_eq!(&vitem_s[], ex_s);
 
         let ex_s = "extern crate \"foo\" as bar;";
         let vitem = string_to_view_item(ex_s.to_string());
         let vitem_s = view_item_to_string(&vitem);
-        assert_eq!(vitem_s.index(&FullRange), ex_s);
+        assert_eq!(&vitem_s[], ex_s);
     }
 
     fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
@@ -1212,7 +1212,7 @@ mod test {
         let docs = item.attrs.iter().filter(|a| a.name().get() == "doc")
                     .map(|a| a.value_str().unwrap().get().to_string()).collect::<Vec<_>>();
         let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
-        assert_eq!(docs.index(&FullRange), b);
+        assert_eq!(&docs[], b);
 
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();

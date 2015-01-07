@@ -15,7 +15,7 @@
 use cmp;
 use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::{IteratorExt, ExactSizeIterator};
-use ops::{Drop, Index};
+use ops::Drop;
 use option::Option;
 use option::Option::{Some, None};
 use result::Result::Ok;
@@ -97,7 +97,7 @@ impl<R: Reader> Buffer for BufferedReader<R> {
             self.cap = try!(self.inner.read(self.buf.as_mut_slice()));
             self.pos = 0;
         }
-        Ok(self.buf.index(&(self.pos..self.cap)))
+        Ok(&self.buf[self.pos..self.cap])
     }
 
     fn consume(&mut self, amt: uint) {
@@ -114,7 +114,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
         let nread = {
             let available = try!(self.fill_buf());
             let nread = cmp::min(available.len(), buf.len());
-            slice::bytes::copy_memory(buf, available.index(&(0..nread)));
+            slice::bytes::copy_memory(buf, &available[0..nread]);
             nread
         };
         self.pos += nread;
@@ -168,7 +168,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            let ret = self.inner.as_mut().unwrap().write(self.buf.index(&(0..self.pos)));
+            let ret = self.inner.as_mut().unwrap().write(&self.buf[0..self.pos]);
             self.pos = 0;
             ret
         } else {
@@ -260,9 +260,9 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match buf.iter().rposition(|&b| b == b'\n') {
             Some(i) => {
-                try!(self.inner.write(buf.index(&(0..(i + 1)))));
+                try!(self.inner.write(&buf[0..(i + 1)]));
                 try!(self.inner.flush());
-                try!(self.inner.write(buf.index(&((i + 1)..))));
+                try!(self.inner.write(&buf[(i + 1)..]));
                 Ok(())
             }
             None => self.inner.write(buf),
@@ -510,7 +510,7 @@ mod test {
         assert_eq!(a, &w.get_ref()[]);
         let w = w.into_inner();
         let a: &[_] = &[0, 1];
-        assert_eq!(a, w.index(&FullRange));
+        assert_eq!(a, &w[]);
     }
 
     // This is just here to make sure that we don't infinite loop in the
@@ -607,14 +607,14 @@ mod test {
     #[test]
     fn read_char_buffered() {
         let buf = [195u8, 159u8];
-        let mut reader = BufferedReader::with_capacity(1, buf.index(&FullRange));
+        let mut reader = BufferedReader::with_capacity(1, &buf[]);
         assert_eq!(reader.read_char(), Ok('ß'));
     }
 
     #[test]
     fn test_chars() {
         let buf = [195u8, 159u8, b'a'];
-        let mut reader = BufferedReader::with_capacity(1, buf.index(&FullRange));
+        let mut reader = BufferedReader::with_capacity(1, &buf[]);
         let mut it = reader.chars();
         assert_eq!(it.next(), Some(Ok('ß')));
         assert_eq!(it.next(), Some(Ok('a')));

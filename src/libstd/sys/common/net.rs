@@ -469,7 +469,7 @@ pub fn write<T, L, W>(fd: sock_t,
             // Also as with read(), we use MSG_DONTWAIT to guard ourselves
             // against unforeseen circumstances.
             let _guard = lock();
-            let ptr = buf.index(&(written..)).as_ptr();
+            let ptr = buf[written..].as_ptr();
             let len = buf.len() - written;
             match retry(|| write(deadline.is_some(), ptr, len)) {
                 -1 if wouldblock() => {}

@@ -190,10 +190,10 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
         Ok(_) => true,
         Err(ref terr) => {
             tcx.sess.span_err(span,
-                              format!("{}: {}",
+                              &format!("{}: {}",
                                       msg(),
                                       ty::type_err_to_str(tcx,
-                                                          terr)).index(&FullRange));
+                                                          terr))[]);
             ty::note_and_explain_type_err(tcx, terr);
             false
         }
@@ -239,10 +239,10 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
         }
         _ => {
             tcx.sess.span_bug(main_span,
-                              format!("main has a non-function type: found \
+                              &format!("main has a non-function type: found \
                                        `{}`",
                                       ppaux::ty_to_string(tcx,
-                                                       main_t)).index(&FullRange));
+                                                       main_t))[]);
         }
     }
 }
@@ -291,9 +291,9 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
         }
         _ => {
             tcx.sess.span_bug(start_span,
-                              format!("start has a non-function type: found \
+                              &format!("start has a non-function type: found \
                                        `{}`",
-                                      ppaux::ty_to_string(tcx, start_t)).index(&FullRange));
+                                      ppaux::ty_to_string(tcx, start_t))[]);
         }
     }
 }

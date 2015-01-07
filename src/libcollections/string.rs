@@ -168,7 +168,7 @@ impl String {
 
         if i > 0 {
             unsafe {
-                res.as_mut_vec().push_all(v.index(&(0..i)))
+                res.as_mut_vec().push_all(&v[0..i])
             };
         }
 
@@ -185,7 +185,7 @@ impl String {
             macro_rules! error { () => ({
                 unsafe {
                     if subseqidx != i_ {
-                        res.as_mut_vec().push_all(v.index(&(subseqidx..i_)));
+                        res.as_mut_vec().push_all(&v[subseqidx..i_]);
                     }
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
@@ -254,7 +254,7 @@ impl String {
         }
         if subseqidx < total {
             unsafe {
-                res.as_mut_vec().push_all(v.index(&(subseqidx..total)))
+                res.as_mut_vec().push_all(&v[subseqidx..total])
             };
         }
         Cow::Owned(res)
@@ -841,21 +841,21 @@ impl ops::Index<ops::Range<uint>> for String {
     type Output = str;
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &str {
-        &self.index(&FullRange)[*index]
+        &self[][*index]
     }
 }
 impl ops::Index<ops::RangeTo<uint>> for String {
     type Output = str;
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &str {
-        &self.index(&FullRange)[*index]
+        &self[][*index]
     }
 }
 impl ops::Index<ops::RangeFrom<uint>> for String {
     type Output = str;
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
-        &self.index(&FullRange)[*index]
+        &self[][*index]
     }
 }
 impl ops::Index<ops::FullRange> for String {
@@ -871,7 +871,7 @@ impl ops::Deref for String {
     type Target = str;
 
     fn deref<'a>(&'a self) -> &'a str {
-        unsafe { mem::transmute(self.vec.index(&FullRange)) }
+        unsafe { mem::transmute(&self.vec[]) }
     }
 }
 

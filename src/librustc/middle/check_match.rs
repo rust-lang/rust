@@ -47,7 +47,7 @@ struct Matrix<'a>(Vec<Vec<&'a Pat>>);
 
 /// Pretty-printer for matrices of patterns, example:
 /// ++++++++++++++++++++++++++
-/// + _     + .index(&FullRange)             +
+/// + _     + []             +
 /// ++++++++++++++++++++++++++
 /// + true  + [First]        +
 /// ++++++++++++++++++++++++++
@@ -161,7 +161,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                 // First, check legality of move bindings.
                 check_legality_of_move_bindings(cx,
                                                 arm.guard.is_some(),
-                                                arm.pats.index(&FullRange));
+                                                &arm.pats[]);
 
                 // Second, if there is a guard on each arm, make sure it isn't
                 // assigning or borrowing anything mutably.
@@ -198,7 +198,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
             }
 
             // Fourth, check for unreachable arms.
-            check_arms(cx, inlined_arms.index(&FullRange), source);
+            check_arms(cx, &inlined_arms[], source);
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
@@ -228,9 +228,9 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
             is_refutable(cx, &*static_inliner.fold_pat((*pat).clone()), |uncovered_pat| {
                 cx.tcx.sess.span_err(
                     pat.span,
-                    format!("refutable pattern in `for` loop binding: \
+                    &format!("refutable pattern in `for` loop binding: \
                             `{}` not covered",
-                            pat_to_string(uncovered_pat)).index(&FullRange));
+                            pat_to_string(uncovered_pat))[]);
             });
 
             // Check legality of move bindings.
@@ -303,7 +303,7 @@ fn check_arms(cx: &MatchCheckCtxt,
         for pat in pats.iter() {
             let v = vec![&**pat];
 
-            match is_useful(cx, &seen, v.index(&FullRange), LeaveOutWitness) {
+            match is_useful(cx, &seen, &v[], LeaveOutWitness) {
                 NotUseful => {
                     match source {
                         ast::MatchSource::IfLetDesugar { .. } => {
@@ -355,7 +355,7 @@ fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
     match is_useful(cx, matrix, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
-            let witness = match pats.index(&FullRange) {
+            let witness = match &pats[] {
                 [ref witness] => &**witness,
                 [] => DUMMY_WILD_PAT,
                 _ => unreachable!()
@@ -609,7 +609,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                         UsefulWithWitness(pats) => UsefulWithWitness({
                             let arity = constructor_arity(cx, &c, left_ty);
                             let mut result = {
-                                let pat_slice = pats.index(&FullRange);
+                                let pat_slice = &pats[];
                                 let subpats: Vec<_> = range(0, arity).map(|i| {
                                     pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
                                 }).collect();
@@ -656,10 +656,10 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
                          witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
     let matrix = Matrix(m.iter().filter_map(|r| {
-        specialize(cx, r.index(&FullRange), &ctor, 0u, arity)
+        specialize(cx, &r[], &ctor, 0u, arity)
     }).collect());
     match specialize(cx, v, &ctor, 0u, arity) {
-        Some(v) => is_useful(cx, &matrix, v.index(&FullRange), witness),
+        Some(v) => is_useful(cx, &matrix, &v[], witness),
         None => NotUseful
     }
 }
@@ -729,7 +729,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 /// This computes the arity of a constructor. The arity of a constructor
 /// is how many subpattern patterns of that constructor should be expanded to.
 ///
-/// For instance, a tuple pattern (_, 42u, Some(.index(&FullRange))) has the arity of 3.
+/// For instance, a tuple pattern (_, 42u, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
 pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uint {
     match ty.sty {
@@ -926,8 +926,8 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
     };
     head.map(|mut head| {
-        head.push_all(r.index(&(0..col)));
-        head.push_all(r.index(&((col + 1)..)));
+        head.push_all(&r[0..col]);
+        head.push_all(&r[(col + 1)..]);
         head
     })
 }
@@ -1041,10 +1041,10 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     _ => {
                         cx.tcx.sess.span_bug(
                             p.span,
-                            format!("binding pattern {} is not an \
+                            &format!("binding pattern {} is not an \
                                      identifier: {:?}",
                                     p.id,
-                                    p.node).index(&FullRange));
+                                    p.node)[]);
                     }
                 }
             }

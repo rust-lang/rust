@@ -903,7 +903,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let all_bounds =
             util::transitive_bounds(
-                self.tcx(), caller_trait_refs.index(&FullRange));
+                self.tcx(), &caller_trait_refs[]);
 
         let matching_bounds =
             all_bounds.filter(
@@ -1465,9 +1465,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_infer(ty::FreshTy(_)) |
             ty::ty_infer(ty::FreshIntTy(_)) => {
                 self.tcx().sess.bug(
-                    format!(
+                    &format!(
                         "asked to assemble builtin bounds of unexpected type: {}",
-                        self_ty.repr(self.tcx())).index(&FullRange));
+                        self_ty.repr(self.tcx()))[]);
             }
         };
 
@@ -1636,8 +1636,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             AmbiguousBuiltin | ParameterBuiltin => {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
-                    format!("builtin bound for {} was ambig",
-                            obligation.repr(self.tcx())).index(&FullRange));
+                    &format!("builtin bound for {} was ambig",
+                            obligation.repr(self.tcx()))[]);
             }
         }
     }
@@ -1815,8 +1815,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
-                    format!("Fn pointer candidate for inappropriate self type: {}",
-                            self_ty.repr(self.tcx())).index(&FullRange));
+                    &format!("Fn pointer candidate for inappropriate self type: {}",
+                            self_ty.repr(self.tcx()))[]);
             }
         };
 
@@ -1944,9 +1944,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             Err(()) => {
                 self.tcx().sess.bug(
-                    format!("Impl {} was matchable against {} but now is not",
+                    &format!("Impl {} was matchable against {} but now is not",
                             impl_def_id.repr(self.tcx()),
-                            obligation.repr(self.tcx())).index(&FullRange));
+                            obligation.repr(self.tcx()))[]);
             }
         }
     }

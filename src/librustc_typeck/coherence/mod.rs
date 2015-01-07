@@ -80,8 +80,8 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
             // that the user can type
             inference_context.tcx.sess.span_bug(
                 span,
-                format!("coherence encountered unexpected type searching for base type: {}",
-                        ty.repr(inference_context.tcx)).index(&FullRange));
+                &format!("coherence encountered unexpected type searching for base type: {}",
+                        ty.repr(inference_context.tcx))[]);
         }
     }
 }
@@ -487,18 +487,18 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 Err(ty::FieldDoesNotImplementCopy(name)) => {
                     tcx.sess
                        .span_err(span,
-                                 format!("the trait `Copy` may not be \
+                                 &format!("the trait `Copy` may not be \
                                           implemented for this type; field \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name)).index(&FullRange))
+                                         token::get_name(name))[])
                 }
                 Err(ty::VariantDoesNotImplementCopy(name)) => {
                     tcx.sess
                        .span_err(span,
-                                 format!("the trait `Copy` may not be \
+                                 &format!("the trait `Copy` may not be \
                                           implemented for this type; variant \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name)).index(&FullRange))
+                                         token::get_name(name))[])
                 }
                 Err(ty::TypeIsStructural) => {
                     tcx.sess

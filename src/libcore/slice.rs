@@ -159,7 +159,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn split_at(&self, mid: uint) -> (&[T], &[T]) {
-        (self.index(&(0..mid)), self.index(&(mid..)))
+        (&self[0..mid], &self[mid..])
     }
 
     #[inline]
@@ -236,11 +236,11 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn tail(&self) -> &[T] { self.index(&(1..)) }
+    fn tail(&self) -> &[T] { &self[1..] }
 
     #[inline]
     fn init(&self) -> &[T] {
-        self.index(&(0..(self.len() - 1)))
+        &self[0..(self.len() - 1)]
     }
 
     #[inline]
@@ -443,13 +443,13 @@ impl<T> SliceExt for [T] {
     #[inline]
     fn starts_with(&self, needle: &[T]) -> bool where T: PartialEq {
         let n = needle.len();
-        self.len() >= n && needle == self.index(&(0..n))
+        self.len() >= n && needle == &self[0..n]
     }
 
     #[inline]
     fn ends_with(&self, needle: &[T]) -> bool where T: PartialEq {
         let (m, n) = (self.len(), needle.len());
-        m >= n && needle == self.index(&((m-n)..))
+        m >= n && needle == &self[(m-n)..]
     }
 
     #[unstable]
@@ -972,8 +972,8 @@ impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(self.v.index(&(0..idx)));
-                self.v = self.v.index(&((idx + 1)..));
+                let ret = Some(&self.v[0..idx]);
+                self.v = &self.v[(idx + 1)..];
                 ret
             }
         }
@@ -998,8 +998,8 @@ impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> boo
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(self.v.index(&((idx + 1)..)));
-                self.v = self.v.index(&(0..idx));
+                let ret = Some(&self.v[(idx + 1)..]);
+                self.v = &self.v[0..idx];
                 ret
             }
         }
@@ -1195,8 +1195,8 @@ impl<'a, T> Iterator for Windows<'a, T> {
         if self.size > self.v.len() {
             None
         } else {
-            let ret = Some(self.v.index(&(0..self.size)));
-            self.v = self.v.index(&(1..));
+            let ret = Some(&self.v[0..self.size]);
+            self.v = &self.v[1..];
             ret
         }
     }
@@ -1283,7 +1283,7 @@ impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
             let mut hi = lo + self.size;
             if hi < lo || hi > self.v.len() { hi = self.v.len(); }
 
-            Some(self.v.index(&(lo..hi)))
+            Some(&self.v[lo..hi])
         } else {
             None
         }

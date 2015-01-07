@@ -14,7 +14,7 @@
 #![feature(associated_types)]
 
 extern crate core;
-use core::ops::{Index, Range, RangeTo, RangeFrom, FullRange};
+use core::ops::{Index, IndexMut, Range, RangeTo, RangeFrom, FullRange};
 
 static mut COUNT: uint = 0;
 
