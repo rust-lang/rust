@@ -307,6 +307,7 @@ impl Isaac64Rng {
                 let mut $var = 0x9e3779b97f4a7c13;
             )
         }
+
         init!(a); init!(b); init!(c); init!(d);
         init!(e); init!(f); init!(g); init!(h);
 

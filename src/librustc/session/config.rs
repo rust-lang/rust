@@ -300,7 +300,7 @@ debugging_opts! {
         UNSTABLE_OPTIONS,
         PRINT_ENUM_SIZES,
         FORCE_OVERFLOW_CHECKS,
-        FORCE_NO_OVERFLOW_CHECKS,
+        FORCE_NO_OVERFLOW_CHECKS
     ]
     0
 }
@@ -354,8 +354,8 @@ pub fn debugging_opts_map() -> Vec<(&'static str, &'static str, u64)> {
      ("unstable-options", "Adds unstable command line options to rustc interface",
       UNSTABLE_OPTIONS),
      ("print-enum-sizes", "Print the size of enums and their variants", PRINT_ENUM_SIZES),
-     ("force-overflow-checks", "Force arithmatic overflow checking", FORCE_OVERFLOW_CHECKS),
-     ("force-no-overflow-checks", "Force arithmatic overflow checking", FORCE_NO_OVERFLOW_CHECKS),
+     ("force-overflow-checks", "Force arithmetic overflow checking on", FORCE_OVERFLOW_CHECKS),
+     ("force-no-overflow-checks", "Force arithmetic overflow checking off", FORCE_NO_OVERFLOW_CHECKS),
     ]
 }
 
