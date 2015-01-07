@@ -1622,7 +1622,7 @@ mod tests {
             os::MapOption::MapWritable
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => panic!("{}", msg)
+            Err(msg) => panic!("{:?}", msg)
         };
         assert!(chunk.len >= 16);
 

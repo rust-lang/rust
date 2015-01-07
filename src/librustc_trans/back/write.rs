@@ -446,7 +446,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             for pass in config.passes.iter() {
                 let pass = CString::from_slice(pass.as_bytes());
                 if !llvm::LLVMRustAddPass(mpm, pass.as_ptr()) {
-                    cgcx.handler.warn(format!("unknown pass {}, ignoring",
+                    cgcx.handler.warn(format!("unknown pass {:?}, ignoring",
                                               pass).as_slice());
                 }
             }

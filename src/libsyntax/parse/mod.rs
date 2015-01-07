@@ -836,20 +836,20 @@ mod test {
                              ast::TtToken(_, token::Ident(name, token::Plain))]
                             if first_delimed.delim == token::Paren
                             && name.as_str() == "a" => {},
-                            _ => panic!("value 3: {}", **first_delimed),
+                            _ => panic!("value 3: {:?}", **first_delimed),
                         }
                         match second_delimed.tts.index(&FullRange) {
                             [ast::TtToken(_, token::Dollar),
                              ast::TtToken(_, token::Ident(name, token::Plain))]
                             if second_delimed.delim == token::Paren
                             && name.as_str() == "a" => {},
-                            _ => panic!("value 4: {}", **second_delimed),
+                            _ => panic!("value 4: {:?}", **second_delimed),
                         }
                     },
-                    _ => panic!("value 2: {}", **macro_delimed),
+                    _ => panic!("value 2: {:?}", **macro_delimed),
                 }
             },
-            _ => panic!("value: {}",tts),
+            _ => panic!("value: {:?}",tts),
         }
     }
 

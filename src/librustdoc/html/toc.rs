@@ -176,8 +176,6 @@ impl TocBuilder {
     }
 }
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
 impl fmt::Show for Toc {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)

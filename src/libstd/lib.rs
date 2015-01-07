@@ -105,7 +105,7 @@
 
 #![allow(unknown_features)]
 #![feature(linkage, thread_local, asm)]
-#![feature(phase, lang_items, unsafe_destructor)]
+#![feature(lang_items, unsafe_destructor)]
 #![feature(slicing_syntax, unboxed_closures)]
 #![feature(old_impl_check)]
 #![cfg_attr(stage0, allow(unused_attributes))]

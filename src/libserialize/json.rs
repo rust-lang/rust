@@ -2005,7 +2005,7 @@ macro_rules! expect {
         match $e {
             Json::Null => Ok(()),
             other => Err(ExpectedError("Null".to_string(),
-                                       format!("{:?}", other)))
+                                       format!("{}", other)))
         }
     });
     ($e:expr, $t:ident) => ({
@@ -2013,7 +2013,7 @@ macro_rules! expect {
             Json::$t(v) => Ok(v),
             other => {
                 Err(ExpectedError(stringify!($t).to_string(),
-                                  format!("{:?}", other)))
+                                  format!("{}", other)))
             }
         }
     })
@@ -2025,20 +2025,20 @@ macro_rules! read_primitive {
             match self.pop() {
                 Json::I64(f) => match num::cast(f) {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), format!("{:?}", f))),
+                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
                 },
                 Json::U64(f) => match num::cast(f) {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), format!("{:?}", f))),
+                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
                 },
-                Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{:?}", f))),
+                Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
                 Json::String(s) => match s.parse() {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_string(), s)),
                 },
-                value => Err(ExpectedError("Number".to_string(), format!("{:?}", value))),
+                value => Err(ExpectedError("Number".to_string(), format!("{}", value))),
             }
         }
     }
@@ -2078,7 +2078,7 @@ impl ::Decoder for Decoder {
                 }
             },
             Json::Null => Ok(f64::NAN),
-            value => Err(ExpectedError("Number".to_string(), format!("{:?}", value)))
+            value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
         }
     }
 
@@ -2096,7 +2096,7 @@ impl ::Decoder for Decoder {
                 _ => ()
             }
         }
-        Err(ExpectedError("single character string".to_string(), format!("{:?}", s)))
+        Err(ExpectedError("single character string".to_string(), format!("{}", s)))
     }
 
     fn read_str(&mut self) -> DecodeResult<string::String> {
@@ -2119,7 +2119,7 @@ impl ::Decoder for Decoder {
                 let n = match o.remove(&"variant".to_string()) {
                     Some(Json::String(s)) => s,
                     Some(val) => {
-                        return Err(ExpectedError("String".to_string(), format!("{:?}", val)))
+                        return Err(ExpectedError("String".to_string(), format!("{}", val)))
                     }
                     None => {
                         return Err(MissingFieldError("variant".to_string()))
@@ -2132,7 +2132,7 @@ impl ::Decoder for Decoder {
                         }
                     },
                     Some(val) => {
-                        return Err(ExpectedError("Array".to_string(), format!("{:?}", val)))
+                        return Err(ExpectedError("Array".to_string(), format!("{}", val)))
                     }
                     None => {
                         return Err(MissingFieldError("fields".to_string()))
@@ -2141,7 +2141,7 @@ impl ::Decoder for Decoder {
                 n
             }
             json => {
-                return Err(ExpectedError("String or Object".to_string(), format!("{:?}", json)))
+                return Err(ExpectedError("String or Object".to_string(), format!("{}", json)))
             }
         };
         let idx = match names.iter().position(|n| *n == name.index(&FullRange)) {
@@ -2911,7 +2911,8 @@ mod tests {
         assert_eq!(v, i64::MAX);
 
         let res: DecodeResult<i64> = super::decode("765.25252");
-        assert_eq!(res, Err(ExpectedError("Integer".to_string(), "765.25252".to_string())));
+        assert_eq!(res, Err(ExpectedError("Integer".to_string(),
+                                          "765.25252".to_string())));
     }
 
     #[test]

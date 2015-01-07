@@ -162,7 +162,7 @@ macro_rules! mat {
                 sgot = &sgot[..expected.len()]
             }
             if expected != sgot {
-                panic!("For RE '{}' against '{}', expected '{}' but got '{}'",
+                panic!("For RE '{}' against '{}', expected '{:?}' but got '{:?}'",
                       $re, text, expected, sgot);
             }
         }

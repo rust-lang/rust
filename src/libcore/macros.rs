@@ -182,8 +182,8 @@ macro_rules! writeln {
     ($dst:expr, $fmt:expr) => (
         write!($dst, concat!($fmt, "\n"))
     );
-    ($dst:expr, $fmt:expr, $($arg:expr),*) => (
-        write!($dst, concat!($fmt, "\n"), $($arg,)*)
+    ($dst:expr, $fmt:expr, $($arg:tt)*) => (
+        write!($dst, concat!($fmt, "\n"), $($arg)*)
     );
 }
 

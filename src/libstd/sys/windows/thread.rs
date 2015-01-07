@@ -62,7 +62,7 @@ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
     if ret as uint == 0 {
         // be sure to not leak the closure
         let _p: Box<Thunk> = mem::transmute(arg);
-        panic!("failed to spawn native thread: {}", ret);
+        panic!("failed to spawn native thread: {:?}", ret);
     }
     return ret;
 }

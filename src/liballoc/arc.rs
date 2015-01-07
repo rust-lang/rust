@@ -41,7 +41,7 @@
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
-//!         println!("{}", five);
+//!         println!("{:?}", five);
 //!     });
 //! }
 //! ```

@@ -1894,7 +1894,8 @@ mod test_map {
 
         let map_str = format!("{:?}", map);
 
-        assert!(map_str == "HashMap {1i: 2i, 3i: 4i}" || map_str == "{3i: 4i, 1i: 2i}");
+        assert!(map_str == "HashMap {1i: 2i, 3i: 4i}" ||
+                map_str == "HashMap {3i: 4i, 1i: 2i}");
         assert_eq!(format!("{:?}", empty), "HashMap {}");
     }
 

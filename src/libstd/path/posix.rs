@@ -1150,7 +1150,7 @@ mod tests {
                     let comps = path.components().collect::<Vec<&[u8]>>();
                     let exp: &[&str] = &$exp;
                     let exps = exp.iter().map(|x| x.as_bytes()).collect::<Vec<&[u8]>>();
-                    assert_eq!(comps, exprs);
+                    assert_eq!(comps, exps);
                     let comps = path.components().rev().collect::<Vec<&[u8]>>();
                     let exps = exps.into_iter().rev().collect::<Vec<&[u8]>>();
                     assert_eq!(comps, exps);
