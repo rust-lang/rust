@@ -32,7 +32,7 @@ use std::slice;
 
 pub mod blocks;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Show)]
 pub enum PathElem {
     PathMod(Name),
     PathName(Name)
@@ -43,13 +43,6 @@ impl PathElem {
         match *self {
             PathMod(name) | PathName(name) => name
         }
-    }
-}
-
-//NOTE(stage0): replace with deriving(Show) after snapshot
-impl fmt::Show for PathElem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 

@@ -100,7 +100,6 @@ impl Ident {
     }
 }
 
-//NOTE(stage0): remove after snapshot
 impl fmt::Show for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}#{}", self.name, self.ctxt)
@@ -1085,7 +1084,6 @@ pub enum IntTy {
     TyI64,
 }
 
-//NOTE(stage0): remove after snapshot
 impl fmt::Show for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)
@@ -1127,7 +1125,6 @@ impl UintTy {
     }
 }
 
-//NOTE(stage0): remove after snapshot
 impl fmt::Show for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)
@@ -1146,7 +1143,6 @@ pub enum FloatTy {
     TyF64,
 }
 
-//NOTE(stage0): remove after snapshot
 impl fmt::Show for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)

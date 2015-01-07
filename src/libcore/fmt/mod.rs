@@ -633,16 +633,6 @@ impl String for bool {
     }
 }
 
-#[cfg(stage0)]
-//NOTE(stage0): remove impl after snapshot
-impl Show for str {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        String::fmt(self, f)
-    }
-}
-
-#[cfg(not(stage0))]
-//NOTE(stage0): remove cfg after snapshot
 impl Show for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         try!(write!(f, "\""));
@@ -659,16 +649,6 @@ impl String for str {
     }
 }
 
-#[cfg(stage0)]
-//NOTE(stage0): remove impl after snapshot
-impl Show for char {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        String::fmt(self, f)
-    }
-}
-
-#[cfg(not(stage0))]
-//NOTE(stage0): remove cfg after snapshot
 impl Show for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         use char::CharExt;
@@ -863,28 +843,6 @@ impl<T: Show> Show for [T] {
     }
 }
 
-#[cfg(stage0)]
-impl<T: Show> String for [T] {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "["));
-        }
-        let mut is_first = true;
-        for x in self.iter() {
-            if is_first {
-                is_first = false;
-            } else {
-                try!(write!(f, ", "));
-            }
-            try!(write!(f, "{}", *x))
-        }
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "]"));
-        }
-        Ok(())
-    }
-}
-#[cfg(not(stage0))]
 impl<T: String> String for [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
