@@ -50,6 +50,7 @@ use trans::debuginfo;
 use trans::glue;
 use trans::machine;
 use trans::meth;
+use trans::monomorphize;
 use trans::inline;
 use trans::tvec;
 use trans::type_of;
@@ -1318,7 +1319,9 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
 {
     match ty.sty {
         ty::ty_struct(did, substs) => {
-            op(0, struct_fields(tcx, did, substs).index(&FullRange))
+            let fields = struct_fields(tcx, did, substs);
+            let fields = monomorphize::normalize_associated_type(tcx, &fields);
+            op(0, fields.index(&FullRange))
         }
 
         ty::ty_tup(ref v) => {
@@ -1340,10 +1343,9 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                         def::DefVariant(enum_id, variant_id, _) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
-                            op(variant_info.disr_val,
-                               struct_fields(tcx,
-                                             variant_id,
-                                             substs).index(&FullRange))
+                            let fields = struct_fields(tcx, variant_id, substs);
+                            let fields = monomorphize::normalize_associated_type(tcx, &fields);
+                            op(variant_info.disr_val, fields.index(&FullRange))
                         }
                         _ => {
                             tcx.sess.bug("resolve didn't map this expr to a \

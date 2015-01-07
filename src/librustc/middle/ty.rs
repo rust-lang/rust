@@ -107,7 +107,7 @@ pub struct CrateAnalysis<'tcx> {
     pub glob_map: Option<GlobMap>,
 }
 
-#[derive(Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct field<'tcx> {
     pub name: ast::Name,
     pub mt: mt<'tcx>
@@ -7212,6 +7212,12 @@ impl<'tcx> HasProjectionTypes for FnSig<'tcx> {
     }
 }
 
+impl<'tcx> HasProjectionTypes for field<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.mt.ty.has_projection_types()
+    }
+}
+
 impl<'tcx> HasProjectionTypes for BareFnTy<'tcx> {
     fn has_projection_types(&self) -> bool {
         self.sig.has_projection_types()
@@ -7309,5 +7315,13 @@ impl<'tcx> Repr<'tcx> for UnboxedClosureUpvar<'tcx> {
         format!("UnboxedClosureUpvar({},{})",
                 self.def.repr(tcx),
                 self.ty.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for field<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("field({},{})",
+                self.name.repr(tcx),
+                self.mt.repr(tcx))
     }
 }
