@@ -5,16 +5,15 @@
 
 # Summary
 
-Change the semantics of the built-in fixed-size integer types from being defined
-as wrapping around on overflow to it being considered a program error (but *not*
-undefined behavior in the C sense), with whether to check for it at compile
-and/or runtime being left up to the implementation. Add an attribute to allow
-runtime overflow checks to be turned on or off per-scope, similarly to lints.
-Add a compiler option to force checking to be on for testing and debugging
-purposes. Add a `WrappingOps` trait to the standard library with operations
-defined as wrapping on overflow for the limited number of cases where this is
-the desired semantics, such as hash functions.
-
+Change the semantics of the built-in fixed-size integer types from
+being defined as wrapping around on overflow to it being considered a
+program error (but *not* undefined behavior in the C
+sense). Implementations are *permitted* to check for overflow at any
+time (statically or dynamically). Implementations are *required* to at
+least check dynamically when `debug_assert!` assertions are
+enabled. Add a `WrappingOps` trait to the standard library with
+operations defined as wrapping on overflow for the limited number of
+cases where this is the desired semantics, such as hash functions.
 
 # Motivation
 
@@ -57,11 +56,17 @@ hardware instructions with wraparound semantics. Therefore, it should be
 acceptable to only provide named methods for wraparound arithmetic, and not
 symbolic operators.
 
-
 ## Goals of this proposal
 
  * Clearly distinguish the circumstances where overflow is expected behavior
    from where it is not.
+   
+ * Ensure that pervasive checking for overflow is performed *at some
+   point* in the development cycle, even if it does not take place in
+   shipping code for performance reasons. The goal of this is to
+   prevent "lock-in" where code has a de-facto reliance on wrapping
+   semantics, and thus incorrectly breaks when stricter checking is
+   enabled.
 
  * Provide programmers with the tools they need to flexibly make the tradeoff
    between higher performance and more reliably catching mistakes.
@@ -82,13 +87,20 @@ symbolic operators.
    proof that faster checked arithmetic is impossible, the proposal would still
    be the same.
 
-
 ## Acknowledgements and further reading
 
-Many aspects of this proposal and many of the ideas within it were influenced
-and inspired by [a discussion on the rust-dev mailing list][GL18]. The author is
-grateful to everyone who provided input, and would like to highlight the
-following messages in particular as providing motivation for the proposal.
+This RFC was [initially written by Gábor Lehel][GH] and was since
+edited by Nicholas Matsakis into its current form. The changes were
+primarily to introduce a requirement that overflow be checked in debug
+builds and move discussion of scoped attributes to the "future
+directions" section.
+
+Many aspects of this proposal and many of the ideas within it were
+influenced and inspired by
+[a discussion on the rust-dev mailing list][GL18]. The author is
+grateful to everyone who provided input, and would like to highlight
+the following messages in particular as providing motivation for the
+proposal.
 
 On the limited use cases for wrapping arithmetic:
 
@@ -128,26 +140,27 @@ Further credit is due to the commenters in the [GitHub discussion thread][GH].
 [LB24]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010579.html
 [GH]: https://github.com/rust-lang/rfcs/pull/146
 
-
 # Detailed design
 
 ## Semantics of overflow with the built-in types
 
-Currently, the built-in arithmetic operators `+`, `-`, `*`, `/`, and `%`, as
-well as casts using `as` on the built-in types `i8`..`i64`, `u8`..`u64`, `int`,
-and `uint` are defined as wrapping around on overflow. Change this to define
-them, on overflow, as either returning an unspecified result, or not returning
-at all (i.e. terminating execution in some fashion, "returning bottom") instead.
+Currently, the built-in arithmetic operators `+`, `-`, `*`, `/`, and
+`%`, as well as casts using `as` on the built-in types `i8`..`i64`,
+`u8`..`u64`, `isize`, and `usize` are defined as wrapping around on
+overflow. Change this to define them, on overflow, as either returning
+an unspecified result, or task panic, depending on whether the
+overflow is checked.
 
 The implication is that overflow is considered to be an abnormal circumstance,
 a program error, and the programmer expects it not to happen, resp. it is her
 goal to make sure that it will not.
 
-However, the compiler is *not* allowed to assume that overflow cannot happen,
-nor to optimize based on this assumption. Where overflow or underflow can be
-statically detected, the implementation is free, and encouraged, to diagnose
-it with a warning or an error at compile time, and/or to represent the 
-overflowing value at runtime with some form of bottom (e.g. task failure).
+However, the compiler is *not* allowed to assume that overflow cannot
+happen, nor to optimize based on this assumption. Where overflow or
+underflow can be statically detected, the implementation is free, and
+encouraged, to diagnose it with an error at compile time, and/or
+to represent the overflowing value at runtime with some form of bottom
+(e.g. task failure).
 
 Notes:
 
@@ -155,10 +168,6 @@ Notes:
    however, this will most likely be the same as the wraparound result.
    Implementations should avoid needlessly exacerbating program errors with
    additional unpredictability or surprising behavior.
-
- * "Terminating execution in some fashion" will most likely mean failing the
-   task, but the defined semantics of the types do not foreclose on other
-   possibilities.
 
  * Most importantly: this is **not** undefined behavior in the C sense. Only the
    result of the operation is left unspecified, as opposed to the entire
@@ -171,6 +180,169 @@ To state it plainly: This is for the programmer's benefit, and not the
 optimizer's.
 
 See also Appendix A.
+
+### The default
+
+In general, implementations are always free to insert dynamic checks
+for overflow if they so choose. However, when running in debug mode
+(in other words, whenever a `debug_assert!` would be compiled in),
+they are *required* to emit code to perform dynamic checks on all
+arithmetic operations that may potentially overflow.
+
+The goal of this rule is to ensure that, during debugging and normal
+development, overflow detection is on, so that users can be alerted to
+potential overflow (and, in particular, for code where overflow is
+expected and normal, they will be immediately guided to use the
+`WrappingOps` traits introduced below). However, because these checks
+will be compiled out whenever an optimized build is produced, final
+code wilil not pay a performance penalty.
+
+In the future, we may add additional means to control when overflow is
+checked, such as scoped attributes or a global, independent
+compile-time switch.
+
+## `WrappingOps` trait for explicit wrapping arithmetic
+
+For those use cases where explicit wraparound on overflow is required, such as
+hash functions, we must provide operations with such semantics. Accomplish this
+by providing the following trait and impls in the `prelude`:
+
+    pub trait WrappingOps {
+        fn wrapping_add(self, rhs: Self) -> Self;
+        fn wrapping_sub(self, rhs: Self) -> Self;
+        fn wrapping_mul(self, rhs: Self) -> Self;
+        fn wrapping_div(self, rhs: Self) -> Self;
+        fn wrapping_rem(self, rhs: Self) -> Self;
+    }
+
+    impl WrappingOps for isize
+    impl WrappingOps for usize
+    impl WrappingOps for i8
+    impl WrappingOps for u8
+    impl WrappingOps for i16
+    impl WrappingOps for u16
+    impl WrappingOps for i32
+    impl WrappingOps for u32
+    impl WrappingOps for i64
+    impl WrappingOps for u64
+
+These are implemented to wrap around on overflow unconditionally.
+
+### `Wrapping<T>` type for convenience
+
+For convenience, also provide a `Wrapping<T>` newtype for which the operator
+overloads are implemented using the `WrappingOps` trait:
+
+    pub struct Wrapping<T>(pub T);
+
+    impl<T: WrappingOps> Add<Wrapping<T>, Wrapping<T>> for Wrapping<T> {
+        fn add(&self, other: &Wrapping<T>) -> Wrapping<T> {
+            self.wrapping_add(*other)
+        }
+    }
+
+    // Likewise for `Sub`, `Mul`, `Div`, and `Rem`
+
+Note that this is only for potential convenience. The type-based approach has the
+drawback that e.g. `Vec<int>` and `Vec<Wrapping<int>>` are incompatible types.
+
+# Required implementation work
+
+## Backwards incompatible parts
+
+ * Amend the language definition to remove the guarantee that over- and
+   underflow wraps around when using the built-in arithmetic operators and casts
+   on the built-in types. Specify that such over- and underflow counts as a
+   program error, and that it is up to the implementation whether to diagnose it
+   at compile time where possible, and whether to insert checks at runtime, or
+   to return an unspecified result (but without optimizing based on the
+   assumption that overflow cannot happen).
+
+ * Add the `WrappingOps` trait and implementations of it for the built-in types.
+
+ * Port existing code which relies on wraparound semantics - primarily hash
+   functions - to use the `wrapping_`* methods.
+
+Any code which does not explicitly depend on wraparound semantics, which is the
+large majority of existing code, is not affected.
+
+## Backwards compatible parts
+
+ * Implement [RFC 40][40] for attributes on statements and expressions.
+
+ * Implement the `overflow_checks` attribute and the `--force-overflow-checks`
+   compiler flag.
+
+ * Potentially emit warnings or errors at compile time when static analysis can
+   show that over- or underflow would happen.
+
+After the backwards incompatible changes have been made, these can be done at
+any point without breaking the semantics of existing programs. The only effect
+would be to make it easier to discover bugs.
+
+
+# Drawbacks
+
+ * Code where `overflow_checks(off)` is in effect could end up accidentally
+   relying on overflow. Given the relative scarcity of cases where overflow is a
+   favorable circumstance, the risk of this happening seems minor.
+
+ * Having to think about whether wraparound arithmetic is appropriate may
+   cause an increased cognitive burden. However, wraparound arithmetic is
+   almost never appropriate. Therefore, programmers should be able to keep using
+   the built-in integer types and to not think about this. Where wraparound
+   semantics are required, it is generally a specialized use case with the
+   implementor well aware of the requirement.
+
+ * The built-in types become "special": the ability to control overflow checks
+   using scoped attributes doesn't extend to user-defined types. If you make a
+   `struct MyNum(int)` and `impl Add for MyNum` using the native `+` operation
+   on `int`s, whether overflow checks happen for `MyNum` is determined by
+   whether `overflow_checks` is `on` or `off` where `impl Add for MyNum` is
+   declared, not whether they are `on` or `off` where the overloaded operators
+   are used.
+
+   The author considers this to be a serious shortcoming. *However*, it has the
+   saving grace of being no worse than the status quo, i.e. the change is still
+   a Pareto-improvement. Under the status quo, neither the built-in types nor
+   user-defined types can have overflow checks controlled by scoped attributes.
+   Under this proposal, the situation is improved with built-in types gaining
+   this capability. In light of this, making further improvements, namely
+   extending the capability to user-defined types, can be left to future work.
+
+ * Someone may conduct a benchmark of Rust with overflow checks turned on, post
+   it to the Internet, and mislead the audience into thinking that Rust is a
+   slow language.
+
+# Alternatives and possible future directions
+
+## Do nothing for now
+
+Defer any action until later, as advocated by:
+
+ * [Patrick Walton on June 22][PW22]
+
+Reasons this was not pursued: The proposed changes are relatively well-contained.
+Doing this after 1.0 would require either breaking existing programs which rely
+on wraparound semantics, or introducing an entirely new set of integer types and
+porting all code to use those types, whereas doing it now lets us avoid
+needlessly proliferating types. Given the paucity of circumstances where
+wraparound semantics is appropriate, having it be the default is defensible only
+if better options aren't available.
+
+## Checks off means wrapping on
+
+Where overflow checks are turned off, instead of defining overflow as returning
+an unspecified result, define it to wrap around. This would allow us to do
+without the `WrappingOps` trait and to avoid having unspecified results. See:
+
+ * [Daniel Micay on June 24][DM24_2]
+
+Reasons this was not pursued: The official semantics of a type should not change
+based on the context. It should be possible to make the choice between turning
+checks `on` or `off` solely based on performance considerations. It should be
+possible to distinguish cases where checking was too expensive from where
+wraparound was desired. (Wraparound is not usually desired.)
 
 ## Scoped attributes to control runtime checking
 
@@ -230,190 +402,6 @@ Illustration of use:
     ...
 
 [40]: https://github.com/rust-lang/rfcs/blob/master/active/0040-more-attributes.md
-
-### The default
-
-There is an important decision to be made with respect to the default behavior
-where neither `overflow_checks(on)` nor `off` has been explicitly specified. The
-author does not presume to know the correct answer, and leaves this open to
-debate. The following defaults are possible:
-
- 1. The default is `on`. This means that the default is to catch more mistakes.
-
- 2. The default is `off`. This means that the default is to be faster. (This
-    happens to be the current "default".)
-
- 3. There is no default, and a decision is forced. If the programmer neglects to
-    explicitly specify a behavior, the compiler will bail out and ask her to
-    specify one.
-
- 4. Combination of (1) and (3): The default is `on`, but the compiler emits a
-    warning when falling back to the default behavior.
-
- 5. Combination of (2) and (3): The default is `off`, but the compiler emits a
-    warning when falling back to the default behavior.
-
-
-## A debugging switch to force checking
-
-The programmer has the option to turn `overflow_checks(off)` due to performance
-considerations. However, when testing or debugging the program, for instance
-when tracking down a difficult bug, it may be desired to throw performance to
-the wind and enable as many checks as possible. For this purpose, provide a
-compiler option, e.g. `--force-overflow-checks`, which causes overflow checks to
-be considered `on` even where an attribute has turned them `off`. This is
-somewhat analogous to the behavior of our current `--ndebug` flag and
-`debug_assert!` macros.
-
-
-## `WrappingOps` trait for explicit wrapping arithmetic
-
-For those use cases where explicit wraparound on overflow is required, such as
-hash functions, we must provide operations with such semantics. Accomplish this
-by providing the following trait and impls in the `prelude`:
-
-    pub trait WrappingOps {
-        fn wrapping_add(self, rhs: Self) -> Self;
-        fn wrapping_sub(self, rhs: Self) -> Self;
-        fn wrapping_mul(self, rhs: Self) -> Self;
-        fn wrapping_div(self, rhs: Self) -> Self;
-        fn wrapping_rem(self, rhs: Self) -> Self;
-    }
-
-    impl WrappingOps for int
-    impl WrappingOps for uint
-    impl WrappingOps for i8
-    impl WrappingOps for u8
-    impl WrappingOps for i16
-    impl WrappingOps for u16
-    impl WrappingOps for i32
-    impl WrappingOps for u32
-    impl WrappingOps for i64
-    impl WrappingOps for u64
-
-These are implemented to wrap around on overflow unconditionally.
-
-
-### `Wrapping<T>` type for convenience
-
-For convenience, also provide a `Wrapping<T>` newtype for which the operator
-overloads are implemented using the `WrappingOps` trait:
-
-    pub struct Wrapping<T>(pub T);
-
-    impl<T: WrappingOps> Add<Wrapping<T>, Wrapping<T>> for Wrapping<T> {
-        fn add(&self, other: &Wrapping<T>) -> Wrapping<T> {
-            self.wrapping_add(*other)
-        }
-    }
-
-    // Likewise for `Sub`, `Mul`, `Div`, and `Rem`
-
-Note that this is only for potential convenience. The type-based approach has the
-drawback that e.g. `Vec<int>` and `Vec<Wrapping<int>>` are incompatible types.
-The recommendation is to not use `Vec<Wrapping<int>>`, but to use `Vec<int>` and
-the `wrapping_`* methods directly, instead.
-
-
-# Required implementation work
-
-## Backwards incompatible parts
-
- * Amend the language definition to remove the guarantee that over- and
-   underflow wraps around when using the built-in arithmetic operators and casts
-   on the built-in types. Specify that such over- and underflow counts as a
-   program error, and that it is up to the implementation whether to diagnose it
-   at compile time where possible, and whether to insert checks at runtime, or
-   to return an unspecified result (but without optimizing based on the
-   assumption that overflow cannot happen).
-
- * Add the `WrappingOps` trait and implementations of it for the built-in types.
-
- * Port existing code which relies on wraparound semantics - primarily hash
-   functions - to use the `wrapping_`* methods.
-
-Any code which does not explicitly depend on wraparound semantics, which is the
-large majority of existing code, is not affected.
-
-
-## Backwards compatible parts
-
- * Implement [RFC 40][40] for attributes on statements and expressions.
-
- * Implement the `overflow_checks` attribute and the `--force-overflow-checks`
-   compiler flag.
-
- * Potentially emit warnings or errors at compile time when static analysis can
-   show that over- or underflow would happen.
-
-After the backwards incompatible changes have been made, these can be done at
-any point without breaking the semantics of existing programs. The only effect
-would be to make it easier to discover bugs.
-
-
-# Drawbacks
-
- * Code where `overflow_checks(off)` is in effect could end up accidentally
-   relying on overflow. Given the relative scarcity of cases where overflow is a
-   favorable circumstance, the risk of this happening seems minor.
-
- * Having to think about whether wraparound arithmetic is appropriate may
-   cause an increased cognitive burden. However, wraparound arithmetic is
-   almost never appropriate. Therefore, programmers should be able to keep using
-   the built-in integer types and to not think about this. Where wraparound
-   semantics are required, it is generally a specialized use case with the
-   implementor well aware of the requirement.
-
- * The built-in types become "special": the ability to control overflow checks
-   using scoped attributes doesn't extend to user-defined types. If you make a
-   `struct MyNum(int)` and `impl Add for MyNum` using the native `+` operation
-   on `int`s, whether overflow checks happen for `MyNum` is determined by
-   whether `overflow_checks` is `on` or `off` where `impl Add for MyNum` is
-   declared, not whether they are `on` or `off` where the overloaded operators
-   are used.
-
-   The author considers this to be a serious shortcoming. *However*, it has the
-   saving grace of being no worse than the status quo, i.e. the change is still
-   a Pareto-improvement. Under the status quo, neither the built-in types nor
-   user-defined types can have overflow checks controlled by scoped attributes.
-   Under this proposal, the situation is improved with built-in types gaining
-   this capability. In light of this, making further improvements, namely
-   extending the capability to user-defined types, can be left to future work.
-
- * Someone may conduct a benchmark of Rust with overflow checks turned on, post
-   it to the Internet, and mislead the audience into thinking that Rust is a
-   slow language.
-
-
-# Alternatives
-
-## Do nothing for now
-
-Defer any action until later, as advocated by:
-
- * [Patrick Walton on June 22][PW22]
-
-Reasons this was not pursued: The proposed changes are relatively well-contained.
-Doing this after 1.0 would require either breaking existing programs which rely
-on wraparound semantics, or introducing an entirely new set of integer types and
-porting all code to use those types, whereas doing it now lets us avoid
-needlessly proliferating types. Given the paucity of circumstances where
-wraparound semantics is appropriate, having it be the default is defensible only
-if better options aren't available.
-
-## Checks off means wrapping on
-
-Where overflow checks are turned off, instead of defining overflow as returning
-an unspecified result, define it to wrap around. This would allow us to do
-without the `WrappingOps` trait and to avoid having unspecified results. See:
-
- * [Daniel Micay on June 24][DM24_2]
-
-Reasons this was not pursued: The official semantics of a type should not change
-based on the context. It should be possible to make the choice between turning
-checks `on` or `off` solely based on performance considerations. It should be
-possible to distinguish cases where checking was too expensive from where
-wraparound was desired. (Wraparound is not usually desired.)
 
 ## Different operators
 
