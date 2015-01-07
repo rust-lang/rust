@@ -30,7 +30,7 @@
 //! In some cases, we follow a degenerate pattern where we do not have
 //! a `fold_T` nor `super_fold_T` method. Instead, `T.fold_with`
 //! traverses the structure directly. This is suboptimal because the
-//! behavior cannot be overriden, but it's much less work to implement.
+//! behavior cannot be overridden, but it's much less work to implement.
 //! If you ever *do* need an override that doesn't exist, it's not hard
 //! to convert the degenerate pattern into the proper thing.
 

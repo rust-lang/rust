@@ -38,7 +38,7 @@
 //! - ConstrainVarSubVar(R_i, R_j) states that region variable R_i
 //!   must be a subregion of R_j
 //! - ConstrainRegSubVar(R, R_i) states that the concrete region R
-//!   (which must not be a variable) must be a subregion of the varibale R_i
+//!   (which must not be a variable) must be a subregion of the variable R_i
 //! - ConstrainVarSubReg(R_i, R) is the inverse
 //!
 //! # Building up the constraints

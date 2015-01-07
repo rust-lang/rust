@@ -1220,7 +1220,7 @@ impl<K, V> Node<K, V> {
     /// Node is full, so split it into two nodes, and yield the middle-most key-value pair
     /// because we have one too many, and our parent now has one too few
     fn split(&mut self) -> (K, V, Node<K, V>) {
-        // Necessary for correctness, but in a private funtion
+        // Necessary for correctness, but in a private function
         debug_assert!(self.len() > 0);
 
         let mut right = if self.is_leaf() {
@@ -1259,7 +1259,7 @@ impl<K, V> Node<K, V> {
         }
     }
 
-    /// Take all the values from right, seperated by the given key and value
+    /// Take all the values from right, separated by the given key and value
     fn absorb(&mut self, key: K, val: V, mut right: Node<K, V>) {
         // Necessary for correctness, but in a private function
         // Just as a sanity check, make sure we can fit this guy in

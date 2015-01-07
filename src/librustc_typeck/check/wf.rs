@@ -210,7 +210,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // We are stricter on the trait-ref in an impl than the
             // self-type.  In particular, we enforce region
             // relationships. The reason for this is that (at least
-            // presently) "appyling" an impl does not require that the
+            // presently) "applying" an impl does not require that the
             // application site check the well-formedness constraints on the
             // trait reference. Instead, this is done at the impl site.
             // Arguably this is wrong and we should treat the trait-reference

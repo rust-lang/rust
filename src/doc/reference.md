@@ -1218,7 +1218,7 @@ the guarantee that these issues are never caused by safe code.
     (`offset` intrinsic), with
     the exception of one byte past the end which is permitted.
   * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64`
-    instrinsics) on overlapping buffers
+    intrinsics) on overlapping buffers
 * Invalid values in primitive types, even in private fields/locals:
   * Dangling/null references or boxes
   * A value other than `false` (0) or `true` (1) in a `bool`
