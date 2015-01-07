@@ -468,7 +468,7 @@ pub fn skolemize_late_bound_regions<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
      * when higher-ranked things are involved. See `doc.rs` for more details.
      */
 
-    let (result, map) = ty::replace_late_bound_regions(infcx.tcx, binder, |br, _| {
+    let (result, map) = ty::replace_late_bound_regions(infcx.tcx, binder, |br| {
         infcx.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
     });
 

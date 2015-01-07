@@ -6672,7 +6672,7 @@ pub fn liberate_late_bound_regions<'tcx, T>(
 {
     replace_late_bound_regions(
         tcx, value,
-        |br, _| ty::ReFree(ty::FreeRegion{scope: scope, bound_region: br})).0
+        |br| ty::ReFree(ty::FreeRegion{scope: scope, bound_region: br})).0
 }
 
 pub fn count_late_bound_regions<'tcx, T>(
@@ -6681,7 +6681,7 @@ pub fn count_late_bound_regions<'tcx, T>(
     -> uint
     where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
-    let (_, skol_map) = replace_late_bound_regions(tcx, value, |_, _| ty::ReStatic);
+    let (_, skol_map) = replace_late_bound_regions(tcx, value, |_| ty::ReStatic);
     skol_map.len()
 }
 
@@ -6712,7 +6712,7 @@ pub fn erase_late_bound_regions<'tcx, T>(
     -> T
     where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
-    replace_late_bound_regions(tcx, value, |_, _| ty::ReStatic).0
+    replace_late_bound_regions(tcx, value, |_| ty::ReStatic).0
 }
 
 /// Rewrite any late-bound regions so that they are anonymous.  Region numbers are
@@ -6730,9 +6730,9 @@ pub fn anonymize_late_bound_regions<'tcx, T>(
     where T : TypeFoldable<'tcx> + Repr<'tcx>,
 {
     let mut counter = 0;
-    ty::Binder(replace_late_bound_regions(tcx, sig, |_, db| {
+    ty::Binder(replace_late_bound_regions(tcx, sig, |_| {
         counter += 1;
-        ReLateBound(db, BrAnon(counter))
+        ReLateBound(ty::DebruijnIndex::new(1), BrAnon(counter))
     }).0)
 }
 
@@ -6743,7 +6743,7 @@ pub fn replace_late_bound_regions<'tcx, T, F>(
     mut mapf: F)
     -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
     where T : TypeFoldable<'tcx> + Repr<'tcx>,
-          F : FnMut(BoundRegion, DebruijnIndex) -> ty::Region,
+          F : FnMut(BoundRegion) -> ty::Region,
 {
     debug!("replace_late_bound_regions({})", binder.repr(tcx));
 
@@ -6755,8 +6755,19 @@ pub fn replace_late_bound_regions<'tcx, T, F>(
         debug!("region={}", region.repr(tcx));
         match region {
             ty::ReLateBound(debruijn, br) if debruijn.depth == current_depth => {
-                * map.entry(br).get().unwrap_or_else(
-                      |vacant_entry| vacant_entry.insert(mapf(br, debruijn)))
+                let region =
+                    * map.entry(br).get().unwrap_or_else(
+                        |vacant_entry| vacant_entry.insert(mapf(br)));
+
+                if let ty::ReLateBound(debruijn1, br) = region {
+                    // If the callback returns a late-bound region,
+                    // that region should always use depth 1. Then we
+                    // adjust it to the correct depth.
+                    assert_eq!(debruijn1.depth, 1);
+                    ty::ReLateBound(debruijn, br)
+                } else {
+                    region
+                }
             }
             _ => {
                 region

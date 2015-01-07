@@ -1056,7 +1056,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty::replace_late_bound_regions(
             self.tcx,
             value,
-            |br, _| self.next_region_var(LateBoundRegion(span, br, lbrct)))
+            |br| self.next_region_var(LateBoundRegion(span, br, lbrct)))
     }
 
     /// See `verify_generic_bound` method in `region_inference`
