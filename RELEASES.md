@@ -61,7 +61,7 @@ Version 1.0.0-alpha (January 2015)
       even though the internals do not (e.g. structs containing unsafe
       pointers like `Arc`). These changes are intended to prevent some
       footguns and are collectively known as [opt-in built-in
-      traits][oibit] (though `Sync` and `Share` will soon become pure
+      traits][oibit] (though `Sync` and `Send` will soon become pure
       library types unknown to the compiler).
     * Operator traits now take their operands [by value][ops], and
       comparison traits can use multidispatch to compare one type
