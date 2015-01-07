@@ -362,7 +362,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 let mut cond_exit = discr_exit;
                 for arm in arms.iter() {
                     cond_exit = self.add_dummy_node(&[cond_exit]);        // 2
-                    let pats_exit = self.pats_any(arm.pats[],
+                    let pats_exit = self.pats_any(arm.pats.index(&FullRange),
                                                   cond_exit);            // 3
                     let guard_exit = self.opt_expr(&arm.guard,
                                                    pats_exit);           // 4
@@ -480,12 +480,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 let inputs = inline_asm.inputs.iter();
                 let outputs = inline_asm.outputs.iter();
                 let post_inputs = self.exprs(inputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} input:{}", expr.id, a);
+                    debug!("cfg::construct InlineAsm id:{} input:{:?}", expr.id, a);
                     let &(_, ref expr) = a;
                     &**expr
                 }), pred);
                 let post_outputs = self.exprs(outputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} output:{}", expr.id, a);
+                    debug!("cfg::construct InlineAsm id:{} output:{:?}", expr.id, a);
                     let &(_, ref expr, _) = a;
                     &**expr
                 }), post_inputs);
@@ -514,7 +514,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        if return_ty == ty::FnDiverging {
+        if return_ty.diverges() {
             self.add_node(ast::DUMMY_NODE_ID, &[])
         } else {
             ret
@@ -616,14 +616,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         self.tcx.sess.span_bug(
                             expr.span,
                             format!("no loop scope for id {}",
-                                    loop_id)[]);
+                                    loop_id).index(&FullRange));
                     }
 
                     r => {
                         self.tcx.sess.span_bug(
                             expr.span,
-                            format!("bad entry `{}` in def_map for label",
-                                    r)[]);
+                            format!("bad entry `{:?}` in def_map for label",
+                                    r).index(&FullRange));
                     }
                 }
             }

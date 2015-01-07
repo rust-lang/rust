@@ -98,7 +98,7 @@ fn scan<R, F, G>(st: &mut PState, mut is_last: F, op: G) -> R where
     }
     let end_pos = st.pos;
     st.pos += 1;
-    return op(st.data[start_pos..end_pos]);
+    return op(st.data.index(&(start_pos..end_pos)));
 }
 
 pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
@@ -251,7 +251,7 @@ fn parse_trait_store_<F>(st: &mut PState, conv: &mut F) -> ty::TraitStore where
         '&' => ty::RegionTraitStore(parse_region_(st, conv), parse_mutability(st)),
         c => {
             st.tcx.sess.bug(format!("parse_trait_store(): bad input '{}'",
-                                    c)[])
+                                    c).index(&FullRange))
         }
     }
 }
@@ -318,7 +318,7 @@ fn parse_bound_region_<F>(st: &mut PState, conv: &mut F) -> ty::BoundRegion wher
         }
         '[' => {
             let def = parse_def_(st, RegionParameter, conv);
-            let ident = token::str_to_ident(parse_str(st, ']')[]);
+            let ident = token::str_to_ident(parse_str(st, ']').index(&FullRange));
             ty::BrNamed(def, ident.name)
         }
         'f' => {
@@ -357,7 +357,7 @@ fn parse_region_<F>(st: &mut PState, conv: &mut F) -> ty::Region where
         assert_eq!(next(st), '|');
         let index = parse_u32(st);
         assert_eq!(next(st), '|');
-        let nm = token::str_to_ident(parse_str(st, ']')[]);
+        let nm = token::str_to_ident(parse_str(st, ']').index(&FullRange));
         ty::ReEarlyBound(node_id, space, index, nm.name)
       }
       'f' => {
@@ -443,8 +443,8 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
     let tcx = st.tcx;
     match next(st) {
       'b' => return tcx.types.bool,
-      'i' => return tcx.types.int,
-      'u' => return tcx.types.uint,
+      'i' => { /* eat the s of is */ next(st); return tcx.types.int },
+      'u' => { /* eat the s of us */ next(st); return tcx.types.uint },
       'M' => {
         match next(st) {
           'b' => return tcx.types.u8,
@@ -481,7 +481,7 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         assert_eq!(next(st), '|');
         let space = parse_param_space(st);
         assert_eq!(next(st), '|');
-        let name = token::intern(parse_str(st, ']')[]);
+        let name = token::intern(parse_str(st, ']').index(&FullRange));
         return ty::mk_param(tcx, space, index, name);
       }
       '~' => return ty::mk_uniq(tcx, parse_ty_(st, conv)),
@@ -637,7 +637,7 @@ fn parse_abi_set(st: &mut PState) -> abi::Abi {
     assert_eq!(next(st), '[');
     scan(st, |c| c == ']', |bytes| {
         let abi_str = str::from_utf8(bytes).unwrap();
-        abi::lookup(abi_str[]).expect(abi_str)
+        abi::lookup(abi_str.index(&FullRange)).expect(abi_str)
     })
 }
 
@@ -733,17 +733,17 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
         panic!();
     }
 
-    let crate_part = buf[0u..colon_idx];
-    let def_part = buf[colon_idx + 1u..len];
+    let crate_part = buf.index(&(0u..colon_idx));
+    let def_part = buf.index(&((colon_idx + 1u)..len));
 
     let crate_num = match str::from_utf8(crate_part).ok().and_then(|s| s.parse::<uint>()) {
        Some(cn) => cn as ast::CrateNum,
-       None => panic!("internal error: parse_def_id: crate number expected, found {}",
+       None => panic!("internal error: parse_def_id: crate number expected, found {:?}",
                      crate_part)
     };
     let def_num = match str::from_utf8(def_part).ok().and_then(|s| s.parse::<uint>()) {
        Some(dn) => dn as ast::NodeId,
-       None => panic!("internal error: parse_def_id: id expected, found {}",
+       None => panic!("internal error: parse_def_id: id expected, found {:?}",
                      def_part)
     };
     ast::DefId { krate: crate_num, node: def_num }

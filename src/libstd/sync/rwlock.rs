@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use kinds::marker;
+use marker;
 use ops::{Deref, DerefMut};
 use sync::poison::{self, LockResult, TryLockError, TryLockResult};
 use sys_common::rwlock as sys;
@@ -411,7 +411,7 @@ mod tests {
                     }
                 }
                 drop(tx);
-            }).detach();
+            });
         }
         drop(tx);
         let _ = rx.recv();
@@ -422,7 +422,7 @@ mod tests {
     fn test_rw_arc_poison_wr() {
         let arc = Arc::new(RwLock::new(1i));
         let arc2 = arc.clone();
-        let _: Result<uint, _> = Thread::spawn(move|| {
+        let _: Result<uint, _> = Thread::scoped(move|| {
             let _lock = arc2.write().unwrap();
             panic!();
         }).join();
@@ -433,7 +433,7 @@ mod tests {
     fn test_rw_arc_poison_ww() {
         let arc = Arc::new(RwLock::new(1i));
         let arc2 = arc.clone();
-        let _: Result<uint, _> = Thread::spawn(move|| {
+        let _: Result<uint, _> = Thread::scoped(move|| {
             let _lock = arc2.write().unwrap();
             panic!();
         }).join();
@@ -444,7 +444,7 @@ mod tests {
     fn test_rw_arc_no_poison_rr() {
         let arc = Arc::new(RwLock::new(1i));
         let arc2 = arc.clone();
-        let _: Result<uint, _> = Thread::spawn(move|| {
+        let _: Result<uint, _> = Thread::scoped(move|| {
             let _lock = arc2.read().unwrap();
             panic!();
         }).join();
@@ -455,7 +455,7 @@ mod tests {
     fn test_rw_arc_no_poison_rw() {
         let arc = Arc::new(RwLock::new(1i));
         let arc2 = arc.clone();
-        let _: Result<uint, _> = Thread::spawn(move|| {
+        let _: Result<uint, _> = Thread::scoped(move|| {
             let _lock = arc2.read().unwrap();
             panic!()
         }).join();
@@ -478,13 +478,13 @@ mod tests {
                 *lock = tmp + 1;
             }
             tx.send(()).unwrap();
-        }).detach();
+        });
 
         // Readers try to catch the writer in the act
         let mut children = Vec::new();
         for _ in range(0u, 5) {
             let arc3 = arc.clone();
-            children.push(Thread::spawn(move|| {
+            children.push(Thread::scoped(move|| {
                 let lock = arc3.read().unwrap();
                 assert!(*lock >= 0);
             }));
@@ -505,7 +505,7 @@ mod tests {
     fn test_rw_arc_access_in_unwind() {
         let arc = Arc::new(RwLock::new(1i));
         let arc2 = arc.clone();
-        let _ = Thread::spawn(move|| -> () {
+        let _ = Thread::scoped(move|| -> () {
             struct Unwinder {
                 i: Arc<RwLock<int>>,
             }

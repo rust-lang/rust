@@ -55,7 +55,7 @@ pub struct Edge<E> {
 
 impl<E: Show> Show for Edge<E> {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
-        write!(f, "Edge {{ next_edge: [{}, {}], source: {}, target: {}, data: {} }}",
+        write!(f, "Edge {{ next_edge: [{:?}, {:?}], source: {:?}, target: {:?}, data: {:?} }}",
                self.next_edge[0], self.next_edge[1], self.source,
                self.target, self.data)
     }
@@ -419,7 +419,7 @@ mod test {
         graph.each_incoming_edge(start_index, |edge_index, edge| {
             assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_incoming.len());
-            debug!("counter={} expected={} edge_index={} edge={}",
+            debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_incoming[counter], edge_index, edge);
             match expected_incoming[counter] {
                 (ref e, ref n) => {
@@ -437,7 +437,7 @@ mod test {
         graph.each_outgoing_edge(start_index, |edge_index, edge| {
             assert!(graph.edge_data(edge_index) == &edge.data);
             assert!(counter < expected_outgoing.len());
-            debug!("counter={} expected={} edge_index={} edge={}",
+            debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                    counter, expected_outgoing[counter], edge_index, edge);
             match expected_outgoing[counter] {
                 (ref e, ref n) => {

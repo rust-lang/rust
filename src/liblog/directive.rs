@@ -84,7 +84,7 @@ pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<Regex>) {
         match Regex::new(filter) {
             Ok(re) => Some(re),
             Err(e) => {
-                println!("warning: invalid regex filter - {}", e);
+                println!("warning: invalid regex filter - {:?}", e);
                 None
             }
         }

@@ -56,12 +56,12 @@ fn any_downcast_ref() {
 
     match a.downcast_ref::<uint>() {
         Some(&5) => {}
-        x => panic!("Unexpected value {}", x)
+        x => panic!("Unexpected value {:?}", x)
     }
 
     match a.downcast_ref::<Test>() {
         None => {}
-        x => panic!("Unexpected value {}", x)
+        x => panic!("Unexpected value {:?}", x)
     }
 }
 
@@ -79,7 +79,7 @@ fn any_downcast_mut() {
             assert_eq!(*x, 5u);
             *x = 612;
         }
-        x => panic!("Unexpected value {}", x)
+        x => panic!("Unexpected value {:?}", x)
     }
 
     match b_r.downcast_mut::<uint>() {
@@ -87,27 +87,27 @@ fn any_downcast_mut() {
             assert_eq!(*x, 7u);
             *x = 413;
         }
-        x => panic!("Unexpected value {}", x)
+        x => panic!("Unexpected value {:?}", x)
     }
 
     match a_r.downcast_mut::<Test>() {
         None => (),
-        x => panic!("Unexpected value {}", x)
+        x => panic!("Unexpected value {:?}", x)
     }
 
     match b_r.downcast_mut::<Test>() {
         None => (),
-        x => panic!("Unexpected value {}", x)
+        x => panic!("Unexpected value {:?}", x)
     }
 
     match a_r.downcast_mut::<uint>() {
         Some(&612) => {}
-        x => panic!("Unexpected value {}", x)
+        x => panic!("Unexpected value {:?}", x)
     }
 
     match b_r.downcast_mut::<uint>() {
         Some(&413) => {}
-        x => panic!("Unexpected value {}", x)
+        x => panic!("Unexpected value {:?}", x)
     }
 }
 

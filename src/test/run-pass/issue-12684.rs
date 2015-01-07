@@ -12,7 +12,7 @@ use std::time::Duration;
 use std::thread::Thread;
 
 fn main() {
-    Thread::spawn(move|| customtask()).join().ok().unwrap();
+    Thread::scoped(move|| customtask()).join().ok().unwrap();
 }
 
 fn customtask() {

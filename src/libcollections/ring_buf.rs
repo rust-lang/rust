@@ -20,7 +20,7 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::iter::{self, repeat, FromIterator, RandomAccessIterator};
-use core::kinds::marker;
+use core::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut};
@@ -525,7 +525,7 @@ impl<T> RingBuf<T> {
     ///     *num = *num - 2;
     /// }
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
-    /// assert_eq!(buf.iter_mut().collect::<Vec<&mut int>>()[], b);
+    /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
     #[stable]
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
@@ -556,7 +556,7 @@ impl<T> RingBuf<T> {
             let buf = self.buffer_as_slice();
             if contiguous {
                 let (empty, buf) = buf.split_at(0);
-                (buf[self.tail..self.head], empty)
+                (buf.index(&(self.tail..self.head)), empty)
             } else {
                 let (mid, right) = buf.split_at(self.tail);
                 let (left, _) = mid.split_at(self.head);
@@ -1613,11 +1613,11 @@ impl<A> Extend<A> for RingBuf<A> {
 #[stable]
 impl<T: fmt::Show> fmt::Show for RingBuf<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "["));
+        try!(write!(f, "RingBuf ["));
 
         for (i, e) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}", *e));
+            try!(write!(f, "{:?}", *e));
         }
 
         write!(f, "]")
@@ -1648,21 +1648,15 @@ mod tests {
         assert_eq!(d.len(), 3u);
         d.push_back(137);
         assert_eq!(d.len(), 4u);
-        debug!("{}", d.front());
         assert_eq!(*d.front().unwrap(), 42);
-        debug!("{}", d.back());
         assert_eq!(*d.back().unwrap(), 137);
         let mut i = d.pop_front();
-        debug!("{}", i);
         assert_eq!(i, Some(42));
         i = d.pop_back();
-        debug!("{}", i);
         assert_eq!(i, Some(137));
         i = d.pop_back();
-        debug!("{}", i);
         assert_eq!(i, Some(137));
         i = d.pop_back();
-        debug!("{}", i);
         assert_eq!(i, Some(17));
         assert_eq!(d.len(), 0u);
         d.push_back(3);
@@ -2308,12 +2302,12 @@ mod tests {
     #[test]
     fn test_show() {
         let ringbuf: RingBuf<int> = range(0i, 10).collect();
-        assert!(format!("{}", ringbuf) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert_eq!(format!("{:?}", ringbuf), "RingBuf [0i, 1i, 2i, 3i, 4i, 5i, 6i, 7i, 8i, 9i]");
 
         let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()
                                                                         .map(|&s| s)
                                                                         .collect();
-        assert!(format!("{}", ringbuf) == "[just, one, test, more]");
+        assert_eq!(format!("{:?}", ringbuf), "RingBuf [\"just\", \"one\", \"test\", \"more\"]");
     }
 
     #[test]

@@ -21,10 +21,10 @@ use cmp::{PartialEq, Eq};
 use cmp::{PartialOrd, Ord};
 use intrinsics;
 use iter::IteratorExt;
-use kinds::Copy;
+use marker::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
-use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
+use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr, Index};
 use option::Option;
 use option::Option::{Some, None};
 use str::{FromStr, StrExt};
@@ -992,7 +992,7 @@ impl_to_primitive_float! { f64 }
 
 /// A generic trait for converting a number to a value.
 #[experimental = "trait is likely to be removed"]
-pub trait FromPrimitive : ::kinds::Sized {
+pub trait FromPrimitive : ::marker::Sized {
     /// Convert an `int` to return an optional value of this type. If the
     /// value cannot be represented by this value, the `None` is returned.
     #[inline]
@@ -1577,7 +1577,7 @@ macro_rules! from_str_radix_float_impl {
                         };
 
                         // Parse the exponent as decimal integer
-                        let src = src[offset..];
+                        let src = src.index(&(offset..));
                         let (is_positive, exp) = match src.slice_shift_char() {
                             Some(('-', src)) => (false, src.parse::<uint>()),
                             Some(('+', src)) => (true,  src.parse::<uint>()),

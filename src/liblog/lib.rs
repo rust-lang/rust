@@ -16,12 +16,12 @@
 //! #[macro_use] extern crate log;
 //!
 //! fn main() {
-//!     debug!("this is a debug {}", "message");
+//!     debug!("this is a debug {:?}", "message");
 //!     error!("this is printed by default");
 //!
 //!     if log_enabled!(log::INFO) {
 //!         let x = 3i * 4i; // expensive computation
-//!         info!("the answer was: {}", x);
+//!         info!("the answer was: {:?}", x);
 //!     }
 //! }
 //! ```
@@ -163,7 +163,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(macro_rules, unboxed_closures, slicing_syntax)]
+#![feature(slicing_syntax)]
 #![deny(missing_docs)]
 
 extern crate regex;
@@ -182,8 +182,7 @@ use regex::Regex;
 
 use directive::LOG_LEVEL_NAMES;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod macros;
 
 mod directive;
@@ -239,10 +238,16 @@ pub struct LogLevel(pub u32);
 
 impl fmt::Show for LogLevel {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, fmt)
+    }
+}
+
+impl fmt::String for LogLevel {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let LogLevel(level) = *self;
         match LOG_LEVEL_NAMES.get(level as uint - 1) {
-            Some(name) => name.fmt(fmt),
-            None => level.fmt(fmt)
+            Some(ref name) => fmt::String::fmt(name, fmt),
+            None => fmt::String::fmt(&level, fmt)
         }
     }
 }
@@ -254,7 +259,7 @@ impl Logger for DefaultLogger {
                        record.level,
                        record.module_path,
                        record.args) {
-            Err(e) => panic!("failed to log: {}", e),
+            Err(e) => panic!("failed to log: {:?}", e),
             Ok(()) => {}
         }
     }
@@ -264,7 +269,7 @@ impl Drop for DefaultLogger {
     fn drop(&mut self) {
         // FIXME(#12628): is panicking the right thing to do?
         match self.handle.flush() {
-            Err(e) => panic!("failed to flush a logger: {}", e),
+            Err(e) => panic!("failed to flush a logger: {:?}", e),
             Ok(()) => {}
         }
     }
@@ -282,7 +287,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     // Test the literal string from args against the current filter, if there
     // is one.
     match unsafe { FILTER.as_ref() } {
-        Some(filter) if !filter.is_match(args.to_string()[]) => return,
+        Some(filter) if !filter.is_match(args.to_string().index(&FullRange)) => return,
         _ => {}
     }
 
@@ -377,7 +382,7 @@ fn enabled(level: u32,
     // Search for the longest match, the vector is assumed to be pre-sorted.
     for directive in iter.rev() {
         match directive.name {
-            Some(ref name) if !module.starts_with(name[]) => {},
+            Some(ref name) if !module.starts_with(name.index(&FullRange)) => {},
             Some(..) | None => {
                 return level <= directive.level
             }
@@ -392,7 +397,7 @@ fn enabled(level: u32,
 /// `Once` primitive (and this function is called from that primitive).
 fn init() {
     let (mut directives, filter) = match os::getenv("RUST_LOG") {
-        Some(spec) => directive::parse_logging_spec(spec[]),
+        Some(spec) => directive::parse_logging_spec(spec.index(&FullRange)),
         None => (Vec::new(), None),
     };
 

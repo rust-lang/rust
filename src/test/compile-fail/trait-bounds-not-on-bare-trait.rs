@@ -14,7 +14,7 @@ trait Foo {
 // This should emit the less confusing error, not the more confusing one.
 
 fn foo(_x: Foo + Send) {
-    //~^ERROR the trait `core::kinds::Sized` is not implemented
+    //~^ERROR the trait `core::marker::Sized` is not implemented
 }
 
 fn main() { }

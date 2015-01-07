@@ -10,7 +10,7 @@
 
 #![feature(optin_builtin_traits)]
 
-use std::kinds::Send;
+use std::marker::Send;
 
 struct TestType;
 

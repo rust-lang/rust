@@ -35,7 +35,7 @@ use middle::lang_items::SizedTraitLangItem;
 use middle::region;
 use middle::resolve_lifetime;
 use middle::subst;
-use middle::subst::{Substs};
+use middle::subst::{Substs, TypeSpace};
 use middle::ty::{AsPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{self, RegionEscape, Ty, TypeScheme};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
@@ -47,6 +47,7 @@ use util::ppaux;
 use util::ppaux::{Repr,UserString};
 use write_ty_to_tcx;
 
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use syntax::abi;
@@ -169,7 +170,7 @@ impl<'a, 'tcx> AstConv<'tcx> for CollectCtxt<'a, 'tcx> {
             }
             x => {
                 self.tcx.sess.bug(format!("unexpected sort of node \
-                                           in get_item_type_scheme(): {}",
+                                           in get_item_type_scheme(): {:?}",
                                           x).as_slice());
             }
         }
@@ -211,7 +212,7 @@ fn get_enum_variant_types<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let rs = ExplicitRscope;
                 let input_tys: Vec<_> = args.iter().map(|va| ccx.to_ty(&rs, &*va.ty)).collect();
-                ty::mk_ctor_fn(tcx, variant_def_id, input_tys[], enum_ty)
+                ty::mk_ctor_fn(tcx, variant_def_id, input_tys.index(&FullRange), enum_ty)
             }
 
             ast::TupleVariantKind(_) => {
@@ -258,7 +259,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                                     ccx,
                                     trait_id,
                                     &trait_def.generics,
-                                    trait_items[],
+                                    trait_items.index(&FullRange),
                                     &m.id,
                                     &m.ident.name,
                                     &m.explicit_self,
@@ -272,7 +273,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                                     ccx,
                                     trait_id,
                                     &trait_def.generics,
-                                    trait_items[],
+                                    trait_items.index(&FullRange),
                                     &m.id,
                                     &m.pe_ident().name,
                                     m.pe_explicit_self(),
@@ -475,7 +476,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CollectCtxt<'a, 'tcx>,
 
         write_ty_to_tcx(tcx, m.id, fty);
 
-        debug!("writing method type: def_id={} mty={}",
+        debug!("writing method type: def_id={:?} mty={}",
                mty.def_id, mty.repr(ccx.tcx));
 
         tcx.impl_or_trait_items
@@ -644,6 +645,10 @@ fn convert(ccx: &CollectCtxt, it: &ast::Item) {
                                                Some(selfty),
                                                None);
             }
+
+            enforce_impl_ty_params_are_constrained(ccx.tcx,
+                                                   generics,
+                                                   local_def(it.id));
         },
         ast::ItemTrait(_, _, _, ref trait_methods) => {
             let trait_def = trait_def_of_item(ccx, it);
@@ -774,7 +779,7 @@ fn convert_struct<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                             local_def(field.node.id)].ty).collect();
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx,
                                                 local_def(ctor_id),
-                                                inputs[],
+                                                inputs.index(&FullRange),
                                                 selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
                 tcx.tcache.borrow_mut().insert(local_def(ctor_id),
@@ -815,7 +820,7 @@ fn get_trait_def<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
         ast_map::NodeItem(item) => trait_def_of_item(ccx, &*item),
         _ => {
             ccx.tcx.sess.bug(format!("get_trait_def({}): not an item",
-                                     trait_id.node)[])
+                                     trait_id.node).index(&FullRange))
         }
     }
 }
@@ -840,7 +845,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
         ref s => {
             tcx.sess.span_bug(
                 it.span,
-                format!("trait_def_of_item invoked on {}", s)[]);
+                format!("trait_def_of_item invoked on {:?}", s).index(&FullRange));
         }
     };
 
@@ -1025,8 +1030,8 @@ fn ty_generics_for_type_or_impl<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                                           -> ty::Generics<'tcx> {
     ty_generics(ccx,
                 subst::TypeSpace,
-                generics.lifetimes[],
-                generics.ty_params[],
+                generics.lifetimes.index(&FullRange),
+                generics.ty_params.index(&FullRange),
                 ty::Generics::empty(),
                 &generics.where_clause)
 }
@@ -1044,8 +1049,8 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
     let mut generics =
         ty_generics(ccx,
                     subst::TypeSpace,
-                    ast_generics.lifetimes[],
-                    ast_generics.ty_params[],
+                    ast_generics.lifetimes.index(&FullRange),
+                    ast_generics.ty_params.index(&FullRange),
                     ty::Generics::empty(),
                     &ast_generics.where_clause);
 
@@ -1130,8 +1135,8 @@ fn ty_generics_for_fn_or_method<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
     let early_lifetimes = resolve_lifetime::early_bound_lifetimes(generics);
     ty_generics(ccx,
                 subst::FnSpace,
-                early_lifetimes[],
-                generics.ty_params[],
+                early_lifetimes.index(&FullRange),
+                generics.ty_params.index(&FullRange),
                 base_generics,
                 &generics.where_clause)
 }
@@ -1201,7 +1206,7 @@ fn ty_generics<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                                            index: i as u32,
                                            def_id: local_def(l.lifetime.id),
                                            bounds: bounds };
-        debug!("ty_generics: def for region param: {}", def);
+        debug!("ty_generics: def for region param: {:?}", def);
         result.regions.push(space, def);
     }
 
@@ -1213,7 +1218,7 @@ fn ty_generics<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                                                    space,
                                                    param,
                                                    i as u32);
-        debug!("ty_generics: def for type param: {}, {}",
+        debug!("ty_generics: def for type param: {}, {:?}",
                def.repr(ccx.tcx),
                space);
         result.types.push(space, def);
@@ -1318,7 +1323,7 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
     let param_ty = ty::ParamTy::new(space, index, param.ident.name);
     let bounds = compute_bounds(ccx,
                                 param_ty.to_ty(ccx.tcx),
-                                param.bounds[],
+                                param.bounds.index(&FullRange),
                                 SizedByDefault::Yes,
                                 param.span);
     let default = match param.default {
@@ -1399,7 +1404,7 @@ fn check_bounds_compatible<'tcx>(tcx: &ty::ctxt<'tcx>,
     if !param_bounds.builtin_bounds.contains(&ty::BoundSized) {
         ty::each_bound_trait_and_supertraits(
             tcx,
-            param_bounds.trait_bounds[],
+            param_bounds.trait_bounds.index(&FullRange),
             |trait_ref| {
                 let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id());
                 if trait_def.bounds.builtin_bounds.contains(&ty::BoundSized) {
@@ -1603,5 +1608,98 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                 _ => region
             }
         })
+    }
+}
+
+/// Checks that all the type parameters on an impl
+fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                                ast_generics: &ast::Generics,
+                                                impl_def_id: ast::DefId)
+{
+    let impl_scheme = ty::lookup_item_type(tcx, impl_def_id);
+    let impl_trait_ref = ty::impl_trait_ref(tcx, impl_def_id);
+
+    // The trait reference is an input, so find all type parameters
+    // reachable from there, to start (if this is an inherent impl,
+    // then just examine the self type).
+    let mut input_parameters: HashSet<_> =
+        impl_trait_ref.iter()
+                      .flat_map(|t| t.input_types().iter()) // Types in trait ref, if any
+                      .chain(Some(impl_scheme.ty).iter())  // Self type, always
+                      .flat_map(|t| t.walk())
+                      .filter_map(to_opt_param_ty)
+                      .collect();
+
+    loop {
+        let num_inputs = input_parameters.len();
+
+        let mut projection_predicates =
+            impl_scheme.generics.predicates
+            .iter()
+            .filter_map(|predicate| {
+                match *predicate {
+                    // Ignore higher-ranked binders. For the purposes
+                    // of this check, they don't matter because they
+                    // only affect named regions, and we're just
+                    // concerned about type parameters here.
+                    ty::Predicate::Projection(ref data) => Some(data.0.clone()),
+                    _ => None,
+                }
+            });
+
+        for projection in projection_predicates {
+            // Special case: watch out for some kind of sneaky attempt
+            // to project out an associated type defined by this very trait.
+            if Some(projection.projection_ty.trait_ref.clone()) == impl_trait_ref {
+                continue;
+            }
+
+            let relies_only_on_inputs =
+                projection.projection_ty.trait_ref.input_types().iter()
+                .flat_map(|t| t.walk())
+                .filter_map(to_opt_param_ty)
+                .all(|t| input_parameters.contains(&t));
+
+            if relies_only_on_inputs {
+                input_parameters.extend(
+                    projection.ty.walk().filter_map(to_opt_param_ty));
+            }
+        }
+
+        if input_parameters.len() == num_inputs {
+            break;
+        }
+    }
+
+    for (index, ty_param) in ast_generics.ty_params.iter().enumerate() {
+        let param_ty = ty::ParamTy { space: TypeSpace,
+                                     idx: index as u32,
+                                     name: ty_param.ident.name };
+        if !input_parameters.contains(&param_ty) {
+            if ty::has_attr(tcx, impl_def_id, "old_impl_check") {
+                tcx.sess.span_warn(
+                    ty_param.span,
+                    format!("the type parameter `{}` is not constrained by the \
+                             impl trait, self type, or predicates",
+                            param_ty.user_string(tcx)).as_slice());
+            } else {
+                tcx.sess.span_err(
+                    ty_param.span,
+                    format!("the type parameter `{}` is not constrained by the \
+                             impl trait, self type, or predicates",
+                            param_ty.user_string(tcx)).as_slice());
+                tcx.sess.span_help(
+                    ty_param.span,
+                    format!("you can temporarily opt out of this rule by placing \
+                             the `#[old_impl_check]` attribute on the impl").as_slice());
+            }
+        }
+    }
+
+    fn to_opt_param_ty<'tcx>(ty: Ty<'tcx>) -> Option<ty::ParamTy> {
+        match ty.sty {
+            ty::ty_param(ref d) => Some(d.clone()),
+            _ => None,
+        }
     }
 }

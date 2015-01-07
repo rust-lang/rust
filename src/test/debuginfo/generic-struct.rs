@@ -32,14 +32,14 @@
 // lldb-command:run
 
 // lldb-command:print int_int
-// lldb-check:[...]$0 = AGenericStruct<int, int> { key: 0, value: 1 }
+// lldb-check:[...]$0 = AGenericStruct<isize, isize> { key: 0, value: 1 }
 // lldb-command:print int_float
-// lldb-check:[...]$1 = AGenericStruct<int, f64> { key: 2, value: 3.5 }
+// lldb-check:[...]$1 = AGenericStruct<isize, f64> { key: 2, value: 3.5 }
 // lldb-command:print float_int
-// lldb-check:[...]$2 = AGenericStruct<f64, int> { key: 4.5, value: 5 }
+// lldb-check:[...]$2 = AGenericStruct<f64, isize> { key: 4.5, value: 5 }
 
 // lldb-command:print float_int_float
-// lldb-check:[...]$3 = AGenericStruct<f64, generic-struct::AGenericStruct<int, f64>> { key: 6.5, value: AGenericStruct<int, f64> { key: 7, value: 8.5 } }
+// lldb-check:[...]$3 = AGenericStruct<f64, generic-struct::AGenericStruct<isize, f64>> { key: 6.5, value: AGenericStruct<isize, f64> { key: 7, value: 8.5 } }
 
 
 #![omit_gdb_pretty_printer_section]

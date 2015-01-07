@@ -381,7 +381,7 @@ mod tests {
                 assert_eq!(buf[2], 's' as u8);
                 assert_eq!(buf[3], 't' as u8);
             }
-            r => panic!("invalid read: {}", r),
+            r => panic!("invalid read: {:?}", r),
         }
 
         assert!(writer.read(&mut buf).is_err());

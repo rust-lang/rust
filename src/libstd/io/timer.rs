@@ -358,7 +358,7 @@ mod test {
 
         Thread::spawn(move|| {
             let _ = timer_rx.recv();
-        }).detach();
+        });
 
         // when we drop the TimerWatcher we're going to destroy the channel,
         // which must wake up the task on the other end
@@ -372,7 +372,7 @@ mod test {
 
         Thread::spawn(move|| {
             let _ = timer_rx.recv();
-        }).detach();
+        });
 
         timer.oneshot(Duration::milliseconds(1));
     }
@@ -385,7 +385,7 @@ mod test {
 
         Thread::spawn(move|| {
             let _ = timer_rx.recv();
-        }).detach();
+        });
 
         timer.sleep(Duration::milliseconds(1));
     }

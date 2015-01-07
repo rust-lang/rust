@@ -30,11 +30,7 @@
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-
-#![allow(unknown_features)]
-#![feature(asm, globs, slicing_syntax)]
-#![feature(unboxed_closures, default_type_params)]
-#![feature(old_orphan_check)]
+#![feature(asm, slicing_syntax)]
 
 extern crate getopts;
 extern crate regex;
@@ -95,7 +91,7 @@ pub mod stats;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Show)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(String)
@@ -108,9 +104,9 @@ impl TestName {
         }
     }
 }
-impl Show for TestName {
+impl fmt::String for TestName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_slice().fmt(f)
+        fmt::String::fmt(self.as_slice(), f)
     }
 }
 
@@ -257,13 +253,13 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
     let opts =
         match parse_opts(args) {
             Some(Ok(o)) => o,
-            Some(Err(msg)) => panic!("{}", msg),
+            Some(Err(msg)) => panic!("{:?}", msg),
             None => return
         };
     match run_tests_console(&opts, tests) {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
-        Err(e) => panic!("io error when running tests: {}", e),
+        Err(e) => panic!("io error when running tests: {:?}", e),
     }
 }
 
@@ -410,7 +406,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         let s = matches.free[0].as_slice();
         match Regex::new(s) {
             Ok(re) => Some(re),
-            Err(e) => return Some(Err(format!("could not parse /{}/: {}", s, e)))
+            Err(e) => return Some(Err(format!("could not parse /{}/: {:?}", s, e)))
         }
     } else {
         None
@@ -793,7 +789,7 @@ impl<T: Writer> ConsoleTestState<T> {
         let ratchet_success = match *ratchet_metrics {
             None => true,
             Some(ref pth) => {
-                try!(self.write_plain(format!("\nusing metrics ratchet: {}\n",
+                try!(self.write_plain(format!("\nusing metrics ratchet: {:?}\n",
                                               pth.display()).as_slice()));
                 match ratchet_pct {
                     None => (),
@@ -912,7 +908,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
         None => (),
         Some(ref pth) => {
             try!(st.metrics.save(pth));
-            try!(st.write_plain(format!("\nmetrics saved to: {}",
+            try!(st.write_plain(format!("\nmetrics saved to: {:?}",
                                           pth.display()).as_slice()));
         }
     }
@@ -952,7 +948,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures().unwrap();
     let s = match st.out {
-        Raw(ref m) => String::from_utf8_lossy(m[]),
+        Raw(ref m) => String::from_utf8_lossy(m.index(&FullRange)),
         Pretty(_) => unreachable!()
     };
 
@@ -1137,11 +1133,11 @@ pub fn run_test(opts: &TestOpts,
                 cfg = cfg.stderr(box stderr as Box<Writer + Send>);
             }
 
-            let result_guard = cfg.spawn(move || { testfn.invoke(()) });
+            let result_guard = cfg.scoped(move || { testfn.invoke(()) });
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
             let test_result = calc_result(&desc, result_guard.join());
             monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
-        }).detach();
+        });
     }
 
     match testfn {
@@ -1206,7 +1202,7 @@ impl MetricMap {
         let mut decoder = json::Decoder::new(value);
         MetricMap(match Decodable::decode(&mut decoder) {
             Ok(t) => t,
-            Err(e) => panic!("failure decoding JSON: {}", e)
+            Err(e) => panic!("failure decoding JSON: {:?}", e)
         })
     }
 

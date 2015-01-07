@@ -296,7 +296,7 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
                 try!(pp::word(&mut s.s,
                               ppaux::ty_to_string(
                                   tcx,
-                                  ty::expr_ty(tcx, expr))[]));
+                                  ty::expr_ty(tcx, expr)).index(&FullRange)));
                 s.pclose()
             }
             _ => Ok(())
@@ -370,7 +370,7 @@ impl UserIdentifiedItem {
             ItemViaNode(node_id) =>
                 NodesMatchingDirect(Some(node_id).into_iter()),
             ItemViaPath(ref parts) =>
-                NodesMatchingSuffix(map.nodes_matching_suffix(parts[])),
+                NodesMatchingSuffix(map.nodes_matching_suffix(parts.index(&FullRange))),
         }
     }
 
@@ -382,7 +382,7 @@ impl UserIdentifiedItem {
                         user_option,
                         self.reconstructed_input(),
                         is_wrong_because);
-            sess.fatal(message[])
+            sess.fatal(message.index(&FullRange))
         };
 
         let mut saw_node = ast::DUMMY_NODE_ID;
@@ -509,7 +509,7 @@ pub fn pretty_print_input(sess: Session,
     let is_expanded = needs_expansion(&ppm);
     let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
     let krate = if compute_ast_map {
-        match driver::phase_2_configure_and_expand(&sess, krate, id[], None) {
+        match driver::phase_2_configure_and_expand(&sess, krate, id.index(&FullRange), None) {
             None => return,
             Some(k) => k
         }
@@ -528,7 +528,7 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src_name = driver::source_name(input);
-    let src = sess.codemap().get_filemap(src_name[])
+    let src = sess.codemap().get_filemap(src_name.index(&FullRange))
                             .src.as_bytes().to_vec();
     let mut rdr = MemReader::new(src);
 
@@ -548,7 +548,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmSource(s), None) =>
             s.call_with_pp_support(
                 sess, ast_map, &arenas, id, out, |annotation, out| {
-                    debug!("pretty printing source code {}", s);
+                    debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
                                         sess.diagnostic(),
@@ -563,7 +563,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmSource(s), Some(uii)) =>
             s.call_with_pp_support(
                 sess, ast_map, &arenas, id, (out,uii), |annotation, (out,uii)| {
-                    debug!("pretty printing source code {}", s);
+                    debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     let ast_map = annotation.ast_map()
                         .expect("--pretty missing ast_map");
@@ -586,10 +586,10 @@ pub fn pretty_print_input(sess: Session,
                 }),
 
         (PpmFlowGraph, opt_uii) => {
-            debug!("pretty printing flow graph for {}", opt_uii);
+            debug!("pretty printing flow graph for {:?}", opt_uii);
             let uii = opt_uii.unwrap_or_else(|| {
                 sess.fatal(format!("`pretty flowgraph=..` needs NodeId (int) or
-                                     unique path suffix (b::c::d)")[])
+                                     unique path suffix (b::c::d)").index(&FullRange))
 
             });
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
@@ -597,7 +597,7 @@ pub fn pretty_print_input(sess: Session,
 
             let node = ast_map.find(nodeid).unwrap_or_else(|| {
                 sess.fatal(format!("--pretty flowgraph couldn't find id: {}",
-                                   nodeid)[])
+                                   nodeid).index(&FullRange))
             });
 
             let code = blocks::Code::from_node(node);
@@ -609,14 +609,14 @@ pub fn pretty_print_input(sess: Session,
                 }
                 None => {
                     let message = format!("--pretty=flowgraph needs \
-                                           block, fn, or method; got {}",
+                                           block, fn, or method; got {:?}",
                                           node);
 
                     // point to what was found, if there's an
                     // accessible span.
                     match ast_map.opt_span(nodeid) {
-                        Some(sp) => sess.span_fatal(sp, message[]),
-                        None => sess.fatal(message[])
+                        Some(sp) => sess.span_fatal(sp, message.index(&FullRange)),
+                        None => sess.fatal(message.index(&FullRange))
                     }
                 }
             }

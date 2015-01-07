@@ -49,7 +49,7 @@ fn print_complements() {
     let all = [Blue, Red, Yellow];
     for aa in all.iter() {
         for bb in all.iter() {
-            println!("{} + {} -> {}", *aa, *bb, transform(*aa, *bb));
+            println!("{:?} + {:?} -> {:?}", *aa, *bb, transform(*aa, *bb));
         }
     }
 }
@@ -84,7 +84,7 @@ fn show_color_list(set: Vec<Color>) -> String {
     let mut out = String::new();
     for col in set.iter() {
         out.push(' ');
-        out.push_str(col.to_string().as_slice());
+        out.push_str(format!("{:?}", col).as_slice());
     }
     out
 }
@@ -170,7 +170,7 @@ fn creature(
         }
     }
     // log creatures met and evil clones of self
-    let report = format!("{}{}", creatures_met, Number(evil_clones_met));
+    let report = format!("{}{:?}", creatures_met, Number(evil_clones_met));
     to_rendezvous_log.send(report).unwrap();
 }
 
@@ -195,7 +195,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
                          from_rendezvous,
                          to_rendezvous,
                          to_rendezvous_log);
-            }).detach();
+            });
             to_creature
         }).collect();
 
@@ -225,7 +225,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
     }
 
     // print the total number of creatures met
-    println!("{}\n", Number(creatures_met));
+    println!("{:?}\n", Number(creatures_met));
 }
 
 fn main() {

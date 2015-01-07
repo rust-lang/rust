@@ -103,7 +103,15 @@ impl ItemType {
     }
 }
 
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl fmt::Show for ItemType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for ItemType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_static_str().fmt(f)
     }

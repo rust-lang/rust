@@ -73,7 +73,7 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
                     MetaWord(ref tname) => {
                         macro_rules! expand {
                             ($func:path) => ($func(cx, titem.span, &**titem, item,
-                                                   |i| push.call_mut((i,))))
+                                                   |i| push(i)))
                         }
 
                         match tname.get() {
@@ -123,7 +123,7 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
                                 cx.span_err(titem.span,
                                             format!("unknown `derive` \
                                                      trait: `{}`",
-                                                    *tname)[]);
+                                                    *tname).index(&FullRange));
                             }
                         };
                     }

@@ -14,7 +14,7 @@ fn assert_send<T:Send>() { }
 
 fn test71<'a>() {
     assert_send::<*mut &'a int>();
-    //~^ ERROR the trait `core::kinds::Send` is not implemented for the type
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type
 }
 
 fn main() {

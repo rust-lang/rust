@@ -141,7 +141,7 @@ impl<A:Send> Future<A> {
         Thread::spawn(move |:| {
             // Don't panic if the other end has hung up
             let _ = tx.send(blk());
-        }).detach();
+        });
 
         Future::from_receiver(rx)
     }

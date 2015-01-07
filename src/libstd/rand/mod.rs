@@ -71,7 +71,7 @@
 //! use std::rand;
 //!
 //! let tuple = rand::random::<(f64, char)>();
-//! println!("{}", tuple)
+//! println!("{:?}", tuple)
 //! ```
 //!
 //! ## Monte Carlo estimation of π
@@ -303,7 +303,7 @@ impl<'a> SeedableRng<&'a [uint]> for StdRng {
 pub fn weak_rng() -> XorShiftRng {
     match OsRng::new() {
         Ok(mut r) => r.gen(),
-        Err(e) => panic!("weak_rng: failed to create seeded RNG: {}", e)
+        Err(e) => panic!("weak_rng: failed to create seeded RNG: {:?}", e)
     }
 }
 
@@ -490,7 +490,7 @@ mod test {
         let mut r = thread_rng();
         let a = r.gen::<f64>();
         let b = r.gen::<f64>();
-        debug!("{}", (a, b));
+        debug!("{:?}", (a, b));
     }
 
     #[test]

@@ -204,7 +204,7 @@ impl error::Error for FromBase64Error {
     }
 
     fn detail(&self) -> Option<String> {
-        Some(self.to_string())
+        Some(format!("{:?}", self))
     }
 }
 

@@ -157,7 +157,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
             None => box io::stderr() as Box<Writer>,
         };
         io::util::copy(&mut p, &mut err).unwrap();
-    }).detach();
+    });
     let emitter = diagnostic::EmitterWriter::new(box w2, None);
 
     // Compile the code
@@ -201,7 +201,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
             if should_fail && out.status.success() {
                 panic!("test executable succeeded when it should have failed");
             } else if !should_fail && !out.status.success() {
-                panic!("test executable failed:\n{}",
+                panic!("test executable failed:\n{:?}",
                       str::from_utf8(out.error.as_slice()));
             }
         }

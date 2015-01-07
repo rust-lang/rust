@@ -18,7 +18,7 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::kinds::Sized;
+use core::marker::Sized;
 use core::mem;
 use core::option::Option;
 use core::ptr::Unique;
@@ -145,7 +145,13 @@ impl BoxAny for Box<Any> {
 
 impl<T: ?Sized + fmt::Show> fmt::Show for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (**self).fmt(f)
+        write!(f, "Box({:?})", &**self)
+    }
+}
+
+impl<T: ?Sized + fmt::String> fmt::String for Box<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(&**self, f)
     }
 }
 

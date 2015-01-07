@@ -16,7 +16,7 @@ use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, count};
-use kinds::{Copy, Sized, marker};
+use marker::{Copy, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
 use num::{Int, UnsignedInt};

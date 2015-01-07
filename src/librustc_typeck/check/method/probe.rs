@@ -267,7 +267,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             return; // already visited
         }
 
-        debug!("assemble_inherent_impl_probe {}", impl_def_id);
+        debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
         let method = match impl_method(self.tcx(), impl_def_id, self.method_name) {
             Some(m) => m,
@@ -576,7 +576,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     self.tcx().sess.span_bug(
                         self.span,
                         format!("No entry for unboxed closure: {}",
-                                closure_def_id.repr(self.tcx()))[]);
+                                closure_def_id.repr(self.tcx())).index(&FullRange));
                 }
             };
 
@@ -745,7 +745,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("pick_method(self_ty={})", self.infcx().ty_to_string(self_ty));
 
         debug!("searching inherent candidates");
-        match self.consider_candidates(self_ty, self.inherent_candidates[]) {
+        match self.consider_candidates(self_ty, self.inherent_candidates.index(&FullRange)) {
             None => {}
             Some(pick) => {
                 return Some(pick);
@@ -753,7 +753,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         debug!("searching extension candidates");
-        self.consider_candidates(self_ty, self.extension_candidates[])
+        self.consider_candidates(self_ty, self.extension_candidates.index(&FullRange))
     }
 
     fn consider_candidates(&self,
@@ -768,7 +768,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("applicable_candidates: {}", applicable_candidates.repr(self.tcx()));
 
         if applicable_candidates.len() > 1 {
-            match self.collapse_candidates_to_trait_pick(applicable_candidates[]) {
+            match self.collapse_candidates_to_trait_pick(applicable_candidates.index(&FullRange)) {
                 Some(pick) => { return Some(Ok(pick)); }
                 None => { }
             }
@@ -864,7 +864,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             Some(data) => data,
             None => return None,
         };
-        if probes[1..].iter().any(|p| p.to_trait_data() != Some(trait_data)) {
+        if probes.index(&(1..)).iter().any(|p| p.to_trait_data() != Some(trait_data)) {
             return None;
         }
 
@@ -1024,7 +1024,7 @@ fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                       -> Option<(uint, Rc<ty::Method<'tcx>>)>
 {
     let trait_items = ty::trait_items(tcx, trait_def_id);
-    debug!("trait_method; items: {}", trait_items);
+    debug!("trait_method; items: {:?}", trait_items);
     trait_items
         .iter()
         .filter(|item|
@@ -1126,7 +1126,7 @@ impl<'tcx> Repr<'tcx> for CandidateKind<'tcx> {
 
 impl<'tcx> Repr<'tcx> for CandidateStep<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("CandidateStep({},{})",
+        format!("CandidateStep({},{:?})",
                 self.self_ty.repr(tcx),
                 self.adjustment)
     }
@@ -1134,19 +1134,19 @@ impl<'tcx> Repr<'tcx> for CandidateStep<'tcx> {
 
 impl<'tcx> Repr<'tcx> for PickAdjustment {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for PickKind<'tcx> {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }
 
 impl<'tcx> Repr<'tcx> for Pick<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("Pick(method_ty={}, adjustment={}, kind={})",
+        format!("Pick(method_ty={}, adjustment={:?}, kind={:?})",
                 self.method_ty.repr(tcx),
                 self.adjustment,
                 self.kind)

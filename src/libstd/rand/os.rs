@@ -28,9 +28,6 @@ mod imp {
     use mem;
     use os::errno;
 
-    // NOTE: for old macros; remove after the next snapshot
-    #[cfg(stage0)] use result::Result::Err;
-
     #[cfg(all(target_os = "linux",
               any(target_arch = "x86_64",
                   target_arch = "x86",
@@ -185,7 +182,7 @@ mod imp {
     extern crate libc;
 
     use io::{IoResult};
-    use kinds::Sync;
+    use marker::Sync;
     use mem;
     use os;
     use rand::Rng;
@@ -397,7 +394,7 @@ mod test {
                     r.fill_bytes(&mut v);
                     Thread::yield_now();
                 }
-            }).detach();
+            });
         }
 
         // start all the tasks

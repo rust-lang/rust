@@ -29,7 +29,7 @@ trait Foo {
     fn test_error8_fn<T: B>(&self);
 }
 
-impl Foo for int {
+impl Foo for isize {
     // invalid bound for T, was defined as Eq in trait
     fn test_error1_fn<T: Ord>(&self) {}
     //~^ ERROR in method `test_error1_fn`, type parameter 0 requires bound `core::cmp::Ord`
@@ -66,12 +66,12 @@ impl Foo for int {
 trait Getter<T> { }
 
 trait Trait {
-    fn method<G:Getter<int>>();
+    fn method<G:Getter<isize>>();
 }
 
-impl Trait for uint {
-    fn method<G: Getter<uint>>() {}
-    //~^ ERROR in method `method`, type parameter 0 requires bound `Getter<uint>`
+impl Trait for usize {
+    fn method<G: Getter<usize>>() {}
+    //~^ ERROR in method `method`, type parameter 0 requires bound `Getter<usize>`
 }
 
 fn main() {}

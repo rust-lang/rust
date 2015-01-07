@@ -10,5 +10,5 @@
 
 fn main() {
     fn test() -> Box<std::any::Any + 'static> { box 1i }
-    println!("{}", test())
+    println!("{:?}", test())
 }

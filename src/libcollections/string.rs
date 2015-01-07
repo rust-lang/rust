@@ -22,7 +22,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{self, Deref, Add};
+use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
@@ -168,7 +168,7 @@ impl String {
 
         if i > 0 {
             unsafe {
-                res.as_mut_vec().push_all(v[..i])
+                res.as_mut_vec().push_all(v.index(&(0..i)))
             };
         }
 
@@ -185,7 +185,7 @@ impl String {
             macro_rules! error { () => ({
                 unsafe {
                     if subseqidx != i_ {
-                        res.as_mut_vec().push_all(v[subseqidx..i_]);
+                        res.as_mut_vec().push_all(v.index(&(subseqidx..i_)));
                     }
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
@@ -254,7 +254,7 @@ impl String {
         }
         if subseqidx < total {
             unsafe {
-                res.as_mut_vec().push_all(v[subseqidx..total])
+                res.as_mut_vec().push_all(v.index(&(subseqidx..total)))
             };
         }
         Cow::Owned(res)
@@ -677,13 +677,25 @@ impl FromUtf8Error {
 
 impl fmt::Show for FromUtf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.error.fmt(f)
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for FromUtf8Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(&self.error, f)
     }
 }
 
 impl fmt::Show for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        "invalid utf-16: lone surrogate found".fmt(f)
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for FromUtf16Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt("invalid utf-16: lone surrogate found", f)
     }
 }
 
@@ -793,10 +805,17 @@ impl Default for String {
     }
 }
 
-#[experimental = "waiting on Show stabilization"]
+#[experimental = "waiting on fmt stabilization"]
+impl fmt::String for String {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(&**self, f)
+    }
+}
+
+#[experimental = "waiting on fmt stabilization"]
 impl fmt::Show for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        (**self).fmt(f)
+        fmt::Show::fmt(&**self, f)
     }
 }
 
@@ -818,25 +837,32 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
-impl ops::Slice<uint, str> for String {
+impl ops::Index<ops::Range<uint>> for String {
+    type Output = str;
     #[inline]
-    fn as_slice_<'a>(&'a self) -> &'a str {
+    fn index(&self, index: &ops::Range<uint>) -> &str {
+        &self.index(&FullRange)[*index]
+    }
+}
+impl ops::Index<ops::RangeTo<uint>> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, index: &ops::RangeTo<uint>) -> &str {
+        &self.index(&FullRange)[*index]
+    }
+}
+impl ops::Index<ops::RangeFrom<uint>> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
+        &self.index(&FullRange)[*index]
+    }
+}
+impl ops::Index<ops::FullRange> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, _index: &ops::FullRange) -> &str {
         unsafe { mem::transmute(self.vec.as_slice()) }
-    }
-
-    #[inline]
-    fn slice_from_or_fail<'a>(&'a self, from: &uint) -> &'a str {
-        self[][*from..]
-    }
-
-    #[inline]
-    fn slice_to_or_fail<'a>(&'a self, to: &uint) -> &'a str {
-        self[][..*to]
-    }
-
-    #[inline]
-    fn slice_or_fail<'a>(&'a self, from: &uint, to: &uint) -> &'a str {
-        self[][*from..*to]
     }
 }
 
@@ -845,7 +871,7 @@ impl ops::Deref for String {
     type Target = str;
 
     fn deref<'a>(&'a self) -> &'a str {
-        unsafe { mem::transmute(self.vec[]) }
+        unsafe { mem::transmute(self.vec.index(&FullRange)) }
     }
 }
 
@@ -895,7 +921,19 @@ pub trait ToString {
     fn to_string(&self) -> String;
 }
 
+#[cfg(stage0)]
 impl<T: fmt::Show> ToString for T {
+    fn to_string(&self) -> String {
+        use core::fmt::Writer;
+        let mut buf = String::new();
+        let _ = buf.write_fmt(format_args!("{}", self));
+        buf.shrink_to_fit();
+        buf
+    }
+}
+
+#[cfg(not(stage0))]
+impl<T: fmt::String> ToString for T {
     fn to_string(&self) -> String {
         use core::fmt::Writer;
         let mut buf = String::new();
@@ -943,6 +981,7 @@ mod tests {
     use str::Utf8Error;
     use core::iter::repeat;
     use super::{as_string, CowString};
+    use core::ops::FullRange;
 
     #[test]
     fn test_as_string() {
@@ -1224,10 +1263,10 @@ mod tests {
     #[test]
     fn test_slicing() {
         let s = "foobar".to_string();
-        assert_eq!("foobar", s[]);
-        assert_eq!("foo", s[..3]);
-        assert_eq!("bar", s[3..]);
-        assert_eq!("oob", s[1..4]);
+        assert_eq!("foobar", &s[]);
+        assert_eq!("foo", &s[..3]);
+        assert_eq!("bar", &s[3..]);
+        assert_eq!("oob", &s[1..4]);
     }
 
     #[test]

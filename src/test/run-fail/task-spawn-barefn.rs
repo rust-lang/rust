@@ -15,7 +15,7 @@ use std::thread::Thread;
 fn main() {
     // the purpose of this test is to make sure that task::spawn()
     // works when provided with a bare function:
-    let r = Thread::spawn(startfn).join();
+    let r = Thread::scoped(startfn).join();
     if r.is_err() {
         panic!()
     }

@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() { format!("{}", None); }
+fn main() { format!("{:?}", None); }
     //~^ ERROR type annotations required

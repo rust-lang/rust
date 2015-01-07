@@ -61,7 +61,7 @@ pub fn run_metrics(config: Config, testfile: String, mm: &mut MetricMap) {
         print!("\n\n");
     }
     let testfile = Path::new(testfile);
-    debug!("running {}", testfile.display());
+    debug!("running {:?}", testfile.display());
     let props = header::load_props(&testfile);
     debug!("loaded props");
     match config.mode {
@@ -141,7 +141,7 @@ fn check_correct_failure_status(proc_res: &ProcRes) {
     static RUST_ERR: int = 101;
     if !proc_res.status.matches_exit_status(RUST_ERR) {
         fatal_proc_rec(
-            format!("failure produced the wrong error: {}",
+            format!("failure produced the wrong error: {:?}",
                     proc_res.status).as_slice(),
             proc_res);
     }
@@ -410,7 +410,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                          ],
                          vec!(("".to_string(), "".to_string())),
                          Some("".to_string()))
-                .expect(format!("failed to exec `{}`", config.adb_path).as_slice());
+                .expect(format!("failed to exec `{:?}`", config.adb_path).as_slice());
 
             procsrv::run("",
                          config.adb_path.as_slice(),
@@ -422,7 +422,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                          ],
                          vec!(("".to_string(), "".to_string())),
                          Some("".to_string()))
-                .expect(format!("failed to exec `{}`", config.adb_path).as_slice());
+                .expect(format!("failed to exec `{:?}`", config.adb_path).as_slice());
 
             let adb_arg = format!("export LD_LIBRARY_PATH={}; \
                                    gdbserver :5039 {}/{}",
@@ -443,11 +443,11 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                                       vec!(("".to_string(),
                                                             "".to_string())),
                                                       Some("".to_string()))
-                .expect(format!("failed to exec `{}`", config.adb_path).as_slice());
+                .expect(format!("failed to exec `{:?}`", config.adb_path).as_slice());
             loop {
                 //waiting 1 second for gdbserver start
                 timer::sleep(Duration::milliseconds(1000));
-                let result = Thread::spawn(move || {
+                let result = Thread::scoped(move || {
                     tcp::TcpStream::connect("127.0.0.1:5039").unwrap();
                 }).join();
                 if result.is_err() {
@@ -481,7 +481,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                              debugger_opts.as_slice(),
                              vec!(("".to_string(), "".to_string())),
                              None)
-                .expect(format!("failed to exec `{}`", gdb_path).as_slice());
+                .expect(format!("failed to exec `{:?}`", gdb_path).as_slice());
             let cmdline = {
                 let cmdline = make_cmdline("",
                                            "arm-linux-androideabi-gdb",
@@ -539,18 +539,17 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             script_str.push_str("set print pretty off\n");
 
             // Add the pretty printer directory to GDB's source-file search path
-            script_str.push_str(format!("directory {}\n", rust_pp_module_abs_path)[]);
+            script_str.push_str(&format!("directory {}\n", rust_pp_module_abs_path)[]);
 
             // Load the target executable
-            script_str.push_str(format!("file {}\n",
-                                        exe_file.as_str().unwrap().replace("\\", "\\\\"))
-                                    .as_slice());
+            script_str.push_str(&format!("file {}\n",
+                                         exe_file.as_str().unwrap().replace("\\", "\\\\"))[]);
 
             // Add line breakpoints
             for line in breakpoint_lines.iter() {
-                script_str.push_str(format!("break '{}':{}\n",
-                                            testfile.filename_display(),
-                                            *line)[]);
+                script_str.push_str(&format!("break '{:?}':{}\n",
+                                             testfile.filename_display(),
+                                             *line)[]);
             }
 
             script_str.push_str(cmds.as_slice());
@@ -676,7 +675,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
                                                .unwrap()
                                                .to_string();
 
-    script_str.push_str(format!("command script import {}\n", rust_pp_module_abs_path[])[]);
+    script_str.push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[])[]);
     script_str.push_str("type summary add --no-value ");
     script_str.push_str("--python-function lldb_rust_formatters.print_val ");
     script_str.push_str("-x \".*\" --category Rust\n");
@@ -889,7 +888,7 @@ fn check_error_patterns(props: &TestProps,
                         output_to_check: &str,
                         proc_res: &ProcRes) {
     if props.error_patterns.is_empty() {
-        fatal(format!("no error pattern specified in {}",
+        fatal(format!("no error pattern specified in {:?}",
                       testfile.display()).as_slice());
     }
     let mut next_err_idx = 0u;
@@ -910,7 +909,7 @@ fn check_error_patterns(props: &TestProps,
     if done { return; }
 
     let missing_patterns =
-        props.error_patterns[next_err_idx..];
+        props.error_patterns.index(&(next_err_idx..));
     if missing_patterns.len() == 1u {
         fatal_proc_rec(format!("error pattern '{}' not found!",
                               missing_patterns[0]).as_slice(),
@@ -955,7 +954,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
     }
 
     let prefixes = expected_errors.iter().map(|ee| {
-        format!("{}:{}:", testfile.display(), ee.line)
+        format!("{:?}:{}:", testfile.display(), ee.line)
     }).collect::<Vec<String> >();
 
     #[cfg(windows)]
@@ -1191,7 +1190,7 @@ fn compose_and_run_compiler(
                                      None);
         if !auxres.status.success() {
             fatal_proc_rec(
-                format!("auxiliary build of {} failed to compile: ",
+                format!("auxiliary build of {:?} failed to compile: ",
                         abs_ab.display()).as_slice(),
                 &auxres);
         }
@@ -1601,7 +1600,7 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
                 .expect(format!("failed to exec `{}`", config.adb_path).as_slice());
 
             if config.verbose {
-                println!("push ({}) {} {} {}",
+                println!("push ({}) {:?} {} {}",
                     config.target, file.display(),
                     copy_result.out, copy_result.err);
             }

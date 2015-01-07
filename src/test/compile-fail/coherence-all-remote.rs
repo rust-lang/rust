@@ -11,9 +11,9 @@
 // aux-build:coherence-lib.rs
 
 extern crate "coherence-lib" as lib;
-use lib::Remote;
+use lib::Remote1;
 
-impl<T> Remote for int { }
+impl<T> Remote1<T> for int { }
 //~^ ERROR E0117
 
 fn main() { }

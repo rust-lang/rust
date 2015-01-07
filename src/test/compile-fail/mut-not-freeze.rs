@@ -15,6 +15,6 @@ fn f<T: Sync>(_: T) {}
 fn main() {
     let x = RefCell::new(0i);
     f(x);
-    //~^ ERROR `core::kinds::Sync` is not implemented
-    //~^^ ERROR `core::kinds::Sync` is not implemented
+    //~^ ERROR `core::marker::Sync` is not implemented
+    //~^^ ERROR `core::marker::Sync` is not implemented
 }

@@ -17,6 +17,6 @@ fn f<T:Send>(_i: T) {
 fn main() {
     let i = box Rc::new(100i);
     f(i);
-    //~^ ERROR `core::kinds::Send` is not implemented
-    //~^^ ERROR `core::kinds::Send` is not implemented
+    //~^ ERROR `core::marker::Send` is not implemented
+    //~^^ ERROR `core::marker::Send` is not implemented
 }

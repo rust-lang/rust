@@ -205,11 +205,11 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
                 debug!("with_each_combination(substs={})",
                        substs.repr(self.tcx));
 
-                callback.call_mut((substs,));
+                callback(substs);
             }
 
             Some((space, index, &param_ty)) => {
-                debug!("with_each_combination: space={}, index={}, param_ty={}",
+                debug!("with_each_combination: space={:?}, index={}, param_ty={}",
                        space, index, param_ty.repr(self.tcx));
 
                 if !ty::type_is_sized(param_env, span, param_ty) {

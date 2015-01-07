@@ -18,7 +18,7 @@ trait Dummy { }
 // careful with object types, who knows what they close over...
 fn test51<'a>() {
     assert_send::<&'a Dummy>();
-    //~^ ERROR the trait `core::kinds::Send` is not implemented
+    //~^ ERROR the trait `core::marker::Send` is not implemented
 }
 fn test52<'a>() {
     assert_send::<&'a (Dummy+Send)>();
@@ -37,7 +37,7 @@ fn test61() {
 // them not ok
 fn test_71<'a>() {
     assert_send::<Box<Dummy+'a>>();
-    //~^ ERROR the trait `core::kinds::Send` is not implemented
+    //~^ ERROR the trait `core::marker::Send` is not implemented
 }
 
 fn main() { }

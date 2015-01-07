@@ -844,7 +844,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
             _ => {
                 debug!("RegionFolder.fold_region({}) folding free region (current_depth={})",
                        r.repr(self.tcx()), self.current_depth);
-                self.fld_r.call_mut((r, self.current_depth))
+                (self.fld_r)(r, self.current_depth)
             }
         }
     }
@@ -868,6 +868,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+        // because whether or not a region is bound affects subtyping,
+        // we can't erase the bound/free distinction, but we can
+        // replace all free regions with 'static
         match r {
             ty::ReLateBound(..) | ty::ReEarlyBound(..) => r,
             _ => ty::ReStatic

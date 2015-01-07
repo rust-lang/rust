@@ -273,13 +273,13 @@ pub mod rt {
         );
     }
 
-    impl_to_source_int! { signed, int, TyI }
+    impl_to_source_int! { signed, int, TyIs }
     impl_to_source_int! { signed, i8,  TyI8 }
     impl_to_source_int! { signed, i16, TyI16 }
     impl_to_source_int! { signed, i32, TyI32 }
     impl_to_source_int! { signed, i64, TyI64 }
 
-    impl_to_source_int! { unsigned, uint, TyU }
+    impl_to_source_int! { unsigned, uint, TyUs }
     impl_to_source_int! { unsigned, u8,   TyU8 }
     impl_to_source_int! { unsigned, u16,  TyU16 }
     impl_to_source_int! { unsigned, u32,  TyU32 }
@@ -473,7 +473,7 @@ pub fn expand_quote_stmt(cx: &mut ExtCtxt,
 }
 
 fn ids_ext(strs: Vec<String> ) -> Vec<ast::Ident> {
-    strs.iter().map(|str| str_to_ident((*str)[])).collect()
+    strs.iter().map(|str| str_to_ident((*str).index(&FullRange))).collect()
 }
 
 fn id_ext(str: &str) -> ast::Ident {
@@ -675,7 +675,7 @@ fn mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
             for i in range(0, tt.len()) {
                 seq.push(tt.get_tt(i));
             }
-            mk_tts(cx, seq[])
+            mk_tts(cx, seq.index(&FullRange))
         }
         ast::TtToken(sp, ref tok) => {
             let e_sp = cx.expr_ident(sp, id_ext("_sp"));
@@ -764,7 +764,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let stmt_let_tt = cx.stmt_let(sp, true, id_ext("tt"), cx.expr_vec_ng(sp));
 
     let mut vector = vec!(stmt_let_sp, stmt_let_tt);
-    vector.extend(mk_tts(cx, tts[]).into_iter());
+    vector.extend(mk_tts(cx, tts.index(&FullRange)).into_iter());
     let block = cx.expr_block(
         cx.block_all(sp,
                      Vec::new(),

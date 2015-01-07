@@ -10,5 +10,5 @@
 
 fn main() {
     let _x = "test" as &::std::any::Any;
-//~^ ERROR the trait `core::kinds::Sized` is not implemented for the type `str`
+//~^ ERROR the trait `core::marker::Sized` is not implemented for the type `str`
 }

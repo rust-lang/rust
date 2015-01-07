@@ -44,15 +44,15 @@ pub fn get_rpath_flags<F, G>(config: RPathConfig<F, G>) -> Vec<String> where
         l.map(|p| p.clone())
     }).collect::<Vec<_>>();
 
-    let rpaths = get_rpaths(config, libs[]);
-    flags.push_all(rpaths_to_flags(rpaths[])[]);
+    let rpaths = get_rpaths(config, libs.index(&FullRange));
+    flags.push_all(rpaths_to_flags(rpaths.index(&FullRange)).index(&FullRange));
     flags
 }
 
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     let mut ret = Vec::new();
     for rpath in rpaths.iter() {
-        ret.push(format!("-Wl,-rpath,{}", (*rpath)[]));
+        ret.push(format!("-Wl,-rpath,{}", (*rpath).index(&FullRange)));
     }
     return ret;
 }
@@ -61,10 +61,10 @@ fn get_rpaths<F, G>(mut config: RPathConfig<F, G>, libs: &[Path]) -> Vec<String>
     F: FnOnce() -> Path,
     G: FnMut(&Path) -> Result<Path, IoError>,
 {
-    debug!("output: {}", config.out_filename.display());
+    debug!("output: {:?}", config.out_filename.display());
     debug!("libs:");
     for libpath in libs.iter() {
-        debug!("    {}", libpath.display());
+        debug!("    {:?}", libpath.display());
     }
 
     // Use relative paths to the libraries. Binaries can be moved
@@ -82,14 +82,14 @@ fn get_rpaths<F, G>(mut config: RPathConfig<F, G>, libs: &[Path]) -> Vec<String>
         }
     }
 
-    log_rpaths("relative", rel_rpaths[]);
-    log_rpaths("fallback", fallback_rpaths[]);
+    log_rpaths("relative", rel_rpaths.index(&FullRange));
+    log_rpaths("fallback", fallback_rpaths.index(&FullRange));
 
     let mut rpaths = rel_rpaths;
-    rpaths.push_all(fallback_rpaths[]);
+    rpaths.push_all(fallback_rpaths.index(&FullRange));
 
     // Remove duplicates
-    let rpaths = minimize_rpaths(rpaths[]);
+    let rpaths = minimize_rpaths(rpaths.index(&FullRange));
     return rpaths;
 }
 
@@ -140,7 +140,7 @@ fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
     let mut set = HashSet::new();
     let mut minimized = Vec::new();
     for rpath in rpaths.iter() {
-        if set.insert(rpath[]) {
+        if set.insert(rpath.index(&FullRange)) {
             minimized.push(rpath.clone());
         }
     }

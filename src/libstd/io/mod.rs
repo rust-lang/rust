@@ -120,10 +120,12 @@
 //!     for stream in acceptor.incoming() {
 //!         match stream {
 //!             Err(e) => { /* connection failed */ }
-//!             Ok(stream) => Thread::spawn(move|| {
-//!                 // connection succeeded
-//!                 handle_client(stream)
-//!             }).detach()
+//!             Ok(stream) => {
+//!                 Thread::spawn(move|| {
+//!                     // connection succeeded
+//!                     handle_client(stream)
+//!                 });
+//!             }
 //!         }
 //!     }
 //!
@@ -232,9 +234,9 @@ use error::{FromError, Error};
 use fmt;
 use int;
 use iter::{Iterator, IteratorExt};
-use kinds::Sized;
+use marker::Sized;
 use mem::transmute;
-use ops::FnOnce;
+use ops::{FnOnce, Index};
 use option::Option;
 use option::Option::{Some, None};
 use os;
@@ -285,8 +287,7 @@ pub mod stdio;
 pub mod timer;
 pub mod util;
 
-#[cfg_attr(stage0, macro_escape)]
-#[cfg_attr(not(stage0), macro_use)]
+#[macro_use]
 pub mod test;
 
 /// The default buffer size for various I/O operations
@@ -302,7 +303,7 @@ pub type IoResult<T> = Result<T, IoError>;
 /// # FIXME
 ///
 /// Is something like this sufficient? It's kind of archaic
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Show)]
 pub struct IoError {
     /// An enumeration which can be matched against for determining the flavor
     /// of error.
@@ -339,7 +340,7 @@ impl IoError {
     }
 }
 
-impl fmt::Show for IoError {
+impl fmt::String for IoError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             IoError { kind: OtherIoError, desc: "unknown error", detail: Some(ref detail) } =>
@@ -1068,7 +1069,7 @@ pub trait Writer {
     fn write_char(&mut self, c: char) -> IoResult<()> {
         let mut buf = [0u8; 4];
         let n = c.encode_utf8(buf.as_mut_slice()).unwrap_or(0);
-        self.write(buf[..n])
+        self.write(buf.index(&(0..n)))
     }
 
     /// Write the result of passing n through `int::to_str_bytes`.
@@ -1453,7 +1454,7 @@ pub trait Buffer: Reader {
                 };
                 match available.iter().position(|&b| b == byte) {
                     Some(i) => {
-                        res.push_all(available[..i + 1]);
+                        res.push_all(available.index(&(0..(i + 1))));
                         used = i + 1;
                         break
                     }
@@ -1492,7 +1493,7 @@ pub trait Buffer: Reader {
                 }
             }
         }
-        match str::from_utf8(buf[..width]).ok() {
+        match str::from_utf8(buf.index(&(0..width))).ok() {
             Some(s) => Ok(s.char_at(0)),
             None => Err(standard_error(InvalidInput))
         }
@@ -1604,6 +1605,7 @@ pub struct IncomingConnections<'a, A: ?Sized +'a> {
     inc: &'a mut A,
 }
 
+#[old_impl_check]
 impl<'a, T, A: ?Sized + Acceptor<T>> Iterator for IncomingConnections<'a, A> {
     type Item = IoResult<T>;
 
@@ -1656,7 +1658,7 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
 /// A mode specifies how a file should be opened or created. These modes are
 /// passed to `File::open_mode` and are used to control where the file is
 /// positioned when it is initially opened.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Show)]
 pub enum FileMode {
     /// Opens a file positioned at the beginning.
     Open,
@@ -1668,7 +1670,7 @@ pub enum FileMode {
 
 /// Access permissions with which the file should be opened. `File`s
 /// opened with `Read` will return an error if written to.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Show)]
 pub enum FileAccess {
     /// Read-only access, requests to write will result in an error
     Read,
@@ -1780,9 +1782,11 @@ pub struct UnstableFileStat {
     pub gen: u64,
 }
 
+
+// NOTE(stage0): change this one last #[doc=..] to /// after the next snapshot
 bitflags! {
-    #[doc = "A set of permissions for a file or directory is represented"]
-    #[doc = "by a set of flags which are or'd together."]
+    #[doc = "A set of permissions for a file or directory is represented by a set of"]
+    /// flags which are or'd together.
     flags FilePermission: u32 {
         const USER_READ     = 0o400,
         const USER_WRITE    = 0o200,
@@ -1798,20 +1802,20 @@ bitflags! {
         const GROUP_RWX = GROUP_READ.bits | GROUP_WRITE.bits | GROUP_EXECUTE.bits,
         const OTHER_RWX = OTHER_READ.bits | OTHER_WRITE.bits | OTHER_EXECUTE.bits,
 
-        #[doc = "Permissions for user owned files, equivalent to 0644 on"]
-        #[doc = "unix-like systems."]
+        /// Permissions for user owned files, equivalent to 0644 on unix-like
+        /// systems.
         const USER_FILE = USER_READ.bits | USER_WRITE.bits | GROUP_READ.bits | OTHER_READ.bits,
 
-        #[doc = "Permissions for user owned directories, equivalent to 0755 on"]
-        #[doc = "unix-like systems."]
+        /// Permissions for user owned directories, equivalent to 0755 on
+        /// unix-like systems.
         const USER_DIR  = USER_RWX.bits | GROUP_READ.bits | GROUP_EXECUTE.bits |
                    OTHER_READ.bits | OTHER_EXECUTE.bits,
 
-        #[doc = "Permissions for user owned executables, equivalent to 0755"]
-        #[doc = "on unix-like systems."]
+        /// Permissions for user owned executables, equivalent to 0755
+        /// on unix-like systems.
         const USER_EXEC = USER_DIR.bits,
 
-        #[doc = "All possible permissions enabled."]
+        /// All possible permissions enabled.
         const ALL_PERMISSIONS = USER_RWX.bits | GROUP_RWX.bits | OTHER_RWX.bits,
     }
 }
@@ -1825,6 +1829,12 @@ impl Default for FilePermission {
 }
 
 impl fmt::Show for FilePermission {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl fmt::String for FilePermission {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:04o}", self.bits)
     }

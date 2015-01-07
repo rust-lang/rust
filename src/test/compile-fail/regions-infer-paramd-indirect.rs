@@ -12,7 +12,7 @@
 // Check that we correctly infer that b and c must be region
 // parameterized because they reference a which requires a region.
 
-type a<'a> = &'a int;
+type a<'a> = &'a isize;
 type b<'a> = Box<a<'a>>;
 
 struct c<'a> {
@@ -30,7 +30,8 @@ impl<'a> set_f<'a> for c<'a> {
     }
 
     fn set_f_bad(&mut self, b: Box<b>) {
-        self.f = b; //~ ERROR mismatched types: expected `Box<Box<&'a int>>`, found `Box<Box<&int>>`
+        self.f = b;
+        //~^ ERROR mismatched types: expected `Box<Box<&'a isize>>`, found `Box<Box<&isize>>`
     }
 }
 

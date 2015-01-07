@@ -67,7 +67,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
     }
 
     let requested_output = os::getenv("RUST_REGION_GRAPH");
-    debug!("requested_output: {} requested_node: {}",
+    debug!("requested_output: {:?} requested_node: {:?}",
            requested_output, requested_node);
 
     let output_path = {
@@ -137,7 +137,7 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
         let mut node_ids = FnvHashMap::new();
         {
             let mut add_node = |&mut : node| {
-                if let Vacant(e) = node_ids.entry(&node) {
+                if let Vacant(e) = node_ids.entry(node) {
                     e.insert(i);
                     i += 1;
                 }
@@ -166,7 +166,7 @@ impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
     fn node_label(&self, n: &Node) -> dot::LabelText {
         match *n {
             Node::RegionVid(n_vid) =>
-                dot::LabelText::label(format!("{}", n_vid)),
+                dot::LabelText::label(format!("{:?}", n_vid)),
             Node::Region(n_rgn) =>
                 dot::LabelText::label(format!("{}", n_rgn.repr(self.tcx))),
         }
@@ -204,12 +204,12 @@ impl<'a, 'tcx> dot::GraphWalk<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
     }
     fn source(&self, edge: &Edge) -> Node {
         let (n1, _) = constraint_to_nodes(edge);
-        debug!("edge {} has source {}", edge, n1);
+        debug!("edge {:?} has source {:?}", edge, n1);
         n1
     }
     fn target(&self, edge: &Edge) -> Node {
         let (_, n2) = constraint_to_nodes(edge);
-        debug!("edge {} has target {}", edge, n2);
+        debug!("edge {:?} has target {:?}", edge, n2);
         n2
     }
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that is a slicing expr[..] fails, the correct cleanups happen.
+// Test that if a slicing expr[..] fails, the correct cleanups happen.
 
 #![feature(slicing_syntax)]
 
@@ -24,10 +24,10 @@ impl Drop for Foo {
 
 fn foo() {
     let x: &[_] = &[Foo, Foo];
-    x[3..4];
+    &x[3..4];
 }
 
 fn main() {
-    let _ = Thread::spawn(move|| foo()).join();
+    let _ = Thread::scoped(move|| foo()).join();
     unsafe { assert!(DTOR_COUNT == 2); }
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[start]
-fn start(argc: int, argv: *const *const u8, crate_map: *const u8) -> int {
+fn start(argc: isize, argv: *const *const u8, crate_map: *const u8) -> isize {
     //~^ ERROR incorrect number of function parameters
-    0
+   0
 }

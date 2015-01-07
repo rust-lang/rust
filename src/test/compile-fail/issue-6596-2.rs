@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ptr;
-use std::raw;
+#![feature(macro_rules)]
 
-trait Slice {}
+// error-pattern: unknown macro variable `nonexistent`
+
+macro_rules! g {
+    ($inp:ident) => (
+        { $inp $nonexistent }
+    );
+}
 
 fn main() {
-  unsafe {
-    let nil: *const u8 = ptr::null();
-    let slice: raw::Slice<u8> =
-      Slice { //~ ERROR use of trait `Slice` as a struct constructor [E0159]
-        data: nil,
-        len:  0,
-      };
-  }
+    g!(foo);
 }

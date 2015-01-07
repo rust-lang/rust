@@ -41,7 +41,7 @@ impl Recorder {
         assert!(self.dump_spans);
         let result = format!("span,kind,{},{},text,\"{}\"\n",
                              kind, su.extent_str(span), escape(su.snippet(span)));
-        self.record(result[]);
+        self.record(result.index(&FullRange));
     }
 }
 
@@ -160,15 +160,15 @@ impl<'a> FmtStrs<'a> {
         if values.len() != fields.len() {
             self.span.sess.span_bug(span, format!(
                 "Mismatch between length of fields for '{}', expected '{}', found '{}'",
-                kind, fields.len(), values.len())[]);
+                kind, fields.len(), values.len()).index(&FullRange));
         }
 
         let values = values.iter().map(|s| {
             // Never take more than 1020 chars
             if s.len() > 1020 {
-                s[..1020]
+                s.index(&(0..1020))
             } else {
-                s[]
+                s.index(&FullRange)
             }
         });
 
@@ -184,7 +184,7 @@ impl<'a> FmtStrs<'a> {
             }
         )));
         Some(strs.fold(String::new(), |mut s, ss| {
-            s.push_str(ss[]);
+            s.push_str(ss.index(&FullRange));
             s
         }))
     }
@@ -198,7 +198,7 @@ impl<'a> FmtStrs<'a> {
         if needs_span {
             self.span.sess.span_bug(span, format!(
                 "Called record_without_span for '{}' which does requires a span",
-                label)[]);
+                label).index(&FullRange));
         }
         assert!(!dump_spans);
 
@@ -212,9 +212,9 @@ impl<'a> FmtStrs<'a> {
         };
 
         let mut result = String::from_str(label);
-        result.push_str(values_str[]);
+        result.push_str(values_str.index(&FullRange));
         result.push_str("\n");
-        self.recorder.record(result[]);
+        self.recorder.record(result.index(&FullRange));
     }
 
     pub fn record_with_span(&mut self,
@@ -237,7 +237,7 @@ impl<'a> FmtStrs<'a> {
         if !needs_span {
             self.span.sess.span_bug(span,
                                     format!("Called record_with_span for '{}' \
-                                             which does not require a span", label)[]);
+                                             which does not require a span", label).as_slice());
         }
 
         let values_str = match self.make_values_str(label, fields, values, span) {
@@ -245,7 +245,7 @@ impl<'a> FmtStrs<'a> {
             None => return,
         };
         let result = format!("{},{}{}\n", label, self.span.extent_str(sub_span), values_str);
-        self.recorder.record(result[]);
+        self.recorder.record(result.index(&FullRange));
     }
 
     pub fn check_and_record(&mut self,
@@ -275,7 +275,7 @@ impl<'a> FmtStrs<'a> {
         // variable def's node id
         let mut qualname = String::from_str(name);
         qualname.push_str("$");
-        qualname.push_str(id.to_string()[]);
+        qualname.push_str(id.to_string().index(&FullRange));
         self.check_and_record(Variable,
                               span,
                               sub_span,

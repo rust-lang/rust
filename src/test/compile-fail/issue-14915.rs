@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x: Box<int> = box 0;
+    let x: Box<isize> = box 0;
 
-    println!("{}", x + 1); //~ ERROR binary operation `+` cannot be applied to type `Box<int>`
+    println!("{}", x + 1); //~ ERROR binary operation `+` cannot be applied to type `Box<isize>`
 }

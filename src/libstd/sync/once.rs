@@ -14,7 +14,7 @@
 //! example use case would be for initializing an FFI library.
 
 use int;
-use kinds::Sync;
+use marker::Sync;
 use mem::drop;
 use ops::FnOnce;
 use sync::atomic::{AtomicInt, Ordering, ATOMIC_INT_INIT};
@@ -159,7 +159,7 @@ mod test {
                     assert!(run);
                 }
                 tx.send(()).unwrap();
-            }).detach();
+            });
         }
 
         unsafe {

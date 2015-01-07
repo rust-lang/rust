@@ -82,7 +82,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
         e::IIImplItemRef(_, &ast::MethodImplItem(ref m)) => m.id,
         e::IIImplItemRef(_, &ast::TypeImplItem(ref ti)) => ti.id,
     };
-    debug!("> Encoding inlined item: {} ({})",
+    debug!("> Encoding inlined item: {} ({:?})",
            ecx.tcx.map.path_to_string(id),
            rbml_w.writer.tell());
 
@@ -96,7 +96,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     encode_side_tables_for_ii(ecx, rbml_w, &ii);
     rbml_w.end_tag();
 
-    debug!("< Encoded inlined fn: {} ({})",
+    debug!("< Encoded inlined fn: {} ({:?})",
            ecx.tcx.map.path_to_string(id),
            rbml_w.writer.tell());
 }
@@ -127,12 +127,12 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
       None => Err(path),
       Some(ast_doc) => {
         let mut path_as_str = None;
-        debug!("> Decoding inlined fn: {}::?",
+        debug!("> Decoding inlined fn: {:?}::?",
         {
             // Do an Option dance to use the path after it is moved below.
             let s = ast_map::path_to_string(ast_map::Values(path.iter()));
             path_as_str = Some(s);
-            path_as_str.as_ref().map(|x| x[])
+            path_as_str.as_ref().map(|x| x.index(&FullRange))
         });
         let mut ast_dsr = reader::Decoder::new(ast_doc);
         let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
@@ -263,14 +263,6 @@ trait def_id_encoder_helpers {
     fn emit_def_id(&mut self, did: ast::DefId);
 }
 
-#[cfg(stage0)]
-impl<S:serialize::Encoder<E>, E> def_id_encoder_helpers for S {
-    fn emit_def_id(&mut self, did: ast::DefId) {
-        did.encode(self).ok().unwrap()
-    }
-}
-
-#[cfg(not(stage0))]
 impl<S:serialize::Encoder> def_id_encoder_helpers for S {
     fn emit_def_id(&mut self, did: ast::DefId) {
         did.encode(self).ok().unwrap()
@@ -283,21 +275,6 @@ trait def_id_decoder_helpers {
                          cdata: &cstore::crate_metadata) -> ast::DefId;
 }
 
-#[cfg(stage0)]
-impl<D:serialize::Decoder<E>, E> def_id_decoder_helpers for D {
-    fn read_def_id(&mut self, dcx: &DecodeContext) -> ast::DefId {
-        let did: ast::DefId = Decodable::decode(self).ok().unwrap();
-        did.tr(dcx)
-    }
-
-    fn read_def_id_nodcx(&mut self,
-                         cdata: &cstore::crate_metadata) -> ast::DefId {
-        let did: ast::DefId = Decodable::decode(self).ok().unwrap();
-        decoder::translate_def_id(cdata, did)
-    }
-}
-
-#[cfg(not(stage0))]
 impl<D:serialize::Decoder> def_id_decoder_helpers for D {
     fn read_def_id(&mut self, dcx: &DecodeContext) -> ast::DefId {
         let did: ast::DefId = Decodable::decode(self).ok().unwrap();
@@ -1880,7 +1857,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
             NominalType | TypeWithId | RegionParameter => dcx.tr_def_id(did),
             TypeParameter | UnboxedClosureSource => dcx.tr_intern_def_id(did)
         };
-        debug!("convert_def_id(source={}, did={})={}", source, did, r);
+        debug!("convert_def_id(source={:?}, did={:?})={:?}", source, did, r);
         return r;
     }
 }
@@ -1900,7 +1877,7 @@ fn decode_side_tables(dcx: &DecodeContext,
             None => {
                 dcx.tcx.sess.bug(
                     format!("unknown tag found in side tables: {:x}",
-                            tag)[]);
+                            tag).index(&FullRange));
             }
             Some(value) => {
                 let val_doc = entry_doc.get(c::tag_table_val as uint);
@@ -1985,7 +1962,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     _ => {
                         dcx.tcx.sess.bug(
                             format!("unknown tag found in side tables: {:x}",
-                                    tag)[]);
+                                    tag).index(&FullRange));
                     }
                 }
             }

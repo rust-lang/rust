@@ -13,8 +13,11 @@
 #![stable]
 
 // Reexported core operators
-#[stable] #[doc(no_inline)] pub use kinds::{Copy, Send, Sized, Sync};
+#[stable] #[doc(no_inline)] pub use marker::{Copy, Send, Sized, Sync};
 #[stable] #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
+
+// TEMPORARY
+#[unstable] #[doc(no_inline)] pub use ops::{Index, IndexMut, FullRange};
 
 // Reexported functions
 #[stable] #[doc(no_inline)] pub use mem::drop;

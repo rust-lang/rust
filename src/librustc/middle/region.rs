@@ -146,24 +146,24 @@ impl RegionMaps {
             None => {}
         }
 
-        debug!("relate_free_regions(sub={}, sup={})", sub, sup);
+        debug!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
         self.free_region_map.borrow_mut().insert(sub, vec!(sup));
     }
 
     pub fn record_encl_scope(&self, sub: CodeExtent, sup: CodeExtent) {
-        debug!("record_encl_scope(sub={}, sup={})", sub, sup);
+        debug!("record_encl_scope(sub={:?}, sup={:?})", sub, sup);
         assert!(sub != sup);
         self.scope_map.borrow_mut().insert(sub, sup);
     }
 
     pub fn record_var_scope(&self, var: ast::NodeId, lifetime: CodeExtent) {
-        debug!("record_var_scope(sub={}, sup={})", var, lifetime);
+        debug!("record_var_scope(sub={:?}, sup={:?})", var, lifetime);
         assert!(var != lifetime.node_id());
         self.var_map.borrow_mut().insert(var, lifetime);
     }
 
     pub fn record_rvalue_scope(&self, var: ast::NodeId, lifetime: CodeExtent) {
-        debug!("record_rvalue_scope(sub={}, sup={})", var, lifetime);
+        debug!("record_rvalue_scope(sub={:?}, sup={:?})", var, lifetime);
         assert!(var != lifetime.node_id());
         self.rvalue_scopes.borrow_mut().insert(var, lifetime);
     }
@@ -172,7 +172,7 @@ impl RegionMaps {
     /// e.g. by an expression like `a().f` -- they will be freed within the innermost terminating
     /// scope.
     pub fn mark_as_terminating_scope(&self, scope_id: CodeExtent) {
-        debug!("record_terminating_scope(scope_id={})", scope_id);
+        debug!("record_terminating_scope(scope_id={:?})", scope_id);
         self.terminating_scopes.borrow_mut().insert(scope_id);
     }
 
@@ -186,7 +186,7 @@ impl RegionMaps {
         //! Returns the narrowest scope that encloses `id`, if any.
         match self.scope_map.borrow().get(&id) {
             Some(&r) => r,
-            None => { panic!("no enclosing scope for id {}", id); }
+            None => { panic!("no enclosing scope for id {:?}", id); }
         }
     }
 
@@ -194,7 +194,7 @@ impl RegionMaps {
     pub fn var_scope(&self, var_id: ast::NodeId) -> CodeExtent {
         match self.var_map.borrow().get(&var_id) {
             Some(&r) => r,
-            None => { panic!("no enclosing scope for id {}", var_id); }
+            None => { panic!("no enclosing scope for id {:?}", var_id); }
         }
     }
 
@@ -204,7 +204,7 @@ impl RegionMaps {
         // check for a designated rvalue scope
         match self.rvalue_scopes.borrow().get(&expr_id) {
             Some(&s) => {
-                debug!("temporary_scope({}) = {} [custom]", expr_id, s);
+                debug!("temporary_scope({:?}) = {:?} [custom]", expr_id, s);
                 return Some(s);
             }
             None => { }
@@ -225,12 +225,12 @@ impl RegionMaps {
                     id = p;
                 }
                 None => {
-                    debug!("temporary_scope({}) = None", expr_id);
+                    debug!("temporary_scope({:?}) = None", expr_id);
                     return None;
                 }
             }
         }
-        debug!("temporary_scope({}) = {} [enclosing]", expr_id, id);
+        debug!("temporary_scope({:?}) = {:?} [enclosing]", expr_id, id);
         return Some(id);
     }
 
@@ -238,7 +238,7 @@ impl RegionMaps {
         //! Returns the lifetime of the variable `id`.
 
         let scope = ty::ReScope(self.var_scope(id));
-        debug!("var_region({}) = {}", id, scope);
+        debug!("var_region({:?}) = {:?}", id, scope);
         scope
     }
 
@@ -258,7 +258,7 @@ impl RegionMaps {
         while superscope != s {
             match self.scope_map.borrow().get(&s) {
                 None => {
-                    debug!("is_subscope_of({}, {}, s={})=false",
+                    debug!("is_subscope_of({:?}, {:?}, s={:?})=false",
                            subscope, superscope, s);
 
                     return false;
@@ -267,7 +267,7 @@ impl RegionMaps {
             }
         }
 
-        debug!("is_subscope_of({}, {})=true",
+        debug!("is_subscope_of({:?}, {:?})=true",
                subscope, superscope);
 
         return true;
@@ -287,7 +287,7 @@ impl RegionMaps {
                            sub_region: ty::Region,
                            super_region: ty::Region)
                            -> bool {
-        debug!("is_subregion_of(sub_region={}, super_region={})",
+        debug!("is_subregion_of(sub_region={:?}, super_region={:?})",
                sub_region, super_region);
 
         sub_region == super_region || {
@@ -365,7 +365,7 @@ impl RegionMaps {
 
         fn ancestors_of(this: &RegionMaps, scope: CodeExtent)
             -> Vec<CodeExtent> {
-            // debug!("ancestors_of(scope={})", scope);
+            // debug!("ancestors_of(scope={:?})", scope);
             let mut result = vec!(scope);
             let mut scope = scope;
             loop {
@@ -376,7 +376,7 @@ impl RegionMaps {
                         scope = superscope;
                     }
                 }
-                // debug!("ancestors_of_loop(scope={})", scope);
+                // debug!("ancestors_of_loop(scope={:?})", scope);
             }
         }
     }
@@ -414,7 +414,7 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor,
 }
 
 fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
-    debug!("resolve_block(blk.id={})", blk.id);
+    debug!("resolve_block(blk.id={:?})", blk.id);
 
     // Record the parent of this block.
     record_superlifetime(visitor, blk.id, blk.span);
@@ -466,7 +466,7 @@ fn resolve_pat(visitor: &mut RegionResolutionVisitor, pat: &ast::Pat) {
 
 fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &ast::Stmt) {
     let stmt_id = stmt_id(stmt);
-    debug!("resolve_stmt(stmt.id={})", stmt_id);
+    debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
     let stmt_scope = CodeExtent::from_node_id(stmt_id);
     visitor.region_maps.mark_as_terminating_scope(stmt_scope);
@@ -479,7 +479,7 @@ fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &ast::Stmt) {
 }
 
 fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
-    debug!("resolve_expr(expr.id={})", expr.id);
+    debug!("resolve_expr(expr.id={:?})", expr.id);
 
     record_superlifetime(visitor, expr.id, expr.span);
 
@@ -566,7 +566,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
 }
 
 fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
-    debug!("resolve_local(local.id={},local.init={})",
+    debug!("resolve_local(local.id={:?},local.init={:?})",
            local.id,local.init.is_some());
 
     let blk_id = match visitor.cx.var_parent {
@@ -643,7 +643,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
     //
-    // FIXME(#6308) -- Note that `[]` patterns work more smoothly post-DST.
+    // FIXME(#6308) -- Note that `.index(&FullRange)` patterns work more smoothly post-DST.
 
     match local.init {
         Some(ref expr) => {
@@ -815,10 +815,10 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
               body: &ast::Block,
               sp: Span,
               id: ast::NodeId) {
-    debug!("region::resolve_fn(id={}, \
-                               span={}, \
-                               body.id={}, \
-                               cx.parent={})",
+    debug!("region::resolve_fn(id={:?}, \
+                               span={:?}, \
+                               body.id={:?}, \
+                               cx.parent={:?})",
            id,
            visitor.sess.codemap().span_to_string(sp),
            body.id,

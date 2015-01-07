@@ -108,7 +108,7 @@ pub struct EnvValue<'tcx> {
 
 impl<'tcx> EnvValue<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        format!("{}({})", self.action, self.datum.to_string(ccx))
+        format!("{:?}({})", self.action, self.datum.to_string(ccx))
     }
 }
 
@@ -154,7 +154,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     // compute the type of the closure
-    let cdata_ty = mk_closure_tys(tcx, bound_values[]);
+    let cdata_ty = mk_closure_tys(tcx, bound_values.index(&FullRange));
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
     // tuple.  This could be a ptr in uniq or a box or on stack,
@@ -183,7 +183,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         if ccx.sess().asm_comments() {
             add_comment(bcx, format!("Copy {} into closure",
-                                     bv.to_string(ccx))[]);
+                                     bv.to_string(ccx)).index(&FullRange));
         }
 
         let bound_data = GEPi(bcx, llbox, &[0u, abi::BOX_FIELD_BODY, i]);
@@ -420,7 +420,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let s = tcx.map.with_path(id, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
-    let llfn = decl_internal_rust_fn(ccx, fty, s[]);
+    let llfn = decl_internal_rust_fn(ccx, fty, s.index(&FullRange));
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -442,9 +442,9 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   bcx.fcx.param_substs,
                   id,
                   &[],
-                  ty::ty_fn_ret(fty),
+                  ty::erase_late_bound_regions(ccx.tcx(), &ty::ty_fn_ret(fty)),
                   ty::ty_fn_abi(fty),
-                  ClosureEnv::new(freevars[],
+                  ClosureEnv::new(freevars.index(&FullRange),
                                   BoxedClosure(cdata_ty, store)));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
     bcx
@@ -466,7 +466,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
 
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
-    let function_type = ty::normalize_ty(ccx.tcx(), function_type);
+    let function_type = normalize_ty(ccx.tcx(), function_type);
     let params = match function_type.sty {
         ty::ty_unboxed_closure(_, _, ref substs) => substs.types.clone(),
         _ => unreachable!()
@@ -489,13 +489,13 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
 
-    let llfn = decl_internal_rust_fn(ccx, function_type, symbol[]);
+    let llfn = decl_internal_rust_fn(ccx, function_type, symbol.index(&FullRange));
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
 
     debug!("get_or_create_declaration_if_unboxed_closure(): inserting new \
-            closure {} (type {})",
+            closure {:?} (type {})",
            mono_id,
            ccx.tn().type_to_string(val_ty(llfn)));
     ccx.unboxed_closure_vals().borrow_mut().insert(mono_id, llfn);
@@ -533,6 +533,8 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
         ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
     let freevar_mode = bcx.tcx().capture_mode(id);
 
+    let sig = ty::erase_late_bound_regions(bcx.tcx(), &function_type.sig);
+
     trans_closure(bcx.ccx(),
                   decl,
                   body,
@@ -540,9 +542,9 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   bcx.fcx.param_substs,
                   id,
                   &[],
-                  function_type.sig.0.output,
+                  sig.output,
                   function_type.abi,
-                  ClosureEnv::new(freevars[],
+                  ClosureEnv::new(freevars.index(&FullRange),
                                   UnboxedClosure(freevar_mode)));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
@@ -579,3 +581,4 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
 
     bcx
 }
+

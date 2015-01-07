@@ -16,9 +16,9 @@ trait From<Src> {
 
 trait To {
     fn to<Dst>(
-        self //~ error: the trait `core::kinds::Sized` is not implemented
+        self //~ error: the trait `core::marker::Sized` is not implemented
     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
-        From::from( //~ error: the trait `core::kinds::Sized` is not implemented
+        From::from( //~ error: the trait `core::marker::Sized` is not implemented
             self
         )
     }

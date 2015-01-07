@@ -37,7 +37,7 @@ impl<K: PartialEq + std::fmt::Show, V:Clone> Index<K> for AssociationList<K,V> {
                 return &pair.value
             }
         }
-        panic!("No value found for key: {}", index);
+        panic!("No value found for key: {:?}", index);
     }
 }
 

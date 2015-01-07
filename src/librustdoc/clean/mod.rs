@@ -397,7 +397,7 @@ impl Clean<Item> for doctree::Module {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub enum Attribute {
     Word(String),
     List(String, Vec<Attribute> ),
@@ -450,7 +450,7 @@ impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn meta_item_list(&self) -> Option<&[P<ast::MetaItem>]> { None }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct TyParam {
     pub name: String,
     pub did: ast::DefId,
@@ -483,7 +483,7 @@ impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub enum TyParamBound {
     RegionBound(Lifetime),
     TraitBound(PolyTrait, ast::TraitBoundModifier)
@@ -621,7 +621,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(self.def_id,
                                                             (fqn, TypeTrait));
 
-        debug!("ty::TraitRef\n  substs.types(TypeSpace): {}\n",
+        debug!("ty::TraitRef\n  substs.types(TypeSpace): {:?}\n",
                self.substs.types.get_slice(ParamSpace::TypeSpace));
 
         // collect any late bound regions
@@ -632,7 +632,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
                 for &ty_s in ts.iter() {
                     if let sty::ty_rptr(ref reg, _) = ty_s.sty {
                         if let &Region::ReLateBound(_, _) = *reg {
-                            debug!("  hit an ReLateBound {}", reg);
+                            debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(lt) = reg.clean(cx) {
                                 late_bounds.push(lt)
                             }
@@ -674,7 +674,7 @@ impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct Lifetime(String);
 
 impl Lifetime {
@@ -724,7 +724,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<TyParamBound> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<Lifetime>},
@@ -757,7 +757,7 @@ impl Clean<WherePredicate> for ast::WherePredicate {
 }
 
 // maybe use a Generic enum and use ~[Generic]?
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct Generics {
     pub lifetimes: Vec<Lifetime>,
     pub type_params: Vec<TyParam>,
@@ -798,7 +798,7 @@ impl Clean<Item> for ast::Method {
         let all_inputs = &self.pe_fn_decl().inputs;
         let inputs = match self.pe_explicit_self().node {
             ast::SelfStatic => all_inputs.as_slice(),
-            _ => all_inputs[1..]
+            _ => all_inputs.index(&(1..))
         };
         let decl = FnDecl {
             inputs: Arguments {
@@ -836,7 +836,7 @@ impl Clean<Item> for ast::TypeMethod {
     fn clean(&self, cx: &DocContext) -> Item {
         let inputs = match self.explicit_self.node {
             ast::SelfStatic => self.decl.inputs.as_slice(),
-            _ => self.decl.inputs[1..]
+            _ => self.decl.inputs.index(&(1..))
         };
         let decl = FnDecl {
             inputs: Arguments {
@@ -908,7 +908,7 @@ impl Clean<Item> for doctree::Function {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct ClosureDecl {
     pub lifetimes: Vec<Lifetime>,
     pub decl: FnDecl,
@@ -929,14 +929,14 @@ impl Clean<ClosureDecl> for ast::ClosureTy {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct FnDecl {
     pub inputs: Arguments,
     pub output: FunctionRetTy,
     pub attrs: Vec<Attribute>,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct Arguments {
     pub values: Vec<Argument>,
 }
@@ -989,7 +989,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (ast::DefId, &'a ty::PolyFnSig<'tcx>) {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct Argument {
     pub type_: Type,
     pub name: String,
@@ -1006,7 +1006,7 @@ impl Clean<Argument> for ast::Arg {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub enum FunctionRetTy {
     Return(Type),
     NoReturn
@@ -1132,7 +1132,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
                                                self.fty.sig.clone()),
             s => {
                 let sig = ty::Binder(ty::FnSig {
-                    inputs: self.fty.sig.0.inputs[1..].to_vec(),
+                    inputs: self.fty.sig.0.inputs.index(&(1..)).to_vec(),
                     ..self.fty.sig.0.clone()
                 });
                 let s = match s {
@@ -1181,7 +1181,7 @@ impl<'tcx> Clean<Item> for ty::ImplOrTraitItem<'tcx> {
 }
 
 /// A trait reference, which may have higher ranked lifetimes.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct PolyTrait {
     pub trait_: Type,
     pub lifetimes: Vec<Lifetime>
@@ -1190,7 +1190,7 @@ pub struct PolyTrait {
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
 /// type out of the AST/ty::ctxt given one of these, if more information is needed. Most importantly
 /// it does not preserve mutability or boxes.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub enum Type {
     /// structs/enums/traits (anything that'd be an ast::TyPath)
     ResolvedPath {
@@ -1236,10 +1236,10 @@ pub enum Type {
     PolyTraitRef(Vec<TyParamBound>),
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Copy, Show)]
 pub enum PrimitiveType {
-    Int, I8, I16, I32, I64,
-    Uint, U8, U16, U32, U64,
+    Isize, I8, I16, I32, I64,
+    Usize, U8, U16, U32, U64,
     F32, F64,
     Char,
     Bool,
@@ -1264,12 +1264,12 @@ pub enum TypeKind {
 impl PrimitiveType {
     fn from_str(s: &str) -> Option<PrimitiveType> {
         match s.as_slice() {
-            "int" => Some(Int),
+            "isize" | "int" => Some(Isize),
             "i8" => Some(I8),
             "i16" => Some(I16),
             "i32" => Some(I32),
             "i64" => Some(I64),
-            "uint" => Some(Uint),
+            "usize" | "uint" => Some(Usize),
             "u8" => Some(U8),
             "u16" => Some(U16),
             "u32" => Some(U32),
@@ -1308,12 +1308,12 @@ impl PrimitiveType {
 
     pub fn to_string(&self) -> &'static str {
         match *self {
-            Int => "int",
+            Isize => "isize",
             I8 => "i8",
             I16 => "i16",
             I32 => "i32",
             I64 => "i64",
-            Uint => "uint",
+            Usize => "usize",
             U8 => "u8",
             U16 => "u16",
             U32 => "u32",
@@ -1376,7 +1376,7 @@ impl Clean<Type> for ast::Ty {
                 Infer
             },
             TyTypeof(..) => {
-                panic!("Unimplemented type {}", self.node)
+                panic!("Unimplemented type {:?}", self.node)
             },
         }
     }
@@ -1387,12 +1387,12 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
         match self.sty {
             ty::ty_bool => Primitive(Bool),
             ty::ty_char => Primitive(Char),
-            ty::ty_int(ast::TyI) => Primitive(Int),
+            ty::ty_int(ast::TyIs) => Primitive(Isize),
             ty::ty_int(ast::TyI8) => Primitive(I8),
             ty::ty_int(ast::TyI16) => Primitive(I16),
             ty::ty_int(ast::TyI32) => Primitive(I32),
             ty::ty_int(ast::TyI64) => Primitive(I64),
-            ty::ty_uint(ast::TyU) => Primitive(Uint),
+            ty::ty_uint(ast::TyUs) => Primitive(Usize),
             ty::ty_uint(ast::TyU8) => Primitive(U8),
             ty::ty_uint(ast::TyU16) => Primitive(U16),
             ty::ty_uint(ast::TyU32) => Primitive(U32),
@@ -1746,7 +1746,7 @@ impl Clean<Span> for syntax::codemap::Span {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct Path {
     pub global: bool,
     pub segments: Vec<PathSegment>,
@@ -1761,7 +1761,7 @@ impl Clean<Path> for ast::Path {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub enum PathParameters {
     AngleBracketed {
         lifetimes: Vec<Lifetime>,
@@ -1793,7 +1793,7 @@ impl Clean<PathParameters> for ast::PathParameters {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct PathSegment {
     pub name: String,
     pub params: PathParameters
@@ -1857,7 +1857,7 @@ impl Clean<Item> for doctree::Typedef {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct BareFunctionDecl {
     pub unsafety: ast::Unsafety,
     pub generics: Generics,
@@ -1892,7 +1892,7 @@ pub struct Static {
 
 impl Clean<Item> for doctree::Static {
     fn clean(&self, cx: &DocContext) -> Item {
-        debug!("claning static {}: {}", self.name.clean(cx), self);
+        debug!("cleaning static {}: {:?}", self.name.clean(cx), self);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -2170,7 +2170,7 @@ trait ToSource {
 
 impl ToSource for syntax::codemap::Span {
     fn to_src(&self, cx: &DocContext) -> String {
-        debug!("converting span {} to snippet", self.clean(cx));
+        debug!("converting span {:?} to snippet", self.clean(cx));
         let sn = match cx.sess().codemap().span_to_snippet(*self) {
             Some(x) => x.to_string(),
             None    => "".to_string()
@@ -2183,7 +2183,7 @@ impl ToSource for syntax::codemap::Span {
 fn lit_to_string(lit: &ast::Lit) -> String {
     match lit.node {
         ast::LitStr(ref st, _) => st.get().to_string(),
-        ast::LitBinary(ref data) => format!("{}", data),
+        ast::LitBinary(ref data) => format!("{:?}", data),
         ast::LitByte(b) => {
             let mut res = String::from_str("b'");
             for c in (b as char).escape_default() {
@@ -2202,7 +2202,7 @@ fn lit_to_string(lit: &ast::Lit) -> String {
 
 fn name_from_pat(p: &ast::Pat) -> String {
     use syntax::ast::*;
-    debug!("Trying to get a name from pattern: {}", p);
+    debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {
         PatWild(PatWildSingle) => "_".to_string(),
@@ -2265,12 +2265,12 @@ fn resolve_type(cx: &DocContext,
             ast::TyStr => return Primitive(Str),
             ast::TyBool => return Primitive(Bool),
             ast::TyChar => return Primitive(Char),
-            ast::TyInt(ast::TyI) => return Primitive(Int),
+            ast::TyInt(ast::TyIs) => return Primitive(Isize),
             ast::TyInt(ast::TyI8) => return Primitive(I8),
             ast::TyInt(ast::TyI16) => return Primitive(I16),
             ast::TyInt(ast::TyI32) => return Primitive(I32),
             ast::TyInt(ast::TyI64) => return Primitive(I64),
-            ast::TyUint(ast::TyU) => return Primitive(Uint),
+            ast::TyUint(ast::TyUs) => return Primitive(Usize),
             ast::TyUint(ast::TyU8) => return Primitive(U8),
             ast::TyUint(ast::TyU16) => return Primitive(U16),
             ast::TyUint(ast::TyU32) => return Primitive(U32),

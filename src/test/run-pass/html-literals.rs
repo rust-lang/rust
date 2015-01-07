@@ -10,6 +10,7 @@
 
 // A test of the macro system. Can we do HTML literals?
 
+// ignore-test FIXME #20673
 
 /*
 

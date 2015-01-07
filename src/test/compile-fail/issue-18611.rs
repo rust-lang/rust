@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn add_state(op: <int as HasState>::State) {
-//~^ ERROR the trait `HasState` is not implemented for the type `int`
+fn add_state(op: <isize as HasState>::State) {
+//~^ ERROR the trait `HasState` is not implemented for the type `isize`
 }
 
 trait HasState {

@@ -10,15 +10,15 @@
 
 #![feature(unboxed_closures)]
 
-fn needs_fn<F>(x: F) where F: Fn(int) -> int {}
+fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
 
 fn main() {
-    let _: () = (box |:_: int| {}) as Box<FnOnce(int)>; //~ ERROR object-safe
-    //~^ ERROR Box<core::ops::FnOnce(int)>
-    let _: () = (box |&:_: int, int| {}) as Box<Fn(int, int)>;
-    //~^ ERROR Box<core::ops::Fn(int, int)>
-    let _: () = (box |&mut:| -> int unimplemented!()) as Box<FnMut() -> int>;
-    //~^ ERROR Box<core::ops::FnMut() -> int>
+    let _: () = (box |:_: isize| {}) as Box<FnOnce(isize)>; //~ ERROR object-safe
+    //~^ ERROR Box<core::ops::FnOnce(isize)>
+    let _: () = (box |&:_: isize, isize| {}) as Box<Fn(isize, isize)>;
+    //~^ ERROR Box<core::ops::Fn(isize, isize)>
+    let _: () = (box |&mut:| -> isize unimplemented!()) as Box<FnMut() -> isize>;
+    //~^ ERROR Box<core::ops::FnMut() -> isize>
 
-    needs_fn(1i); //~ ERROR `core::ops::Fn(int) -> int`
+    needs_fn(1i); //~ ERROR `core::ops::Fn(isize) -> isize`
 }

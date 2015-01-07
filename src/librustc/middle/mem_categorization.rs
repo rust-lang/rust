@@ -482,28 +482,20 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             Ok(self.cat_tup_field(expr, base_cmt, idx.node, expr_ty))
           }
 
-          ast::ExprIndex(ref base, ref idx) => {
-            match idx.node {
-                ast::ExprRange(..) => {
-                    // Slicing syntax special case (KILLME).
-                    Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
+          ast::ExprIndex(ref base, _) => {
+            let method_call = ty::MethodCall::expr(expr.id());
+            match self.typer.node_method_ty(method_call) {
+                Some(method_ty) => {
+                    // If this is an index implemented by a method call, then it
+                    // will include an implicit deref of the result.
+                    let ret_ty = self.overloaded_method_return_ty(method_ty);
+                    self.cat_deref(expr,
+                                   self.cat_rvalue_node(expr.id(),
+                                                        expr.span(),
+                                                        ret_ty), 1, true)
                 }
-                _ => {
-                    let method_call = ty::MethodCall::expr(expr.id());
-                    match self.typer.node_method_ty(method_call) {
-                        Some(method_ty) => {
-                            // If this is an index implemented by a method call, then it will
-                            // include an implicit deref of the result.
-                            let ret_ty = ty::ty_fn_ret(method_ty).unwrap();
-                            self.cat_deref(expr,
-                                           self.cat_rvalue_node(expr.id(),
-                                                                expr.span(),
-                                                                ret_ty), 1, true)
-                        }
-                        None => {
-                            self.cat_index(expr, try!(self.cat_expr(&**base)))
-                        }
-                    }
+                None => {
+                    self.cat_index(expr, try!(self.cat_expr(&**base)))
                 }
             }
           }
@@ -547,7 +539,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                    expr_ty: Ty<'tcx>,
                    def: def::Def)
                    -> McResult<cmt<'tcx>> {
-        debug!("cat_def: id={} expr={} def={}",
+        debug!("cat_def: id={} expr={} def={:?}",
                id, expr_ty.repr(self.tcx()), def);
 
         match def {
@@ -594,7 +586,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           span,
                           format!("Upvar of non-closure {} - {}",
                                   fn_node_id,
-                                  ty.repr(self.tcx()))[]);
+                                  ty.repr(self.tcx())).index(&FullRange));
                   }
               }
           }
@@ -860,12 +852,14 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         };
         let method_ty = self.typer.node_method_ty(method_call);
 
-        debug!("cat_deref: method_call={} method_ty={}",
+        debug!("cat_deref: method_call={:?} method_ty={:?}",
                method_call, method_ty.map(|ty| ty.repr(self.tcx())));
 
         let base_cmt = match method_ty {
             Some(method_ty) => {
-                let ref_ty = ty::ty_fn_ret(method_ty).unwrap();
+                let ref_ty =
+                    ty::assert_no_late_bound_regions(
+                        self.tcx(), &ty::ty_fn_ret(method_ty)).unwrap();
                 self.cat_rvalue_node(node.id(), node.span(), ref_ty)
             }
             None => base_cmt
@@ -945,9 +939,12 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         let element_ty = match method_ty {
             Some(method_ty) => {
-                let ref_ty = ty::ty_fn_ret(method_ty).unwrap();
+                let ref_ty = self.overloaded_method_return_ty(method_ty);
                 base_cmt = self.cat_rvalue_node(elt.id(), elt.span(), ref_ty);
-                ty::ty_fn_args(method_ty)[0]
+
+                // FIXME(#20649) -- why are we using the `self_ty` as the element type...?
+                let self_ty = ty::ty_fn_sig(method_ty).input(0);
+                ty::assert_no_late_bound_regions(self.tcx(), &self_ty)
             }
             None => {
                 match ty::array_element_ty(self.tcx(), base_cmt.ty) {
@@ -1269,6 +1266,19 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         Ok(())
     }
+
+    fn overloaded_method_return_ty(&self,
+                                   method_ty: Ty<'tcx>)
+                                   -> Ty<'tcx>
+    {
+        // When we process an overloaded `*` or `[]` etc, we often
+        // need to extract the return type of the method. These method
+        // types are generated by method resolution and always have
+        // all late-bound regions fully instantiated, so we just want
+        // to skip past the binder.
+        ty::assert_no_late_bound_regions(self.tcx(), &ty::ty_fn_ret(method_ty))
+            .unwrap() // overloaded ops do not diverge, either
+    }
 }
 
 #[derive(Copy)]
@@ -1455,7 +1465,7 @@ impl<'tcx> cmt_<'tcx> {
 
 impl<'tcx> Repr<'tcx> for cmt_<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("{{{} id:{} m:{} ty:{}}}",
+        format!("{{{} id:{} m:{:?} ty:{}}}",
                 self.cat.repr(tcx),
                 self.id,
                 self.mutbl,
@@ -1470,7 +1480,7 @@ impl<'tcx> Repr<'tcx> for categorization<'tcx> {
             cat_rvalue(..) |
             cat_local(..) |
             cat_upvar(..) => {
-                format!("{}", *self)
+                format!("{:?}", *self)
             }
             cat_deref(ref cmt, derefs, ptr) => {
                 format!("{}-{}{}->", cmt.cat.repr(tcx), ptr_sigil(ptr), derefs)

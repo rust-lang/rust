@@ -29,7 +29,7 @@ use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::ty::{MethodStatic, MethodStaticUnboxedClosure};
 use util::ppaux::Repr;
 
-use std::kinds;
+use std::marker;
 use syntax::{ast, ast_util};
 use syntax::ptr::P;
 use syntax::codemap::Span;
@@ -135,7 +135,7 @@ enum TrackMatchMode<T> {
     Conflicting,
 }
 
-impl<T> kinds::Copy for TrackMatchMode<T> {}
+impl<T> marker::Copy for TrackMatchMode<T> {}
 
 impl<T> TrackMatchMode<T> {
     // Builds up the whole match mode for a pattern from its constituent
@@ -441,28 +441,12 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
 
             ast::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
-                match rhs.node {
-                    ast::ExprRange(ref start, ref end) => {
-                        // Hacked slicing syntax (KILLME).
-                        let args = match (start, end) {
-                            (&Some(ref e1), &Some(ref e2)) => vec![&**e1, &**e2],
-                            (&Some(ref e), &None) => vec![&**e],
-                            (&None, &Some(ref e)) => vec![&**e],
-                            (&None, &None) => Vec::new()
-                        };
-                        let overloaded =
-                            self.walk_overloaded_operator(expr, &**lhs, args, PassArgs::ByRef);
-                        assert!(overloaded);
-                    }
-                    _ => {
-                        if !self.walk_overloaded_operator(expr,
-                                                          &**lhs,
-                                                          vec![&**rhs],
-                                                          PassArgs::ByRef) {
-                            self.select_from_expr(&**lhs);
-                            self.consume_expr(&**rhs);
-                        }
-                    }
+                if !self.walk_overloaded_operator(expr,
+                                                  &**lhs,
+                                                  vec![&**rhs],
+                                                  PassArgs::ByRef) {
+                    self.select_from_expr(&**lhs);
+                    self.consume_expr(&**rhs);
                 }
             }
 
@@ -864,12 +848,17 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 None => {}
                 Some(method_ty) => {
                     let cmt = return_if_err!(self.mc.cat_expr_autoderefd(expr, i));
-                    let self_ty = ty::ty_fn_args(method_ty)[0];
+
+                    // the method call infrastructure should have
+                    // replaced all late-bound regions with variables:
+                    let self_ty = ty::ty_fn_sig(method_ty).input(0);
+                    let self_ty = ty::assert_no_late_bound_regions(self.tcx(), &self_ty);
+
                     let (m, r) = match self_ty.sty {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
                         _ => self.tcx().sess.span_bug(expr.span,
                                 format!("bad overloaded deref type {}",
-                                    method_ty.repr(self.tcx()))[])
+                                    method_ty.repr(self.tcx())).index(&FullRange))
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
@@ -1035,7 +1024,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             if pat_util::pat_is_binding(def_map, pat) {
                 let tcx = typer.tcx();
 
-                debug!("binding cmt_pat={} pat={} match_mode={}",
+                debug!("binding cmt_pat={} pat={} match_mode={:?}",
                        cmt_pat.repr(tcx),
                        pat.repr(tcx),
                        match_mode);
@@ -1171,10 +1160,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             // pattern.
 
                             if !tcx.sess.has_errors() {
-                                let msg = format!("Pattern has unexpected type: {} and type {}",
+                                let msg = format!("Pattern has unexpected type: {:?} and type {}",
                                                   def,
                                                   cmt_pat.ty.repr(tcx));
-                                tcx.sess.span_bug(pat.span, msg[])
+                                tcx.sess.span_bug(pat.span, msg.as_slice())
                             }
                         }
 
@@ -1188,10 +1177,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             // reported.
 
                             if !tcx.sess.has_errors() {
-                                let msg = format!("Pattern has unexpected def: {} and type {}",
+                                let msg = format!("Pattern has unexpected def: {:?} and type {}",
                                                   def,
                                                   cmt_pat.ty.repr(tcx));
-                                tcx.sess.span_bug(pat.span, msg[])
+                                tcx.sess.span_bug(pat.span, msg.index(&FullRange))
                             }
                         }
                     }

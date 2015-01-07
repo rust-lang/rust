@@ -145,7 +145,7 @@ pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 
     let repr = Rc::new(represent_type_uncached(cx, t));
-    debug!("Represented as: {}", repr);
+    debug!("Represented as: {:?}", repr);
     cx.adt_reprs().borrow_mut().insert(t, repr.clone());
     repr
 }
@@ -154,7 +154,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      t: Ty<'tcx>) -> Repr<'tcx> {
     match t.sty {
         ty::ty_tup(ref elems) => {
-            Univariant(mk_struct(cx, elems[], false, t), false)
+            Univariant(mk_struct(cx, elems.index(&FullRange), false, t), false)
         }
         ty::ty_struct(def_id, substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx(), def_id);
@@ -165,17 +165,17 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
             if dtor { ftys.push(cx.tcx().types.bool); }
 
-            Univariant(mk_struct(cx, ftys[], packed, t), dtor)
+            Univariant(mk_struct(cx, ftys.index(&FullRange), packed, t), dtor)
         }
         ty::ty_unboxed_closure(def_id, _, substs) => {
             let typer = NormalizingUnboxedClosureTyper::new(cx.tcx());
             let upvars = typer.unboxed_closure_upvars(def_id, substs).unwrap();
             let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
-            Univariant(mk_struct(cx, upvar_types[], false, t), false)
+            Univariant(mk_struct(cx, upvar_types.index(&FullRange), false, t), false)
         }
         ty::ty_enum(def_id, substs) => {
             let cases = get_cases(cx.tcx(), def_id, substs);
-            let hint = *ty::lookup_repr_hints(cx.tcx(), def_id)[].get(0)
+            let hint = *ty::lookup_repr_hints(cx.tcx(), def_id).index(&FullRange).get(0)
                 .unwrap_or(&attr::ReprAny);
 
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
@@ -185,7 +185,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 // (Typechecking will reject discriminant-sizing attrs.)
                 assert_eq!(hint, attr::ReprAny);
                 let ftys = if dtor { vec!(cx.tcx().types.bool) } else { vec!() };
-                return Univariant(mk_struct(cx, ftys[], false, t),
+                return Univariant(mk_struct(cx, ftys.index(&FullRange), false, t),
                                   dtor);
             }
 
@@ -208,7 +208,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 cx.sess().bug(format!("non-C-like enum {} with specified \
                                       discriminants",
                                       ty::item_path_str(cx.tcx(),
-                                                        def_id))[]);
+                                                        def_id)).index(&FullRange));
             }
 
             if cases.len() == 1 {
@@ -217,7 +217,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 assert_eq!(hint, attr::ReprAny);
                 let mut ftys = cases[0].tys.clone();
                 if dtor { ftys.push(cx.tcx().types.bool); }
-                return Univariant(mk_struct(cx, ftys[], false, t),
+                return Univariant(mk_struct(cx, ftys.index(&FullRange), false, t),
                                   dtor);
             }
 
@@ -226,7 +226,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let mut discr = 0;
                 while discr < 2 {
                     if cases[1 - discr].is_zerolen(cx, t) {
-                        let st = mk_struct(cx, cases[discr].tys[],
+                        let st = mk_struct(cx, cases[discr].tys.index(&FullRange),
                                            false, t);
                         match cases[discr].find_ptr(cx) {
                             Some(ref df) if df.len() == 1 && st.fields.len() == 1 => {
@@ -316,17 +316,17 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let fields : Vec<_> = cases.iter().map(|c| {
                 let mut ftys = vec!(ty_of_inttype(cx.tcx(), ity));
-                ftys.push_all(c.tys[]);
+                ftys.push_all(c.tys.index(&FullRange));
                 if dtor { ftys.push(cx.tcx().types.bool); }
-                mk_struct(cx, ftys[], false, t)
+                mk_struct(cx, ftys.index(&FullRange), false, t)
             }).collect();
 
-            ensure_enum_fits_in_address_space(cx, ity, fields[], t);
+            ensure_enum_fits_in_address_space(cx, ity, fields.index(&FullRange), t);
 
             General(ity, fields, dtor)
         }
         _ => cx.sess().bug(format!("adt::represent_type called on non-ADT type: {}",
-                           ty_to_string(cx.tcx(), t))[])
+                           ty_to_string(cx.tcx(), t)).index(&FullRange))
     }
 }
 
@@ -412,7 +412,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 impl<'tcx> Case<'tcx> {
     fn is_zerolen<'a>(&self, cx: &CrateContext<'a, 'tcx>, scapegoat: Ty<'tcx>) -> bool {
-        mk_struct(cx, self.tys[], false, scapegoat).size == 0
+        mk_struct(cx, self.tys.index(&FullRange), false, scapegoat).size == 0
     }
 
     fn find_ptr<'a>(&self, cx: &CrateContext<'a, 'tcx>) -> Option<DiscrField> {
@@ -451,9 +451,9 @@ fn mk_struct<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
            .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
     };
 
-    ensure_struct_fits_in_address_space(cx, lltys[], packed, scapegoat);
+    ensure_struct_fits_in_address_space(cx, lltys.index(&FullRange), packed, scapegoat);
 
-    let llty_rec = Type::struct_(cx, lltys[], packed);
+    let llty_rec = Type::struct_(cx, lltys.index(&FullRange), packed);
     Struct {
         size: machine::llsize_of_alloc(cx, llty_rec),
         align: machine::llalign_of_min(cx, llty_rec),
@@ -482,7 +482,7 @@ fn mk_cenum<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntType {
-    debug!("range_to_inttype: {} {}", hint, bounds);
+    debug!("range_to_inttype: {:?} {:?}", hint, bounds);
     // Lists of sizes to try.  u64 is always allowed as a fallback.
     #[allow(non_upper_case_globals)]
     static choose_shortest: &'static[IntType] = &[
@@ -502,7 +502,7 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
             return ity;
         }
         attr::ReprExtern => {
-            attempts = match cx.sess().target.target.arch[] {
+            attempts = match cx.sess().target.target.arch.index(&FullRange) {
                 // WARNING: the ARM EABI has two variants; the one corresponding to `at_least_32`
                 // appears to be used on Linux and NetBSD, but some systems may use the variant
                 // corresponding to `choose_shortest`.  However, we don't run on those yet...?
@@ -533,7 +533,7 @@ pub fn ll_inttype(cx: &CrateContext, ity: IntType) -> Type {
 }
 
 fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
-    debug!("bounds_usable: {} {}", ity, bounds);
+    debug!("bounds_usable: {:?} {:?}", ity, bounds);
     match ity {
         attr::SignedInt(_) => {
             let lllo = C_integral(ll_inttype(cx, ity), bounds.slo as u64, true);
@@ -628,7 +628,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     match *r {
         CEnum(..) | General(..) | RawNullablePointer { .. } => { }
         Univariant(ref st, _) | StructWrappedNullablePointer { nonnull: ref st, .. } =>
-            llty.set_struct_body(struct_llfields(cx, st, false, false)[],
+            llty.set_struct_body(struct_llfields(cx, st, false, false).index(&FullRange),
                                  st.packed)
     }
 }
@@ -644,7 +644,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         Univariant(ref st, _) | StructWrappedNullablePointer { nonnull: ref st, .. } => {
             match name {
                 None => {
-                    Type::struct_(cx, struct_llfields(cx, st, sizing, dst)[],
+                    Type::struct_(cx, struct_llfields(cx, st, sizing, dst).index(&FullRange),
                                   st.packed)
                 }
                 Some(name) => { assert_eq!(sizing, false); Type::named_struct(cx, name) }
@@ -663,7 +663,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // of the size.
             //
             // FIXME #10604: this breaks when vector types are present.
-            let (size, align) = union_size_and_align(sts[]);
+            let (size, align) = union_size_and_align(sts.index(&FullRange));
             let align_s = align as u64;
             let discr_ty = ll_inttype(cx, ity);
             let discr_size = machine::llsize_of_alloc(cx, discr_ty);
@@ -684,10 +684,10 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                           Type::array(&discr_ty, align_s / discr_size - 1),
                           fill_ty];
             match name {
-                None => Type::struct_(cx, fields[], false),
+                None => Type::struct_(cx, fields.index(&FullRange), false),
                 Some(name) => {
                     let mut llty = Type::named_struct(cx, name);
-                    llty.set_struct_body(fields[], false);
+                    llty.set_struct_body(fields.index(&FullRange), false);
                     llty
                 }
             }
@@ -731,7 +731,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
     -> ValueRef {
     let signed;
     let val;
-    debug!("trans_get_discr r: {}", r);
+    debug!("trans_get_discr r: {:?}", r);
     match *r {
         CEnum(ity, min, max) => {
             val = load_discr(bcx, ity, scrutinee, min, max);
@@ -765,7 +765,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
 
 fn struct_wrapped_nullable_bitdiscr(bcx: Block, nndiscr: Disr, discrfield: &DiscrField,
                                     scrutinee: ValueRef) -> ValueRef {
-    let llptrptr = GEPi(bcx, scrutinee, discrfield[]);
+    let llptrptr = GEPi(bcx, scrutinee, discrfield.index(&FullRange));
     let llptr = Load(bcx, llptrptr);
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
     ICmp(bcx, cmp, llptr, C_null(val_ty(llptr)))
@@ -853,7 +853,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         }
         StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
             if discr != nndiscr {
-                let llptrptr = GEPi(bcx, val, discrfield[]);
+                let llptrptr = GEPi(bcx, val, discrfield.index(&FullRange));
                 let llptrty = val_ty(llptrptr).element_type();
                 Store(bcx, C_null(llptrty), llptrptr)
             }
@@ -935,7 +935,7 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
     let val = if needs_cast {
         let ccx = bcx.ccx();
         let fields = st.fields.iter().map(|&ty| type_of::type_of(ccx, ty)).collect::<Vec<_>>();
-        let real_ty = Type::struct_(ccx, fields[], st.packed);
+        let real_ty = Type::struct_(ccx, fields.index(&FullRange), st.packed);
         PointerCast(bcx, val, real_ty.ptr_to())
     } else {
         val
@@ -967,14 +967,14 @@ pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
             for (discr, case) in cases.iter().enumerate() {
                 let mut variant_cx = fcx.new_temp_block(
-                    format!("enum-variant-iter-{}", discr.to_string())[]
+                    format!("enum-variant-iter-{}", discr.to_string()).index(&FullRange)
                 );
                 let rhs_val = C_integral(ll_inttype(ccx, ity), discr as u64, true);
                 AddCase(llswitch, rhs_val, variant_cx.llbb);
 
                 let fields = case.fields.iter().map(|&ty|
                     type_of::type_of(bcx.ccx(), ty)).collect::<Vec<_>>();
-                let real_ty = Type::struct_(ccx, fields[], case.packed);
+                let real_ty = Type::struct_(ccx, fields.index(&FullRange), case.packed);
                 let variant_value = PointerCast(variant_cx, value, real_ty.ptr_to());
 
                 variant_cx = f(variant_cx, case, variant_value);
@@ -1051,14 +1051,14 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr as u64, true);
             let mut f = vec![lldiscr];
             f.push_all(vals);
-            let mut contents = build_const_struct(ccx, case, f[]);
+            let mut contents = build_const_struct(ccx, case, f.index(&FullRange));
             contents.push_all(&[padding(ccx, max_sz - case.size)]);
-            C_struct(ccx, contents[], false)
+            C_struct(ccx, contents.index(&FullRange), false)
         }
         Univariant(ref st, _dro) => {
             assert!(discr == 0);
             let contents = build_const_struct(ccx, st, vals);
-            C_struct(ccx, contents[], st.packed)
+            C_struct(ccx, contents.index(&FullRange), st.packed)
         }
         RawNullablePointer { nndiscr, nnty, .. } => {
             if discr == nndiscr {
@@ -1072,7 +1072,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             if discr == nndiscr {
                 C_struct(ccx, build_const_struct(ccx,
                                                  nonnull,
-                                                 vals)[],
+                                                 vals).index(&FullRange),
                          false)
             } else {
                 let vals = nonnull.fields.iter().map(|&ty| {
@@ -1082,7 +1082,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
                 }).collect::<Vec<ValueRef>>();
                 C_struct(ccx, build_const_struct(ccx,
                                                  nonnull,
-                                                 vals[])[],
+                                                 vals.index(&FullRange)).index(&FullRange),
                          false)
             }
         }

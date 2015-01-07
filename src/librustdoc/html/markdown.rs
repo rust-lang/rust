@@ -14,7 +14,7 @@
 //! (bundled into the rust runtime). This module self-contains the C bindings
 //! and necessary legwork to render markdown, and exposes all of the
 //! functionality through a unit-struct, `Markdown`, which has an implementation
-//! of `fmt::Show`. Example usage:
+//! of `fmt::String`. Example usage:
 //!
 //! ```rust,ignore
 //! use rustdoc::html::markdown::Markdown;
@@ -41,7 +41,7 @@ use html::highlight;
 use html::escape::Escape;
 use test;
 
-/// A unit struct which has the `fmt::Show` trait implemented. When
+/// A unit struct which has the `fmt::String` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 pub struct Markdown<'a>(pub &'a str);
@@ -172,7 +172,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             let text = slice::from_raw_buf(&(*orig_text).data,
                                            (*orig_text).size as uint);
             let origtext = str::from_utf8(text).unwrap();
-            debug!("docblock: ==============\n{}\n=======", text);
+            debug!("docblock: ==============\n{:?}\n=======", text);
             let rendered = if lang.is_null() {
                 false
             } else {
@@ -435,7 +435,15 @@ pub fn reset_headers() {
     TEST_IDX.with(|s| s.set(0));
 }
 
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for Markdown<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Markdown(md) = *self;
         // This is actually common enough to special-case
@@ -444,7 +452,15 @@ impl<'a> fmt::Show for Markdown<'a> {
     }
 }
 
+//NOTE(stage0): remove impl after snapshot
+#[cfg(stage0)]
 impl<'a> fmt::Show for MarkdownWithToc<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
+    }
+}
+
+impl<'a> fmt::String for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let MarkdownWithToc(md) = *self;
         render(fmt, md.as_slice(), true)

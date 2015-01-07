@@ -81,7 +81,7 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
             inference_context.tcx.sess.span_bug(
                 span,
                 format!("coherence encountered unexpected type searching for base type: {}",
-                        ty.repr(inference_context.tcx))[]);
+                        ty.repr(inference_context.tcx)).index(&FullRange));
         }
     }
 }
@@ -204,7 +204,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             trait_ref: &ty::TraitRef<'tcx>,
             all_impl_items: &mut Vec<ImplOrTraitItemId>) {
         let tcx = self.crate_context.tcx;
-        debug!("instantiate_default_methods(impl_id={}, trait_ref={})",
+        debug!("instantiate_default_methods(impl_id={:?}, trait_ref={})",
                impl_id, trait_ref.repr(tcx));
 
         let impl_type_scheme = ty::lookup_item_type(tcx, impl_id);
@@ -215,7 +215,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let new_id = tcx.sess.next_node_id();
             let new_did = local_def(new_id);
 
-            debug!("new_did={} trait_method={}", new_did, trait_method.repr(tcx));
+            debug!("new_did={:?} trait_method={}", new_did, trait_method.repr(tcx));
 
             // Create substitutions for the various trait parameters.
             let new_method_ty =
@@ -268,7 +268,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     }
 
     fn add_trait_impl(&self, base_def_id: DefId, impl_def_id: DefId) {
-        debug!("add_trait_impl: base_def_id={} impl_def_id={}",
+        debug!("add_trait_impl: base_def_id={:?} impl_def_id={:?}",
                base_def_id, impl_def_id);
         ty::record_trait_implementation(self.crate_context.tcx,
                                         base_def_id,
@@ -490,7 +490,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                  format!("the trait `Copy` may not be \
                                           implemented for this type; field \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name))[])
+                                         token::get_name(name)).index(&FullRange))
                 }
                 Err(ty::VariantDoesNotImplementCopy(name)) => {
                     tcx.sess
@@ -498,7 +498,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                  format!("the trait `Copy` may not be \
                                           implemented for this type; variant \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name))[])
+                                         token::get_name(name)).index(&FullRange))
                 }
                 Err(ty::TypeIsStructural) => {
                     tcx.sess

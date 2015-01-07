@@ -63,7 +63,7 @@
 
 pub use core::hash::{Hash, Hasher, Writer, hash, sip};
 
-use core::kinds::Sized;
+use core::marker::Sized;
 use default::Default;
 use rand::Rng;
 use rand;

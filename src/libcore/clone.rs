@@ -21,7 +21,7 @@
 
 #![stable]
 
-use kinds::Sized;
+use marker::Sized;
 
 /// A common trait for cloning an object.
 #[stable]

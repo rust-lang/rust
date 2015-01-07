@@ -25,7 +25,7 @@ use std::rc::Rc;
 use std::str;
 use std::string::CowString;
 
-pub use ext::tt::transcribe::{TtReader, new_tt_reader};
+pub use ext::tt::transcribe::{TtReader, new_tt_reader, new_tt_reader_with_doc_flag};
 
 pub mod comments;
 
@@ -111,7 +111,7 @@ impl<'a> Reader for TtReader<'a> {
     }
     fn next_token(&mut self) -> TokenAndSpan {
         let r = tt_next_token(self);
-        debug!("TtReader: r={}", r);
+        debug!("TtReader: r={:?}", r);
         r
     }
     fn fatal(&self, m: &str) -> ! {
@@ -196,7 +196,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.fatal_span_(from_pos, to_pos, m[]);
+        self.fatal_span_(from_pos, to_pos, m.index(&FullRange));
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -205,7 +205,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.err_span_(from_pos, to_pos, m[]);
+        self.err_span_(from_pos, to_pos, m.index(&FullRange));
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -214,8 +214,8 @@ impl<'a> StringReader<'a> {
         m.push_str(": ");
         let from = self.byte_offset(from_pos).to_uint();
         let to = self.byte_offset(to_pos).to_uint();
-        m.push_str(self.filemap.src[from..to]);
-        self.fatal_span_(from_pos, to_pos, m[]);
+        m.push_str(self.filemap.src.index(&(from..to)));
+        self.fatal_span_(from_pos, to_pos, m.index(&FullRange));
     }
 
     /// Advance peek_tok and peek_span to refer to the next token, and
@@ -256,13 +256,13 @@ impl<'a> StringReader<'a> {
     /// adjusted 1 towards each other (assumes that on either side there is a
     /// single-byte delimiter).
     pub fn name_from(&self, start: BytePos) -> ast::Name {
-        debug!("taking an ident from {} to {}", start, self.last_pos);
+        debug!("taking an ident from {:?} to {:?}", start, self.last_pos);
         self.with_str_from(start, token::intern)
     }
 
     /// As name_from, with an explicit endpoint.
     pub fn name_from_to(&self, start: BytePos, end: BytePos) -> ast::Name {
-        debug!("taking an ident from {} to {}", start, end);
+        debug!("taking an ident from {:?} to {:?}", start, end);
         self.with_str_from_to(start, end, token::intern)
     }
 
@@ -301,7 +301,7 @@ impl<'a> StringReader<'a> {
             while i < s.len() {
                 let str::CharRange { ch, next } = s.char_range_at(i);
                 if ch == '\r' {
-                    if j < i { buf.push_str(s[j..i]); }
+                    if j < i { buf.push_str(s.index(&(j..i))); }
                     j = next;
                     if next >= s.len() || s.char_at(next) != '\n' {
                         let pos = start + BytePos(i as u32);
@@ -311,7 +311,7 @@ impl<'a> StringReader<'a> {
                 }
                 i = next;
             }
-            if j < s.len() { buf.push_str(s[j..]); }
+            if j < s.len() { buf.push_str(s.index(&(j..))); }
             buf
         }
     }
@@ -496,7 +496,7 @@ impl<'a> StringReader<'a> {
             // for skipping over all "junk"
             '/' | '#' => {
                 let c = self.scan_comment();
-                debug!("scanning a comment {}", c);
+                debug!("scanning a comment {:?}", c);
                 c
             },
             c if is_whitespace(Some(c)) => {
@@ -506,7 +506,7 @@ impl<'a> StringReader<'a> {
                     tok: token::Whitespace,
                     sp: codemap::mk_sp(start_bpos, self.last_pos)
                 });
-                debug!("scanning whitespace: {}", c);
+                debug!("scanning whitespace: {:?}", c);
                 c
             },
             _ => None
@@ -556,7 +556,7 @@ impl<'a> StringReader<'a> {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
                 } else { string.into_cow() };
-                token::DocComment(token::intern(string[]))
+                token::DocComment(token::intern(string.index(&FullRange)))
             } else {
                 token::Comment
             };
@@ -592,8 +592,8 @@ impl<'a> StringReader<'a> {
                                                whence: &str) {
             match r.curr {
                 Some(r_c) if r_c == c => r.bump(),
-                Some(r_c) => panic!("expected {}, hit {}, {}", described_c, r_c, whence),
-                None      => panic!("expected {}, hit EOF, {}", described_c, whence),
+                Some(r_c) => panic!("expected {:?}, hit {:?}, {}", described_c, r_c, whence),
+                None      => panic!("expected {:?}, hit EOF, {}", described_c, whence),
             }
         }
 
@@ -614,7 +614,7 @@ impl<'a> StringReader<'a> {
         self.scan_digits(base);
         let encoded_name : u32 = self.with_str_from(start_bpos, |s| {
             num::from_str_radix(s, 10).unwrap_or_else(|| {
-                panic!("expected digits representing a name, got `{}`, {}, range [{},{}]",
+                panic!("expected digits representing a name, got {:?}, {}, range [{:?},{:?}]",
                       s, whence, start_bpos, self.last_pos);
             })
         });
@@ -632,7 +632,7 @@ impl<'a> StringReader<'a> {
         self.scan_digits(base);
         let encoded_ctxt : ast::SyntaxContext = self.with_str_from(start_bpos, |s| {
             num::from_str_radix(s, 10).unwrap_or_else(|| {
-                panic!("expected digits representing a ctxt, got `{}`, {}", s, whence);
+                panic!("expected digits representing a ctxt, got {:?}, {}", s, whence);
             })
         });
 
@@ -652,7 +652,7 @@ impl<'a> StringReader<'a> {
             if c == Some('_') { debug!("skipping a _"); self.bump(); continue; }
             match c.and_then(|cc| cc.to_digit(radix)) {
                 Some(_) => {
-                    debug!("{} in scan_digits", c);
+                    debug!("{:?} in scan_digits", c);
                     len += 1;
                     self.bump();
                 }
@@ -728,7 +728,7 @@ impl<'a> StringReader<'a> {
                        delim: char,
                        below_0x7f_only: bool)
                        -> bool {
-        debug!("scanning {} digits until {}", n_digits, delim);
+        debug!("scanning {} digits until {:?}", n_digits, delim);
         let start_bpos = self.last_pos;
         let mut accum_int = 0;
 
@@ -990,7 +990,7 @@ impl<'a> StringReader<'a> {
         if is_dec_digit(c) {
             let num = self.scan_number(c.unwrap());
             let suffix = self.scan_optional_raw_name();
-            debug!("next_token_inner: scanned number {}, {}", num, suffix);
+            debug!("next_token_inner: scanned number {:?}, {:?}", num, suffix);
             return token::Literal(num, suffix)
         }
 
@@ -1110,7 +1110,7 @@ impl<'a> StringReader<'a> {
                 // expansion purposes. See #12512 for the gory details of why
                 // this is necessary.
                 let ident = self.with_str_from(start, |lifetime_name| {
-                    str_to_ident(format!("'{}", lifetime_name)[])
+                    str_to_ident(format!("'{}", lifetime_name).index(&FullRange))
                 });
 
                 // Conjure up a "keyword checking ident" to make sure that
@@ -1444,14 +1444,14 @@ fn is_dec_digit(c: Option<char>) -> bool { return in_range(c, '0', '9'); }
 pub fn is_doc_comment(s: &str) -> bool {
     let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/')
               || s.starts_with("//!");
-    debug!("is `{}` a doc comment? {}", s, res);
+    debug!("is {:?} a doc comment? {}", s, res);
     res
 }
 
 pub fn is_block_doc_comment(s: &str) -> bool {
     let res = (s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*')
               || s.starts_with("/*!");
-    debug!("is `{}` a doc comment? {}", s, res);
+    debug!("is {:?} a doc comment? {}", s, res);
     res
 }
 

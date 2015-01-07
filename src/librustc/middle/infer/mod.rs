@@ -989,7 +989,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                    err: Option<&ty::type_err<'tcx>>) where
         M: FnOnce(Option<String>, String) -> String,
     {
-        debug!("hi! expected_ty = {}, actual_ty = {}", expected_ty, actual_ty);
+        debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
 
         let resolved_expected = expected_ty.map(|e_ty| self.resolve_type_vars_if_possible(&e_ty));
 
@@ -1002,7 +1002,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                 self.tcx.sess.span_err(sp, format!("{}{}",
                     mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
-                    error_str)[]);
+                    error_str).index(&FullRange));
 
                 for err in err.iter() {
                     ty::note_and_explain_type_err(self.tcx, *err)
@@ -1219,7 +1219,7 @@ impl<'tcx> Repr<'tcx> for SubregionOrigin<'tcx> {
             }
             Reborrow(a) => format!("Reborrow({})", a.repr(tcx)),
             ReborrowUpvar(a, b) => {
-                format!("ReborrowUpvar({},{})", a.repr(tcx), b)
+                format!("ReborrowUpvar({},{:?})", a.repr(tcx), b)
             }
             ReferenceOutlivesReferent(_, a) => {
                 format!("ReferenceOutlivesReferent({})", a.repr(tcx))
@@ -1277,7 +1277,7 @@ impl<'tcx> Repr<'tcx> for RegionVariableOrigin<'tcx> {
                 format!("EarlyBoundRegion({},{})", a.repr(tcx), b.repr(tcx))
             }
             LateBoundRegion(a, b, c) => {
-                format!("LateBoundRegion({},{},{})", a.repr(tcx), b.repr(tcx), c)
+                format!("LateBoundRegion({},{},{:?})", a.repr(tcx), b.repr(tcx), c)
             }
             BoundRegionInCoherence(a) => {
                 format!("bound_regionInCoherence({})", a.repr(tcx))

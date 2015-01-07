@@ -40,7 +40,7 @@ fn test00() {
     let mut results = Vec::new();
     while i < number_of_tasks {
         let tx = tx.clone();
-        results.push(Thread::spawn({
+        results.push(Thread::scoped({
             let i = i;
             move|| {
                 test00_start(&tx, i, number_of_messages)

@@ -493,7 +493,7 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
 ///     // Now the handle still points at index 75, but on the small node, which has no index 75.
 ///     flag.set(true);
 ///
-///     println!("Uninitialized memory: {}", handle.into_kv());
+///     println!("Uninitialized memory: {:?}", handle.into_kv());
 /// }
 /// ```
 #[derive(Copy)]
@@ -1417,7 +1417,7 @@ pub type MutTraversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Iter<'a,
 /// An owning traversal over a node's entries and edges
 pub type MoveTraversal<K, V> = AbsTraversal<MoveTraversalImpl<K, V>>;
 
-
+#[old_impl_check]
 impl<K, V, E, Impl: TraversalImpl<K, V, E>> Iterator for AbsTraversal<Impl> {
     type Item = TraversalItem<K, V, E>;
 
@@ -1433,6 +1433,7 @@ impl<K, V, E, Impl: TraversalImpl<K, V, E>> Iterator for AbsTraversal<Impl> {
     }
 }
 
+#[old_impl_check]
 impl<K, V, E, Impl: TraversalImpl<K, V, E>> DoubleEndedIterator for AbsTraversal<Impl> {
     fn next_back(&mut self) -> Option<TraversalItem<K, V, E>> {
         let tail_is_edge = self.tail_is_edge;

@@ -227,7 +227,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 
     pub fn pending_obligations(&self) -> &[PredicateObligation<'tcx>] {
-        self.predicates[]
+        self.predicates.index(&FullRange)
     }
 
     /// Attempts to select obligations using `selcx`. If `only_new_obligations` is true, then it
@@ -437,11 +437,9 @@ fn register_region_obligation<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("register_region_obligation({})",
            region_obligation.repr(tcx));
 
-    let body_id = region_obligation.cause.body_id;
-    match region_obligations.entry(&body_id) {
+    match region_obligations.entry(region_obligation.cause.body_id) {
         Vacant(entry) => { entry.insert(vec![region_obligation]); },
         Occupied(mut entry) => { entry.get_mut().push(region_obligation); },
     }
 
 }
-

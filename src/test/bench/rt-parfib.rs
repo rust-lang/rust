@@ -25,7 +25,7 @@ fn parfib(n: uint) -> uint {
     let (tx, rx) = channel();
     Thread::spawn(move|| {
         tx.send(parfib(n-1));
-    }).detach();
+    });
     let m2 = parfib(n-2);
     return (rx.recv().unwrap() + m2);
 }

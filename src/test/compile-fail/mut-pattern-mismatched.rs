@@ -9,18 +9,18 @@
 // except according to those terms.
 
 fn main() {
-    let foo = &mut 1i;
+    let foo = &mut 1is;
 
     // (separate lines to ensure the spans are accurate)
 
-    // SNAP b2085d9 uncomment this after the next snapshot
+    // SNAP 340ac04 uncomment this after the next snapshot
     // NOTE(stage0) just in case tidy doesn't check snap's in tests
-    // let &_ // ~ ERROR expected `&mut int`, found `&_`
+    // let &_ // ~ ERROR expected `&mut isize`, found `&_`
     //    = foo;
     let &mut _ = foo;
 
-    let bar = &1i;
+    let bar = &1is;
     let &_ = bar;
-    let &mut _ //~ ERROR expected `&int`, found `&mut _`
+    let &mut _ //~ ERROR expected `&isize`, found `&mut _`
          = bar;
 }

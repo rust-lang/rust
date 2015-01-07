@@ -17,28 +17,13 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![allow(unknown_features)]
-#![feature(default_type_params, globs, macro_rules, phase, quote)]
+#![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(unboxed_closures)]
-#![feature(old_orphan_check)]
 #![allow(non_camel_case_types)]
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate log;
-
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate syntax;
-
-#[cfg(not(stage0))]
-#[macro_use]
-extern crate syntax;
+#[macro_use] extern crate log;
+#[macro_use] extern crate syntax;
 
 // for "clarity", rename the graphviz crate to dot; graphviz within `borrowck`
 // refers to the borrowck-specific graphviz adapter traits.

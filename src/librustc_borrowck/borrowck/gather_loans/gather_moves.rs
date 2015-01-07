@@ -65,7 +65,7 @@ pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       cmt: mc::cmt<'tcx>,
                                       mode: euv::MatchMode) {
     let tcx = bccx.tcx;
-    debug!("gather_match_variant(move_pat={}, cmt={}, mode={})",
+    debug!("gather_match_variant(move_pat={}, cmt={}, mode={:?})",
            move_pat.id, cmt.repr(tcx), mode);
 
     let opt_lp = opt_loan_path(&cmt);

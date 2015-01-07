@@ -15,16 +15,13 @@
 use cmp;
 use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::{IteratorExt, ExactSizeIterator};
-use ops::Drop;
+use ops::{Drop, Index};
 use option::Option;
 use option::Option::{Some, None};
 use result::Result::Ok;
 use slice::{SliceExt};
 use slice;
 use vec::Vec;
-
-// NOTE: for old macros; remove after the next snapshot
-#[cfg(stage0)] use result::Result::Err;
 
 /// Wraps a Reader and buffers input from it
 ///
@@ -100,7 +97,7 @@ impl<R: Reader> Buffer for BufferedReader<R> {
             self.cap = try!(self.inner.read(self.buf.as_mut_slice()));
             self.pos = 0;
         }
-        Ok(self.buf[self.pos..self.cap])
+        Ok(self.buf.index(&(self.pos..self.cap)))
     }
 
     fn consume(&mut self, amt: uint) {
@@ -117,7 +114,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
         let nread = {
             let available = try!(self.fill_buf());
             let nread = cmp::min(available.len(), buf.len());
-            slice::bytes::copy_memory(buf, available[..nread]);
+            slice::bytes::copy_memory(buf, available.index(&(0..nread)));
             nread
         };
         self.pos += nread;
@@ -171,7 +168,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            let ret = self.inner.as_mut().unwrap().write(self.buf[..self.pos]);
+            let ret = self.inner.as_mut().unwrap().write(self.buf.index(&(0..self.pos)));
             self.pos = 0;
             ret
         } else {
@@ -263,9 +260,9 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match buf.iter().rposition(|&b| b == b'\n') {
             Some(i) => {
-                try!(self.inner.write(buf[..i + 1]));
+                try!(self.inner.write(buf.index(&(0..(i + 1)))));
                 try!(self.inner.flush());
-                try!(self.inner.write(buf[i + 1..]));
+                try!(self.inner.write(buf.index(&((i + 1)..))));
                 Ok(())
             }
             None => self.inner.write(buf),
@@ -472,41 +469,37 @@ mod test {
 
         writer.write(&[0, 1]).unwrap();
         let b: &[_] = &[];
-        assert_eq!(writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[], b);
 
         writer.write(&[2]).unwrap();
         let b: &[_] = &[0, 1];
-        assert_eq!(writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[], b);
 
         writer.write(&[3]).unwrap();
-        assert_eq!(writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[], b);
 
         writer.flush().unwrap();
         let a: &[_] = &[0, 1, 2, 3];
-        assert_eq!(a, writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[]);
 
         writer.write(&[4]).unwrap();
         writer.write(&[5]).unwrap();
-        assert_eq!(a, writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[]);
 
         writer.write(&[6]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5];
-        assert_eq!(a,
-                   writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[]);
 
         writer.write(&[7, 8]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5, 6];
-        assert_eq!(a,
-                   writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[]);
 
         writer.write(&[9, 10, 11]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-        assert_eq!(a,
-                   writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[]);
 
         writer.flush().unwrap();
-        assert_eq!(a,
-                   writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[]);
     }
 
     #[test]
@@ -514,10 +507,10 @@ mod test {
         let mut w = BufferedWriter::with_capacity(3, Vec::new());
         w.write(&[0, 1]).unwrap();
         let a: &[_] = &[];
-        assert_eq!(a, w.get_ref()[]);
+        assert_eq!(a, &w.get_ref()[]);
         let w = w.into_inner();
         let a: &[_] = &[0, 1];
-        assert_eq!(a, w[]);
+        assert_eq!(a, w.index(&FullRange));
     }
 
     // This is just here to make sure that we don't infinite loop in the
@@ -559,21 +552,21 @@ mod test {
         let mut writer = LineBufferedWriter::new(Vec::new());
         writer.write(&[0]).unwrap();
         let b: &[_] = &[];
-        assert_eq!(writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[], b);
         writer.write(&[1]).unwrap();
-        assert_eq!(writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[], b);
         writer.flush().unwrap();
         let b: &[_] = &[0, 1];
-        assert_eq!(writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[], b);
         writer.write(&[0, b'\n', 1, b'\n', 2]).unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n'];
-        assert_eq!(writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[], b);
         writer.flush().unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n', 2];
-        assert_eq!(writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[], b);
         writer.write(&[3, b'\n']).unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n', 2, 3, b'\n'];
-        assert_eq!(writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[], b);
     }
 
     #[test]
@@ -614,14 +607,14 @@ mod test {
     #[test]
     fn read_char_buffered() {
         let buf = [195u8, 159u8];
-        let mut reader = BufferedReader::with_capacity(1, buf[]);
+        let mut reader = BufferedReader::with_capacity(1, buf.index(&FullRange));
         assert_eq!(reader.read_char(), Ok('ß'));
     }
 
     #[test]
     fn test_chars() {
         let buf = [195u8, 159u8, b'a'];
-        let mut reader = BufferedReader::with_capacity(1, buf[]);
+        let mut reader = BufferedReader::with_capacity(1, buf.index(&FullRange));
         let mut it = reader.chars();
         assert_eq!(it.next(), Some(Ok('ß')));
         assert_eq!(it.next(), Some(Ok('a')));

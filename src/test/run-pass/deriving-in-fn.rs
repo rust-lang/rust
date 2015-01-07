@@ -15,5 +15,5 @@ pub fn main() {
     }
 
     let f = Foo { foo: 10 };
-    format!("{}", f);
+    format!("{:?}", f);
 }

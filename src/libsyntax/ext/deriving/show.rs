@@ -90,7 +90,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                 for (i, field) in fields.iter().enumerate() {
                     if i != 0 { format_string.push_str(", "); }
 
-                    format_string.push_str("{}");
+                    format_string.push_str("{:?}");
 
                     exprs.push(field.self_.clone());
                 }
@@ -107,7 +107,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
                     let name = token::get_ident(field.name.unwrap());
                     format_string.push_str(" ");
                     format_string.push_str(name.get());
-                    format_string.push_str(": {}");
+                    format_string.push_str(": {:?}");
 
                     exprs.push(field.self_.clone());
                 }
@@ -127,7 +127,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     let formatter = substr.nonself_args[0].clone();
 
     let meth = cx.ident_of("write_fmt");
-    let s = token::intern_and_get_ident(format_string[]);
+    let s = token::intern_and_get_ident(format_string.index(&FullRange));
     let format_string = cx.expr_str(span, s);
 
     // phew, not our responsibility any more!

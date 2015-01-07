@@ -247,14 +247,14 @@ fn generate_frequencies(mut input: &[u8], frame: uint) -> Table {
     // Pull first frame.
     for _ in range(0, frame) {
         code = code.push_char(input[0]);
-        input = input[1..];
+        input = &input[1..];
     }
     frequencies.lookup(code, BumpCallback);
 
     while input.len() != 0 && input[0] != ('>' as u8) {
         code = code.rotate(input[0], frame);
         frequencies.lookup(code, BumpCallback);
-        input = input[1..];
+        input = &input[1..];
     }
     frequencies
 }
@@ -304,11 +304,11 @@ fn main() {
 
     let nb_freqs: Vec<_> = range(1u, 3).map(|i| {
         let input = input.clone();
-        (i, Thread::spawn(move|| generate_frequencies(input.as_slice(), i)))
+        (i, Thread::scoped(move|| generate_frequencies(input.as_slice(), i)))
     }).collect();
     let occ_freqs: Vec<_> = OCCURRENCES.iter().map(|&occ| {
         let input = input.clone();
-        Thread::spawn(move|| generate_frequencies(input.as_slice(), occ.len()))
+        Thread::scoped(move|| generate_frequencies(input.as_slice(), occ.len()))
     }).collect();
 
     for (i, freq) in nb_freqs.into_iter() {

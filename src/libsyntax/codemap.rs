@@ -120,15 +120,6 @@ impl PartialEq for Span {
 
 impl Eq for Span {}
 
-#[cfg(stage0)]
-impl<S:Encoder<E>, E> Encodable<S, E> for Span {
-    /* Note #1972 -- spans are encoded but not decoded */
-    fn encode(&self, s: &mut S) -> Result<(), E> {
-        s.emit_nil()
-    }
-}
-
-#[cfg(not(stage0))]
 impl Encodable for Span {
     /* Note #1972 -- spans are encoded but not decoded */
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
@@ -136,14 +127,6 @@ impl Encodable for Span {
     }
 }
 
-#[cfg(stage0)]
-impl<D:Decoder<E>, E> Decodable<D, E> for Span {
-    fn decode(_d: &mut D) -> Result<Span, E> {
-        Ok(DUMMY_SP)
-    }
-}
-
-#[cfg(not(stage0))]
 impl Decodable for Span {
     fn decode<D: Decoder>(_d: &mut D) -> Result<Span, D::Error> {
         Ok(DUMMY_SP)
@@ -321,9 +304,9 @@ impl FileMap {
         lines.get(line_number).map(|&line| {
             let begin: BytePos = line - self.start_pos;
             let begin = begin.to_uint();
-            let slice = self.src[begin..];
+            let slice = self.src.index(&(begin..));
             match slice.find('\n') {
-                Some(e) => slice[0..e],
+                Some(e) => slice.index(&(0..e)),
                 None => slice
             }.to_string()
         })
@@ -368,9 +351,9 @@ impl CodeMap {
         // FIXME #12884: no efficient/safe way to remove from the start of a string
         // and reuse the allocation.
         let mut src = if src.starts_with("\u{feff}") {
-            String::from_str(src[3..])
+            String::from_str(src.index(&(3..)))
         } else {
-            String::from_str(src[])
+            String::from_str(src.index(&FullRange))
         };
 
         // Append '\n' in case it's not already there.
@@ -457,8 +440,8 @@ impl CodeMap {
         if begin.fm.start_pos != end.fm.start_pos {
             None
         } else {
-            Some(begin.fm.src[begin.pos.to_uint()..
-                              end.pos.to_uint()].to_string())
+            Some(begin.fm.src.index(&(begin.pos.to_uint()..
+                                      end.pos.to_uint())).to_string())
         }
     }
 
@@ -488,7 +471,7 @@ impl CodeMap {
         let mut total_extra_bytes = 0;
 
         for mbc in map.multibyte_chars.borrow().iter() {
-            debug!("{}-byte char at {}", mbc.bytes, mbc.pos);
+            debug!("{}-byte char at {:?}", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
                 // every character is at least one byte, so we only
                 // count the actual extra bytes.
@@ -566,9 +549,9 @@ impl CodeMap {
         let chpos = self.bytepos_to_file_charpos(pos);
         let linebpos = (*f.lines.borrow())[a];
         let linechpos = self.bytepos_to_file_charpos(linebpos);
-        debug!("byte pos {} is on the line at byte pos {}",
+        debug!("byte pos {:?} is on the line at byte pos {:?}",
                pos, linebpos);
-        debug!("char pos {} is on the line at char pos {}",
+        debug!("char pos {:?} is on the line at char pos {:?}",
                chpos, linechpos);
         debug!("byte is on line: {}", line);
         assert!(chpos >= linechpos);

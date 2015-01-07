@@ -9,21 +9,15 @@
 // except according to those terms.
 
 #![crate_type = "bin"]
-#![feature(phase, slicing_syntax, globs, unboxed_closures)]
+#![feature(slicing_syntax, unboxed_closures)]
 
 #![deny(warnings)]
 
 extern crate test;
 extern crate getopts;
 
-#[cfg(stage0)]
-#[phase(plugin, link)]
-extern crate log;
-
-#[cfg(not(stage0))]
 #[macro_use]
 extern crate log;
-
 extern crate regex;
 
 use std::os;
@@ -108,7 +102,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     let matches =
         &match getopts::getopts(args_.as_slice(), groups.as_slice()) {
           Ok(m) => m,
-          Err(f) => panic!("{}", f)
+          Err(f) => panic!("{:?}", f)
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
@@ -127,7 +121,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         match regex::Regex::new(s) {
             Ok(re) => Some(re),
             Err(e) => {
-                println!("failed to parse filter /{}/: {}", s, e);
+                println!("failed to parse filter /{}/: {:?}", s, e);
                 panic!()
             }
         }
@@ -186,11 +180,11 @@ pub fn parse_config(args: Vec<String> ) -> Config {
 pub fn log_config(config: &Config) {
     let c = config;
     logv(c, format!("configuration:"));
-    logv(c, format!("compile_lib_path: {}", config.compile_lib_path));
-    logv(c, format!("run_lib_path: {}", config.run_lib_path));
-    logv(c, format!("rustc_path: {}", config.rustc_path.display()));
-    logv(c, format!("src_base: {}", config.src_base.display()));
-    logv(c, format!("build_base: {}", config.build_base.display()));
+    logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
+    logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
+    logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
+    logv(c, format!("src_base: {:?}", config.src_base.display()));
+    logv(c, format!("build_base: {:?}", config.build_base.display()));
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
@@ -206,10 +200,10 @@ pub fn log_config(config: &Config) {
     logv(c, format!("jit: {}", config.jit));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
-    logv(c, format!("android-cross-path: {}",
+    logv(c, format!("android-cross-path: {:?}",
                     config.android_cross_path.display()));
-    logv(c, format!("adb_path: {}", config.adb_path));
-    logv(c, format!("adb_test_dir: {}", config.adb_test_dir));
+    logv(c, format!("adb_path: {:?}", config.adb_path));
+    logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}",
                     config.adb_device_status));
     match config.test_shard {
@@ -271,7 +265,7 @@ pub fn run_tests(config: &Config) {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
         Err(e) => {
-            println!("I/O failure during tests: {}", e);
+            println!("I/O failure during tests: {:?}", e);
         }
     }
 }
@@ -299,13 +293,13 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 }
 
 pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
-    debug!("making tests from {}",
+    debug!("making tests from {:?}",
            config.src_base.display());
     let mut tests = Vec::new();
     let dirs = fs::readdir(&config.src_base).unwrap();
     for file in dirs.iter() {
         let file = file.clone();
-        debug!("inspecting file {}", file.display());
+        debug!("inspecting file {:?}", file.display());
         if is_test(config, &file) {
             let t = make_test(config, &file, || {
                 match config.mode {

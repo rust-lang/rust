@@ -221,14 +221,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.resolve_error(sp,
                         format!("duplicate definition of {} `{}`",
                              namespace_error_to_string(duplicate_type),
-                             token::get_name(name))[]);
+                             token::get_name(name)).index(&FullRange));
                     {
                         let r = child.span_for_namespace(ns);
                         for sp in r.iter() {
                             self.session.span_note(*sp,
                                  format!("first definition of {} `{}` here",
                                       namespace_error_to_string(duplicate_type),
-                                      token::get_name(name))[]);
+                                      token::get_name(name)).index(&FullRange));
                         }
                     }
                 }
@@ -845,7 +845,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                            name: Name,
                            new_parent: &Rc<Module>) {
         debug!("(building reduced graph for \
-                external crate) building external def, priv {}",
+                external crate) building external def, priv {:?}",
                vis);
         let is_public = vis == ast::Public;
         let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
@@ -989,7 +989,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
           DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
           DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
-            panic!("didn't expect `{}`", def);
+            panic!("didn't expect `{:?}`", def);
           }
         }
     }
@@ -1201,7 +1201,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 debug!("(building import directive) building import \
                         directive: {}::{}",
                        self.names_to_string(module_.imports.borrow().last().unwrap()
-                                                 .module_path[]),
+                                                 .module_path.index(&FullRange)),
                        token::get_name(target));
 
                 let mut import_resolutions = module_.import_resolutions

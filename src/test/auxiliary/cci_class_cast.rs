@@ -17,7 +17,7 @@ pub mod kitty {
       pub name : String,
     }
 
-    impl fmt::Show for cat {
+    impl fmt::String for cat {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             write!(f, "{}", self.name)
         }

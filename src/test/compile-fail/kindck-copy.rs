@@ -36,14 +36,14 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<&'a [int]>();
 
     // ...unless they are mutable
-    assert_copy::<&'static mut int>(); //~ ERROR `core::kinds::Copy` is not implemented
-    assert_copy::<&'a mut int>();  //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<&'static mut int>(); //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<&'a mut int>();  //~ ERROR `core::marker::Copy` is not implemented
 
     // ~ pointers are not ok
-    assert_copy::<Box<int>>();   //~ ERROR `core::kinds::Copy` is not implemented
-    assert_copy::<String>();   //~ ERROR `core::kinds::Copy` is not implemented
-    assert_copy::<Vec<int> >(); //~ ERROR `core::kinds::Copy` is not implemented
-    assert_copy::<Box<&'a mut int>>(); //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<Box<int>>();   //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<String>();   //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Vec<int> >(); //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Box<&'a mut int>>(); //~ ERROR `core::marker::Copy` is not implemented
 
     // borrowed object types are generally ok
     assert_copy::<&'a Dummy>();
@@ -51,11 +51,11 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<&'static (Dummy+Copy)>();
 
     // owned object types are not ok
-    assert_copy::<Box<Dummy>>(); //~ ERROR `core::kinds::Copy` is not implemented
-    assert_copy::<Box<Dummy+Copy>>(); //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<Box<Dummy>>(); //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Box<Dummy+Copy>>(); //~ ERROR `core::marker::Copy` is not implemented
 
     // mutable object types are not ok
-    assert_copy::<&'a mut (Dummy+Copy)>();  //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<&'a mut (Dummy+Copy)>();  //~ ERROR `core::marker::Copy` is not implemented
 
     // unsafe ptrs are ok
     assert_copy::<*const int>();
@@ -73,10 +73,10 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<MyStruct>();
 
     // structs containing non-POD are not ok
-    assert_copy::<MyNoncopyStruct>(); //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<MyNoncopyStruct>(); //~ ERROR `core::marker::Copy` is not implemented
 
     // ref counted types are not ok
-    assert_copy::<Rc<int>>();   //~ ERROR `core::kinds::Copy` is not implemented
+    assert_copy::<Rc<int>>();   //~ ERROR `core::marker::Copy` is not implemented
 }
 
 pub fn main() {

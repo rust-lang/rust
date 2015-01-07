@@ -30,7 +30,7 @@ impl fmt::UpperHex for B {
         f.write_str("adios")
     }
 }
-impl fmt::Show for C {
+impl fmt::String for C {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad_integral(true, "☃", "123")
     }
@@ -58,9 +58,12 @@ pub fn main() {
     t!(format!("{}", true), "true");
     t!(format!("{}", '☃'), "☃");
     t!(format!("{}", 10i), "10");
-    t!(format!("{}", 10i), "10");
     t!(format!("{}", 10u), "10");
-    t!(format!("{:?}", true), "true");
+    t!(format!("{:?}", '☃'), "'\\u{2603}'");
+    t!(format!("{:?}", 10i), "10i");
+    t!(format!("{:?}", 10u), "10u");
+    t!(format!("{:?}", "true"), "\"true\"");
+    t!(format!("{:?}", "foo\nbar"), "\"foo\\nbar\"");
     t!(format!("{:o}", 10u), "12");
     t!(format!("{:x}", 10u), "a");
     t!(format!("{:X}", 10u), "A");
@@ -79,8 +82,10 @@ pub fn main() {
     t!(format!("{}", 5i + 5i), "10");
     t!(format!("{:#4}", C), "☃123");
 
-    let a: &fmt::Show = &1i;
-    t!(format!("{}", a), "1");
+    // FIXME(#20676)
+    // let a: &fmt::Show = &1i;
+    // t!(format!("{:?}", a), "1i");
+
 
     // Formatting strings and their arguments
     t!(format!("{}", "a"), "a");
