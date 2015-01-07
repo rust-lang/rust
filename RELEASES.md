@@ -144,7 +144,7 @@ Version 1.0.0-alpha (January 2015)
     * Work has begun on supporting AArch64.
 
 [Cargo]: https://crates.io
-[unboxed]: https://github.com/rust-lang/rfcs/blob/master/text/0114-closures.md
+[unboxed]: http://smallcultfollowing.com/babysteps/blog/2014/11/26/purging-proc/
 [enum]: https://github.com/rust-lang/rfcs/blob/master/text/0390-enum-namespacing.md
 [flex]: https://github.com/rust-lang/rfcs/blob/master/text/0131-target-specification.md
 [err]: https://github.com/rust-lang/rfcs/blob/master/text/0201-error-chaining.md
