@@ -543,7 +543,7 @@ use std::thread::Thread;
 fn main() {
     let vec = vec![1i, 2, 3];
 
-    for i in range(1u, 3) {
+    for i in range(0u, 3) {
         Thread::spawn(move || {
             println!("{}", vec[i]);
         }).detach();
@@ -559,7 +559,7 @@ a vector:
 ```{rust}
 let vec = vec![1i, 2, 3];
 
-for i in range(1u, vec.len()) {
+for i in range(0u, vec.len()) {
      println!("{}", vec[i]);
 }
 ```
