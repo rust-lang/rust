@@ -315,8 +315,10 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
 {
     debug!("normalize_associated_type(t={})", value.repr(tcx));
 
+    let value = erase_regions(tcx, value);
+
     if !value.has_projection_types() {
-        return value.clone();
+        return value;
     }
 
     // FIXME(#20304) -- cache
@@ -326,7 +328,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     let mut selcx = traits::SelectionContext::new(&infcx, &typer);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =
-        traits::normalize(&mut selcx, cause, value);
+        traits::normalize(&mut selcx, cause, &value);
 
     debug!("normalize_associated_type: result={} obligations={}",
            result.repr(tcx),

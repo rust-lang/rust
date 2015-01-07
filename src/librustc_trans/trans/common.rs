@@ -992,7 +992,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 let tcx = ccx.tcx();
 
 // Remove any references to regions; this helps improve caching.
-let trait_ref = ty_fold::erase_regions(tcx, trait_ref);
+let trait_ref = erase_regions(tcx, &trait_ref);
 
 // First check the cache.
 match ccx.trait_cache().borrow().get(&trait_ref) {
