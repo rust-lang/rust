@@ -28,7 +28,7 @@ Core encoding and decoding interfaces.
 #![cfg_attr(stage0, allow(unused_attributes))]
 
 // test harness access
-#[cfg(test)] extern crate test;
+#[cfg(test)] extern crate rustc_bench;
 #[macro_use] extern crate log;
 
 extern crate unicode;

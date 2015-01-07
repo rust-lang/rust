@@ -167,7 +167,7 @@ fn test_radix_base_too_large() {
 }
 
 mod uint {
-    use test::Bencher;
+    use rustc_bench::Bencher;
     use core::fmt::radix;
     use std::rand::{weak_rng, Rng};
 
@@ -209,7 +209,7 @@ mod uint {
 }
 
 mod int {
-    use test::Bencher;
+    use rustc_bench::Bencher;
     use core::fmt::radix;
     use std::rand::{weak_rng, Rng};
 

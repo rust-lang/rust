@@ -507,10 +507,8 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-
     use prelude::v1::*;
-    use self::test::Bencher;
+    use rustc_bench::Bencher;
 
     // why is this a macro? wouldn't an inlined function work just as well?
     macro_rules! u64_from_be_bytes_bench_impl {

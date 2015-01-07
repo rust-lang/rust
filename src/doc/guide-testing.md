@@ -1,7 +1,7 @@
 % The Rust Testing Guide
 
 > Program testing can be a very effective way to show the presence of bugs, but
-> it is hopelessly inadequate for showing their absence. 
+> it is hopelessly inadequate for showing their absence.
 >
 > Edsger W. Dijkstra, "The Humble Programmer" (1972)
 
@@ -310,7 +310,7 @@ extern crate adder;
 #[test]
 fn it_works() {
     assert_eq(4, adder::add_two(2));
-}   
+}
 ```
 
 This looks similar to our previous tests, but slightly different. We now have
@@ -442,7 +442,7 @@ code. Let's make our `src/lib.rs` look like this (comments elided):
 ```{rust,ignore}
 #![feature(globs)]
 
-extern crate test;
+extern crate rustc_bench;
 
 pub fn add_two(a: i32) -> i32 {
     a + 2
@@ -451,7 +451,7 @@ pub fn add_two(a: i32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test::Bencher;
+    use rustc_bench::Bencher;
 
     #[test]
     fn it_works() {
@@ -512,8 +512,8 @@ compiler might recognize that some calculation has no external effects and
 remove it entirely.
 
 ```{rust,ignore}
-extern crate test;
-use test::Bencher;
+extern crate rustc_bench;
+use rustc_bench::Bencher;
 
 #[bench]
 fn bench_xor_1000_ints(b: &mut Bencher) {
@@ -547,20 +547,19 @@ b.iter(|| {
 });
 ```
 
-Or, the other option is to call the generic `test::black_box` function, which
-is an opaque "black box" to the optimizer and so forces it to consider any
-argument as used.
+Or, the other option is to call the generic `rustc_bench::black_box` function,
+which is an opaque "black box" to the optimizer and so forces it to consider
+any argument as used.
 
 ```rust
-extern crate test;
-
+extern crate rustc_bench;
 # fn main() {
 # struct X;
 # impl X { fn iter<T, F>(&self, _: F) where F: FnMut() -> T {} } let b = X;
 b.iter(|| {
     let mut n = 1000_u32;
 
-    test::black_box(&mut n); // pretend to modify `n`
+    rustc_bench::black_box(&mut n); // pretend to modify `n`
 
     range(0, n).fold(0, |a, b| a ^ b)
 })

@@ -11,7 +11,7 @@
 // error-pattern:expected item
 
 #[foo = "bar"]
-extern crate test;
+extern crate "std" as std2;
 
 pub fn main() {
 }

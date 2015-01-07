@@ -976,7 +976,7 @@ impl fmt::Writer for String {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use test::Bencher;
+    use rustc_bench::Bencher;
 
     use str::Utf8Error;
     use core::iter::repeat;

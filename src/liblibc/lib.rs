@@ -75,7 +75,6 @@
 #[cfg(not(feature = "cargo-build"))] extern crate core;
 
 #[cfg(test)] extern crate std;
-#[cfg(test)] extern crate test;
 
 // Explicit export lists for the intersection (provided here) mean that
 // you can write more-platform-agnostic code if you stick to just these

@@ -459,10 +459,8 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-
     mod uint {
-        use super::test::Bencher;
+        use rustc_bench::Bencher;
         use rand::{weak_rng, Rng};
         use std::fmt;
 
@@ -503,7 +501,7 @@ mod bench {
     }
 
     mod int {
-        use super::test::Bencher;
+        use rustc_bench::Bencher;
         use rand::{weak_rng, Rng};
         use std::fmt;
 
@@ -544,7 +542,7 @@ mod bench {
     }
 
     mod f64 {
-        use super::test::Bencher;
+        use rustc_bench::Bencher;
         use rand::{weak_rng, Rng};
         use f64;
 

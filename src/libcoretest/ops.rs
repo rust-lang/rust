@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use test::Bencher;
+use rustc_bench::Bencher;
 use core::ops::{Range, FullRange, RangeFrom, RangeTo};
 
 // Overhead of dtors

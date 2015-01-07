@@ -2504,10 +2504,10 @@ impl FromStr for Json {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
+    extern crate rustc_bench;
     use self::Animal::*;
     use self::DecodeEnum::*;
-    use self::test::Bencher;
+    use self::rustc_bench::Bencher;
     use {Encodable, Decodable};
     use super::Json::*;
     use super::ErrorCode::*;

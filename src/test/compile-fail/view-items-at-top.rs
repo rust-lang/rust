@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate test;
+extern crate rustc_bench;
 
 fn f() {
 }
 
-use test::net;    //~ ERROR `use` and `extern crate` declarations must precede items
+use rustc_bench::net;    //~ ERROR `use` and `extern crate` declarations must precede items
 
 fn main() {
 }

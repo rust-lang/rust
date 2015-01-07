@@ -651,8 +651,8 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::Bencher;
+    extern crate rustc_bench;
+    use self::rustc_bench::Bencher;
     use super::{Sha256, FixedBuffer, Digest};
 
     #[bench]

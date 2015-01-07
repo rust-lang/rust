@@ -27,7 +27,7 @@
 #![deny(missing_docs)]
 
 #[cfg(test)]
-extern crate "test" as stdtest;
+extern crate rustc_bench;
 #[cfg(test)]
 extern crate rand;
 

@@ -32,6 +32,8 @@ extern crate core;
 #[cfg(test)] #[macro_use] extern crate std;
 #[cfg(test)] #[macro_use] extern crate log;
 
+#[cfg(test)] extern crate rustc_bench;
+
 use core::prelude::*;
 
 pub use isaac::{IsaacRng, Isaac64Rng};

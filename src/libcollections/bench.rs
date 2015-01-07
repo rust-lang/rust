@@ -11,7 +11,7 @@
 use prelude::*;
 use std::rand;
 use std::rand::Rng;
-use test::{Bencher, black_box};
+use rustc_bench::{Bencher, black_box};
 
 pub fn insert_rand_n<M, I, R>(n: uint,
                               map: &mut M,

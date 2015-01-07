@@ -1057,7 +1057,7 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use Bencher;
+    use rustc_bench::Bencher;
     use stats::Stats;
 
     #[bench]

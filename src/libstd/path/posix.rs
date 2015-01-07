@@ -1211,8 +1211,7 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::Bencher;
+    use rustc_bench::Bencher;
     use super::*;
     use prelude::v1::{Clone, GenericPath};
 

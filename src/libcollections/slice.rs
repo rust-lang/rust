@@ -2730,7 +2730,7 @@ mod bench {
     use core::ptr;
     use core::iter::repeat;
     use std::rand::{weak_rng, Rng};
-    use test::{Bencher, black_box};
+    use rustc_bench::{Bencher, black_box};
 
     #[bench]
     fn iterator(b: &mut Bencher) {

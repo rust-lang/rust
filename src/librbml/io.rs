@@ -130,11 +130,10 @@ impl Seek for SeekableMemWriter {
 
 #[cfg(test)]
 mod tests {
-    extern crate test;
     use super::SeekableMemWriter;
     use std::io;
     use std::iter::repeat;
-    use test::Bencher;
+    use rustc_bench::Bencher;
 
     #[test]
     fn test_seekable_mem_writer() {

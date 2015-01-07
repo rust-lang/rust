@@ -390,13 +390,12 @@ impl<'a> Buffer for BufReader<'a> {
 
 #[cfg(test)]
 mod test {
-    extern crate "test" as test_crate;
-    use io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
-    use prelude::v1::{Ok, Err, range,  Vec, Buffer,  AsSlice, SliceExt};
-    use prelude::v1::{IteratorExt, Index};
+    use prelude::v1::*;
+
+    use io::{SeekSet, SeekCur, SeekEnd};
     use io;
     use iter::repeat;
-    use self::test_crate::Bencher;
+    use rustc_bench::Bencher;
     use super::*;
 
     #[test]

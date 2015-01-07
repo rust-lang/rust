@@ -2826,8 +2826,7 @@ mod tests {
 mod bench {
     use super::*;
     use prelude::{SliceExt, IteratorExt, SliceConcatExt};
-    use test::Bencher;
-    use test::black_box;
+    use rustc_bench::{Bencher, black_box};
 
     #[bench]
     fn char_iterator(b: &mut Bencher) {
@@ -2841,7 +2840,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
         b.iter(|| {
-            for ch in s.chars() { black_box(ch) }
+            for ch in s.chars() { black_box(ch); }
         });
     }
 
@@ -2869,7 +2868,7 @@ mod bench {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
         b.iter(|| {
-            for ch in s.chars().rev() { black_box(ch) }
+            for ch in s.chars().rev() { black_box(ch); }
         });
     }
 

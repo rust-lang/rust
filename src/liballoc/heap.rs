@@ -370,8 +370,8 @@ mod imp {
 
 #[cfg(test)]
 mod test {
-    extern crate test;
-    use self::test::Bencher;
+    extern crate rustc_bench;
+    use self::rustc_bench::Bencher;
     use core::ptr::PtrExt;
     use heap;
 

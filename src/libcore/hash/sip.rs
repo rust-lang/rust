@@ -271,7 +271,7 @@ pub fn hash_with_keys<T: ?Sized + Hash<SipState>>(k0: u64, k1: u64, value: &T) -
 
 #[cfg(test)]
 mod tests {
-    use test::Bencher;
+    use rustc_bench::Bencher;
     use prelude::*;
     use std::fmt;
 

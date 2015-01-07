@@ -1614,7 +1614,7 @@ mod test {
 mod bench {
     use prelude::*;
     use std::rand::{weak_rng, Rng};
-    use test::{Bencher, black_box};
+    use rustc_bench::{Bencher, black_box};
 
     use super::BTreeMap;
     use bench::{insert_rand_n, insert_seq_n, find_rand_n, find_seq_n};

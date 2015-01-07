@@ -12,7 +12,7 @@
 
 mod m {
     #[foo = "bar"]
-    extern crate test;
+    extern crate std;
 }
 
 pub fn main() {

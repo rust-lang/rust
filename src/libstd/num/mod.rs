@@ -990,8 +990,7 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    extern crate test;
-    use self::test::Bencher;
+    use rustc_bench::Bencher;
     use num::Int;
     use prelude::v1::*;
 

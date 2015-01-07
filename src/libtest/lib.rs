@@ -37,6 +37,7 @@ extern crate regex;
 extern crate serialize;
 extern crate "serialize" as rustc_serialize;
 extern crate term;
+extern crate rustc_bench;
 
 pub use self::TestFn::*;
 pub use self::MetricChange::*;
@@ -55,7 +56,6 @@ use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
 use std::any::Any;
-use std::cmp;
 use std::collections::BTreeMap;
 use std::f64;
 use std::fmt::Show;
@@ -71,11 +71,12 @@ use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::{self, Thread};
 use std::thunk::{Thunk, Invoke};
-use std::time::Duration;
+
+use rustc_bench::Bencher;
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
-    pub use {Bencher, TestName, TestResult, TestDesc,
+    pub use {TestName, TestResult, TestDesc,
              TestDescAndFn, TestOpts, TrFailed, TrIgnored, TrOk,
              Metric, MetricMap, MetricAdded, MetricRemoved,
              MetricChange, Improvement, Regression, LikelyNoise,
@@ -178,18 +179,6 @@ impl fmt::Show for TestFn {
             DynBenchFn(..) => "DynBenchFn(..)"
         })
     }
-}
-
-/// Manager of the benchmarking runs.
-///
-/// This is feed into functions marked with `#[bench]` to allow for
-/// set-up & tear-down before running a piece of code repeatedly via a
-/// call to `iter`.
-#[derive(Copy)]
-pub struct Bencher {
-    iterations: u64,
-    dur: Duration,
-    pub bytes: u64,
 }
 
 #[derive(Copy, Clone, Show, PartialEq, Eq, Hash)]
@@ -1323,58 +1312,62 @@ impl MetricMap {
 
 // Benchmarking
 
-/// A function that is opaque to the optimizer, to allow benchmarks to
-/// pretend to use outputs to assist in avoiding dead-code
-/// elimination.
-///
-/// This function is a no-op, and does not even read from `dummy`.
-pub fn black_box<T>(dummy: T) {
-    // we need to "use" the argument in some way LLVM can't
-    // introspect.
-    unsafe {asm!("" : : "r"(&dummy))}
-}
+pub mod bench {
+    use std::cmp;
+    use std::time::Duration;
 
+    use rustc_bench::Bencher;
+    use stats;
+    use super::BenchSamples;
 
-impl Bencher {
-    /// Callback for benchmark functions to run in their body.
-    pub fn iter<T, F>(&mut self, mut inner: F) where F: FnMut() -> T {
-        self.dur = Duration::span(|| {
-            let k = self.iterations;
-            for _ in range(0u64, k) {
-                black_box(inner());
-            }
-        });
-    }
+    pub fn benchmark<F>(f: F) -> BenchSamples where F: FnMut(&mut Bencher) {
+        let mut bs = Bencher::new();
 
-    pub fn ns_elapsed(&mut self) -> u64 {
-        self.dur.num_nanoseconds().unwrap() as u64
-    }
+        let ns_iter_summ = auto_bench(&mut bs, f);
 
-    pub fn ns_per_iter(&mut self) -> u64 {
-        if self.iterations == 0 {
-            0
-        } else {
-            self.ns_elapsed() / cmp::max(self.iterations, 1)
+        let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
+        let iter_s = 1_000_000_000 / ns_iter;
+        let mb_s = (bs.bytes * iter_s) / 1_000_000;
+
+        BenchSamples {
+            ns_iter_summ: ns_iter_summ,
+            mb_s: mb_s as uint
         }
     }
 
-    pub fn bench_n<F>(&mut self, n: u64, f: F) where F: FnOnce(&mut Bencher) {
-        self.iterations = n;
-        f(self);
+    pub fn ns_elapsed(me: &mut Bencher) -> u64 {
+        me.dur().num_nanoseconds().unwrap() as u64
+    }
+
+    pub fn ns_per_iter(me: &mut Bencher) -> u64 {
+        if me.iterations() == 0 {
+            0
+        } else {
+            ns_elapsed(me) / cmp::max(me.iterations(), 1)
+        }
+    }
+
+    pub fn bench_n<F>(me: &mut Bencher, n: u64, f: F)
+        where F: FnOnce(&mut Bencher)
+    {
+        me.set_iterations(n);
+        f(me);
     }
 
     // This is a more statistics-driven benchmark algorithm
-    pub fn auto_bench<F>(&mut self, mut f: F) -> stats::Summary<f64> where F: FnMut(&mut Bencher) {
+    pub fn auto_bench<F>(me: &mut Bencher, mut f: F) -> stats::Summary<f64>
+        where F: FnMut(&mut Bencher)
+    {
         // Initial bench run to get ballpark figure.
         let mut n = 1_u64;
-        self.bench_n(n, |x| f(x));
+        bench_n(me, n, |x| f(x));
 
         // Try to estimate iter count for 1ms falling back to 1m
         // iterations if first run took < 1ns.
-        if self.ns_per_iter() == 0 {
+        if ns_per_iter(me) == 0 {
             n = 1_000_000;
         } else {
-            n = 1_000_000 / cmp::max(self.ns_per_iter(), 1);
+            n = 1_000_000 / cmp::max(ns_per_iter(me), 1);
         }
         // if the first run took more than 1ms we don't want to just
         // be left doing 0 iterations on every loop. The unfortunate
@@ -1392,16 +1385,16 @@ impl Bencher {
             let loop_run = Duration::span(|| {
 
                 for p in samples.iter_mut() {
-                    self.bench_n(n, |x| f(x));
-                    *p = self.ns_per_iter() as f64;
+                    bench_n(me, n, |x| f(x));
+                    *p = ns_per_iter(me) as f64;
                 };
 
                 stats::winsorize(samples, 5.0);
                 summ = Some(stats::Summary::new(samples));
 
                 for p in samples.iter_mut() {
-                    self.bench_n(5 * n, |x| f(x));
-                    *p = self.ns_per_iter() as f64;
+                    bench_n(me, 5 * n, |x| f(x));
+                    *p = ns_per_iter(me) as f64;
                 };
 
                 stats::winsorize(samples, 5.0);
@@ -1425,31 +1418,6 @@ impl Bencher {
             }
 
             n *= 2;
-        }
-    }
-}
-
-pub mod bench {
-    use std::cmp;
-    use std::time::Duration;
-    use super::{Bencher, BenchSamples};
-
-    pub fn benchmark<F>(f: F) -> BenchSamples where F: FnMut(&mut Bencher) {
-        let mut bs = Bencher {
-            iterations: 0,
-            dur: Duration::nanoseconds(0),
-            bytes: 0
-        };
-
-        let ns_iter_summ = bs.auto_bench(f);
-
-        let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
-        let iter_s = 1_000_000_000 / ns_iter;
-        let mb_s = (bs.bytes * iter_s) / 1_000_000;
-
-        BenchSamples {
-            ns_iter_summ: ns_iter_summ,
-            mb_s: mb_s as uint
         }
     }
 }
