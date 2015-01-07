@@ -49,6 +49,15 @@ pub static HEAP: () = ();
 #[stable]
 pub struct Box<T>(Unique<T>);
 
+#[unstable]
+impl<T> Box<T> {
+    /// Moves `x` into a freshly allocated box on the global exchange heap.
+    #[unstable]
+    pub fn new(x: T) -> Box<T> {
+        box x
+    }
+}
+
 #[stable]
 impl<T: Default> Default for Box<T> {
     #[stable]
