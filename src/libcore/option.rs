@@ -238,7 +238,7 @@ impl<T> Option<T> {
     /// // First, cast `Option<String>` to `Option<&String>` with `as_ref`,
     /// // then consume *that* with `map`, leaving `num_as_str` on the stack.
     /// let num_as_int: Option<uint> = num_as_str.as_ref().map(|n| n.len());
-    /// println!("still can print num_as_str: {}", num_as_str);
+    /// println!("still can print num_as_str: {:?}", num_as_str);
     /// ```
     #[inline]
     #[stable]

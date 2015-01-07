@@ -196,7 +196,7 @@ pub mod compat {
     /// they are used to be passed to the real function if available.
     macro_rules! compat_fn {
         ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*)
-                                      -> $rettype:ty $fallback:block) => (
+                                      -> $rettype:ty { $fallback:expr }) => (
             #[inline(always)]
             pub unsafe fn $symbol($($argname: $argtype),*) -> $rettype {
                 static mut ptr: extern "system" fn($($argname: $argtype),*) -> $rettype = thunk;
@@ -211,14 +211,11 @@ pub mod compat {
                     }
                 }
 
-                extern "system" fn fallback($($argname: $argtype),*) -> $rettype $fallback
+                extern "system" fn fallback($($argname: $argtype),*)
+                                            -> $rettype { $fallback }
 
                 ::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
             }
-        );
-
-        ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*) $fallback:block) => (
-            compat_fn!($module::$symbol($($argname: $argtype),*) -> () $fallback)
         )
     }
 
@@ -236,20 +233,22 @@ pub mod compat {
             fn SetLastError(dwErrCode: DWORD);
         }
 
-        compat_fn! { kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
-                                                 _lpTargetFileName: LPCWSTR,
-                                                 _dwFlags: DWORD) -> BOOLEAN {
-            unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
-            0
-        } }
+        compat_fn! {
+            kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
+                                          _lpTargetFileName: LPCWSTR,
+                                          _dwFlags: DWORD) -> BOOLEAN {
+                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0 }
+            }
+        }
 
-        compat_fn! { kernel32::GetFinalPathNameByHandleW(_hFile: HANDLE,
-                                                       _lpszFilePath: LPCWSTR,
-                                                       _cchFilePath: DWORD,
-                                                       _dwFlags: DWORD) -> DWORD {
-            unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); }
-            0
-        } }
+        compat_fn! {
+            kernel32::GetFinalPathNameByHandleW(_hFile: HANDLE,
+                                                _lpszFilePath: LPCWSTR,
+                                                _cchFilePath: DWORD,
+                                                _dwFlags: DWORD) -> DWORD {
+                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0 }
+            }
+        }
     }
 }
 

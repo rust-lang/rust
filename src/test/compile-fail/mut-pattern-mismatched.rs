@@ -13,7 +13,7 @@ fn main() {
 
     // (separate lines to ensure the spans are accurate)
 
-    // SNAP b2085d9 uncomment this after the next snapshot
+    // SNAP 340ac04 uncomment this after the next snapshot
     // NOTE(stage0) just in case tidy doesn't check snap's in tests
     // let &_ // ~ ERROR expected `&mut isize`, found `&_`
     //    = foo;

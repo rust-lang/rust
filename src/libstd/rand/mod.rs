@@ -71,7 +71,7 @@
 //! use std::rand;
 //!
 //! let tuple = rand::random::<(f64, char)>();
-//! println!("{}", tuple)
+//! println!("{:?}", tuple)
 //! ```
 //!
 //! ## Monte Carlo estimation of π

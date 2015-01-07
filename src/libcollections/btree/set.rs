@@ -842,9 +842,9 @@ mod test {
         set.insert(1);
         set.insert(2);
 
-        let set_str = format!("{}", set);
+        let set_str = format!("{:?}", set);
 
-        assert!(set_str == "{1, 2}");
-        assert_eq!(format!("{}", empty), "{}");
+        assert_eq!(set_str, "BTreeSet {1i, 2i}");
+        assert_eq!(format!("{:?}", empty), "BTreeSet {}");
     }
 }

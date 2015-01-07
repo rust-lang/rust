@@ -213,15 +213,12 @@ pub struct Arguments<'a> {
     args: &'a [Argument<'a>],
 }
 
-#[cfg(stage0)]
-//FIXME: remove after stage0 snapshot
 impl<'a> Show for Arguments<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
-        write(fmt.buf, *self)
+        String::fmt(self, fmt)
     }
 }
 
-#[cfg(not(stage0))]
 impl<'a> String for Arguments<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
         write(fmt.buf, *self)
@@ -799,8 +796,13 @@ floating! { f64 }
 impl<T> Show for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
-
+impl<T> String for *const T {
+    fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
+}
 impl<T> Show for *mut T {
+    fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
+}
+impl<T> String for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 
@@ -861,8 +863,12 @@ impl<T: Show> Show for [T] {
     }
 }
 
-impl<T: String> String for [T] {
+#[cfg(stage0)]
+impl<T: Show> String for [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
+        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
+            try!(write!(f, "["));
+        }
         let mut is_first = true;
         for x in self.iter() {
             if is_first {
@@ -870,13 +876,43 @@ impl<T: String> String for [T] {
             } else {
                 try!(write!(f, ", "));
             }
-            try!(String::fmt(x, f))
+            try!(write!(f, "{}", *x))
+        }
+        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
+            try!(write!(f, "]"));
+        }
+        Ok(())
+    }
+}
+#[cfg(not(stage0))]
+impl<T: String> String for [T] {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
+            try!(write!(f, "["));
+        }
+        let mut is_first = true;
+        for x in self.iter() {
+            if is_first {
+                is_first = false;
+            } else {
+                try!(write!(f, ", "));
+            }
+            try!(write!(f, "{}", *x))
+        }
+        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
+            try!(write!(f, "]"));
         }
         Ok(())
     }
 }
 
 impl Show for () {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.pad("()")
+    }
+}
+
+impl String for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
     }

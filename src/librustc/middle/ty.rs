@@ -1726,7 +1726,7 @@ impl fmt::Show for RegionVid {
 
 impl<'tcx> fmt::Show for FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}; variadic: {})->{}", self.inputs, self.variadic, self.output)
+        write!(f, "({:?}; variadic: {})->{:?}", self.inputs, self.variadic, self.output)
     }
 }
 

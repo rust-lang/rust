@@ -128,7 +128,7 @@ fn parallel<T, F>(v: &mut [T], f: F)
         // boundary.
         let f = Racy(&f as *const _ as *const uint);
         let raw = Racy(chunk.repr());
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             let f = f.0 as *const F;
             unsafe { (*f)(i * size, mem::transmute(raw.0)) }
         })

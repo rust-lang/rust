@@ -922,7 +922,6 @@ pub trait ToString {
 }
 
 #[cfg(stage0)]
-//NOTE(stage0): remove after stage0 snapshot
 impl<T: fmt::Show> ToString for T {
     fn to_string(&self) -> String {
         use core::fmt::Writer;

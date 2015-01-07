@@ -46,10 +46,10 @@
 //!     // different type: just print it out unadorned.
 //!     match value_any.downcast_ref::<String>() {
 //!         Some(as_string) => {
-//!             println!("String ({}): {:?}", as_string.len(), as_string);
+//!             println!("String ({}): {}", as_string.len(), as_string);
 //!         }
 //!         None => {
-//!             println!("{}", value);
+//!             println!("{:?}", value);
 //!         }
 //!     }
 //! }

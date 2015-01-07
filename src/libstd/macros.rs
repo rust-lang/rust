@@ -371,7 +371,7 @@ pub mod builtin {
     ///
     /// ```
     #[macro_export]
-    macro_rules! format_args { ($fmt:expr $($args:tt)*) => ({
+    macro_rules! format_args { ($fmt:expr, $($args:tt)*) => ({
         /* compiler built-in */
     }) }
 
@@ -407,7 +407,7 @@ pub mod builtin {
     ///
     /// ```rust
     /// let key: Option<&'static str> = option_env!("SECRET_KEY");
-    /// println!("the secret key might be: {}", key);
+    /// println!("the secret key might be: {:?}", key);
     /// ```
     #[macro_export]
     macro_rules! option_env { ($name:expr) => ({ /* compiler built-in */ }) }

@@ -662,7 +662,7 @@ mod test {
             Ok(..) => panic!(),
             Err(ref e) => {
                 assert!(e.kind == NotConnected || e.kind == EndOfFile,
-                        "unknown kind: {}", e.kind);
+                        "unknown kind: {:?}", e.kind);
             }
         }
     }
@@ -686,7 +686,7 @@ mod test {
             Ok(..) => panic!(),
             Err(ref e) => {
                 assert!(e.kind == NotConnected || e.kind == EndOfFile,
-                        "unknown kind: {}", e.kind);
+                        "unknown kind: {:?}", e.kind);
             }
         }
     }
@@ -999,7 +999,7 @@ mod test {
             Ok(..) => panic!(),
             Err(e) => {
                 assert!(e.kind == ConnectionRefused || e.kind == OtherIoError,
-                        "unknown error: {} {}", e, e.kind);
+                        "unknown error: {} {:?}", e, e.kind);
             }
         }
     }

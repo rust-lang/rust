@@ -91,11 +91,7 @@ pub mod stats;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
-<<<<<<< HEAD
-#[derive(Clone, PartialEq, Eq, Hash)]
-=======
-#[deriving(Clone, PartialEq, Eq, Hash, Show)]
->>>>>>> core: split into fmt::Show and fmt::String
+#[derive(Clone, PartialEq, Eq, Hash, Show)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(String)

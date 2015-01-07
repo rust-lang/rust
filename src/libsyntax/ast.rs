@@ -103,26 +103,26 @@ impl Ident {
 //NOTE(stage0): remove after snapshot
 impl fmt::Show for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        write!(f, "{}#{}", self.name, self.ctxt)
     }
 }
 
 impl fmt::String for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}#{}", self.name, self.ctxt)
+        fmt::String::fmt(&self.name, f)
     }
 }
 
 impl fmt::Show for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        let Name(nm) = *self;
+        write!(f, "{:?}({})", token::get_name(*self).get(), nm)
     }
 }
 
 impl fmt::String for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let Name(nm) = *self;
-        write!(f, "\"{}\"({})", token::get_name(*self).get(), nm)
+        fmt::String::fmt(token::get_name(*self).get(), f)
     }
 }
 

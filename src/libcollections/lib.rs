@@ -24,6 +24,7 @@
 #![allow(unknown_features)]
 #![feature(unsafe_destructor, slicing_syntax)]
 #![feature(old_impl_check)]
+#![feature(unboxed_closures)]
 #![no_std]
 
 #[macro_use]

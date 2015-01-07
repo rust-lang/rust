@@ -1648,21 +1648,15 @@ mod tests {
         assert_eq!(d.len(), 3u);
         d.push_back(137);
         assert_eq!(d.len(), 4u);
-        debug!("{}", d.front());
         assert_eq!(*d.front().unwrap(), 42);
-        debug!("{}", d.back());
         assert_eq!(*d.back().unwrap(), 137);
         let mut i = d.pop_front();
-        debug!("{}", i);
         assert_eq!(i, Some(42));
         i = d.pop_back();
-        debug!("{}", i);
         assert_eq!(i, Some(137));
         i = d.pop_back();
-        debug!("{}", i);
         assert_eq!(i, Some(137));
         i = d.pop_back();
-        debug!("{}", i);
         assert_eq!(i, Some(17));
         assert_eq!(d.len(), 0u);
         d.push_back(3);
@@ -2308,12 +2302,12 @@ mod tests {
     #[test]
     fn test_show() {
         let ringbuf: RingBuf<int> = range(0i, 10).collect();
-        assert!(format!("{}", ringbuf) == "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert_eq!(format!("{:?}", ringbuf), "RingBuf [0i, 1i, 2i, 3i, 4i, 5i, 6i, 7i, 8i, 9i]");
 
         let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()
                                                                         .map(|&s| s)
                                                                         .collect();
-        assert!(format!("{}", ringbuf) == "[just, one, test, more]");
+        assert_eq!(format!("{:?}", ringbuf), "RingBuf [\"just\", \"one\", \"test\", \"more\"]");
     }
 
     #[test]

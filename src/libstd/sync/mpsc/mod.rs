@@ -481,7 +481,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// // Do some useful work for awhile
 ///
 /// // Let's see what that answer was
-/// println!("{}", rx.recv().unwrap());
+/// println!("{:?}", rx.recv().unwrap());
 /// ```
 #[stable]
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {

@@ -1347,7 +1347,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// // count the number of occurrences of letters in the vec
     /// for x in vec!["a","b","a","c","a","b"].iter() {
-    ///     match count.entry(x) {
+    ///     match count.entry(*x) {
     ///         Entry::Vacant(view) => {
     ///             view.insert(1);
     ///         },

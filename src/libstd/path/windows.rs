@@ -1740,8 +1740,8 @@ mod tests {
                     let path = Path::new(pstr);
                     let arg = $arg;
                     let res = path.$op(arg);
-                    let exp = $res;
-                    assert_eq!(Path::new($path).$op($arg), $res);
+                    let exp = Path::new($res);
+                    assert_eq!(res, exp);
                 }
             )
         }
@@ -1920,8 +1920,7 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let (abs, vol, cwd, rel) = ($abs, $vol, $cwd, $rel);
-                    let b = path.is_absolute();
-                    assert_eq!(path.is_absolute(), asb);
+                    assert_eq!(path.is_absolute(), abs);
                     assert_eq!(is_vol_relative(&path), vol);
                     assert_eq!(is_cwd_relative(&path), cwd);
                     assert_eq!(path.is_relative(), rel);
@@ -1955,7 +1954,7 @@ mod tests {
                     let dest = Path::new($dest);
                     let exp = $exp;
                     let res = path.is_ancestor_of(&dest);
-                    assert_eq!(Path::new($path).is_ancestor_of(Path::new($dest)), $exp);
+                    assert_eq!(res, exp);
                 }
             )
         }
@@ -2084,7 +2083,7 @@ mod tests {
         macro_rules! t {
             (s: $path:expr, $other:expr, $exp:expr) => (
                 {
-                    assert_eq!(Path::new($path).path_relative_from(Path::new($other))
+                    assert_eq!(Path::new($path).path_relative_from(&Path::new($other))
                               .as_ref().and_then(|x| x.as_str()), $exp);
                 }
             )
