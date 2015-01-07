@@ -466,7 +466,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
 
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
-    let function_type = normalize_ty(ccx.tcx(), function_type);
+    let function_type = erase_regions(ccx.tcx(), &function_type);
     let params = match function_type.sty {
         ty::ty_unboxed_closure(_, _, ref substs) => substs.types.clone(),
         _ => unreachable!()
