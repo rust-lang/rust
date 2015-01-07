@@ -39,8 +39,13 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         // check can populate this table further with impls from other
         // crates.
         let trait_def_ids: Vec<(ast::DefId, Vec<ast::DefId>)> =
-            self.tcx.trait_impls.borrow().iter().map(|(&k, v)|
-                                                     (k, v.borrow().clone())).collect();
+            self.tcx.trait_impls.borrow().iter().map(|(&k, v)| {
+                let mut impls = v.borrow().clone();
+                if let Some(neg_impls) = self.tcx.trait_negative_impls.borrow().get(&k) {
+                    impls.push_all(neg_impls.borrow().as_slice());
+                }
+                (k, impls)
+            }).collect();
 
         for &(trait_def_id, ref impls) in trait_def_ids.iter() {
             self.check_for_overlapping_impls_of_trait(trait_def_id, impls);
