@@ -189,7 +189,7 @@
     "u64" "i64"
 
     "f32" "f64"
-    "float" "int" "uint"
+    "float" "int" "uint" "isize" "usize"
     "bool"
     "str" "char"))
 

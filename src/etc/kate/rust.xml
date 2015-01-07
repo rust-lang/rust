@@ -91,7 +91,9 @@
 	<list name="types">
 		<item> bool </item>
 		<item> int </item>
+		<item> isize </item>
 		<item> uint </item>
+		<item> usize </item>
 		<item> i8 </item>
 		<item> i16 </item>
 		<item> i32 </item>
