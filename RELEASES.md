@@ -67,9 +67,10 @@ Version 1.0.0-alpha (January 2015)
       characters][unicode].
     * `macro_rules!` [has been declared stable][mac]. Though it is a
       flawed system it is sufficiently popular that it must be usable
-      for 1.0. Effort has gone into future-proofing it in ways that
-      will allow other macro systems to be developed in parallel, and
-      won't otherwise impact the evolution of the language.
+      for 1.0. Effort has gone into [future-proofing][mac-future] it
+      in ways that will allow other macro systems to be developed in
+      parallel, and won't otherwise impact the evolution of the
+      language.
     * The prelude has been [pared back significantly][prelude] such
       that it is the minimum necessary to support the most pervasive
       code patterns, and through [generalized where clauses][where]
@@ -94,6 +95,9 @@ Version 1.0.0-alpha (January 2015)
       items or variants they contain is [now done with `self` instead
       of `mod`][self], as in use `foo::{self, bar}`
     * Glob imports are no longer feature-gated.
+    * The `box` operator and `box` patterns have been feature-gated
+      pending a redesign. For now unique boxes should be allocated
+      like other containers, with `Box::new`.
 
 * Libraries
 
@@ -146,6 +150,7 @@ Version 1.0.0-alpha (January 2015)
 [err-conv]: https://github.com/rust-lang/rfcs/blob/master/text/0236-error-conventions.md
 [rt]: https://github.com/rust-lang/rfcs/blob/master/text/0230-remove-runtime.md
 [mac]: https://github.com/rust-lang/rfcs/blob/master/text/0453-macro-reform.md
+[mac-future]: https://github.com/rust-lang/rfcs/pull/550
 [DST]: http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/
 [coll1]: https://github.com/rust-lang/rfcs/blob/master/text/0235-collections-conventions.md
 [coll2]: https://github.com/rust-lang/rfcs/blob/master/text/0509-collections-reform-part-2.md
