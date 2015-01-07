@@ -51,7 +51,11 @@ use std::rc::Rc;
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use back::abi::FAT_PTR_ADDR;
 use middle::subst;
-use middle::subst::Subst;
+use middle::ty::{mod, Ty, UnboxedClosureTyper};
+use middle::ty::Disr;
+use syntax::ast;
+use syntax::attr;
+use syntax::attr::IntType;
 use trans::_match;
 use trans::build::*;
 use trans::cleanup;
@@ -59,13 +63,9 @@ use trans::cleanup::CleanupMethods;
 use trans::common::*;
 use trans::datum;
 use trans::machine;
+use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::ty::{self, Ty, UnboxedClosureTyper};
-use middle::ty::Disr;
-use syntax::ast;
-use syntax::attr;
-use syntax::attr::IntType;
 use util::ppaux::ty_to_string;
 
 type Hint = attr::ReprAttr;
@@ -159,7 +159,8 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_struct(def_id, substs) => {
             let fields = ty::lookup_struct_fields(cx.tcx(), def_id);
             let mut ftys = fields.iter().map(|field| {
-                ty::lookup_field_type(cx.tcx(), def_id, field.id, substs)
+                let fty = ty::lookup_field_type(cx.tcx(), def_id, field.id, substs);
+                monomorphize::normalize_associated_type(cx.tcx(), &fty)
             }).collect::<Vec<_>>();
             let packed = ty::lookup_packed(cx.tcx(), def_id);
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
@@ -432,7 +433,7 @@ fn get_cases<'tcx>(tcx: &ty::ctxt<'tcx>,
                    -> Vec<Case<'tcx>> {
     ty::enum_variants(tcx, def_id).iter().map(|vi| {
         let arg_tys = vi.args.iter().map(|&raw_ty| {
-            raw_ty.subst(tcx, substs)
+            monomorphize::apply_param_substs(tcx, substs, &raw_ty)
         }).collect();
         Case { discr: vi.disr_val, tys: arg_tys }
     }).collect()
