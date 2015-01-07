@@ -2749,9 +2749,9 @@ macro_rules! step_impl_no_between {
 }
 
 step_impl!(uint u8 u16 u32 int i8 i16 i32);
-#[cfg(target_word_size = "64")]
+#[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
 step_impl!(u64 i64);
-#[cfg(target_word_size = "32")]
+#[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
 step_impl_no_between!(u64 i64);
 
 
