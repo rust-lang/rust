@@ -12,7 +12,7 @@
 // typechecks. The pattern involves regions bound in closures that
 // wind up related to inference variables.
 //
-// NB. Changes to the region implementatiosn have broken this pattern
+// NB. Changes to the region implementations have broken this pattern
 // a few times, but it happens to be used in the compiler so those
 // changes were caught. However, those uses in the compiler could
 // easily get changed or refactored away in the future.
