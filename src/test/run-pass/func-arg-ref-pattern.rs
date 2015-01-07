@@ -14,6 +14,7 @@
 // boxes. Make sure that we don't free the box as we match the
 // pattern.
 
+#![feature(box_syntax)]
 
 fn getaddr(box ref x: Box<uint>) -> *const uint {
     let addr: *const uint = &*x;
