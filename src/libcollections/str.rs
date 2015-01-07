@@ -1355,8 +1355,7 @@ mod tests {
     use prelude::*;
 
     use core::iter::AdditiveIterator;
-    use super::from_utf8;
-    use super::Utf8Error;
+    use super::{from_utf8, Utf8Error};
 
     #[test]
     fn test_le() {
