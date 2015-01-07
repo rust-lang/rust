@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test inherant trait impls work cross-crait.
+// Test inherent trait impls work cross-crait.
 
 pub trait Bar<'a> : 'a {}
 
