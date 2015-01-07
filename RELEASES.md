@@ -1,3 +1,185 @@
+Version 1.0.0-alpha (January 2015)
+----------------------------------
+
+  * ~2400 changes, numerous bugfixes
+
+  * Highlights
+
+    * The language itself is considered feature complete for 1.0,
+      though there will be many usability improvements and bugfixes
+      before the final release.
+    * Nearly 50% of the public API surface of the standard library has
+      been declared 'stable'. Those interfaces are unlikely to change
+      before 1.0.
+    * The long-running debate over integer types has been
+      [settled][ints]: Rust will ship with types named `isize` and
+      `usize`, rather than `int` and `uint`, for pointer-sized
+      integers. Guidelines will be rolled out during the alpha cycle.
+    * Most crates that are not `std` have been moved out of the Rust
+      distribution into the Cargo ecosystem so they can evolve
+      separately and don't need to be stabilized as quickly, including
+      'time', 'getopts', 'num', 'regex', and 'term'.
+    * Documentation continues to be expanded with more guides, more
+      API coverage and more examples.
+    * All official Rust binary installers now come with [Cargo], the
+      Rust package manager.
+
+* Language
+
+    * Closures have been [completely redesigned][unboxed] to be
+      implemented in terms of traits, can now be used as generic type
+      bounds and thus monomorphized and inlined, or via an opaque
+      pointer (boxed) as in the old system. The new system is often
+      referred to as 'unboxed' closures.
+    * Traits now support [associated types][assoc], allowing families
+      of related types to be defined together and used generically in
+      powerful ways.
+    * Enum variants are [namespaced by their type names][enum].
+    * [`where` clauses][where] provide a more versatile and attractive
+      syntax for specifying generic bounds, though the previous syntax
+      remains valid.
+    * Rust again picks a [fallback][fb] (either i32 or f64) for uninferred
+      numeric types.
+    * Rust [no longer has a runtime][rt] of any description, and only
+      supports OS threads, not green threads.
+    * At long last, Rust has been overhauled for 'dynamically-sized
+      types' ([DST]), which integrates 'fat pointers' (object types,
+      arrays, and `str`) more deeply into the type system, making it
+      more consistent.
+    * Rust now has a general [range syntax][range], `i..j`, `i..`, and
+      `..j` that produce range types and which, when combined with the
+      `Index` operator and multidispatch, leads to a convenient slice
+      notation, `[i..j]`.
+    * The new range syntax revealed an ambiguity in the fixed-length
+      array syntax, so now fixed length arrays [are written `[T;
+      N]`][arrays].
+    * The `Copy` trait is no longer implemented automatically. Unsafe
+      pointers no longer implement `Sync` and `Send` so types
+      containing them don't automatically either. `Sync` and `Send`
+      are now 'unsafe traits' so one can "forcibly" implement them via
+      `unsafe impl` if a type confirms to the requirements for them
+      even though the internals do not (e.g. structs containing unsafe
+      pointers like `Arc`). These changes are intended to prevent some
+      footguns and are collectively known as [opt-in built-in
+      traits][oibit] (though `Sync` and `Send` will soon become pure
+      library types unknown to the compiler).
+    * Operator traits now take their operands [by value][ops], and
+      comparison traits can use multidispatch to compare one type
+      against multiple other types, allowing e.g. `String` to be
+      compared with `&str`.
+    * `if let` and `while let` are no longer feature-gated.
+    * Rust has adopted a more [uniform syntax for escaping unicode
+      characters][unicode].
+    * `macro_rules!` [has been declared stable][mac]. Though it is a
+      flawed system it is sufficiently popular that it must be usable
+      for 1.0. Effort has gone into [future-proofing][mac-future] it
+      in ways that will allow other macro systems to be developed in
+      parallel, and won't otherwise impact the evolution of the
+      language.
+    * The prelude has been [pared back significantly][prelude] such
+      that it is the minimum necessary to support the most pervasive
+      code patterns, and through [generalized where clauses][where]
+      many of the prelude extension traits have been consolidated.
+    * Rust's rudimentary reflection [has been removed][refl], as it
+      incurred too much code generation for little benefit.
+    * [Struct variants][structvars] are no longer feature-gated.
+    * Trait bounds can be [polymorphic over lifetimes][hrtb]. Also
+      known as 'higher-ranked trait bounds', this crucially allows
+      unboxed closures to work.
+    * Macros invocations surrounded by parens or square brackets and
+      not terminated by a semicolon are [parsed as
+      expressions][macros], which makes expressions like `vec![1i32,
+      2, 3].len()` work as expected.
+    * Trait objects now implement their traits automatically, and
+      traits that can be coerced to objects now must be [object
+      safe][objsafe].
+    * Automatically deriving traits is now done with `#[derive(...)]`
+      not `#[deriving(...)]` for [consistency with other naming
+      conventions][derive].
+    * Importing the containing module or enum at the same time as
+      items or variants they contain is [now done with `self` instead
+      of `mod`][self], as in use `foo::{self, bar}`
+    * Glob imports are no longer feature-gated.
+    * The `box` operator and `box` patterns have been feature-gated
+      pending a redesign. For now unique boxes should be allocated
+      like other containers, with `Box::new`.
+
+* Libraries
+
+    * A [series][coll1] of [efforts][coll2] to establish
+      [conventions][coll3] for collections types has resulted in API
+      improvements throughout the standard library.
+    * New [APIs for error handling][err] provide ergonomic interop
+      between error types, and [new conventions][err-conv] describe
+      more clearly the recommended error handling strategies in Rust.
+    * The `fail!` macro has been renamed to [`panic!`][panic] so that
+      it is easier to discuss failure in the context of error handling
+      without making clarifications as to whether you are referring to
+      the 'fail' macro or failure more generally.
+    * On Linux, `OsRng` prefers the new, more reliable `getrandom`
+      syscall when available.
+    * The 'serialize' crate has been renamed 'rustc-serialize' and
+      moved out of the distribution to Cargo. Although it is widely
+      used now, it is expected to be superceded in the near future.
+    * The `Show` formatter, typically implemented with
+      `#[derive(Show)]` is [now requested with the `{:?}`
+      specifier][show] and is intended for use by all types, for uses
+      such as `println!` debugging. The new `String` formatter must be
+      implemented by hand, uses the `{}` specifier, and is intended
+      for full-fidelity conversions of things that can logically be
+      represented as strings.
+
+* Tooling
+
+    * [Flexible target specification][flex] allows rustc's code
+      generation to be configured to support otherwise-unsupported
+      platforms.
+    * Rust comes with rust-gdb and rust-lldb scripts that launch their
+      respective debuggers with Rust-appropriate pretty-printing.
+    * The Windows installation of Rust is distributed with the the
+      MinGW components currently required to link binaries on that
+      platform.
+
+* Misc
+
+    * Nullable enum optimizations have been extended to more types so
+      that e.g. `Option<Vec<T>>` and `Option<String>` take up no more
+      space than the inner types themselves.
+    * Work has begun on supporting AArch64.
+
+[Cargo]: https://crates.io
+[unboxed]: http://smallcultfollowing.com/babysteps/blog/2014/11/26/purging-proc/
+[enum]: https://github.com/rust-lang/rfcs/blob/master/text/0390-enum-namespacing.md
+[flex]: https://github.com/rust-lang/rfcs/blob/master/text/0131-target-specification.md
+[err]: https://github.com/rust-lang/rfcs/blob/master/text/0201-error-chaining.md
+[err-conv]: https://github.com/rust-lang/rfcs/blob/master/text/0236-error-conventions.md
+[rt]: https://github.com/rust-lang/rfcs/blob/master/text/0230-remove-runtime.md
+[mac]: https://github.com/rust-lang/rfcs/blob/master/text/0453-macro-reform.md
+[mac-future]: https://github.com/rust-lang/rfcs/pull/550
+[DST]: http://smallcultfollowing.com/babysteps/blog/2014/01/05/dst-take-5/
+[coll1]: https://github.com/rust-lang/rfcs/blob/master/text/0235-collections-conventions.md
+[coll2]: https://github.com/rust-lang/rfcs/blob/master/text/0509-collections-reform-part-2.md
+[coll3]: https://github.com/rust-lang/rfcs/blob/master/text/0216-collection-views.md
+[ops]: https://github.com/rust-lang/rfcs/blob/master/text/0439-cmp-ops-reform.md
+[prelude]: https://github.com/rust-lang/rfcs/blob/master/text/0503-prelude-stabilization.md
+[where]: https://github.com/rust-lang/rfcs/blob/master/text/0135-where.md
+[refl]: https://github.com/rust-lang/rfcs/blob/master/text/0379-remove-reflection.md
+[panic]: https://github.com/rust-lang/rfcs/blob/master/text/0221-panic.md
+[structvars]: https://github.com/rust-lang/rfcs/blob/master/text/0418-struct-variants.md
+[hrtb]: https://github.com/rust-lang/rfcs/blob/master/text/0387-higher-ranked-trait-bounds.md
+[unicode]: https://github.com/rust-lang/rfcs/blob/master/text/0446-es6-unicode-escapes.md
+[oibit]: https://github.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md
+[macros]: https://github.com/rust-lang/rfcs/blob/master/text/0378-expr-macros.md
+[range]: https://github.com/rust-lang/rfcs/blob/master/text/0439-cmp-ops-reform.md#indexing-and-slicing
+[arrays]: https://github.com/rust-lang/rfcs/blob/master/text/0520-new-array-repeat-syntax.md
+[show]: https://github.com/rust-lang/rfcs/blob/master/text/0504-show-stabilization.md
+[derive]: https://github.com/rust-lang/rfcs/blob/master/text/0534-deriving2derive.md
+[self]: https://github.com/rust-lang/rfcs/blob/master/text/0532-self-in-use.md
+[fb]: https://github.com/rust-lang/rfcs/blob/master/text/0212-restore-int-fallback.md
+[objsafe]: https://github.com/rust-lang/rfcs/blob/master/text/0255-object-safety.md
+[assoc]: https://github.com/rust-lang/rfcs/blob/master/text/0195-associated-items.md
+[ints]: https://github.com/rust-lang/rfcs/pull/544#issuecomment-68760871
+
 Version 0.12.0 (October 2014)
 -----------------------------
 
