@@ -97,7 +97,7 @@ use kinds::{Send, Sized, Sync};
 use cmp::{PartialEq, Eq, Ord, PartialOrd};
 use cmp::Ordering::{self, Less, Equal, Greater};
 
-// FIXME #19649: instrinsic docs don't render, so these have no docs :(
+// FIXME #19649: intrinsic docs don't render, so these have no docs :(
 
 #[unstable]
 pub use intrinsics::copy_nonoverlapping_memory;
@@ -233,7 +233,7 @@ pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
 /// not drop the contents of `dst`. This could leak allocations or resources,
 /// so care must be taken not to overwrite an object that should be dropped.
 ///
-/// This is appropriate for initializing uninitialized memory, or overwritting
+/// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
 #[inline]
 #[stable]

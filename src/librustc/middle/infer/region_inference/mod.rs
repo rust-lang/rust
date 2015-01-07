@@ -106,7 +106,7 @@ pub enum RegionResolutionError<'tcx> {
 
     /// `GenericBoundFailure(p, s, a, bs)
     ///
-    /// The parameter/assocated-type `p` must be known to outlive the lifetime
+    /// The parameter/associated-type `p` must be known to outlive the lifetime
     /// `a`, but it is only known to outlive `bs` (and none of the
     /// regions in `bs` outlive `a`).
     GenericBoundFailure(SubregionOrigin<'tcx>, GenericKind<'tcx>, Region, Vec<Region>),
@@ -337,7 +337,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     ///
     /// The idea is to always create a snapshot. Skolemized regions
     /// can be created in the context of this snapshot, but once the
-    /// snapshot is commited or rolled back, their numbers will be
+    /// snapshot is committed or rolled back, their numbers will be
     /// recycled, so you must be finished with them. See the extensive
     /// comments in `higher_ranked.rs` to see how it works (in
     /// particular, the subtyping comparison).

@@ -97,7 +97,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
             fcx.write_ty(pat.id, lhs_ty);
 
-            // subtyping doens't matter here, as the value is some kind of scalar
+            // subtyping doesn't matter here, as the value is some kind of scalar
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
         }
         ast::PatEnum(..) | ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {

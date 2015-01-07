@@ -2780,7 +2780,7 @@ impl<'a> Parser<'a> {
                 let open_span = self.span;
                 self.bump();
 
-                // Parse the token trees within the delimeters
+                // Parse the token trees within the delimiters
                 let tts = self.parse_seq_to_before_end(
                     &token::CloseDelim(delim),
                     seq_sep_none(),
