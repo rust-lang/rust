@@ -21,7 +21,7 @@ pub fn main() {
 
     // FIXME #10183
     // FIXME #18069
-    //if cfg!(target_word_size = "64") {
+    //if cfg!(target_pointer_width = "64") {
     //    assert_eq!(size_of::<[u8; (1 << 32)]>(), (1u << 32));
     //}
 }

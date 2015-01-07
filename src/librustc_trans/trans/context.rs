@@ -721,7 +721,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     /// currently conservatively bounded to 1 << 47 as that is enough to cover the current usable
     /// address space on 64-bit ARMv8 and x86_64.
     pub fn obj_size_bound(&self) -> u64 {
-        match self.sess().target.target.target_word_size.index(&FullRange) {
+        match self.sess().target.target.target_pointer_width.index(&FullRange) {
             "32" => 1 << 31,
             "64" => 1 << 47,
             _ => unreachable!() // error handled by config::build_target_config
