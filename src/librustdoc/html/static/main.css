@@ -157,7 +157,6 @@ nav.sub {
     left: 0;
     top: 0;
     min-height: 100%;
-    z-index: -1;
 }
 
 .content, nav { max-width: 960px; }
@@ -221,6 +220,7 @@ nav.sub {
 .content pre.line-numbers {
     float: left;
     border: none;
+    position: relative;
 
     -webkit-user-select: none;
     -moz-user-select: none;
