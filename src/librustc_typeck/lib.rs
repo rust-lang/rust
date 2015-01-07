@@ -73,6 +73,7 @@ This API is completely unstable and subject to change.
 
 #![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
+#![feature(box_syntax)]
 #![feature(rustc_diagnostic_macros)]
 #![allow(non_camel_case_types)]
 
