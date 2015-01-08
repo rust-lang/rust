@@ -33,7 +33,7 @@ fn test1() {
 }
 
 fn test2<F>(f: &F) where F: FnMut() {
-    (*f)(); //~ ERROR: cannot borrow immutable dereference of `&`-pointer `*f` as mutable
+    (*f)(); //~ ERROR: cannot borrow immutable borrowed content `*f` as mutable
 }
 
 fn test3<F>(f: &mut F) where F: FnMut() {
@@ -41,7 +41,7 @@ fn test3<F>(f: &mut F) where F: FnMut() {
 }
 
 fn test4(f: &Test) {
-    f.f.call_mut(()) //~ ERROR: cannot borrow immutable dereference of `Box` `*f.f` as mutable
+    f.f.call_mut(()) //~ ERROR: cannot borrow immutable `Box` content `*f.f` as mutable
 }
 
 fn test5(f: &mut Test) {

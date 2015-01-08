@@ -37,9 +37,9 @@ fn illegal_dereference<T: Add<Output=()>>(mut x: T, y: T) {
     let m = &mut x;
     let n = &y;
 
-    *m  //~ ERROR: cannot move out of dereference of `&mut`-pointer
+    *m  //~ ERROR: cannot move out of borrowed content
     +
-    *n;  //~ ERROR: cannot move out of dereference of `&`-pointer
+    *n;  //~ ERROR: cannot move out of borrowed content
 }
 
 struct Foo;
