@@ -2535,7 +2535,7 @@ impl<'a> Parser<'a> {
               }
 
               // expr[...]
-              // An index expression.
+              // Could be either an index expression or a slicing expression.
               token::OpenDelim(token::Bracket) => {
                 let bracket_pos = self.span.lo;
                 self.bump();
@@ -2574,22 +2574,6 @@ impl<'a> Parser<'a> {
                     self.span_note(e.span,
                                    "use `&expr[]` to construct a slice of the whole of expr");
                 }
-              }
-
-              // A range expression, either `expr..expr` or `expr..`.
-              token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
-                self.bump();
-
-                let opt_end = if self.token.can_begin_expr() {
-                    let end = self.parse_expr_res(RESTRICTION_NO_DOTS);
-                    Some(end)
-                } else {
-                    None
-                };
-
-                let hi = self.span.hi;
-                let range = self.mk_range(Some(e), opt_end);
-                return self.mk_expr(lo, hi, range);
               }
               _ => return e
             }
@@ -2833,7 +2817,7 @@ impl<'a> Parser<'a> {
           token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
             // A range, closed above: `..expr`.
             self.bump();
-            let e = self.parse_prefix_expr();
+            let e = self.parse_expr();
             hi = e.span.hi;
             ex = self.mk_range(None, Some(e));
           }
@@ -2900,6 +2884,7 @@ impl<'a> Parser<'a> {
             self.restrictions.contains(RESTRICTION_NO_BAR_OP) {
             return lhs;
         }
+
         self.expected_tokens.push(TokenType::Operator);
 
         let cur_opt = self.token.to_binop();
@@ -2991,6 +2976,23 @@ impl<'a> Parser<'a> {
               let assign_op = self.mk_assign_op(aop, lhs, rhs);
               self.mk_expr(span.lo, rhs_span.hi, assign_op)
           }
+          // A range expression, either `expr..expr` or `expr..`.
+          token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
+            self.bump();
+
+            let opt_end = if self.token.can_begin_expr() {
+                let end = self.parse_expr_res(RESTRICTION_NO_DOTS);
+                Some(end)
+            } else {
+                None
+            };
+
+            let lo = lhs.span.lo;
+            let hi = self.span.hi;
+            let range = self.mk_range(Some(lhs), opt_end);
+            return self.mk_expr(lo, hi, range);
+          }
+
           _ => {
               lhs
           }
