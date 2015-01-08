@@ -43,7 +43,7 @@ mod test {
 }
 
 mod foo {
-    pub struct Point{pub x: int, pub y: int}
+    pub struct Point{pub x: isize, pub y: isize}
     pub struct Square{pub p: Point, pub h: uint, pub w: uint}
 }
 
@@ -54,7 +54,7 @@ mod bar {
     pub mod c {
         use foo::Point;
         use foo::Square; //~ ERROR unused import
-        pub fn cc(p: Point) -> int { return 2i * (p.x + p.y); }
+        pub fn cc(p: Point) -> isize { return 2i * (p.x + p.y); }
     }
 
     #[allow(unused_imports)]

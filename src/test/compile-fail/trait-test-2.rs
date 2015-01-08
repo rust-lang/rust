@@ -11,11 +11,11 @@
 #![feature(box_syntax)]
 
 trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
-impl bar for int { fn dup(&self) -> int { *self } fn blah<X>(&self) {} }
+impl bar for isize { fn dup(&self) -> isize { *self } fn blah<X>(&self) {} }
 impl bar for uint { fn dup(&self) -> uint { *self } fn blah<X>(&self) {} }
 
 fn main() {
-    10i.dup::<int>(); //~ ERROR does not take type parameters
-    10i.blah::<int, int>(); //~ ERROR incorrect number of type parameters
+    10i.dup::<isize>(); //~ ERROR does not take type parameters
+    10i.blah::<isize, isize>(); //~ ERROR incorrect number of type parameters
     (box 10i as Box<bar>).dup(); //~ ERROR cannot convert to a trait object
 }

@@ -14,7 +14,7 @@ extern crate issue_3907;
 type Foo = issue_3907::Foo+'static;
 
 struct S {
-    name: int
+    name: isize
 }
 
 fn bar(_x: Foo) {} //~ ERROR the trait `core::marker::Sized` is not implemented

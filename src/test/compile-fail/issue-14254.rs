@@ -15,7 +15,7 @@ trait Foo {
 }
 
 struct BarTy {
-    x : int,
+    x : isize,
     y : f64,
 }
 
@@ -76,7 +76,7 @@ impl Foo for Box<BarTy> {
     }
 }
 
-impl Foo for *const int {
+impl Foo for *const isize {
     fn bar(&self) {
         baz();
         //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
@@ -85,7 +85,7 @@ impl Foo for *const int {
     }
 }
 
-impl<'a> Foo for &'a int {
+impl<'a> Foo for &'a isize {
     fn bar(&self) {
         baz();
         //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
@@ -94,7 +94,7 @@ impl<'a> Foo for &'a int {
     }
 }
 
-impl<'a> Foo for &'a mut int {
+impl<'a> Foo for &'a mut isize {
     fn bar(&self) {
         baz();
         //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
@@ -103,7 +103,7 @@ impl<'a> Foo for &'a mut int {
     }
 }
 
-impl Foo for Box<int> {
+impl Foo for Box<isize> {
     fn bar(&self) {
         baz();
         //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?

@@ -13,11 +13,11 @@
 
 #![feature(box_syntax)]
 
-fn get(x: &int) -> int {
+fn get(x: &isize) -> isize {
     *x
 }
 
-fn set(x: &mut int) {
+fn set(x: &mut isize) {
     *x = 4;
 }
 
@@ -59,7 +59,7 @@ fn f() {
 
 fn g() {
     struct Foo {
-        f: Box<int>
+        f: Box<isize>
     }
 
     let mut x = box Foo { f: box 3 };
@@ -69,7 +69,7 @@ fn g() {
 
 fn h() {
     struct Foo {
-        f: Box<int>
+        f: Box<isize>
     }
 
     let mut x = box Foo { f: box 3 };

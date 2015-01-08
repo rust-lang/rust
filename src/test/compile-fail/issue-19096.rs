@@ -10,5 +10,5 @@
 
 fn main() {
     let t = (42i, 42i);
-    t.0::<int>; //~ ERROR expected one of `.`, `;`, `}`, or an operator, found `::`
+    t.0::<isize>; //~ ERROR expected one of `.`, `;`, `}`, or an operator, found `::`
 }

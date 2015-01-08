@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type mut_box = Box<mut int>;
+type mut_box = Box<mut isize>;
     //~^  ERROR expected identifier, found keyword `mut`
-    //~^^ ERROR expected one of `(`, `+`, `,`, `::`, or `>`, found `int`
+    //~^^ ERROR expected one of `(`, `+`, `,`, `::`, or `>`, found `isize`

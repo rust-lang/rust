@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-struct A { a: int, b: Box<int> }
+struct A { a: isize, b: Box<isize> }
 
 fn deref_after_move() {
     let x = A { a: 1, b: box 2 };

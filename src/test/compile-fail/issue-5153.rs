@@ -14,8 +14,8 @@ trait Foo {
     fn foo(self: Box<Self>);
 }
 
-impl Foo for int {
-    fn foo(self: Box<int>) { }
+impl Foo for isize {
+    fn foo(self: Box<isize>) { }
 }
 
 fn main() {

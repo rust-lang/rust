@@ -10,8 +10,8 @@
 
 
 struct foo {
-    a: int,
-    b: int,
+    a: isize,
+    b: isize,
 }
 
 type bar = Box<foo>;

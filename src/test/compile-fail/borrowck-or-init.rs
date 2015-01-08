@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let i: int;
+    let i: isize;
 
     println!("{}", false || { i = 5; true });
     println!("{}", i); //~ ERROR use of possibly uninitialized variable: `i`

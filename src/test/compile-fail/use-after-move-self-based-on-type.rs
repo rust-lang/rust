@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct S {
-    x: int,
+    x: isize,
 }
 
 impl Drop for S {
@@ -17,7 +17,7 @@ impl Drop for S {
 }
 
 impl S {
-    pub fn foo(self) -> int {
+    pub fn foo(self) -> isize {
         self.bar();
         return self.x;  //~ ERROR use of moved value: `self.x`
     }

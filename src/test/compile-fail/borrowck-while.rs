@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() -> int {
-    let mut x: int;
+fn f() -> isize {
+    let mut x: isize;
     while 1i == 1 { x = 10; }
     return x; //~ ERROR use of possibly uninitialized variable: `x`
 }

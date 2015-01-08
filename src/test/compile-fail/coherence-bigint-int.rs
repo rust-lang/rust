@@ -15,6 +15,6 @@ use lib::Remote1;
 
 pub struct BigInt;
 
-impl Remote1<BigInt> for int { } //~ ERROR E0117
+impl Remote1<BigInt> for isize { } //~ ERROR E0117
 
 fn main() { }

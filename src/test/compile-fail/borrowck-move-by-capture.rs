@@ -13,6 +13,6 @@
 pub fn main() {
     let bar = box 3;
     let _g = |&mut:| {
-        let _h = move |:| -> int { *bar }; //~ ERROR cannot move out of captured outer variable
+        let _h = move |:| -> isize { *bar }; //~ ERROR cannot move out of captured outer variable
     };
 }

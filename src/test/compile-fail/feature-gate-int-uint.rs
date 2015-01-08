@@ -20,11 +20,11 @@ mod u {
     }
 }
 mod i {
-    type X = int; //~ WARN the `int` type is deprecated
+    type X = isize; //~ WARN the `isize` type is deprecated
     struct Foo {
-        x: int //~ WARN the `int` type is deprecated
+        x: isize //~ WARN the `isize` type is deprecated
     }
-    fn bar(x: int) { //~ WARN the `int` type is deprecated
+    fn bar(x: isize) { //~ WARN the `isize` type is deprecated
         1i; //~ WARN the `u` suffix on integers is deprecated
     }
 }

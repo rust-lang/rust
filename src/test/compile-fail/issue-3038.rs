@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum f { g(int, int) }
+enum f { g(isize, isize) }
 
 enum h { i(j, k) }
 
-enum j { l(int, int) }
-enum k { m(int, int) }
+enum j { l(isize, isize) }
+enum k { m(isize, isize) }
 
 fn main()
 {

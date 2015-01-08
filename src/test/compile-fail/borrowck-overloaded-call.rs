@@ -13,23 +13,23 @@
 use std::ops::{Fn, FnMut, FnOnce};
 
 struct SFn {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
-impl Fn<(int,),int> for SFn {
-    extern "rust-call" fn call(&self, (z,): (int,)) -> int {
+impl Fn<(isize,),isize> for SFn {
+    extern "rust-call" fn call(&self, (z,): (isize,)) -> isize {
         self.x * self.y * z
     }
 }
 
 struct SFnMut {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
-impl FnMut<(int,),int> for SFnMut {
-    extern "rust-call" fn call_mut(&mut self, (z,): (int,)) -> int {
+impl FnMut<(isize,),isize> for SFnMut {
+    extern "rust-call" fn call_mut(&mut self, (z,): (isize,)) -> isize {
         self.x * self.y * z
     }
 }

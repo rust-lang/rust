@@ -19,7 +19,7 @@ struct X;
 
 // Remove this impl causing the below resolution to fail // impl Foo<S> for X {}
 
-impl Bar<X> for int {
+impl Bar<X> for isize {
     fn method<U>(&self) where X: Foo<U> {
     }
 }

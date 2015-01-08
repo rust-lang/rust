@@ -13,7 +13,7 @@ trait Groom {
 }
 
 pub struct cat {
-  whiskers: int,
+  whiskers: isize,
 }
 
 pub enum MaybeDog {

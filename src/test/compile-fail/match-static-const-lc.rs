@@ -14,7 +14,7 @@
 #![deny(non_upper_case_globals)]
 
 #[allow(non_upper_case_globals)]
-pub const a : int = 97;
+pub const a : isize = 97;
 
 fn f() {
     let r = match (0,0) {
@@ -27,7 +27,7 @@ fn f() {
 
 mod m {
     #[allow(non_upper_case_globals)]
-    pub const aha : int = 7;
+    pub const aha : isize = 7;
 }
 
 fn g() {
@@ -41,7 +41,7 @@ fn g() {
 }
 
 mod n {
-    pub const OKAY : int = 8;
+    pub const OKAY : isize = 8;
 }
 
 fn h() {

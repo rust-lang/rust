@@ -12,4 +12,4 @@
 
 fn f() { }
 
-fn main() { let i: int; i = f(); }
+fn main() { let i: isize; i = f(); }

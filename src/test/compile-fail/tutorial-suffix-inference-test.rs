@@ -23,7 +23,7 @@ fn main() {
 
     let a = 3is;
 
-    fn identity_i(n: isize) -> int { n }
+    fn identity_i(n: isize) -> isize { n }
 
     identity_i(a); // ok
     identity_u16(a);

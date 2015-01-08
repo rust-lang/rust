@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct BuildData {
-    foo: int,
+    foo: isize,
 }
 
 fn main() {

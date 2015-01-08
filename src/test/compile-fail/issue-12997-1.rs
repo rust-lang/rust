@@ -16,4 +16,4 @@
 fn foo() { } //~ ERROR functions used as benches
 
 #[bench]
-fn bar(x: int, y: int) { } //~ ERROR functions used as benches
+fn bar(x: isize, y: isize) { } //~ ERROR functions used as benches

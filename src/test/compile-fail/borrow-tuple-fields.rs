@@ -11,9 +11,9 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct Foo(Box<int>, int);
+struct Foo(Box<isize>, isize);
 
-struct Bar(int, int);
+struct Bar(isize, isize);
 
 fn main() {
     let x = (box 1i, 2i);

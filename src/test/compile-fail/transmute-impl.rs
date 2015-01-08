@@ -19,12 +19,12 @@ struct Foo<T: ?Sized> {
 }
 
 impl<T: ?Sized> Foo<T> {
-    fn m(x: &T) -> &int where T : Sized {
+    fn m(x: &T) -> &isize where T : Sized {
         // OK here, because T : Sized is in scope.
         unsafe { transmute(x) }
     }
 
-    fn n(x: &T) -> &int {
+    fn n(x: &T) -> &isize {
         // Not OK here, because T : Sized is not in scope.
         unsafe { transmute(x) } //~ ERROR transmute called on types with potentially different sizes
     }

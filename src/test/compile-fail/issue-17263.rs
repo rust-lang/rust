@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-struct Foo { a: int, b: int }
+struct Foo { a: isize, b: isize }
 
 fn main() {
     let mut x = box Foo { a: 1, b: 2 };

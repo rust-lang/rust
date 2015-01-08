@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct X { x: int }
+struct X { x: isize }
 
 impl<'a, T, 'b> X {}
 //~^ ERROR lifetime parameters must be declared prior to type parameters

@@ -21,19 +21,19 @@ type Typedef = String;
 pub type PubTypedef = String; //~ ERROR: missing documentation
 
 struct Foo {
-    a: int,
-    b: int,
+    a: isize,
+    b: isize,
 }
 
 pub struct PubFoo { //~ ERROR: missing documentation
-    pub a: int,      //~ ERROR: missing documentation
-    b: int,
+    pub a: isize,      //~ ERROR: missing documentation
+    b: isize,
 }
 
 #[allow(missing_docs)]
 pub struct PubFoo2 {
-    pub a: int,
-    pub c: int,
+    pub a: isize,
+    pub c: isize,
 }
 
 mod module_no_dox {}
@@ -100,15 +100,15 @@ mod a {
 
 enum Baz {
     BazA {
-        a: int,
-        b: int
+        a: isize,
+        b: isize
     },
     BarB
 }
 
 pub enum PubBaz { //~ ERROR: missing documentation
     PubBazA { //~ ERROR: missing documentation
-        a: int, //~ ERROR: missing documentation
+        a: isize, //~ ERROR: missing documentation
     },
 }
 
@@ -117,14 +117,14 @@ pub enum PubBaz2 {
     /// dox
     PubBaz2A {
         /// dox
-        a: int,
+        a: isize,
     },
 }
 
 #[allow(missing_docs)]
 pub enum PubBaz3 {
     PubBaz3A {
-        b: int
+        b: isize
     },
 }
 

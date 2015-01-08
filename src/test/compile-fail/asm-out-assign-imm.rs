@@ -10,14 +10,14 @@
 
 #![feature(asm)]
 
-fn foo(x: int) { println!("{}", x); }
+fn foo(x: isize) { println!("{}", x); }
 
 #[cfg(any(target_arch = "x86",
           target_arch = "x86_64",
           target_arch = "arm",
           target_arch = "aarch64"))]
 pub fn main() {
-    let x: int;
+    let x: isize;
     x = 1; //~ NOTE prior assignment occurs here
     foo(x);
     unsafe {

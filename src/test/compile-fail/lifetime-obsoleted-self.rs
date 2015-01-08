@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn baz(a: &'self int) { } //~ ERROR invalid lifetime name: 'self is no longer a special lifetime
+fn baz(a: &'self isize) { } //~ ERROR invalid lifetime name: 'self is no longer a special lifetime
 
 fn main() { }

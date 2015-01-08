@@ -15,10 +15,10 @@
 use std::marker::NoCopy as NP;
 
 
-struct S { a: int, np: NP }
+struct S { a: isize, np: NP }
 impl Drop for S { fn drop(&mut self) { } }
 
-struct T { a: int, mv: Box<int> }
+struct T { a: isize, mv: Box<isize> }
 impl Drop for T { fn drop(&mut self) { } }
 
 fn f(s0:S) {

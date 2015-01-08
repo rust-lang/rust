@@ -14,21 +14,21 @@
 
 
 struct Point {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 impl Point {
     fn new() -> Point {
         Point{x:0, y:0}
     }
-    fn get_x(&self) -> int {
+    fn get_x(&self) -> isize {
         self.x
     }
 }
 
 fn main() {
     let point: Point = Point::new();
-    let px: int =  point
+    let px: isize =  point
                         .get_x;//~ ERROR attempted to take value of method `get_x` on type `Point`
                         //~^ HELP maybe a `()` to call it is missing
 

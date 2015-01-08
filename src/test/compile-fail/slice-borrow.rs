@@ -13,7 +13,7 @@
 fn main() {
     let y;
     {
-        let x: &[int] = &[1, 2, 3, 4, 5]; //~ ERROR borrowed value does not live long enough
+        let x: &[isize] = &[1, 2, 3, 4, 5]; //~ ERROR borrowed value does not live long enough
         y = &x[1..];
     }
 }

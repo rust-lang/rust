@@ -20,7 +20,7 @@
 
 use self::Lonely::{Zero, One, Two};
 
-pub struct D { d: int }
+pub struct D { d: isize }
 impl Drop for D { fn drop(&mut self) { } }
 
 pub enum Lonely<X,Y> { Zero, One(X), Two(X, Y) }

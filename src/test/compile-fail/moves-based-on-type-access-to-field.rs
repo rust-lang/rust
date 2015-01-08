@@ -11,7 +11,7 @@
 // Tests that if you move from `x.f` or `x[0]`, `x` is inaccessible.
 // Also tests that we give a more specific error message.
 
-struct Foo { f: String, y: int }
+struct Foo { f: String, y: isize }
 fn consume(_s: String) {}
 fn touch<A>(_a: &A) {}
 

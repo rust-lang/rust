@@ -27,26 +27,26 @@ fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
 fn test<'a,'b>() {
     // No errors expected:
     eq::< Foo<(),()>,                   Foo()                         >();
-    eq::< Foo<(int,),()>,               Foo(int)                      >();
-    eq::< Foo<(int,uint),()>,           Foo(int,uint)                 >();
-    eq::< Foo<(int,uint),uint>,         Foo(int,uint) -> uint         >();
-    eq::< Foo<(&'a int,&'b uint),uint>, Foo(&'a int,&'b uint) -> uint >();
+    eq::< Foo<(isize,),()>,               Foo(isize)                      >();
+    eq::< Foo<(isize,uint),()>,           Foo(isize,uint)                 >();
+    eq::< Foo<(isize,uint),uint>,         Foo(isize,uint) -> uint         >();
+    eq::< Foo<(&'a isize,&'b uint),uint>, Foo(&'a isize,&'b uint) -> uint >();
 
     // Test that anonymous regions in `()` form are equivalent
     // to fresh bound regions, and that we can intermingle
     // named and anonymous as we choose:
-    eq::< for<'x,'y> Foo<(&'x int,&'y uint),uint>,
-          for<'x,'y> Foo(&'x int,&'y uint) -> uint            >();
-    eq::< for<'x,'y> Foo<(&'x int,&'y uint),uint>,
-          for<'x> Foo(&'x int,&uint) -> uint                  >();
-    eq::< for<'x,'y> Foo<(&'x int,&'y uint),uint>,
-          for<'y> Foo(&int,&'y uint) -> uint                  >();
-    eq::< for<'x,'y> Foo<(&'x int,&'y uint),uint>,
-          Foo(&int,&uint) -> uint                             >();
+    eq::< for<'x,'y> Foo<(&'x isize,&'y uint),uint>,
+          for<'x,'y> Foo(&'x isize,&'y uint) -> uint            >();
+    eq::< for<'x,'y> Foo<(&'x isize,&'y uint),uint>,
+          for<'x> Foo(&'x isize,&uint) -> uint                  >();
+    eq::< for<'x,'y> Foo<(&'x isize,&'y uint),uint>,
+          for<'y> Foo(&isize,&'y uint) -> uint                  >();
+    eq::< for<'x,'y> Foo<(&'x isize,&'y uint),uint>,
+          Foo(&isize,&uint) -> uint                             >();
 
     // lifetime elision
-    eq::< for<'x> Foo<(&'x int,), &'x int>,
-          Foo(&int) -> &int                                   >();
+    eq::< for<'x> Foo<(&'x isize,), &'x isize>,
+          Foo(&isize) -> &isize                                   >();
 
     // Errors expected:
     eq::< Foo<(),()>,                   Foo(char)                     >();

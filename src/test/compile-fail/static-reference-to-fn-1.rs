@@ -9,16 +9,16 @@
 // except according to those terms.
 
 struct A<'a> {
-    func: &'a fn() -> Option<int>
+    func: &'a fn() -> Option<isize>
 }
 
 impl<'a> A<'a> {
-    fn call(&self) -> Option<int> {
+    fn call(&self) -> Option<isize> {
         (*self.func)()
     }
 }
 
-fn foo() -> Option<int> {
+fn foo() -> Option<isize> {
     None
 }
 

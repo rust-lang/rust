@@ -14,7 +14,7 @@ pub trait Foo {
     type A;
 }
 
-impl Foo for int {
+impl Foo for isize {
     type A = uint;
 }
 
@@ -45,7 +45,7 @@ pub fn f1_uint_int() {
 }
 
 pub fn f2_int() {
-    let _: int = f2(2is);
+    let _: isize = f2(2is);
     //~^ ERROR expected `isize`, found `usize`
 }
 

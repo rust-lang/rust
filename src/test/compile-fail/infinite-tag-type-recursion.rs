@@ -11,6 +11,6 @@
 
 // error-pattern: illegal recursive enum type; wrap the inner value in a box
 
-enum mlist { cons(int, mlist), nil, }
+enum mlist { cons(isize, mlist), nil, }
 
 fn main() { let a = mlist::cons(10, mlist::cons(11, mlist::nil)); }

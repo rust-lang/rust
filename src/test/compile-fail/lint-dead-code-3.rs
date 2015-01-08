@@ -79,7 +79,7 @@ mod inner {
         fn f(&self) { f(); }
     }
 
-    impl Trait for int {}
+    impl Trait for isize {}
 
     fn f() {}
 }

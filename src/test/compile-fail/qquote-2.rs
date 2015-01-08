@@ -52,7 +52,7 @@ fn mk_ctxt() -> fake_ext_ctxt {
 fn main() {
     let cx = mk_ctxt();
 
-    let stmt = quote_stmt!(cx, let x int = 20;); //~ ERROR expected end-of-string
+    let stmt = quote_stmt!(cx, let x isize = 20;); //~ ERROR expected end-of-string
     check_pp(*stmt,  pprust::print_stmt, "");
 }
 

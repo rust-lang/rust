@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    struct Foo { x: int }
+    struct Foo { x: isize }
     match (Foo { x: 10 }) {
         Foo { ref x: ref x } => {}, //~ ERROR unexpected `:`
         _ => {}

@@ -13,7 +13,7 @@ extern crate core;
 fn assert_send<T:Send>() { }
 
 fn test71<'a>() {
-    assert_send::<*mut &'a int>();
+    assert_send::<*mut &'a isize>();
     //~^ ERROR the trait `core::marker::Send` is not implemented for the type
 }
 

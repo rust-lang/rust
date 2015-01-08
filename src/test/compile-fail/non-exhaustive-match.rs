@@ -36,14 +36,14 @@ fn main() {
       (t::b, t::b) => {}
     }
     let vec = vec!(Some(42i), None, Some(21i));
-    let vec: &[Option<int>] = vec.as_slice();
+    let vec: &[Option<isize>] = vec.as_slice();
     match vec { //~ ERROR non-exhaustive patterns: `[]` not covered
         [Some(..), None, tail..] => {}
         [Some(..), Some(..), tail..] => {}
         [None] => {}
     }
     let vec = vec!(1i);
-    let vec: &[int] = vec.as_slice();
+    let vec: &[isize] = vec.as_slice();
     match vec {
         [_, tail..] => (),
         [] => ()
@@ -57,7 +57,7 @@ fn main() {
         [] => ()
     }
     let vec = vec!(Some(42i), None, Some(21i));
-    let vec: &[Option<int>] = vec.as_slice();
+    let vec: &[Option<isize>] = vec.as_slice();
     match vec {
         [Some(..), None, tail..] => {}
         [Some(..), Some(..), tail..] => {}
