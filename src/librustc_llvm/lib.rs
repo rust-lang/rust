@@ -21,7 +21,9 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
+#![allow(unknown_features)]
 #![feature(link_args)]
+#![feature(box_syntax)]
 
 extern crate libc;
 
