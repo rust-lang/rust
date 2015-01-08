@@ -33,6 +33,10 @@ fn foo(p: &Panolpy) {
 
     22 >> 1;
     // Integer literal types are OK
+
+    // Type of the result follows the LHS, not the RHS:
+    let _: i32 = 22_i64 >> 1_i32;
+    //~^ ERROR mismatched types: expected `i32`, found `i64`
 }
 
 fn main() {
