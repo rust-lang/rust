@@ -25,10 +25,10 @@ impl<X: ?Sized> Eq<X> for X { }
 fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
 
 fn main() {
-    eq::< for<'a> Foo<(&'a int,), &'a int>,
-          Foo(&int) -> &int                                   >();
-    eq::< for<'a> Foo<(&'a int,), (&'a int, &'a int)>,
-          Foo(&int) -> (&int, &int)                           >();
+    eq::< for<'a> Foo<(&'a isize,), &'a isize>,
+          Foo(&isize) -> &isize                                   >();
+    eq::< for<'a> Foo<(&'a isize,), (&'a isize, &'a isize)>,
+          Foo(&isize) -> (&isize, &isize)                           >();
 
-    let _: Foo(&int, &uint) -> &uint; //~ ERROR missing lifetime specifier
+    let _: Foo(&isize, &usize) -> &usize; //~ ERROR missing lifetime specifier
 }

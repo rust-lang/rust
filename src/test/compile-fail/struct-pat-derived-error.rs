@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct a {
-    b: uint,
-    c: uint
+    b: usize,
+    c: usize
 }
 
 impl a {

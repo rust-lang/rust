@@ -10,6 +10,6 @@
 
 // compile-flags:--cfg foo
 
-#![cfg_attr(foo, experimental)]
+#![cfg_attr(foo, unstable)]
 #![cfg_attr(not(foo), stable)]
-
+#![staged_api]

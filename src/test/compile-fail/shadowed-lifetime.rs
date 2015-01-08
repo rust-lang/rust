@@ -10,27 +10,27 @@
 
 // Test that shadowed lifetimes generate an error.
 
-struct Foo<'a>(&'a int);
+struct Foo<'a>(&'a isize);
 
 impl<'a> Foo<'a> {
     //~^ HELP shadowed lifetime `'a` declared here
-    fn shadow_in_method<'a>(&'a self) -> &'a int {
+    fn shadow_in_method<'a>(&'a self) -> &'a isize {
         //~^ WARNING lifetime name `'a` shadows another lifetime name that is already in scope
         //~| HELP deprecated
         self.0
     }
 
-    fn shadow_in_type<'b>(&'b self) -> &'b int {
+    fn shadow_in_type<'b>(&'b self) -> &'b isize {
         //~^ HELP shadowed lifetime `'b` declared here
-        let x: for<'b> fn(&'b int) = panic!();
+        let x: for<'b> fn(&'b isize) = panic!();
         //~^ WARNING lifetime name `'b` shadows another lifetime name that is already in scope
         //~| HELP deprecated
         self.0
     }
 
     fn not_shadow_in_item<'b>(&'b self) {
-        struct Bar<'a, 'b>(&'a int, &'b int); // not a shadow, separate item
-        fn foo<'a, 'b>(x: &'a int, y: &'b int) { } // same
+        struct Bar<'a, 'b>(&'a isize, &'b isize); // not a shadow, separate item
+        fn foo<'a, 'b>(x: &'a isize, y: &'b isize) { } // same
     }
 }
 
@@ -39,5 +39,5 @@ fn main() {
     // just to ensure that this test fails to compile; when shadowed
     // lifetimes become either an error or a proper lint, this will
     // not be needed.
-    let x: int = 3u; //~ ERROR mismatched types
+    let x: isize = 3us; //~ ERROR mismatched types
 }

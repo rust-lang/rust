@@ -15,7 +15,7 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "rustc"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -27,8 +27,8 @@
 #![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(box_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(old_impl_check)]
 
 extern crate arena;
 extern crate flate;

@@ -10,6 +10,6 @@
 
 // error-pattern: parameters were supplied
 
-fn f(x: int) { }
+fn f(x: isize) { }
 
 fn main() { let i: (); i = f(); }

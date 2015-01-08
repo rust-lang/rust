@@ -9,7 +9,7 @@
 // except according to those terms.
 
 mod Foo {
-    pub static X: int = 42;
+    pub static X: isize = 42;
 }
 
 enum Foo {  //~ ERROR duplicate definition of type or module `Foo`

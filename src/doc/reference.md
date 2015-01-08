@@ -14,7 +14,7 @@ provides three kinds of material:
     influenced the design.
 
 This document does not serve as an introduction to the language. Background
-familiarity with the language is assumed. A separate [guide] is available to
+familiarity with the language is assumed. A separate [book] is available to
 help acquire such background familiarity.
 
 This document also does not serve as a reference to the [standard] library
@@ -23,7 +23,7 @@ separately by extracting documentation attributes from their source code. Many
 of the features that one might expect to be language features are library
 features in Rust, so what you're looking for may be there, not here.
 
-[guide]: guide.html
+[book]: book/index.html
 [standard]: std/index.html
 
 # Notation
@@ -647,10 +647,10 @@ All of the above extensions are expressions with values.
 
 Users of `rustc` can define new syntax extensions in two ways:
 
-* [Compiler plugins](guide-plugin.html#syntax-extensions) can include arbitrary
+* [Compiler plugins](book/syntax-extensions.html) can include arbitrary
   Rust code that manipulates syntax trees at compile time.
 
-* [Macros](guide-macros.html) define new syntax in a higher-level,
+* [Macros](book/macros.html) define new syntax in a higher-level,
   declarative way.
 
 ## Macros
@@ -2076,7 +2076,7 @@ On `struct`s:
   list of names `#[macro_use(foo, bar)]` restricts the import to just those
   macros named.  The `extern crate` must appear at the crate root, not inside
   `mod`, which ensures proper function of the [`$crate` macro
-  variable](guide-macros.html#the-variable-$crate).
+  variable](book/macros.html#the-variable-$crate).
 
 - `macro_reexport` on an `extern crate` — re-export the named macros.
 
@@ -2090,8 +2090,9 @@ On `struct`s:
 - `no_link` on an `extern crate` — even if we load this crate for macros or
   compiler plugins, don't link it into the output.
 
-See the [macros guide](guide-macros.html#scoping-and-macro-import/export) for
-more information on macro scope.
+See the [macros section of the
+book](book/macros.html#scoping-and-macro-import/export) for more information on
+macro scope.
 
 
 ### Miscellaneous attributes
@@ -2193,7 +2194,7 @@ For any lint check `C`:
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.  [Compiler
-plugins](guide-plugin.html#lint-plugins) can provide additional lint checks.
+plugins](book/plugin.html#lint-plugins) can provide additional lint checks.
 
 ```{.ignore}
 mod m1 {
@@ -4227,7 +4228,7 @@ communication facilities.
 The Rust compiler supports various methods to link crates together both
 statically and dynamically. This section will explore the various methods to
 link Rust crates together, and more information about native libraries can be
-found in the [ffi guide][ffi].
+found in the [ffi section of the book][ffi].
 
 In one session of compilation, the compiler can generate multiple artifacts
 through the usage of either command line flags or the `crate_type` attribute.
@@ -4359,5 +4360,5 @@ that have since been removed):
 * [Unicode Annex #31](http://www.unicode.org/reports/tr31/): identifier and
   pattern syntax
 
-[ffi]: guide-ffi.html
-[plugin]: guide-plugin.html
+[ffi]: book/ffi.html
+[plugin]: book/plugin.html

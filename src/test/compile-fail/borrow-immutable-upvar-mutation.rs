@@ -13,29 +13,29 @@
 // Tests that we can't assign to or mutably borrow upvars from `Fn`
 // closures (issue #17780)
 
-fn set(x: &mut uint) { *x = 5; }
+fn set(x: &mut usize) { *x = 5; }
 
 fn main() {
     // By-ref captures
     {
-        let mut x = 0u;
+        let mut x = 0us;
         let _f = |&:| x = 42; //~ ERROR cannot assign
 
-        let mut y = 0u;
+        let mut y = 0us;
         let _g = |&:| set(&mut y); //~ ERROR cannot borrow
 
-        let mut z = 0u;
+        let mut z = 0us;
         let _h = |&mut:| { set(&mut z); |&:| z = 42; }; //~ ERROR cannot assign
     }
     // By-value captures
     {
-        let mut x = 0u;
+        let mut x = 0us;
         let _f = move |&:| x = 42; //~ ERROR cannot assign
 
-        let mut y = 0u;
+        let mut y = 0us;
         let _g = move |&:| set(&mut y); //~ ERROR cannot borrow
 
-        let mut z = 0u;
+        let mut z = 0us;
         let _h = move |&mut:| { set(&mut z); move |&:| z = 42; }; //~ ERROR cannot assign
     }
 }

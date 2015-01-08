@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo { a: int, b: int }
-struct Bar { x: int }
+struct Foo { a: isize, b: isize }
+struct Bar { x: isize }
 
 static bar: Bar = Bar { x: 5 };
 static foo: Foo = Foo { a: 2, ..bar }; //~ ERROR mismatched types: expected `Foo`, found `Bar`

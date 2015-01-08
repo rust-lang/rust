@@ -14,7 +14,7 @@ struct Foo<T>{
     x : T
 }
 
-type FooInt = Foo<int>;
+type FooInt = Foo<isize>;
 
 impl Drop for FooInt {
 //~^ ERROR cannot implement a destructor on a structure with type parameters

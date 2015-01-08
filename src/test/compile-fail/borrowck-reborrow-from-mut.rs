@@ -14,8 +14,8 @@ struct Foo {
 }
 
 struct Bar {
-  int1: int,
-  int2: int,
+  int1: isize,
+  int2: isize,
 }
 
 fn borrow_same_field_twice_mut_mut(foo: &mut Foo) {

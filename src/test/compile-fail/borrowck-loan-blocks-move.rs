@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-fn take(_v: Box<int>) {
+fn take(_v: Box<isize>) {
 }
 
 fn box_imm() {

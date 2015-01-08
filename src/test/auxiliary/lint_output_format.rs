@@ -10,13 +10,14 @@
 
 #![crate_name="lint_output_format"]
 #![crate_type = "lib"]
+#![staged_api]
 
 #[deprecated]
 pub fn foo() -> uint {
     20
 }
 
-#[experimental]
+#[unstable]
 pub fn bar() -> uint {
     40
 }

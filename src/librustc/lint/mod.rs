@@ -40,7 +40,7 @@ use syntax::ast;
 pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_attrs};
 
 /// Specification of a single lint.
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub struct Lint {
     /// A string identifier for the lint.
     ///
@@ -208,7 +208,7 @@ impl LintId {
 }
 
 /// Setting for how to handle a lint.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show)]
 pub enum Level {
     Allow, Warn, Deny, Forbid
 }

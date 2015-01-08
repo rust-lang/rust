@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn test() {
-    let mut v: int;
+    let mut v: isize;
     v = v + 1; //~ ERROR use of possibly uninitialized variable: `v`
     v.clone();
 }

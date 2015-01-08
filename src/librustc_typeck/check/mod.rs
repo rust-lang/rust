@@ -2268,12 +2268,17 @@ pub enum LvaluePreference {
 pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  sp: Span,
                                  base_ty: Ty<'tcx>,
-                                 expr_id: Option<ast::NodeId>,
+                                 opt_expr: Option<&ast::Expr>,
                                  mut lvalue_pref: LvaluePreference,
                                  mut should_stop: F)
-                                 -> (Ty<'tcx>, uint, Option<T>) where
-    F: FnMut(Ty<'tcx>, uint) -> Option<T>,
+                                 -> (Ty<'tcx>, uint, Option<T>)
+    where F: FnMut(Ty<'tcx>, uint) -> Option<T>,
 {
+    debug!("autoderef(base_ty={}, opt_expr={}, lvalue_pref={:?})",
+           base_ty.repr(fcx.tcx()),
+           opt_expr.repr(fcx.tcx()),
+           lvalue_pref);
+
     let mut t = base_ty;
     for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
         let resolved_t = structurally_resolved_type(fcx, sp, t);
@@ -2291,7 +2296,19 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
         let mt = match ty::deref(resolved_t, false) {
             Some(mt) => Some(mt),
             None => {
-                let method_call = expr_id.map(|id| MethodCall::autoderef(id, autoderefs));
+                let method_call = opt_expr.map(|expr| MethodCall::autoderef(expr.id, autoderefs));
+
+                // Super subtle: it might seem as though we should
+                // pass `opt_expr` to `try_overloaded_deref`, so that
+                // the (implicit) autoref of using an overloaded deref
+                // would get added to the adjustment table. However we
+                // do not do that, because it's kind of a
+                // "meta-adjustment" -- instead, we just leave it
+                // unrecorded and know that there "will be" an
+                // autoref. regionck and other bits of the code base,
+                // when they encounter an overloaded autoderef, have
+                // to do some reconstructive surgery. This is a pretty
+                // complex mess that is begging for a proper MIR.
                 try_overloaded_deref(fcx, sp, method_call, None, resolved_t, lvalue_pref)
             }
         };
@@ -2324,7 +2341,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Try DerefMut first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.deref_mut_trait()) {
         (PreferMutLvalue, Some(trait_did)) => {
-            method::lookup_in_trait(fcx, span, base_expr.map(|x| &*x),
+            method::lookup_in_trait(fcx, span, base_expr,
                                     token::intern("deref_mut"), trait_did,
                                     base_ty, None)
         }
@@ -2334,7 +2351,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Otherwise, fall back to Deref.
     let method = match (method, fcx.tcx().lang_items.deref_trait()) {
         (None, Some(trait_did)) => {
-            method::lookup_in_trait(fcx, span, base_expr.map(|x| &*x),
+            method::lookup_in_trait(fcx, span, base_expr,
                                     token::intern("deref"), trait_did,
                                     base_ty, None)
         }
@@ -2390,7 +2407,7 @@ fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
     // consolidated.
 
     let (ty, autoderefs, final_mt) =
-        autoderef(fcx, base_expr.span, base_ty, Some(base_expr.id), lvalue_pref, |adj_ty, idx| {
+        autoderef(fcx, base_expr.span, base_ty, Some(base_expr), lvalue_pref, |adj_ty, idx| {
             let autoderefref = ty::AutoDerefRef { autoderefs: idx, autoref: None };
             step(adj_ty, autoderefref)
         });
@@ -2442,7 +2459,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // First, try built-in indexing.
     match (ty::index(adjusted_ty), &index_ty.sty) {
-        (Some(ty), &ty::ty_uint(ast::TyUs)) | (Some(ty), &ty::ty_infer(ty::IntVar(_))) => {
+        (Some(ty), &ty::ty_uint(ast::TyUs(_))) | (Some(ty), &ty::ty_infer(ty::IntVar(_))) => {
             debug!("try_index_step: success, using built-in indexing");
             fcx.write_adjustment(base_expr.id, base_expr.span, ty::AdjustDerefRef(adjustment));
             return Some((tcx.types.uint, ty));
@@ -3208,8 +3225,24 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op) {
             // Shift is a special case: rhs must be uint, no matter what lhs is
-            check_expr_has_type(fcx, &**rhs, fcx.tcx().types.uint);
-            fcx.write_ty(expr.id, lhs_t);
+            check_expr(fcx, &**rhs);
+            let rhs_ty = fcx.expr_ty(&**rhs);
+            let rhs_ty = fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+            if ty::type_is_integral(rhs_ty) {
+                fcx.write_ty(expr.id, lhs_t);
+            } else {
+                fcx.type_error_message(
+                    expr.span,
+                    |actual| {
+                        format!(
+                            "right-hand-side of a shift operation must have integral type, \
+                             not `{}`",
+                            actual)
+                    },
+                    rhs_ty,
+                    None);
+                fcx.write_ty(expr.id, fcx.tcx().types.err);
+            }
             return;
         }
 
@@ -3360,7 +3393,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                 fcx.expr_ty(base));
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
         let (_, autoderefs, field_ty) =
-            autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
+            autoderef(fcx, expr.span, expr_t, Some(base), lvalue_pref, |base_t, _| {
                 match base_t.sty {
                     ty::ty_struct(base_id, substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
@@ -3421,7 +3454,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let mut tuple_like = false;
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
         let (_, autoderefs, field_ty) =
-            autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
+            autoderef(fcx, expr.span, expr_t, Some(base), lvalue_pref, |base_t, _| {
                 match base_t.sty {
                     ty::ty_struct(base_id, substs) => {
                         tuple_like = ty::is_tuple_struct(tcx, base_id);
@@ -4770,7 +4803,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                 ast::TyU16 => disr as u16 as Disr == disr,
                 ast::TyU32 => disr as u32 as Disr == disr,
                 ast::TyU64 => disr as u64 as Disr == disr,
-                ast::TyUs => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
+                ast::TyUs(_) => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
             }
         }
         fn int_in_range(ccx: &CrateCtxt, ty: ast::IntTy, disr: ty::Disr) -> bool {
@@ -4779,7 +4812,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                 ast::TyI16 => disr as i16 as Disr == disr,
                 ast::TyI32 => disr as i32 as Disr == disr,
                 ast::TyI64 => disr as i64 as Disr == disr,
-                ast::TyIs => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
+                ast::TyIs(_) => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
             }
         }
         match ty {

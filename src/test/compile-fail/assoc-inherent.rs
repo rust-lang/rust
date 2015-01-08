@@ -13,7 +13,7 @@
 struct Foo;
 
 impl Foo {
-    type Bar = int; //~ERROR associated items are not allowed in inherent impls
+    type Bar = isize; //~ERROR associated items are not allowed in inherent impls
 }
 
 fn main() {}

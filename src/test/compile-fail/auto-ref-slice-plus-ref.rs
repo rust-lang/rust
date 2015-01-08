@@ -27,7 +27,7 @@ trait MyIter {
     fn test(&self);
 }
 
-impl<'a> MyIter for &'a [int] {
+impl<'a> MyIter for &'a [isize] {
     fn test_mut(&mut self) { }
     fn test(&self) { }
 }

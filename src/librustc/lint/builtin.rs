@@ -216,7 +216,7 @@ impl LintPass for TypeLimits {
                         match lit.node {
                             ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
                             ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
-                                let int_type = if t == ast::TyIs {
+                                let int_type = if let ast::TyIs(_) = t {
                                     cx.sess().target.int_type
                                 } else { t };
                                 let (min, max) = int_ty_range(int_type);
@@ -233,7 +233,7 @@ impl LintPass for TypeLimits {
                         };
                     },
                     ty::ty_uint(t) => {
-                        let uint_type = if t == ast::TyUs {
+                        let uint_type = if let ast::TyUs(_) = t {
                             cx.sess().target.uint_type
                         } else { t };
                         let (min, max) = uint_ty_range(uint_type);
@@ -296,7 +296,7 @@ impl LintPass for TypeLimits {
         // warnings are consistent between 32- and 64-bit platforms
         fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
             match int_ty {
-                ast::TyIs=>    (i64::MIN,        i64::MAX),
+                ast::TyIs(_) =>    (i64::MIN,        i64::MAX),
                 ast::TyI8 =>   (i8::MIN  as i64, i8::MAX  as i64),
                 ast::TyI16 =>  (i16::MIN as i64, i16::MAX as i64),
                 ast::TyI32 =>  (i32::MIN as i64, i32::MAX as i64),
@@ -306,7 +306,7 @@ impl LintPass for TypeLimits {
 
         fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
             match uint_ty {
-                ast::TyUs=>   (u64::MIN,         u64::MAX),
+                ast::TyUs(_) =>   (u64::MIN,         u64::MAX),
                 ast::TyU8 =>  (u8::MIN   as u64, u8::MAX   as u64),
                 ast::TyU16 => (u16::MIN  as u64, u16::MAX  as u64),
                 ast::TyU32 => (u32::MIN  as u64, u32::MAX  as u64),
@@ -323,7 +323,7 @@ impl LintPass for TypeLimits {
 
         fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
-                ast::TyIs=>    int_ty_bits(target_int_ty, target_int_ty),
+                ast::TyIs(_) =>    int_ty_bits(target_int_ty, target_int_ty),
                 ast::TyI8 =>   i8::BITS  as u64,
                 ast::TyI16 =>  i16::BITS as u64,
                 ast::TyI32 =>  i32::BITS as u64,
@@ -333,7 +333,7 @@ impl LintPass for TypeLimits {
 
         fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                ast::TyUs=>    uint_ty_bits(target_uint_ty, target_uint_ty),
+                ast::TyUs(_) =>    uint_ty_bits(target_uint_ty, target_uint_ty),
                 ast::TyU8 =>   u8::BITS  as u64,
                 ast::TyU16 =>  u16::BITS as u64,
                 ast::TyU32 =>  u32::BITS as u64,
@@ -404,12 +404,12 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_def(&mut self, sp: Span, ty_id: ast::NodeId, path_id: ast::NodeId) {
         match self.cx.tcx.def_map.borrow()[path_id].clone() {
-            def::DefPrimTy(ast::TyInt(ast::TyIs)) => {
+            def::DefPrimTy(ast::TyInt(ast::TyIs(_))) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `isize` in foreign module, while \
                                    libc::c_int or libc::c_long should be used");
             }
-            def::DefPrimTy(ast::TyUint(ast::TyUs)) => {
+            def::DefPrimTy(ast::TyUint(ast::TyUs(_))) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `usize` in foreign module, while \
                                    libc::c_uint or libc::c_ulong should be used");
@@ -1630,36 +1630,29 @@ declare_lint! {
     Warn,
     "detects use of #[deprecated] items"
 }
-// FIXME #6875: Change to Warn after std library stabilization is complete
-declare_lint! {
-    EXPERIMENTAL,
-    Allow,
-    "detects use of #[experimental] items"
-}
 
 declare_lint! {
     UNSTABLE,
-    Allow,
+    Warn,
     "detects use of #[unstable] items (incl. items with no stability attribute)"
 }
 
-declare_lint!(STAGED_EXPERIMENTAL, Warn,
-              "detects use of #[experimental] items in staged builds");
-
-declare_lint!(STAGED_UNSTABLE, Warn,
-              "detects use of #[unstable] items (incl. items with no stability attribute) \
-               in staged builds");
-
-/// Checks for use of items with `#[deprecated]`, `#[experimental]` and
+/// Checks for use of items with `#[deprecated]`, `#[unstable]` and
 /// `#[unstable]` attributes, or no stability attribute.
 #[derive(Copy)]
-pub struct Stability;
+pub struct Stability { this_crate_staged: bool }
 
 impl Stability {
+    pub fn new() -> Stability { Stability { this_crate_staged: false } }
+
     fn lint(&self, cx: &Context, id: ast::DefId, span: Span) {
 
         let ref stability = stability::lookup(cx.tcx, id);
         let cross_crate = !ast_util::is_local(id);
+        let staged = (!cross_crate && self.this_crate_staged)
+            || (cross_crate && stability::is_staged_api(cx.tcx, id));
+
+        if !staged { return }
 
         // stability attributes are promises made across crates; only
         // check DEPRECATED for crate-local usage.
@@ -1668,21 +1661,12 @@ impl Stability {
             None if cross_crate => (UNSTABLE, "unmarked"),
             Some(attr::Stability { level: attr::Unstable, .. }) if cross_crate =>
                 (UNSTABLE, "unstable"),
-            Some(attr::Stability { level: attr::Experimental, .. }) if cross_crate =>
-                (EXPERIMENTAL, "experimental"),
             Some(attr::Stability { level: attr::Deprecated, .. }) =>
                 (DEPRECATED, "deprecated"),
             _ => return
         };
 
         output(cx, span, stability, lint, label);
-        if cross_crate && stability::is_staged_api(cx.tcx, id) {
-            if lint.name == UNSTABLE.name {
-                output(cx, span, stability, STAGED_UNSTABLE, label);
-            } else if lint.name == EXPERIMENTAL.name {
-                output(cx, span, stability, STAGED_EXPERIMENTAL, label);
-            }
-        }
 
         fn output(cx: &Context, span: Span, stability: &Option<attr::Stability>,
                   lint: &'static Lint, label: &'static str) {
@@ -1706,7 +1690,7 @@ impl Stability {
 
 impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
-        lint_array!(DEPRECATED, EXPERIMENTAL, UNSTABLE, STAGED_EXPERIMENTAL, STAGED_UNSTABLE)
+        lint_array!(DEPRECATED, UNSTABLE)
     }
 
     fn check_crate(&mut self, _: &Context, c: &ast::Crate) {
@@ -1717,6 +1701,7 @@ impl LintPass for Stability {
                 match attr.node.value.node {
                     ast::MetaWord(_) => {
                         attr::mark_used(attr);
+                        self.this_crate_staged = true;
                     }
                     _ => (/*pass*/)
                 }

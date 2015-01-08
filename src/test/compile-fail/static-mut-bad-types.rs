@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static mut a: int = 3;
+static mut a: isize = 3;
 
 fn main() {
     unsafe {

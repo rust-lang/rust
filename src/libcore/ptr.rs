@@ -106,7 +106,7 @@ pub use intrinsics::copy_nonoverlapping_memory;
 #[unstable]
 pub use intrinsics::copy_memory;
 
-#[experimental = "uncertain about naming and semantics"]
+#[unstable = "uncertain about naming and semantics"]
 pub use intrinsics::set_memory;
 
 

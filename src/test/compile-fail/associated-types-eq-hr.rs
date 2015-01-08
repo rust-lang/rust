@@ -17,43 +17,43 @@ pub trait TheTrait<T> {
 }
 
 struct IntStruct {
-    x: int
+    x: isize
 }
 
-impl<'a> TheTrait<&'a int> for IntStruct {
-    type A = &'a int;
+impl<'a> TheTrait<&'a isize> for IntStruct {
+    type A = &'a isize;
 
-    fn get(&self, t: &'a int) -> &'a int {
+    fn get(&self, t: &'a isize) -> &'a isize {
         t
     }
 }
 
 struct UintStruct {
-    x: int
+    x: isize
 }
 
-impl<'a> TheTrait<&'a int> for UintStruct {
-    type A = &'a uint;
+impl<'a> TheTrait<&'a isize> for UintStruct {
+    type A = &'a usize;
 
-    fn get(&self, t: &'a int) -> &'a uint {
+    fn get(&self, t: &'a isize) -> &'a usize {
         panic!()
     }
 }
 
 fn foo<T>()
-    where T : for<'x> TheTrait<&'x int, A = &'x int>
+    where T : for<'x> TheTrait<&'x isize, A = &'x isize>
 {
     // ok for IntStruct, but not UintStruct
 }
 
 fn bar<T>()
-    where T : for<'x> TheTrait<&'x int, A = &'x uint>
+    where T : for<'x> TheTrait<&'x isize, A = &'x usize>
 {
     // ok for UintStruct, but not IntStruct
 }
 
 fn baz<T>()
-    where T : for<'x,'y> TheTrait<&'x int, A = &'y int>
+    where T : for<'x,'y> TheTrait<&'x isize, A = &'y isize>
 {
     // not ok for either struct, due to the use of two lifetimes
 }

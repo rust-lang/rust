@@ -16,7 +16,7 @@ trait Static : 'static { }
 trait Is<'a> : 'a { }
 
 struct Inv<'a> {
-    x: Option<&'a mut &'a int>
+    x: Option<&'a mut &'a isize>
 }
 
 fn check_bound<'a,A:'a>(x: Inv<'a>, a: A) { }

@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    let _i = 0xff_ffff_ffff_ffff_ffff;
+    let _i = 0xff_ffff_ffff_ffff_ffff_is;
     //~^ ERROR int literal is too large
 }

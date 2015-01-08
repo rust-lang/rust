@@ -11,6 +11,6 @@
 use std::rc::Rc;
 
 pub fn main() {
-    let _x = Rc::new(vec!(1i, 2)).into_iter();
-    //~^ ERROR cannot move out of dereference of `&`-pointer
+    let _x = Rc::new(vec!(1is, 2)).into_iter();
+    //~^ ERROR cannot move out of borrowed content
 }

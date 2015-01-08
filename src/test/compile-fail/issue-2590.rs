@@ -10,16 +10,16 @@
 
 
 struct parser {
-    tokens: Vec<int> ,
+    tokens: Vec<isize> ,
 }
 
 trait parse {
-    fn parse(&self) -> Vec<int> ;
+    fn parse(&self) -> Vec<isize> ;
 }
 
 impl parse for parser {
-    fn parse(&self) -> Vec<int> {
-        self.tokens //~ ERROR cannot move out of dereference of `&`-pointer
+    fn parse(&self) -> Vec<isize> {
+        self.tokens //~ ERROR cannot move out of borrowed content
     }
 }
 

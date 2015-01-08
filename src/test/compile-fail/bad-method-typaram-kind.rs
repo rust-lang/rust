@@ -9,14 +9,14 @@
 // except according to those terms.
 
 fn foo<T:'static>() {
-    1u.bar::<T>(); //~ ERROR `core::marker::Send` is not implemented
+    1us.bar::<T>(); //~ ERROR `core::marker::Send` is not implemented
 }
 
 trait bar {
     fn bar<T:Send>(&self);
 }
 
-impl bar for uint {
+impl bar for usize {
     fn bar<T:Send>(&self) {
     }
 }

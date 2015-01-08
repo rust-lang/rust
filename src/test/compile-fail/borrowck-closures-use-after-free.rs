@@ -15,7 +15,7 @@
 #![feature(box_syntax)]
 
 struct Foo {
-  x: int
+  x: isize
 }
 
 impl Drop for Foo {

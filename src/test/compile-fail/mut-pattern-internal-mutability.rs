@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let foo = &mut 1i;
+    let foo = &mut 1is;
 
     let &mut x = foo;
     x += 1; //~ ERROR re-assignment of immutable variable

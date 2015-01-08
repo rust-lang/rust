@@ -15,7 +15,7 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "syntax"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -27,6 +27,7 @@
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
 #![feature(quote, unsafe_destructor)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 extern crate arena;
 extern crate fmt_macros;

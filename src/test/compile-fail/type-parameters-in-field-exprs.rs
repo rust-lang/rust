@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct Foo {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 fn main() {
@@ -18,7 +18,7 @@ fn main() {
         x: 1,
         y: 2,
     };
-    f.x::<int>;
+    f.x::<isize>;
     //~^ ERROR field expressions may not have type parameters
 }
 

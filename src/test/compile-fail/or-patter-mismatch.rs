@@ -10,6 +10,6 @@
 
 // error-pattern: mismatched types
 
-enum blah { a(int, int, uint), b(int, int), }
+enum blah { a(isize, isize, usize), b(isize, isize), }
 
-fn main() { match blah::a(1, 1, 2u) { blah::a(_, x, y) | blah::b(x, y) => { } } }
+fn main() { match blah::a(1, 1, 2us) { blah::a(_, x, y) | blah::b(x, y) => { } } }

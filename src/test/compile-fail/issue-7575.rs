@@ -30,17 +30,17 @@ trait UnusedTrait {
 
 impl CtxtFn for usize {
     fn f8(self, i: usize) -> usize {
-        i * 4u
+        i * 4us
     }
 
     fn f9(i: usize) -> usize {
-        i * 4u
+        i * 4us
     }
 }
 
 impl OtherTrait for usize {
     fn f9(i: usize) -> usize {
-        i * 8u
+        i * 8us
     }
 }
 

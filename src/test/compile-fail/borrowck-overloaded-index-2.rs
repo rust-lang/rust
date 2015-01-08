@@ -16,17 +16,17 @@ struct MyVec<T> {
     data: Vec<T>,
 }
 
-impl<T> Index<uint> for MyVec<T> {
+impl<T> Index<usize> for MyVec<T> {
     type Output = T;
 
-    fn index(&self, &i: &uint) -> &T {
+    fn index(&self, &i: &usize) -> &T {
         &self.data[i]
     }
 }
 
 fn main() {
-    let v = MyVec { data: vec!(box 1i, box 2, box 3) };
+    let v = MyVec { data: vec!(box 1is, box 2, box 3) };
     let good = &v[0]; // Shouldn't fail here
     let bad = v[0];
-    //~^ ERROR cannot move out of dereference (dereference is implicit, due to indexing)
+    //~^ ERROR cannot move out of indexed content
 }

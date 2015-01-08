@@ -21,7 +21,7 @@
 //! (yet) aim to provide a full set of Unicode tables.
 
 #![crate_name = "unicode"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -30,6 +30,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![no_std]
 #![feature(slicing_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 extern crate core;
 

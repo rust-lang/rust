@@ -14,7 +14,7 @@
 #![allow(dead_code)]
 
 #![crate_name = "rustc_llvm"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -25,6 +25,7 @@
 #![allow(unknown_features)]
 #![feature(link_args)]
 #![feature(box_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 extern crate libc;
 

@@ -147,6 +147,17 @@ else
 CFG_ADB_TEST_DIR=
 endif
 
+# $(1) - name of doc test
+# $(2) - file of the test
+define DOCTEST
+DOC_NAMES := $$(DOC_NAMES) $(1)
+DOCFILE_$(1) := $(2)
+endef
+
+$(foreach doc,$(DOCS), \
+  $(eval $(call DOCTEST,md-$(doc),$(S)src/doc/$(doc).md)))
+$(foreach file,$(wildcard $(S)src/doc/trpl/*.md), \
+  $(eval $(call DOCTEST,$(file:$(S)src/doc/trpl/%.md=trpl-%),$(file))))
 
 ######################################################################
 # Main test targets
@@ -292,6 +303,7 @@ tidy:
 		| grep '^$(S)src/rust-installer' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
 
+
 endif
 
 
@@ -339,8 +351,8 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec: \
            check-stage$(1)-T-$(2)-H-$(3)-doc-crate-$$(crate)-exec)
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-exec: \
-        $$(foreach docname,$$(DOCS), \
-           check-stage$(1)-T-$(2)-H-$(3)-doc-$$(docname)-exec)
+        $$(foreach docname,$$(DOC_NAMES), \
+           check-stage$(1)-T-$(2)-H-$(3)-doc-$$(docname)-exec) \
 
 check-stage$(1)-T-$(2)-H-$(3)-pretty-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-exec \
@@ -795,17 +807,18 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3)
 # rustdoc etc.
 ifeq ($(NO_REBUILD),)
 DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = \
-	$$(D)/$(4).md \
+	$$(DOCFILE_$(4)) \
 	$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
 	$$(RUSTDOC_EXE_$(1)_T_$(2)_H_$(3))
 else
-DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(D)/$(4).md
+DOCTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(DOCFILE_$(4))
 endif
 
 ifeq ($(2),$$(CFG_BUILD))
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): $$(DOCTESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, run doc-$(4) [$(2)])
-	$$(Q)$$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --cfg dox --test $$< --test-args "$$(TESTARGS)" && touch $$@
+	$$(Q)$$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --cfg dox --test $$< \
+		--test-args "$$(TESTARGS)" && touch $$@
 else
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):
 	touch $$@
@@ -815,7 +828,7 @@ endef
 $(foreach host,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
   $(foreach stage,$(STAGES), \
-   $(foreach docname,$(DOCS), \
+   $(foreach docname,$(DOC_NAMES), \
     $(eval $(call DEF_DOC_TEST,$(stage),$(target),$(host),$(docname)))))))
 
 # Crates
@@ -877,7 +890,7 @@ TEST_GROUPS = \
 	debuginfo-lldb \
 	codegen \
 	doc \
-	$(foreach docname,$(DOCS),doc-$(docname)) \
+	$(foreach docname,$(DOC_NAMES),doc-$(docname)) \
 	pretty \
 	pretty-rpass \
     pretty-rpass-valgrind \
@@ -946,7 +959,7 @@ $(foreach stage,$(STAGES), \
    $(eval $(call DEF_CHECK_FOR_STAGE_AND_HOSTS_AND_GROUP,$(stage),$(host),$(group))))))
 
 define DEF_CHECK_DOC_FOR_STAGE
-check-stage$(1)-docs: $$(foreach docname,$$(DOCS), \
+check-stage$(1)-docs: $$(foreach docname,$$(DOC_NAMES), \
                        check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-$$(docname)) \
                      $$(foreach crate,$$(TEST_DOC_CRATES), \
                        check-stage$(1)-T-$$(CFG_BUILD)-H-$$(CFG_BUILD)-doc-crate-$$(crate))

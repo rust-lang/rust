@@ -13,7 +13,7 @@ extern crate cci_class;
 use cci_class::kitties::cat;
 
 fn main() {
-  let nyan : cat = cat(52u, 99);
-  assert!((nyan.meows == 52u));
+  let nyan : cat = cat(52us, 99);
+  assert!((nyan.meows == 52us));
   //~^ ERROR field `meows` of struct `cci_class::kitties::cat` is private
 }

@@ -209,7 +209,6 @@ impl LintStore {
                      UnsafeBlocks,
                      UnusedMut,
                      UnusedAllocation,
-                     Stability,
                      MissingCopyImplementations,
                      UnstableFeatures,
         );
@@ -218,6 +217,7 @@ impl LintStore {
                               TypeLimits,
                               RawPointerDerive,
                               MissingDoc,
+                              Stability,
         );
 
         add_lint_group!(sess, "bad_style",
@@ -308,18 +308,21 @@ impl LintStore {
             UnstableFeatures::Cheat => Allow
         };
         match self.by_name.get("unstable_features") {
-            Some(&Id(lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
-            Some(&Renamed(_, lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            Some(&Id(lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
+                self.set_level(lint_id, (lvl, ReleaseChannel))
+            },
+            Some(&Renamed(_, lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
+                self.set_level(lint_id, (lvl, ReleaseChannel))
+            },
             None => unreachable!()
         }
-        match self.by_name.get("staged_unstable") {
-            Some(&Id(lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
-            Some(&Renamed(_, lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
-            None => unreachable!()
-        }
-        match self.by_name.get("staged_experimental") {
-            Some(&Id(lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
-            Some(&Renamed(_, lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+        match self.by_name.get("unstable") {
+            Some(&Id(lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
+                self.set_level(lint_id, (lvl, ReleaseChannel))
+            },
+            Some(&Renamed(_, lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
+                self.set_level(lint_id, (lvl, ReleaseChannel))
+            },
             None => unreachable!()
         }
     }

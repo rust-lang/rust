@@ -12,7 +12,7 @@ use std::marker;
 
 struct Foo { marker: marker::NoSync }
 
-static FOO: uint = 3;
+static FOO: usize = 3;
 static BAR: Foo = Foo { marker: marker::NoSync };
 //~^ ERROR: the trait `core::marker::Sync` is not implemented
 

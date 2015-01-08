@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    match 22i {
+    match 22is {
         0 .. 3 => {} //~ ERROR expected one of `...`, `=>`, or `|`, found `..`
         _ => {}
     }

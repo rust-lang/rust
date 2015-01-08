@@ -10,8 +10,8 @@
 
 // ignore-test
 
-fn foo<'a>() -> &'a int {  //~ ERROR unconstrained region
+fn foo<'a>() -> &'a isize {  //~ ERROR unconstrained region
     return &x;
 }
-static x: int = 5;
+static x: isize = 5;
 fn main() {}

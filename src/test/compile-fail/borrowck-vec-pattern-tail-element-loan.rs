@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn a<'a>() -> &'a int {
+fn a<'a>() -> &'a isize {
     let vec = vec!(1, 2, 3, 4);
-    let vec: &[int] = vec.as_slice(); //~ ERROR `vec` does not live long enough
+    let vec: &[isize] = vec.as_slice(); //~ ERROR `vec` does not live long enough
     let tail = match vec {
         [_a, tail..] => &tail[0],
         _ => panic!("foo")

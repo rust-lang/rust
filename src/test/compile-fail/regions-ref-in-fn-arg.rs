@@ -10,13 +10,13 @@
 
 #![feature(box_syntax)]
 
-fn arg_item(box ref x: Box<int>) -> &'static int {
+fn arg_item(box ref x: Box<isize>) -> &'static isize {
     x //~^ ERROR borrowed value does not live long enough
 }
 
-fn with<R, F>(f: F) -> R where F: FnOnce(Box<int>) -> R { f(box 3) }
+fn with<R, F>(f: F) -> R where F: FnOnce(Box<isize>) -> R { f(box 3) }
 
-fn arg_closure() -> &'static int {
+fn arg_closure() -> &'static isize {
     with(|box ref x| x) //~ ERROR borrowed value does not live long enough
 }
 

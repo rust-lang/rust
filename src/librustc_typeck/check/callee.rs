@@ -73,7 +73,7 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         autoderef(fcx,
                   callee_expr.span,
                   original_callee_ty,
-                  Some(callee_expr.id),
+                  Some(callee_expr),
                   LvaluePreference::NoPreference,
                   |adj_ty, idx| {
                       let autoderefref = ty::AutoDerefRef { autoderefs: idx, autoref: None };

@@ -32,7 +32,7 @@
 //! # }
 //! ```
 
-#![experimental]
+#![unstable]
 
 use ops::{Drop, FnMut, FnOnce};
 

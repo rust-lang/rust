@@ -22,9 +22,9 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-
+#![allow(unknown_features)] #![feature(int_uint)]
 #![no_std]
-#![experimental]
+#![unstable]
 #![staged_api]
 
 #[macro_use]

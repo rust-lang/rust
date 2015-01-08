@@ -681,6 +681,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_err(s, m);
     }
 
+    pub fn span_bug(&self, s: Span, m: &str) {
+        self.tcx.sess.span_bug(s, m);
+    }
+
     pub fn span_note(&self, s: Span, m: &str) {
         self.tcx.sess.span_note(s, m);
     }

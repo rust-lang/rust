@@ -10,8 +10,8 @@
 
 #[derive(Clone)]
 struct point {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 fn main() {
