@@ -25,6 +25,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(slicing_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 pub use self::Piece::*;
 pub use self::Position::*;

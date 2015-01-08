@@ -110,6 +110,7 @@
 #![feature(slicing_syntax, unboxed_closures)]
 #![feature(box_syntax)]
 #![feature(old_impl_check)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 // Don't link to std. We are std.
 #![no_std]
