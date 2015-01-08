@@ -16,7 +16,7 @@ trait foo {
     fn foo(&self) -> isize;
 }
 
-impl foo for Vec<uint> {
+impl foo for Vec<usize> {
     fn foo(&self) -> isize {1}
 }
 
@@ -39,7 +39,7 @@ fn m2() {
     let mut x = Vec::new();
 
     // ...but we still resolved `foo()` to the trait and hence know the return type.
-    let y: uint = x.foo(); //~ ERROR mismatched types
+    let y: usize = x.foo(); //~ ERROR mismatched types
 }
 
 fn main() { }

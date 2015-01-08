@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S { a: uint }
+struct S { a: usize }
 static A: S  = S { a: 3 };
-static B: &'static uint = &A.a;
+static B: &'static usize = &A.a;
 //~^ ERROR: cannot refer to the interior of another static
-static C: &'static uint = &(A.a);
+static C: &'static usize = &(A.a);
 //~^ ERROR: cannot refer to the interior of another static
 
-static D: [uint; 1] = [1];
-static E: uint = D[0];
+static D: [usize; 1] = [1];
+static E: usize = D[0];
 //~^ ERROR: cannot refer to other statics by value
-static F: &'static uint = &D[0];
+static F: &'static usize = &D[0];
 //~^ ERROR: cannot refer to the interior of another static
 
 fn main() {}

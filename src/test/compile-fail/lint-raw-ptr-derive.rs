@@ -28,7 +28,7 @@ enum Baz {
 #[derive(Clone)]
 struct Buzz {
     x: (*const isize, //~ ERROR use of `#[derive]` with a raw pointer
-        *const uint) //~ ERROR use of `#[derive]` with a raw pointer
+        *const usize) //~ ERROR use of `#[derive]` with a raw pointer
 }
 
 fn main() {}

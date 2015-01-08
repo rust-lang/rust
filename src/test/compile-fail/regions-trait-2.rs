@@ -13,7 +13,7 @@
 // Test that you cannot escape a reference
 // into a trait.
 
-struct ctxt { v: uint }
+struct ctxt { v: usize }
 
 trait get_ctxt {
     fn get_ctxt(&self) -> &'a ctxt;

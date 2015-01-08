@@ -12,7 +12,7 @@
 // within assignments in if expressions.
 
 struct Foo {
-    foo: uint
+    foo: usize
 }
 
 fn main() {

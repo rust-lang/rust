@@ -16,7 +16,7 @@ use lib::TheTrait;
 
 struct TheType;
 
-impl TheTrait<uint> for isize { } //~ ERROR E0117
+impl TheTrait<usize> for isize { } //~ ERROR E0117
 
 impl TheTrait<TheType> for isize { } //~ ERROR E0117
 

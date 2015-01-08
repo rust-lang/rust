@@ -12,7 +12,7 @@
 
 struct Foo {
     first: bool,
-    second: Option<[uint; 4]>
+    second: Option<[usize; 4]>
 }
 
 enum Color {

@@ -17,12 +17,12 @@ extern crate libc;
 use std::num::Int;
 
 struct Foo {
-    x: uint,
+    x: usize,
     b: bool, //~ ERROR: struct field is never used
     marker: std::marker::NoCopy
 }
 
-fn field_read(f: Foo) -> uint {
+fn field_read(f: Foo) -> usize {
     f.x.pow(2)
 }
 
@@ -43,7 +43,7 @@ fn field_match_in_patterns(b: XYZ) -> String {
 }
 
 struct Bar {
-    x: uint, //~ ERROR: struct field is never used
+    x: usize, //~ ERROR: struct field is never used
     b: bool,
     _guard: ()
 }

@@ -10,8 +10,8 @@
 
 fn main() {
     enum color {
-        rgb(uint, uint, uint),
-        cmyk(uint, uint, uint, uint),
+        rgb(usize, usize, usize),
+        cmyk(usize, usize, usize, usize),
         no_color,
     }
 

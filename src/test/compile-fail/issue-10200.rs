@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct Foo(bool);
-fn foo(_: uint) -> Foo { Foo(false) }
+fn foo(_: usize) -> Foo { Foo(false) }
 
 fn main() {
     match Foo(true) {

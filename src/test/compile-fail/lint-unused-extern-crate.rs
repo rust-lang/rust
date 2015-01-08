@@ -28,6 +28,6 @@ use rand::isaac::IsaacRng;
 use other::*;
 
 fn main() {
-    let x: collecs::vec::Vec<uint> = Vec::new();
+    let x: collecs::vec::Vec<usize> = Vec::new();
     let y = foo();
 }

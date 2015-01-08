@@ -12,11 +12,11 @@
 // than the thing it points at and ensure that they result in
 // errors. See also regions-free-region-ordering-callee.rs
 
-fn call1<'a>(x: &'a uint) {
+fn call1<'a>(x: &'a usize) {
     // Test that creating a pointer like
-    // &'a &'z uint requires that 'a <= 'z:
-    let y: uint = 3;
-    let z: &'a & uint = &(&y);
+    // &'a &'z usize requires that 'a <= 'z:
+    let y: usize = 3;
+    let z: &'a & usize = &(&y);
     //~^ ERROR borrowed value does not live long enough
     //~^^ ERROR `y` does not live long enough
 }

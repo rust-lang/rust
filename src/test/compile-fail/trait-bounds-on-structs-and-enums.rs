@@ -17,7 +17,7 @@ struct Foo<T:Trait> {
 enum Bar<T:Trait> {
     ABar(isize),
     BBar(T),
-    CBar(uint),
+    CBar(usize),
 }
 
 fn explode(x: Foo<u32>) {}
@@ -38,7 +38,7 @@ struct Baz {
 
 enum Boo {
 //~^ ERROR not implemented
-    Quux(Bar<uint>),
+    Quux(Bar<usize>),
 }
 
 struct Badness<U> {
@@ -57,7 +57,7 @@ trait PolyTrait<T> {
 
 struct Struct;
 
-impl PolyTrait<Foo<uint>> for Struct {
+impl PolyTrait<Foo<usize>> for Struct {
 //~^ ERROR not implemented
     fn whatever() {}
 }

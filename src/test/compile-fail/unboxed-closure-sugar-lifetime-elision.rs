@@ -30,5 +30,5 @@ fn main() {
     eq::< for<'a> Foo<(&'a isize,), (&'a isize, &'a isize)>,
           Foo(&isize) -> (&isize, &isize)                           >();
 
-    let _: Foo(&isize, &uint) -> &uint; //~ ERROR missing lifetime specifier
+    let _: Foo(&isize, &usize) -> &usize; //~ ERROR missing lifetime specifier
 }

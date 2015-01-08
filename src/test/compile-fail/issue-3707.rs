@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct Obj {
-    member: uint
+    member: usize
 }
 
 impl Obj {

@@ -16,7 +16,7 @@ trait Foo {
 }
 
 impl Foo for isize {
-    type A = uint;
+    type A = usize;
     fn bar() -> isize { 42 }
 }
 

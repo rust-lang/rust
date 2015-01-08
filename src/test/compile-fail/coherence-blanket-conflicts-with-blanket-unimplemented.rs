@@ -16,7 +16,7 @@ use std::default::Default;
 // for the same type (though this crate doesn't implement them at all).
 
 trait MyTrait {
-    fn get(&self) -> uint;
+    fn get(&self) -> usize;
 }
 
 trait Even { }
@@ -24,11 +24,11 @@ trait Even { }
 trait Odd { }
 
 impl<T:Even> MyTrait for T { //~ ERROR E0119
-    fn get(&self) -> uint { 0 }
+    fn get(&self) -> usize { 0 }
 }
 
 impl<T:Odd> MyTrait for T {
-    fn get(&self) -> uint { 0 }
+    fn get(&self) -> usize { 0 }
 }
 
 fn main() { }

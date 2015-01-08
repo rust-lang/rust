@@ -15,7 +15,7 @@ struct foo {
 
 struct bar {
     a: isize,
-    b: uint,
+    b: usize,
 }
 
 fn want_foo(f: foo) {}

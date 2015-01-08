@@ -20,7 +20,7 @@ fn main() {
         x: 3i
     };
 
-    let baz: Foo<uint> = panic!();
+    let baz: Foo<usize> = panic!();
     //~^ ERROR not implemented
 }
 
