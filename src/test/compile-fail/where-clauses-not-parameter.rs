@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn equal<T>(_: &T, _: &T) -> bool where int : Eq {
+fn equal<T>(_: &T, _: &T) -> bool where isize : Eq {
     true //~^ ERROR cannot bound type `isize`, where clause bounds may only be attached
 }
 
@@ -16,24 +16,26 @@ fn equal<T>(_: &T, _: &T) -> bool where int : Eq {
 fn test<T: Eq>() -> bool where Option<T> : Eq {}
 
 // This should be rejected as well.
-fn test2() -> bool where Option<int> : Eq {}
-//~^ ERROR cannot bound type `core::option::Option<isize>`, where clause bounds
+fn test2() -> bool where Option<isize> : Eq {}
+//~^ ERROR cannot bound type `core::option::Option<isize>`, where clause bounds may
 
 #[derive(PartialEq)]
 //~^ ERROR cannot bound type `isize`, where clause bounds
-enum Foo<T> where int : Eq { MkFoo }
+enum Foo<T> where isize : Eq { MkFoo }
 //~^ ERROR cannot bound type `isize`, where clause bounds
 
 fn test3<T: Eq>() -> bool where Option<Foo<T>> : Eq {}
 
-fn test4() -> bool where Option<Foo<int>> : Eq {}
+fn test4() -> bool where Option<Foo<isize>> : Eq {}
 //~^ ERROR cannot bound type `core::option::Option<Foo<isize>>`, where clause bounds
 
-trait Baz<T> where int : Eq {
-    fn baz() where String : Eq;
+trait Baz<T> where isize : Eq {
+    //~^ ERROR cannot bound type `isize`, where clause bounds may only
+    fn baz() where String : Eq; //~ ERROR cannot bound type `collections::string::String`
+    //~^ ERROR cannot bound type `isize`, where clause
 }
 
-impl Baz<int> for int where int : Eq {
+impl Baz<int> for int where isize : Eq {
     //~^ ERROR cannot bound type `isize`, where clause bounds
     fn baz() where String : Eq {}
 }
