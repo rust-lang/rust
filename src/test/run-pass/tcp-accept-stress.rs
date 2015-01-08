@@ -34,11 +34,11 @@ fn test() {
 
     let (srv_tx, srv_rx) = channel();
     let (cli_tx, cli_rx) = channel();
-    for _ in range(0, N) {
+    let _t = range(0, N).map(|_| {
         let a = a.clone();
         let cnt = cnt.clone();
         let srv_tx = srv_tx.clone();
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             let mut a = a;
             loop {
                 match a.accept() {
@@ -52,18 +52,18 @@ fn test() {
                 }
             }
             srv_tx.send(());
-        });
-    }
+        })
+    }).collect::<Vec<_>>();
 
-    for _ in range(0, N) {
+    let _t = range(0, N).map(|_| {
         let cli_tx = cli_tx.clone();
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             for _ in range(0, M) {
                 let _s = TcpStream::connect(addr).unwrap();
             }
             cli_tx.send(());
-        });
-    }
+        })
+    }).collect::<Vec<_>>();
     drop((cli_tx, srv_tx));
 
     // wait for senders

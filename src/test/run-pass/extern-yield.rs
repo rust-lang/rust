@@ -39,7 +39,7 @@ fn count(n: libc::uintptr_t) -> libc::uintptr_t {
 
 pub fn main() {
     range(0, 10u).map(|i| {
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             let result = count(5);
             println!("result = {}", result);
             assert_eq!(result, 16);
