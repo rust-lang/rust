@@ -53,7 +53,7 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
           args: &str, cwd: Option<&Path>,
           paths: &[&Path]) -> ProcessOutput {
     let ar = match *maybe_ar_prog {
-        Some(ref ar) => ar.index(&FullRange),
+        Some(ref ar) => &ar[],
         None => "ar"
     };
     let mut cmd = Command::new(ar);
@@ -73,24 +73,21 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
         Ok(prog) => {
             let o = prog.wait_with_output().unwrap();
             if !o.status.success() {
-                handler.err(format!("{} failed with: {}",
+                handler.err(&format!("{} failed with: {}",
                                  cmd,
-                                 o.status).index(&FullRange));
-                handler.note(format!("stdout ---\n{}",
-                                  str::from_utf8(o.output
-                                                  .index(&FullRange)).unwrap())
-                          .index(&FullRange));
-                handler.note(format!("stderr ---\n{}",
-                                  str::from_utf8(o.error
-                                                  .index(&FullRange)).unwrap())
-                          .index(&FullRange));
+                                 o.status)[]);
+                handler.note(&format!("stdout ---\n{}",
+                                  str::from_utf8(&o.output[]).unwrap())[]);
+                handler.note(&format!("stderr ---\n{}",
+                                  str::from_utf8(&o.error[]).unwrap())
+                             []);
                 handler.abort_if_errors();
             }
             o
         },
         Err(e) => {
-            handler.err(format!("could not exec `{}`: {}", ar.index(&FullRange),
-                             e).index(&FullRange));
+            handler.err(&format!("could not exec `{}`: {}", &ar[],
+                             e)[]);
             handler.abort_if_errors();
             panic!("rustc::back::archive::run_ar() should not reach this point");
         }
@@ -106,16 +103,16 @@ pub fn find_library(name: &str, osprefix: &str, ossuffix: &str,
 
     for path in search_paths.iter() {
         debug!("looking for {} inside {:?}", name, path.display());
-        let test = path.join(oslibname.index(&FullRange));
+        let test = path.join(&oslibname[]);
         if test.exists() { return test }
         if oslibname != unixlibname {
-            let test = path.join(unixlibname.index(&FullRange));
+            let test = path.join(&unixlibname[]);
             if test.exists() { return test }
         }
     }
-    handler.fatal(format!("could not find native static library `{}`, \
+    handler.fatal(&format!("could not find native static library `{}`, \
                            perhaps an -L flag is missing?",
-                          name).index(&FullRange));
+                          name)[]);
 }
 
 impl<'a> Archive<'a> {
@@ -147,7 +144,7 @@ impl<'a> Archive<'a> {
     /// Lists all files in an archive
     pub fn files(&self) -> Vec<String> {
         let output = run_ar(self.handler, &self.maybe_ar_prog, "t", None, &[&self.dst]);
-        let output = str::from_utf8(output.output.index(&FullRange)).unwrap();
+        let output = str::from_utf8(&output.output[]).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of
         // just `\n`
         output.lines_any().map(|s| s.to_string()).collect()
@@ -179,9 +176,9 @@ impl<'a> ArchiveBuilder<'a> {
     /// search in the relevant locations for a library named `name`.
     pub fn add_native_library(&mut self, name: &str) -> io::IoResult<()> {
         let location = find_library(name,
-                                    self.archive.slib_prefix.index(&FullRange),
-                                    self.archive.slib_suffix.index(&FullRange),
-                                    self.archive.lib_search_paths.index(&FullRange),
+                                    &self.archive.slib_prefix[],
+                                    &self.archive.slib_suffix[],
+                                    &self.archive.lib_search_paths[],
                                     self.archive.handler);
         self.add_archive(&location, name, |_| false)
     }
@@ -197,12 +194,12 @@ impl<'a> ArchiveBuilder<'a> {
         // as simple comparison is not enough - there
         // might be also an extra name suffix
         let obj_start = format!("{}", name);
-        let obj_start = obj_start.index(&FullRange);
+        let obj_start = &obj_start[];
         // Ignoring all bytecode files, no matter of
         // name
         let bc_ext = ".bytecode.deflate";
 
-        self.add_archive(rlib, name.index(&FullRange), |fname: &str| {
+        self.add_archive(rlib, &name[], |fname: &str| {
             let skip_obj = lto && fname.starts_with(obj_start)
                 && fname.ends_with(".o");
             skip_obj || fname.ends_with(bc_ext) || fname == METADATA_FILENAME
@@ -239,7 +236,7 @@ impl<'a> ArchiveBuilder<'a> {
             // allow running `ar s file.a` to update symbols only.
             if self.should_update_symbols {
                 run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
-                       "s", Some(self.work_dir.path()), args.index(&FullRange));
+                       "s", Some(self.work_dir.path()), &args[]);
             }
             return self.archive;
         }
@@ -259,7 +256,7 @@ impl<'a> ArchiveBuilder<'a> {
                 // Add the archive members seen so far, without updating the
                 // symbol table (`S`).
                 run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
-                       "cruS", Some(self.work_dir.path()), args.index(&FullRange));
+                       "cruS", Some(self.work_dir.path()), &args[]);
 
                 args.clear();
                 args.push(&abs_dst);
@@ -274,7 +271,7 @@ impl<'a> ArchiveBuilder<'a> {
         // necessary.
         let flags = if self.should_update_symbols { "crus" } else { "cruS" };
         run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
-               flags, Some(self.work_dir.path()), args.index(&FullRange));
+               flags, Some(self.work_dir.path()), &args[]);
 
         self.archive
     }
@@ -316,7 +313,7 @@ impl<'a> ArchiveBuilder<'a> {
             } else {
                 filename
             };
-            let new_filename = self.work_dir.path().join(filename.index(&FullRange));
+            let new_filename = self.work_dir.path().join(&filename[]);
             try!(fs::rename(file, &new_filename));
             self.members.push(Path::new(filename));
         }

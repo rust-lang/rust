@@ -908,8 +908,7 @@ fn check_error_patterns(props: &TestProps,
     }
     if done { return; }
 
-    let missing_patterns =
-        props.error_patterns.index(&(next_err_idx..));
+    let missing_patterns = &props.error_patterns[next_err_idx..];
     if missing_patterns.len() == 1u {
         fatal_proc_rec(format!("error pattern '{}' not found!",
                               missing_patterns[0]).as_slice(),

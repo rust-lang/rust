@@ -98,7 +98,7 @@ impl AttrMetaMethods for MetaItem {
 
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]> {
         match self.node {
-            MetaList(_, ref l) => Some(l.index(&FullRange)),
+            MetaList(_, ref l) => Some(&l[]),
             _ => None
         }
     }
@@ -136,8 +136,8 @@ impl AttributeMethods for Attribute {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
-                token::intern_and_get_ident(strip_doc_comment_decoration(
-                        comment.get()).index(&FullRange)));
+                token::intern_and_get_ident(&strip_doc_comment_decoration(
+                        comment.get())[]));
             if self.node.style == ast::AttrOuter {
                 f(&mk_attr_outer(self.node.id, meta))
             } else {
@@ -297,9 +297,9 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
             }
             MetaList(ref n, ref items) if *n == "inline" => {
                 mark_used(attr);
-                if contains_name(items.index(&FullRange), "always") {
+                if contains_name(&items[], "always") {
                     InlineAlways
-                } else if contains_name(items.index(&FullRange), "never") {
+                } else if contains_name(&items[], "never") {
                     InlineNever
                 } else {
                     InlineHint
@@ -403,7 +403,7 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {
 
         if !set.insert(name.clone()) {
             diagnostic.span_fatal(meta.span,
-                                  format!("duplicate meta item `{}`", name).index(&FullRange));
+                                  &format!("duplicate meta item `{}`", name)[]);
         }
     }
 }

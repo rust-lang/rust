@@ -16,7 +16,6 @@
 
 use fmt;
 use iter::IteratorExt;
-use ops::Index;
 use num::{Int, cast};
 use slice::SliceExt;
 use str;
@@ -62,7 +61,7 @@ trait GenericRadix {
                 if x == zero { break };                   // No more digits left to accumulate.
             }
         }
-        let buf = unsafe { str::from_utf8_unchecked(buf.index(&(curr..))) };
+        let buf = unsafe { str::from_utf8_unchecked(&buf[curr..]) };
         f.pad_integral(is_positive, self.prefix(), buf)
     }
 }

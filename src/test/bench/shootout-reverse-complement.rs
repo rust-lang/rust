@@ -40,7 +40,7 @@
 
 // ignore-android see #10393 #13206
 
-#![feature(slicing_syntax, unboxed_closures)]
+#![feature(unboxed_closures)]
 
 extern crate libc;
 

@@ -271,7 +271,7 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// println!("{:?}", rng.choose(&choices));
     /// # // uncomment when slicing syntax is stable
-    /// //assert_eq!(rng.choose(choices.index(&(0..0))), None);
+    /// //assert_eq!(rng.choose(&choices[0..0]), None);
     /// ```
     fn choose<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
         if values.is_empty() {

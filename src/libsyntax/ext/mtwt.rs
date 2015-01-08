@@ -223,7 +223,7 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name) -> Vec<Mrk> {
 }
 
 // the internal function for computing marks
-// it's not clear to me whether it's better to use a .index(&FullRange) mutable
+// it's not clear to me whether it's better to use a [] mutable
 // vector or a cons-list for this.
 fn marksof_internal(ctxt: SyntaxContext,
                     stopname: Name,

@@ -64,7 +64,7 @@ impl Svh {
     }
 
     pub fn as_str<'a>(&'a self) -> &'a str {
-        self.hash.index(&FullRange)
+        &self.hash[]
     }
 
     pub fn calculate(metadata: &Vec<String>, krate: &ast::Crate) -> Svh {
@@ -362,7 +362,7 @@ mod svh_visitor {
             fn macro_name(mac: &Mac) -> token::InternedString {
                 match &mac.node {
                     &MacInvocTT(ref path, ref _tts, ref _stx_ctxt) => {
-                        let s = path.segments.index(&FullRange);
+                        let s = &path.segments[];
                         assert_eq!(s.len(), 1);
                         content(s[0].identifier)
                     }

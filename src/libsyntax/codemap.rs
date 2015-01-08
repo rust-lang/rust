@@ -304,9 +304,9 @@ impl FileMap {
         lines.get(line_number).map(|&line| {
             let begin: BytePos = line - self.start_pos;
             let begin = begin.to_uint();
-            let slice = self.src.index(&(begin..));
+            let slice = &self.src[begin..];
             match slice.find('\n') {
-                Some(e) => slice.index(&(0..e)),
+                Some(e) => &slice[0..e],
                 None => slice
             }.to_string()
         })
@@ -351,9 +351,9 @@ impl CodeMap {
         // FIXME #12884: no efficient/safe way to remove from the start of a string
         // and reuse the allocation.
         let mut src = if src.starts_with("\u{feff}") {
-            String::from_str(src.index(&(3..)))
+            String::from_str(&src[3..])
         } else {
-            String::from_str(src.index(&FullRange))
+            String::from_str(&src[])
         };
 
         // Append '\n' in case it's not already there.
@@ -440,8 +440,7 @@ impl CodeMap {
         if begin.fm.start_pos != end.fm.start_pos {
             None
         } else {
-            Some(begin.fm.src.index(&(begin.pos.to_uint()..
-                                      end.pos.to_uint())).to_string())
+            Some((&begin.fm.src[begin.pos.to_uint()..end.pos.to_uint()]).to_string())
         }
     }
 

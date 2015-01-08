@@ -562,9 +562,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         match self.terms_cx.inferred_map.get(&param_id) {
             Some(&index) => index,
             None => {
-                self.tcx().sess.bug(format!(
+                self.tcx().sess.bug(&format!(
                         "no inferred index entry for {}",
-                        self.tcx().map.node_to_string(param_id)).index(&FullRange));
+                        self.tcx().map.node_to_string(param_id))[]);
             }
         }
     }
@@ -837,9 +837,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::ty_infer(..) | ty::ty_err => {
                 self.tcx().sess.bug(
-                    format!("unexpected type encountered in \
+                    &format!("unexpected type encountered in \
                             variance inference: {}",
-                            ty.repr(self.tcx())).index(&FullRange));
+                            ty.repr(self.tcx()))[]);
             }
         }
     }
@@ -917,9 +917,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // regions when visiting member types or method types.
                 self.tcx()
                     .sess
-                    .bug(format!("unexpected region encountered in variance \
+                    .bug(&format!("unexpected region encountered in variance \
                                   inference: {}",
-                                 region.repr(self.tcx())).index(&FullRange));
+                                 region.repr(self.tcx()))[]);
             }
         }
     }
@@ -1055,7 +1055,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
                 let found = item_variances.repr(tcx);
-                tcx.sess.span_err(tcx.map.span(item_id), found.index(&FullRange));
+                tcx.sess.span_err(tcx.map.span(item_id), &found[]);
             }
 
             let newly_added = tcx.item_variance_map.borrow_mut()

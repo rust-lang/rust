@@ -56,12 +56,12 @@ pub fn note_and_explain_region(cx: &ctxt,
       (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
-            format!("{}{}{}", prefix, *str, suffix).index(&FullRange));
+            &format!("{}{}{}", prefix, *str, suffix)[]);
         Some(span)
       }
       (ref str, None) => {
         cx.sess.note(
-            format!("{}{}{}", prefix, *str, suffix).index(&FullRange));
+            &format!("{}{}{}", prefix, *str, suffix)[]);
         None
       }
     }
@@ -272,7 +272,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         };
 
         if abi != abi::Rust {
-            s.push_str(format!("extern {} ", abi.to_string()).index(&FullRange));
+            s.push_str(&format!("extern {} ", abi.to_string())[]);
         };
 
         s.push_str("fn");
@@ -291,7 +291,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             Some(def_id) => {
                 s.push_str(" {");
                 let path_str = ty::item_path_str(cx, def_id);
-                s.push_str(path_str.index(&FullRange));
+                s.push_str(&path_str[]);
                 s.push_str("}");
             }
             None => { }
@@ -306,7 +306,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         match cty.store {
             ty::UniqTraitStore => {}
             ty::RegionTraitStore(region, _) => {
-                s.push_str(region_to_string(cx, "", true, region).index(&FullRange));
+                s.push_str(&region_to_string(cx, "", true, region)[]);
             }
         }
 
@@ -325,7 +325,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 assert_eq!(cty.onceness, ast::Once);
                 s.push_str("proc");
                 push_sig_to_string(cx, &mut s, '(', ')', &cty.sig,
-                                   bounds_str.index(&FullRange));
+                                   &bounds_str[]);
             }
             ty::RegionTraitStore(..) => {
                 match cty.onceness {
@@ -333,7 +333,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     ast::Once => s.push_str("once ")
                 }
                 push_sig_to_string(cx, &mut s, '|', '|', &cty.sig,
-                                   bounds_str.index(&FullRange));
+                                   &bounds_str[]);
             }
         }
 
@@ -366,7 +366,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             ty::FnConverging(t) => {
                 if !ty::type_is_nil(t) {
                    s.push_str(" -> ");
-                   s.push_str(ty_to_string(cx, t).index(&FullRange));
+                   s.push_str(&ty_to_string(cx, t)[]);
                 }
             }
             ty::FnDiverging => {
@@ -403,7 +403,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         }
         ty_rptr(r, ref tm) => {
             let mut buf = region_ptr_to_string(cx, *r);
-            buf.push_str(mt_to_string(cx, tm).index(&FullRange));
+            buf.push_str(&mt_to_string(cx, tm)[]);
             buf
         }
         ty_open(typ) =>
@@ -413,7 +413,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 .iter()
                 .map(|elem| ty_to_string(cx, *elem))
                 .collect::<Vec<_>>();
-            match strs.index(&FullRange) {
+            match &strs[] {
                 [ref string] => format!("({},)", string),
                 strs => format!("({})", strs.connect(", "))
             }
@@ -542,7 +542,7 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
         0
     };
 
-    for t in tps.index(&(0..(tps.len() - num_defaults))).iter() {
+    for t in tps[0..(tps.len() - num_defaults)].iter() {
         strs.push(ty_to_string(cx, *t))
     }
 
@@ -550,11 +550,11 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
         format!("{}({}){}",
                 base,
                 if strs[0].starts_with("(") && strs[0].ends_with(",)") {
-                    strs[0].index(&(1 .. (strs[0].len() - 2))) // Remove '(' and ',)'
+                    &strs[0][1 .. (strs[0].len() - 2)] // Remove '(' and ',)'
                 } else if strs[0].starts_with("(") && strs[0].ends_with(")") {
-                    strs[0].index(&(1 .. (strs[0].len() - 1))) // Remove '(' and ')'
+                    &strs[0][1 .. (strs[0].len() - 1)] // Remove '(' and ')'
                 } else {
-                    strs[0].index(&FullRange)
+                    &strs[0][]
                 },
                 if &*strs[1] == "()" { String::new() } else { format!(" -> {}", strs[1]) })
     } else if strs.len() > 0 {
@@ -567,7 +567,7 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
 pub fn ty_to_short_str<'tcx>(cx: &ctxt<'tcx>, typ: Ty<'tcx>) -> String {
     let mut s = typ.repr(cx).to_string();
     if s.len() >= 32u {
-        s = s.index(&(0u..32u)).to_string();
+        s = (&s[0u..32u]).to_string();
     }
     return s;
 }
@@ -632,7 +632,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for [T] {
 
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        repr_vec(tcx, self.index(&FullRange))
+        repr_vec(tcx, &self[])
     }
 }
 
@@ -640,7 +640,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
 // autoderef cannot convert the &[T] handler
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Vec<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        repr_vec(tcx, self.index(&FullRange))
+        repr_vec(tcx, &self[])
     }
 }
 

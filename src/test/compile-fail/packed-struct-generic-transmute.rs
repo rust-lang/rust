@@ -15,8 +15,6 @@
 
 // error-pattern: transmute called on types with different size
 
-#![feature(slicing_syntax)]
-
 use std::mem;
 
 #[repr(packed)]

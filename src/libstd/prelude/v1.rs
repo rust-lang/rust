@@ -17,7 +17,7 @@
 #[stable] #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // TEMPORARY
-#[unstable] #[doc(no_inline)] pub use ops::{Index, IndexMut, FullRange};
+#[unstable] #[doc(no_inline)] pub use ops::FullRange;
 
 // Reexported functions
 #[stable] #[doc(no_inline)] pub use mem::drop;

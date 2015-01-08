@@ -219,16 +219,16 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     // had the duplicate.
                     let ns = ns.unwrap();
                     self.resolve_error(sp,
-                        format!("duplicate definition of {} `{}`",
+                        &format!("duplicate definition of {} `{}`",
                              namespace_error_to_string(duplicate_type),
-                             token::get_name(name)).index(&FullRange));
+                             token::get_name(name))[]);
                     {
                         let r = child.span_for_namespace(ns);
                         for sp in r.iter() {
                             self.session.span_note(*sp,
-                                 format!("first definition of {} `{}` here",
+                                 &format!("first definition of {} `{}` here",
                                       namespace_error_to_string(duplicate_type),
-                                      token::get_name(name)).index(&FullRange));
+                                      token::get_name(name))[]);
                         }
                     }
                 }
@@ -1200,8 +1200,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             SingleImport(target, _) => {
                 debug!("(building import directive) building import \
                         directive: {}::{}",
-                       self.names_to_string(module_.imports.borrow().last().unwrap()
-                                                 .module_path.index(&FullRange)),
+                       self.names_to_string(&module_.imports.borrow().last().unwrap().
+                                                             module_path[]),
                        token::get_name(target));
 
                 let mut import_resolutions = module_.import_resolutions
