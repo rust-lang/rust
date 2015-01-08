@@ -52,7 +52,6 @@ use middle::const_eval;
 use middle::def;
 use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
-use middle::subst::{VecPerParamSpace};
 use middle::traits;
 use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
 use rscope::{self, UnelidableRscope, RegionScope, SpecificRscope,
@@ -244,7 +243,7 @@ pub fn opt_ast_region_to_region<'tcx>(
 
 /// Given a path `path` that refers to an item `I` with the declared generics `decl_generics`,
 /// returns an appropriate set of substitutions for this particular reference to `I`.
-fn ast_path_substs_for_ty<'tcx>(
+pub fn ast_path_substs_for_ty<'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
     decl_generics: &ty::Generics<'tcx>,
@@ -760,50 +759,6 @@ pub fn ast_path_to_ty<'tcx>(
                                         path);
     let ty = decl_ty.subst(tcx, &substs);
     TypeAndSubsts { substs: substs, ty: ty }
-}
-
-/// Returns the type that this AST path refers to. If the path has no type
-/// parameters and the corresponding type has type parameters, fresh type
-/// and/or region variables are substituted.
-///
-/// This is used when checking the constructor in struct literals.
-pub fn ast_path_to_ty_relaxed<'tcx>(
-    this: &AstConv<'tcx>,
-    rscope: &RegionScope,
-    did: ast::DefId,
-    path: &ast::Path)
-    -> TypeAndSubsts<'tcx>
-{
-    let tcx = this.tcx();
-    let ty::TypeScheme {
-        generics,
-        ty: decl_ty
-    } = this.get_item_type_scheme(did);
-
-    let wants_params =
-        generics.has_type_params(TypeSpace) || generics.has_region_params(TypeSpace);
-
-    let needs_defaults =
-        wants_params &&
-        path.segments.iter().all(|s| s.parameters.is_empty());
-
-    let substs = if needs_defaults {
-        let type_params: Vec<_> = range(0, generics.types.len(TypeSpace))
-                                      .map(|_| this.ty_infer(path.span)).collect();
-        let region_params =
-            rscope.anon_regions(path.span, generics.regions.len(TypeSpace))
-                  .unwrap();
-        Substs::new(VecPerParamSpace::params_from_type(type_params),
-                    VecPerParamSpace::params_from_type(region_params))
-    } else {
-        ast_path_substs_for_ty(this, rscope, &generics, path)
-    };
-
-    let ty = decl_ty.subst(tcx, &substs);
-    TypeAndSubsts {
-        substs: substs,
-        ty: ty,
-    }
 }
 
 /// Converts the given AST type to a built-in type. A "built-in type" is, at

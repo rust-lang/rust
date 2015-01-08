@@ -135,10 +135,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 t
             }
 
-            ty::ty_open(..) => {
-                self.tcx().sess.bug("Cannot freshen an open existential type");
-            }
-
+            ty::ty_open(..) |
             ty::ty_bool |
             ty::ty_char |
             ty::ty_int(..) |
