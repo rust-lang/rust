@@ -10,6 +10,9 @@
 
 #![crate_type = "lib"]
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 static mut COUNT: u64 = 1;
 
 pub fn get_count() -> u64 { unsafe { COUNT } }

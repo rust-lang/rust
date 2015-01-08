@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 pub fn main() {
     // Tests for indexing into box/& [T; n]
     let x: [int; 3] = [1, 2, 3];

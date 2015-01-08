@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![allow(dead_code)]
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 trait Foo {}
 impl Foo for int {}

@@ -69,7 +69,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("tuple_indexing", Accepted),
     ("associated_types", Accepted),
     ("visible_private_types", Active),
-    ("slicing_syntax", Accepted),
+    ("slicing_syntax", Active),
+    ("box_syntax", Active),
 
     ("if_let", Accepted),
     ("while_let", Accepted),
@@ -337,6 +338,15 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {
+        match e.node {
+            ast::ExprBox(..) | ast::ExprUnary(ast::UnOp::UnUniq, _) => {
+                self.gate_feature("box_syntax",
+                                  e.span,
+                                  "box expression syntax is experimental in alpha release; \
+                                   you can call `Box::new` instead.");
+            }
+            _ => {}
+        }
         visit::walk_expr(self, e);
     }
 
@@ -356,6 +366,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   "multiple-element slice matches anywhere \
                                    but at the end of a slice (e.g. \
                                    `[0, ..xs, 0]` are experimental")
+            }
+            ast::PatBox(..) => {
+                self.gate_feature("box_syntax",
+                                  pattern.span,
+                                  "box pattern syntax is experimental in alpha release");
             }
             _ => {}
         }

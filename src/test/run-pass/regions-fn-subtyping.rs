@@ -12,6 +12,8 @@
 
 #![allow(dead_assignment)]
 #![allow(unused_variable)]
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 // Should pass region checking.
 fn ok(f: Box<FnMut(&uint)>) {

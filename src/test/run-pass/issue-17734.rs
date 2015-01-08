@@ -10,6 +10,9 @@
 
 // Test that generating drop glue for Box<str> doesn't ICE
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 fn f(s: Box<str>) -> Box<str> {
     s
 }

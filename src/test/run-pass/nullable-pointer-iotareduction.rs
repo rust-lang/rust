@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 use std::{option, mem};
 
 // Iota-reduction is a rule in the Calculus of (Co-)Inductive Constructions,

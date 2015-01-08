@@ -11,6 +11,9 @@
 // Testing creating two vtables with the same self type, but different
 // traits.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 use std::any::Any;
 
 trait Wrap {
