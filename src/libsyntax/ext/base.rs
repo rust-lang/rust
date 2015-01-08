@@ -341,9 +341,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
 
     let mut syntax_expanders = SyntaxEnv::new();
     syntax_expanders.insert(intern("macro_rules"), MacroRulesTT);
-    syntax_expanders.insert(intern("fmt"),
-                            builtin_normal_expander(
-                                ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(intern("format_args"),
                             builtin_normal_expander(
                                 ext::format::expand_format_args));
@@ -353,9 +350,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("option_env"),
                             builtin_normal_expander(
                                     ext::env::expand_option_env));
-    syntax_expanders.insert(intern("bytes"),
-                            builtin_normal_expander(
-                                    ext::bytes::expand_syntax_ext));
     syntax_expanders.insert(intern("concat_idents"),
                             builtin_normal_expander(
                                     ext::concat_idents::expand_syntax_ext));
@@ -367,8 +361,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
                                     ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(intern("derive"),
                             Decorator(box ext::deriving::expand_meta_derive));
-    syntax_expanders.insert(intern("deriving"),
-                            Decorator(box ext::deriving::expand_meta_deriving));
 
     if ecfg.enable_quotes {
         // Quasi-quoting expanders
@@ -416,9 +408,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("include_str"),
                             builtin_normal_expander(
                                     ext::source_util::expand_include_str));
-    syntax_expanders.insert(intern("include_bin"),
-                            builtin_normal_expander(
-                                    ext::source_util::expand_include_bin));
     syntax_expanders.insert(intern("include_bytes"),
                             builtin_normal_expander(
                                     ext::source_util::expand_include_bytes));
