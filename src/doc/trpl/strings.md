@@ -1,4 +1,4 @@
-# Strings
+% Strings
 
 Strings are an important concept for any programmer to master. Rust's string
 handling system is a bit different from other languages, due to its systems

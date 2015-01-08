@@ -1,4 +1,4 @@
-# Comments
+% Comments
 
 Now that we have some functions, it's a good idea to learn about comments.
 Comments are notes that you leave to other programmers to help explain things
@@ -42,5 +42,5 @@ fn hello(name: &str) {
 When writing doc comments, adding sections for any arguments, return values,
 and providing some examples of usage is very, very helpful.
 
-You can use the [`rustdoc`](rustdoc.html) tool to generate HTML documentation
+You can use the [`rustdoc`](../rustdoc.html) tool to generate HTML documentation
 from these doc comments.

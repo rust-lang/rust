@@ -156,8 +156,8 @@ endef
 
 $(foreach doc,$(DOCS), \
   $(eval $(call DOCTEST,md-$(doc),$(S)src/doc/$(doc).md)))
-$(foreach file,$(wildcard $(S)src/doc/trpl/src/*), \
-  $(eval $(call DOCTEST,$(file:$(S)src/doc/trpl/src/%.md=trpl-%),$(file))))
+$(foreach file,$(wildcard $(S)src/doc/trpl/*.md), \
+  $(eval $(call DOCTEST,$(file:$(S)src/doc/trpl/%.md=trpl-%),$(file))))
 
 ######################################################################
 # Main test targets

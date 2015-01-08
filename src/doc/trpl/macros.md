@@ -507,7 +507,7 @@ When this library is loaded with `#[use_macros] extern crate`, only `m2` will
 be imported.
 
 The Rust Reference has a [listing of macro-related
-attributes](reference.html#macro--and-plugin-related-attributes).
+attributes](../reference.html#macro--and-plugin-related-attributes).
 
 # The variable `$crate`
 
@@ -567,7 +567,7 @@ intermediate states out, and passing the flag `--pretty expanded` as a
 command-line argument to the compiler will show the result of expansion.
 
 If Rust's macro system can't do what you need, you may want to write a
-[compiler plugin](guide-plugin.html) instead. Compared to `macro_rules!`
+[compiler plugin](plugin.html) instead. Compared to `macro_rules!`
 macros, this is significantly more work, the interfaces are much less stable,
 and the warnings about debugging apply ten-fold. In exchange you get the
 flexibility of running arbitrary Rust code within the compiler. Syntax

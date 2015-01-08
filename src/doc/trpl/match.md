@@ -1,4 +1,4 @@
-# Match
+% Match
 
 Often, a simple `if`/`else` isn't enough, because you have more than two
 possible options. Also, `else` conditions can get incredibly complicated, so

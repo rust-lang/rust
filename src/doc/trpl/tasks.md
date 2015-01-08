@@ -369,7 +369,7 @@ Unlike `spawn`, the function spawned using `try` may return a value, which
 child thread terminates successfully, `try` will return an `Ok` result; if the
 child thread panics, `try` will return an `Error` result.
 
-[`Result`]: std/result/index.html
+[`Result`]: ../std/result/index.html
 
 > *Note:* A panicked thread does not currently produce a useful error
 > value (`try` always returns `Err(())`). In the

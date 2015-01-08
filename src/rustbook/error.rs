@@ -56,6 +56,12 @@ impl Error for String {
     }
 }
 
+impl<'a> Error for Box<Error + 'a> {
+    fn description(&self) -> &str { (**self).description() }
+    fn detail(&self) -> Option<&str> { (**self).detail() }
+    fn cause(&self) -> Option<&Error> { (**self).cause() }
+}
+
 impl FromError<()> for () {
     fn from_err(_: ()) -> () { () }
 }

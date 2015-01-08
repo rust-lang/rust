@@ -5,20 +5,20 @@
 <p>
 <b>Warning:</b> Plugins are an advanced, unstable feature! For many details,
 the only available documentation is the <a
-href="syntax/index.html"><code>libsyntax</code></a> and <a
-href="rustc/index.html"><code>librustc</code></a> API docs, or even the source
+href="../syntax/index.html"><code>libsyntax</code></a> and <a
+href="../rustc/index.html"><code>librustc</code></a> API docs, or even the source
 code itself. These internal compiler APIs are also subject to change at any
 time.
 </p>
 
 <p>
 For defining new syntax it is often much easier to use Rust's <a
-href="guide-macros.html">built-in macro system</a>.
+href="macros.html">built-in macro system</a>.
 </p>
 
 <p style="margin-bottom: 0">
 The code in this document uses language features not covered in the Rust
-Guide.  See the <a href="reference.html">Reference Manual</a> for more
+Guide.  See the <a href="../reference.html">Reference Manual</a> for more
 information.
 </p>
 
@@ -32,19 +32,19 @@ extend the compiler's behavior with new syntax extensions, lint checks, etc.
 A plugin is a dynamic library crate with a designated "registrar" function that
 registers extensions with `rustc`. Other crates can use these extensions by
 loading the plugin crate with `#[plugin] extern crate`. See the
-[`rustc::plugin`](rustc/plugin/index.html) documentation for more about the
+[`rustc::plugin`](../rustc/plugin/index.html) documentation for more about the
 mechanics of defining and loading a plugin.
 
 Arguments passed as `#[plugin=...]` or `#[plugin(...)]` are not interpreted by
 rustc itself.  They are provided to the plugin through the `Registry`'s [`args`
-method](rustc/plugin/registry/struct.Registry.html#method.args).
+method](../rustc/plugin/registry/struct.Registry.html#method.args).
 
 # Syntax extensions
 
 Plugins can extend Rust's syntax in various ways. One kind of syntax extension
 is the procedural macro. These are invoked the same way as [ordinary
-macros](guide-macros.html), but the expansion is performed by arbitrary Rust
-code that manipulates [syntax trees](syntax/ast/index.html) at
+macros](macros.html), but the expansion is performed by arbitrary Rust
+code that manipulates [syntax trees](../syntax/ast/index.html) at
 compile time.
 
 Let's write a plugin
@@ -126,14 +126,13 @@ The advantages over a simple `fn(&str) -> uint` are:
   a way to define new literal syntax for any data type.
 
 In addition to procedural macros, you can define new
-[`deriving`](reference.html#deriving)-like attributes and other kinds of
+[`deriving`](../reference.html#deriving)-like attributes and other kinds of
 extensions.  See
-[`Registry::register_syntax_extension`](rustc/plugin/registry/struct.Registry.html#method.register_syntax_extension)
+[`Registry::register_syntax_extension`](../rustc/plugin/registry/struct.Registry.html#method.register_syntax_extension)
 and the [`SyntaxExtension`
 enum](http://doc.rust-lang.org/syntax/ext/base/enum.SyntaxExtension.html).  For
 a more involved macro example, see
-[`src/libregex_macros/lib.rs`](https://github.com/rust-lang/rust/blob/master/src/libregex_macros/lib.rs)
-in the Rust distribution.
+[`regex_macros`](https://github.com/rust-lang/regex/blob/master/regex_macros/src/lib.rs).
 
 
 ## Tips and tricks
@@ -147,7 +146,7 @@ variables of the same name (but different syntax contexts) are in play
 in the same scope. In this case `--pretty expanded,hygiene` will tell
 you about the syntax contexts.
 
-You can use [`syntax::parse`](syntax/parse/index.html) to turn token trees into
+You can use [`syntax::parse`](../syntax/parse/index.html) to turn token trees into
 higher-level syntax elements like expressions:
 
 ```ignore
@@ -163,23 +162,23 @@ Looking through [`libsyntax` parser
 code](https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/parser.rs)
 will give you a feel for how the parsing infrastructure works.
 
-Keep the [`Span`s](syntax/codemap/struct.Span.html) of
+Keep the [`Span`s](../syntax/codemap/struct.Span.html) of
 everything you parse, for better error reporting. You can wrap
-[`Spanned`](syntax/codemap/struct.Spanned.html) around
+[`Spanned`](../syntax/codemap/struct.Spanned.html) around
 your custom data structures.
 
 Calling
-[`ExtCtxt::span_fatal`](syntax/ext/base/struct.ExtCtxt.html#method.span_fatal)
+[`ExtCtxt::span_fatal`](../syntax/ext/base/struct.ExtCtxt.html#method.span_fatal)
 will immediately abort compilation. It's better to instead call
-[`ExtCtxt::span_err`](syntax/ext/base/struct.ExtCtxt.html#method.span_err)
+[`ExtCtxt::span_err`](../syntax/ext/base/struct.ExtCtxt.html#method.span_err)
 and return
-[`DummyResult`](syntax/ext/base/struct.DummyResult.html),
+[`DummyResult`](../syntax/ext/base/struct.DummyResult.html),
 so that the compiler can continue and find further errors.
 
 The example above produced an integer literal using
-[`AstBuilder::expr_uint`](syntax/ext/build/trait.AstBuilder.html#tymethod.expr_uint).
+[`AstBuilder::expr_uint`](../syntax/ext/build/trait.AstBuilder.html#tymethod.expr_uint).
 As an alternative to the `AstBuilder` trait, `libsyntax` provides a set of
-[quasiquote macros](syntax/ext/quote/index.html).  They are undocumented and
+[quasiquote macros](../syntax/ext/quote/index.html).  They are undocumented and
 very rough around the edges.  However, the implementation may be a good
 starting point for an improved quasiquote as an ordinary plugin library.
 
@@ -187,7 +186,7 @@ starting point for an improved quasiquote as an ordinary plugin library.
 # Lint plugins
 
 Plugins can extend [Rust's lint
-infrastructure](reference.html#lint-check-attributes) with additional checks for
+infrastructure](../reference.html#lint-check-attributes) with additional checks for
 code style, safety, etc. You can see
 [`src/test/auxiliary/lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/auxiliary/lint_plugin_test.rs)
 for a full example, the core of which is reproduced here:
@@ -236,11 +235,11 @@ foo.rs:4 fn lintme() { }
 The components of a lint plugin are:
 
 * one or more `declare_lint!` invocations, which define static
-  [`Lint`](rustc/lint/struct.Lint.html) structs;
+  [`Lint`](../rustc/lint/struct.Lint.html) structs;
 
 * a struct holding any state needed by the lint pass (here, none);
 
-* a [`LintPass`](rustc/lint/trait.LintPass.html)
+* a [`LintPass`](../rustc/lint/trait.LintPass.html)
   implementation defining how to check each syntax element. A single
   `LintPass` may call `span_lint` for several different `Lint`s, but should
   register them all through the `get_lints` method.
@@ -252,7 +251,7 @@ mostly use the same infrastructure as lint plugins, and provide examples of how
 to access type information.
 
 Lints defined by plugins are controlled by the usual [attributes and compiler
-flags](reference.html#lint-check-attributes), e.g. `#[allow(test_lint)]` or
+flags](../reference.html#lint-check-attributes), e.g. `#[allow(test_lint)]` or
 `-A test-lint`. These identifiers are derived from the first argument to
 `declare_lint!`, with appropriate case and punctuation conversion.
 

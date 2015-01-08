@@ -409,7 +409,7 @@ test.rs:4         let y = &x;
 
 As you might guess, this kind of analysis is complex for a human, and therefore
 hard for a computer, too! There is an entire [guide devoted to references, ownership,
-and lifetimes](guide-ownership.html) that goes into this topic in
+and lifetimes](ownership.html) that goes into this topic in
 great detail, so if you want the full details, check that out.
 
 ## Best practices
@@ -542,7 +542,7 @@ with some improvements:
 4. Rust enforces that no other writeable pointers alias to this heap memory,
    which means writing to an invalid pointer is not possible.
 
-See the section on references or the [ownership guide](guide-ownership.html)
+See the section on references or the [ownership guide](ownership.html)
 for more detail on how lifetimes work.
 
 Using boxes and references together is very common. For example:
@@ -780,6 +780,6 @@ Here's a quick rundown of Rust's pointer types:
 
 # Related resources
 
-* [API documentation for Box](std/boxed/index.html)
-* [Ownership guide](guide-ownership.html)
+* [API documentation for Box](../std/boxed/index.html)
+* [Ownership guide](ownership.html)
 * [Cyclone paper on regions](http://www.cs.umd.edu/projects/cyclone/papers/cyclone-regions.pdf), which inspired Rust's lifetime system

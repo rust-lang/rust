@@ -1,4 +1,4 @@
-# Hello, world!
+% Hello, world!
 
 Now that you have Rust installed, let's write your first Rust program. It's
 traditional to make your first program in any new language one that prints the

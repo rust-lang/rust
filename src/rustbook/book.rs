@@ -29,8 +29,8 @@ pub struct Book {
 /// A depth-first iterator over a book.
 pub struct BookItems<'a> {
     cur_items: &'a [BookItem],
-    cur_idx: uint,
-    stack: Vec<(&'a [BookItem], uint)>,
+    cur_idx: usize,
+    stack: Vec<(&'a [BookItem], usize)>,
 }
 
 impl<'a> Iterator for BookItems<'a> {
@@ -80,7 +80,7 @@ impl Book {
 pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String>> {
     fn collapse(stack: &mut Vec<BookItem>,
                 top_items: &mut Vec<BookItem>,
-                to_level: uint) {
+                to_level: usize) {
         loop {
             if stack.len() < to_level { return }
             if stack.len() == 1 {
@@ -141,7 +141,7 @@ pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String
             };
             let level = cap.name("indent").unwrap().chars().map(|c| {
                 match c {
-                    ' ' => 1u,
+                    ' ' => 1us,
                     '\t' => 4,
                     _ => unreachable!()
                 }

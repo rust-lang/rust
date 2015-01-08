@@ -1,4 +1,4 @@
-# Guessing Game
+% Guessing Game
 
 Okay! We've got the basics of Rust down. Let's write a bigger program.
 
@@ -108,12 +108,12 @@ we do know that Rust has random number generation, but we don't know how to
 use it.
 
 Enter the docs. Rust has a page specifically to document the standard library.
-You can find that page [here](std/index.html). There's a lot of information on
+You can find that page [here](../std/index.html). There's a lot of information on
 that page, but the best part is the search bar. Right up at the top, there's
 a box that you can enter in a search term. The search is pretty primitive
 right now, but is getting better all the time. If you type 'random' in that
-box, the page will update to [this one](std/index.html?search=random). The very
-first result is a link to [`std::rand::random`](std/rand/fn.random.html). If we
+box, the page will update to [this one](../std/index.html?search=random). The very
+first result is a link to [`std::rand::random`](../std/rand/fn.random.html). If we
 click on that result, we'll be taken to its documentation page.
 
 This page shows us a few things: the type signature of the function, some

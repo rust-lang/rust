@@ -1,4 +1,4 @@
-# Arrays, Vectors, and Slices
+% Arrays, Vectors, and Slices
 
 Like many programming languages, Rust has list types to represent a sequence of
 things. The most basic is the **array**, a fixed-size list of elements of the
@@ -48,7 +48,7 @@ errant access is the source of many bugs in other systems programming
 languages.
 
 A **vector** is a dynamic or "growable" array, implemented as the standard
-library type [`Vec<T>`](std/vec/) (we'll talk about what the `<T>` means
+library type [`Vec<T>`](../std/vec/) (we'll talk about what the `<T>` means
 later). Vectors are to arrays what `String` is to `&str`. You can create them
 with the `vec!` macro:
 

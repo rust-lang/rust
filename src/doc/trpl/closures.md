@@ -1,4 +1,4 @@
-# Closures
+% Closures
 
 So far, we've made lots of functions in Rust, but we've given them all names.
 Rust also allows us to create anonymous functions. Rust's anonymous

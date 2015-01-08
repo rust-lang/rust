@@ -1,4 +1,4 @@
-# Standard Input
+% Standard Input
 
 Getting input from the keyboard is pretty easy, but uses some things
 we haven't seen before. Here's a simple program that reads some input,
