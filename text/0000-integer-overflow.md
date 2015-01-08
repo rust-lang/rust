@@ -151,6 +151,10 @@ overflow. Change this to define them, on overflow, as either returning
 an unspecified result, or task panic, depending on whether the
 overflow is checked.
 
+The semantics of bitshifts are also changed. The number of bits to
+shift by must be within the interval
+`[0..N)` where `N` is the number of bits in the value being shifted, or else the result is panic/undefined, as above.
+
 The implication is that overflow is considered to be an abnormal circumstance,
 a program error, and the programmer expects it not to happen, resp. it is her
 goal to make sure that it will not.
