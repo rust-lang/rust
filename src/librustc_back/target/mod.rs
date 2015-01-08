@@ -53,16 +53,19 @@ use std::io::fs::PathExtensions;
 mod windows_base;
 mod linux_base;
 mod apple_base;
+mod apple_ios_base;
 mod freebsd_base;
 mod dragonfly_base;
 
-mod arm_apple_ios;
+mod armv7_apple_ios;
+mod armv7s_apple_ios;
+mod i386_apple_ios;
+
 mod arm_linux_androideabi;
 mod arm_unknown_linux_gnueabi;
 mod arm_unknown_linux_gnueabihf;
 mod aarch64_unknown_linux_gnu;
 mod i686_apple_darwin;
-mod i386_apple_ios;
 mod i686_pc_windows_gnu;
 mod i686_unknown_dragonfly;
 mod i686_unknown_linux_gnu;
@@ -346,8 +349,10 @@ impl Target {
 
             x86_64_apple_darwin,
             i686_apple_darwin,
+
             i386_apple_ios,
-            arm_apple_ios,
+            armv7_apple_ios,
+            armv7s_apple_ios,
 
             x86_64_pc_windows_gnu,
             i686_pc_windows_gnu
