@@ -10,6 +10,8 @@
 
 // ignore-pretty
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 pub trait bomb { fn boom(&self, Ident); }
 pub struct S;

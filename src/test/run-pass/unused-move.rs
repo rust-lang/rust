@@ -13,6 +13,8 @@
 // Abstract: zero-fill to block after drop
 
 #![allow(path_statement)]
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 pub fn main()
 {

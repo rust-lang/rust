@@ -11,6 +11,8 @@
 
 // rustc --test ignores2.rs && ./ignores2
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 use std::path::{Path};

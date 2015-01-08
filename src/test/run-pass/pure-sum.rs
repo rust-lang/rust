@@ -10,6 +10,8 @@
 
 // Check that functions can modify local state.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 fn sums_to(v: Vec<int> , sum: int) -> bool {
     let mut i = 0u;

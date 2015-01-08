@@ -11,6 +11,9 @@
 // Issue 4691: Ensure that functional-struct-updates operates
 // correctly and moves rather than copy when appropriate.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 use std::marker::NoCopy as NP;
 
 struct ncint { np: NP, v: int }

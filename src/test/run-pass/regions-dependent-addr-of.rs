@@ -11,6 +11,7 @@
 // Test lifetimes are linked properly when we create dependent region pointers.
 // Issue #3148.
 
+#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 struct A {

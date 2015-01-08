@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![allow(unused_variable)]
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 pub fn main() {
     let i = box 100i;

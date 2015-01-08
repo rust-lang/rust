@@ -10,6 +10,9 @@
 
 // Test that a custom deref with a fat pointer return type does not ICE
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 use std::ops::Deref;
 
 pub struct Arr {

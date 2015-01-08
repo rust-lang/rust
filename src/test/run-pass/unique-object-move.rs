@@ -10,6 +10,8 @@
 
 // Issue #5192
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 pub trait EventLoop { }
 

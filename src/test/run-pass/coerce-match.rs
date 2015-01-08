@@ -10,6 +10,7 @@
 
 // Check that coercions are propagated through match and if expressions.
 
+#![allow(unknown_features)]
 #![feature(box_syntax)]
 
 pub fn main() {

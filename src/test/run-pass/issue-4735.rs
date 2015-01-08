@@ -10,6 +10,9 @@
 
 // ignore-fast doesn't like extern crate
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 extern crate libc;
 
 use std::mem::transmute;
