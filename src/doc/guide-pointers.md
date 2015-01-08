@@ -455,12 +455,13 @@ fn rc_succ(x: Rc<int>) -> int { *x + 1 }
 Note that the caller of your function will have to modify their calls slightly:
 
 ```{rust}
+# use std::boxed::Box;
 use std::rc::Rc;
 
 fn succ(x: &int) -> int { *x + 1 }
 
 let ref_x = &5i;
-let box_x = box 5i;
+let box_x = Box::new(5i);
 let rc_x  = Rc::new(5i);
 
 succ(ref_x);
@@ -477,24 +478,17 @@ those contents.
 heap allocation in Rust. Creating a box looks like this:
 
 ```{rust}
-let x = box(std::boxed::HEAP) 5i;
+# use std::boxed::Box;
+let x = Box::new(5i);
 ```
 
-`box` is a keyword that does 'placement new,' which we'll talk about in a bit.
-`box` will be useful for creating a number of heap-allocated types, but is not
-quite finished yet. In the meantime, `box`'s type defaults to
-`std::boxed::HEAP`, and so you can leave it off:
+Boxes are heap allocated and they are deallocated automatically by Rust when
+they go out of scope:
 
 ```{rust}
-let x = box 5i;
-```
-
-As you might assume from the `HEAP`, boxes are heap allocated. They are
-deallocated automatically by Rust when they go out of scope:
-
-```{rust}
+# use std::boxed::Box;
 {
-    let x = box 5i;
+    let x = Box::new(5i);
 
     // stuff happens
 
@@ -513,8 +507,9 @@ You don't need to fully grok the theory of affine types or regions to grok
 boxes, though. As a rough approximation, you can treat this Rust code:
 
 ```{rust}
+# use std::boxed::Box;
 {
-    let x = box 5i;
+    let x = Box::new(5i);
 
     // stuff happens
 }
@@ -553,12 +548,13 @@ for more detail on how lifetimes work.
 Using boxes and references together is very common. For example:
 
 ```{rust}
+# use std::boxed::Box;
 fn add_one(x: &int) -> int {
     *x + 1
 }
 
 fn main() {
-    let x = box 5i;
+    let x = Box::new(5i);
 
     println!("{}", add_one(&*x));
 }
@@ -570,12 +566,13 @@ function, and since it's only reading the value, allows it.
 We can borrow `x` multiple times, as long as it's not simultaneous:
 
 ```{rust}
+# use std::boxed::Box;
 fn add_one(x: &int) -> int {
     *x + 1
 }
 
 fn main() {
-    let x = box 5i;
+    let x = Box::new(5i);
 
     println!("{}", add_one(&*x));
     println!("{}", add_one(&*x));
@@ -586,12 +583,13 @@ fn main() {
 Or as long as it's not a mutable borrow. This will error:
 
 ```{rust,ignore}
+# use std::boxed::Box;
 fn add_one(x: &mut int) -> int {
     *x + 1
 }
 
 fn main() {
-    let x = box 5i;
+    let x = Box::new(5i);
 
     println!("{}", add_one(&*x)); // error: cannot borrow immutable dereference
                                   // of `&`-pointer as mutable
@@ -612,14 +610,15 @@ Sometimes, you need a recursive data structure. The simplest is known as a
 
 
 ```{rust}
-#[deriving(Show)]
+# use std::boxed::Box;
+#[derive(Show)]
 enum List<T> {
     Cons(T, Box<List<T>>),
     Nil,
 }
 
 fn main() {
-    let list: List<int> = List::Cons(1, box List::Cons(2, box List::Cons(3, box List::Nil)));
+    let list: List<int> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Cons(3, Box::new(List::Nil))))));
     println!("{:?}", list);
 }
 ```
@@ -627,7 +626,7 @@ fn main() {
 This prints:
 
 ```text
-Cons(1, box Cons(2, box Cons(3, box Nil)))
+Cons(1, Box(Cons(2, Box(Cons(3, Box(Nil))))))
 ```
 
 The reference to another `List` inside of the `Cons` enum variant must be a box,
@@ -667,6 +666,7 @@ In many languages with pointers, you'd return a pointer from a function
 so as to avoid copying a large data structure. For example:
 
 ```{rust}
+# use std::boxed::Box;
 struct BigStruct {
     one: int,
     two: int,
@@ -675,15 +675,15 @@ struct BigStruct {
 }
 
 fn foo(x: Box<BigStruct>) -> Box<BigStruct> {
-    return box *x;
+    return Box::new(*x);
 }
 
 fn main() {
-    let x = box BigStruct {
+    let x = Box::new(BigStruct {
         one: 1,
         two: 2,
         one_hundred: 100,
-    };
+    });
 
     let y = foo(x);
 }
@@ -695,6 +695,7 @@ than the hundred `int`s that make up the `BigStruct`.
 This is an antipattern in Rust. Instead, write this:
 
 ```{rust}
+# use std::boxed::Box;
 struct BigStruct {
     one: int,
     two: int,
@@ -707,13 +708,13 @@ fn foo(x: Box<BigStruct>) -> BigStruct {
 }
 
 fn main() {
-    let x = box BigStruct {
+    let x = Box::new(BigStruct {
         one: 1,
         two: 2,
         one_hundred: 100,
-    };
+    });
 
-    let y = box foo(x);
+    let y = Box::new(foo(x));
 }
 ```
 

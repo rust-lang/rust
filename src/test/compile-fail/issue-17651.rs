@@ -11,6 +11,8 @@
 // Test that moves of unsized values within closures are caught
 // and rejected.
 
+#![feature(box_syntax)]
+
 fn main() {
     (|&:| box *[0us].as_slice())();
     //~^ ERROR cannot move out of dereference

@@ -15,8 +15,6 @@
 
 // error-pattern: transmute called on types with different size
 
-#![feature(slicing_syntax)]
-
 use std::mem;
 
 #[repr(packed)]
@@ -34,6 +32,6 @@ fn main() {
     let foo = Foo { bar: [1u8, 2, 3, 4, 5], baz: 10i32 };
     unsafe {
         let oof: Oof<[u8; 5], i32> = mem::transmute(foo);
-        println!("{} {}", &oof.rab[], oof.zab);
+        println!("{:?} {:?}", &oof.rab[], oof.zab);
     }
 }

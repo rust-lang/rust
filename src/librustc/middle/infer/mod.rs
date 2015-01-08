@@ -39,7 +39,7 @@ use util::ppaux::{ty_to_string};
 use util::ppaux::{Repr, UserString};
 
 use self::coercion::Coerce;
-use self::combine::{Combine, CombineFields};
+use self::combine::{Combine, Combineable, CombineFields};
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::equate::Equate;
 use self::sub::Sub;
@@ -360,17 +360,9 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
     })
 }
 
-pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                             a: Ty<'tcx>, b: Ty<'tcx>)
-                             -> ures<'tcx> {
-    debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    cx.probe(|_| {
-        let trace = TypeTrace {
-            origin: Misc(codemap::DUMMY_SP),
-            values: Types(expected_found(true, a, b))
-        };
-        cx.equate(true, trace).tys(a, b)
-    }).to_ures()
+pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> ures<'tcx>
+{
+    cx.can_equate(&a, &b)
 }
 
 pub fn mk_subr<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -1000,9 +992,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
                 });
 
-                self.tcx.sess.span_err(sp, format!("{}{}",
+                self.tcx.sess.span_err(sp, &format!("{}{}",
                     mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
-                    error_str).index(&FullRange));
+                    error_str)[]);
 
                 for err in err.iter() {
                     ty::note_and_explain_type_err(self.tcx, *err)
@@ -1056,7 +1048,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty::replace_late_bound_regions(
             self.tcx,
             value,
-            |br, _| self.next_region_var(LateBoundRegion(span, br, lbrct)))
+            |br| self.next_region_var(LateBoundRegion(span, br, lbrct)))
     }
 
     /// See `verify_generic_bound` method in `region_inference`
@@ -1071,6 +1063,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                bs.repr(self.tcx));
 
         self.region_vars.verify_generic_bound(origin, kind, a, bs);
+    }
+
+    pub fn can_equate<T>(&self, a: &T, b: &T) -> ures<'tcx>
+        where T : Combineable<'tcx> + Repr<'tcx>
+    {
+        debug!("can_equate({}, {})", a.repr(self.tcx), b.repr(self.tcx));
+        self.probe(|_| {
+            // Gin up a dummy trace, since this won't be committed
+            // anyhow. We should make this typetrace stuff more
+            // generic so we don't have to do anything quite this
+            // terrible.
+            let e = self.tcx.types.err;
+            let trace = TypeTrace { origin: Misc(codemap::DUMMY_SP),
+                                    values: Types(expected_found(true, e, e)) };
+            let eq = self.equate(true, trace);
+            Combineable::combine(&eq, a, b)
+        }).to_ures()
     }
 }
 

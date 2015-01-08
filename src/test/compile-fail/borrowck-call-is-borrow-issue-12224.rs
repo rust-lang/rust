@@ -11,6 +11,7 @@
 // Ensure that invoking a closure counts as a unique immutable borrow
 
 #![feature(unboxed_closures)]
+#![feature(box_syntax)]
 
 type Fn<'a> = Box<FnMut() + 'a>;
 

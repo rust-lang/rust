@@ -61,7 +61,7 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
             e.messages.remove(i);
         }
         None => {
-            panic!("Unexpected error: {} Expected: {}",
+            panic!("Unexpected error: {} Expected: {:?}",
                   msg, e.messages);
         }
     }
@@ -279,7 +279,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     pub fn t_param(&self, space: subst::ParamSpace, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
-        ty::mk_param(self.infcx.tcx, space, index, token::intern(name.index(&FullRange)))
+        ty::mk_param(self.infcx.tcx, space, index, token::intern(&name[]))
     }
 
     pub fn re_early_bound(&self,

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 fn test<'x>(x: &'x int) {
     drop::<Box<for<'z> FnMut(&'z int) -> &'z int>>(box |z| {
         x

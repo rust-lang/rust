@@ -12,6 +12,7 @@
 // bound must be noncopyable. For details see
 // http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/
 
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 struct R<'a> {

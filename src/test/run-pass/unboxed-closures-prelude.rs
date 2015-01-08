@@ -10,6 +10,8 @@
 
 // Tests that the reexports of `FnOnce` et al from the prelude work.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 fn main() {

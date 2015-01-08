@@ -11,6 +11,7 @@
 #![crate_name = "libc"]
 #![crate_type = "rlib"]
 #![cfg_attr(not(feature = "cargo-build"), experimental)]
+#![cfg_attr(not(feature = "cargo-build"), staged_api)]
 #![no_std]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
@@ -5065,7 +5066,5 @@ pub fn issue_14344_workaround() {} // FIXME #14344 force linkage to happen corre
 #[doc(hidden)]
 #[cfg(not(test))]
 mod std {
-    #[cfg(stage0)]
-    pub use core::marker as kinds;
     pub use core::marker;
 }

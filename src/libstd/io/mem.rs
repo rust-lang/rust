@@ -13,7 +13,6 @@
 //! Readers and Writers for in-memory buffers
 
 use cmp::min;
-use ops::Index;
 use option::Option::None;
 use result::Result::{Err, Ok};
 use io;
@@ -160,7 +159,7 @@ impl Reader for MemReader {
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
-            let input = self.buf.index(&(self.pos.. (self.pos + write_len)));
+            let input = &self.buf[self.pos.. (self.pos + write_len)];
             let output = buf.slice_to_mut(write_len);
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
@@ -188,7 +187,7 @@ impl Buffer for MemReader {
     #[inline]
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos < self.buf.len() {
-            Ok(self.buf.index(&(self.pos..)))
+            Ok(&self.buf[self.pos..])
         } else {
             Err(io::standard_error(io::EndOfFile))
         }
@@ -205,7 +204,7 @@ impl<'a> Reader for &'a [u8] {
 
         let write_len = min(buf.len(), self.len());
         {
-            let input = self.index(&(0..write_len));
+            let input = &self[0..write_len];
             let output = buf.slice_to_mut(write_len);
             slice::bytes::copy_memory(output, input);
         }
@@ -228,7 +227,7 @@ impl<'a> Buffer for &'a [u8] {
 
     #[inline]
     fn consume(&mut self, amt: uint) {
-        *self = self.index(&(amt..));
+        *self = &self[amt..];
     }
 }
 
@@ -287,7 +286,7 @@ impl<'a> Writer for BufWriter<'a> {
 
             Ok(())
         } else {
-            slice::bytes::copy_memory(dst, src.index(&(0..dst_len)));
+            slice::bytes::copy_memory(dst, &src[0..dst_len]);
 
             self.pos += dst_len;
 
@@ -350,7 +349,7 @@ impl<'a> Reader for BufReader<'a> {
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
-            let input = self.buf.index(&(self.pos.. (self.pos + write_len)));
+            let input = &self.buf[self.pos.. (self.pos + write_len)];
             let output = buf.slice_to_mut(write_len);
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
@@ -378,7 +377,7 @@ impl<'a> Buffer for BufReader<'a> {
     #[inline]
     fn fill_buf(&mut self) -> IoResult<&[u8]> {
         if self.pos < self.buf.len() {
-            Ok(self.buf.index(&(self.pos..)))
+            Ok(&self.buf[self.pos..])
         } else {
             Err(io::standard_error(io::EndOfFile))
         }
@@ -393,7 +392,7 @@ mod test {
     extern crate "test" as test_crate;
     use io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
     use prelude::v1::{Ok, Err, range,  Vec, Buffer,  AsSlice, SliceExt};
-    use prelude::v1::{IteratorExt, Index};
+    use prelude::v1::IteratorExt;
     use io;
     use iter::repeat;
     use self::test_crate::Bencher;
@@ -499,7 +498,7 @@ mod test {
         assert_eq!(buf, b);
         assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(buf.index(&(0..3)), b);
+        assert_eq!(&buf[0..3], b);
         assert!(reader.read(&mut buf).is_err());
         let mut reader = MemReader::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
@@ -525,7 +524,7 @@ mod test {
         assert_eq!(buf.as_slice(), b);
         assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(buf.index(&(0..3)), b);
+        assert_eq!(&buf[0..3], b);
         assert!(reader.read(&mut buf).is_err());
         let mut reader = &mut in_buf.as_slice();
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
@@ -552,7 +551,7 @@ mod test {
         assert_eq!(buf, b);
         assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(buf.index(&(0..3)), b);
+        assert_eq!(&buf[0..3], b);
         assert!(reader.read(&mut buf).is_err());
         let mut reader = BufReader::new(in_buf.as_slice());
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));

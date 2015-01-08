@@ -10,8 +10,6 @@
 
 // Test mutability and slicing syntax.
 
-#![feature(slicing_syntax)]
-
 fn main() {
     let x: &[int] = &[1, 2, 3, 4, 5];
     // Immutable slices are not mutable.

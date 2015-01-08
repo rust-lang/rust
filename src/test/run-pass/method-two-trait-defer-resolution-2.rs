@@ -16,6 +16,9 @@
 // version will run (note that the `push` occurs after the call to
 // `foo()`).
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 trait Foo {
     fn foo(&self) -> int;
 }

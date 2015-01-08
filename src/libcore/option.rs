@@ -66,10 +66,11 @@
 //! not (`None`).
 //!
 //! ```
+//! # use std::boxed::Box;
 //! let optional: Option<Box<int>> = None;
 //! check_optional(&optional);
 //!
-//! let optional: Option<Box<int>> = Some(box 9000);
+//! let optional: Option<Box<int>> = Some(Box::new(9000));
 //! check_optional(&optional);
 //!
 //! fn check_optional(optional: &Option<Box<int>>) {
@@ -145,17 +146,17 @@
 
 use self::Option::*;
 
+use clone::Clone;
 use cmp::{Eq, Ord};
 use default::Default;
-use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator};
 use iter::{ExactSizeIterator};
+use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator};
 use mem;
-use result::Result;
-use result::Result::{Ok, Err};
-use slice;
-use slice::AsSlice;
-use clone::Clone;
 use ops::{Deref, FnOnce};
+use result::Result::{Ok, Err};
+use result::Result;
+use slice::AsSlice;
+use slice;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -533,7 +534,7 @@ impl<T> Option<T> {
     /// ```
     /// let mut x = Some(4u);
     /// match x.iter_mut().next() {
-    ///     Some(&ref mut v) => *v = 42u,
+    ///     Some(&mut ref mut v) => *v = 42u,
     ///     None => {},
     /// }
     /// assert_eq!(x, Some(42));
@@ -762,7 +763,6 @@ impl<T> AsSlice<T> for Option<T> {
 
 #[stable]
 impl<T> Default for Option<T> {
-    #[stable]
     #[inline]
     #[stable]
     fn default() -> Option<T> { None }

@@ -10,6 +10,8 @@
 
 // error-pattern: reached the recursion limit while auto-dereferencing
 
+#![feature(box_syntax)]
+
 use std::ops::Deref;
 
 struct Foo;

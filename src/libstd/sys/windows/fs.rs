@@ -270,7 +270,7 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
                             return Err(IoError {
                                 kind: io::InvalidInput,
                                 desc: "path was not valid UTF-16",
-                                detail: Some(format!("path was not valid UTF-16: {}", filename)),
+                                detail: Some(format!("path was not valid UTF-16: {:?}", filename)),
                             })
                         }, // FIXME #12056: Convert the UCS-2 to invalid utf-8 instead of erroring
                     }

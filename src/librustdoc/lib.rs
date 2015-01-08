@@ -10,6 +10,7 @@
 
 #![crate_name = "rustdoc"]
 #![experimental]
+#![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -17,6 +18,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(slicing_syntax)]
+#![feature(box_syntax)]
 
 extern crate arena;
 extern crate getopts;

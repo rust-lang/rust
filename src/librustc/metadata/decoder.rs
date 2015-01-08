@@ -33,8 +33,7 @@ use middle::ty::{self, Ty};
 use middle::astencode::vtable_decoder_helpers;
 
 use std::collections::HashMap;
-use std::hash::Hash;
-use std::hash;
+use std::hash::{self, Hash, SipHasher};
 use std::io::extensions::u64_from_be_bytes;
 use std::io;
 use std::num::FromPrimitive;
@@ -75,7 +74,7 @@ fn lookup_hash<'a, F>(d: rbml::Doc<'a>, mut eq_fn: F, hash: u64) -> Option<rbml:
     let mut ret = None;
     reader::tagged_docs(tagged_doc.doc, belt, |elt| {
         let pos = u64_from_be_bytes(elt.data, elt.start, 4) as uint;
-        if eq_fn(elt.data.index(&((elt.start + 4) .. elt.end))) {
+        if eq_fn(&elt.data[(elt.start + 4) .. elt.end]) {
             ret = Some(reader::doc_at(d.data, pos).unwrap().doc);
             false
         } else {
@@ -89,12 +88,12 @@ pub fn maybe_find_item<'a>(item_id: ast::NodeId,
                            items: rbml::Doc<'a>) -> Option<rbml::Doc<'a>> {
     fn eq_item(bytes: &[u8], item_id: ast::NodeId) -> bool {
         return u64_from_be_bytes(
-            bytes.index(&(0u..4u)), 0u, 4u) as ast::NodeId
+            &bytes[0u..4u], 0u, 4u) as ast::NodeId
             == item_id;
     }
     lookup_hash(items,
                 |a| eq_item(a, item_id),
-                hash::hash(&(item_id as i64)))
+                hash::hash::<i64, SipHasher>(&(item_id as i64)))
 }
 
 fn find_item<'a>(item_id: ast::NodeId, items: rbml::Doc<'a>) -> rbml::Doc<'a> {
@@ -1191,7 +1190,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
         let name = docstr(depdoc, tag_crate_dep_crate_name);
-        let hash = Svh::new(docstr(depdoc, tag_crate_dep_hash).index(&FullRange));
+        let hash = Svh::new(&docstr(depdoc, tag_crate_dep_hash)[]);
         deps.push(CrateDep {
             cnum: crate_num,
             name: name,

@@ -9,7 +9,9 @@
 // except according to those terms.
 
 #![crate_type = "bin"]
+#![allow(unknown_features)]
 #![feature(slicing_syntax, unboxed_closures)]
+#![feature(box_syntax)]
 
 #![deny(warnings)]
 

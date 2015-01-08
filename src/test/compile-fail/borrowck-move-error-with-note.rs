@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
 enum Foo {
     Foo1(Box<u32>, Box<u32>),

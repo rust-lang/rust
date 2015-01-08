@@ -112,9 +112,9 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             _ => {
                 bcx.tcx().sess.span_bug(
                     expr.span,
-                    format!("type of callee is neither bare-fn nor closure: \
+                    &format!("type of callee is neither bare-fn nor closure: \
                              {}",
-                            bcx.ty_to_string(datum.ty)).index(&FullRange));
+                            bcx.ty_to_string(datum.ty))[]);
             }
         }
     }
@@ -206,8 +206,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             def::DefSelfTy(..) | def::DefAssociatedPath(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
-                    format!("cannot translate def {:?} \
-                             to a callable thing!", def).index(&FullRange));
+                    &format!("cannot translate def {:?} \
+                             to a callable thing!", def)[]);
             }
         }
     }
@@ -265,7 +265,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let _icx = push_ctxt("trans_fn_pointer_shim");
     let tcx = ccx.tcx();
 
-    let bare_fn_ty = normalize_ty(tcx, bare_fn_ty);
+    let bare_fn_ty = erase_regions(tcx, &bare_fn_ty);
     match ccx.fn_pointer_shims().borrow().get(&bare_fn_ty) {
         Some(&llval) => { return llval; }
         None => { }
@@ -289,8 +289,8 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
             }
 
             _ => {
-                tcx.sess.bug(format!("trans_fn_pointer_shim invoked on invalid type: {}",
-                                           bare_fn_ty.repr(tcx)).index(&FullRange));
+                tcx.sess.bug(&format!("trans_fn_pointer_shim invoked on invalid type: {}",
+                                           bare_fn_ty.repr(tcx))[]);
             }
         };
     let sig = ty::erase_late_bound_regions(tcx, sig);
@@ -315,7 +315,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn =
         decl_internal_rust_fn(ccx,
                               tuple_fn_ty,
-                              function_name.index(&FullRange));
+                              &function_name[]);
 
     //
     let block_arena = TypedArena::new();
@@ -350,7 +350,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            None,
                            bare_fn_ty,
                            |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
-                           ArgVals(llargs.index(&FullRange)),
+                           ArgVals(&llargs[]),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, sig.output);
@@ -776,7 +776,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         // Invoke the actual rust fn and update bcx/llresult.
         let (llret, b) = base::invoke(bcx,
                                       llfn,
-                                      llargs.index(&FullRange),
+                                      &llargs[],
                                       callee_ty,
                                       call_info);
         bcx = b;
@@ -815,7 +815,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
         bcx = foreign::trans_native_call(bcx, callee_ty,
                                          llfn, opt_llretslot.unwrap(),
-                                         llargs.index(&FullRange), arg_tys);
+                                         &llargs[], arg_tys);
     }
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_cleanup_scope);

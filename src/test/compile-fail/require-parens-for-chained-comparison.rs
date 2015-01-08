@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn f<T>() {}
+
 fn main() {
-    let vec = bytes!(1024); //~ ERROR too large integer literal in bytes!
-    //~^ WARN `bytes!` is deprecated
+    false == false == false;
+    //~^ ERROR: Chained comparison operators require parentheses
+
+    false == 0 < 2;
+    //~^ ERROR: Chained comparison operators require parentheses
+
+    f<X>();
+    //~^ ERROR: Chained comparison operators require parentheses
+    //~^^ HELP: Use ::< instead of < if you meant to specify type arguments.
 }

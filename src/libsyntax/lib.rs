@@ -16,6 +16,7 @@
 
 #![crate_name = "syntax"]
 #![experimental]
+#![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -24,6 +25,7 @@
 
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
+#![feature(box_syntax)]
 #![feature(quote, unsafe_destructor)]
 
 extern crate arena;
@@ -81,7 +83,6 @@ pub mod ext {
     pub mod asm;
     pub mod base;
     pub mod build;
-    pub mod bytes;
     pub mod cfg;
     pub mod cfg_attr;
     pub mod concat;
@@ -89,7 +90,6 @@ pub mod ext {
     pub mod deriving;
     pub mod env;
     pub mod expand;
-    pub mod fmt;
     pub mod format;
     pub mod log_syntax;
     pub mod mtwt;

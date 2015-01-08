@@ -173,6 +173,7 @@
 // gdb-command:whatis closure2
 // gdb-check:type = struct (closure, usize)
 
+#![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
 use self::Enum1::{Variant1_1, Variant1_2};

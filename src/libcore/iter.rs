@@ -2344,7 +2344,7 @@ impl<A, I, F> RandomAccessIterator for Inspect<A, I, F> where
 ///
 /// // This iterator will yield up to the last Fibonacci number before the max value of `u32`.
 /// // You can simply change `u32` to `u64` in this line if you want higher values than that.
-/// let mut fibonacci = Unfold::new((Some(0u32), Some(1u32)), |&(ref mut x2, ref mut x1)| {
+/// let mut fibonacci = Unfold::new((Some(0u32), Some(1u32)), |&mut (ref mut x2, ref mut x1)| {
 ///     // Attempt to get the next Fibonacci number
 ///     // `x1` will be `None` if previously overflowed.
 ///     let next = match (*x2, *x1) {
@@ -2749,9 +2749,9 @@ macro_rules! step_impl_no_between {
 }
 
 step_impl!(uint u8 u16 u32 int i8 i16 i32);
-#[cfg(target_word_size = "64")]
+#[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
 step_impl!(u64 i64);
-#[cfg(target_word_size = "32")]
+#[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
 step_impl_no_between!(u64 i64);
 
 
@@ -2804,7 +2804,7 @@ pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
         T: Clone,
         F: FnMut(T) -> T,
     {
-        let &(ref mut f, ref mut val, ref mut first) = st;
+        let &mut (ref mut f, ref mut val, ref mut first) = st;
         if *first {
             *first = false;
         } else {

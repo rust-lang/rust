@@ -34,7 +34,7 @@ use sys::process::Process as ProcessImp;
 use sys;
 use thread::Thread;
 
-#[cfg(windows)] use std::hash::sip::SipState;
+#[cfg(windows)] use hash;
 #[cfg(windows)] use str;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
@@ -98,7 +98,7 @@ pub struct Process {
 /// A representation of environment variable name
 /// It compares case-insensitive on Windows and case-sensitive everywhere else.
 #[cfg(not(windows))]
-#[derive(PartialEq, Eq, Hash, Clone, Show)]
+#[derive(Hash, PartialEq, Eq, Clone, Show)]
 struct EnvKey(CString);
 
 #[doc(hidden)]
@@ -107,8 +107,8 @@ struct EnvKey(CString);
 struct EnvKey(CString);
 
 #[cfg(windows)]
-impl Hash for EnvKey {
-    fn hash(&self, state: &mut SipState) {
+impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for EnvKey {
+    fn hash(&self, state: &mut H) {
         let &EnvKey(ref x) = self;
         match str::from_utf8(x.as_bytes()) {
             Ok(s) => for ch in s.chars() {
@@ -392,13 +392,6 @@ impl Command {
     /// ```
     pub fn status(&self) -> IoResult<ProcessExit> {
         self.spawn().and_then(|mut p| p.wait())
-    }
-}
-
-#[cfg(stage0)]
-impl fmt::Show for Command {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 

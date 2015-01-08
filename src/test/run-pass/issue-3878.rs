@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![allow(path_statement)]
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 pub fn main() {
     let y = box 1i;

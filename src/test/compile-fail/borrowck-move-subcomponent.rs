@@ -11,6 +11,7 @@
 // Tests that the borrow checker checks all components of a path when moving
 // out.
 
+#![feature(box_syntax)]
 
 struct S {
   x : Box<int>

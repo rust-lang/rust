@@ -11,7 +11,8 @@
 use prelude::v1::*;
 use self::Req::*;
 
-use collections;
+use collections::HashMap;
+use collections::hash_map::Hasher;
 use ffi::CString;
 use hash::Hash;
 use io::process::{ProcessExit, ExitStatus, ExitSignal};
@@ -60,7 +61,7 @@ impl Process {
                               out_fd: Option<P>, err_fd: Option<P>)
                               -> IoResult<Process>
         where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
-              K: BytesContainer + Eq + Hash, V: BytesContainer
+              K: BytesContainer + Eq + Hash<Hasher>, V: BytesContainer
     {
         use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
         use libc::funcs::bsd44::getdtablesize;
@@ -553,11 +554,11 @@ fn with_argv<T,F>(prog: &CString, args: &[CString],
     cb(ptrs.as_ptr())
 }
 
-fn with_envp<K,V,T,F>(env: Option<&collections::HashMap<K, V>>,
+fn with_envp<K,V,T,F>(env: Option<&HashMap<K, V>>,
                       cb: F)
                       -> T
     where F : FnOnce(*const c_void) -> T,
-          K : BytesContainer + Eq + Hash,
+          K : BytesContainer + Eq + Hash<Hasher>,
           V : BytesContainer
 {
     // On posixy systems we can pass a char** for envp, which is a

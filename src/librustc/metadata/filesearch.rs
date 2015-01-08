@@ -272,12 +272,12 @@ fn find_libdir(sysroot: &Path) -> String {
         }
     }
 
-    #[cfg(target_word_size = "64")]
+    #[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
     fn primary_libdir_name() -> String {
         "lib64".to_string()
     }
 
-    #[cfg(target_word_size = "32")]
+    #[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
     fn primary_libdir_name() -> String {
         "lib32".to_string()
     }

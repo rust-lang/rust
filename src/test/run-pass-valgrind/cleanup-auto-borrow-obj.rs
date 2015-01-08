@@ -13,6 +13,7 @@
 // schedule cleanups when auto borrowing trait objects.
 // This program should be valgrind clean.
 
+#![feature(box_syntax)]
 
 static mut DROP_RAN: bool = false;
 

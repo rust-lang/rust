@@ -67,21 +67,20 @@
 //! }
 //! ```
 
+use core::prelude::*;
+
 use core::atomic;
 use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
 use core::borrow::BorrowFrom;
-use core::clone::Clone;
 use core::fmt::{self, Show};
-use core::cmp::{Eq, Ord, PartialEq, PartialOrd, Ordering};
+use core::cmp::{Ordering};
 use core::default::Default;
-use core::marker::{Sync, Send};
-use core::mem::{min_align_of, size_of, drop};
+use core::mem::{min_align_of, size_of};
 use core::mem;
 use core::nonzero::NonZero;
-use core::ops::{Drop, Deref};
-use core::option::Option;
-use core::option::Option::{Some, None};
-use core::ptr::{self, PtrExt};
+use core::ops::Deref;
+use core::ptr;
+use core::hash::{Hash, Hasher};
 use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
@@ -586,9 +585,22 @@ impl<T: fmt::Show> fmt::Show for Arc<T> {
 }
 
 #[stable]
+impl<T: fmt::String> fmt::String for Arc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(&**self, f)
+    }
+}
+
+#[stable]
 impl<T: Default + Sync + Send> Default for Arc<T> {
     #[stable]
     fn default() -> Arc<T> { Arc::new(Default::default()) }
+}
+
+impl<H: Hasher, T: Hash<H>> Hash<H> for Arc<T> {
+    fn hash(&self, state: &mut H) {
+        (**self).hash(state)
+    }
 }
 
 #[cfg(test)]

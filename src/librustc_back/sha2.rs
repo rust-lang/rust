@@ -140,7 +140,7 @@ impl FixedBuffer for FixedBuffer64 {
             if input.len() >= buffer_remaining {
                     copy_memory(
                         self.buffer.slice_mut(self.buffer_idx, size),
-                        input.index(&(0..buffer_remaining)));
+                        &input[0..buffer_remaining]);
                 self.buffer_idx = 0;
                 func(&self.buffer);
                 i += buffer_remaining;
@@ -156,7 +156,7 @@ impl FixedBuffer for FixedBuffer64 {
         // While we have at least a full buffer size chunk's worth of data, process that data
         // without copying it into the buffer
         while input.len() - i >= size {
-            func(input.index(&(i..(i + size))));
+            func(&input[i..(i + size)]);
             i += size;
         }
 
@@ -166,7 +166,7 @@ impl FixedBuffer for FixedBuffer64 {
         let input_remaining = input.len() - i;
         copy_memory(
             self.buffer.slice_to_mut(input_remaining),
-            input.index(&(i..)));
+            &input[i..]);
         self.buffer_idx += input_remaining;
     }
 
@@ -188,7 +188,7 @@ impl FixedBuffer for FixedBuffer64 {
     fn full_buffer<'s>(&'s mut self) -> &'s [u8] {
         assert!(self.buffer_idx == 64);
         self.buffer_idx = 0;
-        return self.buffer.index(&(0..64));
+        return &self.buffer[0..64];
     }
 
     fn position(&self) -> uint { self.buffer_idx }

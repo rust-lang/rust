@@ -140,7 +140,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let input_tys = inputs.iter().map(|&arg_ty| type_of_explicit_arg(cx, arg_ty));
     atys.extend(input_tys);
 
-    Type::func(atys.index(&FullRange), &lloutputtype)
+    Type::func(&atys[], &lloutputtype)
 }
 
 // Given a function type and a count of ty params, construct an llvm type
@@ -180,8 +180,8 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
     let llsizingty = match t.sty {
         _ if !lltype_is_sized(cx.tcx(), t) => {
-            cx.sess().bug(format!("trying to take the sizing type of {}, an unsized type",
-                                  ppaux::ty_to_string(cx.tcx(), t)).index(&FullRange))
+            cx.sess().bug(&format!("trying to take the sizing type of {}, an unsized type",
+                                  ppaux::ty_to_string(cx.tcx(), t))[])
         }
 
         ty::ty_bool => Type::bool(cx),
@@ -233,8 +233,8 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         }
 
         ty::ty_projection(..) | ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
-            cx.sess().bug(format!("fictitious type {} in sizing_type_of()",
-                                  ppaux::ty_to_string(cx.tcx(), t)).index(&FullRange))
+            cx.sess().bug(&format!("fictitious type {} in sizing_type_of()",
+                                  ppaux::ty_to_string(cx.tcx(), t))[])
         }
         ty::ty_vec(_, None) | ty::ty_trait(..) | ty::ty_str => panic!("unreachable")
     };
@@ -285,7 +285,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     // Rust types are defined as the same LLVM types.  If we don't do
     // this then, e.g. `Option<{myfield: bool}>` would be a different
     // type than `Option<myrec>`.
-    let t_norm = normalize_ty(cx.tcx(), t);
+    let t_norm = erase_regions(cx.tcx(), &t);
 
     if t != t_norm {
         let llty = type_of(cx, t_norm);
@@ -313,7 +313,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           let repr = adt::represent_type(cx, t);
           let tps = substs.types.get_slice(subst::TypeSpace);
           let name = llvm_type_name(cx, an_enum, did, tps);
-          adt::incomplete_type_of(cx, &*repr, name.index(&FullRange))
+          adt::incomplete_type_of(cx, &*repr, &name[])
       }
       ty::ty_unboxed_closure(did, _, ref substs) => {
           // Only create the named struct, but don't fill it in. We
@@ -324,7 +324,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           // contents of the VecPerParamSpace to to construct the llvm
           // name
           let name = llvm_type_name(cx, an_unboxed_closure, did, substs.types.as_slice());
-          adt::incomplete_type_of(cx, &*repr, name.index(&FullRange))
+          adt::incomplete_type_of(cx, &*repr, &name[])
       }
 
       ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
@@ -380,7 +380,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
               let repr = adt::represent_type(cx, t);
               let tps = substs.types.get_slice(subst::TypeSpace);
               let name = llvm_type_name(cx, a_struct, did, tps);
-              adt::incomplete_type_of(cx, &*repr, name.index(&FullRange))
+              adt::incomplete_type_of(cx, &*repr, &name[])
           }
       }
 
@@ -398,8 +398,8 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
               Type::struct_(cx, &[p_ty, type_of_unsize_info(cx, t)], false)
           }
           ty::ty_trait(..) => Type::opaque_trait(cx),
-          _ => cx.sess().bug(format!("ty_open with sized type: {}",
-                                     ppaux::ty_to_string(cx.tcx(), t)).index(&FullRange))
+          _ => cx.sess().bug(&format!("ty_open with sized type: {}",
+                                     ppaux::ty_to_string(cx.tcx(), t))[])
       },
 
       ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),

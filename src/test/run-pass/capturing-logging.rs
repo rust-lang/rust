@@ -11,6 +11,9 @@
 // ignore-android (FIXME #11419)
 // exec-env:RUST_LOG=info
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 #[macro_use]
 extern crate log;
 

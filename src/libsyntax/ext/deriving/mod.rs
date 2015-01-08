@@ -40,16 +40,6 @@ pub mod totalord;
 
 pub mod generic;
 
-pub fn expand_meta_deriving(cx: &mut ExtCtxt,
-                            _span: Span,
-                            mitem: &MetaItem,
-                            item: &Item,
-                            push: Box<FnMut(P<Item>)>) {
-    cx.span_warn(mitem.span, "`deriving` is deprecated; use `derive`");
-
-    expand_meta_derive(cx, _span, mitem, item, push)
-}
-
 pub fn expand_meta_derive(cx: &mut ExtCtxt,
                           _span: Span,
                           mitem: &MetaItem,
@@ -121,9 +111,9 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
 
                             ref tname => {
                                 cx.span_err(titem.span,
-                                            format!("unknown `derive` \
+                                            &format!("unknown `derive` \
                                                      trait: `{}`",
-                                                    *tname).index(&FullRange));
+                                                    *tname)[]);
                             }
                         };
                     }

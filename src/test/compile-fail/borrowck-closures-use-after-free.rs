@@ -12,6 +12,7 @@
 // cannot also be supplied a borrowed version of that
 // variable's contents. Issue #11192.
 
+#![feature(box_syntax)]
 
 struct Foo {
   x: int

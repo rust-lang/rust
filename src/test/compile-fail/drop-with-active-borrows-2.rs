@@ -15,5 +15,5 @@ fn read_lines_borrowed<'a>() -> Vec<&'a str> {
 }
 
 fn main() {
-    println!("{}", read_lines_borrowed());
+    println!("{:?}", read_lines_borrowed());
 }

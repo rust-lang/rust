@@ -90,15 +90,6 @@ impl Clone for ExNative {
     }
 }
 
-#[cfg(stage0)]
-//FIXME: remove after stage0 snapshot
-impl fmt::Show for Regex {
-    /// Shows the original regular expression.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self.as_str(), f)
-    }
-}
-
 impl fmt::String for Regex {
     /// Shows the original regular expression.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -247,19 +238,19 @@ impl Regex {
             }
 
             let (s, e) = cap.pos(0).unwrap(); // captures only reports matches
-            new.push_str(text.index(&(last_match..s)));
-            new.push_str(rep.reg_replace(&cap).index(&FullRange));
+            new.push_str(&text[last_match..s]);
+            new.push_str(&rep.reg_replace(&cap)[]);
             last_match = e;
         }
-        new.push_str(text.index(&(last_match..text.len())));
+        new.push_str(&text[last_match..text.len()]);
         return new;
     }
 
     /// Returns the original string of this regex.
     pub fn as_str<'a>(&'a self) -> &'a str {
         match *self {
-            Dynamic(ExDynamic { ref original, .. }) => original.index(&FullRange),
-            Native(ExNative { ref original, .. }) => original.index(&FullRange),
+            Dynamic(ExDynamic { ref original, .. }) => &original[],
+            Native(ExNative { ref original, .. }) => &original[],
         }
     }
 
@@ -356,13 +347,13 @@ impl<'r, 't> Iterator for RegexSplits<'r, 't> {
                 if self.last >= text.len() {
                     None
                 } else {
-                    let s = text.index(&(self.last..text.len()));
+                    let s = &text[self.last..text.len()];
                     self.last = text.len();
                     Some(s)
                 }
             }
             Some((s, e)) => {
-                let matched = text.index(&(self.last..s));
+                let matched = &text[self.last..s];
                 self.last = e;
                 Some(matched)
             }
@@ -393,7 +384,7 @@ impl<'r, 't> Iterator for RegexSplitsN<'r, 't> {
         } else {
             self.cur += 1;
             if self.cur >= self.limit {
-                Some(text.index(&(self.splits.last..text.len())))
+                Some(&text[self.splits.last..text.len()])
             } else {
                 self.splits.next()
             }
@@ -526,7 +517,7 @@ impl<'t> Captures<'t> {
             })
         });
         let re = Regex::new(r"\$\$").unwrap();
-        re.replace_all(text.index(&FullRange), NoExpand("$"))
+        re.replace_all(&text[], NoExpand("$"))
     }
 
     /// Returns the number of captured groups.

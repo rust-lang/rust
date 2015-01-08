@@ -330,7 +330,7 @@ impl Bitv {
 
         if extra_bytes > 0 {
             let mut last_word = 0u32;
-            for (i, &byte) in bytes.index(&((complete_words*4)..)).iter().enumerate() {
+            for (i, &byte) in bytes[(complete_words*4)..].iter().enumerate() {
                 last_word |= (reverse_bits(byte) as u32) << (i * 8);
             }
             bitv.storage.push(last_word);
@@ -982,7 +982,7 @@ impl fmt::Show for Bitv {
 }
 
 #[stable]
-impl<S: hash::Writer> hash::Hash<S> for Bitv {
+impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Bitv {
     fn hash(&self, state: &mut S) {
         self.nbits.hash(state);
         for elem in self.blocks() {
@@ -1742,7 +1742,7 @@ impl fmt::Show for BitvSet {
     }
 }
 
-impl<S: hash::Writer> hash::Hash<S> for BitvSet {
+impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for BitvSet {
     fn hash(&self, state: &mut S) {
         for pos in self.iter() {
             pos.hash(state);

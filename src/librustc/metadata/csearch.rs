@@ -27,6 +27,7 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::expect;
 use syntax::parse::token;
 
@@ -95,7 +96,7 @@ pub fn get_item_path(tcx: &ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> 
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    let mut r = vec![ast_map::PathMod(token::intern(cdata.name.index(&FullRange)))];
+    let mut r = vec![ast_map::PathMod(token::intern(&cdata.name[]))];
     r.push_all(path.as_slice());
     r
 }
@@ -373,6 +374,18 @@ pub fn get_stability(cstore: &cstore::CStore,
                      -> Option<attr::Stability> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_stability(&*cdata, def.node)
+}
+
+pub fn is_staged_api(cstore: &cstore::CStore, def: ast::DefId) -> bool {
+    let cdata = cstore.get_crate_data(def.krate);
+    let attrs = decoder::get_crate_attributes(cdata.data());
+    for attr in attrs.iter() {
+        if attr.name().get() == "staged_api" {
+            match attr.node.value.node { ast::MetaWord(_) => return true, _ => (/*pass*/) }
+        }
+    }
+
+    return false;
 }
 
 pub fn get_repr_attrs(cstore: &cstore::CStore, def: ast::DefId)

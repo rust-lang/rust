@@ -28,8 +28,9 @@ use self::TargetLint::*;
 use middle::privacy::ExportedItems;
 use middle::ty::{self, Ty};
 use session::{early_error, Session};
+use session::config::UnstableFeatures;
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass, LintPassObject};
-use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
+use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid, ReleaseChannel};
 use lint::builtin;
 use util::nodemap::FnvHashMap;
 
@@ -104,7 +105,7 @@ impl LintStore {
     }
 
     pub fn get_lints<'t>(&'t self) -> &'t [(&'static Lint, bool)] {
-        self.lints.index(&FullRange)
+        &self.lints[]
     }
 
     pub fn get_lint_groups<'t>(&'t self) -> Vec<(&'static str, Vec<LintId>, bool)> {
@@ -124,11 +125,11 @@ impl LintStore {
                 match (sess, from_plugin) {
                     // We load builtin lints first, so a duplicate is a compiler bug.
                     // Use early_error when handling -W help with no crate.
-                    (None, _) => early_error(msg.index(&FullRange)),
-                    (Some(sess), false) => sess.bug(msg.index(&FullRange)),
+                    (None, _) => early_error(&msg[]),
+                    (Some(sess), false) => sess.bug(&msg[]),
 
                     // A duplicate name from a plugin is a user error.
-                    (Some(sess), true)  => sess.err(msg.index(&FullRange)),
+                    (Some(sess), true)  => sess.err(&msg[]),
                 }
             }
 
@@ -149,11 +150,11 @@ impl LintStore {
             match (sess, from_plugin) {
                 // We load builtin lints first, so a duplicate is a compiler bug.
                 // Use early_error when handling -W help with no crate.
-                (None, _) => early_error(msg.index(&FullRange)),
-                (Some(sess), false) => sess.bug(msg.index(&FullRange)),
+                (None, _) => early_error(&msg[]),
+                (Some(sess), false) => sess.bug(&msg[]),
 
                 // A duplicate name from a plugin is a user error.
-                (Some(sess), true)  => sess.err(msg.index(&FullRange)),
+                (Some(sess), true)  => sess.err(&msg[]),
             }
         }
     }
@@ -210,6 +211,7 @@ impl LintStore {
                      UnusedAllocation,
                      Stability,
                      MissingCopyImplementations,
+                     UnstableFeatures,
         );
 
         add_builtin_with_new!(sess,
@@ -267,8 +269,8 @@ impl LintStore {
                 let warning = format!("lint {} has been renamed to {}",
                                       lint_name, new_name);
                 match span {
-                    Some(span) => sess.span_warn(span, warning.index(&FullRange)),
-                    None => sess.warn(warning.index(&FullRange)),
+                    Some(span) => sess.span_warn(span, &warning[]),
+                    None => sess.warn(&warning[]),
                 };
                 Some(lint_id)
             }
@@ -278,24 +280,47 @@ impl LintStore {
 
     pub fn process_command_line(&mut self, sess: &Session) {
         for &(ref lint_name, level) in sess.opts.lint_opts.iter() {
-            match self.find_lint(lint_name.index(&FullRange), sess, None) {
+            match self.find_lint(&lint_name[], sess, None) {
                 Some(lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.0.clone()))
                                                  .collect::<FnvHashMap<&'static str,
                                                                        Vec<LintId>>>()
-                                                 .get(lint_name.index(&FullRange)) {
+                                                 .get(&lint_name[]) {
                         Some(v) => {
                             v.iter()
                              .map(|lint_id: &LintId|
                                      self.set_level(*lint_id, (level, CommandLine)))
                              .collect::<Vec<()>>();
                         }
-                        None => sess.err(format!("unknown {} flag: {}",
-                                                 level.as_str(), lint_name).index(&FullRange)),
+                        None => sess.err(&format!("unknown {} flag: {}",
+                                                 level.as_str(), lint_name)[]),
                     }
                 }
             }
+        }
+    }
+
+    fn maybe_stage_features(&mut self, sess: &Session) {
+        let lvl = match sess.opts.unstable_features {
+            UnstableFeatures::Default => return,
+            UnstableFeatures::Disallow => Warn,
+            UnstableFeatures::Cheat => Allow
+        };
+        match self.by_name.get("unstable_features") {
+            Some(&Id(lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            Some(&Renamed(_, lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            None => unreachable!()
+        }
+        match self.by_name.get("staged_unstable") {
+            Some(&Id(lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            Some(&Renamed(_, lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            None => unreachable!()
+        }
+        match self.by_name.get("staged_experimental") {
+            Some(&Id(lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            Some(&Renamed(_, lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            None => unreachable!()
         }
     }
 }
@@ -380,6 +405,7 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     if level == Allow { return }
 
     let name = lint.name_lower();
+    let mut def = None;
     let mut note = None;
     let msg = match source {
         Default => {
@@ -394,7 +420,13 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
                     }, name.replace("_", "-"))
         },
         Node(src) => {
-            note = Some(src);
+            def = Some(src);
+            msg.to_string()
+        }
+        ReleaseChannel => {
+            let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
+            note = Some(format!("this feature may not be used in the {} release channel",
+                                release_channel));
             msg.to_string()
         }
     };
@@ -403,14 +435,18 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     if level == Forbid { level = Deny; }
 
     match (level, span) {
-        (Warn, Some(sp)) => sess.span_warn(sp, msg.index(&FullRange)),
-        (Warn, None)     => sess.warn(msg.index(&FullRange)),
-        (Deny, Some(sp)) => sess.span_err(sp, msg.index(&FullRange)),
-        (Deny, None)     => sess.err(msg.index(&FullRange)),
+        (Warn, Some(sp)) => sess.span_warn(sp, &msg[]),
+        (Warn, None)     => sess.warn(&msg[]),
+        (Deny, Some(sp)) => sess.span_err(sp, &msg[]),
+        (Deny, None)     => sess.err(&msg[]),
         _ => sess.bug("impossible level in raw_emit_lint"),
     }
 
-    for span in note.into_iter() {
+    for note in note.into_iter() {
+        sess.note(&note[]);
+    }
+
+    for span in def.into_iter() {
         sess.span_note(span, "lint level defined here");
     }
 }
@@ -513,9 +549,9 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                 if now == Forbid && level != Forbid {
                     let lint_name = lint_id.as_str();
                     self.tcx.sess.span_err(span,
-                                           format!("{}({}) overruled by outer forbid({})",
+                                           &format!("{}({}) overruled by outer forbid({})",
                                                    level.as_str(), lint_name,
-                                                   lint_name).index(&FullRange));
+                                                   lint_name)[]);
                 } else if now != level {
                     let src = self.lints.get_level_source(lint_id).1;
                     self.level_stack.push((lint_id, (now, src)));
@@ -550,7 +586,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     fn visit_item(&mut self, it: &ast::Item) {
-        self.with_lint_attrs(it.attrs.index(&FullRange), |cx| {
+        self.with_lint_attrs(&it.attrs[], |cx| {
             run_lints!(cx, check_item, it);
             cx.visit_ids(|v| v.visit_item(it));
             visit::walk_item(cx, it);
@@ -558,14 +594,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, it: &ast::ForeignItem) {
-        self.with_lint_attrs(it.attrs.index(&FullRange), |cx| {
+        self.with_lint_attrs(&it.attrs[], |cx| {
             run_lints!(cx, check_foreign_item, it);
             visit::walk_foreign_item(cx, it);
         })
     }
 
     fn visit_view_item(&mut self, i: &ast::ViewItem) {
-        self.with_lint_attrs(i.attrs.index(&FullRange), |cx| {
+        self.with_lint_attrs(&i.attrs[], |cx| {
             run_lints!(cx, check_view_item, i);
             cx.visit_ids(|v| v.visit_view_item(i));
             visit::walk_view_item(cx, i);
@@ -591,7 +627,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
                 body: &'v ast::Block, span: Span, id: ast::NodeId) {
         match fk {
             visit::FkMethod(_, _, m) => {
-                self.with_lint_attrs(m.attrs.index(&FullRange), |cx| {
+                self.with_lint_attrs(&m.attrs[], |cx| {
                     run_lints!(cx, check_fn, fk, decl, body, span, id);
                     cx.visit_ids(|v| {
                         v.visit_fn(fk, decl, body, span, id);
@@ -607,7 +643,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_ty_method(&mut self, t: &ast::TypeMethod) {
-        self.with_lint_attrs(t.attrs.index(&FullRange), |cx| {
+        self.with_lint_attrs(&t.attrs[], |cx| {
             run_lints!(cx, check_ty_method, t);
             visit::walk_ty_method(cx, t);
         })
@@ -624,14 +660,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_struct_field(&mut self, s: &ast::StructField) {
-        self.with_lint_attrs(s.node.attrs.index(&FullRange), |cx| {
+        self.with_lint_attrs(&s.node.attrs[], |cx| {
             run_lints!(cx, check_struct_field, s);
             visit::walk_struct_field(cx, s);
         })
     }
 
     fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics) {
-        self.with_lint_attrs(v.node.attrs.index(&FullRange), |cx| {
+        self.with_lint_attrs(&v.node.attrs[], |cx| {
             run_lints!(cx, check_variant, v, g);
             visit::walk_variant(cx, v, g);
             run_lints!(cx, check_variant_post, v, g);
@@ -725,7 +761,7 @@ impl<'a, 'tcx> IdVisitingOperation for Context<'a, 'tcx> {
             None => {}
             Some(lints) => {
                 for (lint_id, span, msg) in lints.into_iter() {
-                    self.span_lint(lint_id.lint, span, msg.index(&FullRange))
+                    self.span_lint(lint_id.lint, span, &msg[])
                 }
             }
         }
@@ -767,11 +803,15 @@ impl LintPass for GatherNodeLevels {
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate(tcx: &ty::ctxt,
                    exported_items: &ExportedItems) {
+
+    // If this is a feature-staged build of rustc then flip several lints to 'forbid'
+    tcx.sess.lint_store.borrow_mut().maybe_stage_features(&tcx.sess);
+
     let krate = tcx.map.krate();
     let mut cx = Context::new(tcx, krate, exported_items);
 
     // Visit the whole crate.
-    cx.with_lint_attrs(krate.attrs.index(&FullRange), |cx| {
+    cx.with_lint_attrs(&krate.attrs[], |cx| {
         cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
             v.visited_outermost = true;

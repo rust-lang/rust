@@ -68,7 +68,7 @@ use fmt;
 use iter::IteratorExt;
 use option::Option;
 use option::Option::{None, Some};
-use ops::{FullRange, Index};
+use ops::FullRange;
 use str;
 use str::StrExt;
 use string::{String, CowString};
@@ -352,7 +352,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                 match name.rposition_elem(&dot) {
                     None | Some(0) => name,
                     Some(1) if name == b".." => name,
-                    Some(pos) => name.index(&(0..pos))
+                    Some(pos) => &name[0..pos]
                 }
             })
         }
@@ -399,7 +399,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                 match name.rposition_elem(&dot) {
                     None | Some(0) => None,
                     Some(1) if name == b".." => None,
-                    Some(pos) => Some(name.index(&((pos+1)..)))
+                    Some(pos) => Some(&name[(pos+1)..])
                 }
             }
         }
@@ -475,7 +475,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             let extlen = extension.container_as_bytes().len();
             match (name.rposition_elem(&dot), extlen) {
                 (None, 0) | (Some(0), 0) => None,
-                (Some(idx), 0) => Some(name.index(&(0..idx)).to_vec()),
+                (Some(idx), 0) => Some(name[0..idx].to_vec()),
                 (idx, extlen) => {
                     let idx = match idx {
                         None | Some(0) => name.len(),
@@ -484,7 +484,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
                     let mut v;
                     v = Vec::with_capacity(idx + extlen + 1);
-                    v.push_all(name.index(&(0..idx)));
+                    v.push_all(&name[0..idx]);
                     v.push(dot);
                     v.push_all(extension.container_as_bytes());
                     Some(v)
@@ -823,7 +823,6 @@ pub struct Display<'a, P:'a> {
     filename: bool
 }
 
-//NOTE(stage0): replace with deriving(Show) after snapshot
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)
@@ -877,7 +876,7 @@ impl BytesContainer for String {
     }
     #[inline]
     fn container_as_str(&self) -> Option<&str> {
-        Some(self.index(&FullRange))
+        Some(&self[])
     }
     #[inline]
     fn is_str(_: Option<&String>) -> bool { true }
@@ -893,7 +892,7 @@ impl BytesContainer for [u8] {
 impl BytesContainer for Vec<u8> {
     #[inline]
     fn container_as_bytes(&self) -> &[u8] {
-        self.index(&FullRange)
+        &self[]
     }
 }
 

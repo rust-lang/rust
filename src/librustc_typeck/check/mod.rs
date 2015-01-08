@@ -90,7 +90,7 @@ use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::pat_util::{self, pat_id_map};
 use middle::region::CodeExtent;
-use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
+use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits;
 use middle::ty::{FnSig, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
@@ -593,7 +593,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
     let tcx = ccx.tcx;
     let err_count_on_creation = tcx.sess.err_count();
 
-    let arg_tys = fn_sig.inputs.index(&FullRange);
+    let arg_tys = &fn_sig.inputs[];
     let ret_ty = fn_sig.output;
 
     debug!("check_fn(arg_tys={}, ret_ty={}, fn_id={})",
@@ -691,7 +691,7 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
       ast::ItemEnum(ref enum_definition, _) => {
         check_enum_variants(ccx,
                             it.span,
-                            enum_definition.variants.index(&FullRange),
+                            &enum_definition.variants[],
                             it.id);
       }
       ast::ItemFn(ref decl, _, _, _, ref body) => {
@@ -985,21 +985,21 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         (&ty::StaticExplicitSelfCategory, _) => {
             tcx.sess.span_err(
                 impl_m_span,
-                format!("method `{}` has a `{}` declaration in the impl, \
+                &format!("method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
                         token::get_name(trait_m.name),
                         ppaux::explicit_self_category_to_str(
-                            &impl_m.explicit_self)).index(&FullRange));
+                            &impl_m.explicit_self))[]);
             return;
         }
         (_, &ty::StaticExplicitSelfCategory) => {
             tcx.sess.span_err(
                 impl_m_span,
-                format!("method `{}` has a `{}` declaration in the trait, \
+                &format!("method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",
                         token::get_name(trait_m.name),
                         ppaux::explicit_self_category_to_str(
-                            &trait_m.explicit_self)).index(&FullRange));
+                            &trait_m.explicit_self))[]);
             return;
         }
         _ => {
@@ -1358,9 +1358,9 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         if trait_params.len() != impl_params.len() {
             tcx.sess.span_err(
                 span,
-                format!("lifetime parameters or bounds on method `{}` do \
+                &format!("lifetime parameters or bounds on method `{}` do \
                          not match the trait declaration",
-                        token::get_name(impl_m.name)).index(&FullRange));
+                        token::get_name(impl_m.name))[]);
             return false;
         }
 
@@ -1406,13 +1406,13 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             let err = if missing.len() != 0 || extra.len() != 0 {
                 tcx.sess.span_err(
                     span,
-                    format!(
+                    &format!(
                         "the lifetime parameter `{}` declared in the impl \
                          has a distinct set of bounds \
                          from its counterpart `{}` \
                          declared in the trait",
                         impl_param.name.user_string(tcx),
-                        trait_param.name.user_string(tcx)).index(&FullRange));
+                        trait_param.name.user_string(tcx))[]);
                 true
             } else {
                 false
@@ -1421,15 +1421,15 @@ fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             if missing.len() != 0 {
                 tcx.sess.span_note(
                     span,
-                    format!("the impl is missing the following bounds: `{}`",
-                            missing.user_string(tcx)).index(&FullRange));
+                    &format!("the impl is missing the following bounds: `{}`",
+                            missing.user_string(tcx))[]);
             }
 
             if extra.len() != 0 {
                 tcx.sess.span_note(
                     span,
-                    format!("the impl has the following extra bounds: `{}`",
-                            extra.user_string(tcx)).index(&FullRange));
+                    &format!("the impl has the following extra bounds: `{}`",
+                            extra.user_string(tcx))[]);
             }
 
             if err {
@@ -1699,8 +1699,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => {
                 self.tcx().sess.span_bug(
                     span,
-                    format!("no type for local variable {}",
-                            nid).index(&FullRange));
+                    &format!("no type for local variable {}",
+                            nid)[]);
             }
         }
     }
@@ -1709,7 +1709,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
     pub fn default_type_parameters(&self) {
         use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
-        for (_, &ref ty) in self.inh.node_types.borrow_mut().iter_mut() {
+        for (_, &mut ref ty) in self.inh.node_types.borrow_mut().iter_mut() {
             let resolved = self.infcx().resolve_type_vars_if_possible(ty);
             if self.infcx().type_var_diverges(resolved) {
                 demand::eqtype(self, codemap::DUMMY_SP, *ty, ty::mk_nil(self.tcx()));
@@ -1947,6 +1947,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Returns the type that this AST path refers to. If the path has no type
+    /// parameters and the corresponding type has type parameters, fresh type
+    /// and/or region variables are substituted.
+    ///
+    /// This is used when checking the constructor in struct literals.
+    fn instantiate_struct_literal_ty(&self,
+                                     did: ast::DefId,
+                                     path: &ast::Path)
+                                     -> TypeAndSubsts<'tcx>
+    {
+        let tcx = self.tcx();
+
+        let ty::TypeScheme { generics, ty: decl_ty } = ty::lookup_item_type(tcx, did);
+
+        let wants_params =
+            generics.has_type_params(TypeSpace) || generics.has_region_params(TypeSpace);
+
+        let needs_defaults =
+            wants_params &&
+            path.segments.iter().all(|s| s.parameters.is_empty());
+
+        let substs = if needs_defaults {
+            let tps =
+                self.infcx().next_ty_vars(generics.types.len(TypeSpace));
+            let rps =
+                self.infcx().region_vars_for_defs(path.span,
+                                                  generics.regions.get_slice(TypeSpace));
+            Substs::new_type(tps, rps)
+        } else {
+            astconv::ast_path_substs_for_ty(self, self, &generics, path)
+        };
+
+        let ty = self.instantiate_type_scheme(path.span, &substs, &decl_ty);
+
+        TypeAndSubsts { substs: substs, ty: ty }
+    }
+
     pub fn write_nil(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, ty::mk_nil(self.tcx()));
     }
@@ -2033,8 +2070,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match self.inh.node_types.borrow().get(&ex.id) {
             Some(&t) => t,
             None => {
-                self.tcx().sess.bug(format!("no type for expr in fcx {}",
-                                            self.tag()).index(&FullRange));
+                self.tcx().sess.bug(&format!("no type for expr in fcx {}",
+                                            self.tag())[]);
             }
         }
     }
@@ -2062,9 +2099,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(
-                    format!("no type for node {}: {} in fcx {}",
+                    &format!("no type for node {}: {} in fcx {}",
                             id, self.tcx().map.node_to_string(id),
-                            self.tag()).index(&FullRange));
+                            self.tag())[]);
             }
         }
     }
@@ -2466,7 +2503,7 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Ok(trait_did) => trait_did,
         Err(ref err_string) => {
             fcx.tcx().sess.span_err(iterator_expr.span,
-                                    err_string.index(&FullRange));
+                                    &err_string[]);
             return fcx.tcx().types.err
         }
     };
@@ -2490,10 +2527,10 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if !ty::type_is_error(true_expr_type) {
                 let ty_string = fcx.infcx().ty_to_string(true_expr_type);
                 fcx.tcx().sess.span_err(iterator_expr.span,
-                                        format!("`for` loop expression has type `{}` which does \
+                                        &format!("`for` loop expression has type `{}` which does \
                                                 not implement the `Iterator` trait; \
                                                 maybe try .iter()",
-                                                ty_string).index(&FullRange));
+                                                ty_string)[]);
             }
             fcx.tcx().types.err
         }
@@ -2528,10 +2565,10 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 }
                 _ => {
                     fcx.tcx().sess.span_err(iterator_expr.span,
-                                            format!("`next` method of the `Iterator` \
+                                            &format!("`next` method of the `Iterator` \
                                                     trait has an unexpected type `{}`",
                                                     fcx.infcx().ty_to_string(return_type))
-                                            .index(&FullRange));
+                                            []);
                     fcx.tcx().types.err
                 }
             }
@@ -2558,7 +2595,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         check_argument_types(fcx,
                              sp,
-                             err_inputs.index(&FullRange),
+                             &err_inputs[],
                              args_no_rcvr,
                              autoref_args,
                              false,
@@ -3010,7 +3047,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         // Call the generic checker.
-        let args: Vec<_> = args.index(&(1..)).iter().map(|x| x).collect();
+        let args: Vec<_> = args[1..].iter().map(|x| x).collect();
         let ret_ty = check_method_argument_types(fcx,
                                                  method_name.span,
                                                  fn_ty,
@@ -3328,7 +3365,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     ty::ty_struct(base_id, substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
                         let fields = ty::lookup_struct_fields(tcx, base_id);
-                        lookup_field_ty(tcx, base_id, fields.index(&FullRange),
+                        lookup_field_ty(tcx, base_id, &fields[],
                                         field.node.name, &(*substs))
                     }
                     _ => None
@@ -3391,7 +3428,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         if tuple_like {
                             debug!("tuple struct named {}", ppaux::ty_to_string(tcx, base_t));
                             let fields = ty::lookup_struct_fields(tcx, base_id);
-                            lookup_tup_field_ty(tcx, base_id, fields.index(&FullRange),
+                            lookup_tup_field_ty(tcx, base_id, &fields[],
                                                 idx.node, &(*substs))
                         } else {
                             None
@@ -3490,17 +3527,18 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     expected_field_type =
                         ty::lookup_field_type(
                             tcx, class_id, field_id, substitutions);
+                    expected_field_type =
+                        fcx.normalize_associated_types_in(
+                            field.span, &expected_field_type);
                     class_field_map.insert(
                         field.ident.node.name, (field_id, true));
                     fields_found += 1;
                 }
             }
+
             // Make sure to give a type to the field even if there's
             // an error, so we can continue typechecking
-            check_expr_coercable_to_type(
-                    fcx,
-                    &*field.expr,
-                    expected_field_type);
+            check_expr_coercable_to_type(fcx, &*field.expr, expected_field_type);
         }
 
         if error_happened {
@@ -3556,7 +3594,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                        class_id,
                                        id,
                                        fcx.ccx.tcx.mk_substs(struct_substs),
-                                       class_fields.index(&FullRange),
+                                       &class_fields[],
                                        fields,
                                        base_expr.is_none(),
                                        None);
@@ -3599,7 +3637,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                        variant_id,
                                        id,
                                        fcx.ccx.tcx.mk_substs(substitutions),
-                                       variant_fields.index(&FullRange),
+                                       &variant_fields[],
                                        fields,
                                        true,
                                        Some(enum_id));
@@ -4066,7 +4104,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let expected = expected.only_has_type();
         let flds = expected.map_to_option(fcx, |ty| {
             match ty.sty {
-                ty::ty_tup(ref flds) => Some(flds.index(&FullRange)),
+                ty::ty_tup(ref flds) => Some(&flds[]),
                 _ => None
             }
         });
@@ -4100,7 +4138,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let struct_id = match def {
             Some(def::DefVariant(enum_id, variant_id, true)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
-                                          variant_id, fields.index(&FullRange));
+                                          variant_id, &fields[]);
                 enum_id
             }
             Some(def::DefTrait(def_id)) => {
@@ -4109,7 +4147,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     pprust::path_to_string(path));
                 check_struct_fields_on_error(fcx,
                                              id,
-                                             fields.index(&FullRange),
+                                             &fields[],
                                              base_expr);
                 def_id
             },
@@ -4122,7 +4160,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                  id,
                                                  expr.span,
                                                  struct_did,
-                                                 fields.index(&FullRange),
+                                                 &fields[],
                                                  base_expr.as_ref().map(|e| &**e));
                     }
                     _ => {
@@ -4131,7 +4169,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             pprust::path_to_string(path));
                         check_struct_fields_on_error(fcx,
                                                      id,
-                                                     fields.index(&FullRange),
+                                                     &fields[],
                                                      base_expr);
                     }
                 }
@@ -4149,10 +4187,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         // parameters correctly.
         let actual_structure_type = fcx.expr_ty(&*expr);
         if !ty::type_is_error(actual_structure_type) {
-            let type_and_substs = astconv::ast_path_to_ty_relaxed(fcx,
-                                                                  fcx,
-                                                                  struct_id,
-                                                                  path);
+            let type_and_substs = fcx.instantiate_struct_literal_ty(struct_id, path);
             match fcx.mk_subty(false,
                                infer::Misc(path.span),
                                actual_structure_type,
@@ -4164,7 +4199,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     fcx.tcx()
                        .sess
                        .span_err(path.span,
-                                 format!("structure constructor specifies a \
+                                 &format!("structure constructor specifies a \
                                          structure of type `{}`, but this \
                                          structure has type `{}`: {}",
                                          fcx.infcx()
@@ -4172,7 +4207,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                          fcx.infcx()
                                             .ty_to_string(
                                                 actual_structure_type),
-                                         type_error_description).index(&FullRange));
+                                         type_error_description)[]);
                     ty::note_and_explain_type_err(tcx, &type_error);
                 }
             }
@@ -4847,7 +4882,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
     }
 
     let hint = *ty::lookup_repr_hints(ccx.tcx, ast::DefId { krate: ast::LOCAL_CRATE, node: id })
-                    .index(&FullRange).get(0).unwrap_or(&attr::ReprAny);
+        [].get(0).unwrap_or(&attr::ReprAny);
 
     if hint != attr::ReprAny && vs.len() <= 1 {
         if vs.len() == 1 {
@@ -5518,7 +5553,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "get_tydesc" => {
               let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
                   Ok(t) => t,
-                  Err(s) => { tcx.sess.span_fatal(it.span, s.index(&FullRange)); }
+                  Err(s) => { tcx.sess.span_fatal(it.span, &s[]); }
               };
               let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
                   ty: tydesc_ty,
@@ -5534,7 +5569,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                                 ty::mk_struct(ccx.tcx, did,
                                               ccx.tcx.mk_substs(subst::Substs::empty()))),
                     Err(msg) => {
-                        tcx.sess.span_fatal(it.span, msg.index(&FullRange));
+                        tcx.sess.span_fatal(it.span, &msg[]);
                     }
                 }
             },

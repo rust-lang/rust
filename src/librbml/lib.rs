@@ -17,6 +17,7 @@
 
 #![crate_name = "rbml"]
 #![experimental]
+#![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -56,7 +57,7 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn as_str_slice<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.data.index(&(self.start..self.end))).unwrap()
+        str::from_utf8(&self.data[self.start..self.end]).unwrap()
     }
 
     pub fn as_str(&self) -> String {
@@ -291,7 +292,7 @@ pub mod reader {
     pub fn with_doc_data<T, F>(d: Doc, f: F) -> T where
         F: FnOnce(&[u8]) -> T,
     {
-        f(d.data.index(&(d.start..d.end)))
+        f(&d.data[d.start..d.end])
     }
 
 

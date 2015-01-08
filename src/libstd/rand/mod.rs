@@ -230,9 +230,9 @@ use rc::Rc;
 use result::Result::{Ok, Err};
 use vec::Vec;
 
-#[cfg(not(target_word_size="64"))]
+#[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
 use core_rand::IsaacRng as IsaacWordRng;
-#[cfg(target_word_size="64")]
+#[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
 use core_rand::Isaac64Rng as IsaacWordRng;
 
 pub use core_rand::{Rand, Rng, SeedableRng, Open01, Closed01};
@@ -403,7 +403,7 @@ pub fn random<T: Rand>() -> T {
 ///
 /// let mut rng = thread_rng();
 /// let sample = sample(&mut rng, range(1i, 100), 5);
-/// println!("{}", sample);
+/// println!("{:?}", sample);
 /// ```
 pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
                                          mut iter: I,

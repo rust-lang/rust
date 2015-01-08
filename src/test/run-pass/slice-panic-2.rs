@@ -10,8 +10,6 @@
 
 // Test that if a slicing expr[..] fails, the correct cleanups happen.
 
-#![feature(slicing_syntax)]
-
 use std::thread::Thread;
 
 struct Foo;

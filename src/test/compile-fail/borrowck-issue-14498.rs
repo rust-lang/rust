@@ -11,6 +11,8 @@
 // This tests that we can't modify Box<&mut T> contents while they
 // are borrowed.
 
+#![feature(box_syntax)]
+
 struct A { a: int }
 struct B<'a> { a: Box<&'a mut int> }
 

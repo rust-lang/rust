@@ -112,6 +112,7 @@
 // lldb-check:[...]$14 = -10
 // lldb-command:continue
 
+#![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {

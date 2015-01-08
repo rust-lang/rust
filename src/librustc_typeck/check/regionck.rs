@@ -188,8 +188,8 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
             }
         }
         _ => {
-            tcx.sess.bug(format!("unexpected def in region_of_def: {:?}",
-                                 def).index(&FullRange))
+            tcx.sess.bug(&format!("unexpected def in region_of_def: {:?}",
+                                 def)[])
         }
     }
 }
@@ -282,13 +282,13 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             Some(f) => f,
             None => {
                 self.tcx().sess.bug(
-                    format!("No fn-sig entry for id={}", id).index(&FullRange));
+                    &format!("No fn-sig entry for id={}", id)[]);
             }
         };
 
         let len = self.region_bound_pairs.len();
-        self.relate_free_regions(fn_sig.index(&FullRange), body.id);
-        link_fn_args(self, CodeExtent::from_node_id(body.id), fn_decl.inputs.index(&FullRange));
+        self.relate_free_regions(&fn_sig[], body.id);
+        link_fn_args(self, CodeExtent::from_node_id(body.id), &fn_decl.inputs[]);
         self.visit_block(body);
         self.visit_region_obligations(body.id);
         self.region_bound_pairs.truncate(len);
@@ -629,7 +629,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         }
 
         ast::ExprMatch(ref discr, ref arms, _) => {
-            link_match(rcx, &**discr, arms.index(&FullRange));
+            link_match(rcx, &**discr, &arms[]);
 
             visit::walk_expr(rcx, expr);
         }
@@ -953,8 +953,8 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 let (m, r) = match self_ty.sty {
                     ty::ty_rptr(r, ref m) => (m.mutbl, r),
                     _ => rcx.tcx().sess.span_bug(deref_expr.span,
-                            format!("bad overloaded deref type {}",
-                                    method.ty.repr(rcx.tcx())).index(&FullRange))
+                            &format!("bad overloaded deref type {}",
+                                    method.ty.repr(rcx.tcx()))[])
                 };
                 {
                     let mc = mc::MemCategorizationContext::new(rcx.fcx);
@@ -1318,9 +1318,9 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                 None => {
                     rcx.tcx().sess.span_bug(
                         span,
-                        format!("Illegal upvar id: {}",
+                        &format!("Illegal upvar id: {}",
                                 upvar_id.repr(
-                                    rcx.tcx())).index(&FullRange));
+                                    rcx.tcx()))[]);
                 }
             }
         }

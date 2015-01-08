@@ -10,6 +10,9 @@
 
 // Make sure #1399 stays fixed
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 struct A { a: Box<int> }
 
 pub fn main() {

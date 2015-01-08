@@ -15,6 +15,7 @@
 
 #![crate_name = "collections"]
 #![experimental]
+#![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
@@ -23,8 +24,9 @@
 
 #![allow(unknown_features)]
 #![feature(unsafe_destructor, slicing_syntax)]
-#![feature(old_impl_check)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
+#![feature(old_impl_check)]
 #![no_std]
 
 #[macro_use]
@@ -101,8 +103,6 @@ mod std {
     pub use core::option;   // necessary for panic!()
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
-    #[cfg(stage0)]
-    pub use core::marker as kinds;
     pub use core::marker;  // deriving(Copy)
     pub use core::hash;     // deriving(Hash)
 }

@@ -20,7 +20,7 @@ use fmt;
 use iter::{IteratorExt, range};
 use num::{cast, Float, ToPrimitive};
 use num::FpCategory as Fp;
-use ops::{FnOnce, Index};
+use ops::FnOnce;
 use result::Result::Ok;
 use slice::{self, SliceExt};
 use str::{self, StrExt};
@@ -332,5 +332,5 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
         }
     }
 
-    f(unsafe { str::from_utf8_unchecked(buf.index(&(0..end))) })
+    f(unsafe { str::from_utf8_unchecked(&buf[0..end]) })
 }

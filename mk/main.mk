@@ -25,11 +25,13 @@ ifeq ($(CFG_RELEASE_CHANNEL),stable)
 CFG_RELEASE=$(CFG_RELEASE_NUM)
 # This is the string used in dist artifact file names, e.g. "0.12.0", "nightly"
 CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)
+CFG_DISABLE_UNSTABLE_FEATURES=1
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),beta)
 # The beta channel is temporarily called 'alpha'
 CFG_RELEASE=$(CFG_RELEASE_NUM)-alpha$(CFG_BETA_CYCLE)
 CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)-alpha$(CFG_BETA_CYCLE)
+CFG_DISABLE_UNSTABLE_FEATURES=1
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),nightly)
 CFG_RELEASE=$(CFG_RELEASE_NUM)-nightly
@@ -121,11 +123,9 @@ CFG_JEMALLOC_FLAGS += $(JEMALLOC_FLAGS)
 
 ifdef CFG_DISABLE_DEBUG
   CFG_RUSTC_FLAGS += --cfg ndebug
-  CFG_GCCISH_CFLAGS += -DRUST_NDEBUG
 else
   $(info cfg: enabling more debugging (CFG_ENABLE_DEBUG))
   CFG_RUSTC_FLAGS += --cfg debug
-  CFG_GCCISH_CFLAGS += -DRUST_DEBUG
 endif
 
 ifdef SAVE_TEMPS
@@ -319,11 +319,20 @@ export CFG_VERSION_WIN
 export CFG_RELEASE
 export CFG_PACKAGE_NAME
 export CFG_BUILD
+export CFG_RELEASE_CHANNEL
 export CFG_LLVM_ROOT
 export CFG_PREFIX
 export CFG_LIBDIR
 export CFG_LIBDIR_RELATIVE
 export CFG_DISABLE_INJECT_STD_VERSION
+ifdef CFG_DISABLE_UNSTABLE_FEATURES
+CFG_INFO := $(info cfg: disabling unstable features (CFG_DISABLE_UNSTABLE_FEATURES))
+# Turn on feature-staging
+export CFG_DISABLE_UNSTABLE_FEATURES
+endif
+# Subvert unstable feature lints to do the self-build
+export CFG_BOOTSTRAP_KEY
+export RUSTC_BOOTSTRAP_KEY:=$(CFG_BOOTSTRAP_KEY)
 
 ######################################################################
 # Per-stage targets and runner

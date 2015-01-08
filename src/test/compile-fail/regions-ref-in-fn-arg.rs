@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
 fn arg_item(box ref x: Box<int>) -> &'static int {
     x //~^ ERROR borrowed value does not live long enough

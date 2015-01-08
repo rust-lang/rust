@@ -262,6 +262,7 @@ referenced Rust object.
 Rust code:
 
 ~~~~no_run
+# use std::boxed::Box;
 
 #[repr(C)]
 struct RustObject {
@@ -286,7 +287,7 @@ extern {
 
 fn main() {
     // Create the object that will be referenced in the callback
-    let mut rust_object = box RustObject { a: 5 };
+    let mut rust_object = Box::new(RustObject { a: 5 });
 
     unsafe {
         register_callback(&mut *rust_object, callback);

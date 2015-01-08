@@ -18,7 +18,7 @@ use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use fmt;
 use marker::Copy;
-use ops::{Deref, FullRange, Index};
+use ops::{Deref, FullRange};
 use option::Option;
 
 // macro for implementing n-ary tuple functions and operations
@@ -35,7 +35,7 @@ macro_rules! array_impls {
             #[unstable = "waiting for Show to stabilize"]
             impl<T:fmt::Show> fmt::Show for [T; $N] {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::Show::fmt(&self.index(&FullRange), f)
+                    fmt::Show::fmt(&&self[], f)
                 }
             }
 
@@ -43,11 +43,11 @@ macro_rules! array_impls {
             impl<A, B> PartialEq<[B; $N]> for [A; $N] where A: PartialEq<B> {
                 #[inline]
                 fn eq(&self, other: &[B; $N]) -> bool {
-                    self.index(&FullRange) == other.index(&FullRange)
+                    &self[] == &other[]
                 }
                 #[inline]
                 fn ne(&self, other: &[B; $N]) -> bool {
-                    self.index(&FullRange) != other.index(&FullRange)
+                    &self[] != &other[]
                 }
             }
 
@@ -58,11 +58,11 @@ macro_rules! array_impls {
             {
                 #[inline(always)]
                 fn eq(&self, other: &Rhs) -> bool {
-                    PartialEq::eq(self.index(&FullRange), &**other)
+                    PartialEq::eq(&self[], &**other)
                 }
                 #[inline(always)]
                 fn ne(&self, other: &Rhs) -> bool {
-                    PartialEq::ne(self.index(&FullRange), &**other)
+                    PartialEq::ne(&self[], &**other)
                 }
             }
 
@@ -73,11 +73,11 @@ macro_rules! array_impls {
             {
                 #[inline(always)]
                 fn eq(&self, other: &[B; $N]) -> bool {
-                    PartialEq::eq(&**self, other.index(&FullRange))
+                    PartialEq::eq(&**self, &other[])
                 }
                 #[inline(always)]
                 fn ne(&self, other: &[B; $N]) -> bool {
-                    PartialEq::ne(&**self, other.index(&FullRange))
+                    PartialEq::ne(&**self, &other[])
                 }
             }
 
@@ -88,23 +88,23 @@ macro_rules! array_impls {
             impl<T:PartialOrd> PartialOrd for [T; $N] {
                 #[inline]
                 fn partial_cmp(&self, other: &[T; $N]) -> Option<Ordering> {
-                    PartialOrd::partial_cmp(&self.index(&FullRange), &other.index(&FullRange))
+                    PartialOrd::partial_cmp(&&self[], &&other[])
                 }
                 #[inline]
                 fn lt(&self, other: &[T; $N]) -> bool {
-                    PartialOrd::lt(&self.index(&FullRange), &other.index(&FullRange))
+                    PartialOrd::lt(&&self[], &&other[])
                 }
                 #[inline]
                 fn le(&self, other: &[T; $N]) -> bool {
-                    PartialOrd::le(&self.index(&FullRange), &other.index(&FullRange))
+                    PartialOrd::le(&&self[], &&other[])
                 }
                 #[inline]
                 fn ge(&self, other: &[T; $N]) -> bool {
-                    PartialOrd::ge(&self.index(&FullRange), &other.index(&FullRange))
+                    PartialOrd::ge(&&self[], &&other[])
                 }
                 #[inline]
                 fn gt(&self, other: &[T; $N]) -> bool {
-                    PartialOrd::gt(&self.index(&FullRange), &other.index(&FullRange))
+                    PartialOrd::gt(&&self[], &&other[])
                 }
             }
 
@@ -112,7 +112,7 @@ macro_rules! array_impls {
             impl<T:Ord> Ord for [T; $N] {
                 #[inline]
                 fn cmp(&self, other: &[T; $N]) -> Ordering {
-                    Ord::cmp(&self.index(&FullRange), &other.index(&FullRange))
+                    Ord::cmp(&&self[], &&other[])
                 }
             }
         )+

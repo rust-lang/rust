@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 fn f<T>(x: Box<T>) -> Box<T> { return x; }
 
 pub fn main() { let x = f(box 3i); println!("{}", *x); }
