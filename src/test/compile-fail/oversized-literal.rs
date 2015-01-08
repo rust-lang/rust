@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    println!("{}", 18446744073709551616u64);  //~ error: isize literal is too large
+    println!("{}", 18446744073709551616u64);  //~ error: int literal is too large
 }
