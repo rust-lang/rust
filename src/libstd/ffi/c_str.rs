@@ -84,7 +84,7 @@ impl CString {
         unsafe { CString::from_vec_unchecked(v) }
     }
 
-    /// Create a C-compatibel string from a byte vector without checking for
+    /// Create a C-compatible string from a byte vector without checking for
     /// interior 0 bytes.
     ///
     /// This method is equivalent to `from_vec` except that no runtime assertion
