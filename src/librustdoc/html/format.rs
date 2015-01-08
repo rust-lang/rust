@@ -332,7 +332,7 @@ fn path<F, G>(w: &mut fmt::Formatter,
         match rel_root {
             Some(root) => {
                 let mut root = String::from_str(root.as_slice());
-                for seg in path.segments.index(&(0..amt)).iter() {
+                for seg in path.segments[0..amt].iter() {
                     if "super" == seg.name ||
                             "self" == seg.name {
                         try!(write!(w, "{}::", seg.name));
@@ -347,7 +347,7 @@ fn path<F, G>(w: &mut fmt::Formatter,
                 }
             }
             None => {
-                for seg in path.segments.index(&(0..amt)).iter() {
+                for seg in path.segments[0..amt].iter() {
                     try!(write!(w, "{}::", seg.name));
                 }
             }

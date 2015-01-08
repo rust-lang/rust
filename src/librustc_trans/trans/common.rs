@@ -273,7 +273,7 @@ pub fn gensym_name(name: &str) -> PathElem {
 let num = token::gensym(name).uint();
 // use one colon which will get translated to a period by the mangler, and
 // we're guaranteed that `num` is globally unique for this crate.
-PathName(token::gensym(format!("{}:{}", name, num).index(&FullRange)))
+PathName(token::gensym(&format!("{}:{}", name, num)[]))
 }
 
 #[derive(Copy)]
@@ -600,8 +600,8 @@ pub fn def(&self, nid: ast::NodeId) -> def::Def {
     match self.tcx().def_map.borrow().get(&nid) {
         Some(v) => v.clone(),
         None => {
-            self.tcx().sess.bug(format!(
-                "no def associated with node id {}", nid).index(&FullRange));
+            self.tcx().sess.bug(&format!(
+                "no def associated with node id {}", nid)[]);
         }
     }
 }
@@ -1029,9 +1029,9 @@ let selection = match selcx.select(&obligation) {
     Err(e) => {
         tcx.sess.span_bug(
             span,
-            format!("Encountered error `{}` selecting `{}` during trans",
+            &format!("Encountered error `{}` selecting `{}` during trans",
                     e.repr(tcx),
-                    trait_ref.repr(tcx)).index(&FullRange))
+                    trait_ref.repr(tcx))[])
     }
 };
 
@@ -1123,8 +1123,8 @@ match fulfill_cx.select_all_or_error(infcx, &typer) {
         } else {
             infcx.tcx.sess.span_bug(
                 span,
-                format!("Encountered errors `{}` fulfilling during trans",
-                        errors.repr(infcx.tcx)).index(&FullRange));
+                &format!("Encountered errors `{}` fulfilling during trans",
+                        errors.repr(infcx.tcx))[]);
         }
     }
 }
@@ -1163,8 +1163,8 @@ let substs = match node {
 };
 
 if substs.types.any(|t| ty::type_needs_infer(*t)) {
-        tcx.sess.bug(format!("type parameters for node {:?} include inference types: {:?}",
-                             node, substs.repr(tcx)).index(&FullRange));
+        tcx.sess.bug(&format!("type parameters for node {:?} include inference types: {:?}",
+                             node, substs.repr(tcx))[]);
     }
 
     monomorphize::apply_param_substs(tcx,
@@ -1182,8 +1182,8 @@ pub fn langcall(bcx: Block,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => bcx.tcx().sess.span_fatal(span, msg.index(&FullRange)),
-                None => bcx.tcx().sess.fatal(msg.index(&FullRange)),
+                Some(span) => bcx.tcx().sess.span_fatal(span, &msg[]),
+                None => bcx.tcx().sess.fatal(&msg[]),
             }
         }
     }

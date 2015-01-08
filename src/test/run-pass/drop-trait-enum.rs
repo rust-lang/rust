@@ -36,13 +36,13 @@ enum Foo {
 impl Drop for Foo {
     fn drop(&mut self) {
         match self {
-            &Foo::SimpleVariant(ref mut sender) => {
+            &mut Foo::SimpleVariant(ref mut sender) => {
                 sender.send(Message::DestructorRan).unwrap();
             }
-            &Foo::NestedVariant(_, _, ref mut sender) => {
+            &mut Foo::NestedVariant(_, _, ref mut sender) => {
                 sender.send(Message::DestructorRan).unwrap();
             }
-            &Foo::FailingVariant { .. } => {
+            &mut Foo::FailingVariant { .. } => {
                 panic!("Failed");
             }
         }

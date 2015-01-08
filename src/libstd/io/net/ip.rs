@@ -22,7 +22,7 @@ use fmt;
 use io::{self, IoResult, IoError};
 use io::net;
 use iter::{Iterator, IteratorExt};
-use ops::{FnOnce, FnMut, Index};
+use ops::{FnOnce, FnMut};
 use option::Option;
 use option::Option::{None, Some};
 use result::Result::{Ok, Err};
@@ -313,7 +313,7 @@ impl<'a> Parser<'a> {
 
         let mut tail = [0u16; 8];
         let (tail_size, _) = read_groups(self, &mut tail, 8 - head_size);
-        Some(ipv6_addr_from_head_tail(head.index(&(0..head_size)), tail.index(&(0..tail_size))))
+        Some(ipv6_addr_from_head_tail(&head[0..head_size], &tail[0..tail_size]))
     }
 
     fn read_ipv6_addr(&mut self) -> Option<IpAddr> {

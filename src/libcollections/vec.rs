@@ -1178,7 +1178,7 @@ impl<T:Clone> Clone for Vec<T> {
 
         // self.len <= other.len due to the truncate above, so the
         // slice here is always in-bounds.
-        let slice = other.index(&(self.len()..));
+        let slice = &other[self.len()..];
         self.push_all(slice);
     }
 }
@@ -2031,7 +2031,7 @@ mod tests {
         v.push(());
         assert_eq!(v.iter_mut().count(), 4);
 
-        for &() in v.iter_mut() {}
+        for &mut () in v.iter_mut() {}
         unsafe { v.set_len(0); }
         assert_eq!(v.iter_mut().count(), 0);
     }

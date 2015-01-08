@@ -337,7 +337,7 @@ pub fn suggest_new_overflow_limit(tcx: &ty::ctxt, span: Span) {
     let suggested_limit = current_limit * 2;
     tcx.sess.span_note(
         span,
-        format!(
+        &format!(
             "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-            suggested_limit).index(&FullRange));
+            suggested_limit)[]);
 }

@@ -36,7 +36,7 @@ impl Deref for X {
 
 impl DerefMut for X {
     fn deref_mut(&mut self) -> &mut int {
-        let &X(box ref mut x) = self;
+        let &mut X(box ref mut x) = self;
         x
     }
 }

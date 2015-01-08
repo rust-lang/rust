@@ -575,8 +575,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 None => {
                     self.tcx().sess.span_bug(
                         self.span,
-                        format!("No entry for unboxed closure: {}",
-                                closure_def_id.repr(self.tcx())).index(&FullRange));
+                        &format!("No entry for unboxed closure: {}",
+                                closure_def_id.repr(self.tcx()))[]);
                 }
             };
 
@@ -745,7 +745,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("pick_method(self_ty={})", self.infcx().ty_to_string(self_ty));
 
         debug!("searching inherent candidates");
-        match self.consider_candidates(self_ty, self.inherent_candidates.index(&FullRange)) {
+        match self.consider_candidates(self_ty, &self.inherent_candidates[]) {
             None => {}
             Some(pick) => {
                 return Some(pick);
@@ -753,7 +753,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         debug!("searching extension candidates");
-        self.consider_candidates(self_ty, self.extension_candidates.index(&FullRange))
+        self.consider_candidates(self_ty, &self.extension_candidates[])
     }
 
     fn consider_candidates(&self,
@@ -768,7 +768,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("applicable_candidates: {}", applicable_candidates.repr(self.tcx()));
 
         if applicable_candidates.len() > 1 {
-            match self.collapse_candidates_to_trait_pick(applicable_candidates.index(&FullRange)) {
+            match self.collapse_candidates_to_trait_pick(&applicable_candidates[]) {
                 Some(pick) => { return Some(Ok(pick)); }
                 None => { }
             }
@@ -864,7 +864,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             Some(data) => data,
             None => return None,
         };
-        if probes.index(&(1..)).iter().any(|p| p.to_trait_data() != Some(trait_data)) {
+        if probes[1..].iter().any(|p| p.to_trait_data() != Some(trait_data)) {
             return None;
         }
 

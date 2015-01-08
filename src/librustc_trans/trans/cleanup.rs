@@ -403,8 +403,8 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         }
 
         self.ccx.sess().bug(
-            format!("no cleanup scope {} found",
-                    self.ccx.tcx().map.node_to_string(cleanup_scope)).index(&FullRange));
+            &format!("no cleanup scope {} found",
+                    self.ccx.tcx().map.node_to_string(cleanup_scope))[]);
     }
 
     /// Schedules a cleanup to occur in the top-most scope, which must be a temporary scope.
@@ -584,9 +584,9 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                     }
 
                     LoopExit(id, _) => {
-                        self.ccx.sess().bug(format!(
+                        self.ccx.sess().bug(&format!(
                                 "cannot exit from scope {}, \
-                                not in scope", id).index(&FullRange));
+                                not in scope", id)[]);
                     }
                 }
             }
@@ -655,7 +655,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 let name = scope.block_name("clean");
                 debug!("generating cleanups for {}", name);
                 let bcx_in = self.new_block(label.is_unwind(),
-                                            name.index(&FullRange),
+                                            &name[],
                                             None);
                 let mut bcx_out = bcx_in;
                 for cleanup in scope.cleanups.iter().rev() {
@@ -702,7 +702,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                 Some(llbb) => { return llbb; }
                 None => {
                     let name = last_scope.block_name("unwind");
-                    pad_bcx = self.new_block(true, name.index(&FullRange), None);
+                    pad_bcx = self.new_block(true, &name[], None);
                     last_scope.cached_landing_pad = Some(pad_bcx.llbb);
                 }
             }
@@ -1022,8 +1022,8 @@ pub fn temporary_scope(tcx: &ty::ctxt,
             r
         }
         None => {
-            tcx.sess.bug(format!("no temporary scope available for expr {}",
-                                 id).index(&FullRange))
+            tcx.sess.bug(&format!("no temporary scope available for expr {}",
+                                 id)[])
         }
     }
 }

@@ -949,7 +949,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures().unwrap();
     let s = match st.out {
-        Raw(ref m) => String::from_utf8_lossy(m.index(&FullRange)),
+        Raw(ref m) => String::from_utf8_lossy(&m[]),
         Pretty(_) => unreachable!()
     };
 

@@ -306,8 +306,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     ty::ReInfer(..) => {
                         self.tcx().sess.span_bug(
                             cmt.span,
-                            format!("invalid borrow lifetime: {:?}",
-                                    loan_region).index(&FullRange));
+                            &format!("invalid borrow lifetime: {:?}",
+                                    loan_region)[]);
                     }
                 };
                 debug!("loan_scope = {:?}", loan_scope);

@@ -69,7 +69,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("tuple_indexing", Accepted),
     ("associated_types", Accepted),
     ("visible_private_types", Active),
-    ("slicing_syntax", Active),
+    ("slicing_syntax", Accepted),
 
     ("if_let", Accepted),
     ("while_let", Accepted),
@@ -150,9 +150,9 @@ impl<'a> Context<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         if !self.has_feature(feature) {
             self.span_handler.span_err(span, explain);
-            self.span_handler.span_help(span, format!("add #![feature({})] to the \
+            self.span_handler.span_help(span, &format!("add #![feature({})] to the \
                                                        crate attributes to enable",
-                                                      feature).index(&FullRange));
+                                                      feature)[]);
         }
     }
 
@@ -243,7 +243,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         }
         match i.node {
             ast::ItemForeignMod(ref foreign_module) => {
-                if attr::contains_name(i.attrs.index(&FullRange), "link_args") {
+                if attr::contains_name(&i.attrs[], "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
@@ -257,14 +257,14 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemFn(..) => {
-                if attr::contains_name(i.attrs.index(&FullRange), "plugin_registrar") {
+                if attr::contains_name(&i.attrs[], "plugin_registrar") {
                     self.gate_feature("plugin_registrar", i.span,
                                       "compiler plugins are experimental and possibly buggy");
                 }
             }
 
             ast::ItemStruct(..) => {
-                if attr::contains_name(i.attrs.index(&FullRange), "simd") {
+                if attr::contains_name(&i.attrs[], "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
                 }
@@ -290,7 +290,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        removed in the future");
                 }
 
-                if attr::contains_name(i.attrs.index(&FullRange),
+                if attr::contains_name(&i.attrs[],
                                        "old_orphan_check") {
                     self.gate_feature(
                         "old_orphan_check",
@@ -298,7 +298,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                         "the new orphan check rules will eventually be strictly enforced");
                 }
 
-                if attr::contains_name(i.attrs.index(&FullRange),
+                if attr::contains_name(&i.attrs[],
                                        "old_impl_check") {
                     self.gate_feature("old_impl_check",
                                       i.span,
@@ -313,7 +313,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
-        if attr::contains_name(i.attrs.index(&FullRange), "linkage") {
+        if attr::contains_name(&i.attrs[], "linkage") {
             self.gate_feature("linkage", i.span,
                               "the `linkage` attribute is experimental \
                                and not portable across platforms")
@@ -337,14 +337,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {
-        match e.node {
-            ast::ExprRange(..) => {
-                self.gate_feature("slicing_syntax",
-                                  e.span,
-                                  "range syntax is experimental");
-            }
-            _ => {}
-        }
         visit::walk_expr(self, e);
     }
 

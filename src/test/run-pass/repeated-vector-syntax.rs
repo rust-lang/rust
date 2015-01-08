@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slicing_syntax)]
-
 pub fn main() {
     let x = [ [true]; 512 ];
     let y = [ 0i; 1 ];

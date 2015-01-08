@@ -1000,9 +1000,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     format!(" ({})", ty::type_err_to_str(self.tcx, t_err))
                 });
 
-                self.tcx.sess.span_err(sp, format!("{}{}",
+                self.tcx.sess.span_err(sp, &format!("{}{}",
                     mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
-                    error_str).index(&FullRange));
+                    error_str)[]);
 
                 for err in err.iter() {
                     ty::note_and_explain_type_err(self.tcx, *err)

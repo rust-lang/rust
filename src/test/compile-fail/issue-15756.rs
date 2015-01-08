@@ -14,7 +14,7 @@ use std::slice::ChunksMut;
 fn dft_iter<'a, T>(arg1: Chunks<'a,T>, arg2: ChunksMut<'a,T>)
 {
     for
-    &something
+    &mut something
 //~^ ERROR the trait `core::marker::Sized` is not implemented for the type `[T]`
     in arg2
     {

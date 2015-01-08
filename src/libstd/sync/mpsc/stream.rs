@@ -338,7 +338,7 @@ impl<T: Send> Packet<T> {
         // upgrade pending, then go through the whole recv rigamarole to update
         // the internal state.
         match self.queue.peek() {
-            Some(&GoUp(..)) => {
+            Some(&mut GoUp(..)) => {
                 match self.recv() {
                     Err(Upgraded(port)) => Err(port),
                     _ => unreachable!(),
@@ -367,7 +367,7 @@ impl<T: Send> Packet<T> {
             Ok(()) => SelSuccess,
             Err(token) => {
                 let ret = match self.queue.peek() {
-                    Some(&GoUp(..)) => {
+                    Some(&mut GoUp(..)) => {
                         match self.queue.pop() {
                             Some(GoUp(port)) => SelUpgraded(token, port),
                             _ => unreachable!(),
@@ -457,7 +457,7 @@ impl<T: Send> Packet<T> {
         // upgraded port.
         if has_data {
             match self.queue.peek() {
-                Some(&GoUp(..)) => {
+                Some(&mut GoUp(..)) => {
                     match self.queue.pop() {
                         Some(GoUp(port)) => Err(port),
                         _ => unreachable!(),
