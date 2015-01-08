@@ -102,8 +102,6 @@ mod std {
     pub use core::option;   // necessary for panic!()
     pub use core::clone;    // deriving(Clone)
     pub use core::cmp;      // deriving(Eq, Ord, etc.)
-    #[cfg(stage0)]
-    pub use core::marker as kinds;
     pub use core::marker;  // deriving(Copy)
     pub use core::hash;     // deriving(Hash)
 }

@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for architecture-sized unsigned integers (`uint` type)
+//! Deprecated: replaced by `usize`.
+//!
+//! The rollout of the new type will gradually take place over the
+//! alpha cycle along with the development of clearer conventions
+//! around integer types.
 
-#![stable]
-#![doc(primitive = "uint")]
+#![deprecated = "replaced by usize"]
 
 pub use core::uint::{BITS, BYTES, MIN, MAX};
 

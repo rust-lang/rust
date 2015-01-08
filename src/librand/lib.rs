@@ -496,8 +496,6 @@ pub struct Closed01<F>(pub F);
 mod std {
     pub use core::{option, fmt}; // panic!()
     pub use core::clone; // derive Clone
-    #[cfg(stage0)]
-    pub use core::marker as kinds;
     pub use core::marker;
 }
 
