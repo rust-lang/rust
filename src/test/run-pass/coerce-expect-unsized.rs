@@ -30,4 +30,7 @@ pub fn main() {
     let _: &Fn(int) -> _ = &{ |x| (x as u8) };
     let _: &Show = &if true { false } else { true };
     let _: &Show = &match true { true => 'a', false => 'b' };
+
+    let _: Box<[int]> = Box::new([1, 2, 3]);
+    let _: Box<Fn(int) -> _> = Box::new(|x| (x as u8));
 }

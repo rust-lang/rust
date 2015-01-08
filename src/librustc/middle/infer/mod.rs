@@ -613,6 +613,39 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.commit_unconditionally(move || self.try(move |_| f()))
     }
 
+    /// Execute `f` and commit only the region bindings if successful.
+    /// The function f must be very careful not to leak any non-region
+    /// variables that get created.
+    pub fn commit_regions_if_ok<T, E, F>(&self, f: F) -> Result<T, E> where
+        F: FnOnce() -> Result<T, E>
+    {
+        debug!("commit_regions_if_ok()");
+        let CombinedSnapshot { type_snapshot,
+                               int_snapshot,
+                               float_snapshot,
+                               region_vars_snapshot } = self.start_snapshot();
+
+        let r = self.try(move |_| f());
+
+        // Roll back any non-region bindings - they should be resolved
+        // inside `f`, with, e.g. `resolve_type_vars_if_possible`.
+        self.type_variables
+            .borrow_mut()
+            .rollback_to(type_snapshot);
+        self.int_unification_table
+            .borrow_mut()
+            .rollback_to(int_snapshot);
+        self.float_unification_table
+            .borrow_mut()
+            .rollback_to(float_snapshot);
+
+        // Commit region vars that may escape through resolved types.
+        self.region_vars
+            .commit(region_vars_snapshot);
+
+        r
+    }
+
     /// Execute `f`, unroll bindings on panic
     pub fn try<T, E, F>(&self, f: F) -> Result<T, E> where
         F: FnOnce(&CombinedSnapshot) -> Result<T, E>
