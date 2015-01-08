@@ -134,7 +134,7 @@ static FALSE: bool = false;
 /// # Examples
 ///
 /// ```rust
-/// use collections::Bitv;
+/// use std::collections::Bitv;
 ///
 /// let mut bv = Bitv::from_elem(10, false);
 ///
