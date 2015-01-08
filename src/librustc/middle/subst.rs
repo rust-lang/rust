@@ -313,6 +313,17 @@ impl<T> VecPerParamSpace<T> {
         self.content.insert(limit, value);
     }
 
+    /// Appends `values` to the vector associated with `space`.
+    ///
+    /// Unlike the `extend` method in `Vec`, this should not be assumed
+    /// to be a cheap operation (even when amortized over many calls).
+    pub fn extend<I:Iterator<Item=T>>(&mut self, space: ParamSpace, mut values: I) {
+        // This could be made more efficient, obviously.
+        for item in values {
+            self.push(space, item);
+        }
+    }
+
     pub fn pop(&mut self, space: ParamSpace) -> Option<T> {
         let (start, limit) = self.limits(space);
         if start == limit {

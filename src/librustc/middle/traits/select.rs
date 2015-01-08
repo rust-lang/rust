@@ -19,6 +19,7 @@ use self::EvaluationResult::*;
 
 use super::{DerivedObligationCause};
 use super::{project};
+use super::project::Normalized;
 use super::{PredicateObligation, Obligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation};
 use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch};
@@ -1155,7 +1156,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let impl_trait_ref =
                         ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap();
                     let impl_trait_ref =
-                        impl_trait_ref.subst(self.tcx(), &impl_substs);
+                        impl_trait_ref.subst(self.tcx(), &impl_substs.value);
                     let poly_impl_trait_ref =
                         ty::Binder(impl_trait_ref);
                     let origin =
@@ -1712,7 +1713,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let substs =
                 self.rematch_impl(impl_def_id, obligation,
                                   snapshot, &skol_map, skol_obligation_trait_ref.trait_ref);
-            debug!("confirm_impl_candidate substs={:?}", substs);
+            debug!("confirm_impl_candidate substs={}", substs.repr(self.tcx()));
             Ok(self.vtable_impl(impl_def_id, substs, obligation.cause.clone(),
                                 obligation.recursion_depth + 1, skol_map, snapshot))
         })
@@ -1720,7 +1721,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn vtable_impl(&mut self,
                    impl_def_id: ast::DefId,
-                   substs: Substs<'tcx>,
+                   substs: Normalized<'tcx, Substs<'tcx>>,
                    cause: ObligationCause<'tcx>,
                    recursion_depth: uint,
                    skol_map: infer::SkolemizationMap,
@@ -1733,21 +1734,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                recursion_depth,
                skol_map.repr(self.tcx()));
 
-        let impl_predicates =
-            self.impl_predicates(cause,
+        let mut impl_obligations =
+            self.impl_obligations(cause,
                                  recursion_depth,
                                  impl_def_id,
-                                 &substs,
+                                 &substs.value,
                                  skol_map,
                                  snapshot);
 
-        debug!("vtable_impl: impl_def_id={} impl_predicates={}",
+        debug!("vtable_impl: impl_def_id={} impl_obligations={}",
                impl_def_id.repr(self.tcx()),
-               impl_predicates.repr(self.tcx()));
+               impl_obligations.repr(self.tcx()));
+
+        impl_obligations.extend(TypeSpace, substs.obligations.into_iter());
 
         VtableImplData { impl_def_id: impl_def_id,
-                         substs: substs,
-                         nested: impl_predicates }
+                         substs: substs.value,
+                         nested: impl_obligations }
     }
 
     fn confirm_object_candidate(&mut self,
@@ -1931,7 +1934,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     snapshot: &infer::CombinedSnapshot,
                     skol_map: &infer::SkolemizationMap,
                     skol_obligation_trait_ref: Rc<ty::TraitRef<'tcx>>)
-                    -> Substs<'tcx>
+                    -> Normalized<'tcx, Substs<'tcx>>
     {
         match self.match_impl(impl_def_id, obligation, snapshot,
                               skol_map, skol_obligation_trait_ref) {
@@ -1953,7 +1956,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                   snapshot: &infer::CombinedSnapshot,
                   skol_map: &infer::SkolemizationMap,
                   skol_obligation_trait_ref: Rc<ty::TraitRef<'tcx>>)
-                  -> Result<Substs<'tcx>, ()>
+                  -> Result<Normalized<'tcx, Substs<'tcx>>, ()>
     {
         let impl_trait_ref = ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap();
 
@@ -1971,6 +1974,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(),
                                                   &impl_substs);
 
+        let impl_trait_ref =
+            project::normalize_with_depth(self,
+                                          obligation.cause.clone(),
+                                          obligation.recursion_depth + 1,
+                                          &impl_trait_ref);
+
         debug!("match_impl(impl_def_id={}, obligation={}, \
                impl_trait_ref={}, skol_obligation_trait_ref={})",
                impl_def_id.repr(self.tcx()),
@@ -1981,7 +1990,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let origin = infer::RelateOutputImplTypes(obligation.cause.span);
         match self.infcx.sub_trait_refs(false,
                                         origin,
-                                        impl_trait_ref,
+                                        impl_trait_ref.value.clone(),
                                         skol_obligation_trait_ref) {
             Ok(()) => { }
             Err(e) => {
@@ -2001,7 +2010,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         debug!("match_impl: success impl_substs={}", impl_substs.repr(self.tcx()));
-        Ok(impl_substs)
+        Ok(Normalized { value: impl_substs,
+                        obligations: impl_trait_ref.obligations })
     }
 
     fn fast_reject_trait_refs(&mut self,
@@ -2142,14 +2152,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn impl_predicates(&mut self,
-                       cause: ObligationCause<'tcx>,
-                       recursion_depth: uint,
-                       impl_def_id: ast::DefId,
-                       impl_substs: &Substs<'tcx>,
-                       skol_map: infer::SkolemizationMap,
-                       snapshot: &infer::CombinedSnapshot)
-                       -> VecPerParamSpace<PredicateObligation<'tcx>>
+    fn impl_obligations(&mut self,
+                        cause: ObligationCause<'tcx>,
+                        recursion_depth: uint,
+                        impl_def_id: ast::DefId,
+                        impl_substs: &Substs<'tcx>,
+                        skol_map: infer::SkolemizationMap,
+                        snapshot: &infer::CombinedSnapshot)
+                        -> VecPerParamSpace<PredicateObligation<'tcx>>
     {
         let impl_generics = ty::lookup_item_type(self.tcx(), impl_def_id).generics;
         let bounds = impl_generics.to_bounds(self.tcx(), impl_substs);
@@ -2162,9 +2172,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                           cause,
                                           recursion_depth,
                                           &normalized_bounds.value);
-        for obligation in normalized_bounds.obligations.into_iter() {
-            impl_obligations.push(TypeSpace, obligation);
-        }
+        impl_obligations.extend(TypeSpace, normalized_bounds.obligations.into_iter());
         impl_obligations
     }
 
