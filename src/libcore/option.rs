@@ -145,17 +145,18 @@
 
 use self::Option::*;
 
+use clone::Clone;
 use cmp::{Eq, Ord};
 use default::Default;
-use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator};
+use fmt;
 use iter::{ExactSizeIterator};
+use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator};
 use mem;
-use result::Result;
-use result::Result::{Ok, Err};
-use slice;
-use slice::AsSlice;
-use clone::Clone;
 use ops::{Deref, FnOnce};
+use result::Result::{Ok, Err};
+use result::Result;
+use slice::AsSlice;
+use slice;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -762,7 +763,6 @@ impl<T> AsSlice<T> for Option<T> {
 
 #[stable]
 impl<T> Default for Option<T> {
-    #[stable]
     #[inline]
     #[stable]
     fn default() -> Option<T> { None }

@@ -681,6 +681,7 @@ impl fmt::Show for FromUtf8Error {
     }
 }
 
+#[stable]
 impl fmt::String for FromUtf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(&self.error, f)
@@ -693,6 +694,7 @@ impl fmt::Show for FromUtf16Error {
     }
 }
 
+#[stable]
 impl fmt::String for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt("invalid utf-16: lone surrogate found", f)
@@ -805,7 +807,7 @@ impl Default for String {
     }
 }
 
-#[experimental = "waiting on fmt stabilization"]
+#[stable]
 impl fmt::String for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(&**self, f)
@@ -1274,18 +1276,17 @@ mod tests {
         assert_eq!(2u8.to_string(), "2");
         assert_eq!(true.to_string(), "true");
         assert_eq!(false.to_string(), "false");
-        assert_eq!(().to_string(), "()");
         assert_eq!(("hi".to_string()).to_string(), "hi");
     }
 
     #[test]
     fn test_vectors() {
         let x: Vec<int> = vec![];
-        assert_eq!(x.to_string(), "[]");
-        assert_eq!((vec![1i]).to_string(), "[1]");
-        assert_eq!((vec![1i, 2, 3]).to_string(), "[1, 2, 3]");
-        assert!((vec![vec![], vec![1i], vec![1i, 1]]).to_string() ==
-               "[[], [1], [1, 1]]");
+        assert_eq!(format!("{:?}", x), "[]");
+        assert_eq!(format!("{:?}", vec![1i]), "[1i]");
+        assert_eq!(format!("{:?}", vec![1i, 2, 3]), "[1i, 2i, 3i]");
+        assert!(format!("{:?}", vec![vec![], vec![1i], vec![1i, 1]]) ==
+               "[[], [1i], [1i, 1i]]");
     }
 
     #[test]

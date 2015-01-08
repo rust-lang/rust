@@ -51,6 +51,8 @@ pub struct ConciseStability<'a>(pub &'a Option<clean::Stability>);
 pub struct WhereClause<'a>(pub &'a clean::Generics);
 /// Wrapper struct for emitting type parameter bounds.
 pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
+/// Wrapper struct for emitting a comma-separated list of items
+pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 
 impl VisSpace {
     pub fn get(&self) -> Option<ast::Visibility> {
@@ -61,6 +63,16 @@ impl VisSpace {
 impl UnsafetySpace {
     pub fn get(&self) -> ast::Unsafety {
         let UnsafetySpace(v) = *self; v
+    }
+}
+
+impl<'a, T: fmt::String> fmt::String for CommaSep<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, item) in self.0.iter().enumerate() {
+            if i != 0 { try!(write!(f, ", ")); }
+            try!(write!(f, "{}", item));
+        }
+        Ok(())
     }
 }
 
@@ -450,7 +462,8 @@ impl fmt::String for clean::Type {
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_string()
                        } else {
-                           format!("for &lt;{:#}&gt;", decl.lifetimes)
+                           format!("for &lt;{}&gt;",
+                                   CommaSep(decl.lifetimes.as_slice()))
                        },
                        args = decl.decl.inputs,
                        arrow = decl.decl.output,
@@ -482,7 +495,8 @@ impl fmt::String for clean::Type {
                        lifetimes = if decl.lifetimes.len() == 0 {
                            "".to_string()
                        } else {
-                           format!("for &lt;{:#}&gt;", decl.lifetimes)
+                           format!("for &lt;{}&gt;",
+                                   CommaSep(decl.lifetimes.as_slice()))
                        },
                        args = decl.decl.inputs,
                        bounds = if decl.bounds.len() == 0 {
@@ -512,7 +526,8 @@ impl fmt::String for clean::Type {
                 primitive_link(f, clean::PrimitiveTuple,
                                match typs.as_slice() {
                                     [ref one] => format!("({},)", one),
-                                    many => format!("({:#})", many)
+                                    many => format!("({})",
+                                                    CommaSep(many.as_slice()))
                                }.as_slice())
             }
             clean::Vector(ref t) => {

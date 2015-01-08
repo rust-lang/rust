@@ -585,6 +585,13 @@ impl<T: fmt::Show> fmt::Show for Arc<T> {
 }
 
 #[stable]
+impl<T: fmt::String> fmt::String for Arc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(&**self, f)
+    }
+}
+
+#[stable]
 impl<T: Default + Sync + Send> Default for Arc<T> {
     #[stable]
     fn default() -> Arc<T> { Arc::new(Default::default()) }
