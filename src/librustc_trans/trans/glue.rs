@@ -138,7 +138,7 @@ pub fn drop_ty_immediate<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("drop_ty_immediate");
     let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
-    Store(bcx, v, vp);
+    store_ty(bcx, v, vp, t);
     drop_ty(bcx, vp, t, source_location)
 }
 
