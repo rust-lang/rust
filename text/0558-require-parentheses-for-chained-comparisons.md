@@ -1,6 +1,6 @@
 - Start Date: 2015-01-07
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#558](https://github.com/rust-lang/rfcs/pull/558)
+- Rust Issue: [rust-lang/rust#20724](https://github.com/rust-lang/rust/issues/20724)
 
 # Summary
 
@@ -69,4 +69,3 @@ This minimizes the breaking changes, but does not allow full python-style chaine
 
 Is there real code that would get broken by this change?
 So far, I've been unable to find any.
-
