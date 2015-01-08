@@ -142,7 +142,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     let cstrs: Vec<CString> = reachable.iter().map(|s| {
         CString::from_slice(s.as_bytes())
     }).collect();
-    let arr: Vec<*const i8> = cstrs.iter().map(|c| c.as_ptr()).collect();
+    let arr: Vec<*const libc::c_char> = cstrs.iter().map(|c| c.as_ptr()).collect();
     let ptr = arr.as_ptr();
     unsafe {
         llvm::LLVMRustRunRestrictionPass(llmod,
