@@ -10,13 +10,13 @@
 
 #![feature(box_syntax)]
 
-fn borrowed_proc<'a>(x: &'a int) -> Box<FnMut()->(int) + 'a> {
+fn borrowed_proc<'a>(x: &'a isize) -> Box<FnMut()->(isize) + 'a> {
     // This is legal, because the region bound on `proc`
     // states that it captures `x`.
     box move|| { *x }
 }
 
-fn static_proc(x: &int) -> Box<FnMut()->(int) + 'static> {
+fn static_proc(x: &isize) -> Box<FnMut()->(isize) + 'static> {
     // This is illegal, because the region bound on `proc` is 'static.
     box move|| { *x } //~ ERROR cannot infer
 }

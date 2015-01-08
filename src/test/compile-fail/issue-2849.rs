@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo { alpha, beta(int) }
+enum foo { alpha, beta(isize) }
 
 fn main() {
     match foo::alpha {

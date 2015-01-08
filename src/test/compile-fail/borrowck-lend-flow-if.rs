@@ -16,13 +16,13 @@
 
 #![feature(box_syntax)]
 
-fn borrow(_v: &int) {}
-fn borrow_mut(_v: &mut int) {}
+fn borrow(_v: &isize) {}
+fn borrow_mut(_v: &mut isize) {}
 fn cond() -> bool { panic!() }
 fn for_func<F>(_f: F) where F: FnOnce() -> bool { panic!() }
 fn produce<T>() -> T { panic!(); }
 
-fn inc(v: &mut Box<int>) {
+fn inc(v: &mut Box<isize>) {
     *v = box() (**v + 1);
 }
 

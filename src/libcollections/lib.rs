@@ -27,6 +27,7 @@
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
 #![feature(old_impl_check)]
+#![allow(unknown_features)] #![feature(int_uint)]
 #![no_std]
 
 #[macro_use]

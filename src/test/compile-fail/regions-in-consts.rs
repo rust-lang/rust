@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static c_y: &int = &22; //~ ERROR missing lifetime specifier
-static c_z: &'static int = &22;
+static c_y: &isize = &22; //~ ERROR missing lifetime specifier
+static c_z: &'static isize = &22;
 
 fn main() {
 }

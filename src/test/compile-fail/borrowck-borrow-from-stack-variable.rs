@@ -16,8 +16,8 @@ struct Foo {
 impl Copy for Foo {}
 
 struct Bar {
-  int1: int,
-  int2: int,
+  int1: isize,
+  int2: isize,
 }
 
 impl Copy for Bar {}

@@ -11,7 +11,7 @@
 #![deny(unused_variables)]
 
 fn main() {
-    for _ in range(1i, 101) {
+    for _ in range(1is, 101) {
         let x = (); //~ ERROR: unused variable: `x`
         match () {
             a => {} //~ ERROR: unused variable: `a`

@@ -18,7 +18,7 @@ struct S {
 
 enum E {
     Foo(Box<S>),
-    Bar(Box<int>),
+    Bar(Box<isize>),
     Baz
 }
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A { foo: int }
+struct A { foo: isize }
 
 fn a() -> A { panic!() }
 

@@ -93,6 +93,9 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     // OIBIT specific features
     ("optin_builtin_traits", Active),
 
+    // int and uint are now deprecated
+    ("int_uint", Active),
+
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
     ("test_accepted_feature", Accepted),
@@ -155,6 +158,14 @@ impl<'a> Context<'a> {
         }
     }
 
+    fn warn_feature(&self, feature: &str, span: Span, explain: &str) {
+        if !self.has_feature(feature) {
+            self.span_handler.span_warn(span, explain);
+            self.span_handler.span_help(span, &format!("add #![feature({})] to the \
+                                                       crate attributes to silence this warning",
+                                                      feature)[]);
+        }
+    }
     fn has_feature(&self, feature: &str) -> bool {
         self.features.iter().any(|&n| n == feature)
     }
@@ -332,6 +343,31 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
+        match t.node {
+            ast::TyPath(ref p, _) => {
+                match &*p.segments {
+
+                    [ast::PathSegment { identifier, .. }] => {
+                        let name = token::get_ident(identifier);
+                        let msg = if name == "int" {
+                            Some("the `int` type is deprecated; \
+                                  use `isize` or a fixed-sized integer")
+                        } else if name == "uint" {
+                            Some("the `uint` type is deprecated; \
+                                  use `usize` or a fixed-sized integer")
+                        } else {
+                            None
+                        };
+
+                        if let Some(msg) = msg {
+                            self.context.warn_feature("int_uint", t.span, msg)
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
         visit::walk_ty(self, t);
     }
 
@@ -342,6 +378,25 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   e.span,
                                   "box expression syntax is experimental in alpha release; \
                                    you can call `Box::new` instead.");
+            }
+            ast::ExprLit(ref lit) => {
+                match lit.node {
+                    ast::LitInt(_, ty) => {
+                        let msg = if let ast::SignedIntLit(ast::TyIs(true), _) = ty {
+                            Some("the `i` suffix on integers is deprecated; use `is` \
+                                  or one of the fixed-sized suffixes")
+                        } else if let ast::UnsignedIntLit(ast::TyUs(true)) = ty {
+                            Some("the `u` suffix on integers is deprecated; use `us` \
+                                 or one of the fixed-sized suffixes")
+                        } else {
+                            None
+                        };
+                        if let Some(msg) = msg {
+                            self.context.warn_feature("int_uint", e.span, msg);
+                        }
+                    }
+                    _ => {}
+                }
             }
             _ => {}
         }

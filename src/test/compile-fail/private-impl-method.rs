@@ -10,7 +10,7 @@
 
 mod a {
     pub struct Foo {
-        pub x: int
+        pub x: isize
     }
 
     impl Foo {

@@ -12,33 +12,33 @@
 // expression is detected.
 
 pub fn main() {
-    let x: int;
+    let x: isize;
     x += 1; //~ ERROR use of possibly uninitialized variable: `x`
 
-    let x: int;
+    let x: isize;
     x -= 1; //~ ERROR use of possibly uninitialized variable: `x`
 
-    let x: int;
+    let x: isize;
     x *= 1; //~ ERROR use of possibly uninitialized variable: `x`
 
-    let x: int;
+    let x: isize;
     x /= 1; //~ ERROR use of possibly uninitialized variable: `x`
 
-    let x: int;
+    let x: isize;
     x %= 1; //~ ERROR use of possibly uninitialized variable: `x`
 
-    let x: int;
+    let x: isize;
     x ^= 1; //~ ERROR use of possibly uninitialized variable: `x`
 
-    let x: int;
+    let x: isize;
     x &= 1; //~ ERROR use of possibly uninitialized variable: `x`
 
-    let x: int;
+    let x: isize;
     x |= 1; //~ ERROR use of possibly uninitialized variable: `x`
 
-    let x: int;
+    let x: isize;
     x <<= 1;    //~ ERROR use of possibly uninitialized variable: `x`
 
-    let x: int;
+    let x: isize;
     x >>= 1;    //~ ERROR use of possibly uninitialized variable: `x`
 }

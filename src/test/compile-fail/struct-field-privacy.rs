@@ -13,17 +13,17 @@
 extern crate "struct-field-privacy" as xc;
 
 struct A {
-    a: int,
+    a: isize,
 }
 
 mod inner {
     struct A {
-        a: int,
-        pub b: int,
+        a: isize,
+        pub b: isize,
     }
     pub struct B {
-        pub a: int,
-        b: int,
+        pub a: isize,
+        b: isize,
     }
 }
 

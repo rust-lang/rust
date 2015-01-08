@@ -12,8 +12,8 @@
 // (Issue #15517.)
 
 struct Foo<'a,'b> {
-    x: &'a int,
-    y: &'b int,
+    x: &'a isize,
+    y: &'b isize,
 }
 
 trait Tr : Sized {

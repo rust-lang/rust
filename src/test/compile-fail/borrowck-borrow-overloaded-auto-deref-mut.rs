@@ -32,25 +32,25 @@ impl<T> DerefMut for Own<T> {
 }
 
 struct Point {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 
 impl Point {
-    fn get(&self) -> (int, int) {
+    fn get(&self) -> (isize, isize) {
         (self.x, self.y)
     }
 
-    fn set(&mut self, x: int, y: int) {
+    fn set(&mut self, x: isize, y: isize) {
         self.x = x;
         self.y = y;
     }
 
-    fn x_ref(&self) -> &int {
+    fn x_ref(&self) -> &isize {
         &self.x
     }
 
-    fn y_mut(&mut self) -> &mut int {
+    fn y_mut(&mut self) -> &mut isize {
         &mut self.y
     }
 }
@@ -67,15 +67,15 @@ fn deref_mut_field2(mut x: Own<Point>) {
     let _i = &mut x.y;
 }
 
-fn deref_extend_field(x: &Own<Point>) -> &int {
+fn deref_extend_field(x: &Own<Point>) -> &isize {
     &x.y
 }
 
-fn deref_extend_mut_field1(x: &Own<Point>) -> &mut int {
+fn deref_extend_mut_field1(x: &Own<Point>) -> &mut isize {
     &mut x.y //~ ERROR cannot borrow
 }
 
-fn deref_extend_mut_field2(x: &mut Own<Point>) -> &mut int {
+fn deref_extend_mut_field2(x: &mut Own<Point>) -> &mut isize {
     &mut x.y
 }
 
@@ -126,15 +126,15 @@ fn deref_mut_method2(mut x: Own<Point>) {
     x.set(0, 0);
 }
 
-fn deref_extend_method(x: &Own<Point>) -> &int {
+fn deref_extend_method(x: &Own<Point>) -> &isize {
     x.x_ref()
 }
 
-fn deref_extend_mut_method1(x: &Own<Point>) -> &mut int {
+fn deref_extend_mut_method1(x: &Own<Point>) -> &mut isize {
     x.y_mut() //~ ERROR cannot borrow
 }
 
-fn deref_extend_mut_method2(x: &mut Own<Point>) -> &mut int {
+fn deref_extend_mut_method2(x: &mut Own<Point>) -> &mut isize {
     x.y_mut()
 }
 

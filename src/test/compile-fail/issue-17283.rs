@@ -12,11 +12,11 @@
 // within assignments in if expressions.
 
 struct Foo {
-    foo: uint
+    foo: usize
 }
 
 fn main() {
-    let x = 1u;
+    let x = 1us;
     let y: Foo;
 
     // `x { ... }` should not be interpreted as a struct literal here

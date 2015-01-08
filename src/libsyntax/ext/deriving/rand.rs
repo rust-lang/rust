@@ -98,13 +98,13 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                                        rand_name,
                                        vec!(rng.clone()));
 
-            // need to specify the uint-ness of the random number
-            let uint_ty = cx.ty_ident(trait_span, cx.ident_of("uint"));
+            // need to specify the usize-ness of the random number
+            let usize_ty = cx.ty_ident(trait_span, cx.ident_of("usize"));
             let value_ident = cx.ident_of("__value");
             let let_statement = cx.stmt_let_typed(trait_span,
                                                   false,
                                                   value_ident,
-                                                  uint_ty,
+                                                  usize_ty,
                                                   rv_call);
 
             // rand() % variants.len()

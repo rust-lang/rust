@@ -15,9 +15,9 @@ extern crate "privacy-tuple-struct" as other;
 
 mod a {
     pub struct A(());
-    pub struct B(int);
-    pub struct C(pub int, int);
-    pub struct D(pub int);
+    pub struct B(isize);
+    pub struct C(pub isize, isize);
+    pub struct D(pub isize);
 
     fn test() {
         let a = A(());

@@ -263,7 +263,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
         }
 
         match unsized_part_of_type(cx.tcx(), t).sty {
-            ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyUs),
+            ty::ty_str | ty::ty_vec(..) => Type::uint_from_ty(cx, ast::TyUs(false)),
             ty::ty_trait(_) => Type::vtable_ptr(cx),
             _ => panic!("Unexpected type returned from unsized_part_of_type : {}",
                        t.repr(cx.tcx()))

@@ -11,5 +11,5 @@
 // Test that the old repeating array syntax gives an error.
 
 fn main() {
-    let _ = [0i, ..3]; //~ ERROR
+    let _ = [0is, ..3]; //~ ERROR
 }

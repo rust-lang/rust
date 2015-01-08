@@ -16,19 +16,19 @@ trait Bar {
     type Out;
 }
 
-impl<T> Foo<T> for [int;0] {
+impl<T> Foo<T> for [isize;0] {
     // OK, T is used in `Foo<T>`.
 }
 
-impl<T,U> Foo<T> for [int;1] {
+impl<T,U> Foo<T> for [isize;1] {
     //~^ ERROR the type parameter `U` is not constrained
 }
 
-impl<T,U> Foo<T> for [int;2] where T : Bar<Out=U> {
+impl<T,U> Foo<T> for [isize;2] where T : Bar<Out=U> {
     // OK, `U` is now constrained by the output type parameter.
 }
 
-impl<T:Bar<Out=U>,U> Foo<T> for [int;3] {
+impl<T:Bar<Out=U>,U> Foo<T> for [isize;3] {
     // OK, same as above but written differently.
 }
 

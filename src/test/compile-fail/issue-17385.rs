@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct X(int);
+struct X(isize);
 
 enum Enum {
     Variant1,
@@ -23,10 +23,10 @@ impl Drop for Enum {
 }
 
 fn main() {
-    let foo = X(1i);
+    let foo = X(1is);
     drop(foo);
     match foo { //~ ERROR use of moved value
-        X(1i) => (),
+        X(1is) => (),
         _ => unreachable!()
     }
 

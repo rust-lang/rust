@@ -11,15 +11,15 @@
 // Check that taking the address of an argument yields a lifetime
 // bounded by the current function call.
 
-fn foo(a: int) {
-    let _p: &'static int = &a; //~ ERROR `a` does not live long enough
+fn foo(a: isize) {
+    let _p: &'static isize = &a; //~ ERROR `a` does not live long enough
 }
 
-fn bar(a: int) {
-    let _q: &int = &a;
+fn bar(a: isize) {
+    let _q: &isize = &a;
 }
 
-fn zed<'a>(a: int) -> &'a int {
+fn zed<'a>(a: isize) -> &'a isize {
     &a //~ ERROR `a` does not live long enough
 }
 

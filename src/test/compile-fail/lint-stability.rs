@@ -175,7 +175,7 @@ mod inheritance {
         let _ = Experimental::ExperimentalVariant; //~ ERROR use of unstable item
         let _ = Experimental::StableVariant;
 
-        let x: uint = 0;
+        let x: usize = 0;
         x.experimental(); //~ ERROR use of unstable item
         x.stable();
     }
@@ -288,18 +288,18 @@ mod this_crate {
     impl Trait for MethodTester {}
 
     #[deprecated]
-    pub struct DeprecatedStruct { i: int }
+    pub struct DeprecatedStruct { i: isize }
     #[unstable]
-    pub struct ExperimentalStruct { i: int }
+    pub struct ExperimentalStruct { i: isize }
     #[unstable]
-    pub struct UnstableStruct { i: int }
-    pub struct UnmarkedStruct { i: int }
+    pub struct UnstableStruct { i: isize }
+    pub struct UnmarkedStruct { i: isize }
     #[stable]
-    pub struct StableStruct { i: int }
+    pub struct StableStruct { i: isize }
     #[frozen]
-    pub struct FrozenStruct { i: int }
+    pub struct FrozenStruct { i: isize }
     #[locked]
-    pub struct LockedStruct { i: int }
+    pub struct LockedStruct { i: isize }
 
     #[deprecated]
     pub struct DeprecatedUnitStruct;
@@ -333,18 +333,18 @@ mod this_crate {
     }
 
     #[deprecated]
-    pub struct DeprecatedTupleStruct(int);
+    pub struct DeprecatedTupleStruct(isize);
     #[unstable]
-    pub struct ExperimentalTupleStruct(int);
+    pub struct ExperimentalTupleStruct(isize);
     #[unstable]
-    pub struct UnstableTupleStruct(int);
-    pub struct UnmarkedTupleStruct(int);
+    pub struct UnstableTupleStruct(isize);
+    pub struct UnmarkedTupleStruct(isize);
     #[stable]
-    pub struct StableTupleStruct(int);
+    pub struct StableTupleStruct(isize);
     #[frozen]
-    pub struct FrozenTupleStruct(int);
+    pub struct FrozenTupleStruct(isize);
     #[locked]
-    pub struct LockedTupleStruct(int);
+    pub struct LockedTupleStruct(isize);
 
     fn test() {
         // Only the deprecated cases of the following should generate

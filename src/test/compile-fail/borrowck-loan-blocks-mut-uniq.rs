@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-fn borrow<F>(v: &int, f: F) where F: FnOnce(&int) {
+fn borrow<F>(v: &isize, f: F) where F: FnOnce(&isize) {
     f(v);
 }
 

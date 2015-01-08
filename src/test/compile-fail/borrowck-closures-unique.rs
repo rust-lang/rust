@@ -14,35 +14,35 @@
 //  may be *immutable*, but we cannot allow
 // multiple borrows.
 
-fn get(x: &int) -> int {
+fn get(x: &isize) -> isize {
     *x
 }
 
-fn set(x: &mut int) -> int {
+fn set(x: &mut isize) -> isize {
     *x
 }
 
-fn a(x: &mut int) {
+fn a(x: &mut isize) {
     let c1 = |&mut:| get(x);
     let c2 = |&mut:| get(x);
 }
 
-fn b(x: &mut int) {
+fn b(x: &mut isize) {
     let c1 = |&mut:| get(x);
     let c2 = |&mut:| set(x); //~ ERROR closure requires unique access to `x`
 }
 
-fn c(x: &mut int) {
+fn c(x: &mut isize) {
     let c1 = |&mut:| get(x);
     let c2 = |&mut:| { get(x); set(x); }; //~ ERROR closure requires unique access to `x`
 }
 
-fn d(x: &mut int) {
+fn d(x: &mut isize) {
     let c1 = |&mut:| set(x);
     let c2 = |&mut:| set(x); //~ ERROR closure requires unique access to `x`
 }
 
-fn e(x: &mut int) {
+fn e(x: &mut isize) {
     let c1 = |&mut:| x = panic!(); //~ ERROR closure cannot assign to immutable local variable
 }
 

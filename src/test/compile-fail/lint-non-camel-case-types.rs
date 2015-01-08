@@ -12,7 +12,7 @@
 #![allow(dead_code)]
 
 struct foo { //~ ERROR type `foo` should have a camel case name such as `Foo`
-    bar: int,
+    bar: isize,
 }
 
 enum foo2 { //~ ERROR type `foo2` should have a camel case name such as `Foo2`
@@ -20,10 +20,10 @@ enum foo2 { //~ ERROR type `foo2` should have a camel case name such as `Foo2`
 }
 
 struct foo3 { //~ ERROR type `foo3` should have a camel case name such as `Foo3`
-    bar: int
+    bar: isize
 }
 
-type foo4 = int; //~ ERROR type `foo4` should have a camel case name such as `Foo4`
+type foo4 = isize; //~ ERROR type `foo4` should have a camel case name such as `Foo4`
 
 enum Foo5 {
     bar //~ ERROR variant `bar` should have a camel case name such as `Bar`
@@ -36,9 +36,9 @@ fn f<ty>(_: ty) {} //~ ERROR type parameter `ty` should have a camel case name s
 
 #[repr(C)]
 struct foo7 {
-    bar: int,
+    bar: isize,
 }
 
-type __ = int; //~ ERROR type `__` should have a camel case name such as `CamelCase`
+type __ = isize; //~ ERROR type `__` should have a camel case name such as `CamelCase`
 
 fn main() { }

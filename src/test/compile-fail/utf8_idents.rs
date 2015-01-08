@@ -16,7 +16,7 @@ fn foo<
 >() {}
 
 struct X {
-    δ: uint //~ ERROR non-ascii idents are not fully supported
+    δ: usize //~ ERROR non-ascii idents are not fully supported
 }
 
 pub fn main() {

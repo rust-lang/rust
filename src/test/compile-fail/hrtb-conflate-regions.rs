@@ -16,12 +16,12 @@ trait Foo<X> {
 }
 
 fn want_foo2<T>()
-    where T : for<'a,'b> Foo<(&'a int, &'b int)>
+    where T : for<'a,'b> Foo<(&'a isize, &'b isize)>
 {
 }
 
 fn want_foo1<T>()
-    where T : for<'z> Foo<(&'z int, &'z int)>
+    where T : for<'z> Foo<(&'z isize, &'z isize)>
 {
 }
 
@@ -30,7 +30,7 @@ fn want_foo1<T>()
 
 struct SomeStruct;
 
-impl<'a> Foo<(&'a int, &'a int)> for SomeStruct
+impl<'a> Foo<(&'a isize, &'a isize)> for SomeStruct
 {
 }
 

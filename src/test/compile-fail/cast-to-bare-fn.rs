@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(_x: int) { }
+fn foo(_x: isize) { }
 
 fn main() {
     let v: u64 = 5;
-    let x = foo as extern "C" fn() -> int;
+    let x = foo as extern "C" fn() -> isize;
     //~^ ERROR mismatched types
-    let y = v as extern "Rust" fn(int) -> (int, int);
+    let y = v as extern "Rust" fn(isize) -> (isize, isize);
     //~^ ERROR non-scalar cast
     y(x());
 }

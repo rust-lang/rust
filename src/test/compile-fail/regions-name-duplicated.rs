@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct Foo<'a, 'a> { //~ ERROR lifetime name `'a` declared twice
-    x: &'a int
+    x: &'a isize
 }
 
 fn main() {}

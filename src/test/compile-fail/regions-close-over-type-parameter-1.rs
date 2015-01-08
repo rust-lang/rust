@@ -14,7 +14,7 @@
 // an object. This should yield errors unless `A` (and the object)
 // both have suitable bounds.
 
-trait SomeTrait { fn get(&self) -> int; }
+trait SomeTrait { fn get(&self) -> isize; }
 
 fn make_object1<A:SomeTrait>(v: A) -> Box<SomeTrait+'static> {
     box v as Box<SomeTrait+'static>

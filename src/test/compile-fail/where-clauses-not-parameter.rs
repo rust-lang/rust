@@ -35,11 +35,11 @@ trait Baz<T> where isize : Eq {
     //~^ ERROR cannot bound type `isize`, where clause
 }
 
-impl Baz<int> for int where isize : Eq {
+impl Baz<isize> for isize where isize : Eq {
     //~^ ERROR cannot bound type `isize`, where clause bounds
     fn baz() where String : Eq {}
 }
 
 fn main() {
-    equal(&0i, &0i);
+    equal(&0is, &0is);
 }

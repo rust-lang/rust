@@ -13,11 +13,11 @@ trait MyEq {
 }
 
 struct A {
-    x: int
+    x: isize
 }
 
-impl MyEq for int {
-    fn eq(&self, other: &int) -> bool { *self == *other }
+impl MyEq for isize {
+    fn eq(&self, other: &isize) -> bool { *self == *other }
 }
 
 impl MyEq for A {}  //~ ERROR not all trait items implemented, missing: `eq`

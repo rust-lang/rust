@@ -14,7 +14,7 @@
 // Note also that the `test_move_array_then_overwrite` tests represent
 // cases that we probably should make illegal.
 
-pub struct D { d: int }
+pub struct D { d: isize }
 impl Drop for D { fn drop(&mut self) { } }
 
 #[rustc_move_fragments]
@@ -34,7 +34,7 @@ pub fn test_move_array_into_recv(a: [D; 3], recv: &mut [D; 3]) {
 }
 
 #[rustc_move_fragments]
-pub fn test_extract_array_elem(a: [D; 3], i: uint) -> D {
+pub fn test_extract_array_elem(a: [D; 3], i: usize) -> D {
     //~^ ERROR                 parent_of_fragments: `$(local a)`
     //~| ERROR                  assigned_leaf_path: `$(local i)`
     //~| ERROR                     moved_leaf_path: `$(local a).[]`
@@ -43,7 +43,7 @@ pub fn test_extract_array_elem(a: [D; 3], i: uint) -> D {
 }
 
 #[rustc_move_fragments]
-pub fn test_overwrite_array_elem(mut a: [D; 3], i: uint, d: D) {
+pub fn test_overwrite_array_elem(mut a: [D; 3], i: usize, d: D) {
     //~^ ERROR                 parent_of_fragments: `$(local mut a)`
     //~| ERROR                  assigned_leaf_path: `$(local i)`
     //~| ERROR                  assigned_leaf_path: `$(local d)`
@@ -59,7 +59,7 @@ pub fn test_overwrite_array_elem(mut a: [D; 3], i: uint, d: D) {
 // See RFC PR 320 for more discussion.
 
 #[rustc_move_fragments]
-pub fn test_move_array_then_overwrite_elem1(mut a: [D; 3], i: uint, recv: &mut [D; 3], d: D) {
+pub fn test_move_array_then_overwrite_elem1(mut a: [D; 3], i: usize, recv: &mut [D; 3], d: D) {
     //~^ ERROR                 parent_of_fragments: `$(local mut a)`
     //~| ERROR                 parent_of_fragments: `$(local recv)`
     //~| ERROR                  assigned_leaf_path: `$(local recv).*`
@@ -76,7 +76,7 @@ pub fn test_move_array_then_overwrite_elem1(mut a: [D; 3], i: uint, recv: &mut [
 }
 
 #[rustc_move_fragments]
-pub fn test_move_array_then_overwrite_elem2(mut a: [D; 3], i: uint, j: uint,
+pub fn test_move_array_then_overwrite_elem2(mut a: [D; 3], i: usize, j: usize,
                                             recv: &mut [D; 3], d1: D, d2: D) {
     //~^^ ERROR                parent_of_fragments: `$(local mut a)`
     //~| ERROR                 parent_of_fragments: `$(local recv)`

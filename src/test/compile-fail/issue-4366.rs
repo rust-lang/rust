@@ -21,11 +21,11 @@ mod foo {
 mod a {
     pub mod b {
         use foo::foo;
-        type bar = int;
+        type bar = isize;
     }
     pub mod sub {
         use a::b::*;
-        fn sub() -> int { foo(); 1 } //~ ERROR: unresolved name `foo`
+        fn sub() -> isize { foo(); 1 } //~ ERROR: unresolved name `foo`
     }
 }
 

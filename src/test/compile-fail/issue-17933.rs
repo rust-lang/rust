@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub static X: uint = 1u;
+pub static X: usize = 1us;
 
 fn main() {
-    match 1u {
+    match 1us {
         self::X => { },
         //~^ ERROR static variables cannot be referenced in a pattern, use a `const` instead
         _       => { },

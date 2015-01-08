@@ -10,9 +10,9 @@
 
 #![feature(box_syntax)]
 
-use std::uint;
+use std::usize;
 
-fn test(_x: Box<uint>) {}
+fn test(_x: Box<usize>) {}
 
 fn main() {
     let i = box 3;

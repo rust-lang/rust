@@ -18,8 +18,8 @@ fn assert_copy<T:Copy>() { }
 trait Dummy { }
 
 struct MyStruct {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 impl Copy for MyStruct {}
@@ -28,22 +28,22 @@ struct MyNoncopyStruct {
     x: Box<char>,
 }
 
-fn test<'a,T,U:Copy>(_: &'a int) {
+fn test<'a,T,U:Copy>(_: &'a isize) {
     // lifetime pointers are ok...
-    assert_copy::<&'static int>();
-    assert_copy::<&'a int>();
+    assert_copy::<&'static isize>();
+    assert_copy::<&'a isize>();
     assert_copy::<&'a str>();
-    assert_copy::<&'a [int]>();
+    assert_copy::<&'a [isize]>();
 
     // ...unless they are mutable
-    assert_copy::<&'static mut int>(); //~ ERROR `core::marker::Copy` is not implemented
-    assert_copy::<&'a mut int>();  //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<&'static mut isize>(); //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<&'a mut isize>();  //~ ERROR `core::marker::Copy` is not implemented
 
     // ~ pointers are not ok
-    assert_copy::<Box<int>>();   //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Box<isize>>();   //~ ERROR `core::marker::Copy` is not implemented
     assert_copy::<String>();   //~ ERROR `core::marker::Copy` is not implemented
-    assert_copy::<Vec<int> >(); //~ ERROR `core::marker::Copy` is not implemented
-    assert_copy::<Box<&'a mut int>>(); //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Vec<isize> >(); //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Box<&'a mut isize>>(); //~ ERROR `core::marker::Copy` is not implemented
 
     // borrowed object types are generally ok
     assert_copy::<&'a Dummy>();
@@ -58,16 +58,16 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<&'a mut (Dummy+Copy)>();  //~ ERROR `core::marker::Copy` is not implemented
 
     // unsafe ptrs are ok
-    assert_copy::<*const int>();
-    assert_copy::<*const &'a mut int>();
+    assert_copy::<*const isize>();
+    assert_copy::<*const &'a mut isize>();
 
     // regular old ints and such are ok
-    assert_copy::<int>();
+    assert_copy::<isize>();
     assert_copy::<bool>();
     assert_copy::<()>();
 
     // tuples are ok
-    assert_copy::<(int,int)>();
+    assert_copy::<(isize,isize)>();
 
     // structs of POD are ok
     assert_copy::<MyStruct>();
@@ -76,7 +76,7 @@ fn test<'a,T,U:Copy>(_: &'a int) {
     assert_copy::<MyNoncopyStruct>(); //~ ERROR `core::marker::Copy` is not implemented
 
     // ref counted types are not ok
-    assert_copy::<Rc<int>>();   //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Rc<isize>>();   //~ ERROR `core::marker::Copy` is not implemented
 }
 
 pub fn main() {

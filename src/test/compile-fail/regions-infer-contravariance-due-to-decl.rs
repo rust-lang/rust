@@ -24,8 +24,8 @@ struct Contravariant<'a> {
 }
 
 fn use_<'short,'long>(c: Contravariant<'short>,
-                      s: &'short int,
-                      l: &'long int,
+                      s: &'short isize,
+                      l: &'long isize,
                       _where:Option<&'short &'long ()>) {
 
     // Test whether Contravariant<'short> <: Contravariant<'long>.  Since

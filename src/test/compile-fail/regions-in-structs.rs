@@ -9,16 +9,16 @@
 // except according to those terms.
 
 struct yes1<'a> {
-  x: &'a uint,
+  x: &'a usize,
 }
 
 struct yes2<'a> {
-  x: &'a uint,
+  x: &'a usize,
 }
 
 struct StructDecl {
-    a: &'a int, //~ ERROR use of undeclared lifetime name `'a`
-    b: &'a int, //~ ERROR use of undeclared lifetime name `'a`
+    a: &'a isize, //~ ERROR use of undeclared lifetime name `'a`
+    b: &'a isize, //~ ERROR use of undeclared lifetime name `'a`
 }
 
 

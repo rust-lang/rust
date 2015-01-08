@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // error-pattern: can't capture dynamic environment in a fn item;
-fn foo(x: int) {
+fn foo(x: isize) {
     fn bar() { log(debug, x); }
 }
 fn main() { foo(2); }

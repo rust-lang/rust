@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-struct point { x: int, y: int }
+struct point { x: isize, y: isize }
 
 trait methods {
     fn impurem(&self);

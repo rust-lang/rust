@@ -28,6 +28,6 @@ fn make_shower<T>(x: T) -> Shower<T> {
 }
 
 pub fn main() {
-    let show3 = make_shower(3i);
+    let show3 = make_shower(3is);
     show3();
 }

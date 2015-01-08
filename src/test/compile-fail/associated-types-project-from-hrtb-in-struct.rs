@@ -17,18 +17,18 @@ pub trait Foo<T> {
     fn get(&self, t: T) -> Self::A;
 }
 
-struct SomeStruct<I : for<'x> Foo<&'x int>> {
+struct SomeStruct<I : for<'x> Foo<&'x isize>> {
     field: I::A
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
 }
 
-struct AnotherStruct<I : for<'x> Foo<&'x int>> {
-    field: <I as Foo<&int>>::A
+struct AnotherStruct<I : for<'x> Foo<&'x isize>> {
+    field: <I as Foo<&isize>>::A
     //~^ ERROR missing lifetime specifier
 }
 
-struct YetAnotherStruct<'a, I : for<'x> Foo<&'x int>> {
-    field: <I as Foo<&'a int>>::A
+struct YetAnotherStruct<'a, I : for<'x> Foo<&'x isize>> {
+    field: <I as Foo<&'a isize>>::A
 }
 
 pub fn main() {}

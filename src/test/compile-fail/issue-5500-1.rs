@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct TrieMapIterator<'a> {
-    node: &'a uint
+    node: &'a usize
 }
 
 fn main() {

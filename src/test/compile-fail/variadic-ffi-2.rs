@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn baz(f: extern "stdcall" fn(uint, ...)) {
+fn baz(f: extern "stdcall" fn(usize, ...)) {
     //~^ ERROR: variadic function must have C calling convention
     f(22, 44);
 }
