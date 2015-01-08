@@ -10,6 +10,8 @@
 
 // Check that dynamically sized rvalues are forbidden
 
+#![feature(box_syntax)]
+
 pub fn main() {
     let _x: Box<str> = box *"hello world";
     //~^ ERROR E0161

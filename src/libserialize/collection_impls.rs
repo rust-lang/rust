@@ -163,7 +163,7 @@ impl<K, V, S> Encodable for HashMap<K, V, S>
           S: HashState,
           <S as HashState>::Hasher: Hasher<Output=u64>
 {
-    fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
+    fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_map(self.len(), |e| {
             let mut i = 0;
             for (key, val) in self.iter() {
@@ -201,7 +201,7 @@ impl<T, S> Encodable for HashSet<T, S>
           S: HashState,
           <S as HashState>::Hasher: Hasher<Output=u64>
 {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
             let mut i = 0;
             for e in self.iter() {

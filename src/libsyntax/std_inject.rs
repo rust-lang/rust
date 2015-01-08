@@ -107,19 +107,6 @@ impl<'a> fold::Folder for PreludeInjector<'a> {
         // `#![no_implicit_prelude]` at the crate level.
         // fold_mod() will insert glob path.
         if !no_prelude(&krate.attrs[]) {
-            // only add `use std::prelude::*;` if there wasn't a
-            // `#![no_implicit_prelude]` at the crate level.
-            // fold_mod() will insert glob path.
-            let globs_attr = attr::mk_attr_inner(attr::mk_attr_id(),
-                                                 attr::mk_list_item(
-                InternedString::new("feature"),
-                vec!(
-                    attr::mk_word_item(InternedString::new("globs")),
-                )));
-            // std_inject runs after feature checking so manually mark this attr
-            attr::mark_used(&globs_attr);
-            krate.attrs.push(globs_attr);
-
             krate.module = self.fold_mod(krate.module);
         }
         krate

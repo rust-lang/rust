@@ -33,12 +33,15 @@ use core::ops::{Deref, DerefMut};
 /// The following two examples are equivalent:
 ///
 /// ```rust
+/// #![feature(box_syntax)]
 /// use std::boxed::HEAP;
 ///
+/// fn main() {
 /// # struct Bar;
 /// # impl Bar { fn new(_a: int) { } }
-/// let foo = box(HEAP) Bar::new(2);
-/// let foo = box Bar::new(2);
+///     let foo = box(HEAP) Bar::new(2);
+///     let foo = box Bar::new(2);
+/// }
 /// ```
 #[lang = "exchange_heap"]
 #[experimental = "may be renamed; uncertain about custom allocator design"]
@@ -49,10 +52,9 @@ pub static HEAP: () = ();
 #[stable]
 pub struct Box<T>(Unique<T>);
 
-#[unstable]
 impl<T> Box<T> {
     /// Moves `x` into a freshly allocated box on the global exchange heap.
-    #[unstable]
+    #[stable]
     pub fn new(x: T) -> Box<T> {
         box x
     }

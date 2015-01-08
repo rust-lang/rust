@@ -10,7 +10,7 @@
 
 #![allow(dead_code)]
 #![forbid(box_pointers)]
-
+#![feature(box_syntax)]
 
 struct Foo {
     x: Box<int> //~ ERROR type uses owned

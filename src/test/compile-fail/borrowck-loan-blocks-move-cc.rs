@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 use std::thread::Thread;
 
 fn borrow<F>(v: &int, f: F) where F: FnOnce(&int) {

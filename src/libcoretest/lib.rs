@@ -7,8 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(globs, unsafe_destructor, slicing_syntax, default_type_params)]
+
+#![feature(unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
+#![feature(box_syntax)]
 
 extern crate core;
 extern crate test;

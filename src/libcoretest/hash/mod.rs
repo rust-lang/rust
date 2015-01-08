@@ -113,6 +113,5 @@ fn test_custom_state() {
         ::std::hash::hash::<_, CustomHasher>(t)
     }
 
-    let custom = Custom { hash: 5 };
     assert_eq!(hash(&Custom { hash: 5 }), 5);
 }

@@ -69,6 +69,7 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
+#![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
 use self::Opt::{Empty, Val};

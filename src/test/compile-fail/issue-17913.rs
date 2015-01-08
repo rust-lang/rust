@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // error-pattern: too big for the current architecture
+
+#![feature(box_syntax)]
 
 #[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
 fn main() {

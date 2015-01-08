@@ -1345,7 +1345,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                                 tcx, enum_id, variant_id);
                             let fields = struct_fields(tcx, variant_id, substs);
                             let fields = monomorphize::normalize_associated_type(tcx, &fields);
-                            op(variant_info.disr_val, &fields.index[])
+                            op(variant_info.disr_val, &fields[])
                         }
                         _ => {
                             tcx.sess.bug("resolve didn't map this expr to a \

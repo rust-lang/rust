@@ -11,6 +11,7 @@
 // force-host
 
 #![feature(plugin_registrar, quote)]
+#![feature(box_syntax)]
 
 extern crate syntax;
 extern crate rustc;

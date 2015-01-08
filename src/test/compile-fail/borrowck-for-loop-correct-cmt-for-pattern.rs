@@ -10,6 +10,8 @@
 
 // Issue #16205.
 
+#![feature(box_syntax)]
+
 struct Foo {
     a: [Box<int>; 3],
 }

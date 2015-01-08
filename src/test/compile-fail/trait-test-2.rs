@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
 trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
 impl bar for int { fn dup(&self) -> int { *self } fn blah<X>(&self) {} }

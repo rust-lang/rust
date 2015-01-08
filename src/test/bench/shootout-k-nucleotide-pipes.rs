@@ -13,6 +13,8 @@
 
 // multi tasking k-nucleotide
 
+#![feature(box_syntax)]
+
 use std::ascii::{AsciiExt, OwnedAsciiExt};
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::HashMap;
@@ -62,7 +64,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 
    let mut buffer = String::new();
    for &(ref k, v) in pairs_sorted.iter() {
-       buffer.push_str(format!("{} {:0.3}\n",
+       buffer.push_str(format!("{:?} {:0.3}\n",
                                k.to_ascii_uppercase(),
                                v).as_slice());
    }
@@ -191,8 +193,8 @@ fn main() {
            // start processing if this is the one
            ('>', false) => {
                match line.as_slice().slice_from(1).find_str("THREE") {
-                   option::Option::Some(_) => { proc_mode = true; }
-                   option::Option::None    => { }
+                   Some(_) => { proc_mode = true; }
+                   None    => { }
                }
            }
 
@@ -221,6 +223,6 @@ fn main() {
 
    // now fetch and print result messages
    for (ii, _sz) in sizes.iter().enumerate() {
-       println!("{}", from_child[ii].recv().unwrap());
+       println!("{:?}", from_child[ii].recv().unwrap());
    }
 }

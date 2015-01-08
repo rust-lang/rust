@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 fn main() {
     let _foo = &[1u, 2] as [usize];
     //~^ ERROR cast to unsized type: `&[usize; 2]` as `[usize]`

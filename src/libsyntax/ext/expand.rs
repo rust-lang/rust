@@ -1295,7 +1295,7 @@ impl<'a, 'v> Visitor<'v> for MacroExterminator<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::{pattern_bindings, expand_crate, contains_macro_use};
+    use super::{pattern_bindings, expand_crate};
     use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer, ExpansionConfig};
     use ast;
     use ast::{Attribute_, AttrOuter, MetaWord, Name};
@@ -1402,22 +1402,6 @@ mod test {
             src,
             Vec::new(), &sess);
         expand_crate(&sess, test_ecfg(), vec!(), vec!(), crate_ast);
-    }
-
-    // make a MetaWord outer attribute with the given name
-    fn make_dummy_attr(s: &str) -> ast::Attribute {
-        Spanned {
-            span:codemap::DUMMY_SP,
-            node: Attribute_ {
-                id: attr::mk_attr_id(),
-                style: AttrOuter,
-                value: P(Spanned {
-                    node: MetaWord(token::intern_and_get_ident(s)),
-                    span: codemap::DUMMY_SP,
-                }),
-                is_sugared_doc: false,
-            }
-        }
     }
 
     fn expand_crate_str(crate_str: String) -> ast::Crate {
@@ -1655,7 +1639,7 @@ mod test {
                     let varref_idents : Vec<ast::Ident>
                         = varref.segments.iter().map(|s| s.identifier)
                         .collect();
-                    println!("varref #{}: {}, resolves to {}",idx, varref_idents, varref_name);
+                    println!("varref #{}: {:?}, resolves to {}",idx, varref_idents, varref_name);
                     let string = token::get_ident(final_varref_ident);
                     println!("varref's first segment's string: \"{}\"", string.get());
                     println!("binding #{}: {}, resolves to {}",

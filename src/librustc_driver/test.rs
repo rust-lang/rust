@@ -61,7 +61,7 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
             e.messages.remove(i);
         }
         None => {
-            panic!("Unexpected error: {} Expected: {}",
+            panic!("Unexpected error: {} Expected: {:?}",
                   msg, e.messages);
         }
     }

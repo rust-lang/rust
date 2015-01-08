@@ -116,7 +116,7 @@ pub struct Options {
     pub unstable_features: UnstableFeatures
 }
 
-#[deriving(Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum UnstableFeatures {
     /// Hard errors for unstable features are active, as on
     /// beta/stable channels.

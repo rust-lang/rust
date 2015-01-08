@@ -1730,11 +1730,8 @@ pub struct MacroDef {
 
 #[cfg(test)]
 mod test {
-    use serialize::json;
     use serialize;
-    use codemap::*;
     use super::*;
-    use std::fmt;
 
     // are ASTs encodable?
     #[test]

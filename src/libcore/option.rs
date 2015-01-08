@@ -66,10 +66,11 @@
 //! not (`None`).
 //!
 //! ```
+//! # use std::boxed::Box;
 //! let optional: Option<Box<int>> = None;
 //! check_optional(&optional);
 //!
-//! let optional: Option<Box<int>> = Some(box 9000);
+//! let optional: Option<Box<int>> = Some(Box::new(9000));
 //! check_optional(&optional);
 //!
 //! fn check_optional(optional: &Option<Box<int>>) {
@@ -148,7 +149,6 @@ use self::Option::*;
 use clone::Clone;
 use cmp::{Eq, Ord};
 use default::Default;
-use fmt;
 use iter::{ExactSizeIterator};
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator};
 use mem;

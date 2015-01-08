@@ -1284,7 +1284,7 @@ impl<'a> Writer for &'a mut (Writer+'a) {
 ///     process_input(tee);
 /// }
 ///
-/// println!("input processed: {}", output);
+/// println!("input processed: {:?}", output);
 /// # }
 /// ```
 pub struct RefWriter<'a, W:'a> {
