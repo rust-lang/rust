@@ -12,8 +12,8 @@ mod argparse {
     pub struct Flag<'a> {
         name: &'a str,
         desc: &'a str,
-        max_count: uint,
-        value: uint
+        max_count: usize,
+        value: usize
     }
 
     pub fn flag<'r>(name: &'r str, desc: &'r str) -> Flag<'r> {

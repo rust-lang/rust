@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub static X: uint = 1u;
+pub static X: usize = 1u;
 
 fn main() {
     match 1u {

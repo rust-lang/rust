@@ -13,14 +13,14 @@ trait animal {
 }
 
 struct cat {
-  meows: uint,
+  meows: usize,
 }
 
 impl animal for cat {
     //~^ ERROR not all trait items implemented, missing: `eat`
 }
 
-fn cat(in_x : uint) -> cat {
+fn cat(in_x : usize) -> cat {
     cat {
         meows: in_x
     }

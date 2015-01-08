@@ -10,7 +10,7 @@
 
 // Tests that a function with a ! annotation always actually fails
 
-fn bad_bang(i: uint) -> ! {
+fn bad_bang(i: usize) -> ! {
     return 7u; //~ ERROR `return` in a function declared as diverging [E0166]
 }
 

@@ -28,7 +28,7 @@ impl<T> Bar<T> {
     fn foo(self: Bar<isize>, x: isize) -> isize { //~ ERROR mismatched self type
         x
     }
-    fn bar(self: &Bar<uint>, x: isize) -> isize {   //~ ERROR mismatched self type
+    fn bar(self: &Bar<usize>, x: isize) -> isize {   //~ ERROR mismatched self type
         x
     }
 }

@@ -16,11 +16,11 @@ trait Foo {
 }
 
 impl Foo for isize {
-    type A = uint;
+    type A = usize;
     fn bar() -> isize { 42 }
 }
 
 pub fn main() {
-    let x: isize = Foo::<A=uint>::bar();
+    let x: isize = Foo::<A=usize>::bar();
     //~^ERROR unexpected binding of associated item in expression path
 }

@@ -14,7 +14,7 @@
 // environment cannot mutate captured variables that have not been
 // declared mutable (#18335)
 
-fn set(x: &mut uint) { *x = 0; }
+fn set(x: &mut usize) { *x = 0; }
 
 fn main() {
     let x = 0u;

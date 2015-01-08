@@ -28,21 +28,21 @@ fn test<'a,'b>() {
     // No errors expected:
     eq::< Foo<(),()>,                   Foo()                         >();
     eq::< Foo<(isize,),()>,               Foo(isize)                      >();
-    eq::< Foo<(isize,uint),()>,           Foo(isize,uint)                 >();
-    eq::< Foo<(isize,uint),uint>,         Foo(isize,uint) -> uint         >();
-    eq::< Foo<(&'a isize,&'b uint),uint>, Foo(&'a isize,&'b uint) -> uint >();
+    eq::< Foo<(isize,usize),()>,           Foo(isize,usize)                 >();
+    eq::< Foo<(isize,usize),usize>,         Foo(isize,usize) -> usize         >();
+    eq::< Foo<(&'a isize,&'b usize),usize>, Foo(&'a isize,&'b usize) -> usize >();
 
     // Test that anonymous regions in `()` form are equivalent
     // to fresh bound regions, and that we can intermingle
     // named and anonymous as we choose:
-    eq::< for<'x,'y> Foo<(&'x isize,&'y uint),uint>,
-          for<'x,'y> Foo(&'x isize,&'y uint) -> uint            >();
-    eq::< for<'x,'y> Foo<(&'x isize,&'y uint),uint>,
-          for<'x> Foo(&'x isize,&uint) -> uint                  >();
-    eq::< for<'x,'y> Foo<(&'x isize,&'y uint),uint>,
-          for<'y> Foo(&isize,&'y uint) -> uint                  >();
-    eq::< for<'x,'y> Foo<(&'x isize,&'y uint),uint>,
-          Foo(&isize,&uint) -> uint                             >();
+    eq::< for<'x,'y> Foo<(&'x isize,&'y usize),usize>,
+          for<'x,'y> Foo(&'x isize,&'y usize) -> usize            >();
+    eq::< for<'x,'y> Foo<(&'x isize,&'y usize),usize>,
+          for<'x> Foo(&'x isize,&usize) -> usize                  >();
+    eq::< for<'x,'y> Foo<(&'x isize,&'y usize),usize>,
+          for<'y> Foo(&isize,&'y usize) -> usize                  >();
+    eq::< for<'x,'y> Foo<(&'x isize,&'y usize),usize>,
+          Foo(&isize,&usize) -> usize                             >();
 
     // lifetime elision
     eq::< for<'x> Foo<(&'x isize,), &'x isize>,

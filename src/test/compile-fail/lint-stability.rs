@@ -174,7 +174,7 @@ mod inheritance {
         let _ = Experimental::ExperimentalVariant; //~ ERROR use of experimental item
         let _ = Experimental::StableVariant;
 
-        let x: uint = 0;
+        let x: usize = 0;
         x.experimental(); //~ ERROR use of experimental item
         x.stable();
     }

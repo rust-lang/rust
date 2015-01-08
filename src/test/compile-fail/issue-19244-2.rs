@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct MyStruct { field: uint }
+struct MyStruct { field: usize }
 const STRUCT: MyStruct = MyStruct { field: 42 };
 
 fn main() {

@@ -12,7 +12,7 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-fn fail_len(v: Vec<isize> ) -> uint {
+fn fail_len(v: Vec<isize> ) -> usize {
     let mut i = 3;
     panic!();
     for x in v.iter() { i += 1u; }

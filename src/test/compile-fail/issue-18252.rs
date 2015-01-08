@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum Foo {
-    Variant { x: uint }
+    Variant { x: usize }
 }
 
 fn main() {

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait foo {
-    fn bar(&self, x: uint) -> Self;
+    fn bar(&self, x: usize) -> Self;
 }
 impl foo for isize {
     fn bar(&self) -> isize {

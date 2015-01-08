@@ -35,7 +35,7 @@ link! { K, L }
 link! { L, M }
 link! { M, N }
 
-enum N { N(uint) }
+enum N { N(usize) }
 
 fn is_send<T:Send>() { }
 

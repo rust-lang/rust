@@ -22,7 +22,7 @@ struct B(isize);
 //~^^^ ERROR `FromPrimitive` cannot be derived for structs
 
 #[derive(FromPrimitive)]
-enum C { Foo(isize), Bar(uint) }
+enum C { Foo(isize), Bar(usize) }
 //~^^ ERROR `FromPrimitive` cannot be derived for enum variants with arguments
 //~^^^ ERROR `FromPrimitive` cannot be derived for enum variants with arguments
 

@@ -33,9 +33,9 @@ struct UintStruct {
 }
 
 impl<'a> TheTrait<&'a isize> for UintStruct {
-    type A = &'a uint;
+    type A = &'a usize;
 
-    fn get(&self, t: &'a isize) -> &'a uint {
+    fn get(&self, t: &'a isize) -> &'a usize {
         panic!()
     }
 }
@@ -47,7 +47,7 @@ fn foo<T>()
 }
 
 fn bar<T>()
-    where T : for<'x> TheTrait<&'x isize, A = &'x uint>
+    where T : for<'x> TheTrait<&'x isize, A = &'x usize>
 {
     // ok for UintStruct, but not IntStruct
 }

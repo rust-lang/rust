@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static x: &'static uint = &1;
-static y: uint = *x;
+static x: &'static usize = &1;
+static y: usize = *x;
 //~^ ERROR cannot refer to other statics by value,
 //         use the address-of operator or a constant instead
 fn main() {}

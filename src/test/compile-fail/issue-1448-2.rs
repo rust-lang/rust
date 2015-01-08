@@ -10,7 +10,7 @@
 
 // Regression test for issue #1448 and #1386
 
-fn foo(a: uint) -> uint { a }
+fn foo(a: usize) -> usize { a }
 
 fn main() {
     println!("{}", foo(10i)); //~ ERROR mismatched types
