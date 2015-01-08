@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum E13 { E13a, E13b(int) }
+enum E13 { E13a, E13b(isize) }
 pub fn expr_match_13() {
     let x = E13::E13b(13); let _y;
     match x {

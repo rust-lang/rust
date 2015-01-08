@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn decl_x_2() {
-    let _x : int;
+    let _x : isize;
 }
