@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-impl Drop for int {
+impl<'a> Drop for &'a mut int {
     //~^ ERROR the Drop trait may only be implemented on structures
     //~^^ ERROR E0117
     fn drop(&mut self) {

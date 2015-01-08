@@ -507,6 +507,11 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                   for this type; type is not a structure or \
                                   enumeration")
                 }
+                Err(ty::TypeHasDestructor) => {
+                    span_err!(tcx.sess, span, E0184,
+                              "the trait `Copy` may not be implemented for this type; \
+                               the type has a destructor");
+                }
             }
         }
     }
