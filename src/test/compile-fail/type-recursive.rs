@@ -10,7 +10,7 @@
 
 // error-pattern:this type cannot be instantiated
 struct t1 {
-    foo: int,
+    foo: isize,
     foolish: t1
 }
 

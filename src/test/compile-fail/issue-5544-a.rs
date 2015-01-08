@@ -10,5 +10,5 @@
 
 fn main() {
     let _i = 18446744073709551616; // 2^64
-    //~^ ERROR int literal is too large
+    //~^ ERROR isize literal is too large
 }

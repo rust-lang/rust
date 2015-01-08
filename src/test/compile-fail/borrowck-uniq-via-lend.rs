@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-fn borrow(_v: &int) {}
+fn borrow(_v: &isize) {}
 
 fn local() {
     let mut v = box 3i;
@@ -18,7 +18,7 @@ fn local() {
 }
 
 fn local_rec() {
-    struct F { f: Box<int> }
+    struct F { f: Box<isize> }
     let mut v = F {f: box 3};
     borrow(&*v.f);
 }
@@ -26,7 +26,7 @@ fn local_rec() {
 fn local_recs() {
     struct F { f: G }
     struct G { g: H }
-    struct H { h: Box<int> }
+    struct H { h: Box<isize> }
     let mut v = F {f: G {g: H {h: box 3}}};
     borrow(&*v.f.g.h);
 }

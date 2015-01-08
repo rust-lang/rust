@@ -20,7 +20,7 @@ fn a() {
     let c2 = |&mut:| x = 5; //~ ERROR cannot borrow `x` as mutable more than once
 }
 
-fn set(x: &mut int) {
+fn set(x: &mut isize) {
     *x = 4;
 }
 
@@ -45,7 +45,7 @@ fn d() {
 
 fn g() {
     struct Foo {
-        f: Box<int>
+        f: Box<isize>
     }
 
     let mut x = box Foo { f: box 3 };

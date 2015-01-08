@@ -13,7 +13,7 @@
 use std::marker;
 
 struct Foo {
-    foo: int,
+    foo: isize,
     nocopy: marker::NoCopy
 }
 

@@ -12,7 +12,7 @@ enum X {
     A =
         b'a' //~ ERROR discriminator values can only be used with a c-like enum
     ,
-    B(int)
+    B(isize)
 }
 
 fn main() {}

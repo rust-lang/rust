@@ -18,7 +18,7 @@
           target_arch = "x86_64"))]
 pub fn main() {
     // assignment not dead
-    let mut x: int = 0;
+    let mut x: isize = 0;
     unsafe {
         // extra colon
         asm!("mov $1, $0" : "=r"(x) : "r"(5u), "0"(x) : : "cc");

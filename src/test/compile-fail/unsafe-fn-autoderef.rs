@@ -9,10 +9,10 @@
 // except according to those terms.
 
 struct Rec {
-    f: int
+    f: isize
 }
 
-fn f(p: *const Rec) -> int {
+fn f(p: *const Rec) -> isize {
 
     // Test that * ptrs do not autoderef.  There is a deeper reason for
     // prohibiting this, beyond making unsafe things annoying (which doesn't

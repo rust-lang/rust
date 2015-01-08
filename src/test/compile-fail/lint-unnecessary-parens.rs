@@ -16,7 +16,7 @@ impl X {
     fn foo(&self) -> bool { self.y }
 }
 
-fn foo() -> int {
+fn foo() -> isize {
     return (1i); //~ ERROR unnecessary parentheses around `return` value
 }
 fn bar() -> X {

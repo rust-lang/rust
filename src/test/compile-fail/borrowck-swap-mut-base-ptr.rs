@@ -15,9 +15,9 @@
 
 use std::mem::swap;
 
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &int = &*t0;     // Freezes `*t0`
+fn foo<'a>(mut t0: &'a mut isize,
+           mut t1: &'a mut isize) {
+    let p: &isize = &*t0;     // Freezes `*t0`
     swap(&mut t0, &mut t1); //~ ERROR cannot borrow `t0`
     *t1 = 22;
 }

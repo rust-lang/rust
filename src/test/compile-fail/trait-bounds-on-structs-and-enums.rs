@@ -15,7 +15,7 @@ struct Foo<T:Trait> {
 }
 
 enum Bar<T:Trait> {
-    ABar(int),
+    ABar(isize),
     BBar(T),
     CBar(uint),
 }
@@ -33,7 +33,7 @@ impl<T> Foo<T> {
 
 struct Baz {
 //~^ ERROR not implemented
-    a: Foo<int>,
+    a: Foo<isize>,
 }
 
 enum Boo {

@@ -23,7 +23,7 @@ trait Even { }
 
 trait Odd { }
 
-impl Even for int { }
+impl Even for isize { }
 
 impl Odd for uint { }
 

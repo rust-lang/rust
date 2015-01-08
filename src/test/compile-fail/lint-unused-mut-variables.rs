@@ -35,8 +35,8 @@ fn main() {
       _ => {}
     }
 
-    let x = |&: mut y: int| 10i; //~ ERROR: variable does not need to be mutable
-    fn what(mut foo: int) {} //~ ERROR: variable does not need to be mutable
+    let x = |&: mut y: isize| 10i; //~ ERROR: variable does not need to be mutable
+    fn what(mut foo: isize) {} //~ ERROR: variable does not need to be mutable
 
     // positive cases
     let mut a = 2i;
@@ -65,8 +65,8 @@ fn main() {
       _ => {}
     }
 
-    let x = |&mut: mut y: int| y = 32i;
-    fn nothing(mut foo: int) { foo = 37i; }
+    let x = |&mut: mut y: isize| y = 32i;
+    fn nothing(mut foo: isize) { foo = 37i; }
 
     // leading underscore should avoid the warning, just like the
     // unused variable lint.
@@ -77,7 +77,7 @@ fn callback<F>(f: F) where F: FnOnce() {}
 
 // make sure the lint attribute can be turned off
 #[allow(unused_mut)]
-fn foo(mut a: int) {
+fn foo(mut a: isize) {
     let mut a = 3i;
     let mut b = vec!(2i);
 }

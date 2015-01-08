@@ -10,6 +10,6 @@
 
 // error-pattern:mismatched types
 
-fn f() -> int { true }
+fn f() -> isize { true }
 
 fn main() { }

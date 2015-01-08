@@ -56,8 +56,8 @@ fn test6() {
 }
 
 fn test7() {
-    fn foo<F>(_: F) where F: FnMut(Box<FnMut(int)>, int) {}
-    let mut f = |&mut: g: Box<FnMut(int)>, b: int| {};
+    fn foo<F>(_: F) where F: FnMut(Box<FnMut(isize)>, isize) {}
+    let mut f = |&mut: g: Box<FnMut(isize)>, b: isize| {};
     f(box |a| { //~ ERROR: cannot borrow `f` as immutable because it is also borrowed as mutable
         foo(f); //~ ERROR: cannot move out of captured outer variable
     }, 3);

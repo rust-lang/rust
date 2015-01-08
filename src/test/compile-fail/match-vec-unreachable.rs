@@ -10,8 +10,8 @@
 
 
 fn main() {
-    let x: Vec<(int, int)> = Vec::new();
-    let x: &[(int, int)] = x.as_slice();
+    let x: Vec<(isize, isize)> = Vec::new();
+    let x: &[(isize, isize)] = x.as_slice();
     match x {
         [a, (2, 3), _] => (),
         [(1, 2), (2, 3), b] => (), //~ ERROR unreachable pattern

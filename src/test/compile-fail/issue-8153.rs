@@ -13,12 +13,12 @@
 struct Foo;
 
 trait Bar {
-    fn bar(&self) -> int;
+    fn bar(&self) -> isize;
 }
 
 impl Bar for Foo {
-    fn bar(&self) -> int {1}
-    fn bar(&self) -> int {2} //~ ERROR duplicate method
+    fn bar(&self) -> isize {1}
+    fn bar(&self) -> isize {2} //~ ERROR duplicate method
 }
 
 fn main() {

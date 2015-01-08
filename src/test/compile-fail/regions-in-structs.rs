@@ -17,8 +17,8 @@ struct yes2<'a> {
 }
 
 struct StructDecl {
-    a: &'a int, //~ ERROR use of undeclared lifetime name `'a`
-    b: &'a int, //~ ERROR use of undeclared lifetime name `'a`
+    a: &'a isize, //~ ERROR use of undeclared lifetime name `'a`
+    b: &'a isize, //~ ERROR use of undeclared lifetime name `'a`
 }
 
 

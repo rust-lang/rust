@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A { pub i: int }
+struct A { pub i: isize }
 pub enum C { pub Variant }      //~ ERROR: unnecessary `pub`
 
 pub trait E {

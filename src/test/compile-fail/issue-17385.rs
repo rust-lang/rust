@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct X(int);
+struct X(isize);
 
 enum Enum {
     Variant1,

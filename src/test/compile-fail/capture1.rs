@@ -12,6 +12,6 @@
 // error-pattern: can't capture dynamic environment in a fn item;
 
 fn main() {
-    let bar: int = 5;
-    fn foo() -> int { return bar; }
+    let bar: isize = 5;
+    fn foo() -> isize { return bar; }
 }

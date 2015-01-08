@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let mut x: Option<int> = None;
+    let mut x: Option<isize> = None;
     match x {
       None => {
           // Note: on this branch, no borrow has occurred.

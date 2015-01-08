@@ -12,9 +12,9 @@
 
 #[derive(Show)]
 struct foo {
-    x: int
+    x: isize
 }
 
 fn main() {
-    println!("{}", foo{ x: 1 } as int);
+    println!("{}", foo{ x: 1 } as isize);
 }

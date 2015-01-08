@@ -11,7 +11,7 @@
 #![feature(box_syntax)]
 
 enum IntList {
-    Cons(int, Box<IntList>),
+    Cons(isize, Box<IntList>),
     Nil
 }
 

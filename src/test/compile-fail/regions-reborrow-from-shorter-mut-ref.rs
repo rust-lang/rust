@@ -12,7 +12,7 @@
 // pointer which is backed by another `&'a mut` can only be done
 // for `'a` (which must be a sublifetime of `'b`).
 
-fn copy_borrowed_ptr<'a, 'b>(p: &'a mut &'b mut int) -> &'b mut int {
+fn copy_borrowed_ptr<'a, 'b>(p: &'a mut &'b mut isize) -> &'b mut isize {
     &mut **p //~ ERROR cannot infer
 }
 

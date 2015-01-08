@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 trait T {}
-impl T for int {}
+impl T for isize {}
 
 fn main() {
     // For an expression of the form:

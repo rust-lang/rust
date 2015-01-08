@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn destructure(x: Option<int>) -> int {
+fn destructure(x: Option<isize>) -> isize {
     match x {
       None => 0,
       Some(ref mut v) => *v //~ ERROR cannot borrow

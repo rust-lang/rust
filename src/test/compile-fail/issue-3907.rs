@@ -14,7 +14,7 @@ extern crate issue_3907;
 type Foo = issue_3907::Foo;
 
 struct S {
-    name: int
+    name: isize
 }
 
 impl Foo for S { //~ ERROR: `Foo` is not a trait

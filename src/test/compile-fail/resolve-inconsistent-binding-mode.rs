@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum opts {
-    a(int), b(int), c(int)
+    a(isize), b(isize), c(isize)
 }
 
 fn matcher1(x: opts) {

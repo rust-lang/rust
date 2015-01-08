@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static X: int = 0;
+static X: isize = 0;
 struct X; //~ ERROR error: duplicate definition of value `X`
 
 fn main() {}

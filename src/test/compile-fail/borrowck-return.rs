@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() -> int {
-    let x: int;
+fn f() -> isize {
+    let x: isize;
     return x; //~ ERROR use of possibly uninitialized variable: `x`
 }
 

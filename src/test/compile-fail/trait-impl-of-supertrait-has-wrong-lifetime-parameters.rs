@@ -13,26 +13,26 @@
 // an impl of T1<'a>, but we have an impl of T1<'b>.
 
 trait T1<'x> {
-    fn x(&self) -> &'x int;
+    fn x(&self) -> &'x isize;
 }
 
 trait T2<'x, 'y> : T1<'x> {
-    fn y(&self) -> &'y int;
+    fn y(&self) -> &'y isize;
 }
 
 struct S<'a, 'b> {
-    a: &'a int,
-    b: &'b int
+    a: &'a isize,
+    b: &'b isize
 }
 
 impl<'a,'b> T1<'b> for S<'a, 'b> {
-    fn x(&self) -> &'b int {
+    fn x(&self) -> &'b isize {
         self.b
     }
 }
 
 impl<'a,'b> T2<'a, 'b> for S<'a, 'b> { //~ ERROR cannot infer an appropriate lifetime
-    fn y(&self) -> &'b int {
+    fn y(&self) -> &'b isize {
         self.b
     }
 }

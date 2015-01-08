@@ -14,8 +14,8 @@
 
 #[rustc_variance]
 enum Base<'a, 'b, 'c:'b, 'd> { //~ ERROR regions=[[+, -, o, *];[];[]]
-    Test8A(extern "Rust" fn(&'a int)),
-    Test8B(&'b [int]),
+    Test8A(extern "Rust" fn(&'a isize)),
+    Test8B(&'b [isize]),
     Test8C(&'b mut &'c str),
 }
 

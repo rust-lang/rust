@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-fn func((1, (Some(1), 2...3)): (int, (Option<int>, int))) { }
+fn func((1, (Some(1), 2...3)): (isize, (Option<isize>, isize))) { }
 //~^ ERROR refutable pattern in function argument: `(_, _)` not covered
 
 fn main() {

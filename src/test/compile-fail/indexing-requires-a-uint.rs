@@ -20,7 +20,7 @@ fn main() {
 
     let i = 0;      // i is an IntVar
     [0][i];         // i should be locked to uint
-    bar::<int>(i);  // i should not be re-coerced back to an int
+    bar::<isize>(i);  // i should not be re-coerced back to an isize
     //~^ ERROR: mismatched types
 }
 

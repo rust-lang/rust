@@ -10,7 +10,7 @@
 
 extern {
     fn printf(...); //~ ERROR: variadic function must be declared with at least one named argument
-    fn printf(..., foo: int); //~ ERROR: `...` must be last in argument list for variadic function
+    fn printf(..., foo: isize); //~ ERROR: `...` must be last in argument list for variadic function
 }
 
 fn main() {}

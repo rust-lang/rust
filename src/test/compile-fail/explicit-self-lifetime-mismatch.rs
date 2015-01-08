@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct Foo<'a,'b> {
-    x: &'a int,
-    y: &'b int,
+    x: &'a isize,
+    y: &'b isize,
 }
 
 impl<'a,'b> Foo<'a,'b> {
