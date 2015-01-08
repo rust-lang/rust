@@ -42,6 +42,7 @@
 #![experimental]
 #![allow(missing_docs)]
 
+#[cfg(not(stage0))]
 use marker::Sized;
 
 pub type GlueFn = extern "Rust" fn(*const i8);

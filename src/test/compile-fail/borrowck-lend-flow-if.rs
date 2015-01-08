@@ -14,6 +14,7 @@
 // either genuine or would require more advanced changes.  The latter
 // cases are noted.
 
+#![feature(box_syntax)]
 
 fn borrow(_v: &int) {}
 fn borrow_mut(_v: &mut int) {}

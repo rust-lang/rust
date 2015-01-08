@@ -443,7 +443,7 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     }
 
     for note in note.into_iter() {
-        sess.note(note.index(&FullRange));
+        sess.note(&note[]);
     }
 
     for span in def.into_iter() {

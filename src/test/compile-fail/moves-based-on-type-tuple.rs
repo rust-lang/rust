@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
 fn dup(x: Box<int>) -> Box<(Box<int>,Box<int>)> { box() (x, x) } //~ ERROR use of moved value
 fn main() {

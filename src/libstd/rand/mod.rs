@@ -403,7 +403,7 @@ pub fn random<T: Rand>() -> T {
 ///
 /// let mut rng = thread_rng();
 /// let sample = sample(&mut rng, range(1i, 100), 5);
-/// println!("{}", sample);
+/// println!("{:?}", sample);
 /// ```
 pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
                                          mut iter: I,

@@ -11,6 +11,7 @@
 // Tests that two closures cannot simultaneously have mutable
 // and immutable access to the variable. Issue #6801.
 
+#![feature(box_syntax)]
 
 fn get(x: &int) -> int {
     *x

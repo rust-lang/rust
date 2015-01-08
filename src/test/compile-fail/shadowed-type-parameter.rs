@@ -10,6 +10,8 @@
 
 // Test that shadowed lifetimes generate an error.
 
+#![feature(box_syntax)]
+
 struct Foo<T>;
 
 impl<T> Foo<T> {
@@ -22,7 +24,7 @@ impl<T> Foo<T> {
     }
 }
 
-trait<T> Bar<T> {
+trait Bar<T> {
     fn shadow_in_required<T>(&self);
     //~^ ERROR type parameter `T` shadows another type parameter
 

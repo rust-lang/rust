@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::iter::range;
-
 pub fn op1() -> Result<int, &'static str> { Ok(666) }
 pub fn op2() -> Result<int, &'static str> { Err("sadface") }
 

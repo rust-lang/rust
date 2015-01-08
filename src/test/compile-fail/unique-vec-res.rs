@@ -10,6 +10,8 @@
 
 #![feature(unsafe_destructor)]
 
+#![feature(box_syntax)]
+
 use std::cell::Cell;
 
 #[derive(Show)]

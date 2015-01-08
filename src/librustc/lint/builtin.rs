@@ -1918,7 +1918,7 @@ impl LintPass for HardwiredLints {
 }
 
 /// Forbids using the `#[feature(...)]` attribute
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct UnstableFeatures;
 
 declare_lint!(UNSTABLE_FEATURES, Allow,

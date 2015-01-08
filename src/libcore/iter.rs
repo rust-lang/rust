@@ -2804,7 +2804,7 @@ pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
         T: Clone,
         F: FnMut(T) -> T,
     {
-        let &(ref mut f, ref mut val, ref mut first) = st;
+        let &mut (ref mut f, ref mut val, ref mut first) = st;
         if *first {
             *first = false;
         } else {

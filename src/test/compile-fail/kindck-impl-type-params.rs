@@ -11,6 +11,8 @@
 // Issue #14061: tests the interaction between generic implementation
 // parameter bounds and trait objects.
 
+#![feature(box_syntax)]
+
 struct S<T>;
 
 trait Gettable<T> {}

@@ -10,6 +10,7 @@
 
 // ignore-pretty very bad with line comments
 
+#![feature(box_syntax)]
 #![allow(non_snake_case)]
 
 use std::io::BufferedReader;

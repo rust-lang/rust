@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 fn ignore<T>(t: T) {}
 
 fn nested<'x>(x: &'x int) {

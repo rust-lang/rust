@@ -3802,18 +3802,19 @@ enum List {             // error: illegal recursive enum type
 
 But the compiler complains that the type is recursive, that is, it could be
 arbitrarily large. To remedy this, Rust provides a fixed-size container called
-a **box** that can hold any type. You can box up any value with the `box`
-keyword. Our boxed List gets the type `Box<List>` (more on the notation when we
+a **Box** that can hold any type. You can box up any value with the `Box::new`
+function. Our boxed List gets the type `Box<List>` (more on the notation when we
 get to generics):
 
 ```{rust}
+# use std::boxed::Box;
 enum List {
     Node(u32, Box<List>),
     Nil
 }
 
 fn main() {
-    let list = List::Node(0, box List::Node(1, box List::Nil));
+    let list = List::Node(0, Box::new(List::Node(1, Box::new(List::Nil))));
 }
 ```
 
@@ -3826,8 +3827,9 @@ just like regular references. This (rather silly) example dynamically allocates
 an integer `5` and makes `x` a pointer to it:
 
 ```{rust}
+# use std::boxed::Box;
 {
-    let x = box 5;
+    let x = Box::new(5);
     println!("{}", *x);     // Prints 5
 }
 ```
@@ -3858,7 +3860,8 @@ Boxes are the sole owner of their contents, so you cannot take a mutable
 reference to them and then use the original box:
 
 ```{rust,ignore}
-let mut x = box 5;
+# use std::boxed::Box;
+let mut x = Box::new(5);
 let y = &mut x;
 
 *x; // you might expect 5, but this is actually an error
@@ -3879,7 +3882,8 @@ As long as `y` is borrowing the contents, we cannot use `x`. After `y` is
 done borrowing the value, we can use it again. This works fine:
 
 ```{rust}
-let mut x = box 5;
+# use std::boxed::Box;
+let mut x = Box::new(5);
 
 {
     let y = &mut x;

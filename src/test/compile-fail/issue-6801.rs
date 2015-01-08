@@ -12,6 +12,7 @@
 // transferring ownership of the owned box before invoking the stack
 // closure results in a crash.
 
+#![feature(box_syntax)]
 
 fn twice(x: Box<uint>) -> uint {
      *x * 2

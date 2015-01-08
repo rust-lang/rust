@@ -68,9 +68,13 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
             Some(t.principal_def_id())
         }
 
+        ty_uniq(_) => {
+            inference_context.tcx.lang_items.owned_box()
+        }
+
         ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
         ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_tup(..) |
-        ty_param(..) | ty_err | ty_open(..) | ty_uniq(_) |
+        ty_param(..) | ty_err | ty_open(..) |
         ty_ptr(_) | ty_rptr(_, _) | ty_projection(..) => {
             None
         }

@@ -103,6 +103,6 @@ fn main() {
         args.into_iter().map(|x| x.to_string()).collect()
     };
 
-    println!("{}", args);
+    println!("{:?}", args);
     run(args.as_slice());
 }

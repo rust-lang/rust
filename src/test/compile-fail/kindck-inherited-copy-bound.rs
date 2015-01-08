@@ -10,6 +10,8 @@
 
 // Test that Copy bounds inherited by trait are checked.
 
+#![feature(box_syntax)]
+
 use std::any::Any;
 
 trait Foo : Copy {

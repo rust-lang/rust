@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 // Tests that we can't move out of an unboxed closure environment

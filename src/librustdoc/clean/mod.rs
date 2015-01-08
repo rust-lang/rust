@@ -2454,7 +2454,7 @@ fn lang_struct(cx: &DocContext, did: Option<ast::DefId>,
 }
 
 /// An equality constraint on an associated type, e.g. `A=Bar` in `Foo<A=Bar>`
-#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
+#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Show)]
 pub struct TypeBinding {
     pub name: String,
     pub ty: Type

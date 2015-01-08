@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(unboxed_closures)]
+#![feature(box_syntax)]
 
 fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
 

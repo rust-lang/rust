@@ -13,7 +13,7 @@
 #[stable]
 macro_rules! vec {
     ($($x:expr),*) => ({
-        let xs: $crate::boxed::Box<[_]> = box [$($x),*];
+        let xs: $crate::boxed::Box<[_]> = $crate::boxed::Box::new([$($x),*]);
         $crate::slice::SliceExt::into_vec(xs)
     });
     ($($x:expr,)*) => (vec![$($x),*])

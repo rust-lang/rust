@@ -175,7 +175,7 @@
 //! use std::f64;
 //! use std::num::Float;
 //!
-//! #[deriving(Show)]
+//! #[derive(Show)]
 //! struct Vector2D {
 //!     x: int,
 //!     y: int,

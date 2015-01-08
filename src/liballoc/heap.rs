@@ -125,7 +125,7 @@ const MIN_ALIGN: uint = 8;
           not(feature = "external_crate"),
           any(target_arch = "x86",
               target_arch = "x86_64",
-              target_arch = "aarch64"))]
+              target_arch = "aarch64")))]
 const MIN_ALIGN: uint = 16;
 
 #[cfg(feature = "external_funcs")]

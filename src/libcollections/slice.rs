@@ -245,7 +245,7 @@ pub trait SliceExt {
     /// ```rust
     /// let v = &[1i, 2, 3, 4];
     /// for win in v.windows(2) {
-    ///     println!("{}", win);
+    ///     println!("{:?}", win);
     /// }
     /// ```
     #[stable]
@@ -268,7 +268,7 @@ pub trait SliceExt {
     /// ```rust
     /// let v = &[1i, 2, 3, 4, 5];
     /// for win in v.chunks(2) {
-    ///     println!("{}", win);
+    ///     println!("{:?}", win);
     /// }
     /// ```
     #[stable]
@@ -554,7 +554,7 @@ pub trait SliceExt {
     /// let mut perms = v.permutations();
     ///
     /// for p in perms {
-    ///   println!("{}", p);
+    ///   println!("{:?}", p);
     /// }
     /// ```
     ///

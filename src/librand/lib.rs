@@ -194,7 +194,7 @@ pub trait Rng : Sized {
     ///
     /// let mut rng = thread_rng();
     /// let x = rng.gen_iter::<uint>().take(10).collect::<Vec<uint>>();
-    /// println!("{}", x);
+    /// println!("{:?}", x);
     /// println!("{:?}", rng.gen_iter::<(f64, bool)>().take(5)
     ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
@@ -291,9 +291,9 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// let mut y = [1i, 2, 3];
     /// rng.shuffle(&mut y);
-    /// println!("{}", y.as_slice());
+    /// println!("{:?}", y.as_slice());
     /// rng.shuffle(&mut y);
-    /// println!("{}", y.as_slice());
+    /// println!("{:?}", y.as_slice());
     /// ```
     fn shuffle<T>(&mut self, values: &mut [T]) {
         let mut i = values.len();
