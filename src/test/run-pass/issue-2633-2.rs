@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 
 fn a_val(x: Box<int>, y: Box<int>) -> int {
     *x + *y

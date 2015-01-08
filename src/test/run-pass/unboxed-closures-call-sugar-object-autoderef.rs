@@ -10,6 +10,8 @@
 
 // Test that the call operator autoderefs when calling to an object type.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 use std::ops::FnMut;

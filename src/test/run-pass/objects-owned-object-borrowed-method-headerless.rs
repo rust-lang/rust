@@ -12,6 +12,9 @@
 // closed over do not contain managed values, and thus the boxes do
 // not have headers.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 
 trait FooTrait {
     fn foo(&self) -> uint;

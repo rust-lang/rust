@@ -10,6 +10,9 @@
 //
 // ignore-lexer-test FIXME #15879
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 // Test sized-ness checking in substitution.
 
 // Unbounded.

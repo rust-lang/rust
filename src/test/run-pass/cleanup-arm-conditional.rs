@@ -21,6 +21,9 @@
 // Test that cleanup scope for temporaries created in a match
 // arm is confined to the match arm itself.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 use std::os;
 
 struct Test { x: int }

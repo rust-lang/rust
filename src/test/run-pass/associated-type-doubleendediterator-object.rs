@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 fn pairwise_sub(mut t: Box<DoubleEndedIterator<Item=int>>) -> int {
     let mut result = 0;
     loop {

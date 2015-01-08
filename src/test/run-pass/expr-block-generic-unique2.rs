@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 fn test_generic<T, F>(expected: T, eq: F) where T: Clone, F: FnOnce(T, T) -> bool {
     let actual: T = { expected.clone() };
     assert!(eq(expected, actual));

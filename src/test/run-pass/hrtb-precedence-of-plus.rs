@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 // Test that `Fn(int) -> int + 'static` parses as `(Fn(int) -> int) +

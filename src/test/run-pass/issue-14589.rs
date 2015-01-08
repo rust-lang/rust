@@ -11,6 +11,9 @@
 // All 3 expressions should work in that the argument gets
 // coerced to a trait object
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 fn main() {
     send::<Box<Foo>>(box Output(0));
     Test::<Box<Foo>>::foo(box Output(0));

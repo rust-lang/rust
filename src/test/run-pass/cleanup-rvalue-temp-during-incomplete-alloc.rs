@@ -24,6 +24,9 @@
 // It's unclear how likely such a bug is to recur, but it seems like a
 // scenario worth testing.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 use std::thread::Thread;
 
 enum Conzabble {

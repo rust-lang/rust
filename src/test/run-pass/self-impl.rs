@@ -10,6 +10,9 @@
 
 // Test that we can use `Self` types in impls in the expected way.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 struct Foo;
 
 // Test uses on inherent impl.

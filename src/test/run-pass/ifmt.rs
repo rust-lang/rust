@@ -13,6 +13,8 @@
 
 #![deny(warnings)]
 #![allow(unused_must_use)]
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 use std::fmt;
 

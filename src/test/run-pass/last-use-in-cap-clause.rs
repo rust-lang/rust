@@ -10,6 +10,8 @@
 
 // Make sure #1399 stays fixed
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 struct A { a: Box<int> }

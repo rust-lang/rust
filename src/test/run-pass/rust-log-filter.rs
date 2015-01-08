@@ -10,6 +10,9 @@
 
 // exec-env:RUST_LOG=rust-log-filter/f.o
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 #[macro_use]
 extern crate log;
 
