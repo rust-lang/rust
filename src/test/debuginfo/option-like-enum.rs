@@ -36,6 +36,12 @@
 // gdb-command:print void_droid_gdb->internals
 // gdb-check:$6 = (isize *) 0x0
 
+// gdb-command:print nested_non_zero_yep
+// gdb-check:$7 = {RUST$ENCODED$ENUM$1$2$Nope = {10.5, {a = 10, b = 20, c = [...]}}}
+
+// gdb-command:print nested_non_zero_nope
+// gdb-check:$8 = {RUST$ENCODED$ENUM$1$2$Nope = {[...], {a = [...], b = [...], c = 0x0}}}
+
 // gdb-command:continue
 
 
@@ -66,6 +72,12 @@
 
 // lldb-command:print none_str
 // lldb-check:[...]$7 = None
+
+// lldb-command:print nested_non_zero_yep
+// lldb-check:[...]$8 = Yep(10.5, NestedNonZeroField { a: 10, b: 20, c: &[...] })
+
+// lldb-command:print nested_non_zero_nope
+// lldb-check:[...]$9 = Nope
 
 
 #![omit_gdb_pretty_printer_section]
@@ -102,6 +114,17 @@ struct NamedFieldsRepr<'a> {
     internals: &'a isize
 }
 
+struct NestedNonZeroField<'a> {
+    a: u16,
+    b: u32,
+    c: &'a char,
+}
+
+enum NestedNonZero<'a> {
+    Yep(f64, NestedNonZeroField<'a>),
+    Nope
+}
+
 fn main() {
 
     let some_str: Option<&'static str> = Some("abc");
@@ -123,6 +146,17 @@ fn main() {
 
     let void_droid = NamedFields::Void;
     let void_droid_gdb: &NamedFieldsRepr = unsafe { std::mem::transmute(&NamedFields::Void) };
+
+    let x = 'x';
+    let nested_non_zero_yep = NestedNonZero::Yep(
+        10.5,
+        NestedNonZeroField {
+            a: 10,
+            b: 20,
+            c: &x
+        });
+
+    let nested_non_zero_nope = NestedNonZero::Nope;
 
     zzz(); // #break
 }
