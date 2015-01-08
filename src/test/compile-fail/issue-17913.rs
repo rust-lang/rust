@@ -10,14 +10,14 @@
 
 // error-pattern: too big for the current architecture
 
-#[cfg(target_word_size = "64")]
+#[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
 fn main() {
     let n = 0u;
     let a = box [&n; 0xF000000000000000u];
     println!("{}", a[0xFFFFFFu]);
 }
 
-#[cfg(target_word_size = "32")]
+#[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
 fn main() {
     let n = 0u;
     let a = box [&n; 0xFFFFFFFFu];
