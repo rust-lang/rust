@@ -112,6 +112,7 @@ use std::cell::{Cell, Ref, RefCell};
 use std::mem::replace;
 use std::rc::Rc;
 use std::iter::repeat;
+use std::slice;
 use syntax::{self, abi, attr};
 use syntax::ast::{self, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
 use syntax::ast_util::{self, local_def, PostExpansionMethod};
@@ -2598,7 +2599,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          sp: Span,
                                          method_fn_ty: Ty<'tcx>,
                                          callee_expr: &ast::Expr,
-                                         args_no_rcvr: &[&P<ast::Expr>],
+                                         args_no_rcvr: &[P<ast::Expr>],
                                          autoref_args: AutorefArgs,
                                          tuple_arguments: TupleArgumentsFlag)
                                          -> ty::FnOutput<'tcx> {
@@ -2624,7 +2625,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // HACK(eddyb) ignore self in the definition (see above).
                 check_argument_types(fcx,
                                      sp,
-                                     fty.sig.0.inputs.slice_from(1),
+                                     &fty.sig.0.inputs[1..],
                                      args_no_rcvr,
                                      autoref_args,
                                      fty.sig.0.variadic,
@@ -2644,7 +2645,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   sp: Span,
                                   fn_inputs: &[Ty<'tcx>],
-                                  args: &[&P<ast::Expr>],
+                                  args: &[P<ast::Expr>],
                                   autoref_args: AutorefArgs,
                                   variadic: bool,
                                   tuple_arguments: TupleArgumentsFlag) {
@@ -2767,7 +2768,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     AutorefArgs::No => {}
                 }
 
-                check_expr_coercable_to_type(fcx, &***arg, formal_ty);
+                check_expr_coercable_to_type(fcx, &**arg, formal_ty);
             }
         }
     }
@@ -2776,12 +2777,12 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // arguments which we skipped above.
     if variadic {
         for arg in args.iter().skip(expected_arg_count) {
-            check_expr(fcx, &***arg);
+            check_expr(fcx, &**arg);
 
             // There are a few types which get autopromoted when passed via varargs
             // in C but we just error out instead and require explicit casts.
             let arg_ty = structurally_resolved_type(fcx, arg.span,
-                                                    fcx.expr_ty(&***arg));
+                                                    fcx.expr_ty(&**arg));
             match arg_ty.sty {
                 ty::ty_float(ast::TyF32) => {
                     fcx.type_error_message(arg.span,
@@ -3064,12 +3065,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         // Call the generic checker.
-        let args: Vec<_> = args[1..].iter().map(|x| x).collect();
         let ret_ty = check_method_argument_types(fcx,
                                                  method_name.span,
                                                  fn_ty,
                                                  expr,
-                                                 args.as_slice(),
+                                                 &args[1..],
                                                  AutorefArgs::No,
                                                  DontTupleArguments);
 
@@ -3167,8 +3167,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             None => None
         };
         let args = match rhs {
-            Some(rhs) => vec![rhs],
-            None => vec![]
+            Some(rhs) => slice::ref_slice(rhs),
+            None => &[][]
         };
         match method {
             Some(method) => {
@@ -3177,12 +3177,12 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 let method_call = ::middle::ty::MethodCall::expr(op_ex.id);
                 fcx.inh.method_map.borrow_mut().insert(method_call, method);
                 match check_method_argument_types(fcx,
-                                            op_ex.span,
-                                            method_ty,
-                                            op_ex,
-                                            args.as_slice(),
-                                            autoref_args,
-                                            DontTupleArguments) {
+                                                  op_ex.span,
+                                                  method_ty,
+                                                  op_ex,
+                                                  args,
+                                                  autoref_args,
+                                                  DontTupleArguments) {
                     ty::FnConverging(result_type) => result_type,
                     ty::FnDiverging => fcx.tcx().types.err
                 }
@@ -3196,7 +3196,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                             op_ex.span,
                                             expected_ty,
                                             op_ex,
-                                            args.as_slice(),
+                                            args,
                                             autoref_args,
                                             DontTupleArguments);
                 fcx.tcx().types.err
@@ -4045,10 +4045,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, fcx.node_ty(b.id));
       }
       ast::ExprCall(ref callee, ref args) => {
-          callee::check_call(fcx, expr, &**callee, args.as_slice());
+          callee::check_call(fcx, expr, &**callee, &args[]);
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
-        check_method_call(fcx, expr, ident, args.as_slice(), tps.as_slice(), lvalue_pref);
+        check_method_call(fcx, expr, ident, &args[], &tps[], lvalue_pref);
         let arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
         let  args_err = arg_tys.fold(false,
              |rest_err, a| {

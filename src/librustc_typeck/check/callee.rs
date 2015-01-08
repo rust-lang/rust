@@ -192,11 +192,10 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         fcx.normalize_associated_types_in(call_expr.span, &fn_sig);
 
     // Call the generic checker.
-    let arg_exprs: Vec<_> = arg_exprs.iter().collect(); // for some weird reason we take &[&P<...>].
     check_argument_types(fcx,
                          call_expr.span,
                          fn_sig.inputs.as_slice(),
-                         arg_exprs.as_slice(),
+                         arg_exprs,
                          AutorefArgs::No,
                          fn_sig.variadic,
                          TupleArgumentsFlag::DontTupleArguments);
@@ -209,12 +208,11 @@ fn confirm_overloaded_call<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                     arg_exprs: &[P<ast::Expr>],
                                     method_callee: ty::MethodCallee<'tcx>)
 {
-    let arg_exprs: Vec<_> = arg_exprs.iter().collect(); // for some weird reason we take &[&P<...>].
     let output_type = check_method_argument_types(fcx,
                                                   call_expr.span,
                                                   method_callee.ty,
                                                   call_expr,
-                                                  arg_exprs.as_slice(),
+                                                  arg_exprs,
                                                   AutorefArgs::No,
                                                   TupleArgumentsFlag::TupleArguments);
     let method_call = ty::MethodCall::expr(call_expr.id);
