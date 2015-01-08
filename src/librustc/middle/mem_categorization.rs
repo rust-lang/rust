@@ -460,7 +460,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                autoderefs,
                cmt.repr(self.tcx()));
         for deref in range(1u, autoderefs + 1) {
-            cmt = try!(self.cat_deref(expr, cmt, deref, false));
+            cmt = try!(self.cat_deref(expr, cmt, deref));
         }
         return Ok(cmt);
     }
@@ -472,7 +472,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         match expr.node {
           ast::ExprUnary(ast::UnDeref, ref e_base) => {
             let base_cmt = try!(self.cat_expr(&**e_base));
-            self.cat_deref(expr, base_cmt, 0, false)
+            self.cat_deref(expr, base_cmt, 0)
           }
 
           ast::ExprField(ref base, f_name) => {
@@ -496,10 +496,23 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     // If this is an index implemented by a method call, then it
                     // will include an implicit deref of the result.
                     let ret_ty = self.overloaded_method_return_ty(method_ty);
-                    self.cat_deref(expr,
-                                   self.cat_rvalue_node(expr.id(),
-                                                        expr.span(),
-                                                        ret_ty), 1, true)
+
+                    // The index method always returns an `&T`, so
+                    // dereference it to find the result type.
+                    let elem_ty = match ret_ty.sty {
+                        ty::ty_rptr(_, mt) => mt.ty,
+                        _ => {
+                            debug!("cat_expr_unadjusted: return type of overloaded index is {}?",
+                                   ret_ty.repr(self.tcx()));
+                            return Err(());
+                        }
+                    };
+
+                    // The call to index() returns a `&T` value, which
+                    // is an rvalue. That is what we will be
+                    // dereferencing.
+                    let base_cmt = self.cat_rvalue_node(expr.id(), expr.span(), ret_ty);
+                    self.cat_deref_common(expr, base_cmt, 1, elem_ty, true)
                 }
                 None => {
                     self.cat_index(expr, try!(self.cat_expr(&**base)))
@@ -844,8 +857,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     fn cat_deref<N:ast_node>(&self,
                              node: &N,
                              base_cmt: cmt<'tcx>,
-                             deref_cnt: uint,
-                             implicit: bool)
+                             deref_cnt: uint)
                              -> McResult<cmt<'tcx>> {
         let adjustment = match self.typer.adjustments().borrow().get(&node.id()) {
             Some(adj) if ty::adjust_is_object(adj) => ty::AutoObject,
@@ -873,7 +885,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         };
         let base_cmt_ty = base_cmt.ty;
         match ty::deref(base_cmt_ty, true) {
-            Some(mt) => self.cat_deref_common(node, base_cmt, deref_cnt, mt.ty, implicit),
+            Some(mt) => self.cat_deref_common(node, base_cmt, deref_cnt, mt.ty,
+                                              /* implicit: */ false),
             None => {
                 debug!("Explicit deref of non-derefable type: {}",
                        base_cmt_ty.repr(self.tcx()));
@@ -1243,7 +1256,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             // box p1, &p1, &mut p1.  we can ignore the mutability of
             // PatRegion since that information is already contained
             // in the type.
-            let subcmt = try!(self.cat_deref(pat, cmt, 0, false));
+            let subcmt = try!(self.cat_deref(pat, cmt, 0));
               try!(self.cat_pattern_(subcmt, &**subpat, op));
           }
 
