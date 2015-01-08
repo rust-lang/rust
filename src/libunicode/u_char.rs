@@ -112,7 +112,7 @@ pub trait CharExt {
     /// 'XID_Start' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to ID_Start but modified for closure under NFKx.
-    #[experimental = "mainly needed for compiler internals"]
+    #[unstable = "mainly needed for compiler internals"]
     fn is_xid_start(self) -> bool;
 
     /// Returns whether the specified `char` satisfies the 'XID_Continue'
@@ -121,7 +121,7 @@ pub trait CharExt {
     /// 'XID_Continue' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-    #[experimental = "mainly needed for compiler internals"]
+    #[unstable = "mainly needed for compiler internals"]
     fn is_xid_continue(self) -> bool;
 
     /// Indicates whether a character is in lowercase.
@@ -171,7 +171,7 @@ pub trait CharExt {
     ///
     /// Returns the lowercase equivalent of the character, or the character
     /// itself if no conversion is possible.
-    #[experimental = "pending case transformation decisions"]
+    #[unstable = "pending case transformation decisions"]
     fn to_lowercase(self) -> char;
 
     /// Converts a character to its uppercase equivalent.
@@ -194,7 +194,7 @@ pub trait CharExt {
     /// [`SpecialCasing`.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
     ///
     /// [2]: http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
-    #[experimental = "pending case transformation decisions"]
+    #[unstable = "pending case transformation decisions"]
     fn to_uppercase(self) -> char;
 
     /// Returns this character's displayed width in columns, or `None` if it is a
@@ -206,7 +206,7 @@ pub trait CharExt {
     /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// recommends that these characters be treated as 1 column (i.e.,
     /// `is_cjk` = `false`) if the context cannot be reliably determined.
-    #[experimental = "needs expert opinion. is_cjk flag stands out as ugly"]
+    #[unstable = "needs expert opinion. is_cjk flag stands out as ugly"]
     fn width(self, is_cjk: bool) -> Option<uint>;
 }
 
@@ -238,10 +238,10 @@ impl CharExt for char {
         }
     }
 
-    #[experimental = "mainly needed for compiler internals"]
+    #[unstable = "mainly needed for compiler internals"]
     fn is_xid_start(self) -> bool { derived_property::XID_Start(self) }
 
-    #[experimental = "mainly needed for compiler internals"]
+    #[unstable = "mainly needed for compiler internals"]
     fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
 
     #[stable]
@@ -288,12 +288,12 @@ impl CharExt for char {
         }
     }
 
-    #[experimental = "pending case transformation decisions"]
+    #[unstable = "pending case transformation decisions"]
     fn to_lowercase(self) -> char { conversions::to_lower(self) }
 
-    #[experimental = "pending case transformation decisions"]
+    #[unstable = "pending case transformation decisions"]
     fn to_uppercase(self) -> char { conversions::to_upper(self) }
 
-    #[experimental = "needs expert opinion. is_cjk flag stands out as ugly"]
+    #[unstable = "needs expert opinion. is_cjk flag stands out as ugly"]
     fn width(self, is_cjk: bool) -> Option<uint> { charwidth::width(self, is_cjk) }
 }

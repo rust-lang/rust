@@ -13,7 +13,7 @@
 // checked.
 
 struct Inv<'a> { // invariant w/r/t 'a
-    x: &'a mut &'a int
+    x: &'a mut &'a isize
 }
 
 pub trait Foo<'a> {
@@ -24,7 +24,7 @@ pub trait Foo<'a> {
 }
 
 
-impl<'a> Foo<'a> for &'a int {
+impl<'a> Foo<'a> for &'a isize {
     fn no_bound<'b:'a>(self, b: Inv<'b>) {
         //~^ ERROR lifetime parameters or bounds on method `no_bound` do not match
     }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_name = "rustc_borrowck"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -21,6 +21,7 @@
 #![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(rustc_diagnostic_macros)]
+#![allow(unknown_features)] #![feature(int_uint)]
 #![allow(non_camel_case_types)]
 
 #[macro_use] extern crate log;

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    let mut v = vec!(1i);
-    let mut f = |&mut:| v.push(2i);
+    let mut v = vec!(1is);
+    let mut f = |&mut:| v.push(2is);
     let _w = v; //~ ERROR: cannot move out of `v`
 
     f();

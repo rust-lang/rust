@@ -13,7 +13,7 @@
 extern crate "coherence-lib" as lib;
 use lib::Remote1;
 
-impl<T> Remote1<T> for int { }
+impl<T> Remote1<T> for isize { }
 //~^ ERROR E0117
 
 fn main() { }

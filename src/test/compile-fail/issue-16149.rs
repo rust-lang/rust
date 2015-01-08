@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern {
-    static externalValue: int;
+    static externalValue: isize;
 }
 
 fn main() {

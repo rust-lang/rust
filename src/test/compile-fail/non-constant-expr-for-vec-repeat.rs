@@ -11,7 +11,7 @@
 // Check that non constant exprs fail for vector repeat syntax
 
 fn main() {
-    fn bar(n: uint) {
+    fn bar(n: usize) {
         let _x = [0; n]; //~ ERROR expected constant integer for repeat count, found variable
     }
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const A: uint = B; //~ ERROR: recursive constant
-const B: uint = A; //~ ERROR: recursive constant
+const A: usize = B; //~ ERROR: recursive constant
+const B: usize = A; //~ ERROR: recursive constant
 
 fn main() {}

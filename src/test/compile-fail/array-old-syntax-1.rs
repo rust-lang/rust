@@ -11,5 +11,5 @@
 // Test that the old fixed length array syntax is a parsing error.
 
 fn main() {
-    let _x: [int, ..3] = [0i, 1, 2]; //~ ERROR
+    let _x: [isize, ..3] = [0is, 1, 2]; //~ ERROR
 }

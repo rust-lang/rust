@@ -23,5 +23,5 @@ fn main() {
     Foo::bar(&x); //~ERROR cannot borrow `x`
 
     let x = Foo;
-    Foo::baz(&x); //~ERROR cannot borrow immutable dereference of `&`-pointer as mutable
+    Foo::baz(&x); //~ERROR cannot borrow immutable borrowed content as mutable
 }

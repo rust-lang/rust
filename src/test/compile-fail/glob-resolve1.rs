@@ -23,7 +23,7 @@ mod bar {
 
     struct C;
 
-    type D = int;
+    type D = isize;
 }
 
 fn foo<T>() {}

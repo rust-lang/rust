@@ -78,7 +78,7 @@
 //! ```
 
 #![crate_name = "getopts"]
-#![experimental = "use the crates.io `getopts` library instead"]
+#![unstable = "use the crates.io `getopts` library instead"]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -87,6 +87,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(slicing_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 #![deny(missing_docs)]
 
 #[cfg(test)] #[macro_use] extern crate log;

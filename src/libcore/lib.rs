@@ -48,7 +48,7 @@
 // separate crate, libcoretest, to avoid bizarre issues.
 
 #![crate_name = "core"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -59,9 +59,10 @@
 #![no_std]
 #![allow(unknown_features, raw_pointer_derive)]
 #![cfg_attr(stage0, allow(unused_attributes))]
-#![feature(intrinsics, lang_items)]
+#![allow(unknown_features)] #![feature(intrinsics, lang_items)]
 #![feature(simd, unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
+#![allow(unknown_features)] #![feature(int_uint)]
 #![deny(missing_docs)]
 
 #[macro_use]

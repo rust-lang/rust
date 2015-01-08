@@ -1031,7 +1031,7 @@ impl<'a> MethodDef<'a> {
             let arms: Vec<ast::Arm> = variants.iter().enumerate()
                 .map(|(index, variant)| {
                     let pat = variant_to_pat(cx, sp, type_ident, &**variant);
-                    let lit = ast::LitInt(index as u64, ast::UnsignedIntLit(ast::TyUs));
+                    let lit = ast::LitInt(index as u64, ast::UnsignedIntLit(ast::TyUs(false)));
                     cx.arm(sp, vec![pat], cx.expr_lit(sp, lit))
                 }).collect();
 

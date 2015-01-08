@@ -156,7 +156,7 @@
 //! if logging is disabled, none of the components of the log will be executed.
 
 #![crate_name = "log"]
-#![experimental = "use the crates.io `log` library instead"]
+#![unstable = "use the crates.io `log` library instead"]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -168,6 +168,7 @@
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 #![deny(missing_docs)]
 
 extern crate regex;

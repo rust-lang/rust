@@ -20,13 +20,13 @@ use std::mem;
 #[repr(packed)]
 struct Foo {
     bar: u8,
-    baz: uint
+    baz: usize
 }
 
 #[derive(Show)]
 struct Oof {
     rab: u8,
-    zab: uint
+    zab: usize
 }
 
 fn main() {

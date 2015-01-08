@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Point { x: int, y: int }
+struct Point { x: isize, y: isize }
 struct Empty;
 
 fn main() {

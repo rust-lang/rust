@@ -16,17 +16,17 @@
 // that is more helpful.
 
 enum Nil {NilValue}
-struct Cons<T> {head:int, tail:T}
-trait Dot {fn dot(&self, other:Self) -> int;}
+struct Cons<T> {head:isize, tail:T}
+trait Dot {fn dot(&self, other:Self) -> isize;}
 impl Dot for Nil {
-  fn dot(&self, _:Nil) -> int {0}
+  fn dot(&self, _:Nil) -> isize {0}
 }
 impl<T:Dot> Dot for Cons<T> {
-  fn dot(&self, other:Cons<T>) -> int {
+  fn dot(&self, other:Cons<T>) -> isize {
     self.head * other.head + self.tail.dot(other.tail)
   }
 }
-fn test<T:Dot> (n:int, i:int, first:T, second:T) ->int {
+fn test<T:Dot> (n:isize, i:isize, first:T, second:T) ->isize {
   match n {    0 => {first.dot(second)}
       //~^ ERROR: reached the recursion limit during monomorphization
       // Error message should be here. It should be a type error

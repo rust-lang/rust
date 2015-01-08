@@ -39,7 +39,7 @@
 //!   guaranteed to happen in order. This is the standard mode for working
 //!   with atomic types and is equivalent to Java's `volatile`.
 
-#![experimental]
+#![unstable]
 #![allow(missing_docs)]
 
 #[cfg(not(stage0))]
@@ -333,7 +333,7 @@ extern "rust-intrinsic" {
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
-    #[experimental = "uncertain about naming and semantics"]
+    #[unstable = "uncertain about naming and semantics"]
     pub fn set_memory<T>(dst: *mut T, val: u8, count: uint);
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with

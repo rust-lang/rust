@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_name = "rustc_resolve"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -19,6 +19,7 @@
 
 #![feature(slicing_syntax)]
 #![feature(rustc_diagnostic_macros)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -819,15 +820,15 @@ impl PrimitiveTypeTable {
         table.intern("char",    TyChar);
         table.intern("f32",     TyFloat(TyF32));
         table.intern("f64",     TyFloat(TyF64));
-        table.intern("int",     TyInt(TyIs));
-        table.intern("isize",   TyInt(TyIs));
+        table.intern("int",     TyInt(TyIs(true)));
+        table.intern("isize",   TyInt(TyIs(false)));
         table.intern("i8",      TyInt(TyI8));
         table.intern("i16",     TyInt(TyI16));
         table.intern("i32",     TyInt(TyI32));
         table.intern("i64",     TyInt(TyI64));
         table.intern("str",     TyStr);
-        table.intern("uint",    TyUint(TyUs));
-        table.intern("usize",   TyUint(TyUs));
+        table.intern("uint",    TyUint(TyUs(true)));
+        table.intern("usize",   TyUint(TyUs(false)));
         table.intern("u8",      TyUint(TyU8));
         table.intern("u16",     TyUint(TyU16));
         table.intern("u32",     TyUint(TyU32));

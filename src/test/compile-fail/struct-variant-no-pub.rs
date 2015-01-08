@@ -10,7 +10,7 @@
 
 enum Foo {
     Bar {
-        pub a: int //~ ERROR: `pub` is not allowed here
+        pub a: isize //~ ERROR: `pub` is not allowed here
     }
 }
 

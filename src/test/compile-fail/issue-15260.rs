@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct Foo {
-    a: uint,
+    a: usize,
 }
 
 fn main() {

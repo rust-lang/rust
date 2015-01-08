@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn expr_call_18() {
-    fn inner(x:int) -> int { x + x }
+    fn inner(x:isize) -> isize { x + x }
     inner(inner(18));
 }

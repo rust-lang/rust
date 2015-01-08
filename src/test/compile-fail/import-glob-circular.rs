@@ -13,13 +13,13 @@
 mod circ1 {
     pub use circ2::f2;
     pub fn f1() { println!("f1"); }
-    pub fn common() -> uint { return 0u; }
+    pub fn common() -> usize { return 0us; }
 }
 
 mod circ2 {
     pub use circ1::f1;
     pub fn f2() { println!("f2"); }
-    pub fn common() -> uint { return 1u; }
+    pub fn common() -> usize { return 1us; }
 }
 
 mod test {

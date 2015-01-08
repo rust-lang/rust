@@ -12,6 +12,6 @@
 use std::option::*;
 
 fn main() {
-  let None: int = 42;
+  let None: isize = 42;
   log(debug, None);
 }

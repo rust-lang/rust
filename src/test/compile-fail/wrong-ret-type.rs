@@ -9,5 +9,5 @@
 // except according to those terms.
 
 // error-pattern: mismatched types
-fn mk_int() -> uint { let i: int = 3; return i; }
+fn mk_int() -> usize { let i: isize = 3; return i; }
 fn main() { }

@@ -13,7 +13,7 @@
 use std::ops::FnMut;
 
 pub fn main() {
-    let mut f = |&mut: x: int, y: int| -> int { x + y };
-    let z = f(1u, 2);    //~ ERROR mismatched types
+    let mut f = |&mut: x: isize, y: isize| -> isize { x + y };
+    let z = f(1us, 2);    //~ ERROR mismatched types
     println!("{}", z);
 }

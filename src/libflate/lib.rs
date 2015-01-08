@@ -15,8 +15,9 @@
 //! [mz]: https://code.google.com/p/miniz/
 
 #![crate_name = "flate"]
-#![experimental]
+#![unstable]
 #![staged_api]
+#![allow(unknown_features)] #![feature(int_uint)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",

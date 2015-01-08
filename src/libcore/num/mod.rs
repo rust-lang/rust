@@ -726,7 +726,7 @@ impl UnsignedInt for u32 {}
 impl UnsignedInt for u64 {}
 
 /// A generic trait for converting a value to a number.
-#[experimental = "trait is likely to be removed"]
+#[unstable = "trait is likely to be removed"]
 pub trait ToPrimitive {
     /// Converts the value of `self` to an `int`.
     #[inline]
@@ -991,7 +991,7 @@ impl_to_primitive_float! { f32 }
 impl_to_primitive_float! { f64 }
 
 /// A generic trait for converting a number to a value.
-#[experimental = "trait is likely to be removed"]
+#[unstable = "trait is likely to be removed"]
 pub trait FromPrimitive : ::marker::Sized {
     /// Convert an `int` to return an optional value of this type. If the
     /// value cannot be represented by this value, the `None` is returned.
@@ -1073,73 +1073,73 @@ pub trait FromPrimitive : ::marker::Sized {
 }
 
 /// A utility function that just calls `FromPrimitive::from_int`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_int<A: FromPrimitive>(n: int) -> Option<A> {
     FromPrimitive::from_int(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i8`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_i8<A: FromPrimitive>(n: i8) -> Option<A> {
     FromPrimitive::from_i8(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i16`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_i16<A: FromPrimitive>(n: i16) -> Option<A> {
     FromPrimitive::from_i16(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i32`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_i32<A: FromPrimitive>(n: i32) -> Option<A> {
     FromPrimitive::from_i32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i64`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_i64<A: FromPrimitive>(n: i64) -> Option<A> {
     FromPrimitive::from_i64(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_uint`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_uint<A: FromPrimitive>(n: uint) -> Option<A> {
     FromPrimitive::from_uint(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u8`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_u8<A: FromPrimitive>(n: u8) -> Option<A> {
     FromPrimitive::from_u8(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u16`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_u16<A: FromPrimitive>(n: u16) -> Option<A> {
     FromPrimitive::from_u16(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u32`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_u32<A: FromPrimitive>(n: u32) -> Option<A> {
     FromPrimitive::from_u32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u64`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_u64<A: FromPrimitive>(n: u64) -> Option<A> {
     FromPrimitive::from_u64(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_f32`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_f32<A: FromPrimitive>(n: f32) -> Option<A> {
     FromPrimitive::from_f32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_f64`.
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn from_f64<A: FromPrimitive>(n: f64) -> Option<A> {
     FromPrimitive::from_f64(n)
 }
@@ -1190,13 +1190,13 @@ impl_from_primitive! { f64, to_f64 }
 /// ```
 ///
 #[inline]
-#[experimental = "likely to be removed"]
+#[unstable = "likely to be removed"]
 pub fn cast<T: NumCast,U: NumCast>(n: T) -> Option<U> {
     NumCast::from(n)
 }
 
 /// An interface for casting between machine scalars.
-#[experimental = "trait is likely to be removed"]
+#[unstable = "trait is likely to be removed"]
 pub trait NumCast: ToPrimitive {
     /// Creates a number from another value that can be converted into a primitive via the
     /// `ToPrimitive` trait.
@@ -1394,20 +1394,20 @@ pub trait Float
 }
 
 /// A generic trait for converting a string with a radix (base) to a value
-#[experimental = "might need to return Result"]
+#[unstable = "might need to return Result"]
 pub trait FromStrRadix {
     fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
 /// A utility function that just calls FromStrRadix::from_str_radix.
-#[experimental = "might need to return Result"]
+#[unstable = "might need to return Result"]
 pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
 }
 
 macro_rules! from_str_radix_float_impl {
     ($T:ty) => {
-        #[experimental = "might need to return Result"]
+        #[unstable = "might need to return Result"]
         impl FromStr for $T {
             /// Convert a string in base 10 to a float.
             /// Accepts an optional decimal exponent.
@@ -1440,7 +1440,7 @@ macro_rules! from_str_radix_float_impl {
             }
         }
 
-        #[experimental = "might need to return Result"]
+        #[unstable = "might need to return Result"]
         impl FromStrRadix for $T {
             /// Convert a string in a given base to a float.
             ///
@@ -1604,7 +1604,7 @@ from_str_radix_float_impl! { f64 }
 
 macro_rules! from_str_radix_int_impl {
     ($T:ty) => {
-        #[experimental = "might need to return Result"]
+        #[unstable = "might need to return Result"]
         impl FromStr for $T {
             #[inline]
             fn from_str(src: &str) -> Option<$T> {
@@ -1612,7 +1612,7 @@ macro_rules! from_str_radix_int_impl {
             }
         }
 
-        #[experimental = "might need to return Result"]
+        #[unstable = "might need to return Result"]
         impl FromStrRadix for $T {
             fn from_str_radix(src: &str, radix: uint) -> Option<$T> {
                 assert!(radix >= 2 && radix <= 36,

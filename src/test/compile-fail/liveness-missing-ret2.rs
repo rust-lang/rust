@@ -10,7 +10,7 @@
 
 // error-pattern: not all control paths return a value
 
-fn f() -> int {
+fn f() -> isize {
     // Make sure typestate doesn't interpret this match expression as
     // the function result
    match true { true => { } _ => {} };

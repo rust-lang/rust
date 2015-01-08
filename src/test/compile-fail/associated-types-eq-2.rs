@@ -18,9 +18,9 @@ pub trait Foo {
 
 struct Bar;
 
-impl Foo for int {
-    type A = uint;
-    fn boo(&self) -> uint { 42 }
+impl Foo for isize {
+    type A = usize;
+    fn boo(&self) -> usize { 42 }
 }
 
 fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}

@@ -19,10 +19,10 @@ fn separate_arms() {
         None => {
             // It is ok to reassign x here, because there is in
             // fact no outstanding loan of x!
-            x = Some(0i);
+            x = Some(0is);
         }
         Some(ref _i) => {
-            x = Some(1i); //~ ERROR cannot assign
+            x = Some(1is); //~ ERROR cannot assign
         }
     }
     x.clone(); // just to prevent liveness warnings

@@ -11,7 +11,7 @@
 // Test that anonymous lifetimes are not permitted in struct declarations
 
 struct Foo {
-    x: &int //~ ERROR missing lifetime specifier
+    x: &isize //~ ERROR missing lifetime specifier
 }
 
 fn main() {}

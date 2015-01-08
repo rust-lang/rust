@@ -10,7 +10,7 @@
 
 fn main() {
     let sl = vec![1,2,3];
-    let v: int = match sl.as_slice() {
+    let v: isize = match sl.as_slice() {
         [] => 0,
         [a,b,c] => 3,
         [a, rest..] => a,

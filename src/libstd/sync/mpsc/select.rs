@@ -46,7 +46,7 @@
 //! ```
 
 #![allow(dead_code)]
-#![experimental = "This implementation, while likely sufficient, is unsafe and \
+#![unstable = "This implementation, while likely sufficient, is unsafe and \
                    likely to be error prone. At some point in the future this \
                    module will likely be replaced, and it is currently \
                    unknown how much API breakage that will cause. The ability \

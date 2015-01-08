@@ -44,7 +44,7 @@ use core::ops::{Deref, DerefMut};
 /// }
 /// ```
 #[lang = "exchange_heap"]
-#[experimental = "may be renamed; uncertain about custom allocator design"]
+#[unstable = "may be renamed; uncertain about custom allocator design"]
 pub static HEAP: () = ();
 
 /// A type that represents a uniquely-owned value.

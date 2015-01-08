@@ -221,7 +221,7 @@ impl<T> Rc<T> {
     ///
     /// let weak_five = five.downgrade();
     /// ```
-    #[experimental = "Weak pointers may not belong in this module"]
+    #[unstable = "Weak pointers may not belong in this module"]
     pub fn downgrade(&self) -> Weak<T> {
         self.inc_weak();
         Weak {
@@ -234,12 +234,12 @@ impl<T> Rc<T> {
 
 /// Get the number of weak references to this value.
 #[inline]
-#[experimental]
+#[unstable]
 pub fn weak_count<T>(this: &Rc<T>) -> uint { this.weak() - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
-#[experimental]
+#[unstable]
 pub fn strong_count<T>(this: &Rc<T>) -> uint { this.strong() }
 
 /// Returns true if there are no other `Rc` or `Weak<T>` values that share the same inner value.
@@ -255,7 +255,7 @@ pub fn strong_count<T>(this: &Rc<T>) -> uint { this.strong() }
 /// rc::is_unique(&five);
 /// ```
 #[inline]
-#[experimental]
+#[unstable]
 pub fn is_unique<T>(rc: &Rc<T>) -> bool {
     weak_count(rc) == 0 && strong_count(rc) == 1
 }
@@ -277,7 +277,7 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// assert_eq!(rc::try_unwrap(x), Err(Rc::new(4u)));
 /// ```
 #[inline]
-#[experimental]
+#[unstable]
 pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
     if is_unique(&rc) {
         unsafe {
@@ -311,7 +311,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// assert!(rc::get_mut(&mut x).is_none());
 /// ```
 #[inline]
-#[experimental]
+#[unstable]
 pub fn get_mut<'a, T>(rc: &'a mut Rc<T>) -> Option<&'a mut T> {
     if is_unique(rc) {
         let inner = unsafe { &mut **rc._ptr };
@@ -337,7 +337,7 @@ impl<T: Clone> Rc<T> {
     /// let mut_five = five.make_unique();
     /// ```
     #[inline]
-    #[experimental]
+    #[unstable]
     pub fn make_unique(&mut self) -> &mut T {
         if !is_unique(self) {
             *self = Rc::new((**self).clone())
@@ -615,7 +615,7 @@ impl<S: hash::Hasher, T: Hash<S>> Hash<S> for Rc<T> {
     }
 }
 
-#[experimental = "Show is experimental."]
+#[unstable = "Show is experimental."]
 impl<T: fmt::Show> fmt::Show for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Rc({:?})", **self)
@@ -635,7 +635,7 @@ impl<T: fmt::String> fmt::String for Rc<T> {
 ///
 /// See the [module level documentation](../index.html) for more.
 #[unsafe_no_drop_flag]
-#[experimental = "Weak pointers may not belong in this module."]
+#[unstable = "Weak pointers may not belong in this module."]
 pub struct Weak<T> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -644,7 +644,7 @@ pub struct Weak<T> {
     _noshare: marker::NoSync
 }
 
-#[experimental = "Weak pointers may not belong in this module."]
+#[unstable = "Weak pointers may not belong in this module."]
 impl<T> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
@@ -717,7 +717,7 @@ impl<T> Drop for Weak<T> {
     }
 }
 
-#[experimental = "Weak pointers may not belong in this module."]
+#[unstable = "Weak pointers may not belong in this module."]
 impl<T> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
     ///
@@ -739,7 +739,7 @@ impl<T> Clone for Weak<T> {
     }
 }
 
-#[experimental = "Show is experimental."]
+#[unstable = "Show is experimental."]
 impl<T: fmt::Show> fmt::Show for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(Weak)")
@@ -780,7 +780,7 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 }
 
 #[cfg(test)]
-#[allow(experimental)]
+#[allow(unstable)]
 mod tests {
     use super::{Rc, Weak, weak_count, strong_count};
     use std::cell::RefCell;

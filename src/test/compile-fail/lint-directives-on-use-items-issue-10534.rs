@@ -16,7 +16,7 @@
 // ignored.
 
 #[allow(dead_code)]
-mod a { pub static x: int = 3; pub static y: int = 4; }
+mod a { pub static x: isize = 3; pub static y: isize = 4; }
 
 mod b {
     use a::x; //~ ERROR: unused import

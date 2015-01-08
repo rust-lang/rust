@@ -12,16 +12,16 @@
 #![deny(dead_code)]
 
 enum Enum1 {
-    Variant1(int),
+    Variant1(isize),
     Variant2 //~ ERROR: variant is never used
 }
 
 enum Enum2 {
     Variant3(bool),
     #[allow(dead_code)]
-    Variant4(int),
-    Variant5 { _x: int }, //~ ERROR: variant is never used: `Variant5`
-    Variant6(int), //~ ERROR: variant is never used: `Variant6`
+    Variant4(isize),
+    Variant5 { _x: isize }, //~ ERROR: variant is never used: `Variant5`
+    Variant6(isize), //~ ERROR: variant is never used: `Variant6`
     _Variant7,
 }
 

@@ -18,7 +18,7 @@ enum Ref1<'a, T> { //~ ERROR the parameter type `T` may not live long enough
 
 enum Ref2<'a, T> { //~ ERROR the parameter type `T` may not live long enough
     Ref2Variant1,
-    Ref2Variant2(int, &'a T),
+    Ref2Variant2(isize, &'a T),
 }
 
 enum RefOk<'a, T:'a> {
@@ -26,7 +26,7 @@ enum RefOk<'a, T:'a> {
 }
 
 enum RefIndirect<'a, T> { //~ ERROR the parameter type `T` may not live long enough
-    RefIndirectVariant1(int, RefOk<'a,T>)
+    RefIndirectVariant1(isize, RefOk<'a,T>)
 }
 
 enum RefDouble<'a, 'b, T> { //~ ERROR reference has a longer lifetime than the data

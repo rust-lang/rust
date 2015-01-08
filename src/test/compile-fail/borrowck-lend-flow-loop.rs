@@ -16,12 +16,12 @@
 
 #![feature(box_syntax)]
 
-fn borrow(_v: &int) {}
-fn borrow_mut(_v: &mut int) {}
+fn borrow(_v: &isize) {}
+fn borrow_mut(_v: &mut isize) {}
 fn cond() -> bool { panic!() }
 fn produce<T>() -> T { panic!(); }
 
-fn inc(v: &mut Box<int>) {
+fn inc(v: &mut Box<isize>) {
     *v = box() (**v + 1);
 }
 
@@ -41,7 +41,7 @@ fn block_overarching_alias_mut() {
 
     let mut v = box 3;
     let mut x = &mut v;
-    for _ in range(0i, 3) {
+    for _ in range(0is, 3) {
         borrow(&*v); //~ ERROR cannot borrow
     }
     *x = box 5;
@@ -113,8 +113,8 @@ fn while_aliased_mut_cond(cond: bool, cond2: bool) {
     }
 }
 
-fn loop_break_pops_scopes<'r, F>(_v: &'r mut [uint], mut f: F) where
-    F: FnMut(&'r mut uint) -> bool,
+fn loop_break_pops_scopes<'r, F>(_v: &'r mut [usize], mut f: F) where
+    F: FnMut(&'r mut usize) -> bool,
 {
     // Here we check that when you break out of an inner loop, the
     // borrows that go out of scope as you exit the inner loop are
@@ -123,7 +123,7 @@ fn loop_break_pops_scopes<'r, F>(_v: &'r mut [uint], mut f: F) where
     while cond() {
         while cond() {
             // this borrow is limited to the scope of `r`...
-            let r: &'r mut uint = produce();
+            let r: &'r mut usize = produce();
             if !f(&mut *r) {
                 break; // ...so it is not live as exit the `while` loop here
             }
@@ -131,13 +131,15 @@ fn loop_break_pops_scopes<'r, F>(_v: &'r mut [uint], mut f: F) where
     }
 }
 
-fn loop_loop_pops_scopes<'r, F>(_v: &'r mut [uint], mut f: F) where F: FnMut(&'r mut uint) -> bool {
+fn loop_loop_pops_scopes<'r, F>(_v: &'r mut [usize], mut f: F)
+    where F: FnMut(&'r mut usize) -> bool
+{
     // Similar to `loop_break_pops_scopes` but for the `loop` keyword
 
     while cond() {
         while cond() {
             // this borrow is limited to the scope of `r`...
-            let r: &'r mut uint = produce();
+            let r: &'r mut usize = produce();
             if !f(&mut *r) {
                 continue; // ...so it is not live as exit (and re-enter) the `while` loop here
             }

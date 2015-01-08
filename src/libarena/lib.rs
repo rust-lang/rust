@@ -20,7 +20,7 @@
 //! more complex, slower arena which can hold objects of any type.
 
 #![crate_name = "arena"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -32,6 +32,7 @@
 #![feature(unsafe_destructor)]
 #![feature(unboxed_closures)]
 #![feature(box_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 #![allow(missing_docs)]
 
 extern crate alloc;

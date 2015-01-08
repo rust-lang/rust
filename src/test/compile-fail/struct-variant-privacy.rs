@@ -9,7 +9,7 @@
 // except according to those terms.
 mod foo {
     enum Bar {
-        Baz { a: int }
+        Baz { a: isize }
     }
 }
 

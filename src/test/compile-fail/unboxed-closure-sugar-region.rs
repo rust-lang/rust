@@ -29,14 +29,14 @@ fn same_type<A,B:Eq<A>>(a: A, b: B) { }
 
 fn test<'a,'b>() {
     // Parens are equivalent to omitting default in angle.
-    eq::< Foo<(int,),()>,               Foo(int)                      >();
+    eq::< Foo<(isize,),()>,               Foo(isize)                      >();
 
     // Here we specify 'static explicitly in angle-bracket version.
     // Parenthesized winds up getting inferred.
-    eq::< Foo<'static, (int,),()>,      Foo(int)                      >();
+    eq::< Foo<'static, (isize,),()>,      Foo(isize)                      >();
 }
 
-fn test2(x: &Foo<(int,),()>, y: &Foo(int)) {
+fn test2(x: &Foo<(isize,),()>, y: &Foo(isize)) {
     // Here, the omitted lifetimes are expanded to distinct things.
     same_type(x, y) //~ ERROR cannot infer
 }

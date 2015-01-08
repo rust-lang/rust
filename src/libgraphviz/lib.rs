@@ -265,7 +265,7 @@
 //! * [DOT language](http://www.graphviz.org/doc/info/lang.html)
 
 #![crate_name = "graphviz"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -273,6 +273,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 #![feature(slicing_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 use self::LabelText::*;
 

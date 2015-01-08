@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> int {
-    let x: int;
+fn foo() -> isize {
+    let x: isize;
 
-    while 1i != 2  {
+    while 1is != 2  {
         break;
         x = 0;
     }
 
     println!("{}", x); //~ ERROR use of possibly uninitialized variable: `x`
 
-    return 17i;
+    return 17is;
 }
 
 fn main() { println!("{}", foo()); }

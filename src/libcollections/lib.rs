@@ -14,7 +14,7 @@
 
 
 #![crate_name = "collections"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -27,6 +27,7 @@
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
 #![feature(old_impl_check)]
+#![allow(unknown_features)] #![feature(int_uint)]
 #![no_std]
 
 #[macro_use]

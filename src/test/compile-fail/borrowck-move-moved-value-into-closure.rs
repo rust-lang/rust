@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-fn call_f<F:FnOnce() -> int>(f: F) -> int {
+fn call_f<F:FnOnce() -> isize>(f: F) -> isize {
     f()
 }
 

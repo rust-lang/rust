@@ -12,26 +12,26 @@
 
 struct S1<X: ?Sized> {
     f1: X, //~ ERROR `core::marker::Sized` is not implemented
-    f2: int,
+    f2: isize,
 }
 struct S2<X: ?Sized> {
-    f: int,
+    f: isize,
     g: X, //~ ERROR `core::marker::Sized` is not implemented
-    h: int,
+    h: isize,
 }
 struct S3 {
     f: str, //~ ERROR `core::marker::Sized` is not implemented
-    g: [uint]
+    g: [usize]
 }
 struct S4 {
     f: str, //~ ERROR `core::marker::Sized` is not implemented
-    g: uint
+    g: usize
 }
 enum E<X: ?Sized> {
-    V1(X, int), //~ERROR `core::marker::Sized` is not implemented
+    V1(X, isize), //~ERROR `core::marker::Sized` is not implemented
 }
 enum F<X: ?Sized> {
-    V2{f1: X, f: int}, //~ERROR `core::marker::Sized` is not implemented
+    V2{f1: X, f: isize}, //~ERROR `core::marker::Sized` is not implemented
 }
 
 pub fn main() {

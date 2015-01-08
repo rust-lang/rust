@@ -18,9 +18,9 @@ pub trait Foo {
 
 struct Bar;
 
-impl Foo for int {
-    type A = uint;
-    fn boo(&self) -> uint {
+impl Foo for isize {
+    type A = usize;
+    fn boo(&self) -> usize {
         42
     }
 }
@@ -40,7 +40,7 @@ pub fn baz(x: &Foo<A=Bar>) {
 
 
 pub fn main() {
-    let a = 42i;
+    let a = 42is;
     foo1(a); //~ERROR expected usize, found struct Bar
     baz(&a); //~ERROR expected usize, found struct Bar
 }

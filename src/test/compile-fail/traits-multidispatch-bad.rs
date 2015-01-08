@@ -14,9 +14,9 @@ trait Convert<Target> {
     fn convert(&self) -> Target;
 }
 
-impl Convert<uint> for int {
-    fn convert(&self) -> uint {
-        *self as uint
+impl Convert<usize> for isize {
+    fn convert(&self) -> usize {
+        *self as usize
     }
 }
 
@@ -26,7 +26,7 @@ where T : Convert<U>
 }
 
 fn a() {
-    test(22i, 44i); //~ ERROR not implemented
+    test(22is, 44is); //~ ERROR not implemented
 }
 
 fn main() {}

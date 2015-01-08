@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct C {
-    x: int,
+    x: isize,
 }
 
 impl Drop for C {

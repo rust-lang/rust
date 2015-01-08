@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const C1: &'static mut [uint] = &mut [];
+const C1: &'static mut [usize] = &mut [];
 //~^ ERROR: constants are not allowed to have mutable references
 
-static mut S: uint = 3;
-const C2: &'static mut uint = &mut S;
+static mut S: usize = 3;
+const C2: &'static mut usize = &mut S;
 //~^ ERROR: constants cannot refer to other statics
 //~^^ ERROR: are not allowed to have mutable references
 

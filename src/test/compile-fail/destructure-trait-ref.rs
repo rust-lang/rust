@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 trait T {}
-impl T for int {}
+impl T for isize {}
 
 fn main() {
     // For an expression of the form:
@@ -27,17 +27,17 @@ fn main() {
     // if n > m, it's a type mismatch error.
 
     // n < m
-    let &x = &(&1i as &T);
-    let &x = &&(&1i as &T);
-    let &&x = &&(&1i as &T);
+    let &x = &(&1is as &T);
+    let &x = &&(&1is as &T);
+    let &&x = &&(&1is as &T);
 
     // n == m
-    let &x = &1i as &T;      //~ ERROR type `&T` cannot be dereferenced
-    let &&x = &(&1i as &T);  //~ ERROR type `&T` cannot be dereferenced
-    let box x = box 1i as Box<T>; //~ ERROR type `Box<T>` cannot be dereferenced
+    let &x = &1is as &T;      //~ ERROR type `&T` cannot be dereferenced
+    let &&x = &(&1is as &T);  //~ ERROR type `&T` cannot be dereferenced
+    let box x = box 1is as Box<T>; //~ ERROR type `Box<T>` cannot be dereferenced
 
     // n > m
-    let &&x = &1i as &T;     //~ ERROR found &-ptr
-    let &&&x = &(&1i as &T); //~ ERROR found &-ptr
-    let box box x = box 1i as Box<T>;    //~ ERROR found box
+    let &&x = &1is as &T;     //~ ERROR found &-ptr
+    let &&&x = &(&1is as &T); //~ ERROR found &-ptr
+    let box box x = box 1is as Box<T>;    //~ ERROR found box
 }

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct BuildData {
-    foo: int,
-    foo: int, //~ ERROR field `foo` is already declared
+    foo: isize,
+    foo: isize, //~ ERROR field `foo` is already declared
 }
 
 fn main() {

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f() {
-    let x = [1i].iter(); //~ ERROR borrowed value does not live long enough
+    let x = [1is].iter(); //~ ERROR borrowed value does not live long enough
                          //~^^ NOTE reference must be valid for the block
                          //~^^ HELP consider using a `let` binding to increase its lifetime
 }

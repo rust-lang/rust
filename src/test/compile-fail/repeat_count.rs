@@ -24,6 +24,6 @@ fn main() {
     //~^ ERROR: expected `usize`, found `&'static str`
     let f = [0; -4];
     //~^ ERROR expected positive integer for repeat count, found negative integer
-    let f = [0u; -1];
+    let f = [0us; -1];
     //~^ ERROR expected positive integer for repeat count, found negative integer
 }

@@ -14,15 +14,15 @@ use std::iter::{Range,range};
 
 trait Itble<'r, T, I: Iterator<Item=T>> { fn iter(&'r self) -> I; }
 
-impl<'r> Itble<'r, uint, Range<uint>> for (uint, uint) {
-    fn iter(&'r self) -> Range<uint> {
+impl<'r> Itble<'r, usize, Range<usize>> for (usize, usize) {
+    fn iter(&'r self) -> Range<usize> {
         let &(min, max) = self;
         range(min, max)
     }
 }
 
-fn check<'r, I: Iterator<Item=uint>, T: Itble<'r, uint, I>>(cont: &T) -> bool {
-//~^ HELP: consider using an explicit lifetime parameter as shown: fn check<'r, I: Iterator<Item = uint>, T: Itble<'r, uint, I>>(cont: &'r T)
+fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool {
+//~^ HELP: consider using an explicit lifetime parameter as shown: fn check<'r, I: Iterator<Item = usize>, T: Itble<'r, usize, I>>(cont: &'r T)
     let cont_iter = cont.iter(); //~ ERROR: cannot infer
     let result = cont_iter.fold(Some(0u16), |state, val| {
         state.map_or(None, |mask| {

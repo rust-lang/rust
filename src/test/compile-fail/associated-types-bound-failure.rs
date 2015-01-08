@@ -11,7 +11,7 @@
 // Test equality constraints on associated types in a where clause.
 
 pub trait ToInt {
-    fn to_int(&self) -> int;
+    fn to_int(&self) -> isize;
 }
 
 pub trait GetToInt
@@ -21,13 +21,13 @@ pub trait GetToInt
     fn get(&self) -> <Self as GetToInt>::R;
 }
 
-fn foo<G>(g: G) -> int
+fn foo<G>(g: G) -> isize
     where G : GetToInt
 {
     ToInt::to_int(&g.get()) //~ ERROR not implemented
 }
 
-fn bar<G : GetToInt>(g: G) -> int
+fn bar<G : GetToInt>(g: G) -> isize
     where G::R : ToInt
 {
     ToInt::to_int(&g.get()) // OK

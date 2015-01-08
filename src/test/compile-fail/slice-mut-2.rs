@@ -11,8 +11,8 @@
 // Test mutability and slicing syntax.
 
 fn main() {
-    let x: &[int] = &[1, 2, 3, 4, 5];
+    let x: &[isize] = &[1, 2, 3, 4, 5];
     // Can't mutably slice an immutable slice
-    let slice: &mut [int] = &mut [0, 1];
-    let _ = &mut x[2..4]; //~ERROR cannot borrow immutable dereference of `&`-pointer `*x` as mutabl
+    let slice: &mut [isize] = &mut [0, 1];
+    let _ = &mut x[2..4]; //~ERROR cannot borrow immutable borrowed content `*x` as mutable
 }

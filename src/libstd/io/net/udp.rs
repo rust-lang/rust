@@ -92,13 +92,13 @@ impl UdpSocket {
     }
 
     /// Joins a multicast IP address (becomes a member of it)
-    #[experimental]
+    #[unstable]
     pub fn join_multicast(&mut self, multi: IpAddr) -> IoResult<()> {
         self.inner.join_multicast(multi)
     }
 
     /// Leaves a multicast IP address (drops membership from it)
-    #[experimental]
+    #[unstable]
     pub fn leave_multicast(&mut self, multi: IpAddr) -> IoResult<()> {
         self.inner.leave_multicast(multi)
     }
@@ -106,25 +106,25 @@ impl UdpSocket {
     /// Set the multicast loop flag to the specified value
     ///
     /// This lets multicast packets loop back to local sockets (if enabled)
-    #[experimental]
+    #[unstable]
     pub fn set_multicast_loop(&mut self, on: bool) -> IoResult<()> {
         self.inner.set_multicast_loop(on)
     }
 
     /// Sets the multicast TTL
-    #[experimental]
+    #[unstable]
     pub fn set_multicast_ttl(&mut self, ttl: int) -> IoResult<()> {
         self.inner.multicast_time_to_live(ttl)
     }
 
     /// Sets this socket's TTL
-    #[experimental]
+    #[unstable]
     pub fn set_ttl(&mut self, ttl: int) -> IoResult<()> {
         self.inner.time_to_live(ttl)
     }
 
     /// Sets the broadcast flag on or off
-    #[experimental]
+    #[unstable]
     pub fn set_broadcast(&mut self, broadcast: bool) -> IoResult<()> {
         self.inner.set_broadcast(broadcast)
     }
@@ -132,7 +132,7 @@ impl UdpSocket {
     /// Sets the read/write timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
-    #[experimental = "the timeout argument may change in type and value"]
+    #[unstable = "the timeout argument may change in type and value"]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_timeout(timeout_ms)
     }
@@ -140,7 +140,7 @@ impl UdpSocket {
     /// Sets the read timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
-    #[experimental = "the timeout argument may change in type and value"]
+    #[unstable = "the timeout argument may change in type and value"]
     pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_read_timeout(timeout_ms)
     }
@@ -148,7 +148,7 @@ impl UdpSocket {
     /// Sets the write timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
-    #[experimental = "the timeout argument may change in type and value"]
+    #[unstable = "the timeout argument may change in type and value"]
     pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_write_timeout(timeout_ms)
     }
@@ -176,7 +176,7 @@ impl sys_common::AsInner<UdpSocketImp> for UdpSocket {
 }
 
 #[cfg(test)]
-#[allow(experimental)]
+#[allow(unstable)]
 mod test {
     use prelude::v1::*;
 

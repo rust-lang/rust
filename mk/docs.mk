@@ -9,7 +9,7 @@
 # except according to those terms.
 
 ######################################################################
-# The various pieces of standalone documentation: guides, manual, etc
+# The various pieces of standalone documentation.
 #
 # The DOCS variable is their names (with no file extension).
 #
@@ -25,13 +25,11 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial guide guide-ffi guide-macros guide-ownership \
-	guide-tasks guide-container guide-pointers guide-testing \
-	guide-plugin guide-crates complement-bugreport guide-error-handling \
-	complement-lang-faq complement-design-faq complement-project-faq \
-    rustdoc guide-unsafe guide-strings reference
+DOCS := index intro tutorial complement-bugreport \
+    complement-lang-faq complement-design-faq complement-project-faq \
+    rustdoc reference
 
-PDF_DOCS := guide reference
+PDF_DOCS := reference
 
 RUSTDOC_DEPS_reference := doc/full-toc.inc
 RUSTDOC_FLAGS_reference := --html-in-header=doc/full-toc.inc
@@ -61,9 +59,15 @@ RUSTDOC_EXE = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
 # ./configure
 RUSTDOC = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(RUSTDOC_EXE)
 
+# The rustbook executable...
+RUSTBOOK_EXE = $(HBIN2_H_$(CFG_BUILD))/rustbook$(X_$(CFG_BUILD))
+# ...with rpath included in case --disable-rpath was provided to
+# ./configure
+RUSTBOOK = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(RUSTBOOK_EXE)
+
 D := $(S)src/doc
 
-DOC_TARGETS :=
+DOC_TARGETS := trpl
 COMPILER_DOC_TARGETS :=
 DOC_L10N_TARGETS :=
 
@@ -270,3 +274,9 @@ endif
 
 docs: $(DOC_TARGETS)
 compiler-docs: $(COMPILER_DOC_TARGETS)
+
+trpl: doc/book/index.html
+
+doc/book/index.html: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/trpl/*.md)
+	$(Q)rm -rf doc/book
+	$(Q)$(RUSTBOOK) build $(S)src/doc/trpl doc/book

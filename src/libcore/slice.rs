@@ -457,7 +457,7 @@ impl<T> SliceExt for [T] {
         self.binary_search_by(|p| p.cmp(x))
     }
 
-    #[experimental]
+    #[unstable]
     fn next_permutation(&mut self) -> bool where T: Ord {
         // These cases only have 1 permutation each, so we can't do anything.
         if self.len() < 2 { return false; }
@@ -488,7 +488,7 @@ impl<T> SliceExt for [T] {
         true
     }
 
-    #[experimental]
+    #[unstable]
     fn prev_permutation(&mut self) -> bool where T: Ord {
         // These cases only have 1 permutation each, so we can't do anything.
         if self.len() < 2 { return false; }
@@ -630,25 +630,25 @@ impl<T> ops::IndexMut<ops::FullRange> for [T] {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Data that is viewable as a slice.
-#[experimental = "will be replaced by slice syntax"]
+#[unstable = "will be replaced by slice syntax"]
 pub trait AsSlice<T> {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a [T];
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<T> AsSlice<T> for [T] {
     #[inline(always)]
     fn as_slice<'a>(&'a self) -> &'a [T] { self }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a mut U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
@@ -754,7 +754,7 @@ pub struct Iter<'a, T: 'a> {
     marker: marker::ContravariantLifetime<'a>
 }
 
-#[experimental]
+#[unstable]
 impl<'a, T> ops::Index<ops::Range<uint>> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -763,7 +763,7 @@ impl<'a, T> ops::Index<ops::Range<uint>> for Iter<'a, T> {
     }
 }
 
-#[experimental]
+#[unstable]
 impl<'a, T> ops::Index<ops::RangeTo<uint>> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -772,7 +772,7 @@ impl<'a, T> ops::Index<ops::RangeTo<uint>> for Iter<'a, T> {
     }
 }
 
-#[experimental]
+#[unstable]
 impl<'a, T> ops::Index<ops::RangeFrom<uint>> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -781,7 +781,7 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>> for Iter<'a, T> {
     }
 }
 
-#[experimental]
+#[unstable]
 impl<'a, T> ops::Index<ops::FullRange> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -795,7 +795,7 @@ impl<'a, T> Iter<'a, T> {
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
-    #[experimental]
+    #[unstable]
     pub fn as_slice(&self) -> &'a [T] {
         make_slice!(T => &'a [T]: self.ptr, self.end)
     }
@@ -813,7 +813,7 @@ impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { *self }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -847,7 +847,7 @@ pub struct IterMut<'a, T: 'a> {
 }
 
 
-#[experimental]
+#[unstable]
 impl<'a, T> ops::Index<ops::Range<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -855,7 +855,7 @@ impl<'a, T> ops::Index<ops::Range<uint>> for IterMut<'a, T> {
         self.index(&ops::FullRange).index(index)
     }
 }
-#[experimental]
+#[unstable]
 impl<'a, T> ops::Index<ops::RangeTo<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -863,7 +863,7 @@ impl<'a, T> ops::Index<ops::RangeTo<uint>> for IterMut<'a, T> {
         self.index(&ops::FullRange).index(index)
     }
 }
-#[experimental]
+#[unstable]
 impl<'a, T> ops::Index<ops::RangeFrom<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -871,7 +871,7 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>> for IterMut<'a, T> {
         self.index(&ops::FullRange).index(index)
     }
 }
-#[experimental]
+#[unstable]
 impl<'a, T> ops::Index<ops::FullRange> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -880,7 +880,7 @@ impl<'a, T> ops::Index<ops::FullRange> for IterMut<'a, T> {
     }
 }
 
-#[experimental]
+#[unstable]
 impl<'a, T> ops::IndexMut<ops::Range<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -888,7 +888,7 @@ impl<'a, T> ops::IndexMut<ops::Range<uint>> for IterMut<'a, T> {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-#[experimental]
+#[unstable]
 impl<'a, T> ops::IndexMut<ops::RangeTo<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -896,7 +896,7 @@ impl<'a, T> ops::IndexMut<ops::RangeTo<uint>> for IterMut<'a, T> {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-#[experimental]
+#[unstable]
 impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -904,7 +904,7 @@ impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>> for IterMut<'a, T> {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-#[experimental]
+#[unstable]
 impl<'a, T> ops::IndexMut<ops::FullRange> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -921,7 +921,7 @@ impl<'a, T> IterMut<'a, T> {
     /// to consume the iterator. Consider using the `Slice` and
     /// `SliceMut` implementations for obtaining slices with more
     /// restricted lifetimes that do not consume the iterator.
-    #[experimental]
+    #[unstable]
     pub fn into_slice(self) -> &'a mut [T] {
         make_slice!(T => &'a mut [T]: self.ptr, self.end)
     }
@@ -1269,7 +1269,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     }
 }
 
-#[experimental = "trait is experimental"]
+#[unstable = "trait is experimental"]
 impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1417,7 +1417,7 @@ pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
 //
 
 /// Operations on `[u8]`.
-#[experimental = "needs review"]
+#[unstable = "needs review"]
 pub mod bytes {
     use ptr;
     use slice::SliceExt;
@@ -1430,7 +1430,7 @@ pub mod bytes {
 
     impl MutableByteVector for [u8] {
         #[inline]
-        #[allow(experimental)]
+        #[allow(unstable)]
         fn set_memory(&mut self, value: u8) {
             unsafe { ptr::set_memory(self.as_mut_ptr(), value, self.len()) };
         }
@@ -1506,7 +1506,7 @@ impl<T: PartialOrd> PartialOrd for [T] {
 }
 
 /// Extension methods for slices containing integers.
-#[experimental]
+#[unstable]
 pub trait IntSliceExt<U, S> {
     /// Converts the slice to an immutable slice of unsigned integers with the same width.
     fn as_unsigned<'a>(&'a self) -> &'a [U];
@@ -1521,7 +1521,7 @@ pub trait IntSliceExt<U, S> {
 
 macro_rules! impl_int_slice {
     ($u:ty, $s:ty, $t:ty) => {
-        #[experimental]
+        #[unstable]
         impl IntSliceExt<$u, $s> for [$t] {
             #[inline]
             fn as_unsigned(&self) -> &[$u] { unsafe { transmute(self) } }

@@ -10,7 +10,7 @@
 
 
 struct Bar<'a> {
-    f: &'a int,
+    f: &'a isize,
 }
 
 impl<'a> Drop for Bar<'a> {
@@ -20,7 +20,7 @@ impl<'a> Drop for Bar<'a> {
 }
 
 struct Baz {
-    f: &'static int,
+    f: &'static isize,
 }
 
 impl Drop for Baz {
