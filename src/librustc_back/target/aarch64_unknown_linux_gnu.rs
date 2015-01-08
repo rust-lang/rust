@@ -18,7 +18,7 @@ pub fn target() -> Target {
                       n32:64-S128".to_string(),
         llvm_target: "aarch64-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),
-        target_word_size: "64".to_string(),
+        target_pointer_width: "64".to_string(),
         arch: "aarch64".to_string(),
         target_os: "linux".to_string(),
         options: base,

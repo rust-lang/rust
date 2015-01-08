@@ -182,12 +182,14 @@ mod imp {
             sa_restorer: *mut libc::c_void,
         }
 
-        #[cfg(target_word_size = "32")]
+        #[cfg(any(all(stage0, target_word_size = "32"),
+                  all(not(stage0), target_pointer_width = "32")))]
         #[repr(C)]
         pub struct sigset_t {
             __val: [libc::c_ulong; 32],
         }
-        #[cfg(target_word_size = "64")]
+        #[cfg(any(all(stage0, target_word_size = "64"),
+                  all(not(stage0), target_pointer_width = "64")))]
         #[repr(C)]
         pub struct sigset_t {
             __val: [libc::c_ulong; 16],

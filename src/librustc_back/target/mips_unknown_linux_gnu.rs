@@ -19,7 +19,7 @@ pub fn target() -> Target {
                       -a:0:64-n32".to_string(),
         llvm_target: "mips-unknown-linux-gnu".to_string(),
         target_endian: "big".to_string(),
-        target_word_size: "32".to_string(),
+        target_pointer_width: "32".to_string(),
         arch: "mips".to_string(),
         target_os: "linux".to_string(),
         options: super::linux_base::opts()

@@ -612,7 +612,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
 
     let end = sess.target.target.target_endian.index(&FullRange);
     let arch = sess.target.target.arch.index(&FullRange);
-    let wordsz = sess.target.target.target_word_size.index(&FullRange);
+    let wordsz = sess.target.target.target_pointer_width.index(&FullRange);
     let os = sess.target.target.target_os.index(&FullRange);
 
     let fam = match sess.target.target.options.is_like_windows {
@@ -627,7 +627,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
          mk(InternedString::new("target_family"), fam),
          mk(InternedString::new("target_arch"), intern(arch)),
          mk(InternedString::new("target_endian"), intern(end)),
-         mk(InternedString::new("target_word_size"),
+         mk(InternedString::new("target_pointer_width"),
             intern(wordsz))
     );
 }
@@ -661,7 +661,7 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     }
     };
 
-    let (int_type, uint_type) = match target.target_word_size.index(&FullRange) {
+    let (int_type, uint_type) = match target.target_pointer_width.index(&FullRange) {
         "32" => (ast::TyI32, ast::TyU32),
         "64" => (ast::TyI64, ast::TyU64),
         w    => sp.handler().fatal((format!("target specification was invalid: unrecognized \
