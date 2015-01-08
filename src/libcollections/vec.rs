@@ -44,6 +44,8 @@
 //! let two = xs.pop();
 //! ```
 
+#![stable]
+
 use core::prelude::*;
 
 use alloc::boxed::Box;
