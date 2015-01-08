@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -102,8 +102,8 @@ impl<T: ?Sized + Ord> Ord for Box<T> {
     fn cmp(&self, other: &Box<T>) -> Ordering {
         Ord::cmp(&**self, &**other)
     }
-
-#[stable]}
+}
+#[stable]
 impl<T: ?Sized + Eq> Eq for Box<T> {}
 
 #[cfg(stage0)]
