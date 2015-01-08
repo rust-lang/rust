@@ -25,17 +25,17 @@ struct Panolpy {
 }
 
 fn foo(p: &Panolpy) {
-    assert_eq!(22 >> p.i8, 11_i8);
-    assert_eq!(22 >> p.i16, 11_i16);
-    assert_eq!(22 >> p.i32, 11_i32);
-    assert_eq!(22 >> p.i64, 11_i64);
-    assert_eq!(22 >> p.isize, 11_is);
+    assert_eq!(22_i32 >> p.i8, 11_i32);
+    assert_eq!(22_i32 >> p.i16, 11_i32);
+    assert_eq!(22_i32 >> p.i32, 11_i32);
+    assert_eq!(22_i32 >> p.i64, 11_i32);
+    assert_eq!(22_i32 >> p.isize, 11_i32);
 
-    assert_eq!(22 >> p.u8, 11_u8);
-    assert_eq!(22 >> p.u16, 11_u16);
-    assert_eq!(22 >> p.u32, 11_u32);
-    assert_eq!(22 >> p.u64, 11_u64);
-    assert_eq!(22 >> p.usize, 11_us);
+    assert_eq!(22_i32 >> p.u8, 11_i32);
+    assert_eq!(22_i32 >> p.u16, 11_i32);
+    assert_eq!(22_i32 >> p.u32, 11_i32);
+    assert_eq!(22_i32 >> p.u64, 11_i32);
+    assert_eq!(22_i32 >> p.usize, 11_i32);
 }
 
 fn main() {
