@@ -13,6 +13,7 @@ use prelude::v1::*;
 use collections;
 use ffi::CString;
 use hash::Hash;
+use collections::hash_map::Hasher;
 use io::fs::PathExtensions;
 use io::process::{ProcessExit, ExitStatus, ExitSignal};
 use io::{IoResult, IoError};
@@ -109,7 +110,7 @@ impl Process {
                               out_fd: Option<P>, err_fd: Option<P>)
                               -> IoResult<Process>
         where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
-              K: BytesContainer + Eq + Hash, V: BytesContainer
+              K: BytesContainer + Eq + Hash<Hasher>, V: BytesContainer
     {
         use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
         use libc::consts::os::extra::{
@@ -424,8 +425,10 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
     }
 }
 
-fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T where
-    K: BytesContainer + Eq + Hash, V: BytesContainer, F: FnOnce(*mut c_void) -> T,
+fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T
+    where K: BytesContainer + Eq + Hash<Hasher>,
+          V: BytesContainer,
+          F: FnOnce(*mut c_void) -> T,
 {
     // On Windows we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final

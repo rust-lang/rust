@@ -33,8 +33,7 @@ use middle::ty::{self, Ty};
 use middle::astencode::vtable_decoder_helpers;
 
 use std::collections::HashMap;
-use std::hash::Hash;
-use std::hash;
+use std::hash::{self, Hash, SipHasher};
 use std::io::extensions::u64_from_be_bytes;
 use std::io;
 use std::num::FromPrimitive;
@@ -94,7 +93,7 @@ pub fn maybe_find_item<'a>(item_id: ast::NodeId,
     }
     lookup_hash(items,
                 |a| eq_item(a, item_id),
-                hash::hash(&(item_id as i64)))
+                hash::hash::<i64, SipHasher>(&(item_id as i64)))
 }
 
 fn find_item<'a>(item_id: ast::NodeId, items: rbml::Doc<'a>) -> rbml::Doc<'a> {

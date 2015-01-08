@@ -14,7 +14,7 @@
 extern crate "typeid-intrinsic" as other1;
 extern crate "typeid-intrinsic2" as other2;
 
-use std::hash;
+use std::hash::{self, SipHasher};
 use std::intrinsics;
 use std::intrinsics::TypeId;
 
@@ -70,5 +70,6 @@ pub fn main() {
     // check it has a hash
     let (a, b) = (TypeId::of::<uint>(), TypeId::of::<uint>());
 
-    assert_eq!(hash::hash(&a), hash::hash(&b));
+    assert_eq!(hash::hash::<TypeId, SipHasher>(&a),
+               hash::hash::<TypeId, SipHasher>(&b));
 }
