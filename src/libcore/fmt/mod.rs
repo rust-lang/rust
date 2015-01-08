@@ -11,6 +11,7 @@
 //! Utilities for formatting and printing strings
 
 #![allow(unused_variables)]
+#![stable]
 
 use any;
 use cell::{Cell, RefCell, Ref, RefMut};
