@@ -12,6 +12,7 @@
 #![allow(unknown_features)]
 #![feature(slicing_syntax, unboxed_closures)]
 #![feature(box_syntax)]
+#![feature(int_uint)]
 
 #![deny(warnings)]
 
