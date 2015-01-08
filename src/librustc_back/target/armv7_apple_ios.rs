@@ -8,21 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::Target;
+use target::{Target, TargetOptions};
 use super::apple_ios_base::{opts, Arch};
 
 pub fn target() -> Target {
     Target {
-        data_layout: "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16\
-                      -i32:32:32-i64:32:64\
-                      -f32:32:32-f64:32:64-v64:64:64\
-                      -v128:128:128-a:0:64-f80:128:128\
-                      -n8:16:32".to_string(),
-        llvm_target: "i386-apple-ios".to_string(),
+        data_layout: "e-p:32:32-f64:32:64-v64:32:64-v128:32:128-a:0:32-n32-S32".to_string(),
+        llvm_target: "armv7-apple-ios".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
-        arch: "x86".to_string(),
+        arch: "arm".to_string(),
         target_os: "ios".to_string(),
-        options: opts(Arch::I386)
+        options: TargetOptions {
+            features: "+v7,+vfp3,+neon".to_string(),
+            .. opts(Arch::Armv7)
+        }
     }
 }
