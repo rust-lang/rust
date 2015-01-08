@@ -281,7 +281,14 @@ pub fn kind_for_unboxed_closure(ccx: &CrateContext, closure_id: ast::DefId)
 
 pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               fn_ty: Ty<'tcx>, name: &str) -> ValueRef {
+    debug!("decl_rust_fn(fn_ty={}, name={:?})",
+           fn_ty.repr(ccx.tcx()),
+           name);
+
     let fn_ty = monomorphize::normalize_associated_type(ccx.tcx(), &fn_ty);
+
+    debug!("decl_rust_fn: fn_ty={} (after normalized associated types)",
+           fn_ty.repr(ccx.tcx()));
 
     let function_type; // placeholder so that the memory ownership works out ok
 
@@ -305,10 +312,12 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sig = ty::erase_late_bound_regions(ccx.tcx(), sig);
     let sig = ty::Binder(sig);
 
+    debug!("decl_rust_fn: sig={} (after erasing regions)",
+           sig.repr(ccx.tcx()));
+
     let llfty = type_of_rust_fn(ccx, env, &sig, abi);
 
-    debug!("decl_rust_fn(sig={}, type={})",
-           sig.repr(ccx.tcx()),
+    debug!("decl_rust_fn: llfty={}",
            ccx.tn().type_to_string(llfty));
 
     let llfn = decl_fn(ccx, name, llvm::CCallConv, llfty, sig.0.output /* (1) */);

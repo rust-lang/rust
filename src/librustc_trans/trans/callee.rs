@@ -265,7 +265,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let _icx = push_ctxt("trans_fn_pointer_shim");
     let tcx = ccx.tcx();
 
-    let bare_fn_ty = normalize_ty(tcx, bare_fn_ty);
+    let bare_fn_ty = erase_regions(tcx, &bare_fn_ty);
     match ccx.fn_pointer_shims().borrow().get(&bare_fn_ty) {
         Some(&llval) => { return llval; }
         None => { }

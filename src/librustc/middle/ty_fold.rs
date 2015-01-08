@@ -862,7 +862,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
 ///////////////////////////////////////////////////////////////////////////
 // Region eraser
 //
-// Replaces all free regions with 'static. Useful in trans.
+// Replaces all free regions with 'static. Useful in contexts, such as
+// method probing, where precise region relationships are not
+// important. Note that in trans you should use
+// `common::erase_regions` instead.
 
 pub struct RegionEraser<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,

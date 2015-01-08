@@ -285,7 +285,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     // Rust types are defined as the same LLVM types.  If we don't do
     // this then, e.g. `Option<{myfield: bool}>` would be a different
     // type than `Option<myrec>`.
-    let t_norm = normalize_ty(cx.tcx(), t);
+    let t_norm = erase_regions(cx.tcx(), &t);
 
     if t != t_norm {
         let llty = type_of(cx, t_norm);

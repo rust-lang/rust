@@ -58,16 +58,21 @@ use util::nodemap::FnvHashSet;
 
 pub use trans::context::CrateContext;
 
-/// Returns an equivalent type with all the typedefs and self regions removed.
-pub fn normalize_ty<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let u = TypeNormalizer(cx).fold_ty(ty);
-    debug!("normalize_ty({}) = {}",
-           ty.repr(cx), u.repr(cx));
-    return u;
+/// Returns an equivalent value with all free regions removed (note
+/// that late-bound regions remain, because they are important for
+/// subtyping, but they are anonymized and normalized as well). This
+/// is a stronger, caching version of `ty_fold::erase_regions`.
+pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx>
+{
+    let value1 = value.fold_with(&mut RegionEraser(cx));
+    debug!("erase_regions({}) = {}",
+           value.repr(cx), value1.repr(cx));
+    return value1;
 
-    struct TypeNormalizer<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
+    struct RegionEraser<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
 
-    impl<'a, 'tcx> TypeFolder<'tcx> for TypeNormalizer<'a, 'tcx> {
+    impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
         fn tcx(&self) -> &ty::ctxt<'tcx> { self.0 }
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -84,7 +89,6 @@ pub fn normalize_ty<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
             where T : TypeFoldable<'tcx> + Repr<'tcx>
         {
-            // FIXME(#20526) this should replace `enter_region_binder`/`exit_region_binder`.
             let u = ty::anonymize_late_bound_regions(self.tcx(), t);
             ty_fold::super_fold_binder(self, &u)
         }
@@ -989,7 +993,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 let tcx = ccx.tcx();
 
 // Remove any references to regions; this helps improve caching.
-let trait_ref = ty_fold::erase_regions(tcx, trait_ref);
+let trait_ref = erase_regions(tcx, &trait_ref);
 
 // First check the cache.
 match ccx.trait_cache().borrow().get(&trait_ref) {
