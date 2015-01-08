@@ -244,11 +244,10 @@ pub struct Normalized<'tcx,T> {
 pub type NormalizedTy<'tcx> = Normalized<'tcx, Ty<'tcx>>;
 
 impl<'tcx,T> Normalized<'tcx,T> {
-    fn with<U>(self, value: U) -> Normalized<'tcx,U> {
+    pub fn with<U>(self, value: U) -> Normalized<'tcx,U> {
         Normalized { value: value, obligations: self.obligations }
     }
 }
-
 
 pub fn normalize_projection_type<'a,'b,'tcx>(
     selcx: &'a mut SelectionContext<'b,'tcx>,
