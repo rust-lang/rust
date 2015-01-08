@@ -56,7 +56,7 @@ use core::cmp::{Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::iter::{repeat, FromIterator};
+use core::iter::{repeat, FromIterator, IntoIterator};
 use core::marker::{ContravariantLifetime, InvariantType};
 use core::mem;
 use core::nonzero::NonZero;
@@ -65,6 +65,7 @@ use core::ops::{Index, IndexMut, Deref, Add};
 use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;
+use core::slice;
 use core::uint;
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
@@ -1401,6 +1402,30 @@ impl<T> FromIterator<T> for Vec<T> {
             vector.push(element)
         }
         vector
+    }
+}
+
+impl<T> IntoIterator for Vec<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a Vec<T> {
+    type Iter = slice::Iter<'a, T>;
+
+    fn into_iter(self) -> slice::Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut Vec<T> {
+    type Iter = slice::IterMut<'a, T>;
+
+    fn into_iter(mut self) -> slice::IterMut<'a, T> {
+        self.iter_mut()
     }
 }
 
