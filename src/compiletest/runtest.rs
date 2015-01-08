@@ -104,7 +104,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
         if !props.error_patterns.is_empty() {
             fatal("both error pattern and expected errors specified");
         }
-        check_expected_errors(expected_errors, testfile, &proc_res);
+        check_expected_errors(props, expected_errors, testfile, &proc_res);
     } else {
         check_error_patterns(props, testfile, output_to_check.as_slice(), &proc_res);
     }
@@ -941,7 +941,8 @@ fn check_forbid_output(props: &TestProps,
     }
 }
 
-fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
+fn check_expected_errors(props: &TestProps,
+                         expected_errors: Vec<errors::ExpectedError> ,
                          testfile: &Path,
                          proc_res: &ProcRes) {
 
@@ -993,6 +994,11 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
 
         // ignore this msg which gets printed at the end
         if line.contains("aborting due to") {
+            was_expected = true;
+        }
+
+        if line.starts_with("<command line option>") &&
+           props.ignore_command_line {
             was_expected = true;
         }
 

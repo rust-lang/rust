@@ -105,6 +105,11 @@ pub struct Span {
 
 pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_id: NO_EXPANSION };
 
+// Generic span to be used for code originating from the command line
+pub const COMMAND_LINE_SP: Span = Span { lo: BytePos(0),
+                                         hi: BytePos(0),
+                                         expn_id: COMMAND_LINE_EXPN };
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
 pub struct Spanned<T> {
     pub node: T,
@@ -235,6 +240,8 @@ pub struct ExpnInfo {
 pub struct ExpnId(u32);
 
 pub const NO_EXPANSION: ExpnId = ExpnId(-1);
+// For code appearing from the command line
+pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(-2);
 
 impl ExpnId {
     pub fn from_llvm_cookie(cookie: c_uint) -> ExpnId {

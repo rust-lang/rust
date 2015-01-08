@@ -99,7 +99,7 @@ fn test_env<F>(source_string: &str,
 {
     let mut options =
         config::basic_options();
-    options.debugging_opts |= config::VERBOSE;
+    options.debugging_opts.verbose = true;
     let codemap =
         CodeMap::new();
     let diagnostic_handler =

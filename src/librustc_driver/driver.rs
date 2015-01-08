@@ -47,7 +47,7 @@ pub fn compile_input(sess: Session,
                      input: &Input,
                      outdir: &Option<Path>,
                      output: &Option<Path>,
-                     addl_plugins: Option<Plugins>) {
+                     addl_plugins: Option<Vec<String>>) {
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
@@ -142,7 +142,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         }
     });
 
-    if sess.opts.debugging_opts & config::AST_JSON_NOEXPAND != 0 {
+    if sess.opts.debugging_opts.ast_json_noexpand {
         println!("{}", json::as_json(&krate));
     }
 
@@ -166,7 +166,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
 pub fn phase_2_configure_and_expand(sess: &Session,
                                     mut krate: ast::Crate,
                                     crate_name: &str,
-                                    addl_plugins: Option<Plugins>)
+                                    addl_plugins: Option<Vec<String>>)
                                     -> Option<ast::Crate> {
     let time_passes = sess.time_passes();
 
@@ -334,7 +334,7 @@ pub fn assign_node_ids_and_map<'ast>(sess: &Session,
     let map = time(sess.time_passes(), "assigning node ids and indexing ast", forest, |forest|
                    ast_map::map_crate(forest, NodeIdAssigner { sess: sess }));
 
-    if sess.opts.debugging_opts & config::AST_JSON != 0 {
+    if sess.opts.debugging_opts.ast_json {
         println!("{}", json::as_json(map.krate()));
     }
 
@@ -484,7 +484,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
 }
 
 fn save_analysis(sess: &Session) -> bool {
-    (sess.opts.debugging_opts & config::SAVE_ANALYSIS) != 0
+    sess.opts.debugging_opts.save_analysis
 }
 
 pub fn phase_save_analysis(sess: &Session,
@@ -575,7 +575,7 @@ pub fn stop_after_phase_1(sess: &Session) -> bool {
     if sess.opts.show_span.is_some() {
         return true;
     }
-    return sess.opts.debugging_opts & config::AST_JSON_NOEXPAND != 0;
+    return sess.opts.debugging_opts.ast_json_noexpand;
 }
 
 pub fn stop_after_phase_2(sess: &Session) -> bool {
@@ -583,7 +583,7 @@ pub fn stop_after_phase_2(sess: &Session) -> bool {
         debug!("invoked with --no-analysis, returning early from compile_input");
         return true;
     }
-    return sess.opts.debugging_opts & config::AST_JSON != 0;
+    return sess.opts.debugging_opts.ast_json;
 }
 
 pub fn stop_after_phase_5(sess: &Session) -> bool {
