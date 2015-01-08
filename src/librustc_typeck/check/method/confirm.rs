@@ -143,7 +143,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // time writing the results into the various tables.
         let (autoderefd_ty, n, result) =
             check::autoderef(
-                self.fcx, self.span, unadjusted_self_ty, Some(self.self_expr.id), NoPreference,
+                self.fcx, self.span, unadjusted_self_ty, Some(self.self_expr), NoPreference,
                 |_, n| if n == auto_deref_ref.autoderefs { Some(()) } else { None });
         assert_eq!(n, auto_deref_ref.autoderefs);
         assert_eq!(result, Some(()));
@@ -492,7 +492,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                exprs.repr(self.tcx()));
 
         // Fix up autoderefs and derefs.
-        for (i, expr) in exprs.iter().rev().enumerate() {
+        for (i, &expr) in exprs.iter().rev().enumerate() {
             // Count autoderefs.
             let autoderef_count = match self.fcx
                                             .inh
@@ -512,8 +512,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             if autoderef_count > 0 {
                 check::autoderef(self.fcx,
                                  expr.span,
-                                 self.fcx.expr_ty(*expr),
-                                 Some(expr.id),
+                                 self.fcx.expr_ty(expr),
+                                 Some(expr),
                                  PreferMutLvalue,
                                  |_, autoderefs| {
                                      if autoderefs == autoderef_count + 1 {
@@ -567,7 +567,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         let result = check::try_index_step(
                             self.fcx,
                             MethodCall::expr(expr.id),
-                            *expr,
+                            expr,
                             &**base_expr,
                             adjusted_base_ty,
                             base_adjustment,
@@ -577,7 +577,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         if let Some((input_ty, return_ty)) = result {
                             demand::suptype(self.fcx, index_expr.span, input_ty, index_expr_ty);
 
-                            let expr_ty = self.fcx.expr_ty(&**expr);
+                            let expr_ty = self.fcx.expr_ty(&*expr);
                             demand::suptype(self.fcx, expr.span, expr_ty, return_ty);
                         }
                     }

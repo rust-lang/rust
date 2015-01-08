@@ -2268,12 +2268,17 @@ pub enum LvaluePreference {
 pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  sp: Span,
                                  base_ty: Ty<'tcx>,
-                                 expr_id: Option<ast::NodeId>,
+                                 opt_expr: Option<&ast::Expr>,
                                  mut lvalue_pref: LvaluePreference,
                                  mut should_stop: F)
-                                 -> (Ty<'tcx>, uint, Option<T>) where
-    F: FnMut(Ty<'tcx>, uint) -> Option<T>,
+                                 -> (Ty<'tcx>, uint, Option<T>)
+    where F: FnMut(Ty<'tcx>, uint) -> Option<T>,
 {
+    debug!("autoderef(base_ty={}, opt_expr={}, lvalue_pref={:?})",
+           base_ty.repr(fcx.tcx()),
+           opt_expr.repr(fcx.tcx()),
+           lvalue_pref);
+
     let mut t = base_ty;
     for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
         let resolved_t = structurally_resolved_type(fcx, sp, t);
@@ -2291,7 +2296,19 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
         let mt = match ty::deref(resolved_t, false) {
             Some(mt) => Some(mt),
             None => {
-                let method_call = expr_id.map(|id| MethodCall::autoderef(id, autoderefs));
+                let method_call = opt_expr.map(|expr| MethodCall::autoderef(expr.id, autoderefs));
+
+                // Super subtle: it might seem as though we should
+                // pass `opt_expr` to `try_overloaded_deref`, so that
+                // the (implicit) autoref of using an overloaded deref
+                // would get added to the adjustment table. However we
+                // do not do that, because it's kind of a
+                // "meta-adjustment" -- instead, we just leave it
+                // unrecorded and know that there "will be" an
+                // autoref. regionck and other bits of the code base,
+                // when they encounter an overloaded autoderef, have
+                // to do some reconstructive surgery. This is a pretty
+                // complex mess that is begging for a proper MIR.
                 try_overloaded_deref(fcx, sp, method_call, None, resolved_t, lvalue_pref)
             }
         };
@@ -2324,7 +2341,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Try DerefMut first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.deref_mut_trait()) {
         (PreferMutLvalue, Some(trait_did)) => {
-            method::lookup_in_trait(fcx, span, base_expr.map(|x| &*x),
+            method::lookup_in_trait(fcx, span, base_expr,
                                     token::intern("deref_mut"), trait_did,
                                     base_ty, None)
         }
@@ -2334,7 +2351,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Otherwise, fall back to Deref.
     let method = match (method, fcx.tcx().lang_items.deref_trait()) {
         (None, Some(trait_did)) => {
-            method::lookup_in_trait(fcx, span, base_expr.map(|x| &*x),
+            method::lookup_in_trait(fcx, span, base_expr,
                                     token::intern("deref"), trait_did,
                                     base_ty, None)
         }
@@ -2390,7 +2407,7 @@ fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
     // consolidated.
 
     let (ty, autoderefs, final_mt) =
-        autoderef(fcx, base_expr.span, base_ty, Some(base_expr.id), lvalue_pref, |adj_ty, idx| {
+        autoderef(fcx, base_expr.span, base_ty, Some(base_expr), lvalue_pref, |adj_ty, idx| {
             let autoderefref = ty::AutoDerefRef { autoderefs: idx, autoref: None };
             step(adj_ty, autoderefref)
         });
@@ -3360,7 +3377,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                 fcx.expr_ty(base));
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
         let (_, autoderefs, field_ty) =
-            autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
+            autoderef(fcx, expr.span, expr_t, Some(base), lvalue_pref, |base_t, _| {
                 match base_t.sty {
                     ty::ty_struct(base_id, substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
@@ -3421,7 +3438,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let mut tuple_like = false;
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
         let (_, autoderefs, field_ty) =
-            autoderef(fcx, expr.span, expr_t, Some(base.id), lvalue_pref, |base_t, _| {
+            autoderef(fcx, expr.span, expr_t, Some(base), lvalue_pref, |base_t, _| {
                 match base_t.sty {
                     ty::ty_struct(base_id, substs) => {
                         tuple_like = ty::is_tuple_struct(tcx, base_id);

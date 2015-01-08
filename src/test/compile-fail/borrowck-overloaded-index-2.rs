@@ -28,5 +28,5 @@ fn main() {
     let v = MyVec { data: vec!(box 1i, box 2, box 3) };
     let good = &v[0]; // Shouldn't fail here
     let bad = v[0];
-    //~^ ERROR cannot move out of dereference (dereference is implicit, due to indexing)
+    //~^ ERROR cannot move out of indexed content
 }
