@@ -17,6 +17,7 @@
 
 #![crate_name = "rbml"]
 #![experimental]
+#![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",

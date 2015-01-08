@@ -8,6 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME #20661: format_args! emits calls to the unstable std::fmt::rt
+// module, so the compiler has some hacks to make that possible
+// (in span_is_internal). Unnfortunately those hacks defeat this
+// particular scenario of checking feature gates in arguments to
+// println!().
+
+// ignore-test
+
 // tests that input to a macro is checked for use of gated features. If this
 // test succeeds due to the acceptance of a feature, pick a new feature to
 // test. Not ideal, but oh well :(

@@ -34,7 +34,7 @@ use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use util::ppaux::{ty_to_string};
 use util::nodemap::{FnvHashMap, NodeSet};
-use lint::{Context, LintPass, LintArray};
+use lint::{Context, LintPass, LintArray, Lint};
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::num::SignedInt;
@@ -1643,6 +1643,13 @@ declare_lint! {
     "detects use of #[unstable] items (incl. items with no stability attribute)"
 }
 
+declare_lint!(STAGED_EXPERIMENTAL, Warn,
+              "detects use of #[experimental] items in staged builds");
+
+declare_lint!(STAGED_UNSTABLE, Warn,
+              "detects use of #[unstable] items (incl. items with no stability attribute) \
+               in staged builds");
+
 /// Checks for use of items with `#[deprecated]`, `#[experimental]` and
 /// `#[unstable]` attributes, or no stability attribute.
 #[derive(Copy)]
@@ -1650,12 +1657,13 @@ pub struct Stability;
 
 impl Stability {
     fn lint(&self, cx: &Context, id: ast::DefId, span: Span) {
-        let stability = stability::lookup(cx.tcx, id);
+
+        let ref stability = stability::lookup(cx.tcx, id);
         let cross_crate = !ast_util::is_local(id);
 
         // stability attributes are promises made across crates; only
         // check DEPRECATED for crate-local usage.
-        let (lint, label) = match stability {
+        let (lint, label) = match *stability {
             // no stability attributes == Unstable
             None if cross_crate => (UNSTABLE, "unmarked"),
             Some(attr::Stability { level: attr::Unstable, .. }) if cross_crate =>
@@ -1667,24 +1675,53 @@ impl Stability {
             _ => return
         };
 
-        let msg = match stability {
-            Some(attr::Stability { text: Some(ref s), .. }) => {
-                format!("use of {} item: {}", label, *s)
+        output(cx, span, stability, lint, label);
+        if cross_crate && stability::is_staged_api(cx.tcx, id) {
+            if lint.name == UNSTABLE.name {
+                output(cx, span, stability, STAGED_UNSTABLE, label);
+            } else if lint.name == EXPERIMENTAL.name {
+                output(cx, span, stability, STAGED_EXPERIMENTAL, label);
             }
-            _ => format!("use of {} item", label)
-        };
+        }
 
-        cx.span_lint(lint, span, msg.index(&FullRange));
+        fn output(cx: &Context, span: Span, stability: &Option<attr::Stability>,
+                  lint: &'static Lint, label: &'static str) {
+            let msg = match *stability {
+                Some(attr::Stability { text: Some(ref s), .. }) => {
+                    format!("use of {} item: {}", label, *s)
+                }
+                _ => format!("use of {} item", label)
+            };
+
+            cx.span_lint(lint, span, msg.index(&FullRange));
+        }
     }
+
 
     fn is_internal(&self, cx: &Context, span: Span) -> bool {
         cx.tcx.sess.codemap().span_is_internal(span)
     }
+
 }
 
 impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
-        lint_array!(DEPRECATED, EXPERIMENTAL, UNSTABLE)
+        lint_array!(DEPRECATED, EXPERIMENTAL, UNSTABLE, STAGED_EXPERIMENTAL, STAGED_UNSTABLE)
+    }
+
+    fn check_crate(&mut self, _: &Context, c: &ast::Crate) {
+        // Just mark the #[staged_api] attribute used, though nothing else is done
+        // with it during this pass over the source.
+        for attr in c.attrs.iter() {
+            if attr.name().get() == "staged_api" {
+                match attr.node.value.node {
+                    ast::MetaWord(_) => {
+                        attr::mark_used(attr);
+                    }
+                    _ => (/*pass*/)
+                }
+            }
+        }
     }
 
     fn check_view_item(&mut self, cx: &Context, item: &ast::ViewItem) {
@@ -1746,6 +1783,7 @@ impl LintPass for Stability {
             }
             _ => return
         };
+
         self.lint(cx, id, span);
     }
 
@@ -1876,5 +1914,24 @@ impl LintPass for HardwiredLints {
             VARIANT_SIZE_DIFFERENCES,
             FAT_PTR_TRANSMUTES
         )
+    }
+}
+
+/// Forbids using the `#[feature(...)]` attribute
+#[deriving(Copy)]
+pub struct UnstableFeatures;
+
+declare_lint!(UNSTABLE_FEATURES, Allow,
+              "enabling unstable features");
+
+impl LintPass for UnstableFeatures {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNSTABLE_FEATURES)
+    }
+    fn check_attribute(&mut self, ctx: &Context, attr: &ast::Attribute) {
+        use syntax::attr;
+        if attr::contains_name(&[attr.node.value.clone()], "feature") {
+            ctx.span_lint(UNSTABLE_FEATURES, attr.span, "unstable feature");
+        }
     }
 }
