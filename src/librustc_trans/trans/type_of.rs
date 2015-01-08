@@ -243,9 +243,24 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     llsizingty
 }
 
+pub fn foreign_arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
+    if ty::type_is_bool(t) {
+        Type::i1(cx)
+    } else {
+        type_of(cx, t)
+    }
+}
+
 pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     if ty::type_is_bool(t) {
         Type::i1(cx)
+    } else if type_is_immediate(cx, t) && type_of(cx, t).is_aggregate() {
+        // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
+        // for this leads to bad optimizations, so its arg type is an appropriately sized integer
+        match machine::llsize_of_alloc(cx, sizing_type_of(cx, t)) {
+            0 => type_of(cx, t),
+            n => Type::ix(cx, n * 8),
+        }
     } else {
         type_of(cx, t)
     }
