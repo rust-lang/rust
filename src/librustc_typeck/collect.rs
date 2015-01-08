@@ -607,6 +607,11 @@ fn convert(ccx: &CollectCtxt, it: &ast::Item) {
                         methods.push(&**method);
                     }
                     ast::TypeImplItem(ref typedef) => {
+                        if opt_trait_ref.is_none() {
+                            tcx.sess.span_err(typedef.span,
+                                              "associated items are not allowed in inherent impls");
+                        }
+
                         let typ = ccx.to_ty(&ExplicitRscope, &*typedef.typ);
                         tcx.tcache
                            .borrow_mut()
