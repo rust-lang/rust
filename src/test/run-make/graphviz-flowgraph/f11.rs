@@ -10,9 +10,9 @@
 
 #[allow(unreachable_code)]
 pub fn expr_loop_11() {
-    let mut _x = 11i;
+    let mut _x = 11is;
     loop {
-        _x -= 1i;
+        _x -= 1is;
     }
     "unreachable";
 }

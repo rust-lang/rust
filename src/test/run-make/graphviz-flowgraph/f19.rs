@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn expr_method_call_19() {
-    struct S19 { x: int }
+    struct S19 { x: isize }
     impl S19 { fn inner(self) -> S19 { S19 { x: self.x + self.x } } }
     let s = S19 { x: 19 };
     s.inner().inner();
