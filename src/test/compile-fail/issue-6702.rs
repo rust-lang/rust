@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct Monster {
-    damage: int
+    damage: isize
 }
 
 

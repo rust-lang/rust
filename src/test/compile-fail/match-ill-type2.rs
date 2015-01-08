@@ -9,9 +9,9 @@
 // except according to those terms.
 
 fn main() {
-    match 1i {
-        1i => 1i,
-        2u => 1i, //~ ERROR mismatched types
-        _ => 2i,
+    match 1is {
+        1is => 1is,
+        2us => 1is, //~ ERROR mismatched types
+        _ => 2is,
     };
 }

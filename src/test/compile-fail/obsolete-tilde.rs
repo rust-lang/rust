@@ -10,12 +10,12 @@
 
 // Test that ~ pointers give an obsolescence message.
 
-fn foo(x: ~int) {} //~ ERROR obsolete syntax: `~` notation for owned pointers
+fn foo(x: ~isize) {} //~ ERROR obsolete syntax: `~` notation for owned pointers
 fn bar(x: ~str) {} //~ ERROR obsolete syntax: `~` notation for owned pointers
-fn baz(x: ~[int]) {} //~ ERROR obsolete syntax: `~[T]` is no longer a type
+fn baz(x: ~[isize]) {} //~ ERROR obsolete syntax: `~[T]` is no longer a type
 
 fn main() {
-    let x = ~4i; //~ ERROR obsolete syntax: `~` notation for owned pointer allocation
+    let x = ~4is; //~ ERROR obsolete syntax: `~` notation for owned pointer allocation
     let y = ~"hello"; //~ ERROR obsolete syntax: `~` notation for owned pointer allocation
-    let z = ~[1i, 2, 3]; //~ ERROR obsolete syntax: `~[T]` is no longer a type
+    let z = ~[1is, 2, 3]; //~ ERROR obsolete syntax: `~[T]` is no longer a type
 }

@@ -13,22 +13,22 @@
 
 #[derive(Clone)]
 struct Foo {
-    x: *const int //~ ERROR use of `#[derive]` with a raw pointer
+    x: *const isize //~ ERROR use of `#[derive]` with a raw pointer
 }
 
 #[derive(Clone)]
-struct Bar(*mut int); //~ ERROR use of `#[derive]` with a raw pointer
+struct Bar(*mut isize); //~ ERROR use of `#[derive]` with a raw pointer
 
 #[derive(Clone)]
 enum Baz {
-    A(*const int), //~ ERROR use of `#[derive]` with a raw pointer
-    B { x: *mut int } //~ ERROR use of `#[derive]` with a raw pointer
+    A(*const isize), //~ ERROR use of `#[derive]` with a raw pointer
+    B { x: *mut isize } //~ ERROR use of `#[derive]` with a raw pointer
 }
 
 #[derive(Clone)]
 struct Buzz {
-    x: (*const int, //~ ERROR use of `#[derive]` with a raw pointer
-        *const uint) //~ ERROR use of `#[derive]` with a raw pointer
+    x: (*const isize, //~ ERROR use of `#[derive]` with a raw pointer
+        *const usize) //~ ERROR use of `#[derive]` with a raw pointer
 }
 
 fn main() {}

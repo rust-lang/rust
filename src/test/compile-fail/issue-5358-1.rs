@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum Either<T, U> { Left(T), Right(U) }
-struct S(Either<uint, uint>);
+struct S(Either<usize, usize>);
 
 fn main() {
     match S(Either::Left(5)) {

@@ -8,21 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Struct { a: uint }
+struct Struct { a: usize }
 
-const C: uint = 1;
-static S: uint = 1;
+const C: usize = 1;
+static S: usize = 1;
 
-const T1: &'static uint = &C;
-const T2: &'static uint = &S; //~ ERROR: constants cannot refer to other statics
-static T3: &'static uint = &C;
-static T4: &'static uint = &S;
+const T1: &'static usize = &C;
+const T2: &'static usize = &S; //~ ERROR: constants cannot refer to other statics
+static T3: &'static usize = &C;
+static T4: &'static usize = &S;
 
-const T5: uint = C;
-const T6: uint = S; //~ ERROR: constants cannot refer to other statics
+const T5: usize = C;
+const T6: usize = S; //~ ERROR: constants cannot refer to other statics
 //~^ cannot refer to other statics
-static T7: uint = C;
-static T8: uint = S; //~ ERROR: cannot refer to other statics by value
+static T7: usize = C;
+static T8: usize = S; //~ ERROR: cannot refer to other statics by value
 
 const T9: Struct = Struct { a: C };
 const T10: Struct = Struct { a: S }; //~ ERROR: cannot refer to other statics by value

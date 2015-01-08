@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    static z: &'static int = {
+    static z: &'static isize = {
         let p = 3;
         &p
 //~^ ERROR cannot borrow a local variable inside a static block, define a separate static instead

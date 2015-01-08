@@ -10,11 +10,11 @@
 
 #![feature(box_syntax)]
 
-type Noncopyable = Box<int>;
+type Noncopyable = Box<isize>;
 
 struct Foo {
-    copied: int,
-    moved: Box<int>,
+    copied: isize,
+    moved: Box<isize>,
     noncopyable: Noncopyable
 }
 

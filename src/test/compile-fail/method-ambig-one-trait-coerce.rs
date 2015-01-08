@@ -15,15 +15,15 @@
 trait Object { }
 
 trait foo {
-    fn foo(self) -> int;
+    fn foo(self) -> isize;
 }
 
 impl foo for Box<Object+'static> {
-    fn foo(self) -> int {1}
+    fn foo(self) -> isize {1}
 }
 
 impl foo for Box<Object+Send> {
-    fn foo(self) -> int {2}
+    fn foo(self) -> isize {2}
 }
 
 fn test1(x: Box<Object+Send+Sync>) {

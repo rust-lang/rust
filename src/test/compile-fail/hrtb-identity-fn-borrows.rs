@@ -16,7 +16,7 @@ trait FnLike<A,R> {
 }
 
 fn call_repeatedly<F>(f: F)
-    where F : for<'a> FnLike<&'a int, &'a int>
+    where F : for<'a> FnLike<&'a isize, &'a isize>
 {
     // Result is stored: cannot re-assign `x`
     let mut x = 3;

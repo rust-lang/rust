@@ -25,6 +25,7 @@
 #![allow(unknown_features)]
 #![feature(link_args)]
 #![feature(box_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 extern crate libc;
 

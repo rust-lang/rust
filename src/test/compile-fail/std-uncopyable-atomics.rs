@@ -21,6 +21,6 @@ fn main() {
     let x = *&x; //~ ERROR: cannot move out of borrowed content
     let x = ATOMIC_UINT_INIT;
     let x = *&x; //~ ERROR: cannot move out of borrowed content
-    let x: AtomicPtr<uint> = AtomicPtr::new(ptr::null_mut());
+    let x: AtomicPtr<usize> = AtomicPtr::new(ptr::null_mut());
     let x = *&x; //~ ERROR: cannot move out of borrowed content
 }

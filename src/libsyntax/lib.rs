@@ -27,6 +27,7 @@
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
 #![feature(quote, unsafe_destructor)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 extern crate arena;
 extern crate fmt_macros;

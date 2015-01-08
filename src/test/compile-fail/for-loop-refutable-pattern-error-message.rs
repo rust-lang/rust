@@ -11,6 +11,6 @@
 
 fn main() {
     for
-        &1i //~ ERROR refutable pattern in `for` loop binding
-        in [1i].iter() {}
+        &1is //~ ERROR refutable pattern in `for` loop binding
+        in [1is].iter() {}
 }

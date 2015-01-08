@@ -16,13 +16,13 @@
 
 // `S` is contravariant with respect to both parameters.
 struct S<'a, 'b> {
-    f: &'a int,
-    g: &'b int,
+    f: &'a isize,
+    g: &'b isize,
 }
 
 fn use_<'short,'long>(c: S<'long, 'short>,
-                      s: &'short int,
-                      l: &'long int,
+                      s: &'short isize,
+                      l: &'long isize,
                       _where:Option<&'short &'long ()>) {
 
     let _: S<'long, 'short> = c; // OK

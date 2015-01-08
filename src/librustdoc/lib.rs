@@ -19,6 +19,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 extern crate arena;
 extern crate getopts;

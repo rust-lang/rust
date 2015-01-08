@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: int) { println!("{}", x); }
+fn foo(x: isize) { println!("{}", x); }
 
 fn main() {
-    let x: int;
-    if 1i > 2 {
+    let x: isize;
+    if 1is > 2 {
         println!("whoops");
     } else {
         x = 10;

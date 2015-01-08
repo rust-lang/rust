@@ -17,15 +17,15 @@ pub trait Foo<T> {
     fn get(&self, t: T) -> Self::A;
 }
 
-fn foo<'a, I : for<'x> Foo<&'x int>>(
-    x: <I as Foo<&'a int>>::A)
+fn foo<'a, I : for<'x> Foo<&'x isize>>(
+    x: <I as Foo<&'a isize>>::A)
 {
     let y: I::A = x;
 }
 
-fn bar<'a, 'b, I : for<'x> Foo<&'x int>>(
-    x: <I as Foo<&'a int>>::A,
-    y: <I as Foo<&'b int>>::A,
+fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
+    x: <I as Foo<&'a isize>>::A,
+    y: <I as Foo<&'b isize>>::A,
     cond: bool)
 {
     // x and y here have two distinct lifetimes:

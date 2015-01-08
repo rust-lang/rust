@@ -14,7 +14,7 @@
 fn test() -> _ { 5 }
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
-fn test2() -> (_, _) { (5u, 5u) }
+fn test2() -> (_, _) { (5us, 5us) }
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 //~^^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
@@ -31,7 +31,7 @@ static TEST5: (_, _) = (1, 2);
 fn test6(_: _) { }
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
-fn test7(x: _) { let _x: uint = x; }
+fn test7(x: _) { let _x: usize = x; }
 //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
 fn test8(_f: fn() -> _) { }
@@ -67,7 +67,7 @@ pub fn main() {
     fn fn_test() -> _ { 5 }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
-    fn fn_test2() -> (_, _) { (5u, 5u) }
+    fn fn_test2() -> (_, _) { (5us, 5us) }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
     //~^^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
@@ -84,7 +84,7 @@ pub fn main() {
     fn fn_test6(_: _) { }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
-    fn fn_test7(x: _) { let _x: uint = x; }
+    fn fn_test7(x: _) { let _x: usize = x; }
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 
     fn fn_test8(_f: fn() -> _) { }

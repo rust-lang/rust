@@ -28,7 +28,7 @@ fn test<T: Sync>(s: T){
 }
 
 fn main() {
-    let us = UnsafeCell::new(MySync{u: UnsafeCell::new(0i)});
+    let us = UnsafeCell::new(MySync{u: UnsafeCell::new(0is)});
     test(us);
     //~^ ERROR `core::marker::Sync` is not implemented
 

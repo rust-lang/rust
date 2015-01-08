@@ -10,7 +10,7 @@
 
 
 fn test() {
-    let v: int;
+    let v: isize;
     v += 1; //~ ERROR use of possibly uninitialized variable: `v`
     v.clone();
 }

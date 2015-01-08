@@ -10,7 +10,7 @@
 
 fn main() {
     match Some("foo") {
-        None::<int> => {}   //~ ERROR mismatched types
+        None::<isize> => {}   //~ ERROR mismatched types
         Some(_) => {}
     }
 }

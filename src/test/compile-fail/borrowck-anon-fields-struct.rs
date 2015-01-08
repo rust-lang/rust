@@ -11,7 +11,7 @@
 // Tests that we are able to distinguish when loans borrow different
 // anonymous fields of a tuple vs the same anonymous field.
 
-struct Y(uint, uint);
+struct Y(usize, usize);
 
 fn distinct_variant() {
     let mut y = Y(1, 2);

@@ -10,7 +10,7 @@
 
 // Test that we cannot return a stack allocated slice
 
-fn function(x: int) -> &'static [int] {
+fn function(x: isize) -> &'static [isize] {
     &[x] //~ ERROR borrowed value does not live long enough
 }
 

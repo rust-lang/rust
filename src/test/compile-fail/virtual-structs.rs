@@ -12,7 +12,7 @@
 #![feature(struct_inherit)]
 
 virtual struct SuperStruct { //~ ERROR `virtual` structs have been removed from the language
-    f1: int,
+    f1: isize,
 }
 
 struct Struct : SuperStruct; //~ ERROR `virtual` structs have been removed from the language

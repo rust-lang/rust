@@ -20,7 +20,7 @@ use other::{
 };
 
 mod a {
-    const B: uint = 3;
+    const B: usize = 3;
 }
 
 fn main() {}

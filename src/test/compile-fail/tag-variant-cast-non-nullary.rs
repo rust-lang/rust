@@ -12,10 +12,10 @@
 
 enum non_nullary {
     nullary,
-    other(int),
+    other(isize),
 }
 
 fn main() {
     let v = non_nullary::nullary;
-    let val = v as int;
+    let val = v as isize;
 }

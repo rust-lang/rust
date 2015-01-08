@@ -13,7 +13,7 @@ use std::rc::Rc;
 fn bar<T: Send>(_: T) {}
 
 fn main() {
-    let x = Rc::new(5i);
+    let x = Rc::new(5is);
     bar(x);
     //~^ ERROR `core::marker::Send` is not implemented
     //~^^ ERROR `core::marker::Send` is not implemented

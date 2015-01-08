@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const FOO: uint = 3;
+const FOO: usize = 3;
 
-fn foo() -> &'static uint { &FOO }
+fn foo() -> &'static usize { &FOO }
 //~^ ERROR: borrowed value does not live long enough
 
 fn main() {

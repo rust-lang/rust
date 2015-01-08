@@ -14,7 +14,7 @@ pub enum T {
 }
 
 pub enum V {
-    V1(int),
+    V1(isize),
     V2(bool)
 }
 

@@ -18,10 +18,10 @@ struct S;
 
 impl Copy for S {}
 
-impl Index<uint> for S {
+impl Index<usize> for S {
     type Output = str;
 
-    fn index<'a>(&'a self, _: &uint) -> &'a str {
+    fn index<'a>(&'a self, _: &usize) -> &'a str {
         "hello"
     }
 }
@@ -30,11 +30,11 @@ struct T;
 
 impl Copy for T {}
 
-impl Index<uint> for T {
+impl Index<usize> for T {
     type Output = Show + 'static;
 
-    fn index<'a>(&'a self, idx: &uint) -> &'a (Show + 'static) {
-        static x: uint = 42;
+    fn index<'a>(&'a self, idx: &usize) -> &'a (Show + 'static) {
+        static x: usize = 42;
         &x
     }
 }

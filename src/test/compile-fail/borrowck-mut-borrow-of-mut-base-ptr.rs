@@ -13,16 +13,16 @@
 //
 // Example from src/middle/borrowck/doc.rs
 
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &int = &*t0;     // Freezes `*t0`
+fn foo<'a>(mut t0: &'a mut isize,
+           mut t1: &'a mut isize) {
+    let p: &isize = &*t0;     // Freezes `*t0`
     let mut t2 = &mut t0;   //~ ERROR cannot borrow `t0`
     **t2 += 1;              // Mutates `*t0`
 }
 
-fn bar<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &mut int = &mut *t0; // Claims `*t0`
+fn bar<'a>(mut t0: &'a mut isize,
+           mut t1: &'a mut isize) {
+    let p: &mut isize = &mut *t0; // Claims `*t0`
     let mut t2 = &mut t0;       //~ ERROR cannot borrow `t0`
     **t2 += 1;                  // Mutates `*t0` but not through `*p`
 }

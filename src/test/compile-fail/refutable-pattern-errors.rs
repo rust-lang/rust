@@ -9,10 +9,10 @@
 // except according to those terms.
 
 
-fn func((1, (Some(1), 2...3)): (int, (Option<int>, int))) { }
+fn func((1, (Some(1), 2...3)): (isize, (Option<isize>, isize))) { }
 //~^ ERROR refutable pattern in function argument: `(_, _)` not covered
 
 fn main() {
-    let (1i, (Some(1i), 2i...3i)) = (1i, (None, 2i));
+    let (1is, (Some(1is), 2is...3is)) = (1is, (None, 2is));
     //~^ ERROR refutable pattern in local binding: `(_, _)` not covered
 }

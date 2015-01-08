@@ -11,7 +11,7 @@
 // ignore-tidy-linelength
 
 struct Foo {
-    x: int
+    x: isize
 }
 
 impl Fo { //~ERROR inherent implementations are not allowed for types not defined in the current module

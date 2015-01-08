@@ -17,5 +17,5 @@ fn main() {
     match true { false => { my_panic(); } true => { } }
 
     println!("{}", x); //~ ERROR unresolved name `x`
-    let x: int;
+    let x: isize;
 }

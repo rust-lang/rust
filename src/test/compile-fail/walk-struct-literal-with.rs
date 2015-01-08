@@ -10,7 +10,7 @@
 
 struct Mine{
     test: String,
-    other_val: int
+    other_val: isize
 }
 
 impl Mine{

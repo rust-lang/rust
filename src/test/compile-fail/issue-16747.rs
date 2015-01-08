@@ -12,7 +12,7 @@ trait ListItem<'a> {
     fn list_name() -> &'a str;
 }
 
-trait Collection { fn len(&self) -> uint; }
+trait Collection { fn len(&self) -> usize; }
 
 struct List<'a, T: ListItem<'a>> {
 //~^ ERROR the parameter type `T` may not live long enough
@@ -22,7 +22,7 @@ struct List<'a, T: ListItem<'a>> {
 }
 
 impl<'a, T: ListItem<'a>> Collection for List<'a, T> {
-    fn len(&self) -> uint {
+    fn len(&self) -> usize {
         0
     }
 }

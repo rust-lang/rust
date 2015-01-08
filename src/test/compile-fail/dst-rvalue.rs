@@ -17,8 +17,8 @@ pub fn main() {
     //~^ ERROR E0161
     //~^^ ERROR cannot move out of borrowed content
 
-    let array: &[int] = &[1, 2, 3];
-    let _x: Box<[int]> = box *array;
+    let array: &[isize] = &[1, 2, 3];
+    let _x: Box<[isize]> = box *array;
     //~^ ERROR E0161
     //~^^ ERROR cannot move out of borrowed content
 }

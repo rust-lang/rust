@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    type X = int;
+    type X = isize;
     type Y = X;
     if true {
         type X = &'static str;

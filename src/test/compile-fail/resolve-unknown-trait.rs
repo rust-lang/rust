@@ -12,7 +12,7 @@
 trait NewTrait : SomeNonExistentTrait {}
 //~^ ERROR attempt to derive a nonexistent trait `SomeNonExistentTrait`
 
-impl SomeNonExistentTrait for int {}
+impl SomeNonExistentTrait for isize {}
 //~^ ERROR attempt to implement a nonexistent trait `SomeNonExistentTrait`
 
 fn f<T:SomeNonExistentTrait>() {}

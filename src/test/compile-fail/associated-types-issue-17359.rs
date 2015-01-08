@@ -15,7 +15,7 @@ trait Trait {
     type Type;
 }
 
-impl Trait for int {}  //~ ERROR missing: `Type`
+impl Trait for isize {}  //~ ERROR missing: `Type`
 
 fn main() {}
 

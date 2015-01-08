@@ -16,10 +16,10 @@ use lib::TheTrait;
 
 struct TheType;
 
-impl TheTrait<uint> for int { } //~ ERROR E0117
+impl TheTrait<usize> for isize { } //~ ERROR E0117
 
-impl TheTrait<TheType> for int { } //~ ERROR E0117
+impl TheTrait<TheType> for isize { } //~ ERROR E0117
 
-impl TheTrait<int> for TheType { }
+impl TheTrait<isize> for TheType { }
 
 fn main() { }

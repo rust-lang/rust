@@ -17,7 +17,7 @@ fn main() {
         loop {
             let tx = tx;
             //~^ ERROR: use of moved value: `tx`
-            tx.send(1i);
+            tx.send(1is);
         }
     });
 }

@@ -17,8 +17,8 @@ extern crate "trait-safety-lib" as lib;
 
 struct Bar;
 impl lib::Foo for Bar { //~ ERROR requires an `unsafe impl` declaration
-    fn foo(&self) -> int {
-        *self as int
+    fn foo(&self) -> isize {
+        *self as isize
     }
 }
 

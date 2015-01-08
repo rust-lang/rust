@@ -9,25 +9,25 @@
 // except according to those terms.
 
 use std::num::FromPrimitive;
-use std::int;
+use std::isize;
 
 #[derive(FromPrimitive)]
-struct A { x: int }
+struct A { x: isize }
 //~^^ ERROR `FromPrimitive` cannot be derived for structs
 //~^^^ ERROR `FromPrimitive` cannot be derived for structs
 
 #[derive(FromPrimitive)]
-struct B(int);
+struct B(isize);
 //~^^ ERROR `FromPrimitive` cannot be derived for structs
 //~^^^ ERROR `FromPrimitive` cannot be derived for structs
 
 #[derive(FromPrimitive)]
-enum C { Foo(int), Bar(uint) }
+enum C { Foo(isize), Bar(usize) }
 //~^^ ERROR `FromPrimitive` cannot be derived for enum variants with arguments
 //~^^^ ERROR `FromPrimitive` cannot be derived for enum variants with arguments
 
 #[derive(FromPrimitive)]
-enum D { Baz { x: int } }
+enum D { Baz { x: isize } }
 //~^^ ERROR `FromPrimitive` cannot be derived for enums with struct variants
 //~^^^ ERROR `FromPrimitive` cannot be derived for enums with struct variants
 

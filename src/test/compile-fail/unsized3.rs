@@ -55,12 +55,12 @@ fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
 
 // Test some tuples.
 fn f9<X: ?Sized>(x1: Box<S<X>>, x2: Box<E<X>>) {
-    f5(&(*x1, 34i));
+    f5(&(*x1, 34is));
     //~^ ERROR the trait `core::marker::Sized` is not implemented
 }
 
 fn f10<X: ?Sized>(x1: Box<S<X>>, x2: Box<E<X>>) {
-    f5(&(32i, *x2));
+    f5(&(32is, *x2));
     //~^ ERROR the trait `core::marker::Sized` is not implemented
 }
 

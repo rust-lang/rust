@@ -10,8 +10,8 @@
 
 // error-pattern: unresolved name
 mod foo {
-    pub fn x(y: int) { log(debug, y); }
-    fn z(y: int) { log(debug, y); }
+    pub fn x(y: isize) { log(debug, y); }
+    fn z(y: isize) { log(debug, y); }
 }
 
 fn main() { foo::z(10); }

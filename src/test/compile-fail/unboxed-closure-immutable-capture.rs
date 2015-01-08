@@ -14,10 +14,10 @@
 // environment cannot mutate captured variables that have not been
 // declared mutable (#18335)
 
-fn set(x: &mut uint) { *x = 0; }
+fn set(x: &mut usize) { *x = 0; }
 
 fn main() {
-    let x = 0u;
+    let x = 0us;
     move |&mut:| x = 1; //~ ERROR cannot assign
     move |&mut:| set(&mut x); //~ ERROR cannot borrow
     move |:| x = 1; //~ ERROR cannot assign

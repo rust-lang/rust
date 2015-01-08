@@ -34,8 +34,8 @@ fn g<T>(val: T) {
 }
 
 fn foo<'a>() {
-    let t: S<&'a int> = S;
-    let a = &t as &Gettable<&'a int>;
+    let t: S<&'a isize> = S;
+    let a = &t as &Gettable<&'a isize>;
     //~^ ERROR declared lifetime bound not satisfied
 }
 

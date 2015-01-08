@@ -15,8 +15,8 @@
 extern crate ambig_impl_2_lib;
 use ambig_impl_2_lib::me;
 trait me2 {
-    fn me(&self) -> uint;
+    fn me(&self) -> usize;
 }
-impl me2 for uint { fn me(&self) -> uint { *self } }
-fn main() { 1u.me(); } //~ ERROR E0034
+impl me2 for usize { fn me(&self) -> usize { *self } }
+fn main() { 1us.me(); } //~ ERROR E0034
 

@@ -2459,7 +2459,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // First, try built-in indexing.
     match (ty::index(adjusted_ty), &index_ty.sty) {
-        (Some(ty), &ty::ty_uint(ast::TyUs)) | (Some(ty), &ty::ty_infer(ty::IntVar(_))) => {
+        (Some(ty), &ty::ty_uint(ast::TyUs(_))) | (Some(ty), &ty::ty_infer(ty::IntVar(_))) => {
             debug!("try_index_step: success, using built-in indexing");
             fcx.write_adjustment(base_expr.id, base_expr.span, ty::AdjustDerefRef(adjustment));
             return Some((tcx.types.uint, ty));
@@ -3225,8 +3225,24 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op) {
             // Shift is a special case: rhs must be uint, no matter what lhs is
-            check_expr_has_type(fcx, &**rhs, fcx.tcx().types.uint);
-            fcx.write_ty(expr.id, lhs_t);
+            check_expr(fcx, &**rhs);
+            let rhs_ty = fcx.expr_ty(&**rhs);
+            let rhs_ty = fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+            if ty::type_is_integral(rhs_ty) {
+                fcx.write_ty(expr.id, lhs_t);
+            } else {
+                fcx.type_error_message(
+                    expr.span,
+                    |actual| {
+                        format!(
+                            "right-hand-side of a shift operation must have integral type, \
+                             not `{}`",
+                            actual)
+                    },
+                    rhs_ty,
+                    None);
+                fcx.write_ty(expr.id, fcx.tcx().types.err);
+            }
             return;
         }
 
@@ -4787,7 +4803,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                 ast::TyU16 => disr as u16 as Disr == disr,
                 ast::TyU32 => disr as u32 as Disr == disr,
                 ast::TyU64 => disr as u64 as Disr == disr,
-                ast::TyUs => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
+                ast::TyUs(_) => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
             }
         }
         fn int_in_range(ccx: &CrateCtxt, ty: ast::IntTy, disr: ty::Disr) -> bool {
@@ -4796,7 +4812,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                 ast::TyI16 => disr as i16 as Disr == disr,
                 ast::TyI32 => disr as i32 as Disr == disr,
                 ast::TyI64 => disr as i64 as Disr == disr,
-                ast::TyIs => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
+                ast::TyIs(_) => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
             }
         }
         match ty {

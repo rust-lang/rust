@@ -12,7 +12,7 @@
 
 fn main() {
     enum R { REB(()) }
-    struct Tau { t: uint }
+    struct Tau { t: usize }
     enum E { B(R, Tau) }
 
     let e = E::B(R::REB(()), Tau { t: 3 });

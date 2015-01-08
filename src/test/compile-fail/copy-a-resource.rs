@@ -10,14 +10,14 @@
 
 #[derive(Show)]
 struct foo {
-  i: int,
+  i: isize,
 }
 
 impl Drop for foo {
     fn drop(&mut self) {}
 }
 
-fn foo(i:int) -> foo {
+fn foo(i:isize) -> foo {
     foo {
         i: i
     }

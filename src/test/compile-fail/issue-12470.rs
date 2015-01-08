@@ -11,16 +11,16 @@
 #![feature(box_syntax)]
 
 trait X {
-    fn get_i(&self) -> int;
+    fn get_i(&self) -> isize;
 }
 
 
 struct B {
-    i: int
+    i: isize
 }
 
 impl X for B {
-    fn get_i(&self) -> int {
+    fn get_i(&self) -> isize {
         self.i
     }
 }

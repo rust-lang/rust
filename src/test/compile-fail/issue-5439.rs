@@ -11,15 +11,15 @@
 #![feature(box_syntax)]
 
 struct Foo {
-    foo: int,
+    foo: isize,
 }
 
 struct Bar {
-    bar: int,
+    bar: isize,
 }
 
 impl Bar {
-    fn make_foo (&self, i: int) -> Box<Foo> {
+    fn make_foo (&self, i: isize) -> Box<Foo> {
         return box Foo { nonexistent: self, foo: i }; //~ ERROR: no field named
     }
 }

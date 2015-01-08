@@ -18,7 +18,7 @@ impl<'a> T+'a {
     fn foo(&self) {}
 }
 
-impl T for int {}
+impl T for isize {}
 
 fn main() {
     let x = &42is;

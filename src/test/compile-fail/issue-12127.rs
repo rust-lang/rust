@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-fn do_it(x: &int) { }
+fn do_it(x: &isize) { }
 
 fn main() {
     let x = box 22;

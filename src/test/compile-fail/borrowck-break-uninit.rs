@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> int {
-    let x: int;
+fn foo() -> isize {
+    let x: isize;
 
     loop {
         break;

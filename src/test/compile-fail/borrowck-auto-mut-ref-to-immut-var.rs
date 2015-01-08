@@ -11,7 +11,7 @@
 // Tests that auto-ref can't create mutable aliases to immutable memory.
 
 struct Foo {
-    x: int
+    x: isize
 }
 
 impl Foo {

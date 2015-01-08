@@ -13,5 +13,5 @@ use std::sync::mpsc::Receiver;
 fn test<T: Sync>() {}
 
 fn main() {
-    test::<Receiver<int>>();   //~ ERROR: `core::marker::Sync` is not implemented
+    test::<Receiver<isize>>();   //~ ERROR: `core::marker::Sync` is not implemented
 }

@@ -21,5 +21,5 @@ fn main() {
     let _: () = (box |&mut:| -> isize unimplemented!()) as Box<FnMut() -> isize>;
     //~^ ERROR Box<core::ops::FnMut() -> isize>
 
-    needs_fn(1i); //~ ERROR `core::ops::Fn(isize) -> isize`
+    needs_fn(1is); //~ ERROR `core::ops::Fn(isize) -> isize`
 }

@@ -14,7 +14,7 @@ struct Foo<T:Trait> {
     x: T,
 }
 
-static X: Foo<uint> = Foo {
+static X: Foo<usize> = Foo {
 //~^ ERROR not implemented
     x: 1,
 };

@@ -15,8 +15,8 @@ trait to_opt {
     fn to_option(&self) -> Option<Self>;
 }
 
-impl to_opt for uint {
-    fn to_option(&self) -> Option<uint> {
+impl to_opt for usize {
+    fn to_option(&self) -> Option<usize> {
         Some(*self)
     }
 }
@@ -27,12 +27,12 @@ impl<T:Clone> to_opt for Option<T> {
     }
 }
 
-fn function<T:to_opt + Clone>(counter: uint, t: T) {
-    if counter > 0u {
-        function(counter - 1u, t.to_option());
+fn function<T:to_opt + Clone>(counter: usize, t: T) {
+    if counter > 0us {
+        function(counter - 1us, t.to_option());
     }
 }
 
 fn main() {
-    function(22u, 22u);
+    function(22us, 22us);
 }

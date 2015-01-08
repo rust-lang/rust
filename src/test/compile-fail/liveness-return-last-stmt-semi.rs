@@ -10,11 +10,11 @@
 //
 // regression test for #8005
 
-macro_rules! test { () => { fn foo() -> int { 1i; } } }
+macro_rules! test { () => { fn foo() -> isize { 1is; } } }
                                              //~^ ERROR not all control paths return a value
                                              //~^^ HELP consider removing this semicolon
 
-fn no_return() -> int {} //~ ERROR  not all control paths return a value
+fn no_return() -> isize {} //~ ERROR  not all control paths return a value
 
 fn bar(x: u32) -> u32 { //~ ERROR  not all control paths return a value
     x * 2; //~ HELP consider removing this semicolon

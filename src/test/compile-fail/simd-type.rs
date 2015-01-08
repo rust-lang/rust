@@ -20,6 +20,6 @@ struct empty; //~ ERROR SIMD vector cannot be empty
 struct i64f64(i64, f64); //~ ERROR SIMD vector should be homogeneous
 
 #[simd]
-struct int4(int, int, int, int); //~ ERROR SIMD vector element type should be machine type
+struct int4(isize, isize, isize, isize); //~ ERROR SIMD vector element type should be machine type
 
 fn main() {}

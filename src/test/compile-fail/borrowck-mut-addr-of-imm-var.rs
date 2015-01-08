@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    let x: int = 3;
-    let y: &mut int = &mut x; //~ ERROR cannot borrow
+    let x: isize = 3;
+    let y: &mut isize = &mut x; //~ ERROR cannot borrow
     *y = 5;
     println!("{}", *y);
 }

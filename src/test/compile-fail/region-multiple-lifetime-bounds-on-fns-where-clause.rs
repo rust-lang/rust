@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn a<'a, 'b, 'c>(x: &mut &'a int, y: &mut &'b int, z: &mut &'c int) where 'b: 'a + 'c {
+fn a<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) where 'b: 'a + 'c {
     // Note: this is legal because of the `'b:'a` declaration.
     *x = *y;
     *z = *y;
 }
 
-fn b<'a, 'b, 'c>(x: &mut &'a int, y: &mut &'b int, z: &mut &'c int) {
+fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Illegal now because there is no `'b:'a` declaration.
     *x = *y; //~ ERROR cannot infer
     *z = *y; //~ ERROR cannot infer
 }
 
-fn c<'a,'b, 'c>(x: &mut &'a int, y: &mut &'b int, z: &mut &'c int) {
+fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Here we try to call `foo` but do not know that `'a` and `'b` are
     // related as required.
     a(x, y, z); //~ ERROR cannot infer
@@ -29,13 +29,13 @@ fn c<'a,'b, 'c>(x: &mut &'a int, y: &mut &'b int, z: &mut &'c int) {
 fn d() {
     // 'a and 'b are early bound in the function `a` because they appear
     // inconstraints:
-    let _: fn(&mut &int, &mut &int, &mut &int) = a; //~ ERROR mismatched types
+    let _: fn(&mut &isize, &mut &isize, &mut &isize) = a; //~ ERROR mismatched types
 }
 
 fn e() {
     // 'a and 'b are late bound in the function `b` because there are
     // no constraints:
-    let _: fn(&mut &int, &mut &int, &mut &int) = b;
+    let _: fn(&mut &isize, &mut &isize, &mut &isize) = b;
 }
 
 fn main() { }
