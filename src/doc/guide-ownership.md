@@ -458,7 +458,7 @@ lifetime, and so if you elide a lifetime (like `&T` instead of `&'a T`), Rust
 will do three things to determine what those lifetimes should be.
 
 When talking about lifetime elision, we use the term 'input lifetime' and
-'output lifetime'. An 'input liftime' is a lifetime associated with a parameter
+'output lifetime'. An 'input lifetime' is a lifetime associated with a parameter
 of a function, and an 'output lifetime' is a lifetime associated with the return
 value of a function. For example, this function has an input lifetime:
 
