@@ -130,8 +130,8 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         ];
         let output_result = rustdoc::main_args(rustdoc_args);
         if output_result != 0 {
-
-            let message = format!("Could not execute `rustdoc`: {}", output_result);
+            let message = format!("Could not execute `rustdoc` with {:?}: {}",
+                                  rustdoc_args, output_result);
             return Err(box message as Box<Error>);
         }
     }
@@ -172,12 +172,13 @@ impl Subcommand for Build {
         match book::parse_summary(summary, &src) {
             Ok(book) => {
                 // execute rustdoc on the whole book
-                let _ = render(&book, &tgt).map_err(|err| {
+                try!(render(&book, &tgt).map_err(|err| {
                     term.err(&format!("error: {}", err.description())[]);
                     err.detail().map(|detail| {
                         term.err(&format!("detail: {}", detail)[]);
-                    })
-                });
+                    });
+                    err
+                }))
             }
             Err(errors) => {
                 for err in errors.into_iter() {

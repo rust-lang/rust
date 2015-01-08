@@ -1,4 +1,4 @@
-# Variable bindings
+% Variable bindings
 
 The first thing we'll learn about are 'variable bindings.' They look like this:
 
@@ -170,5 +170,5 @@ arguments we pass to functions and macros, if you're passing more than one.
 When you just use the curly braces, Rust will attempt to display the
 value in a meaningful way by checking out its type. If you want to specify the
 format in a more detailed manner, there are a [wide number of options
-available](std/fmt/index.html). For now, we'll just stick to the default:
+available](../std/fmt/index.html). For now, we'll just stick to the default:
 integers aren't very complicated to print.

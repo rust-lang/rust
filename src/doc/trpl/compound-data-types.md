@@ -1,4 +1,4 @@
-# Compound Data Types
+% Compound Data Types
 
 Rust, like many programming languages, has a number of different data types
 that are built-in. You've already done some simple work with integers and

@@ -1,4 +1,4 @@
-# Installing Rust
+% Installing Rust
 
 The first step to using Rust is to install it! There are a number of ways to
 install Rust, but the easiest is to use the `rustup` script. If you're on

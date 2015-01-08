@@ -12,7 +12,7 @@ block which allows the programmer to dodge some of the compiler's
 checks and do a wide range of operations, such as:
 
 - dereferencing [raw pointers](#raw-pointers)
-- calling a function via FFI ([covered by the FFI guide](guide-ffi.html))
+- calling a function via FFI ([covered by the FFI guide](ffi.html))
 - casting between types bitwise (`transmute`, aka "reinterpret cast")
 - [inline assembly](#inline-assembly)
 
@@ -37,7 +37,7 @@ build safe interfaces.
 ## References
 
 One of Rust's biggest features is memory safety.  This is achieved in
-part via [the ownership system](guide-ownership.html), which is how the
+part via [the ownership system](ownership.html), which is how the
 compiler can guarantee that every `&` reference is always valid, and,
 for example, never pointing to freed memory.
 
@@ -504,7 +504,7 @@ shouldn't get triggered.
 The second of these three functions, `eh_personality`, is used by the
 failure mechanisms of the compiler. This is often mapped to GCC's
 personality function (see the
-[libstd implementation](std/rt/unwind/index.html) for more
+[libstd implementation](../std/rt/unwind/index.html) for more
 information), but crates which do not trigger a panic can be assured
 that this function is never called. The final function, `panic_fmt`, is
 also used by the failure mechanisms of the compiler.
@@ -517,7 +517,7 @@ also used by the failure mechanisms of the compiler.
 With the above techniques, we've got a bare-metal executable running some Rust
 code. There is a good deal of functionality provided by the standard library,
 however, that is necessary to be productive in Rust. If the standard library is
-not sufficient, then [libcore](core/index.html) is designed to be used
+not sufficient, then [libcore](../core/index.html) is designed to be used
 instead.
 
 The core library has very few dependencies and is much more portable than the

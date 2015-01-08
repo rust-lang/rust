@@ -11,6 +11,7 @@
 //! An abstraction of the terminal. Eventually, provide color and
 //! verbosity support. For now, just a wrapper around stdout/stderr.
 
+use std::os;
 use std::io::stdio;
 
 pub struct Term {
@@ -27,5 +28,6 @@ impl Term {
     pub fn err(&mut self, msg: &str) {
         // swallow any errors
         let _ = self.err.write_line(msg);
+        os::set_exit_status(101);
     }
 }

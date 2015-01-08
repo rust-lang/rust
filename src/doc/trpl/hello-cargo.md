@@ -1,4 +1,4 @@
-# Hello, Cargo!
+% Hello, Cargo!
 
 [Cargo](http://crates.io) is a tool that Rustaceans use to help manage their
 Rust projects. Cargo is currently in an alpha state, just like Rust, and so it

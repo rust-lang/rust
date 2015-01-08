@@ -336,4 +336,4 @@ can help you with. There are a number of really useful iterators, and you can
 write your own as well. Iterators provide a safe, efficient way to manipulate
 all kinds of lists. They're a little unusual at first, but if you play with
 them, you'll get hooked. For a full list of the different iterators and
-consumers, check out the [iterator module documentation](std/iter/index.html).
+consumers, check out the [iterator module documentation](../std/iter/index.html).

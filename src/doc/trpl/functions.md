@@ -1,4 +1,4 @@
-# Functions
+% Functions
 
 You've already seen one function so far, the `main` function:
 

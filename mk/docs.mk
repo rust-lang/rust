@@ -275,9 +275,8 @@ endif
 docs: $(DOC_TARGETS)
 compiler-docs: $(COMPILER_DOC_TARGETS)
 
-trpl: tmp/trpl.ok
+trpl: doc/book/index.html
 
-tmp/trpl.ok: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/trpl/*.md)
+doc/book/index.html: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/trpl/*.md)
 	$(Q)rm -rf doc/book
 	$(Q)$(RUSTBOOK) build $(S)src/doc/trpl doc/book
-	$(Q)touch $@

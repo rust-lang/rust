@@ -1,4 +1,4 @@
-# Looping
+% Looping
 
 Looping is the last basic construct that we haven't learned yet in Rust. Rust has
 two main looping constructs: `for` and `while`.
