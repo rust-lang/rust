@@ -206,6 +206,7 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
         // normalize it when we instantiate those bound regions (which
         // should occur eventually).
 
+        let ty = ty_fold::super_fold_ty(self, ty);
         match ty.sty {
             ty::ty_projection(ref data) if !data.has_escaping_regions() => { // (*)
 
@@ -229,8 +230,9 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
                 self.obligations.extend(obligations.into_iter());
                 ty
             }
+
             _ => {
-                ty_fold::super_fold_ty(self, ty)
+                ty
             }
         }
     }
