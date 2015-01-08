@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//~^^^^^^^^^^ ERROR overflow
+// ignore-command-line: See https://github.com/rust-lang/rust/issues/20747
 //
 // We also get a second error message at the top of file (dummy
 // span). This is not helpful, but also kind of annoying to prevent,
