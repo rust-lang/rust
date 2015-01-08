@@ -24,6 +24,7 @@ use syntax::ast;
 use syntax::ast_util::{local_def};
 use syntax::attr;
 use syntax::codemap::Span;
+use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -262,10 +263,63 @@ fn reject_non_type_param_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
+fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                          span: Span,
+                                          generics: &ty::Generics<'tcx>) {
+    let impl_params = generics.types.get_slice(subst::TypeSpace).iter()
+        .map(|tp| tp.name).collect::<HashSet<_>>();
+
+    for method_param in generics.types.get_slice(subst::FnSpace).iter() {
+        if impl_params.contains(&method_param.name) {
+            tcx.sess.span_err(
+                span,
+                &*format!("type parameter `{}` shadows another type parameter of the same name",
+                          token::get_name(method_param.name)));
+        }
+    }
+}
+
 impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn visit_item(&mut self, i: &ast::Item) {
         self.check_item_well_formed(i);
         visit::walk_item(self, i);
+    }
+
+    fn visit_fn(&mut self,
+                fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+                b: &'v ast::Block, span: Span, id: ast::NodeId) {
+        match fk {
+            visit::FkFnBlock | visit::FkItemFn(..) => {}
+            visit::FkMethod(..) => {
+                match ty::impl_or_trait_item(self.ccx.tcx, local_def(id)) {
+                    ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
+                        reject_shadowing_type_parameters(self.ccx.tcx, span, &ty_method.generics)
+                    }
+                    _ => {}
+                }
+            }
+        }
+        visit::walk_fn(self, fk, fd, b, span)
+    }
+
+    fn visit_trait_item(&mut self, t: &'v ast::TraitItem) {
+        match t {
+            &ast::TraitItem::ProvidedMethod(_) |
+            &ast::TraitItem::TypeTraitItem(_) => {},
+            &ast::TraitItem::RequiredMethod(ref method) => {
+                match ty::impl_or_trait_item(self.ccx.tcx, local_def(method.id)) {
+                    ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
+                        reject_shadowing_type_parameters(
+                            self.ccx.tcx,
+                            method.span,
+                            &ty_method.generics)
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        visit::walk_trait_item(self, t)
     }
 }
 
