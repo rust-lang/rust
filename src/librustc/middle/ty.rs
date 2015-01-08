@@ -1498,10 +1498,12 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 
     pub fn substs(&self) -> &'tcx Substs<'tcx> {
+        // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.substs
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
+        // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
         self.0.input_types()
     }
 
@@ -6974,6 +6976,13 @@ pub trait RegionEscape {
 impl<'tcx> RegionEscape for Ty<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         ty::type_escapes_depth(*self, depth)
+    }
+}
+
+impl<'tcx> RegionEscape for Substs<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.types.has_regions_escaping_depth(depth) ||
+            self.regions.has_regions_escaping_depth(depth)
     }
 }
 
