@@ -2458,14 +2458,6 @@ impl<'a> fmt::String for PrettyJson<'a> {
     }
 }
 
-#[cfg(stage0)]
-//NOTE(stage0): remove impl after snapshot
-impl<'a, T: Encodable> fmt::Show for AsJson<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl<'a, T: Encodable> fmt::String for AsJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

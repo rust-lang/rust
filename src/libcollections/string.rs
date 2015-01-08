@@ -930,18 +930,6 @@ pub trait ToString {
     fn to_string(&self) -> String;
 }
 
-#[cfg(stage0)]
-impl<T: fmt::Show> ToString for T {
-    fn to_string(&self) -> String {
-        use core::fmt::Writer;
-        let mut buf = String::new();
-        let _ = buf.write_fmt(format_args!("{}", self));
-        buf.shrink_to_fit();
-        buf
-    }
-}
-
-#[cfg(not(stage0))]
 impl<T: fmt::String> ToString for T {
     fn to_string(&self) -> String {
         use core::fmt::Writer;

@@ -823,7 +823,6 @@ pub struct Display<'a, P:'a> {
     filename: bool
 }
 
-//NOTE(stage0): replace with deriving(Show) after snapshot
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)
