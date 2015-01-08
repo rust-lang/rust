@@ -46,6 +46,5 @@ fn bar<T, I, X>(x: X) where
 
 fn main() {
     foo(&[0i, 1, 2]);
-    //~^ error: the trait `Bound` is not implemented for the type `<<&[int; 3] as IntoIterator>::Iter as core::iter::Iterator>::Item`
     bar(&[0i, 1, 2]);
 }
