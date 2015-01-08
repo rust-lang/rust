@@ -166,7 +166,7 @@ pub trait SliceExt {
     /// assert_eq!(num_moved, 3);
     /// assert!(a == [6i, 7, 8, 4, 5]);
     /// ```
-    #[experimental = "uncertain about this API approach"]
+    #[unstable = "uncertain about this API approach"]
     fn move_from(&mut self, src: Vec<Self::Item>, start: uint, end: uint) -> uint;
 
     /// Returns a subslice spanning the interval [`start`, `end`).
@@ -175,7 +175,7 @@ pub trait SliceExt {
     /// original slice (i.e. when `end > self.len()`) or when `start > end`.
     ///
     /// Slicing with `start` equal to `end` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice(&self, start: uint, end: uint) -> &[Self::Item];
 
     /// Returns a subslice from `start` to the end of the slice.
@@ -183,7 +183,7 @@ pub trait SliceExt {
     /// Panics when `start` is strictly greater than the length of the original slice.
     ///
     /// Slicing from `self.len()` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_from(&self, start: uint) -> &[Self::Item];
 
     /// Returns a subslice from the start of the slice to `end`.
@@ -191,7 +191,7 @@ pub trait SliceExt {
     /// Panics when `end` is strictly greater than the length of the original slice.
     ///
     /// Slicing to `0` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_to(&self, end: uint) -> &[Self::Item];
 
     /// Divides one slice into two at an index.
@@ -284,11 +284,11 @@ pub trait SliceExt {
     fn first(&self) -> Option<&Self::Item>;
 
     /// Returns all but the first element of a slice.
-    #[experimental = "likely to be renamed"]
+    #[unstable = "likely to be renamed"]
     fn tail(&self) -> &[Self::Item];
 
     /// Returns all but the last element of a slice.
-    #[experimental = "likely to be renamed"]
+    #[unstable = "likely to be renamed"]
     fn init(&self) -> &[Self::Item];
 
     /// Returns the last element of a slice, or `None` if it is empty.
@@ -384,7 +384,7 @@ pub trait SliceExt {
     /// original slice (i.e. when `end > self.len()`) or when `start > end`.
     ///
     /// Slicing with `start` equal to `end` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_mut(&mut self, start: uint, end: uint) -> &mut [Self::Item];
 
     /// Returns a mutable subslice from `start` to the end of the slice.
@@ -392,7 +392,7 @@ pub trait SliceExt {
     /// Panics when `start` is strictly greater than the length of the original slice.
     ///
     /// Slicing from `self.len()` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_from_mut(&mut self, start: uint) -> &mut [Self::Item];
 
     /// Returns a mutable subslice from the start of the slice to `end`.
@@ -400,7 +400,7 @@ pub trait SliceExt {
     /// Panics when `end` is strictly greater than the length of the original slice.
     ///
     /// Slicing to `0` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_to_mut(&mut self, end: uint) -> &mut [Self::Item];
 
     /// Returns an iterator that allows modifying each value
@@ -412,11 +412,11 @@ pub trait SliceExt {
     fn first_mut(&mut self) -> Option<&mut Self::Item>;
 
     /// Returns all but the first element of a mutable slice
-    #[experimental = "likely to be renamed or removed"]
+    #[unstable = "likely to be renamed or removed"]
     fn tail_mut(&mut self) -> &mut [Self::Item];
 
     /// Returns all but the last element of a mutable slice
-    #[experimental = "likely to be renamed or removed"]
+    #[unstable = "likely to be renamed or removed"]
     fn init_mut(&mut self) -> &mut [Self::Item];
 
     /// Returns a mutable pointer to the last item in the slice.
@@ -588,7 +588,7 @@ pub trait SliceExt {
     /// assert!(dst.clone_from_slice(&src2) == 3);
     /// assert!(dst == [3i, 4, 5]);
     /// ```
-    #[experimental]
+    #[unstable]
     fn clone_from_slice(&mut self, &[Self::Item]) -> uint where Self::Item: Clone;
 
     /// Sorts the slice, in place.
@@ -677,11 +677,11 @@ pub trait SliceExt {
     fn prev_permutation(&mut self) -> bool where Self::Item: Ord;
 
     /// Find the first index containing a matching value.
-    #[experimental]
+    #[unstable]
     fn position_elem(&self, t: &Self::Item) -> Option<uint> where Self::Item: PartialEq;
 
     /// Find the last index containing a matching value.
-    #[experimental]
+    #[unstable]
     fn rposition_elem(&self, t: &Self::Item) -> Option<uint> where Self::Item: PartialEq;
 
     /// Return true if the slice contains an element with the given value.
@@ -697,7 +697,7 @@ pub trait SliceExt {
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
     /// Convert `self` into a vector without clones or allocation.
-    #[experimental]
+    #[unstable]
     fn into_vec(self: Box<Self>) -> Vec<Self::Item>;
 }
 
@@ -1034,7 +1034,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
 ///
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
-#[experimental]
+#[unstable]
 #[derive(Clone)]
 pub struct ElementSwaps {
     sdir: Vec<SizeDirection>,
@@ -1046,7 +1046,7 @@ pub struct ElementSwaps {
 
 impl ElementSwaps {
     /// Creates an `ElementSwaps` iterator for a sequence of `length` elements.
-    #[experimental]
+    #[unstable]
     pub fn new(length: uint) -> ElementSwaps {
         // Initialize `sdir` with a direction that position should move in
         // (all negative at the beginning) and the `size` of the

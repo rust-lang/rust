@@ -15,7 +15,7 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "rustc"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

@@ -12,7 +12,7 @@
 //!
 //! A simple wrapper over the platform's dynamic library facilities
 
-#![experimental]
+#![unstable]
 #![allow(missing_docs)]
 
 use prelude::v1::*;

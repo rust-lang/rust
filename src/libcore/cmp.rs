@@ -290,7 +290,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 ///
 /// Returns the first argument if the comparison determines them to be equal.
 #[inline]
-#[experimental]
+#[unstable]
 pub fn partial_min<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
     match v1.partial_cmp(&v2) {
         Some(Less) | Some(Equal) => Some(v1),
@@ -303,7 +303,7 @@ pub fn partial_min<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
 ///
 /// Returns the first argument if the comparison determines them to be equal.
 #[inline]
-#[experimental]
+#[unstable]
 pub fn partial_max<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
     match v1.partial_cmp(&v2) {
         Some(Less) => Some(v2),

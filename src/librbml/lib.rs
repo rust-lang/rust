@@ -16,7 +16,7 @@
 //!     http://www.matroska.org/technical/specs/rfc/index.html
 
 #![crate_name = "rbml"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

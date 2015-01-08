@@ -207,14 +207,14 @@ impl Builder {
     }
 
     /// Redirect thread-local stdout.
-    #[experimental = "Will likely go away after proc removal"]
+    #[unstable = "Will likely go away after proc removal"]
     pub fn stdout(mut self, stdout: Box<Writer + Send>) -> Builder {
         self.stdout = Some(stdout);
         self
     }
 
     /// Redirect thread-local stderr.
-    #[experimental = "Will likely go away after proc removal"]
+    #[unstable = "Will likely go away after proc removal"]
     pub fn stderr(mut self, stderr: Box<Writer + Send>) -> Builder {
         self.stderr = Some(stderr);
         self
@@ -483,7 +483,7 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
 
 impl<T: Send> JoinGuard<'static, T> {
     /// Detaches the child thread, allowing it to outlive its parent.
-    #[experimental = "unsure whether this API imposes limitations elsewhere"]
+    #[unstable = "unsure whether this API imposes limitations elsewhere"]
     pub fn detach(mut self) {
         unsafe { imp::detach(self.native) };
         self.joined = true; // avoid joining in the destructor

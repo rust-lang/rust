@@ -92,7 +92,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
     #[inline]
-    #[experimental = "needs investigation to see if to_string() can match perf"]
+    #[unstable = "needs investigation to see if to_string() can match perf"]
     pub fn from_str(string: &str) -> String {
         String { vec: ::slice::SliceExt::to_vec(string.as_bytes()) }
     }
@@ -719,7 +719,7 @@ impl<'a> FromIterator<&'a str> for String {
     }
 }
 
-#[experimental = "waiting on Extend stabilization"]
+#[unstable = "waiting on Extend stabilization"]
 impl Extend<char> for String {
     fn extend<I:Iterator<Item=char>>(&mut self, mut iterator: I) {
         let (lower_bound, _) = iterator.size_hint();
@@ -730,7 +730,7 @@ impl Extend<char> for String {
     }
 }
 
-#[experimental = "waiting on Extend stabilization"]
+#[unstable = "waiting on Extend stabilization"]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: Iterator<Item=&'a str>>(&mut self, mut iterator: I) {
         // A guess that at least one byte per iterator element will be needed.
@@ -790,7 +790,7 @@ impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
     fn ne(&self, other: &CowString<'a>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
-#[experimental = "waiting on Str stabilization"]
+#[unstable = "waiting on Str stabilization"]
 impl Str for String {
     #[inline]
     #[stable]
@@ -814,14 +814,14 @@ impl fmt::String for String {
     }
 }
 
-#[experimental = "waiting on fmt stabilization"]
+#[unstable = "waiting on fmt stabilization"]
 impl fmt::Show for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Show::fmt(&**self, f)
     }
 }
 
-#[experimental = "waiting on Hash stabilization"]
+#[unstable = "waiting on Hash stabilization"]
 #[cfg(stage0)]
 impl<H: hash::Writer> hash::Hash<H> for String {
     #[inline]
@@ -829,7 +829,7 @@ impl<H: hash::Writer> hash::Hash<H> for String {
         (**self).hash(hasher)
     }
 }
-#[experimental = "waiting on Hash stabilization"]
+#[unstable = "waiting on Hash stabilization"]
 #[cfg(not(stage0))]
 impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for String {
     #[inline]
@@ -887,7 +887,7 @@ impl ops::Deref for String {
 }
 
 /// Wrapper type providing a `&String` reference via `Deref`.
-#[experimental]
+#[unstable]
 pub struct DerefString<'a> {
     x: DerefVec<'a, u8>
 }
@@ -914,7 +914,7 @@ impl<'a> Deref for DerefString<'a> {
 /// let string = as_string("foo").clone();
 /// string_consumer(string);
 /// ```
-#[experimental]
+#[unstable]
 pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
     DerefString { x: as_vec(x.as_bytes()) }
 }

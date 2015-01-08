@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![experimental]
+#![unstable]
 #![doc(hidden)]
 
 macro_rules! assert_approx_eq {

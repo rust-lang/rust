@@ -22,7 +22,7 @@
 //! so we will not _hide_ the facts of which OS the user is on -- they should be given the
 //! opportunity to write OS-ignorant code by default.
 
-#![experimental]
+#![unstable]
 
 #![allow(missing_docs)]
 #![allow(non_snake_case)]

@@ -12,7 +12,7 @@
 //! up to a certain length. Eventually we should able to generalize
 //! to all lengths.
 
-#![experimental] // not yet reviewed
+#![unstable] // not yet reviewed
 
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};

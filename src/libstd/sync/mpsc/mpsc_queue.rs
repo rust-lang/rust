@@ -35,7 +35,7 @@
 //! method, and see the method for more information about it. Due to this
 //! caveat, this queue may not be appropriate for all use-cases.
 
-#![experimental]
+#![unstable]
 
 // http://www.1024cores.net/home/lock-free-algorithms
 //                         /queues/non-intrusive-mpsc-node-based-queue
