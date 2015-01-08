@@ -491,18 +491,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
           ir.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
       }
       ast::ExprForLoop(ref pat, _, _, _) => {
-        pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
-            debug!("adding local variable {} from for loop with bm {:?}",
-                   p_id, bm);
-            let name = path1.node;
-            ir.add_live_node_for_node(p_id, VarDefNode(sp));
-            ir.add_variable(Local(LocalInfo {
-                id: p_id,
-                ident: name
-            }));
-        });
-        ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::walk_expr(ir, expr);
+          ir.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
       }
       ast::ExprBinary(op, _, _) if ast_util::lazy_binop(op.node) => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -1035,8 +1024,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           ast::ExprForLoop(ref pat, ref head, ref blk, _) => {
-            let ln = self.propagate_through_loop(expr, ForLoop(&**pat), &**blk, succ);
-            self.propagate_through_expr(&**head, ln)
+              self.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
           }
 
           // Note that labels have been resolved, so we don't need to look
@@ -1476,14 +1464,6 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
         visit::walk_expr(this, expr);
       }
 
-      ast::ExprForLoop(ref pat, _, _, _) => {
-        this.pat_bindings(&**pat, |this, ln, var, sp, id| {
-            this.warn_about_unused(sp, id, ln, var);
-        });
-
-        visit::walk_expr(this, expr);
-      }
-
       // no correctness conditions related to liveness
       ast::ExprCall(..) | ast::ExprMethodCall(..) | ast::ExprIf(..) |
       ast::ExprMatch(..) | ast::ExprWhile(..) | ast::ExprLoop(..) |
@@ -1502,6 +1482,9 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       }
       ast::ExprWhileLet(..) => {
         this.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
+      }
+      ast::ExprForLoop(..) => {
+        this.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
       }
     }
 }

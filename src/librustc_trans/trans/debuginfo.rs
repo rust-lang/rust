@@ -3627,24 +3627,9 @@ fn create_scope_map(cx: &CrateContext,
                                               Found unexpanded while-let.");
             }
 
-            ast::ExprForLoop(ref pattern, ref head, ref body, _) => {
-                walk_expr(cx, &**head, scope_stack, scope_map);
-
-                with_new_scope(cx,
-                               exp.span,
-                               scope_stack,
-                               scope_map,
-                               |cx, scope_stack, scope_map| {
-                    scope_map.insert(exp.id,
-                                     scope_stack.last()
-                                                .unwrap()
-                                                .scope_metadata);
-                    walk_pattern(cx,
-                                 &**pattern,
-                                 scope_stack,
-                                 scope_map);
-                    walk_block(cx, &**body, scope_stack, scope_map);
-                })
+            ast::ExprForLoop(..) => {
+                cx.sess().span_bug(exp.span, "debuginfo::create_scope_map() - \
+                                              Found unexpanded for loop.");
             }
 
             ast::ExprMac(_) => {
