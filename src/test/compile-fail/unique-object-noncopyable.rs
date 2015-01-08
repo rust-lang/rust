@@ -15,7 +15,7 @@ trait Foo {
 }
 
 struct Bar {
-    x: int,
+    x: isize,
 }
 
 impl Drop for Bar {

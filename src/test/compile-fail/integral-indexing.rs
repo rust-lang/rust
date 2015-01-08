@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let v: Vec<int> = vec!(0, 1, 2, 3, 4, 5);
+    let v: Vec<isize> = vec!(0, 1, 2, 3, 4, 5);
     let s: String = "abcdef".to_string();
     v.as_slice()[3u];
     v.as_slice()[3];

@@ -11,11 +11,11 @@
 // Test that immutable pattern bindings cannot be reassigned.
 
 enum E {
-    Foo(int)
+    Foo(isize)
 }
 
 struct S {
-    bar: int,
+    bar: isize,
 }
 
 pub fn main() {

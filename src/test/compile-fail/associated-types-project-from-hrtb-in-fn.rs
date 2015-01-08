@@ -17,7 +17,7 @@ pub trait Foo<T> {
     fn get(&self, t: T) -> Self::A;
 }
 
-fn foo2<I : for<'x> Foo<&'x int>>(
+fn foo2<I : for<'x> Foo<&'x isize>>(
     x: I::A)
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
 {
@@ -28,15 +28,15 @@ fn foo2<I : for<'x> Foo<&'x int>>(
     // specifically for fn signatures.
 }
 
-fn foo3<I : for<'x> Foo<&'x int>>(
-    x: <I as Foo<&int>>::A)
+fn foo3<I : for<'x> Foo<&'x isize>>(
+    x: <I as Foo<&isize>>::A)
 {
     // OK, in this case we spelled out the precise regions involved, though we left one of
     // them anonymous.
 }
 
-fn foo4<'a, I : for<'x> Foo<&'x int>>(
-    x: <I as Foo<&'a int>>::A)
+fn foo4<'a, I : for<'x> Foo<&'x isize>>(
+    x: <I as Foo<&'a isize>>::A)
 {
     // OK, in this case we spelled out the precise regions involved.
 }

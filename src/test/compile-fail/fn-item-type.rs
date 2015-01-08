@@ -11,8 +11,8 @@
 // Test that the types of distinct fn items are not compatible by
 // default. See also `run-pass/fn-item-type-*.rs`.
 
-fn foo(x: int) -> int { x * 2 }
-fn bar(x: int) -> int { x * 4 }
+fn foo(x: isize) -> isize { x * 2 }
+fn bar(x: isize) -> isize { x * 4 }
 
 fn eq<T>(x: T, y: T) { }
 

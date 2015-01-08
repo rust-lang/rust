@@ -15,12 +15,12 @@
 // variance inference works in the first place.
 
 struct Invariant<'a> {
-    f: &'a mut &'a int
+    f: &'a mut &'a isize
 }
 
 fn use_<'short,'long>(c: Invariant<'long>,
-                      s: &'short int,
-                      l: &'long int,
+                      s: &'short isize,
+                      l: &'long isize,
                       _where:Option<&'short &'long ()>) {
 
     // Test whether Invariant<'long> <: Invariant<'short>.  Since

@@ -12,7 +12,7 @@
 // borrowed (but otherwise non-aliasable) location is illegal.
 
 struct S<'a> {
-    pointer: &'a mut int
+    pointer: &'a mut isize
 }
 
 fn copy_borrowed_ptr<'a>(p: &'a mut S<'a>) -> S<'a> {

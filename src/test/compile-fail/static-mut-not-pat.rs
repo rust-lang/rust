@@ -12,7 +12,7 @@
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
-static mut a: int = 3;
+static mut a: isize = 3;
 
 fn main() {
     // If they can't be matched against, then it's possible to capture the same

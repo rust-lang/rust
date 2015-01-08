@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo { x: int }
+struct Foo { x: isize }
 extern {
     fn foo(1: ());
     //~^ ERROR: patterns aren't allowed in foreign function declarations
-    fn bar((): int);
+    fn bar((): isize);
     //~^ ERROR: patterns aren't allowed in foreign function declarations
-    fn baz(Foo { x }: int);
+    fn baz(Foo { x }: isize);
     //~^ ERROR: patterns aren't allowed in foreign function declarations
     fn qux((x,y): ());
     //~^ ERROR: patterns aren't allowed in foreign function declarations

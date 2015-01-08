@@ -11,7 +11,7 @@
 use std::marker;
 
 struct Foo {
-    a: int,
+    a: isize,
     ns: marker::NoSend
 }
 

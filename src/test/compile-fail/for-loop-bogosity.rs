@@ -9,12 +9,12 @@
 // except according to those terms.
 
 struct MyStruct {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 impl MyStruct {
-    fn next(&mut self) -> Option<int> {
+    fn next(&mut self) -> Option<isize> {
         Some(self.x)
     }
 }

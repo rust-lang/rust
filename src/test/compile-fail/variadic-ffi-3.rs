@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: int, ...) {
+fn foo(x: isize, ...) {
     //~^ ERROR: only foreign functions are allowed to be variadic
 }
 

@@ -13,7 +13,7 @@
 
 fn foo<F:FnOnce()+'static>(_p: F) { }
 
-static i: int = 3;
+static i: isize = 3;
 
 fn capture_local() {
     let x = 3i;

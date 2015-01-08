@@ -17,7 +17,7 @@
 
 // This is the first test that checks moving into local variables.
 
-pub struct D { d: int }
+pub struct D { d: isize }
 impl Drop for D { fn drop(&mut self) { } }
 
 pub struct Pair<X,Y> { x: X, y: Y }

@@ -14,7 +14,7 @@ trait Get {
 }
 
 struct Struct {
-    x: int,
+    x: isize,
 }
 
 impl Struct {

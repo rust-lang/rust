@@ -14,7 +14,7 @@ trait Convert<Target> {
     fn convert(&self) -> Target;
 }
 
-impl Convert<uint> for int {
+impl Convert<uint> for isize {
     fn convert(&self) -> uint {
         *self as uint
     }

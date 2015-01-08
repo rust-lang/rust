@@ -11,14 +11,14 @@
 struct cat {
   meows : uint,
 
-  how_hungry : int,
+  how_hungry : isize,
 }
 
 impl cat {
     pub fn speak(&self) { self.meows += 1u; }
 }
 
-fn cat(in_x : uint, in_y : int) -> cat {
+fn cat(in_x : uint, in_y : isize) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y

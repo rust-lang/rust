@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 struct S {
-  x : Box<int>
+  x : Box<isize>
 }
 
 fn f<T>(_: T) {}

@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn takes_imm(x: &int) { }
+fn takes_imm(x: &isize) { }
 
-fn takes_mut(x: &mut int) { }
+fn takes_mut(x: &mut isize) { }
 
 fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
     f(t)

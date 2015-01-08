@@ -31,39 +31,39 @@ impl<T> DerefMut for Own<T> {
     }
 }
 
-fn deref_imm(x: Own<int>) {
+fn deref_imm(x: Own<isize>) {
     let _i = &*x;
 }
 
-fn deref_mut1(x: Own<int>) {
+fn deref_mut1(x: Own<isize>) {
     let _i = &mut *x; //~ ERROR cannot borrow
 }
 
-fn deref_mut2(mut x: Own<int>) {
+fn deref_mut2(mut x: Own<isize>) {
     let _i = &mut *x;
 }
 
-fn deref_extend<'a>(x: &'a Own<int>) -> &'a int {
+fn deref_extend<'a>(x: &'a Own<isize>) -> &'a isize {
     &**x
 }
 
-fn deref_extend_mut1<'a>(x: &'a Own<int>) -> &'a mut int {
+fn deref_extend_mut1<'a>(x: &'a Own<isize>) -> &'a mut isize {
     &mut **x //~ ERROR cannot borrow
 }
 
-fn deref_extend_mut2<'a>(x: &'a mut Own<int>) -> &'a mut int {
+fn deref_extend_mut2<'a>(x: &'a mut Own<isize>) -> &'a mut isize {
     &mut **x
 }
 
-fn assign1<'a>(x: Own<int>) {
+fn assign1<'a>(x: Own<isize>) {
     *x = 3; //~ ERROR cannot borrow
 }
 
-fn assign2<'a>(x: &'a Own<int>) {
+fn assign2<'a>(x: &'a Own<isize>) {
     **x = 3; //~ ERROR cannot borrow
 }
 
-fn assign3<'a>(x: &'a mut Own<int>) {
+fn assign3<'a>(x: &'a mut Own<isize>) {
     **x = 3;
 }
 

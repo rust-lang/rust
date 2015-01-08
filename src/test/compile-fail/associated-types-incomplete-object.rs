@@ -19,7 +19,7 @@ pub trait Foo {
 
 struct Bar;
 
-impl Foo for int {
+impl Foo for isize {
     type A = uint;
     type B = char;
     fn boo(&self) -> uint {

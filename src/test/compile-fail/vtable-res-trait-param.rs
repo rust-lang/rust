@@ -9,20 +9,20 @@
 // except according to those terms.
 
 trait TraitA {
-    fn method_a(&self) -> int;
+    fn method_a(&self) -> isize;
 }
 
 trait TraitB {
-    fn gimme_an_a<A:TraitA>(&self, a: A) -> int;
+    fn gimme_an_a<A:TraitA>(&self, a: A) -> isize;
 }
 
-impl TraitB for int {
-    fn gimme_an_a<A:TraitA>(&self, a: A) -> int {
+impl TraitB for isize {
+    fn gimme_an_a<A:TraitA>(&self, a: A) -> isize {
         a.method_a() + *self
     }
 }
 
-fn call_it<B:TraitB>(b: B)  -> int {
+fn call_it<B:TraitB>(b: B)  -> isize {
     let y = 4u;
     b.gimme_an_a(y) //~ ERROR the trait `TraitA` is not implemented
 }

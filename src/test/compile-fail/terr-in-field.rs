@@ -9,12 +9,12 @@
 // except according to those terms.
 
 struct foo {
-    a: int,
-    b: int,
+    a: isize,
+    b: isize,
 }
 
 struct bar {
-    a: int,
+    a: isize,
     b: uint,
 }
 

@@ -12,19 +12,19 @@
 #![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types)]
 
-fn f1(x: int) {
+fn f1(x: isize) {
     //~^ ERROR unused variable: `x`
 }
 
-fn f1b(x: &mut int) {
+fn f1b(x: &mut isize) {
     //~^ ERROR unused variable: `x`
 }
 
 #[allow(unused_variables)]
-fn f1c(x: int) {}
+fn f1c(x: isize) {}
 
 fn f1d() {
-    let x: int;
+    let x: isize;
     //~^ ERROR unused variable: `x`
 }
 
@@ -71,10 +71,10 @@ fn f4() {
 }
 
 enum tri {
-    a(int), b(int), c(int)
+    a(isize), b(isize), c(isize)
 }
 
-fn f4b() -> int {
+fn f4b() -> isize {
     match tri::a(3i) {
       tri::a(i) | tri::b(i) | tri::c(i) => {
         i

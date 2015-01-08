@@ -30,7 +30,7 @@ enum XYZ {
     X, //~ ERROR variant is never used
     Y { //~ ERROR variant is never used
         a: String,
-        b: int //~ ERROR: struct field is never used
+        b: isize //~ ERROR: struct field is never used
     },
     Z
 }

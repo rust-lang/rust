@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(x: int) { println!("{}", x); }
+fn foo(x: isize) { println!("{}", x); }
 
 fn main() {
-    let x: int;
+    let x: isize;
     foo(x); //~ ERROR use of possibly uninitialized variable: `x`
 }

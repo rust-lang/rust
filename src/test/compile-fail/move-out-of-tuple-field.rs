@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-struct Foo(Box<int>);
+struct Foo(Box<isize>);
 
 fn main() {
     let x = (box 1i,);

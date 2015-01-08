@@ -10,13 +10,13 @@
 
 #![feature(lang_items, overloaded_calls, unboxed_closures)]
 
-fn c<F:Fn(int, int) -> int>(f: F) -> int {
+fn c<F:Fn(isize, isize) -> isize>(f: F) -> isize {
     f(5, 6)
 }
 
 fn main() {
-    let z: int = 7;
-    assert_eq!(c(|&mut: x: int, y| x + y + z), 10);
+    let z: isize = 7;
+    assert_eq!(c(|&mut: x: isize, y| x + y + z), 10);
     //~^ ERROR not implemented
 }
 

@@ -16,6 +16,6 @@ fn f<T>() -> bool {
 }
 
 fn main() {
-    let b = f::<int>();
+    let b = f::<isize>();
     assert!(b);
 }

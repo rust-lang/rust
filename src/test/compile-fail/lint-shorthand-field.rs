@@ -12,8 +12,8 @@
 #![deny(non_shorthand_field_patterns)]
 
 struct Foo {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
     }
 
     {
-        const x: int = 1;
+        const x: isize = 1;
 
         match (Foo { x: 1, y: 1 }) {
             Foo { x: x, ..} => {},

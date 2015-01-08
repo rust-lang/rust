@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum Foo {
-    Bar(int)
+    Bar(isize)
 }
 
 fn main() {

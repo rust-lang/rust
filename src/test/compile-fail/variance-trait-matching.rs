@@ -11,18 +11,18 @@
 // Issue #5781. Tests that subtyping is handled properly in trait matching.
 
 trait Make<'a> {
-    fn make(x: &'a mut int) -> Self;
+    fn make(x: &'a mut isize) -> Self;
 }
 
-impl<'a> Make<'a> for &'a mut int {
-    fn make(x: &'a mut int) -> &'a mut int {
+impl<'a> Make<'a> for &'a mut isize {
+    fn make(x: &'a mut isize) -> &'a mut isize {
         x
     }
 }
 
-fn f() -> &'static mut int {
+fn f() -> &'static mut isize {
     let mut x = 1;
-    let y: &'static mut int = Make::make(&mut x);   //~ ERROR `x` does not live long enough
+    let y: &'static mut isize = Make::make(&mut x);   //~ ERROR `x` does not live long enough
     y
 }
 

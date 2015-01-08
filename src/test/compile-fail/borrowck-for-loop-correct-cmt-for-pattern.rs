@@ -13,7 +13,7 @@
 #![feature(box_syntax)]
 
 struct Foo {
-    a: [Box<int>; 3],
+    a: [Box<isize>; 3],
 }
 
 fn main() {

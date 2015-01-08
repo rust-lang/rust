@@ -12,7 +12,7 @@
 
 
 struct Foo<'a> {
-    x: &'a int
+    x: &'a isize
 }
 
 pub fn main() {

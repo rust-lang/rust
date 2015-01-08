@@ -17,7 +17,7 @@ use foo::bar::{
 };
 
 mod foo {
-    mod bar { pub type Bar = int; }
+    mod bar { pub type Bar = isize; }
 }
 
 fn main() {}

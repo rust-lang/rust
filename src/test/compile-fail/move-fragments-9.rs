@@ -14,7 +14,7 @@
 // Note also that the `test_move_array_then_overwrite` tests represent
 // cases that we probably should make illegal.
 
-pub struct D { d: int }
+pub struct D { d: isize }
 impl Drop for D { fn drop(&mut self) { } }
 
 #[rustc_move_fragments]
