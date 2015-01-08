@@ -3208,8 +3208,24 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op) {
             // Shift is a special case: rhs must be uint, no matter what lhs is
-            check_expr_has_type(fcx, &**rhs, fcx.tcx().types.uint);
-            fcx.write_ty(expr.id, lhs_t);
+            check_expr(fcx, &**rhs);
+            let rhs_ty = fcx.expr_ty(&**rhs);
+            let rhs_ty = fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+            if ty::type_is_integral(rhs_ty) {
+                fcx.write_ty(expr.id, lhs_t);
+            } else {
+                fcx.type_error_message(
+                    expr.span,
+                    |actual| {
+                        format!(
+                            "right-hand-side of a shift operation must have integral type, \
+                             not `{}`",
+                            actual)
+                    },
+                    rhs_ty,
+                    None);
+                fcx.write_ty(expr.id, fcx.tcx().types.err);
+            }
             return;
         }
 
