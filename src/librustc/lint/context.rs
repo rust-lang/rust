@@ -28,8 +28,9 @@ use self::TargetLint::*;
 use middle::privacy::ExportedItems;
 use middle::ty::{self, Ty};
 use session::{early_error, Session};
+use session::config::UnstableFeatures;
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass, LintPassObject};
-use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
+use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid, ReleaseChannel};
 use lint::builtin;
 use util::nodemap::FnvHashMap;
 
@@ -210,6 +211,7 @@ impl LintStore {
                      UnusedAllocation,
                      Stability,
                      MissingCopyImplementations,
+                     UnstableFeatures,
         );
 
         add_builtin_with_new!(sess,
@@ -298,6 +300,29 @@ impl LintStore {
             }
         }
     }
+
+    fn maybe_stage_features(&mut self, sess: &Session) {
+        let lvl = match sess.opts.unstable_features {
+            UnstableFeatures::Default => return,
+            UnstableFeatures::Disallow => Warn,
+            UnstableFeatures::Cheat => Allow
+        };
+        match self.by_name.get("unstable_features") {
+            Some(&Id(lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            Some(&Renamed(_, lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            None => unreachable!()
+        }
+        match self.by_name.get("staged_unstable") {
+            Some(&Id(lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            Some(&Renamed(_, lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            None => unreachable!()
+        }
+        match self.by_name.get("staged_experimental") {
+            Some(&Id(lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            Some(&Renamed(_, lint_id)) => self.set_level(lint_id, (lvl, ReleaseChannel)),
+            None => unreachable!()
+        }
+    }
 }
 
 /// Context for lint checking.
@@ -380,6 +405,7 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     if level == Allow { return }
 
     let name = lint.name_lower();
+    let mut def = None;
     let mut note = None;
     let msg = match source {
         Default => {
@@ -394,7 +420,13 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
                     }, name.replace("_", "-"))
         },
         Node(src) => {
-            note = Some(src);
+            def = Some(src);
+            msg.to_string()
+        }
+        ReleaseChannel => {
+            let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
+            note = Some(format!("this feature may not be used in the {} release channel",
+                                release_channel));
             msg.to_string()
         }
     };
@@ -410,7 +442,11 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
         _ => sess.bug("impossible level in raw_emit_lint"),
     }
 
-    for span in note.into_iter() {
+    for note in note.into_iter() {
+        sess.note(note.index(&FullRange));
+    }
+
+    for span in def.into_iter() {
         sess.span_note(span, "lint level defined here");
     }
 }
@@ -767,6 +803,10 @@ impl LintPass for GatherNodeLevels {
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate(tcx: &ty::ctxt,
                    exported_items: &ExportedItems) {
+
+    // If this is a feature-staged build of rustc then flip several lints to 'forbid'
+    tcx.sess.lint_store.borrow_mut().maybe_stage_features(&tcx.sess);
+
     let krate = tcx.map.krate();
     let mut cx = Context::new(tcx, krate, exported_items);
 

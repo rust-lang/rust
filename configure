@@ -599,6 +599,18 @@ then
 fi
 putvar CFG_RELEASE_CHANNEL
 
+# A magic value that allows the compiler to use unstable features
+# during the bootstrap even when doing so would normally be an error
+# because of feature staging or because the build turns on
+# warnings-as-errors and unstable features default to warnings.  The
+# build has to match this key in an env var. Meant to be a mild
+# deterrent from users just turning on unstable features on the stable
+# channel.
+# Basing CFG_BOOTSTRAP_KEY on CFG_BOOTSTRAP_KEY lets it get picked up
+# during a Makefile reconfig.
+CFG_BOOTSTRAP_KEY="${CFG_BOOTSTRAP_KEY-`date +%N`}"
+putvar CFG_BOOTSTRAP_KEY
+
 step_msg "looking for build programs"
 
 probe_need CFG_PERL        perl

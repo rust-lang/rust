@@ -11,6 +11,7 @@ pub use self::MaybeTyped::*;
 
 use rustc_driver::driver;
 use rustc::session::{self, config};
+use rustc::session::config::UnstableFeatures;
 use rustc::session::search_paths::SearchPaths;
 use rustc::middle::{privacy, ty};
 use rustc::lint;
@@ -95,9 +96,10 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
         externs: externs,
         target_triple: triple.unwrap_or(config::host_triple().to_string()),
         cfg: config::parse_cfgspecs(cfgs),
+        // Ensure that rustdoc works even if rustc is feature-staged
+        unstable_features: UnstableFeatures::Default,
         ..config::basic_options().clone()
     };
-
 
     let codemap = codemap::CodeMap::new();
     let diagnostic_handler = diagnostic::default_handler(diagnostic::Auto, None);
