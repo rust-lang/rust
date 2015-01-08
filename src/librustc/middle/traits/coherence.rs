@@ -12,6 +12,7 @@
 
 use super::SelectionContext;
 use super::{Obligation, ObligationCause};
+use super::project;
 use super::util;
 
 use middle::subst::{Subst};
@@ -34,22 +35,28 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
            impl1_def_id.repr(infcx.tcx),
            impl2_def_id.repr(infcx.tcx));
 
+    let param_env = ty::empty_parameter_environment(infcx.tcx);
+    let mut selcx = SelectionContext::intercrate(infcx, &param_env);
+    let cause = ObligationCause::dummy();
+
     // `impl1` provides an implementation of `Foo<X,Y> for Z`.
     let impl1_substs =
         util::fresh_substs_for_impl(infcx, DUMMY_SP, impl1_def_id);
     let impl1_trait_ref =
         (*ty::impl_trait_ref(infcx.tcx, impl1_def_id).unwrap()).subst(infcx.tcx, &impl1_substs);
+    let impl1_trait_ref =
+        project::normalize(&mut selcx, cause.clone(), &impl1_trait_ref);
 
     // Determine whether `impl2` can provide an implementation for those
     // same types.
-    let param_env = ty::empty_parameter_environment(infcx.tcx);
-    let mut selcx = SelectionContext::intercrate(infcx, &param_env);
-    let obligation = Obligation::new(ObligationCause::dummy(),
+    let obligation = Obligation::new(cause,
                                      ty::Binder(ty::TraitPredicate {
-                                         trait_ref: Rc::new(impl1_trait_ref),
+                                         trait_ref: Rc::new(impl1_trait_ref.value),
                                      }));
     debug!("impl_can_satisfy(obligation={})", obligation.repr(infcx.tcx));
-    selcx.evaluate_impl(impl2_def_id, &obligation)
+    selcx.evaluate_impl(impl2_def_id, &obligation) &&
+        impl1_trait_ref.obligations.iter().all(
+            |o| selcx.evaluate_obligation(o))
 }
 
 #[allow(missing_copy_implementations)]
