@@ -206,8 +206,10 @@ impl fmt::String for clean::TyParamBound {
 impl fmt::String for clean::PathParameters {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            clean::PathParameters::AngleBracketed { ref lifetimes, ref types } => {
-                if lifetimes.len() > 0 || types.len() > 0 {
+            clean::PathParameters::AngleBracketed {
+                ref lifetimes, ref types, ref bindings
+            } => {
+                if lifetimes.len() > 0 || types.len() > 0 || bindings.len() > 0 {
                     try!(f.write_str("&lt;"));
                     let mut comma = false;
                     for lifetime in lifetimes.iter() {
@@ -223,6 +225,13 @@ impl fmt::String for clean::PathParameters {
                         }
                         comma = true;
                         try!(write!(f, "{}", *ty));
+                    }
+                    for binding in bindings.iter() {
+                        if comma {
+                            try!(f.write_str(", "));
+                        }
+                        comma = true;
+                        try!(write!(f, "{}", *binding));
                     }
                     try!(f.write_str("&gt;"));
                 }
@@ -717,6 +726,7 @@ impl fmt::String for clean::ViewListIdent {
                         params: clean::PathParameters::AngleBracketed {
                             lifetimes: Vec::new(),
                             types: Vec::new(),
+                            bindings: Vec::new()
                         }
                     })
                 };
@@ -724,6 +734,12 @@ impl fmt::String for clean::ViewListIdent {
             }
             _ => write!(f, "{}", self.name),
         }
+    }
+}
+
+impl fmt::String for clean::TypeBinding {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}={}", self.name, self.ty)
     }
 }
 
