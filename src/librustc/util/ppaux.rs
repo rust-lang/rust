@@ -26,6 +26,7 @@ use middle::ty;
 use middle::ty_fold::TypeFoldable;
 
 use std::collections::HashMap;
+use std::collections::hash_state::HashState;
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use syntax::abi;
@@ -1350,11 +1351,11 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for ty::Binder<T> {
     }
 }
 
-#[old_impl_check]
-impl<'tcx, S, H, K, V> Repr<'tcx> for HashMap<K,V,H>
-    where K : Hash<S> + Eq + Repr<'tcx>,
-          V : Repr<'tcx>,
-          H : Hasher<S>
+impl<'tcx, S, K, V> Repr<'tcx> for HashMap<K, V, S>
+    where K: Hash<<S as HashState>::Hasher> + Eq + Repr<'tcx>,
+          V: Repr<'tcx>,
+          S: HashState,
+          <S as HashState>::Hasher: Hasher<Output=u64>,
 {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("HashMap({})",

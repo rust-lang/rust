@@ -30,7 +30,8 @@ pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
     let generics = LifetimeBounds {
         lifetimes: Vec::new(),
         bounds: vec!(("__S",
-                      vec!(Path::new(vec!("std", "hash", "Writer"))))),
+                      vec!(Path::new(vec!("std", "hash", "Writer")),
+                           Path::new(vec!("std", "hash", "Hasher"))))),
     };
     let args = Path::new_local("__S");
     let inline = cx.meta_word(span, InternedString::new("inline"));

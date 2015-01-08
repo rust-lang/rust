@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use std::hash;
-use std::hash::Hash;
+use std::hash::{Hash, SipHasher};
 
 #[derive(Hash)]
 struct Person {
     id: uint,
     name: String,
     phone: uint,
+}
+
+fn hash<T: Hash<SipHasher>>(t: &T) -> u64 {
+    std::hash::hash::<T, SipHasher>(t)
 }
 
 fn main() {
@@ -30,6 +32,6 @@ fn main() {
         name: "Bob".to_string(),
         phone: 555_666_7777
     };
-    assert!(hash::hash(&person1) == hash::hash(&person1));
-    assert!(hash::hash(&person1) != hash::hash(&person2));
+    assert!(hash(&person1) == hash(&person1));
+    assert!(hash(&person1) != hash(&person2));
 }

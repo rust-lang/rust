@@ -678,7 +678,7 @@ mod test {
     use prelude::*;
 
     use super::BTreeSet;
-    use std::hash;
+    use std::hash::{self, SipHasher};
 
     #[test]
     fn test_clone_eq() {
@@ -703,7 +703,7 @@ mod test {
       y.insert(2);
       y.insert(1);
 
-      assert!(hash::hash(&x) == hash::hash(&y));
+      assert!(hash::hash::<_, SipHasher>(&x) == hash::hash::<_, SipHasher>(&y));
     }
 
     struct Counter<'a, 'b> {

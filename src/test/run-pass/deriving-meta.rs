@@ -9,13 +9,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::hash::hash;
+use std::hash::{Hash, SipHasher};
 
 #[derive(PartialEq, Clone, Hash)]
 struct Foo {
     bar: uint,
     baz: int
 }
+
+fn hash<T: Hash<SipHasher>>(_t: &T) {}
 
 pub fn main() {
     let a = Foo {bar: 4, baz: -3};
