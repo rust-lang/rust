@@ -244,10 +244,10 @@ pub mod rt {
     }
 
     macro_rules! impl_to_source_int {
-        (signed, $t:ty, $tag:ident) => (
+        (signed, $t:ty, $tag:expr) => (
             impl ToSource for $t {
                 fn to_source(&self) -> String {
-                    let lit = ast::LitInt(*self as u64, ast::SignedIntLit(ast::$tag,
+                    let lit = ast::LitInt(*self as u64, ast::SignedIntLit($tag,
                                                                           ast::Sign::new(*self)));
                     pprust::lit_to_string(&dummy_spanned(lit))
                 }
@@ -258,10 +258,10 @@ pub mod rt {
                 }
             }
         );
-        (unsigned, $t:ty, $tag:ident) => (
+        (unsigned, $t:ty, $tag:expr) => (
             impl ToSource for $t {
                 fn to_source(&self) -> String {
-                    let lit = ast::LitInt(*self as u64, ast::UnsignedIntLit(ast::$tag));
+                    let lit = ast::LitInt(*self as u64, ast::UnsignedIntLit($tag));
                     pprust::lit_to_string(&dummy_spanned(lit))
                 }
             }
@@ -273,17 +273,17 @@ pub mod rt {
         );
     }
 
-    impl_to_source_int! { signed, int, TyIs }
-    impl_to_source_int! { signed, i8,  TyI8 }
-    impl_to_source_int! { signed, i16, TyI16 }
-    impl_to_source_int! { signed, i32, TyI32 }
-    impl_to_source_int! { signed, i64, TyI64 }
+    impl_to_source_int! { signed, int, ast::TyIs(false) }
+    impl_to_source_int! { signed, i8,  ast::TyI8 }
+    impl_to_source_int! { signed, i16, ast::TyI16 }
+    impl_to_source_int! { signed, i32, ast::TyI32 }
+    impl_to_source_int! { signed, i64, ast::TyI64 }
 
-    impl_to_source_int! { unsigned, uint, TyUs }
-    impl_to_source_int! { unsigned, u8,   TyU8 }
-    impl_to_source_int! { unsigned, u16,  TyU16 }
-    impl_to_source_int! { unsigned, u32,  TyU32 }
-    impl_to_source_int! { unsigned, u64,  TyU64 }
+    impl_to_source_int! { unsigned, uint, ast::TyUs(false) }
+    impl_to_source_int! { unsigned, u8,   ast::TyU8 }
+    impl_to_source_int! { unsigned, u16,  ast::TyU16 }
+    impl_to_source_int! { unsigned, u32,  ast::TyU32 }
+    impl_to_source_int! { unsigned, u64,  ast::TyU64 }
 
     // Alas ... we write these out instead. All redundant.
 
