@@ -131,7 +131,9 @@ fn loop_break_pops_scopes<'r, F>(_v: &'r mut [usize], mut f: F) where
     }
 }
 
-fn loop_loop_pops_scopes<'r, F>(_v: &'r mut [usize], mut f: F) where F: FnMut(&'r mut usize) -> bool {
+fn loop_loop_pops_scopes<'r, F>(_v: &'r mut [usize], mut f: F)
+    where F: FnMut(&'r mut usize) -> bool
+{
     // Similar to `loop_break_pops_scopes` but for the `loop` keyword
 
     while cond() {
