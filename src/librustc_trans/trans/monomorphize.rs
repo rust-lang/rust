@@ -300,8 +300,6 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
                                   -> T
     where T : TypeFoldable<'tcx> + Repr<'tcx> + HasProjectionTypes + Clone
 {
-    assert!(param_substs.regions.is_erased());
-
     let substituted = value.subst(tcx, param_substs);
     normalize_associated_type(tcx, &substituted)
 }

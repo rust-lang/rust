@@ -50,7 +50,7 @@ use std::vec::Vec;
 use syntax::ast::Ident;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathName};
-use syntax::codemap::Span;
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use util::common::memoized;
@@ -114,8 +114,9 @@ pub fn normalize_ty<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 // Is the type's representation size known at compile time?
-pub fn type_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-ty::type_contents(cx, ty).is_sized(cx)
+pub fn type_is_sized<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    let param_env = ty::empty_parameter_environment(tcx);
+    ty::type_is_sized(&param_env, DUMMY_SP, ty)
 }
 
 pub fn lltype_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
