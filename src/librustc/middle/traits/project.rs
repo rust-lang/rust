@@ -649,7 +649,7 @@ fn confirm_candidate<'cx,'tcx>(
             }
 
             match impl_ty {
-                Some(ty) => (ty, impl_vtable.nested.to_vec()),
+                Some(ty) => (ty, impl_vtable.nested.into_vec()),
                 None => {
                     // This means that the impl is missing a
                     // definition for the associated type. This error
