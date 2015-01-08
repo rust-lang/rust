@@ -291,22 +291,6 @@ impl<'a> SeedableRng<&'a [uint]> for StdRng {
     }
 }
 
-/// Create a weak random number generator with a default algorithm and seed.
-///
-/// It returns the fastest `Rng` algorithm currently available in Rust without
-/// consideration for cryptography or security. If you require a specifically
-/// seeded `Rng` for consistency over time you should pick one algorithm and
-/// create the `Rng` yourself.
-///
-/// This will read randomness from the operating system to seed the
-/// generator.
-pub fn weak_rng() -> XorShiftRng {
-    match OsRng::new() {
-        Ok(mut r) => r.gen(),
-        Err(e) => panic!("weak_rng: failed to create seeded RNG: {:?}", e)
-    }
-}
-
 /// Controls how the thread-local RNG is reseeded.
 struct ThreadRngReseeder;
 
@@ -645,7 +629,7 @@ mod bench {
 
     use self::test::Bencher;
     use super::{XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};
-    use super::{OsRng, weak_rng};
+    use super::{OsRng, random};
     use mem::size_of;
 
     #[bench]
@@ -694,7 +678,7 @@ mod bench {
 
     #[bench]
     fn rand_shuffle_100(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng: XorShiftRng = random();
         let x : &mut[uint] = &mut [1; 100];
         b.iter(|| {
             rng.shuffle(x);

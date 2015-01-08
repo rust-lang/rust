@@ -463,7 +463,7 @@ mod bench {
 
     mod uint {
         use super::test::Bencher;
-        use rand::{weak_rng, Rng};
+        use rand::{random, XorShiftRng, Rng};
         use std::fmt;
 
         #[inline]
@@ -473,38 +473,38 @@ mod bench {
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<uint>(), 2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<uint>(), 8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<uint>(), 10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<uint>(), 16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<uint>(), 36); })
         }
     }
 
     mod int {
         use super::test::Bencher;
-        use rand::{weak_rng, Rng};
+        use rand::{random, XorShiftRng, Rng};
         use std::fmt;
 
         #[inline]
@@ -514,43 +514,43 @@ mod bench {
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<int>(), 2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<int>(), 8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<int>(), 10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<int>(), 16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { to_string(rng.gen::<int>(), 36); })
         }
     }
 
     mod f64 {
         use super::test::Bencher;
-        use rand::{weak_rng, Rng};
+        use rand::{random, XorShiftRng, Rng};
         use f64;
 
         #[bench]
         fn float_to_string(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng: XorShiftRng = random();
             b.iter(|| { f64::to_string(rng.gen()); })
         }
     }

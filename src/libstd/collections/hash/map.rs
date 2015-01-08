@@ -1603,7 +1603,7 @@ mod test_map {
     use super::Entry::{Occupied, Vacant};
     use iter::{range_inclusive, range_step_inclusive, repeat};
     use cell::RefCell;
-    use rand::{weak_rng, Rng};
+    use rand::{random, XorShiftRng, Rng};
 
     #[test]
     fn test_create_capacity_zero() {
@@ -2261,7 +2261,7 @@ mod test_map {
         }
 
         let mut m = HashMap::new();
-        let mut rng = weak_rng();
+        let mut rng: XorShiftRng = random();
 
         // Populate the map with some items.
         for _ in range(0u, 50) {
