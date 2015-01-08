@@ -936,29 +936,47 @@ fn constrain_call<'a, I: Iterator<Item=&'a ast::Expr>>(rcx: &mut Rcx,
 fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                   deref_expr: &ast::Expr,
                                   derefs: uint,
-                                  mut derefd_ty: Ty<'tcx>) {
+                                  mut derefd_ty: Ty<'tcx>)
+{
+    debug!("constrain_autoderefs(deref_expr={}, derefs={}, derefd_ty={})",
+           deref_expr.repr(rcx.tcx()),
+           derefs,
+           derefd_ty.repr(rcx.tcx()));
+
     let r_deref_expr = ty::ReScope(CodeExtent::from_node_id(deref_expr.id));
     for i in range(0u, derefs) {
-        debug!("constrain_autoderefs(deref_expr=?, derefd_ty={}, derefs={}/{}",
-               rcx.fcx.infcx().ty_to_string(derefd_ty),
-               i, derefs);
-
         let method_call = MethodCall::autoderef(deref_expr.id, i);
+        debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
+
         derefd_ty = match rcx.fcx.inh.method_map.borrow().get(&method_call) {
             Some(method) => {
+                debug!("constrain_autoderefs: #{} is overloaded, method={}",
+                       i, method.repr(rcx.tcx()));
+
                 // Treat overloaded autoderefs as if an AutoRef adjustment
                 // was applied on the base type, as that is always the case.
                 let fn_sig = ty::ty_fn_sig(method.ty);
-                let self_ty = fn_sig.0.inputs[0];
+                let fn_sig = // late-bound regions should have been instantiated
+                    ty::assert_no_late_bound_regions(rcx.tcx(), fn_sig);
+                let self_ty = fn_sig.inputs[0];
                 let (m, r) = match self_ty.sty {
                     ty::ty_rptr(r, ref m) => (m.mutbl, r),
-                    _ => rcx.tcx().sess.span_bug(deref_expr.span,
+                    _ => {
+                        rcx.tcx().sess.span_bug(
+                            deref_expr.span,
                             &format!("bad overloaded deref type {}",
-                                    method.ty.repr(rcx.tcx()))[])
+                                     method.ty.repr(rcx.tcx()))[])
+                    }
                 };
+
+                debug!("constrain_autoderefs: receiver r={:?} m={:?}",
+                       r.repr(rcx.tcx()), m);
+
                 {
                     let mc = mc::MemCategorizationContext::new(rcx.fcx);
                     let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
+                    debug!("constrain_autoderefs: self_cmt={:?}",
+                           self_cmt.repr(rcx.tcx()));
                     link_region(rcx, deref_expr.span, *r,
                                 ty::BorrowKind::from_mutbl(m), self_cmt);
                 }
@@ -966,7 +984,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 // Specialized version of constrain_call.
                 type_must_outlive(rcx, infer::CallRcvr(deref_expr.span),
                                   self_ty, r_deref_expr);
-                match fn_sig.0.output {
+                match fn_sig.output {
                     ty::FnConverging(return_type) => {
                         type_must_outlive(rcx, infer::CallReturn(deref_expr.span),
                                           return_type, r_deref_expr);
@@ -1185,7 +1203,7 @@ fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                         id: ast::NodeId,
                                         mutbl: ast::Mutability,
                                         cmt_borrowed: mc::cmt<'tcx>) {
-    debug!("link_region_from_node_type(id={}, mutbl={}, cmt_borrowed={})",
+    debug!("link_region_from_node_type(id={:?}, mutbl={:?}, cmt_borrowed={})",
            id, mutbl, cmt_borrowed.repr(rcx.tcx()));
 
     let rptr_ty = rcx.resolve_node_type(id);
