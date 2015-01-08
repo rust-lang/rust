@@ -219,6 +219,7 @@ impl<'a> Show for Arguments<'a> {
     }
 }
 
+#[stable]
 impl<'a> String for Arguments<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
         write(fmt.buf, *self)
@@ -627,6 +628,7 @@ impl Show for bool {
     }
 }
 
+#[stable]
 impl String for bool {
     fn fmt(&self, f: &mut Formatter) -> Result {
         String::fmt(if *self { "true" } else { "false" }, f)
@@ -643,6 +645,7 @@ impl Show for str {
     }
 }
 
+#[stable]
 impl String for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad(self)
@@ -660,6 +663,7 @@ impl Show for char {
     }
 }
 
+#[stable]
 impl String for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8; 4];
@@ -705,6 +709,7 @@ macro_rules! floating { ($ty:ident) => {
         }
     }
 
+    #[stable]
     impl String for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
             use num::Float;
@@ -776,13 +781,7 @@ floating! { f64 }
 impl<T> Show for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
-impl<T> String for *const T {
-    fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
-}
 impl<T> Show for *mut T {
-    fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
-}
-impl<T> String for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 
@@ -843,34 +842,7 @@ impl<T: Show> Show for [T] {
     }
 }
 
-impl<T: String> String for [T] {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "["));
-        }
-        let mut is_first = true;
-        for x in self.iter() {
-            if is_first {
-                is_first = false;
-            } else {
-                try!(write!(f, ", "));
-            }
-            try!(write!(f, "{}", *x))
-        }
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "]"));
-        }
-        Ok(())
-    }
-}
-
 impl Show for () {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        f.pad("()")
-    }
-}
-
-impl String for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
     }
@@ -904,6 +876,7 @@ impl<'b, T: Show> Show for RefMut<'b, T> {
     }
 }
 
+#[stable]
 impl String for Utf8Error {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match *self {

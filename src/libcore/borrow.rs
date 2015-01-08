@@ -238,6 +238,7 @@ impl<'a, T, B: ?Sized> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwne
     }
 }
 
+#[stable]
 impl<'a, T, B: ?Sized> fmt::String for Cow<'a, T, B> where
     B: fmt::String + ToOwned<T>,
     T: fmt::String,
