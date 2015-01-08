@@ -860,13 +860,6 @@ impl fmt::Show for FullRange {
     }
 }
 
-#[unstable = "API still in development"]
-impl fmt::String for FullRange {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt("..", fmt)
-    }
-}
-
 /// A (half-open) range which is bounded at both ends.
 #[derive(Copy, PartialEq, Eq)]
 #[lang="range"]
@@ -925,20 +918,6 @@ impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
         write!(fmt, "{:?}..{:?}", self.start, self.end)
     }
 }
-#[cfg(stage0)]
-#[unstable = "API still in development"]
-impl<Idx: fmt::String + fmt::Show> fmt::String for Range<Idx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}..{}", self.start, self.end)
-    }
-}
-#[cfg(not(stage0))]
-#[unstable = "API still in development"]
-impl<Idx: fmt::String> fmt::String for Range<Idx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}..{}", self.start, self.end)
-    }
-}
 
 /// A range which is only bounded below.
 #[derive(Copy, PartialEq, Eq)]
@@ -969,21 +948,6 @@ impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
     }
 }
 
-#[cfg(stage0)]
-#[unstable = "API still in development"]
-impl<Idx: fmt::String + fmt::Show> fmt::String for RangeFrom<Idx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}..", self.start)
-    }
-}
-#[cfg(not(stage0))]
-#[unstable = "API still in development"]
-impl<Idx: fmt::String> fmt::String for RangeFrom<Idx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}..", self.start)
-    }
-}
-
 /// A range which is only bounded above.
 #[derive(Copy, PartialEq, Eq)]
 #[lang="range_to"]
@@ -997,21 +961,6 @@ pub struct RangeTo<Idx> {
 impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "..{:?}", self.end)
-    }
-}
-
-#[cfg(stage0)]
-#[unstable = "API still in development"]
-impl<Idx: fmt::String + fmt::Show> fmt::String for RangeTo<Idx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "..{}", self.end)
-    }
-}
-#[cfg(not(stage0))]
-#[unstable = "API still in development"]
-impl<Idx: fmt::String> fmt::String for RangeTo<Idx> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "..{}", self.end)
     }
 }
 

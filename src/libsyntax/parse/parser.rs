@@ -2894,7 +2894,6 @@ impl<'a> Parser<'a> {
                 let cur_prec = operator_prec(cur_op);
                 if cur_prec > min_prec {
                     self.bump();
-                    // TODO
                     let expr = self.parse_prefix_expr();
                     let rhs = self.parse_more_binops(expr, cur_prec);
                     let lhs_span = lhs.span;
@@ -2956,13 +2955,11 @@ impl<'a> Parser<'a> {
               let assign_op = self.mk_assign_op(aop, lhs, rhs);
               self.mk_expr(span.lo, rhs_span.hi, assign_op)
           }
-          // TODO
           // A range expression, either `expr..expr` or `expr..`.
           token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
             self.bump();
 
             let opt_end = if self.token.can_begin_expr() {
-                // TODO only use of RES...DOT
                 let end = self.parse_expr_res(RESTRICTION_NO_DOTS);
                 Some(end)
             } else {

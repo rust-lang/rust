@@ -29,7 +29,7 @@ fn main() {
 
     let x = 1+3..4;
     assert!(x == (4..4));
-    
+
     let a = Foo { foo: 3 };
     let x = a.foo..a.bar();
     assert!(x == (3..5));
