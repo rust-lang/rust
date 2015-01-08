@@ -82,7 +82,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("issue_5723_bootstrap", Accepted),
 
     // A way to temporarily opt out of opt in copy. This will *never* be accepted.
-    ("opt_out_copy", Deprecated),
+    ("opt_out_copy", Removed),
 
     // A way to temporarily opt out of the new orphan rules. This will *never* be accepted.
     ("old_orphan_check", Deprecated),
@@ -123,7 +123,6 @@ pub struct Features {
     pub import_shadowing: bool,
     pub visible_private_types: bool,
     pub quote: bool,
-    pub opt_out_copy: bool,
     pub old_orphan_check: bool,
 }
 
@@ -135,7 +134,6 @@ impl Features {
             import_shadowing: false,
             visible_private_types: false,
             quote: false,
-            opt_out_copy: false,
             old_orphan_check: false,
         }
     }
@@ -465,7 +463,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         import_shadowing: cx.has_feature("import_shadowing"),
         visible_private_types: cx.has_feature("visible_private_types"),
         quote: cx.has_feature("quote"),
-        opt_out_copy: cx.has_feature("opt_out_copy"),
         old_orphan_check: cx.has_feature("old_orphan_check"),
     },
     unknown_features)
