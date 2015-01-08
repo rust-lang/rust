@@ -18,7 +18,7 @@ use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
 use core::fmt::Debug;
 use core::fmt;
-use core::iter::{Peekable, Map, FromIterator};
+use core::iter::{Peekable, Map, FromIterator, IntoIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub};
 
 use btree_map::{BTreeMap, Keys};
@@ -477,6 +477,22 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
         let mut set = BTreeSet::new();
         set.extend(iter);
         set
+    }
+}
+
+impl<T> IntoIterator for BTreeSet<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
     }
 }
 

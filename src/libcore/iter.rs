@@ -122,6 +122,23 @@ pub trait FromIterator<A> {
     fn from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
 }
 
+/// Conversion into an `Iterator`
+#[unstable]
+pub trait IntoIterator {
+    type Iter: Iterator;
+
+    /// Consumes `Self` and returns an iterator over it
+    fn into_iter(self) -> Self::Iter;
+}
+
+impl<I> IntoIterator for I where I: Iterator {
+    type Iter = I;
+
+    fn into_iter(self) -> I {
+        self
+    }
+}
+
 /// A type growable from an `Iterator` implementation
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Extend<A> {

@@ -19,7 +19,7 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::hash::{Hash, Writer, Hasher};
-use core::iter::{Enumerate, FilterMap, Map, FromIterator};
+use core::iter::{Enumerate, FilterMap, Map, FromIterator, IntoIterator};
 use core::iter;
 use core::mem::replace;
 use core::ops::{Index, IndexMut};
@@ -533,6 +533,30 @@ impl<V> FromIterator<(uint, V)> for VecMap<V> {
         let mut map = VecMap::new();
         map.extend(iter);
         map
+    }
+}
+
+impl<T> IntoIterator for VecMap<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a VecMap<T> {
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut VecMap<T> {
+    type Iter = IterMut<'a, T>;
+
+    fn into_iter(mut self) -> IterMut<'a, T> {
+        self.iter_mut()
     }
 }
 

@@ -19,7 +19,7 @@ use core::prelude::*;
 use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
-use core::iter::{self, repeat, FromIterator, RandomAccessIterator};
+use core::iter::{self, repeat, FromIterator, IntoIterator, RandomAccessIterator};
 use core::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
@@ -1606,6 +1606,30 @@ impl<A> FromIterator<A> for RingBuf<A> {
         let mut deq = RingBuf::with_capacity(lower);
         deq.extend(iterator);
         deq
+    }
+}
+
+impl<T> IntoIterator for RingBuf<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a RingBuf<T> {
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut RingBuf<T> {
+    type Iter = IterMut<'a, T>;
+
+    fn into_iter(mut self) -> IterMut<'a, T> {
+        self.iter_mut()
     }
 }
 
