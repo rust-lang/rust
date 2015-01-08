@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 // Test for what happens when a type parameter `A` is closed over into
 // an object. This should yield errors unless `A` (and the object)
 // both have suitable bounds.

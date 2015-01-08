@@ -12,12 +12,14 @@
 
 #![allow(non_snake_case)]
 
+use std::collections::hash_state::{DefaultState};
 use std::collections::{HashMap, HashSet};
-use std::hash::{Hasher, Hash, Writer};
+use std::default::Default;
+use std::hash::{Hasher, Writer};
 use syntax::ast;
 
-pub type FnvHashMap<K, V> = HashMap<K, V, FnvHasher>;
-pub type FnvHashSet<V> = HashSet<V, FnvHasher>;
+pub type FnvHashMap<K, V> = HashMap<K, V, DefaultState<FnvHasher>>;
+pub type FnvHashSet<V> = HashSet<V, DefaultState<FnvHasher>>;
 
 pub type NodeMap<T> = FnvHashMap<ast::NodeId, T>;
 pub type DefIdMap<T> = FnvHashMap<ast::DefId, T>;
@@ -28,16 +30,16 @@ pub type DefIdSet = FnvHashSet<ast::DefId>;
 // Hacks to get good names
 pub mod FnvHashMap {
     use std::hash::Hash;
-    use std::collections::HashMap;
-    pub fn new<K: Hash<super::FnvState> + Eq, V>() -> super::FnvHashMap<K, V> {
-        HashMap::with_hasher(super::FnvHasher)
+    use std::default::Default;
+    pub fn new<K: Hash<super::FnvHasher> + Eq, V>() -> super::FnvHashMap<K, V> {
+        Default::default()
     }
 }
 pub mod FnvHashSet {
     use std::hash::Hash;
-    use std::collections::HashSet;
-    pub fn new<V: Hash<super::FnvState> + Eq>() -> super::FnvHashSet<V> {
-        HashSet::with_hasher(super::FnvHasher)
+    use std::default::Default;
+    pub fn new<V: Hash<super::FnvHasher> + Eq>() -> super::FnvHashSet<V> {
+        Default::default()
     }
 }
 pub mod NodeMap {
@@ -68,28 +70,26 @@ pub mod DefIdSet {
 ///
 /// This uses FNV hashing, as described here:
 /// http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-#[derive(Clone, Copy, Default)]
-pub struct FnvHasher;
-
 #[allow(missing_copy_implementations)]
-pub struct FnvState(u64);
+pub struct FnvHasher(u64);
 
-impl Hasher<FnvState> for FnvHasher {
-    fn hash<T: ?Sized + Hash<FnvState>>(&self, t: &T) -> u64 {
-        let mut state = FnvState(0xcbf29ce484222325);
-        t.hash(&mut state);
-        let FnvState(ret) = state;
-        return ret;
-    }
+impl Default for FnvHasher {
+    fn default() -> FnvHasher { FnvHasher(0xcbf29ce484222325) }
 }
 
-impl Writer for FnvState {
+impl Hasher for FnvHasher {
+    type Output = u64;
+    fn reset(&mut self) { *self = Default::default(); }
+    fn finish(&self) -> u64 { self.0 }
+}
+
+impl Writer for FnvHasher {
     fn write(&mut self, bytes: &[u8]) {
-        let FnvState(mut hash) = *self;
+        let FnvHasher(mut hash) = *self;
         for byte in bytes.iter() {
             hash = hash ^ (*byte as u64);
             hash = hash * 0x100000001b3;
         }
-        *self = FnvState(hash);
+        *self = FnvHasher(hash);
     }
 }

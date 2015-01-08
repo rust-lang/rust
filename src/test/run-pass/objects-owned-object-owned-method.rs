@@ -12,6 +12,8 @@
 // closed over contain managed values. This implies that the boxes
 // will have headers that must be skipped over.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 trait FooTrait {
     fn foo(self: Box<Self>) -> uint;

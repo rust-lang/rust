@@ -196,7 +196,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.fatal_span_(from_pos, to_pos, m.index(&FullRange));
+        self.fatal_span_(from_pos, to_pos, &m[]);
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -205,7 +205,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.err_span_(from_pos, to_pos, m.index(&FullRange));
+        self.err_span_(from_pos, to_pos, &m[]);
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -214,8 +214,8 @@ impl<'a> StringReader<'a> {
         m.push_str(": ");
         let from = self.byte_offset(from_pos).to_uint();
         let to = self.byte_offset(to_pos).to_uint();
-        m.push_str(self.filemap.src.index(&(from..to)));
-        self.fatal_span_(from_pos, to_pos, m.index(&FullRange));
+        m.push_str(&self.filemap.src[from..to]);
+        self.fatal_span_(from_pos, to_pos, &m[]);
     }
 
     /// Advance peek_tok and peek_span to refer to the next token, and
@@ -301,7 +301,7 @@ impl<'a> StringReader<'a> {
             while i < s.len() {
                 let str::CharRange { ch, next } = s.char_range_at(i);
                 if ch == '\r' {
-                    if j < i { buf.push_str(s.index(&(j..i))); }
+                    if j < i { buf.push_str(&s[j..i]); }
                     j = next;
                     if next >= s.len() || s.char_at(next) != '\n' {
                         let pos = start + BytePos(i as u32);
@@ -311,7 +311,7 @@ impl<'a> StringReader<'a> {
                 }
                 i = next;
             }
-            if j < s.len() { buf.push_str(s.index(&(j..))); }
+            if j < s.len() { buf.push_str(&s[j..]); }
             buf
         }
     }
@@ -556,7 +556,7 @@ impl<'a> StringReader<'a> {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
                 } else { string.into_cow() };
-                token::DocComment(token::intern(string.index(&FullRange)))
+                token::DocComment(token::intern(&string[]))
             } else {
                 token::Comment
             };
@@ -1110,7 +1110,7 @@ impl<'a> StringReader<'a> {
                 // expansion purposes. See #12512 for the gory details of why
                 // this is necessary.
                 let ident = self.with_str_from(start, |lifetime_name| {
-                    str_to_ident(format!("'{}", lifetime_name).index(&FullRange))
+                    str_to_ident(&format!("'{}", lifetime_name)[])
                 });
 
                 // Conjure up a "keyword checking ident" to make sure that

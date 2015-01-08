@@ -284,7 +284,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             // such as a function name in the module.
             // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
             let llmod_id = format!("{}.{}.rs", crate_name, i);
-            let local_ccx = LocalCrateContext::new(&shared_ccx, llmod_id.index(&FullRange));
+            let local_ccx = LocalCrateContext::new(&shared_ccx, &llmod_id[]);
             shared_ccx.local_ccxs.push(local_ccx);
         }
 
@@ -369,12 +369,12 @@ impl<'tcx> LocalCrateContext<'tcx> {
         unsafe {
             let (llcx, llmod) = create_context_and_module(&shared.tcx.sess, name);
 
-            let td = mk_target_data(shared.tcx
+            let td = mk_target_data(&shared.tcx
                                           .sess
                                           .target
                                           .target
                                           .data_layout
-                                          .index(&FullRange));
+                                          []);
 
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
@@ -721,7 +721,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     /// currently conservatively bounded to 1 << 47 as that is enough to cover the current usable
     /// address space on 64-bit ARMv8 and x86_64.
     pub fn obj_size_bound(&self) -> u64 {
-        match self.sess().target.target.target_word_size.index(&FullRange) {
+        match &self.sess().target.target.target_pointer_width[] {
             "32" => 1 << 31,
             "64" => 1 << 47,
             _ => unreachable!() // error handled by config::build_target_config
@@ -730,8 +730,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {
         self.sess().fatal(
-            format!("the type `{}` is too big for the current architecture",
-                    obj.repr(self.tcx())).index(&FullRange))
+            &format!("the type `{}` is too big for the current architecture",
+                    obj.repr(self.tcx()))[])
     }
 }
 

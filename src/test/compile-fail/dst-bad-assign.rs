@@ -10,6 +10,8 @@
 
 // Forbid assignment into a dynamically sized type.
 
+#![feature(box_syntax)]
+
 struct Fat<T: ?Sized> {
     f1: int,
     f2: &'static str,

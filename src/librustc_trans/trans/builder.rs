@@ -552,11 +552,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for (small_vec_e, &ix) in small_vec.iter_mut().zip(ixs.iter()) {
                 *small_vec_e = C_i32(self.ccx, ix as i32);
             }
-            self.inbounds_gep(base, small_vec.index(&(0..ixs.len())))
+            self.inbounds_gep(base, &small_vec[0..ixs.len()])
         } else {
             let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
             self.count_insn("gepi");
-            self.inbounds_gep(base, v.index(&FullRange))
+            self.inbounds_gep(base, &v[])
         }
     }
 
@@ -764,8 +764,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let s = format!("{} ({})",
                             text,
                             self.ccx.sess().codemap().span_to_string(sp));
-            debug!("{}", s.index(&FullRange));
-            self.add_comment(s.index(&FullRange));
+            debug!("{}", &s[]);
+            self.add_comment(&s[]);
         }
     }
 
@@ -802,7 +802,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {}", self.ccx.tn().type_to_string(output));
-        let fty = Type::func(argtys.index(&FullRange), &output);
+        let fty = Type::func(&argtys[], &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(
                 fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);

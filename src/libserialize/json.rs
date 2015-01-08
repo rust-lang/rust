@@ -383,7 +383,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
         };
 
         if start < i {
-            try!(wr.write_str(v.index(&(start..i))));
+            try!(wr.write_str(&v[start..i]));
         }
 
         try!(wr.write_str(escaped));
@@ -392,7 +392,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
     }
 
     if start != v.len() {
-        try!(wr.write_str(v.index(&(start..))));
+        try!(wr.write_str(&v[start..]));
     }
 
     wr.write_str("\"")
@@ -401,7 +401,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
 fn escape_char(writer: &mut fmt::Writer, v: char) -> fmt::Result {
     let mut buf = [0; 4];
     let n = v.encode_utf8(&mut buf).unwrap();
-    let buf = unsafe { str::from_utf8_unchecked(buf.index(&(0..n))) };
+    let buf = unsafe { str::from_utf8_unchecked(&buf[0..n]) };
     escape_str(writer, buf)
 }
 
@@ -414,7 +414,7 @@ fn spaces(wr: &mut fmt::Writer, mut n: uint) -> fmt::Result {
     }
 
     if n > 0 {
-        wr.write_str(BUF.index(&(0..n)))
+        wr.write_str(&BUF[0..n])
     } else {
         Ok(())
     }
@@ -623,7 +623,7 @@ impl<'a> ::Encoder for Encoder<'a> {
             let mut check_encoder = Encoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf.index(&FullRange)).unwrap();
+        let out = str::from_utf8(&buf[]).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -894,7 +894,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
             let mut check_encoder = PrettyEncoder::new(&mut buf);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(buf.index(&FullRange)).unwrap();
+        let out = str::from_utf8(&buf[]).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -1027,7 +1027,7 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_string<'a>(&'a self) -> Option<&'a str> {
         match *self {
-            Json::String(ref s) => Some(s.index(&FullRange)),
+            Json::String(ref s) => Some(&s[]),
             _ => None
         }
     }
@@ -1137,7 +1137,7 @@ impl Index<uint> for Json {
 
     fn index<'a>(&'a self, idx: &uint) -> &'a Json {
         match self {
-            &Json::Array(ref v) => v.index(idx),
+            &Json::Array(ref v) => &v[*idx],
             _ => panic!("can only index Json with uint if it is an array")
         }
     }
@@ -1222,7 +1222,7 @@ impl Stack {
             InternalIndex(i) => StackElement::Index(i),
             InternalKey(start, size) => {
                 StackElement::Key(str::from_utf8(
-                    self.str_buffer.index(&((start as uint) .. (start as uint + size as uint))))
+                    &self.str_buffer[(start as uint) .. (start as uint + size as uint)])
                         .unwrap())
             }
         }
@@ -1265,7 +1265,7 @@ impl Stack {
             Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
             Some(&InternalKey(start, size)) => {
                 Some(StackElement::Key(str::from_utf8(
-                    self.str_buffer.index(&((start as uint) .. (start+size) as uint))
+                    &self.str_buffer[(start as uint) .. (start+size) as uint]
                 ).unwrap()))
             }
         }
@@ -1396,7 +1396,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
         self.ch == Some(c)
     }
 
-    fn error<T>(&self, reason: ErrorCode) -> Result<T, ParserError> {
+    fn error<U>(&self, reason: ErrorCode) -> Result<U, ParserError> {
         Err(SyntaxError(reason, self.line, self.col))
     }
 
@@ -2144,7 +2144,7 @@ impl ::Decoder for Decoder {
                 return Err(ExpectedError("String or Object".to_string(), format!("{}", json)))
             }
         };
-        let idx = match names.iter().position(|n| *n == name.index(&FullRange)) {
+        let idx = match names.iter().position(|n| *n == &name[]) {
             Some(idx) => idx,
             None => return Err(UnknownVariantError(name))
         };
@@ -2458,14 +2458,6 @@ impl<'a> fmt::String for PrettyJson<'a> {
     }
 }
 
-#[cfg(stage0)]
-//NOTE(stage0): remove impl after snapshot
-impl<'a, T: Encodable> fmt::Show for AsJson<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl<'a, T: Encodable> fmt::String for AsJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -2519,7 +2511,6 @@ mod tests {
     use std::{i64, u64, f32, f64, io};
     use std::collections::BTreeMap;
     use std::num::Float;
-    use std::ops::Index;
     use std::string;
 
     #[derive(RustcDecodable, Eq, PartialEq, Show)]
@@ -3361,7 +3352,7 @@ mod tests {
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
-        let json_str = from_utf8(mem_buf.index(&FullRange)).unwrap();
+        let json_str = from_utf8(&mem_buf[]).unwrap();
         match from_str(json_str) {
             Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             _ => {} // it parsed and we are good to go
@@ -3377,7 +3368,7 @@ mod tests {
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
-        let json_str = from_utf8(mem_buf.index(&FullRange)).unwrap();
+        let json_str = from_utf8(&mem_buf[]).unwrap();
         match from_str(json_str) {
             Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
             _ => {} // it parsed and we are good to go
@@ -3417,7 +3408,7 @@ mod tests {
             write!(&mut writer, "{}",
                    super::as_pretty_json(&json).indent(i)).unwrap();
 
-            let printed = from_utf8(writer.index(&FullRange)).unwrap();
+            let printed = from_utf8(&writer[]).unwrap();
 
             // Check for indents at each line
             let lines: Vec<&str> = printed.lines().collect();
@@ -3481,7 +3472,7 @@ mod tests {
         }
     }
     #[test]
-    #[cfg_attr(target_word_size = "32", ignore)] // FIXME(#14064)
+    #[cfg_attr(target_pointer_width = "32", ignore)] // FIXME(#14064)
     fn test_streaming_parser() {
         assert_stream_equal(
             r#"{ "foo":"bar", "array" : [0, 1, 2, 3, 4, 5], "idents":[null,true,false]}"#,
@@ -3520,7 +3511,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(target_word_size = "32", ignore)] // FIXME(#14064)
+    #[cfg_attr(target_pointer_width = "32", ignore)] // FIXME(#14064)
     fn test_read_object_streaming() {
         assert_eq!(last_event("{ "),      Error(SyntaxError(EOFWhileParsingObject, 1, 3)));
         assert_eq!(last_event("{1"),      Error(SyntaxError(KeyMustBeAString,      1, 2)));
@@ -3604,7 +3595,7 @@ mod tests {
         );
     }
     #[test]
-    #[cfg_attr(target_word_size = "32", ignore)] // FIXME(#14064)
+    #[cfg_attr(target_pointer_width = "32", ignore)] // FIXME(#14064)
     fn test_read_array_streaming() {
         assert_stream_equal(
             "[]",

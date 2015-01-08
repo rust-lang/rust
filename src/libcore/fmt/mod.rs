@@ -21,7 +21,7 @@ use mem;
 use option::Option;
 use option::Option::{Some, None};
 use result::Result::Ok;
-use ops::{Deref, FnOnce, Index};
+use ops::{Deref, FnOnce};
 use result;
 use slice::SliceExt;
 use slice;
@@ -219,6 +219,7 @@ impl<'a> Show for Arguments<'a> {
     }
 }
 
+#[stable]
 impl<'a> String for Arguments<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
         write(fmt.buf, *self)
@@ -424,7 +425,7 @@ impl<'a> Formatter<'a> {
             for c in sign.into_iter() {
                 let mut b = [0; 4];
                 let n = c.encode_utf8(&mut b).unwrap_or(0);
-                let b = unsafe { str::from_utf8_unchecked(b.index(&(0..n))) };
+                let b = unsafe { str::from_utf8_unchecked(&b[0..n]) };
                 try!(f.buf.write_str(b));
             }
             if prefixed { f.buf.write_str(prefix) }
@@ -532,7 +533,7 @@ impl<'a> Formatter<'a> {
 
         let mut fill = [0u8; 4];
         let len = self.fill.encode_utf8(&mut fill).unwrap_or(0);
-        let fill = unsafe { str::from_utf8_unchecked(fill.index(&(..len))) };
+        let fill = unsafe { str::from_utf8_unchecked(&fill[..len]) };
 
         for _ in range(0, pre_pad) {
             try!(self.buf.write_str(fill));
@@ -627,22 +628,13 @@ impl Show for bool {
     }
 }
 
+#[stable]
 impl String for bool {
     fn fmt(&self, f: &mut Formatter) -> Result {
         String::fmt(if *self { "true" } else { "false" }, f)
     }
 }
 
-#[cfg(stage0)]
-//NOTE(stage0): remove impl after snapshot
-impl Show for str {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        String::fmt(self, f)
-    }
-}
-
-#[cfg(not(stage0))]
-//NOTE(stage0): remove cfg after snapshot
 impl Show for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         try!(write!(f, "\""));
@@ -653,22 +645,13 @@ impl Show for str {
     }
 }
 
+#[stable]
 impl String for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad(self)
     }
 }
 
-#[cfg(stage0)]
-//NOTE(stage0): remove impl after snapshot
-impl Show for char {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        String::fmt(self, f)
-    }
-}
-
-#[cfg(not(stage0))]
-//NOTE(stage0): remove cfg after snapshot
 impl Show for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         use char::CharExt;
@@ -680,11 +663,12 @@ impl Show for char {
     }
 }
 
+#[stable]
 impl String for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8; 4];
         let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
-        let s: &str = unsafe { mem::transmute(utf8.index(&(0..amt))) };
+        let s: &str = unsafe { mem::transmute(&utf8[0..amt]) };
         String::fmt(s, f)
     }
 }
@@ -725,6 +709,7 @@ macro_rules! floating { ($ty:ident) => {
         }
     }
 
+    #[stable]
     impl String for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
             use num::Float;
@@ -796,13 +781,7 @@ floating! { f64 }
 impl<T> Show for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
-impl<T> String for *const T {
-    fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
-}
 impl<T> Show for *mut T {
-    fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
-}
-impl<T> String for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 
@@ -863,56 +842,7 @@ impl<T: Show> Show for [T] {
     }
 }
 
-#[cfg(stage0)]
-impl<T: Show> String for [T] {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "["));
-        }
-        let mut is_first = true;
-        for x in self.iter() {
-            if is_first {
-                is_first = false;
-            } else {
-                try!(write!(f, ", "));
-            }
-            try!(write!(f, "{}", *x))
-        }
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "]"));
-        }
-        Ok(())
-    }
-}
-#[cfg(not(stage0))]
-impl<T: String> String for [T] {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "["));
-        }
-        let mut is_first = true;
-        for x in self.iter() {
-            if is_first {
-                is_first = false;
-            } else {
-                try!(write!(f, ", "));
-            }
-            try!(write!(f, "{}", *x))
-        }
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "]"));
-        }
-        Ok(())
-    }
-}
-
 impl Show for () {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        f.pad("()")
-    }
-}
-
-impl String for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
     }
@@ -946,6 +876,7 @@ impl<'b, T: Show> Show for RefMut<'b, T> {
     }
 }
 
+#[stable]
 impl String for Utf8Error {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match *self {

@@ -58,6 +58,7 @@
 
 #![crate_name = "alloc"]
 #![experimental]
+#![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
@@ -66,9 +67,12 @@
 #![no_std]
 #![allow(unknown_features)]
 #![feature(lang_items, unsafe_destructor)]
+#![feature(box_syntax)]
 
 #[macro_use]
 extern crate core;
+
+#[cfg(all(not(feature = "external_funcs"), not(feature = "external_crate")))]
 extern crate libc;
 
 // Allow testing this library

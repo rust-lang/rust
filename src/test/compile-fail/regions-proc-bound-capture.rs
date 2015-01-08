@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 fn borrowed_proc<'a>(x: &'a int) -> Box<FnMut()->(int) + 'a> {
     // This is legal, because the region bound on `proc`
     // states that it captures `x`.

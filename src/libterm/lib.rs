@@ -40,6 +40,7 @@
 
 #![crate_name = "term"]
 #![experimental = "use the crates.io `term` library instead"]
+#![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -49,6 +50,7 @@
 
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
+#![feature(box_syntax)]
 #![deny(missing_docs)]
 
 #[macro_use] extern crate log;

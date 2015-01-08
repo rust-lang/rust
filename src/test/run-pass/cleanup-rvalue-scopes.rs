@@ -12,6 +12,8 @@
 // statement or end of block, as appropriate given the temporary
 // lifetime rules.
 
+#![feature(box_syntax)]
+
 use std::ops::Drop;
 
 static mut FLAGS: u64 = 0;

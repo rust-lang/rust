@@ -49,6 +49,7 @@
 
 #![crate_name = "core"]
 #![experimental]
+#![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
@@ -57,6 +58,7 @@
 
 #![no_std]
 #![allow(unknown_features, raw_pointer_derive)]
+#![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(intrinsics, lang_items)]
 #![feature(simd, unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
@@ -78,12 +80,14 @@ mod int_macros;
 mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;
+#[path = "num/isize.rs"]  pub mod isize;
 #[path = "num/i8.rs"]   pub mod i8;
 #[path = "num/i16.rs"]  pub mod i16;
 #[path = "num/i32.rs"]  pub mod i32;
 #[path = "num/i64.rs"]  pub mod i64;
 
 #[path = "num/uint.rs"] pub mod uint;
+#[path = "num/usize.rs"] pub mod usize;
 #[path = "num/u8.rs"]   pub mod u8;
 #[path = "num/u16.rs"]  pub mod u16;
 #[path = "num/u32.rs"]  pub mod u32;
@@ -146,8 +150,6 @@ mod core {
 mod std {
     pub use clone;
     pub use cmp;
-    #[cfg(stage0)]
-    pub use marker as kinds;
     pub use marker;
     pub use option;
     pub use fmt;

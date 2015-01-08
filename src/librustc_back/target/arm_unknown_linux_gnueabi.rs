@@ -20,7 +20,7 @@ pub fn target() -> Target {
                       -a:0:64-n32".to_string(),
         llvm_target: "arm-unknown-linux-gnueabi".to_string(),
         target_endian: "little".to_string(),
-        target_word_size: "32".to_string(),
+        target_pointer_width: "32".to_string(),
         arch: "arm".to_string(),
         target_os: "linux".to_string(),
 

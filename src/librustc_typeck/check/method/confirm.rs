@@ -314,8 +314,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             None => {
                 self.tcx().sess.span_bug(
                     self.span,
-                    format!("self-type `{}` for ObjectPick never dereferenced to an object",
-                            self_ty.repr(self.tcx())).index(&FullRange))
+                    &format!("self-type `{}` for ObjectPick never dereferenced to an object",
+                            self_ty.repr(self.tcx()))[])
             }
         }
     }
@@ -367,10 +367,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             Err(_) => {
                 self.tcx().sess.span_bug(
                     self.span,
-                    format!(
+                    &format!(
                         "{} was a subtype of {} but now is not?",
                         self_ty.repr(self.tcx()),
-                        method_self_ty.repr(self.tcx())).index(&FullRange));
+                        method_self_ty.repr(self.tcx()))[]);
             }
         }
     }

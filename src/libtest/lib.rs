@@ -25,12 +25,15 @@
 
 #![crate_name = "test"]
 #![experimental]
+#![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
+#![allow(unknown_features)]
 #![feature(asm, slicing_syntax)]
+#![feature(box_syntax)]
 
 extern crate getopts;
 extern crate regex;
@@ -948,7 +951,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures().unwrap();
     let s = match st.out {
-        Raw(ref m) => String::from_utf8_lossy(m.index(&FullRange)),
+        Raw(ref m) => String::from_utf8_lossy(&m[]),
         Pretty(_) => unreachable!()
     };
 

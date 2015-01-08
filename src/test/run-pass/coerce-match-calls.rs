@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static FOO: &'static [u8] = bytes!("hello, world");
+// Check that coercions are propagated through match and if expressions.
+
+use std::boxed::Box;
 
 pub fn main() {
-    let b: &'static [u8] = match true {
-        true => bytes!("test"),
-        false => unreachable!()
-    };
+    let _: Box<[int]> = if true { Box::new([1i, 2, 3]) } else { Box::new([1i]) };
 
-    assert_eq!(b, "test".as_bytes());
-    assert_eq!(FOO, "hello, world".as_bytes());
+    let _: Box<[int]> = match true { true => Box::new([1i, 2, 3]), false => Box::new([1i]) };
+
+    // Check we don't get over-keen at propagating coercions in the case of casts.
+    let x = if true { 42 } else { 42u8 } as u16;
+    let x = match true { true => 42, false => 42u8 } as u16;
 }

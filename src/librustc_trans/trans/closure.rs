@@ -154,7 +154,7 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = ccx.tcx();
 
     // compute the type of the closure
-    let cdata_ty = mk_closure_tys(tcx, bound_values.index(&FullRange));
+    let cdata_ty = mk_closure_tys(tcx, &bound_values[]);
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
     // tuple.  This could be a ptr in uniq or a box or on stack,
@@ -182,8 +182,8 @@ pub fn store_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         debug!("Copy {} into closure", bv.to_string(ccx));
 
         if ccx.sess().asm_comments() {
-            add_comment(bcx, format!("Copy {} into closure",
-                                     bv.to_string(ccx)).index(&FullRange));
+            add_comment(bcx, &format!("Copy {} into closure",
+                                     bv.to_string(ccx))[]);
         }
 
         let bound_data = GEPi(bcx, llbox, &[0u, abi::BOX_FIELD_BODY, i]);
@@ -420,7 +420,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let s = tcx.map.with_path(id, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
-    let llfn = decl_internal_rust_fn(ccx, fty, s.index(&FullRange));
+    let llfn = decl_internal_rust_fn(ccx, fty, &s[]);
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -444,7 +444,7 @@ pub fn trans_expr_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   &[],
                   ty::erase_late_bound_regions(ccx.tcx(), &ty::ty_fn_ret(fty)),
                   ty::ty_fn_abi(fty),
-                  ClosureEnv::new(freevars.index(&FullRange),
+                  ClosureEnv::new(&freevars[],
                                   BoxedClosure(cdata_ty, store)));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
     bcx
@@ -466,7 +466,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
 
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
-    let function_type = normalize_ty(ccx.tcx(), function_type);
+    let function_type = erase_regions(ccx.tcx(), &function_type);
     let params = match function_type.sty {
         ty::ty_unboxed_closure(_, _, ref substs) => substs.types.clone(),
         _ => unreachable!()
@@ -489,7 +489,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
         mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
     });
 
-    let llfn = decl_internal_rust_fn(ccx, function_type, symbol.index(&FullRange));
+    let llfn = decl_internal_rust_fn(ccx, function_type, &symbol[]);
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -544,7 +544,7 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   &[],
                   sig.output,
                   function_type.abi,
-                  ClosureEnv::new(freevars.index(&FullRange),
+                  ClosureEnv::new(&freevars[],
                                   UnboxedClosure(freevar_mode)));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate

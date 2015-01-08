@@ -104,8 +104,8 @@ impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
                           ast_map::NodeForeignItem(_) => {},
                           _ => {
                             self.sess.span_err(e.span,
-                              format!("expected item, found {}",
-                                      self.ast_map.node_to_string(def_id.node)).index(&FullRange));
+                              &format!("expected item, found {}",
+                                      self.ast_map.node_to_string(def_id.node))[]);
                             return;
                           },
                         }

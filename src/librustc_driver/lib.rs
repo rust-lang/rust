@@ -16,14 +16,17 @@
 
 #![crate_name = "rustc_driver"]
 #![experimental]
+#![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
+#![allow(unknown_features)]
 #![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
+#![feature(box_syntax)]
 #![feature(rustc_diagnostic_macros)]
 
 extern crate arena;
@@ -46,7 +49,7 @@ pub use syntax::diagnostic;
 
 use rustc_trans::back::link;
 use rustc::session::{config, Session, build_session};
-use rustc::session::config::{Input, PrintRequest};
+use rustc::session::config::{Input, PrintRequest, UnstableFeatures};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::metadata;
@@ -89,12 +92,12 @@ fn run_compiler(args: &[String]) {
     let descriptions = diagnostics::registry::Registry::new(&DIAGNOSTICS);
     match matches.opt_str("explain") {
         Some(ref code) => {
-            match descriptions.find_description(code.index(&FullRange)) {
+            match descriptions.find_description(&code[]) {
                 Some(ref description) => {
                     println!("{}", description);
                 }
                 None => {
-                    early_error(format!("no extended information for {}", code).index(&FullRange));
+                    early_error(&format!("no extended information for {}", code)[]);
                 }
             }
             return;
@@ -120,7 +123,7 @@ fn run_compiler(args: &[String]) {
             early_error("no input filename given");
         }
         1u => {
-            let ifile = matches.free[0].index(&FullRange);
+            let ifile = &matches.free[0][];
             if ifile == "-" {
                 let contents = io::stdin().read_to_end().unwrap();
                 let src = String::from_utf8(contents).unwrap();
@@ -132,7 +135,11 @@ fn run_compiler(args: &[String]) {
         _ => early_error("multiple input filenames provided")
     };
 
+    let mut sopts = sopts;
+    sopts.unstable_features = get_unstable_features_setting();
+
     let mut sess = build_session(sopts, input_file_path, descriptions);
+
     let cfg = config::build_configuration(&sess);
     if print_crate_info(&sess, Some(&input), &odir, &ofile) {
         return
@@ -179,6 +186,21 @@ fn run_compiler(args: &[String]) {
     }
 
     driver::compile_input(sess, cfg, &input, &odir, &ofile, None);
+}
+
+pub fn get_unstable_features_setting() -> UnstableFeatures {
+    // Whether this is a feature-staged build, i.e. on the beta or stable channel
+    let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+    // The secret key needed to get through the rustc build itself by
+    // subverting the unstable features lints
+    let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
+    // The matching key to the above, only known by the build system
+    let bootstrap_provided_key = os::getenv("RUSTC_BOOTSTRAP_KEY");
+    match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
+        (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
+        (true, _, _) => UnstableFeatures::Disallow,
+        (false, _, _) => UnstableFeatures::Default
+    }
 }
 
 /// Returns a version string such as "0.12.0-dev".
@@ -297,7 +319,7 @@ Available lint options:
         for lint in lints.into_iter() {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
-                     padded(name.index(&FullRange)), lint.default_level.as_str(), lint.desc);
+                     padded(&name[]), lint.default_level.as_str(), lint.desc);
         }
         println!("\n");
     };
@@ -327,7 +349,7 @@ Available lint options:
             let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
                          .collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",
-                     padded(name.index(&FullRange)), desc);
+                     padded(&name[]), desc);
         }
         println!("\n");
     };
@@ -393,7 +415,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     let matches =
-        match getopts::getopts(args.index(&FullRange), config::optgroups().index(&FullRange)) {
+        match getopts::getopts(&args[], &config::optgroups()[]) {
             Ok(m) => m,
             Err(f_stable_attempt) => {
                 // redo option parsing, including unstable options this time,
@@ -567,15 +589,15 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in xs.iter() {
-                    emitter.emit(None, note.index(&FullRange), None, diagnostic::Note)
+                    emitter.emit(None, &note[], None, diagnostic::Note)
                 }
 
                 match r.read_to_string() {
                     Ok(s) => println!("{}", s),
                     Err(e) => {
                         emitter.emit(None,
-                                     format!("failed to read internal \
-                                              stderr: {}", e).index(&FullRange),
+                                     &format!("failed to read internal \
+                                              stderr: {}", e)[],
                                      None,
                                      diagnostic::Error)
                     }

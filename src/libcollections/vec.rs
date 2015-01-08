@@ -1178,12 +1178,20 @@ impl<T:Clone> Clone for Vec<T> {
 
         // self.len <= other.len due to the truncate above, so the
         // slice here is always in-bounds.
-        let slice = other.index(&(self.len()..));
+        let slice = &other[self.len()..];
         self.push_all(slice);
     }
 }
 
+#[cfg(stage0)]
 impl<S: hash::Writer, T: Hash<S>> Hash<S> for Vec<T> {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.as_slice().hash(state);
+    }
+}
+#[cfg(not(stage0))]
+impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
         self.as_slice().hash(state);
@@ -1451,22 +1459,6 @@ impl<T> Default for Vec<T> {
 impl<T: fmt::Show> fmt::Show for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Show::fmt(self.as_slice(), f)
-    }
-}
-
-#[cfg(stage0)]
-#[experimental = "waiting on Show stability"]
-impl<T: fmt::Show> fmt::String for Vec<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self.as_slice(), f)
-    }
-}
-
-#[cfg(not(stage0))]
-#[experimental = "waiting on Show stability"]
-impl<T: fmt::String> fmt::String for Vec<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self.as_slice(), f)
     }
 }
 
@@ -2039,7 +2031,7 @@ mod tests {
         v.push(());
         assert_eq!(v.iter_mut().count(), 4);
 
-        for &() in v.iter_mut() {}
+        for &mut () in v.iter_mut() {}
         unsafe { v.set_len(0); }
         assert_eq!(v.iter_mut().count(), 0);
     }

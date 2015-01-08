@@ -18,7 +18,7 @@ struct defer<'a> {
 impl<'a> Drop for defer<'a> {
     fn drop(&mut self) {
         unsafe {
-            println!("{}", self.x);
+            println!("{:?}", self.x);
         }
     }
 }

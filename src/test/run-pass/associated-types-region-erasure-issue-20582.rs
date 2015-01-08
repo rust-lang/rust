@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Regression test for #20582. This test caused an ICE related to
+// inconsistent region erasure in trans.
+
+struct Foo<'a> {
+    buf: &'a[u8]
+}
+
+impl<'a> Iterator for Foo<'a> {
+    type Item = &'a[u8];
+
+    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+        Some(self.buf)
+    }
+}
+
 fn main() {
-    let vec = bytes!(1024u8); //~ ERROR too large u8 literal in bytes!
-    //~^ WARN `bytes!` is deprecated
 }

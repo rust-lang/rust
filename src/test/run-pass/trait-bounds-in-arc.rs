@@ -13,6 +13,8 @@
 
 // ignore-pretty
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 use std::sync::Arc;

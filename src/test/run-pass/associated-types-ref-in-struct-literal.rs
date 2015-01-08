@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test associated type references in a struct literal. Issue #20535.
+
+pub trait Foo {
+    type Bar;
+}
+
+impl Foo for int {
+    type Bar = int;
+}
+
+struct Thing<F: Foo> {
+    a: F,
+    b: F::Bar,
+}
+
 fn main() {
-    let vec = bytes!('λ'); //~ ERROR non-ascii char literal in bytes!
-    //~^ WARN `bytes!` is deprecated
+    let thing = Thing{a: 1i, b: 2i};
+    assert_eq!(thing.a + 1, thing.b);
 }

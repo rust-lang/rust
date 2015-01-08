@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slicing_syntax)]
-
 fn assert_repr_eq<T: std::fmt::Show>(obj : T, expected : String) {
     assert_eq!(expected, format!("{:?}", obj));
 }

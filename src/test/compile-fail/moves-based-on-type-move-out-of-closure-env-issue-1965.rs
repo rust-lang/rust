@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 use std::uint;
 
 fn test(_x: Box<uint>) {}

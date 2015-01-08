@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static FOO : &'static [u8] = bytes!(concat!(concat!("hel", "lo"), "world"));
+static FOO : &'static str = concat!(concat!("hel", "lo"), "world");
 
 pub fn main() {
-    assert_eq!(FOO, "helloworld".as_bytes());
+    assert_eq!(FOO, "helloworld");
 }

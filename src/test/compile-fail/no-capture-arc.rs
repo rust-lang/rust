@@ -23,5 +23,5 @@ fn main() {
 
     assert_eq!((*arc_v)[2], 3);
 
-    println!("{}", *arc_v);
+    println!("{:?}", *arc_v);
 }

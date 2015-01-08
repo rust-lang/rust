@@ -47,8 +47,7 @@
 //! Original issue: https://github.com/rust-lang/rust/issues/10207
 
 use std::fmt;
-use std::hash::Hash;
-use std::hash::sip::SipState;
+use std::hash::{Hash, SipHasher, Hasher};
 use std::iter::range_step;
 use syntax::ast;
 use syntax::visit;
@@ -65,7 +64,7 @@ impl Svh {
     }
 
     pub fn as_str<'a>(&'a self) -> &'a str {
-        self.hash.index(&FullRange)
+        &self.hash[]
     }
 
     pub fn calculate(metadata: &Vec<String>, krate: &ast::Crate) -> Svh {
@@ -78,7 +77,7 @@ impl Svh {
 
         // FIXME: this should use SHA1, not SipHash. SipHash is not built to
         //        avoid collisions.
-        let mut state = SipState::new();
+        let mut state = SipHasher::new();
 
         for data in metadata.iter() {
             data.hash(&mut state);
@@ -102,7 +101,7 @@ impl Svh {
             attr.node.value.hash(&mut state);
         }
 
-        let hash = state.result();
+        let hash = state.finish();
         return Svh {
             hash: range_step(0u, 64u, 4u).map(|i| hex(hash >> i)).collect()
         };
@@ -120,9 +119,7 @@ impl Svh {
 
 impl fmt::Show for Svh {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        //NOTE(stage0): uncomment after snapshot
-        //write!(f, "Svh {{ {} }}", self.as_str())
-        fmt::String::fmt(self, f)
+        write!(f, "Svh {{ {} }}", self.as_str())
     }
 }
 
@@ -149,14 +146,13 @@ mod svh_visitor {
     use syntax::visit;
     use syntax::visit::{Visitor, FnKind};
 
-    use std::hash::Hash;
-    use std::hash::sip::SipState;
+    use std::hash::{Hash, SipHasher};
 
     pub struct StrictVersionHashVisitor<'a> {
-        pub st: &'a mut SipState,
+        pub st: &'a mut SipHasher,
     }
 
-    pub fn make<'a>(st: &'a mut SipState) -> StrictVersionHashVisitor<'a> {
+    pub fn make<'a>(st: &'a mut SipHasher) -> StrictVersionHashVisitor<'a> {
         StrictVersionHashVisitor { st: st }
     }
 
@@ -366,7 +362,7 @@ mod svh_visitor {
             fn macro_name(mac: &Mac) -> token::InternedString {
                 match &mac.node {
                     &MacInvocTT(ref path, ref _tts, ref _stx_ctxt) => {
-                        let s = path.segments.index(&FullRange);
+                        let s = &path.segments[];
                         assert_eq!(s.len(), 1);
                         content(s[0].identifier)
                     }
@@ -400,7 +396,7 @@ mod svh_visitor {
         }
 
         // All of the remaining methods just record (in the hash
-        // SipState) that the visitor saw that particular variant
+        // SipHasher) that the visitor saw that particular variant
         // (with its payload), and continue walking as the default
         // visitor would.
         //

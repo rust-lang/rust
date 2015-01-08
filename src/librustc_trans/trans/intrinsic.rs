@@ -313,7 +313,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_uint(ccx, machine::llsize_of_real(ccx, lltp_ty))
+            C_uint(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
         }
         (_, "min_align_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);

@@ -111,7 +111,24 @@ pub struct Options {
     /// An optional name to use as the crate for std during std injection,
     /// written `extern crate std = "name"`. Default to "std". Used by
     /// out-of-tree drivers.
-    pub alt_std_name: Option<String>
+    pub alt_std_name: Option<String>,
+    /// Indicates how the compiler should treat unstable features
+    pub unstable_features: UnstableFeatures
+}
+
+#[derive(Clone, Copy)]
+pub enum UnstableFeatures {
+    /// Hard errors for unstable features are active, as on
+    /// beta/stable channels.
+    Disallow,
+    /// Use the default lint levels
+    Default,
+    /// Errors are bypassed for bootstrapping. This is required any time
+    /// during the build that feature-related lints are set to warn or above
+    /// because the build turns on warnings-as-errors and uses lots of unstable
+    /// features. As a result, this this is always required for building Rust
+    /// itself.
+    Cheat
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -217,6 +234,7 @@ pub fn basic_options() -> Options {
         crate_name: None,
         alt_std_name: None,
         libs: Vec::new(),
+        unstable_features: UnstableFeatures::Disallow
     }
 }
 
@@ -558,18 +576,18 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
             if !setter(&mut cg, value) {
                 match (value, opt_type_desc) {
                     (Some(..), None) => {
-                        early_error(format!("codegen option `{}` takes no \
-                                             value", key).index(&FullRange))
+                        early_error(&format!("codegen option `{}` takes no \
+                                             value", key)[])
                     }
                     (None, Some(type_desc)) => {
-                        early_error(format!("codegen option `{0}` requires \
+                        early_error(&format!("codegen option `{0}` requires \
                                              {1} (-C {0}=<value>)",
-                                            key, type_desc).index(&FullRange))
+                                            key, type_desc)[])
                     }
                     (Some(value), Some(type_desc)) => {
-                        early_error(format!("incorrect value `{}` for codegen \
+                        early_error(&format!("incorrect value `{}` for codegen \
                                              option `{}` - {} was expected",
-                                             value, key, type_desc).index(&FullRange))
+                                             value, key, type_desc)[])
                     }
                     (None, None) => unreachable!()
                 }
@@ -578,8 +596,8 @@ pub fn build_codegen_options(matches: &getopts::Matches) -> CodegenOptions
             break;
         }
         if !found {
-            early_error(format!("unknown codegen option: `{}`",
-                                key).index(&FullRange));
+            early_error(&format!("unknown codegen option: `{}`",
+                                key)[]);
         }
     }
     return cg;
@@ -592,10 +610,10 @@ pub fn default_lib_output() -> CrateType {
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     use syntax::parse::token::intern_and_get_ident as intern;
 
-    let end = sess.target.target.target_endian.index(&FullRange);
-    let arch = sess.target.target.arch.index(&FullRange);
-    let wordsz = sess.target.target.target_word_size.index(&FullRange);
-    let os = sess.target.target.target_os.index(&FullRange);
+    let end = &sess.target.target.target_endian[];
+    let arch = &sess.target.target.arch[];
+    let wordsz = &sess.target.target.target_pointer_width[];
+    let os = &sess.target.target.target_os[];
 
     let fam = match sess.target.target.options.is_like_windows {
         true  => InternedString::new("windows"),
@@ -609,7 +627,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
          mk(InternedString::new("target_family"), fam),
          mk(InternedString::new("target_arch"), intern(arch)),
          mk(InternedString::new("target_endian"), intern(end)),
-         mk(InternedString::new("target_word_size"),
+         mk(InternedString::new("target_pointer_width"),
             intern(wordsz))
     );
 }
@@ -631,23 +649,23 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
         append_configuration(&mut user_cfg, InternedString::new("test"))
     }
     let mut v = user_cfg.into_iter().collect::<Vec<_>>();
-    v.push_all(default_cfg.index(&FullRange));
+    v.push_all(&default_cfg[]);
     v
 }
 
 pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
-    let target = match Target::search(opts.target_triple.index(&FullRange)) {
+    let target = match Target::search(&opts.target_triple[]) {
         Ok(t) => t,
         Err(e) => {
             sp.handler().fatal((format!("Error loading target specification: {}", e)).as_slice());
     }
     };
 
-    let (int_type, uint_type) = match target.target_word_size.index(&FullRange) {
+    let (int_type, uint_type) = match &target.target_pointer_width[] {
         "32" => (ast::TyI32, ast::TyU32),
         "64" => (ast::TyI64, ast::TyU64),
-        w    => sp.handler().fatal((format!("target specification was invalid: unrecognized \
-                                            target-word-size {}", w)).index(&FullRange))
+        w    => sp.handler().fatal(&format!("target specification was invalid: unrecognized \
+                                            target-word-size {}", w)[])
     };
 
     Config {
@@ -845,7 +863,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
-        .unwrap_or_else(|e| early_error(e.index(&FullRange)));
+        .unwrap_or_else(|e| early_error(&e[]));
 
     let mut lint_opts = vec!();
     let mut describe_lints = false;
@@ -872,8 +890,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
         }
         if this_bit == 0 {
-            early_error(format!("unknown debug flag: {}",
-                                *debug_flag).index(&FullRange))
+            early_error(&format!("unknown debug flag: {}",
+                                *debug_flag)[])
         }
         debugging_opts |= this_bit;
     }
@@ -917,8 +935,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     "link" => OutputTypeExe,
                     "dep-info" => OutputTypeDepInfo,
                     _ => {
-                        early_error(format!("unknown emission type: `{}`",
-                                            part).index(&FullRange))
+                        early_error(&format!("unknown emission type: `{}`",
+                                            part)[])
                     }
                 };
                 output_types.push(output_type)
@@ -955,9 +973,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 Some("2") => Default,
                 Some("3") => Aggressive,
                 Some(arg) => {
-                    early_error(format!("optimization level needs to be \
+                    early_error(&format!("optimization level needs to be \
                                          between 0-3 (instead was `{}`)",
-                                        arg).index(&FullRange));
+                                        arg)[]);
                 }
             }
         } else {
@@ -993,9 +1011,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             None      |
             Some("2") => FullDebugInfo,
             Some(arg) => {
-                early_error(format!("debug info level needs to be between \
+                early_error(&format!("debug info level needs to be between \
                                      0-2 (instead was `{}`)",
-                                    arg).index(&FullRange));
+                                    arg)[]);
             }
         }
     } else {
@@ -1013,7 +1031,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut search_paths = SearchPaths::new();
     for s in matches.opt_strs("L").iter() {
-        search_paths.add_path(s.index(&FullRange));
+        search_paths.add_path(&s[]);
     }
 
     let libs = matches.opt_strs("l").into_iter().map(|s| {
@@ -1043,9 +1061,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             (Some(name), "framework") => (name, cstore::NativeFramework),
             (Some(name), "static") => (name, cstore::NativeStatic),
             (_, s) => {
-                early_error(format!("unknown library kind `{}`, expected \
+                early_error(&format!("unknown library kind `{}`, expected \
                                      one of dylib, framework, or static",
-                                    s).index(&FullRange));
+                                    s)[]);
             }
         };
         (name.to_string(), kind)
@@ -1089,7 +1107,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     --debuginfo");
     }
 
-    let color = match matches.opt_str("color").as_ref().map(|s| s.index(&FullRange)) {
+    let color = match matches.opt_str("color").as_ref().map(|s| &s[]) {
         Some("auto")   => Auto,
         Some("always") => Always,
         Some("never")  => Never,
@@ -1097,9 +1115,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         None => Auto,
 
         Some(arg) => {
-            early_error(format!("argument for --color must be auto, always \
+            early_error(&format!("argument for --color must be auto, always \
                                  or never (instead was `{}`)",
-                                arg).index(&FullRange))
+                                arg)[])
         }
     };
 
@@ -1149,6 +1167,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         crate_name: crate_name,
         alt_std_name: None,
         libs: libs,
+        unstable_features: UnstableFeatures::Disallow
     }
 }
 
@@ -1201,7 +1220,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            &match getopts(&["--test".to_string()], optgroups().index(&FullRange)) {
+            &match getopts(&["--test".to_string()], &optgroups()[]) {
               Ok(m) => m,
               Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
             };
@@ -1209,7 +1228,7 @@ mod test {
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess);
-        assert!((attr::contains_name(cfg.index(&FullRange), "test")));
+        assert!((attr::contains_name(&cfg[], "test")));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add
@@ -1218,7 +1237,7 @@ mod test {
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
             &match getopts(&["--test".to_string(), "--cfg=test".to_string()],
-                           optgroups().index(&FullRange)) {
+                           &optgroups()[]) {
               Ok(m) => m,
               Err(f) => {
                 panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
@@ -1238,7 +1257,7 @@ mod test {
         {
             let matches = getopts(&[
                 "-Awarnings".to_string()
-            ], optgroups().index(&FullRange)).unwrap();
+            ], &optgroups()[]).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry);
@@ -1249,7 +1268,7 @@ mod test {
             let matches = getopts(&[
                 "-Awarnings".to_string(),
                 "-Dwarnings".to_string()
-            ], optgroups().index(&FullRange)).unwrap();
+            ], &optgroups()[]).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry);
@@ -1259,7 +1278,7 @@ mod test {
         {
             let matches = getopts(&[
                 "-Adead_code".to_string()
-            ], optgroups().index(&FullRange)).unwrap();
+            ], &optgroups()[]).unwrap();
             let registry = diagnostics::registry::Registry::new(&[]);
             let sessopts = build_session_options(&matches);
             let sess = build_session(sessopts, None, registry);

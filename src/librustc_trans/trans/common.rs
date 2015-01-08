@@ -50,7 +50,7 @@ use std::vec::Vec;
 use syntax::ast::Ident;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathName};
-use syntax::codemap::Span;
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use util::common::memoized;
@@ -58,16 +58,21 @@ use util::nodemap::FnvHashSet;
 
 pub use trans::context::CrateContext;
 
-/// Returns an equivalent type with all the typedefs and self regions removed.
-pub fn normalize_ty<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let u = TypeNormalizer(cx).fold_ty(ty);
-    debug!("normalize_ty({}) = {}",
-           ty.repr(cx), u.repr(cx));
-    return u;
+/// Returns an equivalent value with all free regions removed (note
+/// that late-bound regions remain, because they are important for
+/// subtyping, but they are anonymized and normalized as well). This
+/// is a stronger, caching version of `ty_fold::erase_regions`.
+pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx>
+{
+    let value1 = value.fold_with(&mut RegionEraser(cx));
+    debug!("erase_regions({}) = {}",
+           value.repr(cx), value1.repr(cx));
+    return value1;
 
-    struct TypeNormalizer<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
+    struct RegionEraser<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
 
-    impl<'a, 'tcx> TypeFolder<'tcx> for TypeNormalizer<'a, 'tcx> {
+    impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
         fn tcx(&self) -> &ty::ctxt<'tcx> { self.0 }
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -84,7 +89,6 @@ pub fn normalize_ty<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
             where T : TypeFoldable<'tcx> + Repr<'tcx>
         {
-            // FIXME(#20526) this should replace `enter_region_binder`/`exit_region_binder`.
             let u = ty::anonymize_late_bound_regions(self.tcx(), t);
             ty_fold::super_fold_binder(self, &u)
         }
@@ -114,8 +118,9 @@ pub fn normalize_ty<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 // Is the type's representation size known at compile time?
-pub fn type_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-ty::type_contents(cx, ty).is_sized(cx)
+pub fn type_is_sized<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    let param_env = ty::empty_parameter_environment(tcx);
+    ty::type_is_sized(&param_env, DUMMY_SP, ty)
 }
 
 pub fn lltype_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -273,7 +278,7 @@ pub fn gensym_name(name: &str) -> PathElem {
 let num = token::gensym(name).uint();
 // use one colon which will get translated to a period by the mangler, and
 // we're guaranteed that `num` is globally unique for this crate.
-PathName(token::gensym(format!("{}:{}", name, num).index(&FullRange)))
+PathName(token::gensym(&format!("{}:{}", name, num)[]))
 }
 
 #[derive(Copy)]
@@ -600,8 +605,8 @@ pub fn def(&self, nid: ast::NodeId) -> def::Def {
     match self.tcx().def_map.borrow().get(&nid) {
         Some(v) => v.clone(),
         None => {
-            self.tcx().sess.bug(format!(
-                "no def associated with node id {}", nid).index(&FullRange));
+            self.tcx().sess.bug(&format!(
+                "no def associated with node id {}", nid)[]);
         }
     }
 }
@@ -988,7 +993,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 let tcx = ccx.tcx();
 
 // Remove any references to regions; this helps improve caching.
-let trait_ref = ty_fold::erase_regions(tcx, trait_ref);
+let trait_ref = erase_regions(tcx, &trait_ref);
 
 // First check the cache.
 match ccx.trait_cache().borrow().get(&trait_ref) {
@@ -1029,9 +1034,9 @@ let selection = match selcx.select(&obligation) {
     Err(e) => {
         tcx.sess.span_bug(
             span,
-            format!("Encountered error `{}` selecting `{}` during trans",
+            &format!("Encountered error `{}` selecting `{}` during trans",
                     e.repr(tcx),
-                    trait_ref.repr(tcx)).index(&FullRange))
+                    trait_ref.repr(tcx))[])
     }
 };
 
@@ -1123,8 +1128,8 @@ match fulfill_cx.select_all_or_error(infcx, &typer) {
         } else {
             infcx.tcx.sess.span_bug(
                 span,
-                format!("Encountered errors `{}` fulfilling during trans",
-                        errors.repr(infcx.tcx)).index(&FullRange));
+                &format!("Encountered errors `{}` fulfilling during trans",
+                        errors.repr(infcx.tcx))[]);
         }
     }
 }
@@ -1163,8 +1168,8 @@ let substs = match node {
 };
 
 if substs.types.any(|t| ty::type_needs_infer(*t)) {
-        tcx.sess.bug(format!("type parameters for node {:?} include inference types: {:?}",
-                             node, substs.repr(tcx)).index(&FullRange));
+        tcx.sess.bug(&format!("type parameters for node {:?} include inference types: {:?}",
+                             node, substs.repr(tcx))[]);
     }
 
     monomorphize::apply_param_substs(tcx,
@@ -1182,8 +1187,8 @@ pub fn langcall(bcx: Block,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => bcx.tcx().sess.span_fatal(span, msg.index(&FullRange)),
-                None => bcx.tcx().sess.fatal(msg.index(&FullRange)),
+                Some(span) => bcx.tcx().sess.span_fatal(span, &msg[]),
+                None => bcx.tcx().sess.fatal(&msg[]),
             }
         }
     }

@@ -174,7 +174,7 @@ impl Session {
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp,
-                      format!("impossible case reached: {}", msg).index(&FullRange));
+                      &format!("impossible case reached: {}", msg)[]);
     }
     pub fn verbose(&self) -> bool { self.debugging_opt(config::VERBOSE) }
     pub fn time_passes(&self) -> bool { self.debugging_opt(config::TIME_PASSES) }
@@ -216,7 +216,7 @@ impl Session {
     }
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch {
         filesearch::FileSearch::new(self.sysroot(),
-                                    self.opts.target_triple.index(&FullRange),
+                                    &self.opts.target_triple[],
                                     &self.opts.search_paths,
                                     kind)
     }

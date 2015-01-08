@@ -119,8 +119,8 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         mc::cat_static_item => {
             bccx.span_err(
                 move_from.span,
-                format!("cannot move out of {}",
-                        bccx.cmt_to_string(&*move_from)).index(&FullRange));
+                &format!("cannot move out of {}",
+                        bccx.cmt_to_string(&*move_from))[]);
         }
 
         mc::cat_downcast(ref b, _) |
@@ -130,9 +130,9 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                 | ty::ty_enum(did, _) if ty::has_dtor(bccx.tcx, did) => {
                     bccx.span_err(
                         move_from.span,
-                        format!("cannot move out of type `{}`, \
+                        &format!("cannot move out of type `{}`, \
                                  which defines the `Drop` trait",
-                                b.ty.user_string(bccx.tcx)).index(&FullRange));
+                                b.ty.user_string(bccx.tcx))[]);
                 },
                 _ => panic!("this path should not cause illegal move")
             }
@@ -152,13 +152,13 @@ fn note_move_destination(bccx: &BorrowckCtxt,
             "attempting to move value to here");
         bccx.span_help(
             move_to_span,
-            format!("to prevent the move, \
+            &format!("to prevent the move, \
                      use `ref {0}` or `ref mut {0}` to capture value by \
                      reference",
-                    pat_name).index(&FullRange));
+                    pat_name)[]);
     } else {
         bccx.span_note(move_to_span,
-                       format!("and here (use `ref {0}` or `ref mut {0}`)",
-                               pat_name).index(&FullRange));
+                       &format!("and here (use `ref {0}` or `ref mut {0}`)",
+                               pat_name)[]);
     }
 }

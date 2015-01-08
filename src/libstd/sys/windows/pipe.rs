@@ -453,7 +453,7 @@ impl UnixStream {
             }
             let ret = unsafe {
                 libc::WriteFile(self.handle(),
-                                buf.index(&(offset..)).as_ptr() as libc::LPVOID,
+                                buf[offset..].as_ptr() as libc::LPVOID,
                                 (buf.len() - offset) as libc::DWORD,
                                 &mut bytes_written,
                                 &mut overlapped)

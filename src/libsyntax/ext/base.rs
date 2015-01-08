@@ -341,9 +341,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
 
     let mut syntax_expanders = SyntaxEnv::new();
     syntax_expanders.insert(intern("macro_rules"), MacroRulesTT);
-    syntax_expanders.insert(intern("fmt"),
-                            builtin_normal_expander(
-                                ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(intern("format_args"),
                             builtin_normal_expander(
                                 ext::format::expand_format_args));
@@ -353,9 +350,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("option_env"),
                             builtin_normal_expander(
                                     ext::env::expand_option_env));
-    syntax_expanders.insert(intern("bytes"),
-                            builtin_normal_expander(
-                                    ext::bytes::expand_syntax_ext));
     syntax_expanders.insert(intern("concat_idents"),
                             builtin_normal_expander(
                                     ext::concat_idents::expand_syntax_ext));
@@ -367,8 +361,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
                                     ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(intern("derive"),
                             Decorator(box ext::deriving::expand_meta_derive));
-    syntax_expanders.insert(intern("deriving"),
-                            Decorator(box ext::deriving::expand_meta_deriving));
 
     if ecfg.enable_quotes {
         // Quasi-quoting expanders
@@ -416,9 +408,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("include_str"),
                             builtin_normal_expander(
                                     ext::source_util::expand_include_str));
-    syntax_expanders.insert(intern("include_bin"),
-                            builtin_normal_expander(
-                                    ext::source_util::expand_include_bin));
     syntax_expanders.insert(intern("include_bytes"),
                             builtin_normal_expander(
                                     ext::source_util::expand_include_bytes));
@@ -539,7 +528,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
     pub fn mod_path(&self) -> Vec<ast::Ident> {
         let mut v = Vec::new();
-        v.push(token::str_to_ident(self.ecfg.crate_name.index(&FullRange)));
+        v.push(token::str_to_ident(&self.ecfg.crate_name[]));
         v.extend(self.mod_path.iter().map(|a| *a));
         return v;
     }
@@ -547,8 +536,8 @@ impl<'a> ExtCtxt<'a> {
         self.recursion_count += 1;
         if self.recursion_count > self.ecfg.recursion_limit {
             self.span_fatal(ei.call_site,
-                            format!("recursion limit reached while expanding the macro `{}`",
-                                    ei.callee.name).index(&FullRange));
+                            &format!("recursion limit reached while expanding the macro `{}`",
+                                    ei.callee.name)[]);
         }
 
         let mut call_site = ei.call_site;
@@ -670,7 +659,7 @@ pub fn check_zero_tts(cx: &ExtCtxt,
                       tts: &[ast::TokenTree],
                       name: &str) {
     if tts.len() != 0 {
-        cx.span_err(sp, format!("{} takes no arguments", name).index(&FullRange));
+        cx.span_err(sp, &format!("{} takes no arguments", name)[]);
     }
 }
 
@@ -683,12 +672,12 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
                                -> Option<String> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
-        cx.span_err(sp, format!("{} takes 1 argument", name).index(&FullRange));
+        cx.span_err(sp, &format!("{} takes 1 argument", name)[]);
         return None
     }
     let ret = cx.expander().fold_expr(p.parse_expr());
     if p.token != token::Eof {
-        cx.span_err(sp, format!("{} takes 1 argument", name).index(&FullRange));
+        cx.span_err(sp, &format!("{} takes 1 argument", name)[]);
     }
     expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| {
         s.get().to_string()

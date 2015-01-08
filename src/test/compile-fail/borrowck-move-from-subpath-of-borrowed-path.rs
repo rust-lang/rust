@@ -11,6 +11,8 @@
 // verify that an error is raised when trying to move out of a
 // borrowed path.
 
+#![feature(box_syntax)]
+
 fn main() {
     let a = box box 2i;
     let b = &a;

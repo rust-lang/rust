@@ -10,6 +10,8 @@
 
 // ignore-tidy-linelength
 
+#![feature(box_syntax)]
+
 struct S {
     x: Box<E>
 }

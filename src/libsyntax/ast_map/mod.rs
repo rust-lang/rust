@@ -32,7 +32,7 @@ use std::slice;
 
 pub mod blocks;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Show)]
 pub enum PathElem {
     PathMod(Name),
     PathName(Name)
@@ -43,13 +43,6 @@ impl PathElem {
         match *self {
             PathMod(name) | PathName(name) => name
         }
-    }
-}
-
-//NOTE(stage0): replace with deriving(Show) after snapshot
-impl fmt::Show for PathElem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -90,7 +83,7 @@ impl<'a, T: Copy> Iterator for Values<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        let &Values(ref mut items) = self;
+        let &mut Values(ref mut items) = self;
         items.next().map(|&x| x)
     }
 }
@@ -106,7 +99,7 @@ pub fn path_to_string<PI: Iterator<Item=PathElem>>(path: PI) -> String {
         if !s.is_empty() {
             s.push_str("::");
         }
-        s.push_str(e.index(&FullRange));
+        s.push_str(&e[]);
         s
     }).to_string()
 }
@@ -483,20 +476,20 @@ impl<'ast> Map<'ast> {
         F: FnOnce(Option<&[Attribute]>) -> T,
     {
         let attrs = match self.get(id) {
-            NodeItem(i) => Some(i.attrs.index(&FullRange)),
-            NodeForeignItem(fi) => Some(fi.attrs.index(&FullRange)),
+            NodeItem(i) => Some(&i.attrs[]),
+            NodeForeignItem(fi) => Some(&fi.attrs[]),
             NodeTraitItem(ref tm) => match **tm {
-                RequiredMethod(ref type_m) => Some(type_m.attrs.index(&FullRange)),
-                ProvidedMethod(ref m) => Some(m.attrs.index(&FullRange)),
-                TypeTraitItem(ref typ) => Some(typ.attrs.index(&FullRange)),
+                RequiredMethod(ref type_m) => Some(&type_m.attrs[]),
+                ProvidedMethod(ref m) => Some(&m.attrs[]),
+                TypeTraitItem(ref typ) => Some(&typ.attrs[]),
             },
             NodeImplItem(ref ii) => {
                 match **ii {
-                    MethodImplItem(ref m) => Some(m.attrs.index(&FullRange)),
-                    TypeImplItem(ref t) => Some(t.attrs.index(&FullRange)),
+                    MethodImplItem(ref m) => Some(&m.attrs[]),
+                    TypeImplItem(ref t) => Some(&t.attrs[]),
                 }
             }
-            NodeVariant(ref v) => Some(v.node.attrs.index(&FullRange)),
+            NodeVariant(ref v) => Some(&v.node.attrs[]),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
             // FIXME(eddyb) make this work again (requires access to the map).
@@ -520,7 +513,7 @@ impl<'ast> Map<'ast> {
         NodesMatchingSuffix {
             map: self,
             item_name: parts.last().unwrap(),
-            in_which: parts.index(&(0..(parts.len() - 1))),
+            in_which: &parts[0..(parts.len() - 1)],
             idx: 0,
         }
     }
@@ -597,7 +590,7 @@ impl<'a, 'ast> NodesMatchingSuffix<'a, 'ast> {
                 None => return false,
                 Some((node_id, name)) => (node_id, name),
             };
-            if part.index(&FullRange) != mod_name.as_str() {
+            if &part[] != mod_name.as_str() {
                 return false;
             }
             cursor = self.map.get_parent(mod_id);
@@ -635,7 +628,7 @@ impl<'a, 'ast> NodesMatchingSuffix<'a, 'ast> {
     // We are looking at some node `n` with a given name and parent
     // id; do their names match what I am seeking?
     fn matches_names(&self, parent_of_n: NodeId, name: Name) -> bool {
-        name.as_str() == self.item_name.index(&FullRange) &&
+        name.as_str() == &self.item_name[] &&
             self.suffix_matches(parent_of_n)
     }
 }
@@ -1047,7 +1040,7 @@ impl<'a> NodePrinter for pprust::State<'a> {
 
 fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
     let id_str = format!(" (id={})", id);
-    let id_str = if include_id { id_str.index(&FullRange) } else { "" };
+    let id_str = if include_id { &id_str[] } else { "" };
 
     match map.find(id) {
         Some(NodeItem(item)) => {

@@ -9,6 +9,9 @@
 // except according to those terms.
 
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 trait Foo {
     fn foo(&self) -> String;
 }

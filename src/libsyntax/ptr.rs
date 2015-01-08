@@ -37,9 +37,11 @@
 //!   Moreover, a switch to, e.g. `P<'a, T>` would be easy and mostly automated.
 
 use std::fmt::{self, Show};
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
+#[cfg(stage0)] use std::hash::Writer;
 use std::ops::Deref;
 use std::ptr;
+
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 /// An owned smart pointer.
@@ -105,7 +107,14 @@ impl<T: Show> Show for P<T> {
     }
 }
 
-impl<S, T: Hash<S>> Hash<S> for P<T> {
+#[cfg(stage0)]
+impl<S: Writer, T: Hash<S>> Hash<S> for P<T> {
+    fn hash(&self, state: &mut S) {
+        (**self).hash(state);
+    }
+}
+#[cfg(not(stage0))]
+impl<S: Hasher, T: Hash<S>> Hash<S> for P<T> {
     fn hash(&self, state: &mut S) {
         (**self).hash(state);
     }

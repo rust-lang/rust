@@ -27,7 +27,7 @@ use core::ops::{Index, IndexMut};
 use core::ptr;
 use core::raw::Slice as RawSlice;
 
-use std::hash::{Writer, Hash};
+use std::hash::{Writer, Hash, Hasher};
 use std::cmp;
 
 use alloc::heap;
@@ -556,7 +556,7 @@ impl<T> RingBuf<T> {
             let buf = self.buffer_as_slice();
             if contiguous {
                 let (empty, buf) = buf.split_at(0);
-                (buf.index(&(self.tail..self.head)), empty)
+                (&buf[self.tail..self.head], empty)
             } else {
                 let (mid, right) = buf.split_at(self.tail);
                 let (left, _) = mid.split_at(self.head);
@@ -1562,7 +1562,7 @@ impl<A: Ord> Ord for RingBuf<A> {
 }
 
 #[stable]
-impl<S: Writer, A: Hash<S>> Hash<S> for RingBuf<A> {
+impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for RingBuf<A> {
     fn hash(&self, state: &mut S) {
         self.len().hash(state);
         for elt in self.iter() {
@@ -1631,7 +1631,7 @@ mod tests {
     use prelude::*;
     use core::iter;
     use std::fmt::Show;
-    use std::hash;
+    use std::hash::{self, SipHasher};
     use test::Bencher;
     use test;
 
@@ -2283,7 +2283,7 @@ mod tests {
       y.push_back(2);
       y.push_back(3);
 
-      assert!(hash::hash(&x) == hash::hash(&y));
+      assert!(hash::hash::<_, SipHasher>(&x) == hash::hash::<_, SipHasher>(&y));
     }
 
     #[test]

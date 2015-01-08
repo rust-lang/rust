@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 fn call_f<F:FnOnce() -> int>(f: F) -> int {
     f()
 }

@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 static tau: f64 = 2.0*3.14159265358979323;
 
 struct Point {x: f64, y: f64}

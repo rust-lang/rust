@@ -273,6 +273,15 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ty::field<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::field<'tcx> {
+        ty::field {
+            name: self.name,
+            mt: self.mt.fold_with(folder),
+        }
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for ty::Region {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Region {
         folder.fold_region(*self)
@@ -853,7 +862,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
 ///////////////////////////////////////////////////////////////////////////
 // Region eraser
 //
-// Replaces all free regions with 'static. Useful in trans.
+// Replaces all free regions with 'static. Useful in contexts, such as
+// method probing, where precise region relationships are not
+// important. Note that in trans you should use
+// `common::erase_regions` instead.
 
 pub struct RegionEraser<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,

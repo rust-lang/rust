@@ -168,7 +168,7 @@ impl String {
 
         if i > 0 {
             unsafe {
-                res.as_mut_vec().push_all(v.index(&(0..i)))
+                res.as_mut_vec().push_all(&v[0..i])
             };
         }
 
@@ -185,7 +185,7 @@ impl String {
             macro_rules! error { () => ({
                 unsafe {
                     if subseqidx != i_ {
-                        res.as_mut_vec().push_all(v.index(&(subseqidx..i_)));
+                        res.as_mut_vec().push_all(&v[subseqidx..i_]);
                     }
                     subseqidx = i;
                     res.as_mut_vec().push_all(REPLACEMENT);
@@ -254,7 +254,7 @@ impl String {
         }
         if subseqidx < total {
             unsafe {
-                res.as_mut_vec().push_all(v.index(&(subseqidx..total)))
+                res.as_mut_vec().push_all(&v[subseqidx..total])
             };
         }
         Cow::Owned(res)
@@ -681,6 +681,7 @@ impl fmt::Show for FromUtf8Error {
     }
 }
 
+#[stable]
 impl fmt::String for FromUtf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(&self.error, f)
@@ -693,6 +694,7 @@ impl fmt::Show for FromUtf16Error {
     }
 }
 
+#[stable]
 impl fmt::String for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt("invalid utf-16: lone surrogate found", f)
@@ -805,7 +807,7 @@ impl Default for String {
     }
 }
 
-#[experimental = "waiting on fmt stabilization"]
+#[stable]
 impl fmt::String for String {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(&**self, f)
@@ -820,7 +822,16 @@ impl fmt::Show for String {
 }
 
 #[experimental = "waiting on Hash stabilization"]
+#[cfg(stage0)]
 impl<H: hash::Writer> hash::Hash<H> for String {
+    #[inline]
+    fn hash(&self, hasher: &mut H) {
+        (**self).hash(hasher)
+    }
+}
+#[experimental = "waiting on Hash stabilization"]
+#[cfg(not(stage0))]
+impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for String {
     #[inline]
     fn hash(&self, hasher: &mut H) {
         (**self).hash(hasher)
@@ -841,21 +852,21 @@ impl ops::Index<ops::Range<uint>> for String {
     type Output = str;
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &str {
-        &self.index(&FullRange)[*index]
+        &self[][*index]
     }
 }
 impl ops::Index<ops::RangeTo<uint>> for String {
     type Output = str;
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &str {
-        &self.index(&FullRange)[*index]
+        &self[][*index]
     }
 }
 impl ops::Index<ops::RangeFrom<uint>> for String {
     type Output = str;
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
-        &self.index(&FullRange)[*index]
+        &self[][*index]
     }
 }
 impl ops::Index<ops::FullRange> for String {
@@ -871,7 +882,7 @@ impl ops::Deref for String {
     type Target = str;
 
     fn deref<'a>(&'a self) -> &'a str {
-        unsafe { mem::transmute(self.vec.index(&FullRange)) }
+        unsafe { mem::transmute(&self.vec[]) }
     }
 }
 
@@ -921,18 +932,6 @@ pub trait ToString {
     fn to_string(&self) -> String;
 }
 
-#[cfg(stage0)]
-impl<T: fmt::Show> ToString for T {
-    fn to_string(&self) -> String {
-        use core::fmt::Writer;
-        let mut buf = String::new();
-        let _ = buf.write_fmt(format_args!("{}", self));
-        buf.shrink_to_fit();
-        buf
-    }
-}
-
-#[cfg(not(stage0))]
 impl<T: fmt::String> ToString for T {
     fn to_string(&self) -> String {
         use core::fmt::Writer;
@@ -1277,18 +1276,17 @@ mod tests {
         assert_eq!(2u8.to_string(), "2");
         assert_eq!(true.to_string(), "true");
         assert_eq!(false.to_string(), "false");
-        assert_eq!(().to_string(), "()");
         assert_eq!(("hi".to_string()).to_string(), "hi");
     }
 
     #[test]
     fn test_vectors() {
         let x: Vec<int> = vec![];
-        assert_eq!(x.to_string(), "[]");
-        assert_eq!((vec![1i]).to_string(), "[1]");
-        assert_eq!((vec![1i, 2, 3]).to_string(), "[1, 2, 3]");
-        assert!((vec![vec![], vec![1i], vec![1i, 1]]).to_string() ==
-               "[[], [1], [1, 1]]");
+        assert_eq!(format!("{:?}", x), "[]");
+        assert_eq!(format!("{:?}", vec![1i]), "[1i]");
+        assert_eq!(format!("{:?}", vec![1i, 2, 3]), "[1i, 2i, 3i]");
+        assert!(format!("{:?}", vec![vec![], vec![1i], vec![1i, 1]]) ==
+               "[[], [1i], [1i, 1i]]");
     }
 
     #[test]

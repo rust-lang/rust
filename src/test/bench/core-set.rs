@@ -18,6 +18,7 @@ extern crate rand;
 use std::collections::BTreeSet;
 use std::collections::BitvSet;
 use std::collections::HashSet;
+use std::collections::hash_map::Hasher;
 use std::hash::Hash;
 use std::os;
 use std::time::Duration;
@@ -43,7 +44,7 @@ trait MutableSet<T> {
     fn contains(&self, k: &T) -> bool;
 }
 
-impl<T: Hash + Eq> MutableSet<T> for HashSet<T> {
+impl<T: Hash<Hasher> + Eq> MutableSet<T> for HashSet<T> {
     fn insert(&mut self, k: T) { self.insert(k); }
     fn remove(&mut self, k: &T) -> bool { self.remove(k) }
     fn contains(&self, k: &T) -> bool { self.contains(k) }

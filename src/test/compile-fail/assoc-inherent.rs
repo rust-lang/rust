@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let vec = bytes!(-1024u8); //~ ERROR non-literal in bytes
-    //~^ WARN `bytes!` is deprecated
+// Test associated types are forbidden in inherant impls.
+
+struct Foo;
+
+impl Foo {
+    type Bar = int; //~ERROR associated items are not allowed in inherent impls
 }
+
+fn main() {}

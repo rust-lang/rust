@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // Test range syntax - borrow errors.
-#![feature(slicing_syntax)]
 
 pub fn main() {
     let r = {

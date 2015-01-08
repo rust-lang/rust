@@ -12,6 +12,7 @@
 // access to the variable, whether that mutable access be used
 // for direct assignment or for taking mutable ref. Issue #6801.
 
+#![feature(box_syntax)]
 
 fn a() {
     let mut x = 3i;

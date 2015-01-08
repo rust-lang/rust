@@ -10,6 +10,8 @@
 
 //buggy.rs
 
+#![feature(box_syntax)]
+
 extern crate collections;
 use std::collections::HashMap;
 

@@ -14,37 +14,37 @@ use std::fmt::Show;
 
 struct NotShowable;
 
-#[cfg_attr(set1, deriving(Show))]
+#[cfg_attr(set1, derive(Show))]
 struct Set1;
 
-#[cfg_attr(notset, deriving(Show))]
+#[cfg_attr(notset, derive(Show))]
 struct Notset(NotShowable);
 
-#[cfg_attr(not(notset), deriving(Show))]
+#[cfg_attr(not(notset), derive(Show))]
 struct NotNotset;
 
-#[cfg_attr(not(set1), deriving(Show))]
+#[cfg_attr(not(set1), derive(Show))]
 struct NotSet1(NotShowable);
 
-#[cfg_attr(all(set1, set2), deriving(Show))]
+#[cfg_attr(all(set1, set2), derive(Show))]
 struct AllSet1Set2;
 
-#[cfg_attr(all(set1, notset), deriving(Show))]
+#[cfg_attr(all(set1, notset), derive(Show))]
 struct AllSet1Notset(NotShowable);
 
-#[cfg_attr(any(set1, notset), deriving(Show))]
+#[cfg_attr(any(set1, notset), derive(Show))]
 struct AnySet1Notset;
 
-#[cfg_attr(any(notset, notset2), deriving(Show))]
+#[cfg_attr(any(notset, notset2), derive(Show))]
 struct AnyNotsetNotset2(NotShowable);
 
-#[cfg_attr(all(not(notset), any(set1, notset)), deriving(Show))]
+#[cfg_attr(all(not(notset), any(set1, notset)), derive(Show))]
 struct Complex;
 
-#[cfg_attr(any(notset, not(any(set1, notset))), deriving(Show))]
+#[cfg_attr(any(notset, not(any(set1, notset))), derive(Show))]
 struct ComplexNot(NotShowable);
 
-#[cfg_attr(any(target_endian = "little", target_endian = "big"), deriving(Show))]
+#[cfg_attr(any(target_endian = "little", target_endian = "big"), derive(Show))]
 struct KeyValue;
 
 fn is_show<T: Show>() {}

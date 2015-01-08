@@ -187,9 +187,9 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
             infcx.tcx.sess.span_bug(
                 span,
-                format!("region {:?} is not associated with \
+                &format!("region {:?} is not associated with \
                          any bound region from A!",
-                        r0).index(&FullRange))
+                        r0)[])
         }
     }
 
@@ -322,7 +322,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
             }
             infcx.tcx.sess.span_bug(
                 span,
-                format!("could not find original bound region for {:?}", r).index(&FullRange));
+                &format!("could not find original bound region for {:?}", r)[]);
         }
 
         fn fresh_bound_variable(infcx: &InferCtxt, debruijn: ty::DebruijnIndex) -> ty::Region {
@@ -339,7 +339,7 @@ fn var_ids<'tcx, T: Combine<'tcx>>(combiner: &T,
             r => {
                 combiner.infcx().tcx.sess.span_bug(
                     combiner.trace().origin.span(),
-                    format!("found non-region-vid: {:?}", r).index(&FullRange));
+                    &format!("found non-region-vid: {:?}", r)[]);
             }
         }).collect()
 }
@@ -468,7 +468,7 @@ pub fn skolemize_late_bound_regions<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
      * when higher-ranked things are involved. See `doc.rs` for more details.
      */
 
-    let (result, map) = ty::replace_late_bound_regions(infcx.tcx, binder, |br, _| {
+    let (result, map) = ty::replace_late_bound_regions(infcx.tcx, binder, |br| {
         infcx.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
     });
 

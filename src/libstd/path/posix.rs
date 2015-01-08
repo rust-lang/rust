@@ -17,7 +17,6 @@ use hash;
 use io::Writer;
 use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map};
-use ops::Index;
 use marker::Sized;
 use option::Option::{self, Some, None};
 use slice::{AsSlice, Split, SliceExt, SliceConcatExt};
@@ -60,7 +59,7 @@ pub fn is_sep(c: char) -> bool {
 
 impl fmt::Show for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Path {{ {} }}", self.display())
+        fmt::Show::fmt(&self.display(), f)
     }
 }
 
@@ -91,7 +90,7 @@ impl FromStr for Path {
     }
 }
 
-impl<S: hash::Writer> hash::Hash<S> for Path {
+impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Path {
     #[inline]
     fn hash(&self, state: &mut S) {
         self.repr.hash(state)
@@ -127,7 +126,7 @@ impl GenericPathUnsafe for Path {
             None => {
                 self.repr = Path::normalize(filename);
             }
-            Some(idx) if self.repr.index(&((idx+1)..)) == b".." => {
+            Some(idx) if &self.repr[(idx+1)..] == b".." => {
                 let mut v = Vec::with_capacity(self.repr.len() + 1 + filename.len());
                 v.push_all(self.repr.as_slice());
                 v.push(SEP_BYTE);
@@ -137,7 +136,7 @@ impl GenericPathUnsafe for Path {
             }
             Some(idx) => {
                 let mut v = Vec::with_capacity(idx + 1 + filename.len());
-                v.push_all(self.repr.index(&(0..(idx+1))));
+                v.push_all(&self.repr[0..(idx+1)]);
                 v.push_all(filename);
                 // FIXME: this is slow
                 self.repr = Path::normalize(v.as_slice());
@@ -178,9 +177,9 @@ impl GenericPath for Path {
         match self.sepidx {
             None if b".." == self.repr => self.repr.as_slice(),
             None => dot_static,
-            Some(0) => self.repr.index(&(0..1)),
-            Some(idx) if self.repr.index(&((idx+1)..)) == b".." => self.repr.as_slice(),
-            Some(idx) => self.repr.index(&(0..idx))
+            Some(0) => &self.repr[0..1],
+            Some(idx) if &self.repr[(idx+1)..] == b".." => self.repr.as_slice(),
+            Some(idx) => &self.repr[0..idx]
         }
     }
 
@@ -189,9 +188,9 @@ impl GenericPath for Path {
             None if b"." == self.repr ||
                 b".." == self.repr => None,
             None => Some(self.repr.as_slice()),
-            Some(idx) if self.repr.index(&((idx+1)..)) == b".." => None,
-            Some(0) if self.repr.index(&(1..)).is_empty() => None,
-            Some(idx) => Some(self.repr.index(&((idx+1)..)))
+            Some(idx) if &self.repr[(idx+1)..] == b".." => None,
+            Some(0) if self.repr[1..].is_empty() => None,
+            Some(idx) => Some(&self.repr[(idx+1)..])
         }
     }
 
@@ -333,7 +332,7 @@ impl Path {
         // borrowck is being very picky
         let val = {
             let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == SEP_BYTE;
-            let v_ = if is_abs { v.as_slice().index(&(1..)) } else { v.as_slice() };
+            let v_ = if is_abs { &v.as_slice()[1..] } else { v.as_slice() };
             let comps = normalize_helper(v_, is_abs);
             match comps {
                 None => None,
@@ -372,7 +371,7 @@ impl Path {
     /// A path of "/" yields no components. A path of "." yields one component.
     pub fn components<'a>(&'a self) -> Components<'a> {
         let v = if self.repr[0] == SEP_BYTE {
-            self.repr.index(&(1..))
+            &self.repr[1..]
         } else { self.repr.as_slice() };
         let is_sep_byte: fn(&u8) -> bool = is_sep_byte; // coerce to fn ptr
         let mut ret = v.split(is_sep_byte);

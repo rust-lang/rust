@@ -11,6 +11,9 @@
 
 // error-pattern:meep
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 fn f(_a: int, _b: int, _c: Box<int>) { panic!("moop"); }
 
 fn main() { f(1, panic!("meep"), box 42); }

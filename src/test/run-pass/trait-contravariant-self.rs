@@ -22,6 +22,9 @@
 // 4. `Bar for Box<Foo> <: Bar for Box<Foo:Send>` because
 //    `Box<Foo:Send> <: Box<Foo>`.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 trait Foo { }
 struct SFoo;
 impl Foo for SFoo { }

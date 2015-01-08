@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,6 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let vec = bytes!(foo); //~ ERROR non-literal in bytes!
-    //~^ WARN `bytes!` is deprecated
+    let _a = Box::new(1);
 }

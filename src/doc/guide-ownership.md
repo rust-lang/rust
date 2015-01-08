@@ -81,27 +81,29 @@ therefore deallocates the memory for you. Here's the equivalent example in
 Rust:
 
 ```rust
+# use std::boxed::Box;
 {
-    let x = box 5i;
+    let x = Box::new(5i);
 }
 ```
 
-The `box` keyword creates a `Box<T>` (specifically `Box<int>` in this case) by
-allocating a small segment of memory on the heap with enough space to fit an
-`int`. But where in the code is the box deallocated? We said before that we
-must have a deallocation for each allocation. Rust handles this for you. It
+The `Box::new` function creates a `Box<T>` (specifically `Box<int>` in this
+case) by allocating a small segment of memory on the heap with enough space to
+fit an `int`. But where in the code is the box deallocated? We said before that
+we must have a deallocation for each allocation. Rust handles this for you. It
 knows that our handle, `x`, is the owning reference to our box. Rust knows that
 `x` will go out of scope at the end of the block, and so it inserts a call to
 deallocate the memory at the end of the scope. Because the compiler does this
-for us, it's impossible to forget. We always have exactly one deallocation paired
-with each of our allocations.
+for us, it's impossible to forget. We always have exactly one deallocation
+  paired with each of our allocations.
 
 This is pretty straightforward, but what happens when we want to pass our box
 to a function? Let's look at some code:
 
 ```rust
+# use std::boxed::Box;
 fn main() {
-    let x = box 5i;
+    let x = Box::new(5i);
 
     add_one(x);
 }
@@ -115,8 +117,9 @@ This code works, but it's not ideal. For example, let's add one more line of
 code, where we print out the value of `x`:
 
 ```{rust,ignore}
+# use std::boxed::Box;
 fn main() {
-    let x = box 5i;
+    let x = Box::new(5i);
 
     add_one(x);
 
@@ -148,8 +151,9 @@ To fix this, we can have `add_one` give ownership back when it's done with the
 box:
 
 ```rust
+# use std::boxed::Box;
 fn main() {
-    let x = box 5i;
+    let x = Box::new(5i);
 
     let y = add_one(x);
 
@@ -458,7 +462,7 @@ lifetime, and so if you elide a lifetime (like `&T` instead of `&'a T`), Rust
 will do three things to determine what those lifetimes should be.
 
 When talking about lifetime elision, we use the term 'input lifetime' and
-'output lifetime'. An 'input liftime' is a lifetime associated with a parameter
+'output lifetime'. An 'input lifetime' is a lifetime associated with a parameter
 of a function, and an 'output lifetime' is a lifetime associated with the return
 value of a function. For example, this function has an input lifetime:
 
