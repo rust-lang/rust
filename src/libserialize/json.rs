@@ -1396,7 +1396,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
         self.ch == Some(c)
     }
 
-    fn error<T>(&self, reason: ErrorCode) -> Result<T, ParserError> {
+    fn error<U>(&self, reason: ErrorCode) -> Result<U, ParserError> {
         Err(SyntaxError(reason, self.line, self.col))
     }
 
