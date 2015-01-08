@@ -15,7 +15,7 @@ use std::time::Duration;
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _t = Thread::spawn(move||{
+    let _t = Thread::scoped(move||{
         let mut timer = Timer::new().unwrap();
         timer.sleep(Duration::milliseconds(10));
         tx.send(()).unwrap();

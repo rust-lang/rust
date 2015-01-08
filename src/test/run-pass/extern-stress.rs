@@ -42,7 +42,7 @@ fn count(n: libc::uintptr_t) -> libc::uintptr_t {
 
 pub fn main() {
     range(0u, 100).map(|_| {
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             assert_eq!(count(5), 16);
         })
     }).collect::<Vec<_>>();
