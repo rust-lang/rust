@@ -41,9 +41,9 @@ impl Index<uint> for T {
 
 fn main() {
     S[0];
-    //~^ ERROR cannot move out of dereference
+    //~^ ERROR cannot move out of indexed content
     //~^^ ERROR E0161
     T[0];
-    //~^ ERROR cannot move out of dereference
+    //~^ ERROR cannot move out of indexed content
     //~^^ ERROR E0161
 }

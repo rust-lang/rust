@@ -102,9 +102,9 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     Ok(confirm::confirm(fcx, span, self_expr, call_expr, self_ty, pick, supplied_method_types))
 }
 
-pub fn lookup_in_trait<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
+pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  span: Span,
-                                 self_expr: Option<&'a ast::Expr>,
+                                 self_expr: Option<&ast::Expr>,
                                  m_name: ast::Name,
                                  trait_def_id: DefId,
                                  self_ty: Ty<'tcx>,
@@ -125,9 +125,9 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 /// method-lookup code. In particular, autoderef on index is basically identical to autoderef with
 /// normal probes, except that the test also looks for built-in indexing. Also, the second half of
 /// this method is basically the same as confirmation.
-pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
+pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           span: Span,
-                                          self_expr: Option<&'a ast::Expr>,
+                                          self_expr: Option<&ast::Expr>,
                                           m_name: ast::Name,
                                           trait_def_id: DefId,
                                           autoderefref: ty::AutoDerefRef<'tcx>,
