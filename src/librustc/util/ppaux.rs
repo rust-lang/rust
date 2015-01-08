@@ -1183,8 +1183,8 @@ impl<'tcx, T> UserString<'tcx> for ty::Binder<T>
         // the output. We'll probably want to tweak this over time to
         // decide just how much information to give.
         let mut names = Vec::new();
-        let (unbound_value, _) = ty::replace_late_bound_regions(tcx, self, |br, debruijn| {
-            ty::ReLateBound(debruijn, match br {
+        let (unbound_value, _) = ty::replace_late_bound_regions(tcx, self, |br| {
+            ty::ReLateBound(ty::DebruijnIndex::new(1), match br {
                 ty::BrNamed(_, name) => {
                     names.push(token::get_name(name));
                     br
