@@ -50,12 +50,12 @@ fn qux() {
 }
 
 fn quy() {
-    let i = -23us; //~ WARNING negation of unsigned isize literal may be unintentional
+    let i = -23us; //~ WARNING negation of unsigned int literal may be unintentional
                   //~^ WARNING unused variable
 }
 
 fn quz() {
     let i = 23us;
-    let j = -i;   //~ WARNING negation of unsigned isize variable may be unintentional
+    let j = -i;   //~ WARNING negation of unsigned int variable may be unintentional
                   //~^ WARNING unused variable
 }

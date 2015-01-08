@@ -355,7 +355,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                             Some("the `int` type is deprecated; \
                                   use `isize` or a fixed-sized integer")
                         } else if name == "uint" {
-                            Some("the `unt` type is deprecated; \
+                            Some("the `uint` type is deprecated; \
                                   use `usize` or a fixed-sized integer")
                         } else {
                             None
