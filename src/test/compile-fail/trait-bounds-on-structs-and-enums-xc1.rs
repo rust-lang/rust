@@ -17,7 +17,7 @@ use trait_bounds_on_structs_and_enums_xc::{Bar, Foo, Trait};
 fn main() {
     let foo = Foo {
     //~^ ERROR not implemented
-        x: 3i
+        x: 3is
     };
     let bar: Bar<f64> = return;
     //~^ ERROR not implemented

@@ -11,7 +11,7 @@
 use std::cell::RefCell;
 
 fn main() {
-    let m = RefCell::new(0i);
+    let m = RefCell::new(0is);
     let mut b = m.borrow_mut();
     let b1 = &mut *b;
     let b2 = &mut *b; //~ ERROR cannot borrow

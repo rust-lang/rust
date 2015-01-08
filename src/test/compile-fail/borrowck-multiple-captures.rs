@@ -15,9 +15,9 @@ use std::thread::Thread;
 fn borrow<T>(_: &T) { }
 
 fn different_vars_after_borrows() {
-    let x1 = box 1i;
+    let x1 = box 1is;
     let p1 = &x1;
-    let x2 = box 2i;
+    let x2 = box 2is;
     let p2 = &x2;
     Thread::spawn(move|| {
         drop(x1); //~ ERROR cannot move `x1` into closure because it is borrowed
@@ -28,9 +28,9 @@ fn different_vars_after_borrows() {
 }
 
 fn different_vars_after_moves() {
-    let x1 = box 1i;
+    let x1 = box 1is;
     drop(x1);
-    let x2 = box 2i;
+    let x2 = box 2is;
     drop(x2);
     Thread::spawn(move|| {
         drop(x1); //~ ERROR capture of moved value: `x1`
@@ -39,7 +39,7 @@ fn different_vars_after_moves() {
 }
 
 fn same_var_after_borrow() {
-    let x = box 1i;
+    let x = box 1is;
     let p = &x;
     Thread::spawn(move|| {
         drop(x); //~ ERROR cannot move `x` into closure because it is borrowed
@@ -49,7 +49,7 @@ fn same_var_after_borrow() {
 }
 
 fn same_var_after_move() {
-    let x = box 1i;
+    let x = box 1is;
     drop(x);
     Thread::spawn(move|| {
         drop(x); //~ ERROR capture of moved value: `x`

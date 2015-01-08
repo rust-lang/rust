@@ -23,11 +23,11 @@ impl TraitB for isize {
 }
 
 fn call_it<B:TraitB>(b: B)  -> isize {
-    let y = 4u;
+    let y = 4us;
     b.gimme_an_a(y) //~ ERROR the trait `TraitA` is not implemented
 }
 
 fn main() {
-    let x = 3i;
+    let x = 3is;
     assert_eq!(call_it(x), 22);
 }

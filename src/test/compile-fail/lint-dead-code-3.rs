@@ -85,6 +85,6 @@ mod inner {
 }
 
 pub fn foo() {
-    let a = &1i as &inner::Trait;
+    let a = &1is as &inner::Trait;
     a.f();
 }

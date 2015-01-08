@@ -16,7 +16,7 @@ mod u {
         x: usize //~ WARN the `usize` type is deprecated
     }
     fn bar(x: usize) { //~ WARN the `usize` type is deprecated
-        1u; //~ WARN the `u` suffix on integers is deprecated
+        1us; //~ WARN the `u` suffix on integers is deprecated
     }
 }
 mod i {
@@ -25,7 +25,7 @@ mod i {
         x: isize //~ WARN the `isize` type is deprecated
     }
     fn bar(x: isize) { //~ WARN the `isize` type is deprecated
-        1i; //~ WARN the `u` suffix on integers is deprecated
+        1is; //~ WARN the `u` suffix on integers is deprecated
     }
 }
 

@@ -15,7 +15,7 @@ struct cat {
 }
 
 impl cat {
-    pub fn speak(&self) { self.meows += 1u; }
+    pub fn speak(&self) { self.meows += 1us; }
 }
 
 fn cat(in_x : usize, in_y : isize) -> cat {
@@ -26,6 +26,6 @@ fn cat(in_x : usize, in_y : isize) -> cat {
 }
 
 fn main() {
-  let nyan : cat = cat(52u, 99);
+  let nyan : cat = cat(52us, 99);
   nyan.speak = |&:| println!("meow"); //~ ERROR attempted to take value of method
 }

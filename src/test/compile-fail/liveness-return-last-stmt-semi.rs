@@ -10,7 +10,7 @@
 //
 // regression test for #8005
 
-macro_rules! test { () => { fn foo() -> isize { 1i; } } }
+macro_rules! test { () => { fn foo() -> isize { 1is; } } }
                                              //~^ ERROR not all control paths return a value
                                              //~^^ HELP consider removing this semicolon
 

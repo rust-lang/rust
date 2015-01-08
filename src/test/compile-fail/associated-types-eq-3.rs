@@ -40,7 +40,7 @@ pub fn baz(x: &Foo<A=Bar>) {
 
 
 pub fn main() {
-    let a = 42i;
+    let a = 42is;
     foo1(a); //~ERROR expected usize, found struct Bar
     baz(&a); //~ERROR expected usize, found struct Bar
 }

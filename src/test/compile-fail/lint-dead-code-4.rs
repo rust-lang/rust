@@ -61,6 +61,6 @@ fn field_match_in_let(f: Bar) -> bool {
 fn main() {
     field_read(Foo { x: 1, b: false, marker: std::marker::NoCopy });
     field_match_in_patterns(XYZ::Z);
-    field_match_in_let(Bar { x: 42u, b: true, _guard: () });
+    field_match_in_let(Bar { x: 42us, b: true, _guard: () });
     let _ = Baz { x: 0 };
 }
