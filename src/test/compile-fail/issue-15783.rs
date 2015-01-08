@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn foo(params: Option<&[&str]>) -> uint {
+pub fn foo(params: Option<&[&str]>) -> usize {
     params.unwrap().first().unwrap().len()
 }
 

@@ -12,7 +12,7 @@
 // anonymous fields of an enum variant vs the same anonymous field.
 
 enum Foo {
-    X, Y(uint, uint)
+    X, Y(usize, usize)
 }
 
 fn distinct_variant() {

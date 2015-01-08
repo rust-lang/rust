@@ -38,8 +38,8 @@ struct SFnOnce {
     x: String,
 }
 
-impl FnOnce<(String,),uint> for SFnOnce {
-    extern "rust-call" fn call_once(self, (z,): (String,)) -> uint {
+impl FnOnce<(String,),usize> for SFnOnce {
+    extern "rust-call" fn call_once(self, (z,): (String,)) -> usize {
         self.x.len() + z.len()
     }
 }

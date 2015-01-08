@@ -10,19 +10,19 @@
 
 use std::ops::Deref;
 
-struct MyPtr<'a>(&'a mut uint);
+struct MyPtr<'a>(&'a mut usize);
 impl<'a> Deref for MyPtr<'a> {
-    type Target = uint;
+    type Target = usize;
 
-    fn deref<'b>(&'b self) -> &'b uint { self.0 }
+    fn deref<'b>(&'b self) -> &'b usize { self.0 }
 }
 
 trait Tr {
-    fn poke(&self, s: &mut uint);
+    fn poke(&self, s: &mut usize);
 }
 
-impl Tr for uint {
-    fn poke(&self, s: &mut uint)  {
+impl Tr for usize {
+    fn poke(&self, s: &mut usize)  {
         *s = 2;
     }
 }

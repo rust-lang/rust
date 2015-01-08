@@ -19,8 +19,8 @@ pub trait Foo {
 struct Bar;
 
 impl Foo for isize {
-    type A = uint;
-    fn boo(&self) -> uint {
+    type A = usize;
+    fn boo(&self) -> usize {
         42
     }
 }

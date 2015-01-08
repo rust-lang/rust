@@ -9,11 +9,11 @@
 // except according to those terms.
 
 struct yes1<'a> {
-  x: &'a uint,
+  x: &'a usize,
 }
 
 struct yes2<'a> {
-  x: &'a uint,
+  x: &'a usize,
 }
 
 struct StructDecl {

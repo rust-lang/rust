@@ -11,7 +11,7 @@
 
 use std::rc::Rc;
 
-fn foo(_x: Rc<uint>) {}
+fn foo(_x: Rc<usize>) {}
 
 fn bar<F:FnOnce() + Send>(_: F) { }
 

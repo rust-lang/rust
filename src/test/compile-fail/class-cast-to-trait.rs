@@ -15,7 +15,7 @@ trait noisy {
 }
 
 struct cat {
-  meows : uint,
+  meows : usize,
 
   how_hungry : isize,
   name : String,
@@ -50,7 +50,7 @@ impl cat {
     }
 }
 
-fn cat(in_x : uint, in_y : isize, in_name: String) -> cat {
+fn cat(in_x : usize, in_y : isize, in_name: String) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y,

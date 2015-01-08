@@ -12,7 +12,7 @@
 
 trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
 impl bar for isize { fn dup(&self) -> isize { *self } fn blah<X>(&self) {} }
-impl bar for uint { fn dup(&self) -> uint { *self } fn blah<X>(&self) {} }
+impl bar for usize { fn dup(&self) -> usize { *self } fn blah<X>(&self) {} }
 
 fn main() {
     10i.dup::<isize>(); //~ ERROR does not take type parameters

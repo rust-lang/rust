@@ -22,10 +22,10 @@ extern "rust-intrinsic" {
 
     // Bounds aren't checked right now, so this should work
     // even though it's incorrect.
-    fn size_of<T: Clone>() -> uint;
+    fn size_of<T: Clone>() -> usize;
 
     // Unresolved bounds should still error.
-    fn align_of<T: NoSuchTrait>() -> uint;
+    fn align_of<T: NoSuchTrait>() -> usize;
     //~^ ERROR attempt to bound type parameter with a nonexistent trait `NoSuchTrait`
 }
 

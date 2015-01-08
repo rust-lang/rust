@@ -11,11 +11,11 @@
 #![allow(dead_code)]
 
 mod u {
-    type X = uint; //~ WARN the `uint` type is deprecated
+    type X = usize; //~ WARN the `usize` type is deprecated
     struct Foo {
-        x: uint //~ WARN the `uint` type is deprecated
+        x: usize //~ WARN the `usize` type is deprecated
     }
-    fn bar(x: uint) { //~ WARN the `uint` type is deprecated
+    fn bar(x: usize) { //~ WARN the `usize` type is deprecated
         1u; //~ WARN the `u` suffix on integers is deprecated
     }
 }

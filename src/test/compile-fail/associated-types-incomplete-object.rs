@@ -20,17 +20,17 @@ pub trait Foo {
 struct Bar;
 
 impl Foo for isize {
-    type A = uint;
+    type A = usize;
     type B = char;
-    fn boo(&self) -> uint {
+    fn boo(&self) -> usize {
         42
     }
 }
 
 pub fn main() {
-    let a = &42i as &Foo<A=uint, B=char>;
+    let a = &42i as &Foo<A=usize, B=char>;
 
-    let b = &42i as &Foo<A=uint>;
+    let b = &42i as &Foo<A=usize>;
     //~^ ERROR the value of the associated type `B` (from the trait `Foo`) must be specified
 
     let c = &42i as &Foo<B=char>;

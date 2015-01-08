@@ -13,7 +13,7 @@
 // Tests that we can't assign to or mutably borrow upvars from `Fn`
 // closures (issue #17780)
 
-fn set(x: &mut uint) { *x = 5; }
+fn set(x: &mut usize) { *x = 5; }
 
 fn main() {
     // By-ref captures

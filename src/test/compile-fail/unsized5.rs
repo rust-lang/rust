@@ -21,11 +21,11 @@ struct S2<X: ?Sized> {
 }
 struct S3 {
     f: str, //~ ERROR `core::marker::Sized` is not implemented
-    g: [uint]
+    g: [usize]
 }
 struct S4 {
     f: str, //~ ERROR `core::marker::Sized` is not implemented
-    g: uint
+    g: usize
 }
 enum E<X: ?Sized> {
     V1(X, isize), //~ERROR `core::marker::Sized` is not implemented

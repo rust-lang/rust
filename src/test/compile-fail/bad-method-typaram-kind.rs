@@ -16,7 +16,7 @@ trait bar {
     fn bar<T:Send>(&self);
 }
 
-impl bar for uint {
+impl bar for usize {
     fn bar<T:Send>(&self) {
     }
 }

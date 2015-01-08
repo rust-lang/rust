@@ -16,19 +16,19 @@ trait OtherTrait {
 }
 
 trait MyTrait {
-    fn get(&self) -> uint;
+    fn get(&self) -> usize;
 }
 
 impl<T:OtherTrait> MyTrait for T { //~ ERROR E0119
-    fn get(&self) -> uint { 0 }
+    fn get(&self) -> usize { 0 }
 }
 
 struct MyType {
-    dummy: uint
+    dummy: usize
 }
 
 impl MyTrait for MyType {
-    fn get(&self) -> uint { self.dummy }
+    fn get(&self) -> usize { self.dummy }
 }
 
 impl OtherTrait for MyType {

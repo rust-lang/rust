@@ -12,7 +12,7 @@
 
 // ignore-test
 
-type T1 = uint;
+type T1 = usize;
 type T2 = isize;
 
 fn bar(x: T1) -> T2 {

@@ -18,7 +18,7 @@ extern {
     //~^ ERROR: patterns aren't allowed in foreign function declarations
     fn qux((x,y): ());
     //~^ ERROR: patterns aren't allowed in foreign function declarations
-    fn this_is_actually_ok(a: uint);
-    fn and_so_is_this(_: uint);
+    fn this_is_actually_ok(a: usize);
+    fn and_so_is_this(_: usize);
 }
 fn main() {}

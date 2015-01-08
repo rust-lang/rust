@@ -15,7 +15,7 @@ pub trait Foo {
 }
 
 impl Foo for isize {
-    type A = uint;
+    type A = usize;
 }
 
 pub fn f1<T: Foo>(a: T, x: T::A) {}
