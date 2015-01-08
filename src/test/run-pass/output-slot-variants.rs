@@ -10,6 +10,8 @@
 
 #![allow(dead_assignment)]
 #![allow(unused_variable)]
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 struct A { a: int, b: int }
 struct Abox { a: Box<int>, b: Box<int> }

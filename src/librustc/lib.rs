@@ -26,6 +26,7 @@
 #![allow(unknown_features)]
 #![feature(quote)]
 #![feature(slicing_syntax, unsafe_destructor)]
+#![feature(box_syntax)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(old_impl_check)]
 

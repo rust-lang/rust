@@ -11,6 +11,8 @@
 // Test that we do not leak when the arg pattern must drop part of the
 // argument (in this case, the `y` field).
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 struct Foo {
     x: Box<uint>,

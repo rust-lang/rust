@@ -12,6 +12,9 @@
 // blanket impl for T:Copy coexists with an impl for Box<T>, because
 // Box does not impl Copy.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 trait Get {
     fn get(&self) -> Self;
 }

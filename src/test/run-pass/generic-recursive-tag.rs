@@ -10,6 +10,8 @@
 
 // ignore-pretty FIXME(#14193)
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 enum list<T> { cons(Box<T>, Box<list<T>>), nil, }
 

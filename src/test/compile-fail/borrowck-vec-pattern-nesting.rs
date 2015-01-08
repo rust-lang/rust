@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(advanced_slice_patterns)]
+#![feature(box_syntax)]
 
 fn a() {
     let mut vec = [box 1i, box 2, box 3];

@@ -67,6 +67,7 @@
 #![no_std]
 #![allow(unknown_features)]
 #![feature(lang_items, unsafe_destructor)]
+#![feature(box_syntax)]
 
 #[macro_use]
 extern crate core;

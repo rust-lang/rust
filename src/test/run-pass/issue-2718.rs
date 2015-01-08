@@ -11,6 +11,8 @@
 //
 // ignore-lexer-test FIXME #15883
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 #![feature(unsafe_destructor)]
 
 pub type Task = int;

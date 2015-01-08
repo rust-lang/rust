@@ -9,7 +9,8 @@
 // except according to those terms.
 
 
-
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 
 // Tests for if as expressions returning boxed types

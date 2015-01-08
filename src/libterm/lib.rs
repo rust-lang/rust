@@ -50,6 +50,7 @@
 
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
+#![feature(box_syntax)]
 #![deny(missing_docs)]
 
 #[macro_use] extern crate log;
