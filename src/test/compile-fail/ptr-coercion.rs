@@ -13,7 +13,7 @@
 
 pub fn main() {
     // *const -> *mut
-    let x: *const isize = &42i;
+    let x: *const isize = &42is;
     let x: *mut isize = x; //~ERROR values differ in mutability
 
     // & -> *mut

@@ -16,28 +16,28 @@ struct Foo(Box<isize>, isize);
 struct Bar(isize, isize);
 
 fn main() {
-    let x = (box 1i, 2i);
+    let x = (box 1is, 2is);
     let r = &x.0;
     let y = x; //~ ERROR cannot move out of `x` because it is borrowed
 
-    let mut x = (1i, 2i);
+    let mut x = (1is, 2is);
     let a = &x.0;
     let b = &mut x.0; //~ ERROR cannot borrow `x.0` as mutable because it is also borrowed as
 
-    let mut x = (1i, 2i);
+    let mut x = (1is, 2is);
     let a = &mut x.0;
     let b = &mut x.0; //~ ERROR cannot borrow `x.0` as mutable more than once at a time
 
 
-    let x = Foo(box 1i, 2i);
+    let x = Foo(box 1is, 2is);
     let r = &x.0;
     let y = x; //~ ERROR cannot move out of `x` because it is borrowed
 
-    let mut x = Bar(1i, 2i);
+    let mut x = Bar(1is, 2is);
     let a = &x.0;
     let b = &mut x.0; //~ ERROR cannot borrow `x.0` as mutable because it is also borrowed as
 
-    let mut x = Bar(1i, 2i);
+    let mut x = Bar(1is, 2is);
     let a = &mut x.0;
     let b = &mut x.0; //~ ERROR cannot borrow `x.0` as mutable more than once at a time
 }

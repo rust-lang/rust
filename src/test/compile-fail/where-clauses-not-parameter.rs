@@ -41,5 +41,5 @@ impl Baz<isize> for isize where isize : Eq {
 }
 
 fn main() {
-    equal(&0i, &0i);
+    equal(&0is, &0is);
 }

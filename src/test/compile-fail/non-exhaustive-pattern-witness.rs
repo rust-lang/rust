@@ -27,7 +27,7 @@ fn struct_with_a_nested_enum_and_vector() {
         Foo { first: true, second: None } => (),
         Foo { first: true, second: Some(_) } => (),
         Foo { first: false, second: None } => (),
-        Foo { first: false, second: Some([1u, 2u, 3u, 4u]) } => ()
+        Foo { first: false, second: Some([1us, 2us, 3us, 4us]) } => ()
     }
 }
 

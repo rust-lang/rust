@@ -22,10 +22,10 @@ impl S { }
 impl T for S { }
 
 #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
-static s: usize = 0u;
+static s: usize = 0us;
 
 #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
-const c: usize = 0u;
+const c: usize = 0us;
 
 #[derive(PartialEq)] //~ ERROR: `derive` may only be applied to structs and enums
 mod m { }

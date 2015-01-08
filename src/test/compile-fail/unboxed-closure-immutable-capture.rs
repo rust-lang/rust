@@ -17,7 +17,7 @@
 fn set(x: &mut usize) { *x = 0; }
 
 fn main() {
-    let x = 0u;
+    let x = 0us;
     move |&mut:| x = 1; //~ ERROR cannot assign
     move |&mut:| set(&mut x); //~ ERROR cannot borrow
     move |:| x = 1; //~ ERROR cannot assign

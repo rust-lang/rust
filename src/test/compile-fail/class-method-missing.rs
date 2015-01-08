@@ -27,5 +27,5 @@ fn cat(in_x : usize) -> cat {
 }
 
 fn main() {
-  let nyan = cat(0u);
+  let nyan = cat(0us);
 }

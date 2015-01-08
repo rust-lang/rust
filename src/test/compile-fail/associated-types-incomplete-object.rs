@@ -28,15 +28,15 @@ impl Foo for isize {
 }
 
 pub fn main() {
-    let a = &42i as &Foo<A=usize, B=char>;
+    let a = &42is as &Foo<A=usize, B=char>;
 
-    let b = &42i as &Foo<A=usize>;
+    let b = &42is as &Foo<A=usize>;
     //~^ ERROR the value of the associated type `B` (from the trait `Foo`) must be specified
 
-    let c = &42i as &Foo<B=char>;
+    let c = &42is as &Foo<B=char>;
     //~^ ERROR the value of the associated type `A` (from the trait `Foo`) must be specified
 
-    let d = &42i as &Foo;
+    let d = &42is as &Foo;
     //~^ ERROR the value of the associated type `A` (from the trait `Foo`) must be specified
     //~| ERROR the value of the associated type `B` (from the trait `Foo`) must be specified
 }

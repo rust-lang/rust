@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn blah() -> isize { //~ ERROR not all control paths return a value
-    1i
+    1is
 
     ; //~ HELP consider removing this semicolon:
 }

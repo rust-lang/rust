@@ -13,7 +13,7 @@ enum Foo {
 }
 
 fn main() {
-    match Foo::Bar(1i) {
+    match Foo::Bar(1is) {
         Foo { i } => () //~ ERROR `Foo` does not name a struct or a struct variant
     }
 }

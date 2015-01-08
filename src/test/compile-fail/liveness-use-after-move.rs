@@ -11,7 +11,7 @@
 #![feature(box_syntax)]
 
 fn main() {
-    let x = box 5i;
+    let x = box 5is;
     let y = x;
     println!("{}", *x); //~ ERROR use of moved value: `*x`
     y.clone();
