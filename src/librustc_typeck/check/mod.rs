@@ -3762,22 +3762,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprWhileLet(..) => {
         tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
       }
-      ast::ExprForLoop(ref pat, ref head, ref block, _) => {
-        check_expr(fcx, &**head);
-        let typ = lookup_method_for_for_loop(fcx, &**head, expr.id);
-        vtable::select_new_fcx_obligations(fcx);
-
-        debug!("ExprForLoop each item has type {}",
-               fcx.infcx().resolve_type_vars_if_possible(&typ).repr(fcx.tcx()));
-
-        let pcx = pat_ctxt {
-            fcx: fcx,
-            map: pat_id_map(&tcx.def_map, &**pat),
-        };
-        _match::check_pat(&pcx, &**pat, typ);
-
-        check_block_no_value(fcx, &**block);
-        fcx.write_nil(id);
+      ast::ExprForLoop(..) => {
+        tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
       }
       ast::ExprLoop(ref body, _) => {
         check_block_no_value(fcx, &**body);
