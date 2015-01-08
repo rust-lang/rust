@@ -15,7 +15,7 @@
 //! [mz]: https://code.google.com/p/miniz/
 
 #![crate_name = "flate"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

@@ -78,7 +78,7 @@
 //! ```
 
 #![crate_name = "getopts"]
-#![experimental = "use the crates.io `getopts` library instead"]
+#![unstable = "use the crates.io `getopts` library instead"]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

@@ -39,7 +39,7 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![feature(simd)]
-#![allow(experimental)]
+#![allow(unstable)]
 
 // ignore-pretty very bad with line comments
 

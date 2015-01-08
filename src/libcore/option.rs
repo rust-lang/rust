@@ -477,7 +477,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or(0i), Err(0i));
     /// ```
     #[inline]
-    #[experimental]
+    #[unstable]
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
             Some(v) => Ok(v),
@@ -498,7 +498,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or_else(|| 0i), Err(0i));
     /// ```
     #[inline]
-    #[experimental]
+    #[unstable]
     pub fn ok_or_else<E, F: FnOnce() -> E>(self, err: F) -> Result<T, E> {
         match self {
             Some(v) => Ok(v),

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_name = "rustc_resolve"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

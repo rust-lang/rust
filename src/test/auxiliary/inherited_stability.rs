@@ -9,7 +9,8 @@
 // except according to those terms.
 #![crate_name="inherited_stability"]
 #![crate_type = "lib"]
-#![experimental]
+#![unstable]
+#![staged_api]
 
 pub fn experimental() {}
 
@@ -26,7 +27,7 @@ pub mod stable_mod {
 
 #[unstable]
 pub mod unstable_mod {
-    #[experimental]
+    #[unstable]
     pub fn experimental() {}
 
     pub fn unstable() {}

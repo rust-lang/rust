@@ -89,7 +89,7 @@ use intrinsics::TypeId;
 #[stable]
 pub trait Any: 'static {
     /// Get the `TypeId` of `self`
-    #[experimental = "this method will likely be replaced by an associated static"]
+    #[unstable = "this method will likely be replaced by an associated static"]
     fn get_type_id(&self) -> TypeId;
 }
 

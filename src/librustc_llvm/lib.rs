@@ -14,7 +14,7 @@
 #![allow(dead_code)]
 
 #![crate_name = "rustc_llvm"]
-#![experimental]
+#![unstable]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
