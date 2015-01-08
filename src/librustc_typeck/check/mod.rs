@@ -2263,24 +2263,10 @@ pub enum LvaluePreference {
 /// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop` to decide
 /// whether to terminate the loop. Returns the final type and number of derefs that it performed.
 ///
-<<<<<<< HEAD
 /// Note: this method does not modify the adjustments table. The caller is responsible for
 /// inserting an AutoAdjustment record into the `fcx` using one of the suitable methods.
 pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  sp: Span,
-||||||| merged common ancestors
-/// Note: this method does not modify the adjustments table. The caller is responsible for
-/// inserting an AutoAdjustment record into the `fcx` using one of the suitable methods.
-pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
-=======
-/// Note: this method does not modify the adjustments table. The
-/// caller is responsible for inserting an AutoAdjustment record into
-/// the `fcx` using one of the suitable methods.  However, if
-/// `opt_expr` is not `None`, it *will* insert the appropriate method
-/// entries for the overloaded deref call.
-pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
-                                 sp: Span,
->>>>>>> Add comments to autoderef() helper and refactor it to take
                                  base_ty: Ty<'tcx>,
                                  opt_expr: Option<&ast::Expr>,
                                  mut lvalue_pref: LvaluePreference,
@@ -2288,9 +2274,9 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  -> (Ty<'tcx>, uint, Option<T>)
     where F: FnMut(Ty<'tcx>, uint) -> Option<T>,
 {
-    debug!("autoderef(base_ty={}, opt_expr={}, lvalue_pref={})",
+    debug!("autoderef(base_ty={}, opt_expr={}, lvalue_pref={:?})",
            base_ty.repr(fcx.tcx()),
-           opt_expr,
+           opt_expr.repr(fcx.tcx()),
            lvalue_pref);
 
     let mut t = base_ty;

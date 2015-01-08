@@ -15,6 +15,6 @@
 
 fn main() {
     (|&:| box *[0us].as_slice())();
-    //~^ ERROR cannot move out of dereference
+    //~^ ERROR cannot move out of borrowed content
     //~^^ ERROR cannot move a value of type [usize]
 }
