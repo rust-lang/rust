@@ -90,7 +90,7 @@ pub fn pub_fn() {
     let e = used_enum::foo3;
     SemiUsedStruct::la_la_la();
 
-    let i = 1i;
+    let i = 1is;
     match i {
         USED_STATIC => (),
         USED_CONST => (),

@@ -11,5 +11,5 @@
 use std::num::SignedInt;
 
 fn main() {
-    let _f = 10i.abs; //~ ERROR attempted to take value of method
+    let _f = 10is.abs; //~ ERROR attempted to take value of method
 }

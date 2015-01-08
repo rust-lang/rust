@@ -13,5 +13,5 @@ enum Foo {
 }
 
 fn main() {
-    let f = Foo::Variant(42u); //~ ERROR uses it like a function
+    let f = Foo::Variant(42us); //~ ERROR uses it like a function
 }

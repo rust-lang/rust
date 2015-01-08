@@ -10,7 +10,7 @@
 
 fn main() {
     let v = vec![
-        &3i
+        &3is
 //~^ ERROR borrowed value does not live long enough
     ];
 

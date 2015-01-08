@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let mut _a = 3i;
+    let mut _a = 3is;
     let _b = &mut _a;
     {
         let _c = &*_b;

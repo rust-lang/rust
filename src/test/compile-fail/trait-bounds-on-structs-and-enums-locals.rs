@@ -17,7 +17,7 @@ struct Foo<T:Trait> {
 fn main() {
     let foo = Foo {
     //~^ ERROR not implemented
-        x: 3i
+        x: 3is
     };
 
     let baz: Foo<usize> = panic!();

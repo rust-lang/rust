@@ -12,6 +12,6 @@
 
 fn f() -> isize { return g(); }
 
-fn g() -> usize { return 0u; }
+fn g() -> usize { return 0us; }
 
 fn main() { let y = f(); }

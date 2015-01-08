@@ -26,7 +26,7 @@ where T : Convert<U>
 }
 
 fn a() {
-    test(22i, 44i); //~ ERROR not implemented
+    test(22is, 44is); //~ ERROR not implemented
 }
 
 fn main() {}

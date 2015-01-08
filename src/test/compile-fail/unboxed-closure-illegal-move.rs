@@ -18,28 +18,28 @@
 fn main() {
     // By-ref cases
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = |&:| drop(x); //~ cannot move
     }
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = |&mut:| drop(x); //~ cannot move
     }
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = |:| drop(x); //~ cannot move
     }
     // By-value cases
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = move |&:| drop(x); //~ cannot move
     }
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = move |&mut:| drop(x); //~ cannot move
     }
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = move |:| drop(x); // this one is ok
     }
 }

@@ -12,7 +12,7 @@ fn foo(x: isize) { println!("{}", x); }
 
 fn main() {
     let x: isize;
-    if 1i > 2 {
+    if 1is > 2 {
         println!("whoops");
     } else {
         x = 10;
