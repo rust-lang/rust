@@ -85,6 +85,13 @@ pub fn is_shift_binop(b: BinOp) -> bool {
     }
 }
 
+pub fn is_comparison_binop(b: BinOp) -> bool {
+    match b {
+        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
+        _ => false
+    }
+}
+
 /// Returns `true` if the binary operator takes its arguments by value
 pub fn is_by_value_binop(b: BinOp) -> bool {
     match b {
@@ -317,8 +324,7 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
       BiBitAnd                  =>  8u,
       BiBitXor                  =>  7u,
       BiBitOr                   =>  6u,
-      BiLt | BiLe | BiGe | BiGt =>  4u,
-      BiEq | BiNe               =>  3u,
+      BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3u,
       BiAnd                     =>  2u,
       BiOr                      =>  1u
   }

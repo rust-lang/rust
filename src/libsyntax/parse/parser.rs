@@ -16,7 +16,7 @@ use ast::{AssociatedType, BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{ProvidedMethod, Public, Unsafety};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
-use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, Block};
+use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, BiLt, BiGt, Block};
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Crate, CrateConfig, Decl, DeclItem};
 use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
@@ -2906,6 +2906,9 @@ impl<'a> Parser<'a> {
         let cur_opt = self.token.to_binop();
         match cur_opt {
             Some(cur_op) => {
+                if ast_util::is_comparison_binop(cur_op) {
+                    self.check_no_chained_comparison(&*lhs, cur_op)
+                }
                 let cur_prec = operator_prec(cur_op);
                 if cur_prec > min_prec {
                     self.bump();
@@ -2931,6 +2934,25 @@ impl<'a> Parser<'a> {
                     lhs
                 }
             }
+        }
+    }
+
+    /// Produce an error if comparison operators are chained (RFC #558).
+    /// We only need to check lhs, not rhs, because all comparison ops
+    /// have same precedence and are left-associative
+    fn check_no_chained_comparison(&mut self, lhs: &Expr, outer_op: ast::BinOp) {
+        debug_assert!(ast_util::is_comparison_binop(outer_op));
+        match lhs.node {
+            ExprBinary(op, _, _) if ast_util::is_comparison_binop(op) => {
+                let op_span = self.span;
+                self.span_err(op_span,
+                    "Chained comparison operators require parentheses");
+                if op == BiLt && outer_op == BiGt {
+                    self.span_help(op_span,
+                        "Use ::< instead of < if you meant to specify type arguments.");
+                }
+            }
+            _ => {}
         }
     }
 
