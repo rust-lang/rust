@@ -118,7 +118,7 @@ fn transform(piece: Vec<(int, int)> , all: bool) -> Vec<Vec<(int, int)>> {
     // translating to (0, 0) as minimum coordinates.
     for cur_piece in res.iter_mut() {
         let (dy, dx) = *cur_piece.iter().min_by(|e| *e).unwrap();
-        for &(ref mut y, ref mut x) in cur_piece.iter_mut() {
+        for &mut (ref mut y, ref mut x) in cur_piece.iter_mut() {
             *y -= dy; *x -= dx;
         }
     }

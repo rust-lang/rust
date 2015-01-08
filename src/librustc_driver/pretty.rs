@@ -350,8 +350,8 @@ impl<'a, 'ast> Iterator for NodesMatchingUII<'a, 'ast> {
 
     fn next(&mut self) -> Option<ast::NodeId> {
         match self {
-            &NodesMatchingDirect(ref mut iter) => iter.next(),
-            &NodesMatchingSuffix(ref mut iter) => iter.next(),
+            &mut NodesMatchingDirect(ref mut iter) => iter.next(),
+            &mut NodesMatchingSuffix(ref mut iter) => iter.next(),
         }
     }
 }

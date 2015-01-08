@@ -101,12 +101,12 @@ fn any_downcast_mut() {
     }
 
     match a_r.downcast_mut::<uint>() {
-        Some(&612) => {}
+        Some(&mut 612) => {}
         x => panic!("Unexpected value {:?}", x)
     }
 
     match b_r.downcast_mut::<uint>() {
-        Some(&413) => {}
+        Some(&mut 413) => {}
         x => panic!("Unexpected value {:?}", x)
     }
 }
