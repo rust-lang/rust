@@ -161,12 +161,6 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     }
 }
 
-pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-                          -> Box<base::MacResult+'static> {
-    cx.span_warn(sp, "include_bin! is deprecated; use include_bytes! instead");
-    expand_include_bytes(cx, sp, tts)
-}
-
 pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                             -> Box<base::MacResult+'static> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include_bytes!") {

@@ -36,23 +36,27 @@
 /// panic!("this is a {} {message}", "fancy", message = "message");
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! panic {
     () => ({
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        // static requires less code at runtime, more constant data
-        static _FILE_LINE: (&'static str, uint) = (file!(), line!());
-        ::std::rt::begin_unwind($msg, &_FILE_LINE)
+        $crate::rt::begin_unwind($msg, {
+            // static requires less code at runtime, more constant data
+            static _FILE_LINE: (&'static str, uint) = (file!(), line!());
+            &_FILE_LINE
+        })
     });
-    ($fmt:expr, $($arg:tt)*) => ({
-        // The leading _'s are to avoid dead code warnings if this is
-        // used inside a dead function. Just `#[allow(dead_code)]` is
-        // insufficient, since the user may have
-        // `#[forbid(dead_code)]` and which cannot be overridden.
-        static _FILE_LINE: (&'static str, uint) = (file!(), line!());
-        ::std::rt::begin_unwind_fmt(format_args!($fmt, $($arg)*), &_FILE_LINE)
-
+    ($fmt:expr, $($arg:tt)+) => ({
+        $crate::rt::begin_unwind_fmt(format_args!($fmt, $($arg)+), {
+            // The leading _'s are to avoid dead code warnings if this is
+            // used inside a dead function. Just `#[allow(dead_code)]` is
+            // insufficient, since the user may have
+            // `#[forbid(dead_code)]` and which cannot be overridden.
+            static _FILE_LINE: (&'static str, uint) = (file!(), line!());
+            &_FILE_LINE
+        })
     });
 }
 
@@ -77,15 +81,16 @@ macro_rules! panic {
 /// assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! assert {
     ($cond:expr) => (
         if !$cond {
             panic!(concat!("assertion failed: ", stringify!($cond)))
         }
     );
-    ($cond:expr, $($arg:expr),+) => (
+    ($cond:expr, $($arg:tt)+) => (
         if !$cond {
-            panic!($($arg),+)
+            panic!($($arg)+)
         }
     );
 }
@@ -103,6 +108,7 @@ macro_rules! assert {
 /// assert_eq!(a, b);
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! assert_eq {
     ($left:expr , $right:expr) => ({
         match (&($left), &($right)) {
@@ -144,6 +150,7 @@ macro_rules! assert_eq {
 /// debug_assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! debug_assert {
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert!($($arg)*); })
 }
@@ -210,6 +217,7 @@ macro_rules! debug_assert_eq {
 /// }
 /// ```
 #[macro_export]
+#[unstable = "relationship with panic is unclear"]
 macro_rules! unreachable {
     () => ({
         panic!("internal error: entered unreachable code")
@@ -225,6 +233,7 @@ macro_rules! unreachable {
 /// A standardised placeholder for marking unfinished code. It panics with the
 /// message `"not yet implemented"` when executed.
 #[macro_export]
+#[unstable = "relationship with panic is unclear"]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
 }
@@ -242,7 +251,7 @@ macro_rules! unimplemented {
 #[macro_export]
 #[stable]
 macro_rules! format {
-    ($($arg:tt)*) => (::std::fmt::format(format_args!($($arg)*)))
+    ($($arg:tt)*) => ($crate::fmt::format(format_args!($($arg)*)))
 }
 
 /// Equivalent to the `println!` macro except that a newline is not printed at
@@ -250,7 +259,7 @@ macro_rules! format {
 #[macro_export]
 #[stable]
 macro_rules! print {
-    ($($arg:tt)*) => (::std::io::stdio::print_args(format_args!($($arg)*)))
+    ($($arg:tt)*) => ($crate::io::stdio::print_args(format_args!($($arg)*)))
 }
 
 /// Macro for printing to a task's stdout handle.
@@ -268,20 +277,19 @@ macro_rules! print {
 #[macro_export]
 #[stable]
 macro_rules! println {
-    ($($arg:tt)*) => (::std::io::stdio::println_args(format_args!($($arg)*)))
+    ($($arg:tt)*) => ($crate::io::stdio::println_args(format_args!($($arg)*)))
 }
 
 /// Helper macro for unwrapping `Result` values while returning early with an
 /// error if the value of the expression is `Err`. For more information, see
 /// `std::io`.
 #[macro_export]
+#[stable]
 macro_rules! try {
-    ($expr:expr) => ({
-        use $crate::result::Result::{Ok, Err};
-
-        match $expr {
-            Ok(val) => val,
-            Err(err) => return Err($crate::error::FromError::from_error(err)),
+    ($expr:expr) => (match $expr {
+        $crate::result::Result::Ok(val) => val,
+        $crate::result::Result::Err(err) => {
+            return $crate::result::Result::Err($crate::error::FromError::from_error(err))
         }
     })
 }
@@ -411,26 +419,6 @@ pub mod builtin {
     /// ```
     #[macro_export]
     macro_rules! option_env { ($name:expr) => ({ /* compiler built-in */ }) }
-
-    /// Concatenate literals into a static byte slice.
-    ///
-    /// This macro takes any number of comma-separated literal expressions,
-    /// yielding an expression of type `&'static [u8]` which is the
-    /// concatenation (left to right) of all the literals in their byte format.
-    ///
-    /// This extension currently only supports string literals, character
-    /// literals, and integers less than 256. The byte slice returned is the
-    /// utf8-encoding of strings and characters.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let rust = bytes!("r", 'u', "st", 255);
-    /// assert_eq!(rust[1], b'u');
-    /// assert_eq!(rust[4], 255);
-    /// ```
-    #[macro_export]
-    macro_rules! bytes { ($($e:expr),*) => ({ /* compiler built-in */ }) }
 
     /// Concatenate identifiers into one identifier.
     ///
@@ -564,10 +552,6 @@ pub mod builtin {
     /// ```
     #[macro_export]
     macro_rules! include_bytes { ($file:expr) => ({ /* compiler built-in */ }) }
-
-    /// Deprecated alias for `include_bytes!()`.
-    #[macro_export]
-    macro_rules! include_bin { ($file:expr) => ({ /* compiler built-in */}) }
 
     /// Expands to a string that represents the current module path.
     ///

@@ -82,7 +82,6 @@ pub mod ext {
     pub mod asm;
     pub mod base;
     pub mod build;
-    pub mod bytes;
     pub mod cfg;
     pub mod cfg_attr;
     pub mod concat;
@@ -90,7 +89,6 @@ pub mod ext {
     pub mod deriving;
     pub mod env;
     pub mod expand;
-    pub mod fmt;
     pub mod format;
     pub mod log_syntax;
     pub mod mtwt;
