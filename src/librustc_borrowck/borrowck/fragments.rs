@@ -19,7 +19,6 @@ use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
 use borrowck::LoanPathElem::{LpDeref, LpInterior};
 use borrowck::move_data::{InvalidMovePathIndex};
 use borrowck::move_data::{MoveData, MovePathIndex};
-use rustc::session::config;
 use rustc::middle::ty;
 use rustc::middle::mem_categorization as mc;
 use rustc::util::ppaux::{Repr, UserString};
@@ -133,7 +132,7 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
 
         let span_err =
             attrs.iter().any(|a| a.check_name("rustc_move_fragments"));
-        let print = tcx.sess.debugging_opt(config::PRINT_MOVE_FRAGMENTS);
+        let print = tcx.sess.opts.debugging_opts.print_move_fragments;
 
         (span_err, print)
     };

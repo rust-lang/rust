@@ -11,7 +11,7 @@
 //! Used by `rustc` when loading a plugin, or a crate with exported macros.
 
 use session::Session;
-use metadata::creader::CrateReader;
+use metadata::creader::{CrateOrString, CrateReader};
 use plugin::registry::Registry;
 
 use std::mem;
@@ -44,11 +44,11 @@ pub struct Plugins {
     pub registrars: Vec<PluginRegistrar>,
 }
 
-struct PluginLoader<'a> {
+pub struct PluginLoader<'a> {
     sess: &'a Session,
     span_whitelist: HashSet<Span>,
     reader: CrateReader<'a>,
-    plugins: Plugins,
+    pub plugins: Plugins,
 }
 
 impl<'a> PluginLoader<'a> {
@@ -67,7 +67,7 @@ impl<'a> PluginLoader<'a> {
 
 /// Read plugin metadata and dynamically load registrar functions.
 pub fn load_plugins(sess: &Session, krate: &ast::Crate,
-                    addl_plugins: Option<Plugins>) -> Plugins {
+                    addl_plugins: Option<Vec<String>>) -> Plugins {
     let mut loader = PluginLoader::new(sess);
 
     // We need to error on `#[macro_use] extern crate` when it isn't at the
@@ -79,19 +79,14 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 
     visit::walk_crate(&mut loader, krate);
 
-    let mut plugins = loader.plugins;
-
-    match addl_plugins {
-        Some(addl_plugins) => {
-            // Add in the additional plugins requested by the frontend
-            let Plugins { macros: addl_macros, registrars: addl_registrars } = addl_plugins;
-            plugins.macros.extend(addl_macros.into_iter());
-            plugins.registrars.extend(addl_registrars.into_iter());
+    if let Some(plugins) = addl_plugins {
+        for plugin in plugins.iter() {
+            loader.load_plugin(CrateOrString::Str(plugin.as_slice()),
+                                                  None, None, None)
         }
-        None => ()
     }
 
-    return plugins;
+    return loader.plugins;
 }
 
 // note that macros aren't expanded yet, and therefore macros can't add plugins.
@@ -160,22 +155,39 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             }
         }
 
+        self.load_plugin(CrateOrString::Krate(vi), plugin_attr, macro_selection, Some(reexport))
+    }
+
+    fn visit_mac(&mut self, _: &ast::Mac) {
+        // bummer... can't see plugins inside macros.
+        // do nothing.
+    }
+}
+
+impl<'a> PluginLoader<'a> {
+    pub fn load_plugin<'b>(&mut self,
+                           c: CrateOrString<'b>,
+                           plugin_attr: Option<P<ast::MetaItem>>,
+                           macro_selection: Option<HashSet<token::InternedString>>,
+                           reexport: Option<HashSet<token::InternedString>>) {
         let mut macros = vec![];
         let mut registrar = None;
 
-        let load_macros = match macro_selection.as_ref() {
-            Some(sel) => sel.len() != 0 || reexport.len() != 0,
-            None => true,
+        let load_macros = match (macro_selection.as_ref(), reexport.as_ref()) {
+            (Some(sel), Some(re)) => sel.len() != 0 || re.len() != 0,
+            _ => true,
         };
         let load_registrar = plugin_attr.is_some();
 
-        if load_macros && !self.span_whitelist.contains(&vi.span) {
-            self.sess.span_err(vi.span, "an `extern crate` loading macros must be at \
-                                         the crate root");
-        }
+        if let CrateOrString::Krate(vi) = c {
+            if load_macros && !self.span_whitelist.contains(&vi.span) {
+                self.sess.span_err(vi.span, "an `extern crate` loading macros must be at \
+                                             the crate root");
+            }
+       }
 
         if load_macros || load_registrar {
-            let pmd = self.reader.read_plugin_metadata(vi);
+            let pmd = self.reader.read_plugin_metadata(c);
             if load_macros {
                 macros = pmd.exported_macros();
             }
@@ -190,12 +202,16 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
                 None => true,
                 Some(sel) => sel.contains(&name),
             };
-            def.export = reexport.contains(&name);
+            def.export = if let Some(ref re) = reexport {
+                re.contains(&name)
+            } else {
+                false // Don't reexport macros from crates loaded from the command line
+            };
             self.plugins.macros.push(def);
         }
 
         if let Some((lib, symbol)) = registrar {
-            let fun = self.dylink_registrar(vi, lib, symbol);
+            let fun = self.dylink_registrar(c, lib, symbol);
             self.plugins.registrars.push(PluginRegistrar {
                 fun: fun,
                 args: plugin_attr.unwrap(),
@@ -203,16 +219,9 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         }
     }
 
-    fn visit_mac(&mut self, _: &ast::Mac) {
-        // bummer... can't see plugins inside macros.
-        // do nothing.
-    }
-}
-
-impl<'a> PluginLoader<'a> {
     // Dynamically link a registrar function into the compiler process.
-    fn dylink_registrar(&mut self,
-                        vi: &ast::ViewItem,
+    fn dylink_registrar<'b>(&mut self,
+                        c: CrateOrString<'b>,
                         path: Path,
                         symbol: String) -> PluginRegistrarFun {
         // Make sure the path contains a / or the linker will search for it.
@@ -223,7 +232,13 @@ impl<'a> PluginLoader<'a> {
             // this is fatal: there are almost certainly macros we need
             // inside this crate, so continue would spew "macro undefined"
             // errors
-            Err(err) => self.sess.span_fatal(vi.span, &err[])
+            Err(err) => {
+                if let CrateOrString::Krate(cr) = c {
+                    self.sess.span_fatal(cr.span, &err[])
+                } else {
+                    self.sess.fatal(&err[])
+                }
+            }
         };
 
         unsafe {
@@ -233,7 +248,13 @@ impl<'a> PluginLoader<'a> {
                         mem::transmute::<*mut u8,PluginRegistrarFun>(registrar)
                     }
                     // again fatal if we can't register macros
-                    Err(err) => self.sess.span_fatal(vi.span, &err[])
+                    Err(err) => {
+                        if let CrateOrString::Krate(cr) = c {
+                            self.sess.span_fatal(cr.span, &err[])
+                        } else {
+                            self.sess.fatal(&err[])
+                        }
+                    }
                 };
 
             // Intentionally leak the dynamic library. We can't ever unload it
