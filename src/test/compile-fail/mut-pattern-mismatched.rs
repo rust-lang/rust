@@ -13,7 +13,7 @@ fn main() {
 
     // (separate lines to ensure the spans are accurate)
 
-     let &_ // ~ ERROR expected `&mut isize`, found `&_`
+     let &_ //~ ERROR expected `&mut isize`, found `&_`
         = foo;
     let &mut _ = foo;
 

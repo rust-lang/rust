@@ -90,7 +90,7 @@ impl<'a, T: Copy> Iterator for Values<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        let &Values(ref mut items) = self;
+        let &mut Values(ref mut items) = self;
         items.next().map(|&x| x)
     }
 }
