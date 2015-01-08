@@ -9,5 +9,5 @@
 // except according to those terms.
 
 struct Obj { //~ NOTE: unclosed delimiter
-    member: uint
+    member: usize
 ) //~ ERROR: incorrect close delimiter

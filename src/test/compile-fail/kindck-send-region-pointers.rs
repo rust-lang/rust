@@ -13,22 +13,22 @@
 fn assert_send<T:Send>() { }
 
 // lifetime pointers with 'static lifetime are ok
-fn test01() { assert_send::<&'static int>(); }
+fn test01() { assert_send::<&'static isize>(); }
 fn test02() { assert_send::<&'static str>(); }
-fn test03() { assert_send::<&'static [int]>(); }
+fn test03() { assert_send::<&'static [isize]>(); }
 
 // whether or not they are mutable
-fn test10() { assert_send::<&'static mut int>(); }
+fn test10() { assert_send::<&'static mut isize>(); }
 
 // otherwise lifetime pointers are not ok
-fn test20<'a>(_: &'a int) {
-    assert_send::<&'a int>(); //~ ERROR declared lifetime bound not satisfied
+fn test20<'a>(_: &'a isize) {
+    assert_send::<&'a isize>(); //~ ERROR declared lifetime bound not satisfied
 }
-fn test21<'a>(_: &'a int) {
+fn test21<'a>(_: &'a isize) {
     assert_send::<&'a str>(); //~ ERROR declared lifetime bound not satisfied
 }
-fn test22<'a>(_: &'a int) {
-    assert_send::<&'a [int]>(); //~ ERROR declared lifetime bound not satisfied
+fn test22<'a>(_: &'a isize) {
+    assert_send::<&'a [isize]>(); //~ ERROR declared lifetime bound not satisfied
 }
 
 fn main() { }

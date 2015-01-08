@@ -13,7 +13,7 @@
 use std::ops::Add;
 
 #[derive(Clone)]
-struct foo(Box<uint>);
+struct foo(Box<usize>);
 
 impl Add for foo {
     type Output = foo;

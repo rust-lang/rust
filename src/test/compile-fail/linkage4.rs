@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[linkage = "external"]
-static foo: int = 0;
+static foo: isize = 0;
 //~^ ERROR: the `linkage` attribute is experimental and not portable
 
 fn main() {}

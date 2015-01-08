@@ -26,10 +26,10 @@ fn repeater3<'a,A:'a>(v: A) -> Box<Foo+'a> {
 
 fn main() {
     // Error results because the type of is inferred to be
-    // ~Repeat<&'blk int> where blk is the lifetime of the block below.
+    // ~Repeat<&'blk isize> where blk is the lifetime of the block below.
 
     let _ = {
-        let tmp0 = 3i;
+        let tmp0 = 3is;
         let tmp1 = &tmp0; //~ ERROR `tmp0` does not live long enough
         repeater3(tmp1)
     };

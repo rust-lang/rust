@@ -13,9 +13,9 @@
 // See middle::ty::type_contents() for more information.
 
 
-struct List { key: int, next: Option<Box<List>> }
+struct List { key: isize, next: Option<Box<List>> }
 
-fn foo(node: Box<List>) -> int {
+fn foo(node: Box<List>) -> isize {
     let r = match node.next {
         Some(right) => consume(right),
         None => 0
@@ -23,7 +23,7 @@ fn foo(node: Box<List>) -> int {
     consume(node) + r //~ ERROR use of partially moved value: `node`
 }
 
-fn consume(v: Box<List>) -> int {
+fn consume(v: Box<List>) -> isize {
     v.key
 }
 

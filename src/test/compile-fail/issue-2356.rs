@@ -13,7 +13,7 @@ trait Groom {
 }
 
 pub struct cat {
-  whiskers: int,
+  whiskers: isize,
 }
 
 pub enum MaybeDog {
@@ -30,7 +30,7 @@ impl MaybeDog {
 }
 
 impl Groom for cat {
-  fn shave(&self, other: uint) {
+  fn shave(&self, other: usize) {
     whiskers -= other;
     //~^ ERROR: unresolved name `whiskers`. Did you mean `self.whiskers`?
     shave(4);
@@ -75,7 +75,7 @@ impl cat {
     //~^ ERROR: unresolved name `whiskers`. Did you mean `self.whiskers`?
   }
 
-  pub fn grow_older(other:uint) {
+  pub fn grow_older(other:usize) {
     whiskers = 4;
     //~^ ERROR: unresolved name `whiskers`. Did you mean `self.whiskers`?
     purr_louder();

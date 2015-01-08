@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum ast<'a> {
-    num(uint),
+    num(usize),
     add(&'a ast<'a>, &'a ast<'a>)
 }
 

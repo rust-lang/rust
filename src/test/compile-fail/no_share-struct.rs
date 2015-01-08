@@ -10,7 +10,7 @@
 
 use std::marker;
 
-struct Foo { a: int, m: marker::NoSync }
+struct Foo { a: isize, m: marker::NoSync }
 
 fn bar<T: Sync>(_: T) {}
 

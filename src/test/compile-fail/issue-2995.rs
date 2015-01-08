@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn bad (p: *const int) {
-    let _q: &int = p as &int; //~ ERROR non-scalar cast
+fn bad (p: *const isize) {
+    let _q: &isize = p as &isize; //~ ERROR non-scalar cast
 }
 
 fn main() { }

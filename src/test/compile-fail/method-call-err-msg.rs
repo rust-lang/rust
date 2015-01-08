@@ -13,8 +13,8 @@
 pub struct Foo;
 impl Foo {
     fn zero(self) -> Foo { self }
-    fn one(self, _: int) -> Foo { self }
-    fn two(self, _: int, _: int) -> Foo { self }
+    fn one(self, _: isize) -> Foo { self }
+    fn two(self, _: isize, _: isize) -> Foo { self }
 }
 
 fn main() {

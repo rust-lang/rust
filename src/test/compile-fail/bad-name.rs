@@ -11,5 +11,5 @@
 // error-pattern: expected
 
 fn main() {
-  let x.y::<int>.z foo;
+  let x.y::<isize>.z foo;
 }

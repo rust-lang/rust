@@ -16,11 +16,11 @@ use std::sync::mpsc::channel;
 use std::rc::Rc;
 
 struct foo {
-  i: int,
+  i: isize,
   j: Rc<String>,
 }
 
-fn foo(i:int, j: Rc<String>) -> foo {
+fn foo(i:isize, j: Rc<String>) -> foo {
     foo {
         i: i,
         j: j

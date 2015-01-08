@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static foo: int = 2; } //~ ERROR incorrect close delimiter:
+static foo: isize = 2; } //~ ERROR incorrect close delimiter:
 

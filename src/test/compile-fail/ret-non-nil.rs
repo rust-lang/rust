@@ -12,6 +12,6 @@
 
 fn f() { return; }
 
-fn g() -> int { return; }
+fn g() -> isize { return; }
 
 fn main() { f(); g(); }

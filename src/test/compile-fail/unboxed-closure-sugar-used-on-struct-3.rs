@@ -19,7 +19,7 @@ impl<A,B> Bar<A,B> {
 }
 
 fn bar() {
-    let b = Box::Bar::<int,uint>::new(); // OK
+    let b = Box::Bar::<isize,usize>::new(); // OK
 
     let b = Box::Bar::()::new();
     //~^ ERROR expected ident, found `(`

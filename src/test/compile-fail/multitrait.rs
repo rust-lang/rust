@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct S {
- y: int
+ y: isize
 }
 
 impl Cmp, ToString for S { //~ ERROR: expected one of `(`, `+`, `::`, or `{`, found `,`

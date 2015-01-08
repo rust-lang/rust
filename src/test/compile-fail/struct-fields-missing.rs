@@ -10,8 +10,8 @@
 
 
 struct BuildData {
-    foo: int,
-    bar: Box<int>,
+    foo: isize,
+    bar: Box<isize>,
 }
 
 fn main() {

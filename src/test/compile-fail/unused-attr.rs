@@ -44,7 +44,7 @@ fn bar(f: foo::Foo) {
 #[foo] //~ ERROR unused attribute
 struct Foo {
     #[foo] //~ ERROR unused attribute
-    a: int
+    a: isize
 }
 
 #[foo] //~ ERROR unused attribute

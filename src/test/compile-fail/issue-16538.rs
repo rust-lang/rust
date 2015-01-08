@@ -9,9 +9,9 @@
 // except according to those terms.
 
 mod Y {
-    type X = uint;
+    type X = usize;
     extern {
-        static x: *const uint;
+        static x: *const usize;
     }
     fn foo(value: *const X) -> *const X {
         value

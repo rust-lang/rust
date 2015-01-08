@@ -10,10 +10,10 @@
 
 #![feature(unboxed_closures)]
 
-fn with_int(f: &mut FnMut(&int)) {
+fn with_int(f: &mut FnMut(&isize)) {
 }
 
 fn main() {
-    let mut x: Option<&int> = None;
+    let mut x: Option<&isize> = None;
     with_int(&mut |&mut: y| x = Some(y));   //~ ERROR cannot infer
 }

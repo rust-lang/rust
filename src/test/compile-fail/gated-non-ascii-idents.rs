@@ -17,9 +17,9 @@ mod föö { //~ ERROR non-ascii idents
 }
 
 fn bär( //~ ERROR non-ascii idents
-    bäz: int //~ ERROR non-ascii idents
+    bäz: isize //~ ERROR non-ascii idents
     ) {
-    let _ö: int; //~ ERROR non-ascii idents
+    let _ö: isize; //~ ERROR non-ascii idents
 
     match (1, 2) {
         (_ä, _) => {} //~ ERROR non-ascii idents
@@ -27,12 +27,12 @@ fn bär( //~ ERROR non-ascii idents
 }
 
 struct Föö { //~ ERROR non-ascii idents
-    föö: int //~ ERROR non-ascii idents
+    föö: isize //~ ERROR non-ascii idents
 }
 
 enum Bär { //~ ERROR non-ascii idents
     Bäz { //~ ERROR non-ascii idents
-        qüx: int //~ ERROR non-ascii idents
+        qüx: isize //~ ERROR non-ascii idents
     }
 }
 

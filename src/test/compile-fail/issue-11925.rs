@@ -12,7 +12,7 @@
 
 fn main() {
     let r = {
-        let x = box 42i;
+        let x = box 42is;
         let f = move|:| &x; //~ ERROR: `x` does not live long enough
         f()
     };

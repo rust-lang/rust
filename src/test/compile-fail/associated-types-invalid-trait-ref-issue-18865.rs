@@ -16,7 +16,7 @@ trait Foo<T> {
     fn get_bar(&self) -> Self::Bar;
 }
 
-fn f<T:Foo<int>>(t: &T) {
+fn f<T:Foo<isize>>(t: &T) {
     let u: <T as Foo<usize>>::Bar = t.get_bar();
     //~^ ERROR the trait `Foo<usize>` is not implemented for the type `T`
 }

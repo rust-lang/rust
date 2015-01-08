@@ -13,11 +13,11 @@
 
 #![feature(box_syntax)]
 
-struct A { a: int }
-struct B<'a> { a: Box<&'a mut int> }
+struct A { a: isize }
+struct B<'a> { a: Box<&'a mut isize> }
 
 fn borrow_in_var_from_var() {
-    let mut x: int = 1;
+    let mut x: isize = 1;
     let y = box &mut x;
     let p = &y;
     let q = &***p;
@@ -37,7 +37,7 @@ fn borrow_in_var_from_field() {
 }
 
 fn borrow_in_field_from_var() {
-    let mut x: int = 1;
+    let mut x: isize = 1;
     let y = B { a: box &mut x };
     let p = &y.a;
     let q = &***p;

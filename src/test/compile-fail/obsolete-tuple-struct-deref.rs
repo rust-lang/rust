@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    struct S(int);
+    struct S(isize);
     let s = S(0);
     let x = *s; //~ ERROR single-field tuple-structs can no longer be dereferenced
 }

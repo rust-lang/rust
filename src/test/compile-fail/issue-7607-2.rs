@@ -11,7 +11,7 @@
 // ignore-tidy-linelength
 
 pub mod a {
-    pub struct Foo { a: uint }
+    pub struct Foo { a: usize }
 }
 
 pub mod b {

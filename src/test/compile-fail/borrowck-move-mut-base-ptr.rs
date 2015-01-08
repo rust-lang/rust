@@ -13,8 +13,8 @@
 //
 // Example from src/middle/borrowck/doc.rs
 
-fn foo(t0: &mut int) {
-    let p: &int = &*t0; // Freezes `*t0`
+fn foo(t0: &mut isize) {
+    let p: &isize = &*t0; // Freezes `*t0`
     let t1 = t0;        //~ ERROR cannot move out of `t0`
     *t1 = 22;
 }

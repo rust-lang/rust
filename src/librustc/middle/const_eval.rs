@@ -528,12 +528,12 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
 
         eval_const_expr_partial(tcx, &**base)
             .and_then(|val| define_casts!(val, {
-                ty::ty_int(ast::TyIs) => (int, const_int, i64),
+                ty::ty_int(ast::TyIs(_)) => (int, const_int, i64),
                 ty::ty_int(ast::TyI8) => (i8, const_int, i64),
                 ty::ty_int(ast::TyI16) => (i16, const_int, i64),
                 ty::ty_int(ast::TyI32) => (i32, const_int, i64),
                 ty::ty_int(ast::TyI64) => (i64, const_int, i64),
-                ty::ty_uint(ast::TyUs) => (uint, const_uint, u64),
+                ty::ty_uint(ast::TyUs(_)) => (uint, const_uint, u64),
                 ty::ty_uint(ast::TyU8) => (u8, const_uint, u64),
                 ty::ty_uint(ast::TyU16) => (u16, const_uint, u64),
                 ty::ty_uint(ast::TyU32) => (u32, const_uint, u64),

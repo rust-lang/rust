@@ -9,11 +9,11 @@
 // except according to those terms.
 
 enum Enum<'a> {
-    A(&'a int),
+    A(&'a isize),
     B(bool),
 }
 
-fn foo() -> int {
+fn foo() -> isize {
     let mut n = 42;
     let mut x = Enum::A(&mut n);
     match x {

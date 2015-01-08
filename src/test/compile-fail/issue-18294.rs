@@ -10,6 +10,6 @@
 
 fn main() {
     const X: u32 = 1;
-    const Y: uint = &X as *const u32 as uint; //~ ERROR E0018
+    const Y: usize = &X as *const u32 as usize; //~ ERROR E0018
     println!("{}", Y);
 }

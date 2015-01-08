@@ -12,14 +12,14 @@
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
-static mut a: int = 3;
+static mut a: isize = 3;
 
 fn main() {
     // If they can't be matched against, then it's possible to capture the same
     // name as a variable, hence this should be an unreachable pattern situation
     // instead of spitting out a custom error about some identifier collisions
     // (we should allow shadowing)
-    match 4i {
+    match 4is {
         a => {} //~ ERROR static variables cannot be referenced in a pattern
         _ => {}
     }

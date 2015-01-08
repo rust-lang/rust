@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct direct<'a> {
-    f: &'a int
+    f: &'a isize
 }
 
 struct indirect1 {

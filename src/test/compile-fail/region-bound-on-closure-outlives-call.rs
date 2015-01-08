@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn call_rec<F>(mut f: F) -> uint where F: FnMut(uint) -> uint {
+fn call_rec<F>(mut f: F) -> usize where F: FnMut(usize) -> usize {
     (|&mut: x| f(x))(call_rec(f)) //~ ERROR cannot move out of `f`
 }
 

@@ -10,6 +10,6 @@
 
 // error-pattern: return
 
-fn f() -> int { }
+fn f() -> isize { }
 
 fn main() { f(); }

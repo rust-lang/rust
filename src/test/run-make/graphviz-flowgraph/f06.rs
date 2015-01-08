@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S6 { val: int }
+struct S6 { val: isize }
 pub fn pat_struct_6() {
     let S6 { val: _x } = S6{ val: 6 };
 }

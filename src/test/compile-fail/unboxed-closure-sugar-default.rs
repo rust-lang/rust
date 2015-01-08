@@ -24,14 +24,14 @@ fn eq<A: ?Sized,B: ?Sized>() where A : Eq<B> { }
 
 fn test<'a,'b>() {
     // Parens are equivalent to omitting default in angle.
-    eq::< Foo<(int,),()>,               Foo(int)                      >();
+    eq::< Foo<(isize,),()>,               Foo(isize)                      >();
 
     // In angle version, we supply something other than the default
-    eq::< Foo<(int,),(),int>,           Foo(int)                      >();
+    eq::< Foo<(isize,),(),isize>,           Foo(isize)                      >();
     //~^ ERROR not implemented
 
     // Supply default explicitly.
-    eq::< Foo<(int,),(),(int,)>,        Foo(int)                      >();
+    eq::< Foo<(isize,),(),(isize,)>,        Foo(isize)                      >();
 }
 
 fn main() { }

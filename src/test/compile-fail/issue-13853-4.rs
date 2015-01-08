@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct AutoBuilder<'a> {
-    context: &'a int
+    context: &'a isize
 }
 
 impl<'a> Drop for AutoBuilder<'a> {

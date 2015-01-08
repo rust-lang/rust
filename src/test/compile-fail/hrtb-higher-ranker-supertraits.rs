@@ -12,13 +12,13 @@
 
 trait Foo<'tcx>
 {
-    fn foo(&'tcx self) -> &'tcx int;
+    fn foo(&'tcx self) -> &'tcx isize;
 }
 
 trait Bar<'ccx>
     : for<'tcx> Foo<'tcx>
 {
-    fn bar(&'ccx self) -> &'ccx int;
+    fn bar(&'ccx self) -> &'ccx isize;
 }
 
 fn want_foo_for_some_tcx<'x,F>(f: &'x F)

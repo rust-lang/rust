@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn trace_option(option: Option<int>) {
+pub fn trace_option(option: Option<isize>) {
     option.map(|some| 42; //~ NOTE: unclosed delimiter
 } //~ ERROR: incorrect close delimiter

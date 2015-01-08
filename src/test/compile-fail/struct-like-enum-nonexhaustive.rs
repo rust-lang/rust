@@ -9,7 +9,7 @@
 // except according to those terms.
 
 enum A {
-    B { x: Option<int> },
+    B { x: Option<isize> },
     C
 }
 

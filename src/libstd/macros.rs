@@ -44,7 +44,7 @@ macro_rules! panic {
     ($msg:expr) => ({
         $crate::rt::begin_unwind($msg, {
             // static requires less code at runtime, more constant data
-            static _FILE_LINE: (&'static str, uint) = (file!(), line!());
+            static _FILE_LINE: (&'static str, usize) = (file!(), line!());
             &_FILE_LINE
         })
     });
@@ -54,7 +54,7 @@ macro_rules! panic {
             // used inside a dead function. Just `#[allow(dead_code)]` is
             // insufficient, since the user may have
             // `#[forbid(dead_code)]` and which cannot be overridden.
-            static _FILE_LINE: (&'static str, uint) = (file!(), line!());
+            static _FILE_LINE: (&'static str, usize) = (file!(), line!());
             &_FILE_LINE
         })
     });
@@ -466,7 +466,7 @@ pub mod builtin {
 
     /// A macro which expands to the line number on which it was invoked.
     ///
-    /// The expanded expression has type `uint`, and the returned line is not
+    /// The expanded expression has type `usize`, and the returned line is not
     /// the invocation of the `line!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `line!()` macro.
     ///
@@ -481,7 +481,7 @@ pub mod builtin {
 
     /// A macro which expands to the column number on which it was invoked.
     ///
-    /// The expanded expression has type `uint`, and the returned column is not
+    /// The expanded expression has type `usize`, and the returned column is not
     /// the invocation of the `column!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `column!()` macro.
     ///

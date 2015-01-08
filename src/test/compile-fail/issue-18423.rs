@@ -11,7 +11,7 @@
 // Test that `Box` cannot be used with a lifetime parameter.
 
 struct Foo<'a> {
-    x: Box<'a, int> //~ ERROR wrong number of lifetime parameters
+    x: Box<'a, isize> //~ ERROR wrong number of lifetime parameters
 }
 
 pub fn main() {

@@ -11,15 +11,15 @@
 // Test that immutable pattern bindings cannot be reassigned.
 
 enum E {
-    Foo(int)
+    Foo(isize)
 }
 
 struct S {
-    bar: int,
+    bar: isize,
 }
 
 pub fn main() {
-    match 1i {
+    match 1is {
         x => {
             x += 1; //~ ERROR re-assignment of immutable variable `x`
         }
@@ -37,13 +37,13 @@ pub fn main() {
         }
     }
 
-    match (1i,) {
+    match (1is,) {
         (x,) => {
             x += 1; //~ ERROR re-assignment of immutable variable `x`
         }
     }
 
-    match [1i,2,3] {
+    match [1is,2,3] {
         [x,_,_] => {
             x += 1; //~ ERROR re-assignment of immutable variable `x`
         }

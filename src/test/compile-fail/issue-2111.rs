@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(a: Option<uint>, b: Option<uint>) {
+fn foo(a: Option<usize>, b: Option<usize>) {
   match (a,b) {
   //~^ ERROR: non-exhaustive patterns: `(None, None)` not covered
     (Some(a), Some(b)) if a == b => { }

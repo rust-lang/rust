@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static c_x: &'blk int = &22; //~ ERROR use of undeclared lifetime name `'blk`
+static c_x: &'blk isize = &22; //~ ERROR use of undeclared lifetime name `'blk`
 
 enum EnumDecl {
-    Foo(&'a int), //~ ERROR use of undeclared lifetime name `'a`
-    Bar(&'a int), //~ ERROR use of undeclared lifetime name `'a`
+    Foo(&'a isize), //~ ERROR use of undeclared lifetime name `'a`
+    Bar(&'a isize), //~ ERROR use of undeclared lifetime name `'a`
 }
 
-fn fnDecl(x: &'a int, //~ ERROR use of undeclared lifetime name `'a`
-          y: &'a int) //~ ERROR use of undeclared lifetime name `'a`
+fn fnDecl(x: &'a isize, //~ ERROR use of undeclared lifetime name `'a`
+          y: &'a isize) //~ ERROR use of undeclared lifetime name `'a`
 {}
 
 fn main() {

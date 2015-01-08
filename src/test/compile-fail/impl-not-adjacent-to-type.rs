@@ -10,8 +10,8 @@
 
 mod foo {
     pub struct Foo {
-        x: int,
-        y: int,
+        x: isize,
+        y: isize,
     }
 }
 
