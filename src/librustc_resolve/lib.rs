@@ -2944,8 +2944,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     HasTypeParameters(
                                         generics, FnSpace, foreign_item.id,
                                         ItemRibKind),
-                                    |this| visit::walk_foreign_item(this,
-                                                                    &**foreign_item));
+                                    |this| {
+                                        this.resolve_type_parameters(&generics.ty_params);
+                                        this.resolve_where_clause(&generics.where_clause);
+                                        visit::walk_foreign_item(this, &**foreign_item)
+                                    });
                             }
                             ForeignItemStatic(..) => {
                                 visit::walk_foreign_item(this,
