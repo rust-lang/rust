@@ -530,7 +530,8 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
                 _ => {
                     return PathParameters::AngleBracketed {
                         lifetimes: lifetimes,
-                        types: types.clean(cx)
+                        types: types.clean(cx),
+                        bindings: vec![]
                     }
                 }
             };
@@ -547,6 +548,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
             PathParameters::AngleBracketed {
                 lifetimes: lifetimes,
                 types: types.clean(cx),
+                bindings: vec![] // FIXME(#20646)
             }
         }
     }
@@ -1766,6 +1768,7 @@ pub enum PathParameters {
     AngleBracketed {
         lifetimes: Vec<Lifetime>,
         types: Vec<Type>,
+        bindings: Vec<TypeBinding>
     },
     Parenthesized {
         inputs: Vec<Type>,
@@ -1779,7 +1782,8 @@ impl Clean<PathParameters> for ast::PathParameters {
             ast::AngleBracketedParameters(ref data) => {
                 PathParameters::AngleBracketed {
                     lifetimes: data.lifetimes.clean(cx),
-                    types: data.types.clean(cx)
+                    types: data.types.clean(cx),
+                    bindings: data.bindings.clean(cx)
                 }
             }
 
@@ -2442,8 +2446,25 @@ fn lang_struct(cx: &DocContext, did: Option<ast::DefId>,
                 params: PathParameters::AngleBracketed {
                     lifetimes: vec![],
                     types: vec![t.clean(cx)],
+                    bindings: vec![]
                 }
             }],
         },
+    }
+}
+
+/// An equality constraint on an associated type, e.g. `A=Bar` in `Foo<A=Bar>`
+#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
+pub struct TypeBinding {
+    pub name: String,
+    pub ty: Type
+}
+
+impl Clean<TypeBinding> for ast::TypeBinding {
+    fn clean(&self, cx: &DocContext) -> TypeBinding {
+        TypeBinding {
+            name: self.ident.clean(cx),
+            ty: self.ty.clean(cx)
+        }
     }
 }
