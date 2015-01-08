@@ -932,7 +932,7 @@ pub trait ToString {
     fn to_string(&self) -> String;
 }
 
-impl<T: fmt::String> ToString for T {
+impl<T: fmt::String + ?Sized> ToString for T {
     fn to_string(&self) -> String {
         use core::fmt::Writer;
         let mut buf = String::new();
@@ -992,6 +992,12 @@ mod tests {
     fn test_from_str() {
       let owned: Option<::std::string::String> = "string".parse();
       assert_eq!(owned.as_ref().map(|s| s.as_slice()), Some("string"));
+    }
+
+    #[test]
+    fn test_unsized_to_string() {
+        let s: &str = "abc";
+        let _: String = (*s).to_string();
     }
 
     #[test]
