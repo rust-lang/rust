@@ -20,9 +20,9 @@ enum OptionalFloat64 {
 ```
 
 This is really unfortunate. Luckily, Rust has a feature that gives us a better
-way: generics. Generics are called **parametric polymorphism** in type theory,
-which means that they are types or functions that have multiple forms ("poly"
-is multiple, "morph" is form) over a given parameter ("parametric").
+way: generics. Generics are called *parametric polymorphism* in type theory,
+which means that they are types or functions that have multiple forms (*poly*
+is multiple, *morph* is form) over a given parameter (*parametric*).
 
 Anyway, enough with type theory declarations, let's check out the generic form
 of `OptionalInt`. It is actually provided by Rust itself, and looks like this:
@@ -150,7 +150,7 @@ fn inverse32(x: f32) -> Result<f32, String> {
 }
 ```
 
-Bummer. What we need is a **generic function**. Luckily, we can write one!
+Bummer. What we need is a *generic function*. Luckily, we can write one!
 However, it won't _quite_ work yet. Before we get into that, let's talk syntax.
 A generic version of `inverse` would look something like this:
 

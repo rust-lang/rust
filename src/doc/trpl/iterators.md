@@ -11,7 +11,7 @@ for x in range(0i, 10i) {
 ```
 
 Now that you know more Rust, we can talk in detail about how this works. The
-`range` function returns an **iterator**. An iterator is something that we can
+`range` function returns an *iterator*. An iterator is something that we can
 call the `.next()` method on repeatedly, and it gives us a sequence of things.
 
 Like this:
@@ -101,19 +101,19 @@ So, now that we've established that `range` is often not what you want, let's
 talk about what you do want instead.
 
 There are three broad classes of things that are relevant here: iterators,
-**iterator adapters**, and **consumers**. Here's some definitions:
+*iterator adapters*, and *consumers*. Here's some definitions:
 
-* 'iterators' give you a sequence of values.
-* 'iterator adapters' operate on an iterator, producing a new iterator with a
+* *iterators* give you a sequence of values.
+* *iterator adapters* operate on an iterator, producing a new iterator with a
   different output sequence.
-* 'consumers' operate on an iterator, producing some final set of values.
+* *consumers* operate on an iterator, producing some final set of values.
 
 Let's talk about consumers first, since you've already seen an iterator,
 `range`.
 
 ## Consumers
 
-A 'consumer' operates on an iterator, returning some kind of value or values.
+A *consumer* operates on an iterator, returning some kind of value or values.
 The most common consumer is `collect()`. This code doesn't quite compile,
 but it shows the intention:
 
@@ -161,9 +161,9 @@ let sum = range(1i, 4i)
 
 `fold()` is a consumer that looks like this:
 `fold(base, |accumulator, element| ...)`. It takes two arguments: the first
-is an element called the "base". The second is a closure that itself takes two
-arguments: the first is called the "accumulator," and the second is an
-"element." Upon each iteration, the closure is called, and the result is the
+is an element called the *base*. The second is a closure that itself takes two
+arguments: the first is called the *accumulator*, and the second is an
+*element*. Upon each iteration, the closure is called, and the result is the
 value of the accumulator on the next iteration. On the first iteration, the
 base is the value of the accumulator.
 
@@ -205,7 +205,7 @@ see why consumers matter.
 As we've said before, an iterator is something that we can call the
 `.next()` method on repeatedly, and it gives us a sequence of things.
 Because you need to call the method, this means that iterators
-are **lazy** and don't need to generate all of the values upfront.
+are *lazy* and don't need to generate all of the values upfront.
 This code, for example, does not actually generate the numbers
 `1-100`, and just creates a value that represents the sequence:
 
@@ -252,7 +252,7 @@ we need to talk about with regards to iterators. Let's get to it!
 
 ## Iterator adapters
 
-"Iterator adapters" take an iterator and modify it somehow, producing
+*Iterator adapters* take an iterator and modify it somehow, producing
 a new iterator. The simplest one is called `map`:
 
 ```{rust,ignore}

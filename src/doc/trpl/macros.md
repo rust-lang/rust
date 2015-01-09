@@ -571,4 +571,4 @@ If Rust's macro system can't do what you need, you may want to write a
 macros, this is significantly more work, the interfaces are much less stable,
 and the warnings about debugging apply ten-fold. In exchange you get the
 flexibility of running arbitrary Rust code within the compiler. Syntax
-extension plugins are sometimes called "procedural macros" for this reason.
+extension plugins are sometimes called *procedural macros* for this reason.

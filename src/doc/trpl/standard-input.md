@@ -103,7 +103,7 @@ line of input, though it might also fail to do so. This could happen if our prog
 isn't running in a terminal, but as part of a cron job, or some other context
 where there's no standard input. Because of this, `read_line` returns a type
 very similar to our `OptionalInt`: an `IoResult<T>`. We haven't talked about
-`IoResult<T>` yet because it is the **generic** form of our `OptionalInt`.
+`IoResult<T>` yet because it is the *generic* form of our `OptionalInt`.
 Until then, you can think of it as being the same thing, just for any type –
 not just `i32`s.
 

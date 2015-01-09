@@ -5,7 +5,7 @@ then with `match` statements. Let's go on a whirlwind tour of all of the things
 patterns can do!
 
 A quick refresher: you can match against literals directly, and `_` acts as an
-'any' case:
+*any* case:
 
 ```{rust}
 let x = 1i;
@@ -72,7 +72,7 @@ match x {
 }
 ```
 
-You can introduce **match guards** with `if`:
+You can introduce *match guards* with `if`:
 
 ```{rust}
 enum OptionalInt {
