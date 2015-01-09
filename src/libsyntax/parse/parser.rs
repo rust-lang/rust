@@ -4769,8 +4769,12 @@ impl<'a> Parser<'a> {
         self.expect(&token::OpenDelim(token::Brace));
         let (inner_attrs, mut method_attrs) =
             self.parse_inner_attrs_and_next();
-        while !self.eat(&token::CloseDelim(token::Brace)) {
+        loop {
             method_attrs.extend(self.parse_outer_attributes().into_iter());
+            if method_attrs.is_empty() && self.eat(&token::CloseDelim(token::Brace)) {
+                break;
+            }
+
             let vis = self.parse_visibility();
             if self.eat_keyword(keywords::Type) {
                 impl_items.push(TypeImplItem(P(self.parse_typedef(
@@ -4781,7 +4785,7 @@ impl<'a> Parser<'a> {
                             method_attrs,
                             vis)));
             }
-            method_attrs = self.parse_outer_attributes();
+            method_attrs = vec![];
         }
         (impl_items, inner_attrs)
     }
