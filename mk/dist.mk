@@ -59,6 +59,7 @@ PKG_FILES := \
       rustllvm                                 \
       snapshots.txt                            \
       rust-installer                           \
+      rustbook                                 \
       test)                                    \
     $(PKG_GITMODULES)                          \
     $(filter-out config.stamp, \
