@@ -152,8 +152,9 @@ an unspecified result, or task panic, depending on whether the
 overflow is checked.
 
 The semantics of bitshifts are also changed. The number of bits to
-shift by must be within the interval
-`[0..N)` where `N` is the number of bits in the value being shifted, or else the result is panic/undefined, as above.
+shift by must be within the interval `0..N` (using Rust semantics)
+where `N` is the number of bits in the value being shifted, or else
+the result is panic/undefined, as above.
 
 The implication is that overflow is considered to be an abnormal circumstance,
 a program error, and the programmer expects it not to happen, resp. it is her
@@ -172,20 +173,34 @@ Notes:
    however, this will most likely be the same as the wraparound result.
    Implementations should avoid needlessly exacerbating program errors with
    additional unpredictability or surprising behavior.
-
  * Most importantly: this is **not** undefined behavior in the C sense. Only the
    result of the operation is left unspecified, as opposed to the entire
    program's meaning, as in C. The programmer would not be allowed to rely on a
    specific, or any, result being returned on overflow, but the compiler would
    also not be allowed to assume that overflow won't happen and optimize based
    on this assumption.
+ * Even when checking for an overflow, compilers are not required to
+   panic at the precise point of overflow. They are free to coalesce
+   checks from adjacent operations, for example, or otherwise move the
+   point of panic around. However, when checks are enabled (e.g.,
+   during a debug build, by default), then any operation which
+   overflows must result in a panic some finite number of steps after
+   the operation that caused the overflow. (For example, the panic
+   cannot be delayed until after a loop, unless the number of
+   iterations in that loop can be statically bounded.)
+ * When overflow checking is not explicitly enabled, the matter of
+   whether an overflow results in panic or an undefined value is not
+   required to be consistent across executions. This means that, for
+   example, the compiler could insert code which results in an
+   overflow only if the value that was produced is actually consumed
+   (which may occur on only one arm of a branch).
 
 To state it plainly: This is for the programmer's benefit, and not the 
 optimizer's.
 
 See also Appendix A.
 
-### The default
+## The default
 
 In general, implementations are always free to insert dynamic checks
 for overflow if they so choose. However, when running in debug mode
