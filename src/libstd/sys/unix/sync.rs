@@ -61,19 +61,22 @@ mod os {
 mod os {
     use libc;
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64",
+              target_arch = "aarch64"))]
     const __PTHREAD_MUTEX_SIZE__: uint = 56;
     #[cfg(any(target_arch = "x86",
               target_arch = "arm"))]
     const __PTHREAD_MUTEX_SIZE__: uint = 40;
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64",
+              target_arch = "aarch64"))]
     const __PTHREAD_COND_SIZE__: uint = 40;
     #[cfg(any(target_arch = "x86",
               target_arch = "arm"))]
     const __PTHREAD_COND_SIZE__: uint = 24;
 
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(any(target_arch = "x86_64",
+              target_arch = "aarch64"))]
     const __PTHREAD_RWLOCK_SIZE__: uint = 192;
     #[cfg(any(target_arch = "x86",
               target_arch = "arm"))]
