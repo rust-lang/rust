@@ -122,7 +122,8 @@
 extern crate log;
 
 #[macro_use]
-#[macro_reexport(write, writeln)]
+#[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
+    unreachable, unimplemented, write, writeln)]
 extern crate core;
 
 #[macro_use]
