@@ -3111,9 +3111,11 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     let ty::CrateAnalysis { ty_cx: tcx, export_map, reachable, name, .. } = analysis;
     let krate = tcx.map.krate();
 
-    let check_overflow = tcx.sess.opts.debugging_opts & config::FORCE_NO_OVERFLOW_CHECKS == 0
-        && (tcx.sess.opts.debugging_opts & config::FORCE_OVERFLOW_CHECKS != 0
-            || !attr::contains_name(krate.config[], "ndebug"));
+    let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
+        v
+    } else {
+        !attr::contains_name(&krate.config[], "ndebug")
+    };
 
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {

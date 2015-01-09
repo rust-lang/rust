@@ -5364,7 +5364,7 @@ pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                             } else {
                                                 cx.sess.span_err(
                                                     variant.span,
-                                                    format!("Discriminant overflowed!")[]);
+                                                    &format!("Discriminant overflowed!")[]);
                                             }
                                         } else {
                                             discriminant = INITIAL_DISCRIMINANT_VALUE;
