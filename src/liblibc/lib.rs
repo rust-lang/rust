@@ -1969,7 +1969,7 @@ pub mod types {
             }
         }
 
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
         pub mod arch {
             pub mod c95 {
                 pub type c_char = i8;
