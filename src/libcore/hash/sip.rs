@@ -14,7 +14,7 @@
 
 use prelude::*;
 use default::Default;
-
+use num::wrapping::WrappingOps;
 use super::Hasher;
 
 /// An implementation of SipHash 2-4.
@@ -71,17 +71,17 @@ macro_rules! u8to64_le {
 
 macro_rules! rotl {
     ($x:expr, $b:expr) =>
-    (($x << $b) | ($x >> (64 - $b)))
+    (($x << $b) | ($x >> (64.wrapping_sub($b))))
 }
 
 macro_rules! compress {
     ($v0:expr, $v1:expr, $v2:expr, $v3:expr) =>
     ({
-        $v0 += $v1; $v1 = rotl!($v1, 13); $v1 ^= $v0;
+        $v0 = $v0.wrapping_add($v1); $v1 = rotl!($v1, 13); $v1 ^= $v0;
         $v0 = rotl!($v0, 32);
-        $v2 += $v3; $v3 = rotl!($v3, 16); $v3 ^= $v2;
-        $v0 += $v3; $v3 = rotl!($v3, 21); $v3 ^= $v0;
-        $v2 += $v1; $v1 = rotl!($v1, 17); $v1 ^= $v2;
+        $v2 = $v2.wrapping_add($v3); $v3 = rotl!($v3, 16); $v3 ^= $v2;
+        $v0 = $v0.wrapping_add($v3); $v3 = rotl!($v3, 21); $v3 ^= $v0;
+        $v2 = $v2.wrapping_add($v1); $v1 = rotl!($v1, 17); $v1 ^= $v2;
         $v2 = rotl!($v2, 32);
     })
 }

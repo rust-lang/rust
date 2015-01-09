@@ -818,11 +818,11 @@ impl BitVec {
         let full_value = if value { !0 } else { 0 };
 
         // Correct the old tail word, setting or clearing formerly unused bits
-        let old_last_word = blocks_for_bits(self.nbits) - 1;
+        let num_cur_blocks = blocks_for_bits(self.nbits);
         if self.nbits % u32::BITS as usize > 0 {
             let mask = mask_for_bits(self.nbits);
             if value {
-                self.storage[old_last_word] |= !mask;
+                self.storage[num_cur_blocks - 1] |= !mask;
             } else {
                 // Extra bits are already zero by invariant.
             }
@@ -830,7 +830,7 @@ impl BitVec {
 
         // Fill in words after the old tail word
         let stop_idx = cmp::min(self.storage.len(), new_nblocks);
-        for idx in old_last_word + 1..stop_idx {
+        for idx in num_cur_blocks..stop_idx {
             self.storage[idx] = full_value;
         }
 

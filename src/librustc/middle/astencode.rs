@@ -204,7 +204,9 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
     pub fn tr_id(&self, id: ast::NodeId) -> ast::NodeId {
         // from_id_range should be non-empty
         assert!(!self.from_id_range.empty());
-        (id - self.from_id_range.min + self.to_id_range.min)
+        // Use wrapping arithmetic because otherwise it introduces control flow.
+        // Maybe we should just have the control flow? -- aatch
+        (id.wrapping_sub(self.from_id_range.min).wrapping_add(self.to_id_range.min))
     }
 
     /// Translates an EXTERNAL def-id, converting the crate number from the one used in the encoded

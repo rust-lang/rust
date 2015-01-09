@@ -58,3 +58,5 @@
 #[doc(no_inline)] pub use old_io::{Buffer, Writer, Reader, Seek, BufferPrelude};
 // NB: remove when range syntax lands
 #[doc(no_inline)] pub use iter::range;
+
+#[doc(no_inline)] pub use num::wrapping::{Wrapping, WrappingOps};
