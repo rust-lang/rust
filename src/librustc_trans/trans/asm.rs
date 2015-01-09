@@ -25,8 +25,8 @@ use std::ffi::CString;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
-                                    -> Block<'blk, 'tcx> {
+pub fn trans_inline_asm<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, ia: &ast::InlineAsm)
+                                    -> Block<'fcx, 'blk, 'tcx> {
     let fcx = bcx.fcx;
     let mut bcx = bcx;
     let mut constraints = Vec::new();
