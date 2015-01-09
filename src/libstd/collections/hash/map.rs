@@ -314,6 +314,13 @@ fn search_hashed<K, V, M, F>(table: M,
     M: Deref<Target=RawTable<K, V>>,
     F: FnMut(&K) -> bool,
 {
+    // This is the only function where capacity can be zero. To avoid
+    // undefined behaviour when Bucket::new gets the raw bucket in this
+    // case, immediately return the appropriate search result.
+    if table.capacity() == 0 {
+        return TableRef(table);
+    }
+
     let size = table.size();
     let mut probe = Bucket::new(table, hash);
     let ib = probe.index();

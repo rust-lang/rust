@@ -240,25 +240,24 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             let encoder = cx.expr_ident(trait_span, blkarg);
             let emit_variant_arg = cx.ident_of("emit_enum_variant_arg");
             let mut stmts = Vec::new();
-            let last = fields.len() - 1;
-            for (i, &FieldInfo { ref self_, span, .. }) in fields.iter().enumerate() {
-                let enc = cx.expr_method_call(span, self_.clone(),
-                                              encode, vec!(blkencoder.clone()));
-                let lambda = cx.lambda_expr_1(span, enc, blkarg);
-                let call = cx.expr_method_call(span, blkencoder.clone(),
-                                               emit_variant_arg,
-                                               vec!(cx.expr_usize(span, i),
-                                                 lambda));
-                let call = if i != last {
-                    cx.expr_try(span, call)
-                } else {
-                    cx.expr(span, ExprRet(Some(call)))
-                };
-                stmts.push(cx.stmt_expr(call));
-            }
-
-            // enums with no fields need to return Ok()
-            if stmts.len() == 0 {
+            if fields.len() > 0 {
+                let last = fields.len() - 1;
+                for (i, &FieldInfo { ref self_, span, .. }) in fields.iter().enumerate() {
+                    let enc = cx.expr_method_call(span, self_.clone(),
+                                                  encode, vec!(blkencoder.clone()));
+                    let lambda = cx.lambda_expr_1(span, enc, blkarg);
+                    let call = cx.expr_method_call(span, blkencoder.clone(),
+                                                   emit_variant_arg,
+                                                   vec!(cx.expr_usize(span, i),
+                                                        lambda));
+                    let call = if i != last {
+                        cx.expr_try(span, call)
+                    } else {
+                        cx.expr(span, ExprRet(Some(call)))
+                    };
+                    stmts.push(cx.stmt_expr(call));
+                }
+            } else {
                 let ret_ok = cx.expr(trait_span,
                                      ExprRet(Some(cx.expr_ok(trait_span,
                                                              cx.expr_tuple(trait_span, vec![])))));
