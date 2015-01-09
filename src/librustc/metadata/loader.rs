@@ -225,6 +225,7 @@ use metadata::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
 use util::fs;
+use rustc_back::target::Target;
 
 use std::ffi::CString;
 use std::cmp;
@@ -248,6 +249,8 @@ pub struct Context<'a> {
     pub ident: &'a str,
     pub crate_name: &'a str,
     pub hash: Option<&'a Svh>,
+    // points to either self.sess.target.target or self.sess.host, must match triple
+    pub target: &'a Target,
     pub triple: &'a str,
     pub filesearch: FileSearch<'a>,
     pub root: &'a Option<CratePaths>,
@@ -499,7 +502,7 @@ impl<'a> Context<'a> {
 
         for lib in m.into_iter() {
             info!("{} reading metadata from: {}", flavor, lib.display());
-            let metadata = match get_metadata_section(self.sess.target.target.options.is_like_osx,
+            let metadata = match get_metadata_section(self.target.options.is_like_osx,
                                                       &lib) {
                 Ok(blob) => {
                     if self.crate_matches(blob.as_slice(), &lib) {
@@ -588,7 +591,7 @@ impl<'a> Context<'a> {
     // Returns the corresponding (prefix, suffix) that files need to have for
     // dynamic libraries
     fn dylibname(&self) -> (String, String) {
-        let t = &self.sess.target.target;
+        let t = &self.target;
         (t.options.dll_prefix.clone(), t.options.dll_suffix.clone())
     }
 
