@@ -380,8 +380,9 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
                 format!("VtableObject({})",
                         d.repr(tcx)),
 
-            super::VtableParam =>
-                format!("VtableParam"),
+            super::VtableParam(ref n) =>
+                format!("VtableParam({})",
+                        n.repr(tcx)),
 
             super::VtableBuiltin(ref d) =>
                 d.repr(tcx)
