@@ -49,15 +49,16 @@ macro_rules! panic {
 /// assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! assert {
     ($cond:expr) => (
         if !$cond {
             panic!(concat!("assertion failed: ", stringify!($cond)))
         }
     );
-    ($cond:expr, $($arg:expr),+) => (
+    ($cond:expr, $($arg:tt)+) => (
         if !$cond {
-            panic!($($arg),+)
+            panic!($($arg)+)
         }
     );
 }
@@ -75,6 +76,7 @@ macro_rules! assert {
 /// assert_eq!(a, b);
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! assert_eq {
     ($left:expr , $right:expr) => ({
         match (&($left), &($right)) {
@@ -116,6 +118,7 @@ macro_rules! assert_eq {
 /// debug_assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
+#[stable]
 macro_rules! debug_assert {
     ($($arg:tt)*) => (if cfg!(not(ndebug)) { assert!($($arg)*); })
 }
@@ -227,6 +230,7 @@ macro_rules! writeln {
 /// }
 /// ```
 #[macro_export]
+#[unstable = "relationship with panic is unclear"]
 macro_rules! unreachable {
     () => ({
         panic!("internal error: entered unreachable code")
@@ -242,6 +246,7 @@ macro_rules! unreachable {
 /// A standardised placeholder for marking unfinished code. It panics with the
 /// message `"not yet implemented"` when executed.
 #[macro_export]
+#[unstable = "relationship with panic is unclear"]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
 }
