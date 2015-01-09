@@ -106,6 +106,19 @@ There are two main reasons for this choice:
   format!("{}, {}!", "hello", "world")
   ```
 
+## Use in errors
+
+Right now, the (unstable) `Error` trait comes equipped with a `description`
+method yielding an `Option<String>`. This RFC proposes to drop this method an
+instead inherit from `fmt::String`. It likewise proposes to make `unwrap` in
+`Result` depend and use `fmt::String` rather than `fmt::Show`.
+
+The reason in both cases is the same: although errors are often thought of in
+terms of debugging, the messages they result in are often presented directly to
+the user and should thus be tailored. Tying them to `fmt::String` makes it
+easier to remember and add such tailoring, and less likely to spew a lot of
+unwanted internal representation.
+
 # Alternatives
 
 We've already explored an alternative where `Show` tries to play both of the
@@ -116,3 +129,6 @@ the discussion thread.
 # Unresolved questions
 
 Should we set stricter rules about the exact formatting of debugging output?
+
+Should we consider renaming either or both of these traits to something that
+better reflects the usage here? E.g. `fmt::Debug` and `fmt::Display`.
