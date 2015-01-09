@@ -215,7 +215,6 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main:
     let mut prog = String::new();
     if lints {
         prog.push_str(r"
-#![deny(warnings)]
 #![allow(unused_variables, unused_assignments, unused_mut, unused_attributes, dead_code)]
 ");
     }
