@@ -212,13 +212,13 @@ pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 ///   can derive these from callee_ty but in the case of variadic
 ///   functions passed_arg_tys will include the Rust type of all
 ///   the arguments including the ones not specified in the fn's signature.
-pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_native_call<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                      callee_ty: Ty<'tcx>,
                                      llfn: ValueRef,
                                      llretptr: ValueRef,
                                      llargs_rust: &[ValueRef],
                                      passed_arg_tys: Vec<Ty<'tcx>>)
-                                     -> Block<'blk, 'tcx>
+                                     -> Block<'fcx, 'blk, 'tcx>
 {
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();

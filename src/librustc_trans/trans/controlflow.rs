@@ -40,9 +40,9 @@ use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::visit::Visitor;
 
-pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+pub fn trans_stmt<'fcx, 'blk, 'tcx>(cx: Block<'fcx, 'blk, 'tcx>,
                               s: &ast::Stmt)
-                              -> Block<'blk, 'tcx> {
+                              -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt");
     let fcx = cx.fcx;
     debug!("trans_stmt({})", s.repr(cx.tcx()));
@@ -83,8 +83,8 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     return bcx;
 }
 
-pub fn trans_stmt_semi<'blk, 'tcx>(cx: Block<'blk, 'tcx>, e: &ast::Expr)
-                                   -> Block<'blk, 'tcx> {
+pub fn trans_stmt_semi<'fcx, 'blk, 'tcx>(cx: Block<'fcx, 'blk, 'tcx>, e: &ast::Expr)
+                                         -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt_semi");
     let ty = expr_ty(cx, e);
     if type_needs_drop(cx.tcx(), ty) {
@@ -94,10 +94,10 @@ pub fn trans_stmt_semi<'blk, 'tcx>(cx: Block<'blk, 'tcx>, e: &ast::Expr)
     }
 }
 
-pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_block<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                b: &ast::Block,
                                mut dest: expr::Dest)
-                               -> Block<'blk, 'tcx> {
+                               -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("trans_block");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
@@ -131,7 +131,7 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx = expr::trans_into(bcx, &**e, dest);
         }
         None => {
-            assert!(dest == expr::Ignore || bcx.unreachable.get());
+            assert!(dest == expr::Ignore || bcx.data.unreachable.get());
         }
     }
 
@@ -140,13 +140,13 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     return bcx;
 }
 
-pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_if<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                             if_id: ast::NodeId,
                             cond: &ast::Expr,
                             thn: &ast::Block,
                             els: Option<&ast::Expr>,
                             dest: expr::Dest)
-                            -> Block<'blk, 'tcx> {
+                            -> Block<'fcx, 'blk, 'tcx> {
     debug!("trans_if(bcx={}, if_id={}, cond={}, thn={}, dest={})",
            bcx.to_str(), if_id, bcx.expr_to_string(cond), thn.id,
            dest.to_string(bcx.ccx()));
@@ -199,13 +199,13 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let else_bcx_out = expr::trans_into(else_bcx_in, &*elexpr, dest);
             next_bcx = bcx.fcx.join_blocks(if_id,
                                            &[then_bcx_out, else_bcx_out]);
-            CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
+            CondBr(bcx, cond_val, then_bcx_in.data.llbb, else_bcx_in.data.llbb);
         }
 
         None => {
             next_bcx = bcx.fcx.new_id_block("next-block", if_id);
-            Br(then_bcx_out, next_bcx.llbb);
-            CondBr(bcx, cond_val, then_bcx_in.llbb, next_bcx.llbb);
+            Br(then_bcx_out, next_bcx.data.llbb);
+            CondBr(bcx, cond_val, then_bcx_in.data.llbb, next_bcx.data.llbb);
         }
     }
 
@@ -216,11 +216,11 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     next_bcx
 }
 
-pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_while<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                loop_id: ast::NodeId,
                                cond: &ast::Expr,
                                body: &ast::Block)
-                               -> Block<'blk, 'tcx> {
+                               -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("trans_while");
     let fcx = bcx.fcx;
 
@@ -239,9 +239,9 @@ pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let cond_bcx_in = fcx.new_id_block("while_cond", cond.id);
     let body_bcx_in = fcx.new_id_block("while_body", body.id);
 
-    fcx.push_loop_cleanup_scope(loop_id, [next_bcx_in, cond_bcx_in]);
+    fcx.push_loop_cleanup_scope(loop_id, [next_bcx_in.data, cond_bcx_in.data]);
 
-    Br(bcx, cond_bcx_in.llbb);
+    Br(bcx, cond_bcx_in.data.llbb);
 
     // compile the block where we will handle loop cleanups
     let cleanup_llbb = fcx.normal_exit_block(loop_id, cleanup::EXIT_BREAK);
@@ -249,23 +249,23 @@ pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // compile the condition
     let Result {bcx: cond_bcx_out, val: cond_val} =
         expr::trans(cond_bcx_in, cond).to_llbool();
-    CondBr(cond_bcx_out, cond_val, body_bcx_in.llbb, cleanup_llbb);
+    CondBr(cond_bcx_out, cond_val, body_bcx_in.data.llbb, cleanup_llbb);
 
     // loop body:
     let body_bcx_out = trans_block(body_bcx_in, body, expr::Ignore);
-    Br(body_bcx_out, cond_bcx_in.llbb);
+    Br(body_bcx_out, cond_bcx_in.data.llbb);
 
     fcx.pop_loop_cleanup_scope(loop_id);
     return next_bcx_in;
 }
 
 /// Translates a `for` loop.
-pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+pub fn trans_for<'fcx, 'blk, 'tcx>(mut bcx: Block<'fcx, 'blk, 'tcx>,
                              loop_info: NodeInfo,
                              pat: &ast::Pat,
                              head: &ast::Expr,
                              body: &ast::Block)
-                             -> Block<'blk, 'tcx>
+                             -> Block<'fcx, 'blk, 'tcx>
 {
     let _icx = push_ctxt("trans_for");
 
@@ -295,8 +295,8 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let loopback_bcx_in = bcx.fcx.new_id_block("for_loopback", head.id);
     let body_bcx_in = bcx.fcx.new_id_block("for_body", body.id);
     bcx.fcx.push_loop_cleanup_scope(loop_info.id,
-                                    [next_bcx_in, loopback_bcx_in]);
-    Br(bcx, loopback_bcx_in.llbb);
+                                    [next_bcx_in.data, loopback_bcx_in.data]);
+    Br(bcx, loopback_bcx_in.data.llbb);
     let cleanup_llbb = bcx.fcx.normal_exit_block(loop_info.id,
                                                  cleanup::EXIT_BREAK);
 
@@ -351,7 +351,7 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                               None);
     let i1_type = Type::i1(loopback_bcx_out.ccx());
     let llcondition = Trunc(loopback_bcx_out, lldiscriminant, i1_type);
-    CondBr(loopback_bcx_out, llcondition, body_bcx_in.llbb, cleanup_llbb);
+    CondBr(loopback_bcx_out, llcondition, body_bcx_in.data.llbb, cleanup_llbb);
 
     // Now we're in the body. Unpack the `Option` value into the programmer-
     // supplied pattern.
@@ -381,17 +381,17 @@ pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         body_bcx_out.fcx
                     .pop_and_trans_custom_cleanup_scope(body_bcx_out,
                                                         option_cleanup_scope);
-    Br(body_bcx_out, loopback_bcx_in.llbb);
+    Br(body_bcx_out, loopback_bcx_in.data.llbb);
 
     // Codegen cleanups and leave.
     next_bcx_in.fcx.pop_loop_cleanup_scope(loop_info.id);
     next_bcx_in
 }
 
-pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_loop<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                               loop_id: ast::NodeId,
                               body: &ast::Block)
-                              -> Block<'blk, 'tcx> {
+                              -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("trans_loop");
     let fcx = bcx.fcx;
 
@@ -409,26 +409,26 @@ pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let next_bcx_in = bcx.fcx.new_id_block("loop_exit", loop_id);
     let body_bcx_in = bcx.fcx.new_id_block("loop_body", body.id);
 
-    fcx.push_loop_cleanup_scope(loop_id, [next_bcx_in, body_bcx_in]);
+    fcx.push_loop_cleanup_scope(loop_id, [next_bcx_in.data, body_bcx_in.data]);
 
-    Br(bcx, body_bcx_in.llbb);
+    Br(bcx, body_bcx_in.data.llbb);
     let body_bcx_out = trans_block(body_bcx_in, body, expr::Ignore);
-    Br(body_bcx_out, body_bcx_in.llbb);
+    Br(body_bcx_out, body_bcx_in.data.llbb);
 
     fcx.pop_loop_cleanup_scope(loop_id);
 
     return next_bcx_in;
 }
 
-pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_break_cont<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                     expr_id: ast::NodeId,
                                     opt_label: Option<Ident>,
                                     exit: uint)
-                                    -> Block<'blk, 'tcx> {
+                                    -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("trans_break_cont");
     let fcx = bcx.fcx;
 
-    if bcx.unreachable.get() {
+    if bcx.data.unreachable.get() {
         return bcx;
     }
 
@@ -453,23 +453,23 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     return bcx;
 }
 
-pub fn trans_break<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_break<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                expr_id: ast::NodeId,
                                label_opt: Option<Ident>)
-                               -> Block<'blk, 'tcx> {
+                               -> Block<'fcx, 'blk, 'tcx> {
     return trans_break_cont(bcx, expr_id, label_opt, cleanup::EXIT_BREAK);
 }
 
-pub fn trans_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_cont<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                               expr_id: ast::NodeId,
                               label_opt: Option<Ident>)
-                              -> Block<'blk, 'tcx> {
+                              -> Block<'fcx, 'blk, 'tcx> {
     return trans_break_cont(bcx, expr_id, label_opt, cleanup::EXIT_LOOP);
 }
 
-pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             e: Option<&ast::Expr>)
-                             -> Block<'blk, 'tcx> {
+pub fn trans_ret<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
+                            e: Option<&ast::Expr>)
+                            -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("trans_ret");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
@@ -495,10 +495,10 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     return bcx;
 }
 
-pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_fail<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                               sp: Span,
                               fail_str: InternedString)
-                              -> Block<'blk, 'tcx> {
+                              -> Block<'fcx, 'blk, 'tcx> {
     let ccx = bcx.ccx();
     let _icx = push_ctxt("trans_fail_value");
 
@@ -519,11 +519,11 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     return bcx;
 }
 
-pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_fail_bounds_check<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                            sp: Span,
                                            index: ValueRef,
                                            len: ValueRef)
-                                           -> Block<'blk, 'tcx> {
+                                           -> Block<'fcx, 'blk, 'tcx> {
     let ccx = bcx.ccx();
     let _icx = push_ctxt("trans_fail_bounds_check");
 
