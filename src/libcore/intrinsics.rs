@@ -547,7 +547,7 @@ extern "rust-intrinsic" {
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
 }
 
-#[cfg(not(stage1))]
+#[cfg(not(stage0))]
 extern "rust-intrinsic" {
     /// Returns (a + b) mod 2^N, where N is the width of N in bits.
     pub fn overflowing_add<T>(a: T, b: T) -> T;

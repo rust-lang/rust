@@ -59,7 +59,7 @@ macro_rules! wrapping_impl {
 
 wrapping_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 
-#[derive(PartialEq,Eq,PartialOrd,Ord,Clone)]
+#[derive(PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
 pub struct Wrapping<T>(pub T);
 
 impl<T:WrappingOps> Add for Wrapping<T> {
@@ -86,5 +86,58 @@ impl<T:WrappingOps> Mul for Wrapping<T> {
     #[inline(always)]
     fn mul(self, other: Wrapping<T>) -> Wrapping<T> {
         Wrapping(self.0.wrapping_mul(other.0))
+    }
+}
+
+impl<T:WrappingOps+Not<Output=T>> Not for Wrapping<T> {
+    type Output = Wrapping<T>;
+
+    fn not(self) -> Wrapping<T> {
+        Wrapping(!self.0)
+    }
+}
+
+impl<T:WrappingOps+BitXor<Output=T>> BitXor for Wrapping<T> {
+    type Output = Wrapping<T>;
+
+    #[inline(always)]
+    fn bitxor(self, other: Wrapping<T>) -> Wrapping<T> {
+        Wrapping(self.0 ^ other.0)
+    }
+}
+
+impl<T:WrappingOps+BitOr<Output=T>> BitOr for Wrapping<T> {
+    type Output = Wrapping<T>;
+
+    #[inline(always)]
+    fn bitor(self, other: Wrapping<T>) -> Wrapping<T> {
+        Wrapping(self.0 | other.0)
+    }
+}
+
+impl<T:WrappingOps+BitAnd<Output=T>> BitAnd for Wrapping<T> {
+    type Output = Wrapping<T>;
+
+    #[inline(always)]
+    fn bitand(self, other: Wrapping<T>) -> Wrapping<T> {
+        Wrapping(self.0 & other.0)
+    }
+}
+
+impl<T:WrappingOps+Shl<uint,Output=T>> Shl<uint> for Wrapping<T> {
+    type Output = Wrapping<T>;
+
+    #[inline(always)]
+    fn shl(self, other: uint) -> Wrapping<T> {
+        Wrapping(self.0 << other)
+    }
+}
+
+impl<T:WrappingOps+Shr<uint,Output=T>> Shr<uint> for Wrapping<T> {
+    type Output = Wrapping<T>;
+
+    #[inline(always)]
+    fn shr(self, other: uint) -> Wrapping<T> {
+        Wrapping(self.0 >> other)
     }
 }

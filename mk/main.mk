@@ -157,9 +157,8 @@ endif
 # have to worry about the distribution of one file (with its native dynamic
 # dependencies)
 RUSTFLAGS_STAGE0 += -C prefer-dynamic
-# FIXME: Remove the -Z force-no-overflow-checks flags
-RUSTFLAGS_STAGE1 += -C prefer-dynamic -Z force-no-overflow-checks
-RUST_LIB_FLAGS_ST2 += -C prefer-dynamic -Z force-no-overflow-checks
+RUSTFLAGS_STAGE1 += -C prefer-dynamic
+RUST_LIB_FLAGS_ST2 += -C prefer-dynamic
 RUST_LIB_FLAGS_ST3 += -C prefer-dynamic
 
 # Landing pads require a lot of codegen. We can get through bootstrapping faster
