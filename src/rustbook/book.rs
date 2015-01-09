@@ -124,7 +124,7 @@ pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String
             let path_from_root = match src.join(given_path.unwrap()).path_relative_from(src) {
                 Some(p) => p,
                 None => {
-                    errors.push(format!("Paths in SUMMARY.md must be relative, \
+                    errors.push(format!("paths in SUMMARY.md must be relative, \
                                          but path '{}' for section '{}' is not.",
                                          given_path.unwrap(), title));
                     Path::new("")
@@ -148,8 +148,9 @@ pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String
             }).sum() / 4 + 1;
 
             if level > stack.len() + 1 {
-                // FIXME: better error message
-                errors.push(format!("Section '{}' is indented too many levels.", item.title));
+                errors.push(format!("section '{}' is indented too deeply; \
+                                     found {}, expected {} or less",
+                                    item.title, level, stack.len() + 1));
             } else if level <= stack.len() {
                 collapse(&mut stack, &mut top_items, level);
             }
