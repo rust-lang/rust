@@ -218,8 +218,10 @@ pub enum Vtable<'tcx, N> {
     VtableImpl(VtableImplData<'tcx, N>),
 
     /// Successful resolution to an obligation provided by the caller
-    /// for some type parameter.
-    VtableParam,
+    /// for some type parameter. The `Vec<N>` represents the
+    /// obligations incurred from normalizing the where-clause (if
+    /// any).
+    VtableParam(Vec<N>),
 
     /// Virtual calls through an object
     VtableObject(VtableObjectData<'tcx>),
@@ -443,7 +445,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(ref i) => i.iter_nested(),
             VtableFnPointer(..) => (&[]).iter(),
             VtableUnboxedClosure(..) => (&[]).iter(),
-            VtableParam => (&[]).iter(),
+            VtableParam(ref n) => n.iter(),
             VtableObject(_) => (&[]).iter(),
             VtableBuiltin(ref i) => i.iter_nested(),
         }
@@ -454,7 +456,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(ref i) => VtableImpl(i.map_nested(op)),
             VtableFnPointer(ref sig) => VtableFnPointer((*sig).clone()),
             VtableUnboxedClosure(d, ref s) => VtableUnboxedClosure(d, s.clone()),
-            VtableParam => VtableParam,
+            VtableParam(ref n) => VtableParam(n.iter().map(op).collect()),
             VtableObject(ref p) => VtableObject(p.clone()),
             VtableBuiltin(ref b) => VtableBuiltin(b.map_nested(op)),
         }
@@ -467,7 +469,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(i) => VtableImpl(i.map_move_nested(op)),
             VtableFnPointer(sig) => VtableFnPointer(sig),
             VtableUnboxedClosure(d, s) => VtableUnboxedClosure(d, s),
-            VtableParam => VtableParam,
+            VtableParam(n) => VtableParam(n.into_iter().map(op).collect()),
             VtableObject(p) => VtableObject(p),
             VtableBuiltin(no) => VtableBuiltin(no.map_move_nested(op)),
         }
