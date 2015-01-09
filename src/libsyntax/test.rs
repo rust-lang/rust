@@ -439,13 +439,19 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<ast::ViewItem>) {
     let item_ = ast::ItemMod(testmod);
 
     let mod_ident = token::gensym_ident("__test");
+    let allow_unstable = {
+        let unstable = P(nospan(ast::MetaWord(InternedString::new("unstable"))));
+        let allow = P(nospan(ast::MetaList(InternedString::new("allow"),
+                                           vec![unstable])));
+        attr::mk_attr_inner(attr::mk_attr_id(), allow)
+    };
     let item = ast::Item {
         ident: mod_ident,
-        attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: item_,
         vis: ast::Public,
         span: DUMMY_SP,
+        attrs: vec![allow_unstable],
     };
     let reexport = cx.reexport_test_harness_main.as_ref().map(|s| {
         // building `use <ident> = __test::main`
