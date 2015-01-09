@@ -55,18 +55,6 @@ impl Sudoku {
         return Sudoku::new(g)
     }
 
-    pub fn equal(&self, other: &Sudoku) -> bool {
-        for row in range(0u8, 9u8) {
-            for col in range(0u8, 9u8) {
-                if self.grid[row as uint][col as uint] !=
-                        other.grid[row as uint][col as uint] {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
     pub fn read(mut reader: &mut BufferedReader<StdReader>) -> Sudoku {
         /* assert first line is exactly "9,9" */
         assert!(reader.read_line().unwrap() == "9,9".to_string());
@@ -184,7 +172,7 @@ impl Colors {
     fn next(&self) -> u8 {
         let Colors(c) = *self;
         let val = c & HEADS;
-        if (0u16 == val) {
+        if 0u16 == val {
             return 0u8;
         } else {
             return val.trailing_zeros() as u8

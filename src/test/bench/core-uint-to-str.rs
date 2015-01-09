@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::os;
-use std::uint;
 
 fn main() {
     let args = os::args();

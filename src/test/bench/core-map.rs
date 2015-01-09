@@ -14,7 +14,6 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::os;
 use std::rand::{Rng, IsaacRng, SeedableRng};
 use std::time::Duration;
-use std::uint;
 
 fn timed<F>(label: &str, f: F) where F: FnMut() {
     println!("  {}: {}", label, Duration::span(f));
