@@ -29,6 +29,12 @@ DOCS := index intro tutorial complement-bugreport \
     complement-lang-faq complement-design-faq complement-project-faq \
     rustdoc reference
 
+# Legacy guides, preserved for a while to reduce the number of 404s
+DOCS += guide-crates guide-error-handling guide-ffi guide-macros guide \
+    guide-ownership guide-plugins guide-pointers guide-strings guide-tasks \
+    guide-testing
+
+
 PDF_DOCS := reference
 
 RUSTDOC_DEPS_reference := doc/full-toc.inc
