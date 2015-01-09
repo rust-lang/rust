@@ -65,7 +65,7 @@ error: type `T` does not implement any method in scope named `area`
 ```
 
 Because `T` can be any type, we can't be sure that it implements the `area`
-method. But we can add a **trait constraint** to our generic `T`, ensuring
+method. But we can add a *trait constraint* to our generic `T`, ensuring
 that it does:
 
 ```{rust}
@@ -269,7 +269,7 @@ if we tried to implement `Float`, a trait provided by Rust, for `int`, we could
 not, because both the trait and the type aren't in our crate.
 
 One last thing about traits: generic functions with a trait bound use
-**monomorphization** ("mono": one, "morph": form), so they are statically
+*monomorphization* (*mono*: one, *morph*: form), so they are statically
 dispatched. What's that mean? Well, let's take a look at `print_area` again:
 
 ```{rust,ignore}
@@ -313,5 +313,5 @@ fn main() {
 
 The names don't actually change to this, it's just for illustration. But
 as you can see, there's no overhead of deciding which version to call here,
-hence 'statically dispatched.' The downside is that we have two copies of
+hence *statically dispatched*. The downside is that we have two copies of
 the same function, so our binary is a little bit larger.

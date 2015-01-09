@@ -29,7 +29,7 @@ information.
 `rustc` can load compiler plugins, which are user-provided libraries that
 extend the compiler's behavior with new syntax extensions, lint checks, etc.
 
-A plugin is a dynamic library crate with a designated "registrar" function that
+A plugin is a dynamic library crate with a designated *registrar* function that
 registers extensions with `rustc`. Other crates can use these extensions by
 loading the plugin crate with `#[plugin] extern crate`. See the
 [`rustc::plugin`](../rustc/plugin/index.html) documentation for more about the
