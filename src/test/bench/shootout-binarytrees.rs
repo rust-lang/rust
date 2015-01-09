@@ -92,7 +92,7 @@ fn main() {
     let long_lived_arena = TypedArena::new();
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
 
-    let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
+    let messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
             use std::num::Int;
             let iterations = 2i.pow((max_depth - depth + min_depth) as uint);
             Thread::scoped(move|| {

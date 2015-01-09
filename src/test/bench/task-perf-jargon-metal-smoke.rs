@@ -20,7 +20,6 @@
 use std::sync::mpsc::{channel, Sender};
 use std::os;
 use std::thread::Thread;
-use std::uint;
 
 fn child_generation(gens_left: uint, tx: Sender<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.

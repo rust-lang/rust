@@ -22,7 +22,6 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std::os;
 use std::thread::Thread;
 use std::time::Duration;
-use std::uint;
 
 fn move_out<T>(_x: T) {}
 

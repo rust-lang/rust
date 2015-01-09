@@ -202,6 +202,6 @@ fn shift_mut_ref<'a, T>(r: &mut &'a mut [T]) -> Option<&'a mut T> {
         raw.data = raw.data.offset(1);
         raw.len -= 1;
         *r = mem::transmute(raw);
-        Some(unsafe { &mut *ret })
+        Some({ &mut *ret })
     }
 }
