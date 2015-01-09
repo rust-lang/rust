@@ -22,7 +22,7 @@ Version 1.0.0-alpha (January 2015)
     * Documentation continues to be expanded with more API coverage, more
       examples, and more in-depth explanations. The guides have been
       consolidated into [The Rust Programming Language][trpl].
-    * "Rust By Example" is now maintained by the Rust team.
+    * "[Rust By Example][rbe]" is now maintained by the Rust team.
     * All official Rust binary installers now come with [Cargo], the
       Rust package manager.
 
@@ -182,6 +182,7 @@ Version 1.0.0-alpha (January 2015)
 [assoc]: https://github.com/rust-lang/rfcs/blob/master/text/0195-associated-items.md
 [ints]: https://github.com/rust-lang/rfcs/pull/544#issuecomment-68760871
 [trpl]: http://doc.rust-lang.org/book/index.html
+[rbe]: http://rustbyexample.com/
 
 Version 0.12.0 (October 2014)
 -----------------------------
