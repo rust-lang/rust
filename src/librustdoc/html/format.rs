@@ -544,7 +544,7 @@ impl fmt::String for clean::Type {
             }
             clean::FixedVector(ref t, ref s) => {
                 primitive_link(f, clean::Slice,
-                               format!("[{}, ..{}]", **t, *s).as_slice())
+                               format!("[{}; {}]", **t, *s).as_slice())
             }
             clean::Bottom => f.write_str("!"),
             clean::RawPointer(m, ref t) => {
