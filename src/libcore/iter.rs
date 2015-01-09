@@ -110,6 +110,7 @@ pub trait FromIterator<A> {
 #[stable]
 pub trait Extend<A> {
     /// Extend a container with the elements yielded by an arbitrary iterator
+    #[stable]
     fn extend<T: Iterator<Item=A>>(&mut self, iterator: T);
 }
 
@@ -965,6 +966,7 @@ impl<I> IteratorExt for I where I: Iterator {}
 #[stable]
 pub trait DoubleEndedIterator: Iterator {
     /// Yield an element from the end of the range, returning `None` if the range is empty.
+    #[stable]
     fn next_back(&mut self) -> Option<Self::Item>;
 }
 
