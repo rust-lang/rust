@@ -23,21 +23,34 @@ pub fn next_test_port() -> u16 {
     base_port() + NEXT_OFFSET.fetch_add(1, Ordering::Relaxed) as u16
 }
 
-/// Get a temporary path which could be the location of a unix socket
-pub fn next_test_unix() -> Path {
+// iOS has a pretty long tmpdir path which causes pipe creation
+// to like: invalid argument: path must be smaller than SUN_LEN
+fn next_test_unix_socket() -> String {
     static COUNT: AtomicUint = ATOMIC_UINT_INIT;
     // base port and pid are an attempt to be unique between multiple
     // test-runners of different configurations running on one
     // buildbot, the count is to be unique within this executable.
-    let string = format!("rust-test-unix-path-{}-{}-{}",
-                         base_port(),
-                         unsafe {libc::getpid()},
-                         COUNT.fetch_add(1, Ordering::Relaxed));
+    format!("rust-test-unix-path-{}-{}-{}",
+            base_port(),
+            unsafe {libc::getpid()},
+            COUNT.fetch_add(1, Ordering::Relaxed))
+}
+
+/// Get a temporary path which could be the location of a unix socket
+#[cfg(not(target_os = "ios"))]
+pub fn next_test_unix() -> Path {
+    let string = next_test_unix_socket();
     if cfg!(unix) {
         os::tmpdir().join(string)
     } else {
         Path::new(format!("{}{}", r"\\.\pipe\", string))
     }
+}
+
+/// Get a temporary path which could be the location of a unix socket
+#[cfg(target_os = "ios")]
+pub fn next_test_unix() -> Path {
+    Path::new(format!("/var/tmp/{}", next_test_unix_socket()))
 }
 
 /// Get a unique IPv4 localhost:port pair starting at 9600
@@ -99,7 +112,7 @@ pub fn raise_fd_limit() {
 /// multithreaded scheduler testing, depending on the number of cores available.
 ///
 /// This fixes issue #7772.
-#[cfg(target_os="macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 #[allow(non_camel_case_types)]
 mod darwin_fd_limit {
     use libc;
@@ -156,7 +169,7 @@ mod darwin_fd_limit {
     }
 }
 
-#[cfg(not(target_os="macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod darwin_fd_limit {
     pub unsafe fn raise_fd_limit() {}
 }
