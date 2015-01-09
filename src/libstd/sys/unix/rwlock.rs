@@ -50,8 +50,21 @@ impl RWLock {
     #[inline]
     pub unsafe fn write_unlock(&self) { self.read_unlock() }
     #[inline]
+    #[cfg(not(target_os = "dragonfly"))]
     pub unsafe fn destroy(&self) {
         let r = ffi::pthread_rwlock_destroy(self.inner.get());
         debug_assert_eq!(r, 0);
+    }
+
+    #[inline]
+    #[cfg(target_os = "dragonfly")]
+    pub unsafe fn destroy(&self) {
+        use libc;
+        let r = ffi::pthread_rwlock_destroy(self.inner.get());
+        // On DragonFly pthread_rwlock_destroy() returns EINVAL if called on a
+        // rwlock that was just initialized with
+        // ffi::PTHREAD_RWLOCK_INITIALIZER. Once it is used (locked/unlocked)
+        // or pthread_rwlock_init() is called, this behaviour no longer occurs.
+        debug_assert!(r == 0 || r == libc::EINVAL);
     }
 }

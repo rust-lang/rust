@@ -48,8 +48,20 @@ impl Mutex {
         ffi::pthread_mutex_trylock(self.inner.get()) == 0
     }
     #[inline]
+    #[cfg(not(target_os = "dragonfly"))]
     pub unsafe fn destroy(&self) {
         let r = ffi::pthread_mutex_destroy(self.inner.get());
         debug_assert_eq!(r, 0);
+    }
+    #[inline]
+    #[cfg(target_os = "dragonfly")]
+    pub unsafe fn destroy(&self) {
+        use libc;
+        let r = ffi::pthread_mutex_destroy(self.inner.get());
+        // On DragonFly pthread_mutex_destroy() returns EINVAL if called on a
+        // mutex that was just initialized with ffi::PTHREAD_MUTEX_INITIALIZER.
+        // Once it is used (locked/unlocked) or pthread_mutex_init() is called,
+        // this behaviour no longer occurs.
+        debug_assert!(r == 0 || r == libc::EINVAL);
     }
 }

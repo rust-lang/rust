@@ -76,8 +76,20 @@ impl Condvar {
     }
 
     #[inline]
+    #[cfg(not(target_os = "dragonfly"))]
     pub unsafe fn destroy(&self) {
         let r = ffi::pthread_cond_destroy(self.inner.get());
         debug_assert_eq!(r, 0);
+    }
+
+    #[inline]
+    #[cfg(target_os = "dragonfly")]
+    pub unsafe fn destroy(&self) {
+        let r = ffi::pthread_cond_destroy(self.inner.get());
+        // On DragonFly pthread_cond_destroy() returns EINVAL if called on
+        // a condvar that was just initialized with
+        // ffi::PTHREAD_COND_INITIALIZER. Once it is used or
+        // pthread_cond_init() is called, this behaviour no longer occurs.
+        debug_assert!(r == 0 || r == libc::EINVAL);
     }
 }
