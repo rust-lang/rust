@@ -409,6 +409,7 @@ impl<'a> CrateReader<'a> {
                     crate_name: name,
                     hash: hash.map(|a| &*a),
                     filesearch: self.sess.target_filesearch(kind),
+                    target: &self.sess.target.target,
                     triple: &self.sess.opts.target_triple[],
                     root: root,
                     rejected_via_hash: vec!(),
@@ -472,6 +473,7 @@ impl<'a> CrateReader<'a> {
             crate_name: &name[],
             hash: None,
             filesearch: self.sess.host_filesearch(PathKind::Crate),
+            target: &self.sess.host,
             triple: config::host_triple(),
             root: &None,
             rejected_via_hash: vec!(),
@@ -486,6 +488,7 @@ impl<'a> CrateReader<'a> {
                 target_only = true;
                 should_link = info.should_link;
 
+                load_ctxt.target = &self.sess.target.target;
                 load_ctxt.triple = target_triple;
                 load_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
                 load_ctxt.load_library_crate()

@@ -25,6 +25,8 @@ use syntax::parse::token;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
 
+use rustc_back::target::Target;
+
 use std::os;
 use std::cell::{Cell, RefCell};
 
@@ -35,6 +37,7 @@ pub mod search_paths;
 // session for a single crate.
 pub struct Session {
     pub target: config::Config,
+    pub host: Target,
     pub opts: config::Options,
     pub cstore: CStore,
     pub parse_sess: ParseSess,
@@ -243,6 +246,13 @@ pub fn build_session_(sopts: config::Options,
                       local_crate_source_file: Option<Path>,
                       span_diagnostic: diagnostic::SpanHandler)
                       -> Session {
+    let host = match Target::search(config::host_triple()) {
+        Ok(t) => t,
+        Err(e) => {
+            span_diagnostic.handler()
+                .fatal((format!("Error loading host specification: {}", e)).as_slice());
+    }
+    };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic);
     let default_sysroot = match sopts.maybe_sysroot {
@@ -268,6 +278,7 @@ pub fn build_session_(sopts: config::Options,
 
     let sess = Session {
         target: target_cfg,
+        host: host,
         opts: sopts,
         cstore: CStore::new(token::get_ident_interner()),
         parse_sess: p_s,
