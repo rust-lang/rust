@@ -19,7 +19,7 @@ use ext::tt::macro_parser::{parse, parse_or_else};
 use parse::lexer::{new_tt_reader, new_tt_reader_with_doc_flag};
 use parse::parser::Parser;
 use parse::attr::ParserAttr;
-use parse::token::{special_idents, gensym_ident, NtTT, Token};
+use parse::token::{special_idents, gensym_ident, NtTT, Token, BinOpToken};
 use parse::token::Token::*;
 use parse::token;
 use print;
@@ -433,7 +433,7 @@ fn is_in_follow(cx: &ExtCtxt, tok: &Token, frag: &str) -> bool {
         },
         "pat" => {
             match *tok {
-                FatArrow | Comma | Eq => true,
+                FatArrow | Comma | Eq | BinOp(BinOpToken::Or) => true,
                 _ => false
             }
         },
