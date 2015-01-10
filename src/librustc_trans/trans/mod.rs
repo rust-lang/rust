@@ -45,6 +45,7 @@ mod cabi_x86_win64;
 mod cabi_arm;
 mod cabi_aarch64;
 mod cabi_mips;
+mod cabi_powerpc;
 mod foreign;
 mod intrinsic;
 mod debuginfo;
