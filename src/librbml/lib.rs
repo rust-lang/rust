@@ -1059,8 +1059,8 @@ pub mod writer {
             self.end_tag()
         }
 
-        fn emit_map_elt_key<F>(&mut self, _idx: uint, mut f: F) -> EncodeResult where
-            F: FnMut(&mut Encoder<'a, W>) -> EncodeResult,
+        fn emit_map_elt_key<F>(&mut self, _idx: uint, f: F) -> EncodeResult where
+            F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
         {
 
             try!(self.start_tag(EsMapKey as uint));
