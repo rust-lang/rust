@@ -10,7 +10,7 @@
 
 use prelude::v1::*;
 
-use sync::atomic::{AtomicUint, Ordering, ATOMIC_UINT_INIT};
+use sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 use sync::poison::{self, LockResult};
 use sys_common::condvar as sys;
 use sys_common::mutex as sys_mutex;
@@ -78,7 +78,7 @@ unsafe impl Sync for Condvar {}
 #[unstable = "may be merged with Condvar in the future"]
 pub struct StaticCondvar {
     inner: sys::Condvar,
-    mutex: AtomicUint,
+    mutex: AtomicUsize,
 }
 
 unsafe impl Send for StaticCondvar {}
@@ -88,7 +88,7 @@ unsafe impl Sync for StaticCondvar {}
 #[unstable = "may be merged with Condvar in the future"]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
     inner: sys::CONDVAR_INIT,
-    mutex: ATOMIC_UINT_INIT,
+    mutex: ATOMIC_USIZE_INIT,
 };
 
 impl Condvar {
@@ -99,7 +99,7 @@ impl Condvar {
         Condvar {
             inner: box StaticCondvar {
                 inner: unsafe { sys::Condvar::new() },
-                mutex: AtomicUint::new(0),
+                mutex: AtomicUsize::new(0),
             }
         }
     }

@@ -54,7 +54,7 @@ use result::Result::{Err, Ok};
 use slice::{AsSlice, SliceExt};
 use str::{Str, StrExt};
 use string::{String, ToString};
-use sync::atomic::{AtomicInt, ATOMIC_INT_INIT, Ordering};
+use sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};
 use vec::Vec;
 
 #[cfg(unix)] use ffi::{self, CString};
@@ -590,7 +590,7 @@ pub fn last_os_error() -> String {
     error_string(errno() as uint)
 }
 
-static EXIT_STATUS: AtomicInt = ATOMIC_INT_INIT;
+static EXIT_STATUS: AtomicIsize = ATOMIC_ISIZE_INIT;
 
 /// Sets the process exit code
 ///
