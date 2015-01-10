@@ -32,7 +32,8 @@ mod imp {
               any(target_arch = "x86_64",
                   target_arch = "x86",
                   target_arch = "arm",
-                  target_arch = "aarch64")))]
+                  target_arch = "aarch64",
+                  target_arch = "powerpc")))]
     fn getrandom(buf: &mut [u8]) -> libc::c_long {
         extern "C" {
             fn syscall(number: libc::c_long, ...) -> libc::c_long;
@@ -44,6 +45,8 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 355;
         #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
         const NR_GETRANDOM: libc::c_long = 384;
+        #[cfg(target_arch = "powerpc")]
+        const NR_GETRANDOM: libc::c_long = 384;
 
         unsafe {
             syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), 0u)
@@ -54,7 +57,8 @@ mod imp {
                   any(target_arch = "x86_64",
                       target_arch = "x86",
                       target_arch = "arm",
-                      target_arch = "aarch64"))))]
+                      target_arch = "aarch64",
+                      target_arch = "powerpc"))))]
     fn getrandom(_buf: &mut [u8]) -> libc::c_long { -1 }
 
     fn getrandom_fill_bytes(v: &mut [u8]) {
@@ -91,7 +95,8 @@ mod imp {
               any(target_arch = "x86_64",
                   target_arch = "x86",
                   target_arch = "arm",
-                  target_arch = "aarch64")))]
+                  target_arch = "aarch64",
+                  target_arch = "powerpc")))]
     fn is_getrandom_available() -> bool {
         use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 
@@ -119,7 +124,8 @@ mod imp {
                   any(target_arch = "x86_64",
                       target_arch = "x86",
                       target_arch = "arm",
-                      target_arch = "aarch64"))))]
+                      target_arch = "aarch64",
+                      target_arch = "powerpc"))))]
     fn is_getrandom_available() -> bool { false }
 
     /// A random number generator that retrieves randomness straight from
