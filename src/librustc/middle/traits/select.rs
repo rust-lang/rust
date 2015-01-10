@@ -214,6 +214,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.closure_typer.param_env()
     }
 
+    pub fn closure_typer(&self) -> &'cx (ty::UnboxedClosureTyper<'tcx>+'cx) {
+        self.closure_typer
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Selection
     //
@@ -1913,33 +1917,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                obligation.repr(self.tcx()));
 
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
-        let sig = match self_ty.sty {
-            ty::ty_bare_fn(_, &ty::BareFnTy {
-                unsafety: ast::Unsafety::Normal,
-                abi: abi::Rust,
-                ref sig
-            }) => {
-                sig
-            }
-            _ => {
-                self.tcx().sess.span_bug(
-                    obligation.cause.span,
-                    &format!("Fn pointer candidate for inappropriate self type: {}",
-                            self_ty.repr(self.tcx()))[]);
-            }
-        };
-
-        let arguments_tuple = ty::mk_tup(self.tcx(), sig.0.inputs.to_vec());
-        let output_type = sig.0.output.unwrap();
-        let substs =
-            Substs::new_trait(
-                vec![arguments_tuple, output_type],
-                vec![],
-                self_ty);
-        let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
-            def_id: obligation.predicate.def_id(),
-            substs: self.tcx().mk_substs(substs),
-        }));
+        let sig = ty::ty_fn_sig(self_ty);
+        let ty::Binder((trait_ref, _)) =
+            util::closure_trait_ref_and_return_type(self.tcx(),
+                                                    obligation.predicate.def_id(),
+                                                    self_ty,
+                                                    sig,
+                                                    util::TupleArgumentsFlag::Yes);
+        let trait_ref = ty::Binder(trait_ref);
 
         try!(self.confirm_poly_trait_refs(obligation.cause.clone(),
                                           obligation.predicate.to_poly_trait_ref(),
@@ -1958,23 +1943,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                closure_def_id.repr(self.tcx()),
                substs.repr(self.tcx()));
 
-        let closure_type = self.closure_typer.closure_type(closure_def_id, substs);
-
-        debug!("confirm_closure_candidate: closure_def_id={} closure_type={}",
-               closure_def_id.repr(self.tcx()),
-               closure_type.repr(self.tcx()));
-
-        let closure_sig = &closure_type.sig;
-        let arguments_tuple = closure_sig.0.inputs[0];
-        let trait_substs =
-            Substs::new_trait(
-                vec![arguments_tuple, closure_sig.0.output.unwrap()],
-                vec![],
-                obligation.self_ty());
-        let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
-            def_id: obligation.predicate.def_id(),
-            substs: self.tcx().mk_substs(trait_substs),
-        }));
+        let trait_ref = self.closure_trait_ref(obligation,
+                                               closure_def_id,
+                                               substs);
 
         debug!("confirm_closure_candidate(closure_def_id={}, trait_ref={})",
                closure_def_id.repr(self.tcx()),
@@ -2278,6 +2249,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             None => Vec::new(),
             Some(impls) => impls.borrow().clone()
         }
+    }
+
+    fn closure_trait_ref(&self,
+                         obligation: &TraitObligation<'tcx>,
+                         closure_def_id: ast::DefId,
+                         substs: &Substs<'tcx>)
+                         -> ty::PolyTraitRef<'tcx>
+    {
+        let closure_type = self.closure_typer.closure_type(closure_def_id, substs);
+        let ty::Binder((trait_ref, _)) =
+            util::closure_trait_ref_and_return_type(self.tcx(),
+                                                    obligation.predicate.def_id(),
+                                                    obligation.predicate.0.self_ty(), // (1)
+                                                    &closure_type.sig,
+                                                    util::TupleArgumentsFlag::No);
+
+        // (1) Feels icky to skip the binder here, but OTOH we know
+        // that the self-type is an unboxed closure type and hence is
+        // in fact unparameterized (or at least does not reference any
+        // regions bound in the obligation). Still probably some
+        // refactoring could make this nicer.
+
+        ty::Binder(trait_ref)
     }
 
     fn impl_obligations(&mut self,

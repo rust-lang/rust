@@ -512,7 +512,7 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
     }
 
     if cx.lang_items.fn_trait_kind(did).is_some() {
-        format!("{}({}){}",
+        format!("{}({})", // TODO
                 base,
                 if strs[0].starts_with("(") && strs[0].ends_with(",)") {
                     &strs[0][1 .. strs[0].len() - 2] // Remove '(' and ',)'
@@ -520,8 +520,7 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
                     &strs[0][1 .. strs[0].len() - 1] // Remove '(' and ')'
                 } else {
                     &strs[0][]
-                },
-                if &*strs[1] == "()" { String::new() } else { format!(" -> {}", strs[1]) })
+                })
     } else if strs.len() > 0 {
         format!("{}<{}>", base, strs.connect(", "))
     } else {
