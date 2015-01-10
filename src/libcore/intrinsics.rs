@@ -569,4 +569,10 @@ extern "rust-intrinsic" {
     pub fn overflowing_sub<T>(a: T, b: T) -> T;
     /// Returns (a * b) mod 2^N, where N is the width of N in bits.
     pub fn overflowing_mul<T>(a: T, b: T) -> T;
+
+    /// Returns the value of the discriminant for the variant in 'v',
+    /// cast to a `u64`; if `T` has no discriminant, returns 0.
+    // SNAP 5520801
+    #[cfg(not(stage0))]
+    pub fn discriminant_value<T>(v: &T) -> u64;
 }
