@@ -10,7 +10,7 @@ the right way to test Rust code. There are many schools of thought regarding
 the right and wrong way to write tests. All of these approaches use the same
 basic tools, and so we'll show you the syntax for using them.
 
-# The `test` attribute
+## The `test` attribute
 
 At its simplest, a test in Rust is a function that's annotated with the `test`
 attribute. Let's make a new project with Cargo called `adder`:
@@ -219,7 +219,7 @@ fn it_works() {
 This is a very common use of `assert_eq!`: call some function with
 some known arguments and compare it to the expected output.
 
-# The `test` module
+## The `test` module
 
 There is one way in which our existing example is not idiomatic: it's
 missing the test module. The idiomatic way of writing our example
@@ -299,7 +299,7 @@ tests. Anything that just tests one small bit of functionality makes sense to
 go here. But what about "integration-style" tests instead? For that, we have
 the `tests` directory
 
-# The `tests` directory
+## The `tests` directory
 
 To write an integration test, let's make a `tests` directory, and
 put a `tests/lib.rs` file inside, with this as its contents:
@@ -353,7 +353,7 @@ here, since the whole thing is focused on tests.
 
 Let's finally check out that third section: documentation tests.
 
-# Documentation tests
+## Documentation tests
 
 Nothing is better than documentation with examples. Nothing is worse than
 examples that don't actually work, because the code has changed since the
@@ -434,7 +434,7 @@ documentation tests: the `_0` is generated for the module test, and `add_two_0`
 for the function test. These will auto increment with names like `add_two_1` as
 you add more examples.
 
-# Benchmark tests
+## Benchmark tests
 
 Rust also supports benchmark tests, which can test the performance of your
 code. Let's make our `src/lib.rs` look like this (comments elided):
@@ -503,7 +503,7 @@ Advice on writing benchmarks:
 * Make the code in the `iter` loop do something simple, to assist in pinpointing
   performance improvements (or regressions)
 
-## Gotcha: optimizations
+### Gotcha: optimizations
 
 There's another tricky part to writing benchmarks: benchmarks compiled with
 optimizations activated can be dramatically changed by the optimizer so that

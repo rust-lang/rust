@@ -1,6 +1,6 @@
 % Writing Unsafe and Low-Level Code in Rust
 
-# Introduction
+## Introduction
 
 Rust aims to provide safe abstractions over the low-level details of
 the CPU and operating system, but sometimes one needs to drop down and
@@ -32,9 +32,9 @@ build safe interfaces.
 > compilation errors, but do cause semantic changes (such as invoking
 > undefined behaviour). As such, extreme care is required.
 
-# Pointers
+## Pointers
 
-## References
+### References
 
 One of Rust's biggest features is memory safety.  This is achieved in
 part via [the ownership system](ownership.html), which is how the
@@ -76,7 +76,7 @@ let ref_2: &mut u8 = unsafe { mem::transmute(&mut *ref_1) };
 *ref_2 = 20;
 ```
 
-## Raw pointers
+### Raw pointers
 
 Rust offers two additional pointer types (*raw pointers*), written as
 `*const T` and `*mut T`. They're an approximation of C's `const T*` and `T*`
@@ -127,7 +127,7 @@ The latter assumption allows the compiler to optimize more
 effectively. As can be seen, actually *creating* a raw pointer is not
 unsafe, and neither is converting to an integer.
 
-### References and raw pointers
+#### References and raw pointers
 
 At runtime, a raw pointer `*` and a reference pointing to the same
 piece of data have an identical representation. In fact, an `&T`
@@ -167,7 +167,7 @@ requires that `x` is a pointer (unlike `transmute`).
 
 
 
-## Making the unsafe safe(r)
+### Making the unsafe safe(r)
 
 There are various ways to expose a safe interface around some unsafe
 code:
@@ -284,7 +284,7 @@ because the compiler statically guarantees that objects are never used
 before creation or after destruction (unless you use some `unsafe`
 code...).
 
-# Inline assembly
+## Inline assembly
 
 For extremely low-level manipulations and performance reasons, one
 might wish to control the CPU directly. Rust supports using inline
@@ -306,7 +306,7 @@ crate to allow) and of course requires an `unsafe` block.
 > **Note**: the examples here are given in x86/x86-64 assembly, but
 > all platforms are supported.
 
-## Assembly template
+### Assembly template
 
 The `assembly template` is the only required parameter and must be a
 literal string (i.e `""`)
@@ -359,7 +359,7 @@ asm!("xor %eax, %eax" ::: "eax");
 # } }
 ```
 
-## Operands
+### Operands
 
 Input and output operands follow the same format: `:
 "constraints1"(expr1), "constraints2"(expr2), ..."`. Output operand
@@ -386,7 +386,7 @@ fn main() {
 }
 ```
 
-## Clobbers
+### Clobbers
 
 Some instructions modify registers which might otherwise have held
 different values so we use the clobbers list to indicate to the
@@ -410,7 +410,7 @@ If the assembly changes the condition code register `cc` should be
 specified as one of the clobbers. Similarly, if the assembly modifies
 memory, `memory` should also be specified.
 
-## Options
+### Options
 
 The last section, `options` is specific to Rust. The format is comma
 separated literal strings (i.e `:"foo", "bar", "baz"`). It's used to
@@ -425,7 +425,7 @@ Current valid options are:
    the compiler to insert its usual stack alignment code
 3. *intel* - use intel syntax instead of the default AT&T.
 
-# Avoiding the standard library
+## Avoiding the standard library
 
 By default, `std` is linked to every Rust crate. In some contexts,
 this is undesirable, and can be avoided with the `#![no_std]`
@@ -510,7 +510,7 @@ information), but crates which do not trigger a panic can be assured
 that this function is never called. The final function, `panic_fmt`, is
 also used by the failure mechanisms of the compiler.
 
-## Using libcore
+### Using libcore
 
 > **Note**: the core library's structure is unstable, and it is recommended to
 > use the standard library instead wherever possible.
@@ -592,7 +592,7 @@ libraries, such as liballoc, add functionality to libcore which make other
 platform-specific assumptions, but continue to be more portable than the
 standard library itself.
 
-# Interacting with the compiler internals
+## Interacting with the compiler internals
 
 > **Note**: this section is specific to the `rustc` compiler; these
 > parts of the language may never be fully specified and so details may
@@ -611,7 +611,7 @@ libraries to interact directly with the compiler and vice versa:
 - lang-items, special functions, types and traits in libraries marked
   with specific `#[lang]` attributes
 
-## Intrinsics
+### Intrinsics
 
 > **Note**: intrinsics will forever have an unstable interface, it is
 > recommended to use the stable interfaces of libcore rather than intrinsics
@@ -636,7 +636,7 @@ extern "rust-intrinsic" {
 
 As with any other FFI functions, these are always `unsafe` to call.
 
-## Lang items
+### Lang items
 
 > **Note**: lang items are often provided by crates in the Rust distribution,
 > and lang items themselves have an unstable interface. It is recommended to use

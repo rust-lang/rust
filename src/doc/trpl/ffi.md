@@ -1,6 +1,6 @@
 % The Rust Foreign Function Interface Guide
 
-# Introduction
+## Introduction
 
 This guide will use the [snappy](https://github.com/google/snappy)
 compression/decompression library as an introduction to writing bindings for
@@ -68,7 +68,7 @@ extern {
 # fn main() {}
 ~~~~
 
-# Creating a safe interface
+## Creating a safe interface
 
 The raw C API needs to be wrapped to provide memory safety and make use of higher-level concepts
 like vectors. A library can choose to expose only the safe, high-level interface and hide the unsafe
@@ -164,7 +164,7 @@ pub fn uncompress(src: &[u8]) -> Option<Vec<u8>> {
 For reference, the examples used here are also available as an [library on
 GitHub](https://github.com/thestinger/rust-snappy).
 
-# Stack management
+## Stack management
 
 Rust tasks by default run on a *large stack*. This is actually implemented as a
 reserving a large segment of the address space and then lazily mapping in pages
@@ -187,13 +187,13 @@ interoperate. If, however, it is determined that a larger stack is necessary,
 there are appropriate functions in the task spawning API to control the size of
 the stack of the task which is spawned.
 
-# Destructors
+## Destructors
 
 Foreign libraries often hand off ownership of resources to the calling code.
 When this occurs, we must use Rust's destructors to provide safety and guarantee
 the release of these resources (especially in the case of panic).
 
-# Callbacks from C code to Rust functions
+## Callbacks from C code to Rust functions
 
 Some external libraries require the usage of callbacks to report back their
 current state or intermediate data to the caller.
@@ -247,7 +247,7 @@ In this example Rust's `main()` will call `trigger_callback()` in C,
 which would, in turn, call back to `callback()` in Rust.
 
 
-## Targeting callbacks to Rust objects
+### Targeting callbacks to Rust objects
 
 The former example showed how a global function can be called from C code.
 However it is often desired that the callback is targeted to a special
@@ -314,7 +314,7 @@ void trigger_callback() {
 }
 ~~~~
 
-## Asynchronous callbacks
+### Asynchronous callbacks
 
 In the previously given examples the callbacks are invoked as a direct reaction
 to a function call to the external C library.
@@ -338,7 +338,7 @@ This can be achieved by unregistering the callback in the object's
 destructor and designing the library in a way that guarantees that no
 callback will be performed after deregistration.
 
-# Linking
+## Linking
 
 The `link` attribute on `extern` blocks provides the basic building block for
 instructing rustc how it will link to native libraries. There are two accepted
@@ -385,7 +385,7 @@ A few examples of how this model can be used are:
 
 On OSX, frameworks behave with the same semantics as a dynamic library.
 
-## The `link_args` attribute
+### The `link_args` attribute
 
 There is one other way to tell rustc how to customize linking, and that is via
 the `link_args` attribute. This attribute is applied to `extern` blocks and
@@ -410,7 +410,7 @@ meaning.
 It is highly recommended to *not* use this attribute, and rather use the more
 formal `#[link(...)]` attribute on `extern` blocks instead.
 
-# Unsafe blocks
+## Unsafe blocks
 
 Some operations, like dereferencing unsafe pointers or calling functions that have been marked
 unsafe are only allowed inside unsafe blocks. Unsafe blocks isolate unsafety and are a promise to
@@ -425,7 +425,7 @@ unsafe fn kaboom(ptr: *const int) -> int { *ptr }
 
 This function can only be called from an `unsafe` block or another `unsafe` function.
 
-# Accessing foreign globals
+## Accessing foreign globals
 
 Foreign APIs often export a global variable which could do something like track
 global state. In order to access these variables, you declare them in `extern`
@@ -468,7 +468,7 @@ fn main() {
 }
 ~~~
 
-# Foreign calling conventions
+## Foreign calling conventions
 
 Most foreign code exposes a C ABI, and Rust uses the platform's C calling convention by default when
 calling foreign functions. Some foreign functions, most notably the Windows API, use other calling
@@ -507,7 +507,7 @@ however, windows uses the `C` calling convention, so `C` would be used. This
 means that in our previous example, we could have used `extern "system" { ... }`
 to define a block for all windows systems, not just x86 ones.
 
-# Interoperability with foreign code
+## Interoperability with foreign code
 
 Rust guarantees that the layout of a `struct` is compatible with the platform's
 representation in C only if the `#[repr(C)]` attribute is applied to it.
@@ -532,7 +532,7 @@ The standard library includes type aliases and function definitions for the C
 standard library in the `libc` module, and Rust links against `libc` and `libm`
 by default.
 
-# The "nullable pointer optimization"
+## The "nullable pointer optimization"
 
 Certain types are defined to not be `null`. This includes references (`&T`,
 `&mut T`), boxes (`Box<T>`), and function pointers (`extern "abi" fn()`).

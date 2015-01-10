@@ -6,7 +6,7 @@ acquainted. Ownership is how Rust achieves its largest goal, memory safety.
 The ownership system has a few distinct concepts: *ownership*, *borrowing*,
 and *lifetimes*. We'll talk about each one in turn.
 
-# Meta
+## Meta
 
 Before we get to the details, two important notes about the ownership system.
 
@@ -29,7 +29,7 @@ checker less and less.
 
 With that in mind, let's learn about ownership.
 
-# Ownership
+## Ownership
 
 At its core, ownership is about *resources*. For the purposes of the vast
 majority of this guide, we will talk about a specific resource: memory. The
@@ -174,7 +174,7 @@ and so Rust introduces a concept to describe a handle which temporarily refers
 to something another handle owns. It's called *borrowing*, and it's done with
 *references*, designated by the `&` symbol.
 
-# Borrowing
+## Borrowing
 
 Here's the current state of our `add_one` function:
 
@@ -207,7 +207,7 @@ fn add_one(num: &mut int) {
 This function borrows an `int` from its caller, and then increments it. When
 the function is over, and `num` goes out of scope, the borrow is over.
 
-# Lifetimes
+## Lifetimes
 
 Lending out a reference to a resource that someone else owns can be
 complicated, however. For example, imagine this set of operations:
@@ -303,7 +303,7 @@ x: &'a int,
 uses it. So why do we need a lifetime here? We need to ensure that any reference
 to a `Foo` cannot outlive the reference to an `int` it contains.
 
-## Thinking in scopes
+### Thinking in scopes
 
 A way to think about lifetimes is to visualize the scope that a reference is
 valid for. For example:
@@ -360,7 +360,7 @@ about to go out of scope.
 Named lifetimes are a way of giving these scopes a name. Giving something a
 name is the first step towards being able to talk about it.
 
-## 'static
+### 'static
 
 The lifetime named *static* is a special lifetime. It signals that something
 has the lifetime of the entire program. Most Rust programmers first come across
@@ -382,7 +382,7 @@ let x: &'static int = &FOO;
 This adds an `int` to the data segment of the binary, and FOO is a reference to
 it.
 
-# Shared Ownership
+## Shared Ownership
 
 In all the examples we've considered so far, we've assumed that each handle has
 a singular owner. But sometimes, this doesn't work. Consider a car. Cars have
@@ -454,7 +454,7 @@ This is the simplest kind of multiple ownership possible. For example, there's
 also `Arc<T>`, which uses more expensive atomic instructions to be the
 thread-safe counterpart of `Rc<T>`.
 
-## Lifetime Elision
+### Lifetime Elision
 
 Earlier, we mentioned *lifetime elision*, a feature of Rust which allows you to
 not write lifetime annotations in certain circumstances. All references have a
@@ -495,7 +495,7 @@ Here are the three rules:
 
 Otherwise, it is an error to elide an output lifetime.
 
-### Examples
+#### Examples
 
 Here are some examples of functions with elided lifetimes, and the version of
 what the elided lifetimes are expand to:
@@ -528,6 +528,6 @@ fn new(buf: &mut [u8]) -> BufWriter;                    // elided
 fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a>          // expanded
 ```
 
-# Related Resources
+## Related Resources
 
 Coming Soon.
