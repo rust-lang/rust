@@ -2921,13 +2921,13 @@ automatically dereferenced to make the field access possible.
 ```{.ebnf .gram}
 array_expr : '[' "mut" ? vec_elems? ']' ;
 
-array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
+array_elems : [expr [',' expr]*] | [expr ';' expr] ;
 ```
 
 An [array](#array,-and-slice-types) _expression_ is written by enclosing zero
 or more comma-separated expressions of uniform type in square brackets.
 
-In the `[expr ',' ".." expr]` form, the expression after the `".."` must be a
+In the `[expr ';' expr]` form, the expression after the `';'` must be a
 constant expression that can be evaluated at compile time, such as a
 [literal](#literals) or a [static item](#static-items).
 
