@@ -73,10 +73,7 @@ fn write_toc(book: &Book, path_to_root: &Path, out: &mut Writer) -> IoResult<()>
 }
 
 fn render(book: &Book, tgt: &Path) -> CliResult<()> {
-    let tmp = TempDir::new("rust-book")
-                      .ok()
-                      // FIXME: lift to Result instead
-                      .expect("could not create temporary directory");
+    let tmp = try!(TempDir::new("rust-book"));
 
     for (section, item) in book.iter() {
         println!("{} {}", section, item.title);
@@ -163,30 +160,24 @@ impl Subcommand for Build {
             tgt = Path::new(os::args()[3].clone());
         }
 
-        let _ = fs::mkdir(&tgt, io::USER_DIR); // FIXME: handle errors
+        try!(fs::mkdir(&tgt, io::USER_DIR));
 
-        // FIXME: handle errors
-        let _ = File::create(&tgt.join("rust-book.css")).write_str(css::STYLE);
+        try!(File::create(&tgt.join("rust-book.css")).write_str(css::STYLE));
 
-        let summary = File::open(&src.join("SUMMARY.md"));
+        let summary = try!(File::open(&src.join("SUMMARY.md")));
         match book::parse_summary(summary, &src) {
             Ok(book) => {
                 // execute rustdoc on the whole book
-                try!(render(&book, &tgt).map_err(|err| {
-                    term.err(&format!("error: {}", err.description())[]);
-                    err.detail().map(|detail| {
-                        term.err(&format!("detail: {}", detail)[]);
-                    });
-                    err
-                }))
+                render(&book, &tgt)
             }
             Err(errors) => {
+                let n = errors.len();
                 for err in errors.into_iter() {
-                    term.err(&err[]);
+                    term.err(&format!("error: {}", err)[]);
                 }
+
+                Err(box format!("{} errors occurred", n) as Box<Error>)
             }
         }
-
-        Ok(()) // lol
     }
 }

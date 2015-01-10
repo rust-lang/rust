@@ -29,6 +29,12 @@ DOCS := index intro tutorial complement-bugreport \
     complement-lang-faq complement-design-faq complement-project-faq \
     rustdoc reference
 
+# Legacy guides, preserved for a while to reduce the number of 404s
+DOCS += guide-crates guide-error-handling guide-ffi guide-macros guide \
+    guide-ownership guide-plugins guide-pointers guide-strings guide-tasks \
+    guide-testing
+
+
 PDF_DOCS := reference
 
 RUSTDOC_DEPS_reference := doc/full-toc.inc
@@ -277,6 +283,6 @@ compiler-docs: $(COMPILER_DOC_TARGETS)
 
 trpl: doc/book/index.html
 
-doc/book/index.html: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/trpl/*.md)
+doc/book/index.html: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/trpl/*.md) | doc/
 	$(Q)rm -rf doc/book
 	$(Q)$(RUSTBOOK) build $(S)src/doc/trpl doc/book
