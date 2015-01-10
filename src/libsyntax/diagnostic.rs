@@ -13,7 +13,7 @@ pub use self::RenderSpan::*;
 pub use self::ColorConfig::*;
 use self::Destination::*;
 
-use codemap::{COMMAND_LINE_SP, Pos, Span};
+use codemap::{COMMAND_LINE_SP, COMMAND_LINE_EXPN, Pos, Span};
 use codemap;
 use diagnostics;
 
@@ -393,7 +393,10 @@ impl Emitter for EmitterWriter {
 fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
         msg: &str, code: Option<&str>, lvl: Level, custom: bool) -> io::IoResult<()> {
     let sp = rsp.span();
-    let ss = if sp == COMMAND_LINE_SP {
+
+    // We cannot check equality directly with COMMAND_LINE_SP
+    // since PartialEq is manually implemented to ignore the ExpnId
+    let ss = if sp.expn_id == COMMAND_LINE_EXPN {
         "<command line option>".to_string()
     } else {
         cm.span_to_string(sp)
