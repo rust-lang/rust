@@ -1039,6 +1039,12 @@ unsafe fn configure_llvm(sess: &Session) {
         llvm::LLVMInitializeMipsAsmPrinter();
         llvm::LLVMInitializeMipsAsmParser();
 
+        llvm::LLVMInitializePowerPCTargetInfo();
+        llvm::LLVMInitializePowerPCTarget();
+        llvm::LLVMInitializePowerPCTargetMC();
+        llvm::LLVMInitializePowerPCAsmPrinter();
+        llvm::LLVMInitializePowerPCAsmParser();
+
         llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
                                      llvm_args.as_ptr());
     });
