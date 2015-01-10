@@ -183,14 +183,14 @@ impl Token {
             Underscore                  => true,
             Tilde                       => true,
             Literal(_, _)               => true,
-            Pound                       => true,
-            At                          => true,
             Not                         => true,
             BinOp(Minus)                => true,
             BinOp(Star)                 => true,
             BinOp(And)                  => true,
             BinOp(Or)                   => true, // in lambda syntax
             OrOr                        => true, // in lambda syntax
+            AndAnd                      => true, // double borrow
+            DotDot                      => true, // range notation
             ModSep                      => true,
             Interpolated(NtExpr(..))    => true,
             Interpolated(NtIdent(..))   => true,
