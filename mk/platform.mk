@@ -177,7 +177,7 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
 
-  ifeq ($$(findstring $(HOST_$(1)),arm aarch64 mips mipsel),)
+  ifeq ($$(findstring $(HOST_$(1)),arm aarch64 mips mipsel powerpc),)
 
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
@@ -189,7 +189,7 @@ define CFG_MAKE_TOOLCHAIN
                     -o=$$(1)
   else
 
-  # For the ARM, AARCH64 and MIPS crosses, use the toolchain assembler
+  # For the ARM, AARCH64, MIPS and POWER crosses, use the toolchain assembler
   # FIXME: We should be able to use the LLVM assembler
   CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
 		    $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
