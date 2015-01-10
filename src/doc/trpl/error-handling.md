@@ -181,7 +181,7 @@ errors that can occur.
 # Non-recoverable errors with `panic!`
 
 In the case of an error that is unexpected and not recoverable, the `panic!`
-macro will induce a panic. This will crash the current task, and give an error:
+macro will induce a panic. This will crash the current thread, and give an error:
 
 ```{rust,ignore}
 panic!("boom");
@@ -190,7 +190,7 @@ panic!("boom");
 gives
 
 ```text
-task '<main>' panicked at 'boom', hello.rs:2
+thread '<main>' panicked at 'boom', hello.rs:2
 ```
 
 when you run it.
