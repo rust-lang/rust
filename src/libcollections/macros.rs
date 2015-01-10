@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,6 +12,10 @@
 #[macro_export]
 #[stable]
 macro_rules! vec {
+    ($x:expr; $y:expr) => ({
+        let xs: $crate::boxed::Box<[_]> = $crate::boxed::Box::new([$x; $y]);
+        $crate::slice::SliceExt::into_vec(xs)
+    });
     ($($x:expr),*) => ({
         let xs: $crate::boxed::Box<[_]> = $crate::boxed::Box::new([$($x),*]);
         $crate::slice::SliceExt::into_vec(xs)
