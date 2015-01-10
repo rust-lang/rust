@@ -603,7 +603,7 @@ mod b {
 ```
 
 * Paths starting with the keyword `super` begin resolution relative to the
-  parent module. Each further identifier must resolve to an item
+  parent module. Each further identifier must resolve to an item.
 
 ```rust
 mod a {
@@ -985,7 +985,7 @@ top of [modules](#modules) and [blocks](#blocks).
 
 Use declarations support a number of convenient shortcuts:
 
-* Rebinding the target name as a new local name, using the syntax `use p::q::r as x;`.
+* Rebinding the target name as a new local name, using the syntax `use p::q::r as x;`
 * Simultaneously binding a list of paths differing only in their final element,
   using the glob-like brace syntax `use a::b::{c,d,e,f};`
 * Binding all paths matching a given prefix, using the asterisk wildcard syntax
@@ -1091,7 +1091,7 @@ set of *input* [*slots*](#memory-slots) as parameters, through which the caller
 passes arguments into the function, and an *output* [*slot*](#memory-slots)
 through which the function passes results back to the caller.
 
-A function may also be copied into a first class *value*, in which case the
+A function may also be copied into a first-class *value*, in which case the
 value has the corresponding [*function type*](#function-types), and can be used
 otherwise exactly as a function item (with a minor additional cost of calling
 the function indirectly).
@@ -1224,7 +1224,7 @@ the guarantee that these issues are never caused by safe code.
   * A value other than `false` (0) or `true` (1) in a `bool`
   * A discriminant in an `enum` not included in the type definition
   * A value in a `char` which is a surrogate or above `char::MAX`
-  * non-UTF-8 byte sequences in a `str`
+  * Non-UTF-8 byte sequences in a `str`
 * Unwinding into Rust from foreign code or unwinding from Rust into foreign
   code. Rust's failure system is not compatible with exception handling in
   other languages. Unwinding must be caught and handled at FFI boundaries.
@@ -1827,7 +1827,7 @@ accesses in two cases:
 
 These two cases are surprisingly powerful for creating module hierarchies
 exposing public APIs while hiding internal implementation details. To help
-explain, here's a few use cases and what they would entail.
+explain, here's a few use cases and what they would entail:
 
 * A library developer needs to expose functionality to crates which link
   against their library. As a consequence of the first case, this means that
@@ -1858,7 +1858,7 @@ import/expression is only valid if the destination is in the current visibility
 scope.
 
 Here's an example of a program which exemplifies the three cases outlined
-above.
+above:
 
 ```
 // This module is private, meaning that no external crate can access this
@@ -2213,7 +2213,7 @@ mod m1 {
 ```
 
 This example shows how one can use `allow` and `warn` to toggle a particular
-check on and off.
+check on and off:
 
 ```{.ignore}
 #[warn(missing_docs)]
@@ -2235,7 +2235,7 @@ mod m2{
 ```
 
 This example shows how one can use `forbid` to disallow uses of `allow` for
-that lint check.
+that lint check:
 
 ```{.ignore}
 #[forbid(missing_docs)]
@@ -2318,9 +2318,9 @@ These language items are traits:
 * `ord`
   : Elements have a partial ordering.
 * `deref`
-  : `*` can be applied, yielding a reference to another type
+  : `*` can be applied, yielding a reference to another type.
 * `deref_mut`
-  : `*` can be applied, yielding a mutable reference to another type
+  : `*` can be applied, yielding a mutable reference to another type.
 
 These are functions:
 
@@ -2341,7 +2341,7 @@ These are functions:
 * `type_id`
   : The type returned by the `type_id` intrinsic.
 * `unsafe`
-  : A type whose contents can be mutated through an immutable reference
+  : A type whose contents can be mutated through an immutable reference.
 
 #### Marker types
 
@@ -2350,11 +2350,11 @@ These types help drive the compiler's analysis
 * `begin_unwind`
   : ___Needs filling in___
 * `no_copy_bound`
-  : This type does not implement "copy", even if eligible
+  : This type does not implement "copy", even if eligible.
 * `no_send_bound`
-  : This type does not implement "send", even if eligible
+  : This type does not implement "send", even if eligible.
 * `no_sync_bound`
-  : This type does not implement "sync", even if eligible
+  : This type does not implement "sync", even if eligible.
 * `eh_personality`
   : ___Needs filling in___
 * `exchange_free`
@@ -2376,11 +2376,11 @@ These types help drive the compiler's analysis
 * `iterator`
   : ___Needs filling in___
 * `contravariant_lifetime`
-  : The lifetime parameter should be considered contravariant
+  : The lifetime parameter should be considered contravariant.
 * `covariant_lifetime`
-  : The lifetime parameter should be considered covariant
+  : The lifetime parameter should be considered covariant.
 * `invariant_lifetime`
-  : The lifetime parameter should be considered invariant
+  : The lifetime parameter should be considered invariant.
 * `malloc`
   : Allocate memory on the managed heap.
 * `owned_box`
@@ -2390,11 +2390,11 @@ These types help drive the compiler's analysis
 * `start`
   : ___Needs filling in___
 * `contravariant_type`
-  : The type parameter should be considered contravariant
+  : The type parameter should be considered contravariant.
 * `covariant_type`
-  : The type parameter should be considered covariant
+  : The type parameter should be considered covariant.
 * `invariant_type`
-  : The type parameter should be considered invariant
+  : The type parameter should be considered invariant.
 * `ty_desc`
   : ___Needs filling in___
 
@@ -3219,11 +3219,11 @@ the simplest and least-expensive form (analogous to a ```|| { }``` expression),
 the lambda expression captures its environment by reference, effectively
 borrowing pointers to all outer variables mentioned inside the function.
 Alternately, the compiler may infer that a lambda expression should copy or
-move values (depending on their type.) from the environment into the lambda
+move values (depending on their type) from the environment into the lambda
 expression's captured environment.
 
 In this example, we define a function `ten_times` that takes a higher-order
-function argument, and call it with a lambda expression as an argument.
+function argument, and call it with a lambda expression as an argument:
 
 ```
 fn ten_times<F>(f: F) where F: Fn(int) {
@@ -3661,14 +3661,14 @@ within an object along with one byte past the end.
 The types `char` and `str` hold textual data.
 
 A value of type `char` is a [Unicode scalar value](
-http://www.unicode.org/glossary/#unicode_scalar_value) (ie. a code point that
+http://www.unicode.org/glossary/#unicode_scalar_value) (i.e. a code point that
 is not a surrogate), represented as a 32-bit unsigned word in the 0x0000 to
 0xD7FF or 0xE000 to 0x10FFFF range. A `[char]` array is effectively an UCS-4 /
 UTF-32 string.
 
 A value of type `str` is a Unicode string, represented as an array of 8-bit
 unsigned bytes holding a sequence of UTF-8 codepoints. Since `str` is of
-unknown size, it is not a _first class_ type, but can only be instantiated
+unknown size, it is not a _first-class_ type, but can only be instantiated
 through a pointer type, such as `&str` or `String`.
 
 ### Tuple types
@@ -3698,7 +3698,7 @@ assert!(b != "world");
 
 Rust has two different types for a list of items:
 
-* `[T ..N]`, an 'array'
+* `[T; N]`, an 'array'.
 * `&[T]`, a 'slice'.
 
 An array has a fixed size, and can be allocated on either the stack or the
@@ -3710,9 +3710,9 @@ to, it borrows it.
 An example of each kind:
 
 ```{rust}
-let vec: Vec<int>  = vec![1, 2, 3];
-let arr: [int; 3] = [1, 2, 3];
-let s: &[int]      = vec.as_slice();
+let vec: Vec<i32> = vec![1, 2, 3];
+let arr: [i32; 3] = [1, 2, 3];
+let s: &[i32] = vec.as_slice();
 ```
 
 As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
@@ -3798,7 +3798,7 @@ enum List<T> {
     Cons(T, Box<List<T>>)
 }
 
-let a: List<int> = List::Cons(7, Box::new(List::Cons(13, Box::new(List::Nil))));
+let a: List<i32> = List::Cons(7, Box::new(List::Cons(13, Box::new(List::Nil))));
 ```
 
 ### Pointer types
