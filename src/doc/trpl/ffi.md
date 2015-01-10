@@ -166,12 +166,12 @@ GitHub](https://github.com/thestinger/rust-snappy).
 
 # Stack management
 
-Rust tasks by default run on a *large stack*. This is actually implemented as a
+Rust threads by default run on a *large stack*. This is actually implemented as a
 reserving a large segment of the address space and then lazily mapping in pages
 as they are needed. When calling an external C function, the code is invoked on
 the same stack as the rust stack. This means that there is no extra
 stack-switching mechanism in place because it is assumed that the large stack
-for the rust task is plenty for the C function to have.
+for the rust thread is plenty for the C function to have.
 
 A planned future improvement (not yet implemented at the time of this writing)
 is to have a guard page at the end of every rust stack. No rust function will
@@ -184,8 +184,8 @@ For normal external function usage, this all means that there shouldn't be any
 need for any extra effort on a user's perspective. The C stack naturally
 interleaves with the rust stack, and it's "large enough" for both to
 interoperate. If, however, it is determined that a larger stack is necessary,
-there are appropriate functions in the task spawning API to control the size of
-the stack of the task which is spawned.
+there are appropriate functions in the thread spawning API to control the size of
+the stack of the thread which is spawned.
 
 # Destructors
 
@@ -320,8 +320,7 @@ In the previously given examples the callbacks are invoked as a direct reaction
 to a function call to the external C library.
 The control over the current thread is switched from Rust to C to Rust for the
 execution of the callback, but in the end the callback is executed on the
-same thread (and Rust task) that lead called the function which triggered
-the callback.
+same thread that called the function which triggered the callback.
 
 Things get more complicated when the external library spawns its own threads
 and invokes callbacks from there.
@@ -329,7 +328,7 @@ In these cases access to Rust data structures inside the callbacks is
 especially unsafe and proper synchronization mechanisms must be used.
 Besides classical synchronization mechanisms like mutexes, one possibility in
 Rust is to use channels (in `std::comm`) to forward data from the C thread
-that invoked the callback into a Rust task.
+that invoked the callback into a Rust thread.
 
 If an asynchronous callback targets a special object in the Rust address space
 it is also absolutely necessary that no more callbacks are performed by the
