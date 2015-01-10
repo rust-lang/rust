@@ -78,7 +78,7 @@ let ref_2: &mut u8 = unsafe { mem::transmute(&mut *ref_1) };
 
 ## Raw pointers
 
-Rust offers two additional pointer types "raw pointers", written as
+Rust offers two additional pointer types (*raw pointers*), written as
 `*const T` and `*mut T`. They're an approximation of C's `const T*` and `T*`
 respectively; indeed, one of their most common uses is for FFI,
 interfacing with external C libraries.
@@ -418,11 +418,12 @@ specify some extra info about the inline assembly:
 
 Current valid options are:
 
-1. **volatile** - specifying this is analogous to `__asm__ __volatile__ (...)` in gcc/clang.
-2. **alignstack** - certain instructions expect the stack to be
+1. *volatile* - specifying this is analogous to
+   `__asm__ __volatile__ (...)` in gcc/clang.
+2. *alignstack* - certain instructions expect the stack to be
    aligned a certain way (i.e SSE) and specifying this indicates to
    the compiler to insert its usual stack alignment code
-3. **intel** - use intel syntax instead of the default AT&T.
+3. *intel* - use intel syntax instead of the default AT&T.
 
 # Avoiding the standard library
 

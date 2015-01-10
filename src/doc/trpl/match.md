@@ -20,13 +20,13 @@ match x {
 }
 ```
 
-`match` takes an expression and then branches based on its value. Each 'arm' of
+`match` takes an expression and then branches based on its value. Each *arm* of
 the branch is of the form `val => expression`. When the value matches, that arm's
 expression will be evaluated. It's called `match` because of the term 'pattern
 matching', which `match` is an implementation of.
 
 So what's the big advantage here? Well, there are a few. First of all, `match`
-enforces 'exhaustiveness checking'. Do you see that last arm, the one with the
+enforces *exhaustiveness checking*. Do you see that last arm, the one with the
 underscore (`_`)? If we remove that arm, Rust will give us an error:
 
 ```text
@@ -36,7 +36,7 @@ error: non-exhaustive patterns: `_` not covered
 In other words, Rust is trying to tell us we forgot a value. Because `x` is an
 integer, Rust knows that it can have a number of different values – for example,
 `6`. Without the `_`, however, there is no arm that could match, and so Rust refuses
-to compile. `_` acts like a 'catch-all arm'. If none of the other arms match,
+to compile. `_` acts like a *catch-all arm*. If none of the other arms match,
 the arm with `_` will, and since we have this catch-all arm, we now have an arm
 for every possible value of `x`, and so our program will compile successfully.
 

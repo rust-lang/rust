@@ -73,8 +73,8 @@ with it. For this, we use *channels*. A channel is simply a pair of endpoints:
 one for sending messages and another for receiving messages.
 
 The simplest way to create a channel is to use the `channel` function to create a
-`(Sender, Receiver)` pair. In Rust parlance, a **sender** is a sending endpoint
-of a channel, and a **receiver** is the receiving endpoint. Consider the following
+`(Sender, Receiver)` pair. In Rust parlance, a *sender* is a sending endpoint
+of a channel, and a *receiver* is the receiving endpoint. Consider the following
 example of calculating two results concurrently:
 
 ```{rust,ignore}

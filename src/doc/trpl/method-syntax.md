@@ -7,8 +7,8 @@ can be awkward. Consider this code:
 baz(bar(foo(x)));
 ```
 
-We would read this left-to right, and so we see 'baz bar foo.' But this isn't the
-order that the functions would get called in, that's inside-out: 'foo bar baz.'
+We would read this left-to right, and so we see "baz bar foo." But this isn't the
+order that the functions would get called in, that's inside-out: "foo bar baz."
 Wouldn't it be nice if we could do this instead?
 
 ```{rust,ignore}
@@ -16,7 +16,7 @@ x.foo().bar().baz();
 ```
 
 Luckily, as you may have guessed with the leading question, you can! Rust provides
-the ability to use this **method call syntax** via the `impl` keyword.
+the ability to use this *method call syntax* via the `impl` keyword.
 
 Here's how it works:
 
@@ -82,7 +82,7 @@ fn main() {
 }
 ```
 
-This **static method** builds a new `Circle` for us. Note that static methods
+This *static method* builds a new `Circle` for us. Note that static methods
 are called with the `Struct::method()` syntax, rather than the `ref.method()`
 syntax.
 

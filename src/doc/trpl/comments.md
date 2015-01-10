@@ -4,8 +4,8 @@ Now that we have some functions, it's a good idea to learn about comments.
 Comments are notes that you leave to other programmers to help explain things
 about your code. The compiler mostly ignores them.
 
-Rust has two kinds of comments that you should care about: **line comment**s
-and **doc comment**s.
+Rust has two kinds of comments that you should care about: *line comments*
+and *doc comments*.
 
 ```{rust}
 // Line comments are anything after '//' and extend to the end of the line.

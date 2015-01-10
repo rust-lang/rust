@@ -66,7 +66,7 @@ it explain itself to you:
 
 TOML is very similar to INI, but with some extra goodies.
 
-Anyway, there are two **table**s in this file: `package` and `bin`. The first
+Anyway, there are two *tables* in this file: `package` and `bin`. The first
 tells Cargo metadata about your package. The second tells Cargo that we're
 interested in building a binary, not a library (though we could do both!), as
 well as what it is named.

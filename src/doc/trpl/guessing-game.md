@@ -111,7 +111,7 @@ Enter the docs. Rust has a page specifically to document the standard library.
 You can find that page [here](../std/index.html). There's a lot of information on
 that page, but the best part is the search bar. Right up at the top, there's
 a box that you can enter in a search term. The search is pretty primitive
-right now, but is getting better all the time. If you type 'random' in that
+right now, but is getting better all the time. If you type "random" in that
 box, the page will update to [this one](../std/index.html?search=random). The very
 first result is a link to [`std::rand::random`](../std/rand/fn.random.html). If we
 click on that result, we'll be taken to its documentation page.
@@ -147,7 +147,7 @@ explained.  We then added in a `let` expression to create a variable binding
 named `secret_number`, and we printed out its result.
 
 Also, you may wonder why we are using `%` on the result of `rand::random()`.
-This operator is called 'modulo', and it returns the remainder of a division.
+This operator is called *modulo*, and it returns the remainder of a division.
 By taking the modulo of the result of `rand::random()`, we're limiting the
 values to be between 0 and 99. Then, we add one to the result, making it from 1
 to 100. Using modulo can give you a very, very small bias in the result, but
@@ -608,8 +608,8 @@ out that I guessed 76. Run the program a few times, and verify that guessing
 the number works, as well as guessing a number too small.
 
 The Rust compiler helped us out quite a bit there! This technique is called
-"lean on the compiler", and it's often useful when working on some code. Let
-the error messages help guide you towards the correct types.
+"leaning on the compiler", and it's often useful when working on some code.
+Let the error messages help guide you towards the correct types.
 
 Now we've got most of the game working, but we can only make one guess. Let's
 change that by adding loops!

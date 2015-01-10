@@ -166,7 +166,7 @@ GitHub](https://github.com/thestinger/rust-snappy).
 
 # Stack management
 
-Rust tasks by default run on a "large stack". This is actually implemented as a
+Rust tasks by default run on a *large stack*. This is actually implemented as a
 reserving a large segment of the address space and then lazily mapping in pages
 as they are needed. When calling an external C function, the code is invoked on
 the same stack as the rust stack. This means that there is no extra
