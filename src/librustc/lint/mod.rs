@@ -40,7 +40,7 @@ use syntax::ast;
 pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_attrs};
 
 /// Specification of a single lint.
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub struct Lint {
     /// A string identifier for the lint.
     ///
@@ -186,7 +186,7 @@ impl PartialEq for LintId {
 
 impl Eq for LintId { }
 
-impl<S: hash::Writer> hash::Hash<S> for LintId {
+impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for LintId {
     fn hash(&self, state: &mut S) {
         let ptr = self.lint as *const Lint;
         ptr.hash(state);
@@ -208,7 +208,7 @@ impl LintId {
 }
 
 /// Setting for how to handle a lint.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show)]
 pub enum Level {
     Allow, Warn, Deny, Forbid
 }
@@ -248,6 +248,9 @@ pub enum LintSource {
 
     /// Lint level was set by a command-line flag.
     CommandLine,
+
+    /// Lint level was set by the release channel.
+    ReleaseChannel
 }
 
 pub type LevelSource = (Level, LintSource);

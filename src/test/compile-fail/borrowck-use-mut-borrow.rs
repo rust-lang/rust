@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A { a: int, b: int }
+#![feature(box_syntax)]
+
+struct A { a: isize, b: isize }
 
 impl Copy for A {}
 
-struct B { a: int, b: Box<int> }
+struct B { a: isize, b: Box<isize> }
 
 fn var_copy_after_var_borrow() {
-    let mut x: int = 1;
+    let mut x: isize = 1;
     let p = &mut x;
     drop(x); //~ ERROR cannot use `x` because it was mutably borrowed
     *p = 2;
@@ -59,7 +61,7 @@ fn fu_field_copy_after_field_borrow() {
 }
 
 fn var_deref_after_var_borrow() {
-    let mut x: Box<int> = box 1;
+    let mut x: Box<isize> = box 1;
     let p = &mut x;
     drop(*x); //~ ERROR cannot use `*x` because it was mutably borrowed
     **p = 2;

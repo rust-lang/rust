@@ -10,6 +10,6 @@
 
 trait foo { fn foo(&self); }
 
-impl int for uint { fn foo(&self) {} } //~ ERROR trait
+impl isize for usize { fn foo(&self) {} } //~ ERROR trait
 
 fn main() {}

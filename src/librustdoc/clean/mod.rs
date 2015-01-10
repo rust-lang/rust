@@ -530,7 +530,8 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
                 _ => {
                     return PathParameters::AngleBracketed {
                         lifetimes: lifetimes,
-                        types: types.clean(cx)
+                        types: types.clean(cx),
+                        bindings: vec![]
                     }
                 }
             };
@@ -547,6 +548,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
             PathParameters::AngleBracketed {
                 lifetimes: lifetimes,
                 types: types.clean(cx),
+                bindings: vec![] // FIXME(#20646)
             }
         }
     }
@@ -798,7 +800,7 @@ impl Clean<Item> for ast::Method {
         let all_inputs = &self.pe_fn_decl().inputs;
         let inputs = match self.pe_explicit_self().node {
             ast::SelfStatic => all_inputs.as_slice(),
-            _ => all_inputs.index(&(1..))
+            _ => &all_inputs[1..]
         };
         let decl = FnDecl {
             inputs: Arguments {
@@ -836,7 +838,7 @@ impl Clean<Item> for ast::TypeMethod {
     fn clean(&self, cx: &DocContext) -> Item {
         let inputs = match self.explicit_self.node {
             ast::SelfStatic => self.decl.inputs.as_slice(),
-            _ => self.decl.inputs.index(&(1..))
+            _ => &self.decl.inputs[1..]
         };
         let decl = FnDecl {
             inputs: Arguments {
@@ -1132,7 +1134,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
                                                self.fty.sig.clone()),
             s => {
                 let sig = ty::Binder(ty::FnSig {
-                    inputs: self.fty.sig.0.inputs.index(&(1..)).to_vec(),
+                    inputs: self.fty.sig.0.inputs[1..].to_vec(),
                     ..self.fty.sig.0.clone()
                 });
                 let s = match s {
@@ -1387,12 +1389,12 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
         match self.sty {
             ty::ty_bool => Primitive(Bool),
             ty::ty_char => Primitive(Char),
-            ty::ty_int(ast::TyIs) => Primitive(Isize),
+            ty::ty_int(ast::TyIs(_)) => Primitive(Isize),
             ty::ty_int(ast::TyI8) => Primitive(I8),
             ty::ty_int(ast::TyI16) => Primitive(I16),
             ty::ty_int(ast::TyI32) => Primitive(I32),
             ty::ty_int(ast::TyI64) => Primitive(I64),
-            ty::ty_uint(ast::TyUs) => Primitive(Usize),
+            ty::ty_uint(ast::TyUs(_)) => Primitive(Usize),
             ty::ty_uint(ast::TyU8) => Primitive(U8),
             ty::ty_uint(ast::TyU16) => Primitive(U16),
             ty::ty_uint(ast::TyU32) => Primitive(U32),
@@ -1766,6 +1768,7 @@ pub enum PathParameters {
     AngleBracketed {
         lifetimes: Vec<Lifetime>,
         types: Vec<Type>,
+        bindings: Vec<TypeBinding>
     },
     Parenthesized {
         inputs: Vec<Type>,
@@ -1779,7 +1782,8 @@ impl Clean<PathParameters> for ast::PathParameters {
             ast::AngleBracketedParameters(ref data) => {
                 PathParameters::AngleBracketed {
                     lifetimes: data.lifetimes.clean(cx),
-                    types: data.types.clean(cx)
+                    types: data.types.clean(cx),
+                    bindings: data.bindings.clean(cx)
                 }
             }
 
@@ -2265,12 +2269,12 @@ fn resolve_type(cx: &DocContext,
             ast::TyStr => return Primitive(Str),
             ast::TyBool => return Primitive(Bool),
             ast::TyChar => return Primitive(Char),
-            ast::TyInt(ast::TyIs) => return Primitive(Isize),
+            ast::TyInt(ast::TyIs(_)) => return Primitive(Isize),
             ast::TyInt(ast::TyI8) => return Primitive(I8),
             ast::TyInt(ast::TyI16) => return Primitive(I16),
             ast::TyInt(ast::TyI32) => return Primitive(I32),
             ast::TyInt(ast::TyI64) => return Primitive(I64),
-            ast::TyUint(ast::TyUs) => return Primitive(Usize),
+            ast::TyUint(ast::TyUs(_)) => return Primitive(Usize),
             ast::TyUint(ast::TyU8) => return Primitive(U8),
             ast::TyUint(ast::TyU16) => return Primitive(U16),
             ast::TyUint(ast::TyU32) => return Primitive(U32),
@@ -2442,8 +2446,25 @@ fn lang_struct(cx: &DocContext, did: Option<ast::DefId>,
                 params: PathParameters::AngleBracketed {
                     lifetimes: vec![],
                     types: vec![t.clean(cx)],
+                    bindings: vec![]
                 }
             }],
         },
+    }
+}
+
+/// An equality constraint on an associated type, e.g. `A=Bar` in `Foo<A=Bar>`
+#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Show)]
+pub struct TypeBinding {
+    pub name: String,
+    pub ty: Type
+}
+
+impl Clean<TypeBinding> for ast::TypeBinding {
+    fn clean(&self, cx: &DocContext) -> TypeBinding {
+        TypeBinding {
+            name: self.ident.clean(cx),
+            ty: self.ty.clean(cx)
+        }
     }
 }

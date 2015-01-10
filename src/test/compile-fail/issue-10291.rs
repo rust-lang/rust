@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test<'x>(x: &'x int) {
-    drop::<Box<for<'z> FnMut(&'z int) -> &'z int>>(box |z| {
+#![feature(box_syntax)]
+
+fn test<'x>(x: &'x isize) {
+    drop::<Box<for<'z> FnMut(&'z isize) -> &'z isize>>(box |z| {
         x
         //~^ ERROR cannot infer an appropriate lifetime
     });

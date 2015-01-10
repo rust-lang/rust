@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 use std::ops::{Deref, DerefMut};
@@ -36,7 +38,7 @@ impl Deref for X {
 
 impl DerefMut for X {
     fn deref_mut(&mut self) -> &mut int {
-        let &X(box ref mut x) = self;
+        let &mut X(box ref mut x) = self;
         x
     }
 }

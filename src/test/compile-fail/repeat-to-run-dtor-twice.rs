@@ -12,7 +12,7 @@
 // literal syntax.
 
 struct Foo {
-    x: int,
+    x: isize,
 
 }
 

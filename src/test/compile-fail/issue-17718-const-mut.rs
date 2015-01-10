@@ -11,7 +11,7 @@
 const
 mut //~ ERROR: const globals cannot be mutable
 //~^ HELP did you mean to declare a static?
-FOO: uint = 3;
+FOO: usize = 3;
 
 fn main() {
 }

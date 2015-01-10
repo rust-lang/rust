@@ -12,57 +12,57 @@
 #![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types)]
 
-fn f1(x: int) {
+fn f1(x: isize) {
     //~^ ERROR unused variable: `x`
 }
 
-fn f1b(x: &mut int) {
+fn f1b(x: &mut isize) {
     //~^ ERROR unused variable: `x`
 }
 
 #[allow(unused_variables)]
-fn f1c(x: int) {}
+fn f1c(x: isize) {}
 
 fn f1d() {
-    let x: int;
+    let x: isize;
     //~^ ERROR unused variable: `x`
 }
 
 fn f2() {
-    let x = 3i;
+    let x = 3is;
     //~^ ERROR unused variable: `x`
 }
 
 fn f3() {
-    let mut x = 3i;
+    let mut x = 3is;
     //~^ ERROR variable `x` is assigned to, but never used
-    x += 4i;
+    x += 4is;
     //~^ ERROR value assigned to `x` is never read
 }
 
 fn f3b() {
-    let mut z = 3i;
+    let mut z = 3is;
     //~^ ERROR variable `z` is assigned to, but never used
     loop {
-        z += 4i;
+        z += 4is;
     }
 }
 
 #[allow(unused_variables)]
 fn f3c() {
-    let mut z = 3i;
-    loop { z += 4i; }
+    let mut z = 3is;
+    loop { z += 4is; }
 }
 
 #[allow(unused_variables)]
 #[allow(unused_assignments)]
 fn f3d() {
-    let mut x = 3i;
-    x += 4i;
+    let mut x = 3is;
+    x += 4is;
 }
 
 fn f4() {
-    match Some(3i) {
+    match Some(3is) {
       Some(i) => {
         //~^ ERROR unused variable: `i`
       }
@@ -71,11 +71,11 @@ fn f4() {
 }
 
 enum tri {
-    a(int), b(int), c(int)
+    a(isize), b(isize), c(isize)
 }
 
-fn f4b() -> int {
-    match tri::a(3i) {
+fn f4b() -> isize {
+    match tri::a(3is) {
       tri::a(i) | tri::b(i) | tri::c(i) => {
         i
       }
@@ -83,17 +83,17 @@ fn f4b() -> int {
 }
 
 fn f5a() {
-    for x in range(1i, 10) { }
+    for x in range(1is, 10) { }
     //~^ ERROR unused variable: `x`
 }
 
 fn f5b() {
-    for (x, _) in [1i, 2, 3].iter().enumerate() { }
+    for (x, _) in [1is, 2, 3].iter().enumerate() { }
     //~^ ERROR unused variable: `x`
 }
 
 fn f5c() {
-    for (_, x) in [1i, 2, 3].iter().enumerate() {
+    for (_, x) in [1is, 2, 3].iter().enumerate() {
     //~^ ERROR unused variable: `x`
         continue;
         std::os::set_exit_status(*x); //~ WARNING unreachable statement

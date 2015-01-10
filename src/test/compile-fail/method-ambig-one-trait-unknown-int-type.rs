@@ -13,15 +13,15 @@
 // of what kind of `Vec` we have, eventually leading to a type error.
 
 trait foo {
-    fn foo(&self) -> int;
+    fn foo(&self) -> isize;
 }
 
-impl foo for Vec<uint> {
-    fn foo(&self) -> int {1}
+impl foo for Vec<usize> {
+    fn foo(&self) -> isize {1}
 }
 
-impl foo for Vec<int> {
-    fn foo(&self) -> int {2}
+impl foo for Vec<isize> {
+    fn foo(&self) -> isize {2}
 }
 
 // This is very hokey: we have heuristics to suppress messages about
@@ -39,7 +39,7 @@ fn m2() {
     let mut x = Vec::new();
 
     // ...but we still resolved `foo()` to the trait and hence know the return type.
-    let y: uint = x.foo(); //~ ERROR mismatched types
+    let y: usize = x.foo(); //~ ERROR mismatched types
 }
 
 fn main() { }

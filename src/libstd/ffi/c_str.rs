@@ -84,7 +84,7 @@ impl CString {
         unsafe { CString::from_vec_unchecked(v) }
     }
 
-    /// Create a C-compatibel string from a byte vector without checking for
+    /// Create a C-compatible string from a byte vector without checking for
     /// interior 0 bytes.
     ///
     /// This method is equivalent to `from_vec` except that no runtime assertion
@@ -104,7 +104,7 @@ impl CString {
         unsafe { mem::transmute(self.as_slice()) }
     }
 
-    /// Equivalend to `as_slice_with_nul` except that the type returned is a
+    /// Equivalent to `as_slice_with_nul` except that the type returned is a
     /// `u8` slice instead of a `libc::c_char` slice.
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         unsafe { mem::transmute(self.as_slice_with_nul()) }

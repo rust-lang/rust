@@ -41,7 +41,7 @@
 // ignore-stage1
 // ignore-cross-compile #12102
 
-#![feature(plugin, slicing_syntax)]
+#![feature(box_syntax)]
 
 extern crate regex;
 

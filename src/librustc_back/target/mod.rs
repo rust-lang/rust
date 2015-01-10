@@ -53,22 +53,27 @@ use std::io::fs::PathExtensions;
 mod windows_base;
 mod linux_base;
 mod apple_base;
+mod apple_ios_base;
 mod freebsd_base;
 mod dragonfly_base;
 
-mod arm_apple_ios;
+mod armv7_apple_ios;
+mod armv7s_apple_ios;
+mod i386_apple_ios;
+
 mod arm_linux_androideabi;
 mod arm_unknown_linux_gnueabi;
 mod arm_unknown_linux_gnueabihf;
+mod aarch64_apple_ios;
 mod aarch64_unknown_linux_gnu;
 mod i686_apple_darwin;
-mod i386_apple_ios;
 mod i686_pc_windows_gnu;
 mod i686_unknown_dragonfly;
 mod i686_unknown_linux_gnu;
 mod mips_unknown_linux_gnu;
 mod mipsel_unknown_linux_gnu;
 mod x86_64_apple_darwin;
+mod x86_64_apple_ios;
 mod x86_64_pc_windows_gnu;
 mod x86_64_unknown_freebsd;
 mod x86_64_unknown_dragonfly;
@@ -85,8 +90,8 @@ pub struct Target {
     pub llvm_target: String,
     /// String to use as the `target_endian` `cfg` variable.
     pub target_endian: String,
-    /// String to use as the `target_word_size` `cfg` variable.
-    pub target_word_size: String,
+    /// String to use as the `target_pointer_width` `cfg` variable.
+    pub target_pointer_width: String,
     /// OS name to use for conditional compilation.
     pub target_os: String,
     /// Architecture to use for ABI considerations. Valid options: "x86", "x86_64", "arm",
@@ -224,8 +229,7 @@ impl Target {
                      .and_then(|os| os.map(|s| s.to_string())) {
                 Some(val) => val,
                 None =>
-                    handler.fatal((format!("Field {} in target specification is required", name))
-                                  .index(&FullRange))
+                    handler.fatal(&format!("Field {} in target specification is required", name)[])
             }
         };
 
@@ -233,7 +237,7 @@ impl Target {
             data_layout: get_req_field("data-layout"),
             llvm_target: get_req_field("llvm-target"),
             target_endian: get_req_field("target-endian"),
-            target_word_size: get_req_field("target-word-size"),
+            target_pointer_width: get_req_field("target-word-size"),
             arch: get_req_field("arch"),
             target_os: get_req_field("os"),
             options: Default::default(),
@@ -242,18 +246,18 @@ impl Target {
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(name.index(&FullRange)).map(|o| o.as_string()
+                obj.find(&name[]).map(|o| o.as_string()
                                     .map(|s| base.options.$key_name = s.to_string()));
             } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(name.index(&FullRange))
+                obj.find(&name[])
                     .map(|o| o.as_boolean()
                          .map(|s| base.options.$key_name = s));
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(name.index(&FullRange)).map(|o| o.as_array()
+                obj.find(&name[]).map(|o| o.as_array()
                     .map(|v| base.options.$key_name = v.iter()
                         .map(|a| a.as_string().unwrap().to_string()).collect()
                         )
@@ -347,8 +351,12 @@ impl Target {
 
             x86_64_apple_darwin,
             i686_apple_darwin,
+
             i386_apple_ios,
-            arm_apple_ios,
+            x86_64_apple_ios,
+            aarch64_apple_ios,
+            armv7_apple_ios,
+            armv7s_apple_ios,
 
             x86_64_pc_windows_gnu,
             i686_pc_windows_gnu
@@ -369,7 +377,7 @@ impl Target {
 
         let target_path = os::getenv("RUST_TARGET_PATH").unwrap_or(String::new());
 
-        let paths = os::split_paths(target_path.index(&FullRange));
+        let paths = os::split_paths(&target_path[]);
         // FIXME 16351: add a sane default search path?
 
         for dir in paths.iter() {

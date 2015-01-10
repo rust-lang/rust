@@ -10,8 +10,8 @@
 
 // Tests that a function with a ! annotation always actually fails
 
-fn bad_bang(i: uint) -> ! { //~ ERROR computation may converge in a function marked as diverging
-    if i < 0u { } else { panic!(); }
+fn bad_bang(i: usize) -> ! { //~ ERROR computation may converge in a function marked as diverging
+    if i < 0us { } else { panic!(); }
 }
 
-fn main() { bad_bang(5u); }
+fn main() { bad_bang(5us); }

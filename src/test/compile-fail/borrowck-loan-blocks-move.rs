@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
-fn take(_v: Box<int>) {
+fn take(_v: Box<isize>) {
 }
 
 fn box_imm() {

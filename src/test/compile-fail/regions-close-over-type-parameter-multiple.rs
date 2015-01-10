@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 // Various tests where we over type parameters with multiple lifetime
 // bounds.
 
-trait SomeTrait { fn get(&self) -> int; }
+trait SomeTrait { fn get(&self) -> isize; }
 
 fn make_object_good1<'a,'b,A:SomeTrait+'a+'b>(v: A) -> Box<SomeTrait+'a> {
     // A outlives 'a AND 'b...

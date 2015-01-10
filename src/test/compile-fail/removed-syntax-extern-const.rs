@@ -9,5 +9,5 @@
 // except according to those terms.
 
 extern {
-    const i: int; //~ ERROR unexpected token: `const`
+    const i: isize; //~ ERROR unexpected token: `const`
 }

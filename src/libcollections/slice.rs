@@ -55,7 +55,7 @@
 //! #![feature(slicing_syntax)]
 //! fn main() {
 //!     let numbers = [0i, 1i, 2i];
-//!     let last_numbers = numbers.index(&(1..3));
+//!     let last_numbers = &numbers[1..3];
 //!     // last_numbers is now &[1i, 2i]
 //! }
 //! ```
@@ -98,7 +98,7 @@ use core::iter::{range, range_step, MultiplicativeIterator};
 use core::marker::Sized;
 use core::mem::size_of;
 use core::mem;
-use core::ops::{FnMut, FullRange, Index, IndexMut};
+use core::ops::{FnMut, FullRange};
 use core::option::Option::{self, Some, None};
 use core::ptr::PtrExt;
 use core::ptr;
@@ -166,7 +166,7 @@ pub trait SliceExt {
     /// assert_eq!(num_moved, 3);
     /// assert!(a == [6i, 7, 8, 4, 5]);
     /// ```
-    #[experimental = "uncertain about this API approach"]
+    #[unstable = "uncertain about this API approach"]
     fn move_from(&mut self, src: Vec<Self::Item>, start: uint, end: uint) -> uint;
 
     /// Returns a subslice spanning the interval [`start`, `end`).
@@ -175,7 +175,7 @@ pub trait SliceExt {
     /// original slice (i.e. when `end > self.len()`) or when `start > end`.
     ///
     /// Slicing with `start` equal to `end` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice(&self, start: uint, end: uint) -> &[Self::Item];
 
     /// Returns a subslice from `start` to the end of the slice.
@@ -183,7 +183,7 @@ pub trait SliceExt {
     /// Panics when `start` is strictly greater than the length of the original slice.
     ///
     /// Slicing from `self.len()` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_from(&self, start: uint) -> &[Self::Item];
 
     /// Returns a subslice from the start of the slice to `end`.
@@ -191,7 +191,7 @@ pub trait SliceExt {
     /// Panics when `end` is strictly greater than the length of the original slice.
     ///
     /// Slicing to `0` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_to(&self, end: uint) -> &[Self::Item];
 
     /// Divides one slice into two at an index.
@@ -245,7 +245,7 @@ pub trait SliceExt {
     /// ```rust
     /// let v = &[1i, 2, 3, 4];
     /// for win in v.windows(2) {
-    ///     println!("{}", win);
+    ///     println!("{:?}", win);
     /// }
     /// ```
     #[stable]
@@ -268,7 +268,7 @@ pub trait SliceExt {
     /// ```rust
     /// let v = &[1i, 2, 3, 4, 5];
     /// for win in v.chunks(2) {
-    ///     println!("{}", win);
+    ///     println!("{:?}", win);
     /// }
     /// ```
     #[stable]
@@ -284,11 +284,11 @@ pub trait SliceExt {
     fn first(&self) -> Option<&Self::Item>;
 
     /// Returns all but the first element of a slice.
-    #[experimental = "likely to be renamed"]
+    #[unstable = "likely to be renamed"]
     fn tail(&self) -> &[Self::Item];
 
     /// Returns all but the last element of a slice.
-    #[experimental = "likely to be renamed"]
+    #[unstable = "likely to be renamed"]
     fn init(&self) -> &[Self::Item];
 
     /// Returns the last element of a slice, or `None` if it is empty.
@@ -384,7 +384,7 @@ pub trait SliceExt {
     /// original slice (i.e. when `end > self.len()`) or when `start > end`.
     ///
     /// Slicing with `start` equal to `end` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_mut(&mut self, start: uint, end: uint) -> &mut [Self::Item];
 
     /// Returns a mutable subslice from `start` to the end of the slice.
@@ -392,7 +392,7 @@ pub trait SliceExt {
     /// Panics when `start` is strictly greater than the length of the original slice.
     ///
     /// Slicing from `self.len()` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_from_mut(&mut self, start: uint) -> &mut [Self::Item];
 
     /// Returns a mutable subslice from the start of the slice to `end`.
@@ -400,7 +400,7 @@ pub trait SliceExt {
     /// Panics when `end` is strictly greater than the length of the original slice.
     ///
     /// Slicing to `0` yields an empty slice.
-    #[experimental = "will be replaced by slice syntax"]
+    #[unstable = "will be replaced by slice syntax"]
     fn slice_to_mut(&mut self, end: uint) -> &mut [Self::Item];
 
     /// Returns an iterator that allows modifying each value
@@ -412,11 +412,11 @@ pub trait SliceExt {
     fn first_mut(&mut self) -> Option<&mut Self::Item>;
 
     /// Returns all but the first element of a mutable slice
-    #[experimental = "likely to be renamed or removed"]
+    #[unstable = "likely to be renamed or removed"]
     fn tail_mut(&mut self) -> &mut [Self::Item];
 
     /// Returns all but the last element of a mutable slice
-    #[experimental = "likely to be renamed or removed"]
+    #[unstable = "likely to be renamed or removed"]
     fn init_mut(&mut self) -> &mut [Self::Item];
 
     /// Returns a mutable pointer to the last item in the slice.
@@ -554,7 +554,7 @@ pub trait SliceExt {
     /// let mut perms = v.permutations();
     ///
     /// for p in perms {
-    ///   println!("{}", p);
+    ///   println!("{:?}", p);
     /// }
     /// ```
     ///
@@ -588,7 +588,7 @@ pub trait SliceExt {
     /// assert!(dst.clone_from_slice(&src2) == 3);
     /// assert!(dst == [3i, 4, 5]);
     /// ```
-    #[experimental]
+    #[unstable]
     fn clone_from_slice(&mut self, &[Self::Item]) -> uint where Self::Item: Clone;
 
     /// Sorts the slice, in place.
@@ -677,11 +677,11 @@ pub trait SliceExt {
     fn prev_permutation(&mut self) -> bool where Self::Item: Ord;
 
     /// Find the first index containing a matching value.
-    #[experimental]
+    #[unstable]
     fn position_elem(&self, t: &Self::Item) -> Option<uint> where Self::Item: PartialEq;
 
     /// Find the last index containing a matching value.
-    #[experimental]
+    #[unstable]
     fn rposition_elem(&self, t: &Self::Item) -> Option<uint> where Self::Item: PartialEq;
 
     /// Return true if the slice contains an element with the given value.
@@ -697,7 +697,7 @@ pub trait SliceExt {
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
     /// Convert `self` into a vector without clones or allocation.
-    #[experimental]
+    #[unstable]
     fn into_vec(self: Box<Self>) -> Vec<Self::Item>;
 }
 
@@ -987,7 +987,7 @@ impl<T> SliceExt for [T] {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Extension traits for slices over specifc kinds of data
+// Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
 #[unstable = "U should be an associated type"]
 /// An extension trait for concatenating slices
@@ -997,7 +997,7 @@ pub trait SliceConcatExt<T: ?Sized, U> {
     fn concat(&self) -> U;
 
     /// Flattens a slice of `T` into a single value `U`, placing a
-    /// given seperator between each.
+    /// given separator between each.
     #[stable]
     fn connect(&self, sep: &T) -> U;
 }
@@ -1034,7 +1034,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
 ///
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
-#[experimental]
+#[unstable]
 #[derive(Clone)]
 pub struct ElementSwaps {
     sdir: Vec<SizeDirection>,
@@ -1046,7 +1046,7 @@ pub struct ElementSwaps {
 
 impl ElementSwaps {
     /// Creates an `ElementSwaps` iterator for a sequence of `length` elements.
-    #[experimental]
+    #[unstable]
     pub fn new(length: uint) -> ElementSwaps {
         // Initialize `sdir` with a direction that position should move in
         // (all negative at the beginning) and the `size` of the
@@ -1065,12 +1065,12 @@ impl ElementSwaps {
 
 #[unstable = "trait is unstable"]
 impl<T> BorrowFrom<Vec<T>> for [T] {
-    fn borrow_from(owned: &Vec<T>) -> &[T] { owned.index(&FullRange) }
+    fn borrow_from(owned: &Vec<T>) -> &[T] { &owned[] }
 }
 
 #[unstable = "trait is unstable"]
 impl<T> BorrowFromMut<Vec<T>> for [T] {
-    fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { owned.index_mut(&FullRange) }
+    fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { &mut owned[] }
 }
 
 #[unstable = "trait is unstable"]
@@ -1400,7 +1400,6 @@ mod tests {
     use core::prelude::{Ord, FullRange};
     use core::default::Default;
     use core::mem;
-    use core::ops::Index;
     use std::iter::RandomAccessIterator;
     use std::rand::{Rng, thread_rng};
     use std::rc::Rc;
@@ -1611,7 +1610,7 @@ mod tests {
 
         // Test on stack.
         let vec_stack: &[_] = &[1i, 2, 3];
-        let v_b = vec_stack.index(&(1u..3u)).to_vec();
+        let v_b = vec_stack[1u..3u].to_vec();
         assert_eq!(v_b.len(), 2u);
         let v_b = v_b.as_slice();
         assert_eq!(v_b[0], 2);
@@ -1619,7 +1618,7 @@ mod tests {
 
         // Test `Box<[T]>`
         let vec_unique = vec![1i, 2, 3, 4, 5, 6];
-        let v_d = vec_unique.index(&(1u..6u)).to_vec();
+        let v_d = vec_unique[1u..6u].to_vec();
         assert_eq!(v_d.len(), 5u);
         let v_d = v_d.as_slice();
         assert_eq!(v_d[0], 2);
@@ -1632,21 +1631,21 @@ mod tests {
     #[test]
     fn test_slice_from() {
         let vec: &[int] = &[1, 2, 3, 4];
-        assert_eq!(vec.index(&(0..)), vec);
+        assert_eq!(&vec[0..], vec);
         let b: &[int] = &[3, 4];
-        assert_eq!(vec.index(&(2..)), b);
+        assert_eq!(&vec[2..], b);
         let b: &[int] = &[];
-        assert_eq!(vec.index(&(4..)), b);
+        assert_eq!(&vec[4..], b);
     }
 
     #[test]
     fn test_slice_to() {
         let vec: &[int] = &[1, 2, 3, 4];
-        assert_eq!(vec.index(&(0..4)), vec);
+        assert_eq!(&vec[0..4], vec);
         let b: &[int] = &[1, 2];
-        assert_eq!(vec.index(&(0..2)), b);
+        assert_eq!(&vec[0..2], b);
         let b: &[int] = &[];
-        assert_eq!(vec.index(&(0..0)), b);
+        assert_eq!(&vec[0..0], b);
     }
 
 
@@ -2572,7 +2571,7 @@ mod tests {
         }
         assert_eq!(cnt, 3);
 
-        for f in v.index(&(1..3)).iter() {
+        for f in v[1..3].iter() {
             assert!(*f == Foo);
             cnt += 1;
         }

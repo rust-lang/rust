@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 struct Foo {
-    f: int,
+    f: isize,
 }
 
 impl Foo {
-    fn foo(self: int, x: int) -> int {  //~ ERROR mismatched self type
+    fn foo(self: isize, x: isize) -> isize {  //~ ERROR mismatched self type
         self.f + x
     }
 }
@@ -23,10 +25,10 @@ struct Bar<T> {
 }
 
 impl<T> Bar<T> {
-    fn foo(self: Bar<int>, x: int) -> int { //~ ERROR mismatched self type
+    fn foo(self: Bar<isize>, x: isize) -> isize { //~ ERROR mismatched self type
         x
     }
-    fn bar(self: &Bar<uint>, x: int) -> int {   //~ ERROR mismatched self type
+    fn bar(self: &Bar<usize>, x: isize) -> isize {   //~ ERROR mismatched self type
         x
     }
 }

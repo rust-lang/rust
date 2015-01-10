@@ -313,6 +313,17 @@ impl<T> VecPerParamSpace<T> {
         self.content.insert(limit, value);
     }
 
+    /// Appends `values` to the vector associated with `space`.
+    ///
+    /// Unlike the `extend` method in `Vec`, this should not be assumed
+    /// to be a cheap operation (even when amortized over many calls).
+    pub fn extend<I:Iterator<Item=T>>(&mut self, space: ParamSpace, mut values: I) {
+        // This could be made more efficient, obviously.
+        for item in values {
+            self.push(space, item);
+        }
+    }
+
     pub fn pop(&mut self, space: ParamSpace) -> Option<T> {
         let (start, limit) = self.limits(space);
         if start == limit {
@@ -394,7 +405,7 @@ impl<T> VecPerParamSpace<T> {
         self.content.as_slice()
     }
 
-    pub fn to_vec(self) -> Vec<T> {
+    pub fn into_vec(self) -> Vec<T> {
         self.content
     }
 
@@ -599,12 +610,12 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                                 let span = self.span.unwrap_or(DUMMY_SP);
                                 self.tcx().sess.span_bug(
                                     span,
-                                    format!("Type parameter out of range \
+                                    &format!("Type parameter out of range \
                                      when substituting in region {} (root type={}) \
                                      (space={:?}, index={})",
                                     region_name.as_str(),
                                     self.root_ty.repr(self.tcx()),
-                                    space, i).index(&FullRange));
+                                    space, i)[]);
                             }
                         }
                 }
@@ -654,14 +665,14 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
                 let span = self.span.unwrap_or(DUMMY_SP);
                 self.tcx().sess.span_bug(
                     span,
-                    format!("Type parameter `{}` ({}/{:?}/{}) out of range \
+                    &format!("Type parameter `{}` ({}/{:?}/{}) out of range \
                                  when substituting (root type={}) substs={}",
                             p.repr(self.tcx()),
                             source_ty.repr(self.tcx()),
                             p.space,
                             p.idx,
                             self.root_ty.repr(self.tcx()),
-                            self.substs.repr(self.tcx())).index(&FullRange));
+                            self.substs.repr(self.tcx()))[]);
             }
         };
 

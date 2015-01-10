@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
-struct ctxt { v: uint }
+struct ctxt { v: usize }
 
 trait get_ctxt {
     // Here the `&` is bound in the method definition:
@@ -28,12 +29,12 @@ impl<'a> get_ctxt for has_ctxt<'a> {
 
 }
 
-fn get_v(gc: Box<get_ctxt>) -> uint {
+fn get_v(gc: Box<get_ctxt>) -> usize {
     gc.get_ctxt().v
 }
 
 fn main() {
-    let ctxt = ctxt { v: 22u };
+    let ctxt = ctxt { v: 22us };
     let hc = has_ctxt { c: &ctxt };
-    assert_eq!(get_v(box hc as Box<get_ctxt>), 22u);
+    assert_eq!(get_v(box hc as Box<get_ctxt>), 22us);
 }

@@ -11,7 +11,7 @@
 // Regresion test for issue 9243
 
 struct Test {
-    mem: int,
+    mem: isize,
 }
 
 pub static g_test: Test = Test {mem: 0}; //~ ERROR statics are not allowed to have destructors

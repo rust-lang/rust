@@ -46,12 +46,13 @@
 //! though unsafely, transformed from one type to the other.
 //!
 //! ```
+//! # use std::boxed::Box;
 //! use std::mem;
 //!
 //! unsafe {
-//!     let my_num: Box<int> = box 10;
+//!     let my_num: Box<int> = Box::new(10);
 //!     let my_num: *const int = mem::transmute(my_num);
-//!     let my_speed: Box<int> = box 88;
+//!     let my_speed: Box<int> = Box::new(88);
 //!     let my_speed: *mut int = mem::transmute(my_speed);
 //!
 //!     // By taking ownership of the original `Box<T>` though
@@ -97,7 +98,7 @@ use marker::{Send, Sized, Sync};
 use cmp::{PartialEq, Eq, Ord, PartialOrd};
 use cmp::Ordering::{self, Less, Equal, Greater};
 
-// FIXME #19649: instrinsic docs don't render, so these have no docs :(
+// FIXME #19649: intrinsic docs don't render, so these have no docs :(
 
 #[unstable]
 pub use intrinsics::copy_nonoverlapping_memory;
@@ -105,7 +106,7 @@ pub use intrinsics::copy_nonoverlapping_memory;
 #[unstable]
 pub use intrinsics::copy_memory;
 
-#[experimental = "uncertain about naming and semantics"]
+#[unstable = "uncertain about naming and semantics"]
 pub use intrinsics::set_memory;
 
 
@@ -233,7 +234,7 @@ pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
 /// not drop the contents of `dst`. This could leak allocations or resources,
 /// so care must be taken not to overwrite an object that should be dropped.
 ///
-/// This is appropriate for initializing uninitialized memory, or overwritting
+/// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
 #[inline]
 #[stable]

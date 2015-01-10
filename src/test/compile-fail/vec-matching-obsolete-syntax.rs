@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x = [1i, 2, 3];
+    let x = [1is, 2, 3];
     match x {
         [a, b, ..c] => {    //~ ERROR obsolete syntax
             assert_eq!(a, 1);

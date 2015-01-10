@@ -11,6 +11,8 @@
 // Test that attempts to implicitly coerce a value into an
 // object respect the lifetime bound on the object type.
 
+#![feature(box_syntax)]
+
 trait Foo {}
 impl<'a> Foo for &'a [u8] {}
 

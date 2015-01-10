@@ -133,23 +133,13 @@ impl<T> ToOwned<T> for T where T: Clone {
 ///     }
 /// }
 /// ```
-//#[deriving(Show)] NOTE(stage0): uncomment after snapshot
+#[derive(Show)]
 pub enum Cow<'a, T, B: ?Sized + 'a> where B: ToOwned<T> {
     /// Borrowed data.
     Borrowed(&'a B),
 
     /// Owned data.
     Owned(T)
-}
-
-//NOTE(stage0): replace with deriving(Show) after snapshot
-impl<'a, T, B: ?Sized> fmt::Show for Cow<'a, T, B> where
-    B: fmt::String + ToOwned<T>,
-    T: fmt::String
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
 }
 
 #[stable]
@@ -248,6 +238,7 @@ impl<'a, T, B: ?Sized> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwne
     }
 }
 
+#[stable]
 impl<'a, T, B: ?Sized> fmt::String for Cow<'a, T, B> where
     B: fmt::String + ToOwned<T>,
     T: fmt::String,

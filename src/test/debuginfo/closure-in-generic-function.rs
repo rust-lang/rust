@@ -46,6 +46,7 @@
 // lldb-check:[...]$3 = 110
 // lldb-command:continue
 
+#![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
 fn some_generic_fun<T1, T2>(a: T1, b: T2) -> (T2, T1) {

@@ -43,7 +43,7 @@ pub enum BinOpToken {
     Shr,
 }
 
-/// A delimeter token
+/// A delimiter token
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
@@ -134,9 +134,9 @@ pub enum Token {
     Pound,
     Dollar,
     Question,
-    /// An opening delimeter, eg. `{`
+    /// An opening delimiter, eg. `{`
     OpenDelim(DelimToken),
-    /// A closing delimeter, eg. `}`
+    /// A closing delimiter, eg. `}`
     CloseDelim(DelimToken),
 
     /* Literals */
@@ -480,7 +480,7 @@ macro_rules! declare_special_idents_and_keywords {(
         $(init_vec.push($si_str);)*
         $(init_vec.push($sk_str);)*
         $(init_vec.push($rk_str);)*
-        interner::StrInterner::prefill(init_vec.index(&FullRange))
+        interner::StrInterner::prefill(&init_vec[])
     }
 }}
 
@@ -629,7 +629,7 @@ impl InternedString {
 
     #[inline]
     pub fn get<'a>(&'a self) -> &'a str {
-        self.string.index(&FullRange)
+        &self.string[]
     }
 }
 
@@ -659,41 +659,41 @@ impl fmt::Show for InternedString {
 
 impl fmt::String for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.string.index(&FullRange))
+        write!(f, "{}", &self.string[])
     }
 }
 
 impl<'a> PartialEq<&'a str> for InternedString {
     #[inline(always)]
     fn eq(&self, other: & &'a str) -> bool {
-        PartialEq::eq(self.string.index(&FullRange), *other)
+        PartialEq::eq(&self.string[], *other)
     }
     #[inline(always)]
     fn ne(&self, other: & &'a str) -> bool {
-        PartialEq::ne(self.string.index(&FullRange), *other)
+        PartialEq::ne(&self.string[], *other)
     }
 }
 
 impl<'a> PartialEq<InternedString > for &'a str {
     #[inline(always)]
     fn eq(&self, other: &InternedString) -> bool {
-        PartialEq::eq(*self, other.string.index(&FullRange))
+        PartialEq::eq(*self, &other.string[])
     }
     #[inline(always)]
     fn ne(&self, other: &InternedString) -> bool {
-        PartialEq::ne(*self, other.string.index(&FullRange))
+        PartialEq::ne(*self, &other.string[])
     }
 }
 
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(get_name(get_ident_interner().intern(try!(d.read_str()).index(&FullRange))))
+        Ok(get_name(get_ident_interner().intern(&try!(d.read_str())[])))
     }
 }
 
 impl Encodable for InternedString {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self.string.index(&FullRange))
+        s.emit_str(&self.string[])
     }
 }
 

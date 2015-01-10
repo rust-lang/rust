@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 struct A;
 
 impl A {
@@ -18,5 +20,5 @@ impl A {
 pub fn main() {
     let a = box A;
     a.foo();
-    //~^ ERROR cannot borrow immutable dereference of `Box` `*a` as mutable
+    //~^ ERROR cannot borrow immutable `Box` content `*a` as mutable
 }

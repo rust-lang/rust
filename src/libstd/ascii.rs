@@ -22,7 +22,7 @@ use string::String;
 use vec::Vec;
 
 /// Extension methods for ASCII-subset only operations on owned strings
-#[experimental = "would prefer to do this in a more general way"]
+#[unstable = "would prefer to do this in a more general way"]
 pub trait OwnedAsciiExt {
     /// Convert the string to ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
@@ -36,7 +36,7 @@ pub trait OwnedAsciiExt {
 }
 
 /// Extension methods for ASCII-subset only operations on string slices
-#[experimental = "would prefer to do this in a more general way"]
+#[unstable = "would prefer to do this in a more general way"]
 pub trait AsciiExt<T = Self> {
     /// Check if within the ASCII range.
     fn is_ascii(&self) -> bool;
@@ -57,7 +57,7 @@ pub trait AsciiExt<T = Self> {
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
 }
 
-#[experimental = "would prefer to do this in a more general way"]
+#[unstable = "would prefer to do this in a more general way"]
 impl AsciiExt<String> for str {
     #[inline]
     fn is_ascii(&self) -> bool {
@@ -82,7 +82,7 @@ impl AsciiExt<String> for str {
     }
 }
 
-#[experimental = "would prefer to do this in a more general way"]
+#[unstable = "would prefer to do this in a more general way"]
 impl OwnedAsciiExt for String {
     #[inline]
     fn into_ascii_uppercase(self) -> String {
@@ -97,7 +97,7 @@ impl OwnedAsciiExt for String {
     }
 }
 
-#[experimental = "would prefer to do this in a more general way"]
+#[unstable = "would prefer to do this in a more general way"]
 impl AsciiExt<Vec<u8>> for [u8] {
     #[inline]
     fn is_ascii(&self) -> bool {
@@ -123,7 +123,7 @@ impl AsciiExt<Vec<u8>> for [u8] {
     }
 }
 
-#[experimental = "would prefer to do this in a more general way"]
+#[unstable = "would prefer to do this in a more general way"]
 impl OwnedAsciiExt for Vec<u8> {
     #[inline]
     fn into_ascii_uppercase(mut self) -> Vec<u8> {
@@ -142,7 +142,7 @@ impl OwnedAsciiExt for Vec<u8> {
     }
 }
 
-#[experimental = "would prefer to do this in a more general way"]
+#[unstable = "would prefer to do this in a more general way"]
 impl AsciiExt for u8 {
     #[inline]
     fn is_ascii(&self) -> bool {
@@ -165,7 +165,7 @@ impl AsciiExt for u8 {
     }
 }
 
-#[experimental = "would prefer to do this in a more general way"]
+#[unstable = "would prefer to do this in a more general way"]
 impl AsciiExt for char {
     #[inline]
     fn is_ascii(&self) -> bool {

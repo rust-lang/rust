@@ -117,8 +117,8 @@ fn calculate_type(sess: &session::Session,
             sess.cstore.iter_crate_data(|cnum, data| {
                 let src = sess.cstore.get_used_crate_source(cnum).unwrap();
                 if src.rlib.is_some() { return }
-                sess.err(format!("dependency `{}` not found in rlib format",
-                                 data.name).index(&FullRange));
+                sess.err(&format!("dependency `{}` not found in rlib format",
+                                 data.name)[]);
             });
             return Vec::new();
         }
@@ -191,13 +191,13 @@ fn calculate_type(sess: &session::Session,
             Some(cstore::RequireDynamic) if src.dylib.is_some() => continue,
             Some(kind) => {
                 let data = sess.cstore.get_crate_data(cnum + 1);
-                sess.err(format!("crate `{}` required to be available in {}, \
+                sess.err(&format!("crate `{}` required to be available in {}, \
                                   but it was not available in this form",
                                  data.name,
                                  match kind {
                                      cstore::RequireStatic => "rlib",
                                      cstore::RequireDynamic => "dylib",
-                                 }).index(&FullRange));
+                                 })[]);
             }
         }
     }
@@ -220,9 +220,9 @@ fn add_library(sess: &session::Session,
             // can be refined over time.
             if link2 != link || link == cstore::RequireStatic {
                 let data = sess.cstore.get_crate_data(cnum);
-                sess.err(format!("cannot satisfy dependencies so `{}` only \
+                sess.err(&format!("cannot satisfy dependencies so `{}` only \
                                   shows up once",
-                                 data.name).index(&FullRange));
+                                 data.name)[]);
                 sess.help("having upstream crates all available in one format \
                            will likely make this go away");
             }

@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 fn main() {
-    let x = box 1i;
+    let x = box 1is;
     let f = move|:| {
         let _a = x;
         drop(x);

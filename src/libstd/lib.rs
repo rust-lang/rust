@@ -96,6 +96,7 @@
 
 #![crate_name = "std"]
 #![stable]
+#![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -107,8 +108,9 @@
 #![feature(linkage, thread_local, asm)]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(slicing_syntax, unboxed_closures)]
+#![feature(box_syntax)]
 #![feature(old_impl_check)]
-#![cfg_attr(stage0, allow(unused_attributes))]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -121,7 +123,7 @@ extern crate log;
 
 #[macro_use]
 #[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
-                 unreachable, unimplemented, write, writeln)]
+    unreachable, unimplemented, write, writeln)]
 extern crate core;
 
 #[macro_use]
@@ -150,9 +152,9 @@ pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
 pub use core::default;
 pub use core::finally;
+pub use core::hash;
 pub use core::intrinsics;
 pub use core::iter;
-#[cfg(stage0)] #[cfg(not(test))] pub use core::marker as kinds;
 #[cfg(not(test))] pub use core::marker;
 pub use core::mem;
 #[cfg(not(test))] pub use core::ops;
@@ -176,7 +178,7 @@ pub use unicode::char;
 /* Exported macros */
 
 #[macro_use]
-pub mod macros;
+mod macros;
 
 #[macro_use]
 pub mod bitflags;
@@ -203,12 +205,14 @@ mod int_macros;
 mod uint_macros;
 
 #[path = "num/int.rs"]  pub mod int;
+#[path = "num/isize.rs"]  pub mod isize;
 #[path = "num/i8.rs"]   pub mod i8;
 #[path = "num/i16.rs"]  pub mod i16;
 #[path = "num/i32.rs"]  pub mod i32;
 #[path = "num/i64.rs"]  pub mod i64;
 
 #[path = "num/uint.rs"] pub mod uint;
+#[path = "num/usize.rs"] pub mod usize;
 #[path = "num/u8.rs"]   pub mod u8;
 #[path = "num/u16.rs"]  pub mod u16;
 #[path = "num/u32.rs"]  pub mod u32;
@@ -242,7 +246,6 @@ pub mod time;
 /* Common data structures */
 
 pub mod collections;
-pub mod hash;
 
 /* Threads and communication */
 
@@ -274,6 +277,7 @@ mod std {
     pub use clone;
     pub use cmp;
     pub use hash;
+    pub use default;
 
     pub use sync; // used for select!()
     pub use error; // used for try!()
@@ -284,8 +288,6 @@ mod std {
     pub use vec; // used for vec![]
     pub use cell; // used for tls!
     pub use thread_local; // used for thread_local!
-    #[cfg(stage0)]
-    pub use marker as kinds;
     pub use marker;  // used for tls!
     pub use ops; // used for bitflags!
 

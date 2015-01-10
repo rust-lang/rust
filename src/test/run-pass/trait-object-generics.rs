@@ -10,6 +10,8 @@
 
 // test for #8664
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 
 pub trait Trait2<A> {
     fn doit(&self);

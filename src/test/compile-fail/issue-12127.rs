@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn do_it(x: &int) { }
+#![feature(box_syntax)]
+
+fn do_it(x: &isize) { }
 
 fn main() {
     let x = box 22;

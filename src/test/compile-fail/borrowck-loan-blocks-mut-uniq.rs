@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn borrow<F>(v: &int, f: F) where F: FnOnce(&int) {
+#![feature(box_syntax)]
+
+fn borrow<F>(v: &isize, f: F) where F: FnOnce(&isize) {
     f(v);
 }
 

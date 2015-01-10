@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(+x: int) {} //~ ERROR unexpected token: `+`
+fn f(+x: isize) {} //~ ERROR unexpected token: `+`

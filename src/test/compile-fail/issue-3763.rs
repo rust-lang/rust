@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
 mod my_mod {
     pub struct MyStruct {
-        priv_field: int
+        priv_field: isize
     }
     pub fn MyStruct () -> MyStruct {
         MyStruct {priv_field: 4}

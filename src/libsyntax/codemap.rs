@@ -105,6 +105,11 @@ pub struct Span {
 
 pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_id: NO_EXPANSION };
 
+// Generic span to be used for code originating from the command line
+pub const COMMAND_LINE_SP: Span = Span { lo: BytePos(0),
+                                         hi: BytePos(0),
+                                         expn_id: COMMAND_LINE_EXPN };
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
 pub struct Spanned<T> {
     pub node: T,
@@ -235,6 +240,8 @@ pub struct ExpnInfo {
 pub struct ExpnId(u32);
 
 pub const NO_EXPANSION: ExpnId = ExpnId(-1);
+// For code appearing from the command line
+pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(-2);
 
 impl ExpnId {
     pub fn from_llvm_cookie(cookie: c_uint) -> ExpnId {
@@ -304,9 +311,9 @@ impl FileMap {
         lines.get(line_number).map(|&line| {
             let begin: BytePos = line - self.start_pos;
             let begin = begin.to_uint();
-            let slice = self.src.index(&(begin..));
+            let slice = &self.src[begin..];
             match slice.find('\n') {
-                Some(e) => slice.index(&(0..e)),
+                Some(e) => &slice[0..e],
                 None => slice
             }.to_string()
         })
@@ -351,9 +358,9 @@ impl CodeMap {
         // FIXME #12884: no efficient/safe way to remove from the start of a string
         // and reuse the allocation.
         let mut src = if src.starts_with("\u{feff}") {
-            String::from_str(src.index(&(3..)))
+            String::from_str(&src[3..])
         } else {
-            String::from_str(src.index(&FullRange))
+            String::from_str(&src[])
         };
 
         // Append '\n' in case it's not already there.
@@ -440,8 +447,7 @@ impl CodeMap {
         if begin.fm.start_pos != end.fm.start_pos {
             None
         } else {
-            Some(begin.fm.src.index(&(begin.pos.to_uint()..
-                                      end.pos.to_uint())).to_string())
+            Some((&begin.fm.src[begin.pos.to_uint()..end.pos.to_uint()]).to_string())
         }
     }
 
@@ -590,7 +596,12 @@ impl CodeMap {
                 Some(ref info) => {
                     // save the parent expn_id for next loop iteration
                     expnid = info.call_site.expn_id;
-                    if info.callee.span.is_none() {
+                    if info.callee.name == "format_args" {
+                        // This is a hack because the format_args builtin calls unstable APIs.
+                        // I spent like 6 hours trying to solve this more generally but am stupid.
+                        is_internal = true;
+                        false
+                    } else if info.callee.span.is_none() {
                         // it's a compiler built-in, we *really* don't want to mess with it
                         // so we skip it, unless it was called by a regular macro, in which case
                         // we will handle the caller macro next turn

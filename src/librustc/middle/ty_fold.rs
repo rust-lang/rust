@@ -30,7 +30,7 @@
 //! In some cases, we follow a degenerate pattern where we do not have
 //! a `fold_T` nor `super_fold_T` method. Instead, `T.fold_with`
 //! traverses the structure directly. This is suboptimal because the
-//! behavior cannot be overriden, but it's much less work to implement.
+//! behavior cannot be overridden, but it's much less work to implement.
 //! If you ever *do* need an override that doesn't exist, it's not hard
 //! to convert the degenerate pattern into the proper thing.
 
@@ -270,6 +270,15 @@ impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::TraitRef<'tcx> {
         folder.fold_trait_ref(self)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::field<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::field<'tcx> {
+        ty::field {
+            name: self.name,
+            mt: self.mt.fold_with(folder),
+        }
     }
 }
 
@@ -853,7 +862,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
 ///////////////////////////////////////////////////////////////////////////
 // Region eraser
 //
-// Replaces all free regions with 'static. Useful in trans.
+// Replaces all free regions with 'static. Useful in contexts, such as
+// method probing, where precise region relationships are not
+// important. Note that in trans you should use
+// `common::erase_regions` instead.
 
 pub struct RegionEraser<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,

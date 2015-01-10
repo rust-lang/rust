@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
-fn take(_x: Box<int>) {}
+fn take(_x: Box<isize>) {}
 
 fn main() {
 
-    let x: Box<int> = box 25;
+    let x: Box<isize> = box 25;
     loop {
         take(x); //~ ERROR use of moved value: `x`
     }

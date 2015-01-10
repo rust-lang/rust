@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo { a: int, b: int }
+#![feature(box_syntax)]
+
+struct Foo { a: isize, b: isize }
 
 fn main() {
     let mut x = box Foo { a: 1, b: 2 };

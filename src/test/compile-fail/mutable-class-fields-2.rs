@@ -9,9 +9,9 @@
 // except according to those terms.
 
 struct cat {
-  meows : uint,
+  meows : usize,
 
-  how_hungry : int,
+  how_hungry : isize,
 }
 
 impl cat {
@@ -21,7 +21,7 @@ impl cat {
 
 }
 
-fn cat(in_x : uint, in_y : int) -> cat {
+fn cat(in_x : usize, in_y : isize) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y
@@ -29,6 +29,6 @@ fn cat(in_x : uint, in_y : int) -> cat {
 }
 
 fn main() {
-  let nyan : cat = cat(52u, 99);
+  let nyan : cat = cat(52us, 99);
   nyan.eat();
 }

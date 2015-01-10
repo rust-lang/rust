@@ -106,7 +106,7 @@
 //! ```
 //!
 //! This is invalid because the first argument is both referred to as a
-//! hexidecimal as well as an
+//! hexadecimal as well as an
 //! octal.
 //!
 //! There are various parameters which do require a particular type, however.
@@ -175,7 +175,7 @@
 //! use std::f64;
 //! use std::num::Float;
 //!
-//! #[deriving(Show)]
+//! #[derive(Show)]
 //! struct Vector2D {
 //!     x: int,
 //!     y: int,
@@ -410,7 +410,7 @@
 //! them with the same character. For example, the `{` character is escaped with
 //! `{{` and the `}` character is escaped with `}}`.
 
-#![experimental]
+#![unstable]
 
 use string;
 
@@ -439,7 +439,7 @@ pub use core::fmt::{argument, argumentuint};
 /// let s = fmt::format(format_args!("Hello, {}!", "world"));
 /// assert_eq!(s, "Hello, world!".to_string());
 /// ```
-#[experimental = "this is an implementation detail of format! and should not \
+#[unstable = "this is an implementation detail of format! and should not \
                   be called directly"]
 pub fn format(args: Arguments) -> string::String {
     let mut output = string::String::new();

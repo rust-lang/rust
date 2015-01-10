@@ -11,13 +11,14 @@
 // Test that we detect nested calls that could free pointers evaluated
 // for earlier arguments.
 
+#![feature(box_syntax)]
 
-fn rewrite(v: &mut Box<uint>) -> uint {
+fn rewrite(v: &mut Box<usize>) -> usize {
     *v = box 22;
     **v
 }
 
-fn add(v: &uint, w: Box<uint>) -> uint {
+fn add(v: &usize, w: Box<usize>) -> usize {
     *v + *w
 }
 

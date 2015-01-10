@@ -102,9 +102,9 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     Ok(confirm::confirm(fcx, span, self_expr, call_expr, self_ty, pick, supplied_method_types))
 }
 
-pub fn lookup_in_trait<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
+pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  span: Span,
-                                 self_expr: Option<&'a ast::Expr>,
+                                 self_expr: Option<&ast::Expr>,
                                  m_name: ast::Name,
                                  trait_def_id: DefId,
                                  self_ty: Ty<'tcx>,
@@ -125,9 +125,9 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 /// method-lookup code. In particular, autoderef on index is basically identical to autoderef with
 /// normal probes, except that the test also looks for built-in indexing. Also, the second half of
 /// this method is basically the same as confirmation.
-pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
+pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           span: Span,
-                                          self_expr: Option<&'a ast::Expr>,
+                                          self_expr: Option<&ast::Expr>,
                                           m_name: ast::Name,
                                           trait_def_id: DefId,
                                           autoderefref: ty::AutoDerefRef<'tcx>,
@@ -264,9 +264,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                         _ => {
                             fcx.tcx().sess.span_bug(
                                 span,
-                                format!(
+                                &format!(
                                     "trait method is &self but first arg is: {}",
-                                    transformed_self_ty.repr(fcx.tcx())).index(&FullRange));
+                                    transformed_self_ty.repr(fcx.tcx()))[]);
                         }
                     }
                 }
@@ -274,9 +274,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                 _ => {
                     fcx.tcx().sess.span_bug(
                         span,
-                        format!(
+                        &format!(
                             "unexpected explicit self type in operator method: {:?}",
-                            method_ty.explicit_self).index(&FullRange));
+                            method_ty.explicit_self)[]);
                 }
             }
         }
@@ -329,8 +329,8 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // If the method has the name of a field, give a help note
             if is_field {
                 cx.sess.span_note(span,
-                    format!("use `(s.{0})(...)` if you meant to call the \
-                            function stored in the `{0}` field", method_ustring).index(&FullRange));
+                    &format!("use `(s.{0})(...)` if you meant to call the \
+                            function stored in the `{0}` field", method_ustring)[]);
             }
 
             if static_sources.len() > 0 {

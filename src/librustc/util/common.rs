@@ -16,6 +16,7 @@ use std::fmt::Show;
 use std::hash::{Hash, Hasher};
 use std::iter::repeat;
 use std::time::Duration;
+use std::collections::hash_state::HashState;
 
 use syntax::ast;
 use syntax::visit;
@@ -140,11 +141,11 @@ pub fn block_query<P>(b: &ast::Block, p: P) -> bool where P: FnMut(&ast::Expr) -
 /// Efficiency note: This is implemented in an inefficient way because it is typically invoked on
 /// very small graphs. If the graphs become larger, a more efficient graph representation and
 /// algorithm would probably be advised.
-pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
-    edges_map: &HashMap<T,Vec<T>,H>,
-    source: T,
-    destination: T)
-    -> bool
+pub fn can_reach<T, S>(edges_map: &HashMap<T, Vec<T>, S>, source: T,
+                       destination: T) -> bool
+    where S: HashState,
+          <S as HashState>::Hasher: Hasher<Output=u64>,
+          T: Hash< <S as HashState>::Hasher> + Eq + Clone,
 {
     if source == destination {
         return true;
@@ -202,11 +203,12 @@ pub fn can_reach<S,H:Hasher<S>,T:Eq+Clone+Hash<S>>(
 /// }
 /// ```
 #[inline(always)]
-pub fn memoized<T, U, S, H, F>(cache: &RefCell<HashMap<T, U, H>>, arg: T, f: F) -> U where
-    T: Clone + Hash<S> + Eq,
-    U: Clone,
-    H: Hasher<S>,
-    F: FnOnce(T) -> U,
+pub fn memoized<T, U, S, F>(cache: &RefCell<HashMap<T, U, S>>, arg: T, f: F) -> U
+    where T: Clone + Hash<<S as HashState>::Hasher> + Eq,
+          U: Clone,
+          S: HashState,
+          <S as HashState>::Hasher: Hasher<Output=u64>,
+          F: FnOnce(T) -> U,
 {
     let key = arg.clone();
     let result = cache.borrow().get(&key).map(|result| result.clone());

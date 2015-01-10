@@ -11,15 +11,15 @@
 // Tests that two closures cannot simultaneously have mutable
 // and immutable access to the variable. Issue #6801.
 
-fn get(x: &int) -> int {
+fn get(x: &isize) -> isize {
     *x
 }
 
-fn set(x: &mut int) {
+fn set(x: &mut isize) {
     *x = 4;
 }
 
-fn a(x: &int) {
+fn a(x: &isize) {
     let c1 = |&mut:| set(&mut *x);
     //~^ ERROR cannot borrow
     let c2 = |&mut:| set(&mut *x);

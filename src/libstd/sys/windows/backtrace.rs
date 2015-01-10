@@ -362,7 +362,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
             let bytes = unsafe { ffi::c_str_to_bytes(&ptr) };
             match str::from_utf8(bytes) {
                 Ok(s) => try!(demangle(w, s)),
-                Err(..) => try!(w.write(bytes.index(&(..(bytes.len()-1))))),
+                Err(..) => try!(w.write(&bytes[..(bytes.len()-1)])),
             }
         }
         try!(w.write(&['\n' as u8]));

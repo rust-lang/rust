@@ -10,7 +10,7 @@
 
 trait A { }
 
-impl A for int {
+impl A for isize {
     fn foo(&self) { } //~ ERROR method `foo` is not a member of trait `A`
 }
 

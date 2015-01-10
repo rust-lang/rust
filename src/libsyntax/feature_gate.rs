@@ -70,6 +70,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("associated_types", Accepted),
     ("visible_private_types", Active),
     ("slicing_syntax", Active),
+    ("box_syntax", Active),
 
     ("if_let", Accepted),
     ("while_let", Accepted),
@@ -81,7 +82,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("issue_5723_bootstrap", Accepted),
 
     // A way to temporarily opt out of opt in copy. This will *never* be accepted.
-    ("opt_out_copy", Deprecated),
+    ("opt_out_copy", Removed),
 
     // A way to temporarily opt out of the new orphan rules. This will *never* be accepted.
     ("old_orphan_check", Deprecated),
@@ -91,6 +92,9 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
 
     // OIBIT specific features
     ("optin_builtin_traits", Active),
+
+    // int and uint are now deprecated
+    ("int_uint", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -122,7 +126,6 @@ pub struct Features {
     pub import_shadowing: bool,
     pub visible_private_types: bool,
     pub quote: bool,
-    pub opt_out_copy: bool,
     pub old_orphan_check: bool,
 }
 
@@ -134,7 +137,6 @@ impl Features {
             import_shadowing: false,
             visible_private_types: false,
             quote: false,
-            opt_out_copy: false,
             old_orphan_check: false,
         }
     }
@@ -150,12 +152,20 @@ impl<'a> Context<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         if !self.has_feature(feature) {
             self.span_handler.span_err(span, explain);
-            self.span_handler.span_help(span, format!("add #![feature({})] to the \
+            self.span_handler.span_help(span, &format!("add #![feature({})] to the \
                                                        crate attributes to enable",
-                                                      feature).index(&FullRange));
+                                                      feature)[]);
         }
     }
 
+    fn warn_feature(&self, feature: &str, span: Span, explain: &str) {
+        if !self.has_feature(feature) {
+            self.span_handler.span_warn(span, explain);
+            self.span_handler.span_help(span, &format!("add #![feature({})] to the \
+                                                       crate attributes to silence this warning",
+                                                      feature)[]);
+        }
+    }
     fn has_feature(&self, feature: &str) -> bool {
         self.features.iter().any(|&n| n == feature)
     }
@@ -243,7 +253,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         }
         match i.node {
             ast::ItemForeignMod(ref foreign_module) => {
-                if attr::contains_name(i.attrs.index(&FullRange), "link_args") {
+                if attr::contains_name(&i.attrs[], "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
@@ -257,14 +267,14 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemFn(..) => {
-                if attr::contains_name(i.attrs.index(&FullRange), "plugin_registrar") {
+                if attr::contains_name(&i.attrs[], "plugin_registrar") {
                     self.gate_feature("plugin_registrar", i.span,
                                       "compiler plugins are experimental and possibly buggy");
                 }
             }
 
             ast::ItemStruct(..) => {
-                if attr::contains_name(i.attrs.index(&FullRange), "simd") {
+                if attr::contains_name(&i.attrs[], "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
                 }
@@ -290,7 +300,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        removed in the future");
                 }
 
-                if attr::contains_name(i.attrs.index(&FullRange),
+                if attr::contains_name(&i.attrs[],
                                        "old_orphan_check") {
                     self.gate_feature(
                         "old_orphan_check",
@@ -298,7 +308,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                         "the new orphan check rules will eventually be strictly enforced");
                 }
 
-                if attr::contains_name(i.attrs.index(&FullRange),
+                if attr::contains_name(&i.attrs[],
                                        "old_impl_check") {
                     self.gate_feature("old_impl_check",
                                       i.span,
@@ -313,7 +323,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
-        if attr::contains_name(i.attrs.index(&FullRange), "linkage") {
+        if attr::contains_name(&i.attrs[], "linkage") {
             self.gate_feature("linkage", i.span,
                               "the `linkage` attribute is experimental \
                                and not portable across platforms")
@@ -333,15 +343,60 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
+        match t.node {
+            ast::TyPath(ref p, _) => {
+                match &*p.segments {
+
+                    [ast::PathSegment { identifier, .. }] => {
+                        let name = token::get_ident(identifier);
+                        let msg = if name == "int" {
+                            Some("the `int` type is deprecated; \
+                                  use `isize` or a fixed-sized integer")
+                        } else if name == "uint" {
+                            Some("the `uint` type is deprecated; \
+                                  use `usize` or a fixed-sized integer")
+                        } else {
+                            None
+                        };
+
+                        if let Some(msg) = msg {
+                            self.context.warn_feature("int_uint", t.span, msg)
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
         visit::walk_ty(self, t);
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
-            ast::ExprRange(..) => {
-                self.gate_feature("slicing_syntax",
+            ast::ExprBox(..) | ast::ExprUnary(ast::UnOp::UnUniq, _) => {
+                self.gate_feature("box_syntax",
                                   e.span,
-                                  "range syntax is experimental");
+                                  "box expression syntax is experimental in alpha release; \
+                                   you can call `Box::new` instead.");
+            }
+            ast::ExprLit(ref lit) => {
+                match lit.node {
+                    ast::LitInt(_, ty) => {
+                        let msg = if let ast::SignedIntLit(ast::TyIs(true), _) = ty {
+                            Some("the `i` suffix on integers is deprecated; use `is` \
+                                  or one of the fixed-sized suffixes")
+                        } else if let ast::UnsignedIntLit(ast::TyUs(true)) = ty {
+                            Some("the `u` suffix on integers is deprecated; use `us` \
+                                 or one of the fixed-sized suffixes")
+                        } else {
+                            None
+                        };
+                        if let Some(msg) = msg {
+                            self.context.warn_feature("int_uint", e.span, msg);
+                        }
+                    }
+                    _ => {}
+                }
             }
             _ => {}
         }
@@ -364,6 +419,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   "multiple-element slice matches anywhere \
                                    but at the end of a slice (e.g. \
                                    `[0, ..xs, 0]` are experimental")
+            }
+            ast::PatBox(..) => {
+                self.gate_feature("box_syntax",
+                                  pattern.span,
+                                  "box pattern syntax is experimental in alpha release");
             }
             _ => {}
         }
@@ -458,7 +518,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         import_shadowing: cx.has_feature("import_shadowing"),
         visible_private_types: cx.has_feature("visible_private_types"),
         quote: cx.has_feature("quote"),
-        opt_out_copy: cx.has_feature("opt_out_copy"),
         old_orphan_check: cx.has_feature("old_orphan_check"),
     },
     unknown_features)

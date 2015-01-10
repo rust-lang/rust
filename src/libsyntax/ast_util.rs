@@ -85,6 +85,13 @@ pub fn is_shift_binop(b: BinOp) -> bool {
     }
 }
 
+pub fn is_comparison_binop(b: BinOp) -> bool {
+    match b {
+        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
+        _ => false
+    }
+}
+
 /// Returns `true` if the binary operator takes its arguments by value
 pub fn is_by_value_binop(b: BinOp) -> bool {
     match b {
@@ -120,8 +127,10 @@ pub fn is_path(e: P<Expr>) -> bool {
 /// We want to avoid "45int" and "-3int" in favor of "45" and "-3"
 pub fn int_ty_to_string(t: IntTy, val: Option<i64>) -> String {
     let s = match t {
-        TyIs if val.is_some() => "is",
-        TyIs => "isize",
+        TyIs(true) if val.is_some() => "i",
+        TyIs(true) => "int",
+        TyIs(false) if val.is_some() => "is",
+        TyIs(false) => "isize",
         TyI8 => "i8",
         TyI16 => "i16",
         TyI32 => "i32",
@@ -141,7 +150,7 @@ pub fn int_ty_max(t: IntTy) -> u64 {
     match t {
         TyI8 => 0x80u64,
         TyI16 => 0x8000u64,
-        TyIs | TyI32 => 0x80000000u64, // actually ni about TyIs
+        TyIs(_) | TyI32 => 0x80000000u64, // actually ni about TyIs
         TyI64 => 0x8000000000000000u64
     }
 }
@@ -150,8 +159,10 @@ pub fn int_ty_max(t: IntTy) -> u64 {
 /// We want to avoid "42uint" in favor of "42u"
 pub fn uint_ty_to_string(t: UintTy, val: Option<u64>) -> String {
     let s = match t {
-        TyUs if val.is_some() => "us",
-        TyUs => "usize",
+        TyUs(true) if val.is_some() => "u",
+        TyUs(true) => "uint",
+        TyUs(false) if val.is_some() => "us",
+        TyUs(false) => "usize",
         TyU8 => "u8",
         TyU16 => "u16",
         TyU32 => "u32",
@@ -168,7 +179,7 @@ pub fn uint_ty_max(t: UintTy) -> u64 {
     match t {
         TyU8 => 0xffu64,
         TyU16 => 0xffffu64,
-        TyUs | TyU32 => 0xffffffffu64, // actually ni about TyUs
+        TyUs(_) | TyU32 => 0xffffffffu64, // actually ni about TyUs
         TyU64 => 0xffffffffffffffffu64
     }
 }
@@ -238,11 +249,11 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     match *trait_ref {
         Some(ref trait_ref) => {
             pretty.push('.');
-            pretty.push_str(pprust::path_to_string(&trait_ref.path).index(&FullRange));
+            pretty.push_str(&pprust::path_to_string(&trait_ref.path)[]);
         }
         None => {}
     }
-    token::gensym_ident(pretty.index(&FullRange))
+    token::gensym_ident(&pretty[])
 }
 
 pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
@@ -317,8 +328,7 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
       BiBitAnd                  =>  8u,
       BiBitXor                  =>  7u,
       BiBitOr                   =>  6u,
-      BiLt | BiLe | BiGe | BiGt =>  4u,
-      BiEq | BiNe               =>  3u,
+      BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3u,
       BiAnd                     =>  2u,
       BiOr                      =>  1u
   }
@@ -704,7 +714,7 @@ pub fn pat_is_ident(pat: P<ast::Pat>) -> bool {
 pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
     (a.span == b.span)
     && (a.global == b.global)
-    && (segments_name_eq(a.segments.index(&FullRange), b.segments.index(&FullRange)))
+    && (segments_name_eq(&a.segments[], &b.segments[]))
 }
 
 // are two arrays of segments equal when compared unhygienically?
@@ -791,14 +801,14 @@ mod test {
 
     #[test] fn idents_name_eq_test() {
         assert!(segments_name_eq(
-            [Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().index(&FullRange),
-            [Ident{name:Name(3),ctxt:104}, Ident{name:Name(78),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().index(&FullRange)));
+            &[Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[],
+            &[Ident{name:Name(3),ctxt:104}, Ident{name:Name(78),ctxt:182}]
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[]));
         assert!(!segments_name_eq(
-            [Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().index(&FullRange),
-            [Ident{name:Name(3),ctxt:104}, Ident{name:Name(77),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>().index(&FullRange)));
+            &[Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[],
+            &[Ident{name:Name(3),ctxt:104}, Ident{name:Name(77),ctxt:182}]
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[]));
     }
 }

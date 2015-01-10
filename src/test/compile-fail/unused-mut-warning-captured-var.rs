@@ -11,7 +11,7 @@
 #![forbid(unused_mut)]
 
 fn main() {
-    let mut x = 1i;
+    let mut x = 1is;
     //~^ ERROR: variable does not need to be mutable
     move|:| { println!("{}", x); };
 }

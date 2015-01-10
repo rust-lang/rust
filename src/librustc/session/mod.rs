@@ -25,6 +25,8 @@ use syntax::parse::token;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
 
+use rustc_back::target::Target;
+
 use std::os;
 use std::cell::{Cell, RefCell};
 
@@ -35,6 +37,7 @@ pub mod search_paths;
 // session for a single crate.
 pub struct Session {
     pub target: config::Config,
+    pub host: Target,
     pub opts: config::Options,
     pub cstore: CStore,
     pub parse_sess: ParseSess,
@@ -164,9 +167,6 @@ impl Session {
     pub fn diagnostic<'a>(&'a self) -> &'a diagnostic::SpanHandler {
         &self.parse_sess.span_diagnostic
     }
-    pub fn debugging_opt(&self, opt: u64) -> bool {
-        (self.opts.debugging_opts & opt) != 0
-    }
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
         &self.parse_sess.span_diagnostic.cm
     }
@@ -174,38 +174,38 @@ impl Session {
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp,
-                      format!("impossible case reached: {}", msg).index(&FullRange));
+                      &format!("impossible case reached: {}", msg)[]);
     }
-    pub fn verbose(&self) -> bool { self.debugging_opt(config::VERBOSE) }
-    pub fn time_passes(&self) -> bool { self.debugging_opt(config::TIME_PASSES) }
+    pub fn verbose(&self) -> bool { self.opts.debugging_opts.verbose }
+    pub fn time_passes(&self) -> bool { self.opts.debugging_opts.time_passes }
     pub fn count_llvm_insns(&self) -> bool {
-        self.debugging_opt(config::COUNT_LLVM_INSNS)
+        self.opts.debugging_opts.count_llvm_insns
     }
     pub fn count_type_sizes(&self) -> bool {
-        self.debugging_opt(config::COUNT_TYPE_SIZES)
+        self.opts.debugging_opts.count_type_sizes
     }
     pub fn time_llvm_passes(&self) -> bool {
-        self.debugging_opt(config::TIME_LLVM_PASSES)
+        self.opts.debugging_opts.time_llvm_passes
     }
-    pub fn trans_stats(&self) -> bool { self.debugging_opt(config::TRANS_STATS) }
-    pub fn meta_stats(&self) -> bool { self.debugging_opt(config::META_STATS) }
-    pub fn asm_comments(&self) -> bool { self.debugging_opt(config::ASM_COMMENTS) }
-    pub fn no_verify(&self) -> bool { self.debugging_opt(config::NO_VERIFY) }
-    pub fn borrowck_stats(&self) -> bool { self.debugging_opt(config::BORROWCK_STATS) }
+    pub fn trans_stats(&self) -> bool { self.opts.debugging_opts.trans_stats }
+    pub fn meta_stats(&self) -> bool { self.opts.debugging_opts.meta_stats }
+    pub fn asm_comments(&self) -> bool { self.opts.debugging_opts.asm_comments }
+    pub fn no_verify(&self) -> bool { self.opts.debugging_opts.no_verify }
+    pub fn borrowck_stats(&self) -> bool { self.opts.debugging_opts.borrowck_stats }
     pub fn print_llvm_passes(&self) -> bool {
-        self.debugging_opt(config::PRINT_LLVM_PASSES)
+        self.opts.debugging_opts.print_llvm_passes
     }
     pub fn lto(&self) -> bool {
         self.opts.cg.lto
     }
     pub fn no_landing_pads(&self) -> bool {
-        self.debugging_opt(config::NO_LANDING_PADS)
+        self.opts.debugging_opts.no_landing_pads
     }
     pub fn unstable_options(&self) -> bool {
-        self.debugging_opt(config::UNSTABLE_OPTIONS)
+        self.opts.debugging_opts.unstable_options
     }
     pub fn print_enum_sizes(&self) -> bool {
-        self.debugging_opt(config::PRINT_ENUM_SIZES)
+        self.opts.debugging_opts.print_enum_sizes
     }
     pub fn sysroot<'a>(&'a self) -> &'a Path {
         match self.opts.maybe_sysroot {
@@ -216,7 +216,7 @@ impl Session {
     }
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch {
         filesearch::FileSearch::new(self.sysroot(),
-                                    self.opts.target_triple.index(&FullRange),
+                                    &self.opts.target_triple[],
                                     &self.opts.search_paths,
                                     kind)
     }
@@ -246,6 +246,13 @@ pub fn build_session_(sopts: config::Options,
                       local_crate_source_file: Option<Path>,
                       span_diagnostic: diagnostic::SpanHandler)
                       -> Session {
+    let host = match Target::search(config::host_triple()) {
+        Ok(t) => t,
+        Err(e) => {
+            span_diagnostic.handler()
+                .fatal((format!("Error loading host specification: {}", e)).as_slice());
+    }
+    };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic);
     let default_sysroot = match sopts.maybe_sysroot {
@@ -271,6 +278,7 @@ pub fn build_session_(sopts: config::Options,
 
     let sess = Session {
         target: target_cfg,
+        host: host,
         opts: sopts,
         cstore: CStore::new(token::get_ident_interner()),
         parse_sess: p_s,

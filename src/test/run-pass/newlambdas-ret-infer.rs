@@ -11,6 +11,9 @@
 // Test that the lambda kind is inferred correctly as a return
 // expression
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 fn unique() -> Box<FnMut()+'static> { return box || (); }
 
 pub fn main() {

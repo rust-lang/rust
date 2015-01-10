@@ -12,6 +12,6 @@ use std::intrinsics::{init, forget};
 
 // Test that the `forget` and `init` intrinsics are really unsafe
 pub fn main() {
-    let stuff = init::<int>(); //~ ERROR call to unsafe function requires unsafe
+    let stuff = init::<isize>(); //~ ERROR call to unsafe function requires unsafe
     forget(stuff);             //~ ERROR call to unsafe function requires unsafe
 }

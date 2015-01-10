@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![experimental]
+#![unstable]
 
 use prelude::v1::*;
 
@@ -37,7 +37,7 @@ pub fn on_fail(obj: &(Any+Send), file: &'static str, line: uint) {
     let msg = match obj.downcast_ref::<&'static str>() {
         Some(s) => *s,
         None => match obj.downcast_ref::<String>() {
-            Some(s) => s.index(&FullRange),
+            Some(s) => &s[],
             None => "Box<Any>",
         }
     };

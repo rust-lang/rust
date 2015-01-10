@@ -17,17 +17,17 @@ pub trait Foo<T> {
     fn get(&self, t: T) -> Self::A;
 }
 
-trait SomeTrait<I : for<'x> Foo<&'x int>> {
+trait SomeTrait<I : for<'x> Foo<&'x isize>> {
     fn some_method(&self, arg: I::A);
     //~^ ERROR cannot extract an associated type from a higher-ranked trait bound in this context
 }
 
-trait AnotherTrait<I : for<'x> Foo<&'x int>> {
-    fn some_method(&self, arg: <I as Foo<&int>>::A);
+trait AnotherTrait<I : for<'x> Foo<&'x isize>> {
+    fn some_method(&self, arg: <I as Foo<&isize>>::A);
 }
 
-trait YetAnotherTrait<I : for<'x> Foo<&'x int>> {
-    fn some_method<'a>(&self, arg: <I as Foo<&'a int>>::A);
+trait YetAnotherTrait<I : for<'x> Foo<&'x isize>> {
+    fn some_method<'a>(&self, arg: <I as Foo<&'a isize>>::A);
 }
 
 pub fn main() {}

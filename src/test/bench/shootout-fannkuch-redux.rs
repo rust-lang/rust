@@ -38,8 +38,6 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(slicing_syntax)]
-
 use std::{cmp, iter, mem};
 use std::thread::Thread;
 
@@ -130,7 +128,7 @@ impl Perm {
 }
 
 
-fn reverse(tperm: &mut [i32], mut k: uint) {
+fn reverse(tperm: &mut [i32], k: uint) {
     tperm.slice_to_mut(k).reverse()
 }
 
@@ -165,7 +163,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
     let mut futures = vec![];
     let k = perm.max() / N;
 
-    for (i, j) in range(0, N).zip(iter::count(0, k)) {
+    for (_, j) in range(0, N).zip(iter::count(0, k)) {
         let max = cmp::min(j+k, perm.max());
 
         futures.push(Thread::scoped(move|| {

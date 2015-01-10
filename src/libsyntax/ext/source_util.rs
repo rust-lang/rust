@@ -57,7 +57,7 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let topmost = cx.original_span_in_file();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);
-    let filename = token::intern_and_get_ident(loc.file.name.index(&FullRange));
+    let filename = token::intern_and_get_ident(&loc.file.name[]);
     base::MacExpr::new(cx.expr_str(topmost, filename))
 }
 
@@ -65,7 +65,7 @@ pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         -> Box<base::MacResult+'static> {
     let s = pprust::tts_to_string(tts);
     base::MacExpr::new(cx.expr_str(sp,
-                                   token::intern_and_get_ident(s.index(&FullRange))))
+                                   token::intern_and_get_ident(&s[])))
 }
 
 pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
@@ -78,7 +78,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    .connect("::");
     base::MacExpr::new(cx.expr_str(
             sp,
-            token::intern_and_get_ident(string.index(&FullRange))))
+            token::intern_and_get_ident(&string[])))
 }
 
 /// include! : parse the given file as an expr
@@ -135,9 +135,9 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let bytes = match File::open(&file).read_to_end() {
         Err(e) => {
             cx.span_err(sp,
-                        format!("couldn't read {:?}: {}",
+                        &format!("couldn't read {:?}: {}",
                                 file.display(),
-                                e).index(&FullRange));
+                                e)[]);
             return DummyResult::expr(sp);
         }
         Ok(bytes) => bytes,
@@ -147,24 +147,18 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             // Add this input file to the code map to make it available as
             // dependency information
             let filename = format!("{:?}", file.display());
-            let interned = token::intern_and_get_ident(src.index(&FullRange));
+            let interned = token::intern_and_get_ident(&src[]);
             cx.codemap().new_filemap(filename, src);
 
             base::MacExpr::new(cx.expr_str(sp, interned))
         }
         Err(_) => {
             cx.span_err(sp,
-                        format!("{:?} wasn't a utf-8 file",
-                                file.display()).index(&FullRange));
+                        &format!("{:?} wasn't a utf-8 file",
+                                file.display())[]);
             return DummyResult::expr(sp);
         }
     }
-}
-
-pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
-                          -> Box<base::MacResult+'static> {
-    cx.span_warn(sp, "include_bin! is deprecated; use include_bytes! instead");
-    expand_include_bytes(cx, sp, tts)
 }
 
 pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
@@ -177,7 +171,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     match File::open(&file).read_to_end() {
         Err(e) => {
             cx.span_err(sp,
-                        format!("couldn't read {:?}: {}", file.display(), e).index(&FullRange));
+                        &format!("couldn't read {:?}: {}", file.display(), e)[]);
             return DummyResult::expr(sp);
         }
         Ok(bytes) => {

@@ -8,24 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 struct A {
-    x: Box<int>,
-    y: int,
+    x: Box<isize>,
+    y: isize,
 }
 
 struct B {
-    x: Box<int>,
-    y: Box<int>,
+    x: Box<isize>,
+    y: Box<isize>,
 }
 
 struct C {
     x: Box<A>,
-    y: int,
+    y: isize,
 }
 
 struct D {
     x: Box<A>,
-    y: Box<int>,
+    y: Box<isize>,
 }
 
 fn copy_after_move() {

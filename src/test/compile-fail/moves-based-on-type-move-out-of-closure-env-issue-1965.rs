@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::uint;
+#![feature(box_syntax)]
 
-fn test(_x: Box<uint>) {}
+use std::usize;
+
+fn test(_x: Box<usize>) {}
 
 fn main() {
     let i = box 3;

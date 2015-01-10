@@ -9,11 +9,11 @@
 // except according to those terms.
 
 struct Thing {
-    x: int
+    x: isize
 }
 
 impl Thing {
-    fn mul(&self, c: &int) -> Thing {
+    fn mul(&self, c: &isize) -> Thing {
         Thing {x: self.x * *c}
     }
 }

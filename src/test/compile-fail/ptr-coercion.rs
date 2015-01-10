@@ -13,12 +13,12 @@
 
 pub fn main() {
     // *const -> *mut
-    let x: *const int = &42i;
-    let x: *mut int = x; //~ERROR values differ in mutability
+    let x: *const isize = &42is;
+    let x: *mut isize = x; //~ERROR values differ in mutability
 
     // & -> *mut
-    let x: *mut int = &42; //~ERROR values differ in mutability
+    let x: *mut isize = &42; //~ERROR values differ in mutability
 
-    let x: *const int = &42;
-    let x: *mut int = x; //~ERROR values differ in mutability
+    let x: *const isize = &42;
+    let x: *mut isize = x; //~ERROR values differ in mutability
 }

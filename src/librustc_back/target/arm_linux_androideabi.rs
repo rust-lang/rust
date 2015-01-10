@@ -16,7 +16,7 @@ pub fn target() -> Target {
     // Many of the symbols defined in compiler-rt are also defined in libgcc.  Android
     // linker doesn't like that by default.
     base.pre_link_args.push("-Wl,--allow-multiple-definition".to_string());
-    // FIXME #17437 (and #17448): Android doesn't support position dependant executables anymore.
+    // FIXME #17437 (and #17448): Android doesn't support position dependent executables anymore.
     base.position_independent_executables = false;
 
     Target {
@@ -27,7 +27,7 @@ pub fn target() -> Target {
                       -a:0:64-n32".to_string(),
         llvm_target: "arm-linux-androideabi".to_string(),
         target_endian: "little".to_string(),
-        target_word_size: "32".to_string(),
+        target_pointer_width: "32".to_string(),
         arch: "arm".to_string(),
         target_os: "android".to_string(),
         options: base,

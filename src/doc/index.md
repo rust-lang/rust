@@ -9,10 +9,11 @@ If you haven't seen Rust at all yet, the first thing you should read is the [30
 minute intro](intro.html). It will give you an overview of the basic ideas of Rust
 at a high level.
 
-Once you know you really want to learn Rust, the next step is reading [the
-guide](guide.html). It is a lengthy explanation of Rust, its syntax, and its
-concepts. Upon completing the guide, you'll be an intermediate Rust developer,
-and will have a good grasp of the fundamental ideas behind Rust.
+Once you know you really want to learn Rust, the next step is reading [The
+Rust Programming Language](book/index.html). It is a lengthy explanation of
+Rust, its syntax, and its concepts. Upon completing the book, you'll be an
+intermediate Rust developer, and will have a good grasp of the fundamental
+ideas behind Rust.
 
 # Community & Getting Help
 
@@ -47,24 +48,6 @@ development of Rust itself is discussed.
 
 Rust does not have an exact specification, but an effort to describe as much of
 the language in as much detail as possible is in [the reference](reference.html).
-
-# Guides
-
-Rust Guides are in-depth looks at a particular topic that's relevant to Rust
-development. If you're trying to figure out how to do something, there may be
-a guide that can help you out:
-
-* [Ownership](guide-ownership.html)
-* [Strings](guide-strings.html)
-* [Pointers](guide-pointers.html)
-* [Crates and modules](guide-crates.html)
-* [Threads and Communication](guide-tasks.html)
-* [Error Handling](guide-error-handling.html)
-* [Foreign Function Interface](guide-ffi.html)
-* [Writing Unsafe and Low-Level Code](guide-unsafe.html)
-* [Macros](guide-macros.html)
-* [Testing](guide-testing.html)
-* [Compiler Plugins](guide-plugin.html)
 
 # Tools
 

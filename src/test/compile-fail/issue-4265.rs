@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct Foo {
-      baz: uint
+      baz: usize
 }
 
 impl Foo {

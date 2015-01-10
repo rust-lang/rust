@@ -19,14 +19,6 @@ use std::fmt;
 /// string when passed to a format string.
 pub struct Escape<'a>(pub &'a str);
 
-//NOTE(stage0): remove impl after snapshot
-#[cfg(stage0)]
-impl<'a> fmt::Show for Escape<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
 impl<'a> fmt::String for Escape<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Because the internet is always right, turns out there's not that many

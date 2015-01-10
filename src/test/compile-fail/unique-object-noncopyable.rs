@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
 trait Foo {
     fn f(&self);
 }
 
 struct Bar {
-    x: int,
+    x: isize,
 }
 
 impl Drop for Bar {

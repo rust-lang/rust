@@ -40,10 +40,9 @@
 
 // ignore-android see #10393 #13206
 
-#![feature(slicing_syntax)]
+#![feature(box_syntax)]
 
 use std::ascii::OwnedAsciiExt;
-use std::iter::repeat;
 use std::slice;
 use std::sync::Arc;
 use std::thread::Thread;

@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 
 struct Foo<'a> {
-    map: HashMap<uint, &'a str>
+    map: HashMap<usize, &'a str>
 }
 
 impl<'a> Foo<'a> {

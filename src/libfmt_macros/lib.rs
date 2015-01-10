@@ -15,7 +15,8 @@
 //! generated instead.
 
 #![crate_name = "fmt_macros"]
-#![experimental]
+#![unstable]
+#![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -24,6 +25,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(slicing_syntax)]
+#![allow(unknown_features)] #![feature(int_uint)]
 
 pub use self::Piece::*;
 pub use self::Position::*;
@@ -211,12 +213,12 @@ impl<'a> Parser<'a> {
                 self.cur.next();
             }
             Some((_, other)) => {
-                self.err(format!("expected `{:?}`, found `{:?}`", c,
-                                 other).index(&FullRange));
+                self.err(&format!("expected `{:?}`, found `{:?}`", c,
+                                  other)[]);
             }
             None => {
-                self.err(format!("expected `{:?}` but string was terminated",
-                                 c).index(&FullRange));
+                self.err(&format!("expected `{:?}` but string was terminated",
+                                  c)[]);
             }
         }
     }
@@ -239,12 +241,12 @@ impl<'a> Parser<'a> {
             // we may not consume the character, so clone the iterator
             match self.cur.clone().next() {
                 Some((pos, '}')) | Some((pos, '{')) => {
-                    return self.input.index(&(start..pos));
+                    return &self.input[start..pos];
                 }
                 Some(..) => { self.cur.next(); }
                 None => {
                     self.cur.next();
-                    return self.input.index(&(start..self.input.len()));
+                    return &self.input[start..self.input.len()];
                 }
             }
         }
@@ -284,7 +286,7 @@ impl<'a> Parser<'a> {
             flags: 0,
             precision: CountImplied,
             width: CountImplied,
-            ty: self.input.index(&(0..0)),
+            ty: &self.input[0..0],
         };
         if !self.consume(':') { return spec }
 
@@ -393,7 +395,7 @@ impl<'a> Parser<'a> {
                 self.cur.next();
                 pos
             }
-            Some(..) | None => { return self.input.index(&(0..0)); }
+            Some(..) | None => { return &self.input[0..0]; }
         };
         let mut end;
         loop {
@@ -405,7 +407,7 @@ impl<'a> Parser<'a> {
                 None => { end = self.input.len(); break }
             }
         }
-        self.input.index(&(start..end))
+        &self.input[start..end]
     }
 
     /// Optionally parses an integer at the current position. This doesn't deal

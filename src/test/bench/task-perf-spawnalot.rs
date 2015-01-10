@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::os;
-use std::uint;
 use std::thread::Thread;
 
 fn f(n: uint) {

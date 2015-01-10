@@ -41,7 +41,7 @@
 // lldb-check:[...]$2 = 5
 
 #![allow(unused_variables)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {

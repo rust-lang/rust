@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn pat_tup_5() {
-    let (_x, _y) = (5i, 55i);
+    let (_x, _y) = (5is, 55is);
 }

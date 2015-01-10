@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 fn main() {
-    let y: Box<int> = box 42;
-    let mut x: Box<int>;
+    let y: Box<isize> = box 42;
+    let mut x: Box<isize>;
     loop {
         println!("{}", y);
         loop {

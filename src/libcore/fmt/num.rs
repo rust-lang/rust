@@ -16,7 +16,6 @@
 
 use fmt;
 use iter::IteratorExt;
-use ops::Index;
 use num::{Int, cast};
 use slice::SliceExt;
 use str;
@@ -62,7 +61,7 @@ trait GenericRadix {
                 if x == zero { break };                   // No more digits left to accumulate.
             }
         }
-        let buf = unsafe { str::from_utf8_unchecked(buf.index(&(curr..))) };
+        let buf = unsafe { str::from_utf8_unchecked(&buf[curr..]) };
         f.pad_integral(is_positive, self.prefix(), buf)
     }
 }
@@ -155,14 +154,6 @@ pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
 
 macro_rules! radix_fmt {
     ($T:ty as $U:ty, $fmt:ident, $S:expr) => {
-        #[cfg(stage0)]
-        impl fmt::Show for RadixFmt<$T, Radix> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::String::fmt(self, f)
-            }
-        }
-
-        #[cfg(not(stage0))]
         impl fmt::Show for RadixFmt<$T, Radix> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 try!(fmt::String::fmt(self, f));
@@ -188,14 +179,6 @@ macro_rules! int_base {
 
 macro_rules! show {
     ($T:ident with $S:expr) => {
-        #[cfg(stage0)]
-        impl fmt::Show for $T {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::String::fmt(self, f)
-            }
-        }
-
-        #[cfg(not(stage0))]
         impl fmt::Show for $T {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 try!(fmt::String::fmt(self, f));

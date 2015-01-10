@@ -14,7 +14,7 @@ use std::sync::Arc;
 use std::thread::Thread;
 
 fn main() {
-    let v = vec!(1i, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    let v = vec!(1is, 2, 3, 4, 5, 6, 7, 8, 9, 10);
     let arc_v = Arc::new(v);
 
     Thread::spawn(move|| {
@@ -23,5 +23,5 @@ fn main() {
 
     assert_eq!((*arc_v)[2], 3);
 
-    println!("{}", *arc_v);
+    println!("{:?}", *arc_v);
 }

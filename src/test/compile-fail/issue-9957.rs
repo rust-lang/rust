@@ -11,5 +11,5 @@
 pub extern crate core; //~ ERROR: `pub` visibility is not allowed
 
 fn main() {
-    pub use std::uint; //~ ERROR: imports in functions are never reachable
+    pub use std::usize; //~ ERROR: imports in functions are never reachable
 }

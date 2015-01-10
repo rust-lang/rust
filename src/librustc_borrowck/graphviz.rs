@@ -60,7 +60,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
             if seen_one { sets.push_str(" "); } else { seen_one = true; }
             sets.push_str(variant.short_name());
             sets.push_str(": ");
-            sets.push_str(self.dataflow_for_variant(e, n, variant).index(&FullRange));
+            sets.push_str(&self.dataflow_for_variant(e, n, variant)[]);
         }
         sets
     }
@@ -89,7 +89,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
                 set.push_str(", ");
             }
             let loan_str = self.borrowck_ctxt.loan_path_to_string(&*lp);
-            set.push_str(loan_str.index(&FullRange));
+            set.push_str(&loan_str[]);
             saw_some = true;
             true
         });

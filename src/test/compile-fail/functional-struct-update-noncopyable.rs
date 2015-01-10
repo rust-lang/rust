@@ -12,7 +12,7 @@
 
 use std::sync::Arc;
 
-struct A { y: Arc<int>, x: Arc<int> }
+struct A { y: Arc<isize>, x: Arc<isize> }
 
 impl Drop for A {
     fn drop(&mut self) { println!("x={}", *self.x); }

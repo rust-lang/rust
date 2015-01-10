@@ -9,12 +9,12 @@
 // except according to those terms.
 
 struct Obj {
-    member: uint
+    member: usize
 }
 
 impl Obj {
     pub fn boom() -> bool {
-        return 1i+1 == 2
+        return 1is+1 == 2
     }
     pub fn chirp(&self) {
         self.boom(); //~ ERROR `&Obj` does not implement any method in scope named `boom`
@@ -24,5 +24,5 @@ impl Obj {
 fn main() {
     let o = Obj { member: 0 };
     o.chirp();
-    1i + 1;
+    1is + 1;
 }

@@ -11,6 +11,8 @@
 // Test that unboxed closures in contexts with free type parameters
 // monomorphize correctly (issue #16791)
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 fn main(){

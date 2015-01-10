@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(unboxed_closures)]
+#![feature(box_syntax)]
 
 fn id<T>(t: T) -> T { t }
 
@@ -17,6 +18,6 @@ fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
 }
 
 fn main() {
-    let v = &5i;
+    let v = &5is;
     println!("{}", f(v).call_mut(()));
 }

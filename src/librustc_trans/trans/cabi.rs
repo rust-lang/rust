@@ -108,17 +108,24 @@ pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {
-    match ccx.sess().target.target.arch.index(&FullRange) {
+    match &ccx.sess().target.target.arch[] {
         "x86" => cabi_x86::compute_abi_info(ccx, atys, rty, ret_def),
         "x86_64" => if ccx.sess().target.target.options.is_like_windows {
             cabi_x86_win64::compute_abi_info(ccx, atys, rty, ret_def)
         } else {
             cabi_x86_64::compute_abi_info(ccx, atys, rty, ret_def)
         },
-        "arm" => cabi_arm::compute_abi_info(ccx, atys, rty, ret_def),
         "aarch64" => cabi_aarch64::compute_abi_info(ccx, atys, rty, ret_def),
+        "arm" => {
+            let flavor = if ccx.sess().target.target.target_os == "ios" {
+                cabi_arm::Flavor::Ios
+            } else {
+                cabi_arm::Flavor::General
+            };
+            cabi_arm::compute_abi_info(ccx, atys, rty, ret_def, flavor)
+        },
         "mips" => cabi_mips::compute_abi_info(ccx, atys, rty, ret_def),
-        a => ccx.sess().fatal((format!("unrecognized arch \"{}\" in target specification", a))
-                              .index(&FullRange)),
+        a => ccx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a)
+                              []),
     }
 }

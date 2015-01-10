@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 use std::ops::Add;
 
 #[derive(Clone)]
-struct foo(Box<uint>);
+struct foo(Box<usize>);
 
 impl Add for foo {
     type Output = foo;

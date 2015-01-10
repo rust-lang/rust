@@ -643,7 +643,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
     //
-    // FIXME(#6308) -- Note that `.index(&FullRange)` patterns work more smoothly post-DST.
+    // FIXME(#6308) -- Note that `[]` patterns work more smoothly post-DST.
 
     match local.init {
         Some(ref expr) => {

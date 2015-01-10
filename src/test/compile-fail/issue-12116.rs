@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 enum IntList {
-    Cons(int, Box<IntList>),
+    Cons(isize, Box<IntList>),
     Nil
 }
 

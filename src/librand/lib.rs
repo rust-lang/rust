@@ -22,9 +22,10 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-
+#![allow(unknown_features)] #![feature(int_uint)]
 #![no_std]
-#![experimental]
+#![unstable]
+#![staged_api]
 
 #[macro_use]
 extern crate core;
@@ -193,7 +194,7 @@ pub trait Rng : Sized {
     ///
     /// let mut rng = thread_rng();
     /// let x = rng.gen_iter::<uint>().take(10).collect::<Vec<uint>>();
-    /// println!("{}", x);
+    /// println!("{:?}", x);
     /// println!("{:?}", rng.gen_iter::<(f64, bool)>().take(5)
     ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
@@ -270,7 +271,7 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// println!("{:?}", rng.choose(&choices));
     /// # // uncomment when slicing syntax is stable
-    /// //assert_eq!(rng.choose(choices.index(&(0..0))), None);
+    /// //assert_eq!(rng.choose(&choices[0..0]), None);
     /// ```
     fn choose<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
         if values.is_empty() {
@@ -290,9 +291,9 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// let mut y = [1i, 2, 3];
     /// rng.shuffle(&mut y);
-    /// println!("{}", y.as_slice());
+    /// println!("{:?}", y.as_slice());
     /// rng.shuffle(&mut y);
-    /// println!("{}", y.as_slice());
+    /// println!("{:?}", y.as_slice());
     /// ```
     fn shuffle<T>(&mut self, values: &mut [T]) {
         let mut i = values.len();
@@ -495,8 +496,6 @@ pub struct Closed01<F>(pub F);
 mod std {
     pub use core::{option, fmt}; // panic!()
     pub use core::clone; // derive Clone
-    #[cfg(stage0)]
-    pub use core::marker as kinds;
     pub use core::marker;
 }
 

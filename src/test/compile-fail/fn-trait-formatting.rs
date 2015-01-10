@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(unboxed_closures)]
+#![feature(box_syntax)]
 
 fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
 
@@ -20,5 +21,5 @@ fn main() {
     let _: () = (box |&mut:| -> isize unimplemented!()) as Box<FnMut() -> isize>;
     //~^ ERROR Box<core::ops::FnMut() -> isize>
 
-    needs_fn(1i); //~ ERROR `core::ops::Fn(isize) -> isize`
+    needs_fn(1is); //~ ERROR `core::ops::Fn(isize) -> isize`
 }

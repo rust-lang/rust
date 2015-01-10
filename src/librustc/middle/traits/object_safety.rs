@@ -31,7 +31,7 @@ pub enum ObjectSafetyViolation<'tcx> {
     /// Self : Sized declared on the trait
     SizedSelf,
 
-    /// Method has someting illegal
+    /// Method has something illegal
     Method(Rc<ty::Method<'tcx>>, MethodViolationCode),
 }
 
@@ -178,7 +178,7 @@ fn object_safety_violations_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // The `Self` type is erased, so it should not appear in list of
     // arguments or return type apart from the receiver.
     let ref sig = method.fty.sig;
-    for &input_ty in sig.0.inputs.index(&(1..)).iter() {
+    for &input_ty in sig.0.inputs[1..].iter() {
         if contains_illegal_self_type_reference(tcx, trait_def_id, input_ty) {
             return Some(MethodViolationCode::ReferencesSelf);
         }
@@ -256,7 +256,7 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
             ty::ty_projection(ref data) => {
                 // This is a projected type `<Foo as SomeTrait>::X`.
 
-                // Compute supertraits of current trait lazilly.
+                // Compute supertraits of current trait lazily.
                 if supertraits.is_none() {
                     let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
                     let trait_ref = ty::Binder(trait_def.trait_ref.clone());

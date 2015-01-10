@@ -9,6 +9,9 @@
 // except according to those terms.
 
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 // Example from lkuper's intern talk, August 2012 -- now with static
 // methods!
 use Color::{cyan, magenta, yellow, black};

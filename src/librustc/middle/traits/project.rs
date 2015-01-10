@@ -206,6 +206,7 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
         // normalize it when we instantiate those bound regions (which
         // should occur eventually).
 
+        let ty = ty_fold::super_fold_ty(self, ty);
         match ty.sty {
             ty::ty_projection(ref data) if !data.has_escaping_regions() => { // (*)
 
@@ -229,8 +230,9 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
                 self.obligations.extend(obligations.into_iter());
                 ty
             }
+
             _ => {
-                ty_fold::super_fold_ty(self, ty)
+                ty
             }
         }
     }
@@ -242,6 +244,12 @@ pub struct Normalized<'tcx,T> {
 }
 
 pub type NormalizedTy<'tcx> = Normalized<'tcx, Ty<'tcx>>;
+
+impl<'tcx,T> Normalized<'tcx,T> {
+    pub fn with<U>(self, value: U) -> Normalized<'tcx,U> {
+        Normalized { value: value, obligations: self.obligations }
+    }
+}
 
 pub fn normalize_projection_type<'a,'b,'tcx>(
     selcx: &'a mut SelectionContext<'b,'tcx>,
@@ -337,7 +345,7 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
 }
 
 /// in various error cases, we just set ty_err and return an obligation
-/// that, when fulfiled, will lead to an error
+/// that, when fulfilled, will lead to an error
 fn normalize_to_error<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                                projection_ty: ty::ProjectionTy<'tcx>,
                                cause: ObligationCause<'tcx>,
@@ -452,7 +460,9 @@ fn assemble_candidates_from_predicates<'cx,'tcx>(
     for predicate in elaborate_predicates(selcx.tcx(), env_predicates) {
         match predicate {
             ty::Predicate::Projection(ref data) => {
-                let is_match = infcx.probe(|_| {
+                let same_name = data.item_name() == obligation.predicate.item_name;
+
+                let is_match = same_name && infcx.probe(|_| {
                     let origin = infer::Misc(obligation.cause.span);
                     let obligation_poly_trait_ref =
                         obligation_trait_ref.to_poly_trait_ref();
@@ -465,6 +475,9 @@ fn assemble_candidates_from_predicates<'cx,'tcx>(
                 });
 
                 if is_match {
+                    debug!("assemble_candidates_from_predicates: candidate {}",
+                           data.repr(selcx.tcx()));
+
                     candidate_set.vec.push(
                         ProjectionTyCandidate::ParamEnv(data.clone()));
                 }
@@ -527,6 +540,9 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
 
     match vtable {
         super::VtableImpl(data) => {
+            debug!("assemble_candidates_from_impls: impl candidate {}",
+                   data.repr(selcx.tcx()));
+
             candidate_set.vec.push(
                 ProjectionTyCandidate::Impl(data));
         }
@@ -641,7 +657,7 @@ fn confirm_candidate<'cx,'tcx>(
             }
 
             match impl_ty {
-                Some(ty) => (ty, impl_vtable.nested.to_vec()),
+                Some(ty) => (ty, impl_vtable.nested.into_vec()),
                 None => {
                     // This means that the impl is missing a
                     // definition for the associated type. This error

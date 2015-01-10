@@ -14,7 +14,7 @@
 fn main() { }
 
 fn foo() {
-    let mut i = 100u;
+    let mut i = 100us;
     while i >= 0 { //~ ERROR comparison is useless due to type limits
         i -= 1;
     }
@@ -50,12 +50,12 @@ fn qux() {
 }
 
 fn quy() {
-    let i = -23u; //~ WARNING negation of unsigned int literal may be unintentional
+    let i = -23us; //~ WARNING negation of unsigned int literal may be unintentional
                   //~^ WARNING unused variable
 }
 
 fn quz() {
-    let i = 23u;
+    let i = 23us;
     let j = -i;   //~ WARNING negation of unsigned int variable may be unintentional
                   //~^ WARNING unused variable
 }

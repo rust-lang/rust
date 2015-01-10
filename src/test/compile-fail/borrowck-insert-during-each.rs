@@ -12,11 +12,11 @@ extern crate collections;
 use std::collections::HashSet;
 
 struct Foo {
-  n: HashSet<int>,
+  n: HashSet<isize>,
 }
 
 impl Foo {
-    pub fn foo<F>(&mut self, mut fun: F) where F: FnMut(&int) {
+    pub fn foo<F>(&mut self, mut fun: F) where F: FnMut(&isize) {
         for f in self.n.iter() {
             fun(f);
         }

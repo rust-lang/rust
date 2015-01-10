@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![forbid(experimental)]
+#![forbid(unstable)]
 
-#[allow(experimental)] //~ ERROR allow(experimental) overruled by outer forbid(experimental)
+#[allow(unstable)] //~ ERROR allow(unstable) overruled by outer forbid(unstable)
 fn main() {
 }

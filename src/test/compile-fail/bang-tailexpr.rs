@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn f() -> ! { //~ ERROR computation may converge in a function marked as diverging
-    3i
+    3is
 }
 fn main() { }

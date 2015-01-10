@@ -79,7 +79,9 @@
     <context id="types" style-ref="type">
 		<keyword>bool</keyword>
 		<keyword>int</keyword>
+		<keyword>isize</keyword>
 		<keyword>uint</keyword>
+		<keyword>usize</keyword>
 		<keyword>i8</keyword>
 		<keyword>i16</keyword>
 		<keyword>i32</keyword>

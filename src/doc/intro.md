@@ -7,8 +7,8 @@ This introduction will give you a rough idea of what Rust is like, eliding many
 details. It does not require prior experience with systems programming, but you
 may find the syntax easier if you've used a 'curly brace' programming language
 before, like C or JavaScript. The concepts are more important than the syntax,
-so don't worry if you don't get every last detail: you can read [the
-Guide](guide.html) to get a more complete explanation.
+so don't worry if you don't get every last detail: you can read [The
+Rust Programming Language](book/index.html) to get a more complete explanation.
 
 Because this is about high-level concepts, you don't need to actually install
 Rust to follow along. If you'd like to anyway, check out [the
@@ -542,7 +542,7 @@ use std::thread::Thread;
 fn main() {
     let vec = vec![1i, 2, 3];
 
-    for i in range(1u, 3) {
+    for i in range(0u, 3) {
         Thread::spawn(move || {
             println!("{}", vec[i]);
         }).detach();
@@ -558,7 +558,7 @@ a vector:
 ```{rust}
 let vec = vec![1i, 2, 3];
 
-for i in range(1u, vec.len()) {
+for i in range(0u, vec.len()) {
      println!("{}", vec[i]);
 }
 ```
@@ -587,5 +587,6 @@ the type system helps you find bugs, how Rust can help you write correct
 concurrent code, and how you don't have to pay a speed cost for much of this
 safety.
 
-To continue your Rustic education, read [the guide](guide.html) for a more
-in-depth exploration of Rust's syntax and concepts.
+To continue your Rustic education, read [The Rust Programming
+Language](book/index.html) for a more in-depth exploration of Rust's syntax and
+concepts.

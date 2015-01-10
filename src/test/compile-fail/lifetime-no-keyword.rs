@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo<'a>(a: &'a int) { }
-fn bar(a: &'static int) { }
-fn baz(a: &'let int) { } //~ ERROR invalid lifetime name
+fn foo<'a>(a: &'a isize) { }
+fn bar(a: &'static isize) { }
+fn baz(a: &'let isize) { } //~ ERROR invalid lifetime name
 
 fn main() { }

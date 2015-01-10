@@ -10,11 +10,13 @@
 
 //buggy.rs
 
+#![feature(box_syntax)]
+
 extern crate collections;
 use std::collections::HashMap;
 
 fn main() {
-    let mut buggy_map: HashMap<uint, &uint> = HashMap::new();
+    let mut buggy_map: HashMap<usize, &usize> = HashMap::new();
     buggy_map.insert(42, &*box 1); //~ ERROR borrowed value does not live long enough
 
     // but it is ok if we use a temporary

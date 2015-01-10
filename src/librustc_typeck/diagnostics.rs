@@ -157,5 +157,6 @@ register_diagnostics! {
     E0180,
     E0181,
     E0182,
-    E0183
+    E0183,
+    E0184
 }

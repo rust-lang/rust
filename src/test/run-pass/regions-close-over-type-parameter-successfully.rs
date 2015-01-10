@@ -11,6 +11,9 @@
 // A test where we (successfully) close over a reference into
 // an object.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 trait SomeTrait { fn get(&self) -> int; }
 
 impl<'a> SomeTrait for &'a int {

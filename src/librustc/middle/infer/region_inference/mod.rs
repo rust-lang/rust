@@ -106,7 +106,7 @@ pub enum RegionResolutionError<'tcx> {
 
     /// `GenericBoundFailure(p, s, a, bs)
     ///
-    /// The parameter/assocated-type `p` must be known to outlive the lifetime
+    /// The parameter/associated-type `p` must be known to outlive the lifetime
     /// `a`, but it is only known to outlive `bs` (and none of the
     /// regions in `bs` outlive `a`).
     GenericBoundFailure(SubregionOrigin<'tcx>, GenericKind<'tcx>, Region, Vec<Region>),
@@ -337,7 +337,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     ///
     /// The idea is to always create a snapshot. Skolemized regions
     /// can be created in the context of this snapshot, but once the
-    /// snapshot is commited or rolled back, their numbers will be
+    /// snapshot is committed or rolled back, their numbers will be
     /// recycled, so you must be finished with them. See the extensive
     /// comments in `higher_ranked.rs` to see how it works (in
     /// particular, the subtyping comparison).
@@ -473,9 +473,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
           (_, ReLateBound(..)) => {
             self.tcx.sess.span_bug(
                 origin.span(),
-                format!("cannot relate bound region: {} <= {}",
+                &format!("cannot relate bound region: {} <= {}",
                         sub.repr(self.tcx),
-                        sup.repr(self.tcx)).index(&FullRange));
+                        sup.repr(self.tcx))[]);
           }
           (_, ReStatic) => {
             // all regions are subregions of static, so we can ignore this
@@ -734,9 +734,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
           (ReEarlyBound(..), _) |
           (_, ReEarlyBound(..)) => {
             self.tcx.sess.bug(
-                format!("cannot relate bound region: LUB({}, {})",
+                &format!("cannot relate bound region: LUB({}, {})",
                         a.repr(self.tcx),
-                        b.repr(self.tcx)).index(&FullRange));
+                        b.repr(self.tcx))[]);
           }
 
           (ReStatic, _) | (_, ReStatic) => {
@@ -750,10 +750,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
           (ReInfer(ReVar(v_id)), _) | (_, ReInfer(ReVar(v_id))) => {
             self.tcx.sess.span_bug(
                 (*self.var_origins.borrow())[v_id.index as uint].span(),
-                format!("lub_concrete_regions invoked with \
+                &format!("lub_concrete_regions invoked with \
                          non-concrete regions: {:?}, {:?}",
                         a,
-                        b).index(&FullRange));
+                        b)[]);
           }
 
           (ReFree(ref fr), ReScope(s_id)) |
@@ -834,9 +834,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             (ReEarlyBound(..), _) |
             (_, ReEarlyBound(..)) => {
               self.tcx.sess.bug(
-                  format!("cannot relate bound region: GLB({}, {})",
+                  &format!("cannot relate bound region: GLB({}, {})",
                           a.repr(self.tcx),
-                          b.repr(self.tcx)).index(&FullRange));
+                          b.repr(self.tcx))[]);
             }
 
             (ReStatic, r) | (r, ReStatic) => {
@@ -853,10 +853,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             (_, ReInfer(ReVar(v_id))) => {
                 self.tcx.sess.span_bug(
                     (*self.var_origins.borrow())[v_id.index as uint].span(),
-                    format!("glb_concrete_regions invoked with \
+                    &format!("glb_concrete_regions invoked with \
                              non-concrete regions: {:?}, {:?}",
                             a,
-                            b).index(&FullRange));
+                            b)[]);
             }
 
             (ReFree(ref fr), ReScope(s_id)) |
@@ -977,7 +977,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         self.expansion(var_data.as_mut_slice());
         self.contraction(var_data.as_mut_slice());
         let values =
-            self.extract_values_and_collect_conflicts(var_data.index(&FullRange),
+            self.extract_values_and_collect_conflicts(&var_data[],
                                                       errors);
         self.collect_concrete_region_errors(&values, errors);
         values
@@ -1411,11 +1411,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         self.tcx.sess.span_bug(
             (*self.var_origins.borrow())[node_idx.index as uint].span(),
-            format!("collect_error_for_expanding_node() could not find error \
+            &format!("collect_error_for_expanding_node() could not find error \
                     for var {:?}, lower_bounds={}, upper_bounds={}",
                     node_idx,
                     lower_bounds.repr(self.tcx),
-                    upper_bounds.repr(self.tcx)).index(&FullRange));
+                    upper_bounds.repr(self.tcx))[]);
     }
 
     fn collect_error_for_contracting_node(
@@ -1456,10 +1456,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         self.tcx.sess.span_bug(
             (*self.var_origins.borrow())[node_idx.index as uint].span(),
-            format!("collect_error_for_contracting_node() could not find error \
+            &format!("collect_error_for_contracting_node() could not find error \
                      for var {:?}, upper_bounds={}",
                     node_idx,
-                    upper_bounds.repr(self.tcx)).index(&FullRange));
+                    upper_bounds.repr(self.tcx))[]);
     }
 
     fn collect_concrete_regions(&self,

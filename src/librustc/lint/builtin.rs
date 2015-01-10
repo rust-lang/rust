@@ -34,7 +34,7 @@ use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use util::ppaux::{ty_to_string};
 use util::nodemap::{FnvHashMap, NodeSet};
-use lint::{Context, LintPass, LintArray};
+use lint::{Context, LintPass, LintArray, Lint};
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::num::SignedInt;
@@ -216,7 +216,7 @@ impl LintPass for TypeLimits {
                         match lit.node {
                             ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
                             ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
-                                let int_type = if t == ast::TyIs {
+                                let int_type = if let ast::TyIs(_) = t {
                                     cx.sess().target.int_type
                                 } else { t };
                                 let (min, max) = int_ty_range(int_type);
@@ -233,7 +233,7 @@ impl LintPass for TypeLimits {
                         };
                     },
                     ty::ty_uint(t) => {
-                        let uint_type = if t == ast::TyUs {
+                        let uint_type = if let ast::TyUs(_) = t {
                             cx.sess().target.uint_type
                         } else { t };
                         let (min, max) = uint_ty_range(uint_type);
@@ -296,7 +296,7 @@ impl LintPass for TypeLimits {
         // warnings are consistent between 32- and 64-bit platforms
         fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
             match int_ty {
-                ast::TyIs=>    (i64::MIN,        i64::MAX),
+                ast::TyIs(_) =>    (i64::MIN,        i64::MAX),
                 ast::TyI8 =>   (i8::MIN  as i64, i8::MAX  as i64),
                 ast::TyI16 =>  (i16::MIN as i64, i16::MAX as i64),
                 ast::TyI32 =>  (i32::MIN as i64, i32::MAX as i64),
@@ -306,7 +306,7 @@ impl LintPass for TypeLimits {
 
         fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
             match uint_ty {
-                ast::TyUs=>   (u64::MIN,         u64::MAX),
+                ast::TyUs(_) =>   (u64::MIN,         u64::MAX),
                 ast::TyU8 =>  (u8::MIN   as u64, u8::MAX   as u64),
                 ast::TyU16 => (u16::MIN  as u64, u16::MAX  as u64),
                 ast::TyU32 => (u32::MIN  as u64, u32::MAX  as u64),
@@ -323,7 +323,7 @@ impl LintPass for TypeLimits {
 
         fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
-                ast::TyIs=>    int_ty_bits(target_int_ty, target_int_ty),
+                ast::TyIs(_) =>    int_ty_bits(target_int_ty, target_int_ty),
                 ast::TyI8 =>   i8::BITS  as u64,
                 ast::TyI16 =>  i16::BITS as u64,
                 ast::TyI32 =>  i32::BITS as u64,
@@ -333,7 +333,7 @@ impl LintPass for TypeLimits {
 
         fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                ast::TyUs=>    uint_ty_bits(target_uint_ty, target_uint_ty),
+                ast::TyUs(_) =>    uint_ty_bits(target_uint_ty, target_uint_ty),
                 ast::TyU8 =>   u8::BITS  as u64,
                 ast::TyU16 =>  u16::BITS as u64,
                 ast::TyU32 =>  u32::BITS as u64,
@@ -404,12 +404,12 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_def(&mut self, sp: Span, ty_id: ast::NodeId, path_id: ast::NodeId) {
         match self.cx.tcx.def_map.borrow()[path_id].clone() {
-            def::DefPrimTy(ast::TyInt(ast::TyIs)) => {
+            def::DefPrimTy(ast::TyInt(ast::TyIs(_))) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `isize` in foreign module, while \
                                    libc::c_int or libc::c_long should be used");
             }
-            def::DefPrimTy(ast::TyUint(ast::TyUs)) => {
+            def::DefPrimTy(ast::TyUint(ast::TyUs(_))) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `usize` in foreign module, while \
                                    libc::c_uint or libc::c_ulong should be used");
@@ -506,7 +506,7 @@ impl BoxPointers {
         if n_uniq > 0 {
             let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses owned (Box type) pointers: {}", s);
-            cx.span_lint(BOX_POINTERS, span, m.index(&FullRange));
+            cx.span_lint(BOX_POINTERS, span, &m[]);
         }
     }
 }
@@ -586,7 +586,7 @@ impl LintPass for RawPointerDerive {
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
-        if !attr::contains_name(item.attrs.index(&FullRange), "automatically_derived") {
+        if !attr::contains_name(&item.attrs[], "automatically_derived") {
             return
         }
         let did = match item.node {
@@ -770,11 +770,11 @@ impl LintPass for UnusedResults {
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
                     if let ast_map::NodeItem(it) = cx.tcx.map.get(did.node) {
-                        warned |= check_must_use(cx, it.attrs.index(&FullRange), s.span);
+                        warned |= check_must_use(cx, &it.attrs[], s.span);
                     }
                 } else {
                     csearch::get_item_attrs(&cx.sess().cstore, did, |attrs| {
-                        warned |= check_must_use(cx, attrs.index(&FullRange), s.span);
+                        warned |= check_must_use(cx, &attrs[], s.span);
                     });
                 }
             }
@@ -796,7 +796,7 @@ impl LintPass for UnusedResults {
                             msg.push_str(s.get());
                         }
                     }
-                    cx.span_lint(UNUSED_MUST_USE, sp, msg.index(&FullRange));
+                    cx.span_lint(UNUSED_MUST_USE, sp, &msg[]);
                     return true;
                 }
             }
@@ -842,7 +842,7 @@ impl NonCamelCaseTypes {
             } else {
                 format!("{} `{}` should have a camel case name such as `{}`", sort, s, c)
             };
-            cx.span_lint(NON_CAMEL_CASE_TYPES, span, m.index(&FullRange));
+            cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m[]);
         }
     }
 }
@@ -981,8 +981,8 @@ impl NonSnakeCase {
 
         if !is_snake_case(ident) {
             cx.span_lint(NON_SNAKE_CASE, span,
-                format!("{} `{}` should have a snake case name such as `{}`",
-                        sort, s, to_snake_case(s.get())).index(&FullRange));
+                &format!("{} `{}` should have a snake case name such as `{}`",
+                        sort, s, to_snake_case(s.get()))[]);
         }
     }
 }
@@ -1066,10 +1066,10 @@ impl LintPass for NonUpperCaseGlobals {
                 // upper/lowercase)
                 if s.get().chars().any(|c| c.is_lowercase()) {
                     cx.span_lint(NON_UPPER_CASE_GLOBALS, it.span,
-                        format!("static constant `{}` should have an uppercase name \
+                        &format!("static constant `{}` should have an uppercase name \
                                  such as `{}`",
-                                s.get(), s.get().chars().map(|c| c.to_uppercase())
-                                .collect::<String>().index(&FullRange)).index(&FullRange));
+                                s.get(), &s.get().chars().map(|c| c.to_uppercase())
+                                .collect::<String>()[])[]);
                 }
             }
             _ => {}
@@ -1083,10 +1083,10 @@ impl LintPass for NonUpperCaseGlobals {
                 let s = token::get_ident(path1.node);
                 if s.get().chars().any(|c| c.is_lowercase()) {
                     cx.span_lint(NON_UPPER_CASE_GLOBALS, path1.span,
-                        format!("static constant in pattern `{}` should have an uppercase \
+                        &format!("static constant in pattern `{}` should have an uppercase \
                                  name such as `{}`",
-                                s.get(), s.get().chars().map(|c| c.to_uppercase())
-                                    .collect::<String>().index(&FullRange)).index(&FullRange));
+                                s.get(), &s.get().chars().map(|c| c.to_uppercase())
+                                    .collect::<String>()[])[]);
                 }
             }
             _ => {}
@@ -1110,8 +1110,8 @@ impl UnusedParens {
             let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&**inner);
             if !necessary {
                 cx.span_lint(UNUSED_PARENS, value.span,
-                             format!("unnecessary parentheses around {}",
-                                     msg).index(&FullRange))
+                             &format!("unnecessary parentheses around {}",
+                                     msg)[])
             }
         }
 
@@ -1213,7 +1213,7 @@ impl LintPass for UnusedImportBraces {
                                     let m = format!("braces around {} is unnecessary",
                                                     token::get_ident(*name).get());
                                     cx.span_lint(UNUSED_IMPORT_BRACES, view_item.span,
-                                                 m.index(&FullRange));
+                                                 &m[]);
                                 },
                                 _ => ()
                             }
@@ -1251,8 +1251,8 @@ impl LintPass for NonShorthandFieldPatterns {
                 if let ast::PatIdent(_, ident, None) = fieldpat.node.pat.node {
                     if ident.node.as_str() == fieldpat.node.ident.as_str() {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
-                                     format!("the `{}:` in this pattern is redundant and can \
-                                              be removed", ident.node.as_str()).index(&FullRange))
+                                     &format!("the `{}:` in this pattern is redundant and can \
+                                              be removed", ident.node.as_str())[])
                     }
                 }
             }
@@ -1356,7 +1356,7 @@ impl LintPass for UnusedMut {
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         if let ast::ExprMatch(_, ref arms, _) = e.node {
             for a in arms.iter() {
-                self.check_unused_mut_pat(cx, a.pats.index(&FullRange))
+                self.check_unused_mut_pat(cx, &a.pats[])
             }
         }
     }
@@ -1477,7 +1477,7 @@ impl MissingDoc {
         });
         if !has_doc {
             cx.span_lint(MISSING_DOCS, sp,
-                format!("missing documentation for {}", desc).index(&FullRange));
+                &format!("missing documentation for {}", desc)[]);
         }
     }
 }
@@ -1491,7 +1491,7 @@ impl LintPass for MissingDoc {
         let doc_hidden = self.doc_hidden() || attrs.iter().any(|attr| {
             attr.check_name("doc") && match attr.meta_item_list() {
                 None => false,
-                Some(l) => attr::contains_name(l.index(&FullRange), "hidden"),
+                Some(l) => attr::contains_name(&l[], "hidden"),
             }
         });
         self.doc_hidden_stack.push(doc_hidden);
@@ -1513,7 +1513,7 @@ impl LintPass for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &Context, krate: &ast::Crate) {
-        self.check_missing_docs_attrs(cx, None, krate.attrs.index(&FullRange),
+        self.check_missing_docs_attrs(cx, None, &krate.attrs[],
                                      krate.span, "crate");
     }
 
@@ -1527,7 +1527,7 @@ impl LintPass for MissingDoc {
             ast::ItemTy(..) => "a type alias",
             _ => return
         };
-        self.check_missing_docs_attrs(cx, Some(it.id), it.attrs.index(&FullRange),
+        self.check_missing_docs_attrs(cx, Some(it.id), &it.attrs[],
                                      it.span, desc);
     }
 
@@ -1540,13 +1540,13 @@ impl LintPass for MissingDoc {
 
             // Otherwise, doc according to privacy. This will also check
             // doc for default methods defined on traits.
-            self.check_missing_docs_attrs(cx, Some(m.id), m.attrs.index(&FullRange),
+            self.check_missing_docs_attrs(cx, Some(m.id), &m.attrs[],
                                           m.span, "a method");
         }
     }
 
     fn check_ty_method(&mut self, cx: &Context, tm: &ast::TypeMethod) {
-        self.check_missing_docs_attrs(cx, Some(tm.id), tm.attrs.index(&FullRange),
+        self.check_missing_docs_attrs(cx, Some(tm.id), &tm.attrs[],
                                      tm.span, "a type method");
     }
 
@@ -1556,14 +1556,14 @@ impl LintPass for MissingDoc {
                 let cur_struct_def = *self.struct_def_stack.last()
                     .expect("empty struct_def_stack");
                 self.check_missing_docs_attrs(cx, Some(cur_struct_def),
-                                              sf.node.attrs.index(&FullRange), sf.span,
+                                              &sf.node.attrs[], sf.span,
                                               "a struct field")
             }
         }
     }
 
     fn check_variant(&mut self, cx: &Context, v: &ast::Variant, _: &ast::Generics) {
-        self.check_missing_docs_attrs(cx, Some(v.node.id), v.node.attrs.index(&FullRange),
+        self.check_missing_docs_attrs(cx, Some(v.node.id), &v.node.attrs[],
                                      v.span, "a variant");
         assert!(!self.in_variant);
         self.in_variant = true;
@@ -1630,61 +1630,83 @@ declare_lint! {
     Warn,
     "detects use of #[deprecated] items"
 }
-// FIXME #6875: Change to Warn after std library stabilization is complete
-declare_lint! {
-    EXPERIMENTAL,
-    Allow,
-    "detects use of #[experimental] items"
-}
 
 declare_lint! {
     UNSTABLE,
-    Allow,
+    Warn,
     "detects use of #[unstable] items (incl. items with no stability attribute)"
 }
 
-/// Checks for use of items with `#[deprecated]`, `#[experimental]` and
+/// Checks for use of items with `#[deprecated]`, `#[unstable]` and
 /// `#[unstable]` attributes, or no stability attribute.
 #[derive(Copy)]
-pub struct Stability;
+pub struct Stability { this_crate_staged: bool }
 
 impl Stability {
+    pub fn new() -> Stability { Stability { this_crate_staged: false } }
+
     fn lint(&self, cx: &Context, id: ast::DefId, span: Span) {
-        let stability = stability::lookup(cx.tcx, id);
+
+        let ref stability = stability::lookup(cx.tcx, id);
         let cross_crate = !ast_util::is_local(id);
+        let staged = (!cross_crate && self.this_crate_staged)
+            || (cross_crate && stability::is_staged_api(cx.tcx, id));
+
+        if !staged { return }
 
         // stability attributes are promises made across crates; only
         // check DEPRECATED for crate-local usage.
-        let (lint, label) = match stability {
+        let (lint, label) = match *stability {
             // no stability attributes == Unstable
             None if cross_crate => (UNSTABLE, "unmarked"),
             Some(attr::Stability { level: attr::Unstable, .. }) if cross_crate =>
                 (UNSTABLE, "unstable"),
-            Some(attr::Stability { level: attr::Experimental, .. }) if cross_crate =>
-                (EXPERIMENTAL, "experimental"),
             Some(attr::Stability { level: attr::Deprecated, .. }) =>
                 (DEPRECATED, "deprecated"),
             _ => return
         };
 
-        let msg = match stability {
-            Some(attr::Stability { text: Some(ref s), .. }) => {
-                format!("use of {} item: {}", label, *s)
-            }
-            _ => format!("use of {} item", label)
-        };
+        output(cx, span, stability, lint, label);
 
-        cx.span_lint(lint, span, msg.index(&FullRange));
+        fn output(cx: &Context, span: Span, stability: &Option<attr::Stability>,
+                  lint: &'static Lint, label: &'static str) {
+            let msg = match *stability {
+                Some(attr::Stability { text: Some(ref s), .. }) => {
+                    format!("use of {} item: {}", label, *s)
+                }
+                _ => format!("use of {} item", label)
+            };
+
+            cx.span_lint(lint, span, &msg[]);
+        }
     }
+
 
     fn is_internal(&self, cx: &Context, span: Span) -> bool {
         cx.tcx.sess.codemap().span_is_internal(span)
     }
+
 }
 
 impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
-        lint_array!(DEPRECATED, EXPERIMENTAL, UNSTABLE)
+        lint_array!(DEPRECATED, UNSTABLE)
+    }
+
+    fn check_crate(&mut self, _: &Context, c: &ast::Crate) {
+        // Just mark the #[staged_api] attribute used, though nothing else is done
+        // with it during this pass over the source.
+        for attr in c.attrs.iter() {
+            if attr.name().get() == "staged_api" {
+                match attr.node.value.node {
+                    ast::MetaWord(_) => {
+                        attr::mark_used(attr);
+                        self.this_crate_staged = true;
+                    }
+                    _ => (/*pass*/)
+                }
+            }
+        }
     }
 
     fn check_view_item(&mut self, cx: &Context, item: &ast::ViewItem) {
@@ -1746,6 +1768,7 @@ impl LintPass for Stability {
             }
             _ => return
         };
+
         self.lint(cx, id, span);
     }
 
@@ -1876,5 +1899,24 @@ impl LintPass for HardwiredLints {
             VARIANT_SIZE_DIFFERENCES,
             FAT_PTR_TRANSMUTES
         )
+    }
+}
+
+/// Forbids using the `#[feature(...)]` attribute
+#[derive(Copy)]
+pub struct UnstableFeatures;
+
+declare_lint!(UNSTABLE_FEATURES, Allow,
+              "enabling unstable features");
+
+impl LintPass for UnstableFeatures {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNSTABLE_FEATURES)
+    }
+    fn check_attribute(&mut self, ctx: &Context, attr: &ast::Attribute) {
+        use syntax::attr;
+        if attr::contains_name(&[attr.node.value.clone()], "feature") {
+            ctx.span_lint(UNSTABLE_FEATURES, attr.span, "unstable feature");
+        }
     }
 }

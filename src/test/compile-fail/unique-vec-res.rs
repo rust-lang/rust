@@ -10,11 +10,13 @@
 
 #![feature(unsafe_destructor)]
 
+#![feature(box_syntax)]
+
 use std::cell::Cell;
 
 #[derive(Show)]
 struct r<'a> {
-  i: &'a Cell<int>,
+  i: &'a Cell<isize>,
 }
 
 #[unsafe_destructor]

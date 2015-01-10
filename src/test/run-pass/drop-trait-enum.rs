@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 use std::thread::Thread;
 use std::sync::mpsc::{channel, Sender};
 
@@ -36,13 +39,13 @@ enum Foo {
 impl Drop for Foo {
     fn drop(&mut self) {
         match self {
-            &Foo::SimpleVariant(ref mut sender) => {
+            &mut Foo::SimpleVariant(ref mut sender) => {
                 sender.send(Message::DestructorRan).unwrap();
             }
-            &Foo::NestedVariant(_, _, ref mut sender) => {
+            &mut Foo::NestedVariant(_, _, ref mut sender) => {
                 sender.send(Message::DestructorRan).unwrap();
             }
-            &Foo::FailingVariant { .. } => {
+            &mut Foo::FailingVariant { .. } => {
                 panic!("Failed");
             }
         }
@@ -66,7 +69,7 @@ pub fn main() {
     assert_eq!(receiver.recv().ok(), None);
 
     let (sender, receiver) = channel();
-    let _t = Thread::spawn(move|| {
+    let _t = Thread::scoped(move|| {
         let v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
     });
     assert_eq!(receiver.recv().unwrap(), Message::Dropped);
@@ -74,7 +77,7 @@ pub fn main() {
 
     let (sender, receiver) = channel();
     let _t = {
-        Thread::spawn(move|| {
+        Thread::scoped(move|| {
             let mut v = Foo::NestedVariant(box 42u, SendOnDrop {
                 sender: sender.clone()
             }, sender.clone());

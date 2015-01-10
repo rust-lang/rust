@@ -10,6 +10,9 @@
 
 // Test method calls with self as an argument
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 static mut COUNT: uint = 1;
 
 struct Foo;

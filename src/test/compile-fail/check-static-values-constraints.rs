@@ -10,6 +10,8 @@
 
 // Verifies all possible restrictions for statics values.
 
+#![feature(box_syntax)]
+
 use std::marker;
 
 struct WithDtor;
@@ -24,7 +26,7 @@ impl Drop for WithDtor {
 // 3. Expr calls with unsafe arguments for statics are rejected
 enum SafeEnum {
     Variant1,
-    Variant2(int),
+    Variant2(isize),
     Variant3(WithDtor),
     Variant4(String)
 }
@@ -43,7 +45,7 @@ static STATIC3: SafeEnum = SafeEnum::Variant3(WithDtor);
 // a destructor.
 enum UnsafeEnum {
     Variant5,
-    Variant6(int)
+    Variant6(isize)
 }
 
 impl Drop for UnsafeEnum {
@@ -130,11 +132,11 @@ static STATIC16: (&'static Box<MyOwned>, &'static Box<MyOwned>) = (
 static mut STATIC17: SafeEnum = SafeEnum::Variant1;
 //~^ ERROR mutable statics are not allowed to have destructors
 
-static STATIC19: Box<int> =
+static STATIC19: Box<isize> =
     box 3;
 //~^ ERROR statics are not allowed to have custom pointers
 
 pub fn main() {
-    let y = { static x: Box<int> = box 3; x };
+    let y = { static x: Box<isize> = box 3; x };
     //~^ ERROR statics are not allowed to have custom pointers
 }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 struct closure_box<'a> {
@@ -20,7 +21,7 @@ fn box_it<'r>(x: Box<FnMut() + 'r>) -> closure_box<'r> {
 
 fn main() {
     let cl_box = {
-        let mut i = 3i;
+        let mut i = 3is;
         box_it(box || i += 1) //~ ERROR cannot infer
     };
     cl_box.cl.call_mut(());

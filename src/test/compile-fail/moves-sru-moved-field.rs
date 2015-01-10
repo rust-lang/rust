@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 
-type Noncopyable = Box<int>;
+type Noncopyable = Box<isize>;
 
 struct Foo {
-    copied: int,
-    moved: Box<int>,
+    copied: isize,
+    moved: Box<isize>,
     noncopyable: Noncopyable
 }
 

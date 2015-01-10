@@ -9,9 +9,10 @@
 // except according to those terms.
 
 #![feature(advanced_slice_patterns)]
+#![feature(box_syntax)]
 
 fn a() {
-    let mut vec = [box 1i, box 2, box 3];
+    let mut vec = [box 1is, box 2, box 3];
     match vec {
         [box ref _a, _, _] => {
             vec[0] = box 4; //~ ERROR cannot assign
@@ -20,8 +21,8 @@ fn a() {
 }
 
 fn b() {
-    let mut vec = vec!(box 1i, box 2, box 3);
-    let vec: &mut [Box<int>] = vec.as_mut_slice();
+    let mut vec = vec!(box 1is, box 2, box 3);
+    let vec: &mut [Box<isize>] = vec.as_mut_slice();
     match vec {
         [_b..] => {
             vec[0] = box 4; //~ ERROR cannot assign
@@ -30,8 +31,8 @@ fn b() {
 }
 
 fn c() {
-    let mut vec = vec!(box 1i, box 2, box 3);
-    let vec: &mut [Box<int>] = vec.as_mut_slice();
+    let mut vec = vec!(box 1is, box 2, box 3);
+    let vec: &mut [Box<isize>] = vec.as_mut_slice();
     match vec {
         [_a,         //~ ERROR cannot move out
          _b..] => {  //~^ NOTE attempting to move value to here
@@ -48,8 +49,8 @@ fn c() {
 }
 
 fn d() {
-    let mut vec = vec!(box 1i, box 2, box 3);
-    let vec: &mut [Box<int>] = vec.as_mut_slice();
+    let mut vec = vec!(box 1is, box 2, box 3);
+    let vec: &mut [Box<isize>] = vec.as_mut_slice();
     match vec {
         [_a..,     //~ ERROR cannot move out
          _b] => {} //~ NOTE attempting to move value to here
@@ -59,8 +60,8 @@ fn d() {
 }
 
 fn e() {
-    let mut vec = vec!(box 1i, box 2, box 3);
-    let vec: &mut [Box<int>] = vec.as_mut_slice();
+    let mut vec = vec!(box 1is, box 2, box 3);
+    let vec: &mut [Box<isize>] = vec.as_mut_slice();
     match vec {
         [_a, _b, _c] => {}  //~ ERROR cannot move out
         //~^ NOTE attempting to move value to here

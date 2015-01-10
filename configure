@@ -599,6 +599,18 @@ then
 fi
 putvar CFG_RELEASE_CHANNEL
 
+# A magic value that allows the compiler to use unstable features
+# during the bootstrap even when doing so would normally be an error
+# because of feature staging or because the build turns on
+# warnings-as-errors and unstable features default to warnings.  The
+# build has to match this key in an env var. Meant to be a mild
+# deterrent from users just turning on unstable features on the stable
+# channel.
+# Basing CFG_BOOTSTRAP_KEY on CFG_BOOTSTRAP_KEY lets it get picked up
+# during a Makefile reconfig.
+CFG_BOOTSTRAP_KEY="${CFG_BOOTSTRAP_KEY-`date +%N`}"
+putvar CFG_BOOTSTRAP_KEY
+
 step_msg "looking for build programs"
 
 probe_need CFG_PERL        perl
@@ -1043,18 +1055,6 @@ do
     make_dir $h/test/debuginfo-gdb
     make_dir $h/test/debuginfo-lldb
     make_dir $h/test/codegen
-    make_dir $h/test/doc-guide
-    make_dir $h/test/doc-guide-ffi
-    make_dir $h/test/doc-guide-runtime
-    make_dir $h/test/doc-guide-macros
-    make_dir $h/test/doc-guide-ownership
-    make_dir $h/test/doc-guide-pointers
-    make_dir $h/test/doc-guide-container
-    make_dir $h/test/doc-guide-tasks
-    make_dir $h/test/doc-guide-plugin
-    make_dir $h/test/doc-guide-crates
-    make_dir $h/test/doc-guide-error-handling
-    make_dir $h/test/doc-reference
 done
 
 # Configure submodules

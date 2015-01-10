@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
+
 use std::cell::RefCell;
 
 fn main() {
     let c = RefCell::new(vec![]);
-    let mut y = 1u;
+    let mut y = 1us;
     c.push(box || y = 0);
     c.push(box || y = 0);
 //~^ ERROR cannot borrow `y` as mutable more than once at a time
@@ -20,7 +22,7 @@ fn main() {
 
 fn ufcs() {
     let c = RefCell::new(vec![]);
-    let mut y = 1u;
+    let mut y = 1us;
 
     Push::push(&c, box || y = 0);
     Push::push(&c, box || y = 0);

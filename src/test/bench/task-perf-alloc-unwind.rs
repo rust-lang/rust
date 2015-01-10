@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_destructor)]
+#![feature(unsafe_destructor, box_syntax)]
 
 use std::os;
 use std::thread::Thread;
@@ -17,10 +17,6 @@ use std::time::Duration;
 #[derive(Clone)]
 enum List<T> {
     Nil, Cons(T, Box<List<T>>)
-}
-
-enum UniqueList {
-    ULNil, ULCons(Box<UniqueList>)
 }
 
 fn main() {

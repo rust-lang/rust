@@ -615,10 +615,10 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         match result {
             None => true,
             Some((span, msg, note)) => {
-                self.tcx.sess.span_err(span, msg.index(&FullRange));
+                self.tcx.sess.span_err(span, &msg[]);
                 match note {
                     Some((span, msg)) => {
-                        self.tcx.sess.span_note(span, msg.index(&FullRange))
+                        self.tcx.sess.span_note(span, &msg[])
                     }
                     None => {},
                 }
@@ -720,7 +720,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             UnnamedField(idx) => format!("field #{} of {} is private",
                                          idx + 1, struct_desc),
         };
-        self.tcx.sess.span_err(span, msg.index(&FullRange));
+        self.tcx.sess.span_err(span, &msg[]);
     }
 
     // Given the ID of a method, checks to ensure it's in scope.
@@ -741,8 +741,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         self.report_error(self.ensure_public(span,
                                              method_id,
                                              None,
-                                             format!("method `{}`",
-                                                     string).index(&FullRange)));
+                                             &format!("method `{}`",
+                                                     string)[]));
     }
 
     // Checks that a path is in scope.
@@ -756,7 +756,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 self.ensure_public(span,
                                    def,
                                    Some(origdid),
-                                   format!("{} `{}`", tyname, name).index(&FullRange))
+                                   &format!("{} `{}`", tyname, name)[])
             };
 
             match self.last_private_map[path_id] {

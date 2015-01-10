@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 fn f() {
-    let mut a = [box 0i, box 1i];
+    let mut a = [box 0is, box 1is];
     drop(a[0]);
-    a[1] = box 2i;
+    a[1] = box 2is;
     drop(a[0]); //~ ERROR use of moved value: `a[..]`
 }
 

@@ -39,8 +39,11 @@
 //!   guaranteed to happen in order. This is the standard mode for working
 //!   with atomic types and is equivalent to Java's `volatile`.
 
-#![experimental]
+#![unstable]
 #![allow(missing_docs)]
+
+#[cfg(not(stage0))]
+use marker::Sized;
 
 pub type GlueFn = extern "Rust" fn(*const i8);
 
@@ -200,6 +203,10 @@ extern "rust-intrinsic" {
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
+    #[cfg(not(stage0))]
+    pub fn type_id<T: ?Sized + 'static>() -> TypeId;
+
+    #[cfg(stage0)]
     pub fn type_id<T: 'static>() -> TypeId;
 
     /// Create a value initialized to zero.
@@ -326,7 +333,7 @@ extern "rust-intrinsic" {
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
-    #[experimental = "uncertain about naming and semantics"]
+    #[unstable = "uncertain about naming and semantics"]
     pub fn set_memory<T>(dst: *mut T, val: u8, count: uint);
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
@@ -551,8 +558,15 @@ pub struct TypeId {
 
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been instantiated with
+    #[cfg(not(stage0))]
+    pub fn of<T: ?Sized + 'static>() -> TypeId {
+        unsafe { type_id::<T>() }
+    }
+
+    #[cfg(stage0)]
     pub fn of<T: 'static>() -> TypeId {
         unsafe { type_id::<T>() }
     }
+
     pub fn hash(&self) -> u64 { self.t }
 }

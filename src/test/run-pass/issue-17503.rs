@@ -8,14 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slicing_syntax)]
-
 fn main() {
     let s: &[int] = &[0, 1, 2, 3, 4];
     let ss: &&[int] = &s;
     let sss: &&&[int] = &ss;
 
-    println!("{}", &s[0..3]);
-    println!("{}", &ss[3..]);
-    println!("{}", &sss[2..4]);
+    println!("{:?}", &s[0..3]);
+    println!("{:?}", &ss[3..]);
+    println!("{:?}", &sss[2..4]);
 }

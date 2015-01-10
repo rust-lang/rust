@@ -23,7 +23,7 @@ use rustc::middle::ty;
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
 use rustc::session::Session;
-use rustc::session::config::{self, Input};
+use rustc::session::config::Input;
 use rustc::util::ppaux;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
@@ -294,9 +294,9 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
                 try!(pp::word(&mut s.s, "as"));
                 try!(pp::space(&mut s.s));
                 try!(pp::word(&mut s.s,
-                              ppaux::ty_to_string(
+                              &ppaux::ty_to_string(
                                   tcx,
-                                  ty::expr_ty(tcx, expr)).index(&FullRange)));
+                                  ty::expr_ty(tcx, expr))[]));
                 s.pclose()
             }
             _ => Ok(())
@@ -305,19 +305,18 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
 }
 
 fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
-    let print_loans   = config::FLOWGRAPH_PRINT_LOANS;
-    let print_moves   = config::FLOWGRAPH_PRINT_MOVES;
-    let print_assigns = config::FLOWGRAPH_PRINT_ASSIGNS;
-    let print_all     = config::FLOWGRAPH_PRINT_ALL;
-    let opt = |&: print_which| sess.debugging_opt(print_which);
+    let print_loans = sess.opts.debugging_opts.flowgraph_print_loans;
+    let print_moves = sess.opts.debugging_opts.flowgraph_print_moves;
+    let print_assigns = sess.opts.debugging_opts.flowgraph_print_assigns;
+    let print_all = sess.opts.debugging_opts.flowgraph_print_all;
     let mut variants = Vec::new();
-    if opt(print_all) || opt(print_loans) {
+    if print_all || print_loans {
         variants.push(borrowck_dot::Loans);
     }
-    if opt(print_all) || opt(print_moves) {
+    if print_all || print_moves {
         variants.push(borrowck_dot::Moves);
     }
-    if opt(print_all) || opt(print_assigns) {
+    if print_all || print_assigns {
         variants.push(borrowck_dot::Assigns);
     }
     variants
@@ -350,8 +349,8 @@ impl<'a, 'ast> Iterator for NodesMatchingUII<'a, 'ast> {
 
     fn next(&mut self) -> Option<ast::NodeId> {
         match self {
-            &NodesMatchingDirect(ref mut iter) => iter.next(),
-            &NodesMatchingSuffix(ref mut iter) => iter.next(),
+            &mut NodesMatchingDirect(ref mut iter) => iter.next(),
+            &mut NodesMatchingSuffix(ref mut iter) => iter.next(),
         }
     }
 }
@@ -370,7 +369,7 @@ impl UserIdentifiedItem {
             ItemViaNode(node_id) =>
                 NodesMatchingDirect(Some(node_id).into_iter()),
             ItemViaPath(ref parts) =>
-                NodesMatchingSuffix(map.nodes_matching_suffix(parts.index(&FullRange))),
+                NodesMatchingSuffix(map.nodes_matching_suffix(&parts[])),
         }
     }
 
@@ -382,7 +381,7 @@ impl UserIdentifiedItem {
                         user_option,
                         self.reconstructed_input(),
                         is_wrong_because);
-            sess.fatal(message.index(&FullRange))
+            sess.fatal(&message[])
         };
 
         let mut saw_node = ast::DUMMY_NODE_ID;
@@ -509,7 +508,7 @@ pub fn pretty_print_input(sess: Session,
     let is_expanded = needs_expansion(&ppm);
     let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
     let krate = if compute_ast_map {
-        match driver::phase_2_configure_and_expand(&sess, krate, id.index(&FullRange), None) {
+        match driver::phase_2_configure_and_expand(&sess, krate, &id[], None) {
             None => return,
             Some(k) => k
         }
@@ -528,7 +527,7 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src_name = driver::source_name(input);
-    let src = sess.codemap().get_filemap(src_name.index(&FullRange))
+    let src = sess.codemap().get_filemap(&src_name[])
                             .src.as_bytes().to_vec();
     let mut rdr = MemReader::new(src);
 
@@ -588,16 +587,16 @@ pub fn pretty_print_input(sess: Session,
         (PpmFlowGraph, opt_uii) => {
             debug!("pretty printing flow graph for {:?}", opt_uii);
             let uii = opt_uii.unwrap_or_else(|| {
-                sess.fatal(format!("`pretty flowgraph=..` needs NodeId (int) or
-                                     unique path suffix (b::c::d)").index(&FullRange))
+                sess.fatal(&format!("`pretty flowgraph=..` needs NodeId (int) or
+                                     unique path suffix (b::c::d)")[])
 
             });
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
             let nodeid = uii.to_one_node_id("--pretty", &sess, &ast_map);
 
             let node = ast_map.find(nodeid).unwrap_or_else(|| {
-                sess.fatal(format!("--pretty flowgraph couldn't find id: {}",
-                                   nodeid).index(&FullRange))
+                sess.fatal(&format!("--pretty flowgraph couldn't find id: {}",
+                                   nodeid)[])
             });
 
             let code = blocks::Code::from_node(node);
@@ -615,8 +614,8 @@ pub fn pretty_print_input(sess: Session,
                     // point to what was found, if there's an
                     // accessible span.
                     match ast_map.opt_span(nodeid) {
-                        Some(sp) => sess.span_fatal(sp, message.index(&FullRange)),
-                        None => sess.fatal(message.index(&FullRange))
+                        Some(sp) => sess.span_fatal(sp, &message[]),
+                        None => sess.fatal(&message[])
                     }
                 }
             }

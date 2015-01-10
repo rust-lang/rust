@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn test() {
-    let v: int;
+    let v: isize;
     v = 1; //~ NOTE prior assignment occurs here
     println!("v={}", v);
     v = 2; //~ ERROR re-assignment of immutable variable

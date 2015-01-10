@@ -10,6 +10,9 @@
 
 // Check that coercions are propagated through match and if expressions.
 
+#![allow(unknown_features)]
+#![feature(box_syntax)]
+
 pub fn main() {
     let _: Box<[int]> = if true { box [1i, 2, 3] } else { box [1i] };
 

@@ -11,18 +11,18 @@
 #![allow(dead_code)]
 #![deny(unused_assignments)]
 
-fn f1(x: &mut int) {
+fn f1(x: &mut isize) {
     *x = 1; // no error
 }
 
 fn f2() {
-    let mut x: int = 3; //~ ERROR: value assigned to `x` is never read
+    let mut x: isize = 3; //~ ERROR: value assigned to `x` is never read
     x = 4;
     x.clone();
 }
 
 fn f3() {
-    let mut x: int = 3;
+    let mut x: isize = 3;
     x.clone();
     x = 4; //~ ERROR: value assigned to `x` is never read
 }

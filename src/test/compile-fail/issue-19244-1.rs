@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const TUP: (uint,) = (42,);
+const TUP: (usize,) = (42,);
 
 fn main() {
-    let a: [int; TUP.1];
+    let a: [isize; TUP.1];
     //~^ ERROR expected constant expr for array length: tuple index out of bounds
 }

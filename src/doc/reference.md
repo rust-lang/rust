@@ -14,7 +14,7 @@ provides three kinds of material:
     influenced the design.
 
 This document does not serve as an introduction to the language. Background
-familiarity with the language is assumed. A separate [guide] is available to
+familiarity with the language is assumed. A separate [book] is available to
 help acquire such background familiarity.
 
 This document also does not serve as a reference to the [standard] library
@@ -23,7 +23,7 @@ separately by extracting documentation attributes from their source code. Many
 of the features that one might expect to be language features are library
 features in Rust, so what you're looking for may be there, not here.
 
-[guide]: guide.html
+[book]: book/index.html
 [standard]: std/index.html
 
 # Notation
@@ -647,10 +647,10 @@ All of the above extensions are expressions with values.
 
 Users of `rustc` can define new syntax extensions in two ways:
 
-* [Compiler plugins](guide-plugin.html#syntax-extensions) can include arbitrary
+* [Compiler plugins](book/syntax-extensions.html) can include arbitrary
   Rust code that manipulates syntax trees at compile time.
 
-* [Macros](guide-macros.html) define new syntax in a higher-level,
+* [Macros](book/macros.html) define new syntax in a higher-level,
   declarative way.
 
 ## Macros
@@ -1218,7 +1218,7 @@ the guarantee that these issues are never caused by safe code.
     (`offset` intrinsic), with
     the exception of one byte past the end which is permitted.
   * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64`
-    instrinsics) on overlapping buffers
+    intrinsics) on overlapping buffers
 * Invalid values in primitive types, even in private fields/locals:
   * Dangling/null references or boxes
   * A value other than `false` (0) or `true` (1) in a `bool`
@@ -1588,10 +1588,11 @@ pointer values (pointing to a type for which an implementation of the given
 trait is in scope) to pointers to the trait name, used as a type.
 
 ```
+# use std::boxed::Box;
 # trait Shape { }
 # impl Shape for int { }
 # let mycircle = 0i;
-let myshape: Box<Shape> = box mycircle as Box<Shape>;
+let myshape: Box<Shape> = Box::new(mycircle) as Box<Shape>;
 ```
 
 The resulting value is a box containing the value that was cast, along with
@@ -1646,12 +1647,13 @@ fn radius_times_area<T: Circle>(c: T) -> f64 {
 Likewise, supertrait methods may also be called on trait objects.
 
 ```{.ignore}
+# use std::boxed::Box;
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 # impl Shape for int { fn area(&self) -> f64 { 0.0 } }
 # impl Circle for int { fn radius(&self) -> f64 { 0.0 } }
 # let mycircle = 0;
-let mycircle = box mycircle as Box<Circle>;
+let mycircle = Box::new(mycircle) as Box<Circle>;
 let nonsense = mycircle.radius() * mycircle.area();
 ```
 
@@ -2074,7 +2076,7 @@ On `struct`s:
   list of names `#[macro_use(foo, bar)]` restricts the import to just those
   macros named.  The `extern crate` must appear at the crate root, not inside
   `mod`, which ensures proper function of the [`$crate` macro
-  variable](guide-macros.html#the-variable-$crate).
+  variable](book/macros.html#the-variable-$crate).
 
 - `macro_reexport` on an `extern crate` — re-export the named macros.
 
@@ -2088,8 +2090,9 @@ On `struct`s:
 - `no_link` on an `extern crate` — even if we load this crate for macros or
   compiler plugins, don't link it into the output.
 
-See the [macros guide](guide-macros.html#scoping-and-macro-import/export) for
-more information on macro scope.
+See the [macros section of the
+book](book/macros.html#scoping-and-macro-import/export) for more information on
+macro scope.
 
 
 ### Miscellaneous attributes
@@ -2191,7 +2194,7 @@ For any lint check `C`:
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.  [Compiler
-plugins](guide-plugin.html#lint-plugins) can provide additional lint checks.
+plugins](book/plugin.html#lint-plugins) can provide additional lint checks.
 
 ```{.ignore}
 mod m1 {
@@ -3376,14 +3379,17 @@ stands for a *single* data field, whereas a wildcard `..` stands for *all* the
 fields of a particular variant. For example:
 
 ```
+#![feature(box_syntax)]
 enum List<X> { Nil, Cons(X, Box<List<X>>) }
 
-let x: List<int> = List::Cons(10, box List::Cons(11, box List::Nil));
+fn main() {
+    let x: List<int> = List::Cons(10, box List::Cons(11, box List::Nil));
 
-match x {
-    List::Cons(_, box List::Nil) => panic!("singleton list"),
-    List::Cons(..)               => return,
-    List::Nil                    => panic!("empty list")
+    match x {
+        List::Cons(_, box List::Nil) => panic!("singleton list"),
+        List::Cons(..)               => return,
+        List::Nil                    => panic!("empty list")
+    }
 }
 ```
 
@@ -3436,25 +3442,28 @@ the inside of the match.
 An example of a `match` expression:
 
 ```
+#![feature(box_syntax)]
 # fn process_pair(a: int, b: int) { }
 # fn process_ten() { }
 
 enum List<X> { Nil, Cons(X, Box<List<X>>) }
 
-let x: List<int> = List::Cons(10, box List::Cons(11, box List::Nil));
+fn main() {
+    let x: List<int> = List::Cons(10, box List::Cons(11, box List::Nil));
 
-match x {
-    List::Cons(a, box List::Cons(b, _)) => {
-        process_pair(a, b);
-    }
-    List::Cons(10, _) => {
-        process_ten();
-    }
-    List::Nil => {
-        return;
-    }
-    _ => {
-        panic!();
+    match x {
+        List::Cons(a, box List::Cons(b, _)) => {
+            process_pair(a, b);
+        }
+        List::Cons(10, _) => {
+            process_ten();
+        }
+        List::Nil => {
+            return;
+        }
+        _ => {
+            panic!();
+        }
     }
 }
 ```
@@ -3468,6 +3477,8 @@ Subpatterns can also be bound to variables by the use of the syntax `variable @
 subpattern`. For example:
 
 ```
+#![feature(box_syntax)]
+
 enum List { Nil, Cons(uint, Box<List>) }
 
 fn is_sorted(list: &List) -> bool {
@@ -3781,12 +3792,13 @@ enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 An example of a *recursive* type and its use:
 
 ```
+# use std::boxed::Box;
 enum List<T> {
-  Nil,
-  Cons(T, Box<List<T>>)
+    Nil,
+    Cons(T, Box<List<T>>)
 }
 
-let a: List<int> = List::Cons(7, box List::Cons(13, box List::Nil));
+let a: List<int> = List::Cons(7, Box::new(List::Cons(13, Box::new(List::Nil))));
 ```
 
 ### Pointer types
@@ -3893,6 +3905,7 @@ implementation of `R`, and the pointer value of `E`.
 An example of an object type:
 
 ```
+# use std::boxed::Box;
 trait Printable {
   fn stringify(&self) -> String;
 }
@@ -3906,7 +3919,7 @@ fn print(a: Box<Printable>) {
 }
 
 fn main() {
-   print(box 10i as Box<Printable>);
+   print(Box::new(10i) as Box<Printable>);
 }
 ```
 
@@ -4100,7 +4113,8 @@ the type of a box is `std::owned::Box<T>`.
 An example of a box type and value:
 
 ```
-let x: Box<int> = box 10;
+# use std::boxed::Box;
+let x: Box<int> = Box::new(10);
 ```
 
 Box values exist in 1:1 correspondence with their heap allocation, copying a
@@ -4109,7 +4123,8 @@ copy of a box to move ownership of the value. After a value has been moved,
 the source location cannot be used unless it is reinitialized.
 
 ```
-let x: Box<int> = box 10;
+# use std::boxed::Box;
+let x: Box<int> = Box::new(10);
 let y = x;
 // attempting to use `x` will result in an error here
 ```
@@ -4213,7 +4228,7 @@ communication facilities.
 The Rust compiler supports various methods to link crates together both
 statically and dynamically. This section will explore the various methods to
 link Rust crates together, and more information about native libraries can be
-found in the [ffi guide][ffi].
+found in the [ffi section of the book][ffi].
 
 In one session of compilation, the compiler can generate multiple artifacts
 through the usage of either command line flags or the `crate_type` attribute.
@@ -4345,5 +4360,5 @@ that have since been removed):
 * [Unicode Annex #31](http://www.unicode.org/reports/tr31/): identifier and
   pattern syntax
 
-[ffi]: guide-ffi.html
-[plugin]: guide-plugin.html
+[ffi]: book/ffi.html
+[plugin]: book/plugin.html

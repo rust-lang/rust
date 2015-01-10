@@ -29,7 +29,7 @@
 //! }
 //! ```
 
-#![experimental]
+#![unstable]
 
 use sys_common::AsInner;
 use libc;

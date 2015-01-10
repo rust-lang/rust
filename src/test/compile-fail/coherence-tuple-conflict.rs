@@ -15,15 +15,15 @@ use std::default::Default;
 // specific T.
 
 trait MyTrait {
-    fn get(&self) -> uint;
+    fn get(&self) -> usize;
 }
 
 impl<T> MyTrait for (T,T) { //~ ERROR E0119
-    fn get(&self) -> uint { 0 }
+    fn get(&self) -> usize { 0 }
 }
 
 impl<A,B> MyTrait for (A,B) {
-    fn get(&self) -> uint { self.dummy }
+    fn get(&self) -> usize { self.dummy }
 }
 
 fn main() { }

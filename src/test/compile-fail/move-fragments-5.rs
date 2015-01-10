@@ -17,7 +17,7 @@
 
 // This is the first test that checks moving into local variables.
 
-pub struct D { d: int }
+pub struct D { d: isize }
 impl Drop for D { fn drop(&mut self) { } }
 
 pub struct Pair<X,Y> { x: X, y: Y }
@@ -47,7 +47,7 @@ pub fn test_move_field_to_local_to_local(p: Pair<D, D>) {
 // `test_uninitialized_local` , the instrumentation reports that `_x`
 // is moved. This is unlike `test_move_field_to_local`, where `_x` is
 // just reported as an assigned_leaf_path. Presumably because this is
-// how we represent that it did not have an initalizing expression at
+// how we represent that it did not have an initializing expression at
 // the binding site.
 
 #[rustc_move_fragments]

@@ -642,10 +642,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(sp, ast::ExprLit(P(respan(sp, lit))))
     }
     fn expr_uint(&self, span: Span, i: uint) -> P<ast::Expr> {
-        self.expr_lit(span, ast::LitInt(i as u64, ast::UnsignedIntLit(ast::TyUs)))
+        self.expr_lit(span, ast::LitInt(i as u64, ast::UnsignedIntLit(ast::TyUs(false))))
     }
     fn expr_int(&self, sp: Span, i: int) -> P<ast::Expr> {
-        self.expr_lit(sp, ast::LitInt(i as u64, ast::SignedIntLit(ast::TyIs, ast::Sign::new(i))))
+        self.expr_lit(sp, ast::LitInt(i as u64, ast::SignedIntLit(ast::TyIs(false),
+                                                                  ast::Sign::new(i))))
     }
     fn expr_u8(&self, sp: Span, u: u8) -> P<ast::Expr> {
         self.expr_lit(sp, ast::LitInt(u as u64, ast::UnsignedIntLit(ast::TyU8)))
@@ -708,8 +709,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn expr_fail(&self, span: Span, msg: InternedString) -> P<ast::Expr> {
         let loc = self.codemap().lookup_char_pos(span.lo);
         let expr_file = self.expr_str(span,
-                                      token::intern_and_get_ident(loc.file
-                                                                  .name.index(&FullRange)));
+                                      token::intern_and_get_ident(&loc.file.name[]));
         let expr_line = self.expr_uint(span, loc.line);
         let expr_file_line_tuple = self.expr_tuple(span, vec!(expr_file, expr_line));
         let expr_file_line_ptr = self.expr_addr_of(span, expr_file_line_tuple);

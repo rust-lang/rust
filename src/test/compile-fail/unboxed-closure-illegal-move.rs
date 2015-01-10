@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 // Tests that we can't move out of an unboxed closure environment
@@ -17,28 +18,28 @@
 fn main() {
     // By-ref cases
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = |&:| drop(x); //~ cannot move
     }
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = |&mut:| drop(x); //~ cannot move
     }
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = |:| drop(x); //~ cannot move
     }
     // By-value cases
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = move |&:| drop(x); //~ cannot move
     }
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = move |&mut:| drop(x); //~ cannot move
     }
     {
-        let x = box 0u;
+        let x = box 0us;
         let f = move |:| drop(x); // this one is ok
     }
 }

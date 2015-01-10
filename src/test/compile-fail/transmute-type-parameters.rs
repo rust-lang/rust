@@ -13,15 +13,15 @@
 use std::mem::transmute;
 
 unsafe fn f<T>(x: T) {
-    let _: int = transmute(x);  //~ ERROR cannot transmute
+    let _: isize = transmute(x);  //~ ERROR cannot transmute
 }
 
-unsafe fn g<T>(x: (T, int)) {
-    let _: int = transmute(x);  //~ ERROR cannot transmute
+unsafe fn g<T>(x: (T, isize)) {
+    let _: isize = transmute(x);  //~ ERROR cannot transmute
 }
 
 unsafe fn h<T>(x: [T; 10]) {
-    let _: int = transmute(x);  //~ ERROR cannot transmute
+    let _: isize = transmute(x);  //~ ERROR cannot transmute
 }
 
 struct Bad<T> {
@@ -29,7 +29,7 @@ struct Bad<T> {
 }
 
 unsafe fn i<T>(x: Bad<T>) {
-    let _: int = transmute(x);  //~ ERROR cannot transmute
+    let _: isize = transmute(x);  //~ ERROR cannot transmute
 }
 
 enum Worse<T> {
@@ -38,11 +38,11 @@ enum Worse<T> {
 }
 
 unsafe fn j<T>(x: Worse<T>) {
-    let _: int = transmute(x);  //~ ERROR cannot transmute
+    let _: isize = transmute(x);  //~ ERROR cannot transmute
 }
 
 unsafe fn k<T>(x: Option<T>) {
-    let _: int = transmute(x);  //~ ERROR cannot transmute
+    let _: isize = transmute(x);  //~ ERROR cannot transmute
 }
 
 fn main() {}

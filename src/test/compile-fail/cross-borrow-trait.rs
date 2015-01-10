@@ -11,6 +11,8 @@
 // Test that cross-borrowing (implicitly converting from `Box<T>` to `&T`) is
 // forbidden when `T` is a trait.
 
+#![feature(box_syntax)]
+
 struct Foo;
 trait Trait {}
 impl Trait for Foo {}

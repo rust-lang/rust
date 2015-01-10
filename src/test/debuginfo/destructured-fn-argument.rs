@@ -311,6 +311,7 @@
 // lldb-command:continue
 
 #![allow(unused_variables)]
+#![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
 use self::Univariant::Unit;

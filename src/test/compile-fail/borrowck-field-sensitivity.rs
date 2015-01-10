@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A { a: int, b: Box<int> }
+#![feature(box_syntax)]
+
+struct A { a: isize, b: Box<isize> }
 
 fn deref_after_move() {
     let x = A { a: 1, b: box 2 };
