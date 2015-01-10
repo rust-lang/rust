@@ -23,10 +23,10 @@ let x: (i32, &str) = (1, "hello");
 As you can see, the type of a tuple looks just like the tuple, but with each
 position having a type name rather than the value. Careful readers will also
 note that tuples are heterogeneous: we have an `i32` and a `&str` in this tuple.
-You haven't seen `&str` as a type before, and we'll discuss the details of
-strings later. In systems programming languages, strings are a bit more complex
-than in other languages. For now, just read `&str` as a *string slice*, and
-we'll learn more soon.
+You have briefly seen `&str` used as a type before, and we'll discuss the
+details of strings later. In systems programming languages, strings are a bit
+more complex than in other languages. For now, just read `&str` as a *string
+slice*, and we'll learn more soon.
 
 You can access the fields in a tuple through a *destructuring let*. Here's
 an example:
