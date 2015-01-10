@@ -10,7 +10,7 @@
 
 use prelude::v1::*;
 
-use sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Ordering};
+use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 use alloc::{self, heap};
 
 use libc::DWORD;
@@ -18,9 +18,9 @@ use sys::sync as ffi;
 
 const SPIN_COUNT: DWORD = 4000;
 
-pub struct Mutex { inner: AtomicUint }
+pub struct Mutex { inner: AtomicUsize }
 
-pub const MUTEX_INIT: Mutex = Mutex { inner: ATOMIC_UINT_INIT };
+pub const MUTEX_INIT: Mutex = Mutex { inner: ATOMIC_USIZE_INIT };
 
 unsafe impl Sync for Mutex {}
 
@@ -32,7 +32,7 @@ pub unsafe fn raw(m: &Mutex) -> ffi::LPCRITICAL_SECTION {
 impl Mutex {
     #[inline]
     pub unsafe fn new() -> Mutex {
-        Mutex { inner: AtomicUint::new(init_lock() as uint) }
+        Mutex { inner: AtomicUsize::new(init_lock() as uint) }
     }
     #[inline]
     pub unsafe fn lock(&self) {

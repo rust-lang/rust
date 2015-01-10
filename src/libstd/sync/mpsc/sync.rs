@@ -41,7 +41,7 @@ use self::Blocker::*;
 use vec::Vec;
 use core::mem;
 
-use sync::atomic::{Ordering, AtomicUint};
+use sync::atomic::{Ordering, AtomicUsize};
 use sync::mpsc::blocking::{self, WaitToken, SignalToken};
 use sync::mpsc::select::StartResult::{self, Installed, Abort};
 use sync::{Mutex, MutexGuard};
@@ -49,7 +49,7 @@ use sync::{Mutex, MutexGuard};
 pub struct Packet<T> {
     /// Only field outside of the mutex. Just done for kicks, but mainly because
     /// the other shared channel already had the code implemented
-    channels: AtomicUint,
+    channels: AtomicUsize,
 
     lock: Mutex<State<T>>,
 }
@@ -138,7 +138,7 @@ fn wakeup<T>(token: SignalToken, guard: MutexGuard<State<T>>) {
 impl<T: Send> Packet<T> {
     pub fn new(cap: uint) -> Packet<T> {
         Packet {
-            channels: AtomicUint::new(1),
+            channels: AtomicUsize::new(1),
             lock: Mutex::new(State {
                 disconnected: false,
                 blocker: NoneBlocked,

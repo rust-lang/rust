@@ -137,8 +137,8 @@ unsafe impl<T: Sync + Send> Send for Weak<T> { }
 unsafe impl<T: Sync + Send> Sync for Weak<T> { }
 
 struct ArcInner<T> {
-    strong: atomic::AtomicUint,
-    weak: atomic::AtomicUint,
+    strong: atomic::AtomicUsize,
+    weak: atomic::AtomicUsize,
     data: T,
 }
 
@@ -161,8 +161,8 @@ impl<T> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
         let x = box ArcInner {
-            strong: atomic::AtomicUint::new(1),
-            weak: atomic::AtomicUint::new(1),
+            strong: atomic::AtomicUsize::new(1),
+            weak: atomic::AtomicUsize::new(1),
             data: data,
         };
         Arc { _ptr: unsafe { NonZero::new(mem::transmute(x)) } }
@@ -619,7 +619,7 @@ mod tests {
     use super::{Arc, Weak, weak_count, strong_count};
     use std::sync::Mutex;
 
-    struct Canary(*mut atomic::AtomicUint);
+    struct Canary(*mut atomic::AtomicUsize);
 
     impl Drop for Canary
     {
@@ -743,16 +743,16 @@ mod tests {
 
     #[test]
     fn drop_arc() {
-        let mut canary = atomic::AtomicUint::new(0);
-        let x = Arc::new(Canary(&mut canary as *mut atomic::AtomicUint));
+        let mut canary = atomic::AtomicUsize::new(0);
+        let x = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
         drop(x);
         assert!(canary.load(Acquire) == 1);
     }
 
     #[test]
     fn drop_arc_weak() {
-        let mut canary = atomic::AtomicUint::new(0);
-        let arc = Arc::new(Canary(&mut canary as *mut atomic::AtomicUint));
+        let mut canary = atomic::AtomicUsize::new(0);
+        let arc = Arc::new(Canary(&mut canary as *mut atomic::AtomicUsize));
         let arc_weak = arc.downgrade();
         assert!(canary.load(Acquire) == 0);
         drop(arc);

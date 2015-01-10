@@ -17,7 +17,7 @@ use int;
 use marker::Sync;
 use mem::drop;
 use ops::FnOnce;
-use sync::atomic::{AtomicInt, Ordering, ATOMIC_INT_INIT};
+use sync::atomic::{AtomicIsize, Ordering, ATOMIC_ISIZE_INIT};
 use sync::{StaticMutex, MUTEX_INIT};
 
 /// A synchronization primitive which can be used to run a one-time global
@@ -39,8 +39,8 @@ use sync::{StaticMutex, MUTEX_INIT};
 #[stable]
 pub struct Once {
     mutex: StaticMutex,
-    cnt: AtomicInt,
-    lock_cnt: AtomicInt,
+    cnt: AtomicIsize,
+    lock_cnt: AtomicIsize,
 }
 
 unsafe impl Sync for Once {}
@@ -49,8 +49,8 @@ unsafe impl Sync for Once {}
 #[stable]
 pub const ONCE_INIT: Once = Once {
     mutex: MUTEX_INIT,
-    cnt: ATOMIC_INT_INIT,
-    lock_cnt: ATOMIC_INT_INIT,
+    cnt: ATOMIC_ISIZE_INIT,
+    lock_cnt: ATOMIC_ISIZE_INIT,
 };
 
 impl Once {
