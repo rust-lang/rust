@@ -706,20 +706,45 @@ pub trait Shl<RHS> {
 }
 
 macro_rules! shl_impl {
-    ($($t:ty)*) => ($(
+    ($t:ty, $f:ty) => (
         #[stable]
-        impl Shl<uint> for $t {
+        impl Shl<$f> for $t {
             type Output = $t;
 
             #[inline]
-            fn shl(self, other: uint) -> $t {
+            fn shl(self, other: $f) -> $t {
                 self << other
             }
         }
+    )
+}
+
+// SNAP 9e4e524e0
+#[cfg(not(stage0))]
+macro_rules! shl_impl_all {
+    ($($t:ty)*) => ($(
+        shl_impl! { $t, u8 }
+        shl_impl! { $t, u16 }
+        shl_impl! { $t, u32 }
+        shl_impl! { $t, u64 }
+        shl_impl! { $t, usize }
+
+        shl_impl! { $t, i8 }
+        shl_impl! { $t, i16 }
+        shl_impl! { $t, i32 }
+        shl_impl! { $t, i64 }
+        shl_impl! { $t, isize }
     )*)
 }
 
-shl_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+#[cfg(stage0)]
+macro_rules! shl_impl_all {
+    ($($t:ty)*) => ($(
+        shl_impl! { $t, usize }
+    )*)
+}
+
+shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
 /// The `Shr` trait is used to specify the functionality of `>>`.
 ///
@@ -761,17 +786,44 @@ pub trait Shr<RHS> {
 }
 
 macro_rules! shr_impl {
-    ($($t:ty)*) => ($(
-        impl Shr<uint> for $t {
+    ($t:ty, $f:ty) => (
+        impl Shr<$f> for $t {
             type Output = $t;
 
             #[inline]
-            fn shr(self, other: uint) -> $t { self >> other }
+            fn shr(self, other: $f) -> $t {
+                self >> other
+            }
         }
+    )
+}
+
+// SNAP 9e4e524e0
+#[cfg(not(stage0))]
+macro_rules! shr_impl_all {
+    ($($t:ty)*) => ($(
+        shr_impl! { $t, u8 }
+        shr_impl! { $t, u16 }
+        shr_impl! { $t, u32 }
+        shr_impl! { $t, u64 }
+        shr_impl! { $t, usize }
+
+        shr_impl! { $t, i8 }
+        shr_impl! { $t, i16 }
+        shr_impl! { $t, i32 }
+        shr_impl! { $t, i64 }
+        shr_impl! { $t, isize }
     )*)
 }
 
-shr_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+#[cfg(stage0)]
+macro_rules! shr_impl_all {
+    ($($t:ty)*) => ($(
+        shr_impl! { $t, usize }
+    )*)
+}
+
+shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
 /// The `Index` trait is used to specify the functionality of indexing operations
 /// like `arr[idx]` when used in an immutable context.
