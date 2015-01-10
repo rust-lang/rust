@@ -1,12 +1,13 @@
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
+#[plugin]
 extern crate clippy;
+
 extern crate collections;
 use collections::dlist::DList;
 
 pub fn test(foo: DList<uint>) {
-    println!("{}", foo)
+    println!("{:?}", foo)
 }
 
 fn main(){

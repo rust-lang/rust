@@ -1,12 +1,12 @@
-#![feature(phase)]
+#![feature(plugin)]
 
-#[phase(plugin)]
+#[plugin]
 extern crate clippy;
 
-pub fn test(foo: Box<Vec<uint>>) {
-    println!("{}", foo)
+pub fn test(foo: Box<Vec<bool>>) {
+    println!("{:?}", foo.get(0))
 }
 
 fn main(){
-    test(box Vec::new());
+    test(Box::new(Vec::new()));
 }

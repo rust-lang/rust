@@ -1,10 +1,10 @@
-#![feature(globs, phase, plugin_registrar)]
+#![feature(plugin_registrar, box_syntax)]
 
-#![allow(unused_imports)]
+#![allow(unused_imports, unstable)]
 
-#[phase(plugin, link)]
+#[macro_use]
 extern crate syntax;
-#[phase(plugin, link)]
+#[macro_use]
 extern crate rustc;
 
 // Only for the compile time checking of paths
