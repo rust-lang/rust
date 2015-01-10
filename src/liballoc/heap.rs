@@ -119,7 +119,8 @@ unsafe fn exchange_free(ptr: *mut u8, old_size: uint, align: uint) {
           not(feature = "external_crate"),
           any(target_arch = "arm",
               target_arch = "mips",
-              target_arch = "mipsel")))]
+              target_arch = "mipsel",
+              target_arch = "powerpc")))]
 const MIN_ALIGN: uint = 8;
 #[cfg(all(not(feature = "external_funcs"),
           not(feature = "external_crate"),
