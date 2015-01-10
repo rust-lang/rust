@@ -579,13 +579,9 @@ impl<'a, 'b> Context<'a, 'b> {
         } else {
             // Build up the static array which will store our precompiled
             // nonstandard placeholders, if there are any.
-            let piece_ty = self.ecx.ty_path(self.ecx.path_all(
+            let piece_ty = self.ecx.ty_path(self.ecx.path_global(
                     self.fmtsp,
-                    true, Context::rtpath(self.ecx, "Argument"),
-                    vec![static_lifetime],
-                    vec![],
-                    vec![]
-                ));
+                    Context::rtpath(self.ecx, "Argument")));
             let fmt = Context::static_array(self.ecx,
                                             "__STATIC_FMTARGS",
                                             piece_ty,
