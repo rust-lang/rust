@@ -98,7 +98,7 @@ let x;
 ...we'll get an error:
 
 ```text
-src/main.rs:2:9: 2:10 error: cannot determine a type for this local variable: unconstrained type
+src/main.rs:2:9: 2:10 error: unable to infer enough type information about `_`; type annotations required
 src/main.rs:2     let x;
                       ^
 ```

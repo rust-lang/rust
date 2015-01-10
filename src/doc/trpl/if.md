@@ -126,7 +126,7 @@ let y: i32 = if x == 5 { 10; } else { 15; };
 Note the semicolons after the 10 and 15. Rust will give us the following error:
 
 ```text
-error: mismatched types: expected `i32` but found `()` (expected i32 but found ())
+error: mismatched types: expected `i32`, found `()` (expected i32, found ())
 ```
 
 We expected an integer, but we got `()`. `()` is pronounced *unit*, and is a
