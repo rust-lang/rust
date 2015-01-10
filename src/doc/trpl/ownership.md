@@ -488,7 +488,7 @@ Here are the three rules:
   parameter.
 
 * If there is exactly one input lifetime, elided or not, that lifetime is
-  assigned to all elided lifetimes in the return values of that function..
+  assigned to all elided lifetimes in the return values of that function.
 
 * If there are multiple input lifetimes, but one of them is `&self` or `&mut
   self`, the lifetime of `self` is assigned to all elided output lifetimes.
