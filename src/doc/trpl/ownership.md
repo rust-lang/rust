@@ -3,15 +3,15 @@
 This guide presents Rust's ownership system. This is one of Rust's most unique
 and compelling features, with which Rust developers should become quite
 acquainted. Ownership is how Rust achieves its largest goal, memory safety.
-The ownership system has a few distinct concepts: **ownership**, **borrowing**,
-and **lifetimes**. We'll talk about each one in turn.
+The ownership system has a few distinct concepts: *ownership*, *borrowing*,
+and *lifetimes*. We'll talk about each one in turn.
 
 # Meta
 
 Before we get to the details, two important notes about the ownership system.
 
 Rust has a focus on safety and speed. It accomplishes these goals through many
-"zero cost abstractions," which means that in Rust, abstractions cost as little
+*zero-cost abstractions*, which means that in Rust, abstractions cost as little
 as possible in order to make them work. The ownership system is a prime example
 of a zero cost abstraction. All of the analysis we'll talk about in this guide
 is _done at compile time_. You do not pay any run-time cost for any of these
@@ -31,14 +31,14 @@ With that in mind, let's learn about ownership.
 
 # Ownership
 
-At its core, ownership is about 'resources.' For the purposes of the vast
+At its core, ownership is about *resources*. For the purposes of the vast
 majority of this guide, we will talk about a specific resource: memory. The
 concept generalizes to any kind of resource, like a file handle, but to make it
 more concrete, we'll focus on memory.
 
 When your program allocates some memory, it needs some way to deallocate that
 memory. Imagine a function `foo` that allocates four bytes of memory, and then
-never deallocates that memory. We call this problem 'leaking' memory, because
+never deallocates that memory. We call this problem *leaking* memory, because
 each time we call `foo`, we're allocating another four bytes. Eventually, with
 enough calls to `foo`, we will run our system out of memory. That's no good. So
 we need some way for `foo` to deallocate those four bytes. It's also important
@@ -50,7 +50,7 @@ times is bad. The counts must match.
 
 There's one other important detail with regards to allocating memory. Whenever
 we request some amount of memory, what we are given is a handle to that memory.
-This handle (often called a 'pointer', when we're referring to memory) is how
+This handle (often called a *pointer*, when we're referring to memory) is how
 we interact with the allocated memory. As long as we have that handle, we can
 do something with the memory. Once we're done with the handle, we're also done
 with the memory, as we can't do anything useful without a handle to it.
@@ -74,8 +74,8 @@ The call to `malloc` allocates some memory. The call to `free` deallocates the
 memory. There's also bookkeeping about allocating the correct amount of memory.
 
 Rust combines these two aspects of allocating memory (and other resources) into
-a concept called 'ownership.' Whenever we request some memory, that handle we
-receive is called the 'owning handle.' Whenever that handle goes out of scope,
+a concept called *ownership*. Whenever we request some memory, that handle we
+receive is called the *owning handle*. Whenever that handle goes out of scope,
 Rust knows that you cannot do anything with the memory anymore, and so
 therefore deallocates the memory for you. Here's the equivalent example in
 Rust:
@@ -171,8 +171,8 @@ This code will compile and run just fine. Now, we return a `box`, and so the
 ownership is transferred back to `y` in `main`. We only have ownership for the
 duration of our function before giving it back. This pattern is very common,
 and so Rust introduces a concept to describe a handle which temporarily refers
-to something another handle owns. It's called "borrowing," and it's done with
-"references", designated by the `&` symbol.
+to something another handle owns. It's called *borrowing*, and it's done with
+*references*, designated by the `&` symbol.
 
 # Borrowing
 
@@ -191,11 +191,11 @@ contents. But then we give ownership right back.
 
 In the physical world, you can give one of your possessions to someone for a
 short period of time. You still own your possession, you're just letting someone
-else use it for a while. We call that 'lending' something to someone, and that
-person is said to be 'borrowing' that something from you.
+else use it for a while. We call that *lending* something to someone, and that
+person is said to be *borrowing* that something from you.
 
 Rust's ownership system also allows an owner to lend out a handle for a limited
-period. This is also called 'borrowing.' Here's a version of `add_one` which
+period. This is also called *borrowing*. Here's a version of `add_one` which
 borrows its argument rather than taking ownership:
 
 ```rust
@@ -219,11 +219,11 @@ complicated, however. For example, imagine this set of operations:
 4. You decide to use the resource.
 
 Uh oh! Your reference is pointing to an invalid resource. This is called a
-"dangling pointer" or "use after free," when the resource is memory.
+*dangling pointer* or "use after free," when the resource is memory.
 
 To fix this, we have to make sure that step four never happens after step
 three. The ownership system in Rust does this through a concept called
-"lifetimes," which describe the scope that a reference is valid for.
+*lifetimes*, which describe the scope that a reference is valid for.
 
 Let's look at that function which borrows an `int` again:
 
@@ -233,7 +233,7 @@ fn add_one(num: &int) -> int {
 }
 ```
 
-Rust has a feature called 'lifetime elision,' which allows you to not write
+Rust has a feature called *lifetime elision*, which allows you to not write
 lifetime annotations in certain circumstances. This is one of them. We will
 cover the others later. Without eliding the lifetimes, `add_one` looks like
 this:
@@ -244,7 +244,7 @@ fn add_one<'a>(num: &'a int) -> int {
 }
 ```
 
-The `'a` is called a **lifetime**. Most lifetimes are used in places where
+The `'a` is called a *lifetime*. Most lifetimes are used in places where
 short names like `'a`, `'b` and `'c` are clearest, but it's often useful to
 have more descriptive names. Let's dig into the syntax in a bit more detail:
 
@@ -362,7 +362,7 @@ name is the first step towards being able to talk about it.
 
 ## 'static
 
-The lifetime named 'static' is a special lifetime. It signals that something
+The lifetime named *static* is a special lifetime. It signals that something
 has the lifetime of the entire program. Most Rust programmers first come across
 `'static` when dealing with strings:
 
@@ -456,14 +456,14 @@ thread-safe counterpart of `Rc<T>`.
 
 ## Lifetime Elision
 
-Earlier, we mentioned 'lifetime elision,' a feature of Rust which allows you to
+Earlier, we mentioned *lifetime elision*, a feature of Rust which allows you to
 not write lifetime annotations in certain circumstances. All references have a
 lifetime, and so if you elide a lifetime (like `&T` instead of `&'a T`), Rust
 will do three things to determine what those lifetimes should be.
 
-When talking about lifetime elision, we use the term 'input lifetime' and
-'output lifetime'. An 'input lifetime' is a lifetime associated with a parameter
-of a function, and an 'output lifetime' is a lifetime associated with the return
+When talking about lifetime elision, we use the term *input lifetime* and
+*output lifetime*. An *input lifetime* is a lifetime associated with a parameter
+of a function, and an *output lifetime* is a lifetime associated with the return
 value of a function. For example, this function has an input lifetime:
 
 ```{rust,ignore}

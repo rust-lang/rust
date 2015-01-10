@@ -2,7 +2,7 @@
 
 So far, we've made lots of functions in Rust, but we've given them all names.
 Rust also allows us to create anonymous functions. Rust's anonymous
-functions are called **closure**s. By themselves, closures aren't all that
+functions are called *closures*. By themselves, closures aren't all that
 interesting, but when you combine them with functions that take closures as
 arguments, really powerful things are possible.
 
@@ -61,7 +61,7 @@ fn main() {
 
 ## Moving closures
 
-Rust has a second type of closure, called a **moving closure**. Moving
+Rust has a second type of closure, called a *moving closure*. Moving
 closures are indicated using the `move` keyword (e.g., `move || x *
 x`). The difference between a moving closure and an ordinary closure
 is that a moving closure always takes ownership of all variables that

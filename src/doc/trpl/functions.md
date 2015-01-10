@@ -8,7 +8,7 @@ fn main() {
 ```
 
 This is the simplest possible function declaration. As we mentioned before,
-`fn` says 'this is a function,' followed by the name, some parentheses because
+`fn` says "this is a function," followed by the name, some parentheses because
 this function takes no arguments, and then some curly braces to indicate the
 body. Here's a function named `foo`:
 
@@ -86,7 +86,7 @@ fn add_one(x: i32) -> i32 {
 ```
 
 Rust functions return exactly one value, and you declare the type after an
-'arrow', which is a dash (`-`) followed by a greater-than sign (`>`).
+"arrow," which is a dash (`-`) followed by a greater-than sign (`>`).
 
 You'll note the lack of a semicolon here. If we added it in:
 
