@@ -150,6 +150,7 @@ mod imp {
               all(target_os = "linux", target_arch = "aarch64"),
               all(target_os = "linux", target_arch = "mips"), // may not match
               all(target_os = "linux", target_arch = "mipsel"), // may not match
+              all(target_os = "linux", target_arch = "powerpc"), // may not match
               target_os = "android"))] // may not match
     mod signal {
         use libc;
