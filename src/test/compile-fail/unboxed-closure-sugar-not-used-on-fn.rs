@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
 
-fn foo<F: Fn()>(mut f: F) {
-    f.call(()); //~ ERROR explicit use of unboxed closure method `call`
-    f.call_mut(()); //~ ERROR explicit use of unboxed closure method `call_mut`
-    f.call_once(()); //~ ERROR explicit use of unboxed closure method `call_once`
+// Test that the `Fn` traits require `()` form without a feature gate.
+
+fn bar1(x: &Fn<(),()>) {
+    //~^ ERROR angle-bracket notation is not stable when used with the `Fn` family
 }
 
-fn main() {}
+fn bar2<T>(x: &T) where T: Fn<(),()> {
+    //~^ ERROR angle-bracket notation is not stable when used with the `Fn` family
+}
+
+fn main() { }
+
