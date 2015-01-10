@@ -2512,7 +2512,10 @@ struct FormatShim<'a, 'b: 'a> {
 
 impl<'a, 'b> fmt::Writer for FormatShim<'a, 'b> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.inner.write_str(s)
+        match self.inner.write_str(s) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(fmt::Error)
+        }
     }
 }
 
@@ -2521,7 +2524,10 @@ impl fmt::String for Json {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = Encoder::new(&mut shim);
-        self.encode(&mut encoder)
+        match self.encode(&mut encoder) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(fmt::Error)
+        }
     }
 }
 
@@ -2530,7 +2536,10 @@ impl<'a> fmt::String for PrettyJson<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = PrettyEncoder::new(&mut shim);
-        self.inner.encode(&mut encoder)
+        match self.inner.encode(&mut encoder) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(fmt::Error)
+        }
     }
 }
 
@@ -2539,7 +2548,10 @@ impl<'a, T: Encodable> fmt::String for AsJson<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
         let mut encoder = Encoder::new(&mut shim);
-        self.inner.encode(&mut encoder)
+        match self.inner.encode(&mut encoder) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(fmt::Error)
+        }
     }
 }
 
@@ -2560,7 +2572,10 @@ impl<'a, T: Encodable> fmt::String for AsPrettyJson<'a, T> {
             Some(n) => encoder.set_indent(n),
             None => {}
         }
-        self.inner.encode(&mut encoder)
+        match self.inner.encode(&mut encoder) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(fmt::Error)
+        }
     }
 }
 
