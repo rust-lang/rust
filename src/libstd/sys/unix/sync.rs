@@ -126,7 +126,8 @@ mod os {
     #[cfg(any(target_arch = "x86",
               target_arch = "arm",
               target_arch = "mips",
-              target_arch = "mipsel"))]
+              target_arch = "mipsel",
+              target_arch = "powerpc"))]
     const __SIZEOF_PTHREAD_MUTEX_T: uint = 24 - 8;
     #[cfg(target_arch = "aarch64")]
     const __SIZEOF_PTHREAD_MUTEX_T: uint = 48 - 8;
@@ -136,7 +137,8 @@ mod os {
               target_arch = "arm",
               target_arch = "aarch64",
               target_arch = "mips",
-              target_arch = "mipsel"))]
+              target_arch = "mipsel",
+              target_arch = "powerpc"))]
     const __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
 
     #[cfg(any(target_arch = "x86_64",
@@ -146,7 +148,8 @@ mod os {
     #[cfg(any(target_arch = "x86",
               target_arch = "arm",
               target_arch = "mips",
-              target_arch = "mipsel"))]
+              target_arch = "mipsel",
+              target_arch = "powerpc"))]
     const __SIZEOF_PTHREAD_RWLOCK_T: uint = 32 - 8;
 
     #[repr(C)]
