@@ -61,8 +61,10 @@ pub fn closure_analyze_fn(fcx: &FnCtxt,
     let mut seed = SeedBorrowKind::new(fcx);
     seed.visit_block(body);
 
-    let mut adjust = AdjustBorrowKind::new(fcx);
-    adjust.analyze_fn(decl, body);
+    if fcx.err_count_since_creation() == 0 {
+        let mut adjust = AdjustBorrowKind::new(fcx);
+        adjust.analyze_fn(decl, body);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
