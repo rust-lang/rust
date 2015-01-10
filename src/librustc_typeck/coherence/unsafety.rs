@@ -30,7 +30,7 @@ struct UnsafetyChecker<'cx, 'tcx:'cx> {
 impl<'cx, 'tcx,'v> visit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v ast::Item) {
         match item.node {
-            ast::ItemImpl(unsafety, _, _, _, _, _) => {
+            ast::ItemImpl(unsafety, polarity, _, _, _, _) => {
                 match ty::impl_trait_ref(self.tcx, ast_util::local_def(item.id)) {
                     None => {
                         // Inherent impl.
@@ -46,23 +46,34 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
 
                     Some(trait_ref) => {
                         let trait_def = ty::lookup_trait_def(self.tcx, trait_ref.def_id);
-                        match (trait_def.unsafety, unsafety) {
-                            (ast::Unsafety::Normal, ast::Unsafety::Unsafe) => {
+                        match (trait_def.unsafety, unsafety, polarity) {
+                            (ast::Unsafety::Unsafe,
+                             ast::Unsafety::Unsafe, ast::ImplPolarity::Negative) => {
+                                self.tcx.sess.span_err(
+                                    item.span,
+                                    format!("negative implementations are not unsafe").as_slice());
+                            }
+
+                            (ast::Unsafety::Normal, ast::Unsafety::Unsafe, _) => {
                                 self.tcx.sess.span_err(
                                     item.span,
                                     format!("implementing the trait `{}` is not unsafe",
                                             trait_ref.user_string(self.tcx)).as_slice());
                             }
 
-                            (ast::Unsafety::Unsafe, ast::Unsafety::Normal) => {
+                            (ast::Unsafety::Unsafe,
+                             ast::Unsafety::Normal, ast::ImplPolarity::Positive) => {
                                 self.tcx.sess.span_err(
                                     item.span,
                                     format!("the trait `{}` requires an `unsafe impl` declaration",
                                             trait_ref.user_string(self.tcx)).as_slice());
                             }
 
-                            (ast::Unsafety::Unsafe, ast::Unsafety::Unsafe) |
-                            (ast::Unsafety::Normal, ast::Unsafety::Normal) => {
+                            (ast::Unsafety::Unsafe,
+                             ast::Unsafety::Normal, ast::ImplPolarity::Negative) |
+                            (ast::Unsafety::Unsafe,
+                             ast::Unsafety::Unsafe, ast::ImplPolarity::Positive) |
+                            (ast::Unsafety::Normal, ast::Unsafety::Normal, _) => {
                                 /* OK */
                             }
                         }
