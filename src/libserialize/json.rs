@@ -668,8 +668,8 @@ impl<'a> ::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: uint, mut f: F) -> EncodeResult where
-        F: FnMut(&mut Encoder<'a>) -> EncodeResult,
+    fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+        F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx != 0 { try!(write!(self.writer, ",")) }
@@ -961,8 +961,8 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: uint, mut f: F) -> EncodeResult where
-        F: FnMut(&mut PrettyEncoder<'a>) -> EncodeResult,
+    fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+        F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx == 0 {
