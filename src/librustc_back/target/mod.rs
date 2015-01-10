@@ -72,6 +72,7 @@ mod i686_unknown_dragonfly;
 mod i686_unknown_linux_gnu;
 mod mips_unknown_linux_gnu;
 mod mipsel_unknown_linux_gnu;
+mod powerpc_unknown_linux_gnu;
 mod x86_64_apple_darwin;
 mod x86_64_apple_ios;
 mod x86_64_pc_windows_gnu;
@@ -95,7 +96,7 @@ pub struct Target {
     /// OS name to use for conditional compilation.
     pub target_os: String,
     /// Architecture to use for ABI considerations. Valid options: "x86", "x86_64", "arm",
-    /// "aarch64", and "mips". "mips" includes "mipsel".
+    /// "aarch64", "mips", and "powerpc". "mips" includes "mipsel".
     pub arch: String,
     /// Optional settings with defaults.
     pub options: TargetOptions,
@@ -339,6 +340,7 @@ impl Target {
             i686_unknown_linux_gnu,
             mips_unknown_linux_gnu,
             mipsel_unknown_linux_gnu,
+            powerpc_unknown_linux_gnu,
             arm_linux_androideabi,
             arm_unknown_linux_gnueabi,
             arm_unknown_linux_gnueabihf,

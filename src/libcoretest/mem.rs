@@ -22,7 +22,8 @@ fn size_of_basic() {
 #[cfg(any(target_arch = "x86",
           target_arch = "arm",
           target_arch = "mips",
-          target_arch = "mipsel"))]
+          target_arch = "mipsel",
+          target_arch = "powerpc"))]
 fn size_of_32() {
     assert_eq!(size_of::<uint>(), 4u);
     assert_eq!(size_of::<*const uint>(), 4u);
@@ -55,7 +56,8 @@ fn align_of_basic() {
 #[cfg(any(target_arch = "x86",
           target_arch = "arm",
           target_arch = "mips",
-          target_arch = "mipsel"))]
+          target_arch = "mipsel",
+          target_arch = "powerpc"))]
 fn align_of_32() {
     assert_eq!(align_of::<uint>(), 4u);
     assert_eq!(align_of::<*const uint>(), 4u);
