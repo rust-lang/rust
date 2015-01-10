@@ -213,7 +213,7 @@ Segmentation fault (core dumped)
 
 A crash! (Note that this is actually system-dependent. Because referring to an
 invalid reference is undefined behavior, the compiler can do anything,
-including the right thing!) Even though we compiled with flags to give us as
+including the right thing!). Even though we compiled with flags to give us as
 many warnings as possible, and to treat those warnings as errors, we got no
 errors. When we ran the program, it crashed.
 
