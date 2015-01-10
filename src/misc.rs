@@ -49,7 +49,7 @@ impl LintPass for MiscPass {
 }
 
 
-declare_lint!(pub STR_TO_STRING, Warn, "Warn when a String could use into_string() instead of to_string()");
+declare_lint!(pub STR_TO_STRING, Warn, "Warn when a String could use to_owned() instead of to_string()");
 
 #[allow(missing_copy_implementations)]
 pub struct StrToStringPass;
@@ -64,7 +64,7 @@ impl LintPass for StrToStringPass {
             ast::ExprMethodCall(ref method, _, ref args)
                 if method.node.as_str() == "to_string"
                 && is_str(cx, &*args[0]) => {
-                cx.span_lint(STR_TO_STRING, expr.span, "str.into_string() is faster");
+                cx.span_lint(STR_TO_STRING, expr.span, "str.to_owned() is faster");
             },
             _ => ()
         }
