@@ -32,6 +32,7 @@
 
 extern crate arena;
 extern crate flate;
+extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
 extern crate libc;
