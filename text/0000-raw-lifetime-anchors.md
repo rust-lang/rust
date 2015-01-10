@@ -120,6 +120,9 @@ is provided in `std::mem`:
 pub const STATIC: &'static () = &();
 ```
 
+A simple `""` works just as well, while not being as descriptive
+regarding its purpose.
+
 # Drawbacks
 
 The proposal adds new functions to the library for something that is
