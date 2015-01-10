@@ -1117,29 +1117,33 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 #[lang="fn"]
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
-pub trait Fn<Args,Result> {
+#[cfg(stage0)]
+pub trait Fn<Args,Output> {
     /// This is called when the call operator is used.
-    extern "rust-call" fn call(&self, args: Args) -> Result;
+    extern "rust-call" fn call(&self, args: Args) -> Output;
 }
 
 /// A version of the call operator that takes a mutable receiver.
 #[lang="fn_mut"]
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
-pub trait FnMut<Args,Result> {
+#[cfg(stage0)]
+pub trait FnMut<Args,Output> {
     /// This is called when the call operator is used.
-    extern "rust-call" fn call_mut(&mut self, args: Args) -> Result;
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Output;
 }
 
 /// A version of the call operator that takes a by-value receiver.
 #[lang="fn_once"]
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
-pub trait FnOnce<Args,Result> {
+#[cfg(stage0)]
+pub trait FnOnce<Args,Output> {
     /// This is called when the call operator is used.
-    extern "rust-call" fn call_once(self, args: Args) -> Result;
+    extern "rust-call" fn call_once(self, args: Args) -> Output;
 }
 
+#[cfg(stage0)]
 impl<F: ?Sized, A, R> FnMut<A, R> for F
     where F : Fn<A, R>
 {
@@ -1148,10 +1152,69 @@ impl<F: ?Sized, A, R> FnMut<A, R> for F
     }
 }
 
+#[cfg(stage0)]
 impl<F,A,R> FnOnce<A,R> for F
     where F : FnMut<A,R>
 {
     extern "rust-call" fn call_once(mut self, args: A) -> R {
+        self.call_mut(args)
+    }
+}
+
+/// A version of the call operator that takes an immutable receiver.
+#[lang="fn"]
+#[unstable(feature = "core",
+           reason = "uncertain about variadic generics, input versus associated types")]
+#[cfg(not(stage0))]
+pub trait Fn<Args> {
+    type Output;
+
+    /// This is called when the call operator is used.
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+}
+
+/// A version of the call operator that takes a mutable receiver.
+#[lang="fn_mut"]
+#[unstable(feature = "core",
+           reason = "uncertain about variadic generics, input versus associated types")]
+#[cfg(not(stage0))]
+pub trait FnMut<Args> {
+    type Output;
+
+    /// This is called when the call operator is used.
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+}
+
+/// A version of the call operator that takes a by-value receiver.
+#[lang="fn_once"]
+#[unstable(feature = "core",
+           reason = "uncertain about variadic generics, input versus associated types")]
+#[cfg(not(stage0))]
+pub trait FnOnce<Args> {
+    type Output;
+
+    /// This is called when the call operator is used.
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+}
+
+#[cfg(not(stage0))]
+impl<F: ?Sized, A> FnMut<A> for F
+    where F : Fn<A>
+{
+    type Output = <F as Fn<A>>::Output;
+
+    extern "rust-call" fn call_mut(&mut self, args: A) -> <F as Fn<A>>::Output {
+        self.call(args)
+    }
+}
+
+#[cfg(not(stage0))]
+impl<F,A> FnOnce<A> for F
+    where F : FnMut<A>
+{
+    type Output = <F as FnMut<A>>::Output;
+
+    extern "rust-call" fn call_once(mut self, args: A) -> <F as FnMut<A>>::Output {
         self.call_mut(args)
     }
 }

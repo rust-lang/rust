@@ -353,6 +353,36 @@ pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     method_count + method_index_in_trait
 }
 
+pub fn unboxed_closure_trait_ref_and_return_type<'tcx>(
+    closure_typer: &ty::UnboxedClosureTyper<'tcx>,
+    fn_trait_def_id: ast::DefId,
+    self_ty: Ty<'tcx>,
+    closure_def_id: ast::DefId,
+    substs: &Substs<'tcx>)
+    -> ty::Binder<(Rc<ty::TraitRef<'tcx>>, Ty<'tcx>)>
+{
+    let tcx = closure_typer.param_env().tcx;
+    let closure_type = closure_typer.unboxed_closure_type(closure_def_id, substs);
+
+    debug!("unboxed_closure_trait_ref: closure_def_id={} closure_type={}",
+           closure_def_id.repr(tcx),
+           closure_type.repr(tcx));
+
+    let closure_sig = &closure_type.sig;
+    let arguments_tuple = closure_sig.0.inputs[0];
+    let trait_substs =
+        Substs::new_trait(
+            vec![arguments_tuple],
+            vec![],
+            self_ty);
+    let trait_ref = Rc::new(ty::TraitRef {
+        def_id: fn_trait_def_id,
+        substs: tcx.mk_substs(trait_substs),
+    });
+
+    ty::Binder((trait_ref, closure_sig.0.output.unwrap()))
+}
+
 impl<'tcx,O:Repr<'tcx>> Repr<'tcx> for super::Obligation<'tcx, O> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("Obligation(predicate={},depth={})",
