@@ -9,7 +9,7 @@
 
 #if defined(__APPLE__)
 #define MORESTACK ___morestack
-#define STACK_EXHAUSTED _rust_stack_exhausted
+#define STACK_EXHAUSTED _rust_stack_exhausted@plt
 #else
 #define MORESTACK __morestack
 #define STACK_EXHAUSTED rust_stack_exhausted
@@ -30,6 +30,6 @@
 // FIXME(AARCH64): this might not be perfectly right but works for now
 MORESTACK:
 	.cfi_startproc
-	bl STACK_EXHAUSTED@plt
+	bl STACK_EXHAUSTED
 	// the above function ensures that it never returns
 	.cfi_endproc
