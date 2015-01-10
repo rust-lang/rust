@@ -1,6 +1,6 @@
 - Start Date: 2015-01-06
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR:
+- Rust Issue:
 
 # Summary
 
