@@ -774,9 +774,8 @@ impl LintPass for UnusedResults {
                         warned |= check_must_use(cx, &it.attrs[], s.span);
                     }
                 } else {
-                    csearch::get_item_attrs(&cx.sess().cstore, did, |attrs| {
-                        warned |= check_must_use(cx, &attrs[], s.span);
-                    });
+                    let attrs = csearch::get_item_attrs(&cx.sess().cstore, did);
+                    warned |= check_must_use(cx, &attrs[], s.span);
                 }
             }
             _ => {}

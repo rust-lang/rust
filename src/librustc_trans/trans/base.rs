@@ -248,9 +248,8 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
 
     let f = decl_rust_fn(ccx, fn_ty, name);
 
-    csearch::get_item_attrs(&ccx.sess().cstore, did, |attrs| {
-        set_llvm_fn_attrs(ccx, &attrs[], f)
-    });
+    let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
+    set_llvm_fn_attrs(ccx, &attrs[], f);
 
     ccx.externs().borrow_mut().insert(name.to_string(), f);
     f

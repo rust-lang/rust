@@ -126,13 +126,8 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
 
 pub fn load_attrs(cx: &DocContext, tcx: &ty::ctxt,
                   did: ast::DefId) -> Vec<clean::Attribute> {
-    let mut attrs = Vec::new();
-    csearch::get_item_attrs(&tcx.sess.cstore, did, |v| {
-        attrs.extend(v.into_iter().map(|a| {
-            a.clean(cx)
-        }));
-    });
-    attrs
+    let attrs = csearch::get_item_attrs(&tcx.sess.cstore, did);
+    attrs.into_iter().map(|a| a.clean(cx)).collect()
 }
 
 /// Record an external fully qualified name in the external_paths cache.
