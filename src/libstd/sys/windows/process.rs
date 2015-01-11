@@ -10,28 +10,25 @@
 
 use prelude::v1::*;
 
+use collections::hash_map::Hasher;
 use collections;
 use ffi::CString;
 use hash::Hash;
-use collections::hash_map::Hasher;
 use io::fs::PathExtensions;
-use io::process::{ProcessExit, ExitStatus, ExitSignal};
+use io::process::{ProcessExit, ExitStatus};
 use io::{IoResult, IoError};
 use io;
-use libc::{pid_t, c_void, c_int};
+use libc::{pid_t, c_void};
 use libc;
 use mem;
 use os;
 use path::BytesContainer;
 use ptr;
 use str;
-use sys::fs::FileDesc;
 use sync::{StaticMutex, MUTEX_INIT};
-
-use sys::fs;
-use sys::{self, retry, c, wouldblock, set_nonblocking, ms_to_timeval, timer};
-use sys_common::helper_thread::Helper;
-use sys_common::{AsInner, mkerr_libc, timeout};
+use sys::fs::FileDesc;
+use sys::timer;
+use sys_common::{AsInner, timeout};
 
 pub use sys_common::ProcessConfig;
 
@@ -128,8 +125,6 @@ impl Process {
         use libc::funcs::extra::msvcrt::get_osfhandle;
 
         use mem;
-        use iter::{Iterator, IteratorExt};
-        use str::StrExt;
 
         if cfg.gid().is_some() || cfg.uid().is_some() {
             return Err(IoError {

@@ -15,7 +15,6 @@
 
 use prelude::v1::*;
 
-use fmt;
 use io::{IoResult, IoError};
 use iter::repeat;
 use libc::{c_int, c_void};
