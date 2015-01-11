@@ -11,19 +11,19 @@
 
 #[allow(unused)]
 
-#[on_unimplemented = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}`"]
+#[rustc_on_unimplemented = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}`"]
 trait Foo<Bar, Baz, Quux>{}
 
-#[on_unimplemented="a collection of type `{Self}` cannot be built from an iterator over elements of type `{A}`"]
+#[rustc_on_unimplemented="a collection of type `{Self}` cannot be built from an iterator over elements of type `{A}`"]
 trait MyFromIterator<A> {
     /// Build a container with elements from an external iterator.
     fn my_from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
 }
 
-#[on_unimplemented] //~ ERROR this attribute must have a value
+#[rustc_on_unimplemented] //~ ERROR this attribute must have a value
 trait BadAnnotation1 {}
 
-#[on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
+#[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
 //~^ ERROR there is no type parameter C on trait BadAnnotation2
 trait BadAnnotation2<A,B> {}
 

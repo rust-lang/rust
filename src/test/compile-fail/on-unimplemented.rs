@@ -9,14 +9,14 @@
 // except according to those terms.
 // ignore-tidy-linelength
 
-#[on_unimplemented = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}`"]
+#[rustc_on_unimplemented = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}`"]
 trait Foo<Bar, Baz, Quux>{}
 
 fn foobar<U: Clone, T: Foo<u8, U, u32>>() -> T {
 
 }
 
-#[on_unimplemented="a collection of type `{Self}` cannot be built from an iterator over elements of type `{A}`"]
+#[rustc_on_unimplemented="a collection of type `{Self}` cannot be built from an iterator over elements of type `{A}`"]
 trait MyFromIterator<A> {
     /// Build a container with elements from an external iterator.
     fn my_from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
