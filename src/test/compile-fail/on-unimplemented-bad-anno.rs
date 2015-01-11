@@ -9,7 +9,9 @@
 // except according to those terms.
 // ignore-tidy-linelength
 
-#[allow(unused)]
+#![feature(on_unimplemented)]
+
+#![allow(unused)]
 
 #[rustc_on_unimplemented = "test error `{Self}` with `{Bar}` `{Baz}` `{Quux}`"]
 trait Foo<Bar, Baz, Quux>{}
