@@ -59,7 +59,7 @@ struct Candidate<'tcx> {
 
 enum CandidateKind<'tcx> {
     InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>),
-    ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ uint, /* real_index */ uint),
+    ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ uint, /* vtable index */ uint),
     ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef<'tcx>>,
                            subst::Substs<'tcx>, MethodIndex),
     ClosureCandidate(/* Trait */ ast::DefId, MethodIndex),
@@ -318,7 +318,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // itself. Hence, a `&self` method will wind up with an
         // argument type like `&Trait`.
         let trait_ref = data.principal_trait_ref_with_self_ty(self.tcx(), self_ty);
-        self.elaborate_bounds(&[trait_ref.clone()], false, |this, new_trait_ref, m, method_num| {
+        self.elaborate_bounds(&[trait_ref.clone()], |this, new_trait_ref, m, method_num| {
             let new_trait_ref = this.erase_late_bound_regions(&new_trait_ref);
 
             let vtable_index =
@@ -365,7 +365,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             })
             .collect();
 
-        self.elaborate_bounds(bounds.as_slice(), true, |this, poly_trait_ref, m, method_num| {
+        self.elaborate_bounds(bounds.as_slice(), |this, poly_trait_ref, m, method_num| {
             let trait_ref =
                 this.erase_late_bound_regions(&poly_trait_ref);
 
@@ -405,7 +405,6 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn elaborate_bounds<F>(
         &mut self,
         bounds: &[ty::PolyTraitRef<'tcx>],
-        num_includes_types: bool,
         mut mk_cand: F,
     ) where
         F: for<'b> FnMut(
@@ -427,8 +426,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
             let (pos, method) = match trait_method(tcx,
                                                    bound_trait_ref.def_id(),
-                                                   self.method_name,
-                                                   num_includes_types) {
+                                                   self.method_name) {
                 Some(v) => v,
                 None => { continue; }
             };
@@ -1139,19 +1137,13 @@ fn impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// index (or `None`, if no such method).
 fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                       trait_def_id: ast::DefId,
-                      method_name: ast::Name,
-                      num_includes_types: bool)
+                      method_name: ast::Name)
                       -> Option<(uint, Rc<ty::Method<'tcx>>)>
 {
     let trait_items = ty::trait_items(tcx, trait_def_id);
     debug!("trait_method; items: {:?}", trait_items);
     trait_items
         .iter()
-        .filter(|item|
-            num_includes_types || match *item {
-                &ty::MethodTraitItem(_) => true,
-                &ty::TypeTraitItem(_) => false
-            })
         .enumerate()
         .find(|&(_, ref item)| item.name() == method_name)
         .and_then(|(idx, item)| item.as_opt_method().map(|m| (idx, m)))

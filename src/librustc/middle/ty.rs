@@ -452,7 +452,10 @@ pub struct MethodParam<'tcx> {
     // never contains bound regions; those regions should have been
     // instantiated with fresh variables at this point.
     pub trait_ref: Rc<ty::TraitRef<'tcx>>,
-    // index of uint in the list of methods for the trait
+
+    // index of uint in the list of trait items. Note that this is NOT
+    // the index into the vtable, because the list of trait items
+    // includes associated types.
     pub method_num: uint,
 
     /// The impl for the trait from which the method comes. This
@@ -471,14 +474,14 @@ pub struct MethodObject<'tcx> {
     // the actual base trait id of the object
     pub object_trait_id: ast::DefId,
 
-    // index of the method to be invoked amongst the trait's methods
+    // index of the method to be invoked amongst the trait's items
     pub method_num: uint,
 
     // index into the actual runtime vtable.
     // the vtable is formed by concatenating together the method lists of
-    // the base object trait and all supertraits;  this is the index into
+    // the base object trait and all supertraits; this is the index into
     // that vtable
-    pub real_index: uint,
+    pub vtable_index: uint,
 }
 
 #[derive(Clone)]

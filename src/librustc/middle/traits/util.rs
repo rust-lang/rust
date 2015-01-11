@@ -329,58 +329,67 @@ pub fn upcast<'tcx>(tcx: &ty::ctxt<'tcx>,
 pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                object_trait_ref: ty::PolyTraitRef<'tcx>,
                                                trait_def_id: ast::DefId,
-                                               method_index_in_trait: uint) -> uint {
+                                               method_offset_in_trait: uint) -> uint {
     // We need to figure the "real index" of the method in a
     // listing of all the methods of an object. We do this by
     // iterating down the supertraits of the object's trait until
     // we find the trait the method came from, counting up the
     // methods from them.
     let mut method_count = 0;
-    ty::each_bound_trait_and_supertraits(tcx, &[object_trait_ref], |bound_ref| {
+
+    for bound_ref in transitive_bounds(tcx, &[object_trait_ref]) {
         if bound_ref.def_id() == trait_def_id {
-            false
-        } else {
-            let trait_items = ty::trait_items(tcx, bound_ref.def_id());
-            for trait_item in trait_items.iter() {
-                match *trait_item {
-                    ty::MethodTraitItem(_) => method_count += 1,
-                    ty::TypeTraitItem(_) => {}
-                }
-            }
-            true
+            break;
         }
+
+        let trait_items = ty::trait_items(tcx, bound_ref.def_id());
+        for trait_item in trait_items.iter() {
+            match *trait_item {
+                ty::MethodTraitItem(_) => method_count += 1,
+                ty::TypeTraitItem(_) => {}
+            }
+        }
+    }
+
+    // count number of methods preceding the one we are selecting and
+    // add them to the total offset; skip over associated types.
+    let trait_items = ty::trait_items(tcx, trait_def_id);
+    for trait_item in trait_items.iter().take(method_offset_in_trait) {
+        match *trait_item {
+            ty::MethodTraitItem(_) => method_count += 1,
+            ty::TypeTraitItem(_) => {}
+        }
+    }
+
+    // the item at the offset we were given really ought to be a method
+    assert!(match trait_items[method_offset_in_trait] {
+        ty::MethodTraitItem(_) => true,
+        ty::TypeTraitItem(_) => false
     });
-    method_count + method_index_in_trait
+
+    method_count
 }
 
-pub fn unboxed_closure_trait_ref_and_return_type<'tcx>(
-    closure_typer: &ty::UnboxedClosureTyper<'tcx>,
+pub enum TupleArgumentsFlag { Yes, No }
+
+pub fn closure_trait_ref_and_return_type<'tcx>(
+    tcx: &ty::ctxt<'tcx>,
     fn_trait_def_id: ast::DefId,
     self_ty: Ty<'tcx>,
-    closure_def_id: ast::DefId,
-    substs: &Substs<'tcx>)
+    sig: &ty::PolyFnSig<'tcx>,
+    tuple_arguments: TupleArgumentsFlag)
     -> ty::Binder<(Rc<ty::TraitRef<'tcx>>, Ty<'tcx>)>
 {
-    let tcx = closure_typer.param_env().tcx;
-    let closure_type = closure_typer.unboxed_closure_type(closure_def_id, substs);
-
-    debug!("unboxed_closure_trait_ref: closure_def_id={} closure_type={}",
-           closure_def_id.repr(tcx),
-           closure_type.repr(tcx));
-
-    let closure_sig = &closure_type.sig;
-    let arguments_tuple = closure_sig.0.inputs[0];
-    let trait_substs =
-        Substs::new_trait(
-            vec![arguments_tuple],
-            vec![],
-            self_ty);
+    let arguments_tuple = match tuple_arguments {
+        TupleArgumentsFlag::No => sig.0.inputs[0],
+        TupleArgumentsFlag::Yes => ty::mk_tup(tcx, sig.0.inputs.to_vec()),
+    };
+    let trait_substs = Substs::new_trait(vec![arguments_tuple], vec![], self_ty);
     let trait_ref = Rc::new(ty::TraitRef {
         def_id: fn_trait_def_id,
         substs: tcx.mk_substs(trait_substs),
     });
-
-    ty::Binder((trait_ref, closure_sig.0.output.unwrap()))
+    ty::Binder((trait_ref, sig.0.output.unwrap()))
 }
 
 impl<'tcx,O:Repr<'tcx>> Repr<'tcx> for super::Obligation<'tcx, O> {
