@@ -12,6 +12,7 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::apple_base::opts();
+    base.cpu = "x86-64".to_string();
     base.eliminate_frame_pointer = false;
     base.pre_link_args.push("-m64".to_string());
 
