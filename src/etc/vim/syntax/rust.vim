@@ -95,8 +95,6 @@ syn keyword rustTrait Vec
 syn keyword rustTrait Path GenericPath
 " FIXME: remove when I/O reform lands
 syn keyword rustTrait Buffer Writer Reader Seek BufferPrelude
-" FIXME: remove when range syntax lands
-syn keyword rustFunction range
 
 " Other syntax {{{2
 syn keyword   rustSelf        self
