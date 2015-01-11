@@ -14,8 +14,6 @@ use std::marker::Send;
 
 struct TestType;
 
-unsafe impl Send for TestType {}
-
 impl !Send for TestType {}
 
 fn main() {}

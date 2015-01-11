@@ -31,6 +31,5 @@ fn main() {
   let cat = "kitty".to_string();
   let (tx, _) = channel();
   //~^ ERROR `core::marker::Send` is not implemented
-  //~^^ ERROR `core::marker::Send` is not implemented
   tx.send(foo(42, Rc::new(cat)));
 }
