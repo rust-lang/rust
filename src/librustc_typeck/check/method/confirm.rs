@@ -206,7 +206,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 (impl_polytype.substs, MethodStatic(pick.method_ty.def_id))
             }
 
-            probe::ObjectPick(trait_def_id, method_num, real_index) => {
+            probe::ObjectPick(trait_def_id, method_num, vtable_index) => {
                 self.extract_trait_ref(self_ty, |this, object_ty, data| {
                     // The object data has no entry for the Self
                     // Type. For the purposes of this method call, we
@@ -233,7 +233,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         trait_ref: upcast_trait_ref,
                         object_trait_id: trait_def_id,
                         method_num: method_num,
-                        real_index: real_index,
+                        vtable_index: vtable_index,
                     });
                     (substs, origin)
                 })

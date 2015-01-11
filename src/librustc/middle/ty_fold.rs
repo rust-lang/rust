@@ -319,7 +319,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::MethodOrigin<'tcx> {
                     trait_ref: object.trait_ref.fold_with(folder),
                     object_trait_id: object.object_trait_id,
                     method_num: object.method_num,
-                    real_index: object.real_index
+                    vtable_index: object.vtable_index,
                 })
             }
         }

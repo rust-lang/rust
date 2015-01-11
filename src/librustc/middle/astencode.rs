@@ -904,8 +904,8 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                             try!(this.emit_struct_field("method_num", 0, |this| {
                                 this.emit_uint(o.method_num)
                             }));
-                            try!(this.emit_struct_field("real_index", 0, |this| {
-                                this.emit_uint(o.real_index)
+                            try!(this.emit_struct_field("vtable_index", 0, |this| {
+                                this.emit_uint(o.vtable_index)
                             }));
                             Ok(())
                         })
@@ -1492,8 +1492,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                             this.read_uint()
                                         }).unwrap()
                                     },
-                                    real_index: {
-                                        this.read_struct_field("real_index", 3, |this| {
+                                    vtable_index: {
+                                        this.read_struct_field("vtable_index", 3, |this| {
                                             this.read_uint()
                                         }).unwrap()
                                     },

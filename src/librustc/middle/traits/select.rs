@@ -214,7 +214,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.closure_typer.param_env()
     }
 
-    pub fn closure_typer(&self) -> &'cx (ty::UnboxedClosureTyper<'tcx>+'cx) {
+    pub fn closure_typer(&self) -> &'cx (ty::ClosureTyper<'tcx>+'cx) {
         self.closure_typer
     }
 
