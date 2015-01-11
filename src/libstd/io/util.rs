@@ -16,6 +16,7 @@ use io;
 use slice::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
+#[derive(Show)]
 pub struct LimitReader<R> {
     limit: uint,
     inner: R
@@ -77,7 +78,7 @@ impl<R: Buffer> Buffer for LimitReader<R> {
 }
 
 /// A `Writer` which ignores bytes written to it, like /dev/null.
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub struct NullWriter;
 
 impl Writer for NullWriter {
@@ -86,7 +87,7 @@ impl Writer for NullWriter {
 }
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub struct ZeroReader;
 
 impl Reader for ZeroReader {
@@ -107,7 +108,7 @@ impl Buffer for ZeroReader {
 }
 
 /// A `Reader` which is always at EOF, like /dev/null.
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub struct NullReader;
 
 impl Reader for NullReader {
@@ -128,18 +129,19 @@ impl Buffer for NullReader {
 ///
 /// The `Writer`s are delegated to in order. If any `Writer` returns an error,
 /// that error is returned immediately and remaining `Writer`s are not called.
-pub struct MultiWriter {
-    writers: Vec<Box<Writer+'static>>
+#[derive(Show)]
+pub struct MultiWriter<W> {
+    writers: Vec<W>
 }
 
-impl MultiWriter {
+impl<W> MultiWriter<W> where W: Writer {
     /// Creates a new `MultiWriter`
-    pub fn new(writers: Vec<Box<Writer+'static>>) -> MultiWriter {
+    pub fn new(writers: Vec<W>) -> MultiWriter<W> {
         MultiWriter { writers: writers }
     }
 }
 
-impl Writer for MultiWriter {
+impl<W> Writer for MultiWriter<W> where W: Writer {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
         for writer in self.writers.iter_mut() {
@@ -159,7 +161,7 @@ impl Writer for MultiWriter {
 
 /// A `Reader` which chains input from multiple `Reader`s, reading each to
 /// completion before moving onto the next.
-#[derive(Clone)]
+#[derive(Clone, Show)]
 pub struct ChainedReader<I, R> {
     readers: I,
     cur_reader: Option<R>,
@@ -198,6 +200,7 @@ impl<R: Reader, I: Iterator<Item=R>> Reader for ChainedReader<I, R> {
 
 /// A `Reader` which forwards input from another `Reader`, passing it along to
 /// a `Writer` as well. Similar to the `tee(1)` command.
+#[derive(Show)]
 pub struct TeeReader<R, W> {
     reader: R,
     writer: W,
@@ -239,7 +242,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
 }
 
 /// An adaptor converting an `Iterator<u8>` to a `Reader`.
-#[derive(Clone)]
+#[derive(Clone, Show)]
 pub struct IterReader<T> {
     iter: T,
 }
