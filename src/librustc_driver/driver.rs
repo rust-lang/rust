@@ -24,7 +24,6 @@ use rustc_borrowck as borrowck;
 use rustc_resolve as resolve;
 use rustc_trans::back::link;
 use rustc_trans::back::write;
-use rustc_trans::save;
 use rustc_trans::trans;
 use rustc_typeck as typeck;
 
@@ -47,23 +46,43 @@ pub fn compile_input(sess: Session,
                      input: &Input,
                      outdir: &Option<Path>,
                      output: &Option<Path>,
-                     addl_plugins: Option<Vec<String>>) {
+                     addl_plugins: Option<Vec<String>>,
+                     control: CompileController) {
+    macro_rules! controller_entry_point{($point: ident, $make_state: expr) => ({
+        {
+            let state = $make_state;
+            (control.$point.callback)(state);
+        }
+        if control.$point.stop {
+            return;
+        }
+    })}
+
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
     let (outputs, trans, sess) = {
         let (outputs, expanded_crate, id) = {
             let krate = phase_1_parse_input(&sess, cfg, input);
-            if stop_after_phase_1(&sess) { return; }
+
+            controller_entry_point!(after_parse,
+                                    CompileState::state_after_parse(input,
+                                                                    &sess,
+                                                                    outdir,
+                                                                    &krate));
+
             let outputs = build_output_filenames(input,
                                                  outdir,
                                                  output,
                                                  &krate.attrs[],
                                                  &sess);
-            let id = link::find_crate_name(Some(&sess), &krate.attrs[],
+            let id = link::find_crate_name(Some(&sess),
+                                           &krate.attrs[],
                                            input);
             let expanded_crate
-                = match phase_2_configure_and_expand(&sess, krate, &id[],
+                = match phase_2_configure_and_expand(&sess,
+                                                     krate,
+                                                     &id[],
                                                      addl_plugins) {
                     None => return,
                     Some(k) => k
@@ -72,23 +91,37 @@ pub fn compile_input(sess: Session,
             (outputs, expanded_crate, id)
         };
 
+        controller_entry_point!(after_expand,
+                                CompileState::state_after_expand(input,
+                                                                 &sess,
+                                                                 outdir,
+                                                                 &expanded_crate,
+                                                                 &id[]));
+
         let mut forest = ast_map::Forest::new(expanded_crate);
         let ast_map = assign_node_ids_and_map(&sess, &mut forest);
 
         write_out_deps(&sess, input, &outputs, &id[]);
 
-        if stop_after_phase_2(&sess) { return; }
-
         let arenas = ty::CtxtArenas::new();
-        let analysis = phase_3_run_analysis_passes(sess, ast_map, &arenas, id);
-        phase_save_analysis(&analysis.ty_cx.sess, analysis.ty_cx.map.krate(), &analysis, outdir);
+        let analysis = phase_3_run_analysis_passes(sess,
+                                                   ast_map,
+                                                   &arenas,
+                                                   id,
+                                                   control.make_glob_map);
+
+        controller_entry_point!(after_analysis,
+                                CompileState::state_after_analysis(input,
+                                                                   &analysis.ty_cx.sess,
+                                                                   outdir,
+                                                                   analysis.ty_cx.map.krate(),
+                                                                   &analysis,
+                                                                   &analysis.ty_cx));
 
         if log_enabled!(::log::INFO) {
             println!("Pre-trans");
             analysis.ty_cx.print_debug_stats();
         }
-
-        if stop_after_phase_3(&analysis.ty_cx.sess) { return; }
         let (tcx, trans) = phase_4_translate_to_llvm(analysis);
 
         if log_enabled!(::log::INFO) {
@@ -102,7 +135,13 @@ pub fn compile_input(sess: Session,
         (outputs, trans, tcx.sess)
     };
     phase_5_run_llvm_passes(&sess, &trans, &outputs);
-    if stop_after_phase_5(&sess) { return; }
+
+    controller_entry_point!(after_llvm,
+                            CompileState::state_after_llvm(input,
+                                                           &sess,
+                                                           outdir,
+                                                           &trans));
+
     phase_6_link_output(&sess, &trans, &outputs);
 }
 
@@ -117,6 +156,146 @@ pub fn source_name(input: &Input) -> String {
         // FIXME (#9639): This needs to handle non-utf8 paths
         Input::File(ref ifile) => ifile.as_str().unwrap().to_string(),
         Input::Str(_) => anon_src()
+    }
+}
+
+/// CompileController is used to customise compilation, it allows compilation to
+/// be stopped and/or to call arbitrary code at various points in compilation.
+/// It also allows for various flags to be set to influence what information gets
+/// colelcted during compilation.
+///
+/// This is a somewhat higher level controller than a Session - the Session
+/// controls what happens in each phase, whereas the CompileController controls
+/// whether a phase is run at all and whether other code (from outside the
+/// the compiler) is run between phases.
+///
+/// Note that if compilation is set to stop and a callback is provided for a
+/// given entry point, the callback is called before compilation is stopped.
+///
+/// Expect more entry points to be added in the future.
+pub struct CompileController<'a> {
+    pub after_parse: PhaseController<'a>,
+    pub after_expand: PhaseController<'a>,
+    pub after_analysis: PhaseController<'a>,
+    pub after_llvm: PhaseController<'a>,
+
+    pub make_glob_map: resolve::MakeGlobMap,
+}
+
+impl<'a> CompileController<'a> {
+    pub fn basic() -> CompileController<'a> {
+        CompileController {
+            after_parse: PhaseController::basic(),
+            after_expand: PhaseController::basic(),
+            after_analysis: PhaseController::basic(),
+            after_llvm: PhaseController::basic(),
+            make_glob_map: resolve::MakeGlobMap::No,
+        }
+    }
+}
+
+pub struct PhaseController<'a> {
+    pub stop: bool,
+    pub callback: Box<Fn(CompileState) -> () + 'a>,
+}
+
+impl<'a> PhaseController<'a> {
+    pub fn basic() -> PhaseController<'a> {
+        PhaseController {
+            stop: false,
+            callback: box |&: _| {},
+        }
+    }
+}
+
+/// State that is passed to a callback. What state is available depends on when
+/// during compilation the callback is made. See the various constructor methods
+/// (`state_*`) in the impl to see which data is provided for any given entry point.
+pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
+    pub input: &'a Input,
+    pub session: &'a Session,
+    pub cfg: Option<&'a ast::CrateConfig>,
+    pub krate: Option<&'a ast::Crate>,
+    pub crate_name: Option<&'a str>,
+    pub output_filenames: Option<&'a OutputFilenames>,
+    pub out_dir: Option<&'a Path>,
+    pub expanded_crate: Option<&'a ast::Crate>,
+    pub ast_map: Option<&'a ast_map::Map<'ast>>,
+    pub analysis: Option<&'a ty::CrateAnalysis<'tcx>>,
+    pub tcx: Option<&'a ty::ctxt<'tcx>>,
+    pub trans: Option<&'a trans::CrateTranslation>,
+}
+
+impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
+    fn empty(input: &'a Input,
+             session: &'a Session,
+             out_dir: &'a Option<Path>)
+             -> CompileState<'a, 'ast, 'tcx> {
+        CompileState {
+            input: input,
+            session: session,
+            out_dir: out_dir.as_ref(),
+            cfg: None,
+            krate: None,
+            crate_name: None,
+            output_filenames: None,
+            expanded_crate: None,
+            ast_map: None,
+            analysis: None,
+            tcx: None,
+            trans: None,
+        }
+    }
+
+    fn state_after_parse(input: &'a Input,
+                         session: &'a Session,
+                         out_dir: &'a Option<Path>,
+                         krate: &'a ast::Crate)
+                         -> CompileState<'a, 'ast, 'tcx> {
+        CompileState {
+            krate: Some(krate),
+            .. CompileState::empty(input, session, out_dir)
+        }
+    }
+
+    fn state_after_expand(input: &'a Input,
+                          session: &'a Session,
+                          out_dir: &'a Option<Path>,
+                          expanded_crate: &'a ast::Crate,
+                          crate_name: &'a str)
+                          -> CompileState<'a, 'ast, 'tcx> {
+        CompileState {
+            crate_name: Some(crate_name),
+            expanded_crate: Some(expanded_crate),
+            .. CompileState::empty(input, session, out_dir)
+        }
+    }
+
+    fn state_after_analysis(input: &'a Input,
+                            session: &'a Session,
+                            out_dir: &'a Option<Path>,
+                            krate: &'a ast::Crate,
+                            analysis: &'a ty::CrateAnalysis<'tcx>,
+                            tcx: &'a ty::ctxt<'tcx>)
+                            -> CompileState<'a, 'ast, 'tcx> {
+        CompileState {
+            analysis: Some(analysis),
+            tcx: Some(tcx),
+            krate: Some(krate),
+            .. CompileState::empty(input, session, out_dir)
+        }
+    }
+
+
+    fn state_after_llvm(input: &'a Input,
+                        session: &'a Session,
+                        out_dir: &'a Option<Path>,
+                        trans: &'a trans::CrateTranslation)
+                        -> CompileState<'a, 'ast, 'tcx> {
+        CompileState {
+            trans: Some(trans),
+            .. CompileState::empty(input, session, out_dir)
+        }
     }
 }
 
@@ -347,7 +526,9 @@ pub fn assign_node_ids_and_map<'ast>(sess: &Session,
 pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                                          ast_map: ast_map::Map<'tcx>,
                                          arenas: &'tcx ty::CtxtArenas<'tcx>,
-                                         name: String) -> ty::CrateAnalysis<'tcx> {
+                                         name: String,
+                                         make_glob_map: resolve::MakeGlobMap)
+                                         -> ty::CrateAnalysis<'tcx> {
     let time_passes = sess.time_passes();
     let krate = ast_map.krate();
 
@@ -357,11 +538,6 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let lang_items = time(time_passes, "language item collection", (), |_|
                           middle::lang_items::collect_language_items(krate, &sess));
 
-    let make_glob_map = if save_analysis(&sess) {
-        resolve::MakeGlobMap::Yes
-    } else {
-        resolve::MakeGlobMap::No
-    };
     let resolve::CrateMap {
         def_map,
         freevars,
@@ -483,21 +659,6 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     }
 }
 
-fn save_analysis(sess: &Session) -> bool {
-    sess.opts.debugging_opts.save_analysis
-}
-
-pub fn phase_save_analysis(sess: &Session,
-                           krate: &ast::Crate,
-                           analysis: &ty::CrateAnalysis,
-                           odir: &Option<Path>) {
-    if !save_analysis(sess) {
-        return;
-    }
-    time(sess.time_passes(), "save analysis", krate, |krate|
-         save::process_crate(sess, krate, analysis, odir));
-}
-
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_translate_to_llvm<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
@@ -557,41 +718,6 @@ pub fn phase_6_link_output(sess: &Session,
                            &trans.link.crate_name[]));
 
     os::setenv("PATH", old_path);
-}
-
-pub fn stop_after_phase_3(sess: &Session) -> bool {
-   if sess.opts.no_trans {
-        debug!("invoked with --no-trans, returning early from compile_input");
-        return true;
-    }
-    return false;
-}
-
-pub fn stop_after_phase_1(sess: &Session) -> bool {
-    if sess.opts.parse_only {
-        debug!("invoked with --parse-only, returning early from compile_input");
-        return true;
-    }
-    if sess.opts.show_span.is_some() {
-        return true;
-    }
-    return sess.opts.debugging_opts.ast_json_noexpand;
-}
-
-pub fn stop_after_phase_2(sess: &Session) -> bool {
-    if sess.opts.no_analysis {
-        debug!("invoked with --no-analysis, returning early from compile_input");
-        return true;
-    }
-    return sess.opts.debugging_opts.ast_json;
-}
-
-pub fn stop_after_phase_5(sess: &Session) -> bool {
-    if !sess.opts.output_types.iter().any(|&i| i == config::OutputTypeExe) {
-        debug!("not building executable, returning early from compile_input");
-        return true;
-    }
-    return false;
 }
 
 fn escape_dep_filename(filename: &str) -> String {

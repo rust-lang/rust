@@ -27,6 +27,7 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_trans;
 extern crate rustc_driver;
+extern crate rustc_resolve;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;

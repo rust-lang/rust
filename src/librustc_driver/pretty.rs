@@ -27,6 +27,7 @@ use rustc::session::config::Input;
 use rustc::util::ppaux;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
+use rustc_resolve as resolve;
 
 use syntax::ast;
 use syntax::ast_map::{self, blocks, NodePrinter};
@@ -133,7 +134,11 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-                let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, arenas, id);
+                let analysis = driver::phase_3_run_analysis_passes(sess,
+                                                                   ast_map,
+                                                                   arenas,
+                                                                   id,
+                                                                   resolve::MakeGlobMap::No);
                 let annotation = TypedAnnotation { analysis: analysis };
                 f(&annotation, payload)
             }
@@ -603,7 +608,11 @@ pub fn pretty_print_input(sess: Session,
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
-                    let analysis = driver::phase_3_run_analysis_passes(sess, ast_map, &arenas, id);
+                    let analysis = driver::phase_3_run_analysis_passes(sess,
+                                                                       ast_map,
+                                                                       &arenas,
+                                                                       id,
+                                                                       resolve::MakeGlobMap::No);
                     print_flowgraph(variants, analysis, code, out)
                 }
                 None => {
