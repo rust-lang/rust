@@ -2239,6 +2239,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         obligations.map_move(|o| self.register_predicate(o));
     }
+
+    // Only for fields! Returns <none> for methods>
+    // Indifferent to privacy flags
+    pub fn lookup_field_ty(&self,
+                           span: Span,
+                           class_id: ast::DefId,
+                           items: &[ty::field_ty],
+                           fieldname: ast::Name,
+                           substs: &subst::Substs<'tcx>)
+                           -> Option<Ty<'tcx>>
+    {
+        let o_field = items.iter().find(|f| f.name == fieldname);
+        o_field.map(|f| ty::lookup_field_type(self.tcx(), class_id, f.id, substs))
+               .map(|t| self.normalize_associated_types_in(span, &t))
+    }
+
+    pub fn lookup_tup_field_ty(&self,
+                               span: Span,
+                               class_id: ast::DefId,
+                               items: &[ty::field_ty],
+                               idx: uint,
+                               substs: &subst::Substs<'tcx>)
+                               -> Option<Ty<'tcx>>
+    {
+        let o_field = if idx < items.len() { Some(&items[idx]) } else { None };
+        o_field.map(|f| ty::lookup_field_type(self.tcx(), class_id, f.id, substs))
+               .map(|t| self.normalize_associated_types_in(span, &t))
+    }
 }
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
@@ -2953,30 +2981,6 @@ pub fn impl_self_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     TypeAndSubsts { substs: substs, ty: substd_ty }
 }
 
-// Only for fields! Returns <none> for methods>
-// Indifferent to privacy flags
-pub fn lookup_field_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
-                             class_id: ast::DefId,
-                             items: &[ty::field_ty],
-                             fieldname: ast::Name,
-                             substs: &subst::Substs<'tcx>)
-                             -> Option<Ty<'tcx>> {
-
-    let o_field = items.iter().find(|f| f.name == fieldname);
-    o_field.map(|f| ty::lookup_field_type(tcx, class_id, f.id, substs))
-}
-
-pub fn lookup_tup_field_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                 class_id: ast::DefId,
-                                 items: &[ty::field_ty],
-                                 idx: uint,
-                                 substs: &subst::Substs<'tcx>)
-                                 -> Option<Ty<'tcx>> {
-
-    let o_field = if idx < items.len() { Some(&items[idx]) } else { None };
-    o_field.map(|f| ty::lookup_field_type(tcx, class_id, f.id, substs))
-}
-
 // Controls whether the arguments are automatically referenced. This is useful
 // for overloaded binary and unary operators.
 #[derive(Copy, PartialEq)]
@@ -3398,8 +3402,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     ty::ty_struct(base_id, substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
                         let fields = ty::lookup_struct_fields(tcx, base_id);
-                        lookup_field_ty(tcx, base_id, &fields[],
-                                        field.node.name, &(*substs))
+                        fcx.lookup_field_ty(expr.span, base_id, &fields[],
+                                            field.node.name, &(*substs))
                     }
                     _ => None
                 }
@@ -3461,8 +3465,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         if tuple_like {
                             debug!("tuple struct named {}", ppaux::ty_to_string(tcx, base_t));
                             let fields = ty::lookup_struct_fields(tcx, base_id);
-                            lookup_tup_field_ty(tcx, base_id, &fields[],
-                                                idx.node, &(*substs))
+                            fcx.lookup_tup_field_ty(expr.span, base_id, &fields[],
+                                                    idx.node, &(*substs))
                         } else {
                             None
                         }
