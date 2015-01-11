@@ -63,6 +63,7 @@
 #![feature(simd, unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(on_unimplemented)]
 #![deny(missing_docs)]
 
 #[macro_use]

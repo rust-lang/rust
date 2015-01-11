@@ -181,9 +181,8 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         let custom_note = report_on_unimplemented(infcx, &*trait_ref.0,
                                                                   obligation.cause.span);
                         if let Some(s) = custom_note {
-                           infcx.tcx.sess.span_note(
-                                obligation.cause.span,
-                                s.as_slice());
+                           infcx.tcx.sess.span_note(obligation.cause.span,
+                                                    s.as_slice());
                         }
                     }
                 }
