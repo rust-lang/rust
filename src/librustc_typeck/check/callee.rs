@@ -20,6 +20,7 @@ use super::method;
 use super::structurally_resolved_type;
 use super::TupleArgumentsFlag;
 use super::write_call;
+use super::vtable;
 
 use middle::infer;
 use middle::ty::{self, Ty};

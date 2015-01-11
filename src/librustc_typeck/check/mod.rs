@@ -1679,6 +1679,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.ccx.tcx.sess.err_count() - self.err_count_on_creation
     }
 
+    /// Resolves type variables in `ty` if possible. Unlike the infcx
+    /// version, this version will also select obligations if it seems
+    /// useful, in an effort to get more type information.
+    fn resolve_type_vars_if_possible(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+        // If `ty` is a type variable, see whether we already know what it is.
+        ty = self.infcx().shallow_resolve(ty);
+
+        // If not, try resolve pending fcx obligations. Those can shed light.
+        //
+        // FIXME(#18391) -- This current strategy can lead to bad performance in
+        // extreme cases.  We probably ought to smarter in general about
+        // only resolving when we need help and only resolving obligations
+        // will actually help.
+        if ty::type_is_ty_var(ty) {
+            vtable::select_fcx_obligations_where_possible(self);
+            ty = self.infcx().shallow_resolve(ty);
+        }
+
+        ty
+    }
+
     /// Resolves all type variables in `t` and then, if any were left
     /// unresolved, substitutes an error type. This is used after the
     /// main checking when doing a second pass before writeback. The
@@ -2721,12 +2742,10 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         let check_blocks = *check_blocks;
         debug!("check_blocks={}", check_blocks);
 
-        // More awful hacks: before we check the blocks, try to do
-        // an "opportunistic" vtable resolution of any trait
-        // bounds on the call.
-        if check_blocks {
-            vtable::select_new_fcx_obligations(fcx);
-        }
+        // More awful hacks: before we check argument types, try to do
+        // an "opportunistic" vtable resolution of any trait bounds on
+        // the call. This helps coercions.
+        vtable::select_new_fcx_obligations(fcx);
 
         // For variadic functions, we don't have a declared type for all of
         // the arguments hence we only do our usual type checking with
@@ -3227,7 +3246,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             // Shift is a special case: rhs must be uint, no matter what lhs is
             check_expr(fcx, &**rhs);
             let rhs_ty = fcx.expr_ty(&**rhs);
-            let rhs_ty = fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+            let rhs_ty = structurally_resolved_type(fcx, rhs.span, rhs_ty);
             if ty::type_is_integral(rhs_ty) {
                 fcx.write_ty(expr.id, lhs_t);
             } else {
@@ -5437,21 +5456,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
-pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
-                                            mut ty: Ty<'tcx>) -> Ty<'tcx> {
-    // If `ty` is a type variable, see whether we already know what it is.
-    ty = fcx.infcx().shallow_resolve(ty);
-
-    // If not, try resolve pending fcx obligations. Those can shed light.
-    //
-    // FIXME(#18391) -- This current strategy can lead to bad performance in
-    // extreme cases.  We probably ought to smarter in general about
-    // only resolving when we need help and only resolving obligations
-    // will actually help.
-    if ty::type_is_ty_var(ty) {
-        vtable::select_fcx_obligations_where_possible(fcx);
-        ty = fcx.infcx().shallow_resolve(ty);
-    }
+pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                            sp: Span,
+                                            ty: Ty<'tcx>)
+                                            -> Ty<'tcx>
+{
+    let mut ty = fcx.resolve_type_vars_if_possible(ty);
 
     // If not, error.
     if ty::type_is_ty_var(ty) {
