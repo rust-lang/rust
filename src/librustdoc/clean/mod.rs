@@ -104,6 +104,12 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
     }
 }
 
+impl<T, U> Clean<U> for ty::Binder<T> where T: Clean<U> {
+    fn clean(&self, cx: &DocContext) -> U {
+        self.0.clean(cx)
+    }
+}
+
 impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::owned_slice::OwnedSlice<T> {
     fn clean(&self, cx: &DocContext) -> Vec<U> {
         self.iter().map(|x| x.clean(cx)).collect()
@@ -603,12 +609,6 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
     }
 }
 
-impl<'tcx> Clean<TyParamBound> for ty::PolyTraitRef<'tcx> {
-    fn clean(&self, cx: &DocContext) -> TyParamBound {
-        self.0.clean(cx)
-    }
-}
-
 impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         let tcx = match cx.tcx_opt() {
@@ -730,8 +730,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
 pub enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<TyParamBound> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<Lifetime>},
-    // FIXME (#20041)
-    EqPredicate
+    EqPredicate { lhs: Type, rhs: Type }
 }
 
 impl Clean<WherePredicate> for ast::WherePredicate {
@@ -752,8 +751,85 @@ impl Clean<WherePredicate> for ast::WherePredicate {
             }
 
             ast::WherePredicate::EqPredicate(_) => {
-                WherePredicate::EqPredicate
+                unimplemented!() // FIXME(#20041)
             }
+        }
+    }
+}
+
+impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
+    fn clean(&self, cx: &DocContext) -> WherePredicate {
+        use rustc::middle::ty::Predicate;
+
+        match *self {
+            Predicate::Trait(ref pred) => pred.clean(cx),
+            Predicate::Equate(ref pred) => pred.clean(cx),
+            Predicate::RegionOutlives(ref pred) => pred.clean(cx),
+            Predicate::TypeOutlives(ref pred) => pred.clean(cx),
+            Predicate::Projection(ref pred) => pred.clean(cx)
+        }
+    }
+}
+
+impl<'a> Clean<WherePredicate> for ty::TraitPredicate<'a> {
+    fn clean(&self, cx: &DocContext) -> WherePredicate {
+        WherePredicate::BoundPredicate {
+            ty: self.trait_ref.substs.self_ty().clean(cx).unwrap(),
+            bounds: vec![self.trait_ref.clean(cx)]
+        }
+    }
+}
+
+impl<'tcx> Clean<WherePredicate> for ty::EquatePredicate<'tcx> {
+    fn clean(&self, cx: &DocContext) -> WherePredicate {
+        let ty::EquatePredicate(ref lhs, ref rhs) = *self;
+        WherePredicate::EqPredicate {
+            lhs: lhs.clean(cx),
+            rhs: rhs.clean(cx)
+        }
+    }
+}
+
+impl Clean<WherePredicate> for ty::OutlivesPredicate<ty::Region, ty::Region> {
+    fn clean(&self, cx: &DocContext) -> WherePredicate {
+        let ty::OutlivesPredicate(ref a, ref b) = *self;
+        WherePredicate::RegionPredicate {
+            lifetime: a.clean(cx).unwrap(),
+            bounds: vec![b.clean(cx).unwrap()]
+        }
+    }
+}
+
+impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Ty<'tcx>, ty::Region> {
+    fn clean(&self, cx: &DocContext) -> WherePredicate {
+        let ty::OutlivesPredicate(ref ty, ref lt) = *self;
+
+        WherePredicate::BoundPredicate {
+            ty: ty.clean(cx),
+            bounds: vec![TyParamBound::RegionBound(lt.clean(cx).unwrap())]
+        }
+    }
+}
+
+impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
+    fn clean(&self, cx: &DocContext) -> WherePredicate {
+        WherePredicate::EqPredicate {
+            lhs: self.projection_ty.clean(cx),
+            rhs: self.ty.clean(cx)
+        }
+    }
+}
+
+impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
+    fn clean(&self, cx: &DocContext) -> Type {
+        let trait_ = match self.trait_ref.clean(cx) {
+            TyParamBound::TraitBound(t, _) => t.trait_,
+            TyParamBound::RegionBound(_) => panic!("cleaning a trait got a region??"),
+        };
+        Type::QPath {
+            name: self.item_name.clean(cx),
+            self_type: box self.trait_ref.self_ty().clean(cx),
+            trait_: box trait_
         }
     }
 }
@@ -778,11 +854,80 @@ impl Clean<Generics> for ast::Generics {
 
 impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>, subst::ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Generics {
-        let (me, space) = *self;
+        use std::collections::HashSet;
+        use syntax::ast::TraitBoundModifier as TBM;
+        use self::WherePredicate as WP;
+
+        fn has_sized_bound(bounds: &[TyParamBound], cx: &DocContext) -> bool {
+            if let Some(tcx) = cx.tcx_opt() {
+                let sized_did = match tcx.lang_items.sized_trait() {
+                    Some(did) => did,
+                    None => return false
+                };
+                for bound in bounds.iter() {
+                    if let TyParamBound::TraitBound(PolyTrait {
+                        trait_: Type::ResolvedPath { did, .. }, ..
+                    }, TBM::None) = *bound {
+                        if did == sized_did {
+                            return true
+                        }
+                    }
+                }
+            }
+            false
+        }
+
+        let (gens, space) = *self;
+        // Bounds in the type_params and lifetimes fields are repeated in the predicates
+        // field (see rustc_typeck::collect::ty_generics), so remove them.
+        let stripped_typarams = gens.types.get_slice(space).iter().map(|tp| {
+            let mut stp = tp.clone();
+            stp.bounds = ty::ParamBounds::empty();
+            stp.clean(cx)
+        }).collect::<Vec<_>>();
+        let stripped_lifetimes = gens.regions.get_slice(space).iter().map(|rp| {
+            let mut srp = rp.clone();
+            srp.bounds = Vec::new();
+            srp.clean(cx)
+        }).collect::<Vec<_>>();
+
+        let where_predicates = gens.predicates.get_slice(space).to_vec().clean(cx);
+        // Type parameters have a Sized bound by default unless removed with ?Sized.
+        // Scan through the predicates and mark any type parameter with a Sized
+        // bound, removing the bounds as we find them.
+        let mut sized_params = HashSet::new();
+        let mut where_predicates = where_predicates.into_iter().filter_map(|pred| {
+            if let WP::BoundPredicate { ty: Type::Generic(ref g), ref bounds } = pred {
+                if has_sized_bound(&**bounds, cx) {
+                    sized_params.insert(g.clone());
+                    return None
+                }
+            }
+            Some(pred)
+        }).collect::<Vec<_>>();
+        // Finally, run through the type parameters again and insert a ?Sized unbound for
+        // any we didn't find to be Sized.
+        for tp in stripped_typarams.iter() {
+            if !sized_params.contains(&tp.name) {
+                let mut sized_bound = ty::BuiltinBound::BoundSized.clean(cx);
+                if let TyParamBound::TraitBound(_, ref mut tbm) = sized_bound {
+                    *tbm = TBM::Maybe
+                };
+                where_predicates.push(WP::BoundPredicate {
+                    ty: Type::Generic(tp.name.clone()),
+                    bounds: vec![sized_bound]
+                })
+            }
+        }
+
+        // It would be nice to collect all of the bounds on a type and recombine
+        // them if possible, to avoid e.g. `where T: Foo, T: Bar, T: Sized, T: 'a`
+        // and instead see `where T: Foo + Bar + Sized + 'a`
+
         Generics {
-            type_params: me.types.get_slice(space).to_vec().clean(cx),
-            lifetimes: me.regions.get_slice(space).to_vec().clean(cx),
-            where_predicates: vec![]
+            type_params: stripped_typarams,
+            lifetimes: stripped_lifetimes,
+            where_predicates: where_predicates
         }
     }
 }

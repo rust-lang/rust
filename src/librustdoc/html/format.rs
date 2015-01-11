@@ -153,8 +153,8 @@ impl<'a> fmt::String for WhereClause<'a> {
                         try!(write!(f, "{}", lifetime));
                     }
                 }
-                &clean::WherePredicate::EqPredicate => {
-                    unimplemented!()
+                &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
+                    try!(write!(f, "{} == {}", lhs, rhs));
                 }
             }
         }
