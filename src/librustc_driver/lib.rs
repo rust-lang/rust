@@ -186,7 +186,7 @@ fn run_compiler(args: &[String]) {
                 list_metadata(&sess, &(*ifile), &mut stdout).unwrap();
             }
             Input::Str(_) => {
-                early_error("can not list metadata for stdin");
+                early_error("cannot list metadata for stdin");
             }
         }
         return;
