@@ -18,7 +18,7 @@ use default::Default;
 use fmt::Show;
 use fmt;
 use hash::{self, Hash};
-use iter::{Iterator, IteratorExt, FromIterator, Map, Chain, Extend};
+use iter::{Iterator, ExactSizeIterator, IteratorExt, FromIterator, Map, Chain, Extend};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
 
@@ -837,7 +837,11 @@ impl<'a, K> Iterator for Iter<'a, K> {
     type Item = &'a K;
 
     fn next(&mut self) -> Option<&'a K> { self.iter.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+}
+#[stable]
+impl<'a, K> ExactSizeIterator for Iter<'a, K> {
+    fn len(&self) -> usize { self.iter.len() }
 }
 
 #[stable]
@@ -845,15 +849,23 @@ impl<K> Iterator for IntoIter<K> {
     type Item = K;
 
     fn next(&mut self) -> Option<K> { self.iter.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+}
+#[stable]
+impl<K> ExactSizeIterator for IntoIter<K> {
+    fn len(&self) -> usize { self.iter.len() }
 }
 
 #[stable]
-impl<'a, K: 'a> Iterator for Drain<'a, K> {
+impl<'a, K> Iterator for Drain<'a, K> {
     type Item = K;
 
     fn next(&mut self) -> Option<K> { self.iter.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+}
+#[stable]
+impl<'a, K> ExactSizeIterator for Drain<'a, K> {
+    fn len(&self) -> usize { self.iter.len() }
 }
 
 #[stable]
@@ -875,7 +887,7 @@ impl<'a, T, S, H> Iterator for Intersection<'a, T, S>
         }
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper)
     }
@@ -900,7 +912,7 @@ impl<'a, T, S, H> Iterator for Difference<'a, T, S>
         }
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper)
     }
@@ -915,7 +927,7 @@ impl<'a, T, S, H> Iterator for SymmetricDifference<'a, T, S>
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
 #[stable]
@@ -927,7 +939,7 @@ impl<'a, T, S, H> Iterator for Union<'a, T, S>
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
 #[cfg(test)]

@@ -15,7 +15,7 @@ use self::BucketState::*;
 use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
-use iter::{Iterator, count};
+use iter::{Iterator, ExactSizeIterator, count};
 use marker::{Copy, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
@@ -838,9 +838,12 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
         })
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (self.elems_left, Some(self.elems_left))
     }
+}
+impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
+    fn len(&self) -> usize { self.elems_left }
 }
 
 impl<'a, K, V> Iterator for IterMut<'a, K, V> {
@@ -856,9 +859,12 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
         })
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (self.elems_left, Some(self.elems_left))
     }
+}
+impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
+    fn len(&self) -> usize { self.elems_left }
 }
 
 impl<K, V> Iterator for IntoIter<K, V> {
@@ -879,13 +885,16 @@ impl<K, V> Iterator for IntoIter<K, V> {
         })
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let size = self.table.size();
         (size, Some(size))
     }
 }
+impl<K, V> ExactSizeIterator for IntoIter<K, V> {
+    fn len(&self) -> usize { self.table.size() }
+}
 
-impl<'a, K: 'a, V: 'a> Iterator for Drain<'a, K, V> {
+impl<'a, K, V> Iterator for Drain<'a, K, V> {
     type Item = (SafeHash, K, V);
 
     #[inline]
@@ -904,10 +913,13 @@ impl<'a, K: 'a, V: 'a> Iterator for Drain<'a, K, V> {
         })
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let size = self.table.size();
         (size, Some(size))
     }
+}
+impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
+    fn len(&self) -> usize { self.table.size() }
 }
 
 #[unsafe_destructor]
