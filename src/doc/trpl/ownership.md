@@ -225,7 +225,7 @@ To fix this, we have to make sure that step four never happens after step
 three. The ownership system in Rust does this through a concept called
 *lifetimes*, which describe the scope that a reference is valid for.
 
-Let's look at that function which borrows an `i32` again:
+Remember the function that borrowed an `i32`? Let's look at it again.
 
 ```rust
 fn add_one(num: &i32) -> i32 {
