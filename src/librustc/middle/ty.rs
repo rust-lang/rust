@@ -5556,8 +5556,7 @@ pub fn predicates<'tcx>(
 }
 
 /// Iterate over attributes of a definition.
-// (This should really be an iterator, but that would require csearch and
-// decoder to use iterators instead of higher-order functions.)
+// (This should really be an iterator.)
 pub fn each_attr<F>(tcx: &ctxt, did: DefId, mut f: F) -> bool where
     F: FnMut(&ast::Attribute) -> bool,
 {
@@ -5566,12 +5565,8 @@ pub fn each_attr<F>(tcx: &ctxt, did: DefId, mut f: F) -> bool where
         item.attrs.iter().all(|attr| f(attr))
     } else {
         info!("getting foreign attrs");
-        let mut cont = true;
-        csearch::get_item_attrs(&tcx.sess.cstore, did, |attrs| {
-            if cont {
-                cont = attrs.iter().all(|attr| f(attr));
-            }
-        });
+        let attrs = csearch::get_item_attrs(&tcx.sess.cstore, did);
+        let cont = attrs.iter().all(|attr| f(attr));
         info!("done");
         cont
     }
