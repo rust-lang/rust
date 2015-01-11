@@ -26,11 +26,11 @@ fn collect<A, I: Iterator<Item=A>, B: MyFromIterator<A>>(it: I) -> B {
     MyFromIterator::my_from_iter(it)
 }
 
-#[on_unimplemented] //~ ERROR this attribute must have a value
+#[on_unimplemented] //~ ERROR the #[on_unimplemented] attribute on trait definition for BadAnnotation1 must have a value, eg `#[on_unimplemented = "foo"]`
 trait BadAnnotation1 {}
 
 #[on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
-//~^ ERROR there is no type parameter C on trait BadAnnotation2<A, B>
+//~^ ERROR the #[on_unimplemented] attribute on trait definition for BadAnnotation2<A, B> refers to non-existent type parameter C
 trait BadAnnotation2<A,B> {}
 
 fn trigger1<T: BadAnnotation1>(t: T)  {}
