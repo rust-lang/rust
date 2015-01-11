@@ -2117,6 +2117,13 @@ macro scope.
   destructors from being run twice. Destructors might be run multiple times on
   the same object with this attribute.
 - `doc` - Doc comments such as `/// foo` are equivalent to `#[doc = "foo"]`.
+- `rustc_on_unimplemented` - Write a custom note to be shown along with the error
+   when the trait is found to be unimplemented on a type.
+   You may use format arguments like `{T}`, `{A}` to correspond to the
+   types at the point of use corresponding to the type parameters of the
+   trait of the same name. `{Self}` will be replaced with the type that is supposed
+   to implement the trait but doesn't. To use this, the `on_unimplemented` feature gate
+   must be enabled.
 
 ### Conditional compilation
 
