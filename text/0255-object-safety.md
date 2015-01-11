@@ -1,4 +1,4 @@
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Start Date: 2014-09-22
 - RFC PR: [rust-lang/rfcs#255](https://github.com/rust-lang/rfcs/pull/255)
 - Rust Issue: [rust-lang/rust#17670](https://github.com/rust-lang/rust/issues/17670)
 
