@@ -10,7 +10,7 @@
 
 use std::slice;
 
-#[derive(Clone)]
+#[derive(Clone, Show)]
 pub struct SearchPaths {
     paths: Vec<(PathKind, Path)>,
 }
@@ -20,7 +20,7 @@ pub struct Iter<'a> {
     iter: slice::Iter<'a, (PathKind, Path)>,
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Show)]
 pub enum PathKind {
     Native,
     Crate,
