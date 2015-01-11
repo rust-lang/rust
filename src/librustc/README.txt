@@ -68,7 +68,7 @@ util     - ubiquitous types and helper functions
 lib      - bindings to LLVM
 
 The entry-point for the compiler is main() in the librustc_trans
-crate. But the 
+crate.
 
 The 3 central data structures:
 ------------------------------
