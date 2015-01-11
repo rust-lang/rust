@@ -404,7 +404,9 @@ mod test {
         }
 
         // start all the tasks
-        for tx in txs.iter() {
+        // FIXME(#21245) use a for loop
+        let mut iter = txs.iter();
+        while let Some(tx) = iter.next() {
             tx.send(()).unwrap();
         }
     }

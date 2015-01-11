@@ -180,7 +180,9 @@ fn make_masks() -> Vec<Vec<Vec<u64> > > {
 // all unused piece can be placed on the board.
 fn is_board_unfeasible(board: u64, masks: &Vec<Vec<Vec<u64>>>) -> bool {
     let mut coverable = board;
-    for (i, masks_at) in masks.iter().enumerate() {
+    // FIXME(#21245) use a for loop
+    let mut iter = masks.iter().enumerate();
+    while let Some((i, masks_at)) = iter.next() {
         if board & 1 << i != 0 { continue; }
         for (cur_id, pos_masks) in masks_at.iter().enumerate() {
             if board & 1 << (50 + cur_id) != 0 { continue; }
@@ -222,7 +224,9 @@ fn to_vec(raw_sol: &List<u64>) -> Vec<u8> {
     let mut sol = repeat('.' as u8).take(50).collect::<Vec<_>>();
     for &m in raw_sol.iter() {
         let id = '0' as u8 + get_id(m);
-        for i in 0u..50 {
+        // FIXME(#21245) use a for loop
+        let mut iter = 0u..50;
+        while let Some(i) = iter.next() {
             if m & 1 << i != 0 {
                 sol[i] = id;
             }

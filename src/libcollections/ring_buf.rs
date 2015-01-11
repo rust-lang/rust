@@ -1510,7 +1510,7 @@ pub struct Drain<'a, T: 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
-        for _ in *self {}
+        for _ in self.by_ref() {}
         self.inner.head = 0;
         self.inner.tail = 0;
     }
@@ -1793,7 +1793,9 @@ mod tests {
     fn bench_push_back_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
-            for i in 0i..100 {
+            // FIXME(#21245) use a for loop
+            let mut iter = 0i..100;
+            while let Some(i) = iter.next() {
                 deq.push_back(i);
             }
             deq.head = 0;
@@ -1805,7 +1807,9 @@ mod tests {
     fn bench_push_front_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
-            for i in 0i..100 {
+            // FIXME(#21245) use a for loop
+            let mut iter = 0i..100;
+            while let Some(i) = iter.next() {
                 deq.push_front(i);
             }
             deq.head = 0;

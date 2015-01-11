@@ -65,6 +65,8 @@
 #![allow(unknown_features)] #![feature(int_uint)]
 #![feature(on_unimplemented)]
 #![deny(missing_docs)]
+// NOTE(stage0) remove cfg_attr after a snapshot
+#![cfg_attr(not(stage0), allow(unused_mut))]
 
 #[macro_use]
 mod macros;
@@ -158,4 +160,6 @@ mod std {
     pub use marker;
     pub use ops;
     pub use option;
+    // for-loops
+    pub use iter;
 }

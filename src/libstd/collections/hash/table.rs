@@ -15,7 +15,7 @@ use self::BucketState::*;
 use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
-use iter::{Iterator, ExactSizeIterator, count};
+use iter::{Iterator, IteratorExt, ExactSizeIterator, count};
 use marker::{Copy, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
@@ -921,7 +921,7 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 #[unsafe_destructor]
 impl<'a, K: 'a, V: 'a> Drop for Drain<'a, K, V> {
     fn drop(&mut self) {
-        for _ in *self {}
+        for _ in self.by_ref() {}
     }
 }
 
