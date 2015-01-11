@@ -559,7 +559,7 @@ Also, note that we `pub use`d before we declared our `mod`s. Rust requires that
 This will build and run:
 
 ```bash
-$ cargo build
+$ cargo run
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
      Running `target/phrases`
 Hello in English: Hello!
