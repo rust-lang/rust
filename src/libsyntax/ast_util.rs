@@ -321,6 +321,7 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
 /// Maps a binary operator to its precedence
 pub fn operator_prec(op: ast::BinOp) -> uint {
   match op {
+      // prefix expressions sit here with 13
       // 'as' sits here with 12
       BiMul | BiDiv | BiRem     => 11u,
       BiAdd | BiSub             => 10u,
@@ -328,16 +329,27 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
       BiBitAnd                  =>  8u,
       BiBitXor                  =>  7u,
       BiBitOr                   =>  6u,
+      // '..' sits here with 5
       BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3u,
       BiAnd                     =>  2u,
       BiOr                      =>  1u
   }
 }
 
+/// Precedence of the prefix operators '!', '-', '&', '*', '~' etc.
+/// Does not include the prefix form of '..'
+#[allow(non_upper_case_globals)]
+pub static prefix_prec: uint = 13u;
+
 /// Precedence of the `as` operator, which is a binary operator
 /// not appearing in the prior table.
 #[allow(non_upper_case_globals)]
 pub static as_prec: uint = 12u;
+
+// Precedence of '..', which exists as a binary operator,
+// and as unary operators (prefix and postfix form)
+#[allow(non_upper_case_globals)]
+pub static range_prec: uint = 5u;
 
 pub fn empty_generics() -> Generics {
     Generics {
