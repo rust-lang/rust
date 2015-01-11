@@ -22,7 +22,7 @@ use fmt_macros::{Parser, Piece, Position};
 use middle::infer::InferCtxt;
 use middle::ty::{self, AsPredicate, ReferencesError, ToPolyTraitRef, TraitRef};
 use std::collections::HashMap;
-use syntax::codemap::Span;
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use util::ppaux::{Repr, UserString};
 
@@ -66,13 +66,20 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 }
 
 fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                     trait_ref: &TraitRef<'tcx>) -> Option<String> {
+                                     trait_ref: &TraitRef<'tcx>,
+                                     span: Span) -> Option<String> {
     let def_id = trait_ref.def_id;
     let mut report = None;
     ty::each_attr(infcx.tcx, def_id, |item| {
         if item.check_name("on_unimplemented") {
+            let err_sp = if item.meta().span == DUMMY_SP {
+                span
+            } else {
+                item.meta().span
+            };
+            let def = ty::lookup_trait_def(infcx.tcx, def_id);
+            let trait_str = def.trait_ref.user_string(infcx.tcx);
             if let Some(ref istring) = item.value_str() {
-                let def = ty::lookup_trait_def(infcx.tcx, def_id);
                 let mut generic_map = def.generics.types.iter_enumerated()
                                          .map(|(param, i, gen)| {
                                                (gen.name.as_str().to_string(),
@@ -91,20 +98,24 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 Some(val) => Some(val.as_slice()),
                                 None => {
                                     infcx.tcx.sess
-                                         .span_err(item.meta().span,
-                                                   format!("there is no type parameter \
-                                                            {} on trait {}",
-                                                           s, def.trait_ref
-                                                                 .user_string(infcx.tcx))
+                                         .span_err(err_sp,
+                                                   format!("the #[on_unimplemented] attribute on \
+                                                            trait definition for {} refers to \
+                                                            non-existent type parameter {}",
+                                                           trait_str, s)
                                                    .as_slice());
                                     errored = true;
                                     None
                                 }
                             },
                             _ => {
-                                infcx.tcx.sess.span_err(item.meta().span,
-                                                        "only named substitution \
-                                                        parameters are allowed");
+                                infcx.tcx.sess
+                                     .span_err(err_sp,
+                                               format!("the #[on_unimplemented] attribute on \
+                                                        trait definition for {} must have named \
+                                                        format arguments, \
+                                                        eg `#[on_unimplemented = \"foo {{T}}\"]`",
+                                                       trait_str).as_slice());
                                 errored = true;
                                 None
                             }
@@ -116,9 +127,11 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     report = Some(err);
                 }
             } else {
-                infcx.tcx.sess.span_err(item.meta().span,
-                                        "this attribute must have a value, \
-                                        eg `#[on_unimplemented = \"foo\"]`")
+                infcx.tcx.sess.span_err(err_sp,
+                                        format!("the #[on_unimplemented] attribute on \
+                                                 trait definition for {} must have a value, \
+                                                 eg `#[on_unimplemented = \"foo\"]`",
+                                                 trait_str).as_slice());
             }
             false
         } else {
@@ -154,15 +167,16 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         infcx.resolve_type_vars_if_possible(trait_predicate);
                     if !trait_predicate.references_error() {
                         let trait_ref = trait_predicate.to_poly_trait_ref();
-                        // Check if it has a custom "#[on_unimplemented]" error message,
-                        // report with that message if it does
-                        let custom_note = report_on_unimplemented(infcx, &*trait_ref.0);
                         infcx.tcx.sess.span_err(
                             obligation.cause.span,
                             format!(
                                 "the trait `{}` is not implemented for the type `{}`",
                                 trait_ref.user_string(infcx.tcx),
                                 trait_ref.self_ty().user_string(infcx.tcx)).as_slice());
+                        // Check if it has a custom "#[on_unimplemented]" error message,
+                        // report with that message if it does
+                        let custom_note = report_on_unimplemented(infcx, &*trait_ref.0,
+                                                                  obligation.cause.span);
                         if let Some(s) = custom_note {
                            infcx.tcx.sess.span_note(
                                 obligation.cause.span,
