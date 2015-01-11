@@ -15,7 +15,7 @@ extern crate "weak-lang-items" as other;
 use std::thread::Thread;
 
 fn main() {
-    let _ = Thread::spawn(move|| {
+    let _ = Thread::scoped(move|| {
         other::foo()
     });
 }
