@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-stage1
+// ignore-stage2
+// ignore-stage3
+
 use std::marker;
 
 fn foo<P: Sync>(p: P) { }
