@@ -1958,7 +1958,7 @@ mod tests {
             let mut amt = 0;
             let mut it = v.permutations();
             let (min_size, max_opt) = it.size_hint();
-            for _perm in it {
+            for _perm in it.by_ref() {
                 amt += 1;
             }
             assert_eq!(amt, it.swaps.swaps_made);

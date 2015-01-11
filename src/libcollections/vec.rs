@@ -1567,7 +1567,9 @@ impl<T> Drop for Vec<T> {
         // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
         if self.cap != 0 {
             unsafe {
-                for x in self.iter() {
+                // FIXME(#21245) use a for loop
+                let mut iter = self.iter();
+                while let Some(x) = iter.next() {
                     ptr::read(x);
                 }
                 dealloc(*self.ptr, self.cap)
@@ -1648,7 +1650,7 @@ impl<T> IntoIter<T> {
     #[unstable(feature = "collections")]
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
-            for _x in self { }
+            for _x in self.by_ref() { }
             let IntoIter { allocation, cap, ptr: _ptr, end: _end } = self;
             mem::forget(self);
             Vec { ptr: NonZero::new(allocation), cap: cap, len: 0 }
@@ -1726,7 +1728,7 @@ impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
         if self.cap != 0 {
-            for _x in *self {}
+            for _x in self.by_ref() {}
             unsafe {
                 dealloc(self.allocation, self.cap);
             }
@@ -1816,7 +1818,7 @@ impl<'a, T> Drop for Drain<'a, T> {
         // so we can use #[unsafe_no_drop_flag].
 
         // destroy the remaining elements
-        for _x in *self {}
+        for _x in self.by_ref() {}
     }
 }
 

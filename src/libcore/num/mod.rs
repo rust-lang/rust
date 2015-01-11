@@ -1524,7 +1524,7 @@ macro_rules! from_str_radix_float_impl {
                 let mut exp_info = None::<(char, uint)>;
 
                 // Parse the integer part of the significand
-                for (i, c) in cs {
+                for (i, c) in cs.by_ref() {
                     match c.to_digit(radix) {
                         Some(digit) => {
                             // shift significand one digit left
@@ -1572,7 +1572,7 @@ macro_rules! from_str_radix_float_impl {
                 // part of the significand
                 if exp_info.is_none() {
                     let mut power = 1.0;
-                    for (i, c) in cs {
+                    for (i, c) in cs.by_ref() {
                         match c.to_digit(radix) {
                             Some(digit) => {
                                 // Decrease power one order of magnitude

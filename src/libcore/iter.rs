@@ -195,7 +195,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
-        for x in *self {
+        for x in self.by_ref() {
             if n == 0 { return Some(x) }
             n -= 1;
         }
@@ -492,7 +492,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// fn process<U: Iterator<Item=isize>>(it: U) -> isize {
     ///     let mut it = it.fuse();
     ///     let mut sum = 0;
-    ///     for x in it {
+    ///     for x in it.by_ref() {
     ///         if x > 5 {
     ///             break;
     ///         }
@@ -660,7 +660,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn any<F>(&mut self, mut f: F) -> bool where F: FnMut(Self::Item) -> bool {
-        for x in *self { if f(x) { return true; } }
+        for x in self.by_ref() { if f(x) { return true; } }
         false
     }
 
@@ -680,7 +680,7 @@ pub trait IteratorExt: Iterator + Sized {
     fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
         P: FnMut(&Self::Item) -> bool,
     {
-        for x in *self {
+        for x in self.by_ref() {
             if predicate(&x) { return Some(x) }
         }
         None
@@ -703,7 +703,7 @@ pub trait IteratorExt: Iterator + Sized {
         P: FnMut(Self::Item) -> bool,
     {
         let mut i = 0;
-        for x in *self {
+        for x in self.by_ref() {
             if predicate(x) {
                 return Some(i);
             }
@@ -1664,7 +1664,7 @@ impl<A, I, P> Iterator for Filter<A, I, P> where I: Iterator<Item=A>, P: FnMut(&
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        for x in self.iter {
+        for x in self.iter.by_ref() {
             if (self.predicate)(&x) {
                 return Some(x);
             } else {
@@ -1728,7 +1728,7 @@ impl<A, B, I, F> Iterator for FilterMap<A, B, I, F> where
 
     #[inline]
     fn next(&mut self) -> Option<B> {
-        for x in self.iter {
+        for x in self.iter.by_ref() {
             match (self.f)(x) {
                 Some(y) => return Some(y),
                 None => ()
@@ -1914,7 +1914,7 @@ impl<A, I, P> Iterator for SkipWhile<A, I, P> where I: Iterator<Item=A>, P: FnMu
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        for x in self.iter {
+        for x in self.iter.by_ref() {
             if self.flag || !(self.predicate)(&x) {
                 self.flag = true;
                 return Some(x);
@@ -2207,7 +2207,7 @@ impl<A, B, I, U, F> Iterator for FlatMap<A, B, I, U, F> where
     fn next(&mut self) -> Option<B> {
         loop {
             for inner in self.frontiter.iter_mut() {
-                for x in *inner {
+                for x in inner.by_ref() {
                     return Some(x)
                 }
             }

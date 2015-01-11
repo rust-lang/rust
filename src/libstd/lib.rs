@@ -123,6 +123,9 @@
 #![feature(rand)]
 #![feature(hash)]
 #![cfg_attr(test, feature(test))]
+#![allow(unstable)]
+// NOTE(stage0): remove cfg_attr after a snapshot
+#![cfg_attr(not(stage0), allow(unused_mut))]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -310,4 +313,6 @@ mod std {
     pub use slice;
 
     pub use boxed; // used for vec![]
+    // for-loops
+    pub use iter;
 }

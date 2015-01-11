@@ -352,7 +352,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
                 let base_index = word_index * uint::BITS;
-                for offset in 0u..uint::BITS {
+                // FIXME(#21245) use a for loop
+                let mut iter = 0u..uint::BITS;
+                while let Some(offset) = iter.next() {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
                         // NB: we round up the total number of bits

@@ -148,7 +148,9 @@ impl<
     fn decode<D: Decoder>(d: &mut D) -> Result<EnumSet<T>, D::Error> {
         let bits = try!(d.read_uint());
         let mut set = EnumSet::new();
-        for bit in 0..uint::BITS {
+        // FIXME(#21245) use a for loop
+        let mut iter = 0..uint::BITS;
+        while let Some(bit) = iter.next() {
             if bits & (1 << bit) != 0 {
                 set.insert(CLike::from_uint(1 << bit));
             }

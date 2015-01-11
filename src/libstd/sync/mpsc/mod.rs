@@ -1476,7 +1476,9 @@ mod test {
 
         let _t = Thread::spawn(move|| {
             let mut count = 0;
-            for x in rx.iter() {
+            // FIXME(#21245) use a for loop
+            let mut iter = rx.iter();
+            while let Some(x) = iter.next() {
                 if count >= 3 {
                     break;
                 } else {
@@ -1940,7 +1942,9 @@ mod sync_tests {
 
         let _t = Thread::spawn(move|| {
             let mut count = 0;
-            for x in rx.iter() {
+            // FIXME(#21245) use a for loop
+            let mut iter = rx.iter();
+            while let Some(x) = iter.next() {
                 if count >= 3 {
                     break;
                 } else {
