@@ -82,6 +82,11 @@ impl Type {
         ty!(llvm::LLVMInt64TypeInContext(ccx.llcx()))
     }
 
+    // Creates an integer type with the given number of bits, e.g. i24
+    pub fn ix(ccx: &CrateContext, num_bits: u64) -> Type {
+        ty!(llvm::LLVMIntTypeInContext(ccx.llcx(), num_bits as c_uint))
+    }
+
     pub fn f32(ccx: &CrateContext) -> Type {
         ty!(llvm::LLVMFloatTypeInContext(ccx.llcx()))
     }
@@ -258,6 +263,13 @@ impl Type {
 
     pub fn ptr_to(&self) -> Type {
         ty!(llvm::LLVMPointerType(self.to_ref(), 0))
+    }
+
+    pub fn is_aggregate(&self) -> bool {
+        match self.kind() {
+            TypeKind::Struct | TypeKind::Array => true,
+            _ =>  false
+        }
     }
 
     pub fn is_packed(&self) -> bool {
