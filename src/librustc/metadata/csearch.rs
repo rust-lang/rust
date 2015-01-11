@@ -209,7 +209,7 @@ pub fn get_item_attrs<F>(cstore: &cstore::CStore,
     F: FnOnce(Vec<ast::Attribute>),
 {
     let cdata = cstore.get_crate_data(def_id.krate);
-    decoder::get_item_attrs(&*cdata, def_id.node, f)
+    f(decoder::get_item_attrs(&*cdata, def_id.node));
 }
 
 pub fn get_struct_fields(cstore: &cstore::CStore,
