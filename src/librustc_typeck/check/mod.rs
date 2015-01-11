@@ -783,7 +783,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                generics: &ast::Generics,
                                item: &ast::Item) {
     if let Some(ref attr) = item.attrs.iter().find(|&: a| {
-        a.check_name("on_unimplemented")
+        a.check_name("rustc_on_unimplemented")
     }) {
         if let Some(ref istring) = attr.value_str() {
             let mut parser = Parser::new(istring.get());
@@ -819,7 +819,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         } else {
             ccx.tcx.sess.span_err(attr.span,
                                   "this attribute must have a value, \
-                                   eg `#[on_unimplemented = \"foo\"]`")
+                                   eg `#[rustc_on_unimplemented = \"foo\"]`")
         }
     }
 }

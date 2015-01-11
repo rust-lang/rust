@@ -71,7 +71,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     let def_id = trait_ref.def_id;
     let mut report = None;
     ty::each_attr(infcx.tcx, def_id, |item| {
-        if item.check_name("on_unimplemented") {
+        if item.check_name("rustc_on_unimplemented") {
             let err_sp = if item.meta().span == DUMMY_SP {
                 span
             } else {
@@ -99,7 +99,8 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 None => {
                                     infcx.tcx.sess
                                          .span_err(err_sp,
-                                                   format!("the #[on_unimplemented] attribute on \
+                                                   format!("the #[rustc_on_unimplemented] \
+                                                            attribute on \
                                                             trait definition for {} refers to \
                                                             non-existent type parameter {}",
                                                            trait_str, s)
@@ -111,10 +112,12 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             _ => {
                                 infcx.tcx.sess
                                      .span_err(err_sp,
-                                               format!("the #[on_unimplemented] attribute on \
+                                               format!("the #[rustc_on_unimplemented] \
+                                                        attribute on \
                                                         trait definition for {} must have named \
                                                         format arguments, \
-                                                        eg `#[on_unimplemented = \"foo {{T}}\"]`",
+                                                        eg `#[rustc_on_unimplemented = \
+                                                        \"foo {{T}}\"]`",
                                                        trait_str).as_slice());
                                 errored = true;
                                 None
@@ -128,9 +131,9 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                 }
             } else {
                 infcx.tcx.sess.span_err(err_sp,
-                                        format!("the #[on_unimplemented] attribute on \
+                                        format!("the #[rustc_on_unimplemented] attribute on \
                                                  trait definition for {} must have a value, \
-                                                 eg `#[on_unimplemented = \"foo\"]`",
+                                                 eg `#[rustc_on_unimplemented = \"foo\"]`",
                                                  trait_str).as_slice());
             }
             false
@@ -173,7 +176,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 "the trait `{}` is not implemented for the type `{}`",
                                 trait_ref.user_string(infcx.tcx),
                                 trait_ref.self_ty().user_string(infcx.tcx)).as_slice());
-                        // Check if it has a custom "#[on_unimplemented]" error message,
+                        // Check if it has a custom "#[rustc_on_unimplemented]" error message,
                         // report with that message if it does
                         let custom_note = report_on_unimplemented(infcx, &*trait_ref.0,
                                                                   obligation.cause.span);
