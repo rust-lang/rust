@@ -38,7 +38,7 @@ valid for the loop body. Once the body is over, the next value is fetched from
 the iterator, and we loop another time. When there are no more values, the
 `for` loop is over.
 
-In our example, `0..10` is an expression that takes a start and an end position,
+In our example, the range notation `0..10` is an expression that takes a start and an end position,
 and gives an iterator over those values. The upper bound is exclusive, though,
 so our loop will print `0` through `9`, not `10`.
 
