@@ -26,6 +26,9 @@
 //! a `pub fn new()`.
 use self::MethodContext::*;
 
+
+use fmt_macros::{Parser, Piece, Position};
+
 use metadata::csearch;
 use middle::def::*;
 use middle::subst::Substs;
@@ -1918,6 +1921,66 @@ impl LintPass for UnstableFeatures {
         use syntax::attr;
         if attr::contains_name(&[attr.node.value.clone()], "feature") {
             ctx.span_lint(UNSTABLE_FEATURES, attr.span, "unstable feature");
+        }
+    }
+}
+
+/// Checks usage of `#[on_unimplemented]`
+#[derive(Copy)]
+pub struct BadOnUnimplemented;
+
+declare_lint!(BAD_ON_UNIMPLEMENTED, Deny,
+              "Checks usage of `#[on_unimplemented]`");
+
+impl LintPass for BadOnUnimplemented {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(BAD_ON_UNIMPLEMENTED)
+    }
+    fn check_item(&mut self, ctx: &Context, item: &ast::Item) {
+        match item.node {
+            ast::ItemTrait(_, ref generics, _, _) => {
+                if let Some(ref attr) = item.attrs.iter().find(|&: a| {
+                    a.check_name("on_unimplemented")
+                }) {
+                    if let Some(ref istring) = attr.value_str() {
+                        let mut parser = Parser::new(istring.get());
+                        let types = generics.ty_params.as_slice();
+                        for token in parser {
+                            match token {
+                                Piece::String(_) => (), // Normal string, no need to check it
+                                Piece::NextArgument(a) => match a.position {
+                                    // `{Self}` is allowed
+                                    Position::ArgumentNamed(s) if s == "Self" => (),
+                                    // So is `{A}` if A is a type parameter
+                                    Position::ArgumentNamed(s) => match types.iter().find(|t| {
+                                        t.ident.as_str() == s
+                                    }) {
+                                        Some(_) => (),
+                                        None => {
+                                            ctx.span_lint(BAD_ON_UNIMPLEMENTED, attr.span,
+                                                         format!("there is no type parameter \
+                                                                    {} on trait {}",
+                                                                    s, item.ident.as_str())
+                                                           .as_slice());
+                                        }
+                                    },
+                                    // `{:1}` and `{}` are not to be used
+                                    Position::ArgumentIs(_) | Position::ArgumentNext => {
+                                        ctx.span_lint(BAD_ON_UNIMPLEMENTED, attr.span,
+                                                     "only named substitution \
+                                                     parameters are allowed");
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        ctx.span_lint(BAD_ON_UNIMPLEMENTED, attr.span,
+                                     "this attribute must have a value, \
+                                      eg `#[on_unimplemented = \"foo\"]`")
+                    }
+                }
+            },
+            _ => () // Not a trait def, move along
         }
     }
 }
