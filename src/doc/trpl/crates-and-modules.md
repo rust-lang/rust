@@ -256,7 +256,7 @@ fn goodbye() -> String {
 }
 ```
 
-(This is "Sayoonara", if you're curious.)
+(This is "Sayōnara", if you're curious.)
 
 Now that we have our some functionality in our crate, let's try to use it from
 another crate.
