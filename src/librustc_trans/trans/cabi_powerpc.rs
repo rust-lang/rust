@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use libc::c_uint;
 use llvm;
 use llvm::{Integer, Pointer, Float, Double, Struct, Array};
 use llvm::{StructRetAttribute, ZExtAttribute};
