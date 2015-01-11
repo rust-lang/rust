@@ -84,6 +84,7 @@ This API is completely unstable and subject to change.
 #[macro_use] extern crate syntax;
 
 extern crate arena;
+extern crate fmt_macros;
 extern crate rustc;
 
 pub use rustc::lint;

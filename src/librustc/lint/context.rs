@@ -211,7 +211,6 @@ impl LintStore {
                      UnusedAllocation,
                      MissingCopyImplementations,
                      UnstableFeatures,
-                     BadOnUnimplemented,
         );
 
         add_builtin_with_new!(sess,
