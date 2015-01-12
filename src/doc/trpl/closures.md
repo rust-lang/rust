@@ -197,8 +197,9 @@ That is because in Rust each closure has its own unique type.
 So, not only do closures with different signatures have different types,
 but different closures with the *same* signature have *different*
 types, as well!
-You can think of it this way: the behaviour of a closure is part of its type.
-Therefore, using a single type parameter for both accepted closures
+
+You can think of it this way: the behavior of a closure is part of its
+type.  Therefore, using a single type parameter for both closures
 will accept the first of them, rejecting the second. The distinct
 type of the second closure does not allow it to be represented by the
 same type parameter as that of the first.  We acknowledge this, and
