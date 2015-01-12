@@ -48,7 +48,11 @@ extern crate "rustc_llvm" as llvm;
 
 pub use syntax::diagnostic;
 
+use driver::CompileController;
+
+use rustc_resolve as resolve;
 use rustc_trans::back::link;
+use rustc_trans::save;
 use rustc::session::{config, Session, build_session};
 use rustc::session::config::{Input, PrintRequest, UnstableFeatures};
 use rustc::lint::Lint;
@@ -56,6 +60,7 @@ use rustc::lint;
 use rustc::metadata;
 use rustc::metadata::creader::CrateOrString::Str;
 use rustc::DIAGNOSTICS;
+use rustc::util::common::time;
 
 use std::cmp::Ordering::Equal;
 use std::io;
@@ -188,7 +193,43 @@ fn run_compiler(args: &[String]) {
     }
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
-    driver::compile_input(sess, cfg, &input, &odir, &ofile, Some(plugins));
+    let control = build_controller(&sess);
+    driver::compile_input(sess, cfg, &input, &odir, &ofile, Some(plugins), control);
+}
+
+fn build_controller<'a>(sess: &Session) -> CompileController<'a> {
+    let mut control = CompileController::basic();
+
+    if sess.opts.parse_only ||
+       sess.opts.show_span.is_some() ||
+       sess.opts.debugging_opts.ast_json_noexpand {
+        control.after_parse.stop = true;
+    }
+
+    if sess.opts.no_analysis || sess.opts.debugging_opts.ast_json {
+        control.after_expand.stop = true;
+    }
+
+    if sess.opts.no_trans {
+        control.after_analysis.stop = true;
+    }
+
+    if !sess.opts.output_types.iter().any(|&i| i == config::OutputTypeExe) {
+        control.after_llvm.stop = true;
+    }
+
+    if sess.opts.debugging_opts.save_analysis {
+        control.after_analysis.callback = box |state| {
+            time(state.session.time_passes(), "save analysis", state.krate.unwrap(), |krate|
+                 save::process_crate(state.session,
+                                     krate,
+                                     state.analysis.unwrap(),
+                                     state.out_dir));
+        };
+        control.make_glob_map = resolve::MakeGlobMap::Yes;
+    }
+
+    control
 }
 
 pub fn get_unstable_features_setting() -> UnstableFeatures {
