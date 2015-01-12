@@ -20,7 +20,7 @@ use cmp::{max, Eq, PartialEq};
 use default::Default;
 use fmt::{self, Show};
 use hash::{self, Hash, SipHasher};
-use iter::{self, Iterator, IteratorExt, FromIterator, Extend, Map};
+use iter::{self, Iterator, ExactSizeIterator, IteratorExt, FromIterator, Extend, Map};
 use marker::Sized;
 use mem::{self, replace};
 use num::{Int, UnsignedInt};
@@ -1384,7 +1384,11 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     #[inline] fn next(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next() }
-    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+}
+#[stable]
+impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
+    #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
 #[stable]
@@ -1392,7 +1396,11 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     #[inline] fn next(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next() }
-    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+}
+#[stable]
+impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
+    #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
 #[stable]
@@ -1400,7 +1408,11 @@ impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
 
     #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
-    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+}
+#[stable]
+impl<K, V> ExactSizeIterator for IntoIter<K, V> {
+    #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
 #[stable]
@@ -1408,7 +1420,11 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
 
     #[inline] fn next(&mut self) -> Option<(&'a K)> { self.inner.next() }
-    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+}
+#[stable]
+impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
+    #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
 #[stable]
@@ -1416,21 +1432,23 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
     #[inline] fn next(&mut self) -> Option<(&'a V)> { self.inner.next() }
-    #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+}
+#[stable]
+impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
+    #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
 #[stable]
-impl<'a, K: 'a, V: 'a> Iterator for Drain<'a, K, V> {
+impl<'a, K, V> Iterator for Drain<'a, K, V> {
     type Item = (K, V);
 
-    #[inline]
-    fn next(&mut self) -> Option<(K, V)> {
-        self.inner.next()
-    }
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        self.inner.size_hint()
-    }
+    #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
+    #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+}
+#[stable]
+impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
+    #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
 #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
@@ -2136,6 +2154,19 @@ mod test_map {
     }
 
     #[test]
+    fn test_iter_len() {
+        let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+
+        let map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
+
+        let mut iter = map.iter();
+
+        for _ in iter.by_ref().take(3) {}
+
+        assert_eq!(iter.len(), 3);
+    }
+
+    #[test]
     fn test_mut_size_hint() {
         let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 
@@ -2146,6 +2177,19 @@ mod test_map {
         for _ in iter.by_ref().take(3) {}
 
         assert_eq!(iter.size_hint(), (3, Some(3)));
+    }
+
+    #[test]
+    fn test_iter_mut_len() {
+        let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
+
+        let mut map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
+
+        let mut iter = map.iter_mut();
+
+        for _ in iter.by_ref().take(3) {}
+
+        assert_eq!(iter.len(), 3);
     }
 
     #[test]
