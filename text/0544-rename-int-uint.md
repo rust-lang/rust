@@ -46,10 +46,34 @@ However, given the discussions about the previous revisions of this RFC, and the
 
 # Detailed Design
 
-- Rename `int/uint` to `isize/usize`, with `is/us` being their literal suffixes, respectively.
+- Rename `int/uint` to `isize/usize`, with `isz/usz` being their literal suffixes, respectively.
 - Update code and documentation to use pointer-sized integers more narrowly for their intended purposes. Provide a deprecation period to carry out these updates.
 
-Some would prefer using `isize/usize` directly as literal suffixes here, as `is/us` are actual words and maybe a bit *too* pleasant to use. But on the other hand, `42isize` can be too long for others.
+There are different opinions about which literal suffixes to use. The following section would discuss the alternatives.
+
+## Choosing literal suffixes:
+
+### `isize/usize`:
+
+* Pros: They are the same as the type names, very consistent with the rest of the integer primitives.
+* Cons: They are too long for some, and may stand out too much as suffixes.
+
+### `is/us`:
+
+* Pros: They are succinct as suffixes.
+* Cons: They make an extra pair of reserved words which are actual English words, with `is` being a keyword in many programming languages and `us` being an abbreviation of "microsecond", which makes them confusing as suffixes, though technically there should be no ambiguities between "`is` the suffix" and "`is` the keyword with other use cases (in the future)". Also, `is/us` may be *too* short (shorter than `i64/u64`) and may be *too* pleasant to use, which can be a problem.
+
+### `isz/usz`:
+
+* Pros: They are the middle grounds between `isize/usize` and `is/us`, neither too long nor too short, and they are not actual English words.
+* Cons: An extra pair of reserved words.
+
+### `iz/uz`:
+* Pros and cons: Similar to those of `is/us`, except that `iz/uz` are not actual words, which is an additional advantage. However it may not be immediately clear that `iz/uz` are abbreviations of `isize/usize`.
+
+This author believes that `isz/usz` are the best choices here.
+
+(Note: Even if `is/us` don't get used as literal suffixes, it can be beneficial to reserve `is`, but this is outside the scope of this RFC.)
 
 `usize` in action:
 
@@ -57,7 +81,7 @@ Some would prefer using `isize/usize` directly as literal suffixes here, as `is/
 fn slice_or_fail<'b>(&'b self, from: &usize, to: &usize) -> &'b [T]
 ```
 
-See **Alternatives B to L** for the other alternatives that are rejected.
+See **Alternatives B to L** for the alternatives to `isize/usize` that have been rejected.
 
 ## Advantages of `isize/usize`:
 
