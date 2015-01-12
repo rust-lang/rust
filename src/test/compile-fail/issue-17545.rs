@@ -10,7 +10,7 @@
 
 #![feature(unboxed_closures)]
 
-pub fn foo<'a, F: Fn<(&'a (),), ()>>(bar: F) {
+pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
     bar.call((
         &(), //~ ERROR borrowed value does not live long enough
     ));

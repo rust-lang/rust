@@ -16,8 +16,9 @@
 #![feature(unboxed_closures)]
 #![allow(dead_code)]
 
-trait Foo<T,U> {
-    fn dummy(&self, t: T, u: U);
+trait Foo<T> {
+    type Output;
+    fn dummy(&self, t: T);
 }
 
 trait Eq<X: ?Sized> { }
@@ -25,9 +26,9 @@ impl<X: ?Sized> Eq<X> for X { }
 fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
 
 fn main() {
-    eq::< for<'a> Foo<(&'a isize,), &'a isize>,
+    eq::< for<'a> Foo<(&'a isize,), Output=&'a isize>,
           Foo(&isize) -> &isize                                   >();
-    eq::< for<'a> Foo<(&'a isize,), (&'a isize, &'a isize)>,
+    eq::< for<'a> Foo<(&'a isize,), Output=(&'a isize, &'a isize)>,
           Foo(&isize) -> (&isize, &isize)                           >();
 
     let _: Foo(&isize, &usize) -> &usize; //~ ERROR missing lifetime specifier

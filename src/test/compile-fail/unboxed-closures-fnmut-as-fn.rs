@@ -18,7 +18,9 @@ use std::ops::{Fn,FnMut,FnOnce};
 
 struct S;
 
-impl FnMut<(isize,),isize> for S {
+impl FnMut<(isize,)> for S {
+    type Output = isize;
+
     extern "rust-call" fn call_mut(&mut self, (x,): (isize,)) -> isize {
         x * x
     }
@@ -29,6 +31,8 @@ fn call_it<F:Fn(isize)->isize>(f: &F, x: isize) -> isize {
 }
 
 fn main() {
-    let x = call_it(&S, 22); //~ ERROR not implemented
+    let x = call_it(&S, 22);
+    //~^ ERROR not implemented
+    //~| ERROR not implemented
 }
 

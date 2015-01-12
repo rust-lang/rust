@@ -16,5 +16,7 @@ fn is_fn<F>(_: F) where F: Fn() {}
 fn main() {
     // extern functions are extern "C" fn
     let _x: extern "C" fn() = f; // OK
-    is_fn(f); //~ ERROR the trait `core::ops::Fn()` is not implemented for the type `extern "C" fn()
+    is_fn(f);
+    //~^ ERROR the trait `core::ops::Fn<()>` is not implemented for the type `extern "C" fn()
+    //~| ERROR the trait `core::ops::Fn<()>` is not implemented for the type `extern "C" fn()
 }

@@ -15,17 +15,19 @@ use std::ops::FnMut;
 
 struct S;
 
-impl FnMut<(int,),int> for S {
-    extern "rust-call" fn call_mut(&mut self, (x,): (int,)) -> int {
+impl FnMut<(i32,)> for S {
+    type Output = i32;
+
+    extern "rust-call" fn call_mut(&mut self, (x,): (i32,)) -> i32 {
         x * x
     }
 }
 
-fn call_it<F:FnMut(int)->int>(mut f: F, x: int) -> int {
+fn call_it<F:FnMut(i32)->i32>(mut f: F, x: i32) -> i32 {
     f(x) + 3
 }
 
-fn call_box(f: &mut FnMut(int) -> int, x: int) -> int {
+fn call_box(f: &mut FnMut(i32) -> i32, x: i32) -> i32 {
     f(x) + 3
 }
 
