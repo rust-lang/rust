@@ -90,7 +90,7 @@ use middle::lang_items::IteratorItem;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::pat_util::{self, pat_id_map};
-use middle::region::{self, CodeExtent};
+use middle::region::{CodeExtent};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits;
 use middle::ty::{FnSig, VariantInfo, TypeScheme};

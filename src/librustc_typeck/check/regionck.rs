@@ -90,7 +90,6 @@ use check::vtable;
 use middle::def;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
-use middle::subst;
 use middle::traits;
 use middle::ty::{ReScope};
 use middle::ty::{self, Ty, MethodCall};

@@ -22,7 +22,6 @@ use util::ppaux::Repr;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::{local_def};
-use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
