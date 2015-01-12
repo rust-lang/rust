@@ -30,7 +30,7 @@
 use libc;
 use std::ascii::AsciiExt;
 use std::ffi::CString;
-use std::cell::{RefCell, Cell};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::slice;
@@ -155,7 +155,6 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
 thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, uint>> = {
     RefCell::new(HashMap::new())
 });
-thread_local!(static TEST_IDX: Cell<uint> = Cell::new(0));
 
 thread_local!(pub static PLAYGROUND_KRATE: RefCell<Option<Option<String>>> = {
     RefCell::new(None)
@@ -195,26 +194,19 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             if rendered { return }
             PLAYGROUND_KRATE.with(|krate| {
                 let mut s = String::new();
-                let id = krate.borrow().as_ref().map(|krate| {
-                    let idx = TEST_IDX.with(|slot| {
-                        let i = slot.get();
-                        slot.set(i + 1);
-                        i
-                    });
-
+                krate.borrow().as_ref().map(|krate| {
                     let test = origtext.lines().map(|l| {
                         stripped_filtered_line(l).unwrap_or(l)
                     }).collect::<Vec<&str>>().connect("\n");
                     let krate = krate.as_ref().map(|s| s.as_slice());
                     let test = test::maketest(test.as_slice(), krate, false, false);
-                    s.push_str(format!("<span id='rust-example-raw-{}' \
-                                         class='rusttest'>{}</span>",
-                                       idx, Escape(test.as_slice())).as_slice());
-                    format!("rust-example-rendered-{}", idx)
+                    s.push_str(format!("<span class='rusttest'>{}</span>",
+                                         Escape(test.as_slice())).as_slice());
                 });
-                let id = id.as_ref().map(|a| a.as_slice());
-                s.push_str(highlight::highlight(text.as_slice(), None, id)
-                                     .as_slice());
+                s.push_str(highlight::highlight(text.as_slice(),
+                                                None,
+                                                Some("rust-example-rendered"))
+                             .as_slice());
                 let output = CString::from_vec(s.into_bytes());
                 hoedown_buffer_puts(ob, output.as_ptr());
             })
@@ -432,7 +424,6 @@ impl LangString {
 /// previous state (if any).
 pub fn reset_headers() {
     USED_HEADER_MAP.with(|s| s.borrow_mut().clear());
-    TEST_IDX.with(|s| s.set(0));
 }
 
 impl<'a> fmt::String for Markdown<'a> {
