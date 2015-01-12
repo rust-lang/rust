@@ -1818,16 +1818,17 @@ fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
     Ok(())
 }
 
-fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
-    fn method(w: &mut fmt::Formatter, it: &clean::Item, unsafety: ast::Unsafety,
-           g: &clean::Generics, selfty: &clean::SelfTy,
+fn render_method(w: &mut fmt::Formatter, meth: &clean::Item, ctx_s: &str) -> fmt::Result {
+    fn method(w: &mut fmt::Formatter, it: &clean::Item, ctx_s: &str,
+           unsafety: ast::Unsafety, g: &clean::Generics, selfty: &clean::SelfTy,
            d: &clean::FnDecl) -> fmt::Result {
-        write!(w, "{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
+        write!(w, "{}fn <a href='#{ctx}:{ty}.{name}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                match unsafety {
                    ast::Unsafety::Unsafe => "unsafe ",
                    _ => "",
                },
+               ctx = ctx_s,
                ty = shortty(it),
                name = it.name.as_ref().unwrap().as_slice(),
                generics = *g,
@@ -1836,13 +1837,13 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            method(w, meth, m.unsafety, &m.generics, &m.self_, &m.decl)
+            method(w, meth, ctx_s, m.unsafety, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            method(w, meth, m.unsafety, &m.generics, &m.self_, &m.decl)
+            method(w, meth, ctx_s, m.unsafety, &m.generics, &m.self_, &m.decl)
         }
         clean::AssociatedTypeItem(ref typ) => {
-            assoc_type(w, meth, typ)
+            assoc_type(w, meth, ctx_s, typ)
         }
         _ => panic!("render_method called on non-method")
     }
@@ -2082,11 +2083,14 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
 }
 
 fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
+    let method_context: &str = "";
+    
     try!(write!(w, "<h3 class='impl'>{}<code>impl{} ",
                 ConciseStability(&i.stability),
                 i.impl_.generics));
     match i.impl_.trait_ {
-        Some(ref ty) => try!(write!(w, "{} for ", *ty)),
+        Some(ref ty) => {method_context = format!("{}", *ty).as_slice();
+                         try!(write!(w, "{} for ", *ty))},
         None => {}
     }
     try!(write!(w, "{}{}</code></h3>", i.impl_.for_, WhereClause(&i.impl_.generics)));
@@ -2102,11 +2106,12 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                     -> fmt::Result {
         match item.inner {
             clean::MethodItem(..) | clean::TyMethodItem(..) => {
-                try!(write!(w, "<h4 id='method.{}' class='{}'>{}<code>",
+                try!(write!(w, "<h4 id='{}:method.{}' class='{}'>{}<code>",
+                            method_context,
                             *item.name.as_ref().unwrap(),
                             shortty(item),
                             ConciseStability(&item.stability)));
-                try!(render_method(w, item));
+                try!(render_method(w, item, method_context));
                 try!(write!(w, "</code></h4>\n"));
             }
             clean::TypedefItem(ref tydef) => {
