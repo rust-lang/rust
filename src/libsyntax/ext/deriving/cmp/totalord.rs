@@ -108,7 +108,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
             let new = {
                 let other_f = match other_fs {
                     [ref o_f] => o_f,
-                    _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`"),
+                    _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
                 };
 
                 let args = vec![
@@ -132,7 +132,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
         cx.expr_path(equals_path.clone()),
         box |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `deriving(Ord)`")
+                cx.span_bug(span, "not exactly 2 arguments in `derives(Ord)`")
             } else {
                 ordering_collapsed(cx, span, tag_tuple)
             }

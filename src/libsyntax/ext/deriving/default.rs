@@ -81,6 +81,6 @@ fn default_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructur
             // let compilation continue
             cx.expr_uint(trait_span, 0)
         }
-        _ => cx.span_bug(trait_span, "Non-static method in `deriving(Default)`")
+        _ => cx.span_bug(trait_span, "Non-static method in `derive(Default)`")
     };
 }
