@@ -619,6 +619,8 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             }
         };
 
+        let field_type = pcx.fcx.normalize_associated_types_in(span, &field_type);
+
         check_pat(pcx, &*field.pat, field_type);
     }
 

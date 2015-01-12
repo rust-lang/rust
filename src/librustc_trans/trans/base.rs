@@ -702,9 +702,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         let mut cx = cx;
 
         for (i, &arg) in variant.args.iter().enumerate() {
-            cx = (*f)(cx,
-                   adt::trans_field_ptr(cx, repr, av, variant.disr_val, i),
-                   arg.subst(tcx, substs));
+            let arg = monomorphize::apply_param_substs(tcx, substs, &arg);
+            cx = f(cx, adt::trans_field_ptr(cx, repr, av, variant.disr_val, i), arg);
         }
         return cx;
     }
