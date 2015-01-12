@@ -2967,8 +2967,8 @@ _panicked state_.
 
 ### Unary operator expressions
 
-Rust defines six symbolic unary operators. They are all written as prefix
-operators, before the expression they apply to.
+Rust defines three unary operators. They are all written as prefix operators,
+before the expression they apply to.
 
 * `-`
   : Negation. May only be applied to numeric types.
@@ -2986,13 +2986,6 @@ operators, before the expression they apply to.
   : Logical negation. On the boolean type, this flips between `true` and
     `false`. On integer types, this inverts the individual bits in the
     two's complement representation of the value.
-* `box`
-  : [Boxing](#pointer-types) operators. Allocate a box to hold the value they
-    are applied to, and store the value in it. `box` creates a box.
-* `&`
-  : Borrow operator. Returns a reference, pointing to its operand. The operand
-    of a borrow is statically proven to outlive the resulting pointer. If the
-    borrow-checker cannot prove this, it is a compilation error.
 
 ### Binary operator expressions
 
