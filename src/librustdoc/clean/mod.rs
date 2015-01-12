@@ -1056,27 +1056,6 @@ impl Clean<Item> for doctree::Function {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
-pub struct ClosureDecl {
-    pub lifetimes: Vec<Lifetime>,
-    pub decl: FnDecl,
-    pub onceness: ast::Onceness,
-    pub unsafety: ast::Unsafety,
-    pub bounds: Vec<TyParamBound>,
-}
-
-impl Clean<ClosureDecl> for ast::ClosureTy {
-    fn clean(&self, cx: &DocContext) -> ClosureDecl {
-        ClosureDecl {
-            lifetimes: self.lifetimes.clean(cx),
-            decl: self.decl.clean(cx),
-            onceness: self.onceness,
-            unsafety: self.unsafety,
-            bounds: self.bounds.clean(cx)
-        }
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub struct FnDecl {
     pub inputs: Arguments,
     pub output: FunctionRetTy,
@@ -1352,8 +1331,6 @@ pub enum Type {
     Generic(String),
     /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
     Primitive(PrimitiveType),
-    Closure(Box<ClosureDecl>),
-    Proc(Box<ClosureDecl>),
     /// extern "ABI" fn
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
