@@ -392,20 +392,21 @@ Here's an example of a concurrent Rust program:
 use std::thread::Thread;
 
 fn main() {
-    for _ in range(0u, 10u) {
-        Thread::spawn(move || {
+    let guards: Vec<_> = (0..10).map(|_| {
+        Thread::scoped(|| {
             println!("Hello, world!");
-        });
-    }
+        })
+    }).collect();
 }
 ```
 
-This program creates ten threads, who all print `Hello, world!`. The
-`spawn` function takes one argument, a closure, indicated by the
-double bars `||`. (The `move` keyword indicates that the closure takes
-ownership of any data it uses; we'll have more on the significance of
-this shortly.) This closure is executed in a new thread created by
-`spawn`.
+This program creates ten threads, which all print `Hello, world!`. The `scoped`
+function takes one argument, a closure, indicated by the double bars `||`. This
+closure is executed in a new thread created by `scoped`. The method is called
+`scoped` because it returns a 'join guard', which will automatically join the
+child thread when it goes out of scope. Because we `collect` these guards into
+a `Vec<T>`, and that vector goes out of scope at the end of our program, our
+program will wait for every thread to finish before finishing.
 
 One common form of problem in concurrent programs is a 'data race.'
 This occurs when two different threads attempt to access the same
