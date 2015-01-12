@@ -59,7 +59,7 @@ Unlike `let`, you _must_ declare the types of function arguments. This does
 not work:
 
 ```{ignore}
-fn print_number(x, y) {
+fn print_sum(x, y) {
     println!("x is: {}", x + y);
 }
 ```
@@ -67,7 +67,7 @@ fn print_number(x, y) {
 You get this error:
 
 ```text
-hello.rs:5:18: 5:19 error: expected `:` but found `,`
+hello.rs:5:18: 5:19 expected one of `!`, `:`, or `@`, found `)`
 hello.rs:5 fn print_number(x, y) {
 ```
 
