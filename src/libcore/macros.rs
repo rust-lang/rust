@@ -243,6 +243,33 @@ macro_rules! unreachable {
     });
 }
 
+/// An unsafe utility macro for indicating unreachable code and possibly enabling
+/// compiler optimizations.
+///
+/// This macro combines the functionalities of the `std::unreachable!` macro and the
+/// `std::intrinsics::unreachable` compiler intrinsic based on the type of the build:
+///
+/// * In a debug build, the macro behaves the same way as `unreachable`
+///   &ndash; will panic if reached at runtime.
+///
+/// * In an ndebug build, the macro behaves the same as the unsafe
+///   `intrinsics::unreachable()` function which let's the compiler assume
+///   the code will never be reached and optimize accordingly.
+///   Note that reaching the macro at runtime in an ndebug build results in
+///   undefined behaviour!
+#[macro_export]
+macro_rules! optimize_unreachable {
+    ($($arg:tt)*) => ({
+        // This macro should always require an usafe block:
+        unsafe fn noop() {} noop();
+        if cfg!(ndebug) {
+            std::intrinsics::unreachable();
+        } else {
+            unreachable!($($arg)*)
+        }
+    });
+}
+
 /// A standardised placeholder for marking unfinished code. It panics with the
 /// message `"not yet implemented"` when executed.
 #[macro_export]
