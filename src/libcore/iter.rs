@@ -101,6 +101,8 @@ pub trait Iterator {
 
 /// Conversion from an `Iterator`
 #[stable]
+#[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
+                          built from an iterator over elements of type `{A}`"]
 pub trait FromIterator<A> {
     /// Build a container with elements from an external iterator.
     fn from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;

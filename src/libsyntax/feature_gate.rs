@@ -71,6 +71,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("visible_private_types", Active),
     ("slicing_syntax", Active),
     ("box_syntax", Active),
+    ("on_unimplemented", Active),
 
     ("if_let", Accepted),
     ("while_let", Accepted),
@@ -249,6 +250,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("linkage", i.span,
                                   "the `linkage` attribute is experimental \
                                    and not portable across platforms")
+            } else if attr.name() == "rustc_on_unimplemented" {
+                self.gate_feature("on_unimplemented", i.span,
+                                  "the `#[rustc_on_unimplemented]` attribute \
+                                  is an experimental feature")
             }
         }
         match i.node {
