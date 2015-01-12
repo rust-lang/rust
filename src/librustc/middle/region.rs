@@ -198,7 +198,6 @@ impl DeclaringStatementContext {
 enum InnermostEnclosingExpr {
     None,
     Some(ast::NodeId),
-    DestructionScope(ast::NodeId),
     Statement(DeclaringStatementContext),
 }
 
@@ -212,8 +211,6 @@ impl InnermostEnclosingExpr {
                 s.to_code_extent(),
             InnermostEnclosingExpr::Some(parent_id) =>
                 CodeExtent::from_node_id(parent_id),
-            InnermostEnclosingExpr::DestructionScope(parent_id) =>
-                CodeExtent::DestructionScope(parent_id),
         };
         Some(extent)
     }
