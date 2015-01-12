@@ -50,7 +50,8 @@
 //!     ```rust
 //!     use std::old_io as io;
 //!
-//!     for line in io::stdin().lock().lines() {
+//!     let mut stdin = io::stdin();
+//!     for line in stdin.lock().lines() {
 //!         print!("{}", line.unwrap());
 //!     }
 //!     ```
