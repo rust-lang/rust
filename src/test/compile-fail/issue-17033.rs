@@ -11,7 +11,11 @@
 #![feature(overloaded_calls)]
 
 fn f<'r>(p: &'r mut fn(p: &mut ())) {
-    (*p)(()) //~ ERROR mismatched types: expected `&mut ()`, found `()`
+    (*p)(()) //~  ERROR mismatched types
+             //~| expected `&mut ()`
+             //~| found `()`
+             //~| expected &-ptr
+             //~| found ()
 }
 
 fn main() {}

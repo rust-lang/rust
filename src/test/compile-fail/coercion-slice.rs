@@ -11,5 +11,10 @@
 // Tests that we forbid coercion from `[T; n]` to `&[T]`
 
 fn main() {
-    let _: &[isize] = [0is]; //~ERROR: mismatched types: expected `&[isize]`, found `[isize; 1]`
+    let _: &[isize] = [0is];
+    //~^ ERROR mismatched types
+    //~| expected `&[isize]`
+    //~| found `[isize; 1]`
+    //~| expected &-ptr
+    //~| found array of 1 elements
 }

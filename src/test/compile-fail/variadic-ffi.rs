@@ -24,14 +24,18 @@ fn main() {
         foo(1); //~ ERROR: this function takes at least 2 parameters but 1 parameter was supplied
 
         let x: unsafe extern "C" fn(f: isize, x: u8) = foo;
-        //~^ ERROR: mismatched types: expected `unsafe extern "C" fn(isize, u8)`
-        //         , found `unsafe extern "C" fn(isize, u8, ...)`
-        //          (expected non-variadic fn, found variadic function)
+        //~^ ERROR: mismatched types
+        //~| expected `unsafe extern "C" fn(isize, u8)`
+        //~| found `unsafe extern "C" fn(isize, u8, ...)`
+        //~| expected non-variadic fn
+        //~| found variadic function
 
         let y: unsafe extern "C" fn(f: isize, x: u8, ...) = bar;
-        //~^ ERROR: mismatched types: expected `unsafe extern "C" fn(isize, u8, ...)`
-        //         , found `extern "C" extern fn(isize, u8)`
-        //          (expected variadic fn, found non-variadic function)
+        //~^ ERROR: mismatched types
+        //~| expected `unsafe extern "C" fn(isize, u8, ...)`
+        //~| found `extern "C" fn(isize, u8) {bar}`
+        //~| expected variadic fn
+        //~| found non-variadic function
 
         foo(1, 2, 3f32); //~ ERROR: can't pass an f32 to variadic function, cast to c_double
         foo(1, 2, true); //~ ERROR: can't pass bool to variadic function, cast to c_int

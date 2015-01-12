@@ -19,8 +19,11 @@ fn main() {
     let u = match e {
         E::B(
           Tau{t: x},
-          //~^ ERROR mismatched types: expected `main::R`, found `main::Tau`
-          //        (expected enum main::R, found struct main::Tau)
+          //~^ ERROR mismatched types
+          //~| expected `main::R`
+          //~| found `main::Tau`
+          //~| expected enum `main::R`
+          //~| found struct `main::Tau`
           _) => x,
     };
 }

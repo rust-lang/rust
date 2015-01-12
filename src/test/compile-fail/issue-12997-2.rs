@@ -12,6 +12,10 @@
 
 //! Test that makes sure wrongly-typed bench functions are rejected
 
-// error-pattern:expected &-ptr, found isize
 #[bench]
 fn bar(x: isize) { }
+//~^ ERROR mismatched types
+//~| expected `fn(&mut test::Bencher)`
+//~| found `fn(isize) {bar}`
+//~| expected &-ptr
+//~| found isize

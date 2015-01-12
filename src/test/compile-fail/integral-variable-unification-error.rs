@@ -11,5 +11,9 @@
 fn main() {
     let mut x = 2;
     x = 5.0;
-//~^ ERROR expected `_`, found `_` (expected integral variable, found floating-point variable)
+    //~^ ERROR mismatched types
+    //~| expected `_`
+    //~| found `_`
+    //~| expected integral variable
+    //~| found floating-point variable
 }

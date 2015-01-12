@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: expected `bool`, found `_` (expected bool, found integral variable)
+// error-pattern:mismatched types
+// error-pattern:expected `bool`
+// error-pattern:found `_`
+// error-pattern:expected bool
+// error-pattern:found integral variable
 
 fn main(){assert!(1,1);}
