@@ -35,6 +35,7 @@ extern crate flate;
 extern crate getopts;
 extern crate graphviz;
 extern crate libc;
+extern crate regex;
 extern crate rustc_llvm;
 extern crate rustc_back;
 extern crate serialize;

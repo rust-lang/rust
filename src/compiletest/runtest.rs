@@ -966,6 +966,16 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
         line.starts_with( prefix )
     }
 
+    // A multi-line error will have followup lines which will always
+    // start with one of these strings.
+    fn continuation( line: &str) -> bool {
+        line.starts_with(" expected") ||
+        line.starts_with("    found") ||
+        //                1234
+        // Should have 4 spaces: see issue 18946
+        line.starts_with("(")
+    }
+
     // Scan and extract our error/warning messages,
     // which look like:
     //    filename:line1:col1: line2:col2: *error:* msg
@@ -981,7 +991,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
                        ee.kind,
                        ee.msg,
                        line);
-                if prefix_matches(line, prefixes[i].as_slice()) &&
+                if (prefix_matches(line, prefixes[i].as_slice()) || continuation(line)) &&
                     line.contains(ee.kind.as_slice()) &&
                     line.contains(ee.msg.as_slice()) {
                     found_flags[i] = true;
