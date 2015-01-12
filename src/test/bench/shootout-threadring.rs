@@ -41,18 +41,19 @@
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread::Thread;
 
-fn start(n_tasks: int, token: int) {
+fn start(n_tasks: i32, token: i32) {
     let (tx, mut rx) = channel();
     tx.send(token).unwrap();
-    for i in range(2, n_tasks + 1) {
+    let mut guards = Vec::with_capacity(n_tasks as usize);
+    for i in 2 .. n_tasks + 1 {
         let (tx, next_rx) = channel();
-        Thread::spawn(move|| roundtrip(i, tx, rx));
-        rx = next_rx;
+        let cur_rx = std::mem::replace(&mut rx, next_rx);
+        guards.push(Thread::scoped(move|| roundtrip(i, tx, cur_rx)));
     }
-    Thread::spawn(move|| roundtrip(1, tx, rx));
+    let guard = Thread::scoped(move|| roundtrip(1, tx, rx));
 }
 
-fn roundtrip(id: int, tx: Sender<int>, rx: Receiver<int>) {
+fn roundtrip(id: i32, tx: Sender<i32>, rx: Receiver<i32>) {
     for token in rx.iter() {
         if token == 1 {
             println!("{}", id);
@@ -64,7 +65,6 @@ fn roundtrip(id: int, tx: Sender<int>, rx: Receiver<int>) {
 
 fn main() {
     let args = std::os::args();
-    let args = args.as_slice();
     let token = if std::os::getenv("RUST_BENCH").is_some() {
         2000000
     } else {
