@@ -112,6 +112,7 @@ use std::cell::{Cell, Ref, RefCell};
 use std::mem::replace;
 use std::rc::Rc;
 use std::iter::repeat;
+use std::slice;
 use syntax::{self, abi, attr};
 use syntax::ast::{self, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
 use syntax::ast_util::{self, local_def, PostExpansionMethod};
@@ -2558,7 +2559,8 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   iterator_expr,
                                                   &[],
                                                   AutorefArgs::No,
-                                                  DontTupleArguments);
+                                                  DontTupleArguments,
+                                                  NoExpectation);
 
     match method {
         Some(method) => {
@@ -2598,9 +2600,10 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          sp: Span,
                                          method_fn_ty: Ty<'tcx>,
                                          callee_expr: &ast::Expr,
-                                         args_no_rcvr: &[&P<ast::Expr>],
+                                         args_no_rcvr: &[P<ast::Expr>],
                                          autoref_args: AutorefArgs,
-                                         tuple_arguments: TupleArgumentsFlag)
+                                         tuple_arguments: TupleArgumentsFlag,
+                                         expected: Expectation<'tcx>)
                                          -> ty::FnOutput<'tcx> {
     if ty::type_is_error(method_fn_ty) {
         let err_inputs = err_args(fcx.tcx(), args_no_rcvr.len());
@@ -2613,6 +2616,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         check_argument_types(fcx,
                              sp,
                              &err_inputs[],
+                             &[],
                              args_no_rcvr,
                              autoref_args,
                              false,
@@ -2622,9 +2626,15 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         match method_fn_ty.sty {
             ty::ty_bare_fn(_, ref fty) => {
                 // HACK(eddyb) ignore self in the definition (see above).
+                let expected_arg_tys = expected_types_for_fn_args(fcx,
+                                                                  sp,
+                                                                  expected,
+                                                                  fty.sig.0.output,
+                                                                  &fty.sig.0.inputs[1..]);
                 check_argument_types(fcx,
                                      sp,
-                                     fty.sig.0.inputs.slice_from(1),
+                                     &fty.sig.0.inputs[1..],
+                                     &expected_arg_tys[],
                                      args_no_rcvr,
                                      autoref_args,
                                      fty.sig.0.variadic,
@@ -2644,7 +2654,8 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   sp: Span,
                                   fn_inputs: &[Ty<'tcx>],
-                                  args: &[&P<ast::Expr>],
+                                  expected_arg_tys: &[Ty<'tcx>],
+                                  args: &[P<ast::Expr>],
                                   autoref_args: AutorefArgs,
                                   variadic: bool,
                                   tuple_arguments: TupleArgumentsFlag) {
@@ -2658,6 +2669,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         1
     };
 
+    let mut expected_arg_tys = expected_arg_tys;
     let expected_arg_count = fn_inputs.len();
     let formal_tys = if tuple_arguments == TupleArguments {
         let tuple_type = structurally_resolved_type(fcx, sp, fn_inputs[0]);
@@ -2670,8 +2682,16 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         if arg_types.len() == 1 {""} else {"s"},
                         args.len(),
                         if args.len() == 1 {" was"} else {"s were"});
+                    expected_arg_tys = &[][];
                     err_args(fcx.tcx(), args.len())
                 } else {
+                    expected_arg_tys = match expected_arg_tys.get(0) {
+                        Some(&ty) => match ty.sty {
+                            ty::ty_tup(ref tys) => &**tys,
+                            _ => &[]
+                        },
+                        None => &[]
+                    };
                     (*arg_types).clone()
                 }
             }
@@ -2679,14 +2699,15 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 span_err!(tcx.sess, sp, E0059,
                     "cannot use call notation; the first type parameter \
                      for the function trait is neither a tuple nor unit");
+                expected_arg_tys = &[][];
                 err_args(fcx.tcx(), args.len())
             }
         }
     } else if expected_arg_count == supplied_arg_count {
-        fn_inputs.iter().map(|a| *a).collect()
+        fn_inputs.to_vec()
     } else if variadic {
         if supplied_arg_count >= expected_arg_count {
-            fn_inputs.iter().map(|a| *a).collect()
+            fn_inputs.to_vec()
         } else {
             span_err!(tcx.sess, sp, E0060,
                 "this function takes at least {} parameter{} \
@@ -2695,6 +2716,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 if expected_arg_count == 1 {""} else {"s"},
                 supplied_arg_count,
                 if supplied_arg_count == 1 {" was"} else {"s were"});
+            expected_arg_tys = &[][];
             err_args(fcx.tcx(), supplied_arg_count)
         }
     } else {
@@ -2704,6 +2726,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if expected_arg_count == 1 {""} else {"s"},
             supplied_arg_count,
             if supplied_arg_count == 1 {" was"} else {"s were"});
+        expected_arg_tys = &[][];
         err_args(fcx.tcx(), supplied_arg_count)
     };
 
@@ -2767,7 +2790,25 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     AutorefArgs::No => {}
                 }
 
-                check_expr_coercable_to_type(fcx, &***arg, formal_ty);
+                // The special-cased logic below has three functions:
+                // 1. Provide as good of an expected type as possible.
+                let expected = expected_arg_tys.get(i).map(|&ty| {
+                    Expectation::rvalue_hint(ty)
+                });
+
+                check_expr_with_unifier(fcx, &**arg,
+                                        expected.unwrap_or(ExpectHasType(formal_ty)),
+                                        NoPreference, || {
+                    // 2. Coerce to the most detailed type that could be coerced
+                    //    to, which is `expected_ty` if `rvalue_hint` returns an
+                    //    `ExprHasType(expected_ty)`, or the `formal_ty` otherwise.
+                    let coerce_ty = expected.and_then(|e| e.only_has_type(fcx));
+                    demand::coerce(fcx, arg.span, coerce_ty.unwrap_or(formal_ty), &**arg);
+
+                    // 3. Relate the expected type and the formal one,
+                    //    if the expected type was used for the coercion.
+                    coerce_ty.map(|ty| demand::suptype(fcx, arg.span, formal_ty, ty));
+                });
             }
         }
     }
@@ -2776,12 +2817,12 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // arguments which we skipped above.
     if variadic {
         for arg in args.iter().skip(expected_arg_count) {
-            check_expr(fcx, &***arg);
+            check_expr(fcx, &**arg);
 
             // There are a few types which get autopromoted when passed via varargs
             // in C but we just error out instead and require explicit casts.
             let arg_ty = structurally_resolved_type(fcx, arg.span,
-                                                    fcx.expr_ty(&***arg));
+                                                    fcx.expr_ty(&**arg));
             match arg_ty.sty {
                 ty::ty_float(ast::TyF32) => {
                     fcx.type_error_message(arg.span,
@@ -2844,7 +2885,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ast::LitInt(_, ast::SignedIntLit(t, _)) => ty::mk_mach_int(tcx, t),
         ast::LitInt(_, ast::UnsignedIntLit(t)) => ty::mk_mach_uint(tcx, t),
         ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
-            let opt_ty = expected.map_to_option(fcx, |ty| {
+            let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::ty_int(_) | ty::ty_uint(_) => Some(ty),
                     ty::ty_char => Some(tcx.types.u8),
@@ -2858,7 +2899,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
         ast::LitFloat(_, t) => ty::mk_mach_float(tcx, t),
         ast::LitFloatUnsuffixed(_) => {
-            let opt_ty = expected.map_to_option(fcx, |ty| {
+            let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::ty_float(_) => Some(ty),
                     _ => None
@@ -3007,6 +3048,45 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
+/// Unifies the return type with the expected type early, for more coercions
+/// and forward type information on the argument expressions.
+fn expected_types_for_fn_args<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                        call_span: Span,
+                                        expected_ret: Expectation<'tcx>,
+                                        formal_ret: ty::FnOutput<'tcx>,
+                                        formal_args: &[Ty<'tcx>])
+                                        -> Vec<Ty<'tcx>> {
+    let expected_args = expected_ret.only_has_type(fcx).and_then(|ret_ty| {
+        if let ty::FnConverging(formal_ret_ty) = formal_ret {
+            fcx.infcx().commit_regions_if_ok(|| {
+                // Attempt to apply a subtyping relationship between the formal
+                // return type (likely containing type variables if the function
+                // is polymorphic) and the expected return type.
+                // No argument expectations are produced if unification fails.
+                let origin = infer::Misc(call_span);
+                let ures = fcx.infcx().sub_types(false, origin, formal_ret_ty, ret_ty);
+                // FIXME(#15760) can't use try! here, FromError doesn't default
+                // to identity so the resulting type is not constrained.
+                if let Err(e) = ures {
+                    return Err(e);
+                }
+
+                // Record all the argument types, with the substitutions
+                // produced from the above subtyping unification.
+                Ok(formal_args.iter().map(|ty| {
+                    fcx.infcx().resolve_type_vars_if_possible(ty)
+                }).collect())
+            }).ok()
+        } else {
+            None
+        }
+    }).unwrap_or(vec![]);
+    debug!("expected_types_for_fn_args(formal={} -> {}, expected={} -> {})",
+           formal_args.repr(fcx.tcx()), formal_ret.repr(fcx.tcx()),
+           expected_args.repr(fcx.tcx()), expected_ret.repr(fcx.tcx()));
+    expected_args
+}
+
 /// Invariant:
 /// If an expression has any sub-expressions that result in a type error,
 /// inspecting that expression's type with `ty::type_is_error` will return
@@ -3028,12 +3108,13 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
            expr.repr(fcx.tcx()), expected.repr(fcx.tcx()));
 
     // Checks a method call.
-    fn check_method_call(fcx: &FnCtxt,
-                         expr: &ast::Expr,
-                         method_name: ast::SpannedIdent,
-                         args: &[P<ast::Expr>],
-                         tps: &[P<ast::Ty>],
-                         lvalue_pref: LvaluePreference) {
+    fn check_method_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                   expr: &ast::Expr,
+                                   method_name: ast::SpannedIdent,
+                                   args: &[P<ast::Expr>],
+                                   tps: &[P<ast::Ty>],
+                                   expected: Expectation<'tcx>,
+                                   lvalue_pref: LvaluePreference) {
         let rcvr = &*args[0];
         check_expr_with_lvalue_pref(fcx, &*rcvr, lvalue_pref);
 
@@ -3064,14 +3145,14 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         // Call the generic checker.
-        let args: Vec<_> = args[1..].iter().map(|x| x).collect();
         let ret_ty = check_method_argument_types(fcx,
                                                  method_name.span,
                                                  fn_ty,
                                                  expr,
-                                                 args.as_slice(),
+                                                 &args[1..],
                                                  AutorefArgs::No,
-                                                 DontTupleArguments);
+                                                 DontTupleArguments,
+                                                 expected);
 
         write_call(fcx, expr, ret_ty);
     }
@@ -3167,8 +3248,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             None => None
         };
         let args = match rhs {
-            Some(rhs) => vec![rhs],
-            None => vec![]
+            Some(rhs) => slice::ref_slice(rhs),
+            None => &[][]
         };
         match method {
             Some(method) => {
@@ -3177,12 +3258,13 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 let method_call = ::middle::ty::MethodCall::expr(op_ex.id);
                 fcx.inh.method_map.borrow_mut().insert(method_call, method);
                 match check_method_argument_types(fcx,
-                                            op_ex.span,
-                                            method_ty,
-                                            op_ex,
-                                            args.as_slice(),
-                                            autoref_args,
-                                            DontTupleArguments) {
+                                                  op_ex.span,
+                                                  method_ty,
+                                                  op_ex,
+                                                  args,
+                                                  autoref_args,
+                                                  DontTupleArguments,
+                                                  NoExpectation) {
                     ty::FnConverging(result_type) => result_type,
                     ty::FnDiverging => fcx.tcx().types.err
                 }
@@ -3196,9 +3278,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                             op_ex.span,
                                             expected_ty,
                                             op_ex,
-                                            args.as_slice(),
+                                            args,
                                             autoref_args,
-                                            DontTupleArguments);
+                                            DontTupleArguments,
+                                            NoExpectation);
                 fcx.tcx().types.err
             }
         }
@@ -3761,7 +3844,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
       }
       ast::ExprUnary(unop, ref oprnd) => {
-        let expected_inner = expected.map(fcx, |ty| {
+        let expected_inner = expected.to_option(fcx).map_or(NoExpectation, |ty| {
             match unop {
                 ast::UnUniq => match ty.sty {
                     ty::ty_uniq(ty) => {
@@ -3851,8 +3934,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, oprnd_t);
       }
       ast::ExprAddrOf(mutbl, ref oprnd) => {
-        let expected = expected.only_has_type();
-        let hint = expected.map(fcx, |ty| {
+        let hint = expected.only_has_type(fcx).map_or(NoExpectation, |ty| {
             match ty.sty {
                 ty::ty_rptr(_, ref mt) | ty::ty_ptr(ref mt) => {
                     if ty::expr_is_lval(fcx.tcx(), &**oprnd) {
@@ -4046,10 +4128,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, fcx.node_ty(b.id));
       }
       ast::ExprCall(ref callee, ref args) => {
-          callee::check_call(fcx, expr, &**callee, args.as_slice());
+          callee::check_call(fcx, expr, &**callee, &args[], expected);
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
-        check_method_call(fcx, expr, ident, args.as_slice(), tps.as_slice(), lvalue_pref);
+        check_method_call(fcx, expr, ident, &args[], &tps[], expected, lvalue_pref);
         let arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
         let  args_err = arg_tys.fold(false,
              |rest_err, a| {
@@ -4065,7 +4147,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         check_cast(fcx, expr, &**e, &**t);
       }
       ast::ExprVec(ref args) => {
-        let uty = expected.map_to_option(fcx, |uty| {
+        let uty = expected.to_option(fcx).and_then(|uty| {
             match uty.sty {
                 ty::ty_vec(ty, _) => Some(ty),
                 _ => None
@@ -4134,8 +4216,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
       }
       ast::ExprTup(ref elts) => {
-        let expected = expected.only_has_type();
-        let flds = expected.map_to_option(fcx, |ty| {
+        let flds = expected.only_has_type(fcx).and_then(|ty| {
             match ty.sty {
                 ty::ty_tup(ref flds) => Some(&flds[]),
                 _ => None
@@ -4428,13 +4509,6 @@ impl<'tcx> Expectation<'tcx> {
         }
     }
 
-    fn only_has_type(self) -> Expectation<'tcx> {
-        match self {
-            ExpectHasType(t) => ExpectHasType(t),
-            _ => NoExpectation
-        }
-    }
-
     // Resolves `expected` by a single level if it is a variable. If
     // there is no expected type or resolution is not possible (e.g.,
     // no constraints yet present), just returns `None`.
@@ -4458,25 +4532,19 @@ impl<'tcx> Expectation<'tcx> {
         }
     }
 
-    fn map<'a, F>(self, fcx: &FnCtxt<'a, 'tcx>, unpack: F) -> Expectation<'tcx> where
-        F: FnOnce(Ty<'tcx>) -> Expectation<'tcx>
-    {
-        match self.resolve(fcx) {
-            NoExpectation => NoExpectation,
-            ExpectCastableToType(ty) |
-            ExpectHasType(ty) |
-            ExpectRvalueLikeUnsized(ty) => unpack(ty),
-        }
-    }
-
-    fn map_to_option<'a, O, F>(self, fcx: &FnCtxt<'a, 'tcx>, unpack: F) -> Option<O> where
-        F: FnOnce(Ty<'tcx>) -> Option<O>,
-    {
+    fn to_option<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             NoExpectation => None,
             ExpectCastableToType(ty) |
             ExpectHasType(ty) |
-            ExpectRvalueLikeUnsized(ty) => unpack(ty),
+            ExpectRvalueLikeUnsized(ty) => Some(ty),
+        }
+    }
+
+    fn only_has_type<'a>(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
+        match self.resolve(fcx) {
+            ExpectHasType(ty) => Some(ty),
+            _ => None
         }
     }
 }
