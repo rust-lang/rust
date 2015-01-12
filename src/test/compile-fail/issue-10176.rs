@@ -10,7 +10,11 @@
 
 fn f() -> isize {
     (return 1, return 2)
-//~^ ERROR mismatched types: expected `isize`, found `(_, _)` (expected isize, found tuple)
+//~^ ERROR mismatched types
+//~| expected `isize`
+//~| found `(_, _)`
+//~| expected isize
+//~| found tuple
 }
 
 fn main() {}

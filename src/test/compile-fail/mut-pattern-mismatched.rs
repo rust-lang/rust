@@ -13,12 +13,18 @@ fn main() {
 
     // (separate lines to ensure the spans are accurate)
 
-     let &_ //~ ERROR expected `&mut isize`, found `&_`
+     let &_ //~  ERROR mismatched types
+            //~| expected `&mut isize`
+            //~| found `&_`
+            //~| values differ in mutability
         = foo;
     let &mut _ = foo;
 
     let bar = &1is;
     let &_ = bar;
-    let &mut _ //~ ERROR expected `&isize`, found `&mut _`
+    let &mut _ //~  ERROR mismatched types
+               //~| expected `&isize`
+               //~| found `&mut _`
+               //~| values differ in mutability
          = bar;
 }

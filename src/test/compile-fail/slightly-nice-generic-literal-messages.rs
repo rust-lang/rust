@@ -13,7 +13,11 @@ struct Foo<T,U>(T);
 fn main() {
     match Foo(1.1) {
         1 => {}
-    //~^ ERROR expected `Foo<_, _>`, found `_`
+    //~^ ERROR mismatched types
+    //~| expected `Foo<_, _>`
+    //~| found `_`
+    //~| expected struct `Foo`
+    //~| found integral variable
     }
 
 }

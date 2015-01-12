@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:mismatched types: expected `char`, found
 // Issue #876
 
 #![no_implicit_prelude]
@@ -21,4 +20,9 @@ fn last<T>(v: Vec<&T> ) -> std::option::Option<T> {
 fn main() {
     let y;
     let x : char = last(y);
+    //~^ ERROR mismatched types
+    //~| expected `char`
+    //~| found `core::option::Option<_>`
+    //~| expected char
+    //~| found enum `core::option::Option`
 }
