@@ -530,7 +530,6 @@ vectors provided from C, using idiomatic Rust practices.
 
 ```
 #![no_std]
-#![feature(globs)]
 #![feature(lang_items)]
 
 # extern crate libc;
