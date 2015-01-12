@@ -195,11 +195,14 @@ same signature: `Fn(i32) -> i32`.
 
 That is because in Rust each closure has its own unique type.
 So, not only do closures with different signatures have different types,
-but different closures with the *same* signature have *different* types!
+but different closures with the *same* signature have *different*
+types, as well!
 You can think of it this way: the behaviour of a closure is part of its type.
-And since we want to support many different closures that all take
-an `i32` and return an `i32` we introduced a type parameter that is able
-to represent all these closures.
+Therefore, using a single type parameter for both accepted closures
+will accept the first of them, rejecting the second. The distinct
+type of the second closure does not allow it to be represented by the
+same type parameter as that of the first.  We acknowledge this, and
+use two different type parameters `F` and `G`.
 
 This also introduces the `where` clause, which lets us describe type
 parameters in a more flexible manner.
