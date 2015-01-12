@@ -931,8 +931,9 @@ pub fn trans_field_ptr<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, r: &Repr<
     }
 }
 
-pub fn struct_field_ptr<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, st: &Struct<'tcx>, val: ValueRef,
-                                    ix: uint, needs_cast: bool) -> ValueRef {
+pub fn struct_field_ptr<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
+                                          st: &Struct<'tcx>, val: ValueRef,
+                                          ix: uint, needs_cast: bool) -> ValueRef {
     let val = if needs_cast {
         let ccx = bcx.ccx();
         let fields = st.fields.iter().map(|&ty| type_of::type_of(ccx, ty)).collect::<Vec<_>>();
@@ -946,10 +947,10 @@ pub fn struct_field_ptr<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, st: &Str
 }
 
 pub fn fold_variants<'fcx, 'blk, 'tcx, F>(bcx: Block<'fcx, 'blk, 'tcx>,
-                                    r: &Repr<'tcx>,
-                                    value: ValueRef,
-                                    mut f: F)
-                                    -> Block<'fcx, 'blk, 'tcx> where
+                                          r: &Repr<'tcx>,
+                                          value: ValueRef,
+                                          mut f: F)
+                                          -> Block<'fcx, 'blk, 'tcx> where
     F: FnMut(Block<'fcx, 'blk, 'tcx>, &Struct<'tcx>, ValueRef) -> Block<'fcx, 'blk, 'tcx>,
 {
     let fcx = bcx.fcx;
@@ -989,8 +990,10 @@ pub fn fold_variants<'fcx, 'blk, 'tcx, F>(bcx: Block<'fcx, 'blk, 'tcx>,
 }
 
 /// Access the struct drop flag, if present.
-pub fn trans_drop_flag_ptr<'fcx, 'blk, 'tcx>(mut bcx: Block<'fcx, 'blk, 'tcx>, r: &Repr<'tcx>, val: ValueRef)
-                                       -> datum::DatumBlock<'fcx, 'blk, 'tcx, datum::Expr> {
+pub fn trans_drop_flag_ptr<'fcx, 'blk, 'tcx>(mut bcx: Block<'fcx, 'blk, 'tcx>,
+                                             r: &Repr<'tcx>,
+                                             val: ValueRef)
+                                             -> datum::DatumBlock<'fcx, 'blk, 'tcx, datum::Expr> {
     let tcx = bcx.tcx();
     let ptr_ty = ty::mk_imm_ptr(bcx.tcx(), tcx.types.bool);
     match *r {
