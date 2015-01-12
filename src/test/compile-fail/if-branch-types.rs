@@ -10,5 +10,9 @@
 
 fn main() {
     let x = if true { 10is } else { 10us };
-    //~^ ERROR if and else have incompatible types: expected `isize`, found `usize`
+    //~^ ERROR if and else have incompatible types
+    //~| expected `isize`
+    //~| found `usize`
+    //~| expected isize
+    //~| found usize
 }

@@ -16,7 +16,10 @@ impl Pair<
     isize
 > {
     fn say(self: &Pair<&str, isize>) {
-//~^ ERROR mismatched types: expected `Pair<&'static str, isize>`, found `Pair<&str, isize>`
+//~^ ERROR mismatched types
+//~| expected `Pair<&'static str, isize>`
+//~| found `Pair<&str, isize>`
+//~| lifetime mismatch
         println!("{}", self);
     }
 }

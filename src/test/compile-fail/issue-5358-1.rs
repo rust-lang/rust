@@ -13,7 +13,12 @@ struct S(Either<usize, usize>);
 
 fn main() {
     match S(Either::Left(5)) {
-        Either::Right(_) => {}  //~ ERROR mismatched types: expected `S`, found `Either
+        Either::Right(_) => {}
+        //~^ ERROR mismatched types
+        //~| expected `S`
+        //~| found `Either<_, _>`
+        //~| expected struct `S`
+        //~| found enum `Either`
         _ => {}
     }
 }

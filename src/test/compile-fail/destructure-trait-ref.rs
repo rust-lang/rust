@@ -37,7 +37,22 @@ fn main() {
     let box x = box 1is as Box<T>; //~ ERROR type `Box<T>` cannot be dereferenced
 
     // n > m
-    let &&x = &1is as &T;     //~ ERROR found &-ptr
-    let &&&x = &(&1is as &T); //~ ERROR found &-ptr
-    let box box x = box 1is as Box<T>;    //~ ERROR found box
+    let &&x = &1is as &T;
+    //~^ ERROR mismatched types
+    //~| expected `T`
+    //~| found `&_`
+    //~| expected trait T
+    //~| found &-ptr
+    let &&&x = &(&1is as &T);
+    //~^ ERROR mismatched types
+    //~| expected `T`
+    //~| found `&_`
+    //~| expected trait T
+    //~| found &-ptr
+    let box box x = box 1is as Box<T>;
+    //~^ ERROR mismatched types
+    //~| expected `T`
+    //~| found `Box<_>`
+    //~| expected trait T
+    //~| found box
 }
