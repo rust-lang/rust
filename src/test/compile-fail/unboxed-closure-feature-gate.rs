@@ -11,7 +11,8 @@
 // Check that parenthetical notation is feature-gated except with the
 // `Fn` traits.
 
-trait Foo<A,R> {
+trait Foo<A> {
+    type Output;
 }
 
 fn main() {

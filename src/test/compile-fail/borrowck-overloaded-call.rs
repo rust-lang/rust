@@ -17,7 +17,9 @@ struct SFn {
     y: isize,
 }
 
-impl Fn<(isize,),isize> for SFn {
+impl Fn<(isize,)> for SFn {
+    type Output = isize;
+
     extern "rust-call" fn call(&self, (z,): (isize,)) -> isize {
         self.x * self.y * z
     }
@@ -28,7 +30,9 @@ struct SFnMut {
     y: isize,
 }
 
-impl FnMut<(isize,),isize> for SFnMut {
+impl FnMut<(isize,)> for SFnMut {
+    type Output = isize;
+
     extern "rust-call" fn call_mut(&mut self, (z,): (isize,)) -> isize {
         self.x * self.y * z
     }
@@ -38,7 +42,9 @@ struct SFnOnce {
     x: String,
 }
 
-impl FnOnce<(String,),usize> for SFnOnce {
+impl FnOnce<(String,)> for SFnOnce {
+    type Output = usize;
+
     extern "rust-call" fn call_once(self, (z,): (String,)) -> usize {
         self.x.len() + z.len()
     }

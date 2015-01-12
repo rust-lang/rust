@@ -33,7 +33,9 @@ impl Alloy {
     }
 }
 
-impl<'a, 'b> Fn<(&'b mut (Response+'b),),()> for SendFile<'a> {
+impl<'a, 'b> Fn<(&'b mut (Response+'b),)> for SendFile<'a> {
+    type Output = ();
+
     extern "rust-call" fn call(&self, (_res,): (&'b mut (Response+'b),)) {}
 }
 

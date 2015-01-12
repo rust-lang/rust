@@ -15,7 +15,7 @@
 #![feature(unboxed_closures)]
 
 struct Parser<'a, I, O> {
-    parse: Box<FnMut<(I,), Result<O, String>> + 'a>
+    parse: Box<FnMut(I) -> Result<O, String> + 'a>
 }
 
 impl<'a, I, O: 'a> Parser<'a, I, O> {

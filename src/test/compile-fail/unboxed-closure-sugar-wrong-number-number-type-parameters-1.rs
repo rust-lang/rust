@@ -12,7 +12,7 @@
 
 trait One<A> { fn foo(&self) -> A; }
 
-fn foo(_: &One()) //~ ERROR wrong number of type arguments
+fn foo(_: &One()) //~ ERROR no associated type `Output` defined in `One<()>`
 {}
 
 fn main() { }

@@ -14,7 +14,8 @@ trait Foo {}
 
 struct Bar;
 
-impl<'a> std::ops::Fn<(&'a (Foo+'a),), ()> for Bar {
+impl<'a> std::ops::Fn<(&'a (Foo+'a),)> for Bar {
+    type Output = ();
     extern "rust-call" fn call(&self, _: (&'a Foo,)) {}
 }
 

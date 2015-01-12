@@ -22,23 +22,23 @@ trait Get<A,R> {
 // Parse HRTB with explicit `for` in a where-clause:
 
 fn foo00<T>(t: T)
-    where T : for<'a> Get<&'a int, &'a int>
+    where T : for<'a> Get<&'a i32, &'a i32>
 {
 }
 
-fn foo01<T: for<'a> Get<&'a int, &'a int>>(t: T)
+fn foo01<T: for<'a> Get<&'a i32, &'a i32>>(t: T)
 {
 }
 
 // Parse HRTB with explicit `for` in various sorts of types:
 
-fn foo10(t: Box<for<'a> Get<int, int>>) { }
-fn foo11(t: Box<for<'a> Get(int) -> int>) { }
+fn foo10(t: Box<for<'a> Get<i32, i32>>) { }
+fn foo11(t: Box<for<'a> Fn(i32) -> i32>) { }
 
-fn foo20(t: for<'a> fn(int) -> int) { }
-fn foo21(t: for<'a> unsafe fn(int) -> int) { }
-fn foo22(t: for<'a> extern "C" fn(int) -> int) { }
-fn foo23(t: for<'a> unsafe extern "C" fn(int) -> int) { }
+fn foo20(t: for<'a> fn(i32) -> i32) { }
+fn foo21(t: for<'a> unsafe fn(i32) -> i32) { }
+fn foo22(t: for<'a> extern "C" fn(i32) -> i32) { }
+fn foo23(t: for<'a> unsafe extern "C" fn(i32) -> i32) { }
 
 fn main() {
 }
