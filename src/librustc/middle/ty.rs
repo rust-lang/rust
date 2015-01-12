@@ -1890,7 +1890,7 @@ pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::R
 /// normal trait predicate (`T : TraitRef<...>`) and one of these
 /// predicates. Form #2 is a broader form in that it also permits
 /// equality between arbitrary types. Processing an instance of Form
-/// #2 eventually yields one of these `ProjectionPredicate`
+/// \#2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
 #[derive(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ProjectionPredicate<'tcx> {

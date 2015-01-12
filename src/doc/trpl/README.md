@@ -11,7 +11,7 @@ navigate through the menu on the left.
 ## Basics
 
 This section is a linear introduction to the basic syntax and semantics of
-Rust. It has individual sections on each part of Rust's syntax, and cumulates
+Rust. It has individual sections on each part of Rust's syntax, and culminates
 in a small project: a guessing game.
 
 After reading "Basics," you will have a good foundation to learn more about
@@ -27,7 +27,7 @@ and will be able to understand most Rust code and write more complex programs.
 
 ## Advanced
 
-In a similar fashion to "Intermediate," this setion is full of individual,
+In a similar fashion to "Intermediate," this section is full of individual,
 deep-dive chapters, which stand alone and can be read in any order. These
 chapters focus on the most complex features, as well as some things that
 are only available in upcoming versions of Rust.

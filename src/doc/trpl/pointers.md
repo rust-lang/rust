@@ -23,7 +23,7 @@ languages, so it's important to understand them.
 
 When you create a new variable binding, you're giving a name to a value that's
 stored at a particular location on the stack. (If you're not familiar with the
-"heap" vs. "stack", please check out [this Stack Overflow
+*heap* vs. *stack*, please check out [this Stack Overflow
 question](http://stackoverflow.com/questions/79923/what-and-where-are-the-stack-and-heap),
 as the rest of this guide assumes you know the difference.) Like this:
 
@@ -43,7 +43,7 @@ refer to `x`, we get the corresponding value. Hence, `x` is `5`.
 
 Let's introduce a pointer. In some languages, there is just one type of
 'pointer,' but in Rust, we have many types. In this case, we'll use a Rust
-**reference**, which is the simplest kind of pointer.
+*reference*, which is the simplest kind of pointer.
 
 ```{rust}
 let x = 5i;
@@ -90,7 +90,7 @@ hello.rs:6     println!("{}", x + z);
                                   ^
 ```
 
-We can **dereference** the pointer by using the `*` operator. Dereferencing a
+We can *dereference* the pointer by using the `*` operator. Dereferencing a
 pointer means accessing the value at the location stored in the pointer. This
 will work:
 
@@ -105,8 +105,8 @@ println!("{}", x + *z);
 It prints `13`.
 
 That's it! That's all pointers are: they point to some memory location. Not
-much else to them. Now that we've discussed the 'what' of pointers, let's
-talk about the 'why.'
+much else to them. Now that we've discussed the *what* of pointers, let's
+talk about the *why*.
 
 ## Pointer uses
 
@@ -168,7 +168,7 @@ Even in a language which is pass by value, `i` will be `5` at the comment. You
 see, because the argument `x` is a pointer, we do send a copy over to `foo`,
 but because it points at a memory location, which we then assign to, the
 original value is still changed. This pattern is called
-'pass-reference-by-value.' Tricky!
+*pass-reference-by-value*. Tricky!
 
 ## Common pointer problems
 
@@ -209,7 +209,7 @@ as `make_pointer` returns. But we return a pointer to its memory location, and
 so back in `main`, we try to use that pointer, and it's a very similar
 situation to our first one. Setting invalid memory locations is bad.
 
-As one last example of a big problem with pointers, **aliasing** can be an
+As one last example of a big problem with pointers, *aliasing* can be an
 issue. Two pointers are said to alias when they point at the same location
 in memory. Like this:
 
@@ -248,7 +248,7 @@ it's worth it to not have the problems that simple pointers have.
 
 # References
 
-The most basic type of pointer that Rust has is called a 'reference.' Rust
+The most basic type of pointer that Rust has is called a *reference*. Rust
 references look like this:
 
 ```{rust}
@@ -340,8 +340,8 @@ let z = &mut x; // error: cannot borrow `x` as mutable more than once at a time
 Despite their complete safety, a reference's representation at runtime is the
 same as that of an ordinary pointer in a C program. They introduce zero
 overhead. The compiler does all safety checks at compile time. The theory that
-allows for this was originally called **region pointers**. Region pointers
-evolved into what we know today as **lifetimes**.
+allows for this was originally called *region pointers*. Region pointers
+evolved into what we know today as *lifetimes*.
 
 Here's the simple explanation: would you expect this code to compile?
 
@@ -355,7 +355,7 @@ fn main() {
 Probably not. That's because you know that the name `x` is valid from where
 it's declared to when it goes out of scope. In this case, that's the end of
 the `main` function. So you know this code will cause an error. We call this
-duration a 'lifetime'. Let's try a more complex example:
+duration a *lifetime*. Let's try a more complex example:
 
 ```{rust}
 fn main() {
@@ -474,7 +474,7 @@ those contents.
 
 # Boxes
 
-`Box<T>` is Rust's 'boxed pointer' type. Boxes provide the simplest form of
+`Box<T>` is Rust's *boxed pointer* type. Boxes provide the simplest form of
 heap allocation in Rust. Creating a box looks like this:
 
 ```{rust}
@@ -496,10 +496,10 @@ they go out of scope:
 ```
 
 However, boxes do _not_ use reference counting or garbage collection. Boxes are
-what's called an **affine type**. This means that the Rust compiler, at compile
+what's called an *affine type*. This means that the Rust compiler, at compile
 time, determines when the box comes into and goes out of scope, and inserts the
 appropriate calls there. Furthermore, boxes are a specific kind of affine type,
-known as a **region**. You can read more about regions [in this paper on the
+known as a *region*. You can read more about regions [in this paper on the
 Cyclone programming
 language](http://www.cs.umd.edu/projects/cyclone/papers/cyclone-regions.pdf).
 
@@ -560,7 +560,7 @@ fn main() {
 }
 ```
 
-In this case, Rust knows that `x` is being 'borrowed' by the `add_one()`
+In this case, Rust knows that `x` is being *borrowed* by the `add_one()`
 function, and since it's only reading the value, allows it.
 
 We can borrow `x` multiple times, as long as it's not simultaneous:
@@ -606,7 +606,7 @@ and occasionally, when returning data.
 ### Recursive data structures
 
 Sometimes, you need a recursive data structure. The simplest is known as a
-'cons list':
+*cons list*:
 
 
 ```{rust}

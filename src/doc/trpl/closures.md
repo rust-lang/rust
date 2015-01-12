@@ -2,7 +2,7 @@
 
 So far, we've made lots of functions in Rust, but we've given them all names.
 Rust also allows us to create anonymous functions. Rust's anonymous
-functions are called **closure**s. By themselves, closures aren't all that
+functions are called *closures*. By themselves, closures aren't all that
 interesting, but when you combine them with functions that take closures as
 arguments, really powerful things are possible.
 
@@ -61,7 +61,7 @@ fn main() {
 
 ## Moving closures
 
-Rust has a second type of closure, called a **moving closure**. Moving
+Rust has a second type of closure, called a *moving closure*. Moving
 closures are indicated using the `move` keyword (e.g., `move || x *
 x`). The difference between a moving closure and an ordinary closure
 is that a moving closure always takes ownership of all variables that
@@ -110,25 +110,27 @@ passing two variables: one is an i32, and one is a function."
 Next, let's look at how `twice` is defined:
 
 ```{rust,ignore}
-fn twice(x: i32, f: |i32| -> i32) -> i32 {
+fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 {
 ```
 
 `twice` takes two arguments, `x` and `f`. That's why we called it with two
 arguments. `x` is an `i32`, we've done that a ton of times. `f` is a function,
-though, and that function takes an `i32` and returns an `i32`. Notice
-how the `|i32| -> i32` syntax looks a lot like our definition of `square`
-above, if we added the return type in:
-
-```{rust}
-let square = |&: x: i32| -> i32 { x * x };
-//           |i32|       -> i32
-```
-
-This function takes an `i32` and returns an `i32`.
+though, and that function takes an `i32` and returns an `i32`. This is
+what the requirement `Fn(i32) -> i32` for the type parameter `F` says.
+You might ask yourself: why do we need to introduce a type parameter here?
+That is because in Rust each closure has its own unique type.
+So, not only do closures with different signatures have different types,
+but different closures with the *same* signature have *different* types!
+You can think of it this way: the behaviour of a closure is part of its type.
+And since we want to support many different closures that all take
+an `i32` and return an `i32` we introduced a type parameter that is able
+to represent all these closures. 
 
 This is the most complicated function signature we've seen yet! Give it a read
 a few times until you can see how it works. It takes a teeny bit of practice, and
-then it's easy.
+then it's easy. The good news is that this kind of passing a closure around
+can be very efficient. With all the type information available at compile-time
+the compiler can do wonders.
 
 Finally, `twice` returns an `i32` as well.
 

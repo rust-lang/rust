@@ -1616,13 +1616,15 @@ impl<'a> Iterator for Lines<'a> {
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+}
 
-#[stable]}
+#[stable]
 impl<'a> DoubleEndedIterator for Lines<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
+}
 
-#[stable]}
+#[stable]
 impl<'a> Iterator for LinesAny<'a> {
     type Item = &'a str;
 
@@ -1630,8 +1632,9 @@ impl<'a> Iterator for LinesAny<'a> {
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+}
 
-#[stable]}
+#[stable]
 impl<'a> DoubleEndedIterator for LinesAny<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }

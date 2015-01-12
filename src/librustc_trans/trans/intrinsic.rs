@@ -357,11 +357,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 &ccx.link_meta().crate_hash);
             // NB: This needs to be kept in lockstep with the TypeId struct in
             //     the intrinsic module
-            C_named_struct(llret_ty, &[C_u64(ccx, hash)])
+            C_u64(ccx, hash)
         }
         (_, "init") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
+            let lltp_ty = type_of::arg_type_of(ccx, tp_ty);
             if return_type_is_void(ccx, tp_ty) {
                 C_nil(ccx)
             } else {
@@ -686,6 +686,11 @@ fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, name: &'static st
     let ret = C_undef(type_of::type_of(bcx.ccx(), t));
     let ret = InsertValue(bcx, ret, result, 0);
     let ret = InsertValue(bcx, ret, overflow, 1);
-
-    ret
+    if type_is_immediate(bcx.ccx(), t) {
+        let tmp = alloc_ty(bcx, t, "tmp");
+        Store(bcx, ret, tmp);
+        load_ty(bcx, tmp, t)
+    } else {
+        ret
+    }
 }

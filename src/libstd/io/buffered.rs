@@ -13,6 +13,7 @@
 //! Buffering wrappers for I/O traits
 
 use cmp;
+use fmt;
 use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::{IteratorExt, ExactSizeIterator};
 use ops::Drop;
@@ -49,6 +50,13 @@ pub struct BufferedReader<R> {
     buf: Vec<u8>,
     pos: uint,
     cap: uint,
+}
+
+impl<R> fmt::Show for BufferedReader<R> where R: fmt::Show {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "BufferedReader {{ reader: {:?}, buffer: {}/{} }}",
+               self.inner, self.cap - self.pos, self.buf.len())
+    }
 }
 
 impl<R: Reader> BufferedReader<R> {
@@ -148,6 +156,13 @@ pub struct BufferedWriter<W> {
     pos: uint
 }
 
+impl<W> fmt::Show for BufferedWriter<W> where W: fmt::Show {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "BufferedWriter {{ writer: {:?}, buffer: {}/{} }}",
+               self.inner.as_ref().unwrap(), self.pos, self.buf.len())
+    }
+}
+
 impl<W: Writer> BufferedWriter<W> {
     /// Creates a new `BufferedWriter` with the specified buffer capacity
     pub fn with_capacity(cap: uint, inner: W) -> BufferedWriter<W> {
@@ -235,6 +250,13 @@ pub struct LineBufferedWriter<W> {
     inner: BufferedWriter<W>,
 }
 
+impl<W> fmt::Show for LineBufferedWriter<W> where W: fmt::Show {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "LineBufferedWriter {{ writer: {:?}, buffer: {}/{} }}",
+               self.inner.inner, self.inner.pos, self.inner.buf.len())
+    }
+}
+
 impl<W: Writer> LineBufferedWriter<W> {
     /// Creates a new `LineBufferedWriter`
     pub fn new(inner: W) -> LineBufferedWriter<W> {
@@ -316,6 +338,17 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 /// ```
 pub struct BufferedStream<S> {
     inner: BufferedReader<InternalBufferedWriter<S>>
+}
+
+impl<S> fmt::Show for BufferedStream<S> where S: fmt::Show {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let reader = &self.inner;
+        let writer = &self.inner.inner.0;
+        write!(fmt, "BufferedStream {{ stream: {:?}, write_buffer: {}/{}, read_buffer: {}/{} }}",
+               writer.inner,
+               writer.pos, writer.buf.len(),
+               reader.cap - reader.pos, reader.buf.len())
+    }
 }
 
 impl<S: Stream> BufferedStream<S> {

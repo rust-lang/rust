@@ -67,7 +67,7 @@ fn main() {
 }
 ```
 
-These lines define a **function** in Rust. The `main` function is special:
+These lines define a *function* in Rust. The `main` function is special:
 it's the beginning of every Rust program. The first line says "I'm declaring a
 function named `main`, which takes no arguments and returns nothing." If there
 were arguments, they would go inside the parentheses (`(` and `)`), and because
@@ -91,7 +91,7 @@ spaces, not tabs. Please configure your editor of choice to insert four spaces
 with the tab key. We provide some [sample configurations for various
 editors](https://github.com/rust-lang/rust/tree/master/src/etc).
 
-The second point is the `println!()` part. This is calling a Rust **macro**,
+The second point is the `println!()` part. This is calling a Rust *macro*,
 which is how metaprogramming is done in Rust. If it were a function instead, it
 would look like this: `println()`. For our purposes, we don't need to worry
 about this difference. Just know that sometimes, you'll see a `!`, and that
@@ -102,19 +102,19 @@ last thing to mention: Rust's macros are significantly different from C macros,
 if you've used those. Don't be scared of using macros. We'll get to the details
 eventually, you'll just have to trust us for now.
 
-Next, `"Hello, world!"` is a **string**. Strings are a surprisingly complicated
-topic in a systems programming language, and this is a **statically allocated**
+Next, `"Hello, world!"` is a *string*. Strings are a surprisingly complicated
+topic in a systems programming language, and this is a *statically allocated*
 string. We will talk more about different kinds of allocation later. We pass
 this string as an argument to `println!`, which prints the string to the
 screen. Easy enough!
 
-Finally, the line ends with a semicolon (`;`). Rust is an **expression
-oriented** language, which means that most things are expressions. The `;` is
+Finally, the line ends with a semicolon (`;`). Rust is an *expression
+oriented* language, which means that most things are expressions. The `;` is
 used to indicate that this expression is over, and the next one is ready to
 begin. Most lines of Rust code end with a `;`. We will cover this in-depth
 later in the guide.
 
-Finally, actually **compiling** and **running** our program. We can compile
+Finally, actually *compiling* and *running* our program. We can compile
 with our compiler, `rustc`, by passing it the name of our source file:
 
 ```{bash}
@@ -147,7 +147,7 @@ This prints out our `Hello, world!` text to our terminal.
 
 If you come from a dynamically typed language like Ruby, Python, or JavaScript,
 you may not be used to these two steps being separate. Rust is an
-**ahead-of-time compiled language**, which means that you can compile a
+*ahead-of-time compiled language*, which means that you can compile a
 program, give it to someone else, and they don't need to have Rust installed.
 If you give someone a `.rb` or `.py` or `.js` file, they need to have
 Ruby/Python/JavaScript installed, but you just need one command to both compile

@@ -1054,6 +1054,11 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         C_undef(type_of::type_of(cx.ccx(), t))
     } else if ty::type_is_bool(t) {
         Trunc(cx, LoadRangeAssert(cx, ptr, 0, 2, llvm::False), Type::i1(cx.ccx()))
+    } else if type_is_immediate(cx.ccx(), t) && type_of::type_of(cx.ccx(), t).is_aggregate() {
+        // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
+        // for this leads to bad optimizations, so its arg type is an appropriately sized integer
+        // and we have to convert it
+        Load(cx, BitCast(cx, ptr, type_of::arg_type_of(cx.ccx(), t).ptr_to()))
     } else if ty::type_is_char(t) {
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
@@ -1065,9 +1070,14 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
-pub fn store_ty(cx: Block, v: ValueRef, dst: ValueRef, t: Ty) {
+pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
     if ty::type_is_bool(t) {
         Store(cx, ZExt(cx, v, Type::i8(cx.ccx())), dst);
+    } else if type_is_immediate(cx.ccx(), t) && type_of::type_of(cx.ccx(), t).is_aggregate() {
+        // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
+        // for this leads to bad optimizations, so its arg type is an appropriately sized integer
+        // and we have to convert it
+        Store(cx, v, BitCast(cx, dst, type_of::arg_type_of(cx.ccx(), t).ptr_to()));
     } else {
         Store(cx, v, dst);
     };

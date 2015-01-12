@@ -14,6 +14,7 @@ use target::TargetOptions;
 use self::Arch::*;
 
 #[allow(non_camel_case_types)]
+#[derive(Copy)]
 pub enum Arch {
     Armv7,
     Armv7s,
@@ -70,8 +71,16 @@ fn pre_link_args(arch: Arch) -> Vec<String> {
          "-Wl,-syslibroot".to_string(), get_sdk_root(sdk_name)]
 }
 
+fn target_cpu(arch: Arch) -> String {
+    match arch {
+        X86_64 => "x86-64",
+        _ => "generic",
+    }.to_string()
+}
+
 pub fn opts(arch: Arch) -> TargetOptions {
     TargetOptions {
+        cpu: target_cpu(arch),
         dynamic_linking: false,
         executables: true,
         // Although there is an experimental implementation of LLVM which

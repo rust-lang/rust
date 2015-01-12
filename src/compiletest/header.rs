@@ -42,8 +42,6 @@ pub struct TestProps {
     pub pretty_compare_only: bool,
     // Patterns which must not appear in the output of a cfail test.
     pub forbid_output: Vec<String>,
-    // Ignore errors which originate from a command line span
-    pub ignore_command_line: bool,
 }
 
 // Load any test directives embedded in the file
@@ -62,8 +60,6 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut pretty_mode = None;
     let mut pretty_compare_only = false;
     let mut forbid_output = Vec::new();
-    let mut ignore_command_line = false;
-
     iter_header(testfile, |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
@@ -106,10 +102,6 @@ pub fn load_props(testfile: &Path) -> TestProps {
             pretty_compare_only = parse_pretty_compare_only(ln);
         }
 
-        if !ignore_command_line {
-            ignore_command_line = parse_ignore_command_line(ln);
-        }
-
         match parse_aux_build(ln) {
             Some(ab) => { aux_builds.push(ab); }
             None => {}
@@ -148,7 +140,6 @@ pub fn load_props(testfile: &Path) -> TestProps {
         pretty_mode: pretty_mode.unwrap_or("normal".to_string()),
         pretty_compare_only: pretty_compare_only,
         forbid_output: forbid_output,
-        ignore_command_line: ignore_command_line,
     }
 }
 
@@ -298,10 +289,6 @@ fn parse_pretty_mode(line: &str) -> Option<String> {
 
 fn parse_pretty_compare_only(line: &str) -> bool {
     parse_name_directive(line, "pretty-compare-only")
-}
-
-fn parse_ignore_command_line(line: &str) -> bool {
-    parse_name_directive(line, "ignore-command-line")
 }
 
 fn parse_exec_env(line: &str) -> Option<(String, String)> {

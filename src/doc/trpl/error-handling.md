@@ -1,6 +1,6 @@
 % Error Handling in Rust
 
-> The best-laid plans of mice and men
+> The best-laid plans of mice and men  
 > Often go awry
 >
 > "Tae a Moose", Robert Burns
@@ -16,10 +16,10 @@ how to handle each. Then, we'll discuss upgrading failures to panics.
 # Failure vs. Panic
 
 Rust uses two terms to differentiate between two forms of error: failure, and
-panic. A **failure** is an error that can be recovered from in some way. A
-**panic** is an error that cannot be recovered from.
+panic. A *failure* is an error that can be recovered from in some way. A
+*panic* is an error that cannot be recovered from.
 
-What do we mean by 'recover'? Well, in most cases, the possibility of an error
+What do we mean by "recover"? Well, in most cases, the possibility of an error
 is expected. For example, consider the `from_str` function:
 
 ```{rust,ignore}
@@ -35,7 +35,7 @@ from_str("hello5world");
 ```
 
 This won't work. So we know that this function will only work properly for some
-inputs. It's expected behavior. We call this kind of error 'failure.'
+inputs. It's expected behavior. We call this kind of error a *failure*.
 
 On the other hand, sometimes, there are errors that are unexpected, or which
 we cannot recover from. A classic example is an `assert!`:
@@ -46,7 +46,7 @@ assert!(x == 5);
 
 We use `assert!` to declare that something is true. If it's not true, something
 is very wrong. Wrong enough that we can't continue with things in the current
-state. Another example is using the `unreachable!()` macro
+state. Another example is using the `unreachable!()` macro:
 
 ```{rust,ignore}
 enum Event {
@@ -114,7 +114,7 @@ fn main() {
 
 We shouldn't ever hit the `_` case, so we use the `unreachable!()` macro to
 indicate this. `unreachable!()` gives a different kind of error than `Result`.
-Rust calls these sorts of errors 'panics.'
+Rust calls these sorts of errors *panics*.
 
 # Handling errors with `Option` and `Result`
 

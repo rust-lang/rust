@@ -6,7 +6,7 @@ strings, but next, let's talk about some more complicated ways of storing data.
 
 ## Tuples
 
-The first compound data type we're going to talk about are called **tuple**s.
+The first compound data type we're going to talk about are called *tuples*.
 Tuples are an ordered list of a fixed size. Like this:
 
 ```rust
@@ -23,12 +23,12 @@ let x: (i32, &str) = (1, "hello");
 As you can see, the type of a tuple looks just like the tuple, but with each
 position having a type name rather than the value. Careful readers will also
 note that tuples are heterogeneous: we have an `i32` and a `&str` in this tuple.
-You haven't seen `&str` as a type before, and we'll discuss the details of
-strings later. In systems programming languages, strings are a bit more complex
-than in other languages. For now, just read `&str` as "a string slice," and
-we'll learn more soon.
+You have briefly seen `&str` used as a type before, and we'll discuss the
+details of strings later. In systems programming languages, strings are a bit
+more complex than in other languages. For now, just read `&str` as a *string
+slice*, and we'll learn more soon.
 
-You can access the fields in a tuple through a **destructuring let**. Here's
+You can access the fields in a tuple through a *destructuring let*. Here's
 an example:
 
 ```rust
@@ -40,8 +40,8 @@ println!("x is {}", x);
 Remember before when I said the left-hand side of a `let` statement was more
 powerful than just assigning a binding? Here we are. We can put a pattern on
 the left-hand side of the `let`, and if it matches up to the right-hand side,
-we can assign multiple bindings at once. In this case, `let` 'destructures,'
-or 'breaks up,' the tuple, and assigns the bits to three bindings.
+we can assign multiple bindings at once. In this case, `let` "destructures,"
+or "breaks up," the tuple, and assigns the bits to three bindings.
 
 This pattern is very powerful, and we'll see it repeated more later.
 
@@ -83,18 +83,18 @@ fn main() {
 }
 ```
 
-Even though Rust functions can only return one value, a tuple _is_ one value,
-that happens to be made up of more than one value. You can also see in this example how you
-can destructure a pattern returned by a function, as well.
+Even though Rust functions can only return one value, a tuple *is* one value,
+that happens to be made up of more than one value. You can also see in this
+example how you can destructure a pattern returned by a function, as well.
 
 Tuples are a very simple data structure, and so are not often what you want.
 Let's move on to their bigger sibling, structs.
 
 ## Structs
 
-A struct is another form of a 'record type,' just like a tuple. There's a
+A struct is another form of a *record type*, just like a tuple. There's a
 difference: structs give each element that they contain a name, called a
-'field' or a 'member.' Check it out:
+*field* or a *member*. Check it out:
 
 ```rust
 struct Point {
@@ -143,8 +143,7 @@ This will print `The point is at (5, 0)`.
 ## Tuple Structs and Newtypes
 
 Rust has another data type that's like a hybrid between a tuple and a struct,
-called a **tuple struct**. Tuple structs do have a name, but their fields
-don't:
+called a *tuple struct*. Tuple structs do have a name, but their fields don't:
 
 
 ```{rust}
@@ -182,7 +181,7 @@ Now, we have actual names, rather than positions. Good names are important,
 and with a struct, we have actual names.
 
 There _is_ one case when a tuple struct is very useful, though, and that's a
-tuple struct with only one element. We call this a 'newtype,' because it lets
+tuple struct with only one element. We call this a *newtype*, because it lets
 you create a new type that's a synonym for another one:
 
 ```{rust}
@@ -199,7 +198,7 @@ destructuring `let`.
 
 ## Enums
 
-Finally, Rust has a "sum type", an **enum**. Enums are an incredibly useful
+Finally, Rust has a "sum type", an *enum*. Enums are an incredibly useful
 feature of Rust, and are used throughout the standard library. This is an enum
 that is provided by the Rust standard library:
 

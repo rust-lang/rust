@@ -302,6 +302,7 @@ impl String {
     /// assert_eq!(String::from_utf16_lossy(v),
     ///            "𝄞mus\u{FFFD}ic\u{FFFD}".to_string());
     /// ```
+    #[inline]
     #[stable]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
         unicode_str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
@@ -556,6 +557,7 @@ impl String {
     /// assert_eq!(s.remove(1), 'o');
     /// assert_eq!(s.remove(0), 'o');
     /// ```
+    #[inline]
     #[stable]
     pub fn remove(&mut self, idx: uint) -> char {
         let len = self.len();
@@ -582,6 +584,7 @@ impl String {
     ///
     /// If `idx` does not lie on a character boundary or is out of bounds, then
     /// this function will panic.
+    #[inline]
     #[stable]
     pub fn insert(&mut self, idx: uint, ch: char) {
         let len = self.len();
@@ -618,6 +621,7 @@ impl String {
     /// }
     /// assert_eq!(s.as_slice(), "olleh");
     /// ```
+    #[inline]
     #[stable]
     pub unsafe fn as_mut_vec<'a>(&'a mut self) -> &'a mut Vec<u8> {
         &mut self.vec
@@ -645,6 +649,7 @@ impl String {
     /// v.push('a');
     /// assert!(!v.is_empty());
     /// ```
+    #[inline]
     #[stable]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
@@ -801,6 +806,7 @@ impl Str for String {
 
 #[stable]
 impl Default for String {
+    #[inline]
     #[stable]
     fn default() -> String {
         String::new()
@@ -809,6 +815,7 @@ impl Default for String {
 
 #[stable]
 impl fmt::String for String {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(&**self, f)
     }
@@ -816,6 +823,7 @@ impl fmt::String for String {
 
 #[unstable = "waiting on fmt stabilization"]
 impl fmt::Show for String {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Show::fmt(&**self, f)
     }
@@ -842,6 +850,7 @@ impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for String {
 impl<'a> Add<&'a str> for String {
     type Output = String;
 
+    #[inline]
     fn add(mut self, other: &str) -> String {
         self.push_str(other);
         self
@@ -881,6 +890,7 @@ impl ops::Index<ops::FullRange> for String {
 impl ops::Deref for String {
     type Target = str;
 
+    #[inline]
     fn deref<'a>(&'a self) -> &'a str {
         unsafe { mem::transmute(&self.vec[]) }
     }
@@ -895,6 +905,7 @@ pub struct DerefString<'a> {
 impl<'a> Deref for DerefString<'a> {
     type Target = String;
 
+    #[inline]
     fn deref<'b>(&'b self) -> &'b String {
         unsafe { mem::transmute(&*self.x) }
     }
@@ -933,6 +944,7 @@ pub trait ToString {
 }
 
 impl<T: fmt::String + ?Sized> ToString for T {
+    #[inline]
     fn to_string(&self) -> String {
         use core::fmt::Writer;
         let mut buf = String::new();
@@ -943,12 +955,14 @@ impl<T: fmt::String + ?Sized> ToString for T {
 }
 
 impl IntoCow<'static, String, str> for String {
+    #[inline]
     fn into_cow(self) -> CowString<'static> {
         Cow::Owned(self)
     }
 }
 
 impl<'a> IntoCow<'a, String, str> for &'a str {
+    #[inline]
     fn into_cow(self) -> CowString<'a> {
         Cow::Borrowed(self)
     }
@@ -966,6 +980,7 @@ impl<'a> Str for CowString<'a> {
 }
 
 impl fmt::Writer for String {
+    #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.push_str(s);
         Ok(())

@@ -582,6 +582,19 @@ fn ast_path_to_trait_ref<'a,'tcx>(
 
     let (regions, types, assoc_bindings) = match path.segments.last().unwrap().parameters {
         ast::AngleBracketedParameters(ref data) => {
+            // For now, require that parenthetical notation be used
+            // only with `Fn()` etc.
+            if !this.tcx().sess.features.borrow().unboxed_closures &&
+                this.tcx().lang_items.fn_trait_kind(trait_def_id).is_some()
+            {
+                this.tcx().sess.span_err(path.span,
+                                         "angle-bracket notation is not stable when \
+                                         used with the `Fn` family of traits, use parentheses");
+                span_help!(this.tcx().sess, path.span,
+                           "add `#![feature(unboxed_closures)]` to \
+                            the crate attributes to enable");
+            }
+
             convert_angle_bracketed_parameters(this, &shifted_rscope, data)
         }
         ast::ParenthesizedParameters(ref data) => {

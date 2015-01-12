@@ -8,7 +8,7 @@ fn main() {
 ```
 
 This is the simplest possible function declaration. As we mentioned before,
-`fn` says 'this is a function,' followed by the name, some parentheses because
+`fn` says "this is a function," followed by the name, some parentheses because
 this function takes no arguments, and then some curly braces to indicate the
 body. Here's a function named `foo`:
 
@@ -59,7 +59,7 @@ Unlike `let`, you _must_ declare the types of function arguments. This does
 not work:
 
 ```{ignore}
-fn print_number(x, y) {
+fn print_sum(x, y) {
     println!("x is: {}", x + y);
 }
 ```
@@ -67,7 +67,7 @@ fn print_number(x, y) {
 You get this error:
 
 ```text
-hello.rs:5:18: 5:19 error: expected `:` but found `,`
+hello.rs:5:18: 5:19 expected one of `!`, `:`, or `@`, found `)`
 hello.rs:5 fn print_number(x, y) {
 ```
 
@@ -86,7 +86,7 @@ fn add_one(x: i32) -> i32 {
 ```
 
 Rust functions return exactly one value, and you declare the type after an
-'arrow', which is a dash (`-`) followed by a greater-than sign (`>`).
+"arrow," which is a dash (`-`) followed by a greater-than sign (`>`).
 
 You'll note the lack of a semicolon here. If we added it in:
 

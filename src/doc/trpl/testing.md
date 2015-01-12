@@ -294,9 +294,9 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 
 It works!
 
-The current convention is to use the `test` module to hold your "unit"-style
+The current convention is to use the `test` module to hold your "unit-style"
 tests. Anything that just tests one small bit of functionality makes sense to
-go here. But what about "integration"-style tests instead? For that, we have
+go here. But what about "integration-style" tests instead? For that, we have
 the `tests` directory
 
 # The `tests` directory
@@ -309,7 +309,7 @@ extern crate adder;
 
 #[test]
 fn it_works() {
-    assert_eq(4, adder::add_two(2));
+    assert_eq!(4, adder::add_two(2));
 }   
 ```
 

@@ -11,15 +11,15 @@
 #![allow(dead_code)]
 
 struct Foo;
-impl Fn<(), ()> for Foo { //~ ERROR manual implementations of `Fn` are experimental
+impl Fn() for Foo { //~ ERROR manual implementations of `Fn` are experimental
     extern "rust-call" fn call(&self, args: ()) -> () {}
 }
 struct Bar;
-impl FnMut<(), ()> for Bar { //~ ERROR manual implementations of `FnMut` are experimental
+impl FnMut() for Bar { //~ ERROR manual implementations of `FnMut` are experimental
     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
 }
 struct Baz;
-impl FnOnce<(), ()> for Baz { //~ ERROR manual implementations of `FnOnce` are experimental
+impl FnOnce() for Baz { //~ ERROR manual implementations of `FnOnce` are experimental
     extern "rust-call" fn call_once(&self, args: ()) -> () {}
 }
 

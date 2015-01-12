@@ -736,6 +736,13 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 if ty::type_is_bool(rust_ty) {
                     let tmp = builder.load_range_assert(llforeign_arg, 0, 2, llvm::False);
                     builder.trunc(tmp, Type::i1(ccx))
+                } else if type_of::type_of(ccx, rust_ty).is_aggregate() {
+                    // We want to pass small aggregates as immediate values, but using an aggregate
+                    // LLVM type for this leads to bad optimizations, so its arg type is an
+                    // appropriately sized integer and we have to convert it
+                    let tmp = builder.bitcast(llforeign_arg,
+                                              type_of::arg_type_of(ccx, rust_ty).ptr_to());
+                    builder.load(tmp)
                 } else {
                     builder.load(llforeign_arg)
                 }
@@ -834,10 +841,10 @@ fn foreign_signature<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                fn_sig: &ty::FnSig<'tcx>,
                                arg_tys: &[Ty<'tcx>])
                                -> LlvmSignature {
-    let llarg_tys = arg_tys.iter().map(|&arg| arg_type_of(ccx, arg)).collect();
+    let llarg_tys = arg_tys.iter().map(|&arg| foreign_arg_type_of(ccx, arg)).collect();
     let (llret_ty, ret_def) = match fn_sig.output {
         ty::FnConverging(ret_ty) =>
-            (type_of::arg_type_of(ccx, ret_ty), !return_type_is_void(ccx, ret_ty)),
+            (type_of::foreign_arg_type_of(ccx, ret_ty), !return_type_is_void(ccx, ret_ty)),
         ty::FnDiverging =>
             (Type::nil(ccx), false)
     };

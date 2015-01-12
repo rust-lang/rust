@@ -8,17 +8,17 @@ these kinds of things, Rust has a module system.
 
 # Basic terminology: Crates and Modules
 
-Rust has two distinct terms that relate to the module system: "crate" and
-"module." A crate is synonymous with a 'library' or 'package' in other
+Rust has two distinct terms that relate to the module system: *crate* and
+*module*. A crate is synonymous with a *library* or *package* in other
 languages. Hence "Cargo" as the name of Rust's package management tool: you
 ship your crates to others with Cargo. Crates can produce an executable or a
 shared library, depending on the project.
 
-Each crate has an implicit "root module" that contains the code for that crate.
+Each crate has an implicit *root module* that contains the code for that crate.
 You can then define a tree of sub-modules under that root module. Modules allow
 you to partition your code within the crate itself.
 
-As an example, let's make a "phrases" crate, which will give us various phrases
+As an example, let's make a *phrases* crate, which will give us various phrases
 in different languages. To keep things simple, we'll stick to "greetings" and
 "farewells" as two kinds of phrases, and use English and Japanese (日本語） as
 two languages for those phrases to be in. We'll use this module layout:
@@ -45,7 +45,7 @@ two languages for those phrases to be in. We'll use this module layout:
 
 In this example, `phrases` is the name of our crate. All of the rest are
 modules.  You can see that they form a tree, branching out from the crate
-"root", which is the root of the tree: `phrases` itself.
+*root*, which is the root of the tree: `phrases` itself.
 
 Now that we have a plan, let's define these modules in code. To start,
 generate a new crate with Cargo:
@@ -256,7 +256,7 @@ fn goodbye() -> String {
 }
 ```
 
-(This is "Sayoonara", if you're curious.)
+(This is "Sayōnara", if you're curious.)
 
 Now that we have our some functionality in our crate, let's try to use it from
 another crate.
@@ -559,7 +559,7 @@ Also, note that we `pub use`d before we declared our `mod`s. Rust requires that
 This will build and run:
 
 ```bash
-$ cargo build
+$ cargo run
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
      Running `target/phrases`
 Hello in English: Hello!

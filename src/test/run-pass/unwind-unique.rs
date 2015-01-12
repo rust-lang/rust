@@ -19,5 +19,5 @@ fn f() {
 }
 
 pub fn main() {
-    let _t = Thread::spawn(f);
+    let _t = Thread::scoped(f);
 }

@@ -10,7 +10,7 @@
 
 #![allow(dead_code)]
 
-fn foo<F: Fn<(), ()>>(mut f: F) {
+fn foo<F: Fn()>(mut f: F) {
     f.call(()); //~ ERROR explicit use of unboxed closure method `call`
     f.call_mut(()); //~ ERROR explicit use of unboxed closure method `call_mut`
     f.call_once(()); //~ ERROR explicit use of unboxed closure method `call_once`

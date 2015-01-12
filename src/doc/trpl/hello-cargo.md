@@ -7,7 +7,7 @@ Rust projects, and so it is assumed that Rust projects will use Cargo from the
 beginning.
 
 Cargo manages three things: building your code, downloading the dependencies
-your code needs, and building the dependencies your code needs.  At first, your
+your code needs, and building those dependencies. At first, your
 program doesn't have any dependencies, so we'll only be using the first part of
 its functionality. Eventually, we'll add more. Since we started off by using
 Cargo, it'll be easy to add later.
@@ -66,7 +66,7 @@ it explain itself to you:
 
 TOML is very similar to INI, but with some extra goodies.
 
-Anyway, there are two **table**s in this file: `package` and `bin`. The first
+Anyway, there are two *tables* in this file: `package` and `bin`. The first
 tells Cargo metadata about your package. The second tells Cargo that we're
 interested in building a binary, not a library (though we could do both!), as
 well as what it is named.
