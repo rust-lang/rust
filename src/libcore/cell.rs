@@ -115,7 +115,6 @@
 //!     }
 //! #   fn calc_span_tree(&self) -> Vec<(uint, uint)> { vec![] }
 //! }
-//! # fn main() { }
 //! ```
 //!
 //! ## Mutating implementations of `clone`

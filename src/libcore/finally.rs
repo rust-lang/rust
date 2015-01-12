@@ -23,13 +23,11 @@
 //!
 //! use std::finally::Finally;
 //!
-//! # fn main() {
 //! (|&mut:| {
 //!     // ...
 //! }).finally(|| {
 //!     // this code is always run
 //! })
-//! # }
 //! ```
 
 #![deprecated = "It is unclear if this module is more robust than implementing \
