@@ -93,7 +93,19 @@ pub mod guard {
 
         PAGE_SIZE = psize as uint;
 
-        let stackaddr = get_stack_start();
+        let mut stackaddr = get_stack_start();
+
+        // Ensure stackaddr is page aligned! A parent process might
+        // have reset RLIMIT_STACK to be non-page aligned. The
+        // pthread_attr_getstack() reports the usable stack area
+        // stackaddr < stackaddr + stacksize, so if stackaddr is not
+        // page-aligned, calculate the fix such that stackaddr <
+        // new_page_aligned_stackaddr < stackaddr + stacksize
+        let remainder = (stackaddr as usize) % (PAGE_SIZE as usize);
+        if remainder != 0 {
+            stackaddr = ((stackaddr as usize) + (PAGE_SIZE as usize) - remainder)
+                as *mut libc::c_void;
+        }
 
         // Rellocate the last page of the stack.
         // This ensures SIGBUS will be raised on
