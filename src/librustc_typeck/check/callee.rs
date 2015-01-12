@@ -14,6 +14,8 @@ use super::check_argument_types;
 use super::check_expr;
 use super::check_method_argument_types;
 use super::err_args;
+use super::Expectation;
+use super::expected_types_for_fn_args;
 use super::FnCtxt;
 use super::LvaluePreference;
 use super::method;
@@ -65,7 +67,8 @@ pub fn check_legal_trait_for_method_call(ccx: &CrateCtxt, span: Span, trait_id: 
 pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             call_expr: &ast::Expr,
                             callee_expr: &ast::Expr,
-                            arg_exprs: &[P<ast::Expr>])
+                            arg_exprs: &[P<ast::Expr>],
+                            expected: Expectation<'tcx>)
 {
     check_expr(fcx, callee_expr);
     let original_callee_ty = fcx.expr_ty(callee_expr);
@@ -84,15 +87,15 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match result {
         None => {
             // this will report an error since original_callee_ty is not a fn
-            confirm_builtin_call(fcx, call_expr, original_callee_ty, arg_exprs);
+            confirm_builtin_call(fcx, call_expr, original_callee_ty, arg_exprs, expected);
         }
 
         Some(CallStep::Builtin) => {
-            confirm_builtin_call(fcx, call_expr, callee_ty, arg_exprs);
+            confirm_builtin_call(fcx, call_expr, callee_ty, arg_exprs, expected);
         }
 
         Some(CallStep::Overloaded(method_callee)) => {
-            confirm_overloaded_call(fcx, call_expr, arg_exprs, method_callee);
+            confirm_overloaded_call(fcx, call_expr, arg_exprs, method_callee, expected);
         }
     }
 }
@@ -153,7 +156,8 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                  call_expr: &ast::Expr,
                                  callee_ty: Ty<'tcx>,
-                                 arg_exprs: &[P<ast::Expr>])
+                                 arg_exprs: &[P<ast::Expr>],
+                                 expected: Expectation<'tcx>)
 {
     let error_fn_sig;
 
@@ -192,11 +196,16 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         fcx.normalize_associated_types_in(call_expr.span, &fn_sig);
 
     // Call the generic checker.
-    let arg_exprs: Vec<_> = arg_exprs.iter().collect(); // for some weird reason we take &[&P<...>].
+    let expected_arg_tys = expected_types_for_fn_args(fcx,
+                                                      call_expr.span,
+                                                      expected,
+                                                      fn_sig.output,
+                                                      fn_sig.inputs.as_slice());
     check_argument_types(fcx,
                          call_expr.span,
                          fn_sig.inputs.as_slice(),
-                         arg_exprs.as_slice(),
+                         &expected_arg_tys[],
+                         arg_exprs,
                          AutorefArgs::No,
                          fn_sig.variadic,
                          TupleArgumentsFlag::DontTupleArguments);
@@ -207,16 +216,17 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 fn confirm_overloaded_call<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                     call_expr: &ast::Expr,
                                     arg_exprs: &[P<ast::Expr>],
-                                    method_callee: ty::MethodCallee<'tcx>)
+                                    method_callee: ty::MethodCallee<'tcx>,
+                                    expected: Expectation<'tcx>)
 {
-    let arg_exprs: Vec<_> = arg_exprs.iter().collect(); // for some weird reason we take &[&P<...>].
     let output_type = check_method_argument_types(fcx,
                                                   call_expr.span,
                                                   method_callee.ty,
                                                   call_expr,
-                                                  arg_exprs.as_slice(),
+                                                  arg_exprs,
                                                   AutorefArgs::No,
-                                                  TupleArgumentsFlag::TupleArguments);
+                                                  TupleArgumentsFlag::TupleArguments,
+                                                  expected);
     let method_call = ty::MethodCall::expr(call_expr.id);
     fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
     write_call(fcx, call_expr, output_type);

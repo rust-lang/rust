@@ -14,7 +14,8 @@ pub fn foo(params: Option<&[&str]>) -> usize {
 
 fn main() {
     let name = "Foo";
-    let msg = foo(Some(&[name.as_slice()]));
+    let x = Some(&[name.as_slice()]);
+    let msg = foo(x);
 //~^ ERROR mismatched types: expected `core::option::Option<&[&str]>`
     assert_eq!(msg, 3);
 }

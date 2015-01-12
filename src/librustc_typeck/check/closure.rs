@@ -33,7 +33,7 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
            expr.repr(fcx.tcx()),
            expected.repr(fcx.tcx()));
 
-    let expected_sig_and_kind = expected.map_to_option(fcx, |ty| {
+    let expected_sig_and_kind = expected.to_option(fcx).and_then(|ty| {
         deduce_unboxed_closure_expectations_from_expected_type(fcx, ty)
     });
 
