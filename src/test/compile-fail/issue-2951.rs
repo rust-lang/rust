@@ -10,7 +10,12 @@
 
 fn foo<T, U>(x: T, y: U) {
     let mut xx = x;
-    xx = y; //~ ERROR expected `T`, found `U`
+    xx = y;
+    //~^  ERROR mismatched types
+    //~| expected `T`
+    //~| found `U`
+    //~| expected type parameter
+    //~| found a different type parameter
 }
 
 fn main() {

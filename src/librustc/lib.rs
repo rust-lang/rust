@@ -32,9 +32,11 @@
 
 extern crate arena;
 extern crate flate;
+extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
 extern crate libc;
+extern crate regex;
 extern crate rustc_llvm;
 extern crate rustc_back;
 extern crate serialize;

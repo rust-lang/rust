@@ -14,8 +14,16 @@ fn first((value, _): (isize, f64)) -> isize { value }
 
 fn main() {
     let y = first ((1,2.0,3));
-    //~^ ERROR expected a tuple with 2 elements, found one with 3 elements
+    //~^ ERROR mismatched types
+    //~| expected `(isize, f64)`
+    //~| found `(isize, f64, _)`
+    //~| expected a tuple with 2 elements
+    //~| found one with 3 elements
 
     let y = first ((1,));
-    //~^ ERROR expected `(isize, f64)`, found `(isize,)`
+    //~^ ERROR mismatched types
+    //~| expected `(isize, f64)`
+    //~| found `(isize,)`
+    //~| expected a tuple with 2 elements
+    //~| found one with 1 elements
 }

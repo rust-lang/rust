@@ -16,6 +16,10 @@ fn main() {
     let name = "Foo";
     let x = Some(&[name.as_slice()]);
     let msg = foo(x);
-//~^ ERROR mismatched types: expected `core::option::Option<&[&str]>`
+//~^ ERROR mismatched types
+//~| expected `core::option::Option<&[&str]>`
+//~| found `core::option::Option<&[&str; 1]>`
+//~| expected slice
+//~| found array of 1 elements
     assert_eq!(msg, 3);
 }

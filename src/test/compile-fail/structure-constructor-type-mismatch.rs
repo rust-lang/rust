@@ -24,25 +24,33 @@ type PairF<U> = Pair<f32,U>;
 
 fn main() {
     let pt = PointF {
-        //~^ ERROR expected f32, found isize
+        //~^ ERROR structure constructor specifies a structure of type
+        //~| expected f32
+        //~| found isize
         x: 1is,
         y: 2is,
     };
 
     let pt2 = Point::<f32> {
-        //~^ ERROR expected f32, found isize
+        //~^ ERROR structure constructor specifies a structure of type
+        //~| expected f32
+        //~| found isize
         x: 3is,
         y: 4is,
     };
 
     let pair = PairF {
-        //~^ ERROR expected f32, found isize
+        //~^ ERROR structure constructor specifies a structure of type
+        //~| expected f32
+        //~| found isize
         x: 5is,
         y: 6is,
     };
 
     let pair2 = PairF::<isize> {
-        //~^ ERROR expected f32, found isize
+        //~^ ERROR structure constructor specifies a structure of type
+        //~| expected f32
+        //~| found isize
         x: 7is,
         y: 8is,
     };

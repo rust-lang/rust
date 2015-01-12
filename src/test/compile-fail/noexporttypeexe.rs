@@ -18,5 +18,9 @@ fn main() {
     // because the def_id associated with the type was
     // not convertible to a path.
   let x: isize = noexporttypelib::foo();
-    //~^ ERROR expected `isize`, found `core::option::Option<isize>`
+    //~^ ERROR mismatched types
+    //~| expected `isize`
+    //~| found `core::option::Option<isize>`
+    //~| expected isize
+    //~| found enum `core::option::Option`
 }

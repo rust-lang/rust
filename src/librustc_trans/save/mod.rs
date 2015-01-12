@@ -1505,7 +1505,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 pub fn process_crate(sess: &Session,
                      krate: &ast::Crate,
                      analysis: &ty::CrateAnalysis,
-                     odir: &Option<Path>) {
+                     odir: Option<&Path>) {
     if generated_code(krate.span) {
         return;
     }
@@ -1524,8 +1524,8 @@ pub fn process_crate(sess: &Session,
     // find a path to dump our data to
     let mut root_path = match os::getenv("DXR_RUST_TEMP_FOLDER") {
         Some(val) => Path::new(val),
-        None => match *odir {
-            Some(ref val) => val.join("dxr"),
+        None => match odir {
+            Some(val) => val.join("dxr"),
             None => Path::new("dxr-temp"),
         },
     };

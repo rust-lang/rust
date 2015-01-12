@@ -10,6 +10,10 @@
 
 fn main() {
     let a = if true { true };
-//~^ ERROR if may be missing an else clause: expected `()`, found `bool` (expected (), found bool)
+    //~^ ERROR if may be missing an else clause
+    //~| expected `()`
+    //~| found `bool`
+    //~| expected ()
+    //~| found bool
     println!("{}", a);
 }

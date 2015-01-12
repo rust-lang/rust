@@ -14,7 +14,7 @@ extern crate syntax;
 
 use rustc::session::{build_session, Session};
 use rustc::session::config::{basic_options, build_configuration, Input, OutputTypeExe};
-use rustc_driver::driver::{compile_input};
+use rustc_driver::driver::{compile_input, CompileController};
 use syntax::diagnostics::registry::Registry;
 
 fn main() {
@@ -52,11 +52,13 @@ fn basic_sess(sysroot: Path) -> Session {
 fn compile(code: String, output: Path, sysroot: Path) {
     let sess = basic_sess(sysroot);
     let cfg = build_configuration(&sess);
+    let control = CompileController::basic();
 
     compile_input(sess,
             cfg,
             &Input::Str(code),
             &None,
             &Some(output),
-            None);
+            None,
+            control);
 }

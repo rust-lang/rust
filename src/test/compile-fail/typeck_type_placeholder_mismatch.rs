@@ -19,11 +19,19 @@ pub fn main() {
 
 fn test1() {
     let x: Foo<_> = Bar::<usize>;
-    //~^ ERROR mismatched types: expected `Foo<_>`, found `Bar<usize>`
+    //~^ ERROR mismatched types
+    //~| expected `Foo<_>`
+    //~| found `Bar<usize>`
+    //~| expected struct `Foo`
+    //~| found struct `Bar`
     let y: Foo<usize> = x;
 }
 
 fn test2() {
     let x: Foo<_> = Bar::<usize>;
-    //~^ ERROR mismatched types: expected `Foo<_>`, found `Bar<usize>`
+    //~^ ERROR mismatched types
+    //~| expected `Foo<_>`
+    //~| found `Bar<usize>`
+    //~| expected struct `Foo`
+    //~| found struct `Bar`
 }

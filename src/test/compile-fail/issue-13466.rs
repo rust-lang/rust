@@ -15,7 +15,18 @@ pub fn main() {
     // the actual arm `Result<T, E>` has two. typeck should not be
     // tricked into looking up a non-existing second type parameter.
     let _x: usize = match Some(1us) {
-        Ok(u) => u, //~ ERROR  mismatched types: expected `core::option::Option<usize>`
-        Err(e) => panic!(e)  //~ ERROR mismatched types: expected `core::option::Option<usize>`
+        Ok(u) => u,
+        //~^ ERROR mismatched types
+        //~| expected `core::option::Option<usize>`
+        //~| found `core::result::Result<_, _>`
+        //~| expected enum `core::option::Option`
+        //~| found enum `core::result::Result`
+
+        Err(e) => panic!(e)
+        //~^ ERROR mismatched types
+        //~| expected `core::option::Option<usize>`
+        //~| found `core::result::Result<_, _>`
+        //~| expected enum `core::option::Option`
+        //~| found enum `core::result::Result`
     };
 }

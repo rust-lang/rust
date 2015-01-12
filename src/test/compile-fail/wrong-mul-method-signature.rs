@@ -24,7 +24,7 @@ impl Mul<f64> for Vec1 {
     type Output = Vec1;
 
     fn mul(self, s: &f64) -> Vec1 {
-    //~^ ERROR: method `mul` has an incompatible type for trait: expected f64, found &-ptr
+    //~^ ERROR method `mul` has an incompatible type for trait
         Vec1 {
             x: self.x * *s
         }
@@ -41,7 +41,7 @@ impl Mul<Vec2> for Vec2 {
     type Output = f64;
 
     fn mul(self, s: f64) -> Vec2 {
-    //~^ ERROR: method `mul` has an incompatible type for trait: expected struct Vec2, found f64
+    //~^ ERROR method `mul` has an incompatible type for trait
         Vec2 {
             x: self.x * s,
             y: self.y * s
@@ -60,7 +60,7 @@ impl Mul<f64> for Vec3 {
     type Output = i32;
 
     fn mul(self, s: f64) -> f64 {
-    //~^ ERROR: method `mul` has an incompatible type for trait: expected i32, found f64
+    //~^ ERROR method `mul` has an incompatible type for trait
         s
     }
 }
@@ -72,7 +72,15 @@ pub fn main() {
 
     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
     //~^ ERROR mismatched types
-    //~^^ ERROR mismatched types
+    //~| expected `Vec2`
+    //~| found `_`
+    //~| expected struct `Vec2`
+    //~| found floating-point variable
+    //~| ERROR mismatched types
+    //~| expected `Vec2`
+    //~| found `f64`
+    //~| expected struct `Vec2`
+    //~| found f64
 
     let x: i32 = Vec3 { x: 1.0, y: 2.0, z: 3.0 } * 2.0;
 }

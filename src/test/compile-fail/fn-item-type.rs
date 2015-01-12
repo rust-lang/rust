@@ -18,8 +18,16 @@ fn eq<T>(x: T, y: T) { }
 
 fn main() {
     let f = if true { foo } else { bar };
-    //~^ ERROR expected fn item, found a different fn item
+    //~^ ERROR if and else have incompatible types
+    //~| expected `fn(isize) -> isize {foo}`
+    //~| found `fn(isize) -> isize {bar}`
+    //~| expected fn item,
+    //~| found a different fn item
 
     eq(foo, bar);
-    //~^ ERROR expected fn item, found a different fn item
+    //~^ ERROR mismatched types
+    //~|  expected `fn(isize) -> isize {foo}`
+    //~|  found `fn(isize) -> isize {bar}`
+    //~|  expected fn item
+    //~|  found a different fn item
 }

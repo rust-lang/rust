@@ -12,8 +12,16 @@ fn let_in<T, F>(x: T, f: F) where F: FnOnce(T) {}
 
 fn main() {
     let_in(3us, |i| { assert!(i == 3is); });
-    //~^ ERROR expected `usize`, found `isize`
+    //~^ ERROR mismatched types
+    //~| expected `usize`
+    //~| found `isize`
+    //~| expected usize
+    //~| found isize
 
     let_in(3is, |i| { assert!(i == 3us); });
-    //~^ ERROR expected `isize`, found `usize`
+    //~^ ERROR mismatched types
+    //~| expected `isize`
+    //~| found `usize`
+    //~| expected isize
+    //~| found usize
 }
