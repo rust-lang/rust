@@ -83,6 +83,7 @@ use self::TupleArgumentsFlag::*;
 
 use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv};
 use check::_match::pat_ctxt;
+use fmt_macros::{Parser, Piece, Position};
 use middle::{const_eval, def};
 use middle::infer;
 use middle::lang_items::IteratorItem;
@@ -114,6 +115,7 @@ use std::rc::Rc;
 use std::iter::repeat;
 use std::slice;
 use syntax::{self, abi, attr};
+use syntax::attr::AttrMetaMethods;
 use syntax::ast::{self, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
 use syntax::ast_util::{self, local_def, PostExpansionMethod};
 use syntax::codemap::{self, Span};
@@ -727,7 +729,8 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         }
 
       }
-      ast::ItemTrait(_, _, _, ref trait_methods) => {
+      ast::ItemTrait(_, ref generics, _, ref trait_methods) => {
+        check_trait_on_unimplemented(ccx, generics, it);
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_method in trait_methods.iter() {
             match *trait_method {
@@ -774,6 +777,51 @@ pub fn check_item(ccx: &CrateCtxt, it: &ast::Item) {
         }
       }
       _ => {/* nothing to do */ }
+    }
+}
+
+fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                               generics: &ast::Generics,
+                               item: &ast::Item) {
+    if let Some(ref attr) = item.attrs.iter().find(|&: a| {
+        a.check_name("rustc_on_unimplemented")
+    }) {
+        if let Some(ref istring) = attr.value_str() {
+            let mut parser = Parser::new(istring.get());
+            let types = generics.ty_params.as_slice();
+            for token in parser {
+                match token {
+                    Piece::String(_) => (), // Normal string, no need to check it
+                    Piece::NextArgument(a) => match a.position {
+                        // `{Self}` is allowed
+                        Position::ArgumentNamed(s) if s == "Self" => (),
+                        // So is `{A}` if A is a type parameter
+                        Position::ArgumentNamed(s) => match types.iter().find(|t| {
+                            t.ident.as_str() == s
+                        }) {
+                            Some(_) => (),
+                            None => {
+                                ccx.tcx.sess.span_err(attr.span,
+                                                 format!("there is no type parameter \
+                                                          {} on trait {}",
+                                                           s, item.ident.as_str())
+                                            .as_slice());
+                            }
+                        },
+                        // `{:1}` and `{}` are not to be used
+                        Position::ArgumentIs(_) | Position::ArgumentNext => {
+                            ccx.tcx.sess.span_err(attr.span,
+                                                  "only named substitution \
+                                                   parameters are allowed");
+                        }
+                    }
+                }
+            }
+        } else {
+            ccx.tcx.sess.span_err(attr.span,
+                                  "this attribute must have a value, \
+                                   eg `#[rustc_on_unimplemented = \"foo\"]`")
+        }
     }
 }
 
