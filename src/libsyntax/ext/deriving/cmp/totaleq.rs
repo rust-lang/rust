@@ -32,7 +32,7 @@ pub fn expand_deriving_totaleq<F>(cx: &mut ExtCtxt,
             let block = cx.block(span, stmts, None);
             cx.expr_block(block)
         },
-                       box |cx, sp, _, _| cx.span_bug(sp, "non matching enums in deriving(Eq)?"),
+                       box |cx, sp, _, _| cx.span_bug(sp, "non matching enums in derive(Eq)?"),
                        cx,
                        span,
                        substr)

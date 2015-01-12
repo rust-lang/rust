@@ -225,7 +225,7 @@
 //! - `fmt::Show` implementations should be implemented for **all** public types.
 //!   Output will typically represent the internal state as faithfully as possible.
 //!   The purpose of the `Show` trait is to facilitate debugging Rust code. In
-//!   most cases, using `#[deriving(Show)]` is sufficient and recommended.
+//!   most cases, using `#[derive(Show)]` is sufficient and recommended.
 //!
 //! Some examples of the output from both traits:
 //!

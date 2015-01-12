@@ -74,7 +74,7 @@ pub fn expand_deriving_from_primitive<F>(cx: &mut ExtCtxt,
 fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
     let n = match substr.nonself_args {
         [ref n] => n,
-        _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(FromPrimitive)`")
+        _ => cx.span_bug(trait_span, "incorrect number of arguments in `derive(FromPrimitive)`")
     };
 
     match *substr.fields {
@@ -144,6 +144,6 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
 
             cx.expr_match(trait_span, n.clone(), arms)
         }
-        _ => cx.span_bug(trait_span, "expected StaticEnum in deriving(FromPrimitive)")
+        _ => cx.span_bug(trait_span, "expected StaticEnum in derive(FromPrimitive)")
     }
 }
