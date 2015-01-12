@@ -123,7 +123,6 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
         search_paths: libs,
         crate_types: vec!(config::CrateTypeExecutable),
         output_types: vec!(config::OutputTypeExe),
-        no_trans: no_run,
         externs: externs,
         cg: config::CodegenOptions {
             prefer_dynamic: true,
@@ -170,14 +169,18 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
     let sess = session::build_session_(sessopts,
-                                      None,
-                                      span_diagnostic_handler);
+                                       None,
+                                       span_diagnostic_handler);
 
     let outdir = TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir");
     let out = Some(outdir.path().clone());
     let cfg = config::build_configuration(&sess);
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
-    driver::compile_input(sess, cfg, &input, &out, &None, None);
+    let mut control = driver::CompileController::basic();
+    if no_run {
+        control.after_analysis.stop = true;
+    }
+    driver::compile_input(sess, cfg, &input, &out, &None, None, control);
 
     if no_run { return }
 

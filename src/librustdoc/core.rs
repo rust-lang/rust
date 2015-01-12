@@ -16,6 +16,7 @@ use rustc::session::search_paths::SearchPaths;
 use rustc::middle::{privacy, ty};
 use rustc::lint;
 use rustc_trans::back::link;
+use rustc_resolve as resolve;
 
 use syntax::{ast, ast_map, codemap, diagnostic};
 
@@ -126,7 +127,11 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let arenas = ty::CtxtArenas::new();
     let ty::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
-    } = driver::phase_3_run_analysis_passes(sess, ast_map, &arenas, name);
+    } = driver::phase_3_run_analysis_passes(sess,
+                                            ast_map,
+                                            &arenas,
+                                            name,
+                                            resolve::MakeGlobMap::No);
 
     let ctxt = DocContext {
         krate: ty_cx.map.krate(),
