@@ -27,7 +27,8 @@ fn main() {
 fn child() {
     old_io::stdout().write_line("foo").unwrap();
     old_io::stderr().write_line("bar").unwrap();
-    assert_eq!(old_io::stdin().lock().read_line().err().unwrap().kind, old_io::EndOfFile);
+    let mut stdin = old_io::stdin();
+    assert_eq!(stdin.lock().read_line().err().unwrap().kind, old_io::EndOfFile);
 }
 
 fn test() {

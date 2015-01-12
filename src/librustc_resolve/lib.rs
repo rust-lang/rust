@@ -2196,7 +2196,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Search for external modules.
         if namespace == TypeNS {
-            if let Some(module) = module_.external_module_children.borrow().get(&name).cloned() {
+            // FIXME (21114): In principle unclear `child` *has* to be lifted.
+            let child = module_.external_module_children.borrow().get(&name).cloned();
+            if let Some(module) = child {
                 let name_bindings =
                     Rc::new(Resolver::create_name_bindings_from_module(module));
                 debug!("lower name bindings succeeded");
@@ -2481,7 +2483,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            if let Some(module) = module_.external_module_children.borrow().get(&name).cloned() {
+            // FIXME (21114): In principle unclear `child` *has* to be lifted.
+            let child = module_.external_module_children.borrow().get(&name).cloned();
+            if let Some(module) = child {
                 let name_bindings =
                     Rc::new(Resolver::create_name_bindings_from_module(module));
                 return Success((Target::new(module_,

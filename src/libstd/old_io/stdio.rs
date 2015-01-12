@@ -143,7 +143,8 @@ impl StdinReader {
     /// ```rust
     /// use std::old_io;
     ///
-    /// for line in old_io::stdin().lock().lines() {
+    /// let mut stdin = old_io::stdin();
+    /// for line in stdin.lock().lines() {
     ///     println!("{}", line.unwrap());
     /// }
     /// ```
