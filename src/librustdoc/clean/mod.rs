@@ -536,7 +536,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
     match (trait_did, cx.tcx_opt()) {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
         (Some(did), Some(ref tcx)) if tcx.lang_items.fn_trait_kind(did).is_some() => {
-            assert_eq!(types.len(), 2);
+            assert_eq!(types.len(), 1);
             let inputs = match types[0].sty {
                 sty::ty_tup(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
                 _ => {
@@ -547,10 +547,12 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
                     }
                 }
             };
-            let output = match types[1].sty {
-                sty::ty_tup(ref v) if v.is_empty() => None, // -> ()
-                _ => Some(types[1].clean(cx))
-            };
+            let output = None;
+            // FIXME(#20299) return type comes from a projection now
+            // match types[1].sty {
+            //     sty::ty_tup(ref v) if v.is_empty() => None, // -> ()
+            //     _ => Some(types[1].clean(cx))
+            // };
             PathParameters::Parenthesized {
                 inputs: inputs,
                 output: output
