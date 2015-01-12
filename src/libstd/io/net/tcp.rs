@@ -272,12 +272,10 @@ impl sys_common::AsInner<TcpStreamImp> for TcpStream {
 /// A structure representing a socket server. This listener is used to create a
 /// `TcpAcceptor` which can be used to accept sockets on a local port.
 ///
-/// # Example
+/// # Examples
 ///
-/// ```rust
-/// # fn main() { }
+/// ```
 /// # fn foo() {
-/// # #![allow(dead_code)]
 /// use std::io::{TcpListener, TcpStream};
 /// use std::io::{Acceptor, Listener};
 /// use std::thread::Thread;

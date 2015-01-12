@@ -217,11 +217,9 @@
 //! makes it clear:
 //!
 //! ```
-//! # #![feature(macro_rules)]
 //! macro_rules! try {
 //!     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
 //! }
-//! # fn main() { }
 //! ```
 //!
 //! `try!` is imported by the prelude, and is available everywhere.

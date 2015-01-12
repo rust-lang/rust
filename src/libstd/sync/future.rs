@@ -11,14 +11,18 @@
 //! A type representing values that may be computed concurrently and operations
 //! for working with them.
 //!
-//! # Example
+//! # Examples
 //!
-//! ```rust
+//! ```
 //! use std::sync::Future;
-//! # fn fib(n: uint) -> uint {42};
-//! # fn make_a_sandwich() {};
-//! let mut delayed_fib = Future::spawn(move|| { fib(5000) });
-//! make_a_sandwich();
+//!
+//! // a fake, for now
+//! fn fib(n: u32) -> u32 { 42 };
+//!
+//! let mut delayed_fib = Future::spawn(move || fib(5000));
+//!
+//! // do stuff...
+//!
 //! println!("fib(5000) = {}", delayed_fib.get())
 //! ```
 
