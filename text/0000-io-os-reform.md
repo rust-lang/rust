@@ -447,14 +447,22 @@ counts, arguments to `main`, and so on).
 ## Revising `Reader` and `Writer`
 [Revising `Reader` and `Writer`]: #revising-reader-and-writer
 
+> To be added in a follow-up PR.
+
 ## String handling
 [String handling]: #string-handling
+
+> To be added in a follow-up PR.
 
 ## Deadlines
 [Deadlines]: #deadlines
 
+> To be added in a follow-up PR.
+
 ## Splitting streams and cancellation
 [Splitting streams and cancellation]: #splitting-streams-and-cancellation
+
+> To be added in a follow-up PR.
 
 ## Modules
 [Modules]: #modules
@@ -465,20 +473,32 @@ throughout IO, we can go on to explore the modules in detail.
 ### `core::io`
 [core::io]: #coreio
 
+> To be added in a follow-up PR.
+
 ### The `std::io` facade
 [The std::io facade]: #the-stdio-facade
+
+> To be added in a follow-up PR.
 
 ### `std::env`
 [std::env]: #stdenv
 
+> To be added in a follow-up PR.
+
 ### `std::fs`
 [std::fs]: #stdfs
+
+> To be added in a follow-up PR.
 
 ### `std::net`
 [std::net]: #stdnet
 
+> To be added in a follow-up PR.
+
 ### `std::process`
 [std::process]: #stdprocess
+
+> To be added in a follow-up PR.
 
 ### `std::os`
 [std::os]: #stdos
@@ -489,6 +509,8 @@ specific platform submodules (like `linux`, `macos`) over time.
 
 ## Odds and ends
 [Odds and ends]: #odds-and-ends
+
+> To be expanded in a follow-up PR.
 
 ### The `io` prelude
 [The io prelude]: #the-io-prelude
@@ -525,4 +547,4 @@ principles or visions) are outside the scope of this RFC.
 # Unresolved questions
 [Unresolved questions]: #unresolved-questions
 
-(To be extended by specific follow-up PRs.)
+> To be expanded in a follow-up PR.
