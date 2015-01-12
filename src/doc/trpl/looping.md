@@ -18,7 +18,7 @@ for (x = 0; x < 10; x++) {
 Instead, it looks like this:
 
 ```{rust}
-for x in range(0, 10) {
+for x in 0..10 {
     println!("{}", x); // x: i32
 }
 ```
@@ -38,7 +38,7 @@ valid for the loop body. Once the body is over, the next value is fetched from
 the iterator, and we loop another time. When there are no more values, the
 `for` loop is over.
 
-In our example, `range` is a function that takes a start and an end position,
+In our example, `0..10` is an expression that takes a start and an end position,
 and gives an iterator over those values. The upper bound is exclusive, though,
 so our loop will print `0` through `9`, not `10`.
 
@@ -123,7 +123,7 @@ We now loop forever with `loop` and use `break` to break out early.
 iteration. This will only print the odd numbers:
 
 ```{rust}
-for x in range(0, 10) {
+for x in 0..10 {
     if x % 2 == 0 { continue; }
 
     println!("{}", x);
