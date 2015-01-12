@@ -332,5 +332,5 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
         }
     }
 
-    f(unsafe { str::from_utf8_unchecked(&buf[0..end]) })
+    f(unsafe { str::from_utf8_unchecked(&buf[..end]) })
 }

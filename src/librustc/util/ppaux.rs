@@ -542,7 +542,7 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
         0
     };
 
-    for t in tps[0..(tps.len() - num_defaults)].iter() {
+    for t in tps[..(tps.len() - num_defaults)].iter() {
         strs.push(ty_to_string(cx, *t))
     }
 

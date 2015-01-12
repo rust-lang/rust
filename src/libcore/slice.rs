@@ -159,7 +159,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn split_at(&self, mid: uint) -> (&[T], &[T]) {
-        (&self[0..mid], &self[mid..])
+        (&self[..mid], &self[mid..])
     }
 
     #[inline]
@@ -240,7 +240,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn init(&self) -> &[T] {
-        &self[0..(self.len() - 1)]
+        &self[..(self.len() - 1)]
     }
 
     #[inline]
@@ -443,7 +443,7 @@ impl<T> SliceExt for [T] {
     #[inline]
     fn starts_with(&self, needle: &[T]) -> bool where T: PartialEq {
         let n = needle.len();
-        self.len() >= n && needle == &self[0..n]
+        self.len() >= n && needle == &self[..n]
     }
 
     #[inline]
@@ -972,7 +972,7 @@ impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(&self.v[0..idx]);
+                let ret = Some(&self.v[..idx]);
                 self.v = &self.v[(idx + 1)..];
                 ret
             }
@@ -999,7 +999,7 @@ impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> boo
             None => self.finish(),
             Some(idx) => {
                 let ret = Some(&self.v[(idx + 1)..]);
-                self.v = &self.v[0..idx];
+                self.v = &self.v[..idx];
                 ret
             }
         }
@@ -1195,7 +1195,7 @@ impl<'a, T> Iterator for Windows<'a, T> {
         if self.size > self.v.len() {
             None
         } else {
-            let ret = Some(&self.v[0..self.size]);
+            let ret = Some(&self.v[..self.size]);
             self.v = &self.v[1..];
             ret
         }

@@ -286,7 +286,7 @@ impl<'a> Parser<'a> {
             flags: 0,
             precision: CountImplied,
             width: CountImplied,
-            ty: &self.input[0..0],
+            ty: &self.input[..0],
         };
         if !self.consume(':') { return spec }
 
@@ -395,7 +395,7 @@ impl<'a> Parser<'a> {
                 self.cur.next();
                 pos
             }
-            Some(..) | None => { return &self.input[0..0]; }
+            Some(..) | None => { return &self.input[..0]; }
         };
         let mut end;
         loop {
