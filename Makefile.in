@@ -97,10 +97,9 @@
 #     make check-stage1-std RUST_TEST_TASKS=1
 #
 # This is hardly all there is to know of The Rust Build System's
-# mysteries. The tale continues on the wiki[1][2].
+# mysteries. The tale continues on the wiki[1].
 #
-# [1]: https://github.com/rust-lang/rust/wiki/Note-getting-started-developing-Rust
-# [2]: https://github.com/rust-lang/rust/wiki/Note-testsuite
+# [1]: https://github.com/rust-lang/rust/wiki/Note-testsuite
 #
 # If you really feel like getting your hands dirty, then:
 #
