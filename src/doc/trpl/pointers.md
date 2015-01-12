@@ -721,11 +721,10 @@ fn main() {
 This gives you flexibility without sacrificing performance.
 
 You may think that this gives us terrible performance: return a value and then
-immediately box it up ?! Isn't that the worst of both worlds? Rust is smarter
-than that. There is no copy in this code. `main` allocates enough room for the
-`box`, passes a pointer to that memory into `foo` as `x`, and then `foo` writes
-the value straight into that pointer. This writes the return value directly into
-the allocated box.
+immediately box it up ?! Isn't this pattern the worst of both worlds? Rust is
+smarter than that. There is no copy in this code. `main` allocates enough room
+for the `box`, passes a pointer to that memory into `foo` as `x`, and then
+`foo` writes the value straight into the `Box<T>`.
 
 This is important enough that it bears repeating: pointers are not for
 optimizing returning values from your code. Allow the caller to choose how they
