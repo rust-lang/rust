@@ -194,7 +194,8 @@ println!("length is {} inches", integer_length);
 ```
 
 As you can see here, you can extract the inner integer type through a
-destructuring `let`.
+destructuring `let`, as we discussed previously in 'tuples.' In this case, the
+`let Inches(integer_length)` assigns `10` to `integer_length`.
 
 ## Enums
 
