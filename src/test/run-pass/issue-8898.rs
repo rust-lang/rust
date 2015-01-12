@@ -16,7 +16,7 @@ pub fn main() {
     let abc = [1i, 2, 3];
     let tf = [true, false];
     let x  = [(), ()];
-    let slice = &x[0..1];
+    let slice = &x[..1];
 
     assert_repr_eq(&abc[], "[1i, 2i, 3i]".to_string());
     assert_repr_eq(&tf[], "[true, false]".to_string());

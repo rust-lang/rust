@@ -1631,7 +1631,7 @@ mod tests {
     #[test]
     fn test_slice_from() {
         let vec: &[int] = &[1, 2, 3, 4];
-        assert_eq!(&vec[0..], vec);
+        assert_eq!(&vec[], vec);
         let b: &[int] = &[3, 4];
         assert_eq!(&vec[2..], b);
         let b: &[int] = &[];
@@ -1641,11 +1641,11 @@ mod tests {
     #[test]
     fn test_slice_to() {
         let vec: &[int] = &[1, 2, 3, 4];
-        assert_eq!(&vec[0..4], vec);
+        assert_eq!(&vec[..4], vec);
         let b: &[int] = &[1, 2];
-        assert_eq!(&vec[0..2], b);
+        assert_eq!(&vec[..2], b);
         let b: &[int] = &[];
-        assert_eq!(&vec[0..0], b);
+        assert_eq!(&vec[..0], b);
     }
 
 
@@ -2538,7 +2538,7 @@ mod tests {
             let (left, right) = values.split_at_mut(2);
             {
                 let left: &[_] = left;
-                assert!(left[0..left.len()] == [1, 2][]);
+                assert!(left[..left.len()] == [1, 2][]);
             }
             for p in left.iter_mut() {
                 *p += 1;
@@ -2546,7 +2546,7 @@ mod tests {
 
             {
                 let right: &[_] = right;
-                assert!(right[0..right.len()] == [3, 4, 5][]);
+                assert!(right[..right.len()] == [3, 4, 5][]);
             }
             for p in right.iter_mut() {
                 *p += 2;

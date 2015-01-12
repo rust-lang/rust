@@ -95,7 +95,7 @@ impl Writer for SeekableMemWriter {
             // there (left), and what will be appended on the end (right)
             let cap = self.buf.len() - self.pos;
             let (left, right) = if cap <= buf.len() {
-                (&buf[0..cap], &buf[cap..])
+                (&buf[..cap], &buf[cap..])
             } else {
                 let result: (_, &[_]) = (buf, &[]);
                 result

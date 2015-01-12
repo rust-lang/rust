@@ -128,7 +128,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
         copy_memory(buf.as_mut_slice(), alu);
         let buf_len = buf.len();
         copy_memory(buf.slice_mut(alu_len, buf_len),
-                    &alu[0..LINE_LEN]);
+                    &alu[..LINE_LEN]);
 
         let mut pos = 0;
         let mut bytes;
@@ -204,7 +204,7 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
         for i in range(0u, chars_left) {
             buf[i] = self.nextc();
         }
-        self.out.write(&buf[0..chars_left])
+        self.out.write(&buf[..chars_left])
     }
 }
 

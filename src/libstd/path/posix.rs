@@ -136,7 +136,7 @@ impl GenericPathUnsafe for Path {
             }
             Some(idx) => {
                 let mut v = Vec::with_capacity(idx + 1 + filename.len());
-                v.push_all(&self.repr[0..(idx+1)]);
+                v.push_all(&self.repr[..(idx+1)]);
                 v.push_all(filename);
                 // FIXME: this is slow
                 self.repr = Path::normalize(v.as_slice());
@@ -177,9 +177,9 @@ impl GenericPath for Path {
         match self.sepidx {
             None if b".." == self.repr => self.repr.as_slice(),
             None => dot_static,
-            Some(0) => &self.repr[0..1],
+            Some(0) => &self.repr[..1],
             Some(idx) if &self.repr[(idx+1)..] == b".." => self.repr.as_slice(),
-            Some(idx) => &self.repr[0..idx]
+            Some(idx) => &self.repr[..idx]
         }
     }
 
