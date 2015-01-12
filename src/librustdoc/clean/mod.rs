@@ -504,22 +504,28 @@ impl Clean<TyParamBound> for ast::TyParamBound {
     }
 }
 
-impl<'tcx> Clean<Vec<TyParamBound>> for ty::ExistentialBounds<'tcx> {
-    fn clean(&self, cx: &DocContext) -> Vec<TyParamBound> {
-        let mut vec = vec![];
-        self.region_bound.clean(cx).map(|b| vec.push(RegionBound(b)));
+impl<'tcx> Clean<(Vec<TyParamBound>, Vec<TypeBinding>)> for ty::ExistentialBounds<'tcx> {
+    fn clean(&self, cx: &DocContext) -> (Vec<TyParamBound>, Vec<TypeBinding>) {
+        let mut tp_bounds = vec![];
+        self.region_bound.clean(cx).map(|b| tp_bounds.push(RegionBound(b)));
         for bb in self.builtin_bounds.iter() {
-            vec.push(bb.clean(cx));
+            tp_bounds.push(bb.clean(cx));
         }
 
-        // FIXME(#20299) -- should do something with projection bounds
+        let mut bindings = vec![];
+        for &ty::Binder(ref pb) in self.projection_bounds.iter() {
+            bindings.push(TypeBinding {
+                name: pb.projection_ty.item_name.clean(cx),
+                ty: pb.ty.clean(cx)
+            });
+        }
 
-        vec
+        (tp_bounds, bindings)
     }
 }
 
 fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
-                        substs: &subst::Substs) -> PathParameters {
+                        bindings: Vec<TypeBinding>, substs: &subst::Substs) -> PathParameters {
     use rustc::middle::ty::sty;
     let lifetimes = substs.regions().get_slice(subst::TypeSpace)
                     .iter()
@@ -537,7 +543,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
                     return PathParameters::AngleBracketed {
                         lifetimes: lifetimes,
                         types: types.clean(cx),
-                        bindings: vec![]
+                        bindings: bindings
                     }
                 }
             };
@@ -554,7 +560,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
             PathParameters::AngleBracketed {
                 lifetimes: lifetimes,
                 types: types.clean(cx),
-                bindings: vec![] // FIXME(#20646)
+                bindings: bindings
             }
         }
     }
@@ -563,12 +569,12 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
 fn external_path(cx: &DocContext, name: &str, trait_did: Option<ast::DefId>,
-                 substs: &subst::Substs) -> Path {
+                 bindings: Vec<TypeBinding>, substs: &subst::Substs) -> Path {
     Path {
         global: false,
         segments: vec![PathSegment {
             name: name.to_string(),
-            params: external_path_params(cx, trait_did, substs)
+            params: external_path_params(cx, trait_did, bindings, substs)
         }],
     }
 }
@@ -583,16 +589,16 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
         let (did, path) = match *self {
             ty::BoundSend =>
                 (tcx.lang_items.send_trait().unwrap(),
-                 external_path(cx, "Send", None, &empty)),
+                 external_path(cx, "Send", None, vec![], &empty)),
             ty::BoundSized =>
                 (tcx.lang_items.sized_trait().unwrap(),
-                 external_path(cx, "Sized", None, &empty)),
+                 external_path(cx, "Sized", None, vec![], &empty)),
             ty::BoundCopy =>
                 (tcx.lang_items.copy_trait().unwrap(),
-                 external_path(cx, "Copy", None, &empty)),
+                 external_path(cx, "Copy", None, vec![], &empty)),
             ty::BoundSync =>
                 (tcx.lang_items.sync_trait().unwrap(),
-                 external_path(cx, "Sync", None, &empty)),
+                 external_path(cx, "Sync", None, vec![], &empty)),
         };
         let fqn = csearch::get_item_path(tcx, did);
         let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
@@ -619,7 +625,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         let fqn = fqn.into_iter().map(|i| i.to_string())
                      .collect::<Vec<String>>();
         let path = external_path(cx, fqn.last().unwrap().as_slice(),
-                                 Some(self.def_id), self.substs);
+                                 Some(self.def_id), vec![], self.substs);
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(self.def_id,
                                                             (fqn, TypeTrait));
 
@@ -1558,7 +1564,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     _ => TypeEnum,
                 };
                 let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
-                                         None, substs);
+                                         None, vec![], substs);
                 cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
                 ResolvedPath {
                     path: path,
@@ -1570,12 +1576,13 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 let did = principal.def_id();
                 let fqn = csearch::get_item_path(cx.tcx(), did);
                 let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
+                let (typarams, bindings) = bounds.clean(cx);
                 let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
-                                         Some(did), principal.substs());
+                                         Some(did), bindings, principal.substs());
                 cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, TypeTrait));
                 ResolvedPath {
                     path: path,
-                    typarams: Some(bounds.clean(cx)),
+                    typarams: Some(typarams),
                     did: did,
                 }
             }
