@@ -182,7 +182,7 @@ and with a struct, we have actual names.
 
 There _is_ one case when a tuple struct is very useful, though, and that's a
 tuple struct with only one element. We call this a *newtype*, because it lets
-you create a new type that's a synonym for another one:
+you create a new type that's similar to another one:
 
 ```{rust}
 struct Inches(i32);
