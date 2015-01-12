@@ -2409,7 +2409,11 @@ mod tests {
 
     #[test]
     fn test_chunksator() {
+        use core::iter::ExactSizeIterator;
+
         let v = &[1i,2,3,4,5];
+
+        assert_eq!(v.chunks(2).len(), 3);
 
         let chunks: &[&[int]] = &[&[1i,2], &[3,4], &[5]];
         assert_eq!(v.chunks(2).collect::<Vec<&[int]>>(), chunks);
@@ -2675,7 +2679,10 @@ mod tests {
 
     #[test]
     fn test_mut_chunks() {
+        use core::iter::ExactSizeIterator;
+
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
+        assert_eq!(v.chunks_mut(2).len(), 4);
         for (i, chunk) in v.chunks_mut(3).enumerate() {
             for x in chunk.iter_mut() {
                 *x = i as u8;
