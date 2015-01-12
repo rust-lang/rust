@@ -16,6 +16,7 @@
     * [Standard Input](standard-input.md)
     * [Guessing Game](guessing-game.md)
 * [II: Intermediate Rust](intermediate.md)
+    * [More Strings](more-strings.md)
     * [Crates and Modules](crates-and-modules.md)
     * [Testing](testing.md)
     * [Pointers](pointers.md)
