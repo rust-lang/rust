@@ -1031,7 +1031,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
+        let children = module_.anonymous_children.borrow();
+        for (_, child_module) in children.iter() {
             self.resolve_imports_for_module_subtree(child_module.clone());
         }
     }
@@ -2203,7 +2204,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Search for external modules.
         if namespace == TypeNS {
-            if let Some(module) = module_.external_module_children.borrow().get(&name).cloned() {
+            let child = module_.external_module_children.borrow().get(&name).cloned();
+            if let Some(module) = child {
                 let name_bindings =
                     Rc::new(Resolver::create_name_bindings_from_module(module));
                 debug!("lower name bindings succeeded");
@@ -2485,7 +2487,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            if let Some(module) = module_.external_module_children.borrow().get(&name).cloned() {
+            let child = module_.external_module_children.borrow().get(&name).cloned();
+            if let Some(module) = child {
                 let name_bindings =
                     Rc::new(Resolver::create_name_bindings_from_module(module));
                 return Success((Target::new(module_,
@@ -2534,7 +2537,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        for (_, module_) in module_.anonymous_children.borrow().iter() {
+        let children = module_.anonymous_children.borrow();
+        for (_, module_) in children.iter() {
             self.report_unresolved_imports(module_.clone());
         }
     }
