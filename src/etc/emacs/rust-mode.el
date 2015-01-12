@@ -31,6 +31,11 @@
     (modify-syntax-entry ?\" "\"" table)
     (modify-syntax-entry ?\\ "\\" table)
 
+    ;; mark _ as a word constituent so that identifiers
+    ;; such as xyz_type don't cause type to be highlighted
+    ;; as a keyword
+    (modify-syntax-entry ?_ "w" table)
+
     ;; Comments
     (modify-syntax-entry ?/  ". 124b" table)
     (modify-syntax-entry ?*  ". 23"   table)

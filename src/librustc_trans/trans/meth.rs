@@ -736,7 +736,7 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     format!("cannot get vtable for an object type: {}",
                             data.repr(bcx.tcx())).as_slice());
             }
-            traits::VtableParam => {
+            traits::VtableParam(..) => {
                 bcx.sess().bug(
                     &format!("resolved vtable for {} to bad vtable {} in trans",
                             trait_ref.repr(bcx.tcx()),
