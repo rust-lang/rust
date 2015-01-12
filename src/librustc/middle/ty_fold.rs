@@ -514,7 +514,7 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
             traits::VtableFnPointer(ref d) => {
                 traits::VtableFnPointer(d.fold_with(folder))
             }
-            traits::VtableParam => traits::VtableParam,
+            traits::VtableParam(ref n) => traits::VtableParam(n.fold_with(folder)),
             traits::VtableBuiltin(ref d) => traits::VtableBuiltin(d.fold_with(folder)),
             traits::VtableObject(ref d) => traits::VtableObject(d.fold_with(folder)),
         }
