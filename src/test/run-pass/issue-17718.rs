@@ -12,10 +12,10 @@
 
 extern crate "issue-17718" as other;
 
-use std::sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
 const C1: uint = 1;
-const C2: AtomicUint = ATOMIC_UINT_INIT;
+const C2: AtomicUsize = ATOMIC_USIZE_INIT;
 const C3: fn() = foo;
 const C4: uint = C1 * C1 + C1 / C1;
 const C5: &'static uint = &C4;
@@ -25,7 +25,7 @@ const C6: uint = {
 };
 
 static S1: uint = 3;
-static S2: AtomicUint = ATOMIC_UINT_INIT;
+static S2: AtomicUsize = ATOMIC_USIZE_INIT;
 
 mod test {
     static A: uint = 4;

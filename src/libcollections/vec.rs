@@ -2199,7 +2199,7 @@ mod tests {
 
     #[test]
     fn test_map_in_place_zero_drop_count() {
-        use std::sync::atomic::{AtomicUint, Ordering, ATOMIC_UINT_INIT};
+        use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
         #[derive(Clone, PartialEq, Show)]
         struct Nothing;
@@ -2213,7 +2213,7 @@ mod tests {
             }
         }
         const NUM_ELEMENTS: uint = 2;
-        static DROP_COUNTER: AtomicUint = ATOMIC_UINT_INIT;
+        static DROP_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
 
         let v = repeat(Nothing).take(NUM_ELEMENTS).collect::<Vec<_>>();
 

@@ -211,7 +211,7 @@ impl Timer {
         // instead of ()
         HELPER.boot(|| {}, helper);
 
-        static ID: atomic::AtomicUint = atomic::ATOMIC_UINT_INIT;
+        static ID: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
         let id = ID.fetch_add(1, Ordering::Relaxed);
         Ok(Timer {
             id: id,

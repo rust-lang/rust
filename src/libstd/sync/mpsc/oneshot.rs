@@ -42,7 +42,7 @@ use core::prelude::*;
 use sync::mpsc::Receiver;
 use sync::mpsc::blocking::{self, SignalToken};
 use core::mem;
-use sync::atomic::{AtomicUint, Ordering};
+use sync::atomic::{AtomicUsize, Ordering};
 
 // Various states you can find a port in.
 const EMPTY: uint = 0;          // initial state: no data, no blocked reciever
@@ -56,7 +56,7 @@ const DISCONNECTED: uint = 2;   // channel is disconnected OR upgraded
 
 pub struct Packet<T> {
     // Internal state of the chan/port pair (stores the blocked task as well)
-    state: AtomicUint,
+    state: AtomicUsize,
     // One-shot data slot location
     data: Option<T>,
     // when used for the second time, a oneshot channel must be upgraded, and
@@ -93,7 +93,7 @@ impl<T: Send> Packet<T> {
         Packet {
             data: None,
             upgrade: NothingSent,
-            state: AtomicUint::new(EMPTY),
+            state: AtomicUsize::new(EMPTY),
         }
     }
 

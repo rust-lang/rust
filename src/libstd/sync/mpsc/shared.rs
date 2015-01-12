@@ -25,7 +25,7 @@ use core::prelude::*;
 use core::cmp;
 use core::int;
 
-use sync::atomic::{AtomicUint, AtomicInt, AtomicBool, Ordering};
+use sync::atomic::{AtomicUsize, AtomicIsize, AtomicBool, Ordering};
 use sync::mpsc::blocking::{self, SignalToken};
 use sync::mpsc::mpsc_queue as mpsc;
 use sync::mpsc::select::StartResult::*;
@@ -42,17 +42,17 @@ const MAX_STEALS: int = 1 << 20;
 
 pub struct Packet<T> {
     queue: mpsc::Queue<T>,
-    cnt: AtomicInt, // How many items are on this channel
+    cnt: AtomicIsize, // How many items are on this channel
     steals: int, // How many times has a port received without blocking?
-    to_wake: AtomicUint, // SignalToken for wake up
+    to_wake: AtomicUsize, // SignalToken for wake up
 
     // The number of channels which are currently using this packet.
-    channels: AtomicInt,
+    channels: AtomicIsize,
 
     // See the discussion in Port::drop and the channel send methods for what
     // these are used for
     port_dropped: AtomicBool,
-    sender_drain: AtomicInt,
+    sender_drain: AtomicIsize,
 
     // this lock protects various portions of this implementation during
     // select()
@@ -70,12 +70,12 @@ impl<T: Send> Packet<T> {
     pub fn new() -> Packet<T> {
         let p = Packet {
             queue: mpsc::Queue::new(),
-            cnt: AtomicInt::new(0),
+            cnt: AtomicIsize::new(0),
             steals: 0,
-            to_wake: AtomicUint::new(0),
-            channels: AtomicInt::new(2),
+            to_wake: AtomicUsize::new(0),
+            channels: AtomicIsize::new(2),
             port_dropped: AtomicBool::new(false),
-            sender_drain: AtomicInt::new(0),
+            sender_drain: AtomicIsize::new(0),
             select_lock: Mutex::new(()),
         };
         return p;

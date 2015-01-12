@@ -58,7 +58,7 @@
 
 use prelude::v1::*;
 
-use sync::atomic::{self, AtomicUint, Ordering};
+use sync::atomic::{self, AtomicUsize, Ordering};
 use sync::{Mutex, Once, ONCE_INIT};
 
 use sys::thread_local as imp;
@@ -97,7 +97,7 @@ pub struct StaticKey {
 
 /// Inner contents of `StaticKey`, created by the `INIT_INNER` constant.
 pub struct StaticKeyInner {
-    key: AtomicUint,
+    key: AtomicUsize,
 }
 
 /// A type for a safely managed OS-based TLS slot.
@@ -137,7 +137,7 @@ pub const INIT: StaticKey = StaticKey {
 ///
 /// This value allows specific configuration of the destructor for a TLS key.
 pub const INIT_INNER: StaticKeyInner = StaticKeyInner {
-    key: atomic::ATOMIC_UINT_INIT,
+    key: atomic::ATOMIC_USIZE_INIT,
 };
 
 static INIT_KEYS: Once = ONCE_INIT;

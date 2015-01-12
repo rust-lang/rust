@@ -41,7 +41,7 @@ use alloc::boxed::Box;
 use core::mem;
 use core::cell::UnsafeCell;
 
-use sync::atomic::{AtomicPtr, AtomicUint, Ordering};
+use sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 // Node within the linked list queue of messages to send
 struct Node<T> {
@@ -69,8 +69,8 @@ pub struct Queue<T> {
     // Cache maintenance fields. Additions and subtractions are stored
     // separately in order to allow them to use nonatomic addition/subtraction.
     cache_bound: uint,
-    cache_additions: AtomicUint,
-    cache_subtractions: AtomicUint,
+    cache_additions: AtomicUsize,
+    cache_subtractions: AtomicUsize,
 }
 
 unsafe impl<T: Send> Send for Queue<T> { }
@@ -117,8 +117,8 @@ impl<T: Send> Queue<T> {
             first: UnsafeCell::new(n1),
             tail_copy: UnsafeCell::new(n1),
             cache_bound: bound,
-            cache_additions: AtomicUint::new(0),
-            cache_subtractions: AtomicUint::new(0),
+            cache_additions: AtomicUsize::new(0),
+            cache_subtractions: AtomicUsize::new(0),
         }
     }
 
