@@ -164,29 +164,6 @@ pub fn uncompress(src: &[u8]) -> Option<Vec<u8>> {
 For reference, the examples used here are also available as an [library on
 GitHub](https://github.com/thestinger/rust-snappy).
 
-# Stack management
-
-Rust threads by default run on a *large stack*. This is actually implemented as a
-reserving a large segment of the address space and then lazily mapping in pages
-as they are needed. When calling an external C function, the code is invoked on
-the same stack as the rust stack. This means that there is no extra
-stack-switching mechanism in place because it is assumed that the large stack
-for the rust thread is plenty for the C function to have.
-
-A planned future improvement (not yet implemented at the time of this writing)
-is to have a guard page at the end of every rust stack. No rust function will
-hit this guard page (due to Rust's usage of LLVM's `__morestack`). The intention
-for this unmapped page is to prevent infinite recursion in C from overflowing
-onto other rust stacks. If the guard page is hit, then the process will be
-terminated with a message saying that the guard page was hit.
-
-For normal external function usage, this all means that there shouldn't be any
-need for any extra effort on a user's perspective. The C stack naturally
-interleaves with the rust stack, and it's "large enough" for both to
-interoperate. If, however, it is determined that a larger stack is necessary,
-there are appropriate functions in the thread spawning API to control the size of
-the stack of the thread which is spawned.
-
 # Destructors
 
 Foreign libraries often hand off ownership of resources to the calling code.
