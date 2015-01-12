@@ -83,13 +83,13 @@ Rust:
 ```rust
 # use std::boxed::Box;
 {
-    let x = Box::new(5i);
+    let x = Box::new(5);
 }
 ```
 
-The `Box::new` function creates a `Box<T>` (specifically `Box<int>` in this
+The `Box::new` function creates a `Box<T>` (specifically `Box<i32>` in this
 case) by allocating a small segment of memory on the heap with enough space to
-fit an `int`. But where in the code is the box deallocated? We said before that
+fit an `i32`. But where in the code is the box deallocated? We said before that
 we must have a deallocation for each allocation. Rust handles this for you. It
 knows that our handle, `x`, is the owning reference to our box. Rust knows that
 `x` will go out of scope at the end of the block, and so it inserts a call to
@@ -103,12 +103,12 @@ to a function? Let's look at some code:
 ```rust
 # use std::boxed::Box;
 fn main() {
-    let x = Box::new(5i);
+    let x = Box::new(5);
 
     add_one(x);
 }
 
-fn add_one(mut num: Box<int>) {
+fn add_one(mut num: Box<i32>) {
     *num += 1;
 }
 ```
@@ -119,14 +119,14 @@ code, where we print out the value of `x`:
 ```{rust,ignore}
 # use std::boxed::Box;
 fn main() {
-    let x = Box::new(5i);
+    let x = Box::new(5);
 
     add_one(x);
 
     println!("{}", x);
 }
 
-fn add_one(mut num: Box<int>) {
+fn add_one(mut num: Box<i32>) {
     *num += 1;
 }
 ```
@@ -153,14 +153,14 @@ box:
 ```rust
 # use std::boxed::Box;
 fn main() {
-    let x = Box::new(5i);
+    let x = Box::new(5);
 
     let y = add_one(x);
 
     println!("{}", y);
 }
 
-fn add_one(mut num: Box<int>) -> Box<int> {
+fn add_one(mut num: Box<i32>) -> Box<i32> {
     *num += 1;
 
     num
@@ -179,7 +179,7 @@ to something another handle owns. It's called *borrowing*, and it's done with
 Here's the current state of our `add_one` function:
 
 ```rust
-fn add_one(mut num: Box<int>) -> Box<int> {
+fn add_one(mut num: Box<i32>) -> Box<i32> {
     *num += 1;
 
     num
@@ -199,12 +199,12 @@ period. This is also called *borrowing*. Here's a version of `add_one` which
 borrows its argument rather than taking ownership:
 
 ```rust
-fn add_one(num: &mut int) {
+fn add_one(num: &mut i32) {
     *num += 1;
 }
 ```
 
-This function borrows an `int` from its caller, and then increments it. When
+This function borrows an `i32` from its caller, and then increments it. When
 the function is over, and `num` goes out of scope, the borrow is over.
 
 # Lifetimes
@@ -225,10 +225,10 @@ To fix this, we have to make sure that step four never happens after step
 three. The ownership system in Rust does this through a concept called
 *lifetimes*, which describe the scope that a reference is valid for.
 
-Let's look at that function which borrows an `int` again:
+Let's look at that function which borrows an `i32` again:
 
 ```rust
-fn add_one(num: &int) -> int {
+fn add_one(num: &i32) -> i32 {
     *num + 1
 }
 ```
@@ -239,7 +239,7 @@ cover the others later. Without eliding the lifetimes, `add_one` looks like
 this:
 
 ```rust
-fn add_one<'a>(num: &'a int) -> int {
+fn add_one<'a>(num: &'a i32) -> i32 {
     *num + 1
 }
 ```
@@ -262,22 +262,22 @@ fn add_two<'a, 'b>(...)
 Then in our parameter list, we use the lifetimes we've named:
 
 ```{rust,ignore}
-...(num: &'a int) -> ...
+...(num: &'a i32) -> ...
 ```
 
-If you compare `&int` to `&'a int`, they're the same, it's just that the
-lifetime `'a` has snuck in between the `&` and the `int`. We read `&int` as "a
-reference to an int" and `&'a int` as "a reference to an int with the lifetime 'a.'"
+If you compare `&i32` to `&'a i32`, they're the same, it's just that the
+lifetime `'a` has snuck in between the `&` and the `i32`. We read `&i32` as "a
+reference to an i32" and `&'a i32` as "a reference to an i32 with the lifetime 'a.'"
 
 Why do lifetimes matter? Well, for example, here's some code:
 
 ```rust
 struct Foo<'a> {
-    x: &'a int,
+    x: &'a i32,
 }
 
 fn main() {
-    let y = &5i; // this is the same as `let _y = 5; let y = &_y;
+    let y = &5; // this is the same as `let _y = 5; let y = &_y;
     let f = Foo { x: y };
 
     println!("{}", f.x);
@@ -288,7 +288,7 @@ As you can see, `struct`s can also have lifetimes. In a similar way to functions
 
 ```{rust}
 struct Foo<'a> {
-# x: &'a int,
+# x: &'a i32,
 # }
 ```
 
@@ -296,12 +296,12 @@ declares a lifetime, and
 
 ```rust
 # struct Foo<'a> {
-x: &'a int,
+x: &'a i32,
 # }
 ```
 
 uses it. So why do we need a lifetime here? We need to ensure that any reference
-to a `Foo` cannot outlive the reference to an `int` it contains.
+to a `Foo` cannot outlive the reference to an `i32` it contains.
 
 ## Thinking in scopes
 
@@ -310,7 +310,7 @@ valid for. For example:
 
 ```rust
 fn main() {
-    let y = &5i;    // -+ y goes into scope
+    let y = &5;    // -+ y goes into scope
                     //  |
     // stuff        //  |
                     //  |
@@ -321,11 +321,11 @@ Adding in our `Foo`:
 
 ```rust
 struct Foo<'a> {
-    x: &'a int,
+    x: &'a i32,
 }
 
 fn main() {
-    let y = &5i;          // -+ y goes into scope
+    let y = &5;          // -+ y goes into scope
     let f = Foo { x: y }; // -+ f goes into scope
     // stuff              //  |
                           //  |
@@ -337,14 +337,14 @@ This code won't work:
 
 ```{rust,ignore}
 struct Foo<'a> {
-    x: &'a int,
+    x: &'a i32,
 }
 
 fn main() {
     let x;                    // -+ x goes into scope
                               //  |
     {                         //  |
-        let y = &5i;          // ---+ y goes into scope
+        let y = &5;          // ---+ y goes into scope
         let f = Foo { x: y }; // ---+ f goes into scope
         x = &f.x;             //  | | error here
     }                         // ---+ f and y go out of scope
@@ -375,12 +375,12 @@ alive: they are baked into the data segment of the final binary. Another
 example are globals:
 
 ```rust
-static FOO: int = 5i;
-let x: &'static int = &FOO;
+static FOO: i32 = 5;
+let x: &'static i32 = &FOO;
 ```
 
-This adds an `int` to the data segment of the binary, and FOO is a reference to
-it.
+This adds an `i32` to the data segment of the binary, and `FOO` is a reference
+to it.
 
 # Shared Ownership
 
@@ -395,7 +395,7 @@ struct Car {
 }
 
 struct Wheel {
-    size: int,
+    size: i32,
     owner: Car,
 }
 
@@ -431,7 +431,7 @@ struct Car {
 }
 
 struct Wheel {
-    size: int,
+    size: i32,
     owner: Rc<Car>,
 }
 
@@ -504,15 +504,15 @@ what the elided lifetimes are expand to:
 fn print(s: &str);                                      // elided
 fn print<'a>(s: &'a str);                               // expanded
 
-fn debug(lvl: uint, s: &str);                           // elided
-fn debug<'a>(lvl: uint, s: &'a str);                    // expanded
+fn debug(lvl: u32, s: &str);                           // elided
+fn debug<'a>(lvl: u32, s: &'a str);                    // expanded
 
 // In the preceeding example, `lvl` doesn't need a lifetime because it's not a
 // reference (`&`). Only things relating to references (such as a `struct`
 // which contains a reference) need lifetimes.
 
-fn substr(s: &str, until: uint) -> &str;                // elided
-fn substr<'a>(s: &'a str, until: uint) -> &'a str;      // expanded
+fn substr(s: &str, until: u32) -> &str;                // elided
+fn substr<'a>(s: &'a str, until: u32) -> &'a str;      // expanded
 
 fn get_str() -> &str;                                   // ILLEGAL, no inputs
 
