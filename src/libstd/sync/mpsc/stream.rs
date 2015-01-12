@@ -28,7 +28,7 @@ use core::cmp;
 use core::int;
 use thread::Thread;
 
-use sync::atomic::{AtomicInt, AtomicUint, Ordering, AtomicBool};
+use sync::atomic::{AtomicIsize, AtomicUsize, Ordering, AtomicBool};
 use sync::mpsc::Receiver;
 use sync::mpsc::blocking::{self, SignalToken};
 use sync::mpsc::spsc_queue as spsc;
@@ -42,9 +42,9 @@ const MAX_STEALS: int = 1 << 20;
 pub struct Packet<T> {
     queue: spsc::Queue<Message<T>>, // internal queue for all message
 
-    cnt: AtomicInt, // How many items are on this channel
+    cnt: AtomicIsize, // How many items are on this channel
     steals: int, // How many times has a port received without blocking?
-    to_wake: AtomicUint, // SignalToken for the blocked thread to wake up
+    to_wake: AtomicUsize, // SignalToken for the blocked thread to wake up
 
     port_dropped: AtomicBool, // flag if the channel has been destroyed.
 }
@@ -79,9 +79,9 @@ impl<T: Send> Packet<T> {
         Packet {
             queue: unsafe { spsc::Queue::new(128) },
 
-            cnt: AtomicInt::new(0),
+            cnt: AtomicIsize::new(0),
             steals: 0,
-            to_wake: AtomicUint::new(0),
+            to_wake: AtomicUsize::new(0),
 
             port_dropped: AtomicBool::new(false),
         }

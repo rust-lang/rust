@@ -8,27 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Ordering};
+use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 use std::rand::{thread_rng, Rng, Rand};
 use std::thread::Thread;
 
 const REPEATS: uint = 5;
 const MAX_LEN: uint = 32;
-static drop_counts: [AtomicUint;  MAX_LEN] =
-    // FIXME #5244: AtomicUint is not Copy.
+static drop_counts: [AtomicUsize;  MAX_LEN] =
+    // FIXME #5244: AtomicUsize is not Copy.
     [
-        ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT,
-        ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT,
-        ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT,
-        ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT,
-
-        ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT,
-        ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT,
-        ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT,
-        ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT, ATOMIC_UINT_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
+        ATOMIC_USIZE_INIT, ATOMIC_USIZE_INIT,
      ];
 
-static creation_count: AtomicUint = ATOMIC_UINT_INIT;
+static creation_count: AtomicUsize = ATOMIC_USIZE_INIT;
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
 struct DropCounter { x: uint, creation_id: uint }
