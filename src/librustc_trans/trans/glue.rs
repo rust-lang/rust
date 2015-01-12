@@ -302,8 +302,10 @@ fn trans_struct_drop<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
     })
 }
 
-fn size_and_align_of_dst<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
-                                     -> (ValueRef, ValueRef) {
+fn size_and_align_of_dst<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
+                                           t: Ty<'tcx>,
+                                           info: ValueRef)
+                                           -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {}",
            bcx.ty_to_string(t), bcx.val_to_string(info));
     if type_is_sized(bcx.tcx(), t) {

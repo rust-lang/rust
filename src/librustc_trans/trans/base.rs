@@ -1070,7 +1070,10 @@ pub fn load_ty<'fcx, 'blk, 'tcx>(cx: Block<'fcx, 'blk, 'tcx>,
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
-pub fn store_ty<'fcx, 'blk, 'tcx>(cx: Block<'fcx, 'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
+pub fn store_ty<'fcx, 'blk, 'tcx>(cx: Block<'fcx, 'blk, 'tcx>,
+                                  v: ValueRef,
+                                  dst: ValueRef,
+                                  t: Ty<'tcx>) {
     if ty::type_is_bool(t) {
         Store(cx, ZExt(cx, v, Type::i8(cx.ccx())), dst);
     } else if type_is_immediate(cx.ccx(), t) && type_of::type_of(cx.ccx(), t).is_aggregate() {
@@ -1209,7 +1212,9 @@ fn memzero<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>) {
     b.call(llintrinsicfn, &[llptr, llzeroval, size, align, volatile], None);
 }
 
-pub fn alloc_ty<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, t: Ty<'tcx>, name: &str) -> ValueRef {
+pub fn alloc_ty<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
+                                  t: Ty<'tcx>,
+                                  name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);

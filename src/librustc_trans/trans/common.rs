@@ -989,7 +989,8 @@ pub fn expr_ty<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, ex: &ast::Expr) -
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
+pub fn expr_ty_adjusted<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
+                                          ex: &ast::Expr) -> Ty<'tcx> {
     monomorphize_type(bcx, ty::expr_ty_adjusted(bcx.tcx(), ex))
 }
 
