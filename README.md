@@ -58,7 +58,7 @@ documentation.
 
 ### Building on Windows
 
-To easily build on windows we can use [MSYS2](http://sourceforge.net/projects/msys2/):
+To easily build on windows we can use [MSYS2](http://msys2.github.io/):
 
 1. Grab the latest MSYS2 installer and go through the installer.
 2. Now from the MSYS2 terminal we want to install the mingw64 toolchain and the other
