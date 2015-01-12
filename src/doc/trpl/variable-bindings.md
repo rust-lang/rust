@@ -89,25 +89,7 @@ what you need, so it's not verboten.
 
 Let's get back to bindings. Rust variable bindings have one more aspect that
 differs from other languages: bindings are required to be initialized with a
-value before you're allowed to use them. If we try...
-
-```{ignore}
-let x;
-```
-
-...we'll get an error:
-
-```text
-src/main.rs:2:9: 2:10 error: unable to infer enough type information about `_`; type annotations required
-src/main.rs:2     let x;
-                      ^
-```
-
-Giving it a type will compile, though:
-
-```{rust}
-let x: i32;
-```
+value before you're allowed to use them.
 
 Let's try it out. Change your `src/main.rs` file to look like this:
 
