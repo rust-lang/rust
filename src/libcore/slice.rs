@@ -1269,6 +1269,9 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     }
 }
 
+#[stable]
+impl<'a, T> ExactSizeIterator for Chunks<'a, T> {}
+
 #[unstable = "trait is experimental"]
 impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
     #[inline]
@@ -1347,6 +1350,8 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
     }
 }
 
+#[stable]
+impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 
 //
 // Free functions
