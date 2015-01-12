@@ -1,6 +1,6 @@
 % Error Handling in Rust
 
-> The best-laid plans of mice and men
+> The best-laid plans of mice and men  
 > Often go awry
 >
 > "Tae a Moose", Robert Burns
