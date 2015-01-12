@@ -2083,7 +2083,7 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
 }
 
 fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
-    let method_context: &str = "";
+    let mut method_context: &str = "";
     
     try!(write!(w, "<h3 class='impl'>{}<code>impl{} ",
                 ConciseStability(&i.stability),
@@ -2093,6 +2093,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                          try!(write!(w, "{} for ", *ty))},
         None => {}
     }
+    method_context = format!("{}:{}", i.impl_.for_, method_context).as_slice();
     try!(write!(w, "{}{}</code></h3>", i.impl_.for_, WhereClause(&i.impl_.generics)));
     match i.dox {
         Some(ref dox) => {
