@@ -9,8 +9,18 @@
 // except according to those terms.
 
 fn main() {
-    let _x: isize = [1is, 2, 3]; //~ ERROR expected isize, found array of 3 elements
+    let _x: isize = [1is, 2, 3];
+    //~^ ERROR mismatched types
+    //~| expected `isize`
+    //~| found `[isize; 3]`
+    //~| expected isize
+    //~| found array of 3 elements
 
     let x: &[isize] = &[1, 2, 3];
-    let _y: &isize = x; //~ ERROR expected isize, found slice
+    let _y: &isize = x;
+    //~^ ERROR mismatched types
+    //~| expected `&isize`
+    //~| found `&[isize]`
+    //~| expected isize
+    //~| found slice
 }

@@ -10,7 +10,11 @@
 
 fn main() {
     match Some(10) {
-    //~^ ERROR match arms have incompatible types: expected `bool`, found `()`
+    //~^ ERROR match arms have incompatible types:
+    //~| expected `bool`
+    //~| found `()`
+    //~| expected bool
+    //~| found ()
         Some(5) => false,
         Some(2) => true,
         None    => (), //~ NOTE match arm with an incompatible type

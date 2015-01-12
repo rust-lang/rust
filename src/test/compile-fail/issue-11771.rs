@@ -11,11 +11,19 @@
 fn main() {
     let x = ();
     1 +
-    x //~ ERROR mismatched types: expected `_`, found `()` (expected integral variable, found ())
+    x //~  ERROR mismatched types
+      //~| expected `_`
+      //~| found `()`
+      //~| expected integral variable
+      //~| found ()
     ;
 
     let x: () = ();
     1 +
-    x //~ ERROR mismatched types: expected `_`, found `()` (expected integral variable, found ())
+    x //~  ERROR mismatched types
+      //~| expected `_`
+      //~| found `()`
+      //~| expected integral variable
+      //~| found ()
     ;
 }

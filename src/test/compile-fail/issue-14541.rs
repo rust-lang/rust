@@ -13,8 +13,11 @@ struct vec3 { y: f32, z: f32 }
 
 fn make(v: vec2) {
     let vec3 { y: _, z: _ } = v;
-    //~^ ERROR mismatched types: expected `vec2`, found `vec3`
-    //         (expected struct vec2, found struct vec3)
+    //~^ ERROR mismatched types
+    //~| expected `vec2`
+    //~| found `vec3`
+    //~| expected struct `vec2`
+    //~| found struct `vec3`
 }
 
 fn main() { }

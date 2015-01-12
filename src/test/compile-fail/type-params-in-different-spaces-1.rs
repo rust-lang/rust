@@ -12,7 +12,11 @@ use std::num::Int;
 
 trait BrokenAdd: Int {
     fn broken_add<T>(&self, rhs: T) -> Self {
-        *self + rhs //~ ERROR expected `Self`, found `T`
+        *self + rhs //~  ERROR mismatched types
+                    //~| expected `Self`
+                    //~| found `T`
+                    //~| expected Self
+                    //~| found type parameter
     }
 }
 

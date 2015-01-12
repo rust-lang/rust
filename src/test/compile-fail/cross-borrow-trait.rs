@@ -19,6 +19,10 @@ impl Trait for Foo {}
 
 pub fn main() {
     let x: Box<Trait> = box Foo;
-    let _y: &Trait = x; //~ ERROR mismatched types: expected `&Trait`, found `Box<Trait>`
+    let _y: &Trait = x; //~  ERROR mismatched types
+                        //~| expected `&Trait`
+                        //~| found `Box<Trait>`
+                        //~| expected &-ptr
+                        //~| found box
 }
 

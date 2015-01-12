@@ -13,6 +13,9 @@
 const A: (isize,isize) = (4,2);
 fn main() {
     match 42 { A => () }
-    //~^ ERROR mismatched types: expected `_`, found `(isize, isize)`
-    //         (expected integral variable, found tuple)
+    //~^ ERROR mismatched types
+    //~| expected `_`
+    //~| found `(isize, isize)`
+    //~| expected integral variable
+    //~| found tuple
 }
