@@ -21,11 +21,7 @@
 //! # Example
 //!
 //! ```ignore
-//! # fn main() {
-//! #![feature(globs)]
-//!
 //! use core::prelude::*;
-//! # }
 //! ```
 
 // Reexported core operators

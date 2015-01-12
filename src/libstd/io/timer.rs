@@ -27,10 +27,9 @@ use sys::timer::Timer as TimerImp;
 /// period of time. Handles to this timer can also be created in the form of
 /// receivers which will receive notifications over time.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
-/// # fn main() {}
 /// # fn foo() {
 /// use std::io::Timer;
 /// use std::time::Duration;
@@ -54,7 +53,6 @@ use sys::timer::Timer as TimerImp;
 /// the `io::timer` module.
 ///
 /// ```
-/// # fn main() {}
 /// # fn foo() {
 /// use std::io::timer;
 /// use std::time::Duration;
