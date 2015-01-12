@@ -40,7 +40,8 @@ fn hello(name: &str) {
 ```
 
 When writing doc comments, adding sections for any arguments, return values,
-and providing some examples of usage is very, very helpful.
+and providing some examples of usage is very, very helpful. Don't worry about
+the `&str`, we'll get to it soon.
 
 You can use the [`rustdoc`](../rustdoc.html) tool to generate HTML documentation
 from these doc comments.

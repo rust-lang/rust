@@ -94,6 +94,6 @@ backed by arrays. Slices have type `&[T]`, which we'll talk about when we cover
 generics.
 
 We have now learned all of the most basic Rust concepts. We're ready to start
-building our guessing game, we just need to know one last thing: how to get
-input from the keyboard. You can't have a guessing game without the ability to
-guess!
+building ourselves a guessing game, we just need to know one last thing: how to
+get input from the keyboard. You can't have a guessing game without the ability
+to guess!
