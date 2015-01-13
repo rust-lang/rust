@@ -32,7 +32,7 @@
 //! # }
 //! ```
 
-#![unstable]
+#![deprecated = "this was an unsightly interface. just implement Drop"]
 
 use ops::{Drop, FnMut, FnOnce};
 
