@@ -1186,6 +1186,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         .is_ok()
                 })
             }
+            (&BuiltinCandidate(_), &ParamCandidate(_)) => {
+                // If we have a where-clause like `Option<K> : Send`,
+                // then we wind up in a situation where there is a
+                // default rule (`Option<K>:Send if K:Send) and the
+                // where-clause that both seem applicable. Just take
+                // the where-clause in that case.
+                true
+            }
             (&ProjectionCandidate, &ParamCandidate(_)) => {
                 // FIXME(#20297) -- this gives where clauses precedent
                 // over projections. Really these are just two means
