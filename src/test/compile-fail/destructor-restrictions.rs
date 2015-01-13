@@ -14,8 +14,8 @@ use std::cell::RefCell;
 
 fn main() {
     let b = {
-        let a = box RefCell::new(4i);
-        *a.borrow() + 1i    //~ ERROR `*a` does not live long enough
+        let a = Box::new(RefCell::new(4i8));
+        *a.borrow() + 1i8    //~ ERROR `*a` does not live long enough
     };
     println!("{}", b);
 }
