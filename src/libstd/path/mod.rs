@@ -823,12 +823,14 @@ pub struct Display<'a, P:'a> {
     filename: bool
 }
 
+#[stable]
 impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)
     }
 }
 
+#[stable]
 impl<'a, P: GenericPath> fmt::String for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_cow().fmt(f)

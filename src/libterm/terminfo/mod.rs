@@ -197,7 +197,7 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
         let mut file = entry.unwrap();
         let ti = parse(&mut file, false);
         if ti.is_err() {
-            debug!("error parsing terminfo entry: {:?}", ti.unwrap_err());
+            debug!("error parsing terminfo entry: {:?}", ti.err().unwrap());
             return None;
         }
 

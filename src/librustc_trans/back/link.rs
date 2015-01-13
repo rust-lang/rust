@@ -779,14 +779,14 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     }
 
     if sess.opts.debugging_opts.print_link_args {
-        println!("{}", &cmd);
+        println!("{:?}", &cmd);
     }
 
     // May have not found libraries in the right formats.
     sess.abort_if_errors();
 
     // Invoke the system linker
-    debug!("{}", &cmd);
+    debug!("{:?}", &cmd);
     let prog = time(sess.time_passes(), "running linker", (), |()| cmd.output());
     match prog {
         Ok(prog) => {
@@ -794,7 +794,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.err(&format!("linking with `{}` failed: {}",
                                  pname,
                                  prog.status)[]);
-                sess.note(&format!("{}", &cmd)[]);
+                sess.note(&format!("{:?}", &cmd)[]);
                 let mut output = prog.error.clone();
                 output.push_all(&prog.output[]);
                 sess.note(str::from_utf8(&output[]).unwrap());

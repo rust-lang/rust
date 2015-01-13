@@ -162,6 +162,7 @@ impl BoxAny for Box<Any> {
     }
 }
 
+#[stable]
 impl<T: ?Sized + fmt::Show> fmt::Show for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Box({:?})", &**self)

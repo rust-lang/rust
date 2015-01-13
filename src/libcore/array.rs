@@ -32,7 +32,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable = "waiting for Show to stabilize"]
+            #[stable]
             impl<T:fmt::Show> fmt::Show for [T; $N] {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     fmt::Show::fmt(&&self[], f)

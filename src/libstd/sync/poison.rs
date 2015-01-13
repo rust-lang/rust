@@ -54,6 +54,7 @@ pub struct Guard {
 /// each lock, but once a lock is poisoned then all future acquisitions will
 /// return this error.
 #[stable]
+#[derive(Show)]
 pub struct PoisonError<T> {
     guard: T,
 }
@@ -61,6 +62,7 @@ pub struct PoisonError<T> {
 /// An enumeration of possible errors which can occur while calling the
 /// `try_lock` method.
 #[stable]
+#[derive(Show)]
 pub enum TryLockError<T> {
     /// The lock could not be acquired because another task failed while holding
     /// the lock.
@@ -90,7 +92,8 @@ pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 #[stable]
 pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 
-impl<T> fmt::Show for PoisonError<T> {
+#[stable]
+impl<T> fmt::String for PoisonError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "poisoned lock: another task failed inside".fmt(f)
     }
@@ -109,7 +112,8 @@ impl<T> FromError<PoisonError<T>> for TryLockError<T> {
     }
 }
 
-impl<T> fmt::Show for TryLockError<T> {
+#[stable]
+impl<T> fmt::String for TryLockError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TryLockError::Poisoned(ref p) => p.fmt(f),

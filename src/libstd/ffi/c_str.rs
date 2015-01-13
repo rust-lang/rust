@@ -121,7 +121,7 @@ impl Deref for CString {
 
 impl fmt::Show for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        String::from_utf8_lossy(self.as_bytes()).fmt(f)
+        fmt::String::fmt(&String::from_utf8_lossy(self.as_bytes()), f)
     }
 }
 

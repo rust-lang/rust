@@ -419,9 +419,10 @@ pub use core::fmt::{Show, String, Octal, Binary};
 pub use core::fmt::{LowerHex, UpperHex, Pointer};
 pub use core::fmt::{LowerExp, UpperExp};
 pub use core::fmt::Error;
-pub use core::fmt::{Argument, Arguments, write, radix, Radix, RadixFmt};
+pub use core::fmt::{ArgumentV1, Arguments, write, radix, Radix, RadixFmt};
 
 #[doc(hidden)]
+#[cfg(stage0)]
 pub use core::fmt::{argument, argumentuint};
 
 /// The format function takes a precompiled format string and a list of
@@ -439,8 +440,7 @@ pub use core::fmt::{argument, argumentuint};
 /// let s = fmt::format(format_args!("Hello, {}!", "world"));
 /// assert_eq!(s, "Hello, world!".to_string());
 /// ```
-#[unstable = "this is an implementation detail of format! and should not \
-                  be called directly"]
+#[stable]
 pub fn format(args: Arguments) -> string::String {
     let mut output = string::String::new();
     let _ = write!(&mut output, "{}", args);

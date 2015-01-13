@@ -395,14 +395,15 @@ impl Command {
     }
 }
 
-impl fmt::String for Command {
+#[stable]
+impl fmt::Show for Command {
     /// Format the program and arguments of a Command for display. Any
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{}", String::from_utf8_lossy(self.program.as_bytes())));
+        try!(write!(f, "{:?}", self.program));
         for arg in self.args.iter() {
-            try!(write!(f, " '{}'", String::from_utf8_lossy(arg.as_bytes())));
+            try!(write!(f, " '{:?}'", arg));
         }
         Ok(())
     }
@@ -503,6 +504,7 @@ pub enum ProcessExit {
     ExitSignal(int),
 }
 
+#[stable]
 impl fmt::Show for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -510,7 +512,7 @@ impl fmt::Show for ProcessExit {
     }
 }
 
-
+#[stable]
 impl fmt::String for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
