@@ -81,7 +81,6 @@ therefore deallocates the memory for you. Here's the equivalent example in
 Rust:
 
 ```rust
-# use std::boxed::Box;
 {
     let x = Box::new(5);
 }
@@ -101,7 +100,6 @@ This is pretty straightforward, but what happens when we want to pass our box
 to a function? Let's look at some code:
 
 ```rust
-# use std::boxed::Box;
 fn main() {
     let x = Box::new(5);
 
@@ -117,7 +115,6 @@ This code works, but it's not ideal. For example, let's add one more line of
 code, where we print out the value of `x`:
 
 ```{rust,ignore}
-# use std::boxed::Box;
 fn main() {
     let x = Box::new(5);
 
@@ -151,7 +148,6 @@ To fix this, we can have `add_one` give ownership back when it's done with the
 box:
 
 ```rust
-# use std::boxed::Box;
 fn main() {
     let x = Box::new(5);
 

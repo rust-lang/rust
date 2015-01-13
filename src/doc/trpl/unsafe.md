@@ -197,7 +197,6 @@ extern crate libc;
 use libc::{c_void, size_t, malloc, free};
 use std::mem;
 use std::ptr;
-# use std::boxed::Box;
 
 // Define a wrapper around the handle returned by the foreign code.
 // Unique<T> has the same semantics as Box<T>

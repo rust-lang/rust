@@ -455,7 +455,6 @@ fn rc_succ(x: Rc<int>) -> int { *x + 1 }
 Note that the caller of your function will have to modify their calls slightly:
 
 ```{rust}
-# use std::boxed::Box;
 use std::rc::Rc;
 
 fn succ(x: &int) -> int { *x + 1 }
@@ -478,7 +477,6 @@ those contents.
 heap allocation in Rust. Creating a box looks like this:
 
 ```{rust}
-# use std::boxed::Box;
 let x = Box::new(5i);
 ```
 
@@ -486,7 +484,6 @@ Boxes are heap allocated and they are deallocated automatically by Rust when
 they go out of scope:
 
 ```{rust}
-# use std::boxed::Box;
 {
     let x = Box::new(5i);
 
@@ -507,7 +504,6 @@ You don't need to fully grok the theory of affine types or regions to grok
 boxes, though. As a rough approximation, you can treat this Rust code:
 
 ```{rust}
-# use std::boxed::Box;
 {
     let x = Box::new(5i);
 
@@ -548,7 +544,6 @@ for more detail on how lifetimes work.
 Using boxes and references together is very common. For example:
 
 ```{rust}
-# use std::boxed::Box;
 fn add_one(x: &int) -> int {
     *x + 1
 }
@@ -566,7 +561,6 @@ function, and since it's only reading the value, allows it.
 We can borrow `x` multiple times, as long as it's not simultaneous:
 
 ```{rust}
-# use std::boxed::Box;
 fn add_one(x: &int) -> int {
     *x + 1
 }
@@ -583,7 +577,6 @@ fn main() {
 Or as long as it's not a mutable borrow. This will error:
 
 ```{rust,ignore}
-# use std::boxed::Box;
 fn add_one(x: &mut int) -> int {
     *x + 1
 }
@@ -610,7 +603,6 @@ Sometimes, you need a recursive data structure. The simplest is known as a
 
 
 ```{rust}
-# use std::boxed::Box;
 #[derive(Show)]
 enum List<T> {
     Cons(T, Box<List<T>>),
@@ -666,7 +658,6 @@ In many languages with pointers, you'd return a pointer from a function
 so as to avoid copying a large data structure. For example:
 
 ```{rust}
-# use std::boxed::Box;
 struct BigStruct {
     one: int,
     two: int,
@@ -695,7 +686,6 @@ than the hundred `int`s that make up the `BigStruct`.
 This is an antipattern in Rust. Instead, write this:
 
 ```{rust}
-# use std::boxed::Box;
 struct BigStruct {
     one: int,
     two: int,
