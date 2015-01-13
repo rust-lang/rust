@@ -107,6 +107,7 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "LE"                => token::Le,
             "LIT_BINARY"        => token::Literal(token::Binary(Name(0)), None),
             "LIT_BINARY_RAW"    => token::Literal(token::BinaryRaw(Name(0), 0), None),
+            "QUESTION"          => token::Question,
             _                   => continue,
         };
 
