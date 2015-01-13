@@ -2882,12 +2882,13 @@ impl<'a> Parser<'a> {
         debug_assert!(ast_util::is_comparison_binop(outer_op));
         match lhs.node {
             ExprBinary(op, _, _) if ast_util::is_comparison_binop(op.node) => {
-                let op_span = self.span;
+                // respan to include both operators
+                let op_span = mk_sp(op.span.lo, self.span.hi);
                 self.span_err(op_span,
-                    "Chained comparison operators require parentheses");
+                    "chained comparison operators require parentheses");
                 if op.node == BiLt && outer_op == BiGt {
                     self.span_help(op_span,
-                        "use ::< instead of < if you meant to specify type arguments");
+                        "use `::<...>` instead of `<...>` if you meant to specify type arguments");
                 }
             }
             _ => {}
