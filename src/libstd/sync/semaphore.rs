@@ -96,6 +96,20 @@ impl Semaphore {
         self.acquire();
         SemaphoreGuard { sem: self }
     }
+
+    /// Get the current value of the semaphore.
+    ///
+    /// This method could be used to unlock a semaphore in an unknown state.
+    /// ```
+    /// for i in range(sem.get_value(),1) {
+    ///    sem.release();
+    /// }
+    /// Or simply to monitor a semaphore state.
+    /// ```
+    pub fn get_value(&self) -> int {
+        *self.lock.lock().unwrap()
+    }
+
 }
 
 #[unsafe_destructor]
@@ -198,4 +212,21 @@ mod tests {
         }
         rx.recv().unwrap(); // wait for child to be done
     }
+
+    #[test]
+    fn test_sem_get_val() {
+        let s = Arc::new(Semaphore::new(-5));
+        let s2 = s.clone();
+        let (tx, rx) = channel();
+        let _t = Thread::spawn(move|| {
+            let _ = rx.recv();
+            for _ in range(s2.get_value(),1){
+                s2.release();
+            }
+        });
+        tx.send(()).unwrap();
+        s.acquire();
+    }
+
+
 }
