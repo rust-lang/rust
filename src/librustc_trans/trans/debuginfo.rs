@@ -3526,7 +3526,8 @@ fn create_scope_map(cx: &CrateContext,
             ast::ExprLit(_)   |
             ast::ExprBreak(_) |
             ast::ExprAgain(_) |
-            ast::ExprPath(_)  => {}
+            ast::ExprPath(_)  |
+            ast::ExprQPath(_) => {}
 
             ast::ExprCast(ref sub_exp, _)     |
             ast::ExprAddrOf(_, ref sub_exp)  |

@@ -244,7 +244,7 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
 
             // FIXME: (#3728) we can probably do something CCI-ish
             // surrounding nonlocal constants. But we don't yet.
-            ast::ExprPath(_) => self.lookup_constness(e),
+            ast::ExprPath(_) | ast::ExprQPath(_) => self.lookup_constness(e),
 
             ast::ExprRepeat(..) => general_const,
 
@@ -353,6 +353,13 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
                         _ => unreachable!()
                     }
                 }
+            }
+        }
+
+        ast::ExprQPath(_) => {
+            match lookup_const(tcx, expr) {
+                Some(actual) => return const_expr_to_pat(tcx, actual),
+                _ => unreachable!()
             }
         }
 
@@ -542,7 +549,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
                 ty::ty_float(ast::TyF64) => (f64, const_float, f64)
             }))
       }
-      ast::ExprPath(_) => {
+      ast::ExprPath(_) | ast::ExprQPath(_) => {
           match lookup_const(tcx, e) {
               Some(actual_e) => eval_const_expr_partial(tcx, &*actual_e),
               None => Err("non-constant path in constant expr".to_string())

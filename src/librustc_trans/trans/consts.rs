@@ -600,7 +600,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                 C_array(llunitty, &vs[])
             }
           }
-          ast::ExprPath(_) => {
+          ast::ExprPath(_) | ast::ExprQPath(_) => {
             let def = cx.tcx().def_map.borrow()[e.id];
             match def {
                 def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) => {

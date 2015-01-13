@@ -91,8 +91,11 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
     debug!("callee::trans(expr={})", expr.repr(bcx.tcx()));
 
     // pick out special kinds of expressions that can be called:
-    if let ast::ExprPath(_) = expr.node {
-        return trans_def(bcx, bcx.def(expr.id), expr);
+    match expr.node {
+        ast::ExprPath(_) | ast::ExprQPath(_) => {
+            return trans_def(bcx, bcx.def(expr.id), expr);
+        }
+        _ => {}
     }
 
     // any other expressions are closures:
