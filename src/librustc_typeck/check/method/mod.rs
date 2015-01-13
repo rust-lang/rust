@@ -29,7 +29,7 @@ use syntax::codemap::Span;
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;
 
-pub use self::suggest::report_error;
+pub use self::suggest::{report_error, AllTraitsVec};
 
 mod confirm;
 mod doc;
