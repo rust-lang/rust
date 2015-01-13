@@ -157,6 +157,17 @@
 //! }
 //! ```
 //!
+//! If you are absolutely sure you want to ignore a result, you must
+//! do so explicitly:
+//!
+//! ```{.no_run}
+//! # use std::io::{File, Open, Write};
+//!
+//! # let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
+//! file.write_line("important message").ignore();
+//! # drop(file);
+//! ```
+//!
 //! # The `try!` macro
 //!
 //! When writing code that calls many functions that return the
@@ -350,6 +361,26 @@ impl<T, E> Result<T, E> {
         match self {
             Ok(_)  => None,
             Err(x) => Some(x),
+        }
+    }
+
+    /// Ignore this result.
+    ///
+    /// Converts `self` into (), consuming `self`, and
+    /// discarding the value or error.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let x: Result<uint, &str> = Ok(2);
+    /// x.ignore();
+    /// ```
+    #[inline]
+    #[stable]
+    pub fn ignore(self) {
+        match self {
+            Ok(_)  => (),
+            Err(_) => (),
         }
     }
 

@@ -139,3 +139,12 @@ pub fn test_unwrap_or_else_panic() {
     let bad_err: Result<int, &'static str> = Err("Unrecoverable mess.");
     let _ : int = bad_err.unwrap_or_else(handler);
 }
+
+#[test]
+pub fn test_ignore() {
+    let ok: Result<int, &'static str> = Ok(100i);
+    let ok_err: Result<int, &'static str> = Err("Err");
+
+    ok.ignore();
+    ok_err.ignore();
+}
