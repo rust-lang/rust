@@ -71,6 +71,13 @@ fn test_multi_iter() {
 }
 
 #[test]
+fn test_foreach() {
+    let mut sum: i32 = 0;
+    (0..10).foreach(|x| sum = sum + x);
+    assert!(sum == 45);
+}
+
+#[test]
 fn test_counter_from_iter() {
     let it = count(0i, 5).take(10);
     let xs: Vec<int> = FromIterator::from_iter(it);

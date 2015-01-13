@@ -119,6 +119,22 @@ pub trait Extend<A> {
 /// An extension trait providing numerous methods applicable to all iterators.
 #[stable]
 pub trait IteratorExt: Iterator + Sized {
+    /// Executes f foreach element for its side effect.
+    /// Syntatic suggar over a for loop. 
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut sum = 0i
+    /// range(0,10).foreach(|x| sum = sum + x)
+    /// assert!(sum == 55)
+    /// ```
+    fn foreach<F>(&mut self, mut f: F)
+        where F: FnMut(Self::Item) {
+        for i in *self {
+            f(i)
+        }
+    }
     /// Counts the number of elements in this iterator.
     ///
     /// # Example
