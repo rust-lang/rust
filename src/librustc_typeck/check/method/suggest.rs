@@ -11,13 +11,20 @@
 //! Give useful errors and suggestions to users when a method can't be
 //! found or is otherwise invalid.
 
+use CrateCtxt;
+
 use astconv::AstConv;
 use check::{self, FnCtxt};
 use middle::ty::{self, Ty};
+use middle::def;
+use metadata::{csearch, cstore, decoder};
 use util::ppaux::UserString;
 
-use syntax::ast;
+use syntax::{ast, ast_util};
 use syntax::codemap::Span;
+
+use std::cell;
+use std::cmp::Ordering;
 
 use super::{MethodError, CandidateSource, impl_method, trait_method};
 
@@ -67,6 +74,8 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
                 report_candidates(fcx, span, method_name, static_sources);
             }
+
+            suggest_traits_to_import(fcx, span, rcvr_ty, method_name)
         }
 
         MethodError::Ambiguity(sources) => {
@@ -118,5 +127,161 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 }
             }
         }
+    }
+}
+
+
+pub type AllTraitsVec = Vec<TraitInfo>;
+
+fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                      span: Span,
+                                      _rcvr_ty: Ty<'tcx>,
+                                      method_name: ast::Name)
+{
+    let tcx = fcx.tcx();
+
+    let mut candidates = all_traits(fcx.ccx)
+        .filter(|info| trait_method(tcx, info.def_id, method_name).is_some())
+        .collect::<Vec<_>>();
+
+    if candidates.len() > 0 {
+        // sort from most relevant to least relevant
+        candidates.sort_by(|a, b| a.cmp(b).reverse());
+
+        let method_ustring = method_name.user_string(tcx);
+
+        span_help!(fcx.sess(), span,
+                   "methods from traits can only be called if the trait is implemented \
+                    and in scope; the following trait{s} define{inv_s} a method `{name}`:",
+                   s = if candidates.len() == 1 {""} else {"s"},
+                   inv_s = if candidates.len() == 1 {"s"} else {""},
+                   name = method_ustring);
+
+        for (i, trait_info) in candidates.iter().enumerate() {
+            // provide a good-as-possible span; the span of
+            // the trait if it is local, or the span of the
+            // method call itself if not
+            let trait_span = fcx.tcx().map.def_id_span(trait_info.def_id, span);
+
+            fcx.sess().fileline_help(trait_span,
+                                     &*format!("candidate #{}: `{}`",
+                                               i + 1,
+                                               ty::item_path_str(fcx.tcx(), trait_info.def_id)))
+        }
+    }
+}
+
+#[derive(Copy)]
+pub struct TraitInfo {
+    def_id: ast::DefId,
+}
+
+impl TraitInfo {
+    fn new(def_id: ast::DefId) -> TraitInfo {
+        TraitInfo {
+            def_id: def_id,
+        }
+    }
+}
+impl PartialEq for TraitInfo {
+    fn eq(&self, other: &TraitInfo) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+impl Eq for TraitInfo {}
+impl PartialOrd for TraitInfo {
+    fn partial_cmp(&self, other: &TraitInfo) -> Option<Ordering> { Some(self.cmp(other)) }
+}
+impl Ord for TraitInfo {
+    fn cmp(&self, other: &TraitInfo) -> Ordering {
+        // accessible traits are more important/relevant than
+        // inaccessible ones, local crates are more important than
+        // remote ones (local: cnum == 0), and NodeIds just for
+        // totality.
+
+        let lhs = (other.def_id.krate, other.def_id.node);
+        let rhs = (self.def_id.krate, self.def_id.node);
+        lhs.cmp(&rhs)
+    }
+}
+
+/// Retrieve all traits in this crate and any dependent crates.
+fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
+    if ccx.all_traits.borrow().is_none() {
+        use syntax::visit;
+
+        let mut traits = vec![];
+
+        // Crate-local:
+        //
+        // meh.
+        struct Visitor<'a, 'b: 'a, 'tcx: 'a + 'b> {
+            traits: &'a mut AllTraitsVec,
+        }
+        impl<'v,'a, 'b, 'tcx> visit::Visitor<'v> for Visitor<'a, 'b, 'tcx> {
+            fn visit_item(&mut self, i: &'v ast::Item) {
+                match i.node {
+                    ast::ItemTrait(..) => {
+                        self.traits.push(TraitInfo::new(ast_util::local_def(i.id)));
+                    }
+                    _ => {}
+                }
+                visit::walk_item(self, i)
+            }
+        }
+        visit::walk_crate(&mut Visitor {
+            traits: &mut traits
+        }, ccx.tcx.map.krate());
+
+        // Cross-crate:
+        fn handle_external_def(traits: &mut AllTraitsVec,
+                               ccx: &CrateCtxt,
+                               cstore: &cstore::CStore,
+                               dl: decoder::DefLike) {
+            match dl {
+                decoder::DlDef(def::DefTrait(did)) => {
+                    traits.push(TraitInfo::new(did));
+                }
+                decoder::DlDef(def::DefMod(did)) => {
+                    csearch::each_child_of_item(cstore, did, |dl, _, _| {
+                        handle_external_def(traits, ccx, cstore, dl)
+                    })
+                }
+                _ => {}
+            }
+        }
+        let cstore = &ccx.tcx.sess.cstore;
+        cstore.iter_crate_data(|&mut: cnum, _| {
+            csearch::each_top_level_item_of_crate(cstore, cnum, |dl, _, _| {
+                handle_external_def(&mut traits, ccx, cstore, dl)
+            })
+        });
+
+        *ccx.all_traits.borrow_mut() = Some(traits);
+    }
+
+    let borrow = ccx.all_traits.borrow();
+    assert!(borrow.is_some());
+    AllTraits {
+        borrow: borrow,
+        idx: 0
+    }
+}
+
+struct AllTraits<'a> {
+    borrow: cell::Ref<'a Option<AllTraitsVec>>,
+    idx: usize
+}
+
+impl<'a> Iterator for AllTraits<'a> {
+    type Item = TraitInfo;
+
+    fn next(&mut self) -> Option<TraitInfo> {
+        let AllTraits { ref borrow, ref mut idx } = *self;
+        // ugh.
+        borrow.as_ref().unwrap().get(*idx).map(|info| {
+            *idx += 1;
+            *info
+        })
     }
 }
