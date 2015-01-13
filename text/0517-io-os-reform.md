@@ -858,7 +858,23 @@ namespaced.
 #### Channel adapters
 [Channel adapters]: #channel-adapters
 
-The `ChanReader` and `ChanWriter` adapters will be kept exactly as they are today.
+The `ChanReader` and `ChanWriter` adapters will be left as they are today, and
+they will remain `#[unstable]`. The channel adapters currently suffer from a few
+problems today, some of which are inherent to the design:
+
+* Construction is somewhat unergonomic. First a `mpsc` channel pair must be
+  created and then each half of the reader/writer needs to be created.
+* Each call to `write` involves moving memory onto the heap to be sent, which
+  isn't necessarily efficient.
+* The design of `std::sync::mpsc` allows for growing more channels in the
+  future, but it's unclear if we'll want to continue to provide a reader/writer
+  adapter for each channel we add to `std::sync`.
+
+These types generally feel as if they're from a different era of Rust (which
+they are!) and may take some time to fit into the current standard library. They
+can be reconsidered for stabilization after the dust settles from the I/O
+redesign as well as the recent `std::sync` redesign. At this time, however, this
+RFC recommends they remain unstable.
 
 #### `stdin`, `stdout`, `stderr`
 [stdin, stdout, stderr]: #stdin-stdout-stderr
