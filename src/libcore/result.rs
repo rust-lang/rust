@@ -229,7 +229,7 @@
 use self::Result::{Ok, Err};
 
 use clone::Clone;
-use fmt::Debug;
+use fmt;
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
 use ops::{FnMut, FnOnce};
 use option::Option::{self, None, Some};
@@ -715,7 +715,7 @@ impl<T, E> Result<T, E> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, E: Debug> Result<T, E> {
+impl<T, E: fmt::Debug> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     ///
     /// # Panics
@@ -746,7 +746,7 @@ impl<T, E: Debug> Result<T, E> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Debug, E> Result<T, E> {
+impl<T: fmt::Debug, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Err`.
     ///
     /// # Panics

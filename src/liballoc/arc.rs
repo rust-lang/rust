@@ -12,20 +12,22 @@
 
 //! Threadsafe reference-counted boxes (the `Arc<T>` type).
 //!
-//! The `Arc<T>` type provides shared ownership of an immutable value. Destruction is
-//! deterministic, and will occur as soon as the last owner is gone. It is marked as `Send` because
-//! it uses atomic reference counting.
+//! The `Arc<T>` type provides shared ownership of an immutable value.
+//! Destruction is deterministic, and will occur as soon as the last owner is
+//! gone. It is marked as `Send` because it uses atomic reference counting.
 //!
-//! If you do not need thread-safety, and just need shared ownership, consider the [`Rc<T>`
-//! type](../rc/struct.Rc.html). It is the same as `Arc<T>`, but does not use atomics, making it
-//! both thread-unsafe as well as significantly faster when updating the reference count.
+//! If you do not need thread-safety, and just need shared ownership, consider
+//! the [`Rc<T>` type](../rc/struct.Rc.html). It is the same as `Arc<T>`, but
+//! does not use atomics, making it both thread-unsafe as well as significantly
+//! faster when updating the reference count.
 //!
-//! The `downgrade` method can be used to create a non-owning `Weak<T>` pointer to the box. A
-//! `Weak<T>` pointer can be upgraded to an `Arc<T>` pointer, but will return `None` if the value
-//! has already been dropped.
+//! The `downgrade` method can be used to create a non-owning `Weak<T>` pointer
+//! to the box. A `Weak<T>` pointer can be upgraded to an `Arc<T>` pointer, but
+//! will return `None` if the value has already been dropped.
 //!
-//! For example, a tree with parent pointers can be represented by putting the nodes behind strong
-//! `Arc<T>` pointers, and then storing the parent pointers as `Weak<T>` pointers.
+//! For example, a tree with parent pointers can be represented by putting the
+//! nodes behind strong `Arc<T>` pointers, and then storing the parent pointers
+//! as `Weak<T>` pointers.
 //!
 //! # Examples
 //!
@@ -87,8 +89,9 @@ use heap::deallocate;
 ///
 /// # Example
 ///
-/// In this example, a large vector of floats is shared between several tasks. With simple pipes,
-/// without `Arc`, a copy would have to be made for each task.
+/// In this example, a large vector of floats is shared between several tasks.
+/// With simple pipes, without `Arc`, a copy would have to be made for each
+/// task.
 ///
 /// ```rust
 /// use std::sync::Arc;

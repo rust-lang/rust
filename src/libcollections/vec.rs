@@ -1546,13 +1546,6 @@ impl<T: fmt::Debug> fmt::Debug for Vec<T> {
     }
 }
 
-impl<'a> fmt::Writer for Vec<u8> {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.push_all(s.as_bytes());
-        Ok(())
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////

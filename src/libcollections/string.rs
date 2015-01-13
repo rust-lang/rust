@@ -938,11 +938,14 @@ impl FromStr for String {
 }
 
 /// A generic trait for converting a value to a string
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToString {
     /// Converts the value of `self` to an owned string
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn to_string(&self) -> String;
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
     #[inline]
     fn to_string(&self) -> String {
@@ -979,6 +982,7 @@ impl<'a> Str for CowString<'a> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Writer for String {
     #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
