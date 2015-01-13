@@ -288,6 +288,17 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      param_substs,
                                      callee_substs)
         }
+        traits::VtableObject(ref data) => {
+            let trait_item_def_ids =
+                ty::trait_item_def_ids(ccx.tcx(), trait_id);
+            let method_offset_in_trait =
+                trait_item_def_ids.iter()
+                                  .position(|item| item.def_id() == method_id)
+                                  .unwrap();
+            let (llfn, ty) =
+                trans_object_shim(ccx, data.object_ty, trait_id, method_offset_in_trait);
+            immediate_rvalue(llfn, ty)
+        }
         _ => {
             tcx.sess.bug(&format!("static call to invalid vtable: {}",
                                  vtbl.repr(tcx))[]);
@@ -371,7 +382,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableObject(ref data) => {
-            let llfn = trans_object_shim(bcx.ccx(), data.object_ty, trait_id, n_method);
+            let (llfn, _) = trans_object_shim(bcx.ccx(), data.object_ty, trait_id, n_method);
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableBuiltin(..) |
@@ -540,7 +551,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     object_ty: Ty<'tcx>,
     trait_id: ast::DefId,
     method_offset_in_trait: uint)
-    -> ValueRef
+    -> (ValueRef, Ty<'tcx>)
 {
     let _icx = push_ctxt("trans_object_shim");
     let tcx = ccx.tcx();
@@ -667,7 +678,7 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     finish_fn(&fcx, bcx, sig.output);
 
-    llfn
+    (llfn, method_bare_fn_ty)
 }
 
 /// Creates a returns a dynamic vtable for the given type and vtable origin.
