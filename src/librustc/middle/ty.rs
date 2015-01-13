@@ -750,9 +750,6 @@ pub struct ctxt<'tcx> {
     /// Maps a trait onto a list of impls of that trait.
     pub trait_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
 
-    /// Maps a trait onto a list of negative impls of that trait.
-    pub trait_negative_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
-
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
@@ -1894,7 +1891,7 @@ pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::R
 /// normal trait predicate (`T : TraitRef<...>`) and one of these
 /// predicates. Form #2 is a broader form in that it also permits
 /// equality between arbitrary types. Processing an instance of Form
-/// \#2 eventually yields one of these `ProjectionPredicate`
+/// #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
 #[derive(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ProjectionPredicate<'tcx> {
@@ -2415,7 +2412,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         destructor_for_type: RefCell::new(DefIdMap::new()),
         destructors: RefCell::new(DefIdSet::new()),
         trait_impls: RefCell::new(DefIdMap::new()),
-        trait_negative_impls: RefCell::new(DefIdMap::new()),
         inherent_impls: RefCell::new(DefIdMap::new()),
         impl_items: RefCell::new(DefIdMap::new()),
         used_unsafe: RefCell::new(NodeSet::new()),
@@ -6006,14 +6002,7 @@ pub fn record_trait_implementation(tcx: &ctxt,
                                    trait_def_id: DefId,
                                    impl_def_id: DefId) {
 
-    let trait_impls = match trait_impl_polarity(tcx, impl_def_id)  {
-        Some(ast::ImplPolarity::Positive) => &tcx.trait_impls,
-        Some(ast::ImplPolarity::Negative) => &tcx.trait_negative_impls,
-        _ => tcx.sess.bug(&format!("tried to record a non-impl item with id {:?}",
-                                  impl_def_id)[])
-    };
-
-    match trait_impls.borrow().get(&trait_def_id) {
+    match tcx.trait_impls.borrow().get(&trait_def_id) {
         Some(impls_for_trait) => {
             impls_for_trait.borrow_mut().push(impl_def_id);
             return;
@@ -6021,7 +6010,7 @@ pub fn record_trait_implementation(tcx: &ctxt,
         None => {}
     }
 
-    trait_impls.borrow_mut().insert(trait_def_id, Rc::new(RefCell::new(vec!(impl_def_id))));
+    tcx.trait_impls.borrow_mut().insert(trait_def_id, Rc::new(RefCell::new(vec!(impl_def_id))));
 }
 
 /// Populates the type context with all the implementations for the given type

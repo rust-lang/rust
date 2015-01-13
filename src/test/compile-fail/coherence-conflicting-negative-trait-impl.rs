@@ -10,11 +10,20 @@
 
 #![feature(optin_builtin_traits)]
 
-struct TestType;
+trait MyTrait {}
 
-unsafe impl Send for TestType {}
+struct TestType<T>;
+
+unsafe impl<T: MyTrait> Send for TestType<T> {}
+//~^ ERROR conflicting implementations for trait `core::marker::Send`
+//~^^ ERROR conflicting implementations for trait `core::marker::Send`
+
+impl<T: MyTrait> !Send for TestType<T> {}
 //~^ ERROR conflicting implementations for trait `core::marker::Send`
 
-impl !Send for TestType {}
+unsafe impl<T> Send for TestType<T> {}
+//~^ ERROR error: conflicting implementations for trait `core::marker::Send`
+
+impl !Send for TestType<i32> {}
 
 fn main() {}
