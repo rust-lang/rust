@@ -224,7 +224,7 @@ use std::sync::Future;
 # fn main() {
 # fn make_a_sandwich() {};
 fn fib(n: u64) -> u64 {
-    // lengthy computation returning an uint
+    // lengthy computation returning an 64
     12586269025
 }
 
@@ -249,7 +249,7 @@ computations. The workload will be distributed on the available cores.
 # #![allow(deprecated)]
 # use std::num::Float;
 # use std::sync::Future;
-fn partial_sum(start: uint) -> f64 {
+fn partial_sum(start: u64) -> f64 {
     let mut local_sum = 0f64;
     for num in range(start*100000, (start+1)*100000) {
         local_sum += (num as f64 + 1.0).powf(-2.0);
@@ -289,7 +289,7 @@ use std::num::Float;
 use std::rand;
 use std::sync::Arc;
 
-fn pnorm(nums: &[f64], p: uint) -> f64 {
+fn pnorm(nums: &[f64], p: u64) -> f64 {
     nums.iter().fold(0.0, |a, b| a + b.powf(p as f64)).powf(1.0 / (p as f64))
 }
 
@@ -297,7 +297,7 @@ fn main() {
     let numbers = Vec::from_fn(1000000, |_| rand::random::<f64>());
     let numbers_arc = Arc::new(numbers);
 
-    for num in range(1u, 10) {
+    for num in range(1, 10) {
         let thread_numbers = numbers_arc.clone();
 
         spawn(move || {
@@ -328,7 +328,7 @@ if it were local.
 ```{rust,ignore}
 # use std::rand;
 # use std::sync::Arc;
-# fn pnorm(nums: &[f64], p: uint) -> f64 { 4.0 }
+# fn pnorm(nums: &[f64], p: u64) -> f64 { 4.0 }
 # fn main() {
 # let numbers=Vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc = Arc::new(numbers);
@@ -357,16 +357,16 @@ each other if they panic. The simplest way of handling a panic is with the
 `try` function, which is similar to `spawn`, but immediately blocks and waits
 for the child thread to finish. `try` returns a value of type
 `Result<T, Box<Any + Send>>`. `Result` is an `enum` type with two variants:
-`Ok` and `Err`. In this case, because the type arguments to `Result` are `int`
+`Ok` and `Err`. In this case, because the type arguments to `Result` are `i32`
 and `()`, callers can pattern-match on a result to check whether it's an `Ok`
-result with an `int` field (representing a successful result) or an `Err` result
+result with an `i32` field (representing a successful result) or an `Err` result
 (representing termination with an error).
 
 ```{rust,ignore}
 # use std::thread::Thread;
 # fn some_condition() -> bool { false }
-# fn calculate_result() -> int { 0 }
-let result: Result<int, Box<std::any::Any + Send>> = Thread::spawn(move || {
+# fn calculate_result() -> i32 { 0 }
+let result: Result<i32, Box<std::any::Any + Send>> = Thread::spawn(move || {
     if some_condition() {
         calculate_result()
     } else {
