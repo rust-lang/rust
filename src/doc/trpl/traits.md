@@ -145,7 +145,7 @@ As you can see, `print_area` is now generic, but also ensures that we
 have passed in the correct types. If we pass in an incorrect type:
 
 ```{rust,ignore}
-print_area(5i);
+print_area(5);
 ```
 
 We get a compile-time error:
@@ -156,14 +156,14 @@ error: failed to find an implementation of trait main::HasArea for int
 
 So far, we've only added trait implementations to structs, but you can
 implement a trait for any type. So technically, we _could_ implement
-`HasArea` for `int`:
+`HasArea` for `i32`:
 
 ```{rust}
 trait HasArea {
     fn area(&self) -> f64;
 }
 
-impl HasArea for int {
+impl HasArea for i32 {
     fn area(&self) -> f64 {
         println!("this is silly");
 
@@ -171,7 +171,7 @@ impl HasArea for int {
     }
 }
 
-5i.area();
+5.area();
 ```
 
 It is considered poor style to implement methods on such primitive types, even
@@ -264,8 +264,8 @@ it won't affect you, unless you `use` that trait.
 
 There's one more restriction on implementing traits. Either the trait or the
 type you're writing the `impl` for must be inside your crate. So, we could
-implement the `HasArea` type for `int`, because `HasArea` is in our crate.  But
-if we tried to implement `Float`, a trait provided by Rust, for `int`, we could
+implement the `HasArea` type for `i32`, because `HasArea` is in our crate.  But
+if we tried to implement `Float`, a trait provided by Rust, for `i32`, we could
 not, because both the trait and the type aren't in our crate.
 
 One last thing about traits: generic functions with a trait bound use
