@@ -315,3 +315,76 @@ The names don't actually change to this, it's just for illustration. But
 as you can see, there's no overhead of deciding which version to call here,
 hence *statically dispatched*. The downside is that we have two copies of
 the same function, so our binary is a little bit larger.
+
+## Our `inverse` Example
+
+Back in [Generics](generics.html), we were trying to write code like this:
+
+```{rust,ignore}
+fn inverse<T>(x: T) -> Result<T, String> {
+    if x == 0.0 { return Err("x cannot be zero!".to_string()); }
+
+    Ok(1.0 / x)
+}
+```
+
+If we try to compile it, we get this error:
+
+```text
+error: binary operation `==` cannot be applied to type `T`
+```
+
+This is because `T` is too generic: we don't know if a random `T` can be
+compared. For that, we can use trait bounds. It doesn't quite work, but try
+this:
+
+```{rust,ignore}
+fn inverse<T: PartialEq>(x: T) -> Result<T, String> {
+    if x == 0.0 { return Err("x cannot be zero!".to_string()); }
+
+    Ok(1.0 / x)
+}
+```
+
+You should get this error:
+
+```text
+error: mismatched types:
+ expected `T`,
+    found `_`
+(expected type parameter,
+    found floating-point variable)
+```
+
+So this won't work. While our `T` is `PartialEq`, we expected to have another `T`,
+but instead, we found a floating-point variable. We need a different bound. `Float`
+to the rescue:
+
+```
+use std::num::Float;
+
+fn inverse<T: Float>(x: T) -> Result<T, String> {
+    if x == Float::zero() { return Err("x cannot be zero!".to_string()) }
+
+    let one: T = Float::one();
+    Ok(one / x)
+}
+```
+
+We've had to replace our generic `0.0` and `1.0` with the appropriate methods
+from the `Float` trait. Both `f32` and `f64` implement `Float`, so our function
+works just fine:
+
+```
+# use std::num::Float;
+# fn inverse<T: Float>(x: T) -> Result<T, String> {
+#     if x == Float::zero() { return Err("x cannot be zero!".to_string()) }
+#     let one: T = Float::one();
+#     Ok(one / x)
+# }
+println!("the inverse of {} is {:?}", 2.0f32, inverse(2.0f32));
+println!("the inverse of {} is {:?}", 2.0f64, inverse(2.0f64));
+
+println!("the inverse of {} is {:?}", 0.0f32, inverse(0.0f32));
+println!("the inverse of {} is {:?}", 0.0f64, inverse(0.0f64));
+```
