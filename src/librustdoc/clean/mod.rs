@@ -1614,7 +1614,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
 impl Clean<Type> for ast::QPath {
     fn clean(&self, cx: &DocContext) -> Type {
         Type::QPath {
-            name: self.item_name.clean(cx),
+            name: self.item_path.identifier.clean(cx),
             self_type: box self.self_type.clean(cx),
             trait_: box self.trait_ref.clean(cx)
         }
