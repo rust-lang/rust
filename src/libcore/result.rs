@@ -119,7 +119,7 @@
 //! drop(file);
 //! ```
 //!
-//! If you *do* write that in Rust, the compiler will by give you a
+//! If you *do* write that in Rust, the compiler will give you a
 //! warning (by default, controlled by the `unused_must_use` lint).
 //!
 //! You might instead, if you don't want to handle the error, simply
