@@ -3509,6 +3509,26 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
+        // Check for imports appearing after non-item statements.
+        let mut found_non_item = false;
+        for statement in block.stmts.iter() {
+            if let ast::StmtDecl(ref declaration, _) = statement.node {
+                if let ast::DeclItem(ref i) = declaration.node {
+                    match i.node {
+                        ItemExternCrate(_) | ItemUse(_) if found_non_item => {
+                            span_err!(self.session, i.span, E0154,
+                                "imports are not allowed after non-item statements");
+                        }
+                        _ => {}
+                    }
+                } else {
+                    found_non_item = true
+                }
+            } else {
+                found_non_item = true;
+            }
+        }
+
         // Descend into the block.
         visit::walk_block(self, block);
 
