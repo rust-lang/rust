@@ -4,7 +4,7 @@
 
 # Summary
 
-Rename the standard correction `BinaryHeap` to `BinHeap`, in order to follow the existing naming convention.
+Rename the standard collection `BinaryHeap` to `BinHeap`, in order to follow the existing naming convention.
 
 # Motivation
 
