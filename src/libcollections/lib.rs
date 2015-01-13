@@ -26,7 +26,6 @@
 #![feature(unsafe_destructor, slicing_syntax)]
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
-#![feature(old_impl_check)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![allow(unstable)]
 #![no_std]
@@ -141,4 +140,14 @@ mod prelude {
     pub use slice::SliceConcatExt;
     pub use string::{String, ToString};
     pub use vec::Vec;
+}
+
+/// An endpoint of a range of keys.
+pub enum Bound<T> {
+    /// An inclusive bound.
+    Included(T),
+    /// An exclusive bound.
+    Excluded(T),
+    /// An infinite endpoint. Indicates that there is no bound in this direction.
+    Unbounded,
 }

@@ -311,6 +311,7 @@
 
 #![stable]
 
+pub use core_collections::Bound;
 pub use core_collections::{BinaryHeap, Bitv, BitvSet, BTreeMap, BTreeSet};
 pub use core_collections::{DList, RingBuf, VecMap};
 

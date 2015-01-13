@@ -77,6 +77,24 @@ pub struct Node<K, V> {
     _capacity: uint,
 }
 
+struct NodeSlice<'a, K: 'a, V: 'a> {
+    keys: &'a [K],
+    vals: &'a [V],
+    pub edges: &'a [Node<K, V>],
+    head_is_edge: bool,
+    tail_is_edge: bool,
+    has_edges: bool,
+}
+
+struct MutNodeSlice<'a, K: 'a, V: 'a> {
+    keys: &'a [K],
+    vals: &'a mut [V],
+    pub edges: &'a mut [Node<K, V>],
+    head_is_edge: bool,
+    tail_is_edge: bool,
+    has_edges: bool,
+}
+
 /// Rounds up to a multiple of a power of two. Returns the closest multiple
 /// of `target_alignment` that is higher or equal to `unrounded`.
 ///
@@ -342,7 +360,8 @@ impl<K, V> Node<K, V> {
     }
 
     #[inline]
-    pub fn as_slices_internal<'a>(&'a self) -> (&'a [K], &'a [V], &'a [Node<K, V>]) {
+    pub fn as_slices_internal<'b>(&'b self) -> NodeSlice<'b, K, V> {
+        let is_leaf = self.is_leaf();
         let (keys, vals) = self.as_slices();
         let edges: &[_] = if self.is_leaf() {
             &[]
@@ -354,12 +373,18 @@ impl<K, V> Node<K, V> {
                 })
             }
         };
-        (keys, vals, edges)
+        NodeSlice {
+            keys: keys,
+            vals: vals,
+            edges: edges,
+            head_is_edge: true,
+            tail_is_edge: true,
+            has_edges: !is_leaf,
+        }
     }
 
     #[inline]
-    pub fn as_slices_internal_mut<'a>(&'a mut self) -> (&'a mut [K], &'a mut [V],
-                                                        &'a mut [Node<K, V>]) {
+    pub fn as_slices_internal_mut<'b>(&'b mut self) -> MutNodeSlice<'b, K, V> {
         unsafe { mem::transmute(self.as_slices_internal()) }
     }
 
@@ -385,12 +410,12 @@ impl<K, V> Node<K, V> {
 
     #[inline]
     pub fn edges<'a>(&'a self) -> &'a [Node<K, V>] {
-        self.as_slices_internal().2
+        self.as_slices_internal().edges
     }
 
     #[inline]
     pub fn edges_mut<'a>(&'a mut self) -> &'a mut [Node<K, V>] {
-        self.as_slices_internal_mut().2
+        self.as_slices_internal_mut().edges
     }
 }
 
@@ -522,29 +547,10 @@ impl<K: Ord, V> Node<K, V> {
         // FIXME(Gankro): Tune when to search linear or binary based on B (and maybe K/V).
         // For the B configured as of this writing (B = 6), binary search was *significantly*
         // worse for uints.
-        let (found, index) = node.search_linear(key);
-        if found {
-            Found(Handle {
-                node: node,
-                index: index
-            })
-        } else {
-            GoDown(Handle {
-                node: node,
-                index: index
-            })
+        match node.as_slices_internal().search_linear(key) {
+            (index, true) => Found(Handle { node: node, index: index }),
+            (index, false) => GoDown(Handle { node: node, index: index }),
         }
-    }
-
-    fn search_linear<Q: ?Sized>(&self, key: &Q) -> (bool, uint) where Q: BorrowFrom<K> + Ord {
-        for (i, k) in self.keys().iter().enumerate() {
-            match key.cmp(BorrowFrom::borrow_from(k)) {
-                Greater => {},
-                Equal => return (true, i),
-                Less => return (false, i),
-            }
-        }
-        (false, self.len())
     }
 }
 
@@ -1043,31 +1049,11 @@ impl<K, V> Node<K, V> {
     }
 
     pub fn iter<'a>(&'a self) -> Traversal<'a, K, V> {
-        let is_leaf = self.is_leaf();
-        let (keys, vals, edges) = self.as_slices_internal();
-        Traversal {
-            inner: ElemsAndEdges(
-                keys.iter().zip(vals.iter()),
-                edges.iter()
-            ),
-            head_is_edge: true,
-            tail_is_edge: true,
-            has_edges: !is_leaf,
-        }
+        self.as_slices_internal().iter()
     }
 
     pub fn iter_mut<'a>(&'a mut self) -> MutTraversal<'a, K, V> {
-        let is_leaf = self.is_leaf();
-        let (keys, vals, edges) = self.as_slices_internal_mut();
-        MutTraversal {
-            inner: ElemsAndEdges(
-                keys.iter().zip(vals.iter_mut()),
-                edges.iter_mut()
-            ),
-            head_is_edge: true,
-            tail_is_edge: true,
-            has_edges: !is_leaf,
-        }
+        self.as_slices_internal_mut().iter_mut()
     }
 
     pub fn into_iter(self) -> MoveTraversal<K, V> {
@@ -1311,12 +1297,15 @@ fn min_load_from_capacity(cap: uint) -> uint {
 /// A trait for pairs of `Iterator`s, one over edges and the other over key/value pairs. This is
 /// necessary, as the `MoveTraversalImpl` needs to have a destructor that deallocates the `Node`,
 /// and a pair of `Iterator`s would require two independent destructors.
-trait TraversalImpl<K, V, E> {
-    fn next_kv(&mut self) -> Option<(K, V)>;
-    fn next_kv_back(&mut self) -> Option<(K, V)>;
+trait TraversalImpl {
+    type Item;
+    type Edge;
 
-    fn next_edge(&mut self) -> Option<E>;
-    fn next_edge_back(&mut self) -> Option<E>;
+    fn next_kv(&mut self) -> Option<Self::Item>;
+    fn next_kv_back(&mut self) -> Option<Self::Item>;
+
+    fn next_edge(&mut self) -> Option<Self::Edge>;
+    fn next_edge_back(&mut self) -> Option<Self::Edge>;
 }
 
 /// A `TraversalImpl` that actually is backed by two iterators. This works in the non-moving case,
@@ -1324,9 +1313,11 @@ trait TraversalImpl<K, V, E> {
 struct ElemsAndEdges<Elems, Edges>(Elems, Edges);
 
 impl<K, V, E, Elems: DoubleEndedIterator, Edges: DoubleEndedIterator>
-        TraversalImpl<K, V, E> for ElemsAndEdges<Elems, Edges>
+        TraversalImpl for ElemsAndEdges<Elems, Edges>
     where Elems : Iterator<Item=(K, V)>, Edges : Iterator<Item=E>
 {
+    type Item = (K, V);
+    type Edge = E;
 
     fn next_kv(&mut self) -> Option<(K, V)> { self.0.next() }
     fn next_kv_back(&mut self) -> Option<(K, V)> { self.0.next_back() }
@@ -1347,7 +1338,10 @@ struct MoveTraversalImpl<K, V> {
     is_leaf: bool
 }
 
-impl<K, V> TraversalImpl<K, V, Node<K, V>> for MoveTraversalImpl<K, V> {
+impl<K, V> TraversalImpl for MoveTraversalImpl<K, V> {
+    type Item = (K, V);
+    type Edge = Node<K, V>;
+
     fn next_kv(&mut self) -> Option<(K, V)> {
         match (self.keys.next(), self.vals.next()) {
             (Some(k), Some(v)) => Some((k, v)),
@@ -1398,9 +1392,12 @@ struct AbsTraversal<Impl> {
     has_edges: bool,
 }
 
-/// A single atomic step in a traversal. Either an element is visited, or an edge is followed
+/// A single atomic step in a traversal.
 pub enum TraversalItem<K, V, E> {
-    Elem(K, V),
+    /// An element is visited. This isn't written as `Elem(K, V)` just because `opt.map(Elem)`
+    /// requires the function to take a single argument. (Enum constructors are functions.)
+    Elem((K, V)),
+    /// An edge is followed.
     Edge(E),
 }
 
@@ -1417,32 +1414,175 @@ pub type MutTraversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Iter<'a,
 /// An owning traversal over a node's entries and edges
 pub type MoveTraversal<K, V> = AbsTraversal<MoveTraversalImpl<K, V>>;
 
-#[old_impl_check]
-impl<K, V, E, Impl: TraversalImpl<K, V, E>> Iterator for AbsTraversal<Impl> {
+
+impl<K, V, E, Impl> Iterator for AbsTraversal<Impl>
+        where Impl: TraversalImpl<Item=(K, V), Edge=E> {
     type Item = TraversalItem<K, V, E>;
 
     fn next(&mut self) -> Option<TraversalItem<K, V, E>> {
-        let head_is_edge = self.head_is_edge;
-        self.head_is_edge = !head_is_edge;
-
-        if head_is_edge && self.has_edges {
-            self.inner.next_edge().map(|node| Edge(node))
-        } else {
-            self.inner.next_kv().map(|(k, v)| Elem(k, v))
-        }
+        self.next_edge_item().map(Edge).or_else(||
+            self.next_kv_item().map(Elem)
+        )
     }
 }
 
-#[old_impl_check]
-impl<K, V, E, Impl: TraversalImpl<K, V, E>> DoubleEndedIterator for AbsTraversal<Impl> {
+impl<K, V, E, Impl> DoubleEndedIterator for AbsTraversal<Impl>
+        where Impl: TraversalImpl<Item=(K, V), Edge=E> {
     fn next_back(&mut self) -> Option<TraversalItem<K, V, E>> {
-        let tail_is_edge = self.tail_is_edge;
-        self.tail_is_edge = !tail_is_edge;
+        self.next_edge_item_back().map(Edge).or_else(||
+            self.next_kv_item_back().map(Elem)
+        )
+    }
+}
 
-        if tail_is_edge && self.has_edges {
-            self.inner.next_edge_back().map(|node| Edge(node))
+impl<K, V, E, Impl> AbsTraversal<Impl>
+        where Impl: TraversalImpl<Item=(K, V), Edge=E> {
+    /// Advances the iterator and returns the item if it's an edge. Returns None
+    /// and does nothing if the first item is not an edge.
+    pub fn next_edge_item(&mut self) -> Option<E> {
+        // NB. `&& self.has_edges` might be redundant in this condition.
+        let edge = if self.head_is_edge && self.has_edges {
+            self.inner.next_edge()
         } else {
-            self.inner.next_kv_back().map(|(k, v)| Elem(k, v))
+            None
+        };
+        self.head_is_edge = false;
+        edge
+    }
+
+    /// Advances the iterator and returns the item if it's an edge. Returns None
+    /// and does nothing if the last item is not an edge.
+    pub fn next_edge_item_back(&mut self) -> Option<E> {
+        let edge = if self.tail_is_edge && self.has_edges {
+            self.inner.next_edge_back()
+        } else {
+            None
+        };
+        self.tail_is_edge = false;
+        edge
+    }
+
+    /// Advances the iterator and returns the item if it's a key-value pair. Returns None
+    /// and does nothing if the first item is not a key-value pair.
+    pub fn next_kv_item(&mut self) -> Option<(K, V)> {
+        if !self.head_is_edge {
+            self.head_is_edge = true;
+            self.inner.next_kv()
+        } else {
+            None
+        }
+    }
+
+    /// Advances the iterator and returns the item if it's a key-value pair. Returns None
+    /// and does nothing if the last item is not a key-value pair.
+    pub fn next_kv_item_back(&mut self) -> Option<(K, V)> {
+        if !self.tail_is_edge {
+            self.tail_is_edge = true;
+            self.inner.next_kv_back()
+        } else {
+            None
         }
     }
 }
+
+macro_rules! node_slice_impl {
+    ($NodeSlice:ident, $Traversal:ident,
+     $as_slices_internal:ident, $slice_from:ident, $slice_to:ident, $iter:ident) => {
+        impl<'a, K: Ord + 'a, V: 'a> $NodeSlice<'a, K, V> {
+            /// Performs linear search in a slice. Returns a tuple of (index, is_exact_match).
+            fn search_linear<Q: ?Sized>(&self, key: &Q) -> (uint, bool)
+                    where Q: BorrowFrom<K> + Ord {
+                for (i, k) in self.keys.iter().enumerate() {
+                    match key.cmp(BorrowFrom::borrow_from(k)) {
+                        Greater => {},
+                        Equal => return (i, true),
+                        Less => return (i, false),
+                    }
+                }
+                (self.keys.len(), false)
+            }
+
+            /// Returns a sub-slice with elements starting with `min_key`.
+            pub fn slice_from(self, min_key: &K) -> $NodeSlice<'a, K, V> {
+                //  _______________
+                // |_1_|_3_|_5_|_7_|
+                // |   |   |   |   |
+                // 0 0 1 1 2 2 3 3 4  index
+                // |   |   |   |   |
+                // \___|___|___|___/  slice_from(&0); pos = 0
+                //     \___|___|___/  slice_from(&2); pos = 1
+                //     |___|___|___/  slice_from(&3); pos = 1; result.head_is_edge = false
+                //         \___|___/  slice_from(&4); pos = 2
+                //             \___/  slice_from(&6); pos = 3
+                //                \|/ slice_from(&999); pos = 4
+                let (pos, pos_is_kv) = self.search_linear(min_key);
+                $NodeSlice {
+                    has_edges: self.has_edges,
+                    edges: if !self.has_edges {
+                        self.edges
+                    } else {
+                        self.edges.$slice_from(pos)
+                    },
+                    keys: self.keys.slice_from(pos),
+                    vals: self.vals.$slice_from(pos),
+                    head_is_edge: !pos_is_kv,
+                    tail_is_edge: self.tail_is_edge,
+                }
+            }
+
+            /// Returns a sub-slice with elements up to and including `max_key`.
+            pub fn slice_to(self, max_key: &K) -> $NodeSlice<'a, K, V> {
+                //  _______________
+                // |_1_|_3_|_5_|_7_|
+                // |   |   |   |   |
+                // 0 0 1 1 2 2 3 3 4  index
+                // |   |   |   |   |
+                //\|/  |   |   |   |  slice_to(&0); pos = 0
+                // \___/   |   |   |  slice_to(&2); pos = 1
+                // \___|___|   |   |  slice_to(&3); pos = 1; result.tail_is_edge = false
+                // \___|___/   |   |  slice_to(&4); pos = 2
+                // \___|___|___/   |  slice_to(&6); pos = 3
+                // \___|___|___|___/  slice_to(&999); pos = 4
+                let (pos, pos_is_kv) = self.search_linear(max_key);
+                let pos = pos + if pos_is_kv { 1 } else { 0 };
+                $NodeSlice {
+                    has_edges: self.has_edges,
+                    edges: if !self.has_edges {
+                        self.edges
+                    } else {
+                        self.edges.$slice_to(pos + 1)
+                    },
+                    keys: self.keys.slice_to(pos),
+                    vals: self.vals.$slice_to(pos),
+                    head_is_edge: self.head_is_edge,
+                    tail_is_edge: !pos_is_kv,
+                }
+            }
+        }
+
+        impl<'a, K: 'a, V: 'a> $NodeSlice<'a, K, V> {
+            /// Returns an iterator over key/value pairs and edges in a slice.
+            #[inline]
+            pub fn $iter(self) -> $Traversal<'a, K, V> {
+                let mut edges = self.edges.$iter();
+                // Skip edges at both ends, if excluded.
+                if !self.head_is_edge { edges.next(); }
+                if !self.tail_is_edge { edges.next_back(); }
+                // The key iterator is always immutable.
+                $Traversal {
+                    inner: ElemsAndEdges(
+                        self.keys.iter().zip(self.vals.$iter()),
+                        edges
+                    ),
+                    head_is_edge: self.head_is_edge,
+                    tail_is_edge: self.tail_is_edge,
+                    has_edges: self.has_edges,
+                }
+            }
+        }
+    }
+}
+
+node_slice_impl!(NodeSlice, Traversal, as_slices_internal, slice_from, slice_to, iter);
+node_slice_impl!(MutNodeSlice, MutTraversal, as_slices_internal_mut, slice_from_mut,
+                                                                     slice_to_mut, iter_mut);
