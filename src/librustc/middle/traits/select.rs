@@ -2231,17 +2231,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn all_impls(&self, trait_def_id: ast::DefId) -> Vec<ast::DefId> {
         ty::populate_implementations_for_trait_if_necessary(self.tcx(), trait_def_id);
 
-        let mut trait_impls = match self.tcx().trait_impls.borrow().get(&trait_def_id) {
+        match self.tcx().trait_impls.borrow().get(&trait_def_id) {
             None => Vec::new(),
             Some(impls) => impls.borrow().clone()
-        };
-
-        match self.tcx().trait_negative_impls.borrow().get(&trait_def_id) {
-            None => {},
-            Some(impls) => trait_impls.push_all(impls.borrow().as_slice()),
-        };
-
-        trait_impls
+        }
     }
 
     fn impl_obligations(&mut self,
