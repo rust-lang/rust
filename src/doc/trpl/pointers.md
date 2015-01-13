@@ -28,8 +28,8 @@ question](http://stackoverflow.com/questions/79923/what-and-where-are-the-stack-
 as the rest of this guide assumes you know the difference.) Like this:
 
 ```{rust}
-let x = 5i;
-let y = 8i;
+let x = 5;
+let y = 8;
 ```
 | location | value |
 |----------|-------|
@@ -46,8 +46,8 @@ Let's introduce a pointer. In some languages, there is just one type of
 *reference*, which is the simplest kind of pointer.
 
 ```{rust}
-let x = 5i;
-let y = 8i;
+let x = 5;
+let y = 8;
 let z = &y;
 ```
 |location | value    |
@@ -62,8 +62,8 @@ type `int`, but `z` has the type `&int`. We can print this location using the
 `{:p}` format string:
 
 ```{rust}
-let x = 5i;
-let y = 8i;
+let x = 5;
+let y = 8;
 let z = &y;
 
 println!("{:p}", z);
@@ -75,8 +75,8 @@ Because `int` and `&int` are different types, we can't, for example, add them
 together:
 
 ```{rust,ignore}
-let x = 5i;
-let y = 8i;
+let x = 5;
+let y = 8;
 let z = &y;
 
 println!("{}", x + z);
@@ -85,7 +85,7 @@ println!("{}", x + z);
 This gives us an error:
 
 ```text
-hello.rs:6:24: 6:25 error: mismatched types: expected `int` but found `&int` (expected int but found &-ptr)
+hello.rs:6:24: 6:25 error: mismatched types: expected `_` but found `&_` (expected integral variable, found &-ptr)
 hello.rs:6     println!("{}", x + z);
                                   ^
 ```
@@ -95,8 +95,8 @@ pointer means accessing the value at the location stored in the pointer. This
 will work:
 
 ```{rust}
-let x = 5i;
-let y = 8i;
+let x = 5;
+let y = 8;
 let z = &y;
 
 println!("{}", x + *z);
@@ -252,7 +252,7 @@ The most basic type of pointer that Rust has is called a *reference*. Rust
 references look like this:
 
 ```{rust}
-let x = 5i;
+let x = 5;
 let y = &x;
 
 println!("{}", *y);
@@ -269,18 +269,18 @@ referent, because `println!` will automatically dereference it for us.
 Here's a function that takes a reference:
 
 ```{rust}
-fn succ(x: &int) -> int { *x + 1 }
+fn succ(x: &isize) -> isize { *x + 1 }
 ```
 
 You can also use `&` as an operator to create a reference, so we can
 call this function in two different ways:
 
 ```{rust}
-fn succ(x: &int) -> int { *x + 1 }
+fn succ(x: &isize) -> isize { *x + 1 }
 
 fn main() {
 
-    let x = 5i;
+    let x = 5;
     let y = &x;
 
     println!("{}", succ(y));
@@ -294,37 +294,37 @@ Of course, if this were real code, we wouldn't bother with the reference, and
 just write:
 
 ```{rust}
-fn succ(x: int) -> int { x + 1 }
+fn succ(x: isize) -> isize { x + 1 }
 ```
 
 References are immutable by default:
 
 ```{rust,ignore}
-let x = 5i;
+let x = 5;
 let y = &x;
 
-*y = 5; // error: cannot assign to immutable dereference of `&`-pointer `*y`
+*y = 5; // error: cannot assign to immutable borrowed content `*y`
 ```
 
 They can be made mutable with `mut`, but only if its referent is also mutable.
 This works:
 
 ```{rust}
-let mut x = 5i;
+let mut x = 5;
 let y = &mut x;
 ```
 
 This does not:
 
 ```{rust,ignore}
-let x = 5i;
+let x = 5;
 let y = &mut x; // error: cannot borrow immutable local variable `x` as mutable
 ```
 
 Immutable pointers are allowed to alias:
 
 ```{rust}
-let x = 5i;
+let x = 5;
 let y = &x;
 let z = &x;
 ```
@@ -332,7 +332,7 @@ let z = &x;
 Mutable ones, however, are not:
 
 ```{rust,ignore}
-let mut x = 5i;
+let mut x = 5;
 let y = &mut x;
 let z = &mut x; // error: cannot borrow `x` as mutable more than once at a time
 ```
@@ -359,7 +359,7 @@ duration a *lifetime*. Let's try a more complex example:
 
 ```{rust}
 fn main() {
-    let x = &mut 5i;
+    let x = &mut 5;
 
     if *x < 10 {
         let y = &x;
@@ -380,7 +380,7 @@ mutated, and therefore, lets us pass. This wouldn't work:
 
 ```{rust,ignore}
 fn main() {
-    let x = &mut 5i;
+    let x = &mut 5;
 
     if *x < 10 {
         let y = &x;
@@ -425,13 +425,13 @@ References just borrow ownership, which is more polite if you don't need the
 ownership. In other words, prefer:
 
 ```{rust}
-fn succ(x: &int) -> int { *x + 1 }
+fn succ(x: &isize) -> isize { *x + 1 }
 ```
 
 to
 
 ```{rust}
-fn succ(x: Box<int>) -> int { *x + 1 }
+fn succ(x: Box<isize>) -> isize { *x + 1 }
 ```
 
 As a corollary to that rule, references allow you to accept a wide variety of
@@ -439,7 +439,7 @@ other pointers, and so are useful so that you don't have to write a number
 of variants per pointer. In other words, prefer:
 
 ```{rust}
-fn succ(x: &int) -> int { *x + 1 }
+fn succ(x: &isize) -> isize { *x + 1 }
 ```
 
 to
@@ -447,9 +447,9 @@ to
 ```{rust}
 use std::rc::Rc;
 
-fn box_succ(x: Box<int>) -> int { *x + 1 }
+fn box_succ(x: Box<isize>) -> isize { *x + 1 }
 
-fn rc_succ(x: Rc<int>) -> int { *x + 1 }
+fn rc_succ(x: Rc<isize>) -> isize { *x + 1 }
 ```
 
 Note that the caller of your function will have to modify their calls slightly:
@@ -458,11 +458,11 @@ Note that the caller of your function will have to modify their calls slightly:
 # use std::boxed::Box;
 use std::rc::Rc;
 
-fn succ(x: &int) -> int { *x + 1 }
+fn succ(x: &isize) -> isize { *x + 1 }
 
-let ref_x = &5i;
-let box_x = Box::new(5i);
-let rc_x  = Rc::new(5i);
+let ref_x = &5;
+let box_x = Box::new(5);
+let rc_x  = Rc::new(5);
 
 succ(ref_x);
 succ(&*box_x);
@@ -479,7 +479,7 @@ heap allocation in Rust. Creating a box looks like this:
 
 ```{rust}
 # use std::boxed::Box;
-let x = Box::new(5i);
+let x = Box::new(5);
 ```
 
 Boxes are heap allocated and they are deallocated automatically by Rust when
@@ -488,7 +488,7 @@ they go out of scope:
 ```{rust}
 # use std::boxed::Box;
 {
-    let x = Box::new(5i);
+    let x = Box::new(5);
 
     // stuff happens
 
@@ -509,7 +509,7 @@ boxes, though. As a rough approximation, you can treat this Rust code:
 ```{rust}
 # use std::boxed::Box;
 {
-    let x = Box::new(5i);
+    let x = Box::new(5);
 
     // stuff happens
 }
@@ -549,12 +549,10 @@ Using boxes and references together is very common. For example:
 
 ```{rust}
 # use std::boxed::Box;
-fn add_one(x: &int) -> int {
-    *x + 1
-}
+fn add_one(x: &isize) -> isize { *x + 1 }
 
 fn main() {
-    let x = Box::new(5i);
+    let x = Box::new(5);
 
     println!("{}", add_one(&*x));
 }
@@ -567,12 +565,10 @@ We can borrow `x` multiple times, as long as it's not simultaneous:
 
 ```{rust}
 # use std::boxed::Box;
-fn add_one(x: &int) -> int {
-    *x + 1
-}
+fn add_one(x: &isize) -> isize { *x + 1 }
 
 fn main() {
-    let x = Box::new(5i);
+    let x = Box::new(5);
 
     println!("{}", add_one(&*x));
     println!("{}", add_one(&*x));
@@ -584,15 +580,15 @@ Or as long as it's not a mutable borrow. This will error:
 
 ```{rust,ignore}
 # use std::boxed::Box;
-fn add_one(x: &mut int) -> int {
+fn add_one(x: &mut isize) -> isize {
     *x + 1
 }
 
 fn main() {
-    let x = Box::new(5i);
+    let x = Box::new(5);
 
-    println!("{}", add_one(&*x)); // error: cannot borrow immutable dereference
-                                  // of `&`-pointer as mutable
+    println!("{}", add_one(&*x)); // error: cannot borrow immutable borrowed 
+                                  // content as mutable
 }
 ```
 
@@ -668,10 +664,10 @@ so as to avoid copying a large data structure. For example:
 ```{rust}
 # use std::boxed::Box;
 struct BigStruct {
-    one: int,
-    two: int,
+    one: isize,
+    two: isize,
     // etc
-    one_hundred: int,
+    one_hundred: isize,
 }
 
 fn foo(x: Box<BigStruct>) -> Box<BigStruct> {
@@ -697,14 +693,13 @@ This is an antipattern in Rust. Instead, write this:
 ```{rust}
 # use std::boxed::Box;
 struct BigStruct {
-    one: int,
-    two: int,
+    one: isize,
+    two: isize,
     // etc
-    one_hundred: int,
+    one_hundred: isize,
 }
 
-fn foo(x: Box<BigStruct>) -> BigStruct {
-    return *x;
+fn foo(x: Box<BigStruct>) -> BigStruct { *x }
 }
 
 fn main() {
