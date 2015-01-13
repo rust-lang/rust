@@ -29,7 +29,7 @@
 //! }
 //! ```
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 
 use sys_common::AsInner;
 use libc;

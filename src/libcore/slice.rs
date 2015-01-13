@@ -12,7 +12,7 @@
 //!
 //! For more details `std::slice`.
 
-#![stable]
+#![stable(feature = "grandfathered", since = "1.0.0")]
 #![doc(primitive = "slice")]
 
 // How this module is organized.
@@ -131,7 +131,7 @@ pub trait SliceExt {
     fn clone_from_slice(&mut self, &[Self::Item]) -> uint where Self::Item: Clone;
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<T> SliceExt for [T] {
     type Item = T;
 
@@ -258,7 +258,7 @@ impl<T> SliceExt for [T] {
         self.repr().data
     }
 
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     fn binary_search_by<F>(&self, mut f: F) -> Result<uint, uint> where
         F: FnMut(&T) -> Ordering
     {
@@ -452,12 +452,12 @@ impl<T> SliceExt for [T] {
         m >= n && needle == &self[(m-n)..]
     }
 
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     fn binary_search(&self, x: &T) -> Result<uint, uint> where T: Ord {
         self.binary_search_by(|p| p.cmp(x))
     }
 
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     fn next_permutation(&mut self) -> bool where T: Ord {
         // These cases only have 1 permutation each, so we can't do anything.
         if self.len() < 2 { return false; }
@@ -488,7 +488,7 @@ impl<T> SliceExt for [T] {
         true
     }
 
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     fn prev_permutation(&mut self) -> bool where T: Ord {
         // These cases only have 1 permutation each, so we can't do anything.
         if self.len() < 2 { return false; }
@@ -630,33 +630,34 @@ impl<T> ops::IndexMut<ops::FullRange> for [T] {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Data that is viewable as a slice.
-#[unstable = "will be replaced by slice syntax"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "will be replaced by slice syntax")]
 pub trait AsSlice<T> {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a [T];
 }
 
-#[unstable = "trait is experimental"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is experimental")]
 impl<T> AsSlice<T> for [T] {
     #[inline(always)]
     fn as_slice<'a>(&'a self) -> &'a [T] { self }
 }
 
-#[unstable = "trait is experimental"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is experimental")]
 impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
-#[unstable = "trait is experimental"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is experimental")]
 impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a mut U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T> Default for &'a [T] {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn default() -> &'a [T] { &[] }
 }
 
@@ -667,7 +668,7 @@ impl<'a, T> Default for &'a [T] {
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl<'a, T> Iterator for $name<'a, T> {
             type Item = $elem;
 
@@ -705,7 +706,7 @@ macro_rules! iterator {
             }
         }
 
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl<'a, T> DoubleEndedIterator for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
@@ -747,14 +748,14 @@ macro_rules! make_slice {
 }
 
 /// Immutable slice iterator
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ptr: *const T,
     end: *const T,
     marker: marker::ContravariantLifetime<'a>
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::Index<ops::Range<uint>> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -763,7 +764,7 @@ impl<'a, T> ops::Index<ops::Range<uint>> for Iter<'a, T> {
     }
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::Index<ops::RangeTo<uint>> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -772,7 +773,7 @@ impl<'a, T> ops::Index<ops::RangeTo<uint>> for Iter<'a, T> {
     }
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::Index<ops::RangeFrom<uint>> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -781,7 +782,7 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>> for Iter<'a, T> {
     }
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::Index<ops::FullRange> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -795,7 +796,7 @@ impl<'a, T> Iter<'a, T> {
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub fn as_slice(&self) -> &'a [T] {
         make_slice!(T => &'a [T]: self.ptr, self.end)
     }
@@ -805,15 +806,15 @@ impl<'a,T> Copy for Iter<'a,T> {}
 
 iterator!{struct Iter -> *const T, &'a T}
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { *self }
 }
 
-#[unstable = "trait is experimental"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is experimental")]
 impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -839,7 +840,7 @@ impl<'a, T> RandomAccessIterator for Iter<'a, T> {
 }
 
 /// Mutable slice iterator.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ptr: *mut T,
     end: *mut T,
@@ -847,7 +848,7 @@ pub struct IterMut<'a, T: 'a> {
 }
 
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::Index<ops::Range<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -855,7 +856,7 @@ impl<'a, T> ops::Index<ops::Range<uint>> for IterMut<'a, T> {
         self.index(&ops::FullRange).index(index)
     }
 }
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::Index<ops::RangeTo<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -863,7 +864,7 @@ impl<'a, T> ops::Index<ops::RangeTo<uint>> for IterMut<'a, T> {
         self.index(&ops::FullRange).index(index)
     }
 }
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::Index<ops::RangeFrom<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -871,7 +872,7 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>> for IterMut<'a, T> {
         self.index(&ops::FullRange).index(index)
     }
 }
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::Index<ops::FullRange> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -880,7 +881,7 @@ impl<'a, T> ops::Index<ops::FullRange> for IterMut<'a, T> {
     }
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::IndexMut<ops::Range<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -888,7 +889,7 @@ impl<'a, T> ops::IndexMut<ops::Range<uint>> for IterMut<'a, T> {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::IndexMut<ops::RangeTo<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -896,7 +897,7 @@ impl<'a, T> ops::IndexMut<ops::RangeTo<uint>> for IterMut<'a, T> {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -904,7 +905,7 @@ impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>> for IterMut<'a, T> {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<'a, T> ops::IndexMut<ops::FullRange> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -921,7 +922,7 @@ impl<'a, T> IterMut<'a, T> {
     /// to consume the iterator. Consider using the `Slice` and
     /// `SliceMut` implementations for obtaining slices with more
     /// restricted lifetimes that do not consume the iterator.
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub fn into_slice(self) -> &'a mut [T] {
         make_slice!(T => &'a mut [T]: self.ptr, self.end)
     }
@@ -929,7 +930,7 @@ impl<'a, T> IterMut<'a, T> {
 
 iterator!{struct IterMut -> *mut T, &'a mut T}
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// An internal abstraction over the splitting iterators, so that
@@ -942,7 +943,7 @@ trait SplitIter: DoubleEndedIterator {
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct Split<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a [T],
     pred: P,
@@ -950,7 +951,7 @@ pub struct Split<'a, T:'a, P> where P: FnMut(&T) -> bool {
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     fn clone(&self) -> Split<'a, T, P> {
         Split {
@@ -961,7 +962,7 @@ impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a [T];
 
@@ -989,7 +990,7 @@ impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -1015,7 +1016,7 @@ impl<'a, T, P> SplitIter for Split<'a, T, P> where P: FnMut(&T) -> bool {
 
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct SplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a mut [T],
     pred: P,
@@ -1034,7 +1035,7 @@ impl<'a, T, P> SplitIter for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a mut [T];
 
@@ -1069,7 +1070,7 @@ impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T, P> DoubleEndedIterator for SplitMut<'a, T, P> where
     P: FnMut(&T) -> bool,
 {
@@ -1124,7 +1125,7 @@ impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
 }
@@ -1132,14 +1133,14 @@ pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct RSplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
 }
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
 }
@@ -1147,14 +1148,14 @@ pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
 }
 
 macro_rules! forward_iterator {
     ($name:ident: $elem:ident, $iter_of:ty) => {
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl<'a, $elem, P> Iterator for $name<'a, $elem, P> where
             P: FnMut(&T) -> bool
         {
@@ -1180,13 +1181,13 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
 /// An iterator over overlapping subslices of length `size`.
 #[derive(Clone)]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct Windows<'a, T:'a> {
     v: &'a [T],
     size: uint
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T> Iterator for Windows<'a, T> {
     type Item = &'a [T];
 
@@ -1218,13 +1219,13 @@ impl<'a, T> Iterator for Windows<'a, T> {
 /// When the slice len is not evenly divided by the chunk size, the last slice
 /// of the iteration will be the remainder.
 #[derive(Clone)]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct Chunks<'a, T:'a> {
     v: &'a [T],
     size: uint
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T> Iterator for Chunks<'a, T> {
     type Item = &'a [T];
 
@@ -1253,7 +1254,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -1269,7 +1270,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     }
 }
 
-#[unstable = "trait is experimental"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is experimental")]
 impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1293,13 +1294,13 @@ impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
 /// An iterator over a slice in (non-overlapping) mutable chunks (`size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last slice of the iteration will be the remainder.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub struct ChunksMut<'a, T:'a> {
     v: &'a mut [T],
     chunk_size: uint
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T> Iterator for ChunksMut<'a, T> {
     type Item = &'a mut [T];
 
@@ -1329,7 +1330,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
@@ -1353,7 +1354,7 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
 //
 
 /// Converts a pointer to A into a slice of length 1 (without copying).
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
         transmute(RawSlice { data: s, len: 1 })
@@ -1361,7 +1362,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
 }
 
 /// Converts a pointer to A into a slice of length 1 (without copying).
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
         let ptr: *const A = transmute(s);
@@ -1395,7 +1396,8 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 /// }
 /// ```
 #[inline]
-#[unstable = "should be renamed to from_raw_parts"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "should be renamed to from_raw_parts")]
 pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
     transmute(RawSlice { data: *p, len: len })
 }
@@ -1407,7 +1409,8 @@ pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
 /// not being able to provide a non-aliasing guarantee of the returned mutable
 /// slice.
 #[inline]
-#[unstable = "should be renamed to from_raw_parts_mut"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "should be renamed to from_raw_parts_mut")]
 pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
     transmute(RawSlice { data: *p, len: len })
 }
@@ -1417,7 +1420,7 @@ pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
 //
 
 /// Operations on `[u8]`.
-#[unstable = "needs review"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "needs review")]
 pub mod bytes {
     use ptr;
     use slice::SliceExt;
@@ -1459,7 +1462,7 @@ pub mod bytes {
 // Boilerplate traits
 //
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
     fn eq(&self, other: &[B]) -> bool {
         self.len() == other.len() &&
@@ -1471,17 +1474,17 @@ impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<T: Eq> Eq for [T] {}
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<T: Ord> Ord for [T] {
     fn cmp(&self, other: &[T]) -> Ordering {
         order::cmp(self.iter(), other.iter())
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for [T] {
     #[inline]
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
@@ -1506,7 +1509,7 @@ impl<T: PartialOrd> PartialOrd for [T] {
 }
 
 /// Extension methods for slices containing integers.
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub trait IntSliceExt<U, S> {
     /// Converts the slice to an immutable slice of unsigned integers with the same width.
     fn as_unsigned<'a>(&'a self) -> &'a [U];
@@ -1521,7 +1524,7 @@ pub trait IntSliceExt<U, S> {
 
 macro_rules! impl_int_slice {
     ($u:ty, $s:ty, $t:ty) => {
-        #[unstable]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0")]
         impl IntSliceExt<$u, $s> for [$t] {
             #[inline]
             fn as_unsigned(&self) -> &[$u] { unsafe { transmute(self) } }

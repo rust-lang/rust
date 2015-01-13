@@ -9,10 +9,10 @@
 // except according to those terms.
 
 #![crate_name = "rustc_bitflags"]
-#![unstable]
 #![staged_api]
 #![crate_type = "rlib"]
 #![no_std]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 
 //! A typesafe bitmask flag generator.
 

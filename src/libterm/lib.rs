@@ -39,7 +39,8 @@
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
 #![crate_name = "term"]
-#![unstable = "use the crates.io `term` library instead"]
+#![unstable(feature = "unnamed_feature", since = "1.0.0",
+            reason = "use the crates.io `term` library instead")]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

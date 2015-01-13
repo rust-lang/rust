@@ -35,7 +35,7 @@
 //! method, and see the method for more information about it. Due to this
 //! caveat, this queue may not be appropriate for all use-cases.
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 
 // http://www.1024cores.net/home/lock-free-algorithms
 //                         /queues/non-intrusive-mpsc-node-based-queue
@@ -138,7 +138,7 @@ impl<T: Send> Queue<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<T: Send> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {

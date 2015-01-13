@@ -78,7 +78,8 @@
 //! ```
 
 #![crate_name = "getopts"]
-#![unstable = "use the crates.io `getopts` library instead"]
+#![unstable(feature = "unnamed_feature", since = "1.0.0",
+            reason = "use the crates.io `getopts` library instead")]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -538,7 +539,8 @@ pub fn opt(short_name: &str,
 
 impl Fail {
     /// Convert a `Fail` enum into an error string.
-    #[deprecated="use `fmt::String` (`{}` format specifier)"]
+    #[deprecated(feature = "oldstuff", since = "1.0.0",
+                 reason = "use `fmt::String` (`{}` format specifier)")]
     pub fn to_err_msg(self) -> String {
         self.to_string()
     }

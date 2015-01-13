@@ -12,17 +12,17 @@
 #![crate_type = "lib"]
 #![staged_api]
 
-#[deprecated]
+#[deprecated(feature = "oldstuff", since = "1.0.0")]
 pub fn foo() -> uint {
     20
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub fn bar() -> uint {
     40
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub fn baz() -> uint {
     30
 }

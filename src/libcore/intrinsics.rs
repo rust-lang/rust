@@ -39,7 +39,7 @@
 //!   guaranteed to happen in order. This is the standard mode for working
 //!   with atomic types and is equivalent to Java's `volatile`.
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![allow(missing_docs)]
 
 use marker::Sized;
@@ -227,7 +227,7 @@ extern "rust-intrinsic" {
     ///
     /// `forget` is unsafe because the caller is responsible for
     /// ensuring the argument is deallocated already.
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     pub fn forget<T>(_: T) -> ();
 
     /// Unsafely transforms a value of one type into a value of another type.
@@ -243,7 +243,7 @@ extern "rust-intrinsic" {
     /// let v: &[u8] = unsafe { mem::transmute("L") };
     /// assert!(v == [76u8]);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     pub fn transmute<T,U>(e: T) -> U;
 
     /// Gives the address for the return value of the enclosing function.
@@ -303,7 +303,7 @@ extern "rust-intrinsic" {
     ///     }
     /// }
     /// ```
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint);
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
@@ -333,12 +333,13 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     ///
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub fn copy_memory<T>(dst: *mut T, src: *const T, count: uint);
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
-    #[unstable = "uncertain about naming and semantics"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "uncertain about naming and semantics")]
     pub fn set_memory<T>(dst: *mut T, val: u8, count: uint);
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with

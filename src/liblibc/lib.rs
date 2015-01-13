@@ -10,7 +10,8 @@
 
 #![crate_name = "libc"]
 #![crate_type = "rlib"]
-#![cfg_attr(not(feature = "cargo-build"), unstable)]
+#![cfg_attr(not(feature = "cargo-build"),
+            unstable(feature = "unnamed_feature", since = "1.0.0"))]
 #![cfg_attr(not(feature = "cargo-build"), staged_api)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![allow(unstable)]

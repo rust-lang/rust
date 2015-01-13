@@ -112,7 +112,7 @@ impl SipHasher {
     }
 
     /// Returns the computed hash.
-    #[deprecated = "renamed to finish"]
+    #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "renamed to finish")]
     pub fn result(&self) -> u64 { self.finish() }
 }
 

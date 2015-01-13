@@ -80,7 +80,7 @@ pub fn usable_size(size: uint, align: uint) -> uint {
 ///
 /// These statistics may be inconsistent if other threads use the allocator
 /// during the call.
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub fn stats_print() {
     imp::stats_print();
 }

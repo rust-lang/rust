@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_name = "rustdoc"]
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

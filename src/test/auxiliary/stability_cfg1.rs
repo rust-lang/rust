@@ -9,5 +9,5 @@
 // except according to those terms.
 
 #![cfg_attr(foo, experimental)]
-#![cfg_attr(not(foo), stable)]
+#![cfg_attr(not(foo), stable(feature = "unnamed_feature", since = "1.0.0"))]
 #![staged_api]

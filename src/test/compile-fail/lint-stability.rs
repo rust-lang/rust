@@ -39,14 +39,6 @@ mod cross_crate {
         foo.method_deprecated_text(); //~ ERROR use of deprecated item: text
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
 
-        experimental(); //~ ERROR use of unstable item
-        foo.method_experimental(); //~ ERROR use of unstable item
-        foo.trait_experimental(); //~ ERROR use of unstable item
-
-        experimental_text(); //~ ERROR use of unstable item: text
-        foo.method_experimental_text(); //~ ERROR use of unstable item: text
-        foo.trait_experimental_text(); //~ ERROR use of unstable item: text
-
         unstable(); //~ ERROR use of unstable item
         foo.method_unstable(); //~ ERROR use of unstable item
         foo.trait_unstable(); //~ ERROR use of unstable item
@@ -67,53 +59,25 @@ mod cross_crate {
         foo.method_stable_text();
         foo.trait_stable_text();
 
-        frozen();
-        foo.method_frozen();
-        foo.trait_frozen();
-
-        frozen_text();
-        foo.method_frozen_text();
-        foo.trait_frozen_text();
-
-        locked();
-        foo.method_locked();
-        foo.trait_locked();
-
-        locked_text();
-        foo.method_locked_text();
-        foo.trait_locked_text();
-
         let _ = DeprecatedStruct { i: 0 }; //~ ERROR use of deprecated item
-        let _ = ExperimentalStruct { i: 0 }; //~ ERROR use of unstable item
         let _ = UnstableStruct { i: 0 }; //~ ERROR use of unstable item
         let _ = UnmarkedStruct { i: 0 }; //~ ERROR use of unmarked item
         let _ = StableStruct { i: 0 };
-        let _ = FrozenStruct { i: 0 };
-        let _ = LockedStruct { i: 0 };
 
         let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated item
-        let _ = ExperimentalUnitStruct; //~ ERROR use of unstable item
         let _ = UnstableUnitStruct; //~ ERROR use of unstable item
         let _ = UnmarkedUnitStruct; //~ ERROR use of unmarked item
         let _ = StableUnitStruct;
-        let _ = FrozenUnitStruct;
-        let _ = LockedUnitStruct;
 
         let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated item
-        let _ = Enum::ExperimentalVariant; //~ ERROR use of unstable item
         let _ = Enum::UnstableVariant; //~ ERROR use of unstable item
         let _ = Enum::UnmarkedVariant; //~ ERROR use of unmarked item
         let _ = Enum::StableVariant;
-        let _ = Enum::FrozenVariant;
-        let _ = Enum::LockedVariant;
 
         let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
-        let _ = ExperimentalTupleStruct (1); //~ ERROR use of unstable item
         let _ = UnstableTupleStruct (1); //~ ERROR use of unstable item
         let _ = UnmarkedTupleStruct (1); //~ ERROR use of unmarked item
         let _ = StableTupleStruct (1);
-        let _ = FrozenTupleStruct (1);
-        let _ = LockedTupleStruct (1);
 
         // At the moment, the lint checker only checks stability in
         // in the arguments of macros.
@@ -129,8 +93,6 @@ mod cross_crate {
     fn test_method_param<F: Trait>(foo: F) {
         foo.trait_deprecated(); //~ ERROR use of deprecated item
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
-        foo.trait_experimental(); //~ ERROR use of unstable item
-        foo.trait_experimental_text(); //~ ERROR use of unstable item: text
         foo.trait_unstable(); //~ ERROR use of unstable item
         foo.trait_unstable_text(); //~ ERROR use of unstable item: text
         foo.trait_unmarked(); //~ ERROR use of unmarked item
@@ -140,8 +102,6 @@ mod cross_crate {
     fn test_method_object(foo: &Trait) {
         foo.trait_deprecated(); //~ ERROR use of deprecated item
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
-        foo.trait_experimental(); //~ ERROR use of unstable item
-        foo.trait_experimental_text(); //~ ERROR use of unstable item: text
         foo.trait_unstable(); //~ ERROR use of unstable item
         foo.trait_unstable_text(); //~ ERROR use of unstable item: text
         foo.trait_unmarked(); //~ ERROR use of unmarked item
@@ -150,9 +110,9 @@ mod cross_crate {
 
     struct S;
 
-    impl ExperimentalTrait for S { } //~ ERROR use of unstable item
+    impl UnstableTrait for S { } //~ ERROR use of unstable item
 
-    trait LocalTrait : ExperimentalTrait { } //~ ERROR use of unstable item
+    trait LocalTrait : UnstableTrait { } //~ ERROR use of unstable item
 }
 
 mod inheritance {
@@ -160,191 +120,119 @@ mod inheritance {
     use self::inherited_stability::*;
 
     fn test_inheritance() {
-        experimental(); //~ ERROR use of unstable item
+        unstable(); //~ ERROR use of unstable item
         stable();
 
-        stable_mod::experimental(); //~ ERROR use of unstable item
+        stable_mod::unstable(); //~ ERROR use of unstable item
         stable_mod::stable();
 
-        unstable_mod::experimental(); //~ ERROR use of unstable item
+        unstable_mod::deprecated(); //~ ERROR use of deprecated item
         unstable_mod::unstable(); //~ ERROR use of unstable item
 
-        experimental_mod::experimental(); //~ ERROR use of unstable item
-        experimental_mod::stable();
-
-        let _ = Experimental::ExperimentalVariant; //~ ERROR use of unstable item
-        let _ = Experimental::StableVariant;
+        let _ = Unstable::UnstableVariant; //~ ERROR use of unstable item
+        let _ = Unstable::StableVariant;
 
         let x: usize = 0;
-        x.experimental(); //~ ERROR use of unstable item
+        x.unstable(); //~ ERROR use of unstable item
         x.stable();
     }
 }
 
 mod this_crate {
-    #[deprecated]
+    #[deprecated(feature = "oldstuff", since = "1.0.0")]
     pub fn deprecated() {}
-    #[deprecated="text"]
+    #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "text")]
     pub fn deprecated_text() {}
 
-    #[unstable]
-    pub fn experimental() {}
-    #[unstable="text"]
-    pub fn experimental_text() {}
-
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub fn unstable() {}
-    #[unstable="text"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "text")]
     pub fn unstable_text() {}
 
     pub fn unmarked() {}
 
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     pub fn stable() {}
-    #[stable="text"]
+    #[stable(feature = "grandfathered", since = "1.0.0", reason = "text")]
     pub fn stable_text() {}
 
-    #[locked]
-    pub fn locked() {}
-    #[locked="text"]
-    pub fn locked_text() {}
-
-    #[frozen]
-    pub fn frozen() {}
-    #[frozen="text"]
-    pub fn frozen_text() {}
-
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     pub struct MethodTester;
 
     impl MethodTester {
-        #[deprecated]
+        #[deprecated(feature = "oldstuff", since = "1.0.0")]
         pub fn method_deprecated(&self) {}
-        #[deprecated="text"]
+        #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "text")]
         pub fn method_deprecated_text(&self) {}
 
-        #[unstable]
-        pub fn method_experimental(&self) {}
-        #[unstable="text"]
-        pub fn method_experimental_text(&self) {}
-
-        #[unstable]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0")]
         pub fn method_unstable(&self) {}
-        #[unstable="text"]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "text")]
         pub fn method_unstable_text(&self) {}
 
         pub fn method_unmarked(&self) {}
 
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         pub fn method_stable(&self) {}
-        #[stable="text"]
+        #[stable(feature = "grandfathered", since = "1.0.0", reason = "text")]
         pub fn method_stable_text(&self) {}
-
-        #[locked]
-        pub fn method_locked(&self) {}
-        #[locked="text"]
-        pub fn method_locked_text(&self) {}
-
-        #[frozen]
-        pub fn method_frozen(&self) {}
-        #[frozen="text"]
-        pub fn method_frozen_text(&self) {}
     }
 
     pub trait Trait {
-        #[deprecated]
+        #[deprecated(feature = "oldstuff", since = "1.0.0")]
         fn trait_deprecated(&self) {}
-        #[deprecated="text"]
+        #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "text")]
         fn trait_deprecated_text(&self) {}
 
-        #[unstable]
-        fn trait_experimental(&self) {}
-        #[unstable="text"]
-        fn trait_experimental_text(&self) {}
-
-        #[unstable]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0")]
         fn trait_unstable(&self) {}
-        #[unstable="text"]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "text")]
         fn trait_unstable_text(&self) {}
 
         fn trait_unmarked(&self) {}
 
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         fn trait_stable(&self) {}
-        #[stable="text"]
+        #[stable(feature = "grandfathered", since = "1.0.0", reason = "text")]
         fn trait_stable_text(&self) {}
-
-        #[locked]
-        fn trait_locked(&self) {}
-        #[locked="text"]
-        fn trait_locked_text(&self) {}
-
-        #[frozen]
-        fn trait_frozen(&self) {}
-        #[frozen="text"]
-        fn trait_frozen_text(&self) {}
     }
 
     impl Trait for MethodTester {}
 
-    #[deprecated]
+    #[deprecated(feature = "oldstuff", since = "1.0.0")]
     pub struct DeprecatedStruct { i: isize }
-    #[unstable]
-    pub struct ExperimentalStruct { i: isize }
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub struct UnstableStruct { i: isize }
     pub struct UnmarkedStruct { i: isize }
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     pub struct StableStruct { i: isize }
-    #[frozen]
-    pub struct FrozenStruct { i: isize }
-    #[locked]
-    pub struct LockedStruct { i: isize }
 
-    #[deprecated]
+    #[deprecated(feature = "oldstuff", since = "1.0.0")]
     pub struct DeprecatedUnitStruct;
-    #[unstable]
-    pub struct ExperimentalUnitStruct;
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub struct UnstableUnitStruct;
     pub struct UnmarkedUnitStruct;
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     pub struct StableUnitStruct;
-    #[frozen]
-    pub struct FrozenUnitStruct;
-    #[locked]
-    pub struct LockedUnitStruct;
 
     pub enum Enum {
-        #[deprecated]
+        #[deprecated(feature = "oldstuff", since = "1.0.0")]
         DeprecatedVariant,
-        #[unstable]
-        ExperimentalVariant,
-        #[unstable]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0")]
         UnstableVariant,
 
         UnmarkedVariant,
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         StableVariant,
-        #[frozen]
-        FrozenVariant,
-        #[locked]
-        LockedVariant,
     }
 
-    #[deprecated]
+    #[deprecated(feature = "oldstuff", since = "1.0.0")]
     pub struct DeprecatedTupleStruct(isize);
-    #[unstable]
-    pub struct ExperimentalTupleStruct(isize);
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub struct UnstableTupleStruct(isize);
     pub struct UnmarkedTupleStruct(isize);
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     pub struct StableTupleStruct(isize);
-    #[frozen]
-    pub struct FrozenTupleStruct(isize);
-    #[locked]
-    pub struct LockedTupleStruct(isize);
 
     fn test() {
         // Only the deprecated cases of the following should generate
@@ -360,14 +248,6 @@ mod this_crate {
         deprecated_text(); //~ ERROR use of deprecated item: text
         foo.method_deprecated_text(); //~ ERROR use of deprecated item: text
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
-
-        experimental();
-        foo.method_experimental();
-        foo.trait_experimental();
-
-        experimental_text();
-        foo.method_experimental_text();
-        foo.trait_experimental_text();
 
         unstable();
         foo.method_unstable();
@@ -389,60 +269,30 @@ mod this_crate {
         foo.method_stable_text();
         foo.trait_stable_text();
 
-        frozen();
-        foo.method_frozen();
-        foo.trait_frozen();
-
-        frozen_text();
-        foo.method_frozen_text();
-        foo.trait_frozen_text();
-
-        locked();
-        foo.method_locked();
-        foo.trait_locked();
-
-        locked_text();
-        foo.method_locked_text();
-        foo.trait_locked_text();
-
         let _ = DeprecatedStruct { i: 0 }; //~ ERROR use of deprecated item
-        let _ = ExperimentalStruct { i: 0 };
         let _ = UnstableStruct { i: 0 };
         let _ = UnmarkedStruct { i: 0 };
         let _ = StableStruct { i: 0 };
-        let _ = FrozenStruct { i: 0 };
-        let _ = LockedStruct { i: 0 };
 
         let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated item
-        let _ = ExperimentalUnitStruct;
         let _ = UnstableUnitStruct;
         let _ = UnmarkedUnitStruct;
         let _ = StableUnitStruct;
-        let _ = FrozenUnitStruct;
-        let _ = LockedUnitStruct;
 
         let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated item
-        let _ = Enum::ExperimentalVariant;
         let _ = Enum::UnstableVariant;
         let _ = Enum::UnmarkedVariant;
         let _ = Enum::StableVariant;
-        let _ = Enum::FrozenVariant;
-        let _ = Enum::LockedVariant;
 
         let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
-        let _ = ExperimentalTupleStruct (1);
         let _ = UnstableTupleStruct (1);
         let _ = UnmarkedTupleStruct (1);
         let _ = StableTupleStruct (1);
-        let _ = FrozenTupleStruct (1);
-        let _ = LockedTupleStruct (1);
     }
 
     fn test_method_param<F: Trait>(foo: F) {
         foo.trait_deprecated(); //~ ERROR use of deprecated item
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
-        foo.trait_experimental();
-        foo.trait_experimental_text();
         foo.trait_unstable();
         foo.trait_unstable_text();
         foo.trait_unmarked();
@@ -452,29 +302,27 @@ mod this_crate {
     fn test_method_object(foo: &Trait) {
         foo.trait_deprecated(); //~ ERROR use of deprecated item
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
-        foo.trait_experimental();
-        foo.trait_experimental_text();
         foo.trait_unstable();
         foo.trait_unstable_text();
         foo.trait_unmarked();
         foo.trait_stable();
     }
 
-    #[deprecated]
+    #[deprecated(feature = "oldstuff", since = "1.0.0")]
     fn test_fn_body() {
         fn fn_in_body() {}
         fn_in_body();
     }
 
     impl MethodTester {
-        #[deprecated]
+        #[deprecated(feature = "oldstuff", since = "1.0.0")]
         fn test_method_body(&self) {
             fn fn_in_body() {}
             fn_in_body();
         }
     }
 
-    #[deprecated]
+    #[deprecated(feature = "oldstuff", since = "1.0.0")]
     pub trait DeprecatedTrait {}
 
     struct S;

@@ -14,6 +14,6 @@
 //! alpha cycle along with the development of clearer conventions
 //! around integer types.
 
-#![deprecated = "replaced by usize"]
+#![deprecated(feature = "oldstuff", since = "1.0.0", reason = "replaced by usize")]
 
 uint_module! { uint, int, ::int::BITS }

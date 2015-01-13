@@ -33,6 +33,7 @@ use syntax::ast_util;
 use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
+use syntax::codemap;
 use syntax::codemap::{DUMMY_SP, Pos, Spanned};
 use syntax::parse::token::{self, InternedString, special_idents};
 use syntax::ptr::P;
@@ -449,11 +450,13 @@ impl attr::AttrMetaMethods for Attribute {
         }
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
+    fn span(&self) -> codemap::Span { unimplemented!() }
 }
 impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn name(&self) -> InternedString { (**self).name() }
     fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
     fn meta_item_list(&self) -> Option<&[P<ast::MetaItem>]> { None }
+    fn span(&self) -> codemap::Span { unimplemented!() }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
@@ -2483,15 +2486,19 @@ impl Clean<Item> for doctree::Macro {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Stability {
     pub level: attr::StabilityLevel,
-    pub text: String
+    pub feature: String,
+    pub since: String,
+    pub reason: String
 }
 
 impl Clean<Stability> for attr::Stability {
     fn clean(&self, _: &DocContext) -> Stability {
         Stability {
             level: self.level,
-            text: self.text.as_ref().map_or("".to_string(),
-                                            |interned| interned.get().to_string()),
+            feature: self.feature.get().to_string(),
+            since: self.since.get().to_string(),
+            reason: self.reason.as_ref().map_or("".to_string(),
+                                                |interned| interned.get().to_string()),
         }
     }
 }

@@ -56,7 +56,8 @@
 //! assert_eq!(hash::<_, SipHasher>(&person1), hash::<_, SipHasher>(&person2));
 //! ```
 
-#![unstable = "module was recently redesigned"]
+#![unstable(feature = "unnamed_feature", since = "1.0.0",
+            reason = "module was recently redesigned")]
 
 use prelude::*;
 

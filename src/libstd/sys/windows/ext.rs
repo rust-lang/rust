@@ -14,7 +14,7 @@
 //! descriptors, and sockets, but its functionality will grow over
 //! time.
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 
 use sys_common::AsInner;
 use libc;

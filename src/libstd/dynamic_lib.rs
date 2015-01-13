@@ -12,7 +12,7 @@
 //!
 //! A simple wrapper over the platform's dynamic library facilities
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![allow(missing_docs)]
 
 use prelude::v1::*;
