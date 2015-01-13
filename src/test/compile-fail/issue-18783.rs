@@ -13,8 +13,8 @@
 use std::cell::RefCell;
 
 fn main() {
-    let c = RefCell::new(vec![]);
     let mut y = 1us;
+    let c = RefCell::new(vec![]);
     c.push(box || y = 0);
     c.push(box || y = 0);
 //~^ ERROR cannot borrow `y` as mutable more than once at a time
