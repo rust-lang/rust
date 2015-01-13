@@ -1637,19 +1637,15 @@ declare_lint! {
 /// Checks for use of items with `#[deprecated]`, `#[unstable]` and
 /// `#[unstable]` attributes, or no stability attribute.
 #[derive(Copy)]
-pub struct Stability { this_crate_staged: bool }
+pub struct Stability;
 
 impl Stability {
-    pub fn new() -> Stability { Stability { this_crate_staged: false } }
-
     fn lint(&self, cx: &Context, id: ast::DefId, span: Span) {
+
+        if !stability::is_staged_api(cx.tcx, id) { return  }
 
         let ref stability = stability::lookup(cx.tcx, id);
         let cross_crate = !ast_util::is_local(id);
-        let staged = (!cross_crate && self.this_crate_staged)
-            || (cross_crate && stability::is_staged_api(cx.tcx, id));
-
-        if !staged { return }
 
         // stability attributes are promises made across crates; only
         // check DEPRECATED for crate-local usage.
@@ -1668,7 +1664,7 @@ impl Stability {
         fn output(cx: &Context, span: Span, stability: &Option<attr::Stability>,
                   lint: &'static Lint, label: &'static str) {
             let msg = match *stability {
-                Some(attr::Stability { text: Some(ref s), .. }) => {
+                Some(attr::Stability { reason: Some(ref s), .. }) => {
                     format!("use of {} item: {}", label, *s)
                 }
                 _ => format!("use of {} item", label)
@@ -1688,22 +1684,6 @@ impl Stability {
 impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEPRECATED, UNSTABLE)
-    }
-
-    fn check_crate(&mut self, _: &Context, c: &ast::Crate) {
-        // Just mark the #[staged_api] attribute used, though nothing else is done
-        // with it during this pass over the source.
-        for attr in c.attrs.iter() {
-            if attr.name().get() == "staged_api" {
-                match attr.node.value.node {
-                    ast::MetaWord(_) => {
-                        attr::mark_used(attr);
-                        self.this_crate_staged = true;
-                    }
-                    _ => (/*pass*/)
-                }
-            }
-        }
     }
 
     fn check_view_item(&mut self, cx: &Context, item: &ast::ViewItem) {

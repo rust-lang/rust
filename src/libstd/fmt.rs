@@ -403,7 +403,7 @@
 //! them with the same character. For example, the `{` character is escaped with
 //! `{{` and the `}` character is escaped with `}}`.
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 
 use string;
 
@@ -432,8 +432,9 @@ pub use core::fmt::{argument, argumentuint};
 /// let s = fmt::format(format_args!("Hello, {}!", "world"));
 /// assert_eq!(s, "Hello, world!".to_string());
 /// ```
-#[unstable = "this is an implementation detail of format! and should not \
-                  be called directly"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "this is an implementation detail of format! and should not \
+                     be called directly")]
 pub fn format(args: Arguments) -> string::String {
     let mut output = string::String::new();
     let _ = write!(&mut output, "{}", args);

@@ -714,7 +714,7 @@ impl<'a> fmt::String for Stability<'a> {
             Some(ref stability) => {
                 write!(f, "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
                        lvl = stability.level,
-                       reason = stability.text)
+                       reason = stability.reason)
             }
             None => Ok(())
         }
@@ -728,8 +728,8 @@ impl<'a> fmt::String for ConciseStability<'a> {
             Some(ref stability) => {
                 write!(f, "<a class='stability {lvl}' title='{lvl}{colon}{reason}'></a>",
                        lvl = stability.level,
-                       colon = if stability.text.len() > 0 { ": " } else { "" },
-                       reason = stability.text)
+                       colon = if stability.reason.len() > 0 { ": " } else { "" },
+                       reason = stability.reason)
             }
             None => {
                 write!(f, "<a class='stability Unmarked' title='No stability level'></a>")

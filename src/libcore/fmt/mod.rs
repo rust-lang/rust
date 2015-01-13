@@ -11,7 +11,7 @@
 //! Utilities for formatting and printing strings
 
 #![allow(unused_variables)]
-#![stable]
+#![stable(feature = "grandfathered", since = "1.0.0")]
 
 use any;
 use cell::{Cell, RefCell, Ref, RefMut};
@@ -36,7 +36,8 @@ mod num;
 mod float;
 pub mod rt;
 
-#[unstable = "core and I/O reconciliation may alter this definition"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "core and I/O reconciliation may alter this definition")]
 /// The type returned by formatter methods.
 pub type Result = result::Result<(), Error>;
 
@@ -45,7 +46,8 @@ pub type Result = result::Result<(), Error>;
 /// This type does not support transmission of an error other than that an error
 /// occurred. Any extra information must be arranged to be transmitted through
 /// some other means.
-#[unstable = "core and I/O reconciliation may alter this definition"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "core and I/O reconciliation may alter this definition")]
 #[derive(Copy)]
 pub struct Error;
 
@@ -58,7 +60,8 @@ pub struct Error;
 /// This trait should generally not be implemented by consumers of the standard
 /// library. The `write!` macro accepts an instance of `io::Writer`, and the
 /// `io::Writer` trait is favored over implementing this trait.
-#[unstable = "waiting for core and I/O reconciliation"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "waiting for core and I/O reconciliation")]
 pub trait Writer {
     /// Writes a slice of bytes into this writer, returning whether the write
     /// succeeded.
@@ -101,7 +104,8 @@ pub trait Writer {
 /// A struct to represent both where to emit formatting strings to and how they
 /// should be formatted. A mutable version of this is passed to all formatting
 /// traits.
-#[unstable = "name may change and implemented traits are also unstable"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "name may change and implemented traits are also unstable")]
 pub struct Formatter<'a> {
     flags: uint,
     fill: char,
@@ -123,7 +127,8 @@ enum Void {}
 /// family of functions. It contains a function to format the given value. At
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
-#[unstable = "implementation detail of the `format_args!` macro"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "implementation detail of the `format_args!` macro")]
 #[derive(Copy)]
 pub struct Argument<'a> {
     value: &'a Void,
@@ -162,7 +167,8 @@ impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[doc(hidden)] #[inline]
-    #[unstable = "implementation detail of the `format_args!` macro"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "implementation detail of the `format_args!` macro")]
     pub fn new(pieces: &'a [&'a str],
                args: &'a [Argument<'a>]) -> Arguments<'a> {
         Arguments {
@@ -179,7 +185,8 @@ impl<'a> Arguments<'a> {
     /// created with `argumentuint`. However, failing to do so doesn't cause
     /// unsafety, but will ignore invalid .
     #[doc(hidden)] #[inline]
-    #[unstable = "implementation detail of the `format_args!` macro"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "implementation detail of the `format_args!` macro")]
     pub fn with_placeholders(pieces: &'a [&'a str],
                              fmt: &'a [rt::Argument],
                              args: &'a [Argument<'a>]) -> Arguments<'a> {
@@ -200,7 +207,7 @@ impl<'a> Arguments<'a> {
 /// and pass it to a function or closure, passed as the first argument. The
 /// macro validates the format string at compile-time so usage of the `write`
 /// and `format` functions can be safely performed.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 #[derive(Copy)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
@@ -220,7 +227,7 @@ impl<'a> Show for Arguments<'a> {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a> String for Arguments<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
         write(fmt.buf, *self)
@@ -229,7 +236,8 @@ impl<'a> String for Arguments<'a> {
 
 /// Format trait for the `:?` format. Useful for debugging, most all types
 /// should implement this.
-#[unstable = "I/O and core have yet to be reconciled"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "I/O and core have yet to be reconciled")]
 pub trait Show {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
@@ -237,7 +245,8 @@ pub trait Show {
 
 /// When a value can be semantically expressed as a String, this trait may be
 /// used. It corresponds to the default format, `{}`.
-#[unstable = "I/O and core have yet to be reconciled"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "I/O and core have yet to be reconciled")]
 pub trait String {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
@@ -245,49 +254,56 @@ pub trait String {
 
 
 /// Format trait for the `o` character
-#[unstable = "I/O and core have yet to be reconciled"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "I/O and core have yet to be reconciled")]
 pub trait Octal {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `b` character
-#[unstable = "I/O and core have yet to be reconciled"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "I/O and core have yet to be reconciled")]
 pub trait Binary {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `x` character
-#[unstable = "I/O and core have yet to be reconciled"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "I/O and core have yet to be reconciled")]
 pub trait LowerHex {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `X` character
-#[unstable = "I/O and core have yet to be reconciled"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "I/O and core have yet to be reconciled")]
 pub trait UpperHex {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `p` character
-#[unstable = "I/O and core have yet to be reconciled"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "I/O and core have yet to be reconciled")]
 pub trait Pointer {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `e` character
-#[unstable = "I/O and core have yet to be reconciled"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "I/O and core have yet to be reconciled")]
 pub trait LowerExp {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
 /// Format trait for the `E` character
-#[unstable = "I/O and core have yet to be reconciled"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "I/O and core have yet to be reconciled")]
 pub trait UpperExp {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
@@ -301,8 +317,9 @@ pub trait UpperExp {
 ///
 ///   * output - the buffer to write output to
 ///   * args - the precompiled arguments generated by `format_args!`
-#[unstable = "libcore and I/O have yet to be reconciled, and this is an \
-                  implementation detail which should not otherwise be exported"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "libcore and I/O have yet to be reconciled, and this is an \
+                     implementation detail which should not otherwise be exported")]
 pub fn write(output: &mut Writer, args: Arguments) -> Result {
     let mut formatter = Formatter {
         flags: 0,
@@ -398,7 +415,8 @@ impl<'a> Formatter<'a> {
     ///
     /// This function will correctly account for the flags provided as well as
     /// the minimum width. It will not take precision into account.
-    #[unstable = "definition may change slightly over time"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "definition may change slightly over time")]
     pub fn pad_integral(&mut self,
                         is_positive: bool,
                         prefix: &str,
@@ -474,7 +492,8 @@ impl<'a> Formatter<'a> {
     ///               is longer than this length
     ///
     /// Notably this function ignored the `flag` parameters
-    #[unstable = "definition may change slightly over time"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "definition may change slightly over time")]
     pub fn pad(&mut self, s: &str) -> Result {
         // Make sure there's a fast path up front
         if self.width.is_none() && self.precision.is_none() {
@@ -551,35 +570,38 @@ impl<'a> Formatter<'a> {
 
     /// Writes some data to the underlying buffer contained within this
     /// formatter.
-    #[unstable = "reconciling core and I/O may alter this definition"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "reconciling core and I/O may alter this definition")]
     pub fn write_str(&mut self, data: &str) -> Result {
         self.buf.write_str(data)
     }
 
     /// Writes some formatted information into this instance
-    #[unstable = "reconciling core and I/O may alter this definition"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "reconciling core and I/O may alter this definition")]
     pub fn write_fmt(&mut self, fmt: Arguments) -> Result {
         write(self.buf, fmt)
     }
 
     /// Flags for formatting (packed version of rt::Flag)
-    #[unstable = "return type may change and method was just created"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "return type may change and method was just created")]
     pub fn flags(&self) -> uint { self.flags }
 
     /// Character used as 'fill' whenever there is alignment
-    #[unstable = "method was just created"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "method was just created")]
     pub fn fill(&self) -> char { self.fill }
 
     /// Flag indicating what form of alignment was requested
-    #[unstable = "method was just created"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "method was just created")]
     pub fn align(&self) -> rt::Alignment { self.align }
 
     /// Optionally specified integer width that the output should be
-    #[unstable = "method was just created"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "method was just created")]
     pub fn width(&self) -> Option<uint> { self.width }
 
     /// Optionally specified precision for numeric types
-    #[unstable = "method was just created"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "method was just created")]
     pub fn precision(&self) -> Option<uint> { self.precision }
 }
 
@@ -592,7 +614,8 @@ impl Show for Error {
 /// This is a function which calls are emitted to by the compiler itself to
 /// create the Argument structures that are passed into the `format` function.
 #[doc(hidden)] #[inline]
-#[unstable = "implementation detail of the `format_args!` macro"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "implementation detail of the `format_args!` macro")]
 pub fn argument<'a, T>(f: fn(&T, &mut Formatter) -> Result,
                        t: &'a T) -> Argument<'a> {
     Argument::new(t, f)
@@ -601,7 +624,8 @@ pub fn argument<'a, T>(f: fn(&T, &mut Formatter) -> Result,
 /// When the compiler determines that the type of an argument *must* be a uint
 /// (such as for width and precision), then it invokes this method.
 #[doc(hidden)] #[inline]
-#[unstable = "implementation detail of the `format_args!` macro"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "implementation detail of the `format_args!` macro")]
 pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
     Argument::from_uint(s)
 }
@@ -629,7 +653,7 @@ impl Show for bool {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl String for bool {
     fn fmt(&self, f: &mut Formatter) -> Result {
         String::fmt(if *self { "true" } else { "false" }, f)
@@ -646,7 +670,7 @@ impl Show for str {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl String for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad(self)
@@ -664,7 +688,7 @@ impl Show for char {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl String for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8; 4];
@@ -710,7 +734,7 @@ macro_rules! floating { ($ty:ident) => {
         }
     }
 
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     impl String for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
             use num::Float;
@@ -855,7 +879,7 @@ impl<T: Copy + Show> Show for Cell<T> {
     }
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 impl<T: Show> Show for RefCell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self.try_borrow() {
@@ -877,7 +901,7 @@ impl<'b, T: Show> Show for RefMut<'b, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl String for Utf8Error {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match *self {

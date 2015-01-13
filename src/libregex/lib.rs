@@ -16,7 +16,8 @@
 #![crate_name = "regex"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![unstable = "use the crates.io `regex` library instead"]
+#![unstable(feature = "unnamed_feature", since = "1.0.0",
+            reason = "use the crates.io `regex` library instead")]
 #![staged_api]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",

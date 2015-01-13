@@ -10,35 +10,54 @@
 
 //! The first version of the prelude of the standard library.
 
-#![stable]
+#![stable(feature = "grandfathered", since = "1.0.0")]
 
 // Reexported core operators
-#[stable] #[doc(no_inline)] pub use marker::{Copy, Send, Sized, Sync};
-#[stable] #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use marker::{Copy, Send, Sized, Sync};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // TEMPORARY
-#[unstable] #[doc(no_inline)] pub use ops::FullRange;
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[doc(no_inline)] pub use ops::FullRange;
 
 // Reexported functions
-#[stable] #[doc(no_inline)] pub use mem::drop;
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use mem::drop;
 
 // Reexported types and traits
 
-#[stable] #[doc(no_inline)] pub use boxed::Box;
-#[stable] #[doc(no_inline)] pub use char::CharExt;
-#[stable] #[doc(no_inline)] pub use clone::Clone;
-#[stable] #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
-#[stable] #[doc(no_inline)] pub use iter::DoubleEndedIterator;
-#[stable] #[doc(no_inline)] pub use iter::ExactSizeIterator;
-#[stable] #[doc(no_inline)] pub use iter::{Iterator, IteratorExt, Extend};
-#[stable] #[doc(no_inline)] pub use option::Option::{self, Some, None};
-#[stable] #[doc(no_inline)] pub use ptr::{PtrExt, MutPtrExt};
-#[stable] #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
-#[stable] #[doc(no_inline)] pub use slice::AsSlice;
-#[stable] #[doc(no_inline)] pub use slice::{SliceExt, SliceConcatExt};
-#[stable] #[doc(no_inline)] pub use str::{Str, StrExt};
-#[stable] #[doc(no_inline)] pub use string::{String, ToString};
-#[stable] #[doc(no_inline)] pub use vec::Vec;
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use boxed::Box;
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use char::CharExt;
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use clone::Clone;
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use iter::DoubleEndedIterator;
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use iter::ExactSizeIterator;
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use iter::{Iterator, IteratorExt, Extend};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use option::Option::{self, Some, None};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use ptr::{PtrExt, MutPtrExt};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use result::Result::{self, Ok, Err};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use slice::AsSlice;
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use slice::{SliceExt, SliceConcatExt};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use str::{Str, StrExt};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use string::{String, ToString};
+#[stable(feature = "grandfathered", since = "1.0.0")]
+#[doc(no_inline)] pub use vec::Vec;
 
 // NB: remove when path reform lands
 #[doc(no_inline)] pub use path::{Path, GenericPath};

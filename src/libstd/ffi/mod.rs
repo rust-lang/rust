@@ -10,8 +10,9 @@
 
 //! Utilities related to FFI bindings.
 
-#![unstable = "module just underwent fairly large reorganization and the dust \
-               still needs to settle"]
+#![unstable(feature = "unnamed_feature", since = "1.0.0",
+            reason = "module just underwent fairly large reorganization and the dust \
+                      still needs to settle")]
 
 pub use self::c_str::CString;
 pub use self::c_str::c_str_to_bytes;

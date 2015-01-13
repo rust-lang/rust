@@ -12,14 +12,14 @@
 
 macro_rules! uint_module { ($T:ty, $T_SIGNED:ty, $bits:expr) => (
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub const BITS : uint = $bits;
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub const BYTES : uint = ($bits / 8);
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub const MIN: $T = 0 as $T;
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub const MAX: $T = 0 as $T - 1 as $T;
 
 ) }

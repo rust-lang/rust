@@ -691,7 +691,8 @@ impl Process {
     ///     p.wait()
     /// }
     /// ```
-    #[unstable = "the type of the timeout is likely to change"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "the type of the timeout is likely to change")]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
         self.deadline = timeout_ms.map(|i| i + sys::timer::now()).unwrap_or(0);
     }

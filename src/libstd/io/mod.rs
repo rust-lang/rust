@@ -219,7 +219,7 @@
 //! concerned with error handling; instead its caller is responsible for
 //! responding to errors that may occur while attempting to read the numbers.
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![deny(unused_must_use)]
 
 pub use self::SeekStyle::*;
@@ -1744,7 +1744,7 @@ pub struct FileStat {
     ///
     /// Usage of this field is discouraged, but if access is desired then the
     /// fields are located here.
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub unstable: UnstableFileStat,
 }
 
@@ -1752,7 +1752,7 @@ pub struct FileStat {
 /// returned from a `stat` syscall which is not contained in the `FileStat`
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 #[derive(Copy, Hash)]
 pub struct UnstableFileStat {
     /// The ID of the device containing the file.
@@ -1815,9 +1815,9 @@ bitflags! {
 }
 
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl Default for FilePermission {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     #[inline]
     fn default() -> FilePermission { FilePermission::empty() }
 }

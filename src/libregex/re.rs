@@ -255,7 +255,7 @@ impl Regex {
     }
 
     #[doc(hidden)]
-    #[unstable]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
     pub fn names_iter<'a>(&'a self) -> NamesIter<'a> {
         match *self {
             Native(ref n) => NamesIterNative(n.names.iter()),

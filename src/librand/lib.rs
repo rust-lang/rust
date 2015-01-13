@@ -25,7 +25,7 @@
 #![allow(unknown_features)] #![feature(int_uint)]
 #![allow(unstable)]
 #![no_std]
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![staged_api]
 
 #[macro_use]

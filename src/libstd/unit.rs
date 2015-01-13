@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![doc(primitive = "unit")]
-#![stable]
+#![stable(feature = "grandfathered", since = "1.0.0")]
 
 //! The `()` type, sometimes called "unit" or "nil".
 //!

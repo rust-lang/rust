@@ -23,19 +23,20 @@
 //! implemented using unsafe code. In that case, you may want to embed
 //! some of the marker types below into your type.
 
-#![stable]
+#![stable(feature = "grandfathered", since = "1.0.0")]
 
 use clone::Clone;
 
 /// Types able to be transferred across task boundaries.
-#[unstable = "will be overhauled with new lifetime rules; see RFC 458"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "will be overhauled with new lifetime rules; see RFC 458")]
 #[lang="send"]
 pub unsafe trait Send: 'static {
     // empty.
 }
 
 /// Types with a constant size known at compile-time.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 #[lang="sized"]
 pub trait Sized {
     // Empty.
@@ -140,7 +141,7 @@ pub trait Sized {
 /// to consider though: if you think your type may _not_ be able to implement `Copy` in the future,
 /// then it might be prudent to not implement `Copy`. This is because removing `Copy` is a breaking
 /// change: that second example would fail to compile if we made `Foo` non-`Copy`.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 #[lang="copy"]
 pub trait Copy {
     // Empty.
@@ -191,7 +192,8 @@ pub trait Copy {
 /// around the value(s) which can be mutated when behind a `&`
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
-#[unstable = "will be overhauled with new lifetime rules; see RFC 458"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "will be overhauled with new lifetime rules; see RFC 458")]
 #[lang="sync"]
 pub unsafe trait Sync {
     // Empty
@@ -235,7 +237,8 @@ pub unsafe trait Sync {
 /// `S<T>` is a subtype of `S<U>` if `T` is a subtype of `U`
 /// (for example, `S<&'static int>` is a subtype of `S<&'a int>`
 /// for some lifetime `'a`, but not the other way around).
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="covariant_type"]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct CovariantType<T: ?Sized>;
@@ -284,7 +287,8 @@ impl<T: ?Sized> Clone for CovariantType<T> {
 /// subtype of `S<U>` if `U` is a subtype of `T`; given that the
 /// function requires arguments of type `T`, it must also accept
 /// arguments of type `U`, hence such a conversion is safe.
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="contravariant_type"]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct ContravariantType<T: ?Sized>;
@@ -314,14 +318,17 @@ impl<T: ?Sized> Clone for ContravariantType<T> {
 /// The type system would infer that `value` is only read here and
 /// never written, but in fact `Cell` uses unsafe code to achieve
 /// interior mutability.
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="invariant_type"]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct InvariantType<T: ?Sized>;
 
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 impl<T: ?Sized> Copy for InvariantType<T> {}
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 impl<T: ?Sized> Clone for InvariantType<T> {
     fn clone(&self) -> InvariantType<T> { *self }
 }
@@ -342,7 +349,8 @@ impl<T: ?Sized> Clone for InvariantType<T> {
 ///
 /// For more information about variance, refer to this Wikipedia
 /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="covariant_lifetime"]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CovariantLifetime<'a>;
@@ -359,7 +367,8 @@ pub struct CovariantLifetime<'a>;
 ///
 /// For more information about variance, refer to this Wikipedia
 /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="contravariant_lifetime"]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ContravariantLifetime<'a>;
@@ -371,7 +380,8 @@ pub struct ContravariantLifetime<'a>;
 /// pointer that is actually a pointer into memory with lifetime `'a`,
 /// and this pointer is itself stored in an inherently mutable
 /// location (such as a `Cell`).
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="invariant_lifetime"]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InvariantLifetime<'a>;
@@ -380,7 +390,8 @@ pub struct InvariantLifetime<'a>;
 /// be safely sent between tasks, even if it is owned. This is
 /// typically embedded in other types, such as `Gc`, to ensure that
 /// their instances remain thread-local.
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="no_send_bound"]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg(stage0)] // NOTE remove impl after next snapshot
@@ -389,7 +400,8 @@ pub struct NoSend;
 /// A type which is considered "not POD", meaning that it is not
 /// implicitly copyable. This is typically embedded in other types to
 /// ensure that they are never copied, even if they lack a destructor.
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="no_copy_bound"]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(missing_copy_implementations)]
@@ -398,7 +410,8 @@ pub struct NoCopy;
 /// A type which is considered "not sync", meaning that
 /// its contents are not threadsafe, hence they cannot be
 /// shared between tasks.
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="no_sync_bound"]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg(stage0)] // NOTE remove impl after next snapshot
@@ -406,7 +419,8 @@ pub struct NoSync;
 
 /// A type which is considered managed by the GC. This is typically
 /// embedded in other types.
-#[unstable = "likely to change with new variance strategy"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "likely to change with new variance strategy")]
 #[lang="managed_bound"]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(missing_copy_implementations)]

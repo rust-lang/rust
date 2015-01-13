@@ -11,7 +11,7 @@
 struct Foo;
 
 impl Foo {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
 } //~ ERROR expected `fn`, found `}`
 
 fn main() {}

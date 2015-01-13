@@ -50,7 +50,7 @@
 //! is the same as `&[u8]`.
 
 #![doc(primitive = "str")]
-#![stable]
+#![stable(feature = "grandfathered", since = "1.0.0")]
 
 use self::RecompositionState::*;
 use self::DecompositionType::*;
@@ -165,7 +165,7 @@ enum DecompositionType {
 /// External iterator for a string's decomposition's characters.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub struct Decompositions<'a> {
     kind: DecompositionType,
     iter: Chars<'a>,
@@ -173,7 +173,7 @@ pub struct Decompositions<'a> {
     sorted: bool
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a> Iterator for Decompositions<'a> {
     type Item = char;
 
@@ -255,7 +255,7 @@ enum RecompositionState {
 /// External iterator for a string's recomposition's characters.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub struct Recompositions<'a> {
     iter: Decompositions<'a>,
     state: RecompositionState,
@@ -264,7 +264,7 @@ pub struct Recompositions<'a> {
     last_ccc: Option<u8>
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a> Iterator for Recompositions<'a> {
     type Item = char;
 
@@ -352,12 +352,12 @@ impl<'a> Iterator for Recompositions<'a> {
 /// External iterator for a string's UTF16 codeunits.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub struct Utf16Units<'a> {
     encoder: Utf16Encoder<Chars<'a>>
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a> Iterator for Utf16Units<'a> {
     type Item = u16;
 
@@ -384,12 +384,12 @@ macro_rules! utf8_acc_cont_byte {
     ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
 }
 
-#[unstable = "trait is unstable"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is unstable")]
 impl BorrowFrom<String> for str {
     fn borrow_from(owned: &String) -> &str { &owned[] }
 }
 
-#[unstable = "trait is unstable"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is unstable")]
 impl ToOwned<String> for str {
     fn to_owned(&self) -> String {
         unsafe {
@@ -407,16 +407,18 @@ Section: Trait implementations
 */
 
 /// Any string that can be represented as a slice.
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait StrExt: Index<FullRange, Output = str> {
     /// Escapes each char in `s` with `char::escape_default`.
-    #[unstable = "return type may change to be an iterator"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "return type may change to be an iterator")]
     fn escape_default(&self) -> String {
         self.chars().flat_map(|c| c.escape_default()).collect()
     }
 
     /// Escapes each char in `s` with `char::escape_unicode`.
-    #[unstable = "return type may change to be an iterator"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "return type may change to be an iterator")]
     fn escape_unicode(&self) -> String {
         self.chars().flat_map(|c| c.escape_unicode()).collect()
     }
@@ -445,7 +447,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// // not found, so no change.
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn replace(&self, from: &str, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;
@@ -461,7 +463,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// Returns an iterator over the string in Unicode Normalization Form D
     /// (canonical decomposition).
     #[inline]
-    #[unstable = "this functionality may be moved to libunicode"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "this functionality may be moved to libunicode")]
     fn nfd_chars<'a>(&'a self) -> Decompositions<'a> {
         Decompositions {
             iter: self[].chars(),
@@ -474,7 +477,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// Returns an iterator over the string in Unicode Normalization Form KD
     /// (compatibility decomposition).
     #[inline]
-    #[unstable = "this functionality may be moved to libunicode"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "this functionality may be moved to libunicode")]
     fn nfkd_chars<'a>(&'a self) -> Decompositions<'a> {
         Decompositions {
             iter: self[].chars(),
@@ -487,7 +491,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// An Iterator over the string in Unicode Normalization Form C
     /// (canonical decomposition followed by canonical composition).
     #[inline]
-    #[unstable = "this functionality may be moved to libunicode"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "this functionality may be moved to libunicode")]
     fn nfc_chars<'a>(&'a self) -> Recompositions<'a> {
         Recompositions {
             iter: self.nfd_chars(),
@@ -501,7 +506,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// An Iterator over the string in Unicode Normalization Form KC
     /// (compatibility decomposition followed by canonical composition).
     #[inline]
-    #[unstable = "this functionality may be moved to libunicode"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "this functionality may be moved to libunicode")]
     fn nfkc_chars<'a>(&'a self) -> Recompositions<'a> {
         Recompositions {
             iter: self.nfkd_chars(),
@@ -523,7 +529,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// ```rust
     /// assert!("bananas".contains("nana"));
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn contains(&self, pat: &str) -> bool {
         core_str::StrExt::contains(&self[], pat)
     }
@@ -539,7 +545,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// ```rust
     /// assert!("hello".contains_char('e'));
     /// ```
-    #[unstable = "might get removed in favour of a more generic contains()"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "might get removed in favour of a more generic contains()")]
     fn contains_char<P: CharEq>(&self, pat: P) -> bool {
         core_str::StrExt::contains_char(&self[], pat)
     }
@@ -553,7 +560,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<char> = "abc åäö".chars().collect();
     /// assert_eq!(v, vec!['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn chars(&self) -> Chars {
         core_str::StrExt::chars(&self[])
     }
@@ -566,13 +573,13 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<u8> = "bors".bytes().collect();
     /// assert_eq!(v, b"bors".to_vec());
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn bytes(&self) -> Bytes {
         core_str::StrExt::bytes(&self[])
     }
 
     /// An iterator over the characters of `self` and their byte offsets.
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn char_indices(&self) -> CharIndices {
         core_str::StrExt::char_indices(&self[])
     }
@@ -595,7 +602,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = "".split('X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn split<P: CharEq>(&self, pat: P) -> Split<P> {
         core_str::StrExt::split(&self[], pat)
     }
@@ -622,7 +629,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = "".splitn(1, 'X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn splitn<P: CharEq>(&self, count: uint, pat: P) -> SplitN<P> {
         core_str::StrExt::splitn(&self[], count, pat)
     }
@@ -651,7 +658,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
     /// ```
-    #[unstable = "might get removed"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "might get removed")]
     fn split_terminator<P: CharEq>(&self, pat: P) -> SplitTerminator<P> {
         core_str::StrExt::split_terminator(&self[], pat)
     }
@@ -672,7 +679,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn rsplitn<P: CharEq>(&self, count: uint, pat: P) -> RSplitN<P> {
         core_str::StrExt::rsplitn(&self[], count, pat)
     }
@@ -697,7 +704,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<(uint, uint)> = "ababa".match_indices("aba").collect();
     /// assert_eq!(v, vec![(0, 3)]); // only the first `aba`
     /// ```
-    #[unstable = "might have its iterator type changed"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "might have its iterator type changed")]
     fn match_indices<'a>(&'a self, pat: &'a str) -> MatchIndices<'a> {
         core_str::StrExt::match_indices(&self[], pat)
     }
@@ -713,7 +721,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = "1abcabc2".split_str("abc").collect();
     /// assert_eq!(v, vec!["1", "", "2"]);
     /// ```
-    #[unstable = "might get removed in the future in favor of a more generic split()"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "might get removed in the future in favor of a more generic split()")]
     fn split_str<'a>(&'a self, pat: &'a str) -> SplitStr<'a> {
         core_str::StrExt::split_str(&self[], pat)
     }
@@ -729,7 +738,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = four_lines.lines().collect();
     /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn lines(&self) -> Lines {
         core_str::StrExt::lines(&self[])
     }
@@ -745,7 +754,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = four_lines.lines_any().collect();
     /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn lines_any(&self) -> LinesAny {
         core_str::StrExt::lines_any(&self[])
     }
@@ -780,7 +789,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// // byte 100 is outside the string
     /// // s.slice(3, 100);
     /// ```
-    #[unstable = "use slice notation [a..b] instead"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "use slice notation [a..b] instead")]
     fn slice(&self, begin: uint, end: uint) -> &str {
         core_str::StrExt::slice(&self[], begin, end)
     }
@@ -793,7 +803,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// out of bounds.
     ///
     /// See also `slice`, `slice_to` and `slice_chars`.
-    #[unstable = "use slice notation [a..] instead"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "use slice notation [a..] instead")]
     fn slice_from(&self, begin: uint) -> &str {
         core_str::StrExt::slice_from(&self[], begin)
     }
@@ -807,7 +818,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// out of bounds.
     ///
     /// See also `slice`, `slice_from` and `slice_chars`.
-    #[unstable = "use slice notation [..a] instead"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "use slice notation [..a] instead")]
     fn slice_to(&self, end: uint) -> &str {
         core_str::StrExt::slice_to(&self[], end)
     }
@@ -835,7 +847,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!(s.slice_chars(0, 4), "Löwe");
     /// assert_eq!(s.slice_chars(5, 7), "老虎");
     /// ```
-    #[unstable = "may have yet to prove its worth"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "may have yet to prove its worth")]
     fn slice_chars(&self, begin: uint, end: uint) -> &str {
         core_str::StrExt::slice_chars(&self[], begin, end)
     }
@@ -846,7 +859,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     ///
     /// Caller must check both UTF-8 character boundaries and the boundaries of
     /// the entire slice as well.
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     unsafe fn slice_unchecked(&self, begin: uint, end: uint) -> &str {
         core_str::StrExt::slice_unchecked(&self[], begin, end)
     }
@@ -858,7 +871,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// ```rust
     /// assert!("banana".starts_with("ba"));
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn starts_with(&self, pat: &str) -> bool {
         core_str::StrExt::starts_with(&self[], pat)
     }
@@ -870,7 +883,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// ```rust
     /// assert!("banana".ends_with("nana"));
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn ends_with(&self, pat: &str) -> bool {
         core_str::StrExt::ends_with(&self[], pat)
     }
@@ -890,7 +903,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!("12foo1bar12".trim_matches(x), "foo1bar");
     /// assert_eq!("123foo1bar123".trim_matches(|&: c: char| c.is_numeric()), "foo1bar");
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn trim_matches<P: CharEq>(&self, pat: P) -> &str {
         core_str::StrExt::trim_matches(&self[], pat)
     }
@@ -910,7 +923,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
     /// assert_eq!("123foo1bar123".trim_left_matches(|&: c: char| c.is_numeric()), "foo1bar123");
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn trim_left_matches<P: CharEq>(&self, pat: P) -> &str {
         core_str::StrExt::trim_left_matches(&self[], pat)
     }
@@ -930,7 +943,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!("12foo1bar12".trim_right_matches(x), "12foo1bar");
     /// assert_eq!("123foo1bar123".trim_right_matches(|&: c: char| c.is_numeric()), "123foo1bar");
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn trim_right_matches<P: CharEq>(&self, pat: P) -> &str {
         core_str::StrExt::trim_right_matches(&self[], pat)
     }
@@ -958,7 +971,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// // third byte of `老`
     /// assert!(!s.is_char_boundary(8));
     /// ```
-    #[unstable = "naming is uncertain with container conventions"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "naming is uncertain with container conventions")]
     fn is_char_boundary(&self, index: uint) -> bool {
         core_str::StrExt::is_char_boundary(&self[], index)
     }
@@ -1016,7 +1030,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     ///
     /// If `i` is greater than or equal to the length of the string.
     /// If `i` is not the index of the beginning of a valid UTF-8 character.
-    #[unstable = "naming is uncertain with container conventions"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "naming is uncertain with container conventions")]
     fn char_range_at(&self, start: uint) -> CharRange {
         core_str::StrExt::char_range_at(&self[], start)
     }
@@ -1031,7 +1046,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     ///
     /// If `i` is greater than the length of the string.
     /// If `i` is not an index following a valid UTF-8 character.
-    #[unstable = "naming is uncertain with container conventions"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "naming is uncertain with container conventions")]
     fn char_range_at_reverse(&self, start: uint) -> CharRange {
         core_str::StrExt::char_range_at_reverse(&self[], start)
     }
@@ -1051,7 +1067,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     ///
     /// If `i` is greater than or equal to the length of the string.
     /// If `i` is not the index of the beginning of a valid UTF-8 character.
-    #[unstable = "naming is uncertain with container conventions"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "naming is uncertain with container conventions")]
     fn char_at(&self, i: uint) -> char {
         core_str::StrExt::char_at(&self[], i)
     }
@@ -1062,7 +1079,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     ///
     /// If `i` is greater than the length of the string.
     /// If `i` is not an index following a valid UTF-8 character.
-    #[unstable = "naming is uncertain with container conventions"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "naming is uncertain with container conventions")]
     fn char_at_reverse(&self, i: uint) -> char {
         core_str::StrExt::char_at_reverse(&self[], i)
     }
@@ -1074,7 +1092,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// ```rust
     /// assert_eq!("bors".as_bytes(), b"bors");
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn as_bytes(&self) -> &[u8] {
         core_str::StrExt::as_bytes(&self[])
     }
@@ -1102,7 +1120,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.find(x), None);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn find<P: CharEq>(&self, pat: P) -> Option<uint> {
         core_str::StrExt::find(&self[], pat)
     }
@@ -1130,7 +1148,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.rfind(x), None);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn rfind<P: CharEq>(&self, pat: P) -> Option<uint> {
         core_str::StrExt::rfind(&self[], pat)
     }
@@ -1154,7 +1172,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!(s.find_str("老虎 L"), Some(6));
     /// assert_eq!(s.find_str("muffin man"), None);
     /// ```
-    #[unstable = "might get removed in favor of a more generic find in the future"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "might get removed in favor of a more generic find in the future")]
     fn find_str(&self, needle: &str) -> Option<uint> {
         core_str::StrExt::find_str(&self[], needle)
     }
@@ -1177,7 +1196,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!(c, 'ö');
     /// assert_eq!(s2, "we 老虎 Léopard");
     /// ```
-    #[unstable = "awaiting conventions about shifting and slices"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "awaiting conventions about shifting and slices")]
     fn slice_shift_char(&self) -> Option<(char, &str)> {
         core_str::StrExt::slice_shift_char(&self[])
     }
@@ -1196,7 +1216,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
     /// assert!(string.subslice_offset(lines[2]) == 4); // &"c"
     /// ```
-    #[unstable = "awaiting convention about comparability of arbitrary slices"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "awaiting convention about comparability of arbitrary slices")]
     fn subslice_offset(&self, inner: &str) -> uint {
         core_str::StrExt::subslice_offset(&self[], inner)
     }
@@ -1206,14 +1227,15 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// The caller must ensure that the string outlives this pointer,
     /// and that it is not reallocated (e.g. by pushing to the
     /// string).
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     #[inline]
     fn as_ptr(&self) -> *const u8 {
         core_str::StrExt::as_ptr(&self[])
     }
 
     /// Return an iterator of `u16` over the string encoded as UTF-16.
-    #[unstable = "this functionality may only be provided by libunicode"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "this functionality may only be provided by libunicode")]
     fn utf16_units(&self) -> Utf16Units {
         Utf16Units { encoder: Utf16Encoder::new(self[].chars()) }
     }
@@ -1226,7 +1248,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!("foo".len(), 3);
     /// assert_eq!("ƒoo".len(), 4);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     #[inline]
     fn len(&self) -> uint {
         core_str::StrExt::len(&self[])
@@ -1240,7 +1262,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert!("".is_empty());
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn is_empty(&self) -> bool {
         core_str::StrExt::is_empty(&self[])
     }
@@ -1254,7 +1276,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!("j".parse::<u32>(), None);
     /// ```
     #[inline]
-    #[unstable = "this method was just created"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "this method was just created")]
     fn parse<F: FromStr>(&self) -> Option<F> {
         core_str::StrExt::parse(&self[])
     }
@@ -1278,7 +1301,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
     /// assert_eq!(gr2.as_slice(), b);
     /// ```
-    #[unstable = "this functionality may only be provided by libunicode"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "this functionality may only be provided by libunicode")]
     fn graphemes(&self, is_extended: bool) -> Graphemes {
         UnicodeStr::graphemes(&self[], is_extended)
     }
@@ -1293,7 +1317,8 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let b: &[_] = &[(0u, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
     /// assert_eq!(gr_inds.as_slice(), b);
     /// ```
-    #[unstable = "this functionality may only be provided by libunicode"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "this functionality may only be provided by libunicode")]
     fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
         UnicodeStr::grapheme_indices(&self[], is_extended)
     }
@@ -1309,7 +1334,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = some_words.words().collect();
     /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     /// ```
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn words(&self) -> Words {
         UnicodeStr::words(&self[])
     }
@@ -1323,31 +1348,32 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// recommends that these characters be treated as 1 column (i.e.,
     /// `is_cjk` = `false`) if the locale is unknown.
-    #[unstable = "this functionality may only be provided by libunicode"]
+    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+               reason = "this functionality may only be provided by libunicode")]
     fn width(&self, is_cjk: bool) -> uint {
         UnicodeStr::width(&self[], is_cjk)
     }
 
     /// Returns a string with leading and trailing whitespace removed.
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn trim(&self) -> &str {
         UnicodeStr::trim(&self[])
     }
 
     /// Returns a string with leading whitespace removed.
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn trim_left(&self) -> &str {
         UnicodeStr::trim_left(&self[])
     }
 
     /// Returns a string with trailing whitespace removed.
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn trim_right(&self) -> &str {
         UnicodeStr::trim_right(&self[])
     }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl StrExt for str {}
 
 #[cfg(test)]

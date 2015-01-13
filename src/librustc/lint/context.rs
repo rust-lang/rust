@@ -211,13 +211,13 @@ impl LintStore {
                      UnusedAllocation,
                      MissingCopyImplementations,
                      UnstableFeatures,
+                     Stability,
         );
 
         add_builtin_with_new!(sess,
                               TypeLimits,
                               RawPointerDerive,
                               MissingDoc,
-                              Stability,
         );
 
         add_lint_group!(sess, "bad_style",

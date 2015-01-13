@@ -12,7 +12,7 @@
 //! the standard library This varies per-platform, but these libraries are
 //! necessary for running libstd.
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 
 // All platforms need to link to rustrt
 #[cfg(not(test))]

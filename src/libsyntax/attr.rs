@@ -21,7 +21,7 @@ use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::SpanHandler;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use parse::token::InternedString;
+use parse::token::{InternedString, intern_and_get_ident};
 use parse::token;
 use ptr::P;
 
@@ -56,6 +56,8 @@ pub trait AttrMetaMethods {
     fn value_str(&self) -> Option<InternedString>;
     /// Gets a list of inner meta items from a list MetaItem type.
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]>;
+
+    fn span(&self) -> Span;
 }
 
 impl AttrMetaMethods for Attribute {
@@ -73,6 +75,7 @@ impl AttrMetaMethods for Attribute {
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]> {
         self.node.value.meta_item_list()
     }
+    fn span(&self) -> Span { self.meta().span }
 }
 
 impl AttrMetaMethods for MetaItem {
@@ -102,6 +105,7 @@ impl AttrMetaMethods for MetaItem {
             _ => None
         }
     }
+    fn span(&self) -> Span { self.span }
 }
 
 // Annoying, but required to get test_cfg to work
@@ -111,6 +115,7 @@ impl AttrMetaMethods for P<MetaItem> {
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]> {
         (**self).meta_item_list()
     }
+    fn span(&self) -> Span { (**self).span() }
 }
 
 
@@ -340,11 +345,13 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
     }
 }
 
-/// Represents the #[deprecated="foo"] and friends attributes.
+/// Represents the #[deprecated] and friends attributes.
 #[derive(RustcEncodable,RustcDecodable,Clone,Show)]
 pub struct Stability {
     pub level: StabilityLevel,
-    pub text: Option<InternedString>
+    pub feature: InternedString,
+    pub since: InternedString,
+    pub reason: Option<InternedString>,
 }
 
 /// The available stability levels.
@@ -364,7 +371,7 @@ impl fmt::String for StabilityLevel {
 pub fn find_stability_generic<'a,
                               AM: AttrMetaMethods,
                               I: Iterator<Item=&'a AM>>
-                             (mut attrs: I)
+                             (diagnostic: &SpanHandler, mut attrs: I)
                              -> Option<(Stability, &'a AM)> {
     for attr in attrs {
         let level = match attr.name().get() {
@@ -374,17 +381,66 @@ pub fn find_stability_generic<'a,
             _ => continue // not a stability level
         };
 
+        let (feature, since, reason) = match attr.meta_item_list() {
+            Some(metas) => {
+                let mut feature = None;
+                let mut since = None;
+                let mut reason = None;
+                for meta in metas.iter() {
+                    if meta.name().get() == "feature" {
+                        match meta.value_str() {
+                            Some(v) => feature = Some(v),
+                            None => {
+                                diagnostic.span_err(meta.span, "incorrect meta item");
+                            }
+                        }
+                    }
+                    if meta.name().get() == "since" {
+                        match meta.value_str() {
+                            Some(v) => since = Some(v),
+                            None => {
+                                diagnostic.span_err(meta.span, "incorrect meta item");
+                            }
+                        }
+                    }
+                    if meta.name().get() == "reason" {
+                        match meta.value_str() {
+                            Some(v) => reason = Some(v),
+                            None => {
+                                diagnostic.span_err(meta.span, "incorrect meta item");
+                            }
+                        }
+                    }
+                }
+                (feature, since, reason)
+            }
+            None => {
+                diagnostic.span_err(attr.span(), "incorrect stability attribute type");
+                (None, None, None)
+            }
+        };
+
+        if feature == None {
+            diagnostic.span_err(attr.span(), "missing 'feature'");
+        }
+
+        if since == None {
+            diagnostic.span_err(attr.span(), "missing 'since'");
+        }
+
         return Some((Stability {
             level: level,
-                text: attr.value_str()
-            }, attr));
+            feature: feature.unwrap_or(intern_and_get_ident("bogus")),
+            since: since.unwrap_or(intern_and_get_ident("bogus")),
+            reason: reason,
+        }, attr));
     }
     None
 }
 
 /// Find the first stability attribute. `None` if none exists.
-pub fn find_stability(attrs: &[Attribute]) -> Option<Stability> {
-    find_stability_generic(attrs.iter()).map(|(s, attr)| {
+pub fn find_stability(diagnostic: &SpanHandler, attrs: &[Attribute]) -> Option<Stability> {
+    find_stability_generic(diagnostic, attrs.iter()).map(|(s, attr)| {
         mark_used(attr);
         s
     })

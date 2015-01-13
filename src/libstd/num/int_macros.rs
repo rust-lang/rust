@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![doc(hidden)]
 
 macro_rules! int_module { ($T:ty) => (

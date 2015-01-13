@@ -12,7 +12,7 @@
 //! up to a certain length. Eventually we should able to generalize
 //! to all lengths.
 
-#![unstable] // not yet reviewed
+#![unstable(feature = "unnamed_feature", since = "1.0.0")] // not yet reviewed
 
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
@@ -26,7 +26,7 @@ use option::Option;
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
-            #[stable]
+            #[stable(feature = "grandfathered", since = "1.0.0")]
             impl<T:Copy> Clone for [T; $N] {
                 fn clone(&self) -> [T; $N] {
                     *self
@@ -39,14 +39,15 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable = "waiting for Show to stabilize"]
+            #[unstable(feature = "unnamed_feature", since = "1.0.0",
+                       reason = "waiting for Show to stabilize")]
             impl<T:fmt::Show> fmt::Show for [T; $N] {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     fmt::Show::fmt(&&self[], f)
                 }
             }
 
-            #[stable]
+            #[stable(feature = "grandfathered", since = "1.0.0")]
             impl<A, B> PartialEq<[B; $N]> for [A; $N] where A: PartialEq<B> {
                 #[inline]
                 fn eq(&self, other: &[B; $N]) -> bool {
@@ -58,7 +59,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[stable]
+            #[stable(feature = "grandfathered", since = "1.0.0")]
             impl<'a, A, B, Rhs> PartialEq<Rhs> for [A; $N] where
                 A: PartialEq<B>,
                 Rhs: Deref<Target=[B]>,
@@ -73,7 +74,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[stable]
+            #[stable(feature = "grandfathered", since = "1.0.0")]
             impl<'a, A, B, Lhs> PartialEq<[B; $N]> for Lhs where
                 A: PartialEq<B>,
                 Lhs: Deref<Target=[A]>
@@ -88,10 +89,10 @@ macro_rules! array_impls {
                 }
             }
 
-            #[stable]
+            #[stable(feature = "grandfathered", since = "1.0.0")]
             impl<T:Eq> Eq for [T; $N] { }
 
-            #[stable]
+            #[stable(feature = "grandfathered", since = "1.0.0")]
             impl<T:PartialOrd> PartialOrd for [T; $N] {
                 #[inline]
                 fn partial_cmp(&self, other: &[T; $N]) -> Option<Ordering> {
@@ -115,7 +116,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[stable]
+            #[stable(feature = "grandfathered", since = "1.0.0")]
             impl<T:Ord> Ord for [T; $N] {
                 #[inline]
                 fn cmp(&self, other: &[T; $N]) -> Ordering {

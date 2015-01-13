@@ -11,6 +11,7 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
+use session::Session;
 use middle::ty;
 use metadata::csearch;
 use syntax::codemap::Span;
@@ -20,7 +21,7 @@ use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
 use syntax::ast::{Item, RequiredMethod, ProvidedMethod, TraitItem};
 use syntax::ast::{TypeMethod, Method, Generics, StructField, TypeTraitItem};
 use syntax::ast_util::is_local;
-use syntax::attr::Stability;
+use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, FkMethod, Visitor};
 use util::nodemap::{NodeMap, DefIdMap};
 use util::ppaux::Repr;
@@ -29,6 +30,8 @@ use std::mem::replace;
 
 /// A stability index, giving the stability level for items and methods.
 pub struct Index {
+    // Indicates whether this crate has #![staged_api]
+    staged_api: bool,
     // stability for crate-local items; unmarked stability == no entry
     local: NodeMap<Stability>,
     // cache for extern-crate items; unmarked stability == entry with None
@@ -36,23 +39,24 @@ pub struct Index {
 }
 
 // A private tree-walker for producing an Index.
-struct Annotator {
+struct Annotator<'a> {
+    sess: &'a Session,
     index: Index,
     parent: Option<Stability>
 }
 
-impl Annotator {
+impl<'a> Annotator<'a> {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
     fn annotate<F>(&mut self, id: NodeId, use_parent: bool,
                    attrs: &Vec<Attribute>, f: F) where
         F: FnOnce(&mut Annotator),
     {
-        match attr::find_stability(attrs.as_slice()) {
+        match attr::find_stability(self.sess.diagnostic(), attrs.as_slice()) {
             Some(stab) => {
                 self.index.local.insert(id, stab.clone());
 
-                // Don't inherit #[stable]
+                // Don't inherit #[stable(feature = "grandfathered", since = "1.0.0")]
                 if stab.level != attr::Stable {
                     let parent = replace(&mut self.parent, Some(stab));
                     f(self);
@@ -71,7 +75,7 @@ impl Annotator {
     }
 }
 
-impl<'v> Visitor<'v> for Annotator {
+impl<'a, 'v> Visitor<'v> for Annotator<'a> {
     fn visit_item(&mut self, i: &Item) {
         // FIXME (#18969): the following is a hack around the fact
         // that we cannot currently annotate the stability of
@@ -138,12 +142,30 @@ impl<'v> Visitor<'v> for Annotator {
 
 impl Index {
     /// Construct the stability index for a crate being compiled.
-    pub fn build(krate: &Crate) -> Index {
+    pub fn build(sess: &Session, krate: &Crate) -> Index {
+        let mut staged_api = false;
+        for attr in krate.attrs.iter() {
+            if attr.name().get() == "staged_api" {
+                match attr.node.value.node {
+                    ast::MetaWord(_) => {
+                        attr::mark_used(attr);
+                        staged_api = true;
+                    }
+                    _ => (/*pass*/)
+                }
+            }
+        }
+        let index = Index {
+            staged_api: staged_api,
+            local: NodeMap(),
+            extern_cache: DefIdMap()
+        };
+        if !staged_api {
+            return index;
+        }
         let mut annotator = Annotator {
-            index: Index {
-                local: NodeMap(),
-                extern_cache: DefIdMap()
-            },
+            sess: sess,
+            index: index,
             parent: None
         };
         annotator.annotate(ast::CRATE_NODE_ID, true, &krate.attrs,
@@ -197,8 +219,7 @@ pub fn is_staged_api(tcx: &ty::ctxt, id: DefId) -> bool {
                 is_staged_api(tcx, trait_method_id)
             }
         _ if is_local(id) => {
-            // Unused case
-            unreachable!()
+            tcx.stability.borrow().staged_api
         }
         _ => {
             csearch::is_staged_api(&tcx.sess.cstore, id)

@@ -67,7 +67,7 @@
 //! See the documentation for each trait for a minimum implementation that prints
 //! something to the screen.
 
-#![stable]
+#![stable(feature = "grandfathered", since = "1.0.0")]
 
 use clone::Clone;
 use iter::{Step, Iterator,DoubleEndedIterator,ExactSizeIterator};
@@ -97,10 +97,10 @@ use fmt;
 /// }
 /// ```
 #[lang="drop"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Drop {
     /// The `drop` method, called when the value goes out of scope.
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn drop(&mut self);
 }
 
@@ -108,7 +108,8 @@ pub trait Drop {
 // based on "op T" where T is expected to be `Copy`able
 macro_rules! forward_ref_unop {
     (impl $imp:ident, $method:ident for $t:ty) => {
-        #[unstable = "recently added, waiting for dust to settle"]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0",
+                   reason = "recently added, waiting for dust to settle")]
         impl<'a> $imp for &'a $t {
             type Output = <$t as $imp>::Output;
 
@@ -124,7 +125,8 @@ macro_rules! forward_ref_unop {
 // based on "T op U" where T and U are expected to be `Copy`able
 macro_rules! forward_ref_binop {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        #[unstable = "recently added, waiting for dust to settle"]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0",
+                   reason = "recently added, waiting for dust to settle")]
         impl<'a> $imp<$u> for &'a $t {
             type Output = <$t as $imp<$u>>::Output;
 
@@ -134,7 +136,8 @@ macro_rules! forward_ref_binop {
             }
         }
 
-        #[unstable = "recently added, waiting for dust to settle"]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0",
+                   reason = "recently added, waiting for dust to settle")]
         impl<'a> $imp<&'a $u> for $t {
             type Output = <$t as $imp<$u>>::Output;
 
@@ -144,7 +147,8 @@ macro_rules! forward_ref_binop {
             }
         }
 
-        #[unstable = "recently added, waiting for dust to settle"]
+        #[unstable(feature = "unnamed_feature", since = "1.0.0",
+                   reason = "recently added, waiting for dust to settle")]
         impl<'a, 'b> $imp<&'a $u> for &'b $t {
             type Output = <$t as $imp<$u>>::Output;
 
@@ -185,19 +189,19 @@ macro_rules! forward_ref_binop {
 /// }
 /// ```
 #[lang="add"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Add<RHS=Self> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the `+` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn add(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! add_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Add for $t {
             type Output = $t;
 
@@ -240,19 +244,19 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="sub"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Sub<RHS=Self> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the `-` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn sub(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! sub_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Sub for $t {
             type Output = $t;
 
@@ -295,19 +299,19 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="mul"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Mul<RHS=Self> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the `*` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn mul(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! mul_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Mul for $t {
             type Output = $t;
 
@@ -350,19 +354,19 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="div"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Div<RHS=Self> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the `/` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn div(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! div_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Div for $t {
             type Output = $t;
 
@@ -405,19 +409,19 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="rem"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Rem<RHS=Self> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output = Self;
 
     /// The method for the `%` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn rem(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! rem_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
 
@@ -431,7 +435,7 @@ macro_rules! rem_impl {
 
 macro_rules! rem_float_impl {
     ($t:ty, $fmod:ident) => {
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
 
@@ -480,25 +484,25 @@ rem_float_impl! { f64, fmod }
 /// }
 /// ```
 #[lang="neg"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Neg {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the unary `-` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn neg(self) -> Self::Output;
 }
 
 macro_rules! neg_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Neg for $t {
-            #[stable]
+            #[stable(feature = "grandfathered", since = "1.0.0")]
             type Output = $t;
 
             #[inline]
-            #[stable]
+            #[stable(feature = "grandfathered", since = "1.0.0")]
             fn neg(self) -> $t { -self }
         }
 
@@ -508,7 +512,7 @@ macro_rules! neg_impl {
 
 macro_rules! neg_uint_impl {
     ($t:ty, $t_signed:ty) => {
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Neg for $t {
             type Output = $t;
 
@@ -559,19 +563,19 @@ neg_uint_impl! { u64, i64 }
 /// }
 /// ```
 #[lang="not"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Not {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the unary `!` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn not(self) -> Self::Output;
 }
 
 macro_rules! not_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Not for $t {
             type Output = $t;
 
@@ -614,19 +618,19 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitand"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait BitAnd<RHS=Self> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the `&` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn bitand(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitand_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl BitAnd for $t {
             type Output = $t;
 
@@ -669,19 +673,19 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitor"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait BitOr<RHS=Self> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the `|` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn bitor(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitor_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl BitOr for $t {
             type Output = $t;
 
@@ -724,19 +728,19 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitxor"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait BitXor<RHS=Self> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the `^` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn bitxor(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitxor_impl {
     ($($t:ty)*) => ($(
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl BitXor for $t {
             type Output = $t;
 
@@ -779,19 +783,19 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="shl"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Shl<RHS> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the `<<` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn shl(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! shl_impl {
     ($t:ty, $f:ty) => (
-        #[stable]
+        #[stable(feature = "grandfathered", since = "1.0.0")]
         impl Shl<$f> for $t {
             type Output = $t;
 
@@ -852,13 +856,13 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// }
 /// ```
 #[lang="shr"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Shr<RHS> {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Output;
 
     /// The method for the `>>` operator
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn shr(self, rhs: RHS) -> Self::Output;
 }
 
@@ -970,10 +974,10 @@ pub trait IndexMut<Index: ?Sized> {
 /// An unbounded range.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="full_range"]
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 pub struct FullRange;
 
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 impl fmt::Show for FullRange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Show::fmt("..", fmt)
@@ -983,7 +987,7 @@ impl fmt::Show for FullRange {
 /// A (half-open) range which is bounded at both ends.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range"]
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
@@ -991,7 +995,7 @@ pub struct Range<Idx> {
     pub end: Idx,
 }
 
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 impl<Idx: Clone + Step> Iterator for Range<Idx> {
     type Item = Idx;
 
@@ -1016,7 +1020,7 @@ impl<Idx: Clone + Step> Iterator for Range<Idx> {
     }
 }
 
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
     #[inline]
     fn next_back(&mut self) -> Option<Idx> {
@@ -1029,10 +1033,10 @@ impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
     }
 }
 
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 impl<Idx: Clone + Step> ExactSizeIterator for Range<Idx> {}
 
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..{:?}", self.start, self.end)
@@ -1042,13 +1046,13 @@ impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
 /// A range which is only bounded below.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_from"]
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
 }
 
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
     type Item = Idx;
 
@@ -1061,7 +1065,7 @@ impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
     }
 }
 
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..", self.start)
@@ -1071,13 +1075,13 @@ impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
 /// A range which is only bounded above.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_to"]
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
     pub end: Idx,
 }
 
-#[unstable = "API still in development"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "API still in development")]
 impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "..{:?}", self.end)
@@ -1116,24 +1120,24 @@ impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
 /// }
 /// ```
 #[lang="deref"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Deref {
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     type Target: ?Sized;
 
     /// The method called to dereference a value
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn deref<'a>(&'a self) -> &'a Self::Target;
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T: ?Sized> Deref for &'a T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T: ?Sized> Deref for &'a mut T {
     type Target = T;
 
@@ -1178,21 +1182,22 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// }
 /// ```
 #[lang="deref_mut"]
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait DerefMut: Deref {
     /// The method called to mutably dereference a value
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn deref_mut<'a>(&'a mut self) -> &'a mut Self::Target;
 }
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 impl<'a, T: ?Sized> DerefMut for &'a mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }
 
 /// A version of the call operator that takes an immutable receiver.
 #[lang="fn"]
-#[unstable = "uncertain about variadic generics, input versus associated types"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "uncertain about variadic generics, input versus associated types")]
 pub trait Fn<Args,Result> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call(&self, args: Args) -> Result;
@@ -1200,7 +1205,8 @@ pub trait Fn<Args,Result> {
 
 /// A version of the call operator that takes a mutable receiver.
 #[lang="fn_mut"]
-#[unstable = "uncertain about variadic generics, input versus associated types"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "uncertain about variadic generics, input versus associated types")]
 pub trait FnMut<Args,Result> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Result;
@@ -1208,7 +1214,8 @@ pub trait FnMut<Args,Result> {
 
 /// A version of the call operator that takes a by-value receiver.
 #[lang="fn_once"]
-#[unstable = "uncertain about variadic generics, input versus associated types"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "uncertain about variadic generics, input versus associated types")]
 pub trait FnOnce<Args,Result> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_once(self, args: Args) -> Result;

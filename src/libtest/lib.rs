@@ -24,7 +24,7 @@
 // build off of.
 
 #![crate_name = "test"]
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

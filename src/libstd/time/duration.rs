@@ -10,7 +10,7 @@
 
 //! Temporal quantification
 
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 
 use {fmt, i64};
 use ops::{Add, Sub, Mul, Div, Neg, FnOnce};

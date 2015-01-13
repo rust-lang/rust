@@ -14,7 +14,7 @@
 //! alpha cycle along with the development of clearer conventions
 //! around integer types.
 
-#![deprecated = "replaced by usize"]
+#![deprecated(feature = "oldstuff", since = "1.0.0", reason = "replaced by usize")]
 
 pub use core::uint::{BITS, BYTES, MIN, MAX};
 

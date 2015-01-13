@@ -9,52 +9,45 @@
 // except according to those terms.
 #![crate_name="inherited_stability"]
 #![crate_type = "lib"]
-#![unstable]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![staged_api]
 
-pub fn experimental() {}
+pub fn unstable() {}
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub fn stable() {}
 
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub mod stable_mod {
-    pub fn experimental() {}
+    pub fn unstable() {}
 
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     pub fn stable() {}
 }
 
-#[unstable]
+#[unstable(feature = "unnamed_feature", since = "1.0.0")]
 pub mod unstable_mod {
-    #[unstable]
-    pub fn experimental() {}
+    #[deprecated(feature = "unnamed_feature", since = "1.0.0")]
+    pub fn deprecated() {}
 
     pub fn unstable() {}
 }
 
-pub mod experimental_mod {
-    pub fn experimental() {}
-
-    #[stable]
-    pub fn stable() {}
-}
-
-#[stable]
+#[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Stable {
-    fn experimental(&self);
+    fn unstable(&self);
 
-    #[stable]
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn stable(&self);
 }
 
 impl Stable for uint {
-    fn experimental(&self) {}
+    fn unstable(&self) {}
     fn stable(&self) {}
 }
 
-pub enum Experimental {
-    ExperimentalVariant,
-    #[stable]
+pub enum Unstable {
+    UnstableVariant,
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     StableVariant
 }
