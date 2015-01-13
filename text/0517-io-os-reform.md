@@ -519,7 +519,7 @@ struct PartialResult<T, Err>(T, Err);
 type NonatomicResult<S, T, Err> = Result<S, PartialResult<T, Err>>;
 
 // Ergonomically throw out the partial result
-impl<T, Err> FromError<PartialResult<T, Err> for Err { ... }
+impl<T, Err> FromError<PartialResult<T, Err>> for Err { ... }
 ```
 
 The `NonatomicResult` type (which could use a shorter name)
@@ -527,7 +527,16 @@ encapsulates the common pattern of operations that may fail after
 having made some progress. The `PartialResult` type then returns the
 progress that was made along with the error, but with a `FromError`
 implementation that makes it trivial to throw out the partial result
-if desired.
+if desired. For example, the following would be expected to compile:
+
+```rust
+fn write(buf: &[u8]) -> NonatomicResult<(), uint, Error> { /* ... */ }
+
+fn write_bytes() -> Result<(), Error> {
+    try!(write!(&[1, 2, 3, 4]));
+    Ok(())
+}
+```
 
 ### `Reader`
 [Reader]: #reader
@@ -649,7 +658,7 @@ throughout IO, we can go on to explore the modules in detail.
 ### `core::io`
 [core::io]: #coreio
 
-The `io` module is split into a the parts that can live in `libcore`
+The `io` module is split into the parts that can live in `libcore`
 (most of it) and the parts that are added in the `std::io`
 facade. Being able to move components into `libcore` at all is made
 possible through the use of
@@ -696,7 +705,7 @@ impl<T: Writer> WriterExt for T {}
 pub struct IterReader<T> { ... }
 ```
 
-As with `std::iter`, these adapters are object unsafe an hence placed
+As with `std::iter`, these adapters are object unsafe and hence placed
 in an extension trait with a blanket `impl`.
 
 Note that the same `ByRef` type is used for both `Reader` and `Writer`
@@ -731,7 +740,7 @@ readers and writers, as well as `copy`. These are updated as follows:
 
 ```rust
 // A reader that yields no bytes
-fn empty() -> Empty;
+fn empty() -> Empty; // in theory just returns `impl Reader`
 
 // A reader that yields `byte` repeatedly (generalizes today's ZeroReader)
 fn repeat(byte: u8) -> Repeat;
@@ -778,7 +787,8 @@ pub trait BufferedReader: Reader {
     fn fill_buf(&mut self) -> Result<&[u8], Self::Err>;
     fn consume(&mut self, amt: uint);
 
-    // This should perhaps yield an iterator
+    // This should perhaps move to an iterator like `lines` where the iterator
+    // yields vectors read.
     fn read_until(&mut self, byte: u8) -> NonatomicResult<Vec<u8>, Vec<u8>, Self::Err> { ... }
 }
 
