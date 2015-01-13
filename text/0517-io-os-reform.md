@@ -42,13 +42,23 @@ follow-up PRs against this RFC.
             * [Relation to the system-level APIs]
             * [Platform-specific opt-in]
         * [Proposed organization]
-    * [Revising `Reader` and `Writer`] (stub)
+    * [Revising `Reader` and `Writer`]
+        * [Nonatomic results]
+        * [Reader]
+        * [Writer]
     * [String handling] (stub)
     * [Deadlines] (stub)
     * [Splitting streams and cancellation] (stub)
     * [Modules]
-        * [core::io] (stub)
-        * [The std::io facade] (stub)
+        * [core::io]
+            * [Adapters]
+            * [Seeking]
+            * [Buffering]
+            * [MemReader and MemWriter]
+        * [The std::io facade]
+            * [Errors]
+            * [Channel adapters]
+            * [stdin, stdout, stderr]
         * [std::env] (stub)
         * [std::fs] (stub)
         * [std::net] (stub)
@@ -447,7 +457,173 @@ counts, arguments to `main`, and so on).
 ## Revising `Reader` and `Writer`
 [Revising `Reader` and `Writer`]: #revising-reader-and-writer
 
-> To be added in a follow-up PR.
+The `Reader` and `Writer` traits are the backbone of IO, representing
+the ability to (respectively) pull bytes from and push bytes to an IO
+object. The core operations provided by these traits follows a very
+long tradition for blocking IO, but they are still surprisingly subtle
+-- and they need to be revised.
+
+* **Atomicity and data loss**. As discussed
+  [above](#atomicity-and-the-reader-writer-traits), the `Reader` and
+  `Writer` traits currently expose methods that involve multiple
+  actual reads or writes, and data is lost when an error occurs after
+  some (but not all) operations have completed.
+
+  The proposed strategy for `Reader` operations is to return the
+  already-read data together with an error. For writers, the main
+  change is to make `write` only perform a single underlying write
+  (returning the number of bytes written on success), and provide a
+  separate `write_all` method.
+
+* **Parsing/serialization**. The `Reader` and `Writer` traits
+  currently provide a large number of default methods for
+  (de)serialization of various integer types to bytes with a given
+  endianness. Unfortunately, these operations pose atomicity problems
+  as well (e.g., a read could fail after reading two of the bytes
+  needed for a `u32` value).
+
+  Rather than complicate the signatures of these methods, the
+  (de)serialization infrastructure is removed entirely -- in favor of
+  instead eventually introducing a much richer
+  parsing/formatting/(de)serialization framework that works seamlessly
+  with `Reader` and `Writer`.
+
+  Such a framework is out of scope for this RFC, but the
+  endian-sensitive functionality will be provided elsewhere
+  (likely out of tree).
+
+* **The error type**. The traits currently use `IoResult` in their
+  return types, which ties them to `IoError` in particular. Besides
+  being an unnecessary restriction, this type prevents `Reader` and
+  `Writer` (and various adapters built on top of them) from moving to
+  `libcore` -- `IoError` currently requires the `String` type.
+
+  With associated types, there is essentially no downside in making
+  the error type generic.
+
+With those general points out of the way, let's look at the details.
+
+### Nonatomic results
+[Nonatomic results]: #nonatomic-results
+
+To clarity dealing with nonatomic operations and improve their
+ergonomics, we introduce some new types into `std::error`:
+
+```rust
+// The progress so far (T) paired with an err (Err)
+struct PartialResult<T, Err>(T, Err);
+
+// An operation that may fail after having made some progress:
+// - S is what's produced on complete success,
+// - T is what's produced if an operation fails part of the way through
+type NonatomicResult<S, T, Err> = Result<S, PartialResult<T, Err>>;
+
+// Ergonomically throw out the partial result
+impl<T, Err> FromError<PartialResult<T, Err> for Err { ... }
+```
+
+The `NonatomicResult` type (which could use a shorter name)
+encapsulates the common pattern of operations that may fail after
+having made some progress. The `PartialResult` type then returns the
+progress that was made along with the error, but with a `FromError`
+implementation that makes it trivial to throw out the partial result
+if desired.
+
+### `Reader`
+[Reader]: #reader
+
+The updated `Reader` trait (and its extension) is as follows:
+
+```rust
+trait Reader {
+    type Err; // new associated error type
+
+    // unchanged except for error type
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, Err>;
+
+    // these all return partial results on error
+    fn read_to_end(&mut self) -> NonatomicResult<Vec<u8>, Vec<u8>, Err> { ... }
+    fn read_to_string(&self) -> NonatomicResult<String, Vec<u8>, Err> { ... }
+    fn read_at_least(&mut self, min: uint,  buf: &mut [u8]) -> NonatomicResult<uint, uint, Err>  { ... }
+}
+
+// extension trait needed for object safety
+trait ReaderExt: Reader {
+    fn bytes(&mut self) -> Bytes<Self> { ... }
+    fn chars<'r>(&'r mut self) -> Chars<'r, Self, Err> { ... }
+
+    ... // more to come later in the RFC
+}
+impl<R: Reader> ReaderExt for R {}
+```
+
+#### Removed methods
+
+The proposed `Reader` trait is much slimmer than today's. The vast
+majority of removed methods are parsing/deserialization, which were
+discussed above.
+
+The remaining methods (`read_exact`, `push`, `push_at_least`) were
+removed largely because they are *not memory safe*: they involve
+extending a vector's capacity, and then *passing in the resulting
+uninitialized memory* to the `read` method, which is not marked
+`unsafe`! Thus the current design can lead to undefined behavior in
+safe code.
+
+The solution is to instead extend `Vec<T>` with a useful unsafe method:
+
+```rust
+unsafe fn with_extra(&mut self, n: uint) -> &mut [T];
+```
+
+This method is equivalent to calling `reserve(n)` and then providing a
+slice to the memory starting just after `len()` entries. Using this
+method, clients of `Reader` can easily recover the above removed
+methods, but they are explicitly marking the unsafety of doing so.
+
+(Note: `read_to_end` is currently not memory safe for the same reason,
+but is considered a very important convenience. Thus, we will continue
+to provide it, but will zero the slice beforehand.)
+
+### `Writer`
+[Writer]: #writer
+
+The `Writer` trait is cut down to even smaller size:
+
+```rust
+trait Writer {
+    type Err;
+    fn write(&mut self, buf: &[u8]) -> Result<uint, Err>;
+
+    fn write_all(&mut self, buf: &[u8]) -> NonatomicResult<(), uint, Err> { ... };
+    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> Result<(), Err> { ... }
+    fn flush(&mut self) -> Result<(), Err> { ... }
+}
+```
+
+The biggest change here is to the semantics of `write`. Instead of
+repeatedly writing to the underlying IO object until all of `buf` is
+written, it attempts a *single* write and on success returns the
+number of bytes written. This follows the long tradition of blocking
+IO, and is a more fundamental building block than the looping write we
+currently have.
+
+For convenience, `write_all` recovers the behavior of today's `write`,
+looping until either the entire buffer is written or an error
+occurs. In the latter case, however, it now also yields the number of
+bytes that had been written prior to the error.
+
+The `write_fmt` method, like `write_all`, will loop until its entire
+input is written or an error occurs. However, it does not return a
+`NonatomicResult` because the number of bytes written cannot be
+straightforwardly interpreted -- the actual byte sequence written is
+determined by the formatting system.
+
+The other methods include endian conversions (covered by
+serialization) and a few conveniences like `write_str` for other basic
+types. The latter, at least, is already uniformly (and extensibly)
+covered via the `write!` macro. The other helpers, as with `Reader`,
+should migrate into a more general (de)serialization library.
 
 ## String handling
 [String handling]: #string-handling
@@ -473,12 +649,229 @@ throughout IO, we can go on to explore the modules in detail.
 ### `core::io`
 [core::io]: #coreio
 
-> To be added in a follow-up PR.
+The `io` module is split into a the parts that can live in `libcore`
+(most of it) and the parts that are added in the `std::io`
+facade. Being able to move components into `libcore` at all is made
+possible through the use of
+[associated error types](#revising-reader-and-writer) for `Reader` and
+`Writer`.
+
+#### Adapters
+[Adapters]: #adapters
+
+The current `std::io::util` module offers a number of `Reader` and
+`Writer` "adapters". This RFC refactors the design to more closely
+follow `std::iter`. Along the way, it generalizes the `by_ref` adapter:
+
+```rust
+trait ReaderExt: Reader {
+    // already introduced above
+    fn bytes(&mut self) -> Bytes<Self> { ... }
+    fn chars<'r>(&'r mut self) -> Chars<'r, Self, Err> { ... }
+
+    // Reify a borrowed reader as owned
+    fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
+
+    // Read everything from `self`, then read from `next`
+    fn chain<R: Reader>(self, next: R) -> Chain<Self, R> { ... }
+
+    // Adapt `self` to yield only the first `limit` bytes
+    fn take(self, limit: u64) -> Take<Self> { ... }
+
+    // Whenever reading from `self`, push the bytes read to `out`
+    fn tee<W: Writer>(self, out: W) -> Tee<Self, W> { ... }
+}
+impl<T: Reader> ReaderExt for T {}
+
+trait WriterExt: Writer {
+    // Reify a borrowed writer as owned
+    fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
+
+    // Whenever bytes are written to `self`, write them to `other` as well
+    fn carbon_copy<W: Writer>(self, other: W) -> CarbonCopy<Self, W> { ... }
+}
+impl<T: Writer> WriterExt for T {}
+
+// An adaptor converting an `Iterator<u8>` to a `Reader`.
+pub struct IterReader<T> { ... }
+```
+
+As with `std::iter`, these adapters are object unsafe an hence placed
+in an extension trait with a blanket `impl`.
+
+Note that the same `ByRef` type is used for both `Reader` and `Writer`
+-- and this RFC proposes to use it for `std::iter` as well. The
+insight is that there is no difference between the *type* used for
+by-ref adapters in any of these cases; what changes is just which
+trait defers through it. So, we propose to add the following to `core::borrow`:
+
+```rust
+pub struct ByRef<'a, Sized? T:'a> {
+    pub inner: &'a mut T
+}
+```
+
+which will allow `impl`s like the following in `core::io`:
+
+```rust
+impl<'a, W: Writer> Writer for ByRef<'a, W> {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> Result<uint, W::Err> { self.inner.write(buf) }
+
+    #[inline]
+    fn flush(&mut self) -> Result<(), W::Err> { self.inner.flush() }
+}
+```
+
+#### Free functions
+[Free functions]: #free-functions
+
+The current `std::io::util` module also includes a number of primitive
+readers and writers, as well as `copy`. These are updated as follows:
+
+```rust
+// A reader that yields no bytes
+fn empty() -> Empty;
+
+// A reader that yields `byte` repeatedly (generalizes today's ZeroReader)
+fn repeat(byte: u8) -> Repeat;
+
+// A writer that ignores the bytes written to it (/dev/null)
+fn sink() -> Sink;
+
+// Copies all data from a Reader to a Writer
+pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> NonatomicResult<(), uint, E> where
+    R: Reader<Err = E>,
+    W: Writer<Err = E>
+```
+
+#### Seeking
+[Seeking]: #seeking
+
+The seeking infrastructure is largely the same as today's, except that
+`tell` is renamed to follow the RFC's design principles and the `seek`
+signature is refactored with more precise types:
+
+```rust
+pub trait Seek {
+    type Err;
+    fn position(&self) -> Result<u64, Err>;
+    fn seek(&mut self, pos: SeekPos) -> Result<(), Err>;
+}
+
+pub enum SeekPos {
+    FromStart(u64),
+    FromEnd(u64),
+    FromCur(i64),
+}
+```
+
+#### Buffering
+[Buffering]: #buffering
+
+The current `Buffer` trait will be renamed to `BufferedReader` for
+clarity (and to open the door to `BufferedWriter` at some later
+point):
+
+```rust
+pub trait BufferedReader: Reader {
+    fn fill_buf(&mut self) -> Result<&[u8], Self::Err>;
+    fn consume(&mut self, amt: uint);
+
+    // This should perhaps yield an iterator
+    fn read_until(&mut self, byte: u8) -> NonatomicResult<Vec<u8>, Vec<u8>, Self::Err> { ... }
+}
+
+pub trait BufferedReaderExt: BufferedReader {
+    fn lines(&mut self) -> Lines<Self, Self::Err> { ... };
+}
+```
+
+In addition, `read_line` is removed in favor of the `lines` iterator,
+and `read_char` is removed in favor of the `chars` iterator (now on
+`ReaderExt`). These iterators will be changed to yield
+`NonatomicResult` values.
+
+The `BufferedReader`, `BufferedWriter` and `BufferedStream` types stay
+essentially as they are today, except that for streams and writers the
+`into_inner` method yields any errors encountered when flushing,
+together with the remaining data:
+
+```rust
+// If flushing fails, you get the unflushed data back
+fn into_inner(self) -> NonatomicResult<W, Vec<u8>, W::Err>;
+```
+
+#### `MemReader` and `MemWriter`
+[MemReader and MemWriter]: #memreader-and-memwriter
+
+The various in-memory readers and writers available today will be
+consolidated into just `MemReader` and `MemWriter`:
+
+`MemReader` (like today's `BufReader`)
+ - construct from `&[u8]`
+ - implements `Seek`
+
+`MemWriter`
+ - construct freshly, or from a `Vec`
+ - implements `Seek`
+
+Both will allow decomposing into their inner parts, though the exact
+details are left to the implementation.
+
+The rationale for this design is that, if you want to read from a
+`Vec`, it's easy enough to get a slice to read from instead; on the
+other hand, it's rare to want to write into a mutable slice on the
+stack, as opposed to an owned vector. So these two readers and writers
+cover the vast majority of in-memory readers/writers for Rust.
+
+In addition to these, however, we will have the following `impl`s
+directly on slice/vector types:
+
+* `impl Writer for Vec<u8>`
+* `impl Writer for &mut [u8]`
+* `impl Reader for &[u8]`
+
+These `impls` are convenient and efficient, but do not implement `Seek`.
 
 ### The `std::io` facade
 [The std::io facade]: #the-stdio-facade
 
-> To be added in a follow-up PR.
+The `std::io` module will largely be a facade over `core::io`, but it
+will add some functionality that can live only in `std`.
+
+#### `Errors`
+[Errors]: #error
+
+The `IoError` type will be renamed to `std::io::Error`, following our
+[non-prefixing convention](https://github.com/rust-lang/rfcs/pull/356).
+It will remain largely as it is today, but its fields will be made
+private. It may eventually grow a field to track the underlying OS
+error code.
+
+The `IoErrorKind` type will become `std::io::ErrorKind`, and
+`ShortWrite` will be dropped (it is no longer needed with the new
+`Writer` semantics), which should decrease its footprint. The
+`OtherIoError` variant will become `Other` now that `enum`s are
+namespaced.
+
+#### Channel adapters
+[Channel adapters]: #channel-adapters
+
+The `ChanReader` and `ChanWriter` adapters will be kept exactly as they are today.
+
+#### `stdin`, `stdout`, `stderr`
+[stdin, stdout, stderr]: #stdin-stdout-stderr
+
+Finally, `std::io` will provide a `stdin` reader and `stdout` and
+`stderr` writers. These will largely work as they do today, except
+that we will hew more closely to the traditional setup:
+
+* `stderr` will be unbuffered and `stderr_raw` will therefore be dropped.
+* `stdout` will be line-buffered for TTY, fully buffered otherwise.
+* most TTY functionality in `StdReader` and `StdWriter` will be moved
+   to `os::unix`, since it's not yet implemented on Windows.
+* `stdout_raw` and `stderr_raw` will be removed.
 
 ### `std::env`
 [std::env]: #stdenv
