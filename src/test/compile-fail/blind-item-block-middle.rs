@@ -14,4 +14,5 @@ fn main() {
     let bar = 5;
     //~^ ERROR declaration of `bar` shadows an enum variant or unit-like struct in scope
     use foo::bar;
+    //~^ ERROR imports are not allowed after non-item statements
 }

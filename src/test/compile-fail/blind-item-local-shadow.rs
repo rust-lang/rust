@@ -9,11 +9,12 @@
 // except according to those terms.
 
 mod bar {
-    pub fn foo() -> uint { 42 }
+    pub fn foo() -> bool { true }
 }
 
 fn main() {
-    let foo = |&:| 5u;
+    let foo = |&:| false;
     use bar::foo;
-    assert_eq!(foo(), 5u);
+    //~^ ERROR imports are not allowed after non-item statements
+    assert_eq!(foo(), false);
 }
