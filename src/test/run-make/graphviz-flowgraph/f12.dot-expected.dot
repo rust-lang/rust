@@ -34,7 +34,7 @@ digraph block {
     N11 -> N12;
     N12 -> N13;
     N13 -> N14;
-    N14 -> N6[label="exiting scope_0 expr break,\lexiting scope_1 stmt break ;,\lexiting scope_2 block { break ; \"unreachable\"; },\lexiting scope_3 expr if x == 2is { break ; \"unreachable\"; },\lexiting scope_4 block { x -= 1is; if x == 2is { break ; \"unreachable\"; } }"];
+    N14 -> N6;
     N15 -> N16;
     N16 -> N17;
     N17 -> N18;
