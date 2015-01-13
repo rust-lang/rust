@@ -20,6 +20,7 @@ use error::{Error, CliResult, CommandResult};
 use book;
 use book::{Book, BookItem};
 use css;
+use javascript;
 
 use regex::Regex;
 
@@ -63,7 +64,7 @@ fn write_toc(book: &Book, path_to_root: &Path, out: &mut Writer) -> IoResult<()>
         Ok(())
     }
 
-    try!(writeln!(out, "<div id='toc'>"));
+    try!(writeln!(out, "<div id='toc' class='mobile-hidden'>"));
     try!(writeln!(out, "<ul class='chapter'>"));
     try!(walk_items(&book.chapters[], "", path_to_root, out));
     try!(writeln!(out, "</ul>"));
@@ -102,6 +103,14 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         let prelude = tmp.path().join("prelude.html");
         {
             let mut toc = BufferedWriter::new(try!(File::create(&prelude)));
+            try!(writeln!(&mut toc, r#"<div id="nav">
+                <button id="toggle-nav">
+                  <span class="sr-only">Toggle navigation</span>
+                  <span class="bar"></span>
+                  <span class="bar"></span>
+                  <span class="bar"></span>
+                </button>
+              </div>"#));
             let _ = write_toc(book, &item.path_to_root, &mut toc);
             try!(writeln!(&mut toc, "<div id='page-wrapper'>"));
             try!(writeln!(&mut toc, "<div id='page'>"));
@@ -111,6 +120,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         let postlude = tmp.path().join("postlude.html");
         {
             let mut toc = BufferedWriter::new(try!(File::create(&postlude)));
+            try!(toc.write_str(javascript::JAVASCRIPT));
             try!(writeln!(&mut toc, "</div></div>"));
         }
 
