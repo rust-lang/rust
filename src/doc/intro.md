@@ -424,11 +424,11 @@ Let's see an example. This Rust code will not compile:
 use std::thread::Thread;
 
 fn main() {
-    let mut numbers = vec![1i, 2i, 3i];
+    let mut numbers = vec![1is, 2is, 3is];
 
-    for i in range(0u, 3u) {
+    for i in 0..3 {
         Thread::spawn(move || {
-            for j in range(0, 3) { numbers[j] += 1 }
+            for j in 0..3 { numbers[j] += 1 }
         });
     }
 }
@@ -478,9 +478,9 @@ use std::thread::Thread;
 use std::sync::{Arc,Mutex};
 
 fn main() {
-    let numbers = Arc::new(Mutex::new(vec![1i, 2i, 3i]));
+    let numbers = Arc::new(Mutex::new(vec![1is, 2is, 3is]));
 
-    for i in range(0u, 3u) {
+    for i in 0..3 {
         let number = numbers.clone();
         Thread::spawn(move || {
             let mut array = number.lock().unwrap();
