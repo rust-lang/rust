@@ -65,7 +65,9 @@ follow-up PRs against this RFC.
         * [std::env]
         * [std::fs] (stub)
         * [std::net] (stub)
-        * [std::process] (stub)
+        * [std::process]
+            * [Command]
+            * [Child]
         * [std::os]
     * [Odds and ends]
         * [The io prelude]
@@ -1239,7 +1241,65 @@ This brings the constants into line with our naming conventions elsewhere.
 ### `std::process`
 [std::process]: #stdprocess
 
-> To be added in a follow-up PR.
+Currently `std::io::process` is used only for spawning new
+processes. The re-envisioned `std::process` will ultimately support
+inspecting currently-running processes, although this RFC does not
+propose any immediate support for doing so -- it merely future-proofs
+the module.
+
+#### `Command`
+[Command]: #command
+
+The `Command` type is a builder API for processes, and is largely in
+good shape, modulo a few tweaks:
+
+* Replace `ToCCstr` bounds with `IntoOsStrBuf`.
+* Replace `env_set_all` with `env_clear`
+* Rename `cwd` to `current_dir`, take `AsPath`.
+* Rename `spawn` to `run`
+* Move `uid` and `gid` to an extension trait in `os::unix`
+* Make `detached` take a `bool` (rather than always setting the
+  command to detached mode).
+
+The `stdin`, `stdout`, `stderr` methods will undergo a more
+significant change. By default, the corresponding options we be
+considered "unset", the interpretation of which depends on how the
+process is launched:
+
+* For `run` or `status`, these will inherit from the current process by default.
+* For `output`, these will capture to new readers/writers by default.
+
+The `StdioContainer` type will be renamed to `Stdio`, and will not be
+exposed directly as an enum (to enable growth and change over time).
+It will provide a `Capture` constructor for capturing input or output,
+an `Inherit` constructor (which just means to use the current IO
+object -- it does not take an argument), and a `Null` constructor. The
+equivalent of today's `InheritFd` will be added at a later point.
+
+#### `Child`
+[Child]: #child
+
+We propose renaming `Process` to `Child` so that we can add a
+more general notion of non-child `Process` later on (every
+`Child` will be able to give you a `Process`).
+
+* `stdin`, `stdout` and `stderr` will be retained as public fields,
+  but their types will change to `Box<Reader+Send>` or
+  `Box<Writer+Send>` as appropriate. This effectively hides the internal
+  pipe infrastructure.
+* The `kill` method is dropped, and `id` and `signal` will move to `os::platform` extension traits.
+* `signal_exit`, `signal_kill`, `wait`, and `forget` will all stay as they are.
+* `wait_with_output` will take `&self`.
+* `set_timeout` will be changed to use the `with_deadline` infrastructure.
+
+There are also a few other related changes to the module:
+
+* Rename `ProcessOuptput` to `Output`
+* Rename `ProcessExit` to `ExitStatus`, and hide its
+  representation. Remove `matches_exit_status`, and add a `status`
+  method yielding an `Option<i32>
+* Remove `MustDieSignal`, `PleaseExitSignal`.
+* Remove `EnvMap` (which should never have been exposed).
 
 ### `std::os`
 [std::os]: #stdos
