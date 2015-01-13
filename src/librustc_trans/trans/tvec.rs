@@ -25,7 +25,7 @@ use trans::expr::{Dest, Ignore, SaveIn};
 use trans::expr;
 use trans::glue;
 use trans::machine;
-use trans::machine::{nonzero_llsize_of, llsize_of_alloc};
+use trans::machine::llsize_of_alloc;
 use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{self, Ty};
@@ -42,13 +42,6 @@ fn get_len(bcx: Block, vptr: ValueRef) -> ValueRef {
 fn get_dataptr(bcx: Block, vptr: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::get_dataptr");
     Load(bcx, expr::get_dataptr(bcx, vptr))
-}
-
-pub fn pointer_add_byte(bcx: Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("tvec::pointer_add_byte");
-    let old_ty = val_ty(ptr);
-    let bptr = PointerCast(bcx, ptr, Type::i8p(bcx.ccx()));
-    return PointerCast(bcx, InBoundsGEP(bcx, bptr, &[bytes]), old_ty);
 }
 
 pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -94,17 +87,14 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub struct VecTypes<'tcx> {
     pub unit_ty: Ty<'tcx>,
     pub llunit_ty: Type,
-    pub llunit_size: ValueRef,
     pub llunit_alloc_size: u64
 }
 
 impl<'tcx> VecTypes<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        format!("VecTypes {{unit_ty={}, llunit_ty={}, \
-                 llunit_size={}, llunit_alloc_size={}}}",
+        format!("VecTypes {{unit_ty={}, llunit_ty={}, llunit_alloc_size={}}}",
                 ty_to_string(ccx.tcx(), self.unit_ty),
                 ccx.tn().type_to_string(self.llunit_ty),
-                ccx.tn().val_to_string(self.llunit_size),
                 self.llunit_alloc_size)
     }
 }
@@ -333,13 +323,11 @@ pub fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              -> VecTypes<'tcx> {
     let ccx = bcx.ccx();
     let llunit_ty = type_of::type_of(ccx, unit_ty);
-    let llunit_size = nonzero_llsize_of(ccx, llunit_ty);
     let llunit_alloc_size = llsize_of_alloc(ccx, llunit_ty);
 
     VecTypes {
         unit_ty: unit_ty,
         llunit_ty: llunit_ty,
-        llunit_size: llunit_size,
         llunit_alloc_size: llunit_alloc_size
     }
 }
@@ -486,17 +474,13 @@ pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let fcx = bcx.fcx;
 
     let vt = vec_types(bcx, unit_ty);
-    let fill = Mul(bcx, len, vt.llunit_size);
 
     if vt.llunit_alloc_size == 0 {
         // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
-        iter_vec_loop(bcx, data_ptr, &vt, fill, f)
+        iter_vec_loop(bcx, data_ptr, &vt, len, f)
     } else {
         // Calculate the last pointer address we want to handle.
-        // FIXME (#3729): Optimize this when the size of the unit type is
-        // statically known to not use pointer casts, which tend to confuse
-        // LLVM.
-        let data_end_ptr = pointer_add_byte(bcx, data_ptr, fill);
+        let data_end_ptr = InBoundsGEP(bcx, data_ptr, &[len]);
 
         // Now perform the iteration.
         let header_bcx = fcx.new_temp_block("iter_vec_loop_header");

@@ -546,15 +546,6 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-// Structural comparison: a rather involved form of glue.
-pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
-    if cx.sess().opts.cg.save_temps {
-        let buf = CString::from_slice(s.as_bytes());
-        unsafe { llvm::LLVMSetValueName(v, buf.as_ptr()) }
-    }
-}
-
-
 // Used only for creating scalar comparison glue.
 #[derive(Copy)]
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
