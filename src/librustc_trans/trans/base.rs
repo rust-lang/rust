@@ -248,9 +248,8 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
 
     let f = decl_rust_fn(ccx, fn_ty, name);
 
-    csearch::get_item_attrs(&ccx.sess().cstore, did, |attrs| {
-        set_llvm_fn_attrs(ccx, &attrs[], f)
-    });
+    let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
+    set_llvm_fn_attrs(ccx, &attrs[], f);
 
     ccx.externs().borrow_mut().insert(name.to_string(), f);
     f
@@ -353,12 +352,11 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
         // don't do this then linker errors can be generated where the linker
         // complains that one object files has a thread local version of the
         // symbol and another one doesn't.
-        ty::each_attr(ccx.tcx(), did, |attr| {
+        for attr in ty::get_attrs(ccx.tcx(), did).iter() {
             if attr.check_name("thread_local") {
                 llvm::set_thread_local(c, true);
             }
-            true
-        });
+        }
         ccx.externs().borrow_mut().insert(name.to_string(), c);
         return c;
     }

@@ -1025,18 +1025,16 @@ pub fn get_tuple_struct_definition_if_ctor(cdata: Cmd,
     ret
 }
 
-pub fn get_item_attrs<F>(cdata: Cmd,
-                         orig_node_id: ast::NodeId,
-                         f: F) where
-    F: FnOnce(Vec<ast::Attribute>),
-{
+pub fn get_item_attrs(cdata: Cmd,
+                      orig_node_id: ast::NodeId)
+                      -> Vec<ast::Attribute> {
     // The attributes for a tuple struct are attached to the definition, not the ctor;
     // we assume that someone passing in a tuple struct ctor is actually wanting to
     // look at the definition
     let node_id = get_tuple_struct_definition_if_ctor(cdata, orig_node_id);
     let node_id = node_id.map(|x| x.node).unwrap_or(orig_node_id);
     let item = lookup_item(node_id, cdata.data());
-    f(get_attributes(item));
+    get_attributes(item)
 }
 
 pub fn get_struct_field_attrs(cdata: Cmd) -> HashMap<ast::NodeId, Vec<ast::Attribute>> {

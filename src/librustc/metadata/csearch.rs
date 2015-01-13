@@ -203,13 +203,11 @@ pub fn get_methods_if_impl(cstore: &cstore::CStore,
     decoder::get_methods_if_impl(cstore.intr.clone(), &*cdata, def.node)
 }
 
-pub fn get_item_attrs<F>(cstore: &cstore::CStore,
-                         def_id: ast::DefId,
-                         f: F) where
-    F: FnOnce(Vec<ast::Attribute>),
-{
+pub fn get_item_attrs(cstore: &cstore::CStore,
+                      def_id: ast::DefId)
+                      -> Vec<ast::Attribute> {
     let cdata = cstore.get_crate_data(def_id.krate);
-    decoder::get_item_attrs(&*cdata, def_id.node, f)
+    decoder::get_item_attrs(&*cdata, def_id.node)
 }
 
 pub fn get_struct_fields(cstore: &cstore::CStore,
