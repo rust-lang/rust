@@ -564,7 +564,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         },
 
         ast::ExprBinary(op, ref lhs, ref rhs) if has_method_map => {
-            let implicitly_ref_args = !ast_util::is_by_value_binop(op);
+            let implicitly_ref_args = !ast_util::is_by_value_binop(op.node);
 
             // As `expr_method_call`, but the call is via an
             // overloaded op.  Note that we (sadly) currently use an

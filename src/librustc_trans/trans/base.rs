@@ -540,7 +540,7 @@ pub fn compare_scalar_types<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                         lhs: ValueRef,
                                         rhs: ValueRef,
                                         t: Ty<'tcx>,
-                                        op: ast::BinOp)
+                                        op: ast::BinOp_)
                                         -> Result<'blk, 'tcx> {
     let f = |&: a| Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op));
 
@@ -561,7 +561,7 @@ pub fn compare_scalar_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                          lhs: ValueRef,
                                          rhs: ValueRef,
                                          nt: scalar_type,
-                                         op: ast::BinOp)
+                                         op: ast::BinOp_)
                                          -> ValueRef {
     let _icx = push_ctxt("compare_scalar_values");
     fn die(cx: Block) -> ! {
@@ -635,7 +635,7 @@ pub fn compare_simd_types<'blk, 'tcx>(
                            not supported for floating point SIMD types")
         },
         ty::ty_uint(_) | ty::ty_int(_) => {
-            let cmp = match op {
+            let cmp = match op.node {
                 ast::BiEq => llvm::IntEQ,
                 ast::BiNe => llvm::IntNE,
                 ast::BiLt => llvm::IntSLT,
@@ -823,7 +823,7 @@ pub fn cast_shift_rhs<F, G>(op: ast::BinOp,
     G: FnOnce(ValueRef, Type) -> ValueRef,
 {
     // Shifts may have any size int on the rhs
-    if ast_util::is_shift_binop(op) {
+    if ast_util::is_shift_binop(op.node) {
         let mut rhs_llty = val_ty(rhs);
         let mut lhs_llty = val_ty(lhs);
         if rhs_llty.kind() == Vector { rhs_llty = rhs_llty.element_type() }
@@ -852,7 +852,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
                                 rhs: ValueRef,
                                 rhs_t: Ty<'tcx>)
                                 -> Block<'blk, 'tcx> {
-    let (zero_text, overflow_text) = if divrem == ast::BiDiv {
+    let (zero_text, overflow_text) = if divrem.node == ast::BiDiv {
         ("attempted to divide by zero",
          "attempted to divide with overflow")
     } else {

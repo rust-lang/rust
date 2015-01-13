@@ -249,7 +249,7 @@ impl Token {
     }
 
     /// Maps a token to its corresponding binary operator.
-    pub fn to_binop(&self) -> Option<ast::BinOp> {
+    pub fn to_binop(&self) -> Option<ast::BinOp_> {
         match *self {
             BinOp(Star)     => Some(ast::BiMul),
             BinOp(Slash)    => Some(ast::BiDiv),
