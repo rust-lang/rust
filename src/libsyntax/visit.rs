@@ -62,7 +62,6 @@ pub trait Visitor<'v> : Sized {
         self.visit_name(span, ident.name);
     }
     fn visit_mod(&mut self, m: &'v Mod, _s: Span, _n: NodeId) { walk_mod(self, m) }
-    fn visit_view_item(&mut self, i: &'v ViewItem) { walk_view_item(self, i) }
     fn visit_foreign_item(&mut self, i: &'v ForeignItem) { walk_foreign_item(self, i) }
     fn visit_item(&mut self, i: &'v Item) { walk_item(self, i) }
     fn visit_local(&mut self, l: &'v Local) { walk_local(self, l) }
@@ -166,48 +165,8 @@ pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate) {
 }
 
 pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod) {
-    for view_item in module.view_items.iter() {
-        visitor.visit_view_item(view_item)
-    }
-
     for item in module.items.iter() {
         visitor.visit_item(&**item)
-    }
-}
-
-pub fn walk_view_item<'v, V: Visitor<'v>>(visitor: &mut V, vi: &'v ViewItem) {
-    match vi.node {
-        ViewItemExternCrate(name, _, _) => {
-            visitor.visit_ident(vi.span, name)
-        }
-        ViewItemUse(ref vp) => {
-            match vp.node {
-                ViewPathSimple(ident, ref path, id) => {
-                    visitor.visit_ident(vp.span, ident);
-                    visitor.visit_path(path, id);
-                }
-                ViewPathGlob(ref path, id) => {
-                    visitor.visit_path(path, id);
-                }
-                ViewPathList(ref prefix, ref list, _) => {
-                    for id in list.iter() {
-                        match id.node {
-                            PathListIdent { name, .. } => {
-                                visitor.visit_ident(id.span, name);
-                            }
-                            PathListMod { .. } => ()
-                        }
-                    }
-
-                    // Note that the `prefix` here is not a complete
-                    // path, so we don't use `visit_path`.
-                    walk_path(visitor, prefix);
-                }
-            }
-        }
-    }
-    for attr in vi.attrs.iter() {
-        visitor.visit_attribute(attr);
     }
 }
 
@@ -269,6 +228,32 @@ pub fn walk_trait_ref<'v,V>(visitor: &mut V,
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_ident(item.span, item.ident);
     match item.node {
+        ItemExternCrate(..) => {}
+        ItemUse(ref vp) => {
+            match vp.node {
+                ViewPathSimple(ident, ref path) => {
+                    visitor.visit_ident(vp.span, ident);
+                    visitor.visit_path(path, item.id);
+                }
+                ViewPathGlob(ref path) => {
+                    visitor.visit_path(path, item.id);
+                }
+                ViewPathList(ref prefix, ref list) => {
+                    for id in list.iter() {
+                        match id.node {
+                            PathListIdent { name, .. } => {
+                                visitor.visit_ident(id.span, name);
+                            }
+                            PathListMod { .. } => ()
+                        }
+                    }
+
+                    // Note that the `prefix` here is not a complete
+                    // path, so we don't use `visit_path`.
+                    walk_path(visitor, prefix);
+                }
+            }
+        }
         ItemStatic(ref typ, _, ref expr) |
         ItemConst(ref typ, ref expr) => {
             visitor.visit_ty(&**typ);
@@ -285,9 +270,6 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_mod(module, item.span, item.id)
         }
         ItemForeignMod(ref foreign_module) => {
-            for view_item in foreign_module.view_items.iter() {
-                visitor.visit_view_item(view_item)
-            }
             for foreign_item in foreign_module.items.iter() {
                 visitor.visit_foreign_item(&**foreign_item)
             }
@@ -732,9 +714,6 @@ pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V,
 }
 
 pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
-    for view_item in block.view_items.iter() {
-        visitor.visit_view_item(view_item)
-    }
     for statement in block.stmts.iter() {
         visitor.visit_stmt(&**statement)
     }

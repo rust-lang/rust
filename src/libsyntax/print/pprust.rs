@@ -337,10 +337,6 @@ pub fn item_to_string(i: &ast::Item) -> String {
     $to_string(|s| s.print_item(i))
 }
 
-pub fn view_item_to_string(i: &ast::ViewItem) -> String {
-    $to_string(|s| s.print_view_item(i))
-}
-
 pub fn generics_to_string(generics: &ast::Generics) -> String {
     $to_string(|s| s.print_generics(generics))
 }
@@ -638,9 +634,6 @@ impl<'a> State<'a> {
     pub fn print_mod(&mut self, _mod: &ast::Mod,
                      attrs: &[ast::Attribute]) -> IoResult<()> {
         try!(self.print_inner_attributes(attrs));
-        for vitem in _mod.view_items.iter() {
-            try!(self.print_view_item(vitem));
-        }
         for item in _mod.items.iter() {
             try!(self.print_item(&**item));
         }
@@ -650,9 +643,6 @@ impl<'a> State<'a> {
     pub fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod,
                              attrs: &[ast::Attribute]) -> IoResult<()> {
         try!(self.print_inner_attributes(attrs));
-        for vitem in nmod.view_items.iter() {
-            try!(self.print_view_item(vitem));
-        }
         for item in nmod.items.iter() {
             try!(self.print_foreign_item(&**item));
         }
@@ -809,6 +799,28 @@ impl<'a> State<'a> {
         try!(self.print_outer_attributes(&item.attrs[]));
         try!(self.ann.pre(self, NodeItem(item)));
         match item.node {
+            ast::ItemExternCrate(ref optional_path) => {
+                try!(self.head(&visibility_qualified(item.vis,
+                                                     "extern crate")[]));
+                for &(ref p, style) in optional_path.iter() {
+                    try!(self.print_string(p.get(), style));
+                    try!(space(&mut self.s));
+                    try!(word(&mut self.s, "as"));
+                    try!(space(&mut self.s));
+                }
+                try!(self.print_ident(item.ident));
+                try!(word(&mut self.s, ";"));
+                try!(self.end()); // end inner head-block
+                try!(self.end()); // end outer head-block
+            }
+            ast::ItemUse(ref vp) => {
+                try!(self.head(&visibility_qualified(item.vis,
+                                                     "use")[]));
+                try!(self.print_view_path(&**vp));
+                try!(word(&mut self.s, ";"));
+                try!(self.end()); // end inner head-block
+                try!(self.end()); // end outer head-block
+            }
             ast::ItemStatic(ref ty, m, ref expr) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                     "static")[]));
@@ -1380,9 +1392,6 @@ impl<'a> State<'a> {
 
         try!(self.print_inner_attributes(attrs));
 
-        for vi in blk.view_items.iter() {
-            try!(self.print_view_item(vi));
-        }
         for st in blk.stmts.iter() {
             try!(self.print_stmt(&**st));
         }
@@ -2577,7 +2586,7 @@ impl<'a> State<'a> {
 
     pub fn print_view_path(&mut self, vp: &ast::ViewPath) -> IoResult<()> {
         match vp.node {
-            ast::ViewPathSimple(ident, ref path, _) => {
+            ast::ViewPathSimple(ident, ref path) => {
                 try!(self.print_path(path, false));
 
                 // FIXME(#6993) can't compare identifiers directly here
@@ -2591,12 +2600,12 @@ impl<'a> State<'a> {
                 Ok(())
             }
 
-            ast::ViewPathGlob(ref path, _) => {
+            ast::ViewPathGlob(ref path) => {
                 try!(self.print_path(path, false));
                 word(&mut self.s, "::*")
             }
 
-            ast::ViewPathList(ref path, ref idents, _) => {
+            ast::ViewPathList(ref path, ref idents) => {
                 if path.segments.is_empty() {
                     try!(word(&mut self.s, "{"));
                 } else {
@@ -2616,33 +2625,6 @@ impl<'a> State<'a> {
                 word(&mut self.s, "}")
             }
         }
-    }
-
-    pub fn print_view_item(&mut self, item: &ast::ViewItem) -> IoResult<()> {
-        try!(self.hardbreak_if_not_bol());
-        try!(self.maybe_print_comment(item.span.lo));
-        try!(self.print_outer_attributes(&item.attrs[]));
-        try!(self.print_visibility(item.vis));
-        match item.node {
-            ast::ViewItemExternCrate(id, ref optional_path, _) => {
-                try!(self.head("extern crate"));
-                for &(ref p, style) in optional_path.iter() {
-                    try!(self.print_string(p.get(), style));
-                    try!(space(&mut self.s));
-                    try!(word(&mut self.s, "as"));
-                    try!(space(&mut self.s));
-                }
-                try!(self.print_ident(id));
-            }
-
-            ast::ViewItemUse(ref vp) => {
-                try!(self.head("use"));
-                try!(self.print_view_path(&**vp));
-            }
-        }
-        try!(word(&mut self.s, ";"));
-        try!(self.end()); // end inner head-block
-        self.end() // end outer head-block
     }
 
     pub fn print_mutability(&mut self,
