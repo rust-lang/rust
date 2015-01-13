@@ -54,7 +54,7 @@ impl<'a> FileSearch<'a> {
 
         debug!("filesearch: searching lib path");
         let tlib_path = make_target_lib_path(self.sysroot,
-                                    self.triple);
+                                             self.triple);
         if !visited_dirs.contains(tlib_path.as_vec()) {
             match f(&tlib_path) {
                 FileMatches => found = true,

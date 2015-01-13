@@ -1528,6 +1528,19 @@ pub struct ViewItem {
     pub span: Span,
 }
 
+impl ViewItem {
+    pub fn id(&self) -> NodeId {
+        match self.node {
+            ViewItemExternCrate(_, _, id) => id,
+            ViewItemUse(ref vp) => match vp.node {
+                ViewPathSimple(_, _, id) => id,
+                ViewPathGlob(_, id) => id,
+                ViewPathList(_, _, id) => id,
+            }
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub enum ViewItem_ {
     /// Ident: name used to refer to this crate in the code
