@@ -2604,12 +2604,17 @@ impl FlagComputation {
 
             &ty_projection(ref data) => {
                 self.add_flags(HAS_PROJECTION);
-                self.add_substs(data.trait_ref.substs);
+                self.add_projection_ty(data);
             }
 
             &ty_trait(box TyTrait { ref principal, ref bounds }) => {
                 let mut computation = FlagComputation::new();
                 computation.add_substs(principal.0.substs);
+                for projection_bound in bounds.projection_bounds.iter() {
+                    let mut proj_computation = FlagComputation::new();
+                    proj_computation.add_projection_predicate(&projection_bound.0);
+                    computation.add_bound_computation(&proj_computation);
+                }
                 self.add_bound_computation(&computation);
 
                 self.add_bounds(bounds);
@@ -2671,6 +2676,15 @@ impl FlagComputation {
             }
             _ => { }
         }
+    }
+
+    fn add_projection_predicate(&mut self, projection_predicate: &ProjectionPredicate) {
+        self.add_projection_ty(&projection_predicate.projection_ty);
+        self.add_ty(projection_predicate.ty);
+    }
+
+    fn add_projection_ty(&mut self, projection_ty: &ProjectionTy) {
+        self.add_substs(projection_ty.trait_ref.substs);
     }
 
     fn add_substs(&mut self, substs: &Substs) {
