@@ -68,7 +68,7 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FnvHashMap};
 
 use arena::TypedArena;
-use std::borrow::BorrowFrom;
+use std::borrow::{BorrowFrom, Cow};
 use std::cell::{Cell, RefCell};
 use std::cmp::{self, Ordering};
 use std::fmt::{self, Show};
@@ -76,6 +76,7 @@ use std::hash::{Hash, Writer, SipHasher, Hasher};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
+use std::vec::CowVec;
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
@@ -5555,40 +5556,20 @@ pub fn predicates<'tcx>(
     vec
 }
 
-/// Iterate over attributes of a definition.
-// (This should really be an iterator, but that would require csearch and
-// decoder to use iterators instead of higher-order functions.)
-pub fn each_attr<F>(tcx: &ctxt, did: DefId, mut f: F) -> bool where
-    F: FnMut(&ast::Attribute) -> bool,
-{
+/// Get the attributes of a definition.
+pub fn get_attrs<'tcx>(tcx: &'tcx ctxt, did: DefId)
+                       -> CowVec<'tcx, ast::Attribute> {
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
-        item.attrs.iter().all(|attr| f(attr))
+        Cow::Borrowed(&item.attrs[])
     } else {
-        info!("getting foreign attrs");
-        let mut cont = true;
-        csearch::get_item_attrs(&tcx.sess.cstore, did, |attrs| {
-            if cont {
-                cont = attrs.iter().all(|attr| f(attr));
-            }
-        });
-        info!("done");
-        cont
+        Cow::Owned(csearch::get_item_attrs(&tcx.sess.cstore, did))
     }
 }
 
 /// Determine whether an item is annotated with an attribute
 pub fn has_attr(tcx: &ctxt, did: DefId, attr: &str) -> bool {
-    let mut found = false;
-    each_attr(tcx, did, |item| {
-        if item.check_name(attr) {
-            found = true;
-            false
-        } else {
-            true
-        }
-    });
-    found
+    get_attrs(tcx, did).iter().any(|item| item.check_name(attr))
 }
 
 /// Determine whether an item is annotated with `#[repr(packed)]`
@@ -5605,13 +5586,9 @@ pub fn lookup_simd(tcx: &ctxt, did: DefId) -> bool {
 pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
     memoized(&tcx.repr_hint_cache, did, |did: DefId| {
         Rc::new(if did.krate == LOCAL_CRATE {
-            let mut acc = Vec::new();
-            ty::each_attr(tcx, did, |meta| {
-                acc.extend(attr::find_repr_attrs(tcx.sess.diagnostic(),
-                                                 meta).into_iter());
-                true
-            });
-            acc
+            get_attrs(tcx, did).iter().flat_map(|meta| {
+                attr::find_repr_attrs(tcx.sess.diagnostic(), meta).into_iter()
+            }).collect()
         } else {
             csearch::get_repr_attrs(&tcx.sess.cstore, did)
         })
