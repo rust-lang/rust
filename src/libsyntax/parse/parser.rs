@@ -25,7 +25,7 @@ use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
 use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
-use ast::{ExprMethodCall, ExprParen, ExprPath};
+use ast::{ExprMethodCall, ExprParen, ExprPath, ExprQPath};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
@@ -1573,7 +1573,10 @@ impl<'a> Parser<'a> {
             TyQPath(P(QPath {
                 self_type: self_type,
                 trait_ref: P(trait_ref),
-                item_name: item_name,
+                item_path: ast::PathSegment {
+                    identifier: item_name,
+                    parameters: ast::PathParameters::none()
+                }
             }))
         } else if self.check(&token::ModSep) ||
                   self.token.is_ident() ||
@@ -1894,11 +1897,7 @@ impl<'a> Parser<'a> {
             if !self.eat(&token::ModSep) {
                 segments.push(ast::PathSegment {
                     identifier: identifier,
-                    parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
-                        lifetimes: Vec::new(),
-                        types: OwnedSlice::empty(),
-                        bindings: OwnedSlice::empty(),
-                    })
+                    parameters: ast::PathParameters::none()
                 });
                 return segments;
             }
@@ -2253,6 +2252,37 @@ impl<'a> Parser<'a> {
                 hi = self.last_span.hi;
             }
             _ => {
+                if self.eat_lt() {
+                    // QUALIFIED PATH `<TYPE as TRAIT_REF>::item::<'a, T>`
+                    let self_type = self.parse_ty_sum();
+                    self.expect_keyword(keywords::As);
+                    let trait_ref = self.parse_trait_ref();
+                    self.expect(&token::Gt);
+                    self.expect(&token::ModSep);
+                    let item_name = self.parse_ident();
+                    let parameters = if self.eat(&token::ModSep) {
+                        self.expect_lt();
+                        // Consumed `item::<`, go look for types
+                        let (lifetimes, types, bindings) =
+                            self.parse_generic_values_after_lt();
+                        ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                            lifetimes: lifetimes,
+                            types: OwnedSlice::from_vec(types),
+                            bindings: OwnedSlice::from_vec(bindings),
+                        })
+                    } else {
+                        ast::PathParameters::none()
+                    };
+                    let hi = self.span.hi;
+                    return self.mk_expr(lo, hi, ExprQPath(P(QPath {
+                        self_type: self_type,
+                        trait_ref: P(trait_ref),
+                        item_path: ast::PathSegment {
+                            identifier: item_name,
+                            parameters: parameters
+                        }
+                    })));
+                }
                 if self.eat_keyword(keywords::Move) {
                     return self.parse_lambda_expr(CaptureByValue);
                 }
