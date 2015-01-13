@@ -8,73 +8,51 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::v1::*;
-
-use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
-use alloc::{self, heap};
-
-use libc::DWORD;
+use marker::Sync;
+use cell::UnsafeCell;
 use sys::sync as ffi;
 
-const SPIN_COUNT: DWORD = 4000;
+pub struct Mutex { inner: UnsafeCell<ffi::SRWLOCK> }
 
-pub struct Mutex { inner: AtomicUsize }
-
-pub const MUTEX_INIT: Mutex = Mutex { inner: ATOMIC_USIZE_INIT };
+pub const MUTEX_INIT: Mutex = Mutex {
+    inner: UnsafeCell { value: ffi::SRWLOCK_INIT }
+};
 
 unsafe impl Sync for Mutex {}
 
 #[inline]
-pub unsafe fn raw(m: &Mutex) -> ffi::LPCRITICAL_SECTION {
-    m.get()
+pub unsafe fn raw(m: &Mutex) -> ffi::PSRWLOCK {
+    m.inner.get()
 }
+
+// So you might be asking why we're using SRWLock instead of CriticalSection?
+//
+// 1. SRWLock is several times faster than CriticalSection according to benchmarks performed on both
+// Windows 8 and Windows 7.
+//
+// 2. CriticalSection allows recursive locking while SRWLock deadlocks. The Unix implementation
+// deadlocks so consistency is preferred. See #19962 for more details.
+//
+// 3. While CriticalSection is fair and SRWLock is not, the current Rust policy is there there are
+// no guarantees of fairness.
 
 impl Mutex {
     #[inline]
-    pub unsafe fn new() -> Mutex {
-        Mutex { inner: AtomicUsize::new(init_lock() as uint) }
-    }
+    pub unsafe fn new() -> Mutex { MUTEX_INIT }
     #[inline]
     pub unsafe fn lock(&self) {
-        ffi::EnterCriticalSection(self.get())
+        ffi::AcquireSRWLockExclusive(self.inner.get())
     }
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        ffi::TryEnterCriticalSection(self.get()) != 0
+        ffi::TryAcquireSRWLockExclusive(self.inner.get()) != 0
     }
     #[inline]
     pub unsafe fn unlock(&self) {
-        ffi::LeaveCriticalSection(self.get())
+        ffi::ReleaseSRWLockExclusive(self.inner.get())
     }
+    #[inline]
     pub unsafe fn destroy(&self) {
-        let lock = self.inner.swap(0, Ordering::SeqCst);
-        if lock != 0 { free_lock(lock as ffi::LPCRITICAL_SECTION) }
+        // ...
     }
-
-    unsafe fn get(&self) -> ffi::LPCRITICAL_SECTION {
-        match self.inner.load(Ordering::SeqCst) {
-            0 => {}
-            n => return n as ffi::LPCRITICAL_SECTION
-        }
-        let lock = init_lock();
-        match self.inner.compare_and_swap(0, lock as uint, Ordering::SeqCst) {
-            0 => return lock as ffi::LPCRITICAL_SECTION,
-            _ => {}
-        }
-        free_lock(lock);
-        return self.inner.load(Ordering::SeqCst) as ffi::LPCRITICAL_SECTION;
-    }
-}
-
-unsafe fn init_lock() -> ffi::LPCRITICAL_SECTION {
-    let block = heap::allocate(ffi::CRITICAL_SECTION_SIZE, 8)
-                        as ffi::LPCRITICAL_SECTION;
-    if block.is_null() { alloc::oom() }
-    ffi::InitializeCriticalSectionAndSpinCount(block, SPIN_COUNT);
-    return block;
-}
-
-unsafe fn free_lock(h: ffi::LPCRITICAL_SECTION) {
-    ffi::DeleteCriticalSection(h);
-    heap::deallocate(h as *mut _, ffi::CRITICAL_SECTION_SIZE, 8);
 }
