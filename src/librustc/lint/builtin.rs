@@ -660,9 +660,6 @@ impl LintPass for UnusedAttributes {
             // FIXME: #14407 these are only looked at on-demand so we can't
             // guarantee they'll have already been checked
             "deprecated",
-            "experimental",
-            "frozen",
-            "locked",
             "must_use",
             "stable",
             "unstable",

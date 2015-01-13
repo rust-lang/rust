@@ -351,11 +351,8 @@ pub struct Stability {
 #[derive(RustcEncodable,RustcDecodable,PartialEq,PartialOrd,Clone,Show,Copy)]
 pub enum StabilityLevel {
     Deprecated,
-    Experimental,
     Unstable,
     Stable,
-    Frozen,
-    Locked
 }
 
 impl fmt::String for StabilityLevel {
@@ -372,11 +369,8 @@ pub fn find_stability_generic<'a,
     for attr in attrs {
         let level = match attr.name().get() {
             "deprecated" => Deprecated,
-            "experimental" => Experimental,
             "unstable" => Unstable,
             "stable" => Stable,
-            "frozen" => Frozen,
-            "locked" => Locked,
             _ => continue // not a stability level
         };
 
