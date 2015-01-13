@@ -19,41 +19,6 @@ use std::io::process::Command;
 use std::str;
 use std::ops::{Drop, FnMut, FnOnce};
 
-pub trait Finally<T> {
-    fn finally<F>(&mut self, dtor: F) -> T where F: FnMut();
-}
-
-impl<T, F> Finally<T> for F where F: FnMut() -> T {
-    fn finally<G>(&mut self, mut dtor: G) -> T where G: FnMut() {
-        try_finally(&mut (), self, |_, f| (*f)(), |_| dtor())
-    }
-}
-
-pub fn try_finally<T, U, R, F, G>(mutate: &mut T, drop: U, try_fn: F, finally_fn: G) -> R where
-    F: FnOnce(&mut T, U) -> R,
-    G: FnMut(&mut T),
-{
-    let f = Finallyalizer {
-        mutate: mutate,
-        dtor: finally_fn,
-    };
-    try_fn(&mut *f.mutate, drop)
-}
-
-struct Finallyalizer<'a, A:'a, F> where F: FnMut(&mut A) {
-    mutate: &'a mut A,
-    dtor: F,
-}
-
-#[unsafe_destructor]
-impl<'a, A, F> Drop for Finallyalizer<'a, A, F> where F: FnMut(&mut A) {
-    #[inline]
-    fn drop(&mut self) {
-        (self.dtor)(self.mutate);
-    }
-}
-
-
 #[inline(never)]
 fn foo() {
     let _v = vec![1i, 2, 3];
@@ -64,11 +29,15 @@ fn foo() {
 
 #[inline(never)]
 fn double() {
-    (|&mut:| {
-        panic!("once");
-    }).finally(|| {
-        panic!("twice");
-    })
+    struct Double;
+
+    impl Drop for Double {
+        fn drop(&mut self) { panic!("twice") }
+    }
+
+    let _d = Double;
+
+    panic!("once");
 }
 
 fn runtest(me: &str) {
