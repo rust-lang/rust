@@ -46,7 +46,7 @@ pub fn stmt_id(s: &Stmt) -> NodeId {
     }
 }
 
-pub fn binop_to_string(op: BinOp) -> &'static str {
+pub fn binop_to_string(op: BinOp_) -> &'static str {
     match op {
         BiAdd => "+",
         BiSub => "-",
@@ -69,7 +69,7 @@ pub fn binop_to_string(op: BinOp) -> &'static str {
     }
 }
 
-pub fn lazy_binop(b: BinOp) -> bool {
+pub fn lazy_binop(b: BinOp_) -> bool {
     match b {
       BiAnd => true,
       BiOr => true,
@@ -77,7 +77,7 @@ pub fn lazy_binop(b: BinOp) -> bool {
     }
 }
 
-pub fn is_shift_binop(b: BinOp) -> bool {
+pub fn is_shift_binop(b: BinOp_) -> bool {
     match b {
       BiShl => true,
       BiShr => true,
@@ -85,7 +85,7 @@ pub fn is_shift_binop(b: BinOp) -> bool {
     }
 }
 
-pub fn is_comparison_binop(b: BinOp) -> bool {
+pub fn is_comparison_binop(b: BinOp_) -> bool {
     match b {
         BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
         _ => false
@@ -93,7 +93,7 @@ pub fn is_comparison_binop(b: BinOp) -> bool {
 }
 
 /// Returns `true` if the binary operator takes its arguments by value
-pub fn is_by_value_binop(b: BinOp) -> bool {
+pub fn is_by_value_binop(b: BinOp_) -> bool {
     match b {
         BiAdd | BiSub | BiMul | BiDiv | BiRem | BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => {
             true
@@ -319,7 +319,7 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
 }
 
 /// Maps a binary operator to its precedence
-pub fn operator_prec(op: ast::BinOp) -> usize {
+pub fn operator_prec(op: ast::BinOp_) -> usize {
   match op {
       // 'as' sits here with 12
       BiMul | BiDiv | BiRem     => 11us,
