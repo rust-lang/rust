@@ -1430,7 +1430,7 @@ impl<'tcx> UserString<'tcx> for ty::ProjectionPredicate<'tcx> {
 impl<'tcx> Repr<'tcx> for ty::ProjectionTy<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("<{} as {}>::{}",
-                self.trait_ref.self_ty().repr(tcx),
+                self.trait_ref.substs.self_ty().repr(tcx),
                 self.trait_ref.repr(tcx),
                 self.item_name.repr(tcx))
     }
