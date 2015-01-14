@@ -57,6 +57,7 @@ pub fn is_sep(c: char) -> bool {
     c == SEP
 }
 
+#[stable]
 impl fmt::Show for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Show::fmt(&self.display(), f)

@@ -680,6 +680,7 @@ impl FromUtf8Error {
     pub fn utf8_error(&self) -> Utf8Error { self.error }
 }
 
+#[stable]
 impl fmt::Show for FromUtf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)
@@ -693,6 +694,7 @@ impl fmt::String for FromUtf8Error {
     }
 }
 
+#[stable]
 impl fmt::Show for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)
@@ -821,7 +823,7 @@ impl fmt::String for String {
     }
 }
 
-#[unstable = "waiting on fmt stabilization"]
+#[stable]
 impl fmt::Show for String {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -938,11 +940,14 @@ impl FromStr for String {
 }
 
 /// A generic trait for converting a value to a string
+#[stable]
 pub trait ToString {
     /// Converts the value of `self` to an owned string
+    #[stable]
     fn to_string(&self) -> String;
 }
 
+#[stable]
 impl<T: fmt::String + ?Sized> ToString for T {
     #[inline]
     fn to_string(&self) -> String {
@@ -979,6 +984,7 @@ impl<'a> Str for CowString<'a> {
     }
 }
 
+#[stable]
 impl fmt::Writer for String {
     #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {

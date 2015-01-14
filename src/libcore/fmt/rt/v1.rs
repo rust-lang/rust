@@ -14,22 +14,31 @@
 //! These definitions are similar to their `ct` equivalents, but differ in that
 //! these can be statically allocated and are slightly optimized for the runtime
 
-#![unstable = "implementation detail of the `format_args!` macro"]
+#![stable]
 
-pub use self::Alignment::*;
-pub use self::Count::*;
-pub use self::Position::*;
-pub use self::Flag::*;
+#[cfg(stage0)] pub use self::Position::*;
+
+#[cfg(stage0)] pub use self::Alignment::Left as AlignLeft;
+#[cfg(stage0)] pub use self::Alignment::Right as AlignRight;
+#[cfg(stage0)] pub use self::Alignment::Center as AlignCenter;
+#[cfg(stage0)] pub use self::Alignment::Unknown as AlignUnknown;
+#[cfg(stage0)] pub use self::Count::Is as CountIs;
+#[cfg(stage0)] pub use self::Count::Implied as CountImplied;
+#[cfg(stage0)] pub use self::Count::Param as CountIsParam;
+#[cfg(stage0)] pub use self::Count::NextParam as CountIsNextParam;
+#[cfg(stage0)] pub use self::Position::Next as ArgumentNext;
+#[cfg(stage0)] pub use self::Position::At as ArgumentIs;
 
 // SNAP 9e4e524
-#[doc(hidden)]
 #[derive(Copy)]
 #[cfg(not(stage0))]
+#[stable]
 pub struct Argument {
+    #[stable]
     pub position: Position,
+    #[stable]
     pub format: FormatSpec,
 }
-#[doc(hidden)]
 #[derive(Copy)]
 #[cfg(stage0)]
 pub struct Argument<'a> {
@@ -37,58 +46,57 @@ pub struct Argument<'a> {
     pub format: FormatSpec,
 }
 
-#[doc(hidden)]
 #[derive(Copy)]
+#[stable]
 pub struct FormatSpec {
+    #[stable]
     pub fill: char,
+    #[stable]
     pub align: Alignment,
+    #[stable]
     pub flags: uint,
+    #[stable]
     pub precision: Count,
+    #[stable]
     pub width: Count,
 }
 
 /// Possible alignments that can be requested as part of a formatting directive.
 #[derive(Copy, PartialEq)]
+#[stable]
 pub enum Alignment {
     /// Indication that contents should be left-aligned.
-    AlignLeft,
+    #[stable]
+    Left,
     /// Indication that contents should be right-aligned.
-    AlignRight,
+    #[stable]
+    Right,
     /// Indication that contents should be center-aligned.
-    AlignCenter,
+    #[stable]
+    Center,
     /// No alignment was requested.
-    AlignUnknown,
+    #[stable]
+    Unknown,
 }
 
-#[doc(hidden)]
 #[derive(Copy)]
+#[stable]
 pub enum Count {
-    CountIs(uint), CountIsParam(uint), CountIsNextParam, CountImplied,
+    #[stable]
+    Is(usize),
+    #[stable]
+    Param(usize),
+    #[stable]
+    NextParam,
+    #[stable]
+    Implied,
 }
 
-#[doc(hidden)]
 #[derive(Copy)]
+#[stable]
 pub enum Position {
-    ArgumentNext, ArgumentIs(uint)
-}
-
-/// Flags which can be passed to formatting via a directive.
-///
-/// These flags are discovered through the `flags` field of the `Formatter`
-/// structure. The flag in that structure is a union of these flags into a
-/// `uint` where each flag's discriminant is the corresponding bit.
-#[derive(Copy)]
-pub enum Flag {
-    /// A flag which enables number formatting to always print the sign of a
-    /// number.
-    FlagSignPlus,
-    /// Currently not a used flag
-    FlagSignMinus,
-    /// Indicates that the "alternate formatting" for a type should be used.
-    ///
-    /// The meaning of this flag is type-specific.
-    FlagAlternate,
-    /// Indicates that padding should be done with a `0` character as well as
-    /// being aware of the sign to be printed.
-    FlagSignAwareZeroPad,
+    #[stable]
+    Next,
+    #[stable]
+    At(usize)
 }

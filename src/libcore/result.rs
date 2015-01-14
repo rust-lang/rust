@@ -233,7 +233,7 @@
 use self::Result::{Ok, Err};
 
 use clone::Clone;
-use fmt::Show;
+use fmt;
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
 use ops::{FnMut, FnOnce};
 use option::Option::{self, None, Some};
@@ -718,7 +718,7 @@ impl<T, E> Result<T, E> {
 }
 
 #[stable]
-impl<T, E: Show> Result<T, E> {
+impl<T, E: fmt::String> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     ///
     /// # Panics
@@ -743,13 +743,13 @@ impl<T, E: Show> Result<T, E> {
         match self {
             Ok(t) => t,
             Err(e) =>
-                panic!("called `Result::unwrap()` on an `Err` value: {:?}", e)
+                panic!("called `Result::unwrap()` on an `Err` value: {}", e)
         }
     }
 }
 
 #[stable]
-impl<T: Show, E> Result<T, E> {
+impl<T: fmt::String, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Err`.
     ///
     /// # Panics
@@ -773,7 +773,7 @@ impl<T: Show, E> Result<T, E> {
     pub fn unwrap_err(self) -> E {
         match self {
             Ok(t) =>
-                panic!("called `Result::unwrap_err()` on an `Ok` value: {:?}", t),
+                panic!("called `Result::unwrap_err()` on an `Ok` value: {}", t),
             Err(e) => e
         }
     }

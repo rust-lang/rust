@@ -340,6 +340,7 @@ impl IoError {
     }
 }
 
+#[stable]
 impl fmt::String for IoError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -1827,12 +1828,14 @@ impl Default for FilePermission {
     fn default() -> FilePermission { FilePermission::empty() }
 }
 
+#[stable]
 impl fmt::Show for FilePermission {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(self, f)
     }
 }
 
+#[stable]
 impl fmt::String for FilePermission {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:04o}", self.bits)

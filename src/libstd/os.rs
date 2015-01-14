@@ -900,6 +900,7 @@ pub enum MapError {
     ErrMapViewOfFile(uint)
 }
 
+#[stable]
 impl fmt::Show for MapError {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let str = match *self {

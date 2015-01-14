@@ -37,6 +37,7 @@ pub use self::EbmlEncoderTag::*;
 pub use self::Error::*;
 
 use std::str;
+use std::fmt;
 
 pub mod io;
 
@@ -113,6 +114,12 @@ pub enum Error {
     ApplicationError(String)
 }
 // --------------------------------------
+
+impl fmt::String for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Show::fmt(self, f)
+    }
+}
 
 pub mod reader {
     use std::char;

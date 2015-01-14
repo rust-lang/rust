@@ -1457,17 +1457,10 @@ impl<T> Default for Vec<T> {
     }
 }
 
-#[unstable = "waiting on Show stability"]
+#[stable]
 impl<T: fmt::Show> fmt::Show for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Show::fmt(self.as_slice(), f)
-    }
-}
-
-impl<'a> fmt::Writer for Vec<u8> {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.push_all(s.as_bytes());
-        Ok(())
     }
 }
 

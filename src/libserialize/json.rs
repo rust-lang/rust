@@ -617,13 +617,12 @@ impl<'a> ::Encoder for Encoder<'a> {
         if idx != 0 { try!(write!(self.writer, ",")) }
         // ref #12967, make sure to wrap a key in double quotes,
         // in the event that its of a type that omits them (eg numbers)
-        let mut buf = Vec::new();
+        let mut out = String::new();
         // FIXME(14302) remove the transmute and unsafe block.
         unsafe {
-            let mut check_encoder = Encoder::new(&mut buf);
+            let mut check_encoder = Encoder::new(&mut out);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(&buf[]).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -888,13 +887,12 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         try!(spaces(self.writer, self.curr_indent));
         // ref #12967, make sure to wrap a key in double quotes,
         // in the event that its of a type that omits them (eg numbers)
-        let mut buf = Vec::new();
+        let mut out = String::new();
         // FIXME(14302) remove the transmute and unsafe block.
         unsafe {
-            let mut check_encoder = PrettyEncoder::new(&mut buf);
+            let mut check_encoder = PrettyEncoder::new(&mut out);
             try!(f(transmute(&mut check_encoder)));
         }
-        let out = str::from_utf8(&buf[]).unwrap();
         let needs_wrapping = out.char_at(0) != '"' && out.char_at_reverse(out.len()) != '"';
         if needs_wrapping { try!(write!(self.writer, "\"")); }
         try!(f(self));
@@ -2491,6 +2489,18 @@ impl<'a, T: Encodable> fmt::String for AsPrettyJson<'a, T> {
 impl FromStr for Json {
     fn from_str(s: &str) -> Option<Json> {
         from_str(s).ok()
+    }
+}
+
+impl fmt::String for DecoderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Show::fmt(self, f)
+    }
+}
+
+impl fmt::String for ParserError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Show::fmt(self, f)
     }
 }
 

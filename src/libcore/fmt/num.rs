@@ -154,12 +154,14 @@ pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
 
 macro_rules! radix_fmt {
     ($T:ty as $U:ty, $fmt:ident, $S:expr) => {
+        #[stable]
         impl fmt::Show for RadixFmt<$T, Radix> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                try!(fmt::String::fmt(self, f));
+                try!(write!(f, "{}", *self));
                 f.write_str($S)
             }
         }
+        #[stable]
         impl fmt::String for RadixFmt<$T, Radix> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 match *self { RadixFmt(ref x, radix) => radix.$fmt(*x as $U, f) }
@@ -169,6 +171,7 @@ macro_rules! radix_fmt {
 }
 macro_rules! int_base {
     ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
+        #[stable]
         impl fmt::$Trait for $T {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 $Radix.fmt_int(*self as $U, f)
@@ -179,9 +182,10 @@ macro_rules! int_base {
 
 macro_rules! show {
     ($T:ident with $S:expr) => {
+        #[stable]
         impl fmt::Show for $T {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                try!(fmt::String::fmt(self, f));
+                try!(write!(f, "{}", self));
                 f.write_str($S)
             }
         }

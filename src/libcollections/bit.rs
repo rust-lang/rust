@@ -1727,6 +1727,7 @@ impl BitvSet {
     }
 }
 
+#[stable]
 impl fmt::Show for BitvSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "BitvSet {{"));
