@@ -195,6 +195,7 @@ h5 a:hover {text-decoration: none;}
 
 pre, code {
     font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", monospace;
+    word-wrap: break-word;
 }
 pre {
     border-left: 2px solid #eee;
@@ -204,7 +205,6 @@ pre {
     margin: 20px 0;
     font-size: 13px;
     word-break: break-all;
-    word-wrap: break-word;
 }
 code {
     padding: 0 2px;
@@ -315,6 +315,8 @@ hr {
 table {
     border-collapse: collapse;
     border-spacing: 0;
+    overflow-x: auto;
+    display: block;
 }
 
 table tr.odd {
