@@ -21,6 +21,8 @@ use prelude::v1::*;
 use collections::HashMap;
 use ffi::CString;
 use fmt;
+// NOTE(stage0) remove import after a snapshot
+#[cfg(stage0)]
 use hash::Hash;
 use io::pipe::{PipeStream, PipePair};
 use io::{IoResult, IoError};

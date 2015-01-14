@@ -18,6 +18,8 @@ use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
 use core::fmt::Show;
 use core::fmt;
+// NOTE(stage0) remove import after a snapshot
+#[cfg(stage0)]
 use core::hash::Hash;
 use core::iter::{Peekable, Map, FromIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub};
