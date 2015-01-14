@@ -13,7 +13,7 @@
 use libc::c_uint;
 use std::cmp;
 use llvm;
-use llvm::{Integer, Pointer, Float, Double, Struct, Array};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
 use llvm::{StructRetAttribute, ZExtAttribute};
 use trans::cabi::{ArgType, FnType};
 use trans::context::CrateContext;
@@ -50,7 +50,12 @@ fn ty_align(ty: Type) -> uint {
             let elt = ty.element_type();
             ty_align(elt)
         }
-        _ => panic!("ty_size: unhandled type")
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            ty_align(elt) * len
+        }
+        _ => panic!("ty_align: unhandled type")
     }
 }
 
@@ -76,6 +81,12 @@ fn ty_size(ty: Type) -> uint {
         }
         Array => {
             let len = ty.array_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt);
+            len * eltsz
+        }
+        Vector => {
+            let len = ty.vector_length();
             let elt = ty.element_type();
             let eltsz = ty_size(elt);
             len * eltsz

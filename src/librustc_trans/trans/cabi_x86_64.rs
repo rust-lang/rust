@@ -16,7 +16,7 @@ use self::RegClass::*;
 
 use llvm;
 use llvm::{Integer, Pointer, Float, Double};
-use llvm::{Struct, Array, Attribute};
+use llvm::{Struct, Array, Attribute, Vector};
 use llvm::{StructRetAttribute, ByValAttribute, ZExtAttribute};
 use trans::cabi::{ArgType, FnType};
 use trans::context::CrateContext;
@@ -114,7 +114,12 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                 let elt = ty.element_type();
                 ty_align(elt)
             }
-            _ => panic!("ty_size: unhandled type")
+            Vector => {
+                let len = ty.vector_length();
+                let elt = ty.element_type();
+                ty_align(elt) * len
+            }
+            _ => panic!("ty_align: unhandled type")
         }
     }
 
@@ -143,6 +148,13 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                 let eltsz = ty_size(elt);
                 len * eltsz
             }
+            Vector => {
+                let len = ty.vector_length();
+                let elt = ty.element_type();
+                let eltsz = ty_size(elt);
+                len * eltsz
+            }
+
             _ => panic!("ty_size: unhandled type")
         }
     }
@@ -174,6 +186,12 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
             (_,           X87) |
             (_,           X87Up) |
             (_,           ComplexX87) => Memory,
+
+            (SSEFv,       SSEUp) |
+            (SSEFs,       SSEUp) |
+            (SSEDv,       SSEUp) |
+            (SSEDs,       SSEUp) |
+            (SSEInt(_),   SSEUp) => return,
 
             (_,           _) => newv
         };
@@ -240,6 +258,27 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                     i += 1u;
                 }
             }
+            Vector => {
+                let len = ty.vector_length();
+                let elt = ty.element_type();
+                let eltsz = ty_size(elt);
+                let mut reg = match elt.kind() {
+                    Integer => SSEInt,
+                    Float => SSEFv,
+                    Double => SSEDv,
+                    _ => panic!("classify: unhandled vector element type")
+                };
+
+                let mut i = 0u;
+                while i < len {
+                    unify(cls, ix + (off + i * eltsz) / 8, reg);
+
+                    // everything after the first one is the upper
+                    // half of a register.
+                    reg = SSEUp;
+                    i += 1u;
+                }
+            }
             _ => panic!("classify: unhandled type")
         }
     }
@@ -248,7 +287,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
         let mut i = 0u;
         let ty_kind = ty.kind();
         let e = cls.len();
-        if cls.len() > 2u && (ty_kind == Struct || ty_kind == Array) {
+        if cls.len() > 2u && (ty_kind == Struct || ty_kind == Array || ty_kind == Vector) {
             if cls[i].is_sse() {
                 i += 1u;
                 while i < e {
@@ -320,9 +359,19 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
             Int => {
                 tys.push(Type::i64(ccx));
             }
-            SSEFv => {
+            SSEFv | SSEDv | SSEInt => {
+                let (elts_per_word, elt_ty) = match cls[i] {
+                    SSEFv => (2, Type::f32(ccx)),
+                    SSEDv => (1, Type::f64(ccx)),
+                    // FIXME: need to handle the element types, since
+                    // C doesn't distinguish between the contained
+                    // types of the vector at all; normalise to u8,
+                    // maybe?
+                    SSEInt => panic!("llregtype: SSEInt not yet supported"),
+                    _ => unreachable!(),
+                };
                 let vec_len = llvec_len(&cls[(i + 1u)..]);
-                let vec_ty = Type::vector(&Type::f32(ccx), (vec_len * 2u) as u64);
+                let vec_ty = Type::vector(&elt_ty, (vec_len * elts_per_word) as u64);
                 tys.push(vec_ty);
                 i += vec_len;
                 continue;
@@ -337,7 +386,12 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
         }
         i += 1u;
     }
-    return Type::struct_(ccx, tys.as_slice(), false);
+    if tys.len() == 1 && tys[0].kind() == Vector {
+        // if the type contains only a vector, pass it as that vector.
+        tys[0]
+    } else {
+        Type::struct_(ccx, tys.as_slice(), false)
+    }
 }
 
 pub fn compute_abi_info(ccx: &CrateContext,
