@@ -116,11 +116,11 @@ pub fn compress(src: &[u8]) -> Vec<u8> {
         let psrc = src.as_ptr();
 
         let mut dstlen = snappy_max_compressed_length(srclen);
-        let mut dst = Vec::with_capacity(dstlen as uint);
+        let mut dst = Vec::with_capacity(dstlen as usize);
         let pdst = dst.as_mut_ptr();
 
         snappy_compress(psrc, srclen, pdst, &mut dstlen);
-        dst.set_len(dstlen as uint);
+        dst.set_len(dstlen as usize);
         dst
     }
 }
@@ -148,11 +148,11 @@ pub fn uncompress(src: &[u8]) -> Option<Vec<u8>> {
         let mut dstlen: size_t = 0;
         snappy_uncompressed_length(psrc, srclen, &mut dstlen);
 
-        let mut dst = Vec::with_capacity(dstlen as uint);
+        let mut dst = Vec::with_capacity(dstlen as usize);
         let pdst = dst.as_mut_ptr();
 
         if snappy_uncompress(psrc, srclen, pdst, &mut dstlen) == 0 {
-            dst.set_len(dstlen as uint);
+            dst.set_len(dstlen as usize);
             Some(dst)
         } else {
             None // SNAPPY_INVALID_INPUT
@@ -420,7 +420,7 @@ Unsafe functions, on the other hand, advertise it to the world. An unsafe functi
 this:
 
 ~~~~
-unsafe fn kaboom(ptr: *const int) -> int { *ptr }
+unsafe fn kaboom(ptr: *const isize) -> isize { *ptr }
 ~~~~
 
 This function can only be called from an `unsafe` block or another `unsafe` function.
@@ -441,7 +441,7 @@ extern {
 
 fn main() {
     println!("You have readline version {} installed.",
-             rl_readline_version as int);
+             rl_readline_version as isize);
 }
 ~~~
 

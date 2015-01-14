@@ -11,8 +11,8 @@ which both pattern-match on their input and both return early in one case,
 doing nothing otherwise:
 
 ~~~~
-# enum T { SpecialA(uint), SpecialB(uint) }
-# fn f() -> uint {
+# enum T { SpecialA(u32), SpecialB(u32) }
+# fn f() -> u32 {
 # let input_1 = T::SpecialA(0);
 # let input_2 = T::SpecialA(0);
 match input_1 {
@@ -24,7 +24,7 @@ match input_2 {
     T::SpecialB(x) => { return x; }
     _ => {}
 }
-# return 0u;
+# return 0u32;
 # }
 ~~~~
 
@@ -37,8 +37,8 @@ lightweight custom syntax extensions, themselves defined using the
 the pattern in the above code:
 
 ~~~~
-# enum T { SpecialA(uint), SpecialB(uint) }
-# fn f() -> uint {
+# enum T { SpecialA(u32), SpecialB(u32) }
+# fn f() -> u32 {
 # let input_1 = T::SpecialA(0);
 # let input_2 = T::SpecialA(0);
 macro_rules! early_return {
@@ -86,7 +86,7 @@ To take a fragment of Rust code as an argument, write `$` followed by a name
   `foo`.)
 * `expr` (an expression. Examples: `2 + 2`; `if true then { 1 } else { 2 }`;
   `f(42)`.)
-* `ty` (a type. Examples: `int`, `Vec<(char, String)>`, `&T`.)
+* `ty` (a type. Examples: `isize`, `Vec<(char, String)>`, `&T`.)
 * `pat` (a pattern, usually appearing in a `match` or on the left-hand side of
   a declaration. Examples: `Some(t)`; `(17, 'a')`; `_`.)
 * `block` (a sequence of actions. Example: `{ log(error, "hi"); return 12; }`)
@@ -156,8 +156,8 @@ separator token (a comma-separated list could be written `$(...),*`), and `+`
 instead of `*` to mean "at least one".
 
 ~~~~
-# enum T { SpecialA(uint),SpecialB(uint),SpecialC(uint),SpecialD(uint)}
-# fn f() -> uint {
+# enum T { SpecialA(u32),SpecialB(u32),SpecialC(u32),SpecialD(u32)}
+# fn f() -> u32 {
 # let input_1 = T::SpecialA(0);
 # let input_2 = T::SpecialA(0);
 macro_rules! early_return {
@@ -217,10 +217,10 @@ solves the problem.
 Now consider code like the following:
 
 ~~~~
-# enum T1 { Good1(T2, uint), Bad1}
+# enum T1 { Good1(T2, u32), Bad1}
 # struct T2 { body: T3 }
-# enum T3 { Good2(uint), Bad2}
-# fn f(x: T1) -> uint {
+# enum T3 { Good2(u32), Bad2}
+# fn f(x: T1) -> u32 {
 match x {
     T1::Good1(g1, val) => {
         match g1.body {
@@ -264,10 +264,10 @@ macro_rules! biased_match {
     )
 }
 
-# enum T1 { Good1(T2, uint), Bad1}
+# enum T1 { Good1(T2, u32), Bad1}
 # struct T2 { body: T3 }
-# enum T3 { Good2(uint), Bad2}
-# fn f(x: T1) -> uint {
+# enum T3 { Good2(u32), Bad2}
+# fn f(x: T1) -> u32 {
 biased_match!((x)       -> (T1::Good1(g1, val)) else { return 0 };
               binds g1, val );
 biased_match!((g1.body) -> (T3::Good2(result) )
@@ -374,10 +374,10 @@ macro_rules! biased_match {
 }
 
 
-# enum T1 { Good1(T2, uint), Bad1}
+# enum T1 { Good1(T2, u32), Bad1}
 # struct T2 { body: T3 }
-# enum T3 { Good2(uint), Bad2}
-# fn f(x: T1) -> uint {
+# enum T3 { Good2(u32), Bad2}
+# fn f(x: T1) -> u32 {
 biased_match!(
     (x)       -> (T1::Good1(g1, val)) else { return 0 };
     (g1.body) -> (T3::Good2(result) ) else { panic!("Didn't get Good2") };
@@ -519,7 +519,7 @@ A further difficulty occurs when a macro is used in multiple crates.  Say that
 `mylib` defines
 
 ```rust
-pub fn increment(x: uint) -> uint {
+pub fn increment(x: u32) -> u32 {
     x + 1
 }
 
