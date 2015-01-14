@@ -70,7 +70,7 @@ use util::nodemap::{FnvHashMap};
 use arena::TypedArena;
 use std::borrow::{BorrowFrom, Cow};
 use std::cell::{Cell, RefCell};
-use std::cmp::{self, Ordering};
+use std::cmp;
 use std::fmt::{self, Show};
 use std::hash::{Hash, Writer, SipHasher, Hasher};
 use std::mem;
@@ -5094,25 +5094,6 @@ pub fn associated_type_parameter_index(cx: &ctxt,
         }
     }
     cx.sess.bug("couldn't find associated type parameter index")
-}
-
-#[derive(Copy, PartialEq, Eq)]
-pub struct AssociatedTypeInfo {
-    pub def_id: ast::DefId,
-    pub index: uint,
-    pub name: ast::Name,
-}
-
-impl PartialOrd for AssociatedTypeInfo {
-    fn partial_cmp(&self, other: &AssociatedTypeInfo) -> Option<Ordering> {
-        Some(self.index.cmp(&other.index))
-    }
-}
-
-impl Ord for AssociatedTypeInfo {
-    fn cmp(&self, other: &AssociatedTypeInfo) -> Ordering {
-        self.index.cmp(&other.index)
-    }
 }
 
 pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
