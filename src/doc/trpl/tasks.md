@@ -53,7 +53,7 @@ associated state into an entirely different thread for execution.
 
 ```{rust,ignore}
 # use std::thread::spawn;
-# fn generate_thread_number() -> int { 0 }
+# fn generate_thread_number() -> u32 { 0 }
 // Generate some state locally
 let child_thread_number = generate_thread_number();
 
@@ -80,7 +80,7 @@ example of calculating two results concurrently:
 ```{rust,ignore}
 # use std::thread::spawn;
 
-let (tx, rx): (Sender<int>, Receiver<int>) = channel();
+let (tx, rx): (Sender<i32>, Receiver<i32>) = channel();
 
 spawn(move || {
     let result = some_expensive_computation();
@@ -89,7 +89,7 @@ spawn(move || {
 
 some_other_expensive_computation();
 let result = rx.recv();
-# fn some_expensive_computation() -> int { 42 }
+# fn some_expensive_computation() -> i32 { 42 }
 # fn some_other_expensive_computation() {}
 ```
 
@@ -99,7 +99,7 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 into its component parts).
 
 ```{rust,ignore}
-let (tx, rx): (Sender<int>, Receiver<int>) = channel();
+let (tx, rx): (Sender<i32>, Receiver<i32>) = channel();
 ```
 
 The child thread will use the sender to send data to the parent thread, which will
@@ -108,7 +108,7 @@ thread.
 
 ```{rust,ignore}
 # use std::thread::spawn;
-# fn some_expensive_computation() -> int { 42 }
+# fn some_expensive_computation() -> i32 { 42 }
 # let (tx, rx) = channel();
 spawn(move || {
     let result = some_expensive_computation();
@@ -127,7 +127,7 @@ for the child's result to arrive on the receiver:
 
 ```{rust,ignore}
 # fn some_other_expensive_computation() {}
-# let (tx, rx) = channel::<int>();
+# let (tx, rx) = channel::<i32>();
 # tx.send(0);
 some_other_expensive_computation();
 let result = rx.recv();
@@ -140,7 +140,7 @@ single `Receiver` value.  What if our example needed to compute multiple
 results across a number of threads? The following program is ill-typed:
 
 ```{rust,ignore}
-# fn some_expensive_computation() -> int { 42 }
+# fn some_expensive_computation() -> i32 { 42 }
 let (tx, rx) = channel();
 
 spawn(move || {
@@ -168,7 +168,7 @@ for init_val in range(0u, 3) {
 }
 
 let result = rx.recv() + rx.recv() + rx.recv();
-# fn some_expensive_computation(_i: uint) -> int { 42 }
+# fn some_expensive_computation(_i: u32) -> i32 { 42 }
 ```
 
 Cloning a `Sender` produces a new handle to the same channel, allowing multiple
@@ -195,7 +195,7 @@ let rxs = Vec::from_fn(3, |init_val| {
 
 // Wait on each port, accumulating the results
 let result = rxs.iter().fold(0, |accum, rx| accum + rx.recv() );
-# fn some_expensive_computation(_i: uint) -> int { 42 }
+# fn some_expensive_computation(_i: u32) -> i32 { 42 }
 ```
 
 ## Backgrounding computations: Futures
@@ -212,7 +212,7 @@ use std::sync::Future;
 # fn main() {
 # fn make_a_sandwich() {};
 fn fib(n: u64) -> u64 {
-    // lengthy computation returning an uint
+    // lengthy computation returning an u32
     12586269025
 }
 
@@ -237,7 +237,7 @@ computations. The workload will be distributed on the available cores.
 # #![allow(deprecated)]
 # use std::num::Float;
 # use std::sync::Future;
-fn partial_sum(start: uint) -> f64 {
+fn partial_sum(start: u32) -> f64 {
     let mut local_sum = 0f64;
     for num in range(start*100000, (start+1)*100000) {
         local_sum += (num as f64 + 1.0).powf(-2.0);
@@ -277,7 +277,7 @@ use std::num::Float;
 use std::rand;
 use std::sync::Arc;
 
-fn pnorm(nums: &[f64], p: uint) -> f64 {
+fn pnorm(nums: &[f64], p: u32) -> f64 {
     nums.iter().fold(0.0, |a, b| a + b.powf(p as f64)).powf(1.0 / (p as f64))
 }
 
@@ -285,7 +285,7 @@ fn main() {
     let numbers = Vec::from_fn(1000000, |_| rand::random::<f64>());
     let numbers_arc = Arc::new(numbers);
 
-    for num in range(1u, 10) {
+    for num in range(1u32, 10) {
         let thread_numbers = numbers_arc.clone();
 
         spawn(move || {
@@ -316,11 +316,11 @@ if it were local.
 ```{rust,ignore}
 # use std::rand;
 # use std::sync::Arc;
-# fn pnorm(nums: &[f64], p: uint) -> f64 { 4.0 }
+# fn pnorm(nums: &[f64], p: u32) -> f64 { 4.0 }
 # fn main() {
 # let numbers=Vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc = Arc::new(numbers);
-# let num = 4;
+# let num = 4u32;
 let thread_numbers = numbers_arc.clone();
 spawn(move || {
     // Capture thread_numbers and use it as if it was the underlying vector
@@ -345,16 +345,16 @@ each other if they panic. The simplest way of handling a panic is with the
 `try` function, which is similar to `spawn`, but immediately blocks and waits
 for the child thread to finish. `try` returns a value of type
 `Result<T, Box<Any + Send>>`. `Result` is an `enum` type with two variants:
-`Ok` and `Err`. In this case, because the type arguments to `Result` are `int`
+`Ok` and `Err`. In this case, because the type arguments to `Result` are `i32`
 and `()`, callers can pattern-match on a result to check whether it's an `Ok`
-result with an `int` field (representing a successful result) or an `Err` result
+result with an `i32` field (representing a successful result) or an `Err` result
 (representing termination with an error).
 
 ```{rust,ignore}
 # use std::thread::Thread;
 # fn some_condition() -> bool { false }
-# fn calculate_result() -> int { 0 }
-let result: Result<int, Box<std::any::Any + Send>> = Thread::spawn(move || {
+# fn calculate_result() -> i32 { 0 }
+let result: Result<i32, Box<std::any::Any + Send>> = Thread::spawn(move || {
     if some_condition() {
         calculate_result()
     } else {
