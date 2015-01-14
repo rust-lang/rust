@@ -35,6 +35,7 @@ use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
 use slice::{self, SliceExt};
 use usize;
+use clone::Clone;
 
 pub use self::pattern::{Pattern, Matcher, ReverseMatcher, DoubleEndedMatcher};
 
@@ -933,41 +934,48 @@ impl Searcher {
 
 #[derive(Clone)]
 #[unstable(feature = "core", reason = "type may be removed")]
-struct OldMatchIndices<'a> {
+struct OldMatchIndices<'a, 'b> {
     // constants
     haystack: &'a str,
-    needle: &'a str,
+    needle: &'b str,
     searcher: Searcher
 }
 
 /// An iterator over the start and end indices of the matches of a
 /// substring within a larger string
-#[derive(Clone)]
 #[unstable(feature = "core", reason = "type may be removed")]
-pub struct MatchIndices<'a>(OldMatchIndices<'a>);
+pub struct MatchIndices<'a, P: Pattern<'a>>(P::Matcher);
 
 #[stable]
-impl<'a> Iterator for MatchIndices<'a> {
+impl<'a, P: Pattern<'a>> Iterator for MatchIndices<'a, P> {
     type Item = (uint, uint);
 
     #[inline]
     fn next(&mut self) -> Option<(uint, uint)> {
-        self.0.next()
+        Matcher::next(&mut self.0)
     }
 }
 
 /// An iterator over the substrings of a string separated by a given
 /// search string
-#[derive(Clone)]
 #[unstable(feature = "core", reason = "type may be removed")]
-pub struct SplitStr<'a> {
-    it: OldMatchIndices<'a>,
+pub struct SplitStr<'a, 'b> {
+    it: pattern::StrMatcher<'a, 'b>,
     last_end: uint,
     finished: bool
 }
 
+impl<'a, 'b> Clone for SplitStr<'a, 'b> {
+    fn clone(&self) -> Self {
+        SplitStr {
+            it: Clone::clone(&self.it),
+            ..*self
+        }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for OldMatchIndices<'a> {
+impl<'a, 'b> Iterator for OldMatchIndices<'a, 'b> {
     type Item = (uint, uint);
 
     #[inline]
@@ -998,22 +1006,22 @@ impl<'a> Iterator for OldMatchIndices<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for SplitStr<'a> {
+impl<'a, 'b> Iterator for SplitStr<'a, 'b> {
     type Item = &'a str;
 
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         if self.finished { return None; }
-
-        match self.it.next() {
+        let haystack = Matcher::haystack(&self.it);
+        match Matcher::next(&mut self.it) {
             Some((from, to)) => {
-                let ret = Some(&self.it.haystack[self.last_end .. from]);
+                let ret = Some(&haystack[self.last_end..from]);
                 self.last_end = to;
                 ret
             }
             None => {
                 self.finished = true;
-                Some(&self.it.haystack[self.last_end .. self.it.haystack.len()])
+                Some(&haystack[self.last_end..])
             }
         }
     }
@@ -1375,8 +1383,8 @@ pub trait StrExt {
     fn splitn<'a, P: CharEq>(&'a self, count: uint, pat: P) -> SplitN<'a, P>;
     fn split_terminator<'a, P: CharEq>(&'a self, pat: P) -> SplitTerminator<'a, P>;
     fn rsplitn<'a, P: CharEq>(&'a self, count: uint, pat: P) -> RSplitN<'a, P>;
-    fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a>;
-    fn split_str<'a>(&'a self, pat: &'a str) -> SplitStr<'a>;
+    fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
+    fn split_str<'a, 'b>(&'a self, pat: &'b str) -> SplitStr<'a, 'b>;
     fn lines<'a>(&'a self) -> Lines<'a>;
     fn lines_any<'a>(&'a self) -> LinesAny<'a>;
     fn char_len(&self) -> uint;
@@ -1478,16 +1486,12 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a> {
-        MatchIndices(OldMatchIndices {
-            haystack: self,
-            needle: sep,
-            searcher: Searcher::new(self.as_bytes(), sep.as_bytes())
-        })
+    fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
+        MatchIndices(pat.into_matcher(self))
     }
 
     #[inline]
-    fn split_str<'a>(&'a self, sep: &'a str) -> SplitStr<'a> {
+    fn split_str<'a, 'b>(&'a self, sep: &'b str) -> SplitStr<'a, 'b> {
         SplitStr {
             it: self.match_indices(sep).0,
             last_end: 0,
