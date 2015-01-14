@@ -19,13 +19,11 @@ impl TestType {}
 trait TestTrait {}
 
 impl !Send for TestType {}
-impl !TestTrait for TestType {}
 
 struct TestType2<T>;
 
 impl<T> TestType2<T> {}
 
 impl<T> !Send for TestType2<T> {}
-impl<T> !TestTrait for TestType2<T> {}
 
 fn main() {}
