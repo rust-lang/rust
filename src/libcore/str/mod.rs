@@ -931,15 +931,29 @@ impl Searcher {
     }
 }
 
-/// An iterator over the start and end indices of the matches of a
-/// substring within a larger string
 #[derive(Clone)]
 #[unstable(feature = "core", reason = "type may be removed")]
-pub struct MatchIndices<'a> {
+struct OldMatchIndices<'a> {
     // constants
     haystack: &'a str,
     needle: &'a str,
     searcher: Searcher
+}
+
+/// An iterator over the start and end indices of the matches of a
+/// substring within a larger string
+#[derive(Clone)]
+#[unstable(feature = "core", reason = "type may be removed")]
+pub struct MatchIndices<'a>(OldMatchIndices<'a>);
+
+#[stable]
+impl<'a> Iterator for MatchIndices<'a> {
+    type Item = (uint, uint);
+
+    #[inline]
+    fn next(&mut self) -> Option<(uint, uint)> {
+        self.0.next()
+    }
 }
 
 /// An iterator over the substrings of a string separated by a given
@@ -947,13 +961,13 @@ pub struct MatchIndices<'a> {
 #[derive(Clone)]
 #[unstable(feature = "core", reason = "type may be removed")]
 pub struct SplitStr<'a> {
-    it: MatchIndices<'a>,
+    it: OldMatchIndices<'a>,
     last_end: uint,
     finished: bool
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for MatchIndices<'a> {
+impl<'a> Iterator for OldMatchIndices<'a> {
     type Item = (uint, uint);
 
     #[inline]
@@ -1465,17 +1479,17 @@ impl StrExt for str {
 
     #[inline]
     fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a> {
-        MatchIndices {
+        MatchIndices(OldMatchIndices {
             haystack: self,
             needle: sep,
             searcher: Searcher::new(self.as_bytes(), sep.as_bytes())
-        }
+        })
     }
 
     #[inline]
     fn split_str<'a>(&'a self, sep: &'a str) -> SplitStr<'a> {
         SplitStr {
-            it: self.match_indices(sep),
+            it: self.match_indices(sep).0,
             last_end: 0,
             finished: false
         }

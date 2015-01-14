@@ -84,14 +84,14 @@ impl<'a, C: CharEq> DoubleEndedMatcher<'a> for CharEqMatcher<'a, C> {}
 
 // Impl for &str
 
-struct StrMatcher<'a>(super::MatchIndices<'a>);
+struct StrMatcher<'a>(super::OldMatchIndices<'a>);
 
 impl<'a> Pattern<'a> for &'a str {
     type Matcher = StrMatcher<'a>;
 
     #[inline]
     fn into_matcher(self, haystack: &'a str) -> StrMatcher<'a> {
-        let mi = super::MatchIndices {
+        let mi = super::OldMatchIndices {
             haystack: haystack,
             needle: self,
             searcher: super::Searcher::new(haystack.as_bytes(), self.as_bytes())
