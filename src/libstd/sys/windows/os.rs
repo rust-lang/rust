@@ -36,7 +36,7 @@ const BUF_BYTES : uint = 2048u;
 pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     match v.iter().position(|c| *c == 0) {
         // don't include the 0
-        Some(i) => &v[0..i],
+        Some(i) => &v[..i],
         None => v
     }
 }

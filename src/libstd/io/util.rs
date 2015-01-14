@@ -60,7 +60,7 @@ impl<R: Reader> Reader for LimitReader<R> {
 impl<R: Buffer> Buffer for LimitReader<R> {
     fn fill_buf<'a>(&'a mut self) -> io::IoResult<&'a [u8]> {
         let amt = try!(self.inner.fill_buf());
-        let buf = &amt[0..cmp::min(amt.len(), self.limit)];
+        let buf = &amt[..cmp::min(amt.len(), self.limit)];
         if buf.len() == 0 {
             Err(io::standard_error(io::EndOfFile))
         } else {
@@ -223,7 +223,7 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
     fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
         self.reader.read(buf).and_then(|len| {
-            self.writer.write(&mut buf[0..len]).map(|()| len)
+            self.writer.write(&mut buf[..len]).map(|()| len)
         })
     }
 }
@@ -237,7 +237,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
             Err(ref e) if e.kind == io::EndOfFile => return Ok(()),
             Err(e) => return Err(e),
         };
-        try!(w.write(&buf[0..len]));
+        try!(w.write(&buf[..len]));
     }
 }
 

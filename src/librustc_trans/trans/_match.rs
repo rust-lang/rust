@@ -471,7 +471,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Collect all of the matches that can match against anything.
     enter_match(bcx, dm, m, col, val, |pats| {
         if pat_is_binding_or_wild(dm, &*pats[col]) {
-            let mut r = pats[0..col].to_vec();
+            let mut r = pats[..col].to_vec();
             r.push_all(&pats[(col + 1)..]);
             Some(r)
         } else {

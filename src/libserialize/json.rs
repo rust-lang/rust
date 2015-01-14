@@ -401,7 +401,7 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> fmt::Result {
 fn escape_char(writer: &mut fmt::Writer, v: char) -> fmt::Result {
     let mut buf = [0; 4];
     let n = v.encode_utf8(&mut buf).unwrap();
-    let buf = unsafe { str::from_utf8_unchecked(&buf[0..n]) };
+    let buf = unsafe { str::from_utf8_unchecked(&buf[..n]) };
     escape_str(writer, buf)
 }
 
@@ -414,7 +414,7 @@ fn spaces(wr: &mut fmt::Writer, mut n: uint) -> fmt::Result {
     }
 
     if n > 0 {
-        wr.write_str(&BUF[0..n])
+        wr.write_str(&BUF[..n])
     } else {
         Ok(())
     }

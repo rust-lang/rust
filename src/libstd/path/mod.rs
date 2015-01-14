@@ -352,7 +352,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                 match name.rposition_elem(&dot) {
                     None | Some(0) => name,
                     Some(1) if name == b".." => name,
-                    Some(pos) => &name[0..pos]
+                    Some(pos) => &name[..pos]
                 }
             })
         }
@@ -475,7 +475,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
             let extlen = extension.container_as_bytes().len();
             match (name.rposition_elem(&dot), extlen) {
                 (None, 0) | (Some(0), 0) => None,
-                (Some(idx), 0) => Some(name[0..idx].to_vec()),
+                (Some(idx), 0) => Some(name[..idx].to_vec()),
                 (idx, extlen) => {
                     let idx = match idx {
                         None | Some(0) => name.len(),
@@ -484,7 +484,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
                     let mut v;
                     v = Vec::with_capacity(idx + extlen + 1);
-                    v.push_all(&name[0..idx]);
+                    v.push_all(&name[..idx]);
                     v.push(dot);
                     v.push_all(extension.container_as_bytes());
                     Some(v)

@@ -449,7 +449,7 @@ impl<'a> Formatter<'a> {
             for c in sign.into_iter() {
                 let mut b = [0; 4];
                 let n = c.encode_utf8(&mut b).unwrap_or(0);
-                let b = unsafe { str::from_utf8_unchecked(&b[0..n]) };
+                let b = unsafe { str::from_utf8_unchecked(&b[..n]) };
                 try!(f.buf.write_str(b));
             }
             if prefixed { f.buf.write_str(prefix) }
@@ -692,7 +692,7 @@ impl String for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8; 4];
         let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
-        let s: &str = unsafe { mem::transmute(&utf8[0..amt]) };
+        let s: &str = unsafe { mem::transmute(&utf8[..amt]) };
         String::fmt(s, f)
     }
 }

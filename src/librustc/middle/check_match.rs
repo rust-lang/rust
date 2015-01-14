@@ -926,7 +926,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
     };
     head.map(|mut head| {
-        head.push_all(&r[0..col]);
+        head.push_all(&r[..col]);
         head.push_all(&r[(col + 1)..]);
         head
     })

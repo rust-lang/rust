@@ -122,7 +122,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
         let nread = {
             let available = try!(self.fill_buf());
             let nread = cmp::min(available.len(), buf.len());
-            slice::bytes::copy_memory(buf, &available[0..nread]);
+            slice::bytes::copy_memory(buf, &available[..nread]);
             nread
         };
         self.pos += nread;
@@ -183,7 +183,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            let ret = self.inner.as_mut().unwrap().write(&self.buf[0..self.pos]);
+            let ret = self.inner.as_mut().unwrap().write(&self.buf[..self.pos]);
             self.pos = 0;
             ret
         } else {
@@ -282,7 +282,7 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match buf.iter().rposition(|&b| b == b'\n') {
             Some(i) => {
-                try!(self.inner.write(&buf[0..(i + 1)]));
+                try!(self.inner.write(&buf[..(i + 1)]));
                 try!(self.inner.flush());
                 try!(self.inner.write(&buf[(i + 1)..]));
                 Ok(())

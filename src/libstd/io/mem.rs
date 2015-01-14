@@ -204,7 +204,7 @@ impl<'a> Reader for &'a [u8] {
 
         let write_len = min(buf.len(), self.len());
         {
-            let input = &self[0..write_len];
+            let input = &self[..write_len];
             let output = buf.slice_to_mut(write_len);
             slice::bytes::copy_memory(output, input);
         }
@@ -286,7 +286,7 @@ impl<'a> Writer for BufWriter<'a> {
 
             Ok(())
         } else {
-            slice::bytes::copy_memory(dst, &src[0..dst_len]);
+            slice::bytes::copy_memory(dst, &src[..dst_len]);
 
             self.pos += dst_len;
 
@@ -498,7 +498,7 @@ mod test {
         assert_eq!(buf, b);
         assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(&buf[0..3], b);
+        assert_eq!(&buf[..3], b);
         assert!(reader.read(&mut buf).is_err());
         let mut reader = MemReader::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
@@ -524,7 +524,7 @@ mod test {
         assert_eq!(buf.as_slice(), b);
         assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(&buf[0..3], b);
+        assert_eq!(&buf[..3], b);
         assert!(reader.read(&mut buf).is_err());
         let mut reader = &mut in_buf.as_slice();
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
@@ -551,7 +551,7 @@ mod test {
         assert_eq!(buf, b);
         assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
-        assert_eq!(&buf[0..3], b);
+        assert_eq!(&buf[..3], b);
         assert!(reader.read(&mut buf).is_err());
         let mut reader = BufReader::new(in_buf.as_slice());
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
