@@ -75,7 +75,7 @@ trait Fn<A> {
 }
 ```
 
-The other traits are modified in an analagous fashion.
+The other traits are modified in an analogous fashion.
 
 [this pull request]: https://github.com/rust-lang/rust/pull/21019
 
