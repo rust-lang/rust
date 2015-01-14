@@ -629,7 +629,6 @@ impl<K, V> RawTable<K, V> {
 
     /// Creates a new raw table from a given capacity. All buckets are
     /// initially empty.
-    #[allow(unstable)]
     pub fn new(capacity: uint) -> RawTable<K, V> {
         unsafe {
             let ret = RawTable::new_uninitialized(capacity);

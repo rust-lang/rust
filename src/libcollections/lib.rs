@@ -26,8 +26,8 @@
 #![feature(unsafe_destructor, slicing_syntax)]
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 #![no_std]
 
 #[macro_use]

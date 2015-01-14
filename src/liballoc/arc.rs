@@ -608,7 +608,6 @@ impl<H: Hasher, T: Hash<H>> Hash<H> for Arc<T> {
 }
 
 #[cfg(test)]
-#[allow(unstable)]
 mod tests {
     use std::clone::Clone;
     use std::sync::mpsc::channel;

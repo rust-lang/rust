@@ -32,9 +32,9 @@
 #![feature(unsafe_destructor)]
 #![feature(unboxed_closures)]
 #![feature(box_syntax)]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![allow(missing_docs)]
-#![allow(unstable)]
 
 extern crate alloc;
 

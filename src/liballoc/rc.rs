@@ -937,7 +937,6 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 }
 
 #[cfg(test)]
-#[allow(unstable)]
 mod tests {
     use super::{Rc, Weak, weak_count, strong_count};
     use std::cell::RefCell;

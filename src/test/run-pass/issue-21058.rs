@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unstable)]
 
 struct NT(str);
 struct DST { a: u32, b: str }

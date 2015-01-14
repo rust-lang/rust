@@ -28,7 +28,7 @@ use codemap::{CodeMap, Span};
 use diagnostic::SpanHandler;
 use visit;
 use visit::Visitor;
-use parse::token;
+use parse::token::{self, InternedString};
 
 use std::slice;
 use std::ascii::AsciiExt;
@@ -123,7 +123,6 @@ enum Status {
 }
 
 /// A set of features to be used by later passes.
-#[derive(Copy)]
 pub struct Features {
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
@@ -132,6 +131,7 @@ pub struct Features {
     pub quote: bool,
     pub old_orphan_check: bool,
     pub simd_ffi: bool,
+    pub lib_features: Vec<(InternedString, Span)>
 }
 
 impl Features {
@@ -144,6 +144,7 @@ impl Features {
             quote: false,
             old_orphan_check: false,
             simd_ffi: false,
+            lib_features: Vec::new()
         }
     }
 }
@@ -157,10 +158,7 @@ struct Context<'a> {
 impl<'a> Context<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         if !self.has_feature(feature) {
-            self.span_handler.span_err(span, explain);
-            self.span_handler.span_help(span, &format!("add #![feature({})] to the \
-                                                       crate attributes to enable",
-                                                      feature)[]);
+            emit_feature_err(self.span_handler, feature, span, explain);
         }
     }
 
@@ -175,6 +173,13 @@ impl<'a> Context<'a> {
     fn has_feature(&self, feature: &str) -> bool {
         self.features.iter().any(|&n| n == feature)
     }
+}
+
+pub fn emit_feature_err(diag: &SpanHandler, feature: &str, span: Span, explain: &str) {
+    diag.span_err(span, explain);
+    diag.span_help(span, &format!("add #![feature({})] to the \
+                                   crate attributes to enable",
+                                  feature)[]);
 }
 
 struct MacroVisitor<'a> {
@@ -472,7 +477,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
 fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
                         check: F)
-                       -> (Features, Vec<Span>)
+                       -> Features
     where F: FnOnce(&mut Context, &ast::Crate)
 {
     let mut cx = Context {
@@ -524,7 +529,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
                                                              directive not necessary");
                         }
                         None => {
-                            unknown_features.push(mi.span);
+                            unknown_features.push((name, mi.span));
                         }
                     }
                 }
@@ -534,7 +539,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
 
     check(&mut cx, krate);
 
-    (Features {
+    Features {
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         import_shadowing: cx.has_feature("import_shadowing"),
@@ -542,19 +547,20 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         quote: cx.has_feature("quote"),
         old_orphan_check: cx.has_feature("old_orphan_check"),
         simd_ffi: cx.has_feature("simd_ffi"),
-    },
-    unknown_features)
+        lib_features: unknown_features
+    }
 }
 
 pub fn check_crate_macros(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
--> (Features, Vec<Span>) {
+-> Features {
     check_crate_inner(cm, span_handler, krate,
                       |ctx, krate| visit::walk_crate(&mut MacroVisitor { context: ctx }, krate))
 }
 
 pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
--> (Features, Vec<Span>) {
+-> Features {
     check_crate_inner(cm, span_handler, krate,
                       |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
                                                      krate))
 }
+

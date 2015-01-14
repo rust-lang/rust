@@ -316,15 +316,6 @@ impl LintStore {
             },
             None => unreachable!()
         }
-        match self.by_name.get("unstable") {
-            Some(&Id(lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
-                self.set_level(lint_id, (lvl, ReleaseChannel))
-            },
-            Some(&Renamed(_, lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
-                self.set_level(lint_id, (lvl, ReleaseChannel))
-            },
-            None => unreachable!()
-        }
     }
 }
 

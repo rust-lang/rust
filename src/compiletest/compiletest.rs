@@ -13,7 +13,7 @@
 #![feature(slicing_syntax, unboxed_closures)]
 #![feature(box_syntax)]
 #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(unnamed_feature)]
 
 #![deny(warnings)]
 

@@ -19,7 +19,6 @@
 //! provided beyond this module.
 //!
 //! ```rust
-//! #[allow(unstable)];
 //!
 //! fn main() {
 //!     use std::simd::f32x4;

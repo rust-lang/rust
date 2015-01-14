@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unstable)]
+#![allow(unknown_features)]
+#![feature(unnamed_feature)]
 
 #[cfg(rustdoc)]
 extern crate "rustdoc" as this;

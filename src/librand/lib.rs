@@ -22,8 +22,8 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 #![no_std]
 #![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![staged_api]

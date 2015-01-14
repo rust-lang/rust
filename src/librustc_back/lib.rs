@@ -31,8 +31,8 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 #![allow(unknown_features)]
 #![feature(slicing_syntax, box_syntax)]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 
 extern crate syntax;
 extern crate serialize;

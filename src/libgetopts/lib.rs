@@ -88,8 +88,8 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(slicing_syntax)]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 #![deny(missing_docs)]
 
 #[cfg(test)] #[macro_use] extern crate log;

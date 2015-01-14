@@ -26,8 +26,8 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 
 extern crate serialize;
 #[macro_use] extern crate log;

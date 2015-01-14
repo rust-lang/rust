@@ -28,8 +28,8 @@
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 
 extern crate arena;
 extern crate flate;

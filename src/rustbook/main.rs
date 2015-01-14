@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(slicing_syntax, box_syntax)]
-#![allow(unstable)]
+#![feature(unnamed_feature)]
 
 extern crate regex;
 

@@ -1433,7 +1433,6 @@ pub mod bytes {
 
     impl MutableByteVector for [u8] {
         #[inline]
-        #[allow(unstable)]
         fn set_memory(&mut self, value: u8) {
             unsafe { ptr::set_memory(self.as_mut_ptr(), value, self.len()) };
         }
