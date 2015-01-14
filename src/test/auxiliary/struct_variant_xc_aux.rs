@@ -11,6 +11,7 @@
 #![crate_name="struct_variant_xc_aux"]
 #![crate_type = "lib"]
 
+#[derive(Copy)]
 pub enum Enum {
     Variant(u8),
     StructVariant { arg: u8 }
