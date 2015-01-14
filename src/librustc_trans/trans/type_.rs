@@ -333,6 +333,13 @@ impl Type {
             _ => panic!("llvm_float_width called on a non-float type")
         }
     }
+
+    /// Retrieve the bit width of the integer type `self`.
+    pub fn int_width(&self) -> u64 {
+        unsafe {
+            llvm::LLVMGetIntTypeWidth(self.to_ref()) as u64
+        }
+    }
 }
 
 
