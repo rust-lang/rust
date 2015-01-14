@@ -12,11 +12,12 @@
 // ignore-windows FIXME #13259
 
 #![feature(unboxed_closures)]
+#![feature(unsafe_destructor)]
 
 use std::os;
 use std::io::process::Command;
-use std::finally::Finally;
 use std::str;
+use std::ops::{Drop, FnMut, FnOnce};
 
 #[inline(never)]
 fn foo() {
@@ -28,11 +29,15 @@ fn foo() {
 
 #[inline(never)]
 fn double() {
-    (|&mut:| {
-        panic!("once");
-    }).finally(|| {
-        panic!("twice");
-    })
+    struct Double;
+
+    impl Drop for Double {
+        fn drop(&mut self) { panic!("twice") }
+    }
+
+    let _d = Double;
+
+    panic!("once");
 }
 
 fn runtest(me: &str) {
