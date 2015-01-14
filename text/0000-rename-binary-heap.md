@@ -4,7 +4,7 @@
 
 # Summary
 
-Rename the standard collection `BinaryHeap` to `BinHeap`, in order to follow the existing naming convention.
+Rename (maybe one of) the standard collections, so as to make the names more consistent. Currently, among all the alternatives, renaming `BinaryHeap` to `BinHeap` is the slightly preferred solution.
 
 # Motivation
 
@@ -42,32 +42,45 @@ There are four names worth mentioning: `Bitv`, `BitvSet`, `DList` and `BinaryHea
 - `DList`: This should be either `DList`, or `DoublyLinkedList`, as all the "middle grounds" feel unnatural. (DLList? DblList? DoublyList? DLinkList? ...) We don't want the full one because it is too long (and more importantly, we already use other abbreviated names), so `DList` is the best choice here.
 - `BinaryHeap`: It seems that `BinHeap` can be a better name here, no reason to violate the rules.
 
-Thus, this RFC proposes the following change:
+Thus, this RFC proposes the following changes:
 
-**Rename `BinaryHeap` to `BinHeap`.**
+- Rename `std::collections::binary_heap::BinaryHeap` to `std::collections::bin_heap::BinHeap`. Change affected codes accordingly.
+- If necessary, redefine `BinaryHeap` as an alias of `BinHeap` and mark it as deprecated. After a transition period, remove `BinaryHeap` completely. 
 
 # Drawbacks
 
 - This is A breaking change to a standard collection that is already marked `stable`.
-- There is no guarantee that all future additions to the standard collections will have names that look pretty under these abbreviation rules.
+- `DList` is left unchanged, but far from ideal. It just doesn't say much about what the type actually is.
+- Future additions to the standard collections may be like `DList`/`DoublyLinkedList` in that no ideal abbreviations can be found. Such additions *will* make the standard collections' names less consistent. 
 
-However `BinaryHeap` is only one collection, and a deprecation period can be provided if necessary, so the first drawback may not be a serious problem. Regarding the second one, this change at least isn't worse than the status quo.
+This solution can bring *some* consistency to the collections' names, but doing so may be sweeping the real problem under the rug. Still it is better than the status quo and requires the least amount of breaking changes.
 
 # Alternatives
 
 ## A. Keep the status quo:
 
-And Rust will have no consistent abbreviation rules for its standard collections' names.
+And Rust's standard collections will have no consistent name abbreviation rules. `DList` can be excused for being an exception (if only because all the alternatives are worse), but `BinaryHeap` cannot.
 
-## B. Rename all collections to their full names:
+## B. Rename all collections with abbreviated names to their full names:
 
-This will ensure maximum consistency, both now and in the future. However, a breaking change at this scale is undesirable at this stage, and `Vec` is so frequently used that it deserves an abbreviation. Then, if one collection has an abbreviated name, it is only natural for others to also have such names.
+This will ensure maximum consistency, both now and in the future. As the referenced reddit comment (and discussions about this RFC) indicates, *Many* believe this to be the optimal solution.
 
-## C. Also rename `Bitv` to `BitVec`, and `BitvSet` to `BitVecSet`:
+However:
 
-Some may argue that `BitVector` is the more common spelling, not `Bitvector`, so `Bitv` is not as good as `BitVec`. Therefore, `Bitv` and `BitvSet` should also be renamed.
+- A breaking change at this scale is undesirable at this stage.
+- `Vec` is so frequently used that it deserves an abbreviation.
+- If one collection has an abbreviated name, it is only natural for others to also have such names.
+- Most abbreviated names are clear, `DList` is the exception, not the rule.
 
-The drawback: this alternative means more breaking changes than only renaming `BinaryHeap`.
+Still, using full and consistent names may be the right choice in the long run, especially considering that people tend to follow the naming conventions of the standard library, and it's very likely that there will be future additions to the standard collections, which may or may not have "abbreviation-friendly" names.
+
+Also, if abbreviated names are truly needed, one can always write `type`. `Option` is not called `Opt` after all. Some may also argue that modern editors/IDEs make longer names less of an issue.
+
+## C. Rename `BinaryHeap`, and also `Bitv` to `BitVec`, `BitvSet` to `BitVecSet`:
+
+Some may argue that `BitVector` is the more common spelling, not `Bitvector`, so `Bitv` is not as good as `BitVec`. Therefore, `Bitv` and `BitvSet` should also be renamed alongside `BinaryHeap`.
+
+The pros and cons of this alternative is similar to only renaming `BinaryHeap`, but with more conventional names and more breaking changes.
 
 # Unresolved questions
 
