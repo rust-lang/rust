@@ -63,13 +63,6 @@ impl<I,F> Iterator for Map<A,B>,
 This example highlights one subtle point about the `()` notation,
 which is covered below.
 
-One reason is that it *feels right*. I don't think I want the ability
-to have functions overloaded purely on return type. A similar argument
-was [gracefully made by @aturon regarding binary operators
-recently][1].
-
-[1]: http://discuss.rust-lang.org/t/implicit-widening-polymorphic-indexing-and-similar-ideas/1141/15?u=nikomatsakis
-
 # Detailed design
 
 The design has been implemented. You can see it in [this pull
