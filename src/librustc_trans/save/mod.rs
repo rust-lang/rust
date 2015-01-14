@@ -392,8 +392,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     }
 
     fn process_trait_ref(&mut self,
-                         trait_ref: &ast::TraitRef,
-                         impl_id: Option<NodeId>) {
+                         trait_ref: &ast::TraitRef) {
         match self.lookup_type_ref(trait_ref.ref_id) {
             Some(id) => {
                 let sub_span = self.span.sub_span_for_type_name(trait_ref.path.span);
@@ -402,14 +401,6 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                  sub_span,
                                  id,
                                  self.cur_scope);
-                match impl_id {
-                    Some(impl_id) => self.fmt.impl_str(trait_ref.path.span,
-                                                       sub_span,
-                                                       impl_id,
-                                                       id,
-                                                       self.cur_scope),
-                    None => (),
-                }
                 visit::walk_path(self, &trait_ref.path);
             },
             None => ()
@@ -652,7 +643,9 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     trait_ref: &Option<ast::TraitRef>,
                     typ: &ast::Ty,
                     impl_items: &Vec<ast::ImplItem>) {
+        let trait_id = trait_ref.as_ref().and_then(|tr| self.lookup_type_ref(tr.ref_id));
         match typ.node {
+            // Common case impl for a struct or something basic.
             ast::TyPath(ref path, id) => {
                 match self.lookup_type_ref(id) {
                     Some(id) => {
@@ -665,17 +658,29 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         self.fmt.impl_str(path.span,
                                           sub_span,
                                           item.id,
-                                          id,
+                                          Some(id),
+                                          trait_id,
                                           self.cur_scope);
                     },
                     None => ()
                 }
             },
-            _ => self.visit_ty(&*typ),
+            _ => {
+                // Less useful case, impl for a compound type.
+                self.visit_ty(&*typ);
+
+                let sub_span = self.span.sub_span_for_type_name(typ.span);
+                self.fmt.impl_str(typ.span,
+                                  sub_span,
+                                  item.id,
+                                  None,
+                                  trait_id,
+                                  self.cur_scope);
+            }
         }
 
         match *trait_ref {
-            Some(ref trait_ref) => self.process_trait_ref(trait_ref, Some(item.id)),
+            Some(ref trait_ref) => self.process_trait_ref(trait_ref),
             None => (),
         }
 
@@ -1076,7 +1081,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         for param in generics.ty_params.iter() {
             for bound in param.bounds.iter() {
                 if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
-                    self.process_trait_ref(&trait_ref.trait_ref, None);
+                    self.process_trait_ref(&trait_ref.trait_ref);
                 }
             }
             if let Some(ref ty) = param.default {
