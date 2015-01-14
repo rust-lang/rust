@@ -19,6 +19,8 @@ use syntax::ast;
 use syntax::ast::{NodeId,DefId};
 use syntax::codemap::*;
 
+const ZERO_DEF_ID: DefId = DefId { node: 0, krate: 0 };
+
 pub struct Recorder {
     // output file
     pub out: Box<Writer+'static>,
@@ -121,7 +123,9 @@ impl<'a> FmtStrs<'a> {
             MethodDecl => ("method_decl", vec!("id","qualname","scopeid"), true, true),
             Struct => ("struct", vec!("id","ctor_id","qualname","scopeid","value"), true, true),
             Trait => ("trait", vec!("id","qualname","scopeid","value"), true, true),
-            Impl => ("impl", vec!("id","refid","refidcrate","scopeid"), true, true),
+            Impl => ("impl",
+                     vec!("id","refid","refidcrate","traitid","traitidcrate","scopeid"),
+                     true, true),
             Module => ("module", vec!("id","qualname","scopeid","def_file"), true, false),
             UseAlias => ("use_alias",
                          vec!("id","refid","refidcrate","name","scopeid"),
@@ -444,12 +448,20 @@ impl<'a> FmtStrs<'a> {
                     span: Span,
                     sub_span: Option<Span>,
                     id: NodeId,
-                    ref_id: DefId,
+                    ref_id: Option<DefId>,
+                    trait_id: Option<DefId>,
                     scope_id: NodeId) {
+        let ref_id = ref_id.unwrap_or(ZERO_DEF_ID);
+        let trait_id = trait_id.unwrap_or(ZERO_DEF_ID);
         self.check_and_record(Impl,
                               span,
                               sub_span,
-                              svec!(id, ref_id.node, ref_id.krate, scope_id));
+                              svec!(id,
+                                    ref_id.node,
+                                    ref_id.krate,
+                                    trait_id.node,
+                                    trait_id.krate,
+                                    scope_id));
     }
 
     pub fn mod_str(&mut self,
