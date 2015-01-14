@@ -260,6 +260,34 @@ struct RegionResolutionVisitor<'a> {
 
 
 impl RegionMaps {
+    pub fn each_encl_scope<E>(&self, mut e:E) where E: FnMut(&CodeExtent, &CodeExtent) {
+        for (child, parent) in self.scope_map.borrow().iter() {
+            e(child, parent)
+        }
+    }
+    pub fn each_var_scope<E>(&self, mut e:E) where E: FnMut(&ast::NodeId, &CodeExtent) {
+        for (child, parent) in self.var_map.borrow().iter() {
+            e(child, parent)
+        }
+    }
+    pub fn each_encl_free_region<E>(&self, mut e:E) where E: FnMut(&FreeRegion, &FreeRegion) {
+        for (child, parents) in self.free_region_map.borrow().iter() {
+            for parent in parents.iter() {
+                e(child, parent)
+            }
+        }
+    }
+    pub fn each_rvalue_scope<E>(&self, mut e:E) where E: FnMut(&ast::NodeId, &CodeExtent) {
+        for (child, parent) in self.rvalue_scopes.borrow().iter() {
+            e(child, parent)
+        }
+    }
+    pub fn each_terminating_scope<E>(&self, mut e:E) where E: FnMut(&CodeExtent) {
+        for scope in self.terminating_scopes.borrow().iter() {
+            e(scope)
+        }
+    }
+
     pub fn relate_free_regions(&self, sub: FreeRegion, sup: FreeRegion) {
         match self.free_region_map.borrow_mut().get_mut(&sub) {
             Some(sups) => {
