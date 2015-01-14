@@ -34,6 +34,7 @@ enum RegClass {
     SSEDs,
     SSEDv,
     SSEInt,
+    /// Data that can appear in the upper half of an SSE register.
     SSEUp,
     X87,
     X87Up,
@@ -155,26 +156,28 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
     fn unify(cls: &mut [RegClass],
              i: uint,
              newv: RegClass) {
-        if cls[i] == newv {
-            return;
-        } else if cls[i] == NoClass {
-            cls[i] = newv;
-        } else if newv == NoClass {
-            return;
-        } else if cls[i] == Memory || newv == Memory {
-            cls[i] = Memory;
-        } else if cls[i] == Int || newv == Int {
-            cls[i] = Int;
-        } else if cls[i] == X87 ||
-                  cls[i] == X87Up ||
-                  cls[i] == ComplexX87 ||
-                  newv == X87 ||
-                  newv == X87Up ||
-                  newv == ComplexX87 {
-            cls[i] = Memory;
-        } else {
-            cls[i] = newv;
-        }
+        if cls[i] == newv { return }
+
+        let to_write = match (cls[i], newv) {
+            (NoClass,     _) => newv,
+            (_,           NoClass) => return,
+
+            (Memory,      _) |
+            (_,           Memory) => Memory,
+
+            (Int,         _) |
+            (_,           Int) => Int,
+
+            (X87,         _) |
+            (X87Up,       _) |
+            (ComplexX87,  _) |
+            (_,           X87) |
+            (_,           X87Up) |
+            (_,           ComplexX87) => Memory,
+
+            (_,           _) => newv
+        };
+        cls[i] = to_write;
     }
 
     fn classify_struct(tys: &[Type],
