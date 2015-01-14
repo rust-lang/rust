@@ -284,6 +284,13 @@ impl Type {
         }
     }
 
+    /// Return the number of elements in `self` if it is a LLVM vector type.
+    pub fn vector_length(&self) -> uint {
+        unsafe {
+            llvm::LLVMGetVectorSize(self.to_ref()) as uint
+        }
+    }
+
     pub fn array_length(&self) -> uint {
         unsafe {
             llvm::LLVMGetArrayLength(self.to_ref()) as uint
