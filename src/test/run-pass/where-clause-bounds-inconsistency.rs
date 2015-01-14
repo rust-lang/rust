@@ -8,23 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::Show;
+trait Bound {}
 
-trait Str {}
-
-trait Something {
-    fn yay<T: Show>(_: Option<Self>, thing: &[T]);
+trait Trait {
+    fn a<T>(&self, T) where T: Bound;
+    fn b<T>(&self, T) where T: Bound;
+    fn c<T: Bound>(&self, T);
+    fn d<T: Bound>(&self, T);
 }
 
-struct X { data: u32 }
-
-impl Something for X {
-    fn yay<T: Str>(_:Option<X>, thing: &[T]) {
-    //~^ ERROR the requirement `T : Str` appears on the impl method
-    }
+impl Trait for bool {
+    fn a<T: Bound>(&self, _: T) {}
+    //^~ This gets rejected but should be accepted
+    fn b<T>(&self, _: T) where T: Bound {}
+    fn c<T: Bound>(&self, _: T) {}
+    fn d<T>(&self, _: T) where T: Bound {}
 }
 
-fn main() {
-    let arr = &["one", "two", "three"];
-    println!("{:?}", Something::yay(None::<X>, arr));
-}
+fn main() {}
