@@ -19,7 +19,7 @@ use util::ppaux::Repr;
 
 use std::fmt;
 use std::slice::Iter;
-use std::vec::Vec;
+use std::vec::{Vec, IntoIter};
 use syntax::codemap::{Span, DUMMY_SP};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -395,6 +395,10 @@ impl<T> VecPerParamSpace<T> {
 
     pub fn iter<'a>(&'a self) -> Iter<'a,T> {
         self.content.iter()
+    }
+
+    pub fn into_iter(self) -> IntoIter<T> {
+        self.content.into_iter()
     }
 
     pub fn iter_enumerated<'a>(&'a self) -> EnumeratedItems<'a,T> {
