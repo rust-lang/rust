@@ -51,7 +51,7 @@ defined. The closure borrows any variables it uses, so this will error:
 
 ```{rust,ignore}
 fn main() {
-    let mut x = 5;
+    let mut x: i32 = 5;
 
     let printer = |&:| { println!("x is: {}", x); };
 
