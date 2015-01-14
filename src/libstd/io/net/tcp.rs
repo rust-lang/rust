@@ -376,7 +376,6 @@ impl TcpAcceptor {
     /// # Example
     ///
     /// ```no_run
-    /// # #![allow(unstable)]
     /// use std::io::TcpListener;
     /// use std::io::{Listener, Acceptor, TimedOut};
     ///
@@ -421,7 +420,6 @@ impl TcpAcceptor {
     /// # Example
     ///
     /// ```
-    /// # #![allow(unstable)]
     /// use std::io::{TcpListener, Listener, Acceptor, EndOfFile};
     /// use std::thread::Thread;
     ///
@@ -485,7 +483,6 @@ impl sys_common::AsInner<TcpAcceptorImp> for TcpAcceptor {
 }
 
 #[cfg(test)]
-#[allow(unstable)]
 mod test {
     use prelude::v1::*;
 

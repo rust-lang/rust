@@ -113,7 +113,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(int_uint)]
 #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(unnamed_feature)]
 
 // Don't link to std. We are std.
 #![no_std]

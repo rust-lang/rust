@@ -13,8 +13,8 @@
 #![cfg_attr(not(feature = "cargo-build"),
             unstable(feature = "unnamed_feature", since = "1.0.0"))]
 #![cfg_attr(not(feature = "cargo-build"), staged_api)]
+#![cfg_attr(not(feature = "cargo-build"), feature(unnamed_feature))]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 #![no_std]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
@@ -74,7 +74,7 @@
 //! one from Berkeley after the lawsuits died down and the CSRG dissolved.
 
 #![allow(bad_style, raw_pointer_derive)]
-
+#![cfg_attr(not(feature = "cargo-build"), feature(unnamed_feature))]
 #[cfg(feature = "cargo-build")] extern crate "std" as core;
 #[cfg(not(feature = "cargo-build"))] extern crate core;
 

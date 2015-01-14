@@ -30,8 +30,8 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![no_std]
 #![feature(slicing_syntax)]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 
 extern crate core;
 

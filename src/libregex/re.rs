@@ -410,7 +410,6 @@ pub struct Captures<'t> {
 }
 
 impl<'t> Captures<'t> {
-    #[allow(unstable)]
     fn new(re: &Regex, search: &'t str, locs: CaptureLocs)
           -> Option<Captures<'t>> {
         if !has_match(&locs) {

@@ -26,7 +26,7 @@
 
 #![feature(slicing_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(unnamed_feature)]
 
 pub use self::Piece::*;
 pub use self::Position::*;

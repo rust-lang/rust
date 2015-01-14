@@ -14,7 +14,8 @@
 use session::Session;
 use middle::ty;
 use metadata::csearch;
-use syntax::codemap::Span;
+use syntax::parse::token::InternedString;
+use syntax::codemap::{Span, DUMMY_SP};
 use syntax::{attr, visit};
 use syntax::ast;
 use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
@@ -23,7 +24,8 @@ use syntax::ast::{TypeMethod, Method, Generics, StructField, TypeTraitItem};
 use syntax::ast_util::is_local;
 use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, FkMethod, Visitor};
-use util::nodemap::{NodeMap, DefIdMap};
+use syntax::feature_gate::emit_feature_err;
+use util::nodemap::{NodeMap, DefIdMap, FnvHashSet};
 use util::ppaux::Repr;
 
 use std::mem::replace;
@@ -174,6 +176,207 @@ impl Index {
     }
 }
 
+/// Cross-references the feature names of unstable APIs with enabled
+/// features and possibly prints errors. Returns a list of all
+/// features used.
+pub fn check_unstable_api_usage(tcx: &ty::ctxt) -> FnvHashSet<InternedString> {
+    let ref active_lib_features = tcx.sess.features.borrow().lib_features;
+
+    // Put the active features into a map for quick lookup
+    let active_features = active_lib_features.iter().map(|&(ref s, _)| s.clone()).collect();
+
+    let mut checker = Checker {
+        tcx: tcx,
+        active_features: active_features,
+        used_features: FnvHashSet()
+    };
+
+    let krate = tcx.map.krate();
+    visit::walk_crate(&mut checker, krate);
+
+    let used_features = checker.used_features;
+    return used_features;
+}
+
+struct Checker<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+    active_features: FnvHashSet<InternedString>,
+    used_features: FnvHashSet<InternedString>
+}
+
+impl<'a, 'tcx> Checker<'a, 'tcx> {
+    fn check(&mut self, id: ast::DefId, span: Span, stab: &Option<Stability>) {
+        // Only the cross-crate scenario matters when checking unstable APIs
+        let cross_crate = !is_local(id);
+        if !cross_crate { return }
+
+        match *stab {
+            Some(Stability { level: attr::Unstable, ref feature, ref reason, .. }) => {
+                self.used_features.insert(feature.clone());
+
+                if !self.active_features.contains(feature) {
+                    let msg = match *reason {
+                        Some(ref r) => format!("use of unstable library feature '{}': {}",
+                                               feature.get(), r.get()),
+                        None => format!("use of unstable library feature '{}'", feature.get())
+                    };
+
+                    emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
+                                     feature.get(), span, &msg[]);
+                }
+            }
+            Some(..) => {
+                // Stable APIs are always ok to call and deprecated APIs are
+                // handled by a lint.
+            }
+            None => {
+                // This is an 'unmarked' API, which should not exist
+                // in the standard library.
+                self.tcx.sess.span_err(span, "use of unmarked staged library feature");
+                self.tcx.sess.span_note(span, "this is either a bug in the library you are \
+                                               using or a bug in the compiler - there is \
+                                               no way to use this feature");
+            }
+        }
+    }
+}
+
+impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
+    fn visit_view_item(&mut self, item: &ast::ViewItem) {
+        check_view_item(self.tcx, item,
+                        &mut |id, sp, stab| self.check(id, sp, stab));
+        visit::walk_view_item(self, item)
+    }
+
+    fn visit_item(&mut self, item: &ast::Item) {
+        check_item(self.tcx, item,
+                   &mut |id, sp, stab| self.check(id, sp, stab));
+        visit::walk_item(self, item);
+    }
+
+    fn visit_expr(&mut self, ex: &ast::Expr) {
+        check_expr(self.tcx, ex,
+                   &mut |id, sp, stab| self.check(id, sp, stab));
+        visit::walk_expr(self, ex);
+    }
+}
+
+/// Helper for discovering nodes to check for stability
+pub fn check_view_item(tcx: &ty::ctxt, item: &ast::ViewItem,
+                       cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+    // compiler-generated `extern crate` statements have a dummy span.
+    if item.span == DUMMY_SP { return }
+
+    let id = match item.node {
+        ast::ViewItemExternCrate(_, _, id) => id,
+        ast::ViewItemUse(..) => return,
+    };
+    let cnum = match tcx.sess.cstore.find_extern_mod_stmt_cnum(id) {
+        Some(cnum) => cnum,
+        None => return,
+    };
+    let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
+
+    maybe_do_stability_check(tcx, id, item.span, cb);
+}
+
+/// Helper for discovering nodes to check for stability
+pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
+                  cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+    if is_internal(tcx, e.span) { return; }
+
+    let mut span = e.span;
+
+    let id = match e.node {
+        ast::ExprPath(..) | ast::ExprQPath(..) | ast::ExprStruct(..) => {
+            match tcx.def_map.borrow().get(&e.id) {
+                Some(&def) => def.def_id(),
+                None => return
+            }
+        }
+        ast::ExprMethodCall(i, _, _) => {
+            span = i.span;
+            let method_call = ty::MethodCall::expr(e.id);
+            match tcx.method_map.borrow().get(&method_call) {
+                Some(method) => {
+                    match method.origin {
+                        ty::MethodStatic(def_id) => {
+                            def_id
+                        }
+                        ty::MethodStaticUnboxedClosure(def_id) => {
+                            def_id
+                        }
+                        ty::MethodTypeParam(ty::MethodParam {
+                            ref trait_ref,
+                            method_num: index,
+                            ..
+                        }) |
+                        ty::MethodTraitObject(ty::MethodObject {
+                            ref trait_ref,
+                            method_num: index,
+                            ..
+                        }) => {
+                            ty::trait_item(tcx, trait_ref.def_id, index).def_id()
+                        }
+                    }
+                }
+                None => return
+            }
+        }
+        _ => return
+    };
+
+    maybe_do_stability_check(tcx, id, span, cb);
+}
+
+/// Helper for discovering nodes to check for stability
+pub fn check_item(tcx: &ty::ctxt, item: &ast::Item,
+                  cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+    if is_internal(tcx, item.span) { return }
+
+    match item.node {
+        ast::ItemTrait(_, _, ref supertraits, _) => {
+            for t in supertraits.iter() {
+                if let ast::TraitTyParamBound(ref t, _) = *t {
+                    let id = ty::trait_ref_to_def_id(tcx, &t.trait_ref);
+                    maybe_do_stability_check(tcx, id, t.trait_ref.path.span, cb);
+                }
+            }
+        }
+        ast::ItemImpl(_, _, _, Some(ref t), _, _) => {
+            let id = ty::trait_ref_to_def_id(tcx, t);
+            maybe_do_stability_check(tcx, id, t.path.span, cb);
+        }
+        _ => (/* pass */)
+    }
+}
+
+fn maybe_do_stability_check(tcx: &ty::ctxt, id: ast::DefId, span: Span,
+                            cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+    if !is_staged_api(tcx, id) { return  }
+    let ref stability = lookup(tcx, id);
+    cb(id, span, stability);
+}
+
+fn is_internal(tcx: &ty::ctxt, span: Span) -> bool {
+    tcx.sess.codemap().span_is_internal(span)
+}
+
+fn is_staged_api(tcx: &ty::ctxt, id: DefId) -> bool {
+    match ty::trait_item_of_item(tcx, id) {
+        Some(ty::MethodTraitItemId(trait_method_id))
+            if trait_method_id != id => {
+                is_staged_api(tcx, trait_method_id)
+            }
+        _ if is_local(id) => {
+            tcx.stability.borrow().staged_api
+        }
+        _ => {
+            csearch::is_staged_api(&tcx.sess.cstore, id)
+        }
+    }
+}
+
 /// Lookup the stability for a node, loading external crate
 /// metadata as necessary.
 pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
@@ -212,17 +415,16 @@ pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
     })
 }
 
-pub fn is_staged_api(tcx: &ty::ctxt, id: DefId) -> bool {
-    match ty::trait_item_of_item(tcx, id) {
-        Some(ty::MethodTraitItemId(trait_method_id))
-            if trait_method_id != id => {
-                is_staged_api(tcx, trait_method_id)
-            }
-        _ if is_local(id) => {
-            tcx.stability.borrow().staged_api
-        }
-        _ => {
-            csearch::is_staged_api(&tcx.sess.cstore, id)
-        }
-    }
+/// Given the list of enabled features that were not language features (i.e. that
+/// were expected to be library features), and the list of features used from
+/// libraries, identify activated features that don't exist and error about them.
+pub fn check_unknown_features(sess: &Session,
+                              _used_lib_features: &FnvHashSet<InternedString>) {
+    let ref _lib_features = sess.features.borrow().lib_features;
+    // TODO
+
+    //sess.add_lint(lint::builtin::UNKNOWN_FEATURES,
+    //              ast::CRATE_NODE_ID,
+    //              *uf,
+    //              "unknown feature".to_string());
 }

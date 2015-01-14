@@ -1703,7 +1703,6 @@ pub enum FileType {
 /// # Examples
 ///
 /// ```no_run
-/// # #![allow(unstable)]
 ///
 /// use std::io::fs::PathExtensions;
 ///

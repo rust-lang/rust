@@ -16,7 +16,6 @@
 // one test task to ensure that errors are timeouts, not file descriptor
 // exhaustion.
 
-#![allow(unstable)]
 #![reexport_test_harness_main = "test_main"]
 
 #![allow(unused_imports)]

@@ -10,7 +10,6 @@
 
 //! Bindings for executing child processes
 
-#![allow(unstable)]
 #![allow(non_upper_case_globals)]
 
 pub use self::StdioContainer::*;
@@ -663,7 +662,6 @@ impl Process {
     /// # Example
     ///
     /// ```no_run
-    /// # #![allow(unstable)]
     /// use std::io::{Command, IoResult};
     /// use std::io::process::ProcessExit;
     ///

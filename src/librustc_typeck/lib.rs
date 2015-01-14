@@ -77,9 +77,9 @@ This API is completely unstable and subject to change.
 #![feature(slicing_syntax, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![allow(non_camel_case_types)]
-#![allow(unstable)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

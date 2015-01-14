@@ -66,10 +66,10 @@
 
 #![no_std]
 #![allow(unknown_features)]
-#![allow(unstable)]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
+#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
 
 #[macro_use]

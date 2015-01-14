@@ -179,7 +179,6 @@ impl sys_common::AsInner<UdpSocketImp> for UdpSocket {
 }
 
 #[cfg(test)]
-#[allow(unstable)]
 mod test {
     use prelude::v1::*;
 

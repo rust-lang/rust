@@ -18,7 +18,7 @@
 #![unstable(feature = "unnamed_feature", since = "1.0.0")]
 #![staged_api]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(unnamed_feature)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
