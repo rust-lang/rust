@@ -207,7 +207,7 @@ fn build_controller<'a>(sess: &Session) -> CompileController<'a> {
     }
 
     if sess.opts.no_analysis || sess.opts.debugging_opts.ast_json {
-        control.after_expand.stop = true;
+        control.after_write_deps.stop = true;
     }
 
     if sess.opts.no_trans {
