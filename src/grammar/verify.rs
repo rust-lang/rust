@@ -25,6 +25,7 @@ use rustc::session::{self, config};
 
 use syntax::ast;
 use syntax::ast::Name;
+use syntax::codemap::Pos;
 use syntax::parse::token;
 use syntax::parse::lexer::TokenAndSpan;
 
@@ -234,6 +235,13 @@ fn tok_cmp(a: &token::Token, b: &token::Token) -> bool {
     }
 }
 
+fn span_cmp(rust_sp: syntax::codemap::Span, antlr_sp: syntax::codemap::Span, cm: &syntax::codemap::CodeMap) -> bool {
+    println!("{} {}", cm.bytepos_to_file_charpos(rust_sp.lo).to_uint(), cm.bytepos_to_file_charpos(rust_sp.hi).to_uint());
+    antlr_sp.lo.to_uint() == cm.bytepos_to_file_charpos(rust_sp.lo).to_uint() &&
+    antlr_sp.hi.to_uint() == cm.bytepos_to_file_charpos(rust_sp.hi).to_uint() &&
+    antlr_sp.expn_id == rust_sp.expn_id
+}
+
 fn main() {
     fn next(r: &mut lexer::StringReader) -> TokenAndSpan {
         use syntax::parse::lexer::Reader;
@@ -259,6 +267,7 @@ fn main() {
                                            code,
                                            String::from_str("<n/a>"));
     let mut lexer = lexer::StringReader::new(session.diagnostic(), filemap);
+    let ref cm = lexer.span_diagnostic.cm;
 
     for antlr_tok in antlr_tokens {
         let rustc_tok = next(&mut lexer);
@@ -266,7 +275,7 @@ fn main() {
             continue
         }
 
-        assert!(rustc_tok.sp == antlr_tok.sp, "{:?} and {:?} have different spans", rustc_tok,
+        assert!(span_cmp(rustc_tok.sp, antlr_tok.sp, cm), "{:?} and {:?} have different spans", rustc_tok,
                 antlr_tok);
 
         macro_rules! matches {
