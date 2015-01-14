@@ -153,8 +153,8 @@ impl<'a> fmt::String for WhereClause<'a> {
                         try!(write!(f, "{}", lifetime));
                     }
                 }
-                &clean::WherePredicate::EqPredicate => {
-                    unimplemented!()
+                &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
+                    try!(write!(f, "{} == {}", lhs, rhs));
                 }
             }
         }
@@ -465,61 +465,6 @@ impl fmt::String for clean::Type {
             }
             clean::Infer => write!(f, "_"),
             clean::Primitive(prim) => primitive_link(f, prim, prim.to_string()),
-            clean::Closure(ref decl) => {
-                write!(f, "{style}{lifetimes}|{args}|{bounds}{arrow}",
-                       style = UnsafetySpace(decl.unsafety),
-                       lifetimes = if decl.lifetimes.len() == 0 {
-                           "".to_string()
-                       } else {
-                           format!("for &lt;{}&gt;",
-                                   CommaSep(decl.lifetimes.as_slice()))
-                       },
-                       args = decl.decl.inputs,
-                       arrow = decl.decl.output,
-                       bounds = {
-                           let mut ret = String::new();
-                           for bound in decl.bounds.iter() {
-                                match *bound {
-                                    clean::RegionBound(..) => {}
-                                    clean::TraitBound(ref t, modifier) => {
-                                        if ret.len() == 0 {
-                                            ret.push_str(": ");
-                                        } else {
-                                            ret.push_str(" + ");
-                                        }
-                                        if modifier == ast::TraitBoundModifier::Maybe {
-                                            ret.push_str("?");
-                                        }
-                                        ret.push_str(format!("{}",
-                                                             *t).as_slice());
-                                    }
-                                }
-                           }
-                           ret
-                       })
-            }
-            clean::Proc(ref decl) => {
-                write!(f, "{style}{lifetimes}proc({args}){bounds}{arrow}",
-                       style = UnsafetySpace(decl.unsafety),
-                       lifetimes = if decl.lifetimes.len() == 0 {
-                           "".to_string()
-                       } else {
-                           format!("for &lt;{}&gt;",
-                                   CommaSep(decl.lifetimes.as_slice()))
-                       },
-                       args = decl.decl.inputs,
-                       bounds = if decl.bounds.len() == 0 {
-                           "".to_string()
-                       } else {
-                           let m = decl.bounds
-                                           .iter()
-                                           .map(|s| s.to_string());
-                           format!(
-                               ": {}",
-                               m.collect::<Vec<String>>().connect(" + "))
-                       },
-                       arrow = decl.decl.output)
-            }
             clean::BareFunction(ref decl) => {
                 write!(f, "{}{}fn{}{}",
                        UnsafetySpace(decl.unsafety),
