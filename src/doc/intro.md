@@ -546,7 +546,7 @@ fn main() {
     for i in range(0u, 3) {
         Thread::spawn(move || {
             println!("{}", vec[i]);
-        }).detach();
+        });
     }
 }
 ```
