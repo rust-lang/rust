@@ -27,7 +27,7 @@
     * [Iterators](iterators.md)
     * [Generics](generics.md)
     * [Traits](traits.md)
-    * [Threads](threads.md)
+    * [Concurrency](concurrency.md)
     * [Error Handling](error-handling.md)
     * [Documentation](documentation.md)
 * [III: Advanced Topics](advanced.md)
