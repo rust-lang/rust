@@ -17,7 +17,7 @@ fn main() {
     let cmp: &[int] = &[3, 4, 5];
     assert!(&x[2..] == cmp);
     let cmp: &[int] = &[1, 2, 3];
-    assert!(&x[0..3] == cmp);
+    assert!(&x[..3] == cmp);
     let cmp: &[int] = &[2, 3, 4];
     assert!(&x[1..4] == cmp);
 
@@ -27,7 +27,7 @@ fn main() {
     let cmp: &[int] = &[3, 4, 5];
     assert!(&x[2..] == cmp);
     let cmp: &[int] = &[1, 2, 3];
-    assert!(&x[0..3] == cmp);
+    assert!(&x[..3] == cmp);
     let cmp: &[int] = &[2, 3, 4];
     assert!(&x[1..4] == cmp);
 

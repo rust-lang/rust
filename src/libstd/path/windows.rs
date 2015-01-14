@@ -180,20 +180,20 @@ impl GenericPathUnsafe for Path {
             }
             Some((_,idxa,end)) if &self.repr[idxa..end] == ".." => {
                 let mut s = String::with_capacity(end + 1 + filename.len());
-                s.push_str(&self.repr[0..end]);
+                s.push_str(&self.repr[..end]);
                 s.push(SEP);
                 s.push_str(filename);
                 self.update_normalized(&s[]);
             }
             Some((idxb,idxa,_)) if self.prefix == Some(DiskPrefix) && idxa == self.prefix_len() => {
                 let mut s = String::with_capacity(idxb + filename.len());
-                s.push_str(&self.repr[0..idxb]);
+                s.push_str(&self.repr[..idxb]);
                 s.push_str(filename);
                 self.update_normalized(&s[]);
             }
             Some((idxb,_,_)) => {
                 let mut s = String::with_capacity(idxb + 1 + filename.len());
-                s.push_str(&self.repr[0..idxb]);
+                s.push_str(&self.repr[..idxb]);
                 s.push(SEP);
                 s.push_str(filename);
                 self.update_normalized(&s[]);
@@ -350,13 +350,13 @@ impl GenericPath for Path {
             Some((idxb,_,end)) if &self.repr[idxb..end] == "\\" => {
                 &self.repr[]
             }
-            Some((0,idxa,_)) => &self.repr[0..idxa],
+            Some((0,idxa,_)) => &self.repr[..idxa],
             Some((idxb,idxa,_)) => {
                 match self.prefix {
                     Some(DiskPrefix) | Some(VerbatimDiskPrefix) if idxb == self.prefix_len() => {
-                        &self.repr[0..idxa]
+                        &self.repr[..idxa]
                     }
-                    _ => &self.repr[0..idxb]
+                    _ => &self.repr[..idxb]
                 }
             }
         })
@@ -428,15 +428,15 @@ impl GenericPath for Path {
         if self.prefix.is_some() {
             Some(Path::new(match self.prefix {
                 Some(DiskPrefix) if self.is_absolute() => {
-                    &self.repr[0..(self.prefix_len()+1)]
+                    &self.repr[..(self.prefix_len()+1)]
                 }
                 Some(VerbatimDiskPrefix) => {
-                    &self.repr[0..(self.prefix_len()+1)]
+                    &self.repr[..(self.prefix_len()+1)]
                 }
-                _ => &self.repr[0..self.prefix_len()]
+                _ => &self.repr[..self.prefix_len()]
             }))
         } else if is_vol_relative(self) {
-            Some(Path::new(&self.repr[0..1]))
+            Some(Path::new(&self.repr[..1]))
         } else {
             None
         }
@@ -683,7 +683,7 @@ impl Path {
             }
             (None, None) => true,
             (a, b) if a == b => {
-                &s_repr[0..self.prefix_len()] == &o_repr[0..other.prefix_len()]
+                &s_repr[..self.prefix_len()] == &o_repr[..other.prefix_len()]
             }
             _ => false
         }
@@ -737,7 +737,7 @@ impl Path {
                         match prefix.unwrap() {
                             DiskPrefix => {
                                 let len = prefix_len(prefix) + is_abs as uint;
-                                let mut s = String::from_str(&s[0..len]);
+                                let mut s = String::from_str(&s[..len]);
                                 unsafe {
                                     let v = s.as_mut_vec();
                                     v[0] = (*v)[0].to_ascii_uppercase();
@@ -752,7 +752,7 @@ impl Path {
                             }
                             VerbatimDiskPrefix => {
                                 let len = prefix_len(prefix) + is_abs as uint;
-                                let mut s = String::from_str(&s[0..len]);
+                                let mut s = String::from_str(&s[..len]);
                                 unsafe {
                                     let v = s.as_mut_vec();
                                     v[4] = (*v)[4].to_ascii_uppercase();
@@ -762,14 +762,14 @@ impl Path {
                             _ => {
                                 let plen = prefix_len(prefix);
                                 if s.len() > plen {
-                                    Some(String::from_str(&s[0..plen]))
+                                    Some(String::from_str(&s[..plen]))
                                 } else { None }
                             }
                         }
                     } else if is_abs && comps.is_empty() {
                         Some(repeat(SEP).take(1).collect())
                     } else {
-                        let prefix_ = &s[0..prefix_len(prefix)];
+                        let prefix_ = &s[..prefix_len(prefix)];
                         let n = prefix_.len() +
                                 if is_abs { comps.len() } else { comps.len() - 1} +
                                 comps.iter().map(|v| v.len()).sum();
@@ -780,7 +780,7 @@ impl Path {
                                 s.push(':');
                             }
                             Some(VerbatimDiskPrefix) => {
-                                s.push_str(&prefix_[0..4]);
+                                s.push_str(&prefix_[..4]);
                                 s.push(prefix_.as_bytes()[4].to_ascii_uppercase() as char);
                                 s.push_str(&prefix_[5..]);
                             }
@@ -813,7 +813,7 @@ impl Path {
 
     fn update_sepidx(&mut self) {
         let s = if self.has_nonsemantic_trailing_slash() {
-                    &self.repr[0..(self.repr.len()-1)]
+                    &self.repr[..(self.repr.len()-1)]
                 } else { &self.repr[] };
         let sep_test: fn(char) -> bool = if !prefix_is_verbatim(self.prefix) {
             is_sep

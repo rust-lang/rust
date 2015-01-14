@@ -313,7 +313,7 @@ impl FileMap {
             let begin = begin.to_uint();
             let slice = &self.src[begin..];
             match slice.find('\n') {
-                Some(e) => &slice[0..e],
+                Some(e) => &slice[..e],
                 None => slice
             }.to_string()
         })

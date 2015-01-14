@@ -701,10 +701,10 @@ impl TwoWaySearcher {
         //
         // What's going on is we have some critical factorization (u, v) of the
         // needle, and we want to determine whether u is a suffix of
-        // &v[0..period]. If it is, we use "Algorithm CP1". Otherwise we use
+        // &v[..period]. If it is, we use "Algorithm CP1". Otherwise we use
         // "Algorithm CP2", which is optimized for when the period of the needle
         // is large.
-        if &needle[0..crit_pos] == &needle[period.. period + crit_pos] {
+        if &needle[..crit_pos] == &needle[period.. period + crit_pos] {
             TwoWaySearcher {
                 crit_pos: crit_pos,
                 period: period,
@@ -1412,7 +1412,7 @@ impl StrExt for str {
     #[inline]
     fn starts_with(&self, needle: &str) -> bool {
         let n = needle.len();
-        self.len() >= n && needle.as_bytes() == &self.as_bytes()[0..n]
+        self.len() >= n && needle.as_bytes() == &self.as_bytes()[..n]
     }
 
     #[inline]

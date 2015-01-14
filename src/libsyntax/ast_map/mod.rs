@@ -525,7 +525,7 @@ impl<'ast> Map<'ast> {
         NodesMatchingSuffix {
             map: self,
             item_name: parts.last().unwrap(),
-            in_which: &parts[0..(parts.len() - 1)],
+            in_which: &parts[..(parts.len() - 1)],
             idx: 0,
         }
     }

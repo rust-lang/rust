@@ -131,7 +131,7 @@ pub fn abort(args: fmt::Arguments) -> ! {
     impl<'a> fmt::Writer for BufWriter<'a> {
         fn write_str(&mut self, bytes: &str) -> fmt::Result {
             let left = self.buf.slice_from_mut(self.pos);
-            let to_write = &bytes.as_bytes()[0..cmp::min(bytes.len(), left.len())];
+            let to_write = &bytes.as_bytes()[..cmp::min(bytes.len(), left.len())];
             slice::bytes::copy_memory(left, to_write);
             self.pos += to_write.len();
             Ok(())
@@ -142,7 +142,7 @@ pub fn abort(args: fmt::Arguments) -> ! {
     let mut msg = [0u8; 512];
     let mut w = BufWriter { buf: &mut msg, pos: 0 };
     let _ = write!(&mut w, "{}", args);
-    let msg = str::from_utf8(&w.buf[0..w.pos]).unwrap_or("aborted");
+    let msg = str::from_utf8(&w.buf[..w.pos]).unwrap_or("aborted");
     let msg = if msg.is_empty() {"aborted"} else {msg};
     rterrln!("fatal runtime error: {}", msg);
     unsafe { intrinsics::abort(); }

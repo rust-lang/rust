@@ -2081,7 +2081,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             // idx +- 1 to account for the
                                             // colons on either side
                                             &mpath[(idx + 1)..],
-                                            &mpath[0..(idx - 1)]);
+                                            &mpath[..(idx - 1)]);
                         return Failed(Some((span, msg)));
                     },
                     None => {

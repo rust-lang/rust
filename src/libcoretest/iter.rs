@@ -288,7 +288,7 @@ fn test_iterator_len() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     assert_eq!(v[..4].iter().count(), 4);
     assert_eq!(v[..10].iter().count(), 10);
-    assert_eq!(v[0..0].iter().count(), 0);
+    assert_eq!(v[..0].iter().count(), 0);
 }
 
 #[test]
@@ -296,31 +296,31 @@ fn test_iterator_sum() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     assert_eq!(v[..4].iter().map(|&x| x).sum(), 6);
     assert_eq!(v.iter().map(|&x| x).sum(), 55);
-    assert_eq!(v[0..0].iter().map(|&x| x).sum(), 0);
+    assert_eq!(v[..0].iter().map(|&x| x).sum(), 0);
 }
 
 #[test]
 fn test_iterator_product() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).product(), 0);
+    assert_eq!(v[..4].iter().map(|&x| x).product(), 0);
     assert_eq!(v[1..5].iter().map(|&x| x).product(), 24);
-    assert_eq!(v[0..0].iter().map(|&x| x).product(), 1);
+    assert_eq!(v[..0].iter().map(|&x| x).product(), 1);
 }
 
 #[test]
 fn test_iterator_max() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).max(), Some(3));
+    assert_eq!(v[..4].iter().map(|&x| x).max(), Some(3));
     assert_eq!(v.iter().map(|&x| x).max(), Some(10));
-    assert_eq!(v[0..0].iter().map(|&x| x).max(), None);
+    assert_eq!(v[..0].iter().map(|&x| x).max(), None);
 }
 
 #[test]
 fn test_iterator_min() {
     let v: &[_] = &[0i, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[0..4].iter().map(|&x| x).min(), Some(0));
+    assert_eq!(v[..4].iter().map(|&x| x).min(), Some(0));
     assert_eq!(v.iter().map(|&x| x).min(), Some(0));
-    assert_eq!(v[0..0].iter().map(|&x| x).min(), None);
+    assert_eq!(v[..0].iter().map(|&x| x).min(), None);
 }
 
 #[test]
@@ -373,7 +373,7 @@ fn test_all() {
     assert!(v.iter().all(|&x| x < 10));
     assert!(!v.iter().all(|&x| x % 2 == 0));
     assert!(!v.iter().all(|&x| x > 100));
-    assert!(v[0..0].iter().all(|_| panic!()));
+    assert!(v[..0].iter().all(|_| panic!()));
 }
 
 #[test]
@@ -382,7 +382,7 @@ fn test_any() {
     assert!(v.iter().any(|&x| x < 10));
     assert!(v.iter().any(|&x| x % 2 == 0));
     assert!(!v.iter().any(|&x| x > 100));
-    assert!(!v[0..0].iter().any(|_| panic!()));
+    assert!(!v[..0].iter().any(|_| panic!()));
 }
 
 #[test]

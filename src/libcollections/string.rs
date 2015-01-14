@@ -168,7 +168,7 @@ impl String {
 
         if i > 0 {
             unsafe {
-                res.as_mut_vec().push_all(&v[0..i])
+                res.as_mut_vec().push_all(&v[..i])
             };
         }
 

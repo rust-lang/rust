@@ -986,7 +986,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let variable_access = IndirectVariable {
         alloca: env_pointer,
-        address_operations: &address_operations[0..address_op_count]
+        address_operations: &address_operations[..address_op_count]
     };
 
     declare_local(bcx,

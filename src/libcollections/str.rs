@@ -807,7 +807,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// out of bounds.
     ///
     /// See also `slice`, `slice_from` and `slice_chars`.
-    #[unstable = "use slice notation [0..a] instead"]
+    #[unstable = "use slice notation [..a] instead"]
     fn slice_to(&self, end: uint) -> &str {
         core_str::StrExt::slice_to(&self[], end)
     }

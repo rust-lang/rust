@@ -166,7 +166,7 @@ impl<'a> FmtStrs<'a> {
         let values = values.iter().map(|s| {
             // Never take more than 1020 chars
             if s.len() > 1020 {
-                &s[0..1020]
+                &s[..1020]
             } else {
                 &s[]
             }
