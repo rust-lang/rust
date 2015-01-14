@@ -25,7 +25,8 @@ use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
 use parse;
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
-use print::pp::{Breaks, Consistent, Inconsistent, eof};
+use print::pp::{Breaks, eof};
+use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 
 use std::{ascii, mem};
@@ -459,7 +460,7 @@ fn needs_parentheses(expr: &ast::Expr) -> bool {
 
 impl<'a> State<'a> {
     pub fn ibox(&mut self, u: uint) -> IoResult<()> {
-        self.boxes.push(pp::Inconsistent);
+        self.boxes.push(pp::Breaks::Inconsistent);
         pp::ibox(&mut self.s, u)
     }
 
@@ -469,7 +470,7 @@ impl<'a> State<'a> {
     }
 
     pub fn cbox(&mut self, u: uint) -> IoResult<()> {
-        self.boxes.push(pp::Consistent);
+        self.boxes.push(pp::Breaks::Consistent);
         pp::cbox(&mut self.s, u)
     }
 
@@ -531,11 +532,17 @@ impl<'a> State<'a> {
     }
 
     pub fn is_begin(&mut self) -> bool {
-        match self.s.last_token() { pp::Begin(_) => true, _ => false }
+        match self.s.last_token() {
+            pp::Token::Begin(_) => true,
+            _ => false,
+        }
     }
 
     pub fn is_end(&mut self) -> bool {
-        match self.s.last_token() { pp::End => true, _ => false }
+        match self.s.last_token() {
+            pp::Token::End => true,
+            _ => false,
+        }
     }
 
     // is this the beginning of a line?
@@ -545,7 +552,7 @@ impl<'a> State<'a> {
 
     pub fn in_cbox(&self) -> bool {
         match self.boxes.last() {
-            Some(&last_box) => last_box == pp::Consistent,
+            Some(&last_box) => last_box == pp::Breaks::Consistent,
             None => false
         }
     }
@@ -2881,7 +2888,7 @@ impl<'a> State<'a> {
             comments::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
                 let is_semi = match self.s.last_token() {
-                    pp::String(s, _) => ";" == s,
+                    pp::Token::String(s, _) => ";" == s,
                     _ => false
                 };
                 if is_semi || self.is_begin() || self.is_end() {
