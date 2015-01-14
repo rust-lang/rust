@@ -84,13 +84,14 @@ impl<'a, C: CharEq> DoubleEndedMatcher<'a> for CharEqMatcher<'a, C> {}
 
 // Impl for &str
 
-struct StrMatcher<'a>(super::OldMatchIndices<'a>);
+#[derive(Clone)]
+pub struct StrMatcher<'a, 'b>(super::OldMatchIndices<'a, 'b>);
 
-impl<'a> Pattern<'a> for &'a str {
-    type Matcher = StrMatcher<'a>;
+impl<'a, 'b> Pattern<'a> for &'b str {
+    type Matcher = StrMatcher<'a, 'b>;
 
     #[inline]
-    fn into_matcher(self, haystack: &'a str) -> StrMatcher<'a> {
+    fn into_matcher(self, haystack: &'a str) -> StrMatcher<'a, 'b> {
         let mi = super::OldMatchIndices {
             haystack: haystack,
             needle: self,
@@ -100,7 +101,7 @@ impl<'a> Pattern<'a> for &'a str {
     }
 }
 
-unsafe impl<'a> Matcher<'a> for StrMatcher<'a>  {
+unsafe impl<'a, 'b> Matcher<'a> for StrMatcher<'a, 'b>  {
     #[inline]
     fn haystack(&self) -> &'a str {
         self.0.haystack
