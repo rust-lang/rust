@@ -317,9 +317,7 @@ impl Printer {
           Token::Eof => {
             if !self.scan_stack_empty {
                 self.check_stack(0);
-                let left = self.token[self.left].clone();
-                let left_size = self.size[self.left];
-                try!(self.advance_left(left, left_size));
+                try!(self.advance_left());
             }
             self.indent(0);
             Ok(())
@@ -370,16 +368,16 @@ impl Printer {
             self.right_total += b.blank_space;
             Ok(())
           }
-          Token::String(ref s, len) => {
+          Token::String(s, len) => {
             if self.scan_stack_empty {
                 debug!("pp String('{}')/print ~[{},{}]",
-                       *s, self.left, self.right);
-                self.print(token.clone(), len)
+                       s, self.left, self.right);
+                self.print(Token::String(s, len), len)
             } else {
                 debug!("pp String('{}')/buffer ~[{},{}]",
-                       *s, self.left, self.right);
+                       s, self.left, self.right);
                 self.advance_right();
-                self.token[self.right] = token.clone();
+                self.token[self.right] = Token::String(s, len);
                 self.size[self.right] = len;
                 self.right_total += len;
                 self.check_stream()
@@ -400,9 +398,7 @@ impl Printer {
                     self.size[scanned] = SIZE_INFINITY;
                 }
             }
-            let left = self.token[self.left].clone();
-            let left_size = self.size[self.left];
-            try!(self.advance_left(left, left_size));
+            try!(self.advance_left());
             if self.left != self.right {
                 try!(self.check_stream());
             }
@@ -449,29 +445,39 @@ impl Printer {
         self.right %= self.buf_len;
         assert!((self.right != self.left));
     }
-    pub fn advance_left(&mut self, x: Token, l: int) -> io::IoResult<()> {
+    pub fn advance_left(&mut self) -> io::IoResult<()> {
         debug!("advance_left ~[{},{}], sizeof({})={}", self.left, self.right,
-               self.left, l);
-        if l >= 0 {
-            let ret = self.print(x.clone(), l);
-            match x {
-              Token::Break(b) => self.left_total += b.blank_space,
-              Token::String(_, len) => {
-                assert_eq!(len, l); self.left_total += len;
-              }
-              _ => ()
+               self.left, self.size[self.left]);
+
+        let mut left_size = self.size[self.left];
+
+        while left_size >= 0 {
+            let left = self.token[self.left].clone();
+
+            let len = match left {
+                Token::Break(b) => b.blank_space,
+                Token::String(_, len) => {
+                    assert_eq!(len, left_size);
+                    len
+                }
+                _ => 0
+            };
+
+            try!(self.print(left, left_size));
+
+            self.left_total += len;
+
+            if self.left == self.right {
+                break;
             }
-            if self.left != self.right {
-                self.left += 1u;
-                self.left %= self.buf_len;
-                let left = self.token[self.left].clone();
-                let left_size = self.size[self.left];
-                try!(self.advance_left(left, left_size));
-            }
-            ret
-        } else {
-            Ok(())
+
+            self.left += 1u;
+            self.left %= self.buf_len;
+
+            left_size = self.size[self.left];
         }
+
+        Ok(())
     }
     pub fn check_stack(&mut self, k: int) {
         if !self.scan_stack_empty {
