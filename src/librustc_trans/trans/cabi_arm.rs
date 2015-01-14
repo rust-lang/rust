@@ -10,7 +10,6 @@
 
 #![allow(non_upper_case_globals)]
 
-use llvm;
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
 use llvm::{StructRetAttribute, ZExtAttribute};
 use trans::cabi::{FnType, ArgType};
@@ -37,11 +36,7 @@ fn align(off: uint, ty: Type, align_fn: TyAlignFn) -> uint {
 
 fn general_ty_align(ty: Type) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as uint) + 7) / 8,
         Pointer => 4,
         Float => 4,
         Double => 8,
@@ -75,11 +70,7 @@ fn general_ty_align(ty: Type) -> uint {
 //    /iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
 fn ios_ty_align(ty: Type) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                cmp::min(4, ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8)
-            }
-        }
+        Integer => cmp::min(4, ((ty.int_width() as uint) + 7) / 8),
         Pointer => 4,
         Float => 4,
         Double => 4,
@@ -106,11 +97,7 @@ fn ios_ty_align(ty: Type) -> uint {
 
 fn ty_size(ty: Type, align_fn: TyAlignFn) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as uint) + 7) / 8,
         Pointer => 4,
         Float => 4,
         Double => 8,

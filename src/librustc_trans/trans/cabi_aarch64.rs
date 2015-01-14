@@ -10,7 +10,6 @@
 
 #![allow(non_upper_case_globals)]
 
-use llvm;
 use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
 use llvm::{StructRetAttribute, ZExtAttribute};
 use trans::cabi::{FnType, ArgType};
@@ -30,11 +29,7 @@ fn align(off: uint, ty: Type) -> uint {
 
 fn ty_align(ty: Type) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as uint) + 7) / 8,
         Pointer => 8,
         Float => 4,
         Double => 8,
@@ -61,11 +56,7 @@ fn ty_align(ty: Type) -> uint {
 
 fn ty_size(ty: Type) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as uint) + 7) / 8,
         Pointer => 8,
         Float => 4,
         Double => 8,

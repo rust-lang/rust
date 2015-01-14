@@ -14,7 +14,6 @@
 #![allow(non_upper_case_globals)]
 use self::RegClass::*;
 
-use llvm;
 use llvm::{Integer, Pointer, Float, Double};
 use llvm::{Struct, Array, Attribute, Vector};
 use llvm::{StructRetAttribute, ByValAttribute, ZExtAttribute};
@@ -94,11 +93,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
 
     fn ty_align(ty: Type) -> uint {
         match ty.kind() {
-            Integer => {
-                unsafe {
-                    ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-                }
-            }
+            Integer => ((ty.int_width() as uint) + 7) / 8,
             Pointer => 8,
             Float => 4,
             Double => 8,
@@ -125,11 +120,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
 
     fn ty_size(ty: Type) -> uint {
         match ty.kind() {
-            Integer => {
-                unsafe {
-                    ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-                }
-            }
+            Integer => (ty.int_width() as uint + 7) / 8,
             Pointer => 8,
             Float => 4,
             Double => 8,
