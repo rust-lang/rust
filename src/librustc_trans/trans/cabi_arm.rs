@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm;
-use llvm::{Integer, Pointer, Float, Double, Struct, Array};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
 use llvm::{StructRetAttribute, ZExtAttribute};
 use trans::cabi::{FnType, ArgType};
 use trans::context::CrateContext;
@@ -57,6 +57,11 @@ fn general_ty_align(ty: Type) -> uint {
             let elt = ty.element_type();
             general_ty_align(elt)
         }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            general_ty_align(elt) * len
+        }
         _ => panic!("ty_align: unhandled type")
     }
 }
@@ -90,6 +95,11 @@ fn ios_ty_align(ty: Type) -> uint {
             let elt = ty.element_type();
             ios_ty_align(elt)
         }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            ios_ty_align(elt) * len
+        }
         _ => panic!("ty_align: unhandled type")
     }
 }
@@ -119,6 +129,12 @@ fn ty_size(ty: Type, align_fn: TyAlignFn) -> uint {
         }
         Array => {
             let len = ty.array_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt, align_fn);
+            len * eltsz
+        }
+        Vector => {
+            let len = ty.vector_length();
             let elt = ty.element_type();
             let eltsz = ty_size(elt, align_fn);
             len * eltsz
