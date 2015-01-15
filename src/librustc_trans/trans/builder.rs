@@ -952,6 +952,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn add_clause(&self, landing_pad: ValueRef, clause: ValueRef) {
+        self.count_insn("addclause");
+        unsafe {
+            llvm::LLVMAddClause(landing_pad, clause);
+        }
+    }
+
     pub fn resume(&self, exn: ValueRef) -> ValueRef {
         self.count_insn("resume");
         unsafe {

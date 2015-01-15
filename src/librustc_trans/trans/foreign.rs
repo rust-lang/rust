@@ -460,6 +460,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
             match foreign_mod.abi {
                 Rust | RustIntrinsic => {}
                 abi => {
+
                     let ty = ty::node_id_to_type(ccx.tcx(), foreign_item.id);
                     match ty.sty {
                         ty::ty_bare_fn(_, bft) => gate_simd_ffi(ccx.tcx(), &**decl, bft),
@@ -467,8 +468,11 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
                                                      "foreign fn's sty isn't a bare_fn_ty?")
                     }
 
-                    register_foreign_item_fn(ccx, abi, ty,
-                                             &lname.get()[]);
+                    let llfn = register_foreign_item_fn(ccx, abi, ty,
+                                                        &lname.get()[]);
+
+                    add_abi_attributes(ccx, llfn, abi, &foreign_item.attrs[]);
+
                     // Unlike for other items, we shouldn't call
                     // `base::update_linkage` here.  Foreign items have
                     // special linkage requirements, which are handled
@@ -568,7 +572,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let llrustfn = build_rust_fn(ccx, decl, body, param_substs, attrs, id, hash);
 
         // Build up the foreign wrapper (`foo` above).
-        return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys, mty);
+        return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys, mty, attrs);
     }
 
     fn build_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -618,7 +622,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                       llrustfn: ValueRef,
                                       llwrapfn: ValueRef,
                                       tys: &ForeignTypes<'tcx>,
-                                      t: Ty<'tcx>) {
+                                      t: Ty<'tcx>, attrs: &[ast::Attribute]) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
         let tcx = ccx.tcx();
@@ -635,11 +639,19 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         //
         //     S foo(T i) {
         //         S r;
-        //         foo0(&r, NULL, i);
+        //         try {
+        //           foo0(&r, NULL, i);
+        //         } catch (..) {
+        //           abort();
+        //         }
         //         return r;
         //     }
+        //
+        // Because we mark extern "C" functions as nounwind, we need to
+        // enforce this for Rust functions that have a non-rust ABI. Hence
+        // the try-catch we emulate below.
 
-        let ptr = "the block\0".as_ptr();
+        let ptr = "entry\0".as_ptr();
         let the_block = llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llwrapfn,
                                                             ptr as *const _);
 
@@ -788,7 +800,41 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("calling llrustfn = {}, t = {}",
                ccx.tn().val_to_string(llrustfn), t.repr(ccx.tcx()));
         let attributes = base::get_fn_llvm_attributes(ccx, t);
-        let llrust_ret_val = builder.call(llrustfn, llrust_args.as_slice(), Some(attributes));
+        let llrust_ret_val = if attr::contains_name(attrs, "can_unwind") {
+            debug!("fn can unwind - using call");
+            builder.call(llrustfn, llrust_args.as_slice(), Some(attributes))
+        } else {
+            debug!("fn can't unwind - using invoke");
+            // Create the landing pad and the return blocks
+            let ptr = "catch\0".as_ptr();
+            let catch_block = llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llwrapfn,
+                                                                ptr as *const _);
+
+            let ptr = "return\0".as_ptr();
+            let return_block = llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llwrapfn,
+                                                                ptr as *const _);
+
+
+            let llrust_ret_val = builder.invoke(llrustfn, llrust_args.as_slice(),
+                                                return_block, catch_block,
+                                                Some(attributes));
+
+            // Populate the landing pad
+            builder.position_at_end(catch_block);
+            let pad_ty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
+            let llpersonality = base::get_eh_personality(ccx);
+
+            let pad_ret_val = builder.landing_pad(pad_ty, llpersonality, 1us);
+            builder.add_clause(pad_ret_val, C_null(Type::i8p(ccx)));
+            let trap = ccx.get_intrinsic(&("llvm.trap"));
+            builder.call(trap, &[], None);
+            builder.unreachable();
+
+            builder.position_at_end(return_block);
+
+            llrust_ret_val
+
+        };
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {
@@ -1002,5 +1048,17 @@ fn add_argument_attributes(tys: &ForeignTypes,
         }
 
         i += 1;
+    }
+}
+
+pub fn add_abi_attributes(ccx: &CrateContext, llfn: ValueRef, abi: Abi, attrs: &[ast::Attribute]) {
+
+    match ccx.sess().target.target.adjust_abi(abi) {
+        Rust | RustCall | RustIntrinsic => {}
+        _ => {
+            if !attr::contains_name(attrs, "can_unwind") {
+                llvm::SetFunctionAttribute(llfn, llvm::NoUnwindAttribute);
+            }
+        }
     }
 }

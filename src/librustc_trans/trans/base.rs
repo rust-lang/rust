@@ -56,7 +56,7 @@ use trans::cleanup;
 use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_integral};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
-use trans::common::{CrateContext, ExternMap, FunctionContext};
+use trans::common::{CrateContext, ExprId, ExternMap, FunctionContext};
 use trans::common::{NodeInfo, Result};
 use trans::common::{node_id_type, return_type_is_void};
 use trans::common::{tydesc_info, type_is_immediate};
@@ -1008,6 +1008,37 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         let llresult = Call(bcx, llfn, &llargs[], Some(attributes));
         return (llresult, bcx);
+    }
+}
+
+pub fn get_eh_personality<'a, 'tcx>(ccx: &CrateContext<'a,'tcx>) -> ValueRef {
+    // The exception handling personality function.
+    //
+    // If our compilation unit has the `eh_personality` lang item somewhere
+    // within it, then we just need to translate that. Otherwise, we're
+    // building an rlib which will depend on some upstream implementation of
+    // this function, so we just codegen a generic reference to it. We don't
+    // specify any of the types for the function, we just make it a symbol
+    // that LLVM can later use.
+    match ccx.tcx().lang_items.eh_personality() {
+        Some(def_id) => {
+            callee::trans_fn_ref(ccx, def_id, ExprId(0), &Substs::trans_empty()).val
+        }
+        None => {
+            let mut personality = ccx.eh_personality().borrow_mut();
+            match *personality {
+                Some(llpersonality) => llpersonality,
+                None => {
+                    let fty = Type::variadic_func(&[], &Type::i32(ccx));
+                    let f = decl_cdecl_fn(ccx,
+                                          "rust_eh_personality",
+                                          fty,
+                                          ccx.tcx().types.i32);
+                    *personality = Some(f);
+                    f
+                }
+            }
+        }
     }
 }
 
@@ -2870,7 +2901,9 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
                     let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
                     let name = foreign::link_name(&*ni);
-                    foreign::register_foreign_item_fn(ccx, abi, ty, &name.get()[])
+                    let llfn = foreign::register_foreign_item_fn(ccx, abi, ty, &name.get()[]);
+                    foreign::add_abi_attributes(ccx, llfn, abi, &ni.attrs[]);
+                    llfn
                 }
                 ast::ForeignItemStatic(..) => {
                     foreign::register_static(ccx, &*ni)
