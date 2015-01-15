@@ -38,6 +38,7 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_borrowck;
+extern crate rustc_privacy;
 extern crate rustc_resolve;
 extern crate rustc_trans;
 extern crate rustc_typeck;
