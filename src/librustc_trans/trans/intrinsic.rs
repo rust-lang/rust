@@ -355,8 +355,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 ccx.tcx(),
                 *substs.types.get(FnSpace, 0),
                 &ccx.link_meta().crate_hash);
-            // NB: This needs to be kept in lockstep with the TypeId struct in
-            //     the intrinsic module
             C_u64(ccx, hash)
         }
         (_, "init") => {

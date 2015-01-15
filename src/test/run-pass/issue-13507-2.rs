@@ -12,7 +12,7 @@
 extern crate issue13507;
 use issue13507::testtypes;
 
-use std::intrinsics::TypeId;
+use std::any::TypeId;
 
 pub fn type_ids() -> Vec<TypeId> {
     let mut ids = vec!();

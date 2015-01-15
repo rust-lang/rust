@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::intrinsics::TypeId;
+use core::any::TypeId;
 
 #[test]
 fn test_typeid_sized_types() {

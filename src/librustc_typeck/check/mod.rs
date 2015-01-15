@@ -104,7 +104,6 @@ use rscope::RegionScope;
 use session::Session;
 use {CrateCtxt, lookup_def_ccx, no_params, require_same_types};
 use TypeAndSubsts;
-use middle::lang_items::TypeIdLangItem;
 use lint;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux::{self, Repr};
@@ -5239,18 +5238,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
               });
               (1u, Vec::new(), td_ptr)
             }
-            "type_id" => {
-                let langid = ccx.tcx.lang_items.require(TypeIdLangItem);
-                match langid {
-                    Ok(did) => (1u,
-                                Vec::new(),
-                                ty::mk_struct(ccx.tcx, did,
-                                              ccx.tcx.mk_substs(subst::Substs::empty()))),
-                    Err(msg) => {
-                        tcx.sess.span_fatal(it.span, &msg[]);
-                    }
-                }
-            },
+            "type_id" => (1u, Vec::new(), ccx.tcx.types.u64),
             "offset" => {
               (1,
                vec!(

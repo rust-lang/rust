@@ -10,11 +10,9 @@
 
 #![feature(intrinsics)]
 
-use std::intrinsics::TypeId;
-
 extern "rust-intrinsic" {
     // Real example from libcore
-    fn type_id<T: ?Sized + 'static>() -> TypeId;
+    fn type_id<T: ?Sized + 'static>() -> u64;
 
     // Silent bounds made explicit to make sure they are actually
     // resolved.
