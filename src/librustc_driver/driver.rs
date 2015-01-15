@@ -26,6 +26,7 @@ use rustc_trans::back::link;
 use rustc_trans::back::write;
 use rustc_trans::trans;
 use rustc_typeck as typeck;
+use rustc_privacy;
 
 use serialize::json;
 
@@ -630,7 +631,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let maps = (external_exports, last_private_map);
     let (exported_items, public_items) =
             time(time_passes, "privacy checking", maps, |(a, b)|
-                 middle::privacy::check_crate(&ty_cx, &export_map, a, b));
+                 rustc_privacy::check_crate(&ty_cx, &export_map, a, b));
 
     time(time_passes, "intrinsic checking", (), |_|
          middle::intrinsicck::check_crate(&ty_cx));
