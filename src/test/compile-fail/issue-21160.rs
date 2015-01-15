@@ -15,7 +15,7 @@ impl Bar {
 }
 
 #[derive(Hash)]
-//~^ error: the trait `core::hash::Hash<__S>` is not implemented for the type `Bar`
 struct Foo(Bar);
+//~^ error: the trait `core::hash::Hash<__S>` is not implemented for the type `Bar`
 
 fn main() {}

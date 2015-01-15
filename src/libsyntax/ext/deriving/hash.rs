@@ -65,19 +65,19 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         [ref state_expr] => state_expr,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(Hash)`")
     };
-    let hash_path = {
-        let strs = vec![
-            cx.ident_of("std"),
-            cx.ident_of("hash"),
-            cx.ident_of("Hash"),
-            cx.ident_of("hash"),
-        ];
-
-        cx.expr_path(cx.path_global(trait_span, strs))
-    };
     let call_hash = |&: span, thing_expr| {
+        let hash_path = {
+            let strs = vec![
+                cx.ident_of("std"),
+                cx.ident_of("hash"),
+                cx.ident_of("Hash"),
+                cx.ident_of("hash"),
+            ];
+
+            cx.expr_path(cx.path_global(span, strs))
+        };
         let ref_thing = cx.expr_addr_of(span, thing_expr);
-        let expr = cx.expr_call(span, hash_path.clone(), vec!(ref_thing, state_expr.clone()));
+        let expr = cx.expr_call(span, hash_path, vec!(ref_thing, state_expr.clone()));
         cx.stmt_expr(expr)
     };
     let mut stmts = Vec::new();
