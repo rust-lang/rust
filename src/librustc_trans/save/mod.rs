@@ -767,7 +767,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     span: Span,
                     path: &ast::Path,
                     ref_kind: Option<recorder::Row>) {
-        if generated_code(path.span) {
+        if generated_code(span) {
             return
         }
 
@@ -1307,8 +1307,14 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 visit::walk_expr(self, ex);
             },
             ast::ExprPath(ref path) => {
-                self.process_path(ex.id, ex.span, path, None);
+                self.process_path(ex.id, path.span, path, None);
                 visit::walk_path(self, path);
+            }
+            ast::ExprQPath(ref qpath) => {
+                let mut path = qpath.trait_ref.path.clone();
+                path.segments.push(qpath.item_path.clone());
+                self.process_path(ex.id, ex.span, &path, None);
+                visit::walk_qpath(self, ex.span, &**qpath);
             }
             ast::ExprStruct(ref path, ref fields, ref base) =>
                 self.process_struct_lit(ex, path, fields, base),
@@ -1439,7 +1445,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                           "")
                 }
                 def::DefVariant(..) => {
-                    paths_to_process.push((id, p.span, p.clone(), Some(ref_kind)))
+                    paths_to_process.push((id, p.clone(), Some(ref_kind)))
                 }
                 // FIXME(nrc) what are these doing here?
                 def::DefStatic(_, _) => {}
@@ -1448,8 +1454,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                             *def)
             }
         }
-        for &(id, span, ref path, ref_kind) in paths_to_process.iter() {
-            self.process_path(id, span, path, ref_kind);
+        for &(id, ref path, ref_kind) in paths_to_process.iter() {
+            self.process_path(id, path.span, path, ref_kind);
         }
         self.collecting = false;
         self.collected_paths.clear();

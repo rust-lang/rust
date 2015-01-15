@@ -1235,7 +1235,7 @@ pub fn trans_match<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Checks whether the binding in `discr` is assigned to anywhere in the expression `body`
 fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool {
     let (vid, field) = match discr.node {
-        ast::ExprPath(..) => match bcx.def(discr.id) {
+        ast::ExprPath(_) | ast::ExprQPath(_) => match bcx.def(discr.id) {
             def::DefLocal(vid) | def::DefUpvar(vid, _, _) => (vid, None),
             _ => return false
         },
