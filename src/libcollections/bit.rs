@@ -156,7 +156,7 @@ static FALSE: bool = false;
 /// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 /// ```
-#[stable]
+#[unstable = "RFC 509"]
 pub struct Bitv {
     /// Internal representation of the bit vector
     storage: Vec<u32>,
@@ -1107,7 +1107,7 @@ impl<'a> RandomAccessIterator for Iter<'a> {
 /// assert!(bv[3]);
 /// ```
 #[derive(Clone)]
-#[stable]
+#[unstable = "RFC 509"]
 pub struct BitvSet {
     bitv: Bitv,
 }
