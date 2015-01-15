@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::{TempDir, Command, fs};
+use std::io::{Command, fs, USER_RWX};
 use std::os;
 
 fn main() {
@@ -22,19 +22,23 @@ fn main() {
 }
 
 fn test() {
-    // If we're the parent, copy our own binary to a tempr directory, and then
-    // make it executable.
-    let dir = TempDir::new("mytest").unwrap();
-    let me = os::self_exe_name().unwrap();
-    let dest = dir.path().join(format!("mytest{}", os::consts::EXE_SUFFIX));
-    fs::copy(&me, &dest).unwrap();
+    // If we're the parent, copy our own binary to a new directory.
+    let my_path = os::self_exe_name().unwrap();
+    let my_dir  = my_path.dir_path();
 
-    // Append the temp directory to our own PATH.
+    let child_dir = Path::new(my_dir.join("issue-15149-child"));
+    drop(fs::mkdir(&child_dir, USER_RWX));
+
+    let child_path = child_dir.join(format!("mytest{}",
+                                            os::consts::EXE_SUFFIX));
+    fs::copy(&my_path, &child_path).unwrap();
+
+    // Append the new directory to our own PATH.
     let mut path = os::split_paths(os::getenv("PATH").unwrap_or(String::new()));
-    path.push(dir.path().clone());
+    path.push(child_dir.clone());
     let path = os::join_paths(path.as_slice()).unwrap();
 
-    Command::new("mytest").env("PATH", path.as_slice())
-                          .arg("child")
-                          .spawn().unwrap();
+    assert!(Command::new("mytest").env("PATH", path.as_slice())
+                                  .arg("child")
+                                  .status().unwrap().success());
 }
