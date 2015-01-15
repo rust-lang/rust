@@ -167,7 +167,10 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
         llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
 
+        let opt = sess.opts.cg.opt_level.unwrap_or(0) as libc::c_uint;
+
         let builder = llvm::LLVMPassManagerBuilderCreate();
+        llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt);
         llvm::LLVMPassManagerBuilderPopulateLTOPassManager(builder, pm,
             /* Internalize = */ False,
             /* RunInliner = */ True);
