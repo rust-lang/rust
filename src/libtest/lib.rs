@@ -211,6 +211,8 @@ pub struct TestDesc {
     pub should_fail: ShouldFail,
 }
 
+unsafe impl Send for TestDesc {}
+
 #[derive(Show)]
 pub struct TestDescAndFn {
     pub desc: TestDesc,
@@ -524,6 +526,8 @@ pub enum TestResult {
     TrMetrics(MetricMap),
     TrBench(BenchSamples),
 }
+
+unsafe impl Send for TestResult {}
 
 enum OutputLocation<T> {
     Pretty(Box<term::Terminal<term::WriterWrapper> + Send>),
@@ -978,7 +982,6 @@ enum TestEvent {
 
 pub type MonitorMsg = (TestDesc, TestResult, Vec<u8> );
 
-unsafe impl Send for MonitorMsg {}
 
 fn run_tests<F>(opts: &TestOpts,
                 tests: Vec<TestDescAndFn> ,
