@@ -1731,7 +1731,7 @@ impl LintPass for Stability {
         let mut span = e.span;
 
         let id = match e.node {
-            ast::ExprPath(..) | ast::ExprStruct(..) => {
+            ast::ExprPath(..) | ast::ExprQPath(..) | ast::ExprStruct(..) => {
                 match cx.tcx.def_map.borrow().get(&e.id) {
                     Some(&def) => def.def_id(),
                     None => return

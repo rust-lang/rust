@@ -228,7 +228,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckStaticVisitor<'a, 'tcx> {
                           "{} are not allowed to have custom pointers",
                           self.msg());
             }
-            ast::ExprPath(..) => {
+            ast::ExprPath(_) | ast::ExprQPath(_) => {
                 match ty::resolve_expr(self.tcx, e) {
                     def::DefStatic(..) if self.mode == InConstant => {
                         let msg = "constants cannot refer to other statics, \

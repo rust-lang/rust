@@ -454,7 +454,10 @@ pub fn noop_fold_qpath<T: Folder>(qpath: P<QPath>, fld: &mut T) -> P<QPath> {
         QPath {
             self_type: fld.fold_ty(qpath.self_type),
             trait_ref: qpath.trait_ref.map(|tr| fld.fold_trait_ref(tr)),
-            item_name: fld.fold_ident(qpath.item_name),
+            item_path: PathSegment {
+                identifier: fld.fold_ident(qpath.item_path.identifier),
+                parameters: fld.fold_path_parameters(qpath.item_path.parameters),
+            }
         }
     })
 }
@@ -1381,6 +1384,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                           e2.map(|x| folder.fold_expr(x)))
             }
             ExprPath(pth) => ExprPath(folder.fold_path(pth)),
+            ExprQPath(qpath) => ExprQPath(folder.fold_qpath(qpath)),
             ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|x| folder.fold_ident(x))),
             ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|x| folder.fold_ident(x))),
             ExprRet(e) => ExprRet(e.map(|x| folder.fold_expr(x))),

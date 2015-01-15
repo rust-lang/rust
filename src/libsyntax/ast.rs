@@ -747,6 +747,8 @@ pub enum Expr_ {
     /// Variable reference, possibly containing `::` and/or
     /// type parameters, e.g. foo::bar::<baz>
     ExprPath(Path),
+    /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
+    ExprQPath(P<QPath>),
 
     ExprAddrOf(Mutability, P<Expr>),
     ExprBreak(Option<Ident>),
@@ -771,12 +773,12 @@ pub enum Expr_ {
 ///
 ///     <Vec<T> as SomeTrait>::SomeAssociatedItem
 ///      ^~~~~     ^~~~~~~~~   ^~~~~~~~~~~~~~~~~~
-///      self_type  trait_name  item_name
+///      self_type  trait_name  item_path
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub struct QPath {
     pub self_type: P<Ty>,
     pub trait_ref: P<TraitRef>,
-    pub item_name: Ident, // FIXME(#20301) -- should use Name
+    pub item_path: PathSegment,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]

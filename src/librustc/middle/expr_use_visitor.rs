@@ -424,7 +424,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 self.walk_expr(&**subexpr)
             }
 
-            ast::ExprPath(..) => { }
+            ast::ExprPath(_) | ast::ExprQPath(_) => { }
 
             ast::ExprUnary(ast::UnDeref, ref base) => {      // *base
                 if !self.walk_overloaded_operator(expr, &**base, Vec::new(), PassArgs::ByRef) {

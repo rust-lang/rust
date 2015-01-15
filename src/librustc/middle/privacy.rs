@@ -920,7 +920,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                                                             struct type?!"),
                 }
             }
-            ast::ExprPath(..) => {
+            ast::ExprPath(_) | ast::ExprQPath(_) => {
                 let guard = |&: did: ast::DefId| {
                     let fields = ty::lookup_struct_fields(self.tcx, did);
                     let any_priv = fields.iter().any(|f| {

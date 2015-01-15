@@ -3553,10 +3553,25 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         };
         fcx.write_ty(id, oprnd_t);
       }
-      ast::ExprPath(ref pth) => {
-          let defn = lookup_def(fcx, pth.span, id);
+      ast::ExprPath(ref path) => {
+          let defn = lookup_def(fcx, path.span, id);
           let pty = type_scheme_for_def(fcx, expr.span, defn);
-          instantiate_path(fcx, pth, pty, defn, expr.span, expr.id);
+          instantiate_path(fcx, path, pty, None, defn, expr.span, expr.id);
+
+          // We always require that the type provided as the value for
+          // a type parameter outlives the moment of instantiation.
+          constrain_path_type_parameters(fcx, expr);
+      }
+      ast::ExprQPath(ref qpath) => {
+          // Require explicit type params for the trait.
+          let self_ty = fcx.to_ty(&*qpath.self_type);
+          astconv::instantiate_trait_ref(fcx, fcx, &*qpath.trait_ref, Some(self_ty), None);
+
+          let defn = lookup_def(fcx, expr.span, id);
+          let pty = type_scheme_for_def(fcx, expr.span, defn);
+          let mut path = qpath.trait_ref.path.clone();
+          path.segments.push(qpath.item_path.clone());
+          instantiate_path(fcx, &path, pty, Some(self_ty), defn, expr.span, expr.id);
 
           // We always require that the type provided as the value for
           // a type parameter outlives the moment of instantiation.
@@ -4619,6 +4634,7 @@ pub fn type_scheme_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   path: &ast::Path,
                                   type_scheme: TypeScheme<'tcx>,
+                                  opt_self_ty: Option<Ty<'tcx>>,
                                   def: def::Def,
                                   span: Span,
                                   node_id: ast::NodeId) {
@@ -4775,6 +4791,11 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                                 &mut substs);
             }
         }
+    }
+    if let Some(self_ty) = opt_self_ty {
+        // `<T as Trait>::foo` shouldn't have resolved to a `Self`-less item.
+        assert_eq!(type_defs.len(subst::SelfSpace), 1);
+        substs.types.push(subst::SelfSpace, self_ty);
     }
 
     // Now we have to compare the types that the user *actually*

@@ -727,14 +727,7 @@ impl<'a> State<'a> {
                 try!(self.print_bounds("", &bounds[]));
             }
             ast::TyQPath(ref qpath) => {
-                try!(word(&mut self.s, "<"));
-                try!(self.print_type(&*qpath.self_type));
-                try!(space(&mut self.s));
-                try!(self.word_space("as"));
-                try!(self.print_trait_ref(&*qpath.trait_ref));
-                try!(word(&mut self.s, ">"));
-                try!(word(&mut self.s, "::"));
-                try!(self.print_ident(qpath.item_name));
+                try!(self.print_qpath(&**qpath, false))
             }
             ast::TyFixedLengthVec(ref ty, ref v) => {
                 try!(word(&mut self.s, "["));
@@ -1749,6 +1742,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprPath(ref path) => try!(self.print_path(path, true)),
+            ast::ExprQPath(ref qpath) => try!(self.print_qpath(&**qpath, true)),
             ast::ExprBreak(opt_ident) => {
                 try!(word(&mut self.s, "break"));
                 try!(space(&mut self.s));
@@ -1931,6 +1925,22 @@ impl<'a> State<'a> {
         }
 
         Ok(())
+    }
+
+    fn print_qpath(&mut self,
+                   qpath: &ast::QPath,
+                   colons_before_params: bool)
+                   -> IoResult<()>
+    {
+        try!(word(&mut self.s, "<"));
+        try!(self.print_type(&*qpath.self_type));
+        try!(space(&mut self.s));
+        try!(self.word_space("as"));
+        try!(self.print_trait_ref(&*qpath.trait_ref));
+        try!(word(&mut self.s, ">"));
+        try!(word(&mut self.s, "::"));
+        try!(self.print_ident(qpath.item_path.identifier));
+        self.print_path_parameters(&qpath.item_path.parameters, colons_before_params)
     }
 
     fn print_path_parameters(&mut self,

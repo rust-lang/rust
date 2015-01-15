@@ -1001,9 +1001,12 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     debug!("qpath_to_ty: trait_ref={}", trait_ref.repr(this.tcx()));
 
+    // `<T as Trait>::U<V>` shouldn't parse right now.
+    assert!(qpath.item_path.parameters.is_empty());
+
     return this.projected_ty(ast_ty.span,
                              trait_ref,
-                             qpath.item_name.name);
+                             qpath.item_path.identifier.name);
 }
 
 // Parses the programmer's textual representation of a type into our
