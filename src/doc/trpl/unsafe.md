@@ -50,10 +50,9 @@ guarantees, required for memory safety.
 
 In particular, if you have an `&T` reference, then the `T` must not be
 modified through that reference or any other reference or pointer and must not
-alias with any `&mut` reference. There are some
-standard library types, e.g. `Cell` and `RefCell`, that provide inner
-mutability by replacing compile time guarantees with dynamic checks at
-runtime.
+alias with any `&mut` reference. There are some standard library types, e.g.
+`Cell` and `RefCell`, that provide inner mutability by replacing compile time
+guarantees with dynamic checks at runtime.
 
 An `&mut` reference has a different constraint: when an object has an
 `&mut T` pointing into it, then it can be modified only through this reference
@@ -113,11 +112,12 @@ unsafe, and neither is converting to an integer.
 
 ## Reference and pointer aliasing
 
-Several examples can give a better comprehension of the reference and pointer aliasing rules.
+Several examples can give a better comprehension of the reference and pointer
+aliasing rules.
 
-First of all, using `unsafe` code to incorrectly circumvent and violate the
-restrictions on references leads to undefined behaviour. For example,
-the following code creates two aliasing `&mut` references, and is therefore invalid.
+First of all, using `unsafe` code to circumvent the restrictions on references
+leads to undefined behaviour. For example, the following code creates two
+aliasing `&mut` references, and is therefore illegal.
 
 ```
 use std::mem;
@@ -138,19 +138,24 @@ the reference aliasing rules, so it's forbidden to write through a raw pointer,
 when the memory location it points to is borrowed by a safe Rust reference.
 
 ```
-// This function prints 1, 2, 2 and one more number
-// The fourth number can be, for example, 2 in Release build and 3 in Debug build
+// Technically this function invokes undefined behavior and can do anything,
+// but usually it prints 1, 2, 2 and one more number.
+// The fourth number can be, for example, 2 in optimized build and 3 in
+// unoptimized build.
 unsafe fn f(p: *mut i32, r: &mut i32) {
     let mut val1 = *p;
     println!("{}", val1);
-    *r = 2; // This value change should be visible through the pointer p
-    val1 = *p; // This load operation cannot be optimized out
+    *r = 2; // This value change should be visible through the pointer p.
+    val1 = *p; // This load operation cannot be optimized out.
     println!("{}", val1);
 
     let mut val2 = *r;
     println!("{}", val2);
-    *p = 3; // This value change is illegal and may be invisible through the reference r
-    val2 = *r; // This load operation can be optimized out based on the assumption of uniqueness of the reference r
+    // This value change is illegal and may be invisible through the reference r.
+    *p = 3;
+    // This load operation can be optimized out based on the assumption of
+    // uniqueness of the reference r.
+    val2 = *r;
     println!("{}", val2);
 }
 
@@ -160,24 +165,27 @@ fn main() {
 }
 ```
 
-So, raw pointers can be relatively safely used as observers, but an extreme care should be taken
-when performing write operations through them. You should be sure that no one else refers to the
-modified value by `&T` or `&mut T`.
+So, raw pointers can be relatively safely used as observers, but an extreme
+care should be taken when performing write operations through them. You should
+be sure that no one else refers to the modified value by `&T` or `&mut T`.
 
-The structure `UnsafeCell` is special-cased in the compiler to allow the language to work correctly
-with internal mutability. A value of `UnsafeCell` can always be safely read through a reference, even if it is updated through something else (note, that we are talking only about single-threaded scenarios here).
+The structure `UnsafeCell` is special-cased in the compiler to allow the
+language to work correctly with interior mutability. A value of `UnsafeCell`
+can always be safely read through a reference, even if it is updated through
+something else.
 
 ```
 use std::cell::UnsafeCell;
 
-// This function should print 1 and 2
-// If UnsafeCell is replaced with equivalent user-defined structure,
-// then the second printed number is undefined, for example, the function can print 2 in Debug and 1 in Release
+// This function should print 1 and 2.
+// If UnsafeCell is replaced with equivalent user-defined structure, then the
+// second printed number is undefined, for example, the function can print 2 in
+// unoptimized build and 1 in optimized build.
 unsafe fn f_cell(p: *mut i32, r: &UnsafeCell<i32>) {
     let mut val = r.value;
     println!("{}", val);
-    *p = 2; // this value change should be visible through the reference r
-    val = r.value; // this load operation cannot be optimized out
+    *p = 2; // This value change should be visible through the reference r.
+    val = r.value; // This load operation cannot be optimized out.
     println!("{}", val);
 }
 
@@ -187,16 +195,17 @@ fn main() {
 }
 ```
 
-And finally, Rust doesn't have any kind of type based aliasing rules for raw pointers like C,
-e.g. pointers to unrelated types (e.g. `i32` and `f32`) can alias.
+Finally, Rust doesn't have any kind of type based aliasing rules for raw
+pointers like C, e.g. pointers to unrelated types (e.g. `i32` and `f32`) may
+alias.
 
 ```
-// This program should print 1 and 0
+// This program should print 1 and 0.
 unsafe fn f(pi: *mut i32, pf: *mut f32) {
     let mut val = *pi;
     println!("{}", val);
-    *pf = 0.0; // this value change should be visible through the pointer pi
-    val = *pi; // this load operation cannot be optimized out
+    *pf = 0.0; // This value change should be visible through the pointer pi.
+    val = *pi; // This load operation cannot be optimized out.
     println!("{}", val);
 }
 
