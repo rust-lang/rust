@@ -971,7 +971,7 @@ path_glob : ident [ "::" [ path_glob
                           | '*' ] ] ?
           | '{' path_item [ ',' path_item ] * '}' ;
 
-path_item : ident | "mod" ;
+path_item : ident | "self" ;
 ```
 
 A _use declaration_ creates one or more local name bindings synonymous with
@@ -991,15 +991,15 @@ Use declarations support a number of convenient shortcuts:
 * Binding all paths matching a given prefix, using the asterisk wildcard syntax
   `use a::b::*;`
 * Simultaneously binding a list of paths differing only in their final element
-  and their immediate parent module, using the `mod` keyword, such as
-  `use a::b::{mod, c, d};`
+  and their immediate parent module, using the `self` keyword, such as
+  `use a::b::{self, c, d};`
 
 An example of `use` declarations:
 
 ```
 use std::iter::range_step;
 use std::option::Option::{Some, None};
-use std::collections::hash_map::{mod, HashMap};
+use std::collections::hash_map::{self, HashMap};
 
 fn foo<T>(_: T){}
 fn bar(map1: HashMap<String, uint>, map2: hash_map::HashMap<String, uint>){}
