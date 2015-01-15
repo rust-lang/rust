@@ -11,7 +11,7 @@ AR_aarch64-apple-ios = $(shell xcrun -find -sdk iphoneos ar)
 endif
 CFG_LIB_NAME_aarch64-apple-ios = lib$(1).a
 CFG_LIB_GLOB_aarch64-apple-ios = lib$(1)-*.a
-CFG_LIB_SKIP_INSTALL_aarch64-apple-ios = 1 #lib$(1)-*.a
+CFG_INSTALL_ONLY_RLIB_aarch64-apple-ios = 1
 CFG_STATIC_LIB_NAME_aarch64-apple-ios=lib$(1).a
 CFG_LIB_DSYM_GLOB_aarch64-apple-ios = lib$(1)-*.a.dSYM
 CFG_CFLAGS_aarch64-apple-ios := $(CFG_IOS_SDK_FLAGS_aarch64-apple-ios)
