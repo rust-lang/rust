@@ -199,154 +199,116 @@ destructuring `let`.
 ## Enums
 
 Finally, Rust has a "sum type", an *enum*. Enums are an incredibly useful
-feature of Rust, and are used throughout the standard library. This is an enum
-that is provided by the Rust standard library:
-
-```{rust}
-enum Ordering {
-    Less,
-    Equal,
-    Greater,
-}
-```
-
-An `Ordering` can only be _one_ of `Less`, `Equal`, or `Greater` at any given
-time.
-
-Because `Ordering` is provided by the standard library, we can use the `use`
-keyword to use it in our code. We'll learn more about `use` later, but it's
-used to bring names into scope.
-
-Here's an example of how to use `Ordering`:
-
-```{rust}
-use std::cmp::Ordering;
-
-fn cmp(a: i32, b: i32) -> Ordering {
-    if a < b { Ordering::Less }
-    else if a > b { Ordering::Greater }
-    else { Ordering::Equal }
-}
-
-fn main() {
-    let x = 5;
-    let y = 10;
-
-    let ordering = cmp(x, y); // ordering: Ordering
-
-    if ordering == Ordering::Less {
-        println!("less");
-    } else if ordering == Ordering::Greater {
-        println!("greater");
-    } else if ordering == Ordering::Equal {
-        println!("equal");
-    }
-}
-```
-
-There's a symbol here we haven't seen before: the double colon (`::`).
-This is used to indicate a namespace. In this case, `Ordering` lives in
-the `cmp` submodule of the `std` module. We'll talk more about modules
-later in the guide. For now, all you need to know is that you can `use`
-things from the standard library if you need them.
-
-Okay, let's talk about the actual code in the example. `cmp` is a function that
-compares two things, and returns an `Ordering`. We return either
-`Ordering::Less`, `Ordering::Greater`, or `Ordering::Equal`, depending on if
-the two values are greater, less, or equal. Note that each variant of the
-`enum` is namespaced under the `enum` itself: it's `Ordering::Greater` not
-`Greater`.
-
-The `ordering` variable has the type `Ordering`, and so contains one of the
-three values. We can then do a bunch of `if`/`else` comparisons to check which
-one it is. However, repeated `if`/`else` comparisons get quite tedious. Rust
-has a feature that not only makes them nicer to read, but also makes sure that
-you never miss a case. Before we get to that, though, let's talk about another
-kind of enum: one with values.
-
-This enum has two variants, one of which has a value:
-
-```{rust}
-enum OptionalInt {
-    Value(i32),
-    Missing,
-}
-```
-
-This enum represents an `i32` that we may or may not have. In the `Missing`
-case, we have no value, but in the `Value` case, we do. This enum is specific
-to `i32`s, though. We can make it usable by any type, but we haven't quite
-gotten there yet!
-
-You can also have any number of values in an enum:
-
-```{rust}
-enum OptionalColor {
-    Color(i32, i32, i32),
-    Missing,
-}
-```
-
-And you can also have something like this:
-
-```{rust}
-enum StringResult {
-    StringOK(String),
-    ErrorReason(String),
-}
-```
-Where a `StringResult` is either a `StringResult::StringOK`, with the result of
-a computation, or an `StringResult::ErrorReason` with a `String` explaining
-what caused the computation to fail. These kinds of `enum`s are actually very
-useful and are even part of the standard library.
-
-Here is an example of using our `StringResult`:
+feature of Rust, and are used throughout the standard library. An `enum` is
+a type which ties a set of alternates to a specific name. For example, below
+we define `Character` to be either a `Digit` or something else. These
+can be used via their fully scoped names: `Character::Other`.
 
 ```rust
-enum StringResult {
-    StringOK(String),
-    ErrorReason(String),
-}
-
-fn respond(greeting: &str) -> StringResult {
-    if greeting == "Hello" {
-        StringResult::StringOK("Good morning!".to_string())
-    } else {
-        StringResult::ErrorReason("I didn't understand you!".to_string())
-    }
+enum Character {
+    Digit(i32),
+    Other,
 }
 ```
 
-That's a lot of typing! We can use the `use` keyword to make it shorter:
+An `enum` variant, can be defined as most normal types. Below some example types
+have been listed which also would be allowed in an `enum`.
 
 ```rust
-use StringResult::StringOK;
-use StringResult::ErrorReason;
+struct Empty;
+struct Color(i32, i32, i32);
+struct Length(i32);
+struct Status { Health: i32, Mana: i32, Attack: i32, Defense: i32 }
+struct HeightDatabase(Vec<i32>);
+```
 
-enum StringResult {
-    StringOK(String),
-    ErrorReason(String),
+So you see that depending on the sub-datastructure, the `enum` variant, same as a
+struct variant, may or may not hold data. That is, in `Character`, `Digit` is a name
+tied to an `i32` where `Other` is just a name. However, the fact that they are distinct
+makes this very useful.
+
+As with structures, enums don't by default have access to operators such as
+compare ( `==` and `!=`), binary operations (`*` and `+`), and order
+(`<` and `>=`). As such, using the previous `Character` type, the
+following code is invalid:
+
+```{rust, ignore}
+// These assignments both succeed
+let ten  = Character::Digit(10);
+let four = Character::Digit(4); 
+
+// Error: `*` is not implemented for type `Character`
+let forty = ten * four;
+
+// Error: `<` is not implemented for type `Character`
+let four_is_smaller = four < ten;
+
+// Error: `==` is not implemented for type `Character`
+let four_equals_ten = four == ten;
+```
+
+This may seem rather limiting, particularly equality being invalid; in
+many cases however, it's unnecessary. Rust provides the `match` keyword,
+which will be examined in more detail in the next section, which allows
+better and easier branch control than a series of `if`/`else` statements
+would. Here, we'll briefly utilize it to avoid some complicated
+alternatives.
+
+In spite of not having equality, the match below is able to deduce the type
+of the object and take the corresponding branch. It can even retrieve the
+number from inside the structure. This is the typical way an `enum` is
+used.
+
+```rust
+enum Character {
+    Digit(i32),
+    Other,
 }
 
-# fn main() {}
+let nine = Character::Digit(9i32);
+let not_a_digit = Other;
 
-fn respond(greeting: &str) -> StringResult {
-    if greeting == "Hello" {
-        StringOK("Good morning!".to_string())
-    } else {
-        ErrorReason("I didn't understand you!".to_string())
-    }
+match nine {
+    Character::Digit(num) => println!("Got the digit: {:?}", num),
+    Character::Other      => println!("Got the something else"),
+}
+
+match not_a_digit {
+    Character::Digit(num) => println!("Got the digit: {:?}", num),
+    Character::Other      => println!("Got the something else"),
 }
 ```
 
-`use` declarations must come before anything else, which looks a little strange in this example,
-since we `use` the variants before we define them. Anyway, in the body of `respond`, we can just
-say `StringOK` now, rather than the full `StringResult::StringOK`. Importing variants can be
-convenient, but can also cause name conflicts, so do this with caution. It's considered good style
-to rarely import variants for this reason.
+As this is very verbose, it can be shortened using the `use` declaration.
+`use` must precede everything so we put it at the top.
+
+```rust
+use Character::Digit;
+use Character::Other;
+
+enum Character {
+    Digit(i32),
+    Other,
+}
+
+let nine = Digit(9i32);
+let not_a_digit = Other;
+
+match nine {
+    Digit(num) => println!("Got the digit: {:?}", num),
+    Other      => println!("Got the something else"),
+}
+
+match not_a_digit {
+    Digit(num) => println!("Got the digit: {:?}", num),
+    Other      => println!("Got the something else"),
+}
+```
+
+Importing variants can be convenient, but can also cause name conflicts, so do this
+with caution. It's considered good style to rarely import variants for this reason.
 
 As you can see, `enum`s with values are quite a powerful tool for data representation,
 and can be even more useful when they're generic across types. Before we get to generics,
-though, let's talk about how to use them with pattern matching, a tool that will
-let us deconstruct this sum type (the type theory term for enums) in a very elegant
-way and avoid all these messy `if`/`else`s.
+though, let's go into more detail about pattern matching which uses that `match` tool
+we just saw.
