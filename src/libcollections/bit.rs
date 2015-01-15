@@ -2526,7 +2526,7 @@ mod bitv_bench {
             for _ in range(0u, 100) {
                 bitv |= 1 << ((r.next_u32() as uint) % u32::BITS);
             }
-            black_box(&bitv)
+            black_box(&bitv);
         });
     }
 
@@ -2538,7 +2538,7 @@ mod bitv_bench {
             for _ in range(0u, 100) {
                 bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
             }
-            black_box(&bitv)
+            black_box(&bitv);
         });
     }
 
