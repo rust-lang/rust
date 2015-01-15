@@ -957,7 +957,7 @@ pub type Mac = Spanned<Mac_>;
 pub enum Mac_ {
     // NB: the additional ident for a macro_rules-style macro is actually
     // stored in the enclosing item. Oog.
-    MacInvocTT(Path, Vec<TokenTree> , SyntaxContext),   // new macro-invocation
+    MacInvocTT(Path, Vec<TokenTree>, SyntaxContext),   // new macro-invocation
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
