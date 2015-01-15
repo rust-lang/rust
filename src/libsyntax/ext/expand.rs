@@ -395,81 +395,15 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
                    -> SmallVector<P<ast::Item>> {
     let it = expand_item_modifiers(it, fld);
 
-    let mut decorator_items = SmallVector::zero();
-    let mut new_attrs = Vec::new();
-    for attr in it.attrs.iter() {
-        let mname = attr.name();
-
-        match fld.cx.syntax_env.find(&intern(mname.get())) {
-            Some(rc) => match *rc {
-                Decorator(ref dec) => {
-                    attr::mark_used(attr);
-
-                    fld.cx.bt_push(ExpnInfo {
-                        call_site: attr.span,
-                        callee: NameAndSpan {
-                            name: mname.get().to_string(),
-                            format: MacroAttribute,
-                            span: None
-                        }
-                    });
-
-                    // we'd ideally decorator_items.push_all(expand_item(item, fld)),
-                    // but that double-mut-borrows fld
-                    let mut items: SmallVector<P<ast::Item>> = SmallVector::zero();
-                    dec.expand(fld.cx, attr.span, &*attr.node.value, &*it,
-                               box |&mut : item| items.push(item));
-                    decorator_items.extend(items.into_iter()
-                        .flat_map(|item| expand_item(item, fld).into_iter()));
-
-                    fld.cx.bt_pop();
-                }
-                _ => new_attrs.push((*attr).clone()),
-            },
-            _ => new_attrs.push((*attr).clone()),
-        }
-    }
-
-    let mut new_items = match it.node {
-        ast::ItemMac(..) => expand_item_mac(it, fld),
-        ast::ItemMod(_) | ast::ItemForeignMod(_) => {
-            let valid_ident =
-                it.ident.name != parse::token::special_idents::invalid.name;
-
-            if valid_ident {
-                fld.cx.mod_push(it.ident);
-            }
-            let macro_use = contains_macro_use(fld, &new_attrs[]);
-            let result = with_exts_frame!(fld.cx.syntax_env,
-                                          macro_use,
-                                          noop_fold_item(it, fld));
-            if valid_ident {
-                fld.cx.mod_pop();
-            }
-            result
-        },
-        _ => {
-            let it = P(ast::Item {
-                attrs: new_attrs,
-                ..(*it).clone()
-            });
-            noop_fold_item(it, fld)
-        }
-    };
-
-    new_items.push_all(decorator_items);
-    new_items
+    expand_annotatable(Annotatable::Item(it), fld)
+        .into_iter().map(|i| i.expect_item()).collect()
 }
 
 fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
                          -> P<ast::Item> {
     // partition the attributes into ItemModifiers and others
-    let (modifiers, other_attrs): (Vec<_>, _) = it.attrs.iter().cloned().partition(|attr| {
-        match fld.cx.syntax_env.find(&intern(attr.name().get())) {
-            Some(rc) => match *rc { Modifier(_) => true, _ => false },
-            _ => false
-        }
-    });
+    let (modifiers, other_attrs) = modifiers(&it.attrs, fld);
+
     // update the attrs, leave everything else alone. Is this mutation really a good idea?
     it = P(ast::Item {
         attrs: other_attrs,
@@ -477,7 +411,8 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
     });
 
     if modifiers.is_empty() {
-        return it;
+        let it = expand_item_multi_modifier(Annotatable::Item(it), fld);
+        return it.expect_item();
     }
 
     for attr in modifiers.iter() {
@@ -504,7 +439,12 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
         }
     }
 
-    // expansion may have added new ItemModifiers
+    // Expansion may have added new ItemModifiers.
+    // It is possible, that an item modifier could expand to a multi-modifier or
+    // vice versa. In this case we will expand all modifiers before multi-modifiers,
+    // which might give an odd ordering. However, I think it is unlikely that the
+    // two kinds will be mixed, and I old-style multi-modifiers should be deprecated
+    // anyway.
     expand_item_modifiers(it, fld)
 }
 
@@ -1029,6 +969,196 @@ impl<'a> Folder for PatIdentRenamer<'a> {
     }
 }
 
+fn expand_annotatable(a: Annotatable,
+                      fld: &mut MacroExpander)
+                      -> SmallVector<Annotatable> {
+    let a = expand_item_multi_modifier(a, fld);
+
+    let mut decorator_items = SmallVector::zero();
+    let mut new_attrs = Vec::new();
+    for attr in a.attrs().iter() {
+        let mname = attr.name();
+
+        match fld.cx.syntax_env.find(&intern(mname.get())) {
+            Some(rc) => match *rc {
+                Decorator(ref dec) => {
+                    let it = match a {
+                        Annotatable::Item(ref it) => it,
+                        // ItemDecorators are only implemented for Items.
+                        _ => break,
+                    };
+
+                    attr::mark_used(attr);
+
+                    fld.cx.bt_push(ExpnInfo {
+                        call_site: attr.span,
+                        callee: NameAndSpan {
+                            name: mname.get().to_string(),
+                            format: MacroAttribute,
+                            span: None
+                        }
+                    });
+
+                    // we'd ideally decorator_items.push_all(expand_item(item, fld)),
+                    // but that double-mut-borrows fld
+                    let mut items: SmallVector<P<ast::Item>> = SmallVector::zero();
+                    dec.expand(fld.cx, attr.span, &*attr.node.value, &**it,
+                               box |&mut: item| items.push(item));
+                    decorator_items.extend(items.into_iter()
+                        .flat_map(|item| expand_item(item, fld).into_iter()));
+
+                    fld.cx.bt_pop();
+                }
+                _ => new_attrs.push((*attr).clone()),
+            },
+            _ => new_attrs.push((*attr).clone()),
+        }
+    }
+
+    let mut new_items: SmallVector<Annotatable> = match a {
+        Annotatable::Item(it) => match it.node {
+            ast::ItemMac(..) => {
+                expand_item_mac(it, fld).into_iter().map(|i| Annotatable::Item(i)).collect()
+            }
+            ast::ItemMod(_) | ast::ItemForeignMod(_) => {
+                let valid_ident =
+                    it.ident.name != parse::token::special_idents::invalid.name;
+
+                if valid_ident {
+                    fld.cx.mod_push(it.ident);
+                }
+                let macro_use = contains_macro_use(fld, &new_attrs[]);
+                let result = with_exts_frame!(fld.cx.syntax_env,
+                                              macro_use,
+                                              noop_fold_item(it, fld));
+                if valid_ident {
+                    fld.cx.mod_pop();
+                }
+                result.into_iter().map(|i| Annotatable::Item(i)).collect()
+            },
+            _ => {
+                let it = P(ast::Item {
+                    attrs: new_attrs,
+                    ..(*it).clone()
+                });
+                noop_fold_item(it, fld).into_iter().map(|i| Annotatable::Item(i)).collect()
+            }
+        },
+        Annotatable::TraitItem(it) => match it {
+            ast::TraitItem::ProvidedMethod(m) => {
+                expand_method(m, fld).into_iter().map(|m|
+                    Annotatable::TraitItem(ast::TraitItem::ProvidedMethod(m))).collect()
+            }
+            ast::TraitItem::RequiredMethod(m) => {
+                SmallVector::one(Annotatable::TraitItem(
+                    ast::TraitItem::RequiredMethod(fld.fold_type_method(m))))
+            }
+            ast::TraitItem::TypeTraitItem(t) => {
+                SmallVector::one(Annotatable::TraitItem(
+                    ast::TraitItem::TypeTraitItem(P(fld.fold_associated_type((*t).clone())))))
+            }
+        },
+        Annotatable::ImplItem(it) => match it {
+            ast::ImplItem::MethodImplItem(m) => {
+                expand_method(m, fld).into_iter().map(|m|
+                    Annotatable::ImplItem(ast::ImplItem::MethodImplItem(m))).collect()
+            }
+            ast::ImplItem::TypeImplItem(t) => {
+                SmallVector::one(Annotatable::ImplItem(
+                    ast::ImplItem::TypeImplItem(P(fld.fold_typedef((*t).clone())))))
+            }
+        }
+    };
+
+    new_items.push_all(decorator_items.into_iter().map(|i| Annotatable::Item(i)).collect());
+    new_items
+}
+
+fn expand_trait_item(i: ast::TraitItem,
+                     fld: &mut MacroExpander)
+                     -> SmallVector<ast::TraitItem> {
+    expand_annotatable(Annotatable::TraitItem(i), fld)
+        .into_iter().map(|i| i.expect_trait_item()).collect()
+
+}
+
+fn expand_impl_item(i: ast::ImplItem,
+                    fld: &mut MacroExpander)
+                    -> SmallVector<ast::ImplItem> {
+    expand_annotatable(Annotatable::ImplItem(i), fld)
+        .into_iter().map(|i| i.expect_impl_item()).collect()
+}
+
+// partition the attributes into ItemModifiers and others
+fn modifiers(attrs: &Vec<ast::Attribute>,
+             fld: &MacroExpander)
+             -> (Vec<ast::Attribute>, Vec<ast::Attribute>) {
+    attrs.iter().cloned().partition(|attr| {
+        match fld.cx.syntax_env.find(&intern(attr.name().get())) {
+            Some(rc) => match *rc {
+                Modifier(_) => true,
+                _ => false
+            },
+            _ => false
+        }
+    })
+}
+
+// partition the attributes into MultiModifiers and others
+fn multi_modifiers(attrs: &[ast::Attribute],
+                   fld: &MacroExpander)
+                   -> (Vec<ast::Attribute>, Vec<ast::Attribute>) {
+    attrs.iter().cloned().partition(|attr| {
+        match fld.cx.syntax_env.find(&intern(attr.name().get())) {
+            Some(rc) => match *rc {
+                MultiModifier(_) => true,
+                _ => false
+            },
+            _ => false
+        }
+    })
+}
+
+fn expand_item_multi_modifier(mut it: Annotatable,
+                              fld: &mut MacroExpander)
+                              -> Annotatable {
+    let (modifiers, other_attrs) = multi_modifiers(it.attrs(), fld);
+
+    // Update the attrs, leave everything else alone. Is this mutation really a good idea?
+    it = it.fold_attrs(other_attrs);
+
+    if modifiers.is_empty() {
+        return it
+    }
+
+    for attr in modifiers.iter() {
+        let mname = attr.name();
+
+        match fld.cx.syntax_env.find(&intern(mname.get())) {
+            Some(rc) => match *rc {
+                MultiModifier(ref mac) => {
+                    attr::mark_used(attr);
+                    fld.cx.bt_push(ExpnInfo {
+                        call_site: attr.span,
+                        callee: NameAndSpan {
+                            name: mname.get().to_string(),
+                            format: MacroAttribute,
+                            span: None,
+                        }
+                    });
+                    it = mac.expand(fld.cx, attr.span, &*attr.node.value, it);
+                    fld.cx.bt_pop();
+                }
+                _ => unreachable!()
+            },
+            _ => unreachable!()
+        }
+    }
+
+    // Expansion may have added new ItemModifiers.
+    expand_item_multi_modifier(it, fld)
+}
+
 // expand a method
 fn expand_method(m: P<ast::Method>, fld: &mut MacroExpander) -> SmallVector<P<ast::Method>> {
     m.and_then(|m| match m.node {
@@ -1042,7 +1172,7 @@ fn expand_method(m: P<ast::Method>, fld: &mut MacroExpander) -> SmallVector<P<as
                       vis) => {
             let id = fld.new_id(m.id);
             let (rewritten_fn_decl, rewritten_body)
-                = expand_and_rename_fn_decl_and_block(decl,body,fld);
+                = expand_and_rename_fn_decl_and_block(decl, body, fld);
             SmallVector::one(P(ast::Method {
                     attrs: m.attrs.move_map(|a| fld.fold_attribute(a)),
                     id: id,
@@ -1145,6 +1275,14 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_arm(&mut self, arm: ast::Arm) -> ast::Arm {
         expand_arm(arm, self)
+    }
+
+    fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVector<ast::TraitItem> {
+        expand_trait_item(i, self)
+    }
+
+    fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVector<ast::ImplItem> {
+        expand_impl_item(i, self)
     }
 
     fn fold_method(&mut self, method: P<ast::Method>) -> SmallVector<P<ast::Method>> {
