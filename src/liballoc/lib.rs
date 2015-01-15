@@ -97,6 +97,7 @@ pub mod rc;
 /// Common out-of-memory routine
 #[cold]
 #[inline(never)]
+#[nounwind]
 pub fn oom() -> ! {
     // FIXME(#14674): This really needs to do something other than just abort
     //                here, but any printing done must be *guaranteed* to not

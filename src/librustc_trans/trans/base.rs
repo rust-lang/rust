@@ -470,6 +470,7 @@ pub fn set_llvm_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: Val
                                                llvm::FunctionIndex as c_uint,
                                                llvm::ColdAttribute as uint64_t)
             },
+            "nounwind" => llvm::SetFunctionAttribute(llfn, llvm::NoUnwindAttribute),
             _ => used = false,
         }
         if used {
@@ -941,9 +942,12 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 RustIntrinsic => {
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
-                _ => {
-                    foreign::register_foreign_item_fn(ccx, fn_ty.abi, t,
-                                                      &name[])
+                abi => {
+                    let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
+                    let llfn = foreign::register_foreign_item_fn(ccx, fn_ty.abi, t,
+                                                                 &name[]);
+                    foreign::add_abi_attributes(ccx, llfn, abi, &attrs[]);
+                    llfn
                 }
             }
         }

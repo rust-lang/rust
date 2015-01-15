@@ -654,6 +654,7 @@ impl LintPass for UnusedAttributes {
             "omit_gdb_pretty_printer_section",
             "unsafe_no_drop_flag",
             "can_unwind",
+            "nounwind",
 
             // used in resolve
             "prelude_import",
