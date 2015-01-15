@@ -103,6 +103,13 @@ pub fn compile_input(sess: Session,
 
         write_out_deps(&sess, input, &outputs, &id[]);
 
+        controller_entry_point!(after_write_deps,
+                                CompileState::state_after_write_deps(input,
+                                                                     &sess,
+                                                                     outdir,
+                                                                     &ast_map,
+                                                                     &id[]));
+
         let arenas = ty::CtxtArenas::new();
         let analysis = phase_3_run_analysis_passes(sess,
                                                    ast_map,
@@ -176,6 +183,7 @@ pub fn source_name(input: &Input) -> String {
 pub struct CompileController<'a> {
     pub after_parse: PhaseController<'a>,
     pub after_expand: PhaseController<'a>,
+    pub after_write_deps: PhaseController<'a>,
     pub after_analysis: PhaseController<'a>,
     pub after_llvm: PhaseController<'a>,
 
@@ -187,6 +195,7 @@ impl<'a> CompileController<'a> {
         CompileController {
             after_parse: PhaseController::basic(),
             after_expand: PhaseController::basic(),
+            after_write_deps:  PhaseController::basic(),
             after_analysis: PhaseController::basic(),
             after_llvm: PhaseController::basic(),
             make_glob_map: resolve::MakeGlobMap::No,
@@ -267,6 +276,19 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             expanded_crate: Some(expanded_crate),
+            .. CompileState::empty(input, session, out_dir)
+        }
+    }
+
+    fn state_after_write_deps(input: &'a Input,
+                              session: &'a Session,
+                              out_dir: &'a Option<Path>,
+                              ast_map: &'a ast_map::Map<'ast>,
+                              crate_name: &'a str)
+                              -> CompileState<'a, 'ast, 'tcx> {
+        CompileState {
+            crate_name: Some(crate_name),
+            ast_map: Some(ast_map),
             .. CompileState::empty(input, session, out_dir)
         }
     }
