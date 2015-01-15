@@ -467,7 +467,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
     };
 
     instantiate_path(pcx.fcx, path, ty::lookup_item_type(tcx, enum_def_id),
-                     def, pat.span, pat.id);
+                     None, def, pat.span, pat.id);
 
     let pat_ty = fcx.node_ty(pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);
@@ -505,7 +505,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
     } else {
         ctor_scheme
     };
-    instantiate_path(pcx.fcx, path, path_scheme, def, pat.span, pat.id);
+    instantiate_path(pcx.fcx, path, path_scheme, None, def, pat.span, pat.id);
 
     let pat_ty = fcx.node_ty(pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);
