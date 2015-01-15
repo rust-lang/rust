@@ -142,5 +142,23 @@ fn foo(x: i32) -> i32 {
 }
 ```
 
+The previous definition without `return` may look a bit strange if you haven't
+worked in an expression-based language before, but it becomes intutive over
+time. If this were production code, we wouldn't write it in that way anyway,
+we'd write this:
+
+```rust
+fn foo(x: i32) -> i32 {
+    if x < 5 {
+        x
+    } else {
+        x + 1
+    }
+}
+```
+
+Because `if` is an expression, and it's the only expression in this function,
+the value will be the result of the `if`.
+
 There are some additional ways to define functions, but they involve features
 that we haven't learned about yet, so let's just leave it at that for now.
