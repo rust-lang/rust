@@ -10,7 +10,7 @@ There aren't many large programs yet. The Rust [compiler][rustc], 60,000+ lines 
 
 A research browser engine called [Servo][servo], currently 30,000+ lines across more than a dozen crates, will be exercising a lot of Rust's distinctive type-system and concurrency features, and integrating many native libraries.
 
-[servo]: https://github.com/mozilla/servo
+[servo]: https://github.com/servo/servo
 
 Some examples that demonstrate different aspects of the language:
 

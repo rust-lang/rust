@@ -30,7 +30,7 @@ No. It started as a Graydon Hoare's part-time side project in 2006 and remained 
 
 # What will Mozilla use Rust for?
 
-Mozilla intends to use Rust as a platform for prototyping experimental browser architectures. Specifically, the hope is to develop a browser that is more amenable to parallelization than existing ones, while also being less prone to common C++ coding errors that result in security exploits. The name of that project is _[Servo](http://github.com/mozilla/servo)_.
+Mozilla intends to use Rust as a platform for prototyping experimental browser architectures. Specifically, the hope is to develop a browser that is more amenable to parallelization than existing ones, while also being less prone to common C++ coding errors that result in security exploits. The name of that project is _[Servo](http://github.com/servo/servo)_.
 
 # Why a BSD-style permissive license rather than MPL or tri-license?
 
