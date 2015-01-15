@@ -123,7 +123,8 @@ fn is_reg_ty(ty: Type) -> bool {
         Integer
         | Pointer
         | Float
-        | Double => true,
+        | Double
+        | Vector => true,
         _ => false
     };
 }
