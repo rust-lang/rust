@@ -13,7 +13,7 @@
 
 #![feature(unboxed_closures)]
 
-use std::intrinsics::TypeId;
+use std::any::TypeId;
 
 fn main() {
     // Bare fns

@@ -11,7 +11,7 @@
 #![feature(unboxed_closures)]
 
 use std::any::Any;
-use std::intrinsics::TypeId;
+use std::any::TypeId;
 
 pub trait Pt {}
 pub trait Rt {}
