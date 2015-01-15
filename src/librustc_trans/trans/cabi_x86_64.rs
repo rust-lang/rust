@@ -32,7 +32,7 @@ enum RegClass {
     SSEFv,
     SSEDs,
     SSEDv,
-    SSEInt,
+    SSEInt(/* bitwidth */ u64),
     /// Data that can appear in the upper half of an SSE register.
     SSEUp,
     X87,
@@ -57,7 +57,7 @@ impl TypeMethods for Type {
 impl RegClass {
     fn is_sse(&self) -> bool {
         match *self {
-            SSEFs | SSEFv | SSEDs | SSEDv => true,
+            SSEFs | SSEFv | SSEDs | SSEDv | SSEInt(_) => true,
             _ => false
         }
     }
@@ -254,7 +254,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                 let elt = ty.element_type();
                 let eltsz = ty_size(elt);
                 let mut reg = match elt.kind() {
-                    Integer => SSEInt,
+                    Integer => SSEInt(elt.int_width()),
                     Float => SSEFv,
                     Double => SSEDv,
                     _ => panic!("classify: unhandled vector element type")
@@ -350,19 +350,19 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
             Int => {
                 tys.push(Type::i64(ccx));
             }
-            SSEFv | SSEDv | SSEInt => {
+            SSEFv | SSEDv | SSEInt(_) => {
                 let (elts_per_word, elt_ty) = match cls[i] {
                     SSEFv => (2, Type::f32(ccx)),
                     SSEDv => (1, Type::f64(ccx)),
-                    // FIXME: need to handle the element types, since
-                    // C doesn't distinguish between the contained
-                    // types of the vector at all; normalise to u8,
-                    // maybe?
-                    SSEInt => panic!("llregtype: SSEInt not yet supported"),
+                    SSEInt(bits) => {
+                        assert!(bits == 8 || bits == 16 || bits == 32 || bits == 64,
+                                "llreg_ty: unsupported SSEInt width {}", bits);
+                        (64 / bits, Type::ix(ccx, bits))
+                    }
                     _ => unreachable!(),
                 };
                 let vec_len = llvec_len(&cls[(i + 1u)..]);
-                let vec_ty = Type::vector(&elt_ty, (vec_len * elts_per_word) as u64);
+                let vec_ty = Type::vector(&elt_ty, vec_len as u64 * elts_per_word);
                 tys.push(vec_ty);
                 i += vec_len;
                 continue;
