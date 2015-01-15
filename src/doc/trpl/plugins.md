@@ -126,7 +126,7 @@ The advantages over a simple `fn(&str) -> uint` are:
   a way to define new literal syntax for any data type.
 
 In addition to procedural macros, you can define new
-[`deriving`](../reference.html#deriving)-like attributes and other kinds of
+[`derive`](../reference.html#derive)-like attributes and other kinds of
 extensions.  See
 [`Registry::register_syntax_extension`](../rustc/plugin/registry/struct.Registry.html#method.register_syntax_extension)
 and the [`SyntaxExtension`
