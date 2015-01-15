@@ -121,9 +121,12 @@ pub enum ObligationCauseCode<'tcx> {
     // static items must have `Sync` type
     SharedStatic,
 
+
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
+
+    CompareImplMethodObligation,
 }
 
 #[derive(Clone)]
