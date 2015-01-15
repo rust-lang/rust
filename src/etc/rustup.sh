@@ -453,15 +453,32 @@ then
     RUST_URL="${RUST_URL}/${CFG_DATE}"
 fi
 
-verify_hash() {
-    remote_sha256="$1"
-    local_file="$2"
-
+download_hash() {
     msg "Downloading ${remote_sha256}"
     remote_sha256=`"${CFG_CURL}" -f "${remote_sha256}"`
+    if [ -n "${CFG_SAVE}" ]; then
+        echo "${remote_sha256}" > "${local_sha_file}"
+    fi
     if [ "$?" -ne 0 ]; then
         rm -Rf "${CFG_TMP_DIR}"
         err "Failed to download ${remote_url}"
+    fi
+}
+
+verify_hash() {
+    remote_sha256="$1"
+    local_file="$2"
+    local_sha_file="${local_file}.sha256"
+
+    if [ -n "${CFG_SAVE}" ]; then
+        if [ -f "${local_sha_file}" ]; then
+            msg "Local ${local_sha_file} exists, treating as remote hash"
+            remote_sha256=`cat "${local_sha_file}"`
+        else
+            download_hash
+        fi
+    else
+        download_hash
     fi
 
     msg "Verifying hash"
