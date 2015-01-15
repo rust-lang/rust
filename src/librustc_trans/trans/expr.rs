@@ -768,7 +768,6 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 tvec::vec_types(bcx,
                                 ty::sequence_element_type(bcx.tcx(),
                                                           base_datum.ty));
-            base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
 
             let (base, len) = base_datum.get_vec_base_and_len(bcx);
 
