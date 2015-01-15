@@ -182,7 +182,7 @@ code:
 - implement the `Drop` for resource clean-up via a destructor, and use
   RAII (Resource Acquisition Is Initialization). This reduces the need
   for any manual memory management by users, and automatically ensures
-  that clean-up is always run, even when the task panics.
+  that clean-up is always run, even when the thread panics.
 - ensure that any data stored behind a raw pointer is destroyed at the
   appropriate time.
 
@@ -499,7 +499,7 @@ library, but without it you must define your own.
 The first of these three functions, `stack_exhausted`, is invoked whenever stack
 overflow is detected.  This function has a number of restrictions about how it
 can be called and what it must do, but if the stack limit register is not being
-maintained then a task always has an "infinite stack" and this function
+maintained then a thread always has an "infinite stack" and this function
 shouldn't get triggered.
 
 The second of these three functions, `eh_personality`, is used by the
