@@ -14,7 +14,7 @@
 // cross-compiled standard libraries.
 #![no_std]
 
-#![feature(simd, link_llvm_intrinsics, lang_items)]
+#![feature(simd, simd_ffi, link_llvm_intrinsics, lang_items)]
 
 
 #[repr(C)]
