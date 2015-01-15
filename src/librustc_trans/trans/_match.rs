@@ -857,16 +857,9 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             bcx.fcx.schedule_lifetime_end(cs, binding_info.llmatch);
         }
 
-        debug!("binding {} to {}",
-               binding_info.id,
-               bcx.val_to_string(llval));
+        debug!("binding {} to {}", binding_info.id, bcx.val_to_string(llval));
         bcx.fcx.lllocals.borrow_mut().insert(binding_info.id, datum);
-
-        if bcx.sess().opts.debuginfo == FullDebugInfo {
-            debuginfo::create_match_binding_metadata(bcx,
-                                                     ident,
-                                                     binding_info);
-        }
+        debuginfo::create_match_binding_metadata(bcx, ident, binding_info);
     }
     bcx
 }
