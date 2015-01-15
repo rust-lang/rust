@@ -104,6 +104,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
+#![allow(unstable)]
 #![allow(unknown_features)]
 #![feature(linkage, thread_local, asm)]
 #![feature(lang_items, unsafe_destructor)]
@@ -112,8 +113,7 @@
 #![feature(old_impl_check)]
 #![feature(optin_builtin_traits)]
 #![feature(int_uint)]
-#![feature(int_uint)]
-#![allow(unstable)]
+#![feature(unwinding_attributes)]
 
 // Don't link to std. We are std.
 #![no_std]
