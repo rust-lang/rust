@@ -28,7 +28,6 @@ use trans::type_::Type;
 use trans;
 use middle::ty;
 use middle::ty::MethodCall;
-use session::config::FullDebugInfo;
 use util::ppaux::Repr;
 use util::ppaux;
 
@@ -66,10 +65,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             match d.node {
                 ast::DeclLocal(ref local) => {
                     bcx = init_local(bcx, &**local);
-                    if cx.sess().opts.debuginfo == FullDebugInfo {
-                        trans::debuginfo::create_local_var_metadata(bcx,
-                                                                    &**local);
-                    }
+                    debuginfo::create_local_var_metadata(bcx, &**local);
                 }
                 // Inner items are visited by `trans_item`/`trans_meth`.
                 ast::DeclItem(_) => {},
