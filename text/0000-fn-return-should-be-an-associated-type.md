@@ -51,7 +51,7 @@ struct Map<I,F>
     ...
 }
 
-impl<I,F> Iterator for Map<A,B>,
+impl<I,F> Iterator for Map<I,F>,
     where I : Iterator,
           F : FnMut<(I::Item,)>,
 {
@@ -116,7 +116,7 @@ struct Map<I,F>
     ...
 }
 
-impl<B,I,F> Iterator for Map<A,B>,
+impl<B,I,F> Iterator for Map<I,F>,
     where I : Iterator,
           F : FnMut(I::Item) -> B
 {
