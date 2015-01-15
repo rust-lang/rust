@@ -52,7 +52,7 @@ struct Map<I,F>
 }
 
 impl<I,F> Iterator for Map<A,B>,
-    where I : Iterator<Item=A>,
+    where I : Iterator,
           F : FnMut<(I::Item,)>,
 {
     type Item = F::Output;
@@ -83,7 +83,7 @@ The other traits are modified in an analogous fashion.
 
 The shorthand `Foo(...)` expands to `Foo<(...), Output=()>`. The
 shorthand `Foo(..) -> B` expands to `Foo<(...), Output=B>`. This
-implies that if you use the paranthetical notation, you must supply a
+implies that if you use the parenthetical notation, you must supply a
 return type (which could be a new type parameter). If you would prefer
 to leave the return type unspecified, you must use angle-bracket
 notation. (Note that using angle-bracket notation with the `Fn` traits
@@ -117,7 +117,7 @@ struct Map<I,F>
 }
 
 impl<B,I,F> Iterator for Map<A,B>,
-    where I : Iterator<Item=A>,
+    where I : Iterator,
           F : FnMut(I::Item) -> B
 {
     type Item = F::Output;
