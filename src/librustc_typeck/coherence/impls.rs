@@ -11,13 +11,10 @@
 //! Implementations checker: builtin traits and default impls are allowed just
 //! for structs and enums.
 
-use middle::def;
 use middle::ty;
 use syntax::ast::{Item, ItemImpl};
 use syntax::ast;
-use syntax::ast_util;
 use syntax::visit;
-use util::ppaux::UserString;
 
 pub fn check(tcx: &ty::ctxt) {
     let mut impls = ImplsChecker { tcx: tcx };
