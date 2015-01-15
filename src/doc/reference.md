@@ -1588,7 +1588,6 @@ pointer values (pointing to a type for which an implementation of the given
 trait is in scope) to pointers to the trait name, used as a type.
 
 ```
-# use std::boxed::Box;
 # trait Shape { }
 # impl Shape for int { }
 # let mycircle = 0i;
@@ -1647,7 +1646,6 @@ fn radius_times_area<T: Circle>(c: T) -> f64 {
 Likewise, supertrait methods may also be called on trait objects.
 
 ```{.ignore}
-# use std::boxed::Box;
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 # impl Shape for int { fn area(&self) -> f64 { 0.0 } }
@@ -3792,7 +3790,6 @@ enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 An example of a *recursive* type and its use:
 
 ```
-# use std::boxed::Box;
 enum List<T> {
     Nil,
     Cons(T, Box<List<T>>)
@@ -3905,7 +3902,6 @@ implementation of `R`, and the pointer value of `E`.
 An example of an object type:
 
 ```
-# use std::boxed::Box;
 trait Printable {
   fn stringify(&self) -> String;
 }
@@ -4113,7 +4109,6 @@ the type of a box is `std::owned::Box<T>`.
 An example of a box type and value:
 
 ```
-# use std::boxed::Box;
 let x: Box<int> = Box::new(10);
 ```
 
@@ -4123,7 +4118,6 @@ copy of a box to move ownership of the value. After a value has been moved,
 the source location cannot be used unless it is reinitialized.
 
 ```
-# use std::boxed::Box;
 let x: Box<int> = Box::new(10);
 let y = x;
 // attempting to use `x` will result in an error here

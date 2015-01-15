@@ -262,8 +262,6 @@ referenced Rust object.
 Rust code:
 
 ~~~~no_run
-# use std::boxed::Box;
-
 #[repr(C)]
 struct RustObject {
     a: i32,
