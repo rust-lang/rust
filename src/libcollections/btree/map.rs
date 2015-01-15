@@ -1422,7 +1422,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
 #[cfg(test)]
 mod test {
     use prelude::*;
-    use std::borrow::BorrowFrom;
 
     use super::{BTreeMap, Occupied, Vacant};
 
