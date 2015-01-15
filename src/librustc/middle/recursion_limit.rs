@@ -12,7 +12,7 @@
 //
 // There are various parts of the compiler that must impose arbitrary limits
 // on how deeply they recurse to prevent stack overflow. Users can override
-// this via an attribute on the crate like `#![recursion_limit(22)]`. This pass
+// this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
 // just peeks and looks for that attribute.
 
 use session::Session;
@@ -34,6 +34,6 @@ pub fn update_recursion_limit(sess: &Session, krate: &ast::Crate) {
         }
 
         sess.span_err(attr.span, "malformed recursion limit attribute, \
-                                  expected #![recursion_limit(\"N\")]");
+                                  expected #![recursion_limit=\"N\"]");
     }
 }
