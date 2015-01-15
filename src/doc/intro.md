@@ -5,7 +5,7 @@ accomplishes these goals by being memory safe without using garbage collection.
 
 This introduction will give you a rough idea of what Rust is like, eliding many
 details. It does not require prior experience with systems programming, but you
-may find the syntax easier if you've used a 'curly brace' programming language
+may find the syntax easier if you've used a "curly brace" programming language
 before, like C or JavaScript. The concepts are more important than the syntax,
 so don't worry if you don't get every last detail: you can read [The
 Rust Programming Language](book/index.html) to get a more complete explanation.
@@ -15,7 +15,7 @@ Rust to follow along. If you'd like to anyway, check out [the
 homepage](http://rust-lang.org) for explanation.
 
 To show off Rust, let's talk about how easy it is to get started with Rust.
-Then, we'll talk about Rust's most interesting feature, **ownership**, and
+Then, we'll talk about Rust's most interesting feature, *ownership*, and
 then discuss how it makes concurrency easier to reason about. Finally,
 we'll talk about how Rust breaks down the perceived dichotomy between speed
 and safety.
@@ -57,7 +57,7 @@ version = "0.0.1"
 authors = ["Your Name <you@example.com>"]
 ```
 
-This is called a **manifest**, and it contains all of the metadata that Cargo
+This is called a *manifest*, and it contains all of the metadata that Cargo
 needs to compile your project.
 
 Here's what's in `src/main.rs`:
@@ -68,7 +68,7 @@ fn main() {
 }
 ```
 
-Cargo generated a 'hello world' for us. We'll talk more about the syntax here
+Cargo generated a "Hello World" for us. We'll talk more about the syntax here
 later, but that's what Rust code looks like! Let's compile and run it:
 
 ```{bash}
@@ -146,8 +146,8 @@ Enough about tools, let's talk code!
 
 # Ownership
 
-Rust's defining feature is 'memory safety without garbage collection.' Let's
-take a moment to talk about what that means. **Memory safety** means that the
+Rust's defining feature is "memory safety without garbage collection". Let's
+take a moment to talk about what that means. *Memory safety* means that the
 programming language eliminates certain kinds of bugs, such as [buffer
 overflows](http://en.wikipedia.org/wiki/Buffer_overflow) and [dangling
 pointers](http://en.wikipedia.org/wiki/Dangling_pointer). These problems occur
@@ -170,7 +170,7 @@ We make an array, `v`, and then call `push` on it. `push` is a method which
 adds an element to the end of an array.
 
 Next, we make a new variable, `x`, that's equal to the first element of
-the array. Simple, but this is where the 'bug' will appear.
+the array. Simple, but this is where the "bug" will appear.
 
 Let's keep going. We then call `push` again, pushing "world" onto the
 end of the array. `v` now is `["Hello", "world"]`.
@@ -222,7 +222,7 @@ its length changes, we may need to allocate more memory. In Ruby, this happens
 as well, we just don't think about it very often. So why does the C++ version
 segfault when we allocate more memory?
 
-The answer is that in the C++ version, `x` is a **reference** to the memory
+The answer is that in the C++ version, `x` is a *reference* to the memory
 location where the first element of the array is stored. But in Ruby, `x` is a
 standalone value, not connected to the underyling array at all. Let's dig into
 the details for a moment. Your program has access to memory, provided to it by
@@ -332,11 +332,11 @@ error: aborting due to previous error
 
 When we try to mutate the array by `push`ing it the second time, Rust throws
 an error. It says that we "cannot borrow v as mutable because it is also
-borrowed as immutable." What's up with "borrowed"?
+borrowed as immutable." What does it mean by "borrowed"?
 
-In Rust, the type system encodes the notion of **ownership**. The variable `v`
-is an "owner" of the vector. When we make a reference to `v`, we let that
-variable (in this case, `x`) 'borrow' it for a while. Just like if you own a
+In Rust, the type system encodes the notion of *ownership*. The variable `v`
+is an *owner* of the vector. When we make a reference to `v`, we let that
+variable (in this case, `x`) *borrow* it for a while. Just like if you own a
 book, and you lend it to me, I'm borrowing the book.
 
 So, when I try to modify the vector with the second call to `push`, I need
@@ -408,7 +408,7 @@ child thread when it goes out of scope. Because we `collect` these guards into
 a `Vec<T>`, and that vector goes out of scope at the end of our program, our
 program will wait for every thread to finish before finishing.
 
-One common form of problem in concurrent programs is a 'data race.'
+One common form of problem in concurrent programs is a *data race*.
 This occurs when two different threads attempt to access the same
 location in memory in a non-synchronized way, where at least one of
 them is a write. If one thread is attempting to read, and one thread
@@ -461,9 +461,9 @@ code tries to make three owners. This may cause a safety problem, so
 Rust disallows it.
 
 What to do here? Rust has two types that helps us: `Arc<T>` and `Mutex<T>`.
-"Arc" stands for "atomically reference counted." In other words, an Arc will
+*Arc* stands for "atomically reference counted". In other words, an Arc will
 keep track of the number of references to something, and not free the
-associated resource until the count is zero. The 'atomic' portion refers to an
+associated resource until the count is zero. The *atomic* portion refers to an
 Arc's usage of concurrency primitives to atomically update the count, making it
 safe across threads. If we use an Arc, we can have our three references. But,
 an Arc does not allow mutable borrows of the data it holds, and we want to
@@ -526,13 +526,13 @@ give us assurance _at compile time_ that we weren't doing something incorrect
 with regards to concurrency. In order to share ownership, we were forced to be
 explicit and use a mechanism to ensure that it would be properly handled.
 
-# Safety _and_ speed
+# Safety _and_ Speed
 
-Safety and speed are always presented as a continuum. On one hand, you have
-maximum speed, but no safety. On the other, you have absolute safety, with no
-speed. Rust seeks to break out of this mode by introducing safety at compile
-time, ensuring that you haven't done anything wrong, while compiling to the
-same low-level code you'd expect without the safety.
+Safety and speed are always presented as a continuum. At one end of the spectrum,
+you have maximum speed, but no safety. On the other end, you have absolute safety
+with no speed. Rust seeks to break out of this paradigm by introducing safety at
+compile time, ensuring that you haven't done anything wrong, while compiling to
+the same low-level code you'd expect without the safety.
 
 As an example, Rust's ownership system is _entirely_ at compile time. The
 safety check that makes this an error about moved values:
