@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -16,7 +16,7 @@
 extern crate syntax;
 extern crate rustc;
 
-use syntax::ast::{TokenTree, Item, MetaItem};
+use syntax::ast::{TokenTree, Item, MetaItem, ImplItem, TraitItem, Method};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::parse::token;
@@ -37,6 +37,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_syntax_extension(
         token::intern("into_foo"),
         Modifier(box expand_into_foo));
+    reg.register_syntax_extension(
+        token::intern("into_multi_foo"),
+        MultiModifier(box expand_into_foo_multi));
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
@@ -63,6 +66,30 @@ fn expand_into_foo(cx: &mut ExtCtxt, sp: Span, attr: &MetaItem, it: P<Item>)
         attrs: it.attrs.clone(),
         ..(*quote_item!(cx, enum Foo { Bar, Baz }).unwrap()).clone()
     })
+}
+
+fn expand_into_foo_multi(cx: &mut ExtCtxt,
+                         sp: Span,
+                         attr: &MetaItem,
+                         it: Annotatable) -> Annotatable {
+    match it {
+        Annotatable::Item(it) => {
+            Annotatable::Item(P(Item {
+                attrs: it.attrs.clone(),
+                ..(*quote_item!(cx, enum Foo2 { Bar2, Baz2 }).unwrap()).clone()
+            }))
+        }
+        Annotatable::ImplItem(it) => {
+            Annotatable::ImplItem(ImplItem::MethodImplItem(
+                quote_method!(cx, fn foo(&self) -> i32 { 42 })
+            ))
+        }
+        Annotatable::TraitItem(it) => {
+            Annotatable::TraitItem(TraitItem::ProvidedMethod(
+                quote_method!(cx, fn foo(&self) -> i32 { 0 })
+            ))
+        }
+    }
 }
 
 fn expand_forged_ident(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult+'static> {
