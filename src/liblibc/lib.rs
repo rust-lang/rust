@@ -497,7 +497,8 @@ pub mod types {
         #[cfg(any(target_arch = "x86",
                   target_arch = "arm",
                   target_arch = "mips",
-                  target_arch = "mipsel"))]
+                  target_arch = "mipsel",
+                  target_arch = "powerpc"))]
         pub mod arch {
             pub mod c95 {
                 pub type c_char = i8;
@@ -528,7 +529,8 @@ pub mod types {
             }
             #[cfg(any(target_arch = "x86",
                       target_arch = "mips",
-                      target_arch = "mipsel"))]
+                      target_arch = "mipsel",
+                      target_arch = "powerpc"))]
             pub mod posix88 {
                 pub type off_t = i32;
                 pub type dev_t = u64;
@@ -642,7 +644,9 @@ pub mod types {
                     pub __size: [u32; 9]
                 }
             }
-            #[cfg(any(target_arch = "mips", target_arch = "mipsel"))]
+            #[cfg(any(target_arch = "mips",
+                      target_arch = "mipsel",
+                      target_arch = "powerpc"))]
             pub mod posix01 {
                 use types::os::arch::c95::{c_long, c_ulong, time_t};
                 use types::os::arch::posix88::{gid_t, ino_t};
@@ -2697,7 +2701,9 @@ pub mod consts {
             pub const EHWPOISON: c_int = 133;
         }
 
-        #[cfg(any(target_arch = "mips", target_arch = "mipsel"))]
+        #[cfg(any(target_arch = "mips",
+                  target_arch = "mipsel",
+                  target_arch = "powerpc"))]
         pub mod posix88 {
             use types::os::arch::c95::c_int;
             use types::common::c95::c_void;
@@ -2982,7 +2988,8 @@ pub mod consts {
             #[cfg(all(target_os = "linux",
                       any(target_arch = "mips",
                           target_arch = "mipsel",
-                          target_arch = "aarch64")))]
+                          target_arch = "aarch64",
+                          target_arch = "powerpc")))]
             pub const PTHREAD_STACK_MIN: size_t = 131072;
 
             pub const CLOCK_REALTIME: c_int = 0;
@@ -3040,7 +3047,9 @@ pub mod consts {
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
         }
-        #[cfg(any(target_arch = "mips", target_arch = "mipsel"))]
+        #[cfg(any(target_arch = "mips",
+                  target_arch = "mipsel",
+                  target_arch = "powerpc"))]
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
@@ -3115,7 +3124,9 @@ pub mod consts {
             pub const MAP_NONBLOCK : c_int = 0x010000;
             pub const MAP_STACK : c_int = 0x020000;
         }
-        #[cfg(any(target_arch = "mips", target_arch = "mipsel"))]
+        #[cfg(any(target_arch = "mips",
+                  target_arch = "mipsel",
+                  target_arch = "powerpc"))]
         pub mod extra {
             use types::os::arch::c95::c_int;
 

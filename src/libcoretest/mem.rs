@@ -19,18 +19,14 @@ fn size_of_basic() {
 }
 
 #[test]
-#[cfg(any(target_arch = "x86",
-          target_arch = "arm",
-          target_arch = "mips",
-          target_arch = "mipsel"))]
+#[cfg(target_pointer_width = "32")]
 fn size_of_32() {
     assert_eq!(size_of::<uint>(), 4u);
     assert_eq!(size_of::<*const uint>(), 4u);
 }
 
 #[test]
-#[cfg(any(target_arch = "x86_64",
-          target_arch = "aarch64"))]
+#[cfg(target_pointer_width = "64")]
 fn size_of_64() {
     assert_eq!(size_of::<uint>(), 8u);
     assert_eq!(size_of::<*const uint>(), 8u);
@@ -52,18 +48,14 @@ fn align_of_basic() {
 }
 
 #[test]
-#[cfg(any(target_arch = "x86",
-          target_arch = "arm",
-          target_arch = "mips",
-          target_arch = "mipsel"))]
+#[cfg(target_pointer_width = "32")]
 fn align_of_32() {
     assert_eq!(align_of::<uint>(), 4u);
     assert_eq!(align_of::<*const uint>(), 4u);
 }
 
 #[test]
-#[cfg(any(target_arch = "x86_64",
-          target_arch = "aarch64"))]
+#[cfg(target_pointer_width = "64")]
 fn align_of_64() {
     assert_eq!(align_of::<uint>(), 8u);
     assert_eq!(align_of::<*const uint>(), 8u);
