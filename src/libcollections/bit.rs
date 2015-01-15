@@ -91,7 +91,7 @@ use core::iter::RandomAccessIterator;
 use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
 use core::iter::{self, FromIterator};
 use core::num::Int;
-use core::ops::Index;
+use core::ops::{Index, Range};
 use core::slice;
 use core::{u8, u32, uint};
 use bitv_set; //so meta
@@ -590,6 +590,63 @@ impl Bitv {
         Iter { bitv: self, next_idx: 0, end_idx: self.nbits }
     }
 
+    /// Returns an iterator over the indices which have a particular value.
+    /// In other words, this scans for entries that are set to `true` (or
+    /// `false`), and does not report entries that have the opposite value.
+    ///
+    /// This iterator is more efficient than iterating each index and
+    /// testing it with Bitv::get, because this iterator loads and tests
+    /// entire blocks at a time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let bv = Bitv::from_bytes(&[0b01110100, 0b10010010]);
+    /// let true_indices = bv.iter_eq(true).collect();
+    /// let false_indices = bv.iter_eq(false).collect();
+    /// assert_eq!(true_indices, vec![2, 4, 5, 6, 9, 12, 15]);
+    /// assert_eq!(false_indices, vec![0, 1, 3, 7, 8, 10, 11, 13, 14]);
+    /// ```
+    #[inline]
+    pub fn iter_eq(&self, value: bool) -> IterEq {
+        IterEq {
+            storage: &self.storage[],
+            next_idx: 0,
+            end_idx: self.nbits,
+            curblock: 0,
+            xormask: if value { 0u32 } else { !0u32 }
+        }
+    }
+
+    /// Returns an iterator over "runs".  A run is a contiguous sequence
+    /// of entries in a Bitv that all have the same value.  This iterator
+    /// will return either runs of `true` or runs of `false`, depending on
+    /// the value provided for `value`.
+    ///
+    /// This iterator is more efficient than manually iterating through the
+    /// collection and identifying runs, because this iterator loads and
+    /// tests entire blocks at a time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::Bitv;
+    ///
+    /// let bv = Bitv::from_bytes(&[0b01110100, 0b10010010]);
+    /// let true_runs = bv.iter_runs(true).collect();
+    /// let false_runs = bv.iter_runs(false).collect();
+    /// assert_eq!(true_runs, vec![(2, 3), (4, 7), (9, 10), (12, 13), (15, 16)]);
+    /// assert_eq!(false_runs, vec![(0, 2), (3, 4), (7, 9), (10, 12), (13, 15)]);
+    /// ```
+    #[inline]
+    pub fn iter_runs(&self, value: bool) -> IterRuns {
+        IterRuns {
+            iter_eq: self.iter_eq(value)
+        }
+    }
+
     /// Returns `true` if all bits are 0.
     ///
     /// # Examples
@@ -1032,6 +1089,236 @@ impl<'a> Iterator for Iter<'a> {
     fn size_hint(&self) -> (uint, Option<uint>) {
         let rem = self.end_idx - self.next_idx;
         (rem, Some(rem))
+    }
+}
+
+/// An iterator for `Bitv` which implements `Bitv::iter_eq`.
+#[derive(Copy)]
+pub struct IterEq<'a> {
+    storage: &'a [u32], // Access to bits to test
+    next_idx: uint,     // Index of next bit we will check
+    end_idx: uint,      // Exclusive bound of iteration; invariant: next_idx <= end_idx
+    xormask: u32,       // Mask used to flip bits when scanning for 'false'
+    curblock: u32,      // Contains the current block of 32 bits that we're examining
+}
+
+impl<'a> IterEq<'a> {
+    // This is used to invert the sense of the query used in IterEq.
+    // It is used solely to implement IterRuns.  This method is a
+    // little complex because we are preserving the invariants that
+    // IterEq::next() uses to advance its state, while minimizing the
+    // perf impact on IterEq::next().  The complexity comes from needing
+    // to flip the correct number of bits in self.curblock, rather than
+    // blindly flipping them all.
+    #[inline]
+    fn invert(&mut self) {
+        let valid_mask = self.get_curblock_mask();
+        self.xormask ^= !0u32;
+        self.curblock ^= valid_mask;
+    }
+
+    // Gets a mask of the valid bits in self.curblock.
+    #[inline]
+    fn get_curblock_mask(&self) -> u32 {
+        let bits = self.get_curblock_valid_bits();
+        if bits < 32 { (1u32 << bits) - 1 } else { !0u32 }
+    }
+
+    #[inline]
+    fn get_curblock_valid_bits(&self) -> usize {
+        let end_blk = self.end_idx / u32::BITS;
+        let end_bit = self.end_idx % u32::BITS;
+        let next_blk = self.next_idx / u32::BITS;
+        let next_bit = self.next_idx % u32::BITS;
+        if next_blk < end_blk { (u32::BITS - next_bit) % u32::BITS } else { end_bit - next_bit }
+    }
+}
+
+impl<'a> Iterator for IterEq<'a> {
+    type Item = uint;
+
+    #[inline]
+    fn next(&mut self) -> Option<uint> {
+        // Fast path
+        if self.curblock != 0 {
+            // Find the next bit that is set, and report it.
+            debug_assert!(self.next_idx < self.end_idx);
+            let bit = self.curblock.trailing_zeros();
+            let pos = self.next_idx + bit;
+            debug_assert!(pos < self.end_idx);
+            self.next_idx = pos + 1;
+            self.curblock = (self.curblock >> bit) >> 1; // DO NOT COMBINE INTO >> (bit + 1)!
+            return Some(pos);
+        }
+
+        // Slow path
+
+        while self.next_idx < self.end_idx {
+            // If the low bits in next_idx are zero then we need to load the
+            // next block of bits.  Also, flip the bits using self.xormask so
+            // that we can easily implement queries for both 'true' and 'false'
+            // entries without taking any branches in our main path.
+
+            if (self.next_idx % u32::BITS) == 0 {
+                // Scan blocks (u32) until we find a non-zero (after xor'ing) block.
+                // Note that we consider only whole blocks, not the partial last block.
+                let next_blk = self.next_idx / u32::BITS;       // block index
+                let last_blk = self.end_idx / u32::BITS;        // block index
+                debug_assert!(next_blk < self.storage.len());
+                debug_assert!(last_blk <= self.storage.len());
+                let mut blk = next_blk;
+                loop {
+                    if blk < last_blk {
+                        let bits = self.storage[blk] ^ self.xormask;
+                        if bits == 0 {
+                            // Quickly scan past entire blocks that are clear.
+                            blk += 1;
+                            continue;
+                        }
+
+                        // Found at least one
+                        self.curblock = bits;
+                        self.next_idx += (blk - next_blk) * u32::BITS;
+                        break;
+                    }
+                    else {
+                        // No more whole words.  Check last partial, if any.
+                        self.next_idx += (blk - next_blk) * u32::BITS;
+                        debug_assert!(self.next_idx <= self.end_idx);
+
+                        // If there are no bits left, then we're done.
+                        if self.next_idx == self.end_idx {
+                            return None;
+                        }
+
+                        let bits_left = self.end_idx - self.next_idx;
+                        debug_assert!(bits_left < u32::BITS);
+                        self.curblock = (self.storage[blk] ^ self.xormask)
+                            & ((!0u32) >> (32 - bits_left));
+                        if self.curblock == 0 {
+                            // There are no more bits (with the desired value); we're done.
+                            self.next_idx = self.end_idx;
+                            return None;
+                        }
+
+                        break;
+                    }
+                }
+                debug_assert!(self.next_idx < self.end_idx);
+                debug_assert!(self.curblock != 0);
+            }
+
+            debug_assert!(self.next_idx < self.end_idx);
+
+            if self.curblock == 0 {
+                // This block is empty.  Advance to the next.
+                // Take care to avoid overflow.
+                self.next_idx += cmp::min(
+                    32 - (self.next_idx % u32::BITS),
+                    self.end_idx - self.next_idx);
+                continue;
+            }
+
+            // Find the next bit that is set, and report it.
+            let bit = self.curblock.trailing_zeros();
+            let pos = self.next_idx + bit;
+            debug_assert!(pos < self.end_idx);
+            self.next_idx = pos + 1;
+            self.curblock = (self.curblock >> bit) >> 1; // DO NOT MERGE INTO >> (bit + 1)
+            return Some(pos);
+        }
+        None
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        // From the current position to the end, count all bits set, being
+        // careful to handle xormask correctly.
+        let mut total: uint = 0;
+
+        // Count bits in the current block, if any.  It is possible for this
+        // to be the last block, too.
+        let mut next_idx = self.next_idx;
+        if next_idx < self.end_idx && (next_idx % u32::BITS) != 0 {
+            // How many bits in curblock are valid?  Fortunately, curblock has
+            // already been xor'd and trimmed, so all we need to do is count bits.
+            total += self.curblock.count_ones();
+            next_idx += cmp::min(self.end_idx - next_idx, u32::BITS);
+        }
+
+        if next_idx < self.end_idx {
+            // next_idx should be word-aligned here.
+            debug_assert!((next_idx % u32::BITS) == 0);
+
+            // Count all of the whole words, being careful to xor.
+            let last_blk = self.end_idx / u32::BITS;
+            for b in self.storage[(next_idx / u32::BITS) .. last_blk].iter() {
+                total += (*b ^ self.xormask).count_ones();
+            }
+
+            // Count the last (partial) word, if any.
+            let extra_bits = self.end_idx % u32::BITS;
+            let last_block = (self.storage[last_blk] ^ self.xormask)
+                & (!0u32 >> (u32::BITS - extra_bits));
+            total += last_block.count_ones();
+        }
+
+        (total, Some(total))
+    }
+}
+
+pub struct IterRuns<'a> {
+    iter_eq: IterEq<'a>
+}
+
+impl<'a> Iterator for IterRuns<'a> {
+    type Item = Range<usize>;
+
+    // This iterator is similar to IterEq, but definitely not identical.
+    // IterEq finds and reports individual bit indices.  IterRuns reports
+    // (uint, uint) pairs of (start, end).  We implement IterRuns by
+    // using IterEq itself, by searching for the next 1 (or 0), and then
+    // searching for the next 0 (or 1).
+    #[inline]
+    fn next(&mut self) -> Option<Range<usize>> {
+        match self.iter_eq.next() {
+            Some(start) => {
+                // Temporarily invert the sense of the iterator so we can
+                // find the end of this run.  Be careful to restore the
+                // xormask before we continue.
+                self.iter_eq.invert();
+                let endopt = self.iter_eq.next();
+                self.iter_eq.invert();
+                let end: uint = match endopt {
+                    Some(end) => end,
+                    None => self.iter_eq.end_idx
+                };
+                Some(start .. end)
+            }
+            None => None
+        }
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        // Duplicate the internal iterator, so that we do not
+        // advance our iterator state.
+        let mut iter_eq = self.iter_eq;
+        let mut size: uint = 0;
+        loop {
+            match iter_eq.next() {
+                Some(_) => {
+                    size += 1;
+                    iter_eq.invert();
+                    let endopt = iter_eq.next();
+                    iter_eq.invert();
+                    match endopt {
+                        Some(_) => {}
+                        None => break
+                    }
+                }
+                None => break
+            }
+        }
+        (size, Some(size))
     }
 }
 
@@ -3048,5 +3335,326 @@ mod bitv_set_bench {
             }
             sum
         })
+    }
+}
+
+#[cfg(test)]
+mod bitv_iter_eq_test {
+    use core::ops::Range;
+    use prelude::*;
+    use super::Bitv;
+
+    static TEST_DATA: [u8; 34] = [
+        // block 0
+        0b01101110,     // 1, 2, 4, 5, 6
+        0b00000000,
+        0b00000000,
+        0b01111110,     // 25..31
+
+        // block 1 - empty
+        0b00000000,
+        0b00000000,
+        0b00000000,
+        0b00000000,
+
+        // block 2 - full
+        0b11111111,
+        0b11111111,
+        0b11111111,
+        0b11111111,
+
+        // block 3 - mixed
+        0b11000000,     // 96..98
+        0b00000000,
+        0b00000000,
+        0b00000011,     // 126..next block
+
+        // block 4 - more mixed, continued run from block 3
+        0b11111111,     // also, last block is a partial block
+        0b11110000,
+        0b11001100,
+
+        0xff, 0, 0, 0, 1, 3, 0x99, 0xaa, 0, 0, 0, 0, 0, 5, 0,
+    ];
+
+    fn test_bitv_iter_eq(bv: &Bitv) {
+        for ii in (0..2) {
+            let selector = ii != 0;
+
+            // check iter_eq(selector)
+            println!("selector = {:?}", selector);
+            let expected: Vec<uint> = (0..bv.len())
+                .filter(|&i| bv[i] == selector)
+                .collect();
+            println!("expected = {:?}", expected);
+
+            let iter_eq = bv.iter_eq(selector);
+            let size_hint = iter_eq.size_hint();
+            let actual: Vec<uint> = iter_eq.collect();
+            println!("actual   = {:?}", actual);
+
+            assert_eq!(actual.len(), size_hint.0);
+            assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn test_bitv_iter_eq_well_known() {
+        let bv = Bitv::from_bytes(TEST_DATA.as_slice());
+        test_bitv_iter_eq(&bv);
+    }
+
+    #[test]
+    fn test_bitv_iter_eq_empty() {
+        test_bitv_iter_eq(&Bitv::new());
+    }
+
+    fn test_bitv_iter_runs(bv: &Bitv) {
+        for ii in (0..2) {
+            let selector = ii != 0;
+
+            println!("selector: {:?}", selector);
+
+            // Compute the expected result, using a naive algorithm.
+            let expected = {
+                let mut v: Vec<Range<usize>> = Vec::new();
+                let mut pos: usize = 0;
+                while pos < bv.len() {
+                    let start = pos;
+                    pos += 1;
+                    if bv[start] == selector {
+                        while pos < bv.len() && (bv[pos] == selector) {
+                            pos += 1;
+                        }
+                        let end = pos;
+                        v.push(start .. end);
+                    }
+                }
+                v
+            };
+            println!("expected = {:?}", expected);
+
+            let iter_runs = bv.iter_runs(selector);
+            let size_hint = iter_runs.size_hint();
+            let actual: Vec<Range<usize>> = iter_runs.collect();
+            println!("actual   = {:?}", actual);
+
+            assert_eq!(size_hint.0, actual.len());
+            assert_eq!(expected, actual);
+        }
+    }
+
+    // Test Bitv.iter_runs() using well-known test data (hand-written)
+    #[test]
+    fn test_bitv_iter_runs_well_known() {
+        let bv = Bitv::from_bytes(TEST_DATA.as_slice());
+        test_bitv_iter_runs(&bv);
+    }
+
+    #[test]
+    fn test_bitv_iter_runs_empty() {
+        let bv = Bitv::new();
+        test_bitv_iter_runs(&bv);
+    }
+}
+
+#[cfg(test)]
+mod bitv_iter_eq_bench {
+    // use core::ops::Range;
+    use prelude::*;
+    use super::Bitv;
+    use test::Bencher;
+    use std::rand::{weak_rng, Rng};
+    use core::u32;
+
+    fn iter_eq_fast_impl(bv: &Bitv, value: bool) -> uint {
+        let mut n: usize = 0;
+        for i in bv.iter_eq(value) {
+            n += i;
+        }
+        n
+    }
+
+    fn iter_eq_slow1_impl(bv: &Bitv, value: bool) -> uint {
+        let mut n: usize = 0;
+        for i in (0..bv.len()) {
+            if bv[i] == value {
+                n += i;
+            }
+        }
+        n
+    }
+
+    fn iter_eq_slow2_impl(bv: &Bitv, value: bool) -> uint {
+        let mut n: usize = 0;
+        for (i, _) in bv.iter().enumerate().filter(|&(_, b)| b == value) {
+            n += i;
+        }
+        n
+    }
+
+    // Makes a bitv with a given desired ratio of true : false
+    // and a desired number of entries.
+    // ratio = 0 means "everything is false"
+    // ratio = 1 means "everything is true"
+    // ratio = 0.25 means "about 1 in 4 is true"
+    fn make_mixed_bitv(n: usize, ratio: f32) -> Bitv {
+        assert!(n > 0);
+        assert!(ratio >= 0.0 && ratio <= 1.0);
+
+        let int_ratio = (ratio * (u32::MAX as f32)) as u32;
+        debug!("make_mixed_bitv: ratio={} int_ratio={}", ratio, int_ratio);
+        let mut bv = Bitv::from_elem(n, false);
+        let mut rng = weak_rng();
+        let mut total_set: usize = 0;
+        for i in (0..n) {
+            let r = rng.gen::<u32>();
+            let b = r < int_ratio;
+            bv.set(i, b);
+            if b {
+                total_set += 1;
+            }
+        }
+        debug!("desired ratio: {}, actual ratio: {}", ratio,
+            (total_set as f32) / (n as f32));
+        bv
+    }
+
+    fn bench_iter_eq(
+        b: &mut Bencher,
+        n: usize,
+        ratio: f32,
+        value: bool,
+        iter_impl: fn(bv: &Bitv, value: bool) -> uint)
+    {
+        let mut bv = make_mixed_bitv(n, ratio);
+        if !value {
+            // We're looking for 'false', not 'true'.
+            bv.negate();
+        }
+        b.iter(|| {
+            let _ = iter_impl(&bv, value);
+        });
+    }
+
+    // Check at 2% fill
+
+    #[bench]
+    fn bench_bitv_iter_eq_fast_02percent_t(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.02, true, iter_eq_fast_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_fast_02percent_f(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.02, false, iter_eq_fast_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow1_02percent_t(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.02, true, iter_eq_slow1_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow1_02percent_f(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.02, false, iter_eq_slow1_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow2_02percent_t(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.02, true, iter_eq_slow2_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow2_02percent_f(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.02, false, iter_eq_slow2_impl);
+    }
+
+    // Check at 10% fill
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow1_10percent_t(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.10, true, iter_eq_slow1_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_fast_10percent_t(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.10, true, iter_eq_fast_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow1_10percent_f(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.10, false, iter_eq_slow1_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_fast_10percent_f(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.10, false,  iter_eq_fast_impl);
+    }
+
+    // Check at 25% fill
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow1_25percent_t(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.25, true, iter_eq_slow1_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_fast_25percent_t(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.25, true, iter_eq_fast_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow1_25percent_f(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.25, false, iter_eq_slow1_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_fast_25percent_f(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.25, false,  iter_eq_fast_impl);
+    }
+
+    // Check at 80% fill
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow1_80percent_t(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.80, true, iter_eq_slow1_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_fast_80percent_t(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.80, true, iter_eq_fast_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_slow1_80percent_f(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.80, false, iter_eq_slow1_impl);
+    }
+
+    #[bench]
+    fn bench_bitv_iter_eq_fast_80percent_f(b: &mut Bencher) {
+        bench_iter_eq(b, 10000, 0.80, false,  iter_eq_fast_impl);
+    }
+
+    // Bitv iter_runs
+
+    fn iter_runs(bv: &Bitv, value: bool) -> usize {
+        let mut sum = 0;
+        for run in bv.iter_runs(value) {
+            sum += run.start;
+        }
+        sum
+    }
+
+    #[bench]
+    fn bench_bitv_iter_runs_10percent_t(b: &mut Bencher) {
+        let bv = make_mixed_bitv(10000, 0.10);
+        b.iter(|| iter_runs(&bv, true));
+    }
+
+    #[bench]
+    fn bench_bitv_iter_runs_10percent_f(b: &mut Bencher) {
+        let mut bv = make_mixed_bitv(10000, 0.10);
+        bv.negate();
+        b.iter(|| iter_runs(&bv, false));
     }
 }
