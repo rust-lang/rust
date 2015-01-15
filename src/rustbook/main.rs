@@ -39,6 +39,7 @@ mod serve;
 mod test;
 
 mod css;
+mod javascript;
 
 #[cfg(not(test))] // thanks #12327
 fn main() {
