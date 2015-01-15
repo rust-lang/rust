@@ -39,7 +39,12 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         // check can populate this table further with impls from other
         // crates.
         let trait_def_ids: Vec<(ast::DefId, Vec<ast::DefId>)> =
-            self.tcx.trait_impls.borrow().iter().map(|(&k, v)| (k, v.borrow().clone())).collect();
+            self.tcx.trait_impls.borrow().iter().map(|(&k, v)| {
+                // FIXME -- it seems like this method actually pushes
+                // duplicate impls onto the list
+                ty::populate_implementations_for_trait_if_necessary(self.tcx, k);
+                (k, v.borrow().clone())
+            }).collect();
 
         for &(trait_def_id, ref impls) in trait_def_ids.iter() {
             self.check_for_overlapping_impls_of_trait(trait_def_id, impls);
@@ -52,11 +57,6 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     {
         debug!("check_for_overlapping_impls_of_trait(trait_def_id={})",
                trait_def_id.repr(self.tcx));
-
-        // FIXME -- it seems like this method actually pushes
-        // duplicate impls onto the list
-        ty::populate_implementations_for_trait_if_necessary(self.tcx,
-                                                            trait_def_id);
 
         for (i, &impl1_def_id) in trait_impls.iter().enumerate() {
             if impl1_def_id.krate != ast::LOCAL_CRATE {
