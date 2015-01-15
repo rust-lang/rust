@@ -134,7 +134,7 @@ prepare-target-$(2)-host-$(3)-$(1)-$(4): prepare-maybe-clean-$(4) \
         $$(if $$(findstring $(3), $$(PREPARE_HOST)), \
           $$(call PREPARE_DIR,$$(PREPARE_WORKING_DEST_LIB_DIR)) \
           $$(foreach crate,$$(TARGET_CRATES), \
-	    $$(if $$(findstring 1, $$(ONLY_RLIB_$$(crate))),, \
+	    $$(if $$(or $$(findstring 1, $$(ONLY_RLIB_$$(crate))),$$(findstring 1,$$(CFG_INSTALL_ONLY_RLIB_$(2)))),, \
               $$(call PREPARE_LIB,$$(call CFG_LIB_GLOB_$(2),$$(crate)))) \
             $$(call PREPARE_LIB,$$(call CFG_RLIB_GLOB,$$(crate)))) \
           $$(if $$(findstring $(2),$$(CFG_HOST)), \

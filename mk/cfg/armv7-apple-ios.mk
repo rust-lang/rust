@@ -11,7 +11,7 @@ AR_armv7-apple-ios = $(shell xcrun -find -sdk iphoneos ar)
 endif
 CFG_LIB_NAME_armv7-apple-ios = lib$(1).a
 CFG_LIB_GLOB_armv7-apple-ios = lib$(1)-*.a
-CFG_LIB_SKIP_INSTALL_armv7-apple-ios = 1 #lib$(1)-*.a
+CFG_INSTALL_ONLY_RLIB_armv7-apple-ios = 1
 CFG_STATIC_LIB_NAME_armv7-apple-ios=lib$(1).a
 CFG_LIB_DSYM_GLOB_armv7-apple-ios = lib$(1)-*.a.dSYM
 CFG_JEMALLOC_CFLAGS_armv7-apple-ios := -arch armv7 -mfpu=vfp3 $(CFG_IOS_SDK_FLAGS_armv7-apple-ios)
