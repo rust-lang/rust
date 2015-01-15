@@ -35,9 +35,6 @@
 
 #![stable]
 
-#[unstable = "this is just a documentation module and should not be part \
-              of the public api"]
-
 use clone::Clone;
 use cmp::*;
 use cmp::Ordering::*;
