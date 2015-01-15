@@ -24,63 +24,76 @@ The current collection names (and their longer versions) are:
 * `RingBuf` -> `RingBuffer`
 * `VecMap` -> `VectorMap`
 
-The abbreviation rules do seem unclear. Sometimes the first word is abbreviated, sometimes the last. However there are also cases where the names are not abbreviated. Such inconsistency is undesirable, as Rust should not give an impression as "the promising language that has strangely inconsistent naming conventions for its standard collections".
+The abbreviation rules do seem unclear. Sometimes the first word is abbreviated, sometimes the last. However there are also cases where the names are not abbreviated. `Bitv`, `BitvSet` and `DList` seem strange on first glance. Such inconsistencies are undesirable, as Rust should not give an impression as "the promising language that has strangely inconsistent naming conventions for its standard collections".
 
 # Detailed design
 
-An observation:
+First some general naming rules should be established.
 
-Given the current names, Rust actually *do* have consistent name abbreviation rules that are generally followed by its standard collections:
+1. Prefer commonly used names.
+2. Prefer full names when full names and abbreviated names are almost equally elegant.
 
-- Each word in the names must be shorter than five letters, or they should be abbreviated.
-- When choosing abbreviations for each overly-long word, prefer commonly used ones.
+And the new names:
 
-There are four names worth mentioning: `Bitv`, `BitvSet`, `DList` and `BinaryHeap`.
+* `Vec`
+* `BTreeMap` 
+* `BTreeSet` 
+* `BinaryHeap`
+* `Bitv` -> `BitVec`
+* `BitvSet` -> `BitSet`
+* `DList` -> `LinkedList`
+* `HashMap`
+* `HashSet`
+* `RingBuf` -> `RingBuffer`
+* `VecMap`
 
-- `Bitv`: This can be seen as short for `Bitvector`, not `BitVector`, so it actually confirms to the rules.
-- `BitvSet`: Ditto.
-- `DList`: This should be either `DList`, or `DoublyLinkedList`, as all the "middle grounds" feel unnatural. (DLList? DblList? DoublyList? DLinkList? ...) We don't want the full one because it is too long (and more importantly, we already use other abbreviated names), so `DList` is the best choice here.
-- `BinaryHeap`: It seems that `BinHeap` can be a better name here, no reason to violate the rules.
+The following changes should be made:
 
-Thus, this RFC proposes the following changes:
+- Rename `Bitv`, `BitvSet`, `DList` and `RingBuf`. Change affected codes accordingly.
+- If necessary, redefine the original names as aliases of the new names, and mark them as deprecated. After a transition period, remove the original names completely.
 
-- Rename `std::collections::binary_heap::BinaryHeap` to `std::collections::bin_heap::BinHeap`. Change affected codes accordingly.
-- If necessary, redefine `BinaryHeap` as an alias of `BinHeap` and mark it as deprecated. After a transition period, remove `BinaryHeap` completely. 
+## Why prefer full names when full names and abbreviated ones are almost equally elegant?
+
+The naming rules should apply not only to standard collections, but also to other codes. It is (comparatively) easier to maintain a higher level of naming consistency by preferring full names to abbreviated ones *when in doubt*. Because given a full name, there are possibly many abbreviated forms to choose from. Which should be chosen and why? It is hard to write down guideline for that.
+
+For example, a name `BinaryBuffer` have at least three convincing abbreviated forms: `BinBuffer`/`BinaryBuf`/`BinBuf`. Which one would be the most preferred? Hard to say. But it is clear that the full name `BinaryBuffer` is not a bad name.
+
+However, if there *is* a convincing reason, one should not hesitate using abbreviated names. A series of names like `BinBuffer/OctBuffer/HexBuffer` is very natural. Also, few would think the full name of `Arc` is a good type name.
+
+## Advantages of the new names:
+
+- `Vec`: The name of the most frequently used Rust collection is left unchanged (and by extension `VecMap`), so the scope of the changes are greatly reduced. `Vec` is an exception to the rule because it is *the* collection in Rust.
+- `BitVec`: `Bitv` is a very unusual abbreviation of `BitVector`, but `BitVec` is a good one given `Vector` is shortened to `Vec`.
+- `BitSet`: Technically, `BitSet` is a synonym of `BitVec(tor)`, but it has `Set` in its name and can be interpreted as a set-like "view" into the underlying bit array/vector, so `BitSet` is a good name. No need to have an additional `v`.
+- `LinkedList`: `DList` doesn't say much about what it actually is. `LinkedList` is not too long (like `DoublyLinkedList`) and it being a doubly-linked list follows Java/C#'s traditions.
+- `RingBuffer`: `RingBuf` is a good name, but `RingBuffer` is good too. No reason to violate the rule here.
 
 # Drawbacks
 
-- This is A breaking change to a standard collection that is already marked `stable`.
-- `DList` is left unchanged, but far from ideal. It just doesn't say much about what the type actually is.
-- Future additions to the standard collections may be like `DList`/`DoublyLinkedList` in that no ideal abbreviations can be found. Such additions *will* make the standard collections' names less consistent. 
-
-This solution can bring *some* consistency to the collections' names, but doing so may be sweeping the real problem under the rug. Still it is better than the status quo and requires the least amount of breaking changes.
+- Preferring full names may result in people naming things with overly-long names that are hard to write and more importantly, read.
+- There will be breaking changes to standard collections that are already marked `stable`.
 
 # Alternatives
 
 ## A. Keep the status quo:
 
-And Rust's standard collections will have no consistent name abbreviation rules. `DList` can be excused for being an exception (if only because all the alternatives are worse), but `BinaryHeap` cannot.
+And Rust's standard collections will have some strange names and no consistent naming rules.
 
-## B. Rename all collections with abbreviated names to their full names:
+## B. Also rename `Vec` to `Vector`:
 
-This will ensure maximum consistency, both now and in the future. As the referenced reddit comment (and discussions about this RFC) indicates, *Many* believe this to be the optimal solution.
+And by extension, `Bitv` to `BitVector` and `VecMap` to `VectorMap`.
 
-However:
+This means breaking changes at a much larger scale. Undesirable at this stage.
 
-- A breaking change at this scale is undesirable at this stage.
-- `Vec` is so frequently used that it deserves an abbreviation.
-- If one collection has an abbreviated name, it is only natural for others to also have such names.
-- Most abbreviated names are clear, `DList` is the exception, not the rule.
+## C. Rename `DList` to `DLinkedList`, not `LinkedList`:
 
-Still, using full and consistent names may be the right choice in the long run, especially considering that people tend to follow the naming conventions of the standard library, and it's very likely that there will be future additions to the standard collections, which may or may not have "abbreviation-friendly" names.
+It is clearer, but also inconsistent with the other names by having a single-lettered abbreviation of `Doubly`. As Java/C# also have doubly-linked `LinkedList`, it is not necessary to use the additional `D`.
 
-Also, if abbreviated names are truly needed, one can always write `type`. `Option` is not called `Opt` after all. Some may also argue that modern editors/IDEs make longer names less of an issue.
+## D. Instead of renaming `RingBuf` to `RingBuffer`, rename `BinaryHeap` to `BinHeap`.
 
-## C. Rename `BinaryHeap`, and also `Bitv` to `BitVec`, `BitvSet` to `BitVecSet`:
+Or, reversing the second rule: prefer abbreviated names to full ones when in doubt.
 
-Some may argue that `BitVector` is the more common spelling, not `Bitvector`, so `Bitv` is not as good as `BitVec`. Therefore, `Bitv` and `BitvSet` should also be renamed alongside `BinaryHeap`.
-
-The pros and cons of this alternative is similar to only renaming `BinaryHeap`, but with more conventional names and more breaking changes.
+This has the advantage of encouraging succinct names, but everyone has his/her own preferences of how to abbreviate things. Naming consistency will suffer. Whether this is a problem is also a quite subjective matter.
 
 # Unresolved questions
 
