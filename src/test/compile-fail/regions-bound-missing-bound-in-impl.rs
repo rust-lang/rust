@@ -16,15 +16,16 @@ struct Inv<'a> { // invariant w/r/t 'a
     x: &'a mut &'a isize
 }
 
-pub trait Foo<'a> {
+pub trait Foo<'a, 't> {
     fn no_bound<'b>(self, b: Inv<'b>);
     fn has_bound<'b:'a>(self, b: Inv<'b>);
     fn wrong_bound1<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
-    fn wrong_bound2<'b,'c,'d:'a+'b+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
+    fn okay_bound<'b,'c,'d:'a+'b+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
+    fn another_bound<'x: 'a>(self, x: Inv<'x>);
 }
 
 
-impl<'a> Foo<'a> for &'a isize {
+impl<'a, 't> Foo<'a, 't> for &'a isize {
     fn no_bound<'b:'a>(self, b: Inv<'b>) {
         //~^ ERROR lifetime parameters or bounds on method `no_bound` do not match
     }
@@ -47,9 +48,10 @@ impl<'a> Foo<'a> for &'a isize {
         // cases.
     }
 
-    fn wrong_bound2<'b,'c,'e:'b+'c>(self, b: Inv<'b>, c: Inv<'c>, e: Inv<'e>) {
-        //~^ ERROR distinct set of bounds from its counterpart
+    fn okay_bound<'b,'c,'e:'b+'c>(self, b: Inv<'b>, c: Inv<'c>, e: Inv<'e>) {
     }
+
+    fn another_bound<'x: 't>(self, x: Inv<'x>) {}
 }
 
 fn main() { }

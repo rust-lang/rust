@@ -20,7 +20,7 @@ trait IteratorUtil<A> {
 
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
-    //~^ ERROR in method `zip`, type parameter 1 requires bound `Iterator<B>`
+    //~^ ERROR the requirement `U : Iterator<B>` appears on the impl method
         ZipIterator{a: self, b: other}
     }
 }

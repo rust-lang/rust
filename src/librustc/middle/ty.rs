@@ -7341,3 +7341,15 @@ impl<'tcx> Repr<'tcx> for field<'tcx> {
                 self.mt.repr(tcx))
     }
 }
+
+impl<'a, 'tcx> Repr<'tcx> for ParameterEnvironment<'a, 'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("ParameterEnvironment(\
+            free_substs={}, \
+            implicit_region_bound={}, \
+            caller_bounds={})",
+            self.free_substs.repr(tcx),
+            self.implicit_region_bound.repr(tcx),
+            self.caller_bounds.repr(tcx))
+        }
+    }
