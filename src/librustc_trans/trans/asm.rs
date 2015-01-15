@@ -161,10 +161,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
 // Default per-arch clobbers
 // Basically what clang does
 
-#[cfg(any(target_arch = "arm",
-          target_arch = "aarch64",
-          target_arch = "mips",
-          target_arch = "mipsel"))]
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
 fn get_clobbers() -> String {
     "".to_string()
 }
