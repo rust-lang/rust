@@ -310,7 +310,7 @@ valid for. For example:
 
 ```rust
 fn main() {
-    let y = &5;    // -+ y goes into scope
+    let y = &5;     // -+ y goes into scope
                     //  |
     // stuff        //  |
                     //  |
@@ -325,7 +325,7 @@ struct Foo<'a> {
 }
 
 fn main() {
-    let y = &5;          // -+ y goes into scope
+    let y = &5;           // -+ y goes into scope
     let f = Foo { x: y }; // -+ f goes into scope
     // stuff              //  |
                           //  |
@@ -344,7 +344,7 @@ fn main() {
     let x;                    // -+ x goes into scope
                               //  |
     {                         //  |
-        let y = &5;          // ---+ y goes into scope
+        let y = &5;           // ---+ y goes into scope
         let f = Foo { x: y }; // ---+ f goes into scope
         x = &f.x;             //  | | error here
     }                         // ---+ f and y go out of scope
