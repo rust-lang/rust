@@ -10,9 +10,11 @@
 
 #![feature(macro_rules)]
 
+use std::borrow::{Cow, IntoCow};
 use std::collections::Bitv;
 use std::default::Default;
 use std::iter::FromIterator;
+use std::ops::Add;
 use std::option::IntoIter as OptionIter;
 use std::rand::Rand;
 use std::rand::XorShiftRng as DummyRng;
@@ -27,6 +29,11 @@ fn eq<T: Eq>(a: T, b: T) -> bool { a == b }
 fn u8_as_i8(x: u8) -> i8 { x as i8 }
 fn odd(x: uint) -> bool { x % 2 == 1 }
 fn dummy_rng() -> DummyRng { DummyRng::new_unseeded() }
+
+trait Size: Sized {
+    fn size() -> uint { std::mem::size_of::<Self>() }
+}
+impl<T> Size for T {}
 
 macro_rules! tests {
     ($($expr:expr, $ty:ty, ($($test:expr),*);)+) => (pub fn main() {$({
@@ -70,14 +77,31 @@ tests! {
     //    , (vec![b'f', b'o', b'o'], u8_as_i8);
 
     // Trait static methods.
-    // FIXME qualified path expressions aka UFCS i.e. <T as Trait>::method.
+    <bool as Size>::size, fn() -> uint, ();
     Default::default, fn() -> int, ();
+    <int as Default>::default, fn() -> int, ();
     Rand::rand, fn(&mut DummyRng) -> int, (&mut dummy_rng());
+    <int as Rand>::rand, fn(&mut DummyRng) -> int, (&mut dummy_rng());
     Rand::rand::<DummyRng>, fn(&mut DummyRng) -> int, (&mut dummy_rng());
+    <int as Rand>::rand::<DummyRng>, fn(&mut DummyRng) -> int, (&mut dummy_rng());
 
     // Trait non-static methods.
     Clone::clone, fn(&int) -> int, (&5);
+    <int as Clone>::clone, fn(&int) -> int, (&5);
     FromIterator::from_iter, fn(OptionIter<int>) -> Vec<int>, (Some(5).into_iter());
-    FromIterator::from_iter::<OptionIter<int>>, fn(OptionIter<int>) -> Vec<int>
-       , (Some(5).into_iter());
+    <Vec<_> as FromIterator<_>>::from_iter, fn(OptionIter<int>) -> Vec<int>,
+        (Some(5).into_iter());
+    <Vec<int> as FromIterator<_>>::from_iter, fn(OptionIter<int>) -> Vec<int>,
+        (Some(5).into_iter());
+    FromIterator::from_iter::<OptionIter<int>>, fn(OptionIter<int>) -> Vec<int>,
+        (Some(5).into_iter());
+    <Vec<int> as FromIterator<_>>::from_iter::<OptionIter<int>>, fn(OptionIter<int>) -> Vec<int>,
+        (Some(5).into_iter());
+    Add::add, fn(i32, i32) -> i32, (5, 6);
+    <i32 as Add<_>>::add, fn(i32, i32) -> i32, (5, 6);
+    <i32 as Add<i32>>::add, fn(i32, i32) -> i32, (5, 6);
+    <String as IntoCow<_, _>>::into_cow, fn(String) -> Cow<'static, String, str>,
+        ("foo".to_string());
+    <String as IntoCow<'static, _, _>>::into_cow, fn(String) -> Cow<'static, String, str>,
+        ("foo".to_string());
 }
