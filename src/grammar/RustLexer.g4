@@ -194,7 +194,12 @@ LIT_STR_RAW
   : 'r' LIT_STR_RAW_INNER SUFFIX?
   ;
 
+
+QUESTION : '?';
+
 IDENT : XID_start XID_continue* ;
+
+fragment QUESTION_IDENTIFIER : QUESTION? IDENT;
 
 LIFETIME : '\'' IDENT ;
 
