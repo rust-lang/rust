@@ -278,7 +278,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in followed by the method's name.
         let mut qualname = match ty::impl_of_method(&self.analysis.ty_cx,
-                                                ast_util::local_def(method.id)) {
+                                                    ast_util::local_def(method.id)) {
             Some(impl_id) => match self.analysis.ty_cx.map.get(impl_id.node) {
                 NodeItem(item) => {
                     scope_id = item.id;
@@ -349,7 +349,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             .and_then(|def_id| {
                 if match def_id {
                     ty::MethodTraitItemId(def_id) => {
-                        method.id != 0 && def_id.node == 0
+                        def_id.node != 0 && def_id != ast_util::local_def(method.id)
                     }
                     ty::TypeTraitItemId(_) => false,
                 } {
