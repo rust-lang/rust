@@ -4133,12 +4133,8 @@ pub fn node_id_to_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId)
     }
 }
 
-pub fn try_node_id_to_type<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> Option<Ty<'tcx>> {
-    cx.node_types.borrow().get(&id).cloned()
-}
-
 pub fn node_id_to_type<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> Ty<'tcx> {
-    match try_node_id_to_type(cx, id) {
+    match node_id_to_type_opt(cx, id) {
        Some(ty) => ty,
        None => cx.sess.bug(
            &format!("node_id_to_type: no type for node `{}`",
