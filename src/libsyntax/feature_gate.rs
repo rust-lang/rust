@@ -263,9 +263,9 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             } else if attr.name() == "can_unwind" {
                 self.gate_feature("unwinding_attributes", i.span,
                                   "the `#[can_unwind]` attribute is an experimental feature")
-            } else if attr.name() == "nounwind" {
+            } else if attr.name() == "unsafe_no_unwind" {
                 self.gate_feature("unwinding_attributes", i.span,
-                                  "the `#[nounwind]` attribute is an experimental feature")
+                                  "the `#[unsafe_no_unwind]` attribute is an experimental feature")
             }
         }
         match i.node {

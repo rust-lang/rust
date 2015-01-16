@@ -431,11 +431,6 @@ pub fn set_no_inline(f: ValueRef) {
     llvm::SetFunctionAttribute(f, llvm::NoInlineAttribute)
 }
 
-#[allow(dead_code)] // useful
-pub fn set_no_unwind(f: ValueRef) {
-    llvm::SetFunctionAttribute(f, llvm::NoUnwindAttribute)
-}
-
 // Tell LLVM to emit the information necessary to unwind the stack for the
 // function f.
 pub fn set_uwtable(f: ValueRef) {
@@ -470,7 +465,7 @@ pub fn set_llvm_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: Val
                                                llvm::FunctionIndex as c_uint,
                                                llvm::ColdAttribute as uint64_t)
             },
-            "nounwind" => llvm::SetFunctionAttribute(llfn, llvm::NoUnwindAttribute),
+            "unsafe_no_unwind" => llvm::SetFunctionAttribute(llfn, llvm::NoUnwindAttribute),
             _ => used = false,
         }
         if used {
