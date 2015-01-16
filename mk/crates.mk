@@ -52,7 +52,7 @@
 TARGET_CRATES := libc std flate arena term \
                  serialize getopts collections test rand \
                  log regex graphviz core rbml alloc \
-                 unicode
+                 unicode rustc_bitflags
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
@@ -64,7 +64,8 @@ DEPS_libc := core
 DEPS_unicode := core
 DEPS_alloc := core libc native:jemalloc
 DEPS_std := core libc rand alloc collections unicode \
-	native:rust_builtin native:backtrace native:rustrt_native
+	native:rust_builtin native:backtrace native:rustrt_native \
+	rustc_bitflags
 DEPS_graphviz := std
 DEPS_syntax := std term serialize log fmt_macros arena libc
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
@@ -83,6 +84,7 @@ DEPS_rustc_llvm := native:rustllvm libc std
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
                 test
+DEPS_rustc_bitflags := core
 DEPS_flate := std native:miniz
 DEPS_arena := std
 DEPS_graphviz := std
@@ -114,6 +116,7 @@ ONLY_RLIB_alloc := 1
 ONLY_RLIB_rand := 1
 ONLY_RLIB_collections := 1
 ONLY_RLIB_unicode := 1
+ONLY_RLIB_rustc_bitflags := 1
 
 ################################################################################
 # You should not need to edit below this line
