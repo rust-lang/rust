@@ -233,7 +233,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             None => {
                 // This is an 'unmarked' API, which should not exist
                 // in the standard library.
-                self.tcx.sess.span_err(span, "use of unmarked staged library feature");
+                self.tcx.sess.span_err(span, "use of unmarked library feature");
                 self.tcx.sess.span_note(span, "this is either a bug in the library you are \
                                                using or a bug in the compiler - there is \
                                                no way to use this feature");

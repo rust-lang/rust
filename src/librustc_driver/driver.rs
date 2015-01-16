@@ -486,7 +486,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     time(time_passes, "complete gated feature checking", (), |_| {
-        let features = 
+        let features =
             syntax::feature_gate::check_crate(sess.codemap(),
                                           &sess.parse_sess.span_diagnostic,
                                           &krate);

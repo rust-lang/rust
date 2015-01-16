@@ -742,11 +742,9 @@ pub struct Weak<T> {
 }
 
 #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
-#[allow(unstable)]
 impl<T> !marker::Send for Weak<T> {}
 
 #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
-#[allow(unstable)]
 impl<T> !marker::Sync for Weak<T> {}
 
 

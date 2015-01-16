@@ -11,6 +11,7 @@
 #![crate_name="lint_output_format"]
 #![crate_type = "lib"]
 #![staged_api]
+#![unstable(feature = "unnamed_feature", since = "1.0.0")]
 
 #[deprecated(feature = "oldstuff", since = "1.0.0")]
 pub fn foo() -> uint {
