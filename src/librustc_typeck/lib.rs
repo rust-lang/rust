@@ -111,6 +111,10 @@ use syntax::ast_util::local_def;
 
 use std::cell::RefCell;
 
+// NB: This module needs to be declared first so diagnostics are
+// registered before they are used.
+pub mod diagnostics;
+
 mod check;
 mod rscope;
 mod astconv;

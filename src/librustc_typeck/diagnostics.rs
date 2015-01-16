@@ -10,38 +10,7 @@
 
 #![allow(non_snake_case)]
 
-register_diagnostic! {
-    E0001,
-r##"
-    This error suggests that the expression arm corresponding to the noted pattern
-    will never be reached as for all possible values of the expression being matched,
-    one of the preceeding patterns will match.
-
-    This means that perhaps some of the preceeding patterns are too general, this
-    one is too specific or the ordering is incorrect.
-"## }
-
 register_diagnostics! {
-    E0002,
-    E0003,
-    E0004,
-    E0005,
-    E0006,
-    E0007,
-    E0008,
-    E0009,
-    E0010,
-    E0011,
-    E0012,
-    E0013,
-    E0014,
-    E0015,
-    E0016,
-    E0017,
-    E0018,
-    E0019,
-    E0020,
-    E0022,
     E0023,
     E0024,
     E0025,
@@ -61,12 +30,9 @@ register_diagnostics! {
     E0046,
     E0049,
     E0050,
-    E0051,
-    E0052,
     E0053,
     E0054,
     E0055,
-    E0056,
     E0057,
     E0059,
     E0060,
@@ -101,16 +67,12 @@ register_diagnostics! {
     E0092,
     E0093,
     E0094,
-    E0100,
     E0101,
     E0102,
     E0103,
     E0104,
     E0106,
     E0107,
-    E0108,
-    E0109,
-    E0110,
     E0116,
     E0117,
     E0118,
@@ -125,38 +87,21 @@ register_diagnostics! {
     E0130,
     E0131,
     E0132,
-    E0133,
-    E0134,
-    E0135,
-    E0136,
-    E0137,
-    E0138,
-    E0139,
-    E0140,
     E0141,
-    E0152,
-    E0153,
-    E0157,
-    E0158,
     E0159,
-    E0161,
-    E0162,
     E0163,
     E0164,
-    E0165,
     E0166,
     E0167,
     E0168,
-    E0169,
-    E0171,
     E0172,
     E0173, // manual implementations of unboxed closure traits are experimental
     E0174, // explicit use of unboxed closure methods are experimental
-    E0177,
     E0178,
-    E0180,
-    E0181,
     E0182,
     E0183,
     E0184
 }
+
+__build_diagnostic_array! { DIAGNOSTICS }
+
