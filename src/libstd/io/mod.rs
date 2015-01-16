@@ -1436,33 +1436,31 @@ pub trait Buffer: Reader {
     fn read_until(&mut self, byte: u8) -> IoResult<Vec<u8>> {
         let mut res = Vec::new();
 
-        let mut used;
         loop {
-            {
+            let (done, used) = {
                 let available = match self.fill_buf() {
                     Ok(n) => n,
                     Err(ref e) if res.len() > 0 && e.kind == EndOfFile => {
-                        used = 0;
-                        break
+                        return Ok(res);
                     }
                     Err(e) => return Err(e)
                 };
                 match available.iter().position(|&b| b == byte) {
                     Some(i) => {
                         res.push_all(&available[..(i + 1)]);
-                        used = i + 1;
-                        break
+                        (true, i + 1)
                     }
                     None => {
                         res.push_all(available);
-                        used = available.len();
+                        (false, available.len())
                     }
                 }
+            };
+            buffer.consume(used);
+            if done {
+                return Ok(res);
             }
-            self.consume(used);
         }
-        self.consume(used);
-        Ok(res)
     }
 
     /// Reads the next utf8-encoded character from the underlying stream.
