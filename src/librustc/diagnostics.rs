@@ -31,7 +31,6 @@ register_diagnostics! {
     E0010,
     E0011,
     E0012,
-    E0013,
     E0014,
     E0015,
     E0016,
@@ -49,24 +48,13 @@ register_diagnostics! {
     E0137,
     E0138,
     E0139,
-    E0140,
     E0152,
-    E0153,
-    E0157,
     E0158,
     E0161,
     E0162,
     E0165,
-    E0166,
-    E0167,
-    E0168,
-    E0169,
-    E0170,
-    E0171,
-    E0172,
-    E0173,
-    E0174,
-    E0177,
-    E0178,
-    E0179
+    E0170
 }
+
+__build_diagnostic_array! { DIAGNOSTICS }
+
