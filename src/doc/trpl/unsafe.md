@@ -1,4 +1,4 @@
-% Writing Unsafe and Low-Level Code in Rust
+% Unsafe and Low-Level Code
 
 # Introduction
 

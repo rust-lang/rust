@@ -1,4 +1,4 @@
-% The Rust Macros Guide
+% Macros
 
 # Introduction
 

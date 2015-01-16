@@ -1,4 +1,4 @@
-% The Rust Crates and Modules Guide
+% Crates and Modules
 
 When a project starts getting large, it's considered a good software
 engineering practice to split it up into a bunch of smaller pieces, and then
