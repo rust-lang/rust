@@ -668,14 +668,14 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
         time(time_passes, "stability checking", (), |_|
              stability::check_unstable_api_usage(&ty_cx));
 
-    time(time_passes, "unknown feature checking", (), |_|
-         stability::check_unknown_features(
+    time(time_passes, "unused feature checking", (), |_|
+         stability::check_unused_features(
              &ty_cx.sess, lib_features_used));
 
     time(time_passes, "lint checking", (), |_|
          lint::check_crate(&ty_cx, &exported_items));
 
-    // Some of the above passes generate errors
+    // The above three passes generate errors w/o aborting
     ty_cx.sess.abort_if_errors();
 
     ty::CrateAnalysis {

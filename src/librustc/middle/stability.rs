@@ -12,6 +12,7 @@
 //! propagating default levels lexically from parent to children ast nodes.
 
 use session::Session;
+use lint;
 use middle::ty;
 use metadata::csearch;
 use syntax::parse::token::InternedString;
@@ -25,7 +26,7 @@ use syntax::ast_util::is_local;
 use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, FkMethod, Visitor};
 use syntax::feature_gate::emit_feature_warn;
-use util::nodemap::{NodeMap, DefIdMap, FnvHashSet};
+use util::nodemap::{NodeMap, DefIdMap, FnvHashSet, FnvHashMap};
 use util::ppaux::Repr;
 
 use std::mem::replace;
@@ -418,13 +419,20 @@ pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
 /// Given the list of enabled features that were not language features (i.e. that
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
-pub fn check_unknown_features(sess: &Session,
-                              _used_lib_features: &FnvHashSet<InternedString>) {
-    let ref _lib_features = sess.features.borrow().lib_features;
-    // TODO
+pub fn check_unused_features(sess: &Session,
+                             used_lib_features: &FnvHashSet<InternedString>) {
+    let ref lib_features = sess.features.borrow().lib_features;
+    let mut active_lib_features: FnvHashMap<InternedString, Span>
+        = lib_features.clone().into_iter().collect();
 
-    //sess.add_lint(lint::builtin::UNKNOWN_FEATURES,
-    //              ast::CRATE_NODE_ID,
-    //              *uf,
-    //              "unknown feature".to_string());
+    for used_feature in used_lib_features.iter() {
+        active_lib_features.remove(used_feature);
+    }
+
+    for (_, &span) in active_lib_features.iter() {
+        sess.add_lint(lint::builtin::UNUSED_FEATURES,
+                      ast::CRATE_NODE_ID,
+                      span,
+                      "unused or unknown feature".to_string());
+    }
 }
