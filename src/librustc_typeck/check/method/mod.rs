@@ -38,8 +38,9 @@ mod suggest;
 
 pub enum MethodError {
     // Did not find an applicable method, but we did find various
-    // static methods that may apply.
-    NoMatch(Vec<CandidateSource>),
+    // static methods that may apply, as well as a list of
+    // not-in-scope traits which may work.
+    NoMatch(Vec<CandidateSource>, Vec<ast::DefId>),
 
     // Multiple methods might apply.
     Ambiguity(Vec<CandidateSource>),
@@ -65,7 +66,7 @@ pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     match probe::probe(fcx, span, method_name, self_ty, call_expr_id) {
         Ok(_) => true,
-        Err(NoMatch(_)) => false,
+        Err(NoMatch(_, _)) => false,
         Err(Ambiguity(_)) => true,
     }
 }
