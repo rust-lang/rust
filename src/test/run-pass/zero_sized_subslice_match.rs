@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,11 @@
 // except according to those terms.
 
 fn main() {
-    struct S(isize);
-    let s = S(0);
-    let x = *s; //~ ERROR single-field tuple-structs can no longer be dereferenced
+    let x = [(), ()];
+
+    // The subslice used to go out of bounds for zero-sized array items, check that this doesn't
+    // happen anymore
+    match x {
+        [_, y..] => assert_eq!(&x[1] as *const _, &y[0] as *const _)
+    }
 }

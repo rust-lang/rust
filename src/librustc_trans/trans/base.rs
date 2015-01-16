@@ -44,7 +44,7 @@ use middle::subst;
 use middle::weak_lang_items;
 use middle::subst::{Subst, Substs};
 use middle::ty::{self, Ty, UnboxedClosureTyper};
-use session::config::{self, NoDebugInfo, FullDebugInfo};
+use session::config::{self, NoDebugInfo};
 use session::Session;
 use trans::_match;
 use trans::adt;
@@ -543,15 +543,6 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                       dtor_ty)
     }
 }
-
-// Structural comparison: a rather involved form of glue.
-pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
-    if cx.sess().opts.cg.save_temps {
-        let buf = CString::from_slice(s.as_bytes());
-        unsafe { llvm::LLVMSetValueName(v, buf.as_ptr()) }
-    }
-}
-
 
 // Used only for creating scalar comparison glue.
 #[derive(Copy)]
@@ -1626,9 +1617,8 @@ fn create_datums_for_fn_args_under_call_abi<'blk, 'tcx>(
     result
 }
 
-fn copy_args_to_allocas<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
+fn copy_args_to_allocas<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     arg_scope: cleanup::CustomScopeIndex,
-                                    bcx: Block<'blk, 'tcx>,
                                     args: &[ast::Arg],
                                     arg_datums: Vec<RvalueDatum<'tcx>>)
                                     -> Block<'blk, 'tcx> {
@@ -1649,10 +1639,7 @@ fn copy_args_to_allocas<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
         // the event it's not truly needed.
 
         bcx = _match::store_arg(bcx, &*args[i].pat, arg_datum, arg_scope_id);
-
-        if fcx.ccx.sess().opts.debuginfo == FullDebugInfo {
-            debuginfo::create_argument_metadata(bcx, &args[i]);
-        }
+        debuginfo::create_argument_metadata(bcx, &args[i]);
     }
 
     bcx
@@ -1702,9 +1689,7 @@ fn copy_unboxed_closure_args_to_allocas<'blk, 'tcx>(
                                 tuple_element_datum,
                                 arg_scope_id);
 
-        if bcx.fcx.ccx.sess().opts.debuginfo == FullDebugInfo {
-            debuginfo::create_argument_metadata(bcx, &args[j]);
-        }
+        debuginfo::create_argument_metadata(bcx, &args[j]);
     }
 
     bcx
@@ -1877,9 +1862,8 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     bcx = match closure_env.kind {
         closure::NotClosure | closure::BoxedClosure(..) => {
-            copy_args_to_allocas(&fcx,
+            copy_args_to_allocas(bcx,
                                  arg_scope,
-                                 bcx,
                                  &decl.inputs[],
                                  arg_datums)
         }

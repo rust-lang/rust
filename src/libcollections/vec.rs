@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A growable list type, written `Vec<T>` but pronounced 'vector.'
+//! A growable list type with heap-allocated contents, written `Vec<T>` but pronounced 'vector.'
 //!
 //! Vectors have `O(1)` indexing, push (to the end) and pop (from the end).
 //!
@@ -1510,6 +1510,9 @@ pub struct IntoIter<T> {
     ptr: *const T,
     end: *const T
 }
+
+unsafe impl<T: Send> Send for IntoIter<T> { }
+unsafe impl<T: Sync> Sync for IntoIter<T> { }
 
 impl<T> IntoIter<T> {
     #[inline]

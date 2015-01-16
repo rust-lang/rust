@@ -11,7 +11,7 @@ AR_x86_64-apple-ios = $(shell xcrun -find -sdk iphonesimulator ar)
 endif
 CFG_LIB_NAME_x86_64-apple-ios = lib$(1).a
 CFG_LIB_GLOB_x86_64-apple-ios = lib$(1)-*.a
-CFG_LIB_SKIP_INSTALL_x86_64-apple-ios = 1 #lib$(1)-*.a
+CFG_INSTALL_ONLY_RLIB_x86_64-apple-ios = 1
 CFG_STATIC_LIB_NAME_x86_64-apple-ios=lib$(1).a
 CFG_LIB_DSYM_GLOB_x86_64-apple-ios = lib$(1)-*.a.dSYM
 CFG_CFLAGS_x86_64-apple-ios := $(CFG_IOSSIM_FLAGS_x86_64-apple-ios)

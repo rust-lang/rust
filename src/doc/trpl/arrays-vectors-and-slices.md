@@ -82,7 +82,7 @@ arrays:
 
 ```{rust}
 let a = [0, 1, 2, 3, 4];
-let middle = a.slice(1, 4);     // A slice of a: just the elements [1,2,3]
+let middle = &a[1..4];     // A slice of a: just the elements 1, 2, and 3
 
 for e in middle.iter() {
     println!("{}", e);          // Prints 1, 2, 3

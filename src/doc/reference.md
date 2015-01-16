@@ -1588,7 +1588,6 @@ pointer values (pointing to a type for which an implementation of the given
 trait is in scope) to pointers to the trait name, used as a type.
 
 ```
-# use std::boxed::Box;
 # trait Shape { }
 # impl Shape for int { }
 # let mycircle = 0i;
@@ -1647,7 +1646,6 @@ fn radius_times_area<T: Circle>(c: T) -> f64 {
 Likewise, supertrait methods may also be called on trait objects.
 
 ```{.ignore}
-# use std::boxed::Box;
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 # impl Shape for int { fn area(&self) -> f64 { 0.0 } }
@@ -2432,15 +2430,15 @@ There are three different types of inline attributes:
 * `#[inline(always)]` asks the compiler to always perform an inline expansion.
 * `#[inline(never)]` asks the compiler to never perform an inline expansion.
 
-### Deriving
+### Derive
 
-The `deriving` attribute allows certain traits to be automatically implemented
+The `derive` attribute allows certain traits to be automatically implemented
 for data structures. For example, the following will create an `impl` for the
 `PartialEq` and `Clone` traits for `Foo`, the type parameter `T` will be given
 the `PartialEq` or `Clone` constraints for the appropriate `impl`:
 
 ```
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 struct Foo<T> {
     a: int,
     b: T
@@ -2462,7 +2460,7 @@ impl<T: PartialEq> PartialEq for Foo<T> {
 }
 ```
 
-Supported traits for `deriving` are:
+Supported traits for `derive` are:
 
 * Comparison traits: `PartialEq`, `Eq`, `PartialOrd`, `Ord`.
 * Serialization: `Encodable`, `Decodable`. These require `serialize`.
@@ -2967,8 +2965,8 @@ _panicked state_.
 
 ### Unary operator expressions
 
-Rust defines six symbolic unary operators. They are all written as prefix
-operators, before the expression they apply to.
+Rust defines three unary operators. They are all written as prefix operators,
+before the expression they apply to.
 
 * `-`
   : Negation. May only be applied to numeric types.
@@ -2986,13 +2984,6 @@ operators, before the expression they apply to.
   : Logical negation. On the boolean type, this flips between `true` and
     `false`. On integer types, this inverts the individual bits in the
     two's complement representation of the value.
-* `box`
-  : [Boxing](#pointer-types) operators. Allocate a box to hold the value they
-    are applied to, and store the value in it. `box` creates a box.
-* `&`
-  : Borrow operator. Returns a reference, pointing to its operand. The operand
-    of a borrow is statically proven to outlive the resulting pointer. If the
-    borrow-checker cannot prove this, it is a compilation error.
 
 ### Binary operator expressions
 
@@ -3799,7 +3790,6 @@ enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 An example of a *recursive* type and its use:
 
 ```
-# use std::boxed::Box;
 enum List<T> {
     Nil,
     Cons(T, Box<List<T>>)
@@ -3912,7 +3902,6 @@ implementation of `R`, and the pointer value of `E`.
 An example of an object type:
 
 ```
-# use std::boxed::Box;
 trait Printable {
   fn stringify(&self) -> String;
 }
@@ -4120,7 +4109,6 @@ the type of a box is `std::owned::Box<T>`.
 An example of a box type and value:
 
 ```
-# use std::boxed::Box;
 let x: Box<int> = Box::new(10);
 ```
 
@@ -4130,7 +4118,6 @@ copy of a box to move ownership of the value. After a value has been moved,
 the source location cannot be used unless it is reinitialized.
 
 ```
-# use std::boxed::Box;
 let x: Box<int> = Box::new(10);
 let y = x;
 // attempting to use `x` will result in an error here

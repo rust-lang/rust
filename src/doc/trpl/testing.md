@@ -96,7 +96,7 @@ test it_works ... FAILED
 failures:
 
 ---- it_works stdout ----
-        task 'it_works' panicked at 'assertion failed: false', /home/steve/tmp/adder/src/lib.rs:3
+        thread 'it_works' panicked at 'assertion failed: false', /home/steve/tmp/adder/src/lib.rs:3
 
 
 
@@ -105,7 +105,7 @@ failures:
 
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 
-task '<main>' panicked at 'Some tests failed', /home/steve/src/rust/src/libtest/lib.rs:247
+thread '<main>' panicked at 'Some tests failed', /home/steve/src/rust/src/libtest/lib.rs:247
 ```
 
 Rust indicates that our test failed:
@@ -254,7 +254,6 @@ a large module, and so this is a common use of the `glob` feature. Let's change
 our `src/lib.rs` to make use of it:
 
 ```{rust,ignore}
-#![feature(globs)]
 
 pub fn add_two(a: i32) -> i32 {
     a + 2
@@ -271,8 +270,7 @@ mod tests {
 }
 ```
 
-Note the `feature` attribute, as well as the different `use` line. Now we run
-our tests:
+Note the different `use` line. Now we run our tests:
 
 ```bash
 $ cargo test
@@ -370,8 +368,6 @@ with examples:
 //! assert_eq!(4, adder::add_two(2));
 //! ```
 
-#![feature(globs)]
-
 /// This function adds two to its argument.
 ///
 /// # Examples
@@ -440,8 +436,6 @@ Rust also supports benchmark tests, which can test the performance of your
 code. Let's make our `src/lib.rs` look like this (comments elided):
 
 ```{rust,ignore}
-#![feature(globs)]
-
 extern crate test;
 
 pub fn add_two(a: i32) -> i32 {

@@ -26,7 +26,7 @@
     * [Iterators](iterators.md)
     * [Generics](generics.md)
     * [Traits](traits.md)
-    * [Tasks](tasks.md)
+    * [Threads](threads.md)
     * [Error Handling](error-handling.md)
 * [III: Advanced Topics](advanced.md)
     * [FFI](ffi.md)

@@ -323,28 +323,26 @@ impl<'tcx> TypeMap<'tcx> {
     fn get_unique_type_id_of_type<'a>(&mut self, cx: &CrateContext<'a, 'tcx>,
                                       type_: Ty<'tcx>) -> UniqueTypeId {
 
-        // basic type               -> {:name of the type:}
-        // tuple                    -> {tuple_(:param-uid:)*}
-        // struct                   -> {struct_:svh: / :node-id:_<(:param-uid:),*> }
-        // enum                     -> {enum_:svh: / :node-id:_<(:param-uid:),*> }
-        // enum variant             -> {variant_:variant-name:_:enum-uid:}
-        // reference (&)            -> {& :pointee-uid:}
-        // mut reference (&mut)     -> {&mut :pointee-uid:}
-        // ptr (*)                  -> {* :pointee-uid:}
-        // mut ptr (*mut)           -> {*mut :pointee-uid:}
-        // unique ptr (~)           -> {~ :pointee-uid:}
-        // @-ptr (@)                -> {@ :pointee-uid:}
-        // sized vec ([T; x])       -> {[:size:] :element-uid:}
-        // unsized vec ([T])        -> {[] :element-uid:}
-        // trait (T)                -> {trait_:svh: / :node-id:_<(:param-uid:),*> }
-        // closure                  -> {<unsafe_> <once_> :store-sigil:
-        //                                  |(:param-uid:),* <,_...>| -> \
-        //                                  :return-type-uid: : (:bounds:)*}
-        // function                 -> {<unsafe_> <abi_> fn( (:param-uid:)* <,_...> ) -> \
-        //                                  :return-type-uid:}
-        // unique vec box (~[])     -> {HEAP_VEC_BOX<:pointee-uid:>}
-        // gc box                   -> {GC_BOX<:pointee-uid:>}
-        // projection (<T as U>::V) -> {<:ty-uid: as :trait-uid:> :: :name-uid: }
+        // basic type           -> {:name of the type:}
+        // tuple                -> {tuple_(:param-uid:)*}
+        // struct               -> {struct_:svh: / :node-id:_<(:param-uid:),*> }
+        // enum                 -> {enum_:svh: / :node-id:_<(:param-uid:),*> }
+        // enum variant         -> {variant_:variant-name:_:enum-uid:}
+        // reference (&)        -> {& :pointee-uid:}
+        // mut reference (&mut) -> {&mut :pointee-uid:}
+        // ptr (*)              -> {* :pointee-uid:}
+        // mut ptr (*mut)       -> {*mut :pointee-uid:}
+        // unique ptr (~)       -> {~ :pointee-uid:}
+        // @-ptr (@)            -> {@ :pointee-uid:}
+        // sized vec ([T; x])   -> {[:size:] :element-uid:}
+        // unsized vec ([T])    -> {[] :element-uid:}
+        // trait (T)            -> {trait_:svh: / :node-id:_<(:param-uid:),*> }
+        // closure              -> {<unsafe_> <once_> :store-sigil: |(:param-uid:),* <,_...>| -> \
+        //                             :return-type-uid: : (:bounds:)*}
+        // function             -> {<unsafe_> <abi_> fn( (:param-uid:)* <,_...> ) -> \
+        //                             :return-type-uid:}
+        // unique vec box (~[]) -> {HEAP_VEC_BOX<:pointee-uid:>}
+        // gc box               -> {GC_BOX<:pointee-uid:>}
 
         match self.type_to_unique_id.get(&type_).cloned() {
             Some(unique_type_id) => return unique_type_id,
@@ -437,25 +435,6 @@ impl<'tcx> TypeMap<'tcx> {
                                        principal.substs,
                                        &mut unique_type_id);
             },
-            ty::ty_projection(ref projection) => {
-                unique_type_id.push_str("<");
-
-                let self_ty = projection.trait_ref.self_ty();
-                let self_type_id = self.get_unique_type_id_of_type(cx, self_ty);
-                let self_type_id = self.get_unique_type_id_as_string(self_type_id);
-                unique_type_id.push_str(&self_type_id[]);
-
-                unique_type_id.push_str(" as ");
-
-                from_def_id_and_substs(self,
-                                       cx,
-                                       projection.trait_ref.def_id,
-                                       projection.trait_ref.substs,
-                                       &mut unique_type_id);
-
-                unique_type_id.push_str(">::");
-                unique_type_id.push_str(token::get_name(projection.item_name).get());
-            },
             ty::ty_bare_fn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
                 if unsafety == ast::Unsafety::Unsafe {
                     unique_type_id.push_str("unsafe ");
@@ -499,10 +478,7 @@ impl<'tcx> TypeMap<'tcx> {
                                                         closure_ty,
                                                         &mut unique_type_id);
             },
-            ty::ty_err |
-            ty::ty_infer(_) |
-            ty::ty_open(_) |
-            ty::ty_param(_) => {
+            _ => {
                 cx.sess().bug(&format!("get_unique_type_id_of_type() - unexpected type: {}, {:?}",
                                       &ppaux::ty_to_string(cx.tcx(), type_)[],
                                       type_.sty)[])
@@ -878,7 +854,9 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 /// local in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
-    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() ||
+       fn_should_be_ignored(bcx.fcx) ||
+       bcx.sess().opts.debuginfo != FullDebugInfo  {
         return;
     }
 
@@ -922,7 +900,9 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                 env_index: uint,
                                                 captured_by_ref: bool,
                                                 span: Span) {
-    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() ||
+       fn_should_be_ignored(bcx.fcx) ||
+       bcx.sess().opts.debuginfo != FullDebugInfo {
         return;
     }
 
@@ -1005,7 +985,9 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                  variable_ident: ast::Ident,
                                                  binding: BindingInfo<'tcx>) {
-    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() ||
+       fn_should_be_ignored(bcx.fcx) ||
+       bcx.sess().opts.debuginfo != FullDebugInfo {
         return;
     }
 
@@ -1045,7 +1027,9 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// argument in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
-    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() ||
+       fn_should_be_ignored(bcx.fcx) ||
+       bcx.sess().opts.debuginfo != FullDebugInfo {
         return;
     }
 
@@ -1099,7 +1083,9 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
 /// loop variable in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_for_loop_var_metadata(bcx: Block, pat: &ast::Pat) {
-    if bcx.unreachable.get() || fn_should_be_ignored(bcx.fcx) {
+    if bcx.unreachable.get() ||
+       fn_should_be_ignored(bcx.fcx) ||
+       bcx.sess().opts.debuginfo != FullDebugInfo {
         return;
     }
 
@@ -3880,22 +3866,10 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_unboxed_closure(..) => {
             output.push_str("closure");
         }
-        ty::ty_projection(ref projection) => {
-            output.push_str("<");
-            let self_ty = projection.trait_ref.self_ty();
-            push_debuginfo_type_name(cx, self_ty, true, output);
-
-            output.push_str(" as ");
-
-            push_item_name(cx, projection.trait_ref.def_id, false, output);
-            push_type_params(cx, projection.trait_ref.substs, output);
-
-            output.push_str(">::");
-            output.push_str(token::get_name(projection.item_name).get());
-        }
         ty::ty_err |
         ty::ty_infer(_) |
         ty::ty_open(_) |
+        ty::ty_projection(..) |
         ty::ty_param(_) => {
             cx.sess().bug(&format!("debuginfo: Trying to create type name for \
                 unexpected type: {}", ppaux::ty_to_string(cx.tcx(), t))[]);

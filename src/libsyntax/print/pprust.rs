@@ -25,7 +25,8 @@ use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
 use parse;
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
-use print::pp::{Breaks, Consistent, Inconsistent, eof};
+use print::pp::{Breaks, eof};
+use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 
 use std::{ascii, mem};
@@ -459,7 +460,7 @@ fn needs_parentheses(expr: &ast::Expr) -> bool {
 
 impl<'a> State<'a> {
     pub fn ibox(&mut self, u: uint) -> IoResult<()> {
-        self.boxes.push(pp::Inconsistent);
+        self.boxes.push(pp::Breaks::Inconsistent);
         pp::ibox(&mut self.s, u)
     }
 
@@ -469,7 +470,7 @@ impl<'a> State<'a> {
     }
 
     pub fn cbox(&mut self, u: uint) -> IoResult<()> {
-        self.boxes.push(pp::Consistent);
+        self.boxes.push(pp::Breaks::Consistent);
         pp::cbox(&mut self.s, u)
     }
 
@@ -531,11 +532,17 @@ impl<'a> State<'a> {
     }
 
     pub fn is_begin(&mut self) -> bool {
-        match self.s.last_token() { pp::Begin(_) => true, _ => false }
+        match self.s.last_token() {
+            pp::Token::Begin(_) => true,
+            _ => false,
+        }
     }
 
     pub fn is_end(&mut self) -> bool {
-        match self.s.last_token() { pp::End => true, _ => false }
+        match self.s.last_token() {
+            pp::Token::End => true,
+            _ => false,
+        }
     }
 
     // is this the beginning of a line?
@@ -545,7 +552,7 @@ impl<'a> State<'a> {
 
     pub fn in_cbox(&self) -> bool {
         match self.boxes.last() {
-            Some(&last_box) => last_box == pp::Consistent,
+            Some(&last_box) => last_box == pp::Breaks::Consistent,
             None => false
         }
     }
@@ -1497,108 +1504,168 @@ impl<'a> State<'a> {
         Ok(())
     }
 
+    fn print_expr_box(&mut self,
+                      place: &Option<P<ast::Expr>>,
+                      expr: &ast::Expr) -> IoResult<()> {
+        try!(word(&mut self.s, "box"));
+        try!(word(&mut self.s, "("));
+        try!(place.as_ref().map_or(Ok(()), |e|self.print_expr(&**e)));
+        try!(self.word_space(")"));
+        self.print_expr(expr)
+    }
+
+    fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>]) -> IoResult<()> {
+        try!(self.ibox(indent_unit));
+        try!(word(&mut self.s, "["));
+        try!(self.commasep_exprs(Inconsistent, &exprs[]));
+        try!(word(&mut self.s, "]"));
+        self.end()
+    }
+
+    fn print_expr_repeat(&mut self,
+                         element: &ast::Expr,
+                         count: &ast::Expr) -> IoResult<()> {
+        try!(self.ibox(indent_unit));
+        try!(word(&mut self.s, "["));
+        try!(self.print_expr(element));
+        try!(self.word_space(";"));
+        try!(self.print_expr(count));
+        try!(word(&mut self.s, "]"));
+        self.end()
+    }
+
+    fn print_expr_struct(&mut self,
+                         path: &ast::Path,
+                         fields: &[ast::Field],
+                         wth: &Option<P<ast::Expr>>) -> IoResult<()> {
+        try!(self.print_path(path, true));
+        if !(fields.is_empty() && wth.is_none()) {
+            try!(word(&mut self.s, "{"));
+            try!(self.commasep_cmnt(
+                Consistent,
+                &fields[],
+                |s, field| {
+                    try!(s.ibox(indent_unit));
+                    try!(s.print_ident(field.ident.node));
+                    try!(s.word_space(":"));
+                    try!(s.print_expr(&*field.expr));
+                    s.end()
+                },
+                |f| f.span));
+            match *wth {
+                Some(ref expr) => {
+                    try!(self.ibox(indent_unit));
+                    if !fields.is_empty() {
+                        try!(word(&mut self.s, ","));
+                        try!(space(&mut self.s));
+                    }
+                    try!(word(&mut self.s, ".."));
+                    try!(self.print_expr(&**expr));
+                    try!(self.end());
+                }
+                _ => try!(word(&mut self.s, ",")),
+            }
+            try!(word(&mut self.s, "}"));
+        }
+        Ok(())
+    }
+
+    fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>]) -> IoResult<()> {
+        try!(self.popen());
+        try!(self.commasep_exprs(Inconsistent, &exprs[]));
+        if exprs.len() == 1 {
+            try!(word(&mut self.s, ","));
+        }
+        self.pclose()
+    }
+
+    fn print_expr_call(&mut self,
+                       func: &ast::Expr,
+                       args: &[P<ast::Expr>]) -> IoResult<()> {
+        try!(self.print_expr_maybe_paren(func));
+        self.print_call_post(args)
+    }
+
+    fn print_expr_method_call(&mut self,
+                              ident: ast::SpannedIdent,
+                              tys: &[P<ast::Ty>],
+                              args: &[P<ast::Expr>]) -> IoResult<()> {
+        let base_args = args.slice_from(1);
+        try!(self.print_expr(&*args[0]));
+        try!(word(&mut self.s, "."));
+        try!(self.print_ident(ident.node));
+        if tys.len() > 0u {
+            try!(word(&mut self.s, "::<"));
+            try!(self.commasep(Inconsistent, tys,
+                               |s, ty| s.print_type(&**ty)));
+            try!(word(&mut self.s, ">"));
+        }
+        self.print_call_post(base_args)
+    }
+
+    fn print_expr_binary(&mut self,
+                         op: ast::BinOp,
+                         lhs: &ast::Expr,
+                         rhs: &ast::Expr) -> IoResult<()> {
+        try!(self.print_expr(lhs));
+        try!(space(&mut self.s));
+        try!(self.word_space(ast_util::binop_to_string(op)));
+        self.print_expr(rhs)
+    }
+
+    fn print_expr_unary(&mut self,
+                        op: ast::UnOp,
+                        expr: &ast::Expr) -> IoResult<()> {
+        try!(word(&mut self.s, ast_util::unop_to_string(op)));
+        self.print_expr_maybe_paren(expr)
+    }
+
+    fn print_expr_addr_of(&mut self,
+                          mutability: ast::Mutability,
+                          expr: &ast::Expr) -> IoResult<()> {
+        try!(word(&mut self.s, "&"));
+        try!(self.print_mutability(mutability));
+        self.print_expr_maybe_paren(expr)
+    }
+
     pub fn print_expr(&mut self, expr: &ast::Expr) -> IoResult<()> {
         try!(self.maybe_print_comment(expr.span.lo));
         try!(self.ibox(indent_unit));
         try!(self.ann.pre(self, NodeExpr(expr)));
         match expr.node {
-            ast::ExprBox(ref p, ref e) => {
-                try!(word(&mut self.s, "box"));
-                try!(word(&mut self.s, "("));
-                try!(p.as_ref().map_or(Ok(()), |e|self.print_expr(&**e)));
-                try!(self.word_space(")"));
-                try!(self.print_expr(&**e));
+            ast::ExprBox(ref place, ref expr) => {
+                try!(self.print_expr_box(place, &**expr));
             }
             ast::ExprVec(ref exprs) => {
-                try!(self.ibox(indent_unit));
-                try!(word(&mut self.s, "["));
-                try!(self.commasep_exprs(Inconsistent, &exprs[]));
-                try!(word(&mut self.s, "]"));
-                try!(self.end());
+                try!(self.print_expr_vec(&exprs[]));
             }
-
             ast::ExprRepeat(ref element, ref count) => {
-                try!(self.ibox(indent_unit));
-                try!(word(&mut self.s, "["));
-                try!(self.print_expr(&**element));
-                try!(self.word_space(";"));
-                try!(self.print_expr(&**count));
-                try!(word(&mut self.s, "]"));
-                try!(self.end());
+                try!(self.print_expr_repeat(&**element, &**count));
             }
-
             ast::ExprStruct(ref path, ref fields, ref wth) => {
-                try!(self.print_path(path, true));
-                if !(fields.is_empty() && wth.is_none()) {
-                    try!(word(&mut self.s, "{"));
-                    try!(self.commasep_cmnt(
-                        Consistent,
-                        &fields[],
-                        |s, field| {
-                            try!(s.ibox(indent_unit));
-                            try!(s.print_ident(field.ident.node));
-                            try!(s.word_space(":"));
-                            try!(s.print_expr(&*field.expr));
-                            s.end()
-                        },
-                        |f| f.span));
-                    match *wth {
-                        Some(ref expr) => {
-                            try!(self.ibox(indent_unit));
-                            if !fields.is_empty() {
-                                try!(word(&mut self.s, ","));
-                                try!(space(&mut self.s));
-                            }
-                            try!(word(&mut self.s, ".."));
-                            try!(self.print_expr(&**expr));
-                            try!(self.end());
-                        }
-                        _ => try!(word(&mut self.s, ",")),
-                    }
-                    try!(word(&mut self.s, "}"));
-                }
+                try!(self.print_expr_struct(path, &fields[], wth));
             }
             ast::ExprTup(ref exprs) => {
-                try!(self.popen());
-                try!(self.commasep_exprs(Inconsistent, &exprs[]));
-                if exprs.len() == 1 {
-                    try!(word(&mut self.s, ","));
-                }
-                try!(self.pclose());
+                try!(self.print_expr_tup(&exprs[]));
             }
             ast::ExprCall(ref func, ref args) => {
-                try!(self.print_expr_maybe_paren(&**func));
-                try!(self.print_call_post(&args[]));
+                try!(self.print_expr_call(&**func, &args[]));
             }
             ast::ExprMethodCall(ident, ref tys, ref args) => {
-                let base_args = args.slice_from(1);
-                try!(self.print_expr(&*args[0]));
-                try!(word(&mut self.s, "."));
-                try!(self.print_ident(ident.node));
-                if tys.len() > 0u {
-                    try!(word(&mut self.s, "::<"));
-                    try!(self.commasep(Inconsistent, &tys[],
-                                       |s, ty| s.print_type(&**ty)));
-                    try!(word(&mut self.s, ">"));
-                }
-                try!(self.print_call_post(base_args));
+                try!(self.print_expr_method_call(ident, &tys[], &args[]));
             }
             ast::ExprBinary(op, ref lhs, ref rhs) => {
-                try!(self.print_expr(&**lhs));
-                try!(space(&mut self.s));
-                try!(self.word_space(ast_util::binop_to_string(op)));
-                try!(self.print_expr(&**rhs));
+                try!(self.print_expr_binary(op, &**lhs, &**rhs));
             }
             ast::ExprUnary(op, ref expr) => {
-                try!(word(&mut self.s, ast_util::unop_to_string(op)));
-                try!(self.print_expr_maybe_paren(&**expr));
+                try!(self.print_expr_unary(op, &**expr));
             }
             ast::ExprAddrOf(m, ref expr) => {
-                try!(word(&mut self.s, "&"));
-                try!(self.print_mutability(m));
-                try!(self.print_expr_maybe_paren(&**expr));
+                try!(self.print_expr_addr_of(m, &**expr));
             }
-            ast::ExprLit(ref lit) => try!(self.print_literal(&**lit)),
+            ast::ExprLit(ref lit) => {
+                try!(self.print_literal(&**lit));
+            }
             ast::ExprCast(ref expr, ref ty) => {
                 try!(self.print_expr(&**expr));
                 try!(space(&mut self.s));
@@ -2891,7 +2958,7 @@ impl<'a> State<'a> {
             comments::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
                 let is_semi = match self.s.last_token() {
-                    pp::String(s, _) => ";" == s,
+                    pp::Token::String(s, _) => ";" == s,
                     _ => false
                 };
                 if is_semi || self.is_begin() || self.is_end() {

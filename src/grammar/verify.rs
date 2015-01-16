@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(globs, plugin)]
+#![feature(plugin)]
 
 extern crate syntax;
 extern crate rustc;
@@ -107,13 +107,14 @@ fn parse_token_list(file: &str) -> HashMap<String, token::Token> {
             "LE"                => token::Le,
             "LIT_BINARY"        => token::Literal(token::Binary(Name(0)), None),
             "LIT_BINARY_RAW"    => token::Literal(token::BinaryRaw(Name(0), 0), None),
+            "QUESTION"          => token::Question,
             _                   => continue,
         };
 
         res.insert(num.to_string(), tok);
     }
 
-    debug!("Token map: {}", res);
+    debug!("Token map: {:?}", res);
     res
 }
 
@@ -161,7 +162,7 @@ fn fixchar(mut lit: &str) -> ast::Name {
     parse::token::intern(lit.slice(1, lit.len() - 1))
 }
 
-fn count(lit: &str) -> uint {
+fn count(lit: &str) -> usize {
     lit.chars().take_while(|c| *c == '#').count()
 }
 
@@ -176,12 +177,12 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>) -> TokenAn
     let toknum = m.name("toknum").unwrap_or("");
     let content = m.name("content").unwrap_or("");
 
-    let proto_tok = tokens.get(toknum).expect(format!("didn't find token {} in the map",
+    let proto_tok = tokens.get(toknum).expect(format!("didn't find token {:?} in the map",
                                                               toknum).as_slice());
 
     let nm = parse::token::intern(content);
 
-    debug!("What we got: content (`{}`), proto: {}", content, proto_tok);
+    debug!("What we got: content (`{}`), proto: {:?}", content, proto_tok);
 
     let real_tok = match *proto_tok {
         token::BinOp(..)           => token::BinOp(str_to_binop(content)),
@@ -265,7 +266,7 @@ fn main() {
             continue
         }
 
-        assert!(rustc_tok.sp == antlr_tok.sp, "{} and {} have different spans", rustc_tok,
+        assert!(rustc_tok.sp == antlr_tok.sp, "{:?} and {:?} have different spans", rustc_tok,
                 antlr_tok);
 
         macro_rules! matches {
@@ -276,12 +277,12 @@ fn main() {
                             if !tok_cmp(&rustc_tok.tok, &antlr_tok.tok) {
                                 // FIXME #15677: needs more robust escaping in
                                 // antlr
-                                warn!("Different names for {} and {}", rustc_tok, antlr_tok);
+                                warn!("Different names for {:?} and {:?}", rustc_tok, antlr_tok);
                             }
                         }
-                        _ => panic!("{} is not {}", antlr_tok, rustc_tok)
+                        _ => panic!("{:?} is not {:?}", antlr_tok, rustc_tok)
                     },)*
-                    ref c => assert!(c == &antlr_tok.tok, "{} is not {}", rustc_tok, antlr_tok)
+                    ref c => assert!(c == &antlr_tok.tok, "{:?} is not {:?}", rustc_tok, antlr_tok)
                 }
             )
         }

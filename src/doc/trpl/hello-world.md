@@ -71,8 +71,8 @@ These lines define a *function* in Rust. The `main` function is special:
 it's the beginning of every Rust program. The first line says "I'm declaring a
 function named `main`, which takes no arguments and returns nothing." If there
 were arguments, they would go inside the parentheses (`(` and `)`), and because
-we aren't returning anything from this function, we've dropped that notation
-entirely.  We'll get to it later.
+we aren't returning anything from this function, we can omit the return type
+entirely. We'll get to it later.
 
 You'll also note that the function is wrapped in curly braces (`{` and `}`).
 Rust requires these around all function bodies. It is also considered good

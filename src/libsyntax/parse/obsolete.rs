@@ -24,14 +24,6 @@ use ptr::P;
 pub enum ObsoleteSyntax {
     Sized,
     ForSized,
-    OwnedType,
-    OwnedExpr,
-    OwnedPattern,
-    OwnedVector,
-    OwnedSelf,
-    ImportRenaming,
-    SubsliceMatch,
-    ExternCrateRenaming,
     ProcType,
     ProcExpr,
     ClosureType,
@@ -68,38 +60,6 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteSyntax::ProcExpr => (
                 "`proc` expression",
                 "use a `move ||` expression instead",
-            ),
-            ObsoleteSyntax::OwnedType => (
-                "`~` notation for owned pointers",
-                "use `Box<T>` in `std::owned` instead"
-            ),
-            ObsoleteSyntax::OwnedExpr => (
-                "`~` notation for owned pointer allocation",
-                "use the `box` operator instead of `~`"
-            ),
-            ObsoleteSyntax::OwnedPattern => (
-                "`~` notation for owned pointer patterns",
-                "use the `box` operator instead of `~`"
-            ),
-            ObsoleteSyntax::OwnedVector => (
-                "`~[T]` is no longer a type",
-                "use the `Vec` type instead"
-            ),
-            ObsoleteSyntax::OwnedSelf => (
-                "`~self` is no longer supported",
-                "write `self: Box<Self>` instead"
-            ),
-            ObsoleteSyntax::ImportRenaming => (
-                "`use foo = bar` syntax",
-                "write `use bar as foo` instead"
-            ),
-            ObsoleteSyntax::SubsliceMatch => (
-                "subslice match syntax",
-                "instead of `..xs`, write `xs..` in a pattern"
-            ),
-            ObsoleteSyntax::ExternCrateRenaming => (
-                "`extern crate foo = bar` syntax",
-                "write `extern crate bar as foo` instead"
             ),
             ObsoleteSyntax::ClosureType => (
                 "`|uint| -> bool` closure type syntax",

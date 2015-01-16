@@ -27,7 +27,7 @@ please do two things:
 
 Pull requests will be treated as "review requests", and we will give
 feedback we expect to see corrected on
-[style](https://github.com/rust-lang/rust/wiki/Note-style-guide) and
+[style](http://aturon.github.io/) and
 substance before pulling.  Changes contributed via pull request should
 focus on a single issue at a time, like any other.  We will not accept
 pull-requests that try to "sneak" unrelated changes in.

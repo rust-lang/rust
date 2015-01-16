@@ -346,12 +346,14 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             let align_ptr = GEPi(bcx, info, &[2u]);
             (Load(bcx, size_ptr), Load(bcx, align_ptr))
         }
-        ty::ty_vec(unit_ty, None) => {
-            // The info in this case is the length of the vec, so the size is that
+        ty::ty_vec(_, None) | ty::ty_str => {
+            let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
+            // The info in this case is the length of the str, so the size is that
             // times the unit size.
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
+            let unit_align = llalign_of_min(bcx.ccx(), llunit_ty);
             let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
-            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size)), C_uint(bcx.ccx(), 8u))
+            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size)), C_uint(bcx.ccx(), unit_align))
         }
         _ => bcx.sess().bug(&format!("Unexpected unsized type, found {}",
                                     bcx.ty_to_string(t))[])
@@ -456,8 +458,11 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                  &[PointerCast(bcx, Load(bcx, lluniquevalue), Type::i8p(bcx.ccx()))],
                  None);
             bcx
-        }
-        ty::ty_vec(ty, None) => tvec::make_drop_glue_unboxed(bcx, v0, ty, false),
+        },
+        ty::ty_vec(_, None) | ty::ty_str => {
+            let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
+            tvec::make_drop_glue_unboxed(bcx, v0, unit_ty, false)
+        },
         _ => {
             assert!(type_is_sized(bcx.tcx(), t));
             if type_needs_drop(bcx.tcx(), t) &&

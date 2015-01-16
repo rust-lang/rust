@@ -119,7 +119,7 @@
 //! drop(file);
 //! ```
 //!
-//! If you *do* write that in Rust, the compiler will by give you a
+//! If you *do* write that in Rust, the compiler will give you a
 //! warning (by default, controlled by the `unused_must_use` lint).
 //!
 //! You might instead, if you don't want to handle the error, simply
@@ -178,13 +178,11 @@
 //! fn write_info(info: &Info) -> Result<(), IoError> {
 //!     let mut file = File::open_mode(&Path::new("my_best_friends.txt"), Open, Write);
 //!     // Early return on error
-//!     match file.write_line(format!("name: {}", info.name).as_slice()) {
-//!         Ok(_) => (),
-//!         Err(e) => return Err(e)
+//!     if let Err(e) = file.write_line(format!("name: {}", info.name).as_slice()) {
+//!         return Err(e)
 //!     }
-//!     match file.write_line(format!("age: {}", info.age).as_slice()) {
-//!         Ok(_) => (),
-//!         Err(e) => return Err(e)
+//!     if let Err(e) = file.write_line(format!("age: {}", info.age).as_slice()) {
+//!         return Err(e)
 //!     }
 //!     return file.write_line(format!("rating: {}", info.rating).as_slice());
 //! }

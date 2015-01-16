@@ -66,7 +66,6 @@
 //! not (`None`).
 //!
 //! ```
-//! # use std::boxed::Box;
 //! let optional: Option<Box<int>> = None;
 //! check_optional(&optional);
 //!

@@ -92,11 +92,10 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
     let recurse = vec!(cx.ident_of(krate),
                     cx.ident_of("Decodable"),
                     cx.ident_of("decode"));
+    let exprdecode = cx.expr_path(cx.path_global(trait_span, recurse));
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = cx.ident_of("_d");
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
-    let calldecode = cx.expr_call_global(trait_span, recurse, vec!(blkdecoder.clone()));
-    let lambdadecode = cx.lambda_expr_1(trait_span, calldecode, blkarg);
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
@@ -116,7 +115,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                     cx.expr_method_call(span, blkdecoder.clone(), read_struct_field,
                                         vec!(cx.expr_str(span, name),
                                           cx.expr_uint(span, field),
-                                          lambdadecode.clone())))
+                                          exprdecode.clone())))
             });
             let result = cx.expr_ok(trait_span, result);
             cx.expr_method_call(trait_span,
@@ -147,7 +146,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                     let idx = cx.expr_uint(span, field);
                     cx.expr_try(span,
                         cx.expr_method_call(span, blkdecoder.clone(), rvariant_arg,
-                                            vec!(idx, lambdadecode.clone())))
+                                            vec!(idx, exprdecode.clone())))
                 });
 
                 arms.push(cx.arm(v_span,

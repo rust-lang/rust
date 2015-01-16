@@ -198,7 +198,7 @@ Rustdoc also supplies some extra sugar for helping with some tedious
 documentation examples. If a line is prefixed with `# `, then the line
 will not show up in the HTML documentation, but it will be used when
 testing the code block (NB. the space after the `#` is required, so
-that one can still write things like `#[deriving(Eq)]`).
+that one can still write things like `#[derive(Eq)]`).
 
 ~~~md
 ```
@@ -216,6 +216,35 @@ spawn(move || { fib(200); })
 
 The documentation online would look like `spawn(move || { fib(200); })`, but when
 testing this code, the `fib` function will be included (so it can compile).
+
+Rustdoc will automatically add a `main()` wrapper around your code, and in the right
+place. For example:
+
+```
+/// ```
+/// use std::rc::Rc;
+///
+/// let five = Rc::new(5);
+/// ```
+# fn foo() {}
+```
+
+This will end up testing:
+
+```
+fn main() {
+    use std::rc::Rc;
+    let five = Rc::new(5);
+}
+```
+
+Here's the full algorithm:
+
+1. Given a code block, if it does not contain `fn main`, it is wrapped in `fn main() { your_code }`
+2. Given that result, if it contains no `extern crate` directives but it also
+   contains the name of the crate being tested, then `extern crate <name>` is
+   injected at the top.
+3. Some common `allow` attributes are added for documentation examples at the top.
 
 ## Running tests (advanced)
 
