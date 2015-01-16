@@ -173,7 +173,7 @@ impl Condvar {
     /// be woken up from its call to `wait` or `wait_timeout`. Calls to
     /// `notify_one` are not buffered in any way.
     ///
-    /// To wake up all threads, see `notify_one()`.
+    /// To wake up all threads, see `notify_all()`.
     #[stable]
     pub fn notify_one(&self) { unsafe { self.inner.inner.notify_one() } }
 
