@@ -1096,6 +1096,28 @@ fn expand_annotatable(a: Annotatable,
 
                     fld.cx.bt_pop();
                 }
+                MultiDecorator(ref dec) => {
+                    attr::mark_used(attr);
+
+                    fld.cx.bt_push(ExpnInfo {
+                        call_site: attr.span,
+                        callee: NameAndSpan {
+                            name: mname.get().to_string(),
+                            format: MacroAttribute,
+                            span: None
+                        }
+                    });
+
+                    // we'd ideally decorator_items.push_all(expand_item(item, fld)),
+                    // but that double-mut-borrows fld
+                    let mut items: SmallVector<P<ast::Item>> = SmallVector::zero();
+                    dec.expand(fld.cx, attr.span, &*attr.node.value, a,
+                               box |&mut: item| items.push(item));
+                    decorator_items.extend(items.into_iter()
+                        .flat_map(|item| expand_item(item, fld).into_iter()));
+
+                    fld.cx.bt_pop();
+                }
                 _ => new_attrs.push((*attr).clone()),
             },
             _ => new_attrs.push((*attr).clone()),
