@@ -431,6 +431,7 @@ pub enum SyntaxExtension {
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place.
+    #[deprecated="Replaced by MultiModifier"]
     Modifier(Box<ItemModifier + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
