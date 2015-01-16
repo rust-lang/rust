@@ -257,6 +257,11 @@ pub trait MacResult {
         self.make_expr()
             .map(|e| P(codemap::respan(e.span, ast::StmtExpr(e, ast::DUMMY_NODE_ID))))
     }
+
+    /// Create a type.
+    fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
+        None
+    }
 }
 
 /// A convenience type for macros that return a single expression.
@@ -314,6 +319,21 @@ impl MacResult for MacItems {
     }
 }
 
+/// A convenience type for macros that return a single type.
+pub struct MacTy {
+    t: P<ast::Ty>
+}
+impl MacTy {
+    pub fn new(t: P<ast::Ty>) -> Box<MacResult+'static> {
+        box MacTy { t: t } as Box<MacResult+'static>
+    }
+}
+impl MacResult for MacTy {
+    fn make_ty(self: Box<MacTy>) -> Option<P<ast::Ty>> {
+        Some(self.t)
+    }
+}
+
 /// Fill-in macro expansion result, to allow compilation to continue
 /// after hitting errors.
 #[derive(Copy)]
@@ -358,6 +378,15 @@ impl DummyResult {
         }
     }
 
+    /// A plain dummy type.
+    pub fn raw_ty(sp: Span) -> P<ast::Ty> {
+        P(ast::Ty {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::TyInfer,
+            span: sp,
+        })
+    }
+
 }
 
 impl MacResult for DummyResult {
@@ -386,6 +415,9 @@ impl MacResult for DummyResult {
         Some(P(codemap::respan(self.span,
                                ast::StmtExpr(DummyResult::raw_expr(self.span),
                                              ast::DUMMY_NODE_ID))))
+    }
+    fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
+        Some(DummyResult::raw_ty(self.span))
     }
 }
 
