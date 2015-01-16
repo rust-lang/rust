@@ -611,6 +611,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(None);
         }
 
+
         // If there are *NO* candidates, that there are no impls --
         // that we know of, anyway. Note that in the case where there
         // are unbound type variables within the obligation, it might
@@ -626,6 +627,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Just one candidate left.
         let candidate = candidates.pop().unwrap();
+
+        match candidate {
+            ImplCandidate(def_id) => {
+                match ty::trait_impl_polarity(self.tcx(), def_id) {
+                    Some(ast::ImplPolarity::Negative) => return Err(Unimplemented),
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+
         Ok(Some(candidate))
     }
 
@@ -714,7 +726,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!("obligation self ty is {}",
                        obligation.predicate.0.self_ty().repr(self.tcx()));
 
-                try!(self.assemble_candidates_from_impls(obligation, &mut candidates.vec));
+                try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
 
                 try!(self.assemble_builtin_bound_candidates(ty::BoundCopy,
                                                             stack,
@@ -722,10 +734,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             Some(bound @ ty::BoundSend) |
             Some(bound @ ty::BoundSync) => {
-                try!(self.assemble_candidates_from_impls(obligation, &mut candidates.vec));
+                try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
 
                 // No explicit impls were declared for this type, consider the fallback rules.
-                if candidates.vec.is_empty() {
+                if candidates.vec.is_empty() && !candidates.ambiguous {
                     try!(self.assemble_builtin_bound_candidates(bound, stack, &mut candidates));
                 }
             }
@@ -741,7 +753,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // (And unboxed candidates only apply to the Fn/FnMut/etc traits.)
                 try!(self.assemble_unboxed_closure_candidates(obligation, &mut candidates));
                 try!(self.assemble_fn_pointer_candidates(obligation, &mut candidates));
-                try!(self.assemble_candidates_from_impls(obligation, &mut candidates.vec));
+                try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
                 self.assemble_candidates_from_object_ty(obligation, &mut candidates);
             }
         }
@@ -1013,9 +1025,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Search for impls that might apply to `obligation`.
     fn assemble_candidates_from_impls(&mut self,
                                       obligation: &TraitObligation<'tcx>,
-                                      candidate_vec: &mut Vec<SelectionCandidate<'tcx>>)
+                                      candidates: &mut SelectionCandidateSet<'tcx>)
                                       -> Result<(), SelectionError<'tcx>>
     {
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+        debug!("assemble_candidates_from_impls(self_ty={})", self_ty.repr(self.tcx()));
+
         let all_impls = self.all_impls(obligation.predicate.def_id());
         for &impl_def_id in all_impls.iter() {
             self.infcx.probe(|snapshot| {
@@ -1024,7 +1039,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 match self.match_impl(impl_def_id, obligation, snapshot,
                                       &skol_map, skol_obligation_trait_pred.trait_ref.clone()) {
                     Ok(_) => {
-                        candidate_vec.push(ImplCandidate(impl_def_id));
+                        candidates.vec.push(ImplCandidate(impl_def_id));
                     }
                     Err(()) => { }
                 }
@@ -2214,8 +2229,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Returns set of all impls for a given trait.
     fn all_impls(&self, trait_def_id: ast::DefId) -> Vec<ast::DefId> {
-        ty::populate_implementations_for_trait_if_necessary(self.tcx(),
-                                                            trait_def_id);
+        ty::populate_implementations_for_trait_if_necessary(self.tcx(), trait_def_id);
+
         match self.tcx().trait_impls.borrow().get(&trait_def_id) {
             None => Vec::new(),
             Some(impls) => impls.borrow().clone()

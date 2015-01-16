@@ -8,21 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that an `&` pointer to something inherently mutable is itself
-// to be considered mutable.
-
 #![feature(optin_builtin_traits)]
 
-use std::marker::Sync;
+struct TestType;
 
-struct NoSync;
-impl !Sync for NoSync {}
+trait TestTrait {}
 
-enum Foo { A(NoSync) }
+impl !TestTrait for TestType {}
+//~^ ERROR  negative impls are currently allowed just for `Send` and `Sync`
 
-fn bar<T: Sync>(_: T) {}
-
-fn main() {
-    let x = Foo::A(NoSync);
-    bar(&x); //~ ERROR the trait `core::marker::Sync` is not implemented
-}
+fn main() {}

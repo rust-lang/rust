@@ -8,21 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that an `&` pointer to something inherently mutable is itself
-// to be considered mutable.
-
 #![feature(optin_builtin_traits)]
 
-use std::marker::Sync;
+trait MyTrait {}
 
-struct NoSync;
-impl !Sync for NoSync {}
+struct TestType<T>;
 
-enum Foo { A(NoSync) }
+unsafe impl<T: MyTrait> Send for TestType<T> {}
+//~^ ERROR conflicting implementations for trait `core::marker::Send`
+//~^^ ERROR conflicting implementations for trait `core::marker::Send`
 
-fn bar<T: Sync>(_: T) {}
+impl<T: MyTrait> !Send for TestType<T> {}
+//~^ ERROR conflicting implementations for trait `core::marker::Send`
 
-fn main() {
-    let x = Foo::A(NoSync);
-    bar(&x); //~ ERROR the trait `core::marker::Sync` is not implemented
-}
+unsafe impl<T> Send for TestType<T> {}
+//~^ ERROR error: conflicting implementations for trait `core::marker::Send`
+
+impl !Send for TestType<i32> {}
+
+fn main() {}

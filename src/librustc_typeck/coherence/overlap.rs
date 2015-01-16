@@ -38,36 +38,34 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         // check_for_overlapping_impls_of_trait() check, since that
         // check can populate this table further with impls from other
         // crates.
-        let trait_def_ids: Vec<ast::DefId> =
-            self.tcx.trait_impls.borrow().keys().map(|&d| d).collect();
+        let trait_def_ids: Vec<(ast::DefId, Vec<ast::DefId>)> =
+            self.tcx.trait_impls.borrow().iter().map(|(&k, v)| {
+                // FIXME -- it seems like this method actually pushes
+                // duplicate impls onto the list
+                ty::populate_implementations_for_trait_if_necessary(self.tcx, k);
+                (k, v.borrow().clone())
+            }).collect();
 
-        for trait_def_id in trait_def_ids.iter() {
-            self.check_for_overlapping_impls_of_trait(*trait_def_id);
+        for &(trait_def_id, ref impls) in trait_def_ids.iter() {
+            self.check_for_overlapping_impls_of_trait(trait_def_id, impls);
         }
     }
 
     fn check_for_overlapping_impls_of_trait(&self,
-                                            trait_def_id: ast::DefId)
+                                            trait_def_id: ast::DefId,
+                                            trait_impls: &Vec<ast::DefId>)
     {
         debug!("check_for_overlapping_impls_of_trait(trait_def_id={})",
                trait_def_id.repr(self.tcx));
 
-        // FIXME -- it seems like this method actually pushes
-        // duplicate impls onto the list
-        ty::populate_implementations_for_trait_if_necessary(self.tcx,
-                                                            trait_def_id);
-
-        let mut impls = Vec::new();
-        self.push_impls_of_trait(trait_def_id, &mut impls);
-
-        for (i, &impl1_def_id) in impls.iter().enumerate() {
+        for (i, &impl1_def_id) in trait_impls.iter().enumerate() {
             if impl1_def_id.krate != ast::LOCAL_CRATE {
                 // we don't need to check impls if both are external;
                 // that's the other crate's job.
                 continue;
             }
 
-            for &impl2_def_id in impls.slice_from(i+1).iter() {
+            for &impl2_def_id in trait_impls.slice_from(i+1).iter() {
                 self.check_if_impls_overlap(trait_def_id,
                                             impl1_def_id,
                                             impl2_def_id);
@@ -105,15 +103,6 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             span_note!(self.tcx.sess, self.span_of_impl(impl1_def_id),
                        "conflicting implementation in crate `{}`",
                        cdata.name);
-        }
-    }
-
-    fn push_impls_of_trait(&self,
-                           trait_def_id: ast::DefId,
-                           out: &mut Vec<ast::DefId>) {
-        match self.tcx.trait_impls.borrow().get(&trait_def_id) {
-            Some(impls) => { out.push_all(impls.borrow().as_slice()); }
-            None => { /* no impls */ }
         }
     }
 

@@ -66,12 +66,25 @@ use sync::mpsc::blocking::{self, SignalToken};
 
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.
+#[cfg(stage0)] // NOTE remove impl after next snapshot
 pub struct Select {
     head: *mut Handle<'static, ()>,
     tail: *mut Handle<'static, ()>,
     next_id: Cell<uint>,
     marker1: marker::NoSend,
 }
+
+/// The "receiver set" of the select interface. This structure is used to manage
+/// a set of receivers which are being selected over.
+#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+pub struct Select {
+    head: *mut Handle<'static, ()>,
+    tail: *mut Handle<'static, ()>,
+    next_id: Cell<uint>,
+}
+
+#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+impl !marker::Send for Select {}
 
 /// A handle to a receiver which is currently a member of a `Select` set of
 /// receivers.  This handle is used to keep the receiver in the set as well as
@@ -113,9 +126,24 @@ impl Select {
     ///
     /// Usage of this struct directly can sometimes be burdensome, and usage is
     /// rather much easier through the `select!` macro.
+    #[cfg(stage0)] // NOTE remove impl after next snapshot
     pub fn new() -> Select {
         Select {
             marker1: marker::NoSend,
+            head: 0 as *mut Handle<'static, ()>,
+            tail: 0 as *mut Handle<'static, ()>,
+            next_id: Cell::new(1),
+        }
+    }
+
+    /// Creates a new selection structure. This set is initially empty and
+    /// `wait` will panic!() if called.
+    ///
+    /// Usage of this struct directly can sometimes be burdensome, and usage is
+    /// rather much easier through the `select!` macro.
+    #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+    pub fn new() -> Select {
+        Select {
             head: 0 as *mut Handle<'static, ()>,
             tail: 0 as *mut Handle<'static, ()>,
             next_id: Cell::new(1),

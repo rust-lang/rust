@@ -17,5 +17,4 @@ fn main() {
     let x = Rc::new(RefCell::new(5is));
     bar(x);
     //~^ ERROR the trait `core::marker::Sync` is not implemented
-    //~^^ ERROR the trait `core::marker::Sync` is not implemented
 }

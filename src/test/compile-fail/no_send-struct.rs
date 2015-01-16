@@ -8,17 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::marker;
+#![feature(optin_builtin_traits)]
+
+use std::marker::Send;
 
 struct Foo {
     a: isize,
-    ns: marker::NoSend
 }
+
+impl !Send for Foo {}
 
 fn bar<T: Send>(_: T) {}
 
 fn main() {
-    let x = Foo { a: 5, ns: marker::NoSend };
+    let x = Foo { a: 5 };
     bar(x);
     //~^ ERROR the trait `core::marker::Send` is not implemented
 }

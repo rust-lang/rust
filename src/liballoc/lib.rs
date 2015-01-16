@@ -68,6 +68,7 @@
 #![allow(unknown_features)]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
+#![feature(optin_builtin_traits)]
 #![allow(unknown_features)] #![feature(int_uint)]
 
 #[macro_use]

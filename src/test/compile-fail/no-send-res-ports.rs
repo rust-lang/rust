@@ -37,7 +37,6 @@ fn main() {
 
     Thread::spawn(move|| {
         //~^ ERROR `core::marker::Send` is not implemented
-        //~^^ ERROR `core::marker::Send` is not implemented
         let y = x;
         println!("{:?}", y);
     });
