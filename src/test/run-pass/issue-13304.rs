@@ -33,7 +33,7 @@ fn parent() {
     let out = p.wait_with_output().unwrap();
     assert!(out.status.success());
     let s = str::from_utf8(out.output.as_slice()).unwrap();
-    assert_eq!(s, "test1\n\ntest2\n\ntest3\n");
+    assert_eq!(s, "test1\ntest2\ntest3\n");
 }
 
 fn child() {
