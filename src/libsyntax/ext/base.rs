@@ -29,6 +29,7 @@ use fold::Folder;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+#[deprecated="Replaced by MultiItemDecorator"]
 pub trait ItemDecorator {
     fn expand(&self,
               ecx: &mut ExtCtxt,
