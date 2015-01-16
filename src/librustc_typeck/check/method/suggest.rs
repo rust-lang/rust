@@ -35,7 +35,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               error: MethodError)
 {
     match error {
-        MethodError::NoMatch(static_sources) => {
+        MethodError::NoMatch(static_sources, out_of_scope_traits) => {
             let cx = fcx.tcx();
             let method_ustring = method_name.user_string(cx);
 
@@ -75,7 +75,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 report_candidates(fcx, span, method_name, static_sources);
             }
 
-            suggest_traits_to_import(fcx, span, rcvr_ty, method_name)
+            suggest_traits_to_import(fcx, span, rcvr_ty, method_name, out_of_scope_traits)
         }
 
         MethodError::Ambiguity(sources) => {
@@ -136,10 +136,35 @@ pub type AllTraitsVec = Vec<TraitInfo>;
 fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       span: Span,
                                       _rcvr_ty: Ty<'tcx>,
-                                      method_name: ast::Name)
+                                      method_name: ast::Name,
+                                      valid_out_of_scope_traits: Vec<ast::DefId>)
 {
     let tcx = fcx.tcx();
+    let method_ustring = method_name.user_string(tcx);
 
+    if !valid_out_of_scope_traits.is_empty() {
+        let mut candidates = valid_out_of_scope_traits;
+        candidates.sort();
+        let msg = format!(
+            "methods from traits can only be called if the trait is in scope; \
+             the following {traits_are} implemented and {define} a method `{name}`:",
+            traits_are = if candidates.len() == 1 {"trait is"} else {"traits are"},
+            define = if candidates.len() == 1 {"defines"} else {"define"},
+            name = method_ustring);
+
+        fcx.sess().fileline_help(span, &msg[]);
+
+        for (i, trait_did) in candidates.iter().enumerate() {
+            fcx.sess().fileline_help(span,
+                                     &*format!("candidate #{}: `{}`",
+                                               i + 1,
+                                               ty::item_path_str(fcx.tcx(), *trait_did)))
+
+        }
+        return
+    }
+
+    // there's no implemented traits, so lets suggest some traits to implement
     let mut candidates = all_traits(fcx.ccx)
         .filter(|info| trait_method(tcx, info.def_id, method_name).is_some())
         .collect::<Vec<_>>();
@@ -148,22 +173,16 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // sort from most relevant to least relevant
         candidates.sort_by(|a, b| a.cmp(b).reverse());
 
-        let method_ustring = method_name.user_string(tcx);
+        let msg = format!(
+            "methods from traits can only be called if the trait is implemented and \
+             in scope; no such traits are but the following {traits_define} a method `{name}`:",
+            traits_define = if candidates.len() == 1 {"trait defines"} else {"traits define"},
+            name = method_ustring);
 
-        span_help!(fcx.sess(), span,
-                   "methods from traits can only be called if the trait is implemented \
-                    and in scope; the following trait{s} define{inv_s} a method `{name}`:",
-                   s = if candidates.len() == 1 {""} else {"s"},
-                   inv_s = if candidates.len() == 1 {"s"} else {""},
-                   name = method_ustring);
+        fcx.sess().fileline_help(span, &msg[]);
 
         for (i, trait_info) in candidates.iter().enumerate() {
-            // provide a good-as-possible span; the span of
-            // the trait if it is local, or the span of the
-            // method call itself if not
-            let trait_span = fcx.tcx().map.def_id_span(trait_info.def_id, span);
-
-            fcx.sess().fileline_help(trait_span,
+            fcx.sess().fileline_help(span,
                                      &*format!("candidate #{}: `{}`",
                                                i + 1,
                                                ty::item_path_str(fcx.tcx(), trait_info.def_id)))
@@ -173,7 +192,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 #[derive(Copy)]
 pub struct TraitInfo {
-    def_id: ast::DefId,
+    pub def_id: ast::DefId,
 }
 
 impl TraitInfo {
@@ -206,7 +225,7 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieve all traits in this crate and any dependent crates.
-fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
+pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
     if ccx.all_traits.borrow().is_none() {
         use syntax::visit;
 
@@ -268,7 +287,7 @@ fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
     }
 }
 
-struct AllTraits<'a> {
+pub struct AllTraits<'a> {
     borrow: cell::Ref<'a Option<AllTraitsVec>>,
     idx: usize
 }

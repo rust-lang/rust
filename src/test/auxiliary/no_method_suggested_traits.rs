@@ -12,8 +12,13 @@ pub use reexport::Reexported;
 
 pub mod foo {
     pub trait PubPub {
-        fn method(&self);
+        fn method(&self) {}
+
+        fn method3(&self) {}
     }
+
+    impl PubPub for u32 {}
+    impl PubPub for i32 {}
 }
 pub mod bar {
     trait PubPriv {
