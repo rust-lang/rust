@@ -62,7 +62,7 @@ use ast::{ViewItem, ViewItem_, ViewItemExternCrate, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast;
-use ast_util::{self, as_prec, ident_to_path, operator_prec};
+use ast_util::{self, prefix_prec, as_prec, range_prec, ident_to_path, operator_prec};
 use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp};
 use diagnostic;
 use ext::tt::macro_parser;
@@ -93,7 +93,6 @@ bitflags! {
         const RESTRICTION_STMT_EXPR         = 0b0001,
         const RESTRICTION_NO_BAR_OP         = 0b0010,
         const RESTRICTION_NO_STRUCT_LITERAL = 0b0100,
-        const RESTRICTION_NO_DOTS           = 0b1000,
     }
 }
 
@@ -2799,7 +2798,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a prefix-operator expr
-    pub fn parse_prefix_expr(&mut self) -> P<Expr> {
+    /// only operators with a precedence >= min_prec will be accepted
+    pub fn parse_prefix_expr(&mut self, min_prec: uint) -> P<Expr> {
         let lo = self.span.lo;
         let hi;
 
@@ -2807,26 +2807,26 @@ impl<'a> Parser<'a> {
         match self.token {
           token::Not => {
             self.bump();
-            let e = self.parse_prefix_expr();
+            let e = self.parse_prefix_expr(prefix_prec);
             hi = e.span.hi;
             ex = self.mk_unary(UnNot, e);
           }
           token::BinOp(token::Minus) => {
             self.bump();
-            let e = self.parse_prefix_expr();
+            let e = self.parse_prefix_expr(prefix_prec);
             hi = e.span.hi;
             ex = self.mk_unary(UnNeg, e);
           }
           token::BinOp(token::Star) => {
             self.bump();
-            let e = self.parse_prefix_expr();
+            let e = self.parse_prefix_expr(prefix_prec);
             hi = e.span.hi;
             ex = self.mk_unary(UnDeref, e);
           }
           token::BinOp(token::And) | token::AndAnd => {
             self.expect_and();
             let m = self.parse_mutability();
-            let e = self.parse_prefix_expr();
+            let e = self.parse_prefix_expr(prefix_prec);
             hi = e.span.hi;
             ex = ExprAddrOf(m, e);
           }
@@ -2840,14 +2840,14 @@ impl<'a> Parser<'a> {
                 _ => self.obsolete(last_span, ObsoleteSyntax::OwnedExpr)
             }
 
-            let e = self.parse_prefix_expr();
+            let e = self.parse_prefix_expr(prefix_prec);
             hi = e.span.hi;
             ex = self.mk_unary(UnUniq, e);
           }
-          token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
+          token::DotDot if min_prec <= range_prec => {
             // A range, closed above: `..expr`.
             self.bump();
-            let e = self.parse_expr();
+            let e = self.parse_binops(range_prec + 1);
             hi = e.span.hi;
             ex = self.mk_range(None, Some(e));
           }
@@ -2878,7 +2878,7 @@ impl<'a> Parser<'a> {
                                        "perhaps you meant `box() (foo)` instead?");
                         self.abort_if_errors();
                     }
-                    let subexpression = self.parse_prefix_expr();
+                    let subexpression = self.parse_prefix_expr(prefix_prec);
                     hi = subexpression.span.hi;
                     ex = ExprBox(Some(place), subexpression);
                     return self.mk_expr(lo, hi, ex);
@@ -2886,7 +2886,7 @@ impl<'a> Parser<'a> {
             }
 
             // Otherwise, we use the unique pointer default.
-            let subexpression = self.parse_prefix_expr();
+            let subexpression = self.parse_prefix_expr(prefix_prec);
             hi = subexpression.span.hi;
             // FIXME (pnkfelix): After working out kinks with box
             // desugaring, should be `ExprBox(None, subexpression)`
@@ -2898,10 +2898,10 @@ impl<'a> Parser<'a> {
         return self.mk_expr(lo, hi, ex);
     }
 
-    /// Parse an expression of binops
-    pub fn parse_binops(&mut self) -> P<Expr> {
-        let prefix_expr = self.parse_prefix_expr();
-        self.parse_more_binops(prefix_expr, 0)
+    /// Parse an expression of binops of at least min_prec precedence
+    pub fn parse_binops(&mut self, min_prec: uint) -> P<Expr> {
+        let prefix_expr = self.parse_prefix_expr(min_prec);
+        self.parse_more_binops(prefix_expr, min_prec)
     }
 
     /// Parse an expression of binops of at least min_prec precedence
@@ -2924,10 +2924,9 @@ impl<'a> Parser<'a> {
                     self.check_no_chained_comparison(&*lhs, cur_op)
                 }
                 let cur_prec = operator_prec(cur_op);
-                if cur_prec > min_prec {
+                if cur_prec >= min_prec {
                     self.bump();
-                    let expr = self.parse_prefix_expr();
-                    let rhs = self.parse_more_binops(expr, cur_prec);
+                    let rhs = self.parse_binops(cur_prec + 1);
                     let lhs_span = lhs.span;
                     let rhs_span = rhs.span;
                     let binary = self.mk_binary(cur_op, lhs, rhs);
@@ -2938,16 +2937,54 @@ impl<'a> Parser<'a> {
                 }
             }
             None => {
-                if as_prec > min_prec && self.eat_keyword(keywords::As) {
+                if as_prec >= min_prec && self.eat_keyword(keywords::As) {
                     let rhs = self.parse_ty();
                     let _as = self.mk_expr(lhs.span.lo,
                                            rhs.span.hi,
                                            ExprCast(lhs, rhs));
                     self.parse_more_binops(_as, min_prec)
+                } else if range_prec >= min_prec
+                        && match lhs.node { ExprRange(_, _) => false, _ => true }
+                        && self.eat(&token::DotDot) {
+                    // '..' range notation, infix or postfix form
+                    // Note that we intentionally reject other range expressions on the lhs.
+                    // This makes '..1..2' invalid.
+                    // This is necessary for consistency between the prefix and postfix forms.
+                    let opt_rhs = if self.is_at_start_of_range_notation_rhs() {
+                        Some(self.parse_binops(range_prec + 1))
+                    } else {
+                        None
+                    };
+                    let lo = lhs.span.lo;
+                    let hi = self.span.hi;
+                    let range = self.mk_range(Some(lhs), opt_rhs);
+                    let bin = self.mk_expr(lo, hi, range);
+                    self.parse_more_binops(bin, min_prec)
                 } else {
                     lhs
                 }
             }
+        }
+    }
+
+    fn is_at_start_of_range_notation_rhs(&self) -> bool {
+        if self.token.can_begin_expr() {
+            // parse `for i in 1.. { }` as infinite loop, not as `for i in (1..{})`.
+            if self.token == token::OpenDelim(token::Brace) {
+                return !self.restrictions.contains(RESTRICTION_NO_STRUCT_LITERAL);
+            }
+
+            // `1..*i` is ambiguous between `1..(*i)` and `(1..)*(i)`.
+            // We pick the `1..(*i)` interpretation.
+
+            // `r==1..&&true` is ambiguous between `r==(1..(&&true))` and `(r==(1..))&&true`.
+            // We pick the latter interpretation.
+            match self.token.to_binop() {
+                Some(op) => operator_prec(op) > range_prec,
+                None => true
+            }
+        } else {
+           false
         }
     }
 
@@ -2974,7 +3011,7 @@ impl<'a> Parser<'a> {
     /// actually, this seems to be the main entry point for
     /// parsing an arbitrary expression.
     pub fn parse_assign_expr(&mut self) -> P<Expr> {
-        let lhs = self.parse_binops();
+        let lhs = self.parse_binops(0);
         self.parse_assign_expr_with(lhs)
     }
 
@@ -3006,23 +3043,6 @@ impl<'a> Parser<'a> {
               let assign_op = self.mk_assign_op(aop, lhs, rhs);
               self.mk_expr(span.lo, rhs_span.hi, assign_op)
           }
-          // A range expression, either `expr..expr` or `expr..`.
-          token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
-            self.bump();
-
-            let opt_end = if self.token.can_begin_expr() {
-                let end = self.parse_expr_res(RESTRICTION_NO_DOTS);
-                Some(end)
-            } else {
-                None
-            };
-
-            let lo = lhs.span.lo;
-            let hi = self.span.hi;
-            let range = self.mk_range(Some(lhs), opt_end);
-            return self.mk_expr(lo, hi, range);
-          }
-
           _ => {
               lhs
           }

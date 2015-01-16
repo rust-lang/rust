@@ -48,5 +48,13 @@ fn main() {
     assert!(x == &a[3..]);
 
     for _i in 2+4..10-3 {}
+
+    let i = 42;
+    for _ in 1..i {}
+    for _ in 1.. { break; }
+
+    if 1..2 == 1..2 {}
+    if 1.. == 1.. {}
+    if ..1 == ..1 {}
 }
 
