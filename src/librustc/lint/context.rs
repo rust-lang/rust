@@ -257,6 +257,7 @@ impl LintStore {
         self.register_renamed("transmute_fat_ptr", "fat_ptr_transmutes");
         self.register_renamed("raw_pointer_deriving", "raw_pointer_derive");
 
+        self.register_renamed("unknown_features", "unused_features");
     }
 
     #[allow(unused_variables)]
@@ -829,6 +830,5 @@ pub fn check_crate(tcx: &ty::ctxt,
         }
     }
 
-    tcx.sess.abort_if_errors();
     *tcx.node_lint_levels.borrow_mut() = cx.node_levels.into_inner();
 }

@@ -1734,9 +1734,9 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub UNKNOWN_FEATURES,
+    pub UNUSED_FEATURES,
     Deny,
-    "unknown features found in crate-level #[feature] directives"
+    "unused or unknown features found in crate-level #[feature] directives"
 }
 
 declare_lint! {
@@ -1780,7 +1780,7 @@ impl LintPass for HardwiredLints {
             DEAD_CODE,
             UNREACHABLE_CODE,
             WARNINGS,
-            UNKNOWN_FEATURES,
+            UNUSED_FEATURES,
             UNKNOWN_CRATE_TYPES,
             VARIANT_SIZE_DIFFERENCES,
             FAT_PTR_TRANSMUTES
