@@ -420,6 +420,7 @@ impl MacResult for DummyResult {
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
+    #[deprecated="Replaced by MultiDecorator"]
     Decorator(Box<ItemDecorator + 'static>),
 
     /// A syntax extension that is attached to an item and creates new items
