@@ -10,6 +10,7 @@
 
 #![allow(unused_variables)]
 #![deny(dead_code)]
+#![feature(main, start)]
 
 struct Foo;
 
