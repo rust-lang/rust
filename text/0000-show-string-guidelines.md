@@ -12,6 +12,9 @@ That RFC did not, however, establish complete conventions for when to implement
 which of the traits, nor what is expected from the output.  That's what this RFC
 seeks to do.
 
+It turns out that, due to the suggested conventions and other
+concerns, renaming the traits is also desirable.
+
 # Motivation
 
 Part of the reason for splitting up `Show` in the first place was some tension
@@ -35,11 +38,16 @@ be "composed" from smaller pieces of user-facing output (via, say,
 consumption, the output needs to be quite tailored, and interpolation via
 `format` is a good tool for that job.
 
-## Debugging: `fmt::Show`
+As part of the conventions being laid out here, the RFC proposes to:
 
-The `fmt::Show` trait is intended for debugging. It should:
+1. Rename `fmt::Show` to `fmt::Debug`, and
+2. Rename `fmt::String` to `fmt::Display`.
 
-* Be implemented on every type, usually via `#[derive(Show)]`.
+## Debugging: `fmt::Debug`
+
+The `fmt::Debug` trait is intended for debugging. It should:
+
+* Be implemented on every type, usually via `#[derive(Debug)]`.
 * Never panic.
 * Escape away control characters.
 * Introduce quotes and other delimiters as necessary to give a clear
@@ -48,26 +56,48 @@ The `fmt::Show` trait is intended for debugging. It should:
   suffixes for integer literals is not generally useful since that data is
   readily available from the type definition.
 
-It is *not* a goal for the debugging output to be valid Rust source.
+In terms of the output produced, the goal is make it easy to make sense of
+compound data of various kinds without overwhelming debugging output
+with every last bit of type information -- most of which is readily
+available from the source. The following rules give rough guidance:
 
-## User-facing: `fmt::String`
+* Scalars print as unsuffixed literals.
+* Strings print as normal quoted notation, with escapes.
+* Smart pointers print as whatever they point to (without further annotation).
+* Fully public structs print as you'd normally construct them:
+  `MyStruct { f1: ..., f2: ... }`
+* Enums print as you'd construct their variants (possibly with special
+  cases for things like `Option` and single-variant enums?).
+* Containers print using *some* notation that makes their type and
+  contents clear. (Since we lack literals for all container types,
+  this will be ad hoc).
 
-The `fmt::String` trait is intended for user-facing output. It should:
+It is *not* a *requirement* for the debugging output to be valid Rust
+source. This is in general not possible in the presence of private
+fields and other abstractions. However, when it is feasible to do so,
+debugging output *should* match Rust syntax; doing so makes it easier
+to copy debug output into unit tests, for example.
+
+## User-facing: `fmt::Display`
+
+The `fmt::Display` trait is intended for user-facing output. It should:
 
 * Be implemented for scalars, strings, and other basic types.
 * Be implemented for generic wrappers like `Option<T>` or smart pointers, where
-  the output can be wholly delegated to a *single* `fmt::String` implementation
+  the output can be wholly delegated to a *single* `fmt::Display` implementation
   on the underlying type.
 * *Not* be implemented for generic containers like `Vec<T>` or even `Result<T, E>`,
   where there is no useful, general way to tailor the output for user consumption.
 * Be implemented for *specific* user-defined types as useful for an application,
   with application-defined user-facing output. In particular, applications will
-  often make their types implement `fmt::String` specifically for use in
+  often make their types implement `fmt::Display` specifically for use in
   `format` interpolation.
 * Never panic.
 * Avoid quotes, escapes, and so on unless specifically desired for a user-facing purpose.
+* Require use of an explicit adapter (like the `display` method in
+  `Path`) when it potentially looses significant information.
 
-A common pattern for `fmt::String` is to provide simple "adapters", which are
+A common pattern for `fmt::Display` is to provide simple "adapters", which are
 types wrapping another type for the sole purpose of formatting in a certain
 style or context. For example:
 
@@ -80,15 +110,16 @@ impl MyInterestingType {
     fn for_cli(&self) -> ForCli<MyInterestingType> { ForCli(self) }
 }
 
-impl<'a> fmt::String for ForHtml<'a, MyInterestingType> { ... }
-impl<'a> fmt::String for ForCli<'a, MyInterestingType> { ... }
+impl<'a> fmt::Display for ForHtml<'a, MyInterestingType> { ... }
+impl<'a> fmt::Display for ForCli<'a, MyInterestingType> { ... }
 ```
 
 ## Rationale for format specifiers
 
-Given the above conventions, it should be clear that `fmt::Show` is much more
-common than `fmt::String`. Why, then, use `{}` for `fmt::String` and `{:?}` for
-`fmt::Show`? Aren't those the wrong defaults?
+Given the above conventions, it should be clear that `fmt::Debug` is
+much more commonly *implemented* on types than `fmt::Display`. Why,
+then, use `{}` for `fmt::Display` and `{:?}` for `fmt::Debug`? Aren't
+those the wrong defaults?
 
 There are two main reasons for this choice:
 
@@ -106,16 +137,20 @@ There are two main reasons for this choice:
   format!("{}, {}!", "hello", "world")
   ```
 
+In other words, although more types implement `fmt::Debug`, most
+meaningful uses of interpolation (other than in such implementations)
+will use `fmt::Display`, making `{}` the right choice.
+
 ## Use in errors
 
 Right now, the (unstable) `Error` trait comes equipped with a `description`
 method yielding an `Option<String>`. This RFC proposes to drop this method an
-instead inherit from `fmt::String`. It likewise proposes to make `unwrap` in
-`Result` depend and use `fmt::String` rather than `fmt::Show`.
+instead inherit from `fmt::Display`. It likewise proposes to make `unwrap` in
+`Result` depend and use `fmt::Display` rather than `fmt::Debug`.
 
 The reason in both cases is the same: although errors are often thought of in
 terms of debugging, the messages they result in are often presented directly to
-the user and should thus be tailored. Tying them to `fmt::String` makes it
+the user and should thus be tailored. Tying them to `fmt::Display` makes it
 easier to remember and add such tailoring, and less likely to spew a lot of
 unwanted internal representation.
 
@@ -128,7 +163,4 @@ the discussion thread.
 
 # Unresolved questions
 
-Should we set stricter rules about the exact formatting of debugging output?
-
-Should we consider renaming either or both of these traits to something that
-better reflects the usage here? E.g. `fmt::Debug` and `fmt::Display`.
+(Previous questions here have been resolved in an RFC update).
