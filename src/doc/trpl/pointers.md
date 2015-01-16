@@ -13,13 +13,13 @@ unless you're in one of those specific situations.
 You may be interested in the [cheat sheet](#cheat-sheet), which gives a quick
 overview of the types, names, and purpose of the various pointers.
 
-# An introduction
+## An introduction
 
 If you aren't familiar with the concept of pointers, here's a short
 introduction.  Pointers are a very fundamental concept in systems programming
 languages, so it's important to understand them.
 
-## Pointer Basics
+### Pointer Basics
 
 When you create a new variable binding, you're giving a name to a value that's
 stored at a particular location on the stack. (If you're not familiar with the
@@ -108,7 +108,7 @@ That's it! That's all pointers are: they point to some memory location. Not
 much else to them. Now that we've discussed the *what* of pointers, let's
 talk about the *why*.
 
-## Pointer uses
+### Pointer uses
 
 Rust's pointers are quite useful, but in different ways than in other systems
 languages. We'll talk about best practices for Rust pointers later in
@@ -170,7 +170,7 @@ but because it points at a memory location, which we then assign to, the
 original value is still changed. This pattern is called
 *pass-reference-by-value*. Tricky!
 
-## Common pointer problems
+### Common pointer problems
 
 We've talked about pointers, and we've sung their praises. So what's the
 downside? Well, Rust attempts to mitigate each of these kinds of problems,
@@ -238,7 +238,7 @@ first, and therefore, the value of `x` is actually non-deterministic. Worse,
 what if one of them had invalidated the memory location they pointed to? We'd
 have the same problem as before, where we'd be setting an invalid location.
 
-## Conclusion
+### Conclusion
 
 That's a basic overview of pointers as a general concept. As we alluded to
 before, Rust has different kinds of pointers, rather than just one, and
@@ -246,7 +246,7 @@ mitigates all of the problems that we talked about, too. This does mean that
 Rust pointers are slightly more complicated than in other languages, but
 it's worth it to not have the problems that simple pointers have.
 
-# References
+## References
 
 The most basic type of pointer that Rust has is called a *reference*. Rust
 references look like this:
@@ -412,7 +412,7 @@ hard for a computer, too! There is an entire [guide devoted to references, owner
 and lifetimes](ownership.html) that goes into this topic in
 great detail, so if you want the full details, check that out.
 
-## Best practices
+### Best practices
 
 In general, prefer stack allocation over heap allocation. Using references to
 stack allocated information is preferred whenever possible. Therefore,
@@ -472,7 +472,7 @@ succ(&*rc_x);
 The initial `*` dereferences the pointer, and then `&` takes a reference to
 those contents.
 
-# Boxes
+## Boxes
 
 `Box<T>` is Rust's *boxed pointer* type. Boxes provide the simplest form of
 heap allocation in Rust. Creating a box looks like this:
@@ -598,12 +598,12 @@ fn main() {
 
 Notice we changed the signature of `add_one()` to request a mutable reference.
 
-## Best practices
+### Best practices
 
 Boxes are appropriate to use in two situations: Recursive data structures,
 and occasionally, when returning data.
 
-### Recursive data structures
+#### Recursive data structures
 
 Sometimes, you need a recursive data structure. The simplest is known as a
 *cons list*:
@@ -636,7 +636,7 @@ we don't know the size, and therefore, we need to heap allocate our list.
 Working with recursive or other unknown-sized data structures is the primary
 use-case for boxes.
 
-### Returning data
+#### Returning data
 
 This is important enough to have its own section entirely. The TL;DR is this:
 you don't generally want to return pointers, even when you might in a language
@@ -644,23 +644,23 @@ like C or C++.
 
 See [Returning Pointers](#returning-pointers) below for more.
 
-# Rc and Arc
+## Rc and Arc
 
 This part is coming soon.
 
-## Best practices
+### Best practices
 
 This part is coming soon.
 
-# Raw Pointers
+## Raw Pointers
 
 This part is coming soon.
 
-## Best practices
+### Best practices
 
 This part is coming soon.
 
-# Returning Pointers
+## Returning Pointers
 
 In many languages with pointers, you'd return a pointer from a function
 so as to avoid copying a large data structure. For example:
@@ -731,15 +731,15 @@ This is important enough that it bears repeating: pointers are not for
 optimizing returning values from your code. Allow the caller to choose how they
 want to use your output.
 
-# Creating your own Pointers
+## Creating your own Pointers
 
 This part is coming soon.
 
-## Best practices
+### Best practices
 
 This part is coming soon.
 
-# Patterns and `ref`
+## Patterns and `ref`
 
 When you're trying to match something that's stored in a pointer, there may be
 a situation where matching directly isn't the best option available. Let's see
@@ -764,7 +764,7 @@ The `ref s` here means that `s` will be of type `&String`, rather than type
 This is important when the type you're trying to get access to has a destructor
 and you don't want to move it, you just want a reference to it.
 
-# Cheat Sheet
+## Cheat Sheet
 
 Here's a quick rundown of Rust's pointer types:
 
@@ -778,7 +778,7 @@ Here's a quick rundown of Rust's pointer types:
 | `*const T`   | Raw pointer         | Unsafe read access to `T`                                           |
 | `*mut T`     | Mutable raw pointer | Unsafe read and write access to `T`                                 |
 
-# Related resources
+## Related resources
 
 * [API documentation for Box](../std/boxed/index.html)
 * [Ownership guide](ownership.html)

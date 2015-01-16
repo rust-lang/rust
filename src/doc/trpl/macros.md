@@ -1,6 +1,6 @@
 % The Rust Macros Guide
 
-# Introduction
+## Introduction
 
 Functions are the primary tool that programmers can use to build abstractions.
 Sometimes, however, programmers want to abstract over compile-time syntax
@@ -64,7 +64,7 @@ Macros are defined in pattern-matching style: in the above example, the text
 macro. The text on the right-hand side of the `=>`, beginning with `match
 $inp`, is the *macro transcription syntax*: what the macro expands to.
 
-# Invocation syntax
+## Invocation syntax
 
 The macro invocation syntax specifies the syntax for the arguments to the
 macro. It appears on the left-hand side of the `=>` in a macro definition. It
@@ -97,7 +97,7 @@ rules of tokenization apply,
 So `($x:ident -> (($e:expr)))`, though excessively fancy, would designate a macro
 that could be invoked like: `my_macro!(i->(( 2+2 )))`.
 
-## Invocation location
+### Invocation location
 
 A macro invocation may take the place of (and therefore expand to) an
 expression, item, statement, or pattern.  The Rust parser will parse the macro
@@ -112,7 +112,7 @@ location). Although this behavior sounds excessively dynamic, it is known to
 be useful under some circumstances.
 
 
-# Transcription syntax
+## Transcription syntax
 
 The right-hand side of the `=>` follows the same rules as the left-hand side,
 except that a `$` need only be followed by the name of the syntactic fragment
@@ -132,15 +132,15 @@ are permitted in expression, statement, and item locations. However, nothing
 else about the code is examined or executed by the macro system; execution
 still has to wait until run-time.
 
-## Interpolation location
+### Interpolation location
 
 The interpolation `$argument_name` may appear in any location consistent with
 its fragment specifier (i.e., if it is specified as `ident`, it may be used
 anywhere an identifier is permitted).
 
-# Multiplicity
+## Multiplicity
 
-## Invocation
+### Invocation
 
 Going back to the motivating example, recall that `early_return` expanded into
 a `match` that would `return` if the `match`'s scrutinee matched the
@@ -179,7 +179,7 @@ early_return!(input_2, [T::SpecialB]);
 # fn main() {}
 ~~~~
 
-### Transcription
+#### Transcription
 
 As the above example demonstrates, `$(...)*` is also valid on the right-hand
 side of a macro definition. The behavior of `*` in transcription,
@@ -191,7 +191,7 @@ of repetitions for all of the `$name`s it contains in lockstep, and (2) each
 `$name` must be under at least as many `$(...)*`s as it was matched against.
 If it is under more, it'll be repeated, as appropriate.
 
-## Parsing limitations
+### Parsing limitations
 
 
 For technical reasons, there are two limitations to the treatment of syntax
@@ -210,9 +210,9 @@ parsing `e`. Changing the invocation syntax to require a distinctive token in
 front can solve the problem. In the above example, `$(T $t:ty)* E $e:exp`
 solves the problem.
 
-# Macro argument pattern matching
+## Macro argument pattern matching
 
-## Motivation
+### Motivation
 
 Now consider code like the following:
 
@@ -295,7 +295,7 @@ pattern we want is clear:
 However, it's not possible to directly expand to nested match statements. But
 there is a solution.
 
-## The recursive approach to macro writing
+### The recursive approach to macro writing
 
 A macro may accept multiple different input grammars. The first one to
 successfully match the actual argument to a macro invocation is the one that
@@ -408,7 +408,7 @@ position (in particular, not as an argument to yet another macro invocation),
 the expander will then proceed to evaluate `m2!()` (along with any other macro
 invocations `m1!(m2!())` produced).
 
-# Hygiene
+## Hygiene
 
 To prevent clashes, rust implements
 [hygienic macros](http://en.wikipedia.org/wiki/Hygienic_macro).
@@ -438,7 +438,7 @@ fn main() {
 The two `'x` names did not clash, which would have caused the loop
 to print "I am never printed" and to run forever.
 
-# Scoping and macro import/export
+## Scoping and macro import/export
 
 Macros are expanded at an early stage in compilation, before name resolution.
 One downside is that scoping works differently for macros, compared to other
@@ -513,7 +513,7 @@ be imported.
 The Rust Reference has a [listing of macro-related
 attributes](../reference.html#macro--and-plugin-related-attributes).
 
-# The variable `$crate`
+## The variable `$crate`
 
 A further difficulty occurs when a macro is used in multiple crates.  Say that
 `mylib` defines
@@ -560,7 +560,7 @@ To keep this system simple and correct, `#[macro_use] extern crate ...` may
 only appear at the root of your crate, not inside `mod`.  This ensures that
 `$crate` is a single identifier.
 
-# A final note
+## A final note
 
 Macros, as currently implemented, are not for the faint of heart. Even
 ordinary syntax errors can be more difficult to debug when they occur inside a

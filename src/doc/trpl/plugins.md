@@ -24,7 +24,7 @@ information.
 
 </div>
 
-# Introduction
+## Introduction
 
 `rustc` can load compiler plugins, which are user-provided libraries that
 extend the compiler's behavior with new syntax extensions, lint checks, etc.
@@ -39,7 +39,7 @@ Arguments passed as `#[plugin=...]` or `#[plugin(...)]` are not interpreted by
 rustc itself.  They are provided to the plugin through the `Registry`'s [`args`
 method](../rustc/plugin/registry/struct.Registry.html#method.args).
 
-# Syntax extensions
+## Syntax extensions
 
 Plugins can extend Rust's syntax in various ways. One kind of syntax extension
 is the procedural macro. These are invoked the same way as [ordinary
@@ -135,7 +135,7 @@ a more involved macro example, see
 [`regex_macros`](https://github.com/rust-lang/regex/blob/master/regex_macros/src/lib.rs).
 
 
-## Tips and tricks
+### Tips and tricks
 
 To see the results of expanding syntax extensions, run
 `rustc --pretty expanded`. The output represents a whole crate, so you
@@ -183,7 +183,7 @@ very rough around the edges.  However, the implementation may be a good
 starting point for an improved quasiquote as an ordinary plugin library.
 
 
-# Lint plugins
+## Lint plugins
 
 Plugins can extend [Rust's lint
 infrastructure](../reference.html#lint-check-attributes) with additional checks for

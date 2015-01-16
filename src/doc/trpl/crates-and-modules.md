@@ -6,7 +6,7 @@ fit them together. It's also important to have a well-defined interface, so
 that some of your functionality is private, and some is public. To facilitate
 these kinds of things, Rust has a module system.
 
-# Basic terminology: Crates and Modules
+## Basic terminology: Crates and Modules
 
 Rust has two distinct terms that relate to the module system: *crate* and
 *module*. A crate is synonymous with a *library* or *package* in other
@@ -70,7 +70,7 @@ $ tree .
 `src/lib.rs` is our crate root, corresponding to the `phrases` in our diagram
 above.
 
-# Defining Modules
+## Defining Modules
 
 To define each of our modules, we use the `mod` keyword. Let's make our
 `src/lib.rs` look like this:
@@ -124,7 +124,7 @@ deps  libphrases-a7448e02a0468eaa.rlib  native
 `libphrase-hash.rlib` is the compiled crate. Before we see how to use this
 crate from another crate, let's break it up into multiple files.
 
-# Multiple file crates
+## Multiple file crates
 
 If each crate were just one file, these files would get very large. It's often
 easier to split up crates into multiple files, and Rust supports this in two
@@ -261,7 +261,7 @@ fn goodbye() -> String {
 Now that we have our some functionality in our crate, let's try to use it from
 another crate.
 
-# Importing External Crates
+## Importing External Crates
 
 We have a library crate. Let's make an executable crate that imports and uses
 our library.
@@ -314,7 +314,7 @@ note: in expansion of format_args!
 By default, everything is private in Rust. Let's talk about this in some more
 depth.
 
-# Exporting a Public Interface
+## Exporting a Public Interface
 
 Rust allows you to precisely control which aspects of your interface are
 public, and so private is the default. To make things public, you use the `pub`
@@ -396,7 +396,7 @@ Now that our functions are public, we can use them. Great! However, typing out
 another keyword for importing names into the current scope, so that you can
 refer to them with shorter names. Let's talk about `use`.
 
-# Importing Modules with `use`
+## Importing Modules with `use`
 
 Rust has a `use` keyword, which allows us to import names into our local scope.
 Let's change our `src/main.rs` to look like this:
@@ -477,7 +477,7 @@ use phrases::english::{greetings, farewells};
 
 These two declarations are equivalent, but the second is a lot less typing.
 
-## Re-exporting with `pub use`
+### Re-exporting with `pub use`
 
 You don't just use `use` to shorten identifiers. You can also use it inside of your crate
 to re-export a function inside another module. This allows you to present an external

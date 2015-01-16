@@ -2,7 +2,7 @@
 
 **NOTE** This guide is badly out of date and needs to be rewritten.
 
-# Introduction
+## Introduction
 
 Rust provides safe concurrent abstractions through a number of core library
 primitives. This guide will describe the concurrency model in Rust, how it
@@ -19,7 +19,7 @@ Threads use Rust's type system to provide strong memory safety guarantees.  In
 particular, the type system guarantees that threads cannot induce a data race
 from shared mutable state.
 
-# Basics
+## Basics
 
 At its simplest, creating a thread is a matter of calling the `spawn` function
 with a closure argument. `spawn` executes the closure in the new thread.
@@ -66,7 +66,7 @@ spawn(move || {
 });
 ```
 
-## Communication
+### Communication
 
 Now that we have spawned a new thread, it would be nice if we could communicate
 with it. For this, we use *channels*. A channel is simply a pair of endpoints:
@@ -198,7 +198,7 @@ let result = rxs.iter().fold(0, |accum, rx| accum + rx.recv() );
 # fn some_expensive_computation(_i: uint) -> int { 42 }
 ```
 
-## Backgrounding computations: Futures
+### Backgrounding computations: Futures
 
 With `sync::Future`, rust has a mechanism for requesting a computation and
 getting the result later.
@@ -256,7 +256,7 @@ fn main() {
 }
 ```
 
-## Sharing without copying: Arc
+### Sharing without copying: Arc
 
 To share data between threads, a first approach would be to only use channel as
 we have seen previously. A copy of the data to share would then be made for
@@ -329,7 +329,7 @@ spawn(move || {
 # }
 ```
 
-# Handling thread panics
+## Handling thread panics
 
 Rust has a built-in mechanism for raising exceptions. The `panic!()` macro
 (which can also be written with an error string as an argument: `panic!(

@@ -13,7 +13,7 @@ There are two main kinds of errors that can occur in your programs: failures,
 and panics. Let's talk about the difference between the two, and then discuss
 how to handle each. Then, we'll discuss upgrading failures to panics.
 
-# Failure vs. Panic
+## Failure vs. Panic
 
 Rust uses two terms to differentiate between two forms of error: failure, and
 panic. A *failure* is an error that can be recovered from in some way. A
@@ -116,7 +116,7 @@ We shouldn't ever hit the `_` case, so we use the `unreachable!()` macro to
 indicate this. `unreachable!()` gives a different kind of error than `Result`.
 Rust calls these sorts of errors *panics*.
 
-# Handling errors with `Option` and `Result`
+## Handling errors with `Option` and `Result`
 
 The simplest way to indicate that a function may fail is to use the `Option<T>`
 type. Remember our `from_str()` example? Here's its type signature:
@@ -178,7 +178,7 @@ match version {
 This function makes use of an enum, `ParseError`, to enumerate the various
 errors that can occur.
 
-# Non-recoverable errors with `panic!`
+## Non-recoverable errors with `panic!`
 
 In the case of an error that is unexpected and not recoverable, the `panic!`
 macro will induce a panic. This will crash the current task, and give an error:
@@ -197,7 +197,7 @@ when you run it.
 
 Because these kinds of situations are relatively rare, use panics sparingly.
 
-# Upgrading failures to panics
+## Upgrading failures to panics
 
 In certain circumstances, even though a function may fail, we may want to treat
 it as a panic instead. For example, `io::stdin().read_line()` returns an
