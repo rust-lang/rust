@@ -12,6 +12,7 @@ Looks like you've taken a wrong turn.
 Some things that might be helpful to you though:
 
 ## Search
+
 * <form action="https://duckduckgo.com/">
     <input type="text" id="site-search" name="q" size="80"></input>
     <input type="submit" value="Search DuckDuckGo">
@@ -19,10 +20,12 @@ Some things that might be helpful to you though:
 * Rust doc search: <span id="core-search"></span>
 
 ## Reference
+
 * [The Rust official site](http://rust-lang.org)
-* [The Rust reference](http://doc.rust-lang.org/reference.html) (* [PDF](http://doc.rust-lang.org/reference.pdf))
+* [The Rust reference](http://doc.rust-lang.org/reference.html)
 
 ## Docs
+
 * [The standard library](http://doc.rust-lang.org/std/)
 
 <script>

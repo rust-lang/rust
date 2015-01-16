@@ -7,16 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![feature(asm)]
 
 fn main() {
-    let x = [1is, 2, 3];
-    match x {
-        [a, b, ..c] => {    //~ ERROR obsolete syntax
-            assert_eq!(a, 1);
-            assert_eq!(b, 2);
-            let expected: &[_] = &[3];
-            assert_eq!(c, expected);
-        }
-    }
+    let a;
+    asm!("nop" "nop"); //~ ERROR malformed inline assembly
+    asm!("nop" "nop" : "=r"(a)); //~ ERROR malformed inline assembly
 }
-

@@ -21,13 +21,7 @@
 //!   (e.g. `Option<T>`), the parameters are automatically given the
 //!   current trait as a bound. (This includes separate type parameters
 //!   and lifetimes for methods.)
-//! - Additional bounds on the type parameters, e.g. the `Ord` instance
-//!   requires an explicit `PartialEq` bound at the
-//!   moment. (`TraitDef.additional_bounds`)
-//!
-//! Unsupported: FIXME #6257: calling methods on reference fields,
-//! e.g. derive Eq/Ord/Clone don't work on `struct A(&int)`,
-//! because of how the auto-dereferencing happens.
+//! - Additional bounds on the type parameters (`TraitDef.additional_bounds`)
 //!
 //! The most important thing for implementers is the `Substructure` and
 //! `SubstructureFields` objects. The latter groups 5 possibilities of the
@@ -79,6 +73,15 @@
 //! enums (one for each variant). For empty struct and empty enum
 //! variants, it is represented as a count of 0.
 //!
+//! # "`cs`" functions
+//!
+//! The `cs_...` functions ("combine substructure) are designed to
+//! make life easier by providing some pre-made recipes for common
+//! tasks; mostly calling the function being derived on all the
+//! arguments and then combining them back together in some way (or
+//! letting the user chose that). They are not meant to be the only
+//! way to handle the structures that this code creates.
+//!
 //! # Examples
 //!
 //! The following simplified `PartialEq` is used for in-code examples:
@@ -102,22 +105,22 @@
 //! When generating the `expr` for the `A` impl, the `SubstructureFields` is
 //!
 //! ```{.text}
-//! Struct(~[FieldInfo {
+//! Struct(vec![FieldInfo {
 //!            span: <span of x>
 //!            name: Some(<ident of x>),
 //!            self_: <expr for &self.x>,
-//!            other: ~[<expr for &other.x]
+//!            other: vec![<expr for &other.x]
 //!          }])
 //! ```
 //!
 //! For the `B` impl, called with `B(a)` and `B(b)`,
 //!
 //! ```{.text}
-//! Struct(~[FieldInfo {
+//! Struct(vec![FieldInfo {
 //!           span: <span of `int`>,
 //!           name: None,
-//!           <expr for &a>
-//!           ~[<expr for &b>]
+//!           self_: <expr for &a>
+//!           other: vec![<expr for &b>]
 //!          }])
 //! ```
 //!
@@ -128,11 +131,11 @@
 //!
 //! ```{.text}
 //! EnumMatching(0, <ast::Variant for C0>,
-//!              ~[FieldInfo {
+//!              vec![FieldInfo {
 //!                 span: <span of int>
 //!                 name: None,
 //!                 self_: <expr for &a>,
-//!                 other: ~[<expr for &b>]
+//!                 other: vec![<expr for &b>]
 //!               }])
 //! ```
 //!
@@ -140,11 +143,11 @@
 //!
 //! ```{.text}
 //! EnumMatching(1, <ast::Variant for C1>,
-//!              ~[FieldInfo {
+//!              vec![FieldInfo {
 //!                 span: <span of x>
 //!                 name: Some(<ident of x>),
 //!                 self_: <expr for &self.x>,
-//!                 other: ~[<expr for &other.x>]
+//!                 other: vec![<expr for &other.x>]
 //!                }])
 //! ```
 //!
@@ -152,7 +155,7 @@
 //!
 //! ```{.text}
 //! EnumNonMatchingCollapsed(
-//!     ~[<ident of self>, <ident of __arg_1>],
+//!     vec![<ident of self>, <ident of __arg_1>],
 //!     &[<ast::Variant for C0>, <ast::Variant for C1>],
 //!     &[<ident for self index value>, <ident of __arg_1 index value>])
 //! ```
@@ -168,16 +171,16 @@
 //!
 //! ## Static
 //!
-//! A static method on the above would result in,
+//! A static method on the types above would result in,
 //!
 //! ```{.text}
-//! StaticStruct(<ast::StructDef of A>, Named(~[(<ident of x>, <span of x>)]))
+//! StaticStruct(<ast::StructDef of A>, Named(vec![(<ident of x>, <span of x>)]))
 //!
-//! StaticStruct(<ast::StructDef of B>, Unnamed(~[<span of x>]))
+//! StaticStruct(<ast::StructDef of B>, Unnamed(vec![<span of x>]))
 //!
-//! StaticEnum(<ast::EnumDef of C>, ~[(<ident of C0>, <span of C0>, Unnamed(~[<span of int>])),
-//!                                   (<ident of C1>, <span of C1>,
-//!                                    Named(~[(<ident of x>, <span of x>)]))])
+//! StaticEnum(<ast::EnumDef of C>,
+//!            vec![(<ident of C0>, <span of C0>, Unnamed(vec![<span of int>])),
+//!                 (<ident of C1>, <span of C1>, Named(vec![(<ident of x>, <span of x>)]))])
 //! ```
 
 pub use self::StaticFields::*;
@@ -1378,8 +1381,8 @@ pub fn cs_fold<F>(use_foldl: bool,
 /// process the collected results. i.e.
 ///
 /// ```
-/// f(cx, span, ~[self_1.method(__arg_1_1, __arg_2_1),
-///              self_2.method(__arg_1_2, __arg_2_2)])
+/// f(cx, span, vec![self_1.method(__arg_1_1, __arg_2_1),
+///                  self_2.method(__arg_1_2, __arg_2_2)])
 /// ```
 #[inline]
 pub fn cs_same_method<F>(f: F,

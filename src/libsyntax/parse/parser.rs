@@ -52,7 +52,7 @@ use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
-use ast::{TypeField, TyFixedLengthVec, TyBareFn};
+use ast::{TyFixedLengthVec, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr, TyQPath};
 use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
@@ -71,7 +71,7 @@ use parse::attr::ParserAttr;
 use parse::classify;
 use parse::common::{SeqSep, seq_sep_none, seq_sep_trailing_allowed};
 use parse::lexer::{Reader, TokenAndSpan};
-use parse::obsolete::*;
+use parse::obsolete::{ParserObsoleteMethods, ObsoleteSyntax};
 use parse::token::{self, MatchNt, SubstNt, SpecialVarNt, InternedString};
 use parse::token::{keywords, special_idents, SpecialMacroVar};
 use parse::{new_sub_parser_from_file, ParseSess};
@@ -1404,22 +1404,6 @@ impl<'a> Parser<'a> {
         MutTy { ty: t, mutbl: mutbl }
     }
 
-    /// Parse [mut/const/imm] ID : TY
-    /// now used only by obsolete record syntax parser...
-    pub fn parse_ty_field(&mut self) -> TypeField {
-        let lo = self.span.lo;
-        let mutbl = self.parse_mutability();
-        let id = self.parse_ident();
-        self.expect(&token::Colon);
-        let ty = self.parse_ty_sum();
-        let hi = ty.span.hi;
-        ast::TypeField {
-            ident: id,
-            mt: MutTy { ty: ty, mutbl: mutbl },
-            span: mk_sp(lo, hi),
-        }
-    }
-
     /// Parse optional return type [ -> TY ] in function decl
     pub fn parse_ret_ty(&mut self) -> FunctionRetTy {
         if self.eat(&token::RArrow) {
@@ -1506,17 +1490,6 @@ impl<'a> Parser<'a> {
             } else {
                 TyTup(ts)
             }
-        } else if self.token == token::Tilde {
-            // OWNED POINTER
-            self.bump();
-            let last_span = self.last_span;
-            match self.token {
-                token::OpenDelim(token::Bracket) => {
-                    self.obsolete(last_span, ObsoleteSyntax::OwnedVector)
-                }
-                _ => self.obsolete(last_span, ObsoleteSyntax::OwnedType)
-            }
-            TyTup(vec![self.parse_ty()])
         } else if self.check(&token::BinOp(token::Star)) {
             // STAR POINTER (bare pointer?)
             self.bump();
@@ -2830,20 +2803,6 @@ impl<'a> Parser<'a> {
             hi = e.span.hi;
             ex = ExprAddrOf(m, e);
           }
-          token::Tilde => {
-            self.bump();
-            let last_span = self.last_span;
-            match self.token {
-                token::OpenDelim(token::Bracket) => {
-                    self.obsolete(last_span, ObsoleteSyntax::OwnedVector)
-                },
-                _ => self.obsolete(last_span, ObsoleteSyntax::OwnedExpr)
-            }
-
-            let e = self.parse_prefix_expr();
-            hi = e.span.hi;
-            ex = self.mk_unary(UnUniq, e);
-          }
           token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
             // A range, closed above: `..expr`.
             self.bump();
@@ -3249,10 +3208,6 @@ impl<'a> Parser<'a> {
                             span: self.span,
                         }));
                         before_slice = false;
-                    } else {
-                        let _ = self.parse_pat();
-                        let span = self.span;
-                        self.obsolete(span, ObsoleteSyntax::SubsliceMatch);
                     }
                     continue
                 }
@@ -3355,20 +3310,6 @@ impl<'a> Parser<'a> {
             self.bump();
             pat = PatWild(PatWildSingle);
             hi = self.last_span.hi;
-            return P(ast::Pat {
-                id: ast::DUMMY_NODE_ID,
-                node: pat,
-                span: mk_sp(lo, hi)
-            })
-          }
-          token::Tilde => {
-            // parse ~pat
-            self.bump();
-            let sub = self.parse_pat();
-            pat = PatBox(sub);
-            let last_span = self.last_span;
-            hi = last_span.hi;
-            self.obsolete(last_span, ObsoleteSyntax::OwnedPattern);
             return P(ast::Pat {
                 id: ast::DUMMY_NODE_ID,
                 node: pat,
@@ -4483,16 +4424,6 @@ impl<'a> Parser<'a> {
                 self_ident_hi = self.last_span.hi;
                 eself
             }
-            token::Tilde => {
-                // We need to make sure it isn't a type
-                if self.look_ahead(1, |t| t.is_keyword(keywords::Self)) {
-                    self.bump();
-                    drop(self.expect_self_ident());
-                    let last_span = self.last_span;
-                    self.obsolete(last_span, ObsoleteSyntax::OwnedSelf)
-                }
-                SelfStatic
-            }
             token::BinOp(token::Star) => {
                 // Possibly "*self" or "*mut self" -- not supported. Try to avoid
                 // emitting cryptic "unexpected token" errors.
@@ -4533,15 +4464,6 @@ impl<'a> Parser<'a> {
                     } else {
                         SelfValue(self_ident)
                     }
-                } else if self.token.is_mutability() &&
-                        self.look_ahead(1, |t| *t == token::Tilde) &&
-                        self.look_ahead(2, |t| t.is_keyword(keywords::Self)) {
-                    mutbl_self = self.parse_mutability();
-                    self.bump();
-                    drop(self.expect_self_ident());
-                    let last_span = self.last_span;
-                    self.obsolete(last_span, ObsoleteSyntax::OwnedSelf);
-                    SelfStatic
                 } else {
                     SelfStatic
                 }
@@ -5422,13 +5344,7 @@ impl<'a> Parser<'a> {
         let (maybe_path, ident) = match self.token {
             token::Ident(..) => {
                 let the_ident = self.parse_ident();
-                let path = if self.token == token::Eq {
-                    self.bump();
-                    let path = self.parse_str();
-                    let span = self.span;
-                    self.obsolete(span, ObsoleteSyntax::ExternCrateRenaming);
-                    Some(path)
-                } else if self.eat_keyword(keywords::As) {
+                let path = if self.eat_keyword(keywords::As) {
                     // skip the ident if there is one
                     if self.token.is_ident() { self.bump(); }
 
@@ -5698,17 +5614,7 @@ impl<'a> Parser<'a> {
         }
         // either a view item or an item:
         if self.eat_keyword(keywords::Extern) {
-            let next_is_mod = self.eat_keyword(keywords::Mod);
-
-            if next_is_mod || self.eat_keyword(keywords::Crate) {
-                if next_is_mod {
-                    let last_span = self.last_span;
-                    self.span_err(mk_sp(lo, last_span.hi),
-                                 &format!("`extern mod` is obsolete, use \
-                                          `extern crate` instead \
-                                          to refer to external \
-                                          crates.")[])
-                }
+            if self.eat_keyword(keywords::Crate) {
                 return self.parse_item_extern_crate(lo, visibility, attrs);
             }
 
@@ -6075,35 +5981,7 @@ impl<'a> Parser<'a> {
 
         let first_ident = self.parse_ident();
         let mut path = vec!(first_ident);
-        match self.token {
-          token::Eq => {
-            // x = foo::bar
-            self.bump();
-            let path_lo = self.span.lo;
-            path = vec!(self.parse_ident());
-            while self.check(&token::ModSep) {
-                self.bump();
-                let id = self.parse_ident();
-                path.push(id);
-            }
-            let span = mk_sp(path_lo, self.span.hi);
-            self.obsolete(span, ObsoleteSyntax::ImportRenaming);
-            let path = ast::Path {
-                span: span,
-                global: false,
-                segments: path.into_iter().map(|identifier| {
-                    ast::PathSegment {
-                        identifier: identifier,
-                        parameters: ast::PathParameters::none(),
-                    }
-                }).collect()
-            };
-            return P(spanned(lo, self.span.hi,
-                             ViewPathSimple(first_ident, path,
-                                           ast::DUMMY_NODE_ID)));
-          }
-
-          token::ModSep => {
+        if let token::ModSep = self.token {
             // foo::bar or foo::{a,b,c} or foo::*
             while self.check(&token::ModSep) {
                 self.bump();
@@ -6156,8 +6034,6 @@ impl<'a> Parser<'a> {
                   _ => break
                 }
             }
-          }
-          _ => ()
         }
         let mut rename_to = path[path.len() - 1u];
         let path = ast::Path {

@@ -95,7 +95,7 @@ digraph block {
     N40 -> N41;
     N41 -> N42;
     N42 -> N43;
-    N43 -> N1[label="exiting scope_0 expr while y > 0is {\l    y -= 1is;\l    while z > 0is { z -= 1is; }\l    if x > 10is { return; \"unreachable\"; }\l}\l,\lexiting scope_1 expr while x > 0is {\l    x -= 1is;\l    while y > 0is {\l        y -= 1is;\l        while z > 0is { z -= 1is; }\l        if x > 10is { return; \"unreachable\"; }\l    }\l}\l"];
+    N43 -> N1;
     N44 -> N45;
     N45 -> N46;
     N46 -> N47;

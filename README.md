@@ -58,16 +58,23 @@ documentation.
 
 ### Building on Windows
 
-To easily build on windows we can use [MSYS2](http://sourceforge.net/projects/msys2/):
+To easily build on windows we can use [MSYS2](http://msys2.github.io/):
 
 1. Grab the latest MSYS2 installer and go through the installer.
 2. Now from the MSYS2 terminal we want to install the mingw64 toolchain and the other
    tools we need.
 
-        $ pacman -S mingw-w64-i686-toolchain
-        $ pacman -S base-devel
+```bash
+# choose one based on platform
+$ pacman -S mingw-w64-i686-toolchain
+$ pacman -S mingw-w64-x86_64-toolchain
 
-3. With that now start `mingw32_shell.bat` from where you installed MSYS2 (i.e. `C:\msys`).
+$ pacman -S base-devel
+```
+
+3. With that now start `mingw32_shell.bat` or `mingw64_shell.bat`
+   from where you installed MSYS2 (i.e. `C:\msys`). Which one you
+   choose depends on if you want 32 or 64 bit Rust.
 4. From there just navigate to where you have Rust's source code, configure and build it:
 
         $ ./configure

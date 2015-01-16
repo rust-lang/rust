@@ -63,6 +63,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     'statement: loop {
         match state {
             Asm => {
+                if asm_str_style.is_some() {
+                    // If we already have a string with instructions,
+                    // ending up in Asm state again is an error.
+                    cx.span_err(sp, "malformed inline assembly");
+                    return DummyResult::expr(sp);
+                }
                 let (s, style) = match expr_to_string(cx, p.parse_expr(),
                                                    "inline assembly must be a string literal") {
                     Some((s, st)) => (s, st),

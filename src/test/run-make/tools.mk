@@ -51,7 +51,7 @@ endif
 
 # Extra flags needed to compile a working executable with the standard library
 ifdef IS_WINDOWS
-	EXTRACFLAGS :=
+	EXTRACFLAGS := -lws2_32
 else
 ifeq ($(shell uname),Darwin)
 else

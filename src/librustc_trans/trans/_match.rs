@@ -201,7 +201,7 @@ use middle::pat_util::*;
 use trans::adt;
 use trans::base::*;
 use trans::build::{AddCase, And, BitCast, Br, CondBr, GEPi, InBoundsGEP, Load};
-use trans::build::{Mul, Not, Store, Sub, add_comment};
+use trans::build::{Not, Store, Sub, add_comment};
 use trans::build;
 use trans::callee;
 use trans::cleanup::{self, CleanupMethods};
@@ -630,8 +630,7 @@ fn bind_subslice_pat(bcx: Block,
     let vec_datum = match_datum(val, vec_ty);
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
 
-    let slice_byte_offset = Mul(bcx, vt.llunit_size, C_uint(bcx.ccx(), offset_left));
-    let slice_begin = tvec::pointer_add_byte(bcx, base, slice_byte_offset);
+    let slice_begin = InBoundsGEP(bcx, base, &[C_uint(bcx.ccx(), offset_left)]);
     let slice_len_offset = C_uint(bcx.ccx(), offset_left + offset_right);
     let slice_len = Sub(bcx, len, slice_len_offset);
     let slice_ty = ty::mk_slice(bcx.tcx(),
@@ -857,16 +856,9 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             bcx.fcx.schedule_lifetime_end(cs, binding_info.llmatch);
         }
 
-        debug!("binding {} to {}",
-               binding_info.id,
-               bcx.val_to_string(llval));
+        debug!("binding {} to {}", binding_info.id, bcx.val_to_string(llval));
         bcx.fcx.lllocals.borrow_mut().insert(binding_info.id, datum);
-
-        if bcx.sess().opts.debuginfo == FullDebugInfo {
-            debuginfo::create_match_binding_metadata(bcx,
-                                                     ident,
-                                                     binding_info);
-        }
+        debuginfo::create_match_binding_metadata(bcx, ident, binding_info);
     }
     bcx
 }

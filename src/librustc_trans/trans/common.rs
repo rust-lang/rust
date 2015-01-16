@@ -217,12 +217,15 @@ pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>,
     ty::type_contents(cx, ty).needs_drop(cx)
 }
 
-fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                   ty: Ty<'tcx>) -> bool {
+fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         ty::ty_struct(def_id, substs) => {
-            let fields = ty::struct_fields(ccx.tcx(), def_id, substs);
-            fields.len() == 1 && type_is_immediate(ccx, fields[0].mt.ty)
+            let fields = ty::lookup_struct_fields(ccx.tcx(), def_id);
+            fields.len() == 1 && {
+                let ty = ty::lookup_field_type(ccx.tcx(), def_id, fields[0].id, substs);
+                let ty = monomorphize::normalize_associated_type(ccx.tcx(), &ty);
+                type_is_immediate(ccx, ty)
+            }
         }
         _ => false
     }

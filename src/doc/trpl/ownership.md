@@ -81,7 +81,6 @@ therefore deallocates the memory for you. Here's the equivalent example in
 Rust:
 
 ```rust
-# use std::boxed::Box;
 {
     let x = Box::new(5);
 }
@@ -101,7 +100,6 @@ This is pretty straightforward, but what happens when we want to pass our box
 to a function? Let's look at some code:
 
 ```rust
-# use std::boxed::Box;
 fn main() {
     let x = Box::new(5);
 
@@ -117,7 +115,6 @@ This code works, but it's not ideal. For example, let's add one more line of
 code, where we print out the value of `x`:
 
 ```{rust,ignore}
-# use std::boxed::Box;
 fn main() {
     let x = Box::new(5);
 
@@ -151,7 +148,6 @@ To fix this, we can have `add_one` give ownership back when it's done with the
 box:
 
 ```rust
-# use std::boxed::Box;
 fn main() {
     let x = Box::new(5);
 
@@ -207,6 +203,26 @@ fn add_one(num: &mut i32) {
 This function borrows an `i32` from its caller, and then increments it. When
 the function is over, and `num` goes out of scope, the borrow is over.
 
+We have to change our `main` a bit too:
+
+```rust
+fn main() {
+    let mut x = 5;
+
+    add_one(&mut x);
+
+    println!("{}", x);
+}
+
+fn add_one(num: &mut i32) {
+    *num += 1;
+}
+```
+
+We don't need to assign the result of `add_one()` anymore, because it doesn't
+return anything anymore. This is because we're not passing ownership back,
+since we just borrow, not take ownership.
+
 # Lifetimes
 
 Lending out a reference to a resource that someone else owns can be
@@ -225,7 +241,7 @@ To fix this, we have to make sure that step four never happens after step
 three. The ownership system in Rust does this through a concept called
 *lifetimes*, which describe the scope that a reference is valid for.
 
-Let's look at that function which borrows an `i32` again:
+Remember the function that borrowed an `i32`? Let's look at it again.
 
 ```rust
 fn add_one(num: &i32) -> i32 {

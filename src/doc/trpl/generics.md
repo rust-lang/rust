@@ -88,9 +88,9 @@ enum Result<H, N> {
 if we wanted to. Convention says that the first generic parameter should be
 `T`, for 'type,' and that we use `E` for 'error.' Rust doesn't care, however.
 
-The `Result<T, E>` type is intended to
-be used to return the result of a computation, and to have the ability to
-return an error if it didn't work out. Here's an example:
+The `Result<T, E>` type is intended to be used to return the result of a
+computation, and to have the ability to return an error if it didn't work out.
+Here's an example:
 
 ```{rust}
 let x: Result<f64, String> = Ok(2.3f64);

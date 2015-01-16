@@ -46,7 +46,6 @@
 //! though unsafely, transformed from one type to the other.
 //!
 //! ```
-//! # use std::boxed::Box;
 //! use std::mem;
 //!
 //! unsafe {
