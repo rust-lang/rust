@@ -12,12 +12,8 @@
 
 // pp-exact
 
-trait UnsafeTrait {
-    fn foo(&self);
-}
+struct Test;
 
-impl !UnsafeTrait for int {
-    fn foo(&self) { }
-}
+impl !Send for Test { }
 
 pub fn main() { }
