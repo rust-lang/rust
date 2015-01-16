@@ -11,5 +11,6 @@
 struct S;
 
 impl S {
-    static fn f() {} //~ ERROR expected `fn`, found `static`
+    static fn f() {}
+    //~^ ERROR expected one of `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `static`
 }
