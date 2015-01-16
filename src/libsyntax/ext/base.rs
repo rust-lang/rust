@@ -150,6 +150,29 @@ impl Annotatable {
     }
 }
 
+// A more flexible ItemDecorator.
+pub trait MultiItemDecorator {
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              sp: Span,
+              meta_item: &ast::MetaItem,
+              item: &Annotatable,
+              push: Box<FnMut(P<Annotatable>)>);
+}
+
+impl<F> MultiItemDecorator for F
+    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &Annotatable, Box<FnMut(P<Annotatable>)>)
+{
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              sp: Span,
+              meta_item: &ast::MetaItem,
+              item: &Annotatable,
+              push: Box<FnMut(P<Annotatable>)>) {
+        (*self)(ecx, sp, meta_item, item, push)
+    }
+}
+
 // A more flexible ItemModifier (ItemModifier should go away, eventually, FIXME).
 // meta_item is the annotation, item is the item being modified, parent_item
 // is the impl or trait item is declared in if item is part of such a thing.
