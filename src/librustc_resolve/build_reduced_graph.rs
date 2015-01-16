@@ -321,9 +321,19 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             // These items live in the type namespace.
             ItemTy(..) => {
                 let name_bindings =
-                    self.add_child(name, parent, ForbidDuplicateTypesAndModules, sp);
+                    self.add_child(name, parent, ForbidDuplicateTypesAndModules,
+                                   sp);
 
-                name_bindings.define_type(DefTy(local_def(item.id), false), sp, modifiers);
+                name_bindings.define_type(DefTy(local_def(item.id), false), sp,
+                                          modifiers);
+
+                let parent_link = self.get_parent_link(parent, name);
+                name_bindings.set_module_kind(parent_link,
+                                              Some(local_def(item.id)),
+                                              TypeModuleKind,
+                                              false,
+                                              is_public,
+                                              sp);
                 parent.clone()
             }
 
@@ -423,21 +433,19 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         return parent.clone();
                     }
                 };
-
                 // Create the module and add all methods.
-                let parent_opt = parent.children.borrow().get(&mod_name).cloned();
-                let new_parent = match parent_opt {
+                let child_opt = parent.children.borrow().get(&mod_name)
+                                       .and_then(|m| m.get_module_if_available());
+                let new_parent = match child_opt {
                     // It already exists
-                    Some(ref child) if child.get_module_if_available()
-                        .is_some() &&
-                        (child.get_module().kind.get() == ImplModuleKind ||
-                         child.get_module().kind.get() == TraitModuleKind) => {
-                            child.get_module()
-                        }
-                    Some(ref child) if child.get_module_if_available()
-                        .is_some() &&
-                        child.get_module().kind.get() ==
-                        EnumModuleKind => child.get_module(),
+                    Some(ref child) if (child.kind.get() == ImplModuleKind ||
+                                        child.kind.get() == TraitModuleKind) => {
+                        child.clone()
+                    }
+                    Some(ref child) if child.kind.get() == EnumModuleKind ||
+                                       child.kind.get() == TypeModuleKind => {
+                        child.clone()
+                    }
                     // Create the module
                     _ => {
                         let name_bindings =
@@ -859,7 +867,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         let kind = match def {
             DefTy(_, true) => EnumModuleKind,
-            DefStruct(..) | DefTy(..) => ImplModuleKind,
+            DefTy(_, false) => TypeModuleKind,
+            DefStruct(..) => ImplModuleKind,
             _ => NormalModuleKind
         };
 
