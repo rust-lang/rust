@@ -9,13 +9,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![allow(unused_imports)]
-
+#![feature(start)]
 #![no_std]
+
 extern crate std;
 extern crate "std" as zed;
-
 
 use std::str;
 use zed::str as x;
