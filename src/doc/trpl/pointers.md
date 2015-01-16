@@ -1,4 +1,4 @@
-% The Rust Pointer Guide
+% Pointers
 
 Rust's pointers are one of its more unique and compelling features. Pointers
 are also one of the more confusing topics for newcomers to Rust. They can also

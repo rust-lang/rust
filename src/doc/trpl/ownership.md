@@ -1,4 +1,4 @@
-% The Rust Ownership Guide
+% Ownership
 
 This guide presents Rust's ownership system. This is one of Rust's most unique
 and compelling features, with which Rust developers should become quite
