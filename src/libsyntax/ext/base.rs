@@ -51,6 +51,7 @@ impl<F> ItemDecorator for F
     }
 }
 
+#[deprecated="Replaced by MultiItemModifier"]
 pub trait ItemModifier {
     fn expand(&self,
               ecx: &mut ExtCtxt,
@@ -60,9 +61,11 @@ pub trait ItemModifier {
               -> P<ast::Item>;
 }
 
+#[deprecated="Replaced by MultiItemModifier"]
 impl<F> ItemModifier for F
     where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<ast::Item>
 {
+
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
