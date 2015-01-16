@@ -300,9 +300,8 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        "unsafe_destructor") {
                     self.gate_feature("unsafe_destructor",
                                       i.span,
-                                      "`#[unsafe_destructor]` allows too \
-                                       many unsafe patterns and may be \
-                                       removed in the future");
+                                      "`#[unsafe_destructor]` does nothing \
+                                       anymore")
                 }
 
                 if attr::contains_name(&i.attrs[],

@@ -103,11 +103,11 @@ pub fn trans_impl(ccx: &CrateContext,
     }
 }
 
-pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_method_callee<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                        method_call: MethodCall,
                                        self_expr: Option<&ast::Expr>,
                                        arg_cleanup_scope: cleanup::ScopeId)
-                                       -> Callee<'blk, 'tcx> {
+                                       -> Callee<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_method_callee");
 
     let (origin, method_ty) =
@@ -317,12 +317,12 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
     meth_did.def_id()
 }
 
-fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn trans_monomorphized_callee<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                           method_call: MethodCall,
                                           trait_id: ast::DefId,
                                           n_method: uint,
                                           vtable: traits::Vtable<'tcx, ()>)
-                                          -> Callee<'blk, 'tcx> {
+                                          -> Callee<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_monomorphized_callee");
     match vtable {
         traits::VtableImpl(vtable_impl) => {
@@ -393,7 +393,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
  /// In that case, the vector we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is to slice
  /// off the method type parameters and append them to the type parameters from the type that the
  /// receiver is mapped to.
-fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn combine_impl_and_methods_tps<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                             node: ExprOrMethodCall,
                                             rcvr_substs: subst::Substs<'tcx>)
                                             -> subst::Substs<'tcx>
@@ -424,12 +424,12 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// In this case, we must pull the fn pointer out of the vtable that is packaged up with the
 /// object. Objects are represented as a pair, so we first evaluate the self expression and then
 /// extract the self data and vtable out of the pair.
-fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn trans_trait_callee<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                   method_ty: Ty<'tcx>,
                                   n_method: uint,
                                   self_expr: &ast::Expr,
                                   arg_cleanup_scope: cleanup::ScopeId)
-                                  -> Callee<'blk, 'tcx> {
+                                  -> Callee<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_trait_callee");
     let mut bcx = bcx;
 
@@ -461,11 +461,11 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Same as `trans_trait_callee()` above, except that it is given a by-ref pointer to the object
 /// pair.
-pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_trait_callee_from_llval<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                                  callee_ty: Ty<'tcx>,
                                                  n_method: uint,
                                                  llpair: ValueRef)
-                                                 -> Callee<'blk, 'tcx> {
+                                                 -> Callee<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_trait_callee");
     let ccx = bcx.ccx();
 
@@ -678,7 +678,7 @@ pub fn trans_object_shim<'a, 'tcx>(
 /// `trait_ref` would map `T:Trait`, but `box_ty` would be
 /// `Foo<T>`. This `box_ty` is primarily used to encode the destructor.
 /// This will hopefully change now that DST is underway.
-pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn get_vtable<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                               box_ty: Ty<'tcx>,
                               trait_ref: ty::PolyTraitRef<'tcx>)
                               -> ValueRef
@@ -784,7 +784,7 @@ pub fn make_vtable<I: Iterator<Item=ValueRef>>(ccx: &CrateContext,
     }
 }
 
-fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+fn emit_vtable_methods<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                    impl_id: ast::DefId,
                                    substs: subst::Substs<'tcx>)
                                    -> Vec<ValueRef> {
@@ -843,12 +843,12 @@ fn emit_vtable_methods<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Generates the code to convert from a pointer (`Box<T>`, `&T`, etc) into an object
 /// (`Box<Trait>`, `&Trait`, etc). This means creating a pair where the first word is the vtable
 /// and the second word is the pointer.
-pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_trait_cast<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                     datum: Datum<'tcx, Expr>,
                                     id: ast::NodeId,
                                     trait_ref: ty::PolyTraitRef<'tcx>,
                                     dest: expr::Dest)
-                                    -> Block<'blk, 'tcx> {
+                                    -> Block<'fcx, 'blk, 'tcx> {
     let mut bcx = bcx;
     let _icx = push_ctxt("meth::trans_trait_cast");
 

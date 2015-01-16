@@ -498,12 +498,14 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                             trait_def_id);
 
         let trait_impls = self.tcx().trait_impls.borrow();
-        let impl_def_ids = match trait_impls.get(&trait_def_id) {
+        let impl_def_ids = trait_impls.get(&trait_def_id);
+        let impl_def_ids = match impl_def_ids {
             None => { return; }
             Some(impls) => impls,
         };
 
-        for &impl_def_id in impl_def_ids.borrow().iter() {
+        let impl_def_ids = impl_def_ids.borrow();
+        for &impl_def_id in impl_def_ids.iter() {
             debug!("assemble_extension_candidates_for_trait_impl: trait_def_id={} impl_def_id={}",
                    trait_def_id.repr(self.tcx()),
                    impl_def_id.repr(self.tcx()));
@@ -998,8 +1000,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // if there are any.
         assert_eq!(substs.types.len(subst::FnSpace), 0);
         assert_eq!(substs.regions().len(subst::FnSpace), 0);
-        let mut substs = substs;
         let placeholder;
+        let mut substs = substs;
         if
             !method.generics.types.is_empty_in(subst::FnSpace) ||
             !method.generics.regions.is_empty_in(subst::FnSpace)

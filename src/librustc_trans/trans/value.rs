@@ -58,7 +58,7 @@ impl Value {
         match self.get_single_user().and_then(|user| user.as_store_inst()) {
             Some(store) => {
                 store.get_parent().and_then(|store_bb| {
-                    let mut bb = BasicBlock(bcx.llbb);
+                    let mut bb = BasicBlock(bcx.data.llbb);
                     let mut ret = Some(store);
                     while bb.get() != store_bb.get() {
                         match bb.get_single_predecessor() {

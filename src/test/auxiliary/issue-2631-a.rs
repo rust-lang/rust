@@ -19,5 +19,6 @@ pub type header_map = HashMap<String, Rc<RefCell<Vec<Rc<String>>>>>;
 
 // the unused ty param is necessary so this gets monomorphized
 pub fn request<T>(req: &header_map) {
-  let _x = req["METHOD".to_string()].clone().borrow().clone()[0].clone();
+  let data = req["METHOD".to_string()].clone();
+  let _x = data.borrow().clone()[0].clone();
 }

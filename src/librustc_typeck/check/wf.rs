@@ -22,7 +22,6 @@ use util::ppaux::Repr;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::{local_def};
-use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
@@ -118,6 +117,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         region::CodeExtent::from_node_id(item.id),
                                                         Some(&mut this.cache));
+            debug!("check_type_defn at bounds_checker.scope: {:?}", bounds_checker.scope);
+
             for variant in variants.iter() {
                 for field in variant.fields.iter() {
                     // Regions are checked below.
@@ -153,6 +154,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         region::CodeExtent::from_node_id(item.id),
                                                         Some(&mut this.cache));
+            debug!("check_item_type at bounds_checker.scope: {:?}", bounds_checker.scope);
 
             let type_scheme = ty::lookup_item_type(fcx.tcx(), local_def(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
@@ -167,12 +169,20 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                   item: &ast::Item)
     {
         self.with_fcx(item, |this, fcx| {
+
+            // FIXME (pnkfelix): what is the "extent" of an item impl?
+            // This seems fundamentally different from the dynamic
+            // extent represented by a block or a function body.
+            //
+            // For now, just leaving as the default you get via
+            // `fn CodeExtent::from_node_id`.
             let item_scope = region::CodeExtent::from_node_id(item.id);
 
             let mut bounds_checker = BoundsChecker::new(fcx,
                                                         item.span,
                                                         item_scope,
                                                         Some(&mut this.cache));
+            debug!("check_impl at bounds_checker.scope: {:?}", bounds_checker.scope);
 
             // Find the impl self type as seen from the "inside" --
             // that is, with all type parameters converted from bound
@@ -194,22 +204,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let trait_ref = fcx.instantiate_type_scheme(item.span,
                                                         &fcx.inh.param_env.free_substs,
                                                         &trait_ref);
-
-            // There are special rules that apply to drop.
-            if
-                fcx.tcx().lang_items.drop_trait() == Some(trait_ref.def_id) &&
-                !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor")
-            {
-                match self_ty.sty {
-                    ty::ty_struct(def_id, _) |
-                    ty::ty_enum(def_id, _) => {
-                        check_struct_safe_for_destructor(fcx, item.span, def_id);
-                    }
-                    _ => {
-                        // Coherence already reports an error in this case.
-                    }
-                }
-            }
 
             if fcx.tcx().lang_items.copy_trait() == Some(trait_ref.def_id) {
                 // This is checked in coherence.
@@ -420,8 +414,8 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
     {
         self.binding_count += 1;
         let value = liberate_late_bound_regions(self.fcx.tcx(), self.scope, binder);
-        debug!("BoundsChecker::fold_binder: late-bound regions replaced: {}",
-               value.repr(self.tcx()));
+        debug!("BoundsChecker::fold_binder: late-bound regions replaced: {} at scope: {:?}",
+               value.repr(self.tcx()), self.scope);
         let value = value.fold_with(self);
         self.binding_count -= 1;
         ty::Binder(value)
@@ -583,23 +577,4 @@ fn filter_to_trait_obligations<'tcx>(bounds: ty::GenericBounds<'tcx>)
         }
     }
     result
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Special drop trait checking
-
-fn check_struct_safe_for_destructor<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                              span: Span,
-                                              struct_did: ast::DefId) {
-    let struct_tpt = ty::lookup_item_type(fcx.tcx(), struct_did);
-    if struct_tpt.generics.has_type_params(subst::TypeSpace)
-        || struct_tpt.generics.has_region_params(subst::TypeSpace)
-    {
-        span_err!(fcx.tcx().sess, span, E0141,
-                  "cannot implement a destructor on a structure \
-                   with type parameters");
-        span_note!(fcx.tcx().sess, span,
-                   "use \"#[unsafe_destructor]\" on the implementation \
-                    to force the compiler to allow this");
-    }
 }

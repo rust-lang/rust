@@ -91,7 +91,8 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
             }
         }
 
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
+        let children = module_.anonymous_children.borrow();
+        for (_, child_module) in children.iter() {
             self.record_exports_for_module_subtree(child_module.clone());
         }
     }

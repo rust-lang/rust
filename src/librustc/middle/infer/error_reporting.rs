@@ -242,7 +242,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
                 SubSupConflict(var_origin, _, sub_r, _, sup_r) => {
-                    debug!("processing SubSupConflict");
+                    debug!("processing SubSupConflict sub: {:?} sup: {:?}", sub_r, sup_r);
                     match free_regions_from_same_fn(self.tcx, sub_r, sup_r) {
                         Some(ref same_frs) => {
                             var_origins.push(var_origin);
@@ -721,6 +721,22 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     sup,
                     "");
             }
+            infer::SafeDestructor(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    "unsafe use of destructor: destructor might be called \
+                     while references are dead");
+                note_and_explain_region(
+                    self.tcx,
+                    "superregion: ",
+                    sup,
+                    "");
+                note_and_explain_region(
+                    self.tcx,
+                    "subregion: ",
+                    sub,
+                    "");
+            }
             infer::BindingTypeIsNotValidAtDecl(span) => {
                 self.tcx.sess.span_err(
                     span,
@@ -818,6 +834,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         let scope_id = same_regions[0].scope_id;
         let parent = self.tcx.map.get_parent(scope_id);
         let parent_node = self.tcx.map.find(parent);
+        let taken = lifetimes_in_scope(self.tcx, scope_id);
+        let life_giver = LifeGiver::with_taken(&taken[]);
         let node_inner = match parent_node {
             Some(ref node) => match *node {
                 ast_map::NodeItem(ref item) => {
@@ -860,8 +878,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         };
         let (fn_decl, generics, unsafety, ident, expl_self, span)
                                     = node_inner.expect("expect item fn");
-        let taken = lifetimes_in_scope(self.tcx, scope_id);
-        let life_giver = LifeGiver::with_taken(&taken[]);
         let rebuilder = Rebuilder::new(self.tcx, fn_decl, expl_self,
                                        generics, same_regions, &life_giver);
         let (fn_decl, expl_self, generics) = rebuilder.rebuild();
@@ -1640,6 +1656,12 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     &format!("...so that the declared lifetime parameter bounds \
                                 are satisfied")[]);
+            }
+            infer::SafeDestructor(span) => {
+                self.tcx.sess.span_note(
+                    span,
+                    "...so that references are valid when the destructor \
+                     runs")
             }
         }
     }

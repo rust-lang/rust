@@ -1547,7 +1547,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
             _ => typ,
         };
 
-        let body_scope = region::CodeExtent::from_node_id(body_id);
+        let body_scope = region::CodeExtent::DestructionScope(body_id);
 
         // "Required type" comes from the trait definition. It may
         // contain late-bound regions from the method, but not the

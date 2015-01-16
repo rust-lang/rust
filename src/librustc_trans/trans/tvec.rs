@@ -51,11 +51,11 @@ pub fn pointer_add_byte(bcx: Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef 
     return PointerCast(bcx, InBoundsGEP(bcx, bptr, &[bytes]), old_ty);
 }
 
-pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn make_drop_glue_unboxed<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                           vptr: ValueRef,
                                           unit_ty: Ty<'tcx>,
                                           should_deallocate: bool)
-                                          -> Block<'blk, 'tcx> {
+                                          -> Block<'fcx, 'blk, 'tcx> {
     let not_null = IsNotNull(bcx, vptr);
     with_cond(bcx, not_null, |bcx| {
         let ccx = bcx.ccx();
@@ -109,10 +109,10 @@ impl<'tcx> VecTypes<'tcx> {
     }
 }
 
-pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_fixed_vstore<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                       expr: &ast::Expr,
                                       dest: expr::Dest)
-                                      -> Block<'blk, 'tcx> {
+                                      -> Block<'fcx, 'blk, 'tcx> {
     //!
     //
     // [...] allocates a fixed-size array and moves it around "by value".
@@ -139,10 +139,10 @@ pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// &[...] allocates memory on the stack and writes the values into it, returning the vector (the
 /// caller must make the reference).  "..." is similar except that the memory can be statically
 /// allocated and we return a reference (strings are always by-ref).
-pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_slice_vec<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                    slice_expr: &ast::Expr,
                                    content_expr: &ast::Expr)
-                                   -> DatumBlock<'blk, 'tcx, Expr> {
+                                   -> DatumBlock<'fcx, 'blk, 'tcx, Expr> {
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
     let mut bcx = bcx;
@@ -202,11 +202,11 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Literal strings translate to slices into static memory.  This is different from
 /// trans_slice_vstore() above because it doesn't need to copy the content anywhere.
-pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn trans_lit_str<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                  lit_expr: &ast::Expr,
                                  str_lit: InternedString,
                                  dest: Dest)
-                                 -> Block<'blk, 'tcx> {
+                                 -> Block<'fcx, 'blk, 'tcx> {
     debug!("trans_lit_str(lit_expr={}, dest={})",
            bcx.expr_to_string(lit_expr),
            dest.to_string(bcx.ccx()));
@@ -225,12 +225,12 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn write_content<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                  vt: &VecTypes<'tcx>,
                                  vstore_expr: &ast::Expr,
                                  content_expr: &ast::Expr,
                                  dest: Dest)
-                                 -> Block<'blk, 'tcx> {
+                                 -> Block<'fcx, 'blk, 'tcx> {
     let _icx = push_ctxt("tvec::write_content");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
@@ -321,14 +321,14 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn vec_types_from_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn vec_types_from_expr<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                                        vec_expr: &ast::Expr)
                                        -> VecTypes<'tcx> {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty))
 }
 
-pub fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn vec_types<'fcx, 'blk, 'tcx>(bcx: Block<'fcx, 'blk, 'tcx>,
                              unit_ty: Ty<'tcx>)
                              -> VecTypes<'tcx> {
     let ccx = bcx.ccx();
@@ -416,13 +416,13 @@ pub fn get_base_and_len(bcx: Block,
     }
 }
 
-pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+pub fn iter_vec_loop<'fcx, 'blk, 'tcx, F>(bcx: Block<'fcx, 'blk, 'tcx>,
                                      data_ptr: ValueRef,
                                      vt: &VecTypes<'tcx>,
                                      count: ValueRef,
                                      f: F)
-                                     -> Block<'blk, 'tcx> where
-    F: FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+                                     -> Block<'fcx, 'blk, 'tcx> where
+    F: FnOnce(Block<'fcx, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'fcx, 'blk, 'tcx>,
 {
     let _icx = push_ctxt("tvec::iter_vec_loop");
     let fcx = bcx.fcx;
@@ -432,14 +432,14 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let cond_bcx = fcx.new_temp_block("expr_repeat: loop cond");
     let body_bcx = fcx.new_temp_block("expr_repeat: body: set");
     let inc_bcx = fcx.new_temp_block("expr_repeat: body: inc");
-    Br(bcx, loop_bcx.llbb);
+    Br(bcx, loop_bcx.data.llbb);
 
     let loop_counter = {
         // i = 0
         let i = alloca(loop_bcx, bcx.ccx().int_type(), "__i");
         Store(loop_bcx, C_uint(bcx.ccx(), 0u), i);
 
-        Br(loop_bcx, cond_bcx.llbb);
+        Br(loop_bcx, cond_bcx.data.llbb);
         i
     };
 
@@ -448,7 +448,7 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         let rhs = count;
         let cond_val = ICmp(cond_bcx, llvm::IntULT, lhs, rhs);
 
-        CondBr(cond_bcx, cond_val, body_bcx.llbb, next_bcx.llbb);
+        CondBr(cond_bcx, cond_val, body_bcx.data.llbb, next_bcx.data.llbb);
     }
 
     { // loop body
@@ -460,7 +460,7 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         };
         let body_bcx = f(body_bcx, lleltptr, vt.unit_ty);
 
-        Br(body_bcx, inc_bcx.llbb);
+        Br(body_bcx, inc_bcx.data.llbb);
     }
 
     { // i += 1
@@ -468,19 +468,19 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1u));
         Store(inc_bcx, plusone, loop_counter);
 
-        Br(inc_bcx, cond_bcx.llbb);
+        Br(inc_bcx, cond_bcx.data.llbb);
     }
 
     next_bcx
 }
 
-pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+pub fn iter_vec_raw<'fcx, 'blk, 'tcx, F>(bcx: Block<'fcx, 'blk, 'tcx>,
                                    data_ptr: ValueRef,
                                    unit_ty: Ty<'tcx>,
                                    len: ValueRef,
                                    f: F)
-                                   -> Block<'blk, 'tcx> where
-    F: FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
+                                   -> Block<'fcx, 'blk, 'tcx> where
+    F: FnOnce(Block<'fcx, 'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'fcx, 'blk, 'tcx>,
 {
     let _icx = push_ctxt("tvec::iter_vec_raw");
     let fcx = bcx.fcx;
@@ -500,19 +500,19 @@ pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
         // Now perform the iteration.
         let header_bcx = fcx.new_temp_block("iter_vec_loop_header");
-        Br(bcx, header_bcx.llbb);
+        Br(bcx, header_bcx.data.llbb);
         let data_ptr =
-            Phi(header_bcx, val_ty(data_ptr), &[data_ptr], &[bcx.llbb]);
+            Phi(header_bcx, val_ty(data_ptr), &[data_ptr], &[bcx.data.llbb]);
         let not_yet_at_end =
             ICmp(header_bcx, llvm::IntULT, data_ptr, data_end_ptr);
         let body_bcx = fcx.new_temp_block("iter_vec_loop_body");
         let next_bcx = fcx.new_temp_block("iter_vec_next");
-        CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);
+        CondBr(header_bcx, not_yet_at_end, body_bcx.data.llbb, next_bcx.data.llbb);
         let body_bcx = f(body_bcx, data_ptr, vt.unit_ty);
         AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
                                                &[C_int(bcx.ccx(), 1i)]),
-                         body_bcx.llbb);
-        Br(body_bcx, header_bcx.llbb);
+                         body_bcx.data.llbb);
+        Br(body_bcx, header_bcx.data.llbb);
         next_bcx
     }
 }

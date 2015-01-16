@@ -8,24 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Tests the new destructor semantics.
 
-struct Bar<'a> {
-    f: &'a isize,
+use std::cell::RefCell;
+
+fn main() {
+    let b = {
+        let a = Box::new(RefCell::new(4i8));
+        *a.borrow() + 1i8    //~ ERROR `*a` does not live long enough
+    };
+    println!("{}", b);
 }
-
-impl<'a> Drop for Bar<'a> {
-//~^ ERROR E0141
-    fn drop(&mut self) {
-    }
-}
-
-struct Baz {
-    f: &'static isize,
-}
-
-impl Drop for Baz {
-    fn drop(&mut self) {
-    }
-}
-
-fn main() { }
