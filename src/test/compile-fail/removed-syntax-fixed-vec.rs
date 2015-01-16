@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type v = [isize * 3]; //~ ERROR expected one of `(`, `+`, `::`, `;`, or `]`, found `*`
+type v = [isize * 3]; //~ ERROR expected one of `(`, `+`, `::`, `;`, `<`, or `]`, found `*`
