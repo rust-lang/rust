@@ -132,6 +132,7 @@ pub mod vtable;
 pub mod writeback;
 pub mod regionmanip;
 pub mod regionck;
+pub mod coercion;
 pub mod demand;
 pub mod method;
 mod upvar;
@@ -1730,18 +1731,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                        sub: Ty<'tcx>,
                        sup: Ty<'tcx>)
                        -> Result<(), ty::type_err<'tcx>> {
-        match infer::mk_coercety(self.infcx(),
-                                 false,
-                                 infer::ExprAssignable(expr.span),
-                                 sub,
-                                 sup) {
-            Ok(None) => Ok(()),
-            Err(ref e) => Err((*e)),
-            Ok(Some(adjustment)) => {
+        match try!(coercion::mk_coercety(self.infcx(),
+                                         false,
+                                         infer::ExprAssignable(expr.span),
+                                         sub,
+                                         sup)) {
+            None => {}
+            Some(adjustment) => {
                 self.write_adjustment(expr.id, expr.span, adjustment);
-                Ok(())
             }
         }
+        Ok(())
     }
 
     pub fn mk_eqty(&self,
