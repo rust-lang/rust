@@ -13,11 +13,19 @@
 //! Implementing these traits allows you to get an effect similar to
 //! overloading operators.
 //!
-//! The values for the right hand side of an operator are automatically
-//! borrowed, so `a + b` is sugar for `a.add(&b)`.
-//!
-//! All of these traits are imported by the prelude, so they are available in
+//! Some of these traits are imported by the prelude, so they are available in
 //! every Rust program.
+//!
+//! Many of the operators take their operands by value. In non-generic
+//! contexts involving built-in types, this is usually not a problem.
+//! However, using these operators in generic code, requires some
+//! attention if values have to be reused as opposed to letting the operators
+//! consume them. One option is to occasionally use `clone()`.
+//! Another option is to rely on the types involved providing additional
+//! operator implementations for references. For example, for a user-defined
+//! type `T` which is supposed to support addition, it is probably a good
+//! idea to have both `T` and `&T` implement the traits `Add<T>` and `Add<&T>`
+//! so that generic code can be written without unnecessary cloning.
 //!
 //! # Example
 //!
