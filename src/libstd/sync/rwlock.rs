@@ -110,9 +110,35 @@ pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock {
 /// dropped.
 #[must_use]
 #[stable]
+#[cfg(stage0)] // NOTE remove impl after next snapshot
 pub struct RwLockReadGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
+    __marker: marker::NoSend,
+}
+
+/// RAII structure used to release the shared read access of a lock when
+/// dropped.
+#[must_use]
+#[stable]
+#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+pub struct RwLockReadGuard<'a, T: 'a> {
+    __lock: &'a StaticRwLock,
+    __data: &'a UnsafeCell<T>,
+}
+
+#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+impl<'a, T> !marker::Send for RwLockReadGuard<'a, T> {}
+
+/// RAII structure used to release the exclusive write access of a lock when
+/// dropped.
+#[must_use]
+#[stable]
+#[cfg(stage0)] // NOTE remove impl after next snapshot
+pub struct RwLockWriteGuard<'a, T: 'a> {
+    __lock: &'a StaticRwLock,
+    __data: &'a UnsafeCell<T>,
+    __poison: poison::Guard,
     __marker: marker::NoSend,
 }
 
@@ -120,12 +146,15 @@ pub struct RwLockReadGuard<'a, T: 'a> {
 /// dropped.
 #[must_use]
 #[stable]
+#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 pub struct RwLockWriteGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
     __poison: poison::Guard,
-    __marker: marker::NoSend,
 }
+
+#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+impl<'a, T> !marker::Send for RwLockWriteGuard<'a, T> {}
 
 impl<T: Send + Sync> RwLock<T> {
     /// Creates a new instance of an RwLock which is unlocked and read to go.
@@ -303,6 +332,7 @@ impl StaticRwLock {
 }
 
 impl<'rwlock, T> RwLockReadGuard<'rwlock, T> {
+    #[cfg(stage0)] // NOTE remove impl after next snapshot
     fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |_| {
@@ -313,8 +343,20 @@ impl<'rwlock, T> RwLockReadGuard<'rwlock, T> {
             }
         })
     }
+
+    #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+    fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
+           -> LockResult<RwLockReadGuard<'rwlock, T>> {
+        poison::map_result(lock.poison.borrow(), |_| {
+            RwLockReadGuard {
+                __lock: lock,
+                __data: data,
+            }
+        })
+    }
 }
 impl<'rwlock, T> RwLockWriteGuard<'rwlock, T> {
+    #[cfg(stage0)] // NOTE remove impl after next snapshot
     fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
@@ -323,6 +365,18 @@ impl<'rwlock, T> RwLockWriteGuard<'rwlock, T> {
                 __data: data,
                 __poison: guard,
                 __marker: marker::NoSend,
+            }
+        })
+    }
+
+    #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+    fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
+           -> LockResult<RwLockWriteGuard<'rwlock, T>> {
+        poison::map_result(lock.poison.borrow(), |guard| {
+            RwLockWriteGuard {
+                __lock: lock,
+                __data: data,
+                __poison: guard,
             }
         })
     }

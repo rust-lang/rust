@@ -16,5 +16,4 @@ fn main() {
     let x = Rc::new(5is);
     bar(x);
     //~^ ERROR `core::marker::Send` is not implemented
-    //~^^ ERROR `core::marker::Send` is not implemented
 }

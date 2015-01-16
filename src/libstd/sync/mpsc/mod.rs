@@ -370,11 +370,23 @@ unsafe impl<T:Send> Send for Sender<T> { }
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 #[stable]
+#[cfg(stage0)] // NOTE remove impl after next snapshot
 pub struct SyncSender<T> {
     inner: Arc<RacyCell<sync::Packet<T>>>,
     // can't share in an arc
     _marker: marker::NoSync,
 }
+
+/// The sending-half of Rust's synchronous channel type. This half can only be
+/// owned by one task, but it can be cloned to send to other tasks.
+#[stable]
+#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+pub struct SyncSender<T> {
+    inner: Arc<RacyCell<sync::Packet<T>>>,
+}
+
+#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+impl<T> !marker::Sync for SyncSender<T> {}
 
 /// An error returned from the `send` function on channels.
 ///
@@ -677,8 +689,14 @@ impl<T: Send> Drop for Sender<T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T: Send> SyncSender<T> {
+    #[cfg(stage0)] // NOTE remove impl after next snapshot
     fn new(inner: Arc<RacyCell<sync::Packet<T>>>) -> SyncSender<T> {
         SyncSender { inner: inner, _marker: marker::NoSync }
+    }
+
+    #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
+    fn new(inner: Arc<RacyCell<sync::Packet<T>>>) -> SyncSender<T> {
+        SyncSender { inner: inner }
     }
 
     /// Sends a value on this synchronous channel.

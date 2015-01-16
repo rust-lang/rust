@@ -262,6 +262,15 @@ pub fn get_field_type<'tcx>(tcx: &ty::ctxt<'tcx>, class_id: ast::DefId,
     }
 }
 
+pub fn get_impl_polarity<'tcx>(tcx: &ty::ctxt<'tcx>,
+                               def: ast::DefId)
+                               -> Option<ast::ImplPolarity>
+{
+    let cstore = &tcx.sess.cstore;
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_impl_polarity(&*cdata, def.node)
+}
+
 // Given a def_id for an impl, return the trait it implements,
 // if there is one.
 pub fn get_impl_trait<'tcx>(tcx: &ty::ctxt<'tcx>,

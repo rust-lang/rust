@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that an `&` pointer to something inherently mutable is itself
-// to be considered mutable.
-
 #![feature(optin_builtin_traits)]
 
-use std::marker::Sync;
+use std::marker::Send;
 
-struct NoSync;
-impl !Sync for NoSync {}
+pub struct WaitToken;
+impl !Send for WaitToken {}
 
-enum Foo { A(NoSync) }
+pub struct Test<T>(T);
+unsafe impl<T: 'static> Send for Test<T> {}
 
-fn bar<T: Sync>(_: T) {}
+pub fn spawn<F>(_: F) -> () where F: FnOnce(), F: Send + 'static {}
 
 fn main() {
-    let x = Foo::A(NoSync);
-    bar(&x); //~ ERROR the trait `core::marker::Sync` is not implemented
+    let wt = Test(WaitToken);
+    spawn(move || {
+        let x = wt;
+        println!("Hello, World!");
+    });
 }

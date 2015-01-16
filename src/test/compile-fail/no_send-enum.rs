@@ -8,16 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::marker;
+#![feature(optin_builtin_traits)]
+
+use std::marker::Send;
+
+struct NoSend;
+impl !Send for NoSend {}
 
 enum Foo {
-    A(marker::NoSend)
+    A(NoSend)
 }
 
 fn bar<T: Send>(_: T) {}
 
 fn main() {
-    let x = Foo::A(marker::NoSend);
+    let x = Foo::A(NoSend);
     bar(x);
     //~^ ERROR `core::marker::Send` is not implemented
 }

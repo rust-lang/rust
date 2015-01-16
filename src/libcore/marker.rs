@@ -286,6 +286,7 @@ pub struct InvariantLifetime<'a>;
 #[unstable = "likely to change with new variance strategy"]
 #[lang="no_send_bound"]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg(stage0)] // NOTE remove impl after next snapshot
 pub struct NoSend;
 
 /// A type which is considered "not POD", meaning that it is not
@@ -303,6 +304,7 @@ pub struct NoCopy;
 #[unstable = "likely to change with new variance strategy"]
 #[lang="no_sync_bound"]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg(stage0)] // NOTE remove impl after next snapshot
 pub struct NoSync;
 
 /// A type which is considered managed by the GC. This is typically
