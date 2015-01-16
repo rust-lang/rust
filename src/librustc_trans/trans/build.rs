@@ -126,6 +126,25 @@ pub fn Invoke(cx: Block,
     B(cx).invoke(fn_, args, then, catch, attributes)
 }
 
+pub fn InvokeWithConv(cx: Block,
+                      fn_: ValueRef,
+                      args: &[ValueRef],
+                      then: BasicBlockRef,
+                      catch: BasicBlockRef,
+                      conv: CallConv,
+                      attributes: Option<AttrBuilder>)
+                      -> ValueRef {
+    if cx.unreachable.get() {
+        return C_null(Type::i8(cx.ccx()));
+    }
+    check_not_terminated(cx);
+    terminate(cx, "InvokeWithConv");
+    debug!("InvokeWithConv({} with arguments ({}))",
+           cx.val_to_string(fn_),
+           args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().connect(", "));
+    B(cx).invoke_with_conv(fn_, args, then, catch, conv, attributes)
+}
+
 pub fn Unreachable(cx: Block) {
     if cx.unreachable.get() {
         return

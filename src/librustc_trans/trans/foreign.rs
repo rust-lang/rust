@@ -17,6 +17,7 @@ use trans::base::{llvm_linkage_by_name, push_ctxt};
 use trans::base;
 use trans::build::*;
 use trans::cabi;
+use trans::cleanup::CleanupMethods;
 use trans::common::*;
 use trans::machine;
 use trans::monomorphize;
@@ -366,11 +367,27 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         arg_idx += 1;
     }
 
-    let llforeign_retval = CallWithConv(bcx,
-                                        llfn,
-                                        &llargs_foreign[],
-                                        cc,
-                                        Some(attrs));
+    // Foreign functions *can* unwind, albeit rarely, so use invoke instead of call.
+    // We shouldn't really be emitting an invoke all the time, LLVM can optimise them
+    // out, but we should be able avoid it most of the time
+    let (llforeign_retval, bcx) = if base::need_invoke(bcx) {
+        let normal_bcx = bcx.fcx.new_temp_block("normal-return");
+        let landing_pad = bcx.fcx.get_landing_pad();
+
+        let ret = InvokeWithConv(bcx, llfn, &llargs_foreign[],
+                                 normal_bcx.llbb,
+                                 landing_pad,
+                                 cc,
+                                 Some(attrs));
+        (ret, normal_bcx)
+    } else {
+        let ret = CallWithConv(bcx,
+                               llfn,
+                               &llargs_foreign[],
+                               cc,
+                               Some(attrs));
+        (ret, bcx)
+    };
 
     // If the function we just called does not use an outpointer,
     // store the result into the rust outpointer. Cast the outpointer
