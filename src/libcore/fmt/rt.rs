@@ -21,18 +21,9 @@ pub use self::Count::*;
 pub use self::Position::*;
 pub use self::Flag::*;
 
-// SNAP 9e4e524
 #[doc(hidden)]
 #[derive(Copy)]
-#[cfg(not(stage0))]
 pub struct Argument {
-    pub position: Position,
-    pub format: FormatSpec,
-}
-#[doc(hidden)]
-#[derive(Copy)]
-#[cfg(stage0)]
-pub struct Argument<'a> {
     pub position: Position,
     pub format: FormatSpec,
 }

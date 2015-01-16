@@ -947,13 +947,6 @@ impl<'tcx> PartialEq for TyS<'tcx> {
 }
 impl<'tcx> Eq for TyS<'tcx> {}
 
-#[cfg(stage0)]
-impl<'tcx, S: Writer> Hash<S> for TyS<'tcx> {
-    fn hash(&self, s: &mut S) {
-        (self as *const _).hash(s)
-    }
-}
-#[cfg(not(stage0))]
 impl<'tcx, S: Writer + Hasher> Hash<S> for TyS<'tcx> {
     fn hash(&self, s: &mut S) {
         (self as *const _).hash(s)

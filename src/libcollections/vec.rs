@@ -1185,14 +1185,6 @@ impl<T:Clone> Clone for Vec<T> {
     }
 }
 
-#[cfg(stage0)]
-impl<S: hash::Writer, T: Hash<S>> Hash<S> for Vec<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        self.as_slice().hash(state);
-    }
-}
-#[cfg(not(stage0))]
 impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
     #[inline]
     fn hash(&self, state: &mut S) {

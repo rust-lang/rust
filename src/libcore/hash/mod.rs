@@ -58,7 +58,13 @@
 
 #![unstable = "module was recently redesigned"]
 
+use prelude::*;
+
+use borrow::{Cow, ToOwned};
 use default::Default;
+use intrinsics::TypeId;
+use mem;
+use num::Int;
 
 pub use self::sip::SipHasher;
 
@@ -70,19 +76,6 @@ mod sip;
 /// to compute the hash. Specific implementations of this trait may specialize
 /// for particular instances of `H` in order to be able to optimize the hashing
 /// behavior.
-#[cfg(stage0)]
-pub trait Hash<H> {
-    /// Feeds this value into the state given, updating the hasher as necessary.
-    fn hash(&self, state: &mut H);
-}
-
-/// A hashable type.
-///
-/// The `H` type parameter is an abstract hash state that is used by the `Hash`
-/// to compute the hash. Specific implementations of this trait may specialize
-/// for particular instances of `H` in order to be able to optimize the hashing
-/// behavior.
-#[cfg(not(stage0))]
 pub trait Hash<H: Hasher> {
     /// Feeds this value into the state given, updating the hasher as necessary.
     fn hash(&self, state: &mut H);
@@ -121,314 +114,147 @@ pub fn hash<T: Hash<H>, H: Hasher + Default>(value: &T) -> H::Output {
 
 //////////////////////////////////////////////////////////////////////////////
 
-#[cfg(stage0)]
-mod impls {
-    use prelude::*;
-
-    use borrow::{Cow, ToOwned};
-    use intrinsics::TypeId;
-    use mem;
-    use super::{Hash, Writer};
-    use num::Int;
-
-    macro_rules! impl_hash {
-        ($ty:ident, $uty:ident) => {
-            impl<S: Writer> Hash<S> for $ty {
-                #[inline]
-                fn hash(&self, state: &mut S) {
-                    let a: [u8; ::$ty::BYTES] = unsafe {
-                        mem::transmute((*self as $uty).to_le() as $ty)
-                    };
-                    state.write(a.as_slice())
-                }
+macro_rules! impl_hash {
+    ($ty:ident, $uty:ident) => {
+        impl<S: Writer + Hasher> Hash<S> for $ty {
+            #[inline]
+            fn hash(&self, state: &mut S) {
+                let a: [u8; ::$ty::BYTES] = unsafe {
+                    mem::transmute((*self as $uty).to_le() as $ty)
+                };
+                state.write(a.as_slice())
             }
-        }
-    }
-
-    impl_hash! { u8, u8 }
-    impl_hash! { u16, u16 }
-    impl_hash! { u32, u32 }
-    impl_hash! { u64, u64 }
-    impl_hash! { uint, uint }
-    impl_hash! { i8, u8 }
-    impl_hash! { i16, u16 }
-    impl_hash! { i32, u32 }
-    impl_hash! { i64, u64 }
-    impl_hash! { int, uint }
-
-    impl<S: Writer> Hash<S> for bool {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            (*self as u8).hash(state);
-        }
-    }
-
-    impl<S: Writer> Hash<S> for char {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            (*self as u32).hash(state);
-        }
-    }
-
-    impl<S: Writer> Hash<S> for str {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            state.write(self.as_bytes());
-            0xffu8.hash(state)
-        }
-    }
-
-    macro_rules! impl_hash_tuple {
-        () => (
-            impl<S> Hash<S> for () {
-                #[inline]
-                fn hash(&self, _state: &mut S) {}
-            }
-        );
-
-        ( $($name:ident)+) => (
-            impl<S, $($name: Hash<S>),*> Hash<S> for ($($name,)*) {
-                #[inline]
-                #[allow(non_snake_case)]
-                fn hash(&self, state: &mut S) {
-                    match *self {
-                        ($(ref $name,)*) => {
-                            $(
-                                $name.hash(state);
-                            )*
-                        }
-                    }
-                }
-            }
-        );
-    }
-
-    impl_hash_tuple! {}
-    impl_hash_tuple! { A }
-    impl_hash_tuple! { A B }
-    impl_hash_tuple! { A B C }
-    impl_hash_tuple! { A B C D }
-    impl_hash_tuple! { A B C D E }
-    impl_hash_tuple! { A B C D E F }
-    impl_hash_tuple! { A B C D E F G }
-    impl_hash_tuple! { A B C D E F G H }
-    impl_hash_tuple! { A B C D E F G H I }
-    impl_hash_tuple! { A B C D E F G H I J }
-    impl_hash_tuple! { A B C D E F G H I J K }
-    impl_hash_tuple! { A B C D E F G H I J K L }
-
-    impl<S: Writer, T: Hash<S>> Hash<S> for [T] {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            self.len().hash(state);
-            for elt in self.iter() {
-                elt.hash(state);
-            }
-        }
-    }
-
-
-    impl<'a, S, T: ?Sized + Hash<S>> Hash<S> for &'a T {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            (**self).hash(state);
-        }
-    }
-
-    impl<'a, S, T: ?Sized + Hash<S>> Hash<S> for &'a mut T {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            (**self).hash(state);
-        }
-    }
-
-    impl<S: Writer, T> Hash<S> for *const T {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            // NB: raw-pointer Hash does _not_ dereference
-            // to the target; it just gives you the pointer-bytes.
-            (*self as uint).hash(state);
-        }
-    }
-
-    impl<S: Writer, T> Hash<S> for *mut T {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            // NB: raw-pointer Hash does _not_ dereference
-            // to the target; it just gives you the pointer-bytes.
-            (*self as uint).hash(state);
-        }
-    }
-
-    impl<S: Writer> Hash<S> for TypeId {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            self.hash().hash(state)
-        }
-    }
-
-    impl<'a, T, B: ?Sized, S> Hash<S> for Cow<'a, T, B>
-        where B: Hash<S> + ToOwned<T>
-    {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            Hash::hash(&**self, state)
         }
     }
 }
 
-#[cfg(not(stage0))]
-mod impls {
-    use prelude::*;
+impl_hash! { u8, u8 }
+impl_hash! { u16, u16 }
+impl_hash! { u32, u32 }
+impl_hash! { u64, u64 }
+impl_hash! { uint, uint }
+impl_hash! { i8, u8 }
+impl_hash! { i16, u16 }
+impl_hash! { i32, u32 }
+impl_hash! { i64, u64 }
+impl_hash! { int, uint }
 
-    use borrow::{Cow, ToOwned};
-    use intrinsics::TypeId;
-    use mem;
-    use super::{Hash, Writer, Hasher};
-    use num::Int;
-
-    macro_rules! impl_hash {
-        ($ty:ident, $uty:ident) => {
-            impl<S: Writer + Hasher> Hash<S> for $ty {
-                #[inline]
-                fn hash(&self, state: &mut S) {
-                    let a: [u8; ::$ty::BYTES] = unsafe {
-                        mem::transmute((*self as $uty).to_le() as $ty)
-                    };
-                    state.write(a.as_slice())
-                }
-            }
-        }
+impl<S: Writer + Hasher> Hash<S> for bool {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (*self as u8).hash(state);
     }
+}
 
-    impl_hash! { u8, u8 }
-    impl_hash! { u16, u16 }
-    impl_hash! { u32, u32 }
-    impl_hash! { u64, u64 }
-    impl_hash! { uint, uint }
-    impl_hash! { i8, u8 }
-    impl_hash! { i16, u16 }
-    impl_hash! { i32, u32 }
-    impl_hash! { i64, u64 }
-    impl_hash! { int, uint }
-
-    impl<S: Writer + Hasher> Hash<S> for bool {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            (*self as u8).hash(state);
-        }
+impl<S: Writer + Hasher> Hash<S> for char {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (*self as u32).hash(state);
     }
+}
 
-    impl<S: Writer + Hasher> Hash<S> for char {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            (*self as u32).hash(state);
-        }
+impl<S: Writer + Hasher> Hash<S> for str {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        state.write(self.as_bytes());
+        0xffu8.hash(state)
     }
+}
 
-    impl<S: Writer + Hasher> Hash<S> for str {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            state.write(self.as_bytes());
-            0xffu8.hash(state)
+macro_rules! impl_hash_tuple {
+    () => (
+        impl<S: Hasher> Hash<S> for () {
+            #[inline]
+            fn hash(&self, _state: &mut S) {}
         }
-    }
+    );
 
-    macro_rules! impl_hash_tuple {
-        () => (
-            impl<S: Hasher> Hash<S> for () {
-                #[inline]
-                fn hash(&self, _state: &mut S) {}
-            }
-        );
-
-        ( $($name:ident)+) => (
-            impl<S: Hasher, $($name: Hash<S>),*> Hash<S> for ($($name,)*) {
-                #[inline]
-                #[allow(non_snake_case)]
-                fn hash(&self, state: &mut S) {
-                    match *self {
-                        ($(ref $name,)*) => {
-                            $(
-                                $name.hash(state);
-                            )*
-                        }
+    ( $($name:ident)+) => (
+        impl<S: Hasher, $($name: Hash<S>),*> Hash<S> for ($($name,)*) {
+            #[inline]
+            #[allow(non_snake_case)]
+            fn hash(&self, state: &mut S) {
+                match *self {
+                    ($(ref $name,)*) => {
+                        $(
+                            $name.hash(state);
+                        )*
                     }
                 }
             }
-        );
-    }
+        }
+    );
+}
 
-    impl_hash_tuple! {}
-    impl_hash_tuple! { A }
-    impl_hash_tuple! { A B }
-    impl_hash_tuple! { A B C }
-    impl_hash_tuple! { A B C D }
-    impl_hash_tuple! { A B C D E }
-    impl_hash_tuple! { A B C D E F }
-    impl_hash_tuple! { A B C D E F G }
-    impl_hash_tuple! { A B C D E F G H }
-    impl_hash_tuple! { A B C D E F G H I }
-    impl_hash_tuple! { A B C D E F G H I J }
-    impl_hash_tuple! { A B C D E F G H I J K }
-    impl_hash_tuple! { A B C D E F G H I J K L }
+impl_hash_tuple! {}
+impl_hash_tuple! { A }
+impl_hash_tuple! { A B }
+impl_hash_tuple! { A B C }
+impl_hash_tuple! { A B C D }
+impl_hash_tuple! { A B C D E }
+impl_hash_tuple! { A B C D E F }
+impl_hash_tuple! { A B C D E F G }
+impl_hash_tuple! { A B C D E F G H }
+impl_hash_tuple! { A B C D E F G H I }
+impl_hash_tuple! { A B C D E F G H I J }
+impl_hash_tuple! { A B C D E F G H I J K }
+impl_hash_tuple! { A B C D E F G H I J K L }
 
-    impl<S: Writer + Hasher, T: Hash<S>> Hash<S> for [T] {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            self.len().hash(state);
-            for elt in self.iter() {
-                elt.hash(state);
-            }
+impl<S: Writer + Hasher, T: Hash<S>> Hash<S> for [T] {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.len().hash(state);
+        for elt in self.iter() {
+            elt.hash(state);
         }
     }
+}
 
 
-    impl<'a, S: Hasher, T: ?Sized + Hash<S>> Hash<S> for &'a T {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            (**self).hash(state);
-        }
+impl<'a, S: Hasher, T: ?Sized + Hash<S>> Hash<S> for &'a T {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (**self).hash(state);
     }
+}
 
-    impl<'a, S: Hasher, T: ?Sized + Hash<S>> Hash<S> for &'a mut T {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            (**self).hash(state);
-        }
+impl<'a, S: Hasher, T: ?Sized + Hash<S>> Hash<S> for &'a mut T {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (**self).hash(state);
     }
+}
 
-    impl<S: Writer + Hasher, T> Hash<S> for *const T {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            // NB: raw-pointer Hash does _not_ dereference
-            // to the target; it just gives you the pointer-bytes.
-            (*self as uint).hash(state);
-        }
+impl<S: Writer + Hasher, T> Hash<S> for *const T {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        // NB: raw-pointer Hash does _not_ dereference
+        // to the target; it just gives you the pointer-bytes.
+        (*self as uint).hash(state);
     }
+}
 
-    impl<S: Writer + Hasher, T> Hash<S> for *mut T {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            // NB: raw-pointer Hash does _not_ dereference
-            // to the target; it just gives you the pointer-bytes.
-            (*self as uint).hash(state);
-        }
+impl<S: Writer + Hasher, T> Hash<S> for *mut T {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        // NB: raw-pointer Hash does _not_ dereference
+        // to the target; it just gives you the pointer-bytes.
+        (*self as uint).hash(state);
     }
+}
 
-    impl<S: Writer + Hasher> Hash<S> for TypeId {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            self.hash().hash(state)
-        }
+impl<S: Writer + Hasher> Hash<S> for TypeId {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        self.hash().hash(state)
     }
+}
 
-    impl<'a, T, B: ?Sized, S: Hasher> Hash<S> for Cow<'a, T, B>
-        where B: Hash<S> + ToOwned<T>
-    {
-        #[inline]
-        fn hash(&self, state: &mut S) {
-            Hash::hash(&**self, state)
-        }
+impl<'a, T, B: ?Sized, S: Hasher> Hash<S> for Cow<'a, T, B>
+    where B: Hash<S> + ToOwned<T>
+{
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        Hash::hash(&**self, state)
     }
 }

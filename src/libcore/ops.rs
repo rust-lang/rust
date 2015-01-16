@@ -719,8 +719,6 @@ macro_rules! shl_impl {
     )
 }
 
-// SNAP 9e4e524e0
-#[cfg(not(stage0))]
 macro_rules! shl_impl_all {
     ($($t:ty)*) => ($(
         shl_impl! { $t, u8 }
@@ -734,13 +732,6 @@ macro_rules! shl_impl_all {
         shl_impl! { $t, i32 }
         shl_impl! { $t, i64 }
         shl_impl! { $t, isize }
-    )*)
-}
-
-#[cfg(stage0)]
-macro_rules! shl_impl_all {
-    ($($t:ty)*) => ($(
-        shl_impl! { $t, usize }
     )*)
 }
 
@@ -798,8 +789,6 @@ macro_rules! shr_impl {
     )
 }
 
-// SNAP 9e4e524e0
-#[cfg(not(stage0))]
 macro_rules! shr_impl_all {
     ($($t:ty)*) => ($(
         shr_impl! { $t, u8 }
@@ -813,13 +802,6 @@ macro_rules! shr_impl_all {
         shr_impl! { $t, i32 }
         shr_impl! { $t, i64 }
         shr_impl! { $t, isize }
-    )*)
-}
-
-#[cfg(stage0)]
-macro_rules! shr_impl_all {
-    ($($t:ty)*) => ($(
-        shr_impl! { $t, usize }
     )*)
 }
 
