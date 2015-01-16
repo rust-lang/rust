@@ -1508,6 +1508,10 @@ impl Clean<Type> for ast::Ty {
             TyTypeof(..) => {
                 panic!("Unimplemented type {:?}", self.node)
             },
+            TyMac(..) => {
+                cx.tcx().sess.span_bug(ast_ty.span,
+                                       "Unexpanded type macro found during cleaning")
+            }
         }
     }
 }

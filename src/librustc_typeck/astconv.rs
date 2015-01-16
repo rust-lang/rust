@@ -1215,6 +1215,9 @@ pub fn ast_ty_to_ty<'tcx>(
                 // handled specially and will not descend into this routine.
                 this.ty_infer(ast_ty.span)
             }
+            ast::TyMac(ref _mac) => {
+                tcx.sess.span_bug(ast_ty.span, "Unexpanded type macro found during elaboration");
+            }
         }
     });
 
