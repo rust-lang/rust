@@ -63,7 +63,7 @@ pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
 fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
     let state_expr = match substr.nonself_args {
         [ref state_expr] => state_expr,
-        _ => cx.span_bug(trait_span, "incorrect number of arguments in `deriving(Hash)`")
+        _ => cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`")
     };
     let call_hash = |&: span, thing_expr| {
         let hash_path = {
@@ -96,15 +96,11 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
 
             fs
         }
-        _ => cx.span_bug(trait_span, "impossible substructure in `deriving(Hash)`")
+        _ => cx.span_bug(trait_span, "impossible substructure in `derive(Hash)`")
     };
 
     for &FieldInfo { ref self_, span, .. } in fields.iter() {
         stmts.push(call_hash(span, self_.clone()));
-    }
-
-    if stmts.len() == 0 {
-        cx.span_bug(trait_span, "#[derive(Hash)] needs at least one field");
     }
 
     cx.expr_block(cx.block(trait_span, stmts, None))
