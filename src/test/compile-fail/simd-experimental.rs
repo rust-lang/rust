@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![deny(unstable)]
+#![feature(unnamed_feature)]
 
 use std::simd;
 

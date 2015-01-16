@@ -11,6 +11,7 @@
 #![deny(exceeding_bitshifts)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![feature(unnamed_feature)]
 
 fn main() {
       let n = 1u8 << 7;

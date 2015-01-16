@@ -11,6 +11,7 @@
 #![allow(unused_variables)]
 #![allow(non_camel_case_types)]
 #![deny(dead_code)]
+#![feature(unnamed_feature)]
 
 #![crate_type="lib"]
 

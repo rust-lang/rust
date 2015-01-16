@@ -10,7 +10,7 @@
 
 #![deny(dead_code)]
 #![allow(unreachable_code)]
-#![allow(unstable)]
+#![feature(unnamed_feature)]
 
 #[macro_use] extern crate core;
 
