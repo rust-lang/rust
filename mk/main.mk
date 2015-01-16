@@ -333,7 +333,6 @@ export CFG_DISABLE_UNSTABLE_FEATURES
 endif
 # Subvert unstable feature lints to do the self-build
 export CFG_BOOTSTRAP_KEY
-export RUSTC_BOOTSTRAP_KEY:=$(CFG_BOOTSTRAP_KEY)
 
 ######################################################################
 # Per-stage targets and runner
@@ -404,8 +403,13 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 ifeq ($(1),0)
 # Don't run the stage0 compiler under valgrind - that ship has sailed
 CFG_VALGRIND_COMPILE$(1) =
+# FIXME(21230) HACK Extract the key from the snapshot
+CFG_BOOSTRAP_KEY_ENV$(1) = RUSTC_BOOTSTRAP_KEY=$$$$((grep -a 'save analysis[0-9]' \
+	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) || echo N) |\
+	sed 's/.*save analysis\([0-9]*\).*/\1/')
 else
 CFG_VALGRIND_COMPILE$(1) = $$(CFG_VALGRIND_COMPILE)
+CFG_BOOSTRAP_KEY_ENV$(1) = RUSTC_BOOTSTRAP_KEY=$$(CFG_BOOTSTRAP_KEY)
 endif
 
 # Add RUSTFLAGS_STAGEN values to the build command
@@ -478,6 +482,7 @@ STAGE$(1)_T_$(2)_H_$(3) := \
 	$$(Q)$$(RPATH_VAR$(1)_T_$(2)_H_$(3)) \
 		$$(call CFG_RUN_TARG_$(3),$(1), \
 		$$(CFG_VALGRIND_COMPILE$(1)) \
+		$$(CFG_BOOSTRAP_KEY_ENV$(1)) \
 		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3)) \
 		$$(CFG_RUSTC_FLAGS) $$(EXTRAFLAGS_STAGE$(1)) --target=$(2)) \

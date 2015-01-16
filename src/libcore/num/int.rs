@@ -16,8 +16,5 @@
 
 #![deprecated = "replaced by isize"]
 
-#[cfg(stage0)] #[cfg(target_word_size = "32")] int_module! { int, 32 }
-#[cfg(stage0)] #[cfg(target_word_size = "64")] int_module! { int, 64 }
-
-#[cfg(not(stage0))] #[cfg(target_pointer_width = "32")] int_module! { int, 32 }
-#[cfg(not(stage0))] #[cfg(target_pointer_width = "64")] int_module! { int, 64 }
+#[cfg(target_pointer_width = "32")] int_module! { int, 32 }
+#[cfg(target_pointer_width = "64")] int_module! { int, 64 }

@@ -173,13 +173,13 @@ mod signal {
     unsafe impl ::marker::Sync for sigaction { }
 
     #[repr(C)]
-    #[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
+    #[cfg(target_pointer_width = "32")]
     pub struct sigset_t {
         __val: [libc::c_ulong; 32],
     }
 
     #[repr(C)]
-    #[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
+    #[cfg(target_pointer_width = "64")]
     pub struct sigset_t {
         __val: [libc::c_ulong; 16],
     }
