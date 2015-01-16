@@ -459,6 +459,7 @@ enum ModuleKind {
     TraitModuleKind,
     ImplModuleKind,
     EnumModuleKind,
+    TypeModuleKind,
     AnonymousModuleKind,
 }
 
@@ -2240,6 +2241,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         TraitModuleKind |
                         ImplModuleKind |
                         EnumModuleKind |
+                        TypeModuleKind |
                         AnonymousModuleKind => {
                             search_module = parent_module_node.upgrade().unwrap();
                         }
@@ -2337,6 +2339,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         TraitModuleKind |
                         ImplModuleKind |
                         EnumModuleKind |
+                        TypeModuleKind |
                         AnonymousModuleKind => module_ = new_module,
                     }
                 }
@@ -2353,6 +2356,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             TraitModuleKind |
             ImplModuleKind |
             EnumModuleKind |
+            TypeModuleKind |
             AnonymousModuleKind => {
                 match self.get_nearest_normal_module_parent(module_.clone()) {
                     None => module_,
