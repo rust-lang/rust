@@ -12,7 +12,7 @@
 
 #![deny(unused_extern_crates)]
 #![allow(unused_variables)]
-#![allow(unstable)]
+#![feature(unnamed_feature)]
 
 extern crate libc; //~ ERROR: unused extern crate
 

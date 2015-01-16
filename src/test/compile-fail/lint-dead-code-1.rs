@@ -14,6 +14,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(missing_copy_implementations)]
 #![deny(dead_code)]
+#![feature(unnamed_feature)]
 
 #![crate_type="lib"]
 
