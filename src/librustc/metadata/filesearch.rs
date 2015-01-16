@@ -39,13 +39,13 @@ pub struct FileSearch<'a> {
 
 impl<'a> FileSearch<'a> {
     pub fn for_each_lib_search_path<F>(&self, mut f: F) where
-        F: FnMut(&Path) -> FileMatch,
+        F: FnMut(&Path, PathKind) -> FileMatch,
     {
         let mut visited_dirs = HashSet::new();
         let mut found = false;
 
-        for path in self.search_paths.iter(self.kind) {
-            match f(path) {
+        for (path, kind) in self.search_paths.iter(self.kind) {
+            match f(path, kind) {
                 FileMatches => found = true,
                 FileDoesntMatch => ()
             }
@@ -56,7 +56,7 @@ impl<'a> FileSearch<'a> {
         let tlib_path = make_target_lib_path(self.sysroot,
                                              self.triple);
         if !visited_dirs.contains(tlib_path.as_vec()) {
-            match f(&tlib_path) {
+            match f(&tlib_path, PathKind::All) {
                 FileMatches => found = true,
                 FileDoesntMatch => ()
             }
@@ -76,7 +76,7 @@ impl<'a> FileSearch<'a> {
                     visited_dirs.insert(tlib_path.as_vec().to_vec());
                     // Don't keep searching the RUST_PATH if one match turns up --
                     // if we did, we'd get a "multiple matching crates" error
-                    match f(&tlib_path) {
+                    match f(&tlib_path, PathKind::All) {
                        FileMatches => {
                            break;
                        }
@@ -91,8 +91,10 @@ impl<'a> FileSearch<'a> {
         make_target_lib_path(self.sysroot, self.triple)
     }
 
-    pub fn search<F>(&self, mut pick: F) where F: FnMut(&Path) -> FileMatch {
-        self.for_each_lib_search_path(|lib_search_path| {
+    pub fn search<F>(&self, mut pick: F)
+        where F: FnMut(&Path, PathKind) -> FileMatch
+    {
+        self.for_each_lib_search_path(|lib_search_path, kind| {
             debug!("searching {}", lib_search_path.display());
             match fs::readdir(lib_search_path) {
                 Ok(files) => {
@@ -108,7 +110,7 @@ impl<'a> FileSearch<'a> {
                     let files2 = files.iter().filter(|p| !is_rlib(p));
                     for path in files1.chain(files2) {
                         debug!("testing {}", path.display());
-                        let maybe_picked = pick(path);
+                        let maybe_picked = pick(path, kind);
                         match maybe_picked {
                             FileMatches => {
                                 debug!("picked {}", path.display());
@@ -142,7 +144,7 @@ impl<'a> FileSearch<'a> {
     // Returns a list of directories where target-specific dylibs might be located.
     pub fn get_dylib_search_paths(&self) -> Vec<Path> {
         let mut paths = Vec::new();
-        self.for_each_lib_search_path(|lib_search_path| {
+        self.for_each_lib_search_path(|lib_search_path, _| {
             paths.push(lib_search_path.clone());
             FileDoesntMatch
         });

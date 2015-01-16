@@ -17,8 +17,10 @@ all:
 	$(RUSTC) -C metadata=2 -C extra-filename=-2 a.rs
 	$(RUSTC) b.rs --extern a=$(TMPDIR)/liba-1.rlib
 	$(RUSTC) c.rs --extern a=$(TMPDIR)/liba-2.rlib
+	@echo before
 	$(RUSTC) --cfg before d.rs --extern a=$(TMPDIR)/liba-1.rlib
 	$(call RUN,d)
+	@echo after
 	$(RUSTC) --cfg after  d.rs --extern a=$(TMPDIR)/liba-1.rlib
 	$(call RUN,d)
 
