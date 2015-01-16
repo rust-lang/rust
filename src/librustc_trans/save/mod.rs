@@ -44,7 +44,7 @@ use syntax::codemap::*;
 use syntax::parse::token::{self, get_ident, keywords};
 use syntax::owned_slice::OwnedSlice;
 use syntax::visit::{self, Visitor};
-use syntax::print::pprust::{path_to_string,ty_to_string};
+use syntax::print::pprust::{path_to_string, ty_to_string};
 use syntax::ptr::P;
 
 use self::span_utils::SpanUtils;
@@ -122,7 +122,6 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         }
 
         let mut result: Vec<(Span, String)> = vec!();
-
 
         let mut segs = vec!();
         for (seg, span) in path.segments.iter().zip(spans.iter()) {
@@ -1568,8 +1567,7 @@ pub fn process_crate(sess: &Session,
                         SpanUtils {
                             sess: sess,
                             err_count: Cell::new(0)
-                        },
-                        cratename.clone()),
+                        }),
         span: SpanUtils {
             sess: sess,
             err_count: Cell::new(0)

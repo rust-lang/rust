@@ -50,7 +50,6 @@ impl Recorder {
 pub struct FmtStrs<'a> {
     pub recorder: Box<Recorder>,
     span: SpanUtils<'a>,
-    krate: String,
 }
 
 macro_rules! s { ($e:expr) => { format!("{}", $e) }}
@@ -92,11 +91,10 @@ pub enum Row {
 }
 
 impl<'a> FmtStrs<'a> {
-    pub fn new(rec: Box<Recorder>, span: SpanUtils<'a>, krate: String) -> FmtStrs<'a> {
+    pub fn new(rec: Box<Recorder>, span: SpanUtils<'a>) -> FmtStrs<'a> {
         FmtStrs {
             recorder: rec,
             span: span,
-            krate: krate,
         }
     }
 
@@ -177,16 +175,7 @@ impl<'a> FmtStrs<'a> {
         });
 
         let pairs = fields.iter().zip(values);
-        let strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(
-            if *f == "qualname" && v.len() > 0 {
-                let mut n = self.krate.clone();
-                n.push_str("::");
-                n.push_str(v);
-                n
-            } else {
-                String::from_str(v)
-            }
-        )));
+        let strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(String::from_str(v))));
         Some(strs.fold(String::new(), |mut s, ss| {
             s.push_str(&ss[]);
             s
