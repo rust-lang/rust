@@ -58,7 +58,6 @@
 
 #![no_std]
 #![allow(unknown_features, raw_pointer_derive)]
-#![cfg_attr(stage0, allow(unused_attributes))]
 #![allow(unknown_features)] #![feature(intrinsics, lang_items)]
 #![feature(simd, unsafe_destructor, slicing_syntax)]
 #![feature(unboxed_closures)]
