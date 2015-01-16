@@ -471,7 +471,7 @@ impl<'a> fmt::String for MarkdownWithToc<'a> {
 }
 
 pub fn plain_summary_line(md: &str) -> String {
-    extern "C" fn link(_ob: *mut hoedown_buffer,
+    extern fn link(_ob: *mut hoedown_buffer,
                        _link: *const hoedown_buffer,
                        _title: *const hoedown_buffer,
                        content: *const hoedown_buffer,
@@ -479,9 +479,6 @@ pub fn plain_summary_line(md: &str) -> String {
     {
         unsafe {
             if !content.is_null() && (*content).size > 0 {
-                // FIXME(liigo): I don't know why the parameter `_ob` is
-                // not the value passed in by `hoedown_document_render`.
-                // I have to manually pass in `ob` through `opaque` currently.
                 let ob = opaque as *mut hoedown_buffer;
                 hoedown_buffer_put(ob, (*content).data as *const libc::c_char,
                                    (*content).size);
@@ -490,7 +487,7 @@ pub fn plain_summary_line(md: &str) -> String {
         1
     }
 
-    extern "C" fn normal_text(_ob: *mut hoedown_buffer,
+    extern fn normal_text(_ob: *mut hoedown_buffer,
                               text: *const hoedown_buffer,
                               opaque: *mut libc::c_void)
     {
