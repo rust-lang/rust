@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-F unstable
+// compile-flags: -F unused_features
 // aux-build:lint_output_format.rs
 
-extern crate lint_output_format; //~ ERROR: use of unmarked item
+#![feature(foo)] //~ ERROR unused or unknown feature
+
+extern crate lint_output_format; //~ WARNING: use of unstable library feature
 use lint_output_format::{foo, bar};
 
 fn main() {
     let _x = foo(); //~ WARNING #[warn(deprecated)] on by default
-    let _y = bar(); //~ ERROR [-F unstable]
+    let _y = bar(); //~ WARNING: use of unstable library feature
 }

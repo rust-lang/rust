@@ -96,7 +96,8 @@ pub trait Hasher {
 
 /// A common bound on the `Hasher` parameter to `Hash` implementations in order
 /// to generically hash an aggregate.
-#[experimental = "this trait will likely be replaced by io::Writer"]
+#[unstable(feature = "unnamed_feature", since = "1.0.0",
+           reason = "this trait will likely be replaced by io::Writer")]
 #[allow(missing_docs)]
 pub trait Writer {
     fn write(&mut self, bytes: &[u8]);

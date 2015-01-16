@@ -43,7 +43,7 @@ with open(feature_gate_source, 'r') as f:
             line = line.replace("(", "").replace("),", "").replace(")", "")
             parts = line.split(",")
             if len(parts) != 3:
-                print "unexpected number of components in line: " + original_line
+                print "error: unexpected number of components in line: " + original_line
                 sys.exit(1)
             feature_name = parts[0].strip().replace('"', "")
             since = parts[1].strip().replace('"', "")
@@ -102,14 +102,15 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                     lib_features[feature_name] = feature_name
                     if lib_features_and_level.get((feature_name, level)) is None:
                         # Add it to the observed features
-                        lib_features_and_level[(feature_name, level)] = (since, path, line_num, line)
+                        lib_features_and_level[(feature_name, level)] = \
+                            (since, path, line_num, line)
                     else:
                         # Verify that for this combination of feature_name and level the 'since'
                         # attribute matches.
                         (expected_since, source_path, source_line_num, source_line) = \
                             lib_features_and_level.get((feature_name, level))
                         if since != expected_since:
-                            print "mismatch in " + level + " feature '" + feature_name + "'"
+                            print "error: mismatch in " + level + " feature '" + feature_name + "'"
                             print "line " + str(source_line_num) + " of " + source_path + ":"
                             print source_line
                             print "line " + str(line_num) + " of " + path + ":"
@@ -118,13 +119,13 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
 
                     # Verify that this lib feature doesn't duplicate a lang feature
                     if feature_name in language_feature_names:
-                        print "lib feature '" + feature_name + "' duplicates a lang feature"
+                        print "error: lib feature '" + feature_name + "' duplicates a lang feature"
                         print "line " + str(line_num) + " of " + path + ":"
                         print line
                         errors = True
 
                 else:
-                    print "misformed stability attribute"
+                    print "error: misformed stability attribute"
                     print "line " + str(line_num) + " of " + path + ":"
                     print line
                     errors = True
@@ -141,7 +142,7 @@ for f in language_features:
     status = "unstable"
     stable_since = None
     partially_deprecated = False
-    
+
     if f[2] == "Accepted":
         status = "stable"
     if status == "stable":
@@ -165,7 +166,7 @@ for f in lib_features:
     is_deprecated = lib_features_and_level.get((name, "deprecated")) is not None
 
     if is_stable and is_unstable:
-        print "feature '" + name + "' is both stable and unstable"
+        print "error: feature '" + name + "' is both stable and unstable"
         errors = True
 
     if is_stable:
@@ -189,7 +190,7 @@ merged_stats = { }
 for name in lib_feature_stats:
     if language_feature_stats.get(name) is not None:
         if not name in joint_features:
-            print "feature '" + name + "' is both a lang and lib feature but not whitelisted"
+            print "error: feature '" + name + "' is both a lang and lib feature but not whitelisted"
             errors = True
         lang_status = lang_feature_stats[name][3]
         lib_status = lib_feature_stats[name][3]
@@ -199,7 +200,7 @@ for name in lib_feature_stats:
         lib_partially_deprecated = lib_feature_stats[name][5]
 
         if lang_status != lib_status and lib_status != "deprecated":
-            print "feature '" + name + "' has lang status " + lang_status + \
+            print "error: feature '" + name + "' has lang status " + lang_status + \
                   " but lib status " + lib_status
             errors = True
 
@@ -208,7 +209,7 @@ for name in lib_feature_stats:
             partially_deprecated = True
 
         if lang_stable_since != lib_stable_since:
-            print "feature '" + name + "' has lang stable since " + lang_stable_since + \
+            print "error: feature '" + name + "' has lang stable since " + lang_stable_since + \
                   " but lib stable since " + lib_stable_since
             errors = True
 

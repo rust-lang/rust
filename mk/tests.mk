@@ -300,7 +300,7 @@ tidy:
 		| grep '^$(S)src/libbacktrace' -v \
 		| grep '^$(S)src/rust-installer' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
-		$(CFG_PYTHON) $(S)src/etc/featureck.py $(S)src/
+		$(Q)$(CFG_PYTHON) $(S)src/etc/featureck.py $(S)src/
 
 
 endif
