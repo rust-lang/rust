@@ -54,6 +54,7 @@ use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
 use ast::{TyFixedLengthVec, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
+use ast::{TyMac};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr, TyQPath};
 use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
 use ast::{TypeImplItem, TypeTraitItem, Typedef, UnboxedClosureKind};
@@ -1554,8 +1555,20 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::ModSep) ||
                   self.token.is_ident() ||
                   self.token.is_path() {
-            // NAMED TYPE
-            self.parse_ty_path()
+            let pth = self.parse_path(LifetimeAndTypesWithoutColons);
+            if self.check(&token::Not) {
+                // MACRO INVOCATION
+                self.bump();
+                let delim = self.expect_open_delim();
+                let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                                seq_sep_none(),
+                                                |p| p.parse_token_tree());
+                let hi = self.span.hi;
+                TyMac(spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT)))
+            } else {
+                // NAMED TYPE
+                TyPath(pth, ast::DUMMY_NODE_ID)
+            }
         } else if self.eat(&token::Underscore) {
             // TYPE TO BE INFERRED
             TyInfer
