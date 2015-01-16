@@ -592,7 +592,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         .collect::<FnvHashMap<_, _>>();
 
     // Keep track of which fields have already appeared in the pattern.
-    let mut used_fields = FnvHashMap::new();
+    let mut used_fields = FnvHashMap();
 
     // Typecheck each field.
     for &Spanned { node: ref field, span } in fields.iter() {

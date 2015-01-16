@@ -1711,7 +1711,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     let mut builtin_bounds = ty::empty_builtin_bounds();
     let mut region_bounds = Vec::new();
     let mut trait_bounds = Vec::new();
-    let mut trait_def_ids = DefIdMap::new();
+    let mut trait_def_ids = DefIdMap();
     for ast_bound in ast_bounds.iter() {
         match *ast_bound {
             ast::TraitTyParamBound(ref b, ast::TraitBoundModifier::None) => {

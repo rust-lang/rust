@@ -141,8 +141,8 @@ impl Index {
     pub fn build(krate: &Crate) -> Index {
         let mut annotator = Annotator {
             index: Index {
-                local: NodeMap::new(),
-                extern_cache: DefIdMap::new()
+                local: NodeMap(),
+                extern_cache: DefIdMap()
             },
             parent: None
         };

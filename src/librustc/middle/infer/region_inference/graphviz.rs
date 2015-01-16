@@ -133,7 +133,7 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
            name: String,
            map: &'a ConstraintMap<'tcx>) -> ConstraintGraph<'a, 'tcx> {
         let mut i = 0;
-        let mut node_ids = FnvHashMap::new();
+        let mut node_ids = FnvHashMap();
         {
             let mut add_node = |&mut : node| {
                 if let Vacant(e) = node_ids.entry(node) {
@@ -188,7 +188,7 @@ fn constraint_to_nodes(c: &Constraint) -> (Node, Node) {
 
 impl<'a, 'tcx> dot::GraphWalk<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
     fn nodes(&self) -> dot::Nodes<Node> {
-        let mut set = FnvHashSet::new();
+        let mut set = FnvHashSet();
         for constraint in self.map.keys() {
             let (n1, n2) = constraint_to_nodes(constraint);
             set.insert(n1);

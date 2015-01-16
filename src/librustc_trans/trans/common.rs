@@ -176,7 +176,7 @@ pub fn unsized_part_of_type<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx>
 // cleanups.
 pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     return memoized(ccx.needs_unwind_cleanup_cache(), ty, |ty| {
-        type_needs_unwind_cleanup_(ccx.tcx(), ty, &mut FnvHashSet::new())
+        type_needs_unwind_cleanup_(ccx.tcx(), ty, &mut FnvHashSet())
     });
 
     fn type_needs_unwind_cleanup_<'tcx>(tcx: &ty::ctxt<'tcx>,

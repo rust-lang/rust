@@ -209,12 +209,12 @@ impl<'tcx> MoveData<'tcx> {
     pub fn new() -> MoveData<'tcx> {
         MoveData {
             paths: RefCell::new(Vec::new()),
-            path_map: RefCell::new(FnvHashMap::new()),
+            path_map: RefCell::new(FnvHashMap()),
             moves: RefCell::new(Vec::new()),
             path_assignments: RefCell::new(Vec::new()),
             var_assignments: RefCell::new(Vec::new()),
             variant_matches: RefCell::new(Vec::new()),
-            assignee_ids: RefCell::new(NodeSet::new()),
+            assignee_ids: RefCell::new(NodeSet()),
             fragments: RefCell::new(fragments::FragmentSets::new()),
         }
     }

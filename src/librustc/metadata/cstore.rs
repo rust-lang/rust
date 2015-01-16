@@ -84,8 +84,8 @@ pub struct CStore {
 impl CStore {
     pub fn new(intr: Rc<IdentInterner>) -> CStore {
         CStore {
-            metas: RefCell::new(FnvHashMap::new()),
-            extern_mod_crate_map: RefCell::new(FnvHashMap::new()),
+            metas: RefCell::new(FnvHashMap()),
+            extern_mod_crate_map: RefCell::new(FnvHashMap()),
             used_crate_sources: RefCell::new(Vec::new()),
             used_libraries: RefCell::new(Vec::new()),
             used_link_args: RefCell::new(Vec::new()),

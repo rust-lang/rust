@@ -74,7 +74,7 @@ type Scope<'a> = &'a ScopeChain<'a>;
 static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
 pub fn krate(sess: &Session, krate: &ast::Crate, def_map: &DefMap) -> NamedRegionMap {
-    let mut named_region_map = NodeMap::new();
+    let mut named_region_map = NodeMap();
     visit::walk_crate(&mut LifetimeContext {
         sess: sess,
         named_region_map: &mut named_region_map,

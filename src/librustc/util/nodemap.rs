@@ -15,7 +15,7 @@
 use std::collections::hash_state::{DefaultState};
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
-use std::hash::{Hasher, Writer};
+use std::hash::{Hasher, Writer, Hash};
 use syntax::ast;
 
 pub type FnvHashMap<K, V> = HashMap<K, V, DefaultState<FnvHasher>>;
@@ -27,41 +27,17 @@ pub type DefIdMap<T> = FnvHashMap<ast::DefId, T>;
 pub type NodeSet = FnvHashSet<ast::NodeId>;
 pub type DefIdSet = FnvHashSet<ast::DefId>;
 
-// Hacks to get good names
-pub mod FnvHashMap {
-    use std::hash::Hash;
-    use std::default::Default;
-    pub fn new<K: Hash<super::FnvHasher> + Eq, V>() -> super::FnvHashMap<K, V> {
-        Default::default()
-    }
+pub fn FnvHashMap<K: Hash<FnvHasher> + Eq, V>() -> FnvHashMap<K, V> {
+    Default::default()
 }
-pub mod FnvHashSet {
-    use std::hash::Hash;
-    use std::default::Default;
-    pub fn new<V: Hash<super::FnvHasher> + Eq>() -> super::FnvHashSet<V> {
-        Default::default()
-    }
+pub fn FnvHashSet<V: Hash<FnvHasher> + Eq>() -> FnvHashSet<V> {
+    Default::default()
 }
-pub mod NodeMap {
-    pub fn new<T>() -> super::NodeMap<T> {
-        super::FnvHashMap::new()
-    }
-}
-pub mod DefIdMap {
-    pub fn new<T>() -> super::DefIdMap<T> {
-        super::FnvHashMap::new()
-    }
-}
-pub mod NodeSet {
-    pub fn new() -> super::NodeSet {
-        super::FnvHashSet::new()
-    }
-}
-pub mod DefIdSet {
-    pub fn new() -> super::DefIdSet {
-        super::FnvHashSet::new()
-    }
-}
+
+pub fn NodeMap<T>() -> NodeMap<T> { FnvHashMap() }
+pub fn DefIdMap<T>() -> DefIdMap<T> { FnvHashMap() }
+pub fn NodeSet() -> NodeSet { FnvHashSet() }
+pub fn DefIdSet() -> DefIdSet { FnvHashSet() }
 
 /// A speedy hash algorithm for node ids and def ids. The hashmap in
 /// libcollections by default uses SipHash which isn't quite as speedy as we

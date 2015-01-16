@@ -2111,7 +2111,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         link_meta: link_meta,
         cstore: cstore,
         encode_inlined_item: RefCell::new(encode_inlined_item),
-        type_abbrevs: RefCell::new(FnvHashMap::new()),
+        type_abbrevs: RefCell::new(FnvHashMap()),
         reachable: reachable,
      };
 
@@ -2216,7 +2216,7 @@ pub fn encoded_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> String {
         diag: tcx.sess.diagnostic(),
         ds: def_to_string,
         tcx: tcx,
-        abbrevs: &RefCell::new(FnvHashMap::new())
+        abbrevs: &RefCell::new(FnvHashMap())
     }, t);
     String::from_utf8(wr.unwrap()).unwrap()
 }
