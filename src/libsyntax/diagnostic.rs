@@ -118,6 +118,9 @@ impl SpanHandler {
     pub fn fileline_note(&self, sp: Span, msg: &str) {
         self.handler.custom_emit(&self.cm, FileLine(sp), msg, Note);
     }
+    pub fn fileline_help(&self, sp: Span, msg: &str) {
+        self.handler.custom_emit(&self.cm, FileLine(sp), msg, Help);
+    }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((&self.cm, sp)), msg, Bug);
         panic!(ExplicitBug);
