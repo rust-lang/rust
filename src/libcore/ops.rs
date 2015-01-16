@@ -120,9 +120,9 @@ macro_rules! forward_ref_unop {
     }
 }
 
-// implements the binary operator "&T op U"
-// based on "T + U" where T and U are expected `Copy`able
-macro_rules! forward_ref_val_binop {
+// implements binary operators "&T op U", "T op &U", "&T op &U"
+// based on "T op U" where T and U are expected to be `Copy`able
+macro_rules! forward_ref_binop {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
         #[unstable]
         impl<'a> $imp<$u> for &'a $t {
@@ -133,13 +133,7 @@ macro_rules! forward_ref_val_binop {
                 $imp::$method(*self, other)
             }
         }
-    }
-}
 
-// implements the binary operator "T op &U"
-// based on "T + U" where T and U are expected `Copy`able
-macro_rules! forward_val_ref_binop {
-    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
         #[unstable]
         impl<'a> $imp<&'a $u> for $t {
             type Output = <$t as $imp<$u>>::Output;
@@ -149,13 +143,7 @@ macro_rules! forward_val_ref_binop {
                 $imp::$method(self, *other)
             }
         }
-    }
-}
 
-// implements the binary operator "&T op &U"
-// based on "T + U" where T and U are expected `Copy`able
-macro_rules! forward_ref_ref_binop {
-    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
         #[unstable]
         impl<'a, 'b> $imp<&'a $u> for &'b $t {
             type Output = <$t as $imp<$u>>::Output;
@@ -165,16 +153,6 @@ macro_rules! forward_ref_ref_binop {
                 $imp::$method(*self, *other)
             }
         }
-    }
-}
-
-// implements binary operators "&T op U", "T op &U", "&T op &U"
-// based on "T + U" where T and U are expected `Copy`able
-macro_rules! forward_ref_binop {
-    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        forward_ref_val_binop! { impl $imp, $method for $t, $u }
-        forward_val_ref_binop! { impl $imp, $method for $t, $u }
-        forward_ref_ref_binop! { impl $imp, $method for $t, $u }
     }
 }
 
