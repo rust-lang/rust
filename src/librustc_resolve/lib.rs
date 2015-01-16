@@ -23,6 +23,7 @@
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
+#[macro_use] #[no_link] extern crate rustc_bitflags;
 
 extern crate rustc;
 
