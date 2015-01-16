@@ -69,10 +69,7 @@
 
 #![stable]
 
-use clone::Clone;
-use iter::{Step, Iterator,DoubleEndedIterator,ExactSizeIterator};
 use marker::Sized;
-use option::Option::{self, Some, None};
 use fmt;
 
 /// The `Drop` trait is used to run some code when a value goes out of scope. This
@@ -924,10 +921,12 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// }
 /// ```
 #[lang="index"]
+#[stable]
 pub trait Index<Index: ?Sized> {
     type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
+    #[stable]
     fn index<'a>(&'a self, index: &Index) -> &'a Self::Output;
 }
 
@@ -960,20 +959,22 @@ pub trait Index<Index: ?Sized> {
 /// }
 /// ```
 #[lang="index_mut"]
+#[stable]
 pub trait IndexMut<Index: ?Sized> {
     type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
+    #[stable]
     fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Self::Output;
 }
 
 /// An unbounded range.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="full_range"]
-#[unstable = "API still in development"]
+#[unstable = "may be renamed to RangeFull"]
 pub struct FullRange;
 
-#[unstable = "API still in development"]
+#[stable]
 impl fmt::Show for FullRange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Show::fmt("..", fmt)
@@ -983,7 +984,7 @@ impl fmt::Show for FullRange {
 /// A (half-open) range which is bounded at both ends.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range"]
-#[unstable = "API still in development"]
+#[stable]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
@@ -991,48 +992,7 @@ pub struct Range<Idx> {
     pub end: Idx,
 }
 
-#[unstable = "API still in development"]
-impl<Idx: Clone + Step> Iterator for Range<Idx> {
-    type Item = Idx;
-
-    #[inline]
-    fn next(&mut self) -> Option<Idx> {
-        if self.start < self.end {
-            let result = self.start.clone();
-            self.start.step();
-            return Some(result);
-        }
-
-        return None;
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        if let Some(hint) = Step::steps_between(&self.start, &self.end) {
-            (hint, Some(hint))
-        } else {
-            (0, None)
-        }
-    }
-}
-
-#[unstable = "API still in development"]
-impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
-    #[inline]
-    fn next_back(&mut self) -> Option<Idx> {
-        if self.start < self.end {
-            self.end.step_back();
-            return Some(self.end.clone());
-        }
-
-        return None;
-    }
-}
-
-#[unstable = "API still in development"]
-impl<Idx: Clone + Step> ExactSizeIterator for Range<Idx> {}
-
-#[unstable = "API still in development"]
+#[stable]
 impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..{:?}", self.start, self.end)
@@ -1042,26 +1002,15 @@ impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
 /// A range which is only bounded below.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_from"]
-#[unstable = "API still in development"]
+#[stable]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
 }
 
-#[unstable = "API still in development"]
-impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
-    type Item = Idx;
 
-    #[inline]
-    fn next(&mut self) -> Option<Idx> {
-        // Deliberately overflow so we loop forever.
-        let result = self.start.clone();
-        self.start.step();
-        return Some(result);
-    }
-}
 
-#[unstable = "API still in development"]
+#[stable]
 impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..", self.start)
@@ -1071,13 +1020,13 @@ impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
 /// A range which is only bounded above.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_to"]
-#[unstable = "API still in development"]
+#[stable]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
     pub end: Idx,
 }
 
-#[unstable = "API still in development"]
+#[stable]
 impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "..{:?}", self.end)
