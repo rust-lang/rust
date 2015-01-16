@@ -1,4 +1,4 @@
-% Variable bindings
+% Variable Bindings
 
 The first thing we'll learn about are *variable bindings*. They look like this:
 
