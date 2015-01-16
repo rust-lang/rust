@@ -60,14 +60,15 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use super::{CoerceResult, Coercion};
-use super::combine::{CombineFields, Combine};
-use super::sub::Sub;
+use middle::infer::{cres, Coercion, InferCtxt, TypeOrigin, TypeTrace};
+use middle::infer::combine::{CombineFields, Combine};
+use middle::infer::sub::Sub;
 
 use middle::subst;
 use middle::ty::{AutoPtr, AutoDerefRef, AdjustDerefRef, AutoUnsize, AutoUnsafe};
 use middle::ty::{mt};
 use middle::ty::{self, Ty};
+use util::common::indent;
 use util::ppaux;
 use util::ppaux::Repr;
 
@@ -472,24 +473,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    pub fn coerce_borrowed_fn(&self,
-                              a: Ty<'tcx>,
-                              b: Ty<'tcx>)
-                              -> CoerceResult<'tcx> {
-        debug!("coerce_borrowed_fn(a={}, b={})",
-               a.repr(self.tcx()),
-               b.repr(self.tcx()));
-
-        match a.sty {
-            ty::ty_bare_fn(Some(a_def_id), f) => {
-                self.coerce_from_fn_item(a, a_def_id, f, b)
-            }
-            _ => {
-                self.subtype(a, b)
-            }
-        }
-    }
-
     fn coerce_from_fn_item(&self,
                            a: Ty<'tcx>,
                            fn_def_id_a: ast::DefId,
@@ -549,6 +532,23 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             autoref: Some(ty::AutoUnsafe(mutbl_b, None))
         })))
     }
+}
+
+pub type CoerceResult<'tcx> = cres<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
+
+pub fn mk_coercety<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
+                             a_is_expected: bool,
+                             origin: TypeOrigin,
+                             a: Ty<'tcx>,
+                             b: Ty<'tcx>)
+                             -> CoerceResult<'tcx> {
+    debug!("mk_coercety({} -> {})", a.repr(cx.tcx), b.repr(cx.tcx));
+    indent(|| {
+        cx.commit_if_ok(|| {
+            let trace = TypeTrace::types(origin, a_is_expected, a, b);
+            Coerce(cx.combine_fields(a_is_expected, trace)).tys(a, b)
+        })
+    })
 }
 
 fn can_coerce_mutbls(from_mutbl: ast::Mutability,
