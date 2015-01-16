@@ -11,6 +11,7 @@
 use super::{MethodError,Ambiguity,NoMatch};
 use super::MethodIndex;
 use super::{CandidateSource,ImplSource,TraitSource};
+use super::suggest;
 
 use check;
 use check::{FnCtxt, NoPreference};
@@ -25,6 +26,7 @@ use middle::infer::InferCtxt;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 use std::collections::HashSet;
+use std::mem;
 use std::rc::Rc;
 use util::ppaux::Repr;
 
@@ -42,6 +44,7 @@ struct ProbeContext<'a, 'tcx:'a> {
     extension_candidates: Vec<Candidate<'tcx>>,
     impl_dups: HashSet<ast::DefId>,
     static_candidates: Vec<CandidateSource>,
+    all_traits_search: bool,
 }
 
 struct CandidateStep<'tcx> {
@@ -127,7 +130,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // take place in the `fcx.infcx().probe` below.
     let steps = match create_steps(fcx, span, self_ty) {
         Some(steps) => steps,
-        None => return Err(NoMatch(Vec::new())),
+        None => return Err(NoMatch(Vec::new(), Vec::new())),
     };
 
     // Create a list of simplified self types, if we can.
@@ -208,7 +211,15 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             steps: Rc::new(steps),
             opt_simplified_steps: opt_simplified_steps,
             static_candidates: Vec::new(),
+            all_traits_search: false,
         }
+    }
+
+    fn reset(&mut self) {
+        self.inherent_candidates.clear();
+        self.extension_candidates.clear();
+        self.impl_dups.clear();
+        self.static_candidates.clear();
     }
 
     fn tcx(&self) -> &'a ty::ctxt<'tcx> {
@@ -442,6 +453,15 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 if duplicates.insert(trait_did) {
                     self.assemble_extension_candidates_for_trait(trait_did);
                 }
+            }
+        }
+    }
+
+    fn assemble_extension_candidates_for_all_traits(&mut self) {
+        let mut duplicates = HashSet::new();
+        for trait_info in suggest::all_traits(self.fcx.ccx) {
+            if duplicates.insert(trait_info.def_id) {
+                self.assemble_extension_candidates_for_trait(trait_info.def_id)
             }
         }
     }
@@ -715,7 +735,47 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             }
         }
 
-        Err(NoMatch(self.static_candidates))
+        let static_candidates = mem::replace(&mut self.static_candidates, vec![]);
+
+        let out_of_scope_traits = if !self.all_traits_search {
+            // things failed, and we haven't yet looked through all
+            // traits, so lets do that now:
+            self.reset();
+            self.all_traits_search = true;
+
+            let span = self.span;
+            let tcx = self.tcx();
+
+            self.assemble_extension_candidates_for_all_traits();
+
+            match self.pick() {
+                Ok(p) => vec![p.method_ty.container.id()],
+                Err(Ambiguity(v)) => v.into_iter().map(|source| {
+                    match source {
+                        TraitSource(id) => id,
+                        ImplSource(impl_id) => {
+                            match ty::trait_id_of_impl(tcx, impl_id) {
+                                Some(id) => id,
+                                None => tcx.sess.span_bug(span,
+                                                          "found inherent method when looking \
+                                                           at traits")
+                            }
+                        }
+                    }
+                }).collect(),
+                // it'd be really weird for this assertion to trigger,
+                // given the `vec![]` in the else branch below
+                Err(NoMatch(_, others)) => {
+                    assert!(others.is_empty());
+                    vec![]
+                }
+            }
+        } else {
+            // we've just looked through all traits and didn't find
+            // anything at all.
+            vec![]
+        };
+        Err(NoMatch(static_candidates, out_of_scope_traits))
     }
 
     fn pick_step(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {

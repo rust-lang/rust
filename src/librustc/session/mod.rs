@@ -174,6 +174,9 @@ impl Session {
     pub fn fileline_note(&self, sp: Span, msg: &str) {
         self.diagnostic().fileline_note(sp, msg)
     }
+    pub fn fileline_help(&self, sp: Span, msg: &str) {
+        self.diagnostic().fileline_help(sp, msg)
+    }
     pub fn note(&self, msg: &str) {
         self.diagnostic().handler().note(msg)
     }
