@@ -271,9 +271,9 @@ impl<'tcx> TypeMap<'tcx> {
     fn new() -> TypeMap<'tcx> {
         TypeMap {
             unique_id_interner: Interner::new(),
-            type_to_metadata: FnvHashMap::new(),
-            unique_id_to_metadata: FnvHashMap::new(),
-            type_to_unique_id: FnvHashMap::new(),
+            type_to_metadata: FnvHashMap(),
+            unique_id_to_metadata: FnvHashMap(),
+            type_to_unique_id: FnvHashMap(),
         }
     }
 
@@ -672,11 +672,11 @@ impl<'tcx> CrateDebugContext<'tcx> {
             llcontext: llcontext,
             builder: builder,
             current_debug_location: Cell::new(UnknownLocation),
-            created_files: RefCell::new(FnvHashMap::new()),
-            created_enum_disr_types: RefCell::new(DefIdMap::new()),
+            created_files: RefCell::new(FnvHashMap()),
+            created_enum_disr_types: RefCell::new(DefIdMap()),
             type_map: RefCell::new(TypeMap::new()),
-            namespace_map: RefCell::new(FnvHashMap::new()),
-            composite_types_completed: RefCell::new(FnvHashSet::new()),
+            namespace_map: RefCell::new(FnvHashMap()),
+            composite_types_completed: RefCell::new(FnvHashSet()),
         };
     }
 }
@@ -3228,7 +3228,7 @@ fn create_scope_map(cx: &CrateContext,
                     fn_metadata: DISubprogram,
                     fn_ast_id: ast::NodeId)
                  -> NodeMap<DIScope> {
-    let mut scope_map = NodeMap::new();
+    let mut scope_map = NodeMap();
 
     let def_map = &cx.tcx().def_map;
 

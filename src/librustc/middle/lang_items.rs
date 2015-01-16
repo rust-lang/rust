@@ -167,7 +167,7 @@ impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
 
 impl<'a> LanguageItemCollector<'a> {
     pub fn new(session: &'a Session) -> LanguageItemCollector<'a> {
-        let mut item_refs = FnvHashMap::new();
+        let mut item_refs = FnvHashMap();
 
         $( item_refs.insert($name, $variant as uint); )*
 

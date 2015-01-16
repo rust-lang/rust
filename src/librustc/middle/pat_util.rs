@@ -21,7 +21,7 @@ pub type PatIdMap = FnvHashMap<ast::Ident, ast::NodeId>;
 // This is used because same-named variables in alternative patterns need to
 // use the NodeId of their namesake in the first pattern.
 pub fn pat_id_map(dm: &DefMap, pat: &ast::Pat) -> PatIdMap {
-    let mut map = FnvHashMap::new();
+    let mut map = FnvHashMap();
     pat_bindings(dm, pat, |_bm, p_id, _s, path1| {
         map.insert(path1.node, p_id);
     });

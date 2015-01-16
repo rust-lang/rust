@@ -286,7 +286,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
 pub fn process_crate(tcx: &ty::ctxt) {
     visit::walk_crate(&mut ConstEvalVisitor {
         tcx: tcx,
-        ccache: DefIdMap::new(),
+        ccache: DefIdMap(),
     }, tcx.map.krate());
     tcx.sess.abort_if_errors();
 }

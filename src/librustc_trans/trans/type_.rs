@@ -352,7 +352,7 @@ pub struct TypeNames {
 impl TypeNames {
     pub fn new() -> TypeNames {
         TypeNames {
-            named_types: RefCell::new(FnvHashMap::new())
+            named_types: RefCell::new(FnvHashMap())
         }
     }
 

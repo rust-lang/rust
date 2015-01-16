@@ -277,9 +277,9 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             tcx: tcx,
             num_live_nodes: 0,
             num_vars: 0,
-            live_node_map: NodeMap::new(),
-            variable_map: NodeMap::new(),
-            capture_info_map: NodeMap::new(),
+            live_node_map: NodeMap(),
+            variable_map: NodeMap(),
+            capture_info_map: NodeMap(),
             var_kinds: Vec::new(),
             lnks: Vec::new(),
         }
@@ -582,8 +582,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             successors: repeat(invalid_node()).take(num_live_nodes).collect(),
             users: repeat(invalid_users()).take(num_live_nodes * num_vars).collect(),
             loop_scope: Vec::new(),
-            break_ln: NodeMap::new(),
-            cont_ln: NodeMap::new(),
+            break_ln: NodeMap(),
+            cont_ln: NodeMap(),
         }
     }
 

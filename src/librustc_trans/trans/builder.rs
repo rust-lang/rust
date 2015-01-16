@@ -59,7 +59,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Build version of path with cycles removed.
 
                 // Pass 1: scan table mapping str -> rightmost pos.
-                let mut mm = FnvHashMap::new();
+                let mut mm = FnvHashMap();
                 let len = v.len();
                 let mut i = 0u;
                 while i < len {

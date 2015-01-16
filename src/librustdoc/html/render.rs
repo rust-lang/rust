@@ -313,7 +313,7 @@ pub fn run(mut krate: clean::Crate,
     let analysis = ::ANALYSISKEY.with(|a| a.clone());
     let analysis = analysis.borrow();
     let public_items = analysis.as_ref().map(|a| a.public_items.clone());
-    let public_items = public_items.unwrap_or(NodeSet::new());
+    let public_items = public_items.unwrap_or(NodeSet());
     let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
       analysis.as_ref().map(|a| {
         let paths = a.external_paths.borrow_mut().take().unwrap();

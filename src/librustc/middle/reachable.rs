@@ -169,7 +169,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         });
         ReachableContext {
             tcx: tcx,
-            reachable_symbols: NodeSet::new(),
+            reachable_symbols: NodeSet(),
             worklist: Vec::new(),
             any_library: any_library,
         }

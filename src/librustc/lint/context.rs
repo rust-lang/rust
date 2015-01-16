@@ -98,9 +98,9 @@ impl LintStore {
         LintStore {
             lints: vec!(),
             passes: Some(vec!()),
-            by_name: FnvHashMap::new(),
-            levels: FnvHashMap::new(),
-            lint_groups: FnvHashMap::new(),
+            by_name: FnvHashMap(),
+            levels: FnvHashMap(),
+            lint_groups: FnvHashMap(),
         }
     }
 
@@ -468,7 +468,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
             exported_items: exported_items,
             lints: lint_store,
             level_stack: vec![],
-            node_levels: RefCell::new(FnvHashMap::new()),
+            node_levels: RefCell::new(FnvHashMap()),
         }
     }
 
