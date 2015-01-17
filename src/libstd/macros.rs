@@ -258,10 +258,12 @@ pub mod builtin {
     /// ```
     /// #![feature(concat_idents)]
     ///
+    /// # fn main() {
     /// fn foobar() -> u32 { 23 }
     ///
     /// let f = concat_idents!(foo, bar);
     /// println!("{}", f());
+    /// # }
     /// ```
     #[macro_export]
     macro_rules! concat_idents {
