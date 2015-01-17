@@ -26,24 +26,24 @@ mod foo {
 
 fn main() {
     1u32.method();
-    //~^ ERROR does not implement
-    //~^^ HELP the following traits are implemented and define a method `method`
+    //~^ HELP following traits are implemented but not in scope, perhaps add a `use` for one of them
+    //~^^ ERROR does not implement
     //~^^^ HELP `foo::Bar`
     //~^^^^ HELP `no_method_suggested_traits::foo::PubPub`
 
     'a'.method();
     //~^ ERROR does not implement
-    //~^^ HELP the following trait is implemented and defines a method `method`
+    //~^^ HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
     //~^^^ HELP `foo::Bar`
 
     1i32.method();
     //~^ ERROR does not implement
-    //~^^ HELP the following trait is implemented and defines a method `method`
+    //~^^ HELP the following trait is implemented but not in scope, perhaps add a `use` for it:
     //~^^^ HELP `no_method_suggested_traits::foo::PubPub`
 
     1u64.method();
     //~^ ERROR does not implement
-    //~^^ HELP the following traits define a method `method`
+    //~^^ HELP following traits define a method `method`, perhaps you need to implement one of them
     //~^^^ HELP `foo::Bar`
     //~^^^^ HELP `no_method_suggested_traits::foo::PubPub`
     //~^^^^^ HELP `no_method_suggested_traits::reexport::Reexported`
@@ -53,10 +53,10 @@ fn main() {
 
     1u64.method2();
     //~^ ERROR does not implement
-    //~^^ HELP the following trait defines a method `method2`
+    //~^^ HELP the following trait defines a method `method2`, perhaps you need to implement it
     //~^^^ HELP `foo::Bar`
     1u64.method3();
     //~^ ERROR does not implement
-    //~^^ HELP the following trait defines a method `method3`
+    //~^^ HELP the following trait defines a method `method3`, perhaps you need to implement it
     //~^^^ HELP `no_method_suggested_traits::foo::PubPub`
 }
