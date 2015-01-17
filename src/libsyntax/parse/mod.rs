@@ -1171,9 +1171,9 @@ mod test {
         for &src in srcs.iter() {
             let spans = get_spans_of_pat_idents(src);
             let Span{ lo, hi, .. } = spans[0];
-            assert!("self" == &src[lo.to_uint()..hi.to_uint()],
+            assert!("self" == &src[lo.to_usize()..hi.to_usize()],
                     "\"{}\" != \"self\". src=\"{}\"",
-                    &src[lo.to_uint()..hi.to_uint()], src)
+                    &src[lo.to_usize()..hi.to_usize()], src)
         }
     }
 

@@ -326,11 +326,11 @@ impl<'a, 'b> Context<'a, 'b> {
         match c {
             parse::CountIs(i) => {
                 self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "CountIs"),
-                                          vec!(self.ecx.expr_uint(sp, i)))
+                                          vec!(self.ecx.expr_usize(sp, i)))
             }
             parse::CountIsParam(i) => {
                 self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "CountIsParam"),
-                                          vec!(self.ecx.expr_uint(sp, i)))
+                                          vec!(self.ecx.expr_usize(sp, i)))
             }
             parse::CountImplied => {
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx,
@@ -349,7 +349,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 };
                 let i = i + self.args.len();
                 self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "CountIsParam"),
-                                          vec!(self.ecx.expr_uint(sp, i)))
+                                          vec!(self.ecx.expr_usize(sp, i)))
             }
         }
     }
@@ -382,7 +382,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     }
                     parse::ArgumentIs(i) => {
                         self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "ArgumentIs"),
-                                                  vec!(self.ecx.expr_uint(sp, i)))
+                                                  vec!(self.ecx.expr_usize(sp, i)))
                     }
                     // Named arguments are converted to positional arguments at
                     // the end of the list of arguments
@@ -393,7 +393,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         };
                         let i = i + self.args.len();
                         self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "ArgumentIs"),
-                                                  vec!(self.ecx.expr_uint(sp, i)))
+                                                  vec!(self.ecx.expr_usize(sp, i)))
                     }
                 };
 
@@ -432,7 +432,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     }
                 };
                 let align = self.ecx.expr_path(align);
-                let flags = self.ecx.expr_uint(sp, arg.format.flags);
+                let flags = self.ecx.expr_usize(sp, arg.format.flags);
                 let prec = self.trans_count(arg.format.precision);
                 let width = self.trans_count(arg.format.width);
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "FormatSpec"));

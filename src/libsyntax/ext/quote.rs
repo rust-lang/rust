@@ -588,7 +588,7 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         }
 
         token::Literal(token::StrRaw(ident, n), suf) => {
-            return mk_lit!("StrRaw", suf, mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n))
+            return mk_lit!("StrRaw", suf, mk_name(cx, sp, ident.ident()), cx.expr_usize(sp, n))
         }
 
         token::Ident(ident, style) => {

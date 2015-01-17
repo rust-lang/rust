@@ -212,8 +212,8 @@ impl<'a> StringReader<'a> {
     /// offending string to the error message
     fn fatal_span_verbose(&self, from_pos: BytePos, to_pos: BytePos, mut m: String) -> ! {
         m.push_str(": ");
-        let from = self.byte_offset(from_pos).to_uint();
-        let to = self.byte_offset(to_pos).to_uint();
+        let from = self.byte_offset(from_pos).to_usize();
+        let to = self.byte_offset(to_pos).to_usize();
         m.push_str(&self.filemap.src[from..to]);
         self.fatal_span_(from_pos, to_pos, &m[]);
     }
@@ -272,8 +272,8 @@ impl<'a> StringReader<'a> {
         F: FnOnce(&str) -> T,
     {
         f(self.filemap.src.slice(
-                self.byte_offset(start).to_uint(),
-                self.byte_offset(end).to_uint()))
+                self.byte_offset(start).to_usize(),
+                self.byte_offset(end).to_usize()))
     }
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
@@ -321,7 +321,7 @@ impl<'a> StringReader<'a> {
     /// discovered, add it to the FileMap's list of line start offsets.
     pub fn bump(&mut self) {
         self.last_pos = self.pos;
-        let current_byte_offset = self.byte_offset(self.pos).to_uint();
+        let current_byte_offset = self.byte_offset(self.pos).to_usize();
         if current_byte_offset < self.filemap.src.len() {
             assert!(self.curr.is_some());
             let last_char = self.curr.unwrap();
@@ -329,7 +329,7 @@ impl<'a> StringReader<'a> {
                           .src
                           .char_range_at(current_byte_offset);
             let byte_offset_diff = next.next - current_byte_offset;
-            self.pos = self.pos + Pos::from_uint(byte_offset_diff);
+            self.pos = self.pos + Pos::from_usize(byte_offset_diff);
             self.curr = Some(next.ch);
             self.col = self.col + CharPos(1u);
             if last_char == '\n' {
@@ -346,7 +346,7 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.pos).to_uint();
+        let offset = self.byte_offset(self.pos).to_usize();
         if offset < self.filemap.src.len() {
             Some(self.filemap.src.char_at(offset))
         } else {
@@ -359,7 +359,7 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextnextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.pos).to_uint();
+        let offset = self.byte_offset(self.pos).to_usize();
         let s = self.filemap.src.as_slice();
         if offset >= s.len() { return None }
         let str::CharRange { next, .. } = s.char_range_at(offset);
