@@ -70,12 +70,12 @@ pub mod string;
 pub mod vec;
 pub mod vec_map;
 
-#[stable]
+#[unstable = "RFC 509"]
 pub mod bitv {
     pub use bit::{Bitv, Iter};
 }
 
-#[stable]
+#[unstable = "RFC 509"]
 pub mod bitv_set {
     pub use bit::{BitvSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
