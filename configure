@@ -612,7 +612,7 @@ putvar CFG_RELEASE_CHANNEL
 # channel.
 # Basing CFG_BOOTSTRAP_KEY on CFG_BOOTSTRAP_KEY lets it get picked up
 # during a Makefile reconfig.
-CFG_BOOTSTRAP_KEY="${CFG_BOOTSTRAP_KEY-`date +%N`}"
+CFG_BOOTSTRAP_KEY="${CFG_BOOTSTRAP_KEY-`date +%H:%M:%S`}"
 putvar CFG_BOOTSTRAP_KEY
 
 step_msg "looking for build programs"
