@@ -297,7 +297,7 @@ enum StringResult {
 }
 ```
 Where a `StringResult` is either a `StringResult::StringOK`, with the result of
-a computation, or an `StringResult::ErrorReason` with a `String` explaining
+a computation, or a `StringResult::ErrorReason` with a `String` explaining
 what caused the computation to fail. These kinds of `enum`s are actually very
 useful and are even part of the standard library.
 
