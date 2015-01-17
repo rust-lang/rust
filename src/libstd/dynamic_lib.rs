@@ -165,6 +165,7 @@ mod test {
               target_os = "macos",
               target_os = "freebsd",
               target_os = "dragonfly",
+              target_os = "bitrig",
               target_os = "openbsd"))]
     fn test_errors_do_not_crash() {
         // Open /dev/null as a library to get an error, and make sure
@@ -183,6 +184,7 @@ mod test {
           target_os = "ios",
           target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 mod dl {
     use prelude::v1::*;
