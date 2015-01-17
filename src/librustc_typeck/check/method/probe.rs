@@ -44,7 +44,6 @@ struct ProbeContext<'a, 'tcx:'a> {
     extension_candidates: Vec<Candidate<'tcx>>,
     impl_dups: HashSet<ast::DefId>,
     static_candidates: Vec<CandidateSource>,
-    all_traits_search: bool,
 }
 
 struct CandidateStep<'tcx> {
@@ -211,7 +210,6 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             steps: Rc::new(steps),
             opt_simplified_steps: opt_simplified_steps,
             static_candidates: Vec::new(),
-            all_traits_search: false,
         }
     }
 
@@ -724,58 +722,51 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     // THE ACTUAL SEARCH
 
     fn pick(mut self) -> PickResult<'tcx> {
-        let steps = self.steps.clone();
-
-        for step in steps.iter() {
-            match self.pick_step(step) {
-                Some(r) => {
-                    return r;
-                }
-                None => { }
-            }
+        match self.pick_core() {
+            Some(r) => return r,
+            None => {}
         }
 
         let static_candidates = mem::replace(&mut self.static_candidates, vec![]);
 
-        let out_of_scope_traits = if !self.all_traits_search {
-            // things failed, and we haven't yet looked through all
-            // traits, so lets do that now:
-            self.reset();
-            self.all_traits_search = true;
+        // things failed, so lets look at all traits, for diagnostic purposes now:
+        self.reset();
 
-            let span = self.span;
-            let tcx = self.tcx();
+        let span = self.span;
+        let tcx = self.tcx();
 
-            self.assemble_extension_candidates_for_all_traits();
+        self.assemble_extension_candidates_for_all_traits();
 
-            match self.pick() {
-                Ok(p) => vec![p.method_ty.container.id()],
-                Err(Ambiguity(v)) => v.into_iter().map(|source| {
-                    match source {
-                        TraitSource(id) => id,
-                        ImplSource(impl_id) => {
-                            match ty::trait_id_of_impl(tcx, impl_id) {
-                                Some(id) => id,
-                                None => tcx.sess.span_bug(span,
-                                                          "found inherent method when looking \
-                                                           at traits")
-                            }
+        let out_of_scope_traits = match self.pick_core() {
+            Some(Ok(p)) => vec![p.method_ty.container.id()],
+            Some(Err(Ambiguity(v))) => v.into_iter().map(|source| {
+                match source {
+                    TraitSource(id) => id,
+                    ImplSource(impl_id) => {
+                        match ty::trait_id_of_impl(tcx, impl_id) {
+                            Some(id) => id,
+                            None =>
+                                tcx.sess.span_bug(span,
+                                                  "found inherent method when looking at traits")
                         }
                     }
-                }).collect(),
-                // it'd be really weird for this assertion to trigger,
-                // given the `vec![]` in the else branch below
-                Err(NoMatch(_, others)) => {
-                    assert!(others.is_empty());
-                    vec![]
                 }
+            }).collect(),
+            Some(Err(NoMatch(_, others))) => {
+                assert!(others.is_empty());
+                vec![]
             }
-        } else {
-            // we've just looked through all traits and didn't find
-            // anything at all.
-            vec![]
+            None => vec![],
         };
+;
         Err(NoMatch(static_candidates, out_of_scope_traits))
+    }
+
+    fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
+        let steps = self.steps.clone();
+
+        // find the first step that works
+        steps.iter().filter_map(|step| self.pick_step(step)).next()
     }
 
     fn pick_step(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {

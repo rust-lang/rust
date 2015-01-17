@@ -147,16 +147,16 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         candidates.sort();
         let msg = format!(
             "methods from traits can only be called if the trait is in scope; \
-             the following {traits_are} implemented and {define} a method `{name}`:",
+             the following {traits_are} implemented but not in scope, \
+             perhaps add a `use` for {one_of_them}:",
             traits_are = if candidates.len() == 1 {"trait is"} else {"traits are"},
-            define = if candidates.len() == 1 {"defines"} else {"define"},
-            name = method_ustring);
+            one_of_them = if candidates.len() == 1 {"it"} else {"one of them"});
 
         fcx.sess().fileline_help(span, &msg[]);
 
         for (i, trait_did) in candidates.iter().enumerate() {
             fcx.sess().fileline_help(span,
-                                     &*format!("candidate #{}: `{}`",
+                                     &*format!("candidate #{}: use `{}`",
                                                i + 1,
                                                ty::item_path_str(fcx.tcx(), *trait_did)))
 
@@ -174,9 +174,11 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         candidates.sort_by(|a, b| a.cmp(b).reverse());
 
         let msg = format!(
-            "methods from traits can only be called if the trait is implemented and \
-             in scope; no such traits are but the following {traits_define} a method `{name}`:",
+            "methods from traits can only be called if the trait is implemented and in scope; \
+             the following {traits_define} a method `{name}`, \
+             perhaps you need to implement {one_of_them}:",
             traits_define = if candidates.len() == 1 {"trait defines"} else {"traits define"},
+            one_of_them = if candidates.len() == 1 {"it"} else {"one of them"},
             name = method_ustring);
 
         fcx.sess().fileline_help(span, &msg[]);
