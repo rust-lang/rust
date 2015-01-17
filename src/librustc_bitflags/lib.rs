@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![crate_name = "rustc_bitflags"]
 #![unstable]
+#![staged_api]
+#![crate_type = "rlib"]
+#![no_std]
 
 //! A typesafe bitmask flag generator.
+
+#[cfg(test)] #[macro_use] extern crate std;
 
 /// The `bitflags!` macro generates a `struct` that holds a set of C-style
 /// bitmask flags. It is useful for creating typesafe wrappers for C APIs.
@@ -21,6 +27,8 @@
 /// # Example
 ///
 /// ```{.rust}
+/// #[macro_use] extern crate rustc_bitflags;
+///
 /// bitflags! {
 ///     flags Flags: u32 {
 ///         const FLAG_A       = 0b00000001,
@@ -45,6 +53,8 @@
 /// The generated `struct`s can also be extended with type and trait implementations:
 ///
 /// ```{.rust}
+/// #[macro_use] extern crate rustc_bitflags;
+///
 /// use std::fmt;
 ///
 /// bitflags! {
@@ -273,8 +283,8 @@ macro_rules! bitflags {
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
-    use hash::{self, SipHasher};
-    use option::Option::{Some, None};
+    use std::hash::{self, SipHasher};
+    use std::option::Option::{Some, None};
 
     bitflags! {
         #[doc = "> The first principle is that you must not fool yourself — and"]
