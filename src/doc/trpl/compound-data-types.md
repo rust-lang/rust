@@ -51,7 +51,7 @@ arity and contained types.
 
 ```rust
 let mut x = (1, 2); // x: (i32, i32)
-let y = (2, 3);     // y: (i32, i32)
+let y = (2, 3); // y: (i32, i32)
 
 x = y;
 ```
@@ -156,7 +156,7 @@ These two will not be equal, even if they have the same values:
 ```{rust}
 # struct Color(i32, i32, i32);
 # struct Point(i32, i32, i32);
-let black  = Color(0, 0, 0);
+let black = Color(0, 0, 0);
 let origin = Point(0, 0, 0);
 ```
 
