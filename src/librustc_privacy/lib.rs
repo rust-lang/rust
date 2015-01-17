@@ -19,6 +19,7 @@
 
 #![feature(rustc_diagnostic_macros)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![allow(unstable)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
