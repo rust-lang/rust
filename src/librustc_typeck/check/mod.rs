@@ -1726,24 +1726,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
-    pub fn mk_assignty(&self,
-                       expr: &ast::Expr,
-                       sub: Ty<'tcx>,
-                       sup: Ty<'tcx>)
-                       -> Result<(), ty::type_err<'tcx>> {
-        match try!(coercion::mk_coercety(self.infcx(),
-                                         false,
-                                         infer::ExprAssignable(expr.span),
-                                         sub,
-                                         sup)) {
-            None => {}
-            Some(adjustment) => {
-                self.write_adjustment(expr.id, expr.span, adjustment);
-            }
-        }
-        Ok(())
-    }
-
     pub fn mk_eqty(&self,
                    a_is_expected: bool,
                    origin: infer::TypeOrigin,
