@@ -4168,6 +4168,27 @@ pub mod funcs {
                 pub fn malloc(size: size_t) -> *mut c_void;
                 pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
                 pub fn free(p: *mut c_void);
+
+                /// Exits the running program in a possibly dangerous manner.
+                ///
+                /// # Unsafety
+                ///
+                /// While this forces your program to exit, it does so in a way that has
+                /// consequences. This will skip all unwinding code, which means that anything
+                /// relying on unwinding for cleanup (such as flushing and closing a buffer to a
+                /// file) may act in an unexpected way.
+                ///
+                /// # Examples
+                ///
+                /// ```no_run
+                /// extern crate libc;
+                ///
+                /// fn main() {
+                ///     unsafe {
+                ///         libc::exit(1);
+                ///     }
+                /// }
+                /// ```
                 pub fn exit(status: c_int) -> !;
                 pub fn _exit(status: c_int) -> !;
                 pub fn atexit(cb: extern fn()) -> c_int;
