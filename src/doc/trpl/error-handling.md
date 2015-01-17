@@ -1,4 +1,4 @@
-% Error Handling in Rust
+% Error Handling
 
 > The best-laid plans of mice and men  
 > Often go awry

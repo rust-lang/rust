@@ -1,4 +1,4 @@
-% The Rust Compiler Plugins Guide
+% Compiler Plugins
 
 <div class="unstable-feature">
 
