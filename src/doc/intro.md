@@ -424,11 +424,11 @@ Let's see an example. This Rust code will not compile:
 use std::thread::Thread;
 
 fn main() {
-    let mut numbers = vec![1i, 2i, 3i];
+    let mut numbers = vec![1is, 2, 3];
 
-    for i in range(0u, 3u) {
+    for i in 0..3 {
         Thread::spawn(move || {
-            for j in range(0, 3) { numbers[j] += 1 }
+            for j in 0..3 { numbers[j] += 1 }
         });
     }
 }
@@ -438,15 +438,15 @@ It gives us this error:
 
 ```text
 6:71 error: capture of moved value: `numbers`
-    for j in range(0, 3) { numbers[j] += 1 }
-               ^~~~~~~
+    for j in 0..3 { numbers[j] += 1 }
+                    ^~~~~~~
 7:50 note: `numbers` moved into closure environment here
     spawn(move || {
-        for j in range(0, 3) { numbers[j] += 1 }
+        for j in 0..3 { numbers[j] += 1 }
     });
 6:79 error: cannot assign to immutable dereference (dereference is implicit, due to indexing)
-        for j in range(0, 3) { numbers[j] += 1 }
-                           ^~~~~~~~~~~~~~~
+        for j in 0..3 { numbers[j] += 1 }
+                        ^~~~~~~~~~~~~~~
 ```
 
 It mentions that "numbers moved into closure environment". Because we
@@ -478,9 +478,9 @@ use std::thread::Thread;
 use std::sync::{Arc,Mutex};
 
 fn main() {
-    let numbers = Arc::new(Mutex::new(vec![1i, 2i, 3i]));
+    let numbers = Arc::new(Mutex::new(vec![1is, 2, 3]));
 
-    for i in range(0u, 3u) {
+    for i in 0..3 {
         let number = numbers.clone();
         Thread::spawn(move || {
             let mut array = number.lock().unwrap();
@@ -541,12 +541,12 @@ safety check that makes this an error about moved values:
 use std::thread::Thread;
 
 fn main() {
-    let vec = vec![1i, 2, 3];
+    let vec = vec![1is, 2, 3];
 
-    for i in range(0u, 3) {
+    for i in 0us..3 {
         Thread::spawn(move || {
             println!("{}", vec[i]);
-        }).detach();
+        });
     }
 }
 ```
@@ -557,9 +557,9 @@ you can remove it. As an example, this is a poor way to iterate through
 a vector:
 
 ```{rust}
-let vec = vec![1i, 2, 3];
+let vec = vec![1, 2, 3];
 
-for i in range(0u, vec.len()) {
+for i in 0..vec.len() {
      println!("{}", vec[i]);
 }
 ```
@@ -569,7 +569,7 @@ that we don't try to access an invalid index. However, we can remove this
 while retaining safety. The answer is iterators:
 
 ```{rust}
-let vec = vec![1i, 2, 3];
+let vec = vec![1, 2, 3];
 
 for x in vec.iter() {
     println!("{}", x);
