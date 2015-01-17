@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![deny(unused_variables)]
+#![allow(unstable)]
 
 fn main() {
     for _ in range(1is, 101) {

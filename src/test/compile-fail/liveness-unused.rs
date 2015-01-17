@@ -10,6 +10,7 @@
 
 #![deny(unused_variables)]
 #![deny(unused_assignments)]
+#![allow(unstable)]
 #![allow(dead_code, non_camel_case_types)]
 
 fn f1(x: isize) {
