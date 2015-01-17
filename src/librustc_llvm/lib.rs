@@ -26,6 +26,7 @@
 #![feature(link_args)]
 #![feature(box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![allow(unstable)]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;

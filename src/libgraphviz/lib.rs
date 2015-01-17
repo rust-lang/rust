@@ -274,6 +274,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 #![feature(slicing_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![allow(unstable)]
 
 use self::LabelText::*;
 
