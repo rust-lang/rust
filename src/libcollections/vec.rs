@@ -681,6 +681,43 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Moves all the elements of `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of elements in the vector overflows a `uint`.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let mut vec = vec![1, 2, 3];
+    /// let mut vec2 = vec![4, 5, 6];
+    /// vec.append(&mut vec2);
+    /// assert_eq!(vec, vec![1, 2, 3, 4, 5, 6]);
+    /// assert_eq!(vec2, vec![]);
+    /// ```
+    #[inline]
+    #[unstable = "new API, waiting for dust to settle"]
+    pub fn append(&mut self, other: &mut Self) {
+        if mem::size_of::<T>() == 0 {
+            // zero-size types consume no memory, so we can't rely on the
+            // address space running out
+            self.len = self.len.checked_add(other.len()).expect("length overflow");
+            unsafe { other.set_len(0) }
+            return;
+        }
+        self.reserve(other.len());
+        let len = self.len();
+        unsafe {
+            ptr::copy_nonoverlapping_memory(
+                self.get_unchecked_mut(len),
+                other.as_ptr(),
+                other.len());
+        }
+
+        self.len += other.len();
+        unsafe { other.set_len(0); }
+    }
+
     /// Creates a draining iterator that clears the `Vec` and iterates over
     /// the removed items from start to end.
     ///
@@ -2296,6 +2333,15 @@ mod tests {
         let xs = vec![1u, 2, 3];
         let ys = xs.into_boxed_slice();
         assert_eq!(ys.as_slice(), [1u, 2, 3]);
+    }
+
+    #[test]
+    fn test_append() {
+        let mut vec = vec![1, 2, 3];
+        let mut vec2 = vec![4, 5, 6];
+        vec.append(&mut vec2);
+        assert_eq!(vec, vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(vec2, vec![]);
     }
 
     #[bench]
