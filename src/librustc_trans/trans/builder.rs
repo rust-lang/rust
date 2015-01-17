@@ -33,7 +33,7 @@ pub struct Builder<'a, 'tcx: 'a> {
 // lot more efficient) than doing str::as_c_str("", ...) every time.
 pub fn noname() -> *const c_char {
     static CNULL: c_char = 0;
-    &CNULL as *const c_char
+    &CNULL
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

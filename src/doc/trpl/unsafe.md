@@ -254,7 +254,7 @@ impl<T: Send> Drop for Unique<T> {
             // Copy the object out from the pointer onto the stack,
             // where it is covered by normal Rust destructor semantics
             // and cleans itself up, if necessary
-            ptr::read(self.ptr as *const T);
+            ptr::read(self.ptr);
 
             // clean-up our allocation
             free(self.ptr as *mut c_void)
