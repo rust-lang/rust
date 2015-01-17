@@ -169,6 +169,7 @@
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![allow(unstable)]
 #![deny(missing_docs)]
 
 extern crate regex;

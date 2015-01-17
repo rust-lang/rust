@@ -112,6 +112,8 @@
 #![feature(old_impl_check)]
 #![feature(optin_builtin_traits)]
 #![feature(int_uint)]
+#![feature(int_uint)]
+#![allow(unstable)]
 
 // Don't link to std. We are std.
 #![no_std]

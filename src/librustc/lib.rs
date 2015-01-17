@@ -29,6 +29,7 @@
 #![feature(box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![feature(rustc_diagnostic_macros)]
+#![allow(unstable)]
 
 extern crate arena;
 extern crate flate;

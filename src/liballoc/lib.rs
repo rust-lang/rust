@@ -66,6 +66,7 @@
 
 #![no_std]
 #![allow(unknown_features)]
+#![allow(unstable)]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
