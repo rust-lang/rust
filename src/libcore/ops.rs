@@ -830,28 +830,27 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 ///
 /// # Example
 ///
-/// A trivial implementation of `Index`. When `Foo[Foo]` happens, it ends up
+/// A trivial implementation of `Index`. When `Foo[Bar]` happens, it ends up
 /// calling `index`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Index;
 ///
 /// #[derive(Copy)]
 /// struct Foo;
+/// struct Bar;
 ///
-/// impl Index<Foo> for Foo {
+/// impl Index<Bar> for Foo {
 ///     type Output = Foo;
 ///
-///     fn index<'a>(&'a self, _index: &Foo) -> &'a Foo {
+///     fn index<'a>(&'a self, _index: &Bar) -> &'a Foo {
 ///         println!("Indexing!");
 ///         self
 ///     }
 /// }
 ///
 /// fn main() {
-///     Foo[Foo];
+///     Foo[Bar];
 /// }
 /// ```
 #[lang="index"]
@@ -867,28 +866,27 @@ pub trait Index<Index: ?Sized> {
 ///
 /// # Example
 ///
-/// A trivial implementation of `IndexMut`. When `Foo[Foo]` happens, it ends up
+/// A trivial implementation of `IndexMut`. When `Foo[Bar]` happens, it ends up
 /// calling `index_mut`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::IndexMut;
 ///
 /// #[derive(Copy)]
 /// struct Foo;
+/// struct Bar;
 ///
-/// impl IndexMut<Foo> for Foo {
+/// impl IndexMut<Bar> for Foo {
 ///     type Output = Foo;
 ///
-///     fn index_mut<'a>(&'a mut self, _index: &Foo) -> &'a mut Foo {
+///     fn index_mut<'a>(&'a mut self, _index: &Bar) -> &'a mut Foo {
 ///         println!("Indexing!");
 ///         self
 ///     }
 /// }
 ///
 /// fn main() {
-///     &mut Foo[Foo];
+///     &mut Foo[Bar];
 /// }
 /// ```
 #[lang="index_mut"]
