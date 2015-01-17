@@ -10,20 +10,17 @@
 
 #![crate_name = "rustdoc_test"]
 
-// In: Foo
+// @has search-index.js Foo
 pub use private::Foo;
 
 mod private {
     pub struct Foo;
     impl Foo {
-        // In: test_method
-        pub fn test_method() {}
-        // Out: priv_method
-        fn priv_method() {}
+        pub fn test_method() {} // @has - test_method
+        fn priv_method() {} // @!has - priv_method
     }
 
     pub trait PrivateTrait {
-        // Out: priv_method
-        fn trait_method() {}
+        fn trait_method() {} // @!has - priv_method
     }
 }

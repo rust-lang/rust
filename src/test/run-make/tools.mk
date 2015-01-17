@@ -7,6 +7,7 @@ TARGET_RPATH_ENV = \
 
 RUSTC := $(HOST_RPATH_ENV) $(RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR)
 CC := $(CC) -L $(TMPDIR)
+HTMLDOCCK := $(PYTHON) $(S)/src/etc/htmldocck.py
 
 # This is the name of the binary we will generate and run; use this
 # e.g. for `$(CC) -o $(RUN_BINFILE)`.
