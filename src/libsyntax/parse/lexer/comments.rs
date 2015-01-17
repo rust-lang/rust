@@ -399,9 +399,9 @@ mod test {
     }
 
     #[test] fn test_block_doc_comment_3() {
-        let comment = "/**\n let a: *int;\n *a = 5;\n*/";
+        let comment = "/**\n let a: *i32;\n *a = 5;\n*/";
         let stripped = strip_doc_comment_decoration(comment);
-        assert_eq!(stripped, " let a: *int;\n *a = 5;");
+        assert_eq!(stripped, " let a: *i32;\n *a = 5;");
     }
 
     #[test] fn test_block_doc_comment_4() {

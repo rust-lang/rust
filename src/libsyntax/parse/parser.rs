@@ -1499,7 +1499,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::OpenDelim(token::Bracket));
             let t = self.parse_ty_sum();
 
-            // Parse the `; e` in `[ int; e ]`
+            // Parse the `; e` in `[ i32; e ]`
             // where `e` is a const expression
             let t = match self.maybe_parse_fixed_length_of_vec() {
                 None => TyVec(t),
@@ -4803,7 +4803,7 @@ impl<'a> Parser<'a> {
          Some(attrs))
     }
 
-    /// Parse a::B<String,int>
+    /// Parse a::B<String,i32>
     fn parse_trait_ref(&mut self) -> TraitRef {
         ast::TraitRef {
             path: self.parse_path(LifetimeAndTypesWithoutColons),
@@ -4822,7 +4822,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse for<'l> a::B<String,int>
+    /// Parse for<'l> a::B<String,i32>
     fn parse_poly_trait_ref(&mut self) -> PolyTraitRef {
         let lifetime_defs = self.parse_late_bound_lifetime_defs();
 

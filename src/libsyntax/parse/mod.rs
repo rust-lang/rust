@@ -855,7 +855,7 @@ mod test {
 
     #[test]
     fn string_to_tts_1 () {
-        let tts = string_to_tts("fn a (b : int) { b; }".to_string());
+        let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
         assert_eq!(json::encode(&tts),
         "[\
     {\
@@ -919,7 +919,7 @@ mod test {
                             {\
                                 \"variant\":\"Ident\",\
                                 \"fields\":[\
-                                    \"int\",\
+                                    \"i32\",\
                                     \"Plain\"\
                                 ]\
                             }\
@@ -1031,8 +1031,8 @@ mod test {
 
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
-        // this test depends on the intern order of "fn" and "int"
-        assert!(string_to_item("fn a (b : int) { b; }".to_string()) ==
+        // this test depends on the intern order of "fn" and "i32"
+        assert_eq!(string_to_item("fn a (b : i32) { b; }".to_string()),
                   Some(
                       P(ast::Item{ident:str_to_ident("a"),
                             attrs:Vec::new(),
@@ -1046,7 +1046,7 @@ mod test {
                                         segments: vec!(
                                             ast::PathSegment {
                                                 identifier:
-                                                    str_to_ident("int"),
+                                                    str_to_ident("i32"),
                                                 parameters: ast::PathParameters::none(),
                                             }
                                         ),
