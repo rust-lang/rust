@@ -475,7 +475,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         while num > 0u { num /= 10u; digits += 1u; }
 
         // indent past |name:## | and the 0-offset column location
-        let left = fm.name.len() + digits + lo.col.to_uint() + 3u;
+        let left = fm.name.len() + digits + lo.col.to_usize() + 3u;
         let mut s = String::new();
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
@@ -502,7 +502,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
-            let num_squigglies = hi.col.to_uint() - lo.col.to_uint() - 1u;
+            let num_squigglies = hi.col.to_usize() - lo.col.to_usize() - 1us;
             for _ in range(0, num_squigglies) {
                 s.push('~');
             }
@@ -551,7 +551,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
     let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1]+1);
     let hi = cm.lookup_char_pos(sp.hi);
     // Span seems to use half-opened interval, so subtract 1
-    let skip = last_line_start.len() + hi.col.to_uint() - 1;
+    let skip = last_line_start.len() + hi.col.to_usize() - 1;
     let mut s = String::new();
     for _ in range(0, skip) {
         s.push(' ');

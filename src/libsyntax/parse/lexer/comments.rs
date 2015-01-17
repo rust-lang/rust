@@ -208,7 +208,7 @@ fn read_line_comments(rdr: &mut StringReader, code_to_the_left: bool,
 /// whitespace.  Note k may be outside bounds of s.
 fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
     let len = s.len();
-    let mut col = col.to_uint();
+    let mut col = col.to_usize();
     let mut cursor: usize = 0;
     while col > 0 && cursor < len {
         let r: str::CharRange = s.char_range_at(cursor);

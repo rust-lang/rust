@@ -398,7 +398,7 @@ mod tests {
          assert_eq! (marksof_internal (ans, stopname,&t), vec!(16));}
         // rename where stop doesn't match:
         { let chain = vec!(M(9),
-                        R(id(name1.uint() as u32,
+                        R(id(name1.usize() as u32,
                              apply_mark_internal (4, EMPTY_CTXT,&mut t)),
                           Name(100101102)),
                         M(14));
@@ -407,7 +407,7 @@ mod tests {
         // rename where stop does match
         { let name1sc = apply_mark_internal(4, EMPTY_CTXT, &mut t);
          let chain = vec!(M(9),
-                       R(id(name1.uint() as u32, name1sc),
+                       R(id(name1.usize() as u32, name1sc),
                          stopname),
                        M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);

@@ -70,7 +70,7 @@ impl<T: Eq + Hash<Hasher> + Clone + 'static> Interner<T> {
 
     pub fn get(&self, idx: Name) -> T {
         let vect = self.vect.borrow();
-        (*vect)[idx.uint()].clone()
+        (*vect)[idx.usize()].clone()
     }
 
     pub fn len(&self) -> usize {
@@ -190,13 +190,13 @@ impl StrInterner {
         let new_idx = Name(self.len() as u32);
         // leave out of map to avoid colliding
         let mut vect = self.vect.borrow_mut();
-        let existing = (*vect)[idx.uint()].clone();
+        let existing = (*vect)[idx.usize()].clone();
         vect.push(existing);
         new_idx
     }
 
     pub fn get(&self, idx: Name) -> RcStr {
-        (*self.vect.borrow())[idx.uint()].clone()
+        (*self.vect.borrow())[idx.usize()].clone()
     }
 
     pub fn len(&self) -> usize {

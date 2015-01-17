@@ -1789,7 +1789,7 @@ impl<'a> State<'a> {
             ast::ExprTupField(ref expr, id) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "."));
-                try!(self.print_uint(id.node));
+                try!(self.print_usize(id.node));
             }
             ast::ExprIndex(ref expr, ref index) => {
                 try!(self.print_expr(&**expr));
@@ -1951,7 +1951,7 @@ impl<'a> State<'a> {
         self.ann.post(self, NodeIdent(&ident))
     }
 
-    pub fn print_uint(&mut self, i: usize) -> IoResult<()> {
+    pub fn print_usize(&mut self, i: usize) -> IoResult<()> {
         word(&mut self.s, &i.to_string()[])
     }
 

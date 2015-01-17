@@ -20,7 +20,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast::{TokenTree, TtToken};
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacExpr};
-use syntax::ext::build::AstBuilder;  // trait for expr_uint
+use syntax::ext::build::AstBuilder;  // trait for expr_usize
 use rustc::plugin::Registry;
 
 // WARNING WARNING WARNING WARNING WARNING
@@ -61,7 +61,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         }
     }
 
-    MacExpr::new(cx.expr_uint(sp, total))
+    MacExpr::new(cx.expr_usize(sp, total))
 }
 
 #[plugin_registrar]

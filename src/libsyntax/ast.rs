@@ -95,7 +95,7 @@ impl Ident {
 
     pub fn encode_with_hygiene(&self) -> String {
         format!("\x00name_{},ctxt_{}\x00",
-                self.name.uint(),
+                self.name.usize(),
                 self.ctxt)
     }
 }
@@ -181,7 +181,7 @@ impl Name {
         }
     }
 
-    pub fn uint(&self) -> usize {
+    pub fn usize(&self) -> usize {
         let Name(nm) = *self;
         nm as usize
     }

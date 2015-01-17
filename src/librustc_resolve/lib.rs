@@ -1962,7 +1962,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let module_name = self.module_to_string(&*search_module);
                     let mut span = span;
                     let msg = if "???" == &module_name[] {
-                        span.hi = span.lo + Pos::from_uint(segment_name.get().len());
+                        span.hi = span.lo + Pos::from_usize(segment_name.get().len());
 
                         match search_parent_externals(name,
                                                      &self.current_module) {

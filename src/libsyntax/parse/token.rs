@@ -757,7 +757,7 @@ pub fn fresh_name(src: &ast::Ident) -> ast::Name {
 
 // create a fresh mark.
 pub fn fresh_mark() -> ast::Mrk {
-    gensym("mark").uint() as u32
+    gensym("mark").usize() as u32
 }
 
 #[cfg(test)]

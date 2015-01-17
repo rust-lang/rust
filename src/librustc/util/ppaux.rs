@@ -164,7 +164,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
     fn explain_span(cx: &ctxt, heading: &str, span: Span)
                     -> (String, Option<Span>) {
         let lo = cx.sess.codemap().lookup_char_pos_adj(span.lo);
-        (format!("the {} at {}:{}", heading, lo.line, lo.col.to_uint()),
+        (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
          Some(span))
     }
 }
