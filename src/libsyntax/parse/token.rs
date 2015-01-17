@@ -562,7 +562,7 @@ declare_special_idents_and_keywords! {
         (45,                         Where,      "where");
         'reserved:
         (46,                         Alignof,    "alignof");
-        (47,                         Be,         "be");
+        (47,                         Become,     "become");
         (48,                         Offsetof,   "offsetof");
         (49,                         Priv,       "priv");
         (50,                         Pure,       "pure");
