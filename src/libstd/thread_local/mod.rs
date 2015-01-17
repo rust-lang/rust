@@ -449,7 +449,7 @@ mod imp {
         // destructor as running for this thread so calls to `get` will return
         // `None`.
         *(*ptr).dtor_running.get() = true;
-        ptr::read((*ptr).inner.get() as *const T);
+        ptr::read((*ptr).inner.get());
     }
 }
 
