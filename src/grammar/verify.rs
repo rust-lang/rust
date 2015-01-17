@@ -10,6 +10,8 @@
 
 #![feature(plugin)]
 
+#![allow(unstable)]
+
 extern crate syntax;
 extern crate rustc;
 
@@ -164,7 +166,8 @@ fn count(lit: &str) -> usize {
     lit.chars().take_while(|c| *c == '#').count()
 }
 
-fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>) -> TokenAndSpan {
+fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>, surrogate_pairs_pos: &[usize])
+                     -> TokenAndSpan {
     // old regex:
     // \[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?)',<(?P<toknum>-?\d+)>,\d+:\d+]
     let start = s.find_str("[@").unwrap();
@@ -213,9 +216,16 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>) -> TokenAn
         0
     };
 
+    let mut lo = start.parse::<u32>().unwrap() - offset;
+    let mut hi = end.parse::<u32>().unwrap() + 1;
+
+    // Adjust the span: For each surrogate pair already encountered, subtract one position.
+    lo -= surrogate_pairs_pos.binary_search(&(lo as usize)).unwrap_or_else(|x| x) as u32;
+    hi -= surrogate_pairs_pos.binary_search(&(hi as usize)).unwrap_or_else(|x| x) as u32;
+
     let sp = syntax::codemap::Span {
-        lo: syntax::codemap::BytePos(start.parse::<u32>().unwrap() - offset),
-        hi: syntax::codemap::BytePos(end.parse::<u32>().unwrap() + 1),
+        lo: syntax::codemap::BytePos(lo),
+        hi: syntax::codemap::BytePos(hi),
         expn_id: syntax::codemap::NO_EXPANSION
     };
 
@@ -235,11 +245,10 @@ fn tok_cmp(a: &token::Token, b: &token::Token) -> bool {
     }
 }
 
-fn span_cmp(rust_sp: syntax::codemap::Span, antlr_sp: syntax::codemap::Span, cm: &syntax::codemap::CodeMap) -> bool {
-    println!("{} {}", cm.bytepos_to_file_charpos(rust_sp.lo).to_uint(), cm.bytepos_to_file_charpos(rust_sp.hi).to_uint());
-    antlr_sp.lo.to_uint() == cm.bytepos_to_file_charpos(rust_sp.lo).to_uint() &&
-    antlr_sp.hi.to_uint() == cm.bytepos_to_file_charpos(rust_sp.hi).to_uint() &&
-    antlr_sp.expn_id == rust_sp.expn_id
+fn span_cmp(antlr_sp: syntax::codemap::Span, rust_sp: syntax::codemap::Span, cm: &syntax::codemap::CodeMap) -> bool {
+    antlr_sp.expn_id == rust_sp.expn_id &&
+        antlr_sp.lo.to_uint() == cm.bytepos_to_file_charpos(rust_sp.lo).to_uint() &&
+        antlr_sp.hi.to_uint() == cm.bytepos_to_file_charpos(rust_sp.hi).to_uint()
 }
 
 fn main() {
@@ -250,16 +259,18 @@ fn main() {
 
     let args = std::os::args();
 
-    let mut token_file = File::open(&Path::new(args[2]));
-    let token_map = parse_token_list(token_file.read_to_string().unwrap());
-
-    let mut stdin = std::io::stdin();
-    let mut lock = stdin.lock();
-    let lines = lock.lines();
-    let mut antlr_tokens = lines.map(|l| parse_antlr_token(l.unwrap().trim(),
-                                                                   &token_map));
-
+    // Rust's lexer
     let code = File::open(&Path::new(args[1])).unwrap().read_to_string().unwrap();
+
+    let surrogate_pairs_pos: Vec<usize> = code.chars().enumerate()
+                                                     .filter(|&(_, c)| c as usize > 0xFFFF)
+                                                     .map(|(n, _)| n)
+                                                     .enumerate()
+                                                     .map(|(x, n)| x + n)
+                                                     .collect();
+
+    debug!("Pairs: {:?}", surrogate_pairs_pos);
+
     let options = config::basic_options();
     let session = session::build_session(options, None,
                                          syntax::diagnostics::registry::Registry::new(&[]));
@@ -269,13 +280,25 @@ fn main() {
     let mut lexer = lexer::StringReader::new(session.diagnostic(), filemap);
     let ref cm = lexer.span_diagnostic.cm;
 
+    // ANTLR
+    let mut token_file = File::open(&Path::new(args[2]));
+    let token_map = parse_token_list(token_file.read_to_string().unwrap());
+
+    let mut stdin = std::io::stdin();
+    let mut lock = stdin.lock();
+    let lines = lock.lines();
+    let mut antlr_tokens = lines.map(|l| parse_antlr_token(l.unwrap().trim(),
+                                                           &token_map,
+                                                           &surrogate_pairs_pos[]));
+
     for antlr_tok in antlr_tokens {
         let rustc_tok = next(&mut lexer);
         if rustc_tok.tok == token::Eof && antlr_tok.tok == token::Eof {
             continue
         }
 
-        assert!(span_cmp(rustc_tok.sp, antlr_tok.sp, cm), "{:?} and {:?} have different spans", rustc_tok,
+        assert!(span_cmp(antlr_tok.sp, rustc_tok.sp, cm), "{:?} and {:?} have different spans",
+                rustc_tok,
                 antlr_tok);
 
         macro_rules! matches {
