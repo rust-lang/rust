@@ -28,7 +28,7 @@
 //! arguments:
 //!
 //! - `Struct`, when `Self` is a struct (including tuple structs, e.g
-//!   `struct T(int, char)`).
+//!   `struct T(i32, char)`).
 //! - `EnumMatching`, when `Self` is an enum and all the arguments are the
 //!   same variant of the enum (e.g. `Some(1)`, `Some(3)` and `Some(4)`)
 //! - `EnumNonMatchingCollapsed` when `Self` is an enum and the arguments
@@ -54,17 +54,17 @@
 //! following snippet
 //!
 //! ```rust
-//! struct A { x : int }
+//! struct A { x : i32 }
 //!
-//! struct B(int);
+//! struct B(i32);
 //!
 //! enum C {
-//!     C0(int),
-//!     C1 { x: int }
+//!     C0(i32),
+//!     C1 { x: i32 }
 //! }
 //! ```
 //!
-//! The `int`s in `B` and `C0` don't have an identifier, so the
+//! The `i32`s in `B` and `C0` don't have an identifier, so the
 //! `Option<ident>`s would be `None` for them.
 //!
 //! In the static cases, the structure is summarised, either into the just
@@ -90,8 +90,8 @@
 //! trait PartialEq {
 //!     fn eq(&self, other: &Self);
 //! }
-//! impl PartialEq for int {
-//!     fn eq(&self, other: &int) -> bool {
+//! impl PartialEq for i32 {
+//!     fn eq(&self, other: &i32) -> bool {
 //!         *self == *other
 //!     }
 //! }
@@ -117,7 +117,7 @@
 //!
 //! ```{.text}
 //! Struct(vec![FieldInfo {
-//!           span: <span of `int`>,
+//!           span: <span of `i32`>,
 //!           name: None,
 //!           self_: <expr for &a>
 //!           other: vec![<expr for &b>]
@@ -132,7 +132,7 @@
 //! ```{.text}
 //! EnumMatching(0, <ast::Variant for C0>,
 //!              vec![FieldInfo {
-//!                 span: <span of int>
+//!                 span: <span of i32>
 //!                 name: None,
 //!                 self_: <expr for &a>,
 //!                 other: vec![<expr for &b>]
@@ -179,7 +179,7 @@
 //! StaticStruct(<ast::StructDef of B>, Unnamed(vec![<span of x>]))
 //!
 //! StaticEnum(<ast::EnumDef of C>,
-//!            vec![(<ident of C0>, <span of C0>, Unnamed(vec![<span of int>])),
+//!            vec![(<ident of C0>, <span of C0>, Unnamed(vec![<span of i32>])),
 //!                 (<ident of C1>, <span of C1>, Named(vec![(<ident of x>, <span of x>)]))])
 //! ```
 
@@ -719,7 +719,7 @@ impl<'a> MethodDef<'a> {
 
     /// ```
     /// #[derive(PartialEq)]
-    /// struct A { x: int, y: int }
+    /// struct A { x: i32, y: i32 }
     ///
     /// // equivalent to:
     /// impl PartialEq for A {
@@ -825,7 +825,7 @@ impl<'a> MethodDef<'a> {
     /// #[derive(PartialEq)]
     /// enum A {
     ///     A1,
-    ///     A2(int)
+    ///     A2(i32)
     /// }
     ///
     /// // is equivalent to
