@@ -93,7 +93,7 @@ fragment SUFFIX
   ;
 
 LIT_CHAR
-  : '\'' ( '\\' CHAR_ESCAPE | ~[\\'\n\t\r] ) '\'' SUFFIX?
+  : '\'' ( '\\' CHAR_ESCAPE | ~[\\'\n\t\r] | '\ud800' .. '\udbff' '\udc00' .. '\udfff' ) '\'' SUFFIX?
   ;
 
 LIT_BYTE
