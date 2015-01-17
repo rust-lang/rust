@@ -37,7 +37,7 @@ use error::{FromError, Error};
 use fmt;
 use io::{IoResult, IoError};
 use iter::{Iterator, IteratorExt};
-use marker::Copy;
+use marker::{Copy, Send};
 use libc::{c_void, c_int, c_char};
 use libc;
 use boxed::Box;
@@ -937,8 +937,8 @@ impl Error for MapError {
     fn detail(&self) -> Option<String> { Some(format!("{:?}", self)) }
 }
 
-impl FromError<MapError> for Box<Error> {
-    fn from_error(err: MapError) -> Box<Error> {
+impl FromError<MapError> for Box<Error + Send> {
+    fn from_error(err: MapError) -> Box<Error + Send> {
         box err
     }
 }
