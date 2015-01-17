@@ -10,8 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use llvm;
-use llvm::{Integer, Pointer, Float, Double, Struct, Array};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
 use llvm::{StructRetAttribute, ZExtAttribute};
 use trans::cabi::{FnType, ArgType};
 use trans::context::CrateContext;
@@ -37,11 +36,7 @@ fn align(off: uint, ty: Type, align_fn: TyAlignFn) -> uint {
 
 fn general_ty_align(ty: Type) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as uint) + 7) / 8,
         Pointer => 4,
         Float => 4,
         Double => 8,
@@ -57,6 +52,11 @@ fn general_ty_align(ty: Type) -> uint {
             let elt = ty.element_type();
             general_ty_align(elt)
         }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            general_ty_align(elt) * len
+        }
         _ => panic!("ty_align: unhandled type")
     }
 }
@@ -70,11 +70,7 @@ fn general_ty_align(ty: Type) -> uint {
 //    /iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
 fn ios_ty_align(ty: Type) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                cmp::min(4, ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8)
-            }
-        }
+        Integer => cmp::min(4, ((ty.int_width() as uint) + 7) / 8),
         Pointer => 4,
         Float => 4,
         Double => 4,
@@ -90,17 +86,18 @@ fn ios_ty_align(ty: Type) -> uint {
             let elt = ty.element_type();
             ios_ty_align(elt)
         }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            ios_ty_align(elt) * len
+        }
         _ => panic!("ty_align: unhandled type")
     }
 }
 
 fn ty_size(ty: Type, align_fn: TyAlignFn) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as uint) + 7) / 8,
         Pointer => 4,
         Float => 4,
         Double => 8,
@@ -119,6 +116,12 @@ fn ty_size(ty: Type, align_fn: TyAlignFn) -> uint {
         }
         Array => {
             let len = ty.array_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt, align_fn);
+            len * eltsz
+        }
+        Vector => {
+            let len = ty.vector_length();
             let elt = ty.element_type();
             let eltsz = ty_size(elt, align_fn);
             len * eltsz
@@ -166,7 +169,8 @@ fn is_reg_ty(ty: Type) -> bool {
         Integer
         | Pointer
         | Float
-        | Double => true,
+        | Double
+        | Vector => true,
         _ => false
     }
 }
