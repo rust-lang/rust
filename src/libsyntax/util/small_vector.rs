@@ -89,7 +89,7 @@ impl<T> SmallVector<T> {
         }
     }
 
-    pub fn get<'a>(&'a self, idx: uint) -> &'a T {
+    pub fn get<'a>(&'a self, idx: usize) -> &'a T {
         match self.repr {
             One(ref v) if idx == 0 => v,
             Many(ref vs) => &vs[idx],
@@ -126,7 +126,7 @@ impl<T> SmallVector<T> {
         IntoIter { repr: repr }
     }
 
-    pub fn len(&self) -> uint {
+    pub fn len(&self) -> usize {
         match self.repr {
             Zero => 0,
             One(..) => 1,
@@ -165,7 +165,7 @@ impl<T> Iterator for IntoIter<T> {
         }
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         match self.repr {
             ZeroIterator => (0, Some(0)),
             OneIterator(..) => (1, Some(1)),

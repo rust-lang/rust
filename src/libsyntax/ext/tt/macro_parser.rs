@@ -110,14 +110,14 @@ enum TokenTreeOrTokenTreeVec {
 }
 
 impl TokenTreeOrTokenTreeVec {
-    fn len(&self) -> uint {
+    fn len(&self) -> usize {
         match self {
             &TtSeq(ref v) => v.len(),
             &Tt(ref tt) => tt.len(),
         }
     }
 
-    fn get_tt(&self, index: uint) -> TokenTree {
+    fn get_tt(&self, index: usize) -> TokenTree {
         match self {
             &TtSeq(ref v) => v[index].clone(),
             &Tt(ref tt) => tt.get_tt(index),
@@ -129,7 +129,7 @@ impl TokenTreeOrTokenTreeVec {
 #[derive(Clone)]
 struct MatcherTtFrame {
     elts: TokenTreeOrTokenTreeVec,
-    idx: uint,
+    idx: usize,
 }
 
 #[derive(Clone)]
@@ -137,16 +137,16 @@ pub struct MatcherPos {
     stack: Vec<MatcherTtFrame>,
     top_elts: TokenTreeOrTokenTreeVec,
     sep: Option<Token>,
-    idx: uint,
+    idx: usize,
     up: Option<Box<MatcherPos>>,
     matches: Vec<Vec<Rc<NamedMatch>>>,
-    match_lo: uint,
-    match_cur: uint,
-    match_hi: uint,
+    match_lo: usize,
+    match_cur: usize,
+    match_hi: usize,
     sp_lo: BytePos,
 }
 
-pub fn count_names(ms: &[TokenTree]) -> uint {
+pub fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count + match elt {
             &TtSequence(_, ref seq) => {
@@ -206,7 +206,7 @@ pub enum NamedMatch {
 pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
             -> HashMap<Ident, Rc<NamedMatch>> {
     fn n_rec(p_s: &ParseSess, m: &TokenTree, res: &[Rc<NamedMatch>],
-             ret_val: &mut HashMap<Ident, Rc<NamedMatch>>, idx: &mut uint) {
+             ret_val: &mut HashMap<Ident, Rc<NamedMatch>>, idx: &mut usize) {
         match m {
             &TtSequence(_, ref seq) => {
                 for next_m in seq.tts.iter() {

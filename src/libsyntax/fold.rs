@@ -174,7 +174,7 @@ pub trait Folder : Sized {
         noop_fold_ident(i, self)
     }
 
-    fn fold_uint(&mut self, i: uint) -> uint {
+    fn fold_uint(&mut self, i: usize) -> usize {
         noop_fold_uint(i, self)
     }
 
@@ -505,7 +505,7 @@ pub fn noop_fold_ident<T: Folder>(i: Ident, _: &mut T) -> Ident {
     i
 }
 
-pub fn noop_fold_uint<T: Folder>(i: uint, _: &mut T) -> uint {
+pub fn noop_fold_uint<T: Folder>(i: usize, _: &mut T) -> usize {
     i
 }
 

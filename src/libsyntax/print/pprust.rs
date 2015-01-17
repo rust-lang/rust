@@ -54,8 +54,8 @@ impl PpAnn for NoAnn {}
 
 #[derive(Copy)]
 pub struct CurrentCommentAndLiteral {
-    cur_cmnt: uint,
-    cur_lit: uint,
+    cur_cmnt: usize,
+    cur_lit: usize,
 }
 
 pub struct State<'a> {
@@ -92,10 +92,10 @@ pub fn rust_printer_annotated<'a>(writer: Box<io::Writer+'static>,
 }
 
 #[allow(non_upper_case_globals)]
-pub const indent_unit: uint = 4u;
+pub const indent_unit: usize = 4us;
 
 #[allow(non_upper_case_globals)]
-pub const default_columns: uint = 78u;
+pub const default_columns: usize = 78us;
 
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments and literals to
@@ -459,7 +459,7 @@ fn needs_parentheses(expr: &ast::Expr) -> bool {
 }
 
 impl<'a> State<'a> {
-    pub fn ibox(&mut self, u: uint) -> IoResult<()> {
+    pub fn ibox(&mut self, u: usize) -> IoResult<()> {
         self.boxes.push(pp::Breaks::Inconsistent);
         pp::ibox(&mut self.s, u)
     }
@@ -469,13 +469,13 @@ impl<'a> State<'a> {
         pp::end(&mut self.s)
     }
 
-    pub fn cbox(&mut self, u: uint) -> IoResult<()> {
+    pub fn cbox(&mut self, u: usize) -> IoResult<()> {
         self.boxes.push(pp::Breaks::Consistent);
         pp::cbox(&mut self.s, u)
     }
 
     // "raw box"
-    pub fn rbox(&mut self, u: uint, b: pp::Breaks) -> IoResult<()> {
+    pub fn rbox(&mut self, u: usize, b: pp::Breaks) -> IoResult<()> {
         self.boxes.push(b);
         pp::rbox(&mut self.s, u, b)
     }
@@ -514,11 +514,11 @@ impl<'a> State<'a> {
     }
 
     pub fn bclose_(&mut self, span: codemap::Span,
-                   indented: uint) -> IoResult<()> {
+                   indented: usize) -> IoResult<()> {
         self.bclose_maybe_open(span, indented, true)
     }
     pub fn bclose_maybe_open (&mut self, span: codemap::Span,
-                              indented: uint, close_box: bool) -> IoResult<()> {
+                              indented: usize, close_box: bool) -> IoResult<()> {
         try!(self.maybe_print_comment(span.hi));
         try!(self.break_offset_if_not_bol(1u, -(indented as int)));
         try!(word(&mut self.s, "}"));
@@ -567,7 +567,7 @@ impl<'a> State<'a> {
         if !self.is_bol() { try!(space(&mut self.s)); }
         Ok(())
     }
-    pub fn break_offset_if_not_bol(&mut self, n: uint,
+    pub fn break_offset_if_not_bol(&mut self, n: usize,
                                    off: int) -> IoResult<()> {
         if !self.is_bol() {
             break_offset(&mut self.s, n, off)
@@ -1355,7 +1355,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_block_unclosed_indent(&mut self, blk: &ast::Block,
-                                       indented: uint) -> IoResult<()> {
+                                       indented: usize) -> IoResult<()> {
         self.print_block_maybe_unclosed(blk, indented, &[], false)
     }
 
@@ -1367,7 +1367,7 @@ impl<'a> State<'a> {
 
     pub fn print_block_maybe_unclosed(&mut self,
                                       blk: &ast::Block,
-                                      indented: uint,
+                                      indented: usize,
                                       attrs: &[ast::Attribute],
                                       close_box: bool) -> IoResult<()> {
         match blk.rules {
@@ -1951,7 +1951,7 @@ impl<'a> State<'a> {
         self.ann.post(self, NodeIdent(&ident))
     }
 
-    pub fn print_uint(&mut self, i: uint) -> IoResult<()> {
+    pub fn print_uint(&mut self, i: usize) -> IoResult<()> {
         word(&mut self.s, &i.to_string()[])
     }
 
@@ -3053,7 +3053,7 @@ impl<'a> State<'a> {
     }
 }
 
-fn repeat(s: &str, n: uint) -> String { iter::repeat(s).take(n).collect() }
+fn repeat(s: &str, n: usize) -> String { iter::repeat(s).take(n).collect() }
 
 #[cfg(test)]
 mod test {

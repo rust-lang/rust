@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An "interner" is a data structure that associates values with uint tags and
+//! An "interner" is a data structure that associates values with usize tags and
 //! allows bidirectional lookup; i.e. given a value, one can easily find the
 //! type, and vice versa.
 
@@ -73,7 +73,7 @@ impl<T: Eq + Hash<Hasher> + Clone + 'static> Interner<T> {
         (*vect)[idx.uint()].clone()
     }
 
-    pub fn len(&self) -> uint {
+    pub fn len(&self) -> usize {
         let vect = self.vect.borrow();
         (*vect).len()
     }
@@ -199,7 +199,7 @@ impl StrInterner {
         (*self.vect.borrow())[idx.uint()].clone()
     }
 
-    pub fn len(&self) -> uint {
+    pub fn len(&self) -> usize {
         self.vect.borrow().len()
     }
 

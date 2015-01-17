@@ -26,7 +26,7 @@ use term::WriterWrapper;
 use term;
 
 /// maximum number of lines we will print for each error; arbitrary.
-static MAX_LINES: uint = 6u;
+static MAX_LINES: usize = 6u;
 
 #[derive(Clone, Copy)]
 pub enum RenderSpan {
@@ -137,7 +137,7 @@ impl SpanHandler {
 /// (fatal, bug, unimpl) may cause immediate exit,
 /// others log errors for later reporting.
 pub struct Handler {
-    err_count: Cell<uint>,
+    err_count: Cell<usize>,
     emit: RefCell<Box<Emitter + Send>>,
 }
 
@@ -153,7 +153,7 @@ impl Handler {
     pub fn bump_err_count(&self) {
         self.err_count.set(self.err_count.get() + 1u);
     }
-    pub fn err_count(&self) -> uint {
+    pub fn err_count(&self) -> usize {
         self.err_count.get()
     }
     pub fn has_errors(&self) -> bool {

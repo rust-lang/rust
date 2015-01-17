@@ -295,7 +295,7 @@ impl<'a> StringReader<'a> {
         return s.into_cow();
 
         fn translate_crlf_(rdr: &StringReader, start: BytePos,
-                        s: &str, errmsg: &str, mut i: uint) -> String {
+                        s: &str, errmsg: &str, mut i: usize) -> String {
             let mut buf = String::with_capacity(s.len());
             let mut j = 0;
             while i < s.len() {
@@ -645,7 +645,7 @@ impl<'a> StringReader<'a> {
 
     /// Scan through any digits (base `radix`) or underscores, and return how
     /// many digits there were.
-    fn scan_digits(&mut self, radix: uint) -> uint {
+    fn scan_digits(&mut self, radix: usize) -> usize {
         let mut len = 0u;
         loop {
             let c = self.curr;
@@ -724,7 +724,7 @@ impl<'a> StringReader<'a> {
     /// Scan over `n_digits` hex digits, stopping at `delim`, reporting an
     /// error if too many or too few digits are encountered.
     fn scan_hex_digits(&mut self,
-                       n_digits: uint,
+                       n_digits: usize,
                        delim: char,
                        below_0x7f_only: bool)
                        -> bool {
@@ -877,7 +877,7 @@ impl<'a> StringReader<'a> {
     fn scan_unicode_escape(&mut self, delim: char) -> bool {
         self.bump(); // past the {
         let start_bpos = self.last_pos;
-        let mut count: uint = 0;
+        let mut count = 0us;
         let mut accum_int = 0;
 
         while !self.curr_is('}') && count <= 6 {
@@ -935,7 +935,7 @@ impl<'a> StringReader<'a> {
 
     /// Check that a base is valid for a floating literal, emitting a nice
     /// error if it isn't.
-    fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: uint) {
+    fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: usize) {
         match base {
             16u => self.err_span_(start_bpos, last_bpos, "hexadecimal float literal is not \
                                  supported"),

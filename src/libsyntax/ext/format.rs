@@ -31,7 +31,7 @@ enum ArgumentType {
 }
 
 enum Position {
-    Exact(uint),
+    Exact(usize),
     Named(String),
 }
 
@@ -61,11 +61,11 @@ struct Context<'a, 'b:'a> {
     /// Stays `true` if all formatting parameters are default (as in "{}{}").
     all_pieces_simple: bool,
 
-    name_positions: HashMap<String, uint>,
+    name_positions: HashMap<String, usize>,
 
     /// Updated as arguments are consumed or methods are entered
-    nest_level: uint,
-    next_arg: uint,
+    nest_level: usize,
+    next_arg: usize,
 }
 
 /// Parses the arguments from the given list of tokens, returning None

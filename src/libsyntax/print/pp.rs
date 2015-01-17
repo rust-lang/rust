@@ -31,7 +31,7 @@
 //!
 //! In particular you'll see a certain amount of churn related to INTEGER vs.
 //! CARDINAL in the Mesa implementation. Mesa apparently interconverts the two
-//! somewhat readily? In any case, I've used uint for indices-in-buffers and
+//! somewhat readily? In any case, I've used usize for indices-in-buffers and
 //! ints for character-sizes-and-indentation-offsets. This respects the need
 //! for ints to "go negative" while carrying a pending-calculation balance, and
 //! helps differentiate all the numbers flying around internally (slightly).
@@ -123,9 +123,9 @@ pub fn tok_str(token: &Token) -> String {
 
 pub fn buf_str(toks: &[Token],
                szs: &[int],
-               left: uint,
-               right: uint,
-               lim: uint)
+               left: usize,
+               right: usize,
+               lim: usize)
                -> String {
     let n = toks.len();
     assert_eq!(n, szs.len());
@@ -161,14 +161,14 @@ pub struct PrintStackElem {
 
 static SIZE_INFINITY: int = 0xffff;
 
-pub fn mk_printer(out: Box<io::Writer+'static>, linewidth: uint) -> Printer {
+pub fn mk_printer(out: Box<io::Writer+'static>, linewidth: usize) -> Printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
-    let n: uint = 3 * linewidth;
+    let n: usize = 3 * linewidth;
     debug!("mk_printer {}", linewidth);
     let token: Vec<Token> = repeat(Token::Eof).take(n).collect();
     let size: Vec<int> = repeat(0i).take(n).collect();
-    let scan_stack: Vec<uint> = repeat(0u).take(n).collect();
+    let scan_stack: Vec<usize> = repeat(0us).take(n).collect();
     Printer {
         out: out,
         buf_len: n,
@@ -267,15 +267,15 @@ pub fn mk_printer(out: Box<io::Writer+'static>, linewidth: uint) -> Printer {
 /// called 'print'.
 pub struct Printer {
     pub out: Box<io::Writer+'static>,
-    buf_len: uint,
+    buf_len: usize,
     /// Width of lines we're constrained to
     margin: int,
     /// Number of spaces left on line
     space: int,
     /// Index of left side of input stream
-    left: uint,
+    left: usize,
     /// Index of right side of input stream
-    right: uint,
+    right: usize,
     /// Ring-buffer stream goes through
     token: Vec<Token> ,
     /// Ring-buffer of calculated sizes
@@ -290,13 +290,13 @@ pub struct Printer {
     /// Begin (if there is any) on top of it. Stuff is flushed off the
     /// bottom as it becomes irrelevant due to the primary ring-buffer
     /// advancing.
-    scan_stack: Vec<uint> ,
+    scan_stack: Vec<usize> ,
     /// Top==bottom disambiguator
     scan_stack_empty: bool,
     /// Index of top of scan_stack
-    top: uint,
+    top: usize,
     /// Index of bottom of scan_stack
-    bottom: uint,
+    bottom: usize,
     /// Stack of blocks-in-progress being flushed by print
     print_stack: Vec<PrintStackElem> ,
     /// Buffered indentation to avoid writing trailing whitespace
@@ -405,7 +405,7 @@ impl Printer {
         }
         Ok(())
     }
-    pub fn scan_push(&mut self, x: uint) {
+    pub fn scan_push(&mut self, x: usize) {
         debug!("scan_push {}", x);
         if self.scan_stack_empty {
             self.scan_stack_empty = false;
@@ -416,7 +416,7 @@ impl Printer {
         }
         self.scan_stack[self.top] = x;
     }
-    pub fn scan_pop(&mut self) -> uint {
+    pub fn scan_pop(&mut self) -> usize {
         assert!((!self.scan_stack_empty));
         let x = self.scan_stack[self.top];
         if self.top == self.bottom {
@@ -426,11 +426,11 @@ impl Printer {
         }
         return x;
     }
-    pub fn scan_top(&mut self) -> uint {
+    pub fn scan_top(&mut self) -> usize {
         assert!((!self.scan_stack_empty));
         return self.scan_stack[self.top];
     }
-    pub fn scan_pop_bottom(&mut self) -> uint {
+    pub fn scan_pop_bottom(&mut self) -> usize {
         assert!((!self.scan_stack_empty));
         let x = self.scan_stack[self.bottom];
         if self.top == self.bottom {
@@ -620,22 +620,22 @@ impl Printer {
 // Convenience functions to talk to the printer.
 //
 // "raw box"
-pub fn rbox(p: &mut Printer, indent: uint, b: Breaks) -> io::IoResult<()> {
+pub fn rbox(p: &mut Printer, indent: usize, b: Breaks) -> io::IoResult<()> {
     p.pretty_print(Token::Begin(BeginToken {
         offset: indent as int,
         breaks: b
     }))
 }
 
-pub fn ibox(p: &mut Printer, indent: uint) -> io::IoResult<()> {
+pub fn ibox(p: &mut Printer, indent: usize) -> io::IoResult<()> {
     rbox(p, indent, Breaks::Inconsistent)
 }
 
-pub fn cbox(p: &mut Printer, indent: uint) -> io::IoResult<()> {
+pub fn cbox(p: &mut Printer, indent: usize) -> io::IoResult<()> {
     rbox(p, indent, Breaks::Consistent)
 }
 
-pub fn break_offset(p: &mut Printer, n: uint, off: int) -> io::IoResult<()> {
+pub fn break_offset(p: &mut Printer, n: usize, off: int) -> io::IoResult<()> {
     p.pretty_print(Token::Break(BreakToken {
         offset: off,
         blank_space: n as int
@@ -662,7 +662,7 @@ pub fn zero_word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
     p.pretty_print(Token::String(/* bad */ wrd.to_string(), 0))
 }
 
-pub fn spaces(p: &mut Printer, n: uint) -> io::IoResult<()> {
+pub fn spaces(p: &mut Printer, n: usize) -> io::IoResult<()> {
     break_offset(p, n, 0)
 }
 
@@ -675,7 +675,7 @@ pub fn space(p: &mut Printer) -> io::IoResult<()> {
 }
 
 pub fn hardbreak(p: &mut Printer) -> io::IoResult<()> {
-    spaces(p, SIZE_INFINITY as uint)
+    spaces(p, SIZE_INFINITY as usize)
 }
 
 pub fn hardbreak_tok_offset(off: int) -> Token {

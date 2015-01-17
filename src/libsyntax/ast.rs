@@ -152,7 +152,7 @@ impl PartialEq for Ident {
 
 /// A SyntaxContext represents a chain of macro-expandings
 /// and renamings. Each macro expansion corresponds to
-/// a fresh uint
+/// a fresh usize
 
 // I'm representing this syntax context as an index into
 // a table, in order to work around a compiler bug
@@ -181,9 +181,9 @@ impl Name {
         }
     }
 
-    pub fn uint(&self) -> uint {
+    pub fn uint(&self) -> usize {
         let Name(nm) = *self;
-        nm as uint
+        nm as usize
     }
 
     pub fn ident(&self) -> Ident {
@@ -740,7 +740,7 @@ pub enum Expr_ {
     ExprAssign(P<Expr>, P<Expr>),
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
     ExprField(P<Expr>, SpannedIdent),
-    ExprTupField(P<Expr>, Spanned<uint>),
+    ExprTupField(P<Expr>, Spanned<usize>),
     ExprIndex(P<Expr>, P<Expr>),
     ExprRange(Option<P<Expr>>, Option<P<Expr>>),
 
@@ -839,7 +839,7 @@ pub struct SequenceRepetition {
     /// Whether the sequence can be repeated zero (*), or one or more times (+)
     pub op: KleeneOp,
     /// The number of `MatchNt`s that appear in the sequence (and subsequences)
-    pub num_captures: uint,
+    pub num_captures: usize,
 }
 
 /// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
@@ -878,7 +878,7 @@ pub enum TokenTree {
 }
 
 impl TokenTree {
-    pub fn len(&self) -> uint {
+    pub fn len(&self) -> usize {
         match *self {
             TtToken(_, token::DocComment(_)) => 2,
             TtToken(_, token::SpecialVarNt(..)) => 2,
@@ -893,7 +893,7 @@ impl TokenTree {
         }
     }
 
-    pub fn get_tt(&self, index: uint) -> TokenTree {
+    pub fn get_tt(&self, index: usize) -> TokenTree {
         match (self, index) {
             (&TtToken(sp, token::DocComment(_)), 0) => {
                 TtToken(sp, token::Pound)
@@ -963,7 +963,7 @@ pub enum Mac_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
 pub enum StrStyle {
     CookedStr,
-    RawStr(uint)
+    RawStr(usize)
 }
 
 pub type Lit = Spanned<Lit_>;
@@ -992,7 +992,7 @@ pub enum LitIntType {
 }
 
 impl LitIntType {
-    pub fn suffix_len(&self) -> uint {
+    pub fn suffix_len(&self) -> usize {
         match *self {
             UnsuffixedIntLit(_) => 0,
             SignedIntLit(s, _) => s.suffix_len(),
@@ -1113,7 +1113,7 @@ impl fmt::String for IntTy {
 }
 
 impl IntTy {
-    pub fn suffix_len(&self) -> uint {
+    pub fn suffix_len(&self) -> usize {
         match *self {
             TyIs(true) /* i */ => 1,
             TyIs(false) /* is */ | TyI8 => 2,
@@ -1146,7 +1146,7 @@ impl PartialEq for UintTy {
 }
 
 impl UintTy {
-    pub fn suffix_len(&self) -> uint {
+    pub fn suffix_len(&self) -> usize {
         match *self {
             TyUs(true) /* u */ => 1,
             TyUs(false) /* us */ | TyU8 => 2,
@@ -1186,7 +1186,7 @@ impl fmt::String for FloatTy {
 }
 
 impl FloatTy {
-    pub fn suffix_len(&self) -> uint {
+    pub fn suffix_len(&self) -> usize {
         match *self {
             TyF32 | TyF64 => 3, // add F128 handling here
         }
@@ -1274,7 +1274,7 @@ pub enum Ty_ {
     TyPtr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
     TyRptr(Option<Lifetime>, MutTy),
-    /// A bare function (e.g. `fn(uint) -> bool`)
+    /// A bare function (e.g. `fn(usize) -> bool`)
     TyBareFn(P<BareFnTy>),
     /// A tuple (`(A, B, C, D,...)`)
     TyTup(Vec<P<Ty>> ),
@@ -1566,7 +1566,7 @@ pub enum AttrStyle {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
-pub struct AttrId(pub uint);
+pub struct AttrId(pub usize);
 
 /// Doc-comments are promoted to attributes that have is_sugared_doc = true
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
