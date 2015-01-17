@@ -835,26 +835,24 @@ pub fn cast_shift_rhs<F, G>(op: ast::BinOp,
     G: FnOnce(ValueRef, Type) -> ValueRef,
 {
     // Shifts may have any size int on the rhs
-    unsafe {
-        if ast_util::is_shift_binop(op) {
-            let mut rhs_llty = val_ty(rhs);
-            let mut lhs_llty = val_ty(lhs);
-            if rhs_llty.kind() == Vector { rhs_llty = rhs_llty.element_type() }
-            if lhs_llty.kind() == Vector { lhs_llty = lhs_llty.element_type() }
-            let rhs_sz = llvm::LLVMGetIntTypeWidth(rhs_llty.to_ref());
-            let lhs_sz = llvm::LLVMGetIntTypeWidth(lhs_llty.to_ref());
-            if lhs_sz < rhs_sz {
-                trunc(rhs, lhs_llty)
-            } else if lhs_sz > rhs_sz {
-                // FIXME (#1877: If shifting by negative
-                // values becomes not undefined then this is wrong.
-                zext(rhs, lhs_llty)
-            } else {
-                rhs
-            }
+    if ast_util::is_shift_binop(op) {
+        let mut rhs_llty = val_ty(rhs);
+        let mut lhs_llty = val_ty(lhs);
+        if rhs_llty.kind() == Vector { rhs_llty = rhs_llty.element_type() }
+        if lhs_llty.kind() == Vector { lhs_llty = lhs_llty.element_type() }
+        let rhs_sz = rhs_llty.int_width();
+        let lhs_sz = lhs_llty.int_width();
+        if lhs_sz < rhs_sz {
+            trunc(rhs, lhs_llty)
+        } else if lhs_sz > rhs_sz {
+            // FIXME (#1877: If shifting by negative
+            // values becomes not undefined then this is wrong.
+            zext(rhs, lhs_llty)
         } else {
             rhs
         }
+    } else {
+        rhs
     }
 }
 

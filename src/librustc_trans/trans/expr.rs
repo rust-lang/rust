@@ -1905,18 +1905,16 @@ fn int_cast(bcx: Block,
             signed: bool)
             -> ValueRef {
     let _icx = push_ctxt("int_cast");
-    unsafe {
-        let srcsz = llvm::LLVMGetIntTypeWidth(llsrctype.to_ref());
-        let dstsz = llvm::LLVMGetIntTypeWidth(lldsttype.to_ref());
-        return if dstsz == srcsz {
-            BitCast(bcx, llsrc, lldsttype)
-        } else if srcsz > dstsz {
-            TruncOrBitCast(bcx, llsrc, lldsttype)
-        } else if signed {
-            SExtOrBitCast(bcx, llsrc, lldsttype)
-        } else {
-            ZExtOrBitCast(bcx, llsrc, lldsttype)
-        };
+    let srcsz = llsrctype.int_width();
+    let dstsz = lldsttype.int_width();
+    return if dstsz == srcsz {
+        BitCast(bcx, llsrc, lldsttype)
+    } else if srcsz > dstsz {
+        TruncOrBitCast(bcx, llsrc, lldsttype)
+    } else if signed {
+        SExtOrBitCast(bcx, llsrc, lldsttype)
+    } else {
+        ZExtOrBitCast(bcx, llsrc, lldsttype)
     }
 }
 

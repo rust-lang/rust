@@ -284,6 +284,13 @@ impl Type {
         }
     }
 
+    /// Return the number of elements in `self` if it is a LLVM vector type.
+    pub fn vector_length(&self) -> uint {
+        unsafe {
+            llvm::LLVMGetVectorSize(self.to_ref()) as uint
+        }
+    }
+
     pub fn array_length(&self) -> uint {
         unsafe {
             llvm::LLVMGetArrayLength(self.to_ref()) as uint
@@ -324,6 +331,13 @@ impl Type {
             X86_FP80 => 80,
             FP128 | PPC_FP128 => 128,
             _ => panic!("llvm_float_width called on a non-float type")
+        }
+    }
+
+    /// Retrieve the bit width of the integer type `self`.
+    pub fn int_width(&self) -> u64 {
+        unsafe {
+            llvm::LLVMGetIntTypeWidth(self.to_ref()) as u64
         }
     }
 }

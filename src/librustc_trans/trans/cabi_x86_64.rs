@@ -14,9 +14,8 @@
 #![allow(non_upper_case_globals)]
 use self::RegClass::*;
 
-use llvm;
 use llvm::{Integer, Pointer, Float, Double};
-use llvm::{Struct, Array, Attribute};
+use llvm::{Struct, Array, Attribute, Vector};
 use llvm::{StructRetAttribute, ByValAttribute, ZExtAttribute};
 use trans::cabi::{ArgType, FnType};
 use trans::context::CrateContext;
@@ -33,7 +32,8 @@ enum RegClass {
     SSEFv,
     SSEDs,
     SSEDv,
-    SSEInt,
+    SSEInt(/* bitwidth */ u64),
+    /// Data that can appear in the upper half of an SSE register.
     SSEUp,
     X87,
     X87Up,
@@ -57,7 +57,7 @@ impl TypeMethods for Type {
 impl RegClass {
     fn is_sse(&self) -> bool {
         match *self {
-            SSEFs | SSEFv | SSEDs | SSEDv => true,
+            SSEFs | SSEFv | SSEDs | SSEDv | SSEInt(_) => true,
             _ => false
         }
     }
@@ -93,11 +93,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
 
     fn ty_align(ty: Type) -> uint {
         match ty.kind() {
-            Integer => {
-                unsafe {
-                    ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-                }
-            }
+            Integer => ((ty.int_width() as uint) + 7) / 8,
             Pointer => 8,
             Float => 4,
             Double => 8,
@@ -113,17 +109,18 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                 let elt = ty.element_type();
                 ty_align(elt)
             }
-            _ => panic!("ty_size: unhandled type")
+            Vector => {
+                let len = ty.vector_length();
+                let elt = ty.element_type();
+                ty_align(elt) * len
+            }
+            _ => panic!("ty_align: unhandled type")
         }
     }
 
     fn ty_size(ty: Type) -> uint {
         match ty.kind() {
-            Integer => {
-                unsafe {
-                    ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-                }
-            }
+            Integer => (ty.int_width() as uint + 7) / 8,
             Pointer => 8,
             Float => 4,
             Double => 8,
@@ -142,6 +139,13 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                 let eltsz = ty_size(elt);
                 len * eltsz
             }
+            Vector => {
+                let len = ty.vector_length();
+                let elt = ty.element_type();
+                let eltsz = ty_size(elt);
+                len * eltsz
+            }
+
             _ => panic!("ty_size: unhandled type")
         }
     }
@@ -155,26 +159,34 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
     fn unify(cls: &mut [RegClass],
              i: uint,
              newv: RegClass) {
-        if cls[i] == newv {
-            return;
-        } else if cls[i] == NoClass {
-            cls[i] = newv;
-        } else if newv == NoClass {
-            return;
-        } else if cls[i] == Memory || newv == Memory {
-            cls[i] = Memory;
-        } else if cls[i] == Int || newv == Int {
-            cls[i] = Int;
-        } else if cls[i] == X87 ||
-                  cls[i] == X87Up ||
-                  cls[i] == ComplexX87 ||
-                  newv == X87 ||
-                  newv == X87Up ||
-                  newv == ComplexX87 {
-            cls[i] = Memory;
-        } else {
-            cls[i] = newv;
-        }
+        if cls[i] == newv { return }
+
+        let to_write = match (cls[i], newv) {
+            (NoClass,     _) => newv,
+            (_,           NoClass) => return,
+
+            (Memory,      _) |
+            (_,           Memory) => Memory,
+
+            (Int,         _) |
+            (_,           Int) => Int,
+
+            (X87,         _) |
+            (X87Up,       _) |
+            (ComplexX87,  _) |
+            (_,           X87) |
+            (_,           X87Up) |
+            (_,           ComplexX87) => Memory,
+
+            (SSEFv,       SSEUp) |
+            (SSEFs,       SSEUp) |
+            (SSEDv,       SSEUp) |
+            (SSEDs,       SSEUp) |
+            (SSEInt(_),   SSEUp) => return,
+
+            (_,           _) => newv
+        };
+        cls[i] = to_write;
     }
 
     fn classify_struct(tys: &[Type],
@@ -237,6 +249,27 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                     i += 1u;
                 }
             }
+            Vector => {
+                let len = ty.vector_length();
+                let elt = ty.element_type();
+                let eltsz = ty_size(elt);
+                let mut reg = match elt.kind() {
+                    Integer => SSEInt(elt.int_width()),
+                    Float => SSEFv,
+                    Double => SSEDv,
+                    _ => panic!("classify: unhandled vector element type")
+                };
+
+                let mut i = 0u;
+                while i < len {
+                    unify(cls, ix + (off + i * eltsz) / 8, reg);
+
+                    // everything after the first one is the upper
+                    // half of a register.
+                    reg = SSEUp;
+                    i += 1u;
+                }
+            }
             _ => panic!("classify: unhandled type")
         }
     }
@@ -245,7 +278,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
         let mut i = 0u;
         let ty_kind = ty.kind();
         let e = cls.len();
-        if cls.len() > 2u && (ty_kind == Struct || ty_kind == Array) {
+        if cls.len() > 2u && (ty_kind == Struct || ty_kind == Array || ty_kind == Vector) {
             if cls[i].is_sse() {
                 i += 1u;
                 while i < e {
@@ -317,9 +350,19 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
             Int => {
                 tys.push(Type::i64(ccx));
             }
-            SSEFv => {
+            SSEFv | SSEDv | SSEInt(_) => {
+                let (elts_per_word, elt_ty) = match cls[i] {
+                    SSEFv => (2, Type::f32(ccx)),
+                    SSEDv => (1, Type::f64(ccx)),
+                    SSEInt(bits) => {
+                        assert!(bits == 8 || bits == 16 || bits == 32 || bits == 64,
+                                "llreg_ty: unsupported SSEInt width {}", bits);
+                        (64 / bits, Type::ix(ccx, bits))
+                    }
+                    _ => unreachable!(),
+                };
                 let vec_len = llvec_len(&cls[(i + 1u)..]);
-                let vec_ty = Type::vector(&Type::f32(ccx), (vec_len * 2u) as u64);
+                let vec_ty = Type::vector(&elt_ty, vec_len as u64 * elts_per_word);
                 tys.push(vec_ty);
                 i += vec_len;
                 continue;
@@ -334,7 +377,12 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
         }
         i += 1u;
     }
-    return Type::struct_(ccx, tys.as_slice(), false);
+    if tys.len() == 1 && tys[0].kind() == Vector {
+        // if the type contains only a vector, pass it as that vector.
+        tys[0]
+    } else {
+        Type::struct_(ccx, tys.as_slice(), false)
+    }
 }
 
 pub fn compute_abi_info(ccx: &CrateContext,

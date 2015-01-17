@@ -10,8 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use llvm;
-use llvm::{Integer, Pointer, Float, Double, Struct, Array};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
 use llvm::{StructRetAttribute, ZExtAttribute};
 use trans::cabi::{FnType, ArgType};
 use trans::context::CrateContext;
@@ -30,11 +29,7 @@ fn align(off: uint, ty: Type) -> uint {
 
 fn ty_align(ty: Type) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as uint) + 7) / 8,
         Pointer => 8,
         Float => 4,
         Double => 8,
@@ -50,17 +45,18 @@ fn ty_align(ty: Type) -> uint {
             let elt = ty.element_type();
             ty_align(elt)
         }
+        Vector => {
+            let len = ty.vector_length();
+            let elt = ty.element_type();
+            ty_align(elt) * len
+        }
         _ => panic!("ty_align: unhandled type")
     }
 }
 
 fn ty_size(ty: Type) -> uint {
     match ty.kind() {
-        Integer => {
-            unsafe {
-                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
-            }
-        }
+        Integer => ((ty.int_width() as uint) + 7) / 8,
         Pointer => 8,
         Float => 4,
         Double => 8,
@@ -76,6 +72,12 @@ fn ty_size(ty: Type) -> uint {
         }
         Array => {
             let len = ty.array_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt);
+            len * eltsz
+        }
+        Vector => {
+            let len = ty.vector_length();
             let elt = ty.element_type();
             let eltsz = ty_size(elt);
             len * eltsz
@@ -137,7 +139,8 @@ fn is_reg_ty(ty: Type) -> bool {
         Integer
         | Pointer
         | Float
-        | Double => true,
+        | Double
+        | Vector => true,
         _ => false
     }
 }
