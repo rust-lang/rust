@@ -81,10 +81,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 match ccx.tcx.lang_items.to_builtin_kind(trait_ref.def_id) {
                     Some(ty::BoundSend) | Some(ty::BoundSync) => {}
                     Some(_) | None => {
-                        ccx.tcx.sess.span_err(
-                            item.span,
-                            format!("negative impls are currently \
-                                     allowed just for `Send` and `Sync`").as_slice())
+                        span_err!(ccx.tcx.sess, item.span, E0192,
+                            "negative impls are currently \
+                                     allowed just for `Send` and `Sync`")
                     }
                 }
             }
@@ -302,12 +301,11 @@ fn reject_non_type_param_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
     fn report_bound_error<'t>(tcx: &ty::ctxt<'t>,
                           span: Span,
                           bounded_ty: ty::Ty<'t>) {
-        tcx.sess.span_err(
-            span,
-            format!("cannot bound type `{}`, where clause \
+        span_err!(tcx.sess, span, E0193,
+            "cannot bound type `{}`, where clause \
                 bounds may only be attached to types involving \
                 type parameters",
-                bounded_ty.repr(tcx)).as_slice())
+                bounded_ty.repr(tcx))
     }
 
     fn is_ty_param(ty: ty::Ty) -> bool {
@@ -326,10 +324,9 @@ fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     for method_param in generics.types.get_slice(subst::FnSpace).iter() {
         if impl_params.contains(&method_param.name) {
-            tcx.sess.span_err(
-                span,
-                &*format!("type parameter `{}` shadows another type parameter of the same name",
-                          token::get_name(method_param.name)));
+            span_err!(tcx.sess, span, E0194,
+                "type parameter `{}` shadows another type parameter of the same name",
+                          token::get_name(method_param.name));
         }
     }
 }

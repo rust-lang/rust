@@ -100,7 +100,67 @@ register_diagnostics! {
     E0178,
     E0182,
     E0183,
-    E0184
+    E0184,
+    E0185,
+    E0186,
+    E0187, // can't infer the kind of the closure
+    E0188, // types differ in mutability
+    E0189, // can only cast a boxed pointer to a boxed object
+    E0190, // can only cast a &-pointer to an &-object
+    E0191, // value of the associated type must be specified
+    E0192, // negative imples are allowed just fo `Send` and `Sync`
+    E0193, // cannot bound type where clause bounds may only be attached to types
+           // involving type parameters
+    E0194,
+    E0195, // lifetime parameters or bounds on method do not match the trait declaration
+    E0196, // cannot determine a type for this unboxed closure
+    E0197, // inherent impls cannot be declared as unsafe
+    E0198, // negative implementations are not unsafe
+    E0199, // implementing trait is not unsafe
+    E0200, // trait requires an `unsafe impl` declaration
+    E0201, // duplicate method in trait impl
+    E0202, // associated items are not allowed in inherint impls
+    E0203, // type parameter has more than one relaxed default bound,
+           // and only one is supported
+    E0204, // trait `Copy` may not be implemented for this type; field
+           // does not implement `Copy`
+    E0205, // trait `Copy` may not be implemented for this type; variant
+           // does not implement `copy`
+    E0206, // trait `Copy` may not be implemented for this type; type is
+           // not a structure or enumeration
+    E0207, // type parameter is not constrained by the impl trait, self type, or predicate
+    E0208,
+    E0209, // builtin traits can only be implemented on structs or enums
+    E0210, // type parameter is not constrained by any local type
+    E0211,
+    E0212, // cannot extract an associated type from a higher-ranked trait bound
+    E0213, // associated types are not accepted in this context
+    E0214, // parenthesized parameters may only be used with a trait
+    E0215, // angle-bracket notation is not stable with `Fn`
+    E0216, // parenthetical notation is only stable with `Fn`
+    E0217, // ambiguous associated type, defined in multiple supertraits
+    E0218, // no associated type defined
+    E0219, // associated type defined in higher-ranked supertrait
+    E0220, // associated type not found for type parameter
+    E0221, // ambiguous associated type in bounds
+    E0222, // variadic function must have C calling convention
+    E0223, // ambiguous associated type
+    E0224, // at least one non-builtin train is required for an object type
+    E0225, // only the builtin traits can be used as closure or object bounds
+    E0226, // only a single explicit lifetime bound is permitted
+    E0227, // ambiguous lifetime bound, explicit lifetime bound required
+    E0228, // explicit lifetime bound required
+    E0229, // associated type bindings are not allowed here
+    E0230, // there is no type parameter on trait
+    E0231, // only named substitution parameters are allowed
+    E0232, // this attribute must have a value
+    E0233,
+    E0234, // `for` loop expression has type which does not implement the `Iterator` trait
+    E0235, // structure constructor specifies a structure of type but
+    E0236, // no lang item for range syntax
+    E0237, // no lang item for range syntax
+    E0238, // parenthesized parameters may only be used with a trait
+    E0239  // `next` method of `Iterator` trait has unexpected type
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }
