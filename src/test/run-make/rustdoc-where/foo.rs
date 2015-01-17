@@ -24,11 +24,15 @@ impl<D> Delta<D> where D: MyTrait {
 }
 
 pub struct Echo<E>;
-// @matches foo/struct.Echo.html '//*[@class="impl"]//code' "impl.*MyTrait.*for.*Echo.*where.*E:.*MyTrait" 
-// @matches foo/trait.MyTrait.html '//*[@id="implementors-list"]//code' "impl.*MyTrait.*for.*Echo.*where.*E:.*MyTrait"
+// @matches foo/struct.Echo.html '//*[@class="impl"]//code' \
+//          "impl.*MyTrait.*for.*Echo.*where.*E:.*MyTrait"
+// @matches foo/trait.MyTrait.html '//*[@id="implementors-list"]//code' \
+//          "impl.*MyTrait.*for.*Echo.*where.*E:.*MyTrait"
 impl<E> MyTrait for Echo<E> where E: MyTrait {}
 
 pub enum Foxtrot<F> {}
-// @matches foo/enum.Foxtrot.html '//*[@class="impl"]//code' "impl.*MyTrait.*for.*Foxtrot.*where.*F:.*MyTrait" 
-// @matches foo/trait.MyTrait.html '//*[@id="implementors-list"]//code' "impl.*MyTrait.*for.*Foxtrot.*where.*F:.*MyTrait"
+// @matches foo/enum.Foxtrot.html '//*[@class="impl"]//code' \
+//          "impl.*MyTrait.*for.*Foxtrot.*where.*F:.*MyTrait"
+// @matches foo/trait.MyTrait.html '//*[@id="implementors-list"]//code' \
+//          "impl.*MyTrait.*for.*Foxtrot.*where.*F:.*MyTrait"
 impl<F> MyTrait for Foxtrot<F> where F: MyTrait {}
