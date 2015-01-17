@@ -28,6 +28,7 @@
 #![allow(unknown_features)] #![feature(int_uint)]
 
 extern crate libc;
+#[macro_use] #[no_link] extern crate rustc_bitflags;
 
 pub use self::OtherAttribute::*;
 pub use self::SpecialAttribute::*;

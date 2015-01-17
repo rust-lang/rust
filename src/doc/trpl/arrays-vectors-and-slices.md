@@ -5,7 +5,7 @@ things. The most basic is the *array*, a fixed-size list of elements of the
 same type. By default, arrays are immutable.
 
 ```{rust}
-let a = [1, 2, 3];     // a: [i32; 3]
+let a = [1, 2, 3]; // a: [i32; 3]
 let mut m = [1, 2, 3]; // mut m: [i32; 3]
 ```
 
@@ -68,7 +68,7 @@ let mut nums = vec![1, 2, 3]; // mut nums: Vec<i32>
 
 nums.push(4);
 
-println!("The length of nums is now {}", nums.len());   // Prints 4
+println!("The length of nums is now {}", nums.len()); // Prints 4
 ```
 
 Vectors have many more useful methods.
@@ -82,10 +82,10 @@ arrays:
 
 ```{rust}
 let a = [0, 1, 2, 3, 4];
-let middle = &a[1..4];     // A slice of a: just the elements 1, 2, and 3
+let middle = &a[1..4]; // A slice of a: just the elements 1, 2, and 3
 
 for e in middle.iter() {
-    println!("{}", e);          // Prints 1, 2, 3
+    println!("{}", e); // Prints 1, 2, 3
 }
 ```
 

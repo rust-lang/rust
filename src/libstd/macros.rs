@@ -122,16 +122,18 @@ macro_rules! try {
 /// receivers. It places no restrictions on the types of receivers given to
 /// this macro, this can be viewed as a heterogeneous select.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::thread::Thread;
-/// use std::sync::mpsc::channel;
+/// use std::sync::mpsc;
 ///
-/// let (tx1, rx1) = channel();
-/// let (tx2, rx2) = channel();
-/// # fn long_running_task() {}
-/// # fn calculate_the_answer() -> int { 42i }
+/// // two placeholder functions for now
+/// fn long_running_task() {}
+/// fn calculate_the_answer() -> u32 { 42 }
+///
+/// let (tx1, rx1) = mpsc::channel();
+/// let (tx2, rx2) = mpsc::channel();
 ///
 /// Thread::spawn(move|| { long_running_task(); tx1.send(()).unwrap(); });
 /// Thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
@@ -251,13 +253,13 @@ pub mod builtin {
     /// statement or expression position, meaning this macro may be difficult to
     /// use in some situations.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// #![feature(concat_idents)]
     ///
     /// # fn main() {
-    /// fn foobar() -> int { 23 }
+    /// fn foobar() -> u32 { 23 }
     ///
     /// let f = concat_idents!(foo, bar);
     /// println!("{}", f());

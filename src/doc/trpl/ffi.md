@@ -1,4 +1,4 @@
-% The Rust Foreign Function Interface Guide
+% Foreign Function Interface
 
 # Introduction
 
@@ -11,7 +11,7 @@ snappy includes a C interface (documented in
 The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
 
-~~~~no_run
+```no_run
 extern crate libc;
 use libc::size_t;
 
@@ -24,7 +24,7 @@ fn main() {
     let x = unsafe { snappy_max_compressed_length(100) };
     println!("max compressed length of a 100 byte buffer: {}", x);
 }
-~~~~
+```
 
 The `extern` block is a list of function signatures in a foreign library, in
 this case with the platform's C ABI. The `#[link(...)]` attribute is used to
@@ -44,7 +44,7 @@ keeping the binding correct at runtime.
 
 The `extern` block can be extended to cover the entire snappy API:
 
-~~~~no_run
+```no_run
 extern crate libc;
 use libc::{c_int, size_t};
 
@@ -66,7 +66,7 @@ extern {
                                          compressed_length: size_t) -> c_int;
 }
 # fn main() {}
-~~~~
+```
 
 # Creating a safe interface
 
@@ -79,7 +79,7 @@ vectors as pointers to memory. Rust's vectors are guaranteed to be a contiguous 
 length is number of elements currently contained, and the capacity is the total size in elements of
 the allocated memory. The length is less than or equal to the capacity.
 
-~~~~
+```
 # extern crate libc;
 # use libc::{c_int, size_t};
 # unsafe fn snappy_validate_compressed_buffer(_: *const u8, _: size_t) -> c_int { 0 }
@@ -89,7 +89,7 @@ pub fn validate_compressed_buffer(src: &[u8]) -> bool {
         snappy_validate_compressed_buffer(src.as_ptr(), src.len() as size_t) == 0
     }
 }
-~~~~
+```
 
 The `validate_compressed_buffer` wrapper above makes use of an `unsafe` block, but it makes the
 guarantee that calling it is safe for all inputs by leaving off `unsafe` from the function
@@ -103,7 +103,7 @@ required capacity to hold the compressed output. The vector can then be passed t
 `snappy_compress` function as an output parameter. An output parameter is also passed to retrieve
 the true length after compression for setting the length.
 
-~~~~
+```
 # extern crate libc;
 # use libc::{size_t, c_int};
 # unsafe fn snappy_compress(a: *const u8, b: size_t, c: *mut u8,
@@ -116,20 +116,20 @@ pub fn compress(src: &[u8]) -> Vec<u8> {
         let psrc = src.as_ptr();
 
         let mut dstlen = snappy_max_compressed_length(srclen);
-        let mut dst = Vec::with_capacity(dstlen as uint);
+        let mut dst = Vec::with_capacity(dstlen as usize);
         let pdst = dst.as_mut_ptr();
 
         snappy_compress(psrc, srclen, pdst, &mut dstlen);
-        dst.set_len(dstlen as uint);
+        dst.set_len(dstlen as usize);
         dst
     }
 }
-~~~~
+```
 
 Decompression is similar, because snappy stores the uncompressed size as part of the compression
 format and `snappy_uncompressed_length` will retrieve the exact buffer size required.
 
-~~~~
+```
 # extern crate libc;
 # use libc::{size_t, c_int};
 # unsafe fn snappy_uncompress(compressed: *const u8,
@@ -148,44 +148,21 @@ pub fn uncompress(src: &[u8]) -> Option<Vec<u8>> {
         let mut dstlen: size_t = 0;
         snappy_uncompressed_length(psrc, srclen, &mut dstlen);
 
-        let mut dst = Vec::with_capacity(dstlen as uint);
+        let mut dst = Vec::with_capacity(dstlen as usize);
         let pdst = dst.as_mut_ptr();
 
         if snappy_uncompress(psrc, srclen, pdst, &mut dstlen) == 0 {
-            dst.set_len(dstlen as uint);
+            dst.set_len(dstlen as usize);
             Some(dst)
         } else {
             None // SNAPPY_INVALID_INPUT
         }
     }
 }
-~~~~
+```
 
 For reference, the examples used here are also available as an [library on
 GitHub](https://github.com/thestinger/rust-snappy).
-
-# Stack management
-
-Rust threads by default run on a *large stack*. This is actually implemented as a
-reserving a large segment of the address space and then lazily mapping in pages
-as they are needed. When calling an external C function, the code is invoked on
-the same stack as the rust stack. This means that there is no extra
-stack-switching mechanism in place because it is assumed that the large stack
-for the rust thread is plenty for the C function to have.
-
-A planned future improvement (not yet implemented at the time of this writing)
-is to have a guard page at the end of every rust stack. No rust function will
-hit this guard page (due to Rust's usage of LLVM's `__morestack`). The intention
-for this unmapped page is to prevent infinite recursion in C from overflowing
-onto other rust stacks. If the guard page is hit, then the process will be
-terminated with a message saying that the guard page was hit.
-
-For normal external function usage, this all means that there shouldn't be any
-need for any extra effort on a user's perspective. The C stack naturally
-interleaves with the rust stack, and it's "large enough" for both to
-interoperate. If, however, it is determined that a larger stack is necessary,
-there are appropriate functions in the thread spawning API to control the size of
-the stack of the thread which is spawned.
 
 # Destructors
 
@@ -208,7 +185,7 @@ A basic example is:
 
 Rust code:
 
-~~~~no_run
+```no_run
 extern fn callback(a: i32) {
     println!("I'm called from C with value {0}", a);
 }
@@ -225,11 +202,11 @@ fn main() {
         trigger_callback(); // Triggers the callback
     }
 }
-~~~~
+```
 
 C code:
 
-~~~~c
+```c
 typedef void (*rust_callback)(int32_t);
 rust_callback cb;
 
@@ -241,7 +218,7 @@ int32_t register_callback(rust_callback callback) {
 void trigger_callback() {
   cb(7); // Will call callback(7) in Rust
 }
-~~~~
+```
 
 In this example Rust's `main()` will call `trigger_callback()` in C,
 which would, in turn, call back to `callback()` in Rust.
@@ -261,7 +238,7 @@ referenced Rust object.
 
 Rust code:
 
-~~~~no_run
+```no_run
 #[repr(C)]
 struct RustObject {
     a: i32,
@@ -292,11 +269,11 @@ fn main() {
         trigger_callback();
     }
 }
-~~~~
+```
 
 C code:
 
-~~~~c
+```c
 typedef void (*rust_callback)(void*, int32_t);
 void* cb_target;
 rust_callback cb;
@@ -310,7 +287,7 @@ int32_t register_callback(void* callback_target, rust_callback callback) {
 void trigger_callback() {
   cb(cb_target, 7); // Will call callback(&rustObject, 7) in Rust
 }
-~~~~
+```
 
 ## Asynchronous callbacks
 
@@ -389,13 +366,13 @@ the `link_args` attribute. This attribute is applied to `extern` blocks and
 specifies raw flags which need to get passed to the linker when producing an
 artifact. An example usage would be:
 
-~~~ no_run
+``` no_run
 #![feature(link_args)]
 
 #[link_args = "-foo -bar -baz"]
 extern {}
 # fn main() {}
-~~~
+```
 
 Note that this feature is currently hidden behind the `feature(link_args)` gate
 because this is not a sanctioned way of performing linking. Right now rustc
@@ -416,9 +393,9 @@ the compiler that the unsafety does not leak out of the block.
 Unsafe functions, on the other hand, advertise it to the world. An unsafe function is written like
 this:
 
-~~~~
+```
 unsafe fn kaboom(ptr: *const int) -> int { *ptr }
-~~~~
+```
 
 This function can only be called from an `unsafe` block or another `unsafe` function.
 
@@ -428,7 +405,7 @@ Foreign APIs often export a global variable which could do something like track
 global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
-~~~no_run
+```no_run
 extern crate libc;
 
 #[link(name = "readline")]
@@ -440,13 +417,13 @@ fn main() {
     println!("You have readline version {} installed.",
              rl_readline_version as int);
 }
-~~~
+```
 
 Alternatively, you may need to alter global state provided by a foreign
 interface. To do this, statics can be declared with `mut` so rust can mutate
 them.
 
-~~~no_run
+```no_run
 extern crate libc;
 
 use std::ffi::CString;
@@ -463,7 +440,7 @@ fn main() {
     // get a line, process it
     unsafe { rl_prompt = ptr::null(); }
 }
-~~~
+```
 
 # Foreign calling conventions
 
@@ -471,7 +448,7 @@ Most foreign code exposes a C ABI, and Rust uses the platform's C calling conven
 calling foreign functions. Some foreign functions, most notably the Windows API, use other calling
 conventions. Rust provides a way to tell the compiler which convention to use:
 
-~~~~
+```
 extern crate libc;
 
 #[cfg(all(target_os = "win32", target_arch = "x86"))]
@@ -481,7 +458,7 @@ extern "stdcall" {
     fn SetEnvironmentVariableA(n: *const u8, v: *const u8) -> libc::c_int;
 }
 # fn main() { }
-~~~~
+```
 
 This applies to the entire `extern` block. The list of supported ABI constraints
 are:
@@ -541,3 +518,22 @@ with one of the non-nullable types, it is represented as a single pointer,
 and the non-data variant is represented as the null pointer. So
 `Option<extern "C" fn(c_int) -> c_int>` is how one represents a nullable
 function pointer using the C ABI.
+
+# Calling Rust code from C
+
+You may wish to compile Rust code in a way so that it can be called from C. This is
+fairly easy, but requires a few things:
+
+```
+#[no_mangle]
+pub extern fn hello_rust() -> *const u8 {
+    "Hello, world!\0".as_ptr()
+}
+# fn main() {}
+```
+
+The `extern` makes this function adhere to the C calling convention, as
+discussed above in "[Foreign Calling
+Conventions](guide-ffi.html#foreign-calling-conventions)". The `no_mangle`
+attribute turns off Rust's name mangling, so that it is easier to link to.
+

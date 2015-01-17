@@ -54,7 +54,7 @@ The other kind of looping construct in Rust is the `while` loop. It looks like
 this:
 
 ```{rust}
-let mut x = 5u32;       // mut x: u32
+let mut x = 5; // mut x: u32
 let mut done = false; // mut done: bool
 
 while !done {
@@ -91,7 +91,7 @@ can do with safety and code generation, so you should always prefer
 Let's take a look at that `while` loop we had earlier:
 
 ```{rust}
-let mut x = 5u32;
+let mut x = 5;
 let mut done = false;
 
 while !done {
@@ -108,7 +108,7 @@ modifying iteration: `break` and `continue`.
 In this case, we can write the loop in a better way with `break`:
 
 ```{rust}
-let mut x = 5u32;
+let mut x = 5;
 
 loop {
     x += x - 3;

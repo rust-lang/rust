@@ -1,4 +1,4 @@
-% The Rust Ownership Guide
+% Ownership
 
 This guide presents Rust's ownership system. This is one of Rust's most unique
 and compelling features, with which Rust developers should become quite
@@ -418,7 +418,7 @@ struct Wheel {
 fn main() {
     let car = Car { name: "DeLorean".to_string() };
 
-    for _ in range(0u, 4) {
+    for _ in range(0, 4) {
         Wheel { size: 360, owner: car };
     }
 }
@@ -456,7 +456,7 @@ fn main() {
 
     let car_owner = Rc::new(car);
 
-    for _ in range(0u, 4) {
+    for _ in range(0, 4) {
         Wheel { size: 360, owner: car_owner.clone() };
     }
 }
@@ -517,31 +517,31 @@ Here are some examples of functions with elided lifetimes, and the version of
 what the elided lifetimes are expand to:
 
 ```{rust,ignore}
-fn print(s: &str);                                      // elided
-fn print<'a>(s: &'a str);                               // expanded
+fn print(s: &str); // elided
+fn print<'a>(s: &'a str); // expanded
 
-fn debug(lvl: u32, s: &str);                           // elided
-fn debug<'a>(lvl: u32, s: &'a str);                    // expanded
+fn debug(lvl: u32, s: &str); // elided
+fn debug<'a>(lvl: u32, s: &'a str); // expanded
 
 // In the preceeding example, `lvl` doesn't need a lifetime because it's not a
 // reference (`&`). Only things relating to references (such as a `struct`
 // which contains a reference) need lifetimes.
 
-fn substr(s: &str, until: u32) -> &str;                // elided
-fn substr<'a>(s: &'a str, until: u32) -> &'a str;      // expanded
+fn substr(s: &str, until: u32) -> &str; // elided
+fn substr<'a>(s: &'a str, until: u32) -> &'a str; // expanded
 
-fn get_str() -> &str;                                   // ILLEGAL, no inputs
+fn get_str() -> &str; // ILLEGAL, no inputs
 
-fn frob(s: &str, t: &str) -> &str;                      // ILLEGAL, two inputs
+fn frob(s: &str, t: &str) -> &str; // ILLEGAL, two inputs
 
-fn get_mut(&mut self) -> &mut T;                        // elided
-fn get_mut<'a>(&'a mut self) -> &'a mut T;              // expanded
+fn get_mut(&mut self) -> &mut T; // elided
+fn get_mut<'a>(&'a mut self) -> &'a mut T; // expanded
 
-fn args<T:ToCStr>(&mut self, args: &[T]) -> &mut Command                  // elided
+fn args<T:ToCStr>(&mut self, args: &[T]) -> &mut Command // elided
 fn args<'a, 'b, T:ToCStr>(&'a mut self, args: &'b [T]) -> &'a mut Command // expanded
 
-fn new(buf: &mut [u8]) -> BufWriter;                    // elided
-fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a>          // expanded
+fn new(buf: &mut [u8]) -> BufWriter; // elided
+fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a> // expanded
 ```
 
 # Related Resources

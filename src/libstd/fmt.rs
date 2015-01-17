@@ -26,15 +26,13 @@
 //!
 //! Some examples of the `format!` extension are:
 //!
-//! ```rust
-//! # fn main() {
+//! ```
 //! format!("Hello");                  // => "Hello"
 //! format!("Hello, {}!", "world");    // => "Hello, world!"
 //! format!("The number is {}", 1i);   // => "The number is 1"
 //! format!("{:?}", (3i, 4i));         // => "(3i, 4i)"
 //! format!("{value}", value=4i);      // => "4"
 //! format!("{} {}", 1i, 2u);          // => "1 2"
-//! # }
 //! ```
 //!
 //! From these, you can see that the first argument is a format string. It is
@@ -83,12 +81,10 @@
 //!
 //! For example, the following `format!` expressions all use named argument:
 //!
-//! ```rust
-//! # fn main() {
+//! ```
 //! format!("{argument}", argument = "test");   // => "test"
 //! format!("{name} {}", 1i, name = 2i);        // => "2 1"
 //! format!("{a} {c} {b}", a="a", b='b', c=3i);  // => "a 3 b"
-//! # }
 //! ```
 //!
 //! It is illegal to put positional parameters (those without names) after
@@ -288,8 +284,6 @@
 //! use std::fmt;
 //! use std::io;
 //!
-//! # #[allow(unused_must_use)]
-//! # fn main() {
 //! fmt::format(format_args!("this returns {}", "String"));
 //!
 //! let some_writer: &mut io::Writer = &mut io::stdout();
@@ -299,7 +293,6 @@
 //!     write!(&mut io::stdout(), "{}", args);
 //! }
 //! my_fmt_fn(format_args!("or a {} too", "function"));
-//! # }
 //! ```
 //!
 //! The result of the `format_args!` macro is a value of type `fmt::Arguments`.
