@@ -3423,7 +3423,7 @@ Used inside an array pattern, `..` stands for any number of elements, when the
 `advanced_slice_patterns` feature gate is turned on. This wildcard can be used
 at most once for a given array, which implies that it cannot be used to
 specifically match elements that are at an unknown distance from both ends of a
-array, like `[.., 42, ..]`. If followed by a variable name, it will bind the
+array, like `[.., 42, ..]`. If preceded by a variable name, it will bind the
 corresponding slice to the variable. Example:
 
 ```
