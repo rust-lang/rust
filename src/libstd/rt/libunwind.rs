@@ -109,6 +109,10 @@ extern {}
 #[link(name = "gcc_pic")]
 extern {}
 
+#[cfg(target_os = "bitrig")]
+#[link(name = "c++abi")]
+extern {}
+
 extern "C" {
     // iOS on armv7 uses SjLj exceptions and requires to link
     // against corresponding routine (..._SjLj_...)

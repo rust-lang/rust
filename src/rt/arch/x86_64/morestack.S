@@ -15,13 +15,13 @@
 
 #if defined(__APPLE__)
 #define EXHAUSTED               _rust_stack_exhausted
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
+#elif defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__Bitrig__)
 #define EXHAUSTED               rust_stack_exhausted@PLT
 #else
 #define EXHAUSTED               rust_stack_exhausted
 #endif
 
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__DragonFly__) || defined(__Bitrig__)
 	.hidden MORESTACK
 #else
 #if defined(__APPLE__)

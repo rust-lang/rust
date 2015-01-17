@@ -13,6 +13,7 @@
 //ignore-freebsd
 //ignore-ios
 //ignore-dragonfly
+//ignore-bitrig
 
 #![feature(asm)]
 

@@ -319,6 +319,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
         if !STATE.is_null() { return STATE }
         let selfname = if cfg!(target_os = "freebsd") ||
                           cfg!(target_os = "dragonfly") ||
+                          cfg!(target_os = "bitrig") ||
                           cfg!(target_os = "openbsd") {
             env::current_exe().ok()
         } else {

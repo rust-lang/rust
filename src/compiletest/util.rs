@@ -23,6 +23,7 @@ static OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("linux", "linux"),
     ("freebsd", "freebsd"),
     ("dragonfly", "dragonfly"),
+    ("bitrig", "bitrig"),
     ("openbsd", "openbsd"),
 ];
 
