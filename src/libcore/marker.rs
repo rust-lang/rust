@@ -210,8 +210,7 @@ impl<T: ?Sized> Clone for ContravariantType<T> {
 /// "interior" mutability:
 ///
 /// ```
-/// pub struct Cell<T> { value: T }
-/// # fn main() {}
+/// struct Cell<T> { value: T }
 /// ```
 ///
 /// The type system would infer that `value` is only read here and
