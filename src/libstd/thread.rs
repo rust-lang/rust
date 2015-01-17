@@ -382,7 +382,7 @@ impl Thread {
         unsafe { imp::yield_now() }
     }
 
-    /// Determines whether the current thread is panicking.
+    /// Determines whether the current thread is unwinding because of panic.
     #[inline]
     #[stable]
     pub fn panicking() -> bool {
