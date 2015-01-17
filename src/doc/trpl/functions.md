@@ -143,7 +143,7 @@ fn foo(x: i32) -> i32 {
 ```
 
 The previous definition without `return` may look a bit strange if you haven't
-worked in an expression-based language before, but it becomes intutive over
+worked in an expression-based language before, but it becomes intuitive over
 time. If this were production code, we wouldn't write it in that way anyway,
 we'd write this:
 

@@ -8,7 +8,7 @@ A quick refresher: you can match against literals directly, and `_` acts as an
 *any* case:
 
 ```{rust}
-let x = 1i;
+let x = 1;
 
 match x {
     1 => println!("one"),
@@ -21,7 +21,7 @@ match x {
 You can match multiple patterns with `|`:
 
 ```{rust}
-let x = 1i;
+let x = 1;
 
 match x {
     1 | 2 => println!("one or two"),
@@ -33,7 +33,7 @@ match x {
 You can match a range of values with `...`:
 
 ```{rust}
-let x = 1i;
+let x = 1;
 
 match x {
     1 ... 5 => println!("one through five"),
@@ -47,7 +47,7 @@ If you're matching multiple things, via a `|` or a `...`, you can bind
 the value to a name with `@`:
 
 ```{rust}
-let x = 1i;
+let x = 1;
 
 match x {
     e @ 1 ... 5 => println!("got a range element {}", e),
@@ -60,15 +60,15 @@ ignore the value and type in the variant:
 
 ```{rust}
 enum OptionalInt {
-    Value(int),
+    Value(i32),
     Missing,
 }
 
-let x = OptionalInt::Value(5i);
+let x = OptionalInt::Value(5);
 
 match x {
     OptionalInt::Value(..) => println!("Got an int!"),
-    OptionalInt::Missing   => println!("No such luck."),
+    OptionalInt::Missing => println!("No such luck."),
 }
 ```
 
@@ -76,16 +76,16 @@ You can introduce *match guards* with `if`:
 
 ```{rust}
 enum OptionalInt {
-    Value(int),
+    Value(i32),
     Missing,
 }
 
-let x = OptionalInt::Value(5i);
+let x = OptionalInt::Value(5);
 
 match x {
     OptionalInt::Value(i) if i > 5 => println!("Got an int bigger than five!"),
     OptionalInt::Value(..) => println!("Got an int!"),
-    OptionalInt::Missing   => println!("No such luck."),
+    OptionalInt::Missing => println!("No such luck."),
 }
 ```
 
@@ -93,33 +93,33 @@ If you're matching on a pointer, you can use the same syntax as you declared it
 with. First, `&`:
 
 ```{rust}
-let x = &5i;
+let x = &5;
 
 match x {
     &val => println!("Got a value: {}", val),
 }
 ```
 
-Here, the `val` inside the `match` has type `int`. In other words, the left-hand
-side of the pattern destructures the value. If we have `&5i`, then in `&val`, `val`
-would be `5i`.
+Here, the `val` inside the `match` has type `i32`. In other words, the left-hand
+side of the pattern destructures the value. If we have `&5`, then in `&val`, `val`
+would be `5`.
 
 If you want to get a reference, use the `ref` keyword:
 
 ```{rust}
-let x = 5i;
+let x = 5;
 
 match x {
     ref r => println!("Got a reference to {}", r),
 }
 ```
 
-Here, the `r` inside the `match` has the type `&int`. In other words, the `ref`
+Here, the `r` inside the `match` has the type `&i32`. In other words, the `ref`
 keyword _creates_ a reference, for use in the pattern. If you need a mutable
 reference, `ref mut` will work in the same way:
 
 ```{rust}
-let mut x = 5i;
+let mut x = 5;
 
 match x {
     ref mut mr => println!("Got a mutable reference to {}", mr),
@@ -131,11 +131,11 @@ If you have a struct, you can destructure it inside of a pattern:
 ```{rust}
 # #![allow(non_shorthand_field_patterns)]
 struct Point {
-    x: int,
-    y: int,
+    x: i32,
+    y: i32,
 }
 
-let origin = Point { x: 0i, y: 0i };
+let origin = Point { x: 0, y: 0 };
 
 match origin {
     Point { x: x, y: y } => println!("({},{})", x, y),
@@ -147,11 +147,11 @@ If we only care about some of the values, we don't have to give them all names:
 ```{rust}
 # #![allow(non_shorthand_field_patterns)]
 struct Point {
-    x: int,
-    y: int,
+    x: i32,
+    y: i32,
 }
 
-let origin = Point { x: 0i, y: 0i };
+let origin = Point { x: 0, y: 0 };
 
 match origin {
     Point { x: x, .. } => println!("x is {}", x),
@@ -163,11 +163,11 @@ You can do this kind of match on any member, not just the first:
 ```{rust}
 # #![allow(non_shorthand_field_patterns)]
 struct Point {
-    x: int,
-    y: int,
+    x: i32,
+    y: i32,
 }
 
-let origin = Point { x: 0i, y: 0i };
+let origin = Point { x: 0, y: 0 };
 
 match origin {
     Point { y: y, .. } => println!("y is {}", y),

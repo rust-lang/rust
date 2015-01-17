@@ -39,13 +39,16 @@ macro_rules! panic {
 /// // the panic message for these assertions is the stringified value of the
 /// // expression given.
 /// assert!(true);
-/// # fn some_computation() -> bool { true }
+///
+/// fn some_computation() -> bool { true } // a very simple function
+///
 /// assert!(some_computation());
 ///
 /// // assert with a custom message
-/// # let x = true;
+/// let x = true;
 /// assert!(x, "x wasn't true!");
-/// # let a = 3i; let b = 27i;
+///
+/// let a = 3i; let b = 27i;
 /// assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
@@ -108,13 +111,15 @@ macro_rules! assert_eq {
 /// // the panic message for these assertions is the stringified value of the
 /// // expression given.
 /// debug_assert!(true);
-/// # fn some_expensive_computation() -> bool { true }
+///
+/// fn some_expensive_computation() -> bool { true } // a very simple function
 /// debug_assert!(some_expensive_computation());
 ///
 /// // assert with a custom message
-/// # let x = true;
+/// let x = true;
 /// debug_assert!(x, "x wasn't true!");
-/// # let a = 3i; let b = 27i;
+///
+/// let a = 3; let b = 27;
 /// debug_assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]

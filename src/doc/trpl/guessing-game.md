@@ -297,9 +297,9 @@ fn main() {
     println!("You guessed: {}", input);
 
     match cmp(input, secret_number) {
-        Ordering::Less    => println!("Too small!"),
+        Ordering::Less => println!("Too small!"),
         Ordering::Greater => println!("Too big!"),
-        Ordering::Equal   => println!("You win!"),
+        Ordering::Equal => println!("You win!"),
     }
 }
 
@@ -352,9 +352,9 @@ fn main() {
     println!("You guessed: {}", input);
 
     match cmp(input, secret_number) {
-        Ordering::Less    => println!("Too small!"),
+        Ordering::Less => println!("Too small!"),
         Ordering::Greater => println!("Too big!"),
-        Ordering::Equal   => println!("You win!"),
+        Ordering::Equal => println!("You win!"),
     }
 }
 
@@ -422,8 +422,8 @@ In this case, we say `x` is a `u32` explicitly, so Rust is able to properly
 tell `random()` what to generate. In a similar fashion, both of these work:
 
 ```{rust,ignore}
-let input_num = "5".parse::<u32>();         // input_num: Option<u32>
-let input_num: Option<u32> = "5".parse();   // input_num: Option<u32>
+let input_num = "5".parse::<u32>(); // input_num: Option<u32>
+let input_num: Option<u32> = "5".parse(); // input_num: Option<u32>
 ```
 
 Anyway, with us now converting our input to a number, our code looks like this:
@@ -450,9 +450,9 @@ fn main() {
     println!("You guessed: {}", input_num);
 
     match cmp(input_num, secret_number) {
-        Ordering::Less    => println!("Too small!"),
+        Ordering::Less => println!("Too small!"),
         Ordering::Greater => println!("Too big!"),
-        Ordering::Equal   => println!("You win!"),
+        Ordering::Equal => println!("You win!"),
     }
 }
 
@@ -499,7 +499,7 @@ fn main() {
 
     let num = match input_num {
         Some(num) => num,
-        None      => {
+        None => {
             println!("Please input a number!");
             return;
         }
@@ -509,9 +509,9 @@ fn main() {
     println!("You guessed: {}", num);
 
     match cmp(num, secret_number) {
-        Ordering::Less    => println!("Too small!"),
+        Ordering::Less => println!("Too small!"),
         Ordering::Greater => println!("Too big!"),
-        Ordering::Equal   => println!("You win!"),
+        Ordering::Equal => println!("You win!"),
     }
 }
 
@@ -566,7 +566,7 @@ fn main() {
 
     let num = match input_num {
         Some(num) => num,
-        None      => {
+        None => {
             println!("Please input a number!");
             return;
         }
@@ -576,9 +576,9 @@ fn main() {
     println!("You guessed: {}", num);
 
     match cmp(num, secret_number) {
-        Ordering::Less    => println!("Too small!"),
+        Ordering::Less => println!("Too small!"),
         Ordering::Greater => println!("Too big!"),
-        Ordering::Equal   => println!("You win!"),
+        Ordering::Equal => println!("You win!"),
     }
 }
 
@@ -642,7 +642,7 @@ fn main() {
 
         let num = match input_num {
             Some(num) => num,
-            None      => {
+            None => {
                 println!("Please input a number!");
                 return;
             }
@@ -652,9 +652,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Ordering::Less    => println!("Too small!"),
+            Ordering::Less => println!("Too small!"),
             Ordering::Greater => println!("Too big!"),
-            Ordering::Equal   => println!("You win!"),
+            Ordering::Equal => println!("You win!"),
         }
     }
 }
@@ -718,7 +718,7 @@ fn main() {
 
         let num = match input_num {
             Some(num) => num,
-            None      => {
+            None => {
                 println!("Please input a number!");
                 return;
             }
@@ -728,9 +728,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Ordering::Less    => println!("Too small!"),
+            Ordering::Less => println!("Too small!"),
             Ordering::Greater => println!("Too big!"),
-            Ordering::Equal   => {
+            Ordering::Equal => {
                 println!("You win!");
                 return;
             },
@@ -774,7 +774,7 @@ fn main() {
 
         let num = match input_num {
             Some(num) => num,
-            None      => {
+            None => {
                 println!("Please input a number!");
                 continue;
             }
@@ -784,9 +784,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Ordering::Less    => println!("Too small!"),
+            Ordering::Less => println!("Too small!"),
             Ordering::Greater => println!("Too big!"),
-            Ordering::Equal   => {
+            Ordering::Equal => {
                 println!("You win!");
                 return;
             },
@@ -851,7 +851,7 @@ fn main() {
 
         let num = match input_num {
             Some(num) => num,
-            None      => {
+            None => {
                 println!("Please input a number!");
                 continue;
             }
@@ -861,9 +861,9 @@ fn main() {
         println!("You guessed: {}", num);
 
         match cmp(num, secret_number) {
-            Ordering::Less    => println!("Too small!"),
+            Ordering::Less => println!("Too small!"),
             Ordering::Greater => println!("Too big!"),
-            Ordering::Equal   => {
+            Ordering::Equal => {
                 println!("You win!");
                 return;
             },

@@ -1,4 +1,4 @@
-% Writing Unsafe and Low-Level Code in Rust
+% Unsafe and Low-Level Code
 
 # Introduction
 
@@ -95,7 +95,7 @@ offered by the Rust language and libraries. For example, they
   use-after-free;
 - are considered sendable (if their contents is considered sendable),
   so the compiler offers no assistance with ensuring their use is
-  thread-safe; for example, one can concurrently access a `*mut int`
+  thread-safe; for example, one can concurrently access a `*mut i32`
   from two threads without synchronization.
 - lack any form of lifetimes, unlike `&`, and so the compiler cannot
   reason about dangling pointers; and
@@ -265,12 +265,12 @@ impl<T: Send> Drop for Unique<T> {
 // A comparison between the built-in `Box` and this reimplementation
 fn main() {
     {
-        let mut x = Box::new(5i);
+        let mut x = Box::new(5);
         *x = 10;
     } // `x` is freed here
 
     {
-        let mut y = Unique::new(5i);
+        let mut y = Unique::new(5);
         *y.borrow_mut() = 10;
     } // `y` is freed here
 }
@@ -367,7 +367,7 @@ expressions must be mutable lvalues:
 ```
 # #![feature(asm)]
 # #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn add(a: int, b: int) -> int {
+fn add(a: i32, b: i32) -> i32 {
     let mut c = 0;
     unsafe {
         asm!("add $2, $0"
@@ -378,7 +378,7 @@ fn add(a: int, b: int) -> int {
     c
 }
 # #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-# fn add(a: int, b: int) -> int { a + b }
+# fn add(a: i32, b: i32) -> i32 { a + b }
 
 fn main() {
     assert_eq!(add(3, 14159), 14162)
@@ -454,7 +454,7 @@ extern crate libc;
 
 // Entry point for this program
 #[start]
-fn start(_argc: int, _argv: *const *const u8) -> int {
+fn start(_argc: isize, _argv: *const *const u8) -> isize {
     0
 }
 
@@ -480,7 +480,7 @@ compiler's name mangling too:
 extern crate libc;
 
 #[no_mangle] // ensure that this symbol is called `main` in the output
-pub extern fn main(argc: int, argv: *const *const u8) -> int {
+pub extern fn main(argc: i32, argv: *const *const u8) -> i32 {
     0
 }
 
@@ -552,8 +552,8 @@ pub extern fn dot_product(a: *const u32, a_len: u32,
     // cannot tell the pointers are valid.
     let (a_slice, b_slice): (&[u32], &[u32]) = unsafe {
         mem::transmute((
-            Slice { data: a, len: a_len as uint },
-            Slice { data: b, len: b_len as uint },
+            Slice { data: a, len: a_len as usize },
+            Slice { data: b, len: b_len as usize },
         ))
     };
 
@@ -567,14 +567,14 @@ pub extern fn dot_product(a: *const u32, a_len: u32,
 
 #[lang = "panic_fmt"]
 extern fn panic_fmt(args: &core::fmt::Arguments,
-                       file: &str,
-                       line: uint) -> ! {
+                    file: &str,
+                    line: u32) -> ! {
     loop {}
 }
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
-# #[start] fn start(argc: int, argv: *const *const u8) -> int { 0 }
+# #[start] fn start(argc: isize, argv: *const *const u8) -> isize { 0 }
 # fn main() {}
 ```
 
@@ -628,7 +628,7 @@ via a declaration like
 extern "rust-intrinsic" {
     fn transmute<T, U>(x: T) -> U;
 
-    fn offset<T>(dst: *const T, offset: int) -> *const T;
+    fn offset<T>(dst: *const T, offset: isize) -> *const T;
 }
 ```
 
@@ -665,24 +665,24 @@ extern {
 pub struct Box<T>(*mut T);
 
 #[lang="exchange_malloc"]
-unsafe fn allocate(size: uint, _align: uint) -> *mut u8 {
+unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     let p = libc::malloc(size as libc::size_t) as *mut u8;
 
     // malloc failed
-    if p as uint == 0 {
+    if p as usize == 0 {
         abort();
     }
 
     p
 }
 #[lang="exchange_free"]
-unsafe fn deallocate(ptr: *mut u8, _size: uint, _align: uint) {
+unsafe fn deallocate(ptr: *mut u8, _size: usize, _align: usize) {
     libc::free(ptr as *mut libc::c_void)
 }
 
 #[start]
-fn main(argc: int, argv: *const *const u8) -> int {
-    let x = box 1i;
+fn main(argc: isize, argv: *const *const u8) -> isize {
+    let x = box 1;
 
     0
 }

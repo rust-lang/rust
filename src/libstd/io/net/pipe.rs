@@ -168,9 +168,7 @@ impl UnixListener {
     /// # Example
     ///
     /// ```
-    /// # fn main() {}
     /// # fn foo() {
-    /// # #![allow(unused_must_use)]
     /// use std::io::net::pipe::UnixListener;
     /// use std::io::{Listener, Acceptor};
     ///

@@ -5,7 +5,7 @@ Let's talk about loops.
 Remember Rust's `for` loop? Here's an example:
 
 ```{rust}
-for x in range(0i, 10i) {
+for x in range(0, 10) {
     println!("{}", x);
 }
 ```
@@ -17,7 +17,7 @@ call the `.next()` method on repeatedly, and it gives us a sequence of things.
 Like this:
 
 ```{rust}
-let mut range = range(0i, 10i);
+let mut range = range(0, 10);
 
 loop {
     match range.next() {
@@ -32,8 +32,8 @@ loop {
 We make a mutable binding to the return value of `range`, which is our iterator.
 We then `loop`, with an inner `match`. This `match` is used on the result of
 `range.next()`, which gives us a reference to the next value of the iterator.
-`next` returns an `Option<int>`, in this case, which will be `Some(int)` when
-we have a value and `None` once we run out. If we get `Some(int)`, we print it
+`next` returns an `Option<i32>`, in this case, which will be `Some(i32)` when
+we have a value and `None` once we run out. If we get `Some(i32)`, we print it
 out, and if we get `None`, we `break` out of the loop.
 
 This code sample is basically the same as our `for` loop version. The `for`
@@ -50,9 +50,9 @@ primitive. For example, if you needed to iterate over the contents of
 a vector, you may be tempted to write this:
 
 ```{rust}
-let nums = vec![1i, 2i, 3i];
+let nums = vec![1, 2, 3];
 
-for i in range(0u, nums.len()) {
+for i in range(0, nums.len()) {
     println!("{}", nums[i]);
 }
 ```
@@ -62,7 +62,7 @@ vectors returns an iterator which iterates through a reference to each element
 of the vector in turn. So write this:
 
 ```{rust}
-let nums = vec![1i, 2i, 3i];
+let nums = vec![1, 2, 3];
 
 for num in nums.iter() {
     println!("{}", num);
@@ -79,12 +79,12 @@ very common with iterators: we can ignore unnecessary bounds checks, but still
 know that we're safe.
 
 There's another detail here that's not 100% clear because of how `println!`
-works. `num` is actually of type `&int`. That is, it's a reference to an `int`,
-not an `int` itself. `println!` handles the dereferencing for us, so we don't
+works. `num` is actually of type `&i32`. That is, it's a reference to an `i32`,
+not an `i32` itself. `println!` handles the dereferencing for us, so we don't
 see it. This code works fine too:
 
 ```{rust}
-let nums = vec![1i, 2i, 3i];
+let nums = vec![1, 2, 3];
 
 for num in nums.iter() {
     println!("{}", *num);
@@ -118,7 +118,7 @@ The most common consumer is `collect()`. This code doesn't quite compile,
 but it shows the intention:
 
 ```{rust,ignore}
-let one_to_one_hundred = range(1i, 101i).collect();
+let one_to_one_hundred = range(1, 101).collect();
 ```
 
 As you can see, we call `collect()` on our iterator. `collect()` takes
@@ -128,7 +128,7 @@ type of things you want to collect, and so you need to let it know.
 Here's the version that does compile:
 
 ```{rust}
-let one_to_one_hundred = range(1i, 101i).collect::<Vec<int>>();
+let one_to_one_hundred = range(1, 101).collect::<Vec<i32>>();
 ```
 
 If you remember, the `::<>` syntax allows us to give a type hint,
@@ -138,12 +138,12 @@ and so we tell it that we want a vector of integers.
 is one:
 
 ```{rust}
-let greater_than_forty_two = range(0i, 100i)
+let greater_than_forty_two = range(0, 100)
                              .find(|x| *x > 42);
 
 match greater_than_forty_two {
     Some(_) => println!("We got some numbers!"),
-    None    => println!("No numbers found :("),
+    None => println!("No numbers found :("),
 }
 ```
 
@@ -155,8 +155,8 @@ element, `find` returns an `Option` rather than the element itself.
 Another important consumer is `fold`. Here's what it looks like:
 
 ```{rust}
-let sum = range(1i, 4i)
-              .fold(0i, |sum, x| sum + x);
+let sum = range(1, 4)
+              .fold(0, |sum, x| sum + x);
 ```
 
 `fold()` is a consumer that looks like this:
@@ -172,24 +172,24 @@ in this iterator:
 
 | base | accumulator | element | closure result |
 |------|-------------|---------|----------------|
-| 0i   | 0i          | 1i      | 1i             |
-| 0i   | 1i          | 2i      | 3i             |
-| 0i   | 3i          | 3i      | 6i             |
+| 0    | 0           | 1       | 1              |
+| 0    | 1           | 2       | 3              |
+| 0    | 3           | 3       | 6              |
 
 We called `fold()` with these arguments:
 
 ```{rust}
-# range(1i, 4i)
-.fold(0i, |sum, x| sum + x);
+# range(1, 4)
+.fold(0, |sum, x| sum + x);
 ```
 
-So, `0i` is our base, `sum` is our accumulator, and `x` is our element.  On the
-first iteration, we set `sum` to `0i`, and `x` is the first element of `nums`,
-`1i`. We then add `sum` and `x`, which gives us `0i + 1i = 1i`. On the second
+So, `0` is our base, `sum` is our accumulator, and `x` is our element.  On the
+first iteration, we set `sum` to `0`, and `x` is the first element of `nums`,
+`1`. We then add `sum` and `x`, which gives us `0 + 1 = 1`. On the second
 iteration, that value becomes our accumulator, `sum`, and the element is
-the second element of the array, `2i`. `1i + 2i = 3i`, and so that becomes
+the second element of the array, `2`. `1 + 2 = 3`, and so that becomes
 the value of the accumulator for the last iteration. On that iteration,
-`x` is the last element, `3i`, and `3i + 3i = 6i`, which is our final
+`x` is the last element, `3`, and `3 + 3 = 6`, which is our final
 result for our sum. `1 + 2 + 3 = 6`, and that's the result we got.
 
 Whew. `fold` can be a bit strange the first few times you see it, but once it
@@ -210,14 +210,14 @@ This code, for example, does not actually generate the numbers
 `1-100`, and just creates a value that represents the sequence:
 
 ```{rust}
-let nums = range(1i, 100i);
+let nums = range(1, 100);
 ```
 
 Since we didn't do anything with the range, it didn't generate the sequence.
 Let's add the consumer:
 
 ```{rust}
-let nums = range(1i, 100i).collect::<Vec<int>>();
+let nums = range(1, 100).collect::<Vec<i32>>();
 ```
 
 Now, `collect()` will require that `range()` give it some numbers, and so
@@ -228,7 +228,7 @@ which you've used before. `iter()` can turn a vector into a simple iterator
 that gives you each element in turn:
 
 ```{rust}
-let nums = [1i, 2i, 3i];
+let nums = [1, 2, 3];
 
 for num in nums.iter() {
    println!("{}", num);
@@ -239,12 +239,12 @@ These two basic iterators should serve you well. There are some more
 advanced iterators, including ones that are infinite. Like `count`:
 
 ```{rust}
-std::iter::count(1i, 5i);
+std::iter::count(1, 5);
 ```
 
 This iterator counts up from one, adding five each time. It will give
 you a new integer every time, forever (well, technically, until it reaches the
-maximum number representable by an `int`). But since iterators are lazy,
+maximum number representable by an `i32`). But since iterators are lazy,
 that's okay! You probably don't want to use `collect()` on it, though...
 
 That's enough about iterators. Iterator adapters are the last concept
@@ -256,7 +256,7 @@ we need to talk about with regards to iterators. Let's get to it!
 a new iterator. The simplest one is called `map`:
 
 ```{rust,ignore}
-range(1i, 100i).map(|x| x + 1i);
+range(1, 100).map(|x| x + 1);
 ```
 
 `map` is called upon another iterator, and produces a new iterator where each
@@ -267,7 +267,7 @@ compile the example, you'll get a warning:
 ```{notrust,ignore}
 warning: unused result which must be used: iterator adaptors are lazy and
          do nothing unless consumed, #[warn(unused_must_use)] on by default
- range(1i, 100i).map(|x| x + 1i);
+ range(1, 100).map(|x| x + 1);
  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
@@ -275,7 +275,7 @@ Laziness strikes again! That closure will never execute. This example
 doesn't print any numbers:
 
 ```{rust,ignore}
-range(1i, 100i).map(|x| println!("{}", x));
+range(1, 100).map(|x| println!("{}", x));
 ```
 
 If you are trying to execute a closure on an iterator for its side effects,
@@ -287,7 +287,7 @@ has no side effect on the original iterator. Let's try it out with our infinite
 iterator from before, `count()`:
 
 ```{rust}
-for i in std::iter::count(1i, 5i).take(5) {
+for i in std::iter::count(1, 5).take(5) {
     println!("{}", i);
 }
 ```
@@ -307,7 +307,7 @@ returns `true` or `false`. The new iterator `filter()` produces
 only the elements that that closure returns `true` for:
 
 ```{rust}
-for i in range(1i, 100i).filter(|&x| x % 2 == 0) {
+for i in range(1, 100).filter(|&x| x % 2 == 0) {
     println!("{}", i);
 }
 ```
@@ -322,11 +322,11 @@ You can chain all three things together: start with an iterator, adapt it
 a few times, and then consume the result. Check it out:
 
 ```{rust}
-range(1i, 1000i)
+range(1, 1000)
     .filter(|&x| x % 2 == 0)
     .filter(|&x| x % 3 == 0)
     .take(5)
-    .collect::<Vec<int>>();
+    .collect::<Vec<i32>>();
 ```
 
 This will give you a vector containing `6`, `12`, `18`, `24`, and `30`.

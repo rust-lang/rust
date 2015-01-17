@@ -51,13 +51,15 @@ closure is limited to capturing `Send`-able data from its environment
 ensures that `spawn` can safely move the entire closure and all its
 associated state into an entirely different thread for execution.
 
-```{rust,ignore}
-# use std::thread::spawn;
-# fn generate_thread_number() -> int { 0 }
+```rust
+use std::thread::Thread;
+
+fn generate_thread_number() -> i32 { 4 } // a very simple generation
+
 // Generate some state locally
 let child_thread_number = generate_thread_number();
 
-spawn(move || {
+Thread::spawn(move || {
     // Capture it in the remote thread. The `move` keyword indicates
     // that this closure should move `child_thread_number` into its
     // environment, rather than capturing a reference into the
@@ -77,20 +79,22 @@ The simplest way to create a channel is to use the `channel` function to create 
 of a channel, and a *receiver* is the receiving endpoint. Consider the following
 example of calculating two results concurrently:
 
-```{rust,ignore}
-# use std::thread::spawn;
+```rust
+use std::thread::Thread;
+use std::sync::mpsc;
 
-let (tx, rx): (Sender<int>, Receiver<int>) = channel();
+let (tx, rx): (mpsc::Sender<u32>, mpsc::Receiver<u32>) = mpsc::channel();
 
-spawn(move || {
+Thread::spawn(move || {
     let result = some_expensive_computation();
     tx.send(result);
 });
 
 some_other_expensive_computation();
 let result = rx.recv();
-# fn some_expensive_computation() -> int { 42 }
-# fn some_other_expensive_computation() {}
+
+fn some_expensive_computation() -> u32 { 42 } // very expensive ;)
+fn some_other_expensive_computation() {}      // even more so
 ```
 
 Let's examine this example in detail. First, the `let` statement creates a
@@ -98,19 +102,21 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 `(tx, rx)`, is an example of a destructuring let: the pattern separates a tuple
 into its component parts).
 
-```{rust,ignore}
-let (tx, rx): (Sender<int>, Receiver<int>) = channel();
+```rust
+# use std::sync::mpsc;
+let (tx, rx): (mpsc::Sender<u32>, mpsc::Receiver<u32>) = mpsc::channel();
 ```
 
 The child thread will use the sender to send data to the parent thread, which will
 wait to receive the data on the receiver. The next statement spawns the child
 thread.
 
-```{rust,ignore}
-# use std::thread::spawn;
-# fn some_expensive_computation() -> int { 42 }
-# let (tx, rx) = channel();
-spawn(move || {
+```rust
+# use std::thread::Thread;
+# use std::sync::mpsc;
+# fn some_expensive_computation() -> u32 { 42 }
+# let (tx, rx) = mpsc::channel();
+Thread::spawn(move || {
     let result = some_expensive_computation();
     tx.send(result);
 });
@@ -125,9 +131,10 @@ computation, then sends the result over the captured channel.
 Finally, the parent continues with some other expensive computation, then waits
 for the child's result to arrive on the receiver:
 
-```{rust,ignore}
+```rust
+# use std::sync::mpsc;
 # fn some_other_expensive_computation() {}
-# let (tx, rx) = channel::<int>();
+# let (tx, rx) = mpsc::channel::<u32>();
 # tx.send(0);
 some_other_expensive_computation();
 let result = rx.recv();
@@ -140,8 +147,9 @@ single `Receiver` value.  What if our example needed to compute multiple
 results across a number of threads? The following program is ill-typed:
 
 ```{rust,ignore}
-# fn some_expensive_computation() -> int { 42 }
-let (tx, rx) = channel();
+# use std::sync::mpsc;
+# fn some_expensive_computation() -> u32 { 42 }
+let (tx, rx) = mpsc::channel();
 
 spawn(move || {
     tx.send(some_expensive_computation());
@@ -156,19 +164,22 @@ spawn(move || {
 
 Instead we can clone the `tx`, which allows for multiple senders.
 
-```{rust,ignore}
-let (tx, rx) = channel();
+```rust
+use std::thread::Thread;
+use std::sync::mpsc;
 
-for init_val in range(0u, 3) {
+let (tx, rx) = mpsc::channel();
+
+for init_val in 0 .. 3 {
     // Create a new channel handle to distribute to the child thread
     let child_tx = tx.clone();
-    spawn(move || {
+    Thread::spawn(move || {
         child_tx.send(some_expensive_computation(init_val));
     });
 }
 
-let result = rx.recv() + rx.recv() + rx.recv();
-# fn some_expensive_computation(_i: uint) -> int { 42 }
+let result = rx.recv().unwrap() + rx.recv().unwrap() + rx.recv().unwrap();
+# fn some_expensive_computation(_i: u32) -> u32 { 42 }
 ```
 
 Cloning a `Sender` produces a new handle to the same channel, allowing multiple
@@ -181,21 +192,22 @@ Note that the above cloning example is somewhat contrived since you could also
 simply use three `Sender` pairs, but it serves to illustrate the point. For
 reference, written with multiple streams, it might look like the example below.
 
-```{rust,ignore}
-# use std::thread::spawn;
+```rust
+use std::thread::Thread;
+use std::sync::mpsc;
 
 // Create a vector of ports, one for each child thread
-let rxs = Vec::from_fn(3, |init_val| {
-    let (tx, rx) = channel();
-    spawn(move || {
+let rxs = (0 .. 3).map(|&:init_val| {
+    let (tx, rx) = mpsc::channel();
+    Thread::spawn(move || {
         tx.send(some_expensive_computation(init_val));
     });
     rx
-});
+}).collect::<Vec<_>>();
 
 // Wait on each port, accumulating the results
-let result = rxs.iter().fold(0, |accum, rx| accum + rx.recv() );
-# fn some_expensive_computation(_i: uint) -> int { 42 }
+let result = rxs.iter().fold(0, |&:accum, rx| accum + rx.recv().unwrap() );
+# fn some_expensive_computation(_i: u32) -> u32 { 42 }
 ```
 
 ## Backgrounding computations: Futures
@@ -212,7 +224,7 @@ use std::sync::Future;
 # fn main() {
 # fn make_a_sandwich() {};
 fn fib(n: u64) -> u64 {
-    // lengthy computation returning an uint
+    // lengthy computation returning an 64
     12586269025
 }
 
@@ -237,7 +249,7 @@ computations. The workload will be distributed on the available cores.
 # #![allow(deprecated)]
 # use std::num::Float;
 # use std::sync::Future;
-fn partial_sum(start: uint) -> f64 {
+fn partial_sum(start: u64) -> f64 {
     let mut local_sum = 0f64;
     for num in range(start*100000, (start+1)*100000) {
         local_sum += (num as f64 + 1.0).powf(-2.0);
@@ -277,7 +289,7 @@ use std::num::Float;
 use std::rand;
 use std::sync::Arc;
 
-fn pnorm(nums: &[f64], p: uint) -> f64 {
+fn pnorm(nums: &[f64], p: u64) -> f64 {
     nums.iter().fold(0.0, |a, b| a + b.powf(p as f64)).powf(1.0 / (p as f64))
 }
 
@@ -285,7 +297,7 @@ fn main() {
     let numbers = Vec::from_fn(1000000, |_| rand::random::<f64>());
     let numbers_arc = Arc::new(numbers);
 
-    for num in range(1u, 10) {
+    for num in range(1, 10) {
         let thread_numbers = numbers_arc.clone();
 
         spawn(move || {
@@ -316,7 +328,7 @@ if it were local.
 ```{rust,ignore}
 # use std::rand;
 # use std::sync::Arc;
-# fn pnorm(nums: &[f64], p: uint) -> f64 { 4.0 }
+# fn pnorm(nums: &[f64], p: u64) -> f64 { 4.0 }
 # fn main() {
 # let numbers=Vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc = Arc::new(numbers);
@@ -345,16 +357,16 @@ each other if they panic. The simplest way of handling a panic is with the
 `try` function, which is similar to `spawn`, but immediately blocks and waits
 for the child thread to finish. `try` returns a value of type
 `Result<T, Box<Any + Send>>`. `Result` is an `enum` type with two variants:
-`Ok` and `Err`. In this case, because the type arguments to `Result` are `int`
+`Ok` and `Err`. In this case, because the type arguments to `Result` are `i32`
 and `()`, callers can pattern-match on a result to check whether it's an `Ok`
-result with an `int` field (representing a successful result) or an `Err` result
+result with an `i32` field (representing a successful result) or an `Err` result
 (representing termination with an error).
 
 ```{rust,ignore}
 # use std::thread::Thread;
 # fn some_condition() -> bool { false }
-# fn calculate_result() -> int { 0 }
-let result: Result<int, Box<std::any::Any + Send>> = Thread::spawn(move || {
+# fn calculate_result() -> i32 { 0 }
+let result: Result<i32, Box<std::any::Any + Send>> = Thread::spawn(move || {
     if some_condition() {
         calculate_result()
     } else {

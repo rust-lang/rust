@@ -1,4 +1,4 @@
-% Error Handling in Rust
+% Error Handling
 
 > The best-laid plans of mice and men  
 > Often go awry
@@ -60,12 +60,12 @@ fn probability(_: &Event) -> f64 {
 
 fn descriptive_probability(event: Event) -> &'static str {
     match probability(&event) {
-        1.00          => "certain",
-        0.00          => "impossible",
+        1.00 => "certain",
+        0.00 => "impossible",
         0.00 ... 0.25 => "very unlikely",
         0.25 ... 0.50 => "unlikely",
         0.50 ... 0.75 => "likely",
-        0.75 ... 1.00  => "very likely",
+        0.75 ... 1.00 => "very likely",
     }
 }
 
@@ -97,12 +97,12 @@ fn probability(_: &Event) -> f64 {
 
 fn descriptive_probability(event: Event) -> &'static str {
     match probability(&event) {
-        1.00          => "certain",
-        0.00          => "impossible",
+        1.00 => "certain",
+        0.00 => "impossible",
         0.00 ... 0.25 => "very unlikely",
         0.25 ... 0.50 => "unlikely",
         0.50 ... 0.75 => "likely",
-        0.75 ... 1.00  => "very likely",
+        0.75 ... 1.00 => "very likely",
         _ => unreachable!()
     }
 }

@@ -42,6 +42,104 @@ pub trait Sized {
 }
 
 /// Types that can be copied by simply copying bits (i.e. `memcpy`).
+///
+/// By default, variable bindings have 'move semantics.' In other
+/// words:
+///
+/// ```
+/// #[derive(Show)]
+/// struct Foo;
+///
+/// let x = Foo;
+///
+/// let y = x;
+///
+/// // `x` has moved into `y`, and so cannot be used
+///
+/// // println!("{:?}", x); // error: use of moved value
+/// ```
+///
+/// However, if a type implements `Copy`, it instead has 'copy semantics':
+///
+/// ```
+/// // we can just derive a `Copy` implementation
+/// #[derive(Show, Copy)]
+/// struct Foo;
+///
+/// let x = Foo;
+///
+/// let y = x;
+///
+/// // `y` is a copy of `x`
+///
+/// println!("{:?}", x); // A-OK!
+/// ```
+///
+/// It's important to note that in these two examples, the only difference is if you are allowed to
+/// access `x` after the assignment: a move is also a bitwise copy under the hood.
+///
+/// ## When can my type be `Copy`?
+///
+/// A type can implement `Copy` if all of its components implement `Copy`. For example, this
+/// `struct` can be `Copy`:
+///
+/// ```
+/// struct Point {
+///    x: i32,
+///    y: i32,
+/// }
+/// ```
+///
+/// A `struct` can be `Copy`, and `i32` is `Copy`, so therefore, `Point` is eligible to be `Copy`.
+///
+/// ```
+/// # struct Point;
+/// struct PointList {
+///     points: Vec<Point>,
+/// }
+/// ```
+///
+/// The `PointList` `struct` cannot implement `Copy`, because `Vec<T>` is not `Copy`. If we
+/// attempt to derive a `Copy` implementation, we'll get an error.
+///
+/// ```text
+/// error: the trait `Copy` may not be implemented for this type; field `points` does not implement
+/// `Copy`
+/// ```
+///
+/// ## How can I implement `Copy`?
+///
+/// There are two ways to implement `Copy` on your type:
+///
+/// ```
+/// #[derive(Copy)]
+/// struct MyStruct;
+/// ```
+///
+/// and
+///
+/// ```
+/// struct MyStruct;
+/// impl Copy for MyStruct {}
+/// ```
+///
+/// There is a small difference between the two: the `derive` strategy will also place a `Copy`
+/// bound on type parameters, which isn't always desired.
+///
+/// ## When can my type _not_ be `Copy`?
+///
+/// Some types can't be copied safely. For example, copying `&mut T` would create an aliased
+/// mutable reference, and copying `String` would result in two attempts to free the same buffer.
+///
+/// Generalizing the latter case, any type implementing `Drop` can't be `Copy`, because it's
+/// managing some resource besides its own `size_of::<T>()` bytes.
+///
+/// ## When should my type be `Copy`?
+///
+/// Generally speaking, if your type _can_ implement `Copy`, it should. There's one important thing
+/// to consider though: if you think your type may _not_ be able to implement `Copy` in the future,
+/// then it might be prudent to not implement `Copy`. This is because removing `Copy` is a breaking
+/// change: that second example would fail to compile if we made `Foo` non-`Copy`.
 #[stable]
 #[lang="copy"]
 pub trait Copy {
@@ -210,8 +308,7 @@ impl<T: ?Sized> Clone for ContravariantType<T> {
 /// "interior" mutability:
 ///
 /// ```
-/// pub struct Cell<T> { value: T }
-/// # fn main() {}
+/// struct Cell<T> { value: T }
 /// ```
 ///
 /// The type system would infer that `value` is only read here and
