@@ -21,13 +21,43 @@ use core::fmt;
 use core::hash::{Hash, Writer, Hasher};
 use core::iter::{Enumerate, FilterMap, Map, FromIterator};
 use core::iter;
+use core::marker::InvariantType;
 use core::mem::replace;
+use core::mem;
 use core::ops::{Index, IndexMut};
 
-use {vec, slice};
-use vec::Vec;
+use {vec, slice, Vec};
 
 // FIXME(conventions): capacity management???
+
+/// This is the trait to bound on for keys of `VecMap`s. It cannot be
+/// implemented manually currently.
+pub trait VecMapKey {
+    #[doc(hidden)]
+    fn to_uint(&self) -> uint;
+    #[doc(hidden)]
+    fn from_uint(value: uint) -> Self;
+    #[doc(hidden)]
+    fn unimplementable(_: InvariantType<Self>) -> Unconstructible;
+}
+
+#[allow(missing_copy_implementations)]
+#[doc(hidden)]
+pub struct Unconstructible(());
+
+// Tell inference to not infer `uint`.
+struct _Nothing;
+impl VecMapKey for _Nothing {
+    fn to_uint(&self) -> uint { unreachable!(); }
+    fn from_uint(_: uint) -> _Nothing { unreachable!(); }
+    fn unimplementable(_: InvariantType<_Nothing>) -> Unconstructible { unreachable!(); }
+}
+
+impl VecMapKey for uint {
+    fn to_uint(&self) -> uint { *self }
+    fn from_uint(value: uint) -> uint { value }
+    fn unimplementable(_: InvariantType<Self>) -> Unconstructible { Unconstructible(()) }
+}
 
 /// A map optimized for small integer keys.
 ///
@@ -62,30 +92,31 @@ use vec::Vec;
 /// months.clear();
 /// assert!(months.is_empty());
 /// ```
-pub struct VecMap<V> {
+pub struct VecMap<K,V> {
     v: Vec<Option<V>>,
+    invariant_type: InvariantType<K>,
 }
 
 #[stable]
-impl<V> Default for VecMap<V> {
+impl<K:VecMapKey,V> Default for VecMap<K,V> {
     #[stable]
     #[inline]
-    fn default() -> VecMap<V> { VecMap::new() }
+    fn default() -> VecMap<K,V> { VecMap::new() }
 }
 
-impl<V:Clone> Clone for VecMap<V> {
+impl<K:VecMapKey,V:Clone> Clone for VecMap<K,V> {
     #[inline]
-    fn clone(&self) -> VecMap<V> {
-        VecMap { v: self.v.clone() }
+    fn clone(&self) -> VecMap<K,V> {
+        VecMap::new_from_vec(self.v.clone())
     }
 
     #[inline]
-    fn clone_from(&mut self, source: &VecMap<V>) {
+    fn clone_from(&mut self, source: &VecMap<K,V>) {
         self.v.clone_from(&source.v);
     }
 }
 
-impl<S: Writer + Hasher, V: Hash<S>> Hash<S> for VecMap<V> {
+impl<S: Writer + Hasher, K: VecMapKey+Hash<S>, V: Hash<S>> Hash<S> for VecMap<K,V> {
     fn hash(&self, state: &mut S) {
         // In order to not traverse the `VecMap` twice, count the elements
         // during iteration.
@@ -98,17 +129,24 @@ impl<S: Writer + Hasher, V: Hash<S>> Hash<S> for VecMap<V> {
     }
 }
 
-impl<V> VecMap<V> {
+impl<K:VecMapKey,V> VecMap<K,V> {
+    #[inline]
+    fn new_from_vec(vec: Vec<Option<V>>) -> VecMap<K,V> {
+        VecMapKey::unimplementable(InvariantType::<K>);
+        VecMap { v: vec, invariant_type: InvariantType }
+    }
     /// Creates an empty `VecMap`.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::collections::VecMap;
-    /// let mut map: VecMap<&str> = VecMap::new();
+    /// let mut map: VecMap<uint,&str> = VecMap::new();
     /// ```
     #[stable]
-    pub fn new() -> VecMap<V> { VecMap { v: vec![] } }
+    pub fn new() -> VecMap<K,V> {
+        VecMap::new_from_vec(vec![])
+    }
 
     /// Creates an empty `VecMap` with space for at least `capacity`
     /// elements before resizing.
@@ -117,11 +155,11 @@ impl<V> VecMap<V> {
     ///
     /// ```
     /// use std::collections::VecMap;
-    /// let mut map: VecMap<&str> = VecMap::with_capacity(10);
+    /// let mut map: VecMap<uint,&str> = VecMap::with_capacity(10);
     /// ```
     #[stable]
-    pub fn with_capacity(capacity: uint) -> VecMap<V> {
-        VecMap { v: Vec::with_capacity(capacity) }
+    pub fn with_capacity(capacity: uint) -> VecMap<K,V> {
+        VecMap::new_from_vec(Vec::with_capacity(capacity))
     }
 
     /// Returns the number of elements the `VecMap` can hold without
@@ -131,7 +169,7 @@ impl<V> VecMap<V> {
     ///
     /// ```
     /// use std::collections::VecMap;
-    /// let map: VecMap<String> = VecMap::with_capacity(10);
+    /// let map: VecMap<uint,String> = VecMap::with_capacity(10);
     /// assert!(map.capacity() >= 10);
     /// ```
     #[inline]
@@ -187,11 +225,11 @@ impl<V> VecMap<V> {
     }
 
     /// Returns an iterator visiting all keys in ascending order by the keys.
-    /// The iterator's element type is `uint`.
+    /// The iterator's element type is `K`.
     #[stable]
-    pub fn keys<'r>(&'r self) -> Keys<'r, V> {
+    pub fn keys<'r>(&'r self) -> Keys<'r, K, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
-        let first: fn((uint, &'r V)) -> uint = first; // coerce to fn pointer
+        let first: fn((K, &'r V)) -> K = first; // coerce to fn pointer
 
         Keys { iter: self.iter().map(first) }
     }
@@ -199,15 +237,15 @@ impl<V> VecMap<V> {
     /// Returns an iterator visiting all values in ascending order by the keys.
     /// The iterator's element type is `&'r V`.
     #[stable]
-    pub fn values<'r>(&'r self) -> Values<'r, V> {
+    pub fn values<'r>(&'r self) -> Values<'r, K, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
-        let second: fn((uint, &'r V)) -> &'r V = second; // coerce to fn pointer
+        let second: fn((K, &'r V)) -> &'r V = second; // coerce to fn pointer
 
         Values { iter: self.iter().map(second) }
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order by the keys.
-    /// The iterator's element type is `(uint, &'r V)`.
+    /// The iterator's element type is `(K, &'r V)`.
     ///
     /// # Examples
     ///
@@ -224,18 +262,18 @@ impl<V> VecMap<V> {
     ///     println!("{}: {}", key, value);
     /// }
     /// ```
-    #[stable]
-    pub fn iter<'r>(&'r self) -> Iter<'r, V> {
+    pub fn iter<'r>(&'r self) -> Iter<'r, K, V> {
         Iter {
             front: 0,
             back: self.v.len(),
-            iter: self.v.iter()
+            iter: self.v.iter(),
+            invariant_type: InvariantType,
         }
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order by the keys,
     /// with mutable references to the values.
-    /// The iterator's element type is `(uint, &'r mut V)`.
+    /// The iterator's element type is `(&mut K, &'r mut V)`.
     ///
     /// # Examples
     ///
@@ -256,17 +294,18 @@ impl<V> VecMap<V> {
     /// }
     /// ```
     #[stable]
-    pub fn iter_mut<'r>(&'r mut self) -> IterMut<'r, V> {
+    pub fn iter_mut<'r>(&'r mut self) -> IterMut<'r, K, V> {
         IterMut {
             front: 0,
             back: self.v.len(),
-            iter: self.v.iter_mut()
+            iter: self.v.iter_mut(),
+            invariant_type: InvariantType,
         }
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order by
     /// the keys, emptying (but not consuming) the original `VecMap`.
-    /// The iterator's element type is `(uint, &'r V)`.
+    /// The iterator's element type is `(K, V)`.
     ///
     /// # Examples
     ///
@@ -284,13 +323,13 @@ impl<V> VecMap<V> {
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
     #[stable]
-    pub fn into_iter(&mut self) -> IntoIter<V> {
-        fn filter<A>((i, v): (uint, Option<A>)) -> Option<(uint, A)> {
-            v.map(|v| (i, v))
+    pub fn into_iter(&mut self) -> IntoIter<K, V> {
+        fn filter<A:VecMapKey, B>((i, v): (uint, Option<B>)) -> Option<(A, B)> {
+            v.map(|v| (VecMapKey::from_uint(i), v))
         }
-        let filter: fn((uint, Option<V>)) -> Option<(uint, V)> = filter; // coerce to fn ptr
+        let filter: fn((uint, Option<V>)) -> Option<(K, V)> = filter; // coerce to fn ptr
 
-        let values = replace(&mut self.v, vec!());
+        let values = mem::replace(&mut self.v, vec![]);
         IntoIter { iter: values.into_iter().enumerate().filter_map(filter) }
     }
 
@@ -356,9 +395,10 @@ impl<V> VecMap<V> {
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[stable]
-    pub fn get(&self, key: &uint) -> Option<&V> {
-        if *key < self.v.len() {
-            match self.v[*key] {
+    pub fn get(&self, key: &K) -> Option<&V> {
+        let idx = key.to_uint();
+        if idx < self.v.len() {
+            match self.v[idx] {
               Some(ref value) => Some(value),
               None => None
             }
@@ -381,7 +421,7 @@ impl<V> VecMap<V> {
     /// ```
     #[inline]
     #[stable]
-    pub fn contains_key(&self, key: &uint) -> bool {
+    pub fn contains_key(&self, key: &K) -> bool {
         self.get(key).is_some()
     }
 
@@ -401,9 +441,10 @@ impl<V> VecMap<V> {
     /// assert_eq!(map[1], "b");
     /// ```
     #[stable]
-    pub fn get_mut(&mut self, key: &uint) -> Option<&mut V> {
-        if *key < self.v.len() {
-            match *(&mut self.v[*key]) {
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+        let idx = key.to_uint();
+        if idx < self.v.len() {
+            match *(&mut self.v[idx]) {
               Some(ref mut value) => Some(value),
               None => None
             }
@@ -429,12 +470,13 @@ impl<V> VecMap<V> {
     /// assert_eq!(map[37], "c");
     /// ```
     #[stable]
-    pub fn insert(&mut self, key: uint, value: V) -> Option<V> {
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         let len = self.v.len();
-        if len <= key {
-            self.v.extend(range(0, key - len + 1).map(|_| None));
+        let idx = key.to_uint();
+        if len <= idx {
+            self.v.extend(range(0, idx - len + 1).map(|_| None));
         }
-        replace(&mut self.v[key], Some(value))
+        mem::replace(&mut self.v[idx], Some(value))
     }
 
     /// Removes a key from the map, returning the value at the key if the key
@@ -451,49 +493,48 @@ impl<V> VecMap<V> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[stable]
-    pub fn remove(&mut self, key: &uint) -> Option<V> {
-        if *key >= self.v.len() {
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        let idx = key.to_uint();
+        if idx >= self.v.len() {
             return None;
         }
-        let result = &mut self.v[*key];
-        result.take()
+        self.v[idx].take()
     }
 }
 
 #[stable]
-impl<V: PartialEq> PartialEq for VecMap<V> {
-    fn eq(&self, other: &VecMap<V>) -> bool {
+impl<K: VecMapKey + PartialEq, V: PartialEq> PartialEq for VecMap<K, V> {
+    fn eq(&self, other: &VecMap<K, V>) -> bool {
         iter::order::eq(self.iter(), other.iter())
     }
 }
 
 #[stable]
-impl<V: Eq> Eq for VecMap<V> {}
+impl<K: VecMapKey + Eq, V: Eq> Eq for VecMap<K, V> {}
 
-#[stable]
-impl<V: PartialOrd> PartialOrd for VecMap<V> {
+impl<K: VecMapKey + PartialOrd, V: PartialOrd> PartialOrd for VecMap<K,V> {
     #[inline]
-    fn partial_cmp(&self, other: &VecMap<V>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &VecMap<K, V>) -> Option<Ordering> {
         iter::order::partial_cmp(self.iter(), other.iter())
     }
 }
 
 #[stable]
-impl<V: Ord> Ord for VecMap<V> {
+impl<K: VecMapKey + Ord, V: Ord> Ord for VecMap<K,V> {
     #[inline]
-    fn cmp(&self, other: &VecMap<V>) -> Ordering {
+    fn cmp(&self, other: &VecMap<K,V>) -> Ordering {
         iter::order::cmp(self.iter(), other.iter())
     }
 }
 
 #[stable]
-impl<V: fmt::Show> fmt::Show for VecMap<V> {
+impl<K: VecMapKey + fmt::Show, V: fmt::Show> fmt::Show for VecMap<K,V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "VecMap {{"));
 
         for (i, (k, v)) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{}: {:?}", k, *v));
+            try!(write!(f, "{:?}: {:?}", k, *v));
         }
 
         write!(f, "}}")
@@ -501,8 +542,8 @@ impl<V: fmt::Show> fmt::Show for VecMap<V> {
 }
 
 #[stable]
-impl<V> FromIterator<(uint, V)> for VecMap<V> {
-    fn from_iter<Iter: Iterator<Item=(uint, V)>>(iter: Iter) -> VecMap<V> {
+impl<K: VecMapKey, V> FromIterator<(K, V)> for VecMap<K,V> {
+    fn from_iter<Iter: Iterator<Item=(K, V)>>(iter: Iter) -> VecMap<K,V> {
         let mut map = VecMap::new();
         map.extend(iter);
         map
@@ -510,29 +551,28 @@ impl<V> FromIterator<(uint, V)> for VecMap<V> {
 }
 
 #[stable]
-impl<V> Extend<(uint, V)> for VecMap<V> {
-    fn extend<Iter: Iterator<Item=(uint, V)>>(&mut self, mut iter: Iter) {
+impl<K: VecMapKey, V> Extend<(K, V)> for VecMap<K,V> {
+    fn extend<Iter: Iterator<Item=(K, V)>>(&mut self, mut iter: Iter) {
         for (k, v) in iter {
             self.insert(k, v);
         }
     }
 }
 
-impl<V> Index<uint> for VecMap<V> {
+#[stable]
+impl<K: VecMapKey, V> Index<K> for VecMap<K,V> {
     type Output = V;
-
     #[inline]
-    fn index<'a>(&'a self, i: &uint) -> &'a V {
+    fn index<'a>(&'a self, i: &K) -> &'a V {
         self.get(i).expect("key not present")
     }
 }
 
 #[stable]
-impl<V> IndexMut<uint> for VecMap<V> {
+impl<K: VecMapKey, V> IndexMut<K> for VecMap<K,V> {
     type Output = V;
-
     #[inline]
-    fn index_mut<'a>(&'a mut self, i: &uint) -> &'a mut V {
+    fn index_mut<'a>(&'a mut self, i: &K) -> &'a mut V {
         self.get_mut(i).expect("key not present")
     }
 }
@@ -540,9 +580,8 @@ impl<V> IndexMut<uint> for VecMap<V> {
 macro_rules! iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
         #[stable]
-        impl<'a, V> Iterator for $name<'a, V> {
+        impl<'a, K:VecMapKey, V> Iterator for $name<'a, K, V> {
             type Item = $elem;
-
             #[inline]
             fn next(&mut self) -> Option<$elem> {
                 while self.front < self.back {
@@ -552,7 +591,7 @@ macro_rules! iterator {
                                 Some(x) => {
                                     let index = self.front;
                                     self.front += 1;
-                                    return Some((index, x));
+                                    return Some((VecMapKey::from_uint(index), x));
                                 },
                                 None => {},
                             }
@@ -575,7 +614,7 @@ macro_rules! iterator {
 macro_rules! double_ended_iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
         #[stable]
-        impl<'a, V> DoubleEndedIterator for $name<'a, V> {
+        impl<'a, K:VecMapKey, V> DoubleEndedIterator for $name<'a, K, V> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
                 while self.front < self.back {
@@ -584,7 +623,7 @@ macro_rules! double_ended_iterator {
                             match elem$(. $getter ())+ {
                                 Some(x) => {
                                     self.back -= 1;
-                                    return Some((self.back, x));
+                                    return Some((VecMapKey::from_uint(self.back), x));
                                 },
                                 None => {},
                             }
@@ -601,112 +640,91 @@ macro_rules! double_ended_iterator {
 
 /// An iterator over the key-value pairs of a map.
 #[stable]
-pub struct Iter<'a, V:'a> {
+pub struct Iter<'a, K:'a, V:'a> {
     front: uint,
     back: uint,
-    iter: slice::Iter<'a, Option<V>>
+    iter: slice::Iter<'a, Option<V>>,
+    invariant_type: InvariantType<K>,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-impl<'a, V> Clone for Iter<'a, V> {
-    fn clone(&self) -> Iter<'a, V> {
+impl<'a, K, V> Clone for Iter<'a, K, V> {
+    fn clone(&self) -> Iter<'a, K, V> {
         Iter {
             front: self.front,
             back: self.back,
-            iter: self.iter.clone()
+            iter: self.iter.clone(),
+            invariant_type: InvariantType,
         }
     }
 }
 
-iterator! { impl Iter -> (uint, &'a V), as_ref }
-double_ended_iterator! { impl Iter -> (uint, &'a V), as_ref }
+iterator! { impl Iter -> (K, &'a V), as_ref }
+double_ended_iterator! { impl Iter -> (K, &'a V), as_ref }
 
 /// An iterator over the key-value pairs of a map, with the
 /// values being mutable.
 #[stable]
-pub struct IterMut<'a, V:'a> {
+pub struct IterMut<'a, K: 'a, V:'a> {
     front: uint,
     back: uint,
-    iter: slice::IterMut<'a, Option<V>>
+    iter: slice::IterMut<'a, Option<V>>,
+    invariant_type: InvariantType<K>,
 }
 
-iterator! { impl IterMut -> (uint, &'a mut V), as_mut }
-double_ended_iterator! { impl IterMut -> (uint, &'a mut V), as_mut }
+iterator! { impl IterMut -> (K, &'a mut V), as_mut }
+double_ended_iterator! { impl IterMut -> (K, &'a mut V), as_mut }
 
 /// An iterator over the keys of a map.
-#[stable]
-pub struct Keys<'a, V: 'a> {
-    iter: Map<(uint, &'a V), uint, Iter<'a, V>, fn((uint, &'a V)) -> uint>
-}
-
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-impl<'a, V> Clone for Keys<'a, V> {
-    fn clone(&self) -> Keys<'a, V> {
-        Keys {
-            iter: self.iter.clone()
-        }
-    }
+pub struct Keys<'a, K: VecMapKey+'a, V: 'a> {
+    iter: Map<(K, &'a V), K, Iter<'a, K, V>, fn((K, &'a V)) -> K>
 }
 
 /// An iterator over the values of a map.
-#[stable]
-pub struct Values<'a, V: 'a> {
-    iter: Map<(uint, &'a V), &'a V, Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
-}
-
-// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-impl<'a, V> Clone for Values<'a, V> {
-    fn clone(&self) -> Values<'a, V> {
-        Values {
-            iter: self.iter.clone()
-        }
-    }
+pub struct Values<'a, K: VecMapKey+'a, V: 'a> {
+    iter: Map<(K, &'a V), &'a V, Iter<'a, K, V>, fn((K, &'a V)) -> &'a V>
 }
 
 /// A consuming iterator over the key-value pairs of a map.
-#[stable]
-pub struct IntoIter<V> {
+pub struct IntoIter<K: VecMapKey, V> {
     iter: FilterMap<
-    (uint, Option<V>),
-    (uint, V),
-    Enumerate<vec::IntoIter<Option<V>>>,
-    fn((uint, Option<V>)) -> Option<(uint, V)>>
+        (uint, Option<V>),
+        (K, V),
+        Enumerate<vec::IntoIter<Option<V>>>,
+        fn((uint, Option<V>)) -> Option<(K, V)>
+    >
 }
 
-#[stable]
-impl<'a, V> Iterator for Keys<'a, V> {
-    type Item = uint;
-
-    fn next(&mut self) -> Option<uint> { self.iter.next() }
+impl<'a, K: VecMapKey, V> Iterator for Keys<'a, K, V> {
+    type Item = K;
+    fn next(&mut self) -> Option<K> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
-#[stable]
-impl<'a, V> DoubleEndedIterator for Keys<'a, V> {
-    fn next_back(&mut self) -> Option<uint> { self.iter.next_back() }
+impl<'a, K: VecMapKey, V> DoubleEndedIterator for Keys<'a, K, V> {
+    fn next_back(&mut self) -> Option<K> { self.iter.next_back() }
 }
 
 #[stable]
-impl<'a, V> Iterator for Values<'a, V> {
+impl<'a, K:VecMapKey, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
     fn next(&mut self) -> Option<(&'a V)> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<'a, V> DoubleEndedIterator for Values<'a, V> {
+impl<'a, K:VecMapKey, V> DoubleEndedIterator for Values<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a V)> { self.iter.next_back() }
 }
 
 #[stable]
-impl<V> Iterator for IntoIter<V> {
-    type Item = (uint, V);
-
-    fn next(&mut self) -> Option<(uint, V)> { self.iter.next() }
+impl<K:VecMapKey,V> Iterator for IntoIter<K,V> {
+    type Item = (K, V);
+    fn next(&mut self) -> Option<(K, V)> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 #[stable]
-impl<V> DoubleEndedIterator for IntoIter<V> {
-    fn next_back(&mut self) -> Option<(uint, V)> { self.iter.next_back() }
+impl<K:VecMapKey,V> DoubleEndedIterator for IntoIter<K,V> {
+    fn next_back(&mut self) -> Option<(K, V)> { self.iter.next_back() }
 }
 
 #[cfg(test)]
@@ -924,13 +942,13 @@ mod test_map {
     #[test]
     fn test_show() {
         let mut map = VecMap::new();
-        let empty = VecMap::<int>::new();
+        let empty = VecMap::<uint,i32>::new();
 
-        map.insert(1, 2i);
-        map.insert(3, 4i);
+        map.insert(1, 2);
+        map.insert(3, 4);
 
         let map_str = format!("{:?}", map);
-        assert!(map_str == "VecMap {1: 2i, 3: 4i}" || map_str == "{3: 4i, 1: 2i}");
+        assert!(map_str == "VecMap {1u: 2i32, 3u: 4i32}" || map_str == "{3u: 4i32, 1u: 2i32}");
         assert_eq!(format!("{:?}", empty), "VecMap {}");
     }
 
@@ -1025,7 +1043,7 @@ mod test_map {
     fn test_from_iter() {
         let xs: Vec<(uint, char)> = vec![(1u, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e')];
 
-        let map: VecMap<char> = xs.iter().map(|&x| x).collect();
+        let map: VecMap<uint,char> = xs.iter().map(|&x| x).collect();
 
         for &(k, v) in xs.iter() {
             assert_eq!(map.get(&k), Some(&v));
@@ -1034,7 +1052,7 @@ mod test_map {
 
     #[test]
     fn test_index() {
-        let mut map: VecMap<int> = VecMap::new();
+        let mut map: VecMap<uint,i32> = VecMap::new();
 
         map.insert(1, 2);
         map.insert(2, 1);
@@ -1046,7 +1064,7 @@ mod test_map {
     #[test]
     #[should_fail]
     fn test_index_nonexistent() {
-        let mut map: VecMap<int> = VecMap::new();
+        let mut map: VecMap<uint,i32> = VecMap::new();
 
         map.insert(1, 2);
         map.insert(2, 1);
@@ -1064,7 +1082,7 @@ mod bench {
 
     #[bench]
     pub fn insert_rand_100(b: &mut Bencher) {
-        let mut m : VecMap<uint> = VecMap::new();
+        let mut m : VecMap<uint,u32> = VecMap::new();
         insert_rand_n(100, &mut m, b,
                       |m, i| { m.insert(i, 1); },
                       |m, i| { m.remove(&i); });
@@ -1072,7 +1090,7 @@ mod bench {
 
     #[bench]
     pub fn insert_rand_10_000(b: &mut Bencher) {
-        let mut m : VecMap<uint> = VecMap::new();
+        let mut m : VecMap<uint,u32> = VecMap::new();
         insert_rand_n(10_000, &mut m, b,
                       |m, i| { m.insert(i, 1); },
                       |m, i| { m.remove(&i); });
@@ -1081,7 +1099,7 @@ mod bench {
     // Insert seq
     #[bench]
     pub fn insert_seq_100(b: &mut Bencher) {
-        let mut m : VecMap<uint> = VecMap::new();
+        let mut m : VecMap<uint,u32> = VecMap::new();
         insert_seq_n(100, &mut m, b,
                      |m, i| { m.insert(i, 1); },
                      |m, i| { m.remove(&i); });
@@ -1089,7 +1107,7 @@ mod bench {
 
     #[bench]
     pub fn insert_seq_10_000(b: &mut Bencher) {
-        let mut m : VecMap<uint> = VecMap::new();
+        let mut m : VecMap<uint,u32> = VecMap::new();
         insert_seq_n(10_000, &mut m, b,
                      |m, i| { m.insert(i, 1); },
                      |m, i| { m.remove(&i); });
@@ -1098,7 +1116,7 @@ mod bench {
     // Find rand
     #[bench]
     pub fn find_rand_100(b: &mut Bencher) {
-        let mut m : VecMap<uint> = VecMap::new();
+        let mut m : VecMap<uint,u32> = VecMap::new();
         find_rand_n(100, &mut m, b,
                     |m, i| { m.insert(i, 1); },
                     |m, i| { m.get(&i); });
@@ -1106,7 +1124,7 @@ mod bench {
 
     #[bench]
     pub fn find_rand_10_000(b: &mut Bencher) {
-        let mut m : VecMap<uint> = VecMap::new();
+        let mut m : VecMap<uint,u32> = VecMap::new();
         find_rand_n(10_000, &mut m, b,
                     |m, i| { m.insert(i, 1); },
                     |m, i| { m.get(&i); });
@@ -1115,7 +1133,7 @@ mod bench {
     // Find seq
     #[bench]
     pub fn find_seq_100(b: &mut Bencher) {
-        let mut m : VecMap<uint> = VecMap::new();
+        let mut m : VecMap<uint,u32> = VecMap::new();
         find_seq_n(100, &mut m, b,
                    |m, i| { m.insert(i, 1); },
                    |m, i| { m.get(&i); });
@@ -1123,7 +1141,7 @@ mod bench {
 
     #[bench]
     pub fn find_seq_10_000(b: &mut Bencher) {
-        let mut m : VecMap<uint> = VecMap::new();
+        let mut m : VecMap<uint,u32> = VecMap::new();
         find_seq_n(10_000, &mut m, b,
                    |m, i| { m.insert(i, 1); },
                    |m, i| { m.get(&i); });
