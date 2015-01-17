@@ -999,7 +999,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                   root: &Rc<Module>,
                                                   def_like: DefLike,
                                                   name: Name,
-                                                  visibility: Visibility) {
+                                                  def_visibility: Visibility) {
         match def_like {
             DlDef(def) => {
                 // Add the new child item, if necessary.
@@ -1027,7 +1027,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                            DUMMY_SP);
 
                         self.handle_external_def(def,
-                                                 visibility,
+                                                 def_visibility,
                                                  &*child_name_bindings,
                                                  token::get_name(name).get(),
                                                  name,
@@ -1106,7 +1106,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                     let def = DefFn(method_info.def_id, false);
 
                                     // NB: not IMPORTABLE
-                                    let modifiers = if visibility == ast::Public {
+                                    let modifiers = if method_info.vis == ast::Public {
                                         PUBLIC
                                     } else {
                                         DefModifiers::empty()
