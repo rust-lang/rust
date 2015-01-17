@@ -58,7 +58,7 @@ let z = &y;
 
 See the difference? Rather than contain a value, the value of a pointer is a
 location in memory. In this case, the location of `y`. `x` and `y` have the
-type `int`, but `z` has the type `&int`. We can print this location using the
+type `i32`, but `z` has the type `&i32`. We can print this location using the
 `{:p}` format string:
 
 ```{rust}
@@ -71,7 +71,7 @@ println!("{:p}", z);
 
 This would print `0xd3e028`, with our fictional memory addresses.
 
-Because `int` and `&int` are different types, we can't, for example, add them
+Because `i32` and `&i32` are different types, we can't, for example, add them
 together:
 
 ```{rust,ignore}
@@ -269,14 +269,14 @@ referent, because `println!` will automatically dereference it for us.
 Here's a function that takes a reference:
 
 ```{rust}
-fn succ(x: &int) -> int { *x + 1 }
+fn succ(x: &i32) -> i32 { *x + 1 }
 ```
 
 You can also use `&` as an operator to create a reference, so we can
 call this function in two different ways:
 
 ```{rust}
-fn succ(x: &int) -> int { *x + 1 }
+fn succ(x: &i32) -> i32 { *x + 1 }
 
 fn main() {
 
@@ -294,7 +294,7 @@ Of course, if this were real code, we wouldn't bother with the reference, and
 just write:
 
 ```{rust}
-fn succ(x: int) -> int { x + 1 }
+fn succ(x: i32) -> i32 { x + 1 }
 ```
 
 References are immutable by default:
@@ -425,13 +425,13 @@ References just borrow ownership, which is more polite if you don't need the
 ownership. In other words, prefer:
 
 ```{rust}
-fn succ(x: &int) -> int { *x + 1 }
+fn succ(x: &i32) -> i32 { *x + 1 }
 ```
 
 to
 
 ```{rust}
-fn succ(x: Box<int>) -> int { *x + 1 }
+fn succ(x: Box<i32>) -> i32 { *x + 1 }
 ```
 
 As a corollary to that rule, references allow you to accept a wide variety of
@@ -439,7 +439,7 @@ other pointers, and so are useful so that you don't have to write a number
 of variants per pointer. In other words, prefer:
 
 ```{rust}
-fn succ(x: &int) -> int { *x + 1 }
+fn succ(x: &i32) -> i32 { *x + 1 }
 ```
 
 to
@@ -447,9 +447,9 @@ to
 ```{rust}
 use std::rc::Rc;
 
-fn box_succ(x: Box<int>) -> int { *x + 1 }
+fn box_succ(x: Box<i32>) -> i32 { *x + 1 }
 
-fn rc_succ(x: Rc<int>) -> int { *x + 1 }
+fn rc_succ(x: Rc<i32>) -> i32 { *x + 1 }
 ```
 
 Note that the caller of your function will have to modify their calls slightly:
@@ -544,7 +544,7 @@ for more detail on how lifetimes work.
 Using boxes and references together is very common. For example:
 
 ```{rust}
-fn add_one(x: &int) -> int {
+fn add_one(x: &i32) -> i32 {
     *x + 1
 }
 
@@ -561,7 +561,7 @@ function, and since it's only reading the value, allows it.
 We can borrow `x` multiple times, as long as it's not simultaneous:
 
 ```{rust}
-fn add_one(x: &int) -> int {
+fn add_one(x: &i32) -> i32 {
     *x + 1
 }
 
@@ -577,7 +577,7 @@ fn main() {
 Or as long as it's not a mutable borrow. This will error:
 
 ```{rust,ignore}
-fn add_one(x: &mut int) -> int {
+fn add_one(x: &mut i32) -> i32 {
     *x + 1
 }
 
@@ -610,7 +610,7 @@ enum List<T> {
 }
 
 fn main() {
-    let list: List<int> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Cons(3, Box::new(List::Nil))))));
+    let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Cons(3, Box::new(List::Nil))))));
     println!("{:?}", list);
 }
 ```
@@ -659,10 +659,10 @@ so as to avoid copying a large data structure. For example:
 
 ```{rust}
 struct BigStruct {
-    one: int,
-    two: int,
+    one: i32,
+    two: i32,
     // etc
-    one_hundred: int,
+    one_hundred: i32,
 }
 
 fn foo(x: Box<BigStruct>) -> Box<BigStruct> {
@@ -687,10 +687,10 @@ This is an antipattern in Rust. Instead, write this:
 
 ```{rust}
 struct BigStruct {
-    one: int,
-    two: int,
+    one: i32,
+    two: i32,
     // etc
-    one_hundred: int,
+    one_hundred: i32,
 }
 
 fn foo(x: Box<BigStruct>) -> BigStruct {
