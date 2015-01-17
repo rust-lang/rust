@@ -148,11 +148,43 @@ class CustomHTMLParser(HTMLParser):
 
 Command = namedtuple('Command', 'negated cmd args lineno')
 
-LINE_PATTERN = re.compile(r'(?<=(?<!\S)@)(?P<negated>!?)(?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)(?P<args>.*)$')
+# returns a generator out of the file object, which
+# - removes `\\` then `\n` then a shared prefix with the previous line then optional whitespace;
+# - keeps a line number (starting from 0) of the first line being concatenated.
+def concat_multi_lines(f):
+    lastline = None # set to the last line when the last line has a backslash
+    firstlineno = None
+    catenated = ''
+    for lineno, line in enumerate(f):
+        line = line.rstrip('\r\n')
+
+        # strip the common prefix from the current line if needed
+        if lastline is not None:
+            maxprefix = 0
+            for i in xrange(min(len(line), len(lastline))):
+                if line[i] != lastline[i]: break
+                maxprefix += 1
+            line = line[maxprefix:].lstrip()
+
+        firstlineno = firstlineno or lineno
+        if line.endswith('\\'):
+            lastline = line[:-1]
+            catenated += line[:-1]
+        else:
+            yield firstlineno, catenated + line
+            lastline = None
+            firstlineno = None
+            catenated = ''
+
+LINE_PATTERN = re.compile(r'''
+    (?<=(?<!\S)@)(?P<negated>!?)
+    (?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
+    (?P<args>.*)$
+''', re.X)
 def get_commands(template):
     with open(template, 'rUb') as f:
-        for lineno, line in enumerate(f):
-            m = LINE_PATTERN.search(line.rstrip('\r\n'))
+        for lineno, line in concat_multi_lines(f):
+            m = LINE_PATTERN.search(line)
             if not m: continue
 
             negated = (m.group('negated') == '!')
