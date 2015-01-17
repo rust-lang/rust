@@ -28,8 +28,8 @@ question](http://stackoverflow.com/questions/79923/what-and-where-are-the-stack-
 as the rest of this guide assumes you know the difference.) Like this:
 
 ```{rust}
-let x = 5i;
-let y = 8i;
+let x = 5i32;
+let y = 8i32;
 ```
 | location | value |
 |----------|-------|
@@ -46,8 +46,8 @@ Let's introduce a pointer. In some languages, there is just one type of
 *reference*, which is the simplest kind of pointer.
 
 ```{rust}
-let x = 5i;
-let y = 8i;
+let x = 5i32;
+let y = 8i32;
 let z = &y;
 ```
 |location | value    |
@@ -62,8 +62,8 @@ type `int`, but `z` has the type `&int`. We can print this location using the
 `{:p}` format string:
 
 ```{rust}
-let x = 5i;
-let y = 8i;
+let x = 5i32;
+let y = 8i32;
 let z = &y;
 
 println!("{:p}", z);
@@ -75,8 +75,8 @@ Because `int` and `&int` are different types, we can't, for example, add them
 together:
 
 ```{rust,ignore}
-let x = 5i;
-let y = 8i;
+let x = 5i32;
+let y = 8i32;
 let z = &y;
 
 println!("{}", x + z);
@@ -95,8 +95,8 @@ pointer means accessing the value at the location stored in the pointer. This
 will work:
 
 ```{rust}
-let x = 5i;
-let y = 8i;
+let x = 5i32;
+let y = 8i32;
 let z = &y;
 
 println!("{}", x + *z);
@@ -252,7 +252,7 @@ The most basic type of pointer that Rust has is called a *reference*. Rust
 references look like this:
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 let y = &x;
 
 println!("{}", *y);
@@ -280,7 +280,7 @@ fn succ(x: &int) -> int { *x + 1 }
 
 fn main() {
 
-    let x = 5i;
+    let x = 5i32;
     let y = &x;
 
     println!("{}", succ(y));
@@ -300,7 +300,7 @@ fn succ(x: int) -> int { x + 1 }
 References are immutable by default:
 
 ```{rust,ignore}
-let x = 5i;
+let x = 5i32;
 let y = &x;
 
 *y = 5; // error: cannot assign to immutable dereference of `&`-pointer `*y`
@@ -310,21 +310,21 @@ They can be made mutable with `mut`, but only if its referent is also mutable.
 This works:
 
 ```{rust}
-let mut x = 5i;
+let mut x = 5i32;
 let y = &mut x;
 ```
 
 This does not:
 
 ```{rust,ignore}
-let x = 5i;
+let x = 5i32;
 let y = &mut x; // error: cannot borrow immutable local variable `x` as mutable
 ```
 
 Immutable pointers are allowed to alias:
 
 ```{rust}
-let x = 5i;
+let x = 5i32;
 let y = &x;
 let z = &x;
 ```
@@ -332,7 +332,7 @@ let z = &x;
 Mutable ones, however, are not:
 
 ```{rust,ignore}
-let mut x = 5i;
+let mut x = 5i32;
 let y = &mut x;
 let z = &mut x; // error: cannot borrow `x` as mutable more than once at a time
 ```
@@ -359,7 +359,7 @@ duration a *lifetime*. Let's try a more complex example:
 
 ```{rust}
 fn main() {
-    let x = &mut 5i;
+    let x = &mut 5i32;
 
     if *x < 10 {
         let y = &x;
@@ -380,7 +380,7 @@ mutated, and therefore, lets us pass. This wouldn't work:
 
 ```{rust,ignore}
 fn main() {
-    let x = &mut 5i;
+    let x = &mut 5i32;
 
     if *x < 10 {
         let y = &x;
@@ -459,9 +459,9 @@ use std::rc::Rc;
 
 fn succ(x: &int) -> int { *x + 1 }
 
-let ref_x = &5i;
-let box_x = Box::new(5i);
-let rc_x  = Rc::new(5i);
+let ref_x = &5i32;
+let box_x = Box::new(5i32);
+let rc_x  = Rc::new(5i32);
 
 succ(ref_x);
 succ(&*box_x);
@@ -477,7 +477,7 @@ those contents.
 heap allocation in Rust. Creating a box looks like this:
 
 ```{rust}
-let x = Box::new(5i);
+let x = Box::new(5i32);
 ```
 
 Boxes are heap allocated and they are deallocated automatically by Rust when
@@ -485,7 +485,7 @@ they go out of scope:
 
 ```{rust}
 {
-    let x = Box::new(5i);
+    let x = Box::new(5i32);
 
     // stuff happens
 
@@ -505,7 +505,7 @@ boxes, though. As a rough approximation, you can treat this Rust code:
 
 ```{rust}
 {
-    let x = Box::new(5i);
+    let x = Box::new(5i32);
 
     // stuff happens
 }
@@ -549,7 +549,7 @@ fn add_one(x: &int) -> int {
 }
 
 fn main() {
-    let x = Box::new(5i);
+    let x = Box::new(5i32);
 
     println!("{}", add_one(&*x));
 }
@@ -566,7 +566,7 @@ fn add_one(x: &int) -> int {
 }
 
 fn main() {
-    let x = Box::new(5i);
+    let x = Box::new(5i32);
 
     println!("{}", add_one(&*x));
     println!("{}", add_one(&*x));
@@ -582,7 +582,7 @@ fn add_one(x: &mut int) -> int {
 }
 
 fn main() {
-    let x = Box::new(5i);
+    let x = Box::new(5i32);
 
     println!("{}", add_one(&*x)); // error: cannot borrow immutable dereference
                                   // of `&`-pointer as mutable
