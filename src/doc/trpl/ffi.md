@@ -529,6 +529,7 @@ fairly easy, but requires a few things:
 pub extern fn hello_rust() -> *const u8 {
     "Hello, world!\0".as_ptr()
 }
+# fn main() {}
 ```
 
 The `extern` makes this function adhere to the C calling convention, as
