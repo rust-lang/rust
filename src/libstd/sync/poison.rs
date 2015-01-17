@@ -99,8 +99,23 @@ impl<T> fmt::Show for PoisonError<T> {
 impl<T> PoisonError<T> {
     /// Consumes this error indicating that a lock is poisoned, returning the
     /// underlying guard to allow access regardless.
-    #[stable]
+    #[deprecated="renamed to into_inner"]
     pub fn into_guard(self) -> T { self.guard }
+
+    /// Consumes this error indicating that a lock is poisoned, returning the
+    /// underlying guard to allow access regardless.
+    #[unstable]
+    pub fn into_inner(self) -> T { self.guard }
+
+    /// Reaches into this error indicating that a lock is poisoned, returning a
+    /// reference to the underlying guard to allow access regardless.
+    #[unstable]
+    pub fn get_ref(&self) -> &T { &self.guard }
+
+    /// Reaches into this error indicating that a lock is poisoned, returning a
+    /// mutable reference to the underlying guard to allow access regardless.
+    #[unstable]
+    pub fn get_mut(&mut self) -> &mut T { &mut self.guard }
 }
 
 impl<T> FromError<PoisonError<T>> for TryLockError<T> {
