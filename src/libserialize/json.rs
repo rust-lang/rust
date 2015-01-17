@@ -192,8 +192,8 @@
 //! }
 //! ```
 
-use self::ErrorCode::*;
 use self::JsonEvent::*;
+use self::ErrorCode::*;
 use self::ParserError::*;
 use self::DecoderError::*;
 use self::ParserState::*;
