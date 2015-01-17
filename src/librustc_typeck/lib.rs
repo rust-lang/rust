@@ -206,11 +206,11 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
     match result {
         Ok(_) => true,
         Err(ref terr) => {
-            tcx.sess.span_err(span,
-                              &format!("{}: {}",
+            span_err!(tcx.sess, span, E0211,
+                              "{}: {}",
                                       msg(),
                                       ty::type_err_to_str(tcx,
-                                                          terr))[]);
+                                                          terr));
             ty::note_and_explain_type_err(tcx, terr);
             false
         }

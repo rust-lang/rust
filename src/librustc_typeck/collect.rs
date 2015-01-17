@@ -452,7 +452,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CollectCtxt<'a, 'tcx>,
     let mut seen_methods = FnvHashSet();
     for m in ms {
         if !seen_methods.insert(m.pe_ident().repr(tcx)) {
-            tcx.sess.span_err(m.span, "duplicate method in trait impl");
+            span_err!(tcx.sess, m.span, E0201, "duplicate method in trait impl");
         }
 
         let m_def_id = local_def(m.id);
@@ -608,7 +608,7 @@ fn convert(ccx: &CollectCtxt, it: &ast::Item) {
                     }
                     ast::TypeImplItem(ref typedef) => {
                         if opt_trait_ref.is_none() {
-                            tcx.sess.span_err(typedef.span,
+                            span_err!(tcx.sess, typedef.span, E0202,
                                               "associated items are not allowed in inherent impls");
                         }
 
@@ -1160,7 +1160,8 @@ fn add_unsized_bound<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                 assert!(ptr.bound_lifetimes.is_empty());
                 unbound = Some(ptr.trait_ref.clone());
             } else {
-                ccx.tcx.sess.span_err(span, "type parameter has more than one relaxed default \
+                span_err!(ccx.tcx.sess, span, E0203,
+                          "type parameter has more than one relaxed default \
                                                 bound, only one is supported");
             }
         }
@@ -1690,11 +1691,10 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                              impl trait, self type, or predicates",
                             param_ty.user_string(tcx)).as_slice());
             } else {
-                tcx.sess.span_err(
-                    ty_param.span,
-                    format!("the type parameter `{}` is not constrained by the \
+                span_err!(tcx.sess, ty_param.span, E0207,
+                    "the type parameter `{}` is not constrained by the \
                              impl trait, self type, or predicates",
-                            param_ty.user_string(tcx)).as_slice());
+                            param_ty.user_string(tcx));
                 tcx.sess.span_help(
                     ty_param.span,
                     format!("you can temporarily opt out of this rule by placing \
