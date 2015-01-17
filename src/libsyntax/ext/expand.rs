@@ -1311,7 +1311,7 @@ fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
 pub struct ExpansionConfig {
     pub crate_name: String,
     pub enable_quotes: bool,
-    pub recursion_limit: uint,
+    pub recursion_limit: usize,
 }
 
 impl ExpansionConfig {
@@ -1595,7 +1595,7 @@ mod test {
     // in principle, you might want to control this boolean on a per-varref basis,
     // but that would make things even harder to understand, and might not be
     // necessary for thorough testing.
-    type RenamingTest = (&'static str, Vec<Vec<uint>>, bool);
+    type RenamingTest = (&'static str, Vec<Vec<usize>>, bool);
 
     #[test]
     fn automatic_renaming () {
@@ -1749,7 +1749,7 @@ mod test {
     }
 
     // run one of the renaming tests
-    fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
+    fn run_renaming_test(t: &RenamingTest, test_idx: usize) {
         let invalid_name = token::special_idents::invalid.name;
         let (teststr, bound_connections, bound_ident_check) = match *t {
             (ref str,ref conns, bic) => (str.to_string(), conns.clone(), bic)

@@ -264,12 +264,12 @@ pub struct Map<'ast> {
 }
 
 impl<'ast> Map<'ast> {
-    fn entry_count(&self) -> uint {
+    fn entry_count(&self) -> usize {
         self.map.borrow().len()
     }
 
     fn find_entry(&self, id: NodeId) -> Option<MapEntry<'ast>> {
-        self.map.borrow().get(id as uint).map(|e| *e)
+        self.map.borrow().get(id as usize).map(|e| *e)
     }
 
     pub fn krate(&self) -> &'ast Crate {
@@ -652,7 +652,7 @@ impl<'a, 'ast> Iterator for NodesMatchingSuffix<'a, 'ast> {
     fn next(&mut self) -> Option<NodeId> {
         loop {
             let idx = self.idx;
-            if idx as uint >= self.map.entry_count() {
+            if idx as usize >= self.map.entry_count() {
                 return None;
             }
             self.idx += 1;
@@ -744,10 +744,10 @@ impl<'ast> NodeCollector<'ast> {
     fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'ast>) {
         debug!("ast_map: {:?} => {:?}", id, entry);
         let len = self.map.len();
-        if id as uint >= len {
-            self.map.extend(repeat(NotPresent).take(id as uint - len + 1));
+        if id as usize >= len {
+            self.map.extend(repeat(NotPresent).take(id as usize - len + 1));
         }
-        self.map[id as uint] = entry;
+        self.map[id as usize] = entry;
     }
 
     fn insert(&mut self, id: NodeId, node: Node<'ast>) {

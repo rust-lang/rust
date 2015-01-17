@@ -374,7 +374,7 @@ pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
 /// Rather than just accepting/rejecting a given literal, unescapes it as
 /// well. Can take any slice prefixed by a character escape. Returns the
 /// character and the number of characters consumed.
-pub fn char_lit(lit: &str) -> (char, int) {
+pub fn char_lit(lit: &str) -> (char, isize) {
     use std::{num, char};
 
     let mut chars = lit.chars();
@@ -401,19 +401,19 @@ pub fn char_lit(lit: &str) -> (char, int) {
     let msg = format!("lexer should have rejected a bad character escape {}", lit);
     let msg2 = &msg[];
 
-    fn esc(len: uint, lit: &str) -> Option<(char, int)> {
+    fn esc(len: usize, lit: &str) -> Option<(char, isize)> {
         num::from_str_radix(&lit[2..len], 16)
         .and_then(char::from_u32)
-        .map(|x| (x, len as int))
+        .map(|x| (x, len as isize))
     }
 
-    let unicode_escape = |&: | -> Option<(char, int)>
+    let unicode_escape = |&: | -> Option<(char, isize)>
         if lit.as_bytes()[2] == b'{' {
             let idx = lit.find('}').expect(msg2);
             let subslice = &lit[3..idx];
             num::from_str_radix(subslice, 16)
                 .and_then(char::from_u32)
-                .map(|x| (x, subslice.chars().count() as int + 4))
+                .map(|x| (x, subslice.chars().count() as isize + 4))
         } else {
             esc(6, lit)
         };
@@ -437,7 +437,7 @@ pub fn str_lit(lit: &str) -> String {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a>(it: &mut iter::Peekable<(uint, char), str::CharIndices<'a>>) {
+    fn eat<'a>(it: &mut iter::Peekable<(usize, char), str::CharIndices<'a>>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
@@ -568,7 +568,7 @@ pub fn float_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) -> a
 }
 
 /// Parse a string representing a byte literal into its final form. Similar to `char_lit`
-pub fn byte_lit(lit: &str) -> (u8, uint) {
+pub fn byte_lit(lit: &str) -> (u8, usize) {
     let err = |&: i| format!("lexer accepted invalid byte literal {} step {}", lit, i);
 
     if lit.len() == 1 {
@@ -606,7 +606,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a, I: Iterator<Item=(uint, u8)>>(it: &mut iter::Peekable<(uint, u8), I>) {
+    fn eat<'a, I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<(usize, u8), I>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
@@ -1161,11 +1161,11 @@ mod test {
 
     #[test] fn span_of_self_arg_pat_idents_are_correct() {
 
-        let srcs = ["impl z { fn a (&self, &myarg: int) {} }",
-                    "impl z { fn a (&mut self, &myarg: int) {} }",
-                    "impl z { fn a (&'a self, &myarg: int) {} }",
-                    "impl z { fn a (self, &myarg: int) {} }",
-                    "impl z { fn a (self: Foo, &myarg: int) {} }",
+        let srcs = ["impl z { fn a (&self, &myarg: i32) {} }",
+                    "impl z { fn a (&mut self, &myarg: i32) {} }",
+                    "impl z { fn a (&'a self, &myarg: i32) {} }",
+                    "impl z { fn a (self, &myarg: i32) {} }",
+                    "impl z { fn a (self: Foo, &myarg: i32) {} }",
                     ];
 
         for &src in srcs.iter() {

@@ -16,7 +16,7 @@
 //!
 //! ```ignore
 //! #[derive(Encodable, Decodable)]
-//! struct Node { id: uint }
+//! struct Node { id: usize }
 //! ```
 //!
 //! would generate two implementations like:

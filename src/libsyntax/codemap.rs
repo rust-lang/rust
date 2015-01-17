@@ -30,8 +30,8 @@ use libc::c_uint;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {
-    fn from_uint(n: uint) -> Self;
-    fn to_uint(&self) -> uint;
+    fn from_uint(n: usize) -> Self;
+    fn to_uint(&self) -> usize;
 }
 
 /// A byte offset. Keep this small (currently 32-bits), as AST contains
@@ -43,14 +43,14 @@ pub struct BytePos(pub u32);
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
 #[derive(Copy, PartialEq, Hash, PartialOrd, Show)]
-pub struct CharPos(pub uint);
+pub struct CharPos(pub usize);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
 // have been unsuccessful
 
 impl Pos for BytePos {
-    fn from_uint(n: uint) -> BytePos { BytePos(n as u32) }
-    fn to_uint(&self) -> uint { let BytePos(n) = *self; n as uint }
+    fn from_uint(n: usize) -> BytePos { BytePos(n as u32) }
+    fn to_uint(&self) -> usize { let BytePos(n) = *self; n as usize }
 }
 
 impl Add for BytePos {
@@ -70,8 +70,8 @@ impl Sub for BytePos {
 }
 
 impl Pos for CharPos {
-    fn from_uint(n: uint) -> CharPos { CharPos(n) }
-    fn to_uint(&self) -> uint { let CharPos(n) = *self; n }
+    fn from_uint(n: usize) -> CharPos { CharPos(n) }
+    fn to_uint(&self) -> usize { let CharPos(n) = *self; n }
 }
 
 impl Add for CharPos {
@@ -173,7 +173,7 @@ pub struct Loc {
     /// Information about the original source
     pub file: Rc<FileMap>,
     /// The (1-based) line number
-    pub line: uint,
+    pub line: usize,
     /// The (0-based) column offset
     pub col: CharPos
 }
@@ -183,13 +183,13 @@ pub struct Loc {
 // perhaps they should just be removed.
 pub struct LocWithOpt {
     pub filename: FileName,
-    pub line: uint,
+    pub line: usize,
     pub col: CharPos,
     pub file: Option<Rc<FileMap>>,
 }
 
 // used to be structural records. Better names, anyone?
-pub struct FileMapAndLine { pub fm: Rc<FileMap>, pub line: uint }
+pub struct FileMapAndLine { pub fm: Rc<FileMap>, pub line: usize }
 pub struct FileMapAndBytePos { pub fm: Rc<FileMap>, pub pos: BytePos }
 
 /// The syntax with which a macro was invoked.
@@ -258,7 +258,7 @@ pub type FileName = String;
 
 pub struct FileLines {
     pub file: Rc<FileMap>,
-    pub lines: Vec<uint>
+    pub lines: Vec<usize>
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap
@@ -267,7 +267,7 @@ pub struct MultiByteChar {
     /// The absolute offset of the character in the CodeMap
     pub pos: BytePos,
     /// The number of bytes, >=2
-    pub bytes: uint,
+    pub bytes: usize,
 }
 
 /// A single source in the CodeMap
@@ -306,7 +306,7 @@ impl FileMap {
 
     /// get a line from the list of pre-computed line-beginnings
     ///
-    pub fn get_line(&self, line_number: uint) -> Option<String> {
+    pub fn get_line(&self, line_number: usize) -> Option<String> {
         let lines = self.lines.borrow();
         lines.get(line_number).map(|&line| {
             let begin: BytePos = line - self.start_pos;
@@ -319,7 +319,7 @@ impl FileMap {
         })
     }
 
-    pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
+    pub fn record_multibyte_char(&self, pos: BytePos, bytes: usize) {
         assert!(bytes >=2 && bytes <= 4);
         let mbc = MultiByteChar {
             pos: pos,
@@ -430,7 +430,7 @@ impl CodeMap {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         let mut lines = Vec::new();
-        for i in range(lo.line - 1u, hi.line as uint) {
+        for i in range(lo.line - 1u, hi.line as usize) {
             lines.push(i);
         };
         FileLines {file: lo.file, lines: lines}
@@ -494,7 +494,7 @@ impl CodeMap {
         CharPos(bpos.to_uint() - map.start_pos.to_uint() - total_extra_bytes)
     }
 
-    fn lookup_filemap_idx(&self, pos: BytePos) -> uint {
+    fn lookup_filemap_idx(&self, pos: BytePos) -> usize {
         let files = self.files.borrow();
         let files = &*files;
         let len = files.len();
@@ -579,7 +579,7 @@ impl CodeMap {
     {
         match id {
             NO_EXPANSION => f(None),
-            ExpnId(i) => f(Some(&(*self.expansions.borrow())[i as uint]))
+            ExpnId(i) => f(Some(&(*self.expansions.borrow())[i as usize]))
         }
     }
 

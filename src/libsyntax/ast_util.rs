@@ -156,7 +156,7 @@ pub fn int_ty_max(t: IntTy) -> u64 {
 }
 
 /// Get a string representation of an unsigned int type, with its value.
-/// We want to avoid "42uint" in favor of "42u"
+/// We want to avoid "42u" in favor of "42us". "42uint" is right out.
 pub fn uint_ty_to_string(t: UintTy, val: Option<u64>) -> String {
     let s = match t {
         TyUs(true) if val.is_some() => "u",
@@ -319,7 +319,7 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
 }
 
 /// Maps a binary operator to its precedence
-pub fn operator_prec(op: ast::BinOp) -> uint {
+pub fn operator_prec(op: ast::BinOp) -> usize {
   match op {
       // 'as' sits here with 12
       BiMul | BiDiv | BiRem     => 11u,
@@ -337,7 +337,7 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
 /// Precedence of the `as` operator, which is a binary operator
 /// not appearing in the prior table.
 #[allow(non_upper_case_globals)]
-pub static as_prec: uint = 12u;
+pub static as_prec: usize = 12us;
 
 pub fn empty_generics() -> Generics {
     Generics {

@@ -116,7 +116,7 @@ pub trait AstBuilder {
     fn expr_mut_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr>;
     fn expr_field_access(&self, span: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr>;
     fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>,
-                             idx: uint) -> P<ast::Expr>;
+                             idx: usize) -> P<ast::Expr>;
     fn expr_call(&self, span: Span, expr: P<ast::Expr>, args: Vec<P<ast::Expr>>) -> P<ast::Expr>;
     fn expr_call_ident(&self, span: Span, id: ast::Ident, args: Vec<P<ast::Expr>>) -> P<ast::Expr>;
     fn expr_call_global(&self, sp: Span, fn_path: Vec<ast::Ident>,
@@ -134,7 +134,7 @@ pub trait AstBuilder {
 
     fn expr_lit(&self, sp: Span, lit: ast::Lit_) -> P<ast::Expr>;
 
-    fn expr_uint(&self, span: Span, i: uint) -> P<ast::Expr>;
+    fn expr_uint(&self, span: Span, i: usize) -> P<ast::Expr>;
     fn expr_int(&self, sp: Span, i: int) -> P<ast::Expr>;
     fn expr_u8(&self, sp: Span, u: u8) -> P<ast::Expr>;
     fn expr_bool(&self, sp: Span, value: bool) -> P<ast::Expr>;
@@ -587,7 +587,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let id = Spanned { node: ident, span: field_span };
         self.expr(sp, ast::ExprField(expr, id))
     }
-    fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>, idx: uint) -> P<ast::Expr> {
+    fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>, idx: usize) -> P<ast::Expr> {
         let field_span = Span {
             lo: sp.lo - Pos::from_uint(idx.to_string().len()),
             hi: sp.hi,
@@ -641,7 +641,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn expr_lit(&self, sp: Span, lit: ast::Lit_) -> P<ast::Expr> {
         self.expr(sp, ast::ExprLit(P(respan(sp, lit))))
     }
-    fn expr_uint(&self, span: Span, i: uint) -> P<ast::Expr> {
+    fn expr_uint(&self, span: Span, i: usize) -> P<ast::Expr> {
         self.expr_lit(span, ast::LitInt(i as u64, ast::UnsignedIntLit(ast::TyUs(false))))
     }
     fn expr_int(&self, sp: Span, i: int) -> P<ast::Expr> {

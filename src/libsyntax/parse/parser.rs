@@ -292,9 +292,9 @@ pub struct Parser<'a> {
     pub buffer: [TokenAndSpan; 4],
     pub buffer_start: int,
     pub buffer_end: int,
-    pub tokens_consumed: uint,
+    pub tokens_consumed: usize,
     pub restrictions: Restrictions,
-    pub quote_depth: uint, // not (yet) related to the quasiquoter
+    pub quote_depth: usize, // not (yet) related to the quasiquoter
     pub reader: Box<Reader+'a>,
     pub interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
@@ -932,8 +932,8 @@ impl<'a> Parser<'a> {
             self.reader.real_token()
         } else {
             // Avoid token copies with `replace`.
-            let buffer_start = self.buffer_start as uint;
-            let next_index = (buffer_start + 1) & 3 as uint;
+            let buffer_start = self.buffer_start as usize;
+            let next_index = (buffer_start + 1) & 3 as usize;
             self.buffer_start = next_index as int;
 
             let placeholder = TokenAndSpan {
@@ -972,15 +972,15 @@ impl<'a> Parser<'a> {
         }
         return (4 - self.buffer_start) + self.buffer_end;
     }
-    pub fn look_ahead<R, F>(&mut self, distance: uint, f: F) -> R where
+    pub fn look_ahead<R, F>(&mut self, distance: usize, f: F) -> R where
         F: FnOnce(&token::Token) -> R,
     {
         let dist = distance as int;
         while self.buffer_length() < dist {
-            self.buffer[self.buffer_end as uint] = self.reader.real_token();
+            self.buffer[self.buffer_end as usize] = self.reader.real_token();
             self.buffer_end = (self.buffer_end + 1) & 3;
         }
-        f(&self.buffer[((self.buffer_start + dist - 1) & 3) as uint].tok)
+        f(&self.buffer[((self.buffer_start + dist - 1) & 3) as usize].tok)
     }
     pub fn fatal(&mut self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(self.span, m)
@@ -2087,7 +2087,7 @@ impl<'a> Parser<'a> {
         ExprField(expr, ident)
     }
 
-    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<uint>) -> ast::Expr_ {
+    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<usize>) -> ast::Expr_ {
         ExprTupField(expr, idx)
     }
 
@@ -2485,7 +2485,7 @@ impl<'a> Parser<'a> {
                     hi = self.span.hi;
                     self.bump();
 
-                    let index = n.as_str().parse::<uint>();
+                    let index = n.as_str().parse::<usize>();
                     match index {
                         Some(n) => {
                             let id = spanned(dot, hi, n);
@@ -2511,7 +2511,7 @@ impl<'a> Parser<'a> {
                         };
                         self.span_help(last_span,
                             &format!("try parenthesizing the first index; e.g., `(foo.{}){}`",
-                                    float.trunc() as uint,
+                                    float.trunc() as usize,
                                     &float.fract().to_string()[1..])[]);
                     }
                     self.abort_if_errors();
@@ -2864,7 +2864,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an expression of binops of at least min_prec precedence
-    pub fn parse_more_binops(&mut self, lhs: P<Expr>, min_prec: uint) -> P<Expr> {
+    pub fn parse_more_binops(&mut self, lhs: P<Expr>, min_prec: usize) -> P<Expr> {
         if self.expr_is_complete(&*lhs) { return lhs; }
 
         // Prevent dynamic borrow errors later on by limiting the

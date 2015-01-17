@@ -294,7 +294,7 @@ pub enum SubstructureFields<'a> {
     /// Matching variants of the enum: variant index, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
-    EnumMatching(uint, &'a ast::Variant, Vec<FieldInfo>),
+    EnumMatching(usize, &'a ast::Variant, Vec<FieldInfo>),
 
     /// Non-matching variants of the enum, but with all state hidden from
     /// the consequent code.  The first component holds `Ident`s for all of
@@ -915,7 +915,7 @@ impl<'a> MethodDef<'a> {
             .collect::<Vec<ast::Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
-        // a series of let statements mapping each self_arg to a uint
+        // a series of let statements mapping each self_arg to a usize
         // corresponding to its variant index.
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
             .map(|name| { let vi_suffix = format!("{}_vi", &name[]);
@@ -1039,7 +1039,7 @@ impl<'a> MethodDef<'a> {
                 }).collect();
 
             // Build a series of let statements mapping each self_arg
-            // to a uint corresponding to its variant index.
+            // to a usize corresponding to its variant index.
             // i.e. for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
             // with three Self args, builds three statements:
             //

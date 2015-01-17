@@ -22,7 +22,7 @@ use print::pprust;
 use std::io;
 use std::str;
 use std::string::String;
-use std::uint;
+use std::usize;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum CommentStyle {
@@ -87,7 +87,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
 
     /// remove a "[ \t]*\*" block from each line, if possible
     fn horizontal_trim(lines: Vec<String> ) -> Vec<String> {
-        let mut i = uint::MAX;
+        let mut i = usize::MAX;
         let mut can_trim = true;
         let mut first = true;
         for line in lines.iter() {
@@ -206,10 +206,10 @@ fn read_line_comments(rdr: &mut StringReader, code_to_the_left: bool,
 /// Returns None if the first col chars of s contain a non-whitespace char.
 /// Otherwise returns Some(k) where k is first char offset after that leading
 /// whitespace.  Note k may be outside bounds of s.
-fn all_whitespace(s: &str, col: CharPos) -> Option<uint> {
+fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
     let len = s.len();
     let mut col = col.to_uint();
-    let mut cursor: uint = 0;
+    let mut cursor: usize = 0;
     while col > 0 && cursor < len {
         let r: str::CharRange = s.char_range_at(cursor);
         if !r.ch.is_whitespace() {

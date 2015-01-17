@@ -105,8 +105,8 @@ pub fn all_names() -> Vec<&'static str> {
 
 impl Abi {
     #[inline]
-    pub fn index(&self) -> uint {
-        *self as uint
+    pub fn index(&self) -> usize {
+        *self as usize
     }
 
     #[inline]
