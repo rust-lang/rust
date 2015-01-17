@@ -435,6 +435,9 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_expr(&**expression)
         }
         TyInfer => {}
+        TyMac(ref mac) => {
+            visitor.visit_mac(mac)
+        }
     }
 }
 

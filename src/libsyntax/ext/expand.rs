@@ -51,6 +51,28 @@ pub fn expand_type(t: P<ast::Ty>,
                 t
             }
         }
+        (ast::Ty_::TyMac(mac), _) => {
+            let expanded_ty = match expand_mac_invoc(mac, t.span,
+                                                     |r| r.make_ty(),
+                                                     mark_ty,
+                                                     fld) {
+                Some(ty) => ty,
+                None => {
+                    return DummyResult::raw_ty(t.span);
+                }
+            };
+
+            // Keep going, outside-in.
+            //
+            let fully_expanded = fld.fold_ty(expanded_ty);
+            fld.cx.bt_pop();
+
+            fully_expanded.map(|t| ast::Ty {
+                id: ast::DUMMY_NODE_ID,
+                node: t.node,
+                span: t.span,
+            })
+        }
         _ => t
     };
     fold::noop_fold_ty(t, fld)
@@ -1410,6 +1432,11 @@ fn mark_item(expr: P<ast::Item>, m: Mrk) -> P<ast::Item> {
 fn mark_method(expr: P<ast::Method>, m: Mrk) -> P<ast::Method> {
     Marker{mark:m}.fold_method(expr)
         .expect_one("marking an item didn't return exactly one method")
+}
+
+// apply a given mark to the given ty. Used following the expansion of a macro.
+fn mark_ty(ty: P<ast::Ty>, m: Mrk) -> P<ast::Ty> {
+    Marker{mark:m}.fold_ty(ty)
 }
 
 /// Check that there are no macro invocations left in the AST:
