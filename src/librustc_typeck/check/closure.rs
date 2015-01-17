@@ -50,10 +50,9 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
                     check_unboxed_closure(fcx, expr, kind, decl, body, None);
 
-                    fcx.ccx.tcx.sess.span_err(
-                        expr.span,
+                    span_err!(fcx.ccx.tcx.sess, expr.span, E0187,
                         "can't infer the \"kind\" of the closure, explicitly annotate it. e.g. \
-                        `|&:| {}`");
+                        `|&:| {{}}`");
                 },
                 Some((sig, kind)) => {
                     check_unboxed_closure(fcx, expr, kind, decl, body, Some(sig));
