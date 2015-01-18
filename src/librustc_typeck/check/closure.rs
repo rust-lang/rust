@@ -96,7 +96,6 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         //
         // FIXME(pcwalton): Refactor this API.
         ty::region_existential_bound(ty::ReStatic),
-        ty::RegionTraitStore(ty::ReStatic, ast::MutImmutable),
 
         decl,
         abi::RustCall,

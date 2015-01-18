@@ -552,7 +552,6 @@ impl<'tcx> TypeMap<'tcx> {
                                               unique_type_id: &mut String) {
         let ty::ClosureTy { unsafety,
                             onceness,
-                            store,
                             ref bounds,
                             ref sig,
                             abi: _ } = closure_ty;
@@ -564,15 +563,7 @@ impl<'tcx> TypeMap<'tcx> {
             unique_type_id.push_str("once ");
         }
 
-        match store {
-            ty::UniqTraitStore => unique_type_id.push_str("~|"),
-            ty::RegionTraitStore(_, ast::MutMutable) => {
-                unique_type_id.push_str("&mut|")
-            }
-            ty::RegionTraitStore(_, ast::MutImmutable) => {
-                unique_type_id.push_str("&|")
-            }
-        };
+        unique_type_id.push_str("|");
 
         let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
 

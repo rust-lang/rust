@@ -1459,7 +1459,6 @@ pub fn ty_of_closure<'tcx>(
     unsafety: ast::Unsafety,
     onceness: ast::Onceness,
     bounds: ty::ExistentialBounds<'tcx>,
-    store: ty::TraitStore,
     decl: &ast::FnDecl,
     abi: abi::Abi,
     expected_sig: Option<ty::FnSig<'tcx>>)
@@ -1510,7 +1509,6 @@ pub fn ty_of_closure<'tcx>(
     ty::ClosureTy {
         unsafety: unsafety,
         onceness: onceness,
-        store: store,
         bounds: bounds,
         abi: abi,
         sig: ty::Binder(ty::FnSig {inputs: input_tys,
