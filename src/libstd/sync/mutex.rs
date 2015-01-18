@@ -60,7 +60,7 @@ use sys_common::mutex as sys;
 /// let data = Arc::new(Mutex::new(0));
 ///
 /// let (tx, rx) = channel();
-/// for _ in range(0u, 10) {
+/// for _ in range(0us, 10) {
 ///     let (data, tx) = (data.clone(), tx.clone());
 ///     Thread::spawn(move || {
 ///         // The shared static can only be accessed once the lock is held.
@@ -87,7 +87,7 @@ use sys_common::mutex as sys;
 /// use std::sync::{Arc, Mutex};
 /// use std::thread::Thread;
 ///
-/// let lock = Arc::new(Mutex::new(0u));
+/// let lock = Arc::new(Mutex::new(0us));
 /// let lock2 = lock.clone();
 ///
 /// let _ = Thread::scoped(move || -> () {
@@ -104,7 +104,7 @@ use sys_common::mutex as sys;
 /// // pattern matched on to return the underlying guard on both branches.
 /// let mut guard = match lock.lock() {
 ///     Ok(guard) => guard,
-///     Err(poisoned) => poisoned.into_guard(),
+///     Err(poisoned) => poisoned.into_inner(),
 /// };
 ///
 /// *guard += 1;
