@@ -557,6 +557,7 @@ impl fmt::String for clean::FunctionRetTy {
         match *self {
             clean::Return(clean::Tuple(ref tys)) if tys.is_empty() => Ok(()),
             clean::Return(ref ty) => write!(f, " -&gt; {}", ty),
+            clean::DefaultReturn => Ok(()),
             clean::NoReturn => write!(f, " -&gt; !")
         }
     }
