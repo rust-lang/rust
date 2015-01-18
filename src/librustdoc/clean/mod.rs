@@ -1141,6 +1141,7 @@ impl Clean<Argument> for ast::Arg {
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
 pub enum FunctionRetTy {
     Return(Type),
+    DefaultReturn,
     NoReturn
 }
 
@@ -1148,7 +1149,8 @@ impl Clean<FunctionRetTy> for ast::FunctionRetTy {
     fn clean(&self, cx: &DocContext) -> FunctionRetTy {
         match *self {
             ast::Return(ref typ) => Return(typ.clean(cx)),
-            ast::NoReturn(_) => NoReturn
+            ast::DefaultReturn(..) => DefaultReturn,
+            ast::NoReturn(..) => NoReturn
         }
     }
 }

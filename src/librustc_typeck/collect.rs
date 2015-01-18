@@ -1488,7 +1488,9 @@ fn ty_of_foreign_fn_decl<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
     let output = match decl.output {
         ast::Return(ref ty) =>
             ty::FnConverging(ast_ty_to_ty(ccx, &rb, &**ty)),
-        ast::NoReturn(_) =>
+        ast::DefaultReturn(..) =>
+            ty::FnConverging(ty::mk_nil(ccx.tcx)),
+        ast::NoReturn(..) =>
             ty::FnDiverging
     };
 

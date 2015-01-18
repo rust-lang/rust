@@ -726,6 +726,7 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
         inputs: inputs.move_map(|x| fld.fold_arg(x)),
         output: match output {
             Return(ty) => Return(fld.fold_ty(ty)),
+            DefaultReturn(span) => DefaultReturn(span),
             NoReturn(span) => NoReturn(span)
         },
         variadic: variadic
@@ -1189,14 +1190,7 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> 
         attrs: attrs.move_map(|x| folder.fold_attribute(x)),
         node: match node {
             ForeignItemFn(fdec, generics) => {
-                ForeignItemFn(fdec.map(|FnDecl {inputs, output, variadic}| FnDecl {
-                    inputs: inputs.move_map(|a| folder.fold_arg(a)),
-                    output: match output {
-                        Return(ty) => Return(folder.fold_ty(ty)),
-                        NoReturn(span) => NoReturn(span)
-                    },
-                    variadic: variadic
-                }), folder.fold_generics(generics))
+                ForeignItemFn(folder.fold_fn_decl(fdec), folder.fold_generics(generics))
             }
             ForeignItemStatic(t, m) => {
                 ForeignItemStatic(folder.fold_ty(t), m)
