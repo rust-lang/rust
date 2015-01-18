@@ -520,7 +520,7 @@ impl<'a> State<'a> {
     pub fn bclose_maybe_open (&mut self, span: codemap::Span,
                               indented: usize, close_box: bool) -> IoResult<()> {
         try!(self.maybe_print_comment(span.hi));
-        try!(self.break_offset_if_not_bol(1u, -(indented as int)));
+        try!(self.break_offset_if_not_bol(1u, -(indented as isize)));
         try!(word(&mut self.s, "}"));
         if close_box {
             try!(self.end()); // close the outer-box
@@ -568,7 +568,7 @@ impl<'a> State<'a> {
         Ok(())
     }
     pub fn break_offset_if_not_bol(&mut self, n: usize,
-                                   off: int) -> IoResult<()> {
+                                   off: isize) -> IoResult<()> {
         if !self.is_bol() {
             break_offset(&mut self.s, n, off)
         } else {

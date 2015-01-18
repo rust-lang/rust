@@ -290,8 +290,8 @@ pub struct Parser<'a> {
     /// the previous token or None (only stashed sometimes).
     pub last_token: Option<Box<token::Token>>,
     pub buffer: [TokenAndSpan; 4],
-    pub buffer_start: int,
-    pub buffer_end: int,
+    pub buffer_start: isize,
+    pub buffer_end: isize,
     pub tokens_consumed: usize,
     pub restrictions: Restrictions,
     pub quote_depth: usize, // not (yet) related to the quasiquoter
@@ -934,7 +934,7 @@ impl<'a> Parser<'a> {
             // Avoid token copies with `replace`.
             let buffer_start = self.buffer_start as usize;
             let next_index = (buffer_start + 1) & 3 as usize;
-            self.buffer_start = next_index as int;
+            self.buffer_start = next_index as isize;
 
             let placeholder = TokenAndSpan {
                 tok: token::Underscore,
@@ -966,7 +966,7 @@ impl<'a> Parser<'a> {
         self.token = next;
         self.span = mk_sp(lo, hi);
     }
-    pub fn buffer_length(&mut self) -> int {
+    pub fn buffer_length(&mut self) -> isize {
         if self.buffer_start <= self.buffer_end {
             return self.buffer_end - self.buffer_start;
         }
@@ -975,7 +975,7 @@ impl<'a> Parser<'a> {
     pub fn look_ahead<R, F>(&mut self, distance: usize, f: F) -> R where
         F: FnOnce(&token::Token) -> R,
     {
-        let dist = distance as int;
+        let dist = distance as isize;
         while self.buffer_length() < dist {
             self.buffer[self.buffer_end as usize] = self.reader.real_token();
             self.buffer_end = (self.buffer_end + 1) & 3;

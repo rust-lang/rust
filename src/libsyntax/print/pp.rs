@@ -71,19 +71,19 @@ pub enum Breaks {
 
 #[derive(Clone, Copy)]
 pub struct BreakToken {
-    offset: int,
-    blank_space: int
+    offset: isize,
+    blank_space: isize
 }
 
 #[derive(Clone, Copy)]
 pub struct BeginToken {
-    offset: int,
+    offset: isize,
     breaks: Breaks
 }
 
 #[derive(Clone)]
 pub enum Token {
-    String(String, int),
+    String(String, isize),
     Break(BreakToken),
     Begin(BeginToken),
     End,
@@ -122,7 +122,7 @@ pub fn tok_str(token: &Token) -> String {
 }
 
 pub fn buf_str(toks: &[Token],
-               szs: &[int],
+               szs: &[isize],
                left: usize,
                right: usize,
                lim: usize)
@@ -155,11 +155,11 @@ pub enum PrintStackBreak {
 
 #[derive(Copy)]
 pub struct PrintStackElem {
-    offset: int,
+    offset: isize,
     pbreak: PrintStackBreak
 }
 
-static SIZE_INFINITY: int = 0xffff;
+static SIZE_INFINITY: isize = 0xffff;
 
 pub fn mk_printer(out: Box<io::Writer+'static>, linewidth: usize) -> Printer {
     // Yes 3, it makes the ring buffers big enough to never
@@ -167,13 +167,13 @@ pub fn mk_printer(out: Box<io::Writer+'static>, linewidth: usize) -> Printer {
     let n: usize = 3 * linewidth;
     debug!("mk_printer {}", linewidth);
     let token: Vec<Token> = repeat(Token::Eof).take(n).collect();
-    let size: Vec<int> = repeat(0i).take(n).collect();
+    let size: Vec<isize> = repeat(0i).take(n).collect();
     let scan_stack: Vec<usize> = repeat(0us).take(n).collect();
     Printer {
         out: out,
         buf_len: n,
-        margin: linewidth as int,
-        space: linewidth as int,
+        margin: linewidth as isize,
+        space: linewidth as isize,
         left: 0,
         right: 0,
         token: token,
@@ -269,9 +269,9 @@ pub struct Printer {
     pub out: Box<io::Writer+'static>,
     buf_len: usize,
     /// Width of lines we're constrained to
-    margin: int,
+    margin: isize,
     /// Number of spaces left on line
-    space: int,
+    space: isize,
     /// Index of left side of input stream
     left: usize,
     /// Index of right side of input stream
@@ -279,11 +279,11 @@ pub struct Printer {
     /// Ring-buffer stream goes through
     token: Vec<Token> ,
     /// Ring-buffer of calculated sizes
-    size: Vec<int> ,
+    size: Vec<isize> ,
     /// Running size of stream "...left"
-    left_total: int,
+    left_total: isize,
     /// Running size of stream "...right"
-    right_total: int,
+    right_total: isize,
     /// Pseudo-stack, really a ring too. Holds the
     /// primary-ring-buffers index of the Begin that started the
     /// current block, possibly with the most recent Break after that
@@ -300,7 +300,7 @@ pub struct Printer {
     /// Stack of blocks-in-progress being flushed by print
     print_stack: Vec<PrintStackElem> ,
     /// Buffered indentation to avoid writing trailing whitespace
-    pending_indentation: int,
+    pending_indentation: isize,
 }
 
 impl Printer {
@@ -479,7 +479,7 @@ impl Printer {
 
         Ok(())
     }
-    pub fn check_stack(&mut self, k: int) {
+    pub fn check_stack(&mut self, k: isize) {
         if !self.scan_stack_empty {
             let x = self.scan_top();
             match self.token[x] {
@@ -506,14 +506,14 @@ impl Printer {
             }
         }
     }
-    pub fn print_newline(&mut self, amount: int) -> io::IoResult<()> {
+    pub fn print_newline(&mut self, amount: isize) -> io::IoResult<()> {
         debug!("NEWLINE {}", amount);
         let ret = write!(self.out, "\n");
         self.pending_indentation = 0;
         self.indent(amount);
         return ret;
     }
-    pub fn indent(&mut self, amount: int) {
+    pub fn indent(&mut self, amount: isize) {
         debug!("INDENT {}", amount);
         self.pending_indentation += amount;
     }
@@ -536,7 +536,7 @@ impl Printer {
         }
         write!(self.out, "{}", s)
     }
-    pub fn print(&mut self, token: Token, l: int) -> io::IoResult<()> {
+    pub fn print(&mut self, token: Token, l: isize) -> io::IoResult<()> {
         debug!("print {} {} (remaining line space={})", tok_str(&token), l,
                self.space);
         debug!("{}", buf_str(&self.token[],
@@ -622,7 +622,7 @@ impl Printer {
 // "raw box"
 pub fn rbox(p: &mut Printer, indent: usize, b: Breaks) -> io::IoResult<()> {
     p.pretty_print(Token::Begin(BeginToken {
-        offset: indent as int,
+        offset: indent as isize,
         breaks: b
     }))
 }
@@ -635,10 +635,10 @@ pub fn cbox(p: &mut Printer, indent: usize) -> io::IoResult<()> {
     rbox(p, indent, Breaks::Consistent)
 }
 
-pub fn break_offset(p: &mut Printer, n: usize, off: int) -> io::IoResult<()> {
+pub fn break_offset(p: &mut Printer, n: usize, off: isize) -> io::IoResult<()> {
     p.pretty_print(Token::Break(BreakToken {
         offset: off,
-        blank_space: n as int
+        blank_space: n as isize
     }))
 }
 
@@ -651,7 +651,7 @@ pub fn eof(p: &mut Printer) -> io::IoResult<()> {
 }
 
 pub fn word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), wrd.len() as int))
+    p.pretty_print(Token::String(/* bad */ wrd.to_string(), wrd.len() as isize))
 }
 
 pub fn huge_word(p: &mut Printer, wrd: &str) -> io::IoResult<()> {
@@ -678,7 +678,7 @@ pub fn hardbreak(p: &mut Printer) -> io::IoResult<()> {
     spaces(p, SIZE_INFINITY as usize)
 }
 
-pub fn hardbreak_tok_offset(off: int) -> Token {
+pub fn hardbreak_tok_offset(off: isize) -> Token {
     Token::Break(BreakToken {offset: off, blank_space: SIZE_INFINITY})
 }
 

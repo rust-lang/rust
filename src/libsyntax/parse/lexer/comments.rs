@@ -267,7 +267,7 @@ fn read_block_comment(rdr: &mut StringReader,
         assert!(!curr_line.contains_char('\n'));
         lines.push(curr_line);
     } else {
-        let mut level: int = 1;
+        let mut level: isize = 1;
         while level > 0 {
             debug!("=== block comment level {}", level);
             if rdr.is_eof() {

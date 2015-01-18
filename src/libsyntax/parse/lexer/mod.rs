@@ -519,7 +519,7 @@ impl<'a> StringReader<'a> {
         let is_doc_comment = self.curr_is('*') || self.curr_is('!');
         let start_bpos = self.last_pos - BytePos(2);
 
-        let mut level: int = 1;
+        let mut level: isize = 1;
         let mut has_cr = false;
         while level > 0 {
             if self.is_eof() {
