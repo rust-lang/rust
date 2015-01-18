@@ -25,8 +25,6 @@
 //! demonstrates adding and subtracting two `Point`s.
 //!
 //! ```rust
-//! #![feature(associated_types)]
-//!
 //! use std::ops::{Add, Sub};
 //!
 //! #[derive(Show)]
@@ -104,8 +102,6 @@ pub trait Drop {
 /// calling `add`, and therefore, `main` prints `Adding!`.
 ///
 /// ```rust
-/// #![feature(associated_types)]
-///
 /// use std::ops::Add;
 ///
 /// #[derive(Copy)]
@@ -157,8 +153,6 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `sub`, and therefore, `main` prints `Subtracting!`.
 ///
 /// ```rust
-/// #![feature(associated_types)]
-///
 /// use std::ops::Sub;
 ///
 /// #[derive(Copy)]
@@ -210,8 +204,6 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `mul`, and therefore, `main` prints `Multiplying!`.
 ///
 /// ```rust
-/// #![feature(associated_types)]
-///
 /// use std::ops::Mul;
 ///
 /// #[derive(Copy)]
@@ -263,8 +255,6 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `div`, and therefore, `main` prints `Dividing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Div;
 ///
 /// #[derive(Copy)]
@@ -316,8 +306,6 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Rem;
 ///
 /// #[derive(Copy)]
@@ -386,8 +374,6 @@ rem_float_impl! { f64, fmod }
 /// `neg`, and therefore, `main` prints `Negating!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Neg;
 ///
 /// struct Foo;
@@ -461,8 +447,6 @@ neg_uint_impl! { u64, i64 }
 /// `not`, and therefore, `main` prints `Not-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Not;
 ///
 /// struct Foo;
@@ -515,8 +499,6 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::BitAnd;
 ///
 /// #[derive(Copy)]
@@ -568,8 +550,6 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitor`, and therefore, `main` prints `Bitwise Or-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::BitOr;
 ///
 /// #[derive(Copy)]
@@ -621,8 +601,6 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitxor`, and therefore, `main` prints `Bitwise Xor-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::BitXor;
 ///
 /// #[derive(Copy)]
@@ -674,8 +652,6 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shl`, and therefore, `main` prints `Shifting left!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Shl;
 ///
 /// #[derive(Copy)]
@@ -745,8 +721,6 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// calling `shr`, and therefore, `main` prints `Shifting right!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Shr;
 ///
 /// #[derive(Copy)]
@@ -1006,8 +980,6 @@ impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
 /// struct.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Deref;
 ///
 /// struct DerefExample<T> {
@@ -1061,8 +1033,6 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// struct.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::{Deref, DerefMut};
 ///
 /// struct DerefMutExample<T> {
