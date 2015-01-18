@@ -12,10 +12,10 @@ use prelude::v1::*;
 
 use io::IoResult;
 
-#[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
+#[cfg(target_pointer_width = "64")]
 pub const HEX_WIDTH: uint = 18;
 
-#[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
+#[cfg(target_pointer_width = "32")]
 pub const HEX_WIDTH: uint = 10;
 
 // All rust symbols are in theory lists of "::"-separated identifiers. Some

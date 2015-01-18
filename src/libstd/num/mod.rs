@@ -424,14 +424,12 @@ mod tests {
         assert_eq!(int::MIN.to_u32(),  None);
         assert_eq!(int::MIN.to_u64(),  None);
 
-        #[cfg(any(all(stage0, target_word_size = "32"),
-                  all(not(stage0), target_pointer_width = "32")))]
+        #[cfg(target_pointer_width = "32")]
         fn check_word_size() {
             assert_eq!(int::MIN.to_i32(), Some(int::MIN as i32));
         }
 
-        #[cfg(any(all(stage0, target_word_size = "64"),
-                  all(not(stage0), target_pointer_width = "64")))]
+        #[cfg(target_pointer_width = "64")]
         fn check_word_size() {
             assert_eq!(int::MIN.to_i32(), None);
         }
@@ -494,14 +492,12 @@ mod tests {
         assert_eq!(i64::MIN.to_u32(),  None);
         assert_eq!(i64::MIN.to_u64(),  None);
 
-        #[cfg(any(all(stage0, target_word_size = "32"),
-                  all(not(stage0), target_pointer_width = "32")))]
+        #[cfg(target_pointer_width = "32")]
         fn check_word_size() {
             assert_eq!(i64::MIN.to_int(), None);
         }
 
-        #[cfg(any(all(stage0, target_word_size = "64"),
-                  all(not(stage0), target_pointer_width = "64")))]
+        #[cfg(target_pointer_width = "64")]
         fn check_word_size() {
             assert_eq!(i64::MIN.to_int(), Some(i64::MIN as int));
         }
@@ -521,15 +517,13 @@ mod tests {
         // int::MAX.to_u32() is word-size specific
         assert_eq!(int::MAX.to_u64(),  Some(int::MAX as u64));
 
-        #[cfg(any(all(stage0, target_word_size = "32"),
-                  all(not(stage0), target_pointer_width = "32")))]
+        #[cfg(target_pointer_width = "32")]
         fn check_word_size() {
             assert_eq!(int::MAX.to_i32(), Some(int::MAX as i32));
             assert_eq!(int::MAX.to_u32(), Some(int::MAX as u32));
         }
 
-        #[cfg(any(all(stage0, target_word_size = "64"),
-                  all(not(stage0), target_pointer_width = "64")))]
+        #[cfg(target_pointer_width = "64")]
         fn check_word_size() {
             assert_eq!(int::MAX.to_i32(), None);
             assert_eq!(int::MAX.to_u32(), None);
@@ -593,15 +587,13 @@ mod tests {
         assert_eq!(i64::MAX.to_u32(),  None);
         assert_eq!(i64::MAX.to_u64(),  Some(i64::MAX as u64));
 
-        #[cfg(any(all(stage0, target_word_size = "32"),
-                  all(not(stage0), target_pointer_width = "32")))]
+        #[cfg(target_pointer_width = "32")]
         fn check_word_size() {
             assert_eq!(i64::MAX.to_int(),  None);
             assert_eq!(i64::MAX.to_uint(), None);
         }
 
-        #[cfg(any(all(stage0, target_word_size = "64"),
-                  all(not(stage0), target_pointer_width = "64")))]
+        #[cfg(target_pointer_width = "64")]
         fn check_word_size() {
             assert_eq!(i64::MAX.to_int(),  Some(i64::MAX as int));
             assert_eq!(i64::MAX.to_uint(), Some(i64::MAX as uint));
@@ -692,15 +684,13 @@ mod tests {
         // uint::MAX.to_u32() is word-size specific
         assert_eq!(uint::MAX.to_u64(),  Some(uint::MAX as u64));
 
-        #[cfg(any(all(stage0, target_word_size = "32"),
-                  all(not(stage0), target_pointer_width = "32")))]
+        #[cfg(target_pointer_width = "32")]
         fn check_word_size() {
             assert_eq!(uint::MAX.to_u32(), Some(uint::MAX as u32));
             assert_eq!(uint::MAX.to_i64(), Some(uint::MAX as i64));
         }
 
-        #[cfg(any(all(stage0, target_word_size = "64"),
-                  all(not(stage0), target_pointer_width = "64")))]
+        #[cfg(target_pointer_width = "64")]
         fn check_word_size() {
             assert_eq!(uint::MAX.to_u32(), None);
             assert_eq!(uint::MAX.to_i64(), None);
@@ -750,14 +740,12 @@ mod tests {
         assert_eq!(u32::MAX.to_u32(),  Some(u32::MAX as u32));
         assert_eq!(u32::MAX.to_u64(),  Some(u32::MAX as u64));
 
-        #[cfg(any(all(stage0, target_word_size = "32"),
-                  all(not(stage0), target_pointer_width = "32")))]
+        #[cfg(target_pointer_width = "32")]
         fn check_word_size() {
             assert_eq!(u32::MAX.to_int(),  None);
         }
 
-        #[cfg(any(all(stage0, target_word_size = "64"),
-                  all(not(stage0), target_pointer_width = "64")))]
+        #[cfg(target_pointer_width = "64")]
         fn check_word_size() {
             assert_eq!(u32::MAX.to_int(),  Some(u32::MAX as int));
         }
@@ -778,14 +766,12 @@ mod tests {
         assert_eq!(u64::MAX.to_u32(),  None);
         assert_eq!(u64::MAX.to_u64(),  Some(u64::MAX as u64));
 
-        #[cfg(any(all(stage0, target_word_size = "32"),
-                  all(not(stage0), target_pointer_width = "32")))]
+        #[cfg(target_pointer_width = "32")]
         fn check_word_size() {
             assert_eq!(u64::MAX.to_uint(), None);
         }
 
-        #[cfg(any(all(stage0, target_word_size = "64"),
-                  all(not(stage0), target_pointer_width = "64")))]
+        #[cfg(target_pointer_width = "64")]
         fn check_word_size() {
             assert_eq!(u64::MAX.to_uint(), Some(u64::MAX as uint));
         }

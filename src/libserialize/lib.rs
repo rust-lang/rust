@@ -24,7 +24,6 @@ Core encoding and decoding interfaces.
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![allow(unknown_features)]
-#![cfg_attr(stage0, allow(unused_attributes))]
 #![feature(box_syntax)]
 #![feature(old_impl_check)]
 #![feature(slicing_syntax)]
