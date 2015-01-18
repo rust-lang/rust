@@ -16,11 +16,11 @@
 //! # Examples
 //!
 //! ```rust
-//! use std::hash::{hash, Hash, SipHasher};
+//! use std::hash::{hash, SipHasher};
 //!
 //! #[derive(Hash)]
 //! struct Person {
-//!     id: uint,
+//!     id: i32,
 //!     name: String,
 //!     phone: u64,
 //! }
@@ -38,7 +38,7 @@
 //! use std::hash::{hash, Hash, Hasher, Writer, SipHasher};
 //!
 //! struct Person {
-//!     id: uint,
+//!     id: i32,
 //!     name: String,
 //!     phone: u64,
 //! }
