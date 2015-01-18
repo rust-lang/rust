@@ -208,9 +208,8 @@ Again, these declarations tell Rust to look for either
 these sub-modules don't have their own sub-modules, we've chosen to make them
 `src/english/greetings.rs` and `src/japanese/farewells.rs`. Whew!
 
-Right now, the contents of `src/english/greetings.rs` and
-`src/japanese/farewells.rs` are both empty at the moment. Let's add some
-functions.
+The contents of `src/english/greetings.rs` and `src/japanese/farewells.rs` are
+both empty at the moment. Let's add some functions.
 
 Put this in `src/english/greetings.rs`:
 
