@@ -101,6 +101,7 @@ So `($x:ident -> (($e:expr)))`, though excessively fancy, would designate a macr
 that could be invoked like: `my_macro!(i->(( 2+2 )))`.
 
 To avoid ambiguity, macro invocation syntax must conform to the following rules:
+
 * `expr` must be followed by `=>`, `,` or `;`.
 * `ty` and `path` must be followed by `=>`, `,`, `:`, `=`, `>` or `as`.
 * `pat` must be followed by `=>`, `,` or `=`.
