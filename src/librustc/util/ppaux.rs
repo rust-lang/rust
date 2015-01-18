@@ -276,7 +276,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             _ => { }
         }
 
-        push_sig_to_string(cx, &mut s, '(', ')', sig, "");
+        push_sig_to_string(cx, &mut s, '(', ')', sig);
 
         match opt_def_id {
             Some(def_id) => {
@@ -302,14 +302,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             }
         };
 
-        let bounds_str = cty.bounds.user_string(cx);
-
-        match cty.onceness {
-            ast::Many => {}
-            ast::Once => s.push_str("once ")
-        }
-        push_sig_to_string(cx, &mut s, '|', '|', &cty.sig,
-                           &bounds_str[]);
+        push_sig_to_string(cx, &mut s, '|', '|', &cty.sig);
 
         s
     }
@@ -318,8 +311,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                                 s: &mut String,
                                 bra: char,
                                 ket: char,
-                                sig: &ty::PolyFnSig<'tcx>,
-                                bounds: &str) {
+                                sig: &ty::PolyFnSig<'tcx>) {
         s.push(bra);
         let strs = sig.0.inputs
             .iter()
@@ -330,11 +322,6 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             s.push_str(", ...");
         }
         s.push(ket);
-
-        if !bounds.is_empty() {
-            s.push_str(":");
-            s.push_str(bounds);
-        }
 
         match sig.0.output {
             ty::FnConverging(t) => {

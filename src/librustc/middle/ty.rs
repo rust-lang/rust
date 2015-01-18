@@ -1032,10 +1032,8 @@ pub struct BareFnTy<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ClosureTy<'tcx> {
     pub unsafety: ast::Unsafety,
-    pub onceness: ast::Onceness,
-    pub bounds: ExistentialBounds<'tcx>,
-    pub sig: PolyFnSig<'tcx>,
     pub abi: abi::Abi,
+    pub sig: PolyFnSig<'tcx>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
@@ -7296,10 +7294,8 @@ impl ReferencesError for Region
 
 impl<'tcx> Repr<'tcx> for ClosureTy<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("ClosureTy({},{},{},{},{})",
+        format!("ClosureTy({},{},{})",
                 self.unsafety,
-                self.onceness,
-                self.bounds.repr(tcx),
                 self.sig.repr(tcx),
                 self.abi)
     }
@@ -7330,5 +7326,5 @@ impl<'a, 'tcx> Repr<'tcx> for ParameterEnvironment<'a, 'tcx> {
             self.free_substs.repr(tcx),
             self.implicit_region_bound.repr(tcx),
             self.caller_bounds.repr(tcx))
-        }
     }
+}

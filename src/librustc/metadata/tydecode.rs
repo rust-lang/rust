@@ -628,14 +628,6 @@ fn parse_abi_set(st: &mut PState) -> abi::Abi {
     })
 }
 
-fn parse_onceness(c: char) -> ast::Onceness {
-    match c {
-        'o' => ast::Once,
-        'm' => ast::Many,
-        _ => panic!("parse_onceness: bad onceness")
-    }
-}
-
 fn parse_closure_ty<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>,
                                  mut conv: F) -> ty::ClosureTy<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
@@ -648,14 +640,10 @@ fn parse_closure_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>,
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     let unsafety = parse_unsafety(next(st));
-    let onceness = parse_onceness(next(st));
-    let bounds = parse_existential_bounds_(st, conv);
     let sig = parse_sig_(st, conv);
     let abi = parse_abi_set(st);
     ty::ClosureTy {
         unsafety: unsafety,
-        onceness: onceness,
-        bounds: bounds,
         sig: sig,
         abi: abi,
     }

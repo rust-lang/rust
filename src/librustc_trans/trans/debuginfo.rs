@@ -551,16 +551,11 @@ impl<'tcx> TypeMap<'tcx> {
                                               closure_ty: ty::ClosureTy<'tcx>,
                                               unique_type_id: &mut String) {
         let ty::ClosureTy { unsafety,
-                            onceness,
-                            ref bounds,
                             ref sig,
                             abi: _ } = closure_ty;
+
         if unsafety == ast::Unsafety::Unsafe {
             unique_type_id.push_str("unsafe ");
-        }
-
-        if onceness == ast::Once {
-            unique_type_id.push_str("once ");
         }
 
         unique_type_id.push_str("|");
@@ -591,18 +586,6 @@ impl<'tcx> TypeMap<'tcx> {
             ty::FnDiverging => {
                 unique_type_id.push_str("!");
             }
-        }
-
-        unique_type_id.push(':');
-
-        for bound in bounds.builtin_bounds.iter() {
-            match bound {
-                ty::BoundSend => unique_type_id.push_str("Send"),
-                ty::BoundSized => unique_type_id.push_str("Sized"),
-                ty::BoundCopy => unique_type_id.push_str("Copy"),
-                ty::BoundSync => unique_type_id.push_str("Sync"),
-            };
-            unique_type_id.push('+');
         }
     }
 
