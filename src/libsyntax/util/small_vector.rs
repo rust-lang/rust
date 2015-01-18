@@ -191,7 +191,7 @@ mod test {
 
     #[test]
     fn test_len() {
-        let v: SmallVector<int> = SmallVector::zero();
+        let v: SmallVector<isize> = SmallVector::zero();
         assert_eq!(0, v.len());
 
         assert_eq!(1, SmallVector::one(1i).len());
@@ -214,7 +214,7 @@ mod test {
 
     #[test]
     fn test_from_iter() {
-        let v: SmallVector<int> = (vec!(1i, 2, 3)).into_iter().collect();
+        let v: SmallVector<isize> = (vec![1is, 2, 3]).into_iter().collect();
         assert_eq!(3, v.len());
         assert_eq!(&1, v.get(0));
         assert_eq!(&2, v.get(1));
@@ -224,7 +224,7 @@ mod test {
     #[test]
     fn test_move_iter() {
         let v = SmallVector::zero();
-        let v: Vec<int> = v.into_iter().collect();
+        let v: Vec<isize> = v.into_iter().collect();
         assert_eq!(Vec::new(), v);
 
         let v = SmallVector::one(1i);
@@ -237,7 +237,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_expect_one_zero() {
-        let _: int = SmallVector::zero().expect_one("");
+        let _: isize = SmallVector::zero().expect_one("");
     }
 
     #[test]
