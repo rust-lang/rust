@@ -128,3 +128,5 @@ There is room for a helper type wrapping an allocated C string with a supplied
 deallocation function to invoke when dropped. That type should also dereference
 to `CStr`. My library crate [c_string](https://crates.io/crates/c_string)
 provides an example in `OwnedCString`.
+
+Need a `Cow`?
