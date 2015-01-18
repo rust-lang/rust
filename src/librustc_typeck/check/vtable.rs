@@ -51,7 +51,7 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         {
             let object_trait = object_trait(&object_trait_ty);
             if !mutability_allowed(referent_mutbl, target_mutbl) {
-                fcx.tcx().sess.span_err(source_expr.span,
+                span_err!(fcx.tcx().sess, source_expr.span, E0188,
                                         "types differ in mutability");
             } else {
                 // Ensure that if &'a T is cast to &'b Trait, then T : Trait
@@ -70,19 +70,17 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         (_, &ty::ty_uniq(..)) => {
-            fcx.ccx.tcx.sess.span_err(
-                source_expr.span,
-                &format!("can only cast an boxed pointer \
+            span_err!(fcx.ccx.tcx.sess, source_expr.span, E0189,
+                "can only cast a boxed pointer \
                          to a boxed object, not a {}",
-                        ty::ty_sort_string(fcx.tcx(), source_ty))[]);
+                      ty::ty_sort_string(fcx.tcx(), source_ty));
         }
 
         (_, &ty::ty_rptr(..)) => {
-            fcx.ccx.tcx.sess.span_err(
-                source_expr.span,
-                &format!("can only cast a &-pointer \
+            span_err!(fcx.ccx.tcx.sess, source_expr.span, E0190,
+                "can only cast a &-pointer \
                          to an &-object, not a {}",
-                        ty::ty_sort_string(fcx.tcx(), source_ty))[]);
+                        ty::ty_sort_string(fcx.tcx(), source_ty));
         }
 
         _ => {
@@ -272,11 +270,10 @@ fn check_object_type_binds_all_associated_types<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 
     for (trait_def_id, name) in associated_types.into_iter() {
-        tcx.sess.span_err(
-            span,
-            format!("the value of the associated type `{}` (from the trait `{}`) must be specified",
+        span_err!(tcx.sess, span, E0191,
+            "the value of the associated type `{}` (from the trait `{}`) must be specified",
                     name.user_string(tcx),
-                    ty::item_path_str(tcx, trait_def_id)).as_slice());
+                    ty::item_path_str(tcx, trait_def_id));
     }
 }
 

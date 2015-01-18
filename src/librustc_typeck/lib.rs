@@ -111,6 +111,10 @@ use syntax::ast_util::local_def;
 
 use std::cell::RefCell;
 
+// NB: This module needs to be declared first so diagnostics are
+// registered before they are used.
+pub mod diagnostics;
+
 mod check;
 mod rscope;
 mod astconv;
@@ -202,11 +206,11 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
     match result {
         Ok(_) => true,
         Err(ref terr) => {
-            tcx.sess.span_err(span,
-                              &format!("{}: {}",
+            span_err!(tcx.sess, span, E0211,
+                              "{}: {}",
                                       msg(),
                                       ty::type_err_to_str(tcx,
-                                                          terr))[]);
+                                                          terr));
             ty::note_and_explain_type_err(tcx, terr);
             false
         }

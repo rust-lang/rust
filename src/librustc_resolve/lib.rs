@@ -97,6 +97,10 @@ use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
 
+// NB: This module needs to be declared first so diagnostics are
+// registered before they are used.
+pub mod diagnostics;
+
 mod check_unused;
 mod record_exports;
 mod build_reduced_graph;
