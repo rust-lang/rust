@@ -11,7 +11,7 @@
 
 
 
-fn f(x: isize) -> isize {
+fn f(x: i32s) -> i32s {
     // println!("in f:");
 
     println!("{}", x);
@@ -22,7 +22,7 @@ fn f(x: isize) -> isize {
     } else {
         // println!("recurring");
 
-        let y: isize = x * f(x - 1);
+        let y: i32s = x * f(x - 1);
         // println!("returned");
 
         println!("{}", y);
