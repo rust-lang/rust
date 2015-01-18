@@ -67,11 +67,11 @@ pub fn write_output_file(
         output: &Path,
         file_type: llvm::FileType) {
     unsafe {
-        let output = CString::from_slice(output.as_vec());
+        let output_c = CString::from_slice(output.as_vec());
         let result = llvm::LLVMRustWriteOutputFile(
-                target, pm, m, output.as_ptr(), file_type);
+                target, pm, m, output_c.as_ptr(), file_type);
         if !result {
-            llvm_err(handler, "could not write output".to_string());
+            llvm_err(handler, format!("could not write output to {}", output.display()));
         }
     }
 }
