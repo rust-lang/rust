@@ -69,6 +69,9 @@ impl Session {
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.diagnostic().span_fatal(sp, msg)
     }
+    pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> ! {
+        self.diagnostic().span_fatal_with_code(sp, msg, code)
+    }
     pub fn fatal(&self, msg: &str) -> ! {
         self.diagnostic().handler().fatal(msg)
     }

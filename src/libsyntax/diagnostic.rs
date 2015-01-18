@@ -92,6 +92,10 @@ impl SpanHandler {
         self.handler.emit(Some((&self.cm, sp)), msg, Fatal);
         panic!(FatalError);
     }
+    pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> ! {
+        self.handler.emit_with_code(Some((&self.cm, sp)), msg, code, Fatal);
+        panic!(FatalError);
+    }
     pub fn span_err(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Error);
         self.handler.bump_err_count();

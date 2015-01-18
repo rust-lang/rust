@@ -160,7 +160,18 @@ register_diagnostics! {
     E0236, // no lang item for range syntax
     E0237, // no lang item for range syntax
     E0238, // parenthesized parameters may only be used with a trait
-    E0239  // `next` method of `Iterator` trait has unexpected type
+    E0239, // `next` method of `Iterator` trait has unexpected type
+    E0240,
+    E0241,
+    E0242, // internal error looking up a definition
+    E0243, // wrong number of type arguments
+    E0244, // wrong number of type arguments
+    E0245, // not a trait
+    E0246, // illegal recursive type
+    E0247, // found module name used as a type
+    E0248, // found value name used as a type
+    E0249, // expected constant expr for array length
+    E0250  // expected constant expr for array length
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }
