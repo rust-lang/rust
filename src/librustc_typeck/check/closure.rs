@@ -89,14 +89,6 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     let mut fn_ty = astconv::ty_of_closure(
         fcx,
         ast::Unsafety::Normal,
-        ast::Many,
-
-        // The `RegionTraitStore` and region_existential_bounds
-        // are lies, but we ignore them so it doesn't matter.
-        //
-        // FIXME(pcwalton): Refactor this API.
-        ty::region_existential_bound(ty::ReStatic),
-
         decl,
         abi::RustCall,
         expected_sig);

@@ -691,8 +691,6 @@ pub fn super_fold_closure_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
     ty::ClosureTy {
         sig: fty.sig.fold_with(this),
         unsafety: fty.unsafety,
-        onceness: fty.onceness,
-        bounds: fty.bounds.fold_with(this),
         abi: fty.abi,
     }
 }
