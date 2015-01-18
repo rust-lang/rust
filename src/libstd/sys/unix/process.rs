@@ -125,9 +125,9 @@ impl Process {
                     let mut bytes = [0; 8];
                     return match input.read(&mut bytes) {
                         Ok(8) => {
-                            assert!(combine(CLOEXEC_MSG_FOOTER) == combine(bytes.slice(4, 8)),
+                            assert!(combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4.. 8]),
                                 "Validation on the CLOEXEC pipe failed: {:?}", bytes);
-                            let errno = combine(bytes.slice(0, 4));
+                            let errno = combine(&bytes[0.. 4]);
                             assert!(p.wait(0).is_ok(), "wait(0) should either return Ok or panic");
                             Err(super::decode_error(errno))
                         }

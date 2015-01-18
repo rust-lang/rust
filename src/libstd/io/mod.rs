@@ -516,7 +516,7 @@ pub trait Reader {
         while read < min {
             let mut zeroes = 0;
             loop {
-                match self.read(buf.slice_from_mut(read)) {
+                match self.read(&mut buf[read..]) {
                     Ok(0) => {
                         zeroes += 1;
                         if zeroes >= NO_PROGRESS_LIMIT {
@@ -1481,7 +1481,7 @@ pub trait Buffer: Reader {
         {
             let mut start = 1;
             while start < width {
-                match try!(self.read(buf.slice_mut(start, width))) {
+                match try!(self.read(&mut buf[start .. width])) {
                     n if n == width - start => break,
                     n if n < width - start => { start += n; }
                     _ => return Err(standard_error(InvalidInput)),

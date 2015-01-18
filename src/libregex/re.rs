@@ -459,7 +459,7 @@ impl<'t> Captures<'t> {
     pub fn at(&self, i: uint) -> Option<&'t str> {
         match self.pos(i) {
             None => None,
-            Some((s, e)) => Some(self.text.slice(s, e))
+            Some((s, e)) => Some(&self.text[s.. e])
         }
     }
 

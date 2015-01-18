@@ -494,7 +494,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ty::ty_bare_fn(_, ref f) if f.abi == Rust || f.abi == RustCall => {
             let fake_sig =
                 ty::Binder(ty::FnSig {
-                    inputs: f.sig.0.inputs.slice_from(1).to_vec(),
+                    inputs: f.sig.0.inputs[1..].to_vec(),
                     output: f.sig.0.output,
                     variadic: f.sig.0.variadic,
                 });
@@ -634,7 +634,7 @@ pub fn trans_object_shim<'a, 'tcx>(
             }
             _ => {
                 // skip the self parameter:
-                sig.inputs.slice_from(1)
+                &sig.inputs[1..]
             }
         };
 

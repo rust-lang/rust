@@ -1590,7 +1590,7 @@ impl<'a> State<'a> {
                               ident: ast::SpannedIdent,
                               tys: &[P<ast::Ty>],
                               args: &[P<ast::Expr>]) -> IoResult<()> {
-        let base_args = args.slice_from(1);
+        let base_args = &args[1..];
         try!(self.print_expr(&*args[0]));
         try!(word(&mut self.s, "."));
         try!(self.print_ident(ident.node));
@@ -2312,7 +2312,7 @@ impl<'a> State<'a> {
         let args = if first {
             &decl.inputs[]
         } else {
-            decl.inputs.slice_from(1)
+            &decl.inputs[1..]
         };
 
         for arg in args.iter() {

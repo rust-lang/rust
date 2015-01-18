@@ -157,7 +157,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             return;
         }
 
-        let sub_paths = sub_paths.slice(0, len-1);
+        let sub_paths = &sub_paths[.. (len-1)];
         for &(ref span, ref qualname) in sub_paths.iter() {
             self.fmt.sub_mod_ref_str(path.span,
                                      *span,
@@ -174,7 +174,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         if len <= 1 {
             return;
         }
-        let sub_paths = sub_paths.slice_to(len-1);
+        let sub_paths = &sub_paths[.. (len-1)];
 
         // write the trait part of the sub-path
         let (ref span, ref qualname) = sub_paths[len-2];

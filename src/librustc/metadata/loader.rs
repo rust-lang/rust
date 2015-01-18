@@ -392,11 +392,11 @@ impl<'a> Context<'a> {
             };
             let (hash, rlib) = if file.starts_with(&rlib_prefix[]) &&
                     file.ends_with(".rlib") {
-                (file.slice(rlib_prefix.len(), file.len() - ".rlib".len()),
+                (&file[(rlib_prefix.len()) .. (file.len() - ".rlib".len())],
                  true)
             } else if file.starts_with(dylib_prefix.as_slice()) &&
                       file.ends_with(dypair.1.as_slice()) {
-                (file.slice(dylib_prefix.len(), file.len() - dypair.1.len()),
+                (&file[(dylib_prefix.len()) .. (file.len() - dypair.1.len())],
                  false)
             } else {
                 return FileDoesntMatch

@@ -752,21 +752,15 @@ pub trait StrExt: Index<FullRange, Output = str> {
 
     /// Deprecated: use `s[a .. b]` instead.
     #[deprecated = "use slice notation [a..b] instead"]
-    fn slice(&self, begin: uint, end: uint) -> &str {
-        core_str::StrExt::slice(&self[], begin, end)
-    }
+    fn slice(&self, begin: uint, end: uint) -> &str;
 
     /// Deprecated: use `s[a..]` instead.
     #[deprecated = "use slice notation [a..] instead"]
-    fn slice_from(&self, begin: uint) -> &str {
-        core_str::StrExt::slice_from(&self[], begin)
-    }
+    fn slice_from(&self, begin: uint) -> &str;
 
     /// Deprecated: use `s[..a]` instead.
     #[deprecated = "use slice notation [..a] instead"]
-    fn slice_to(&self, end: uint) -> &str {
-        core_str::StrExt::slice_to(&self[], end)
-    }
+    fn slice_to(&self, end: uint) -> &str;
 
     /// Returns a slice of the string from the character range
     /// [`begin`..`end`).
@@ -1304,7 +1298,19 @@ pub trait StrExt: Index<FullRange, Output = str> {
 }
 
 #[stable]
-impl StrExt for str {}
+impl StrExt for str {
+    fn slice(&self, begin: uint, end: uint) -> &str {
+        &self[begin..end]
+    }
+
+    fn slice_from(&self, begin: uint) -> &str {
+        &self[begin..]
+    }
+
+    fn slice_to(&self, end: uint) -> &str {
+        &self[..end]
+    }
+}
 
 #[cfg(test)]
 mod tests {
