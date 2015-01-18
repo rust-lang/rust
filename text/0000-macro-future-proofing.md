@@ -81,20 +81,21 @@ allowed tokens for the given NT's fragment specifier, and is defined below.
 
 *output*: whether M is valid
 
-1. If there are no tokens in `M`, accept.
-2. For each token `T` in `M`:
-    1. If `T` is not an NT, continue.
-    2. If `T` is a simple NT, look ahead to the next token `T'` in `M`. If
-       `T'` is `EOF` or a close delimiter of a token tree, replace `T'` with
-       `F`. If `T'` is in the set `FOLLOW(NT)`, `T'` is EOF, `T'` is any NT,
-       or `T'` is any close delimiter, continue. Else, reject.
-    3. Else, `T` is a complex NT.
-        1. If `T` has the form `$(...)+` or `$(...)*`, run the algorithm on
-           the contents with `F` set to `EOF`. If it accepts, continue, else,
-           reject.
-        2. If `T` has the form `$(...)U+` or `$(...)U*` for some token `U`, run
-           the algorithm on the contents with `F` set to `U`. If it accepts,
-           continue, else, reject.
+For each token `T` in `M`:
+
+1. If `T` is not an NT, continue.
+2. If `T` is a simple NT, look ahead to the next token `T'` in `M`. If
+   `T'` is `EOF` or a close delimiter of a token tree, replace `T'` with
+   `F`. If `T'` is in the set `FOLLOW(NT)`, `T'` is EOF, or `T'` is any close
+   delimiter, continue. Otherwise, reject.
+3. Else, `T` is a complex NT.
+    1. If `T` has the form `$(...)+` or `$(...)*`, run the algorithm on the
+       contents with `F` set to the token following `T`. If it accepts,
+       continue, else, reject.
+    2. If `T` has the form `$(...)U+` or `$(...)U*` for some token `U`, run
+       the algorithm on the contents with `F` set to `U`. If it accepts,
+       check that the last token in the sequence can be followed by `F`. If
+       so, accept. Otherwise, reject.
 
 This algorithm should be run on every matcher in every `macro_rules`
 invocation, with `F` as `EOF`. If it rejects a matcher, an error should be
@@ -103,11 +104,11 @@ emitted and compilation should not complete.
 The current legal fragment specifiers are: `item`, `block`, `stmt`, `pat`,
 `expr`, `ty`, `ident`, `path`, `meta`, and `tt`.
 
-- `FOLLOW(stmt)` = `FOLLOW(expr)`
 - `FOLLOW(pat)` = `{FatArrow, Comma, Eq}`
-- `FOLLOW(expr)` = `{Comma, Semicolon}`
+- `FOLLOW(expr)` = `{FatArrow, Comma, Semicolon}`
+- `FOLLOW(ty)` = `{Comma, FatArrow, Colon, Eq, Gt, Ident(as)}`
+- `FOLLOW(stmt)` = `FOLLOW(expr)`
 - `FOLLOW(path)` = `FOLLOW(ty)`
-- `FOLLOW(ty)` = `{Comma, RArrow, Colon, Eq, Gt, Ident(as)}`
 - `FOLLOW(block)` = any token
 - `FOLLOW(ident)` = any token
 - `FOLLOW(tt)` = any token
@@ -119,7 +120,7 @@ The current legal fragment specifiers are: `item`, `block`, `stmt`, `pat`,
 # Drawbacks
 
 It does restrict the input to a MBE, but the choice of delimiters provides
-reasonable freedom.
+reasonable freedom and can be extended in the future.
 
 # Alternatives
 
