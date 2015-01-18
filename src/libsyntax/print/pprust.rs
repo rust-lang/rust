@@ -381,7 +381,7 @@ pub fn block_to_string(blk: &ast::Block) -> String {
         // containing cbox, will be closed by print-block at }
         try!(s.cbox(indent_unit));
         // head-ibox, will be closed by print-block after {
-        try!(s.ibox(0u));
+        try!(s.ibox(0us));
         s.print_block(blk)
     })
 }
@@ -520,7 +520,7 @@ impl<'a> State<'a> {
     pub fn bclose_maybe_open (&mut self, span: codemap::Span,
                               indented: usize, close_box: bool) -> IoResult<()> {
         try!(self.maybe_print_comment(span.hi));
-        try!(self.break_offset_if_not_bol(1u, -(indented as isize)));
+        try!(self.break_offset_if_not_bol(1us, -(indented as isize)));
         try!(word(&mut self.s, "}"));
         if close_box {
             try!(self.end()); // close the outer-box
@@ -595,7 +595,7 @@ impl<'a> State<'a> {
     pub fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F) -> IoResult<()> where
         F: FnMut(&mut State, &T) -> IoResult<()>,
     {
-        try!(self.rbox(0u, b));
+        try!(self.rbox(0us, b));
         let mut first = true;
         for elt in elts.iter() {
             if first { first = false; } else { try!(self.word_space(",")); }
@@ -613,13 +613,13 @@ impl<'a> State<'a> {
         F: FnMut(&mut State, &T) -> IoResult<()>,
         G: FnMut(&T) -> codemap::Span,
     {
-        try!(self.rbox(0u, b));
+        try!(self.rbox(0us, b));
         let len = elts.len();
-        let mut i = 0u;
+        let mut i = 0us;
         for elt in elts.iter() {
             try!(self.maybe_print_comment(get_span(elt).hi));
             try!(op(self, elt));
-            i += 1u;
+            i += 1us;
             if i < len {
                 try!(word(&mut self.s, ","));
                 try!(self.maybe_print_trailing_comment(get_span(elt),
@@ -670,7 +670,7 @@ impl<'a> State<'a> {
 
     pub fn print_type(&mut self, ty: &ast::Ty) -> IoResult<()> {
         try!(self.maybe_print_comment(ty.span.lo));
-        try!(self.ibox(0u));
+        try!(self.ibox(0us));
         match ty.node {
             ast::TyVec(ref ty) => {
                 try!(word(&mut self.s, "["));
@@ -871,7 +871,7 @@ impl<'a> State<'a> {
             }
             ast::ItemTy(ref ty, ref params) => {
                 try!(self.ibox(indent_unit));
-                try!(self.ibox(0u));
+                try!(self.ibox(0us));
                 try!(self.word_nbsp(&visibility_qualified(item.vis, "type")[]));
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(params));
@@ -1262,7 +1262,7 @@ impl<'a> State<'a> {
 
     pub fn print_outer_attributes(&mut self,
                                   attrs: &[ast::Attribute]) -> IoResult<()> {
-        let mut count = 0u;
+        let mut count = 0us;
         for attr in attrs.iter() {
             match attr.node.style {
                 ast::AttrOuter => {
@@ -1280,7 +1280,7 @@ impl<'a> State<'a> {
 
     pub fn print_inner_attributes(&mut self,
                                   attrs: &[ast::Attribute]) -> IoResult<()> {
-        let mut count = 0u;
+        let mut count = 0us;
         for attr in attrs.iter() {
             match attr.node.style {
                 ast::AttrInner => {
@@ -1404,8 +1404,8 @@ impl<'a> State<'a> {
                 match _else.node {
                     // "another else-if"
                     ast::ExprIf(ref i, ref then, ref e) => {
-                        try!(self.cbox(indent_unit - 1u));
-                        try!(self.ibox(0u));
+                        try!(self.cbox(indent_unit - 1us));
+                        try!(self.ibox(0us));
                         try!(word(&mut self.s, " else if "));
                         try!(self.print_expr(&**i));
                         try!(space(&mut self.s));
@@ -1414,8 +1414,8 @@ impl<'a> State<'a> {
                     }
                     // "another else-if-let"
                     ast::ExprIfLet(ref pat, ref expr, ref then, ref e) => {
-                        try!(self.cbox(indent_unit - 1u));
-                        try!(self.ibox(0u));
+                        try!(self.cbox(indent_unit - 1us));
+                        try!(self.ibox(0us));
                         try!(word(&mut self.s, " else if let "));
                         try!(self.print_pat(&**pat));
                         try!(space(&mut self.s));
@@ -1427,8 +1427,8 @@ impl<'a> State<'a> {
                     }
                     // "final else"
                     ast::ExprBlock(ref b) => {
-                        try!(self.cbox(indent_unit - 1u));
-                        try!(self.ibox(0u));
+                        try!(self.cbox(indent_unit - 1us));
+                        try!(self.ibox(0us));
                         try!(word(&mut self.s, " else "));
                         self.print_block(&**b)
                     }
@@ -1594,7 +1594,7 @@ impl<'a> State<'a> {
         try!(self.print_expr(&*args[0]));
         try!(word(&mut self.s, "."));
         try!(self.print_ident(ident.node));
-        if tys.len() > 0u {
+        if tys.len() > 0us {
             try!(word(&mut self.s, "::<"));
             try!(self.commasep(Inconsistent, tys,
                                |s, ty| s.print_type(&**ty)));
@@ -1765,7 +1765,7 @@ impl<'a> State<'a> {
                 // containing cbox, will be closed by print-block at }
                 try!(self.cbox(indent_unit));
                 // head-box, will be closed by print-block after {
-                try!(self.ibox(0u));
+                try!(self.ibox(0us));
                 try!(self.print_block(&**blk));
             }
             ast::ExprAssign(ref lhs, ref rhs) => {
@@ -2142,7 +2142,7 @@ impl<'a> State<'a> {
                     },
                     |f| f.node.pat.span));
                 if etc {
-                    if fields.len() != 0u { try!(self.word_space(",")); }
+                    if fields.len() != 0us { try!(self.word_space(",")); }
                     try!(word(&mut self.s, ".."));
                 }
                 try!(space(&mut self.s));
@@ -2209,7 +2209,7 @@ impl<'a> State<'a> {
             try!(space(&mut self.s));
         }
         try!(self.cbox(indent_unit));
-        try!(self.ibox(0u));
+        try!(self.ibox(0us));
         try!(self.print_outer_attributes(&arm.attrs[]));
         let mut first = true;
         for p in arm.pats.iter() {
@@ -2295,7 +2295,7 @@ impl<'a> State<'a> {
         -> IoResult<()> {
         // It is unfortunate to duplicate the commasep logic, but we want the
         // self type and the args all in the same box.
-        try!(self.rbox(0u, Inconsistent));
+        try!(self.rbox(0us, Inconsistent));
         let mut first = true;
         for &explicit_self in opt_explicit_self.iter() {
             let m = match explicit_self {
@@ -2472,7 +2472,7 @@ impl<'a> State<'a> {
         try!(word(&mut self.s, "<"));
 
         let mut ints = Vec::new();
-        for i in range(0u, total) {
+        for i in range(0us, total) {
             ints.push(i);
         }
 
@@ -2794,7 +2794,7 @@ impl<'a> State<'a> {
                 if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
                     span_line.line == comment_line.line {
                         try!(self.print_comment(cmnt));
-                        self.cur_cmnt_and_lit.cur_cmnt += 1u;
+                        self.cur_cmnt_and_lit.cur_cmnt += 1us;
                     }
             }
             _ => ()
@@ -2812,7 +2812,7 @@ impl<'a> State<'a> {
             match self.next_comment() {
                 Some(ref cmnt) => {
                     try!(self.print_comment(cmnt));
-                    self.cur_cmnt_and_lit.cur_cmnt += 1u;
+                    self.cur_cmnt_and_lit.cur_cmnt += 1us;
                 }
                 _ => break
             }
@@ -2894,7 +2894,7 @@ impl<'a> State<'a> {
                 while self.cur_cmnt_and_lit.cur_lit < lits.len() {
                     let ltrl = (*lits)[self.cur_cmnt_and_lit.cur_lit].clone();
                     if ltrl.pos > pos { return None; }
-                    self.cur_cmnt_and_lit.cur_lit += 1u;
+                    self.cur_cmnt_and_lit.cur_lit += 1us;
                     if ltrl.pos == pos { return Some(ltrl); }
                 }
                 None
@@ -2909,7 +2909,7 @@ impl<'a> State<'a> {
                 Some(ref cmnt) => {
                     if (*cmnt).pos < pos {
                         try!(self.print_comment(cmnt));
-                        self.cur_cmnt_and_lit.cur_cmnt += 1u;
+                        self.cur_cmnt_and_lit.cur_cmnt += 1us;
                     } else { break; }
                 }
                 _ => break
@@ -2922,7 +2922,7 @@ impl<'a> State<'a> {
                          cmnt: &comments::Comment) -> IoResult<()> {
         match cmnt.style {
             comments::Mixed => {
-                assert_eq!(cmnt.lines.len(), 1u);
+                assert_eq!(cmnt.lines.len(), 1us);
                 try!(zerobreak(&mut self.s));
                 try!(word(&mut self.s, &cmnt.lines[0][]));
                 zerobreak(&mut self.s)
@@ -2941,11 +2941,11 @@ impl<'a> State<'a> {
             }
             comments::Trailing => {
                 try!(word(&mut self.s, " "));
-                if cmnt.lines.len() == 1u {
+                if cmnt.lines.len() == 1us {
                     try!(word(&mut self.s, &cmnt.lines[0][]));
                     hardbreak(&mut self.s)
                 } else {
-                    try!(self.ibox(0u));
+                    try!(self.ibox(0us));
                     for line in cmnt.lines.iter() {
                         if !line.is_empty() {
                             try!(word(&mut self.s, &line[]));

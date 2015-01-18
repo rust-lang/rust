@@ -181,7 +181,7 @@ pub fn parse_tts_from_source_str(name: String,
         name,
         source
     );
-    p.quote_depth += 1u;
+    p.quote_depth += 1us;
     // right now this is re-creating the token trees from ... token trees.
     maybe_aborted(p.parse_all_token_trees(),p)
 }
@@ -325,7 +325,7 @@ pub mod with_hygiene {
             name,
             source
         );
-        p.quote_depth += 1u;
+        p.quote_depth += 1us;
         // right now this is re-creating the token trees from ... token trees.
         maybe_aborted(p.parse_all_token_trees(),p)
     }
@@ -574,7 +574,7 @@ pub fn byte_lit(lit: &str) -> (u8, usize) {
     if lit.len() == 1 {
         (lit.as_bytes()[0], 1)
     } else {
-        assert!(lit.as_bytes()[0] == b'\\', err(0i));
+        assert!(lit.as_bytes()[0] == b'\\', err(0is));
         let b = match lit.as_bytes()[1] {
             b'"' => b'"',
             b'n' => b'\n',
@@ -684,9 +684,9 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     match suffix {
         Some(suf) if looks_like_width_suffix(&['f'], suf) => {
             match base {
-                16u => sd.span_err(sp, "hexadecimal float literal is not supported"),
-                8u => sd.span_err(sp, "octal float literal is not supported"),
-                2u => sd.span_err(sp, "binary float literal is not supported"),
+                16us => sd.span_err(sp, "hexadecimal float literal is not supported"),
+                8us => sd.span_err(sp, "octal float literal is not supported"),
+                2us => sd.span_err(sp, "binary float literal is not supported"),
                 _ => ()
             }
             let ident = token::intern_and_get_ident(&*s);

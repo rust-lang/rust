@@ -767,7 +767,7 @@ impl<'a> Parser<'a> {
         // would encounter a `>` and stop. This lets the parser handle trailing
         // commas in generic parameters, because it can stop either after
         // parsing a type or after parsing a comma.
-        for i in iter::count(0u, 1) {
+        for i in iter::count(0us, 1) {
             if self.check(&token::Gt)
                 || self.token == token::BinOp(token::Shr)
                 || self.token == token::Ge
@@ -944,7 +944,7 @@ impl<'a> Parser<'a> {
         };
         self.span = next.sp;
         self.token = next.tok;
-        self.tokens_consumed += 1u;
+        self.tokens_consumed += 1us;
         self.expected_tokens.clear();
         // check after each token
         self.check_unknown_macro_variable();
@@ -2638,7 +2638,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn check_unknown_macro_variable(&mut self) {
-        if self.quote_depth == 0u {
+        if self.quote_depth == 0us {
             match self.token {
                 token::SubstNt(name, _) =>
                     self.fatal(&format!("unknown macro variable `{}`",
@@ -2707,7 +2707,7 @@ impl<'a> Parser<'a> {
                                     token_str)[])
                 },
                 /* we ought to allow different depths of unquotation */
-                token::Dollar | token::SubstNt(..) if p.quote_depth > 0u => {
+                token::Dollar | token::SubstNt(..) if p.quote_depth > 0us => {
                     p.parse_unquoted()
                 }
                 _ => {
@@ -5079,7 +5079,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if first && attrs_remaining_len > 0u {
+        if first && attrs_remaining_len > 0us {
             // We parsed attributes for the first item but didn't find it
             let last_span = self.last_span;
             self.span_err(last_span,
@@ -5683,7 +5683,7 @@ impl<'a> Parser<'a> {
             return IoviItem(item);
         }
         if self.token.is_keyword(keywords::Unsafe) &&
-            self.look_ahead(1u, |t| t.is_keyword(keywords::Trait))
+            self.look_ahead(1us, |t| t.is_keyword(keywords::Trait))
         {
             // UNSAFE TRAIT ITEM
             self.expect_keyword(keywords::Unsafe);
@@ -5700,7 +5700,7 @@ impl<'a> Parser<'a> {
             return IoviItem(item);
         }
         if self.token.is_keyword(keywords::Unsafe) &&
-            self.look_ahead(1u, |t| t.is_keyword(keywords::Impl))
+            self.look_ahead(1us, |t| t.is_keyword(keywords::Impl))
         {
             // IMPL ITEM
             self.expect_keyword(keywords::Unsafe);
@@ -5731,7 +5731,7 @@ impl<'a> Parser<'a> {
             return IoviItem(item);
         }
         if self.token.is_keyword(keywords::Unsafe)
-            && self.look_ahead(1u, |t| *t != token::OpenDelim(token::Brace)) {
+            && self.look_ahead(1us, |t| *t != token::OpenDelim(token::Brace)) {
             // UNSAFE FUNCTION ITEM
             self.bump();
             let abi = if self.eat_keyword(keywords::Extern) {
@@ -6035,7 +6035,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        let mut rename_to = path[path.len() - 1u];
+        let mut rename_to = path[path.len() - 1us];
         let path = ast::Path {
             span: mk_sp(lo, self.last_span.hi),
             global: false,

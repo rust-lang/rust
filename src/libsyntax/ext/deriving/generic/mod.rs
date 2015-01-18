@@ -748,7 +748,7 @@ impl<'a> MethodDef<'a> {
         let mut raw_fields = Vec::new(); // ~[[fields of self],
                                  // [fields of next Self arg], [etc]]
         let mut patterns = Vec::new();
-        for i in range(0u, self_args.len()) {
+        for i in range(0us, self_args.len()) {
             let struct_path= cx.path(DUMMY_SP, vec!( type_ident ));
             let (pat, ident_expr) =
                 trait_.create_struct_pattern(cx,
@@ -837,8 +837,8 @@ impl<'a> MethodDef<'a> {
     ///             (&A2(ref __self_0),
     ///              &A2(ref __arg_1_0)) => (*__self_0).eq(&(*__arg_1_0)),
     ///             _ => {
-    ///                 let __self_vi = match *self { A1(..) => 0u, A2(..) => 1u };
-    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0u, A2(..) => 1u };
+    ///                 let __self_vi = match *self { A1(..) => 0us, A2(..) => 1us };
+    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0us, A2(..) => 1us };
     ///                 false
     ///             }
     ///         }
@@ -882,8 +882,8 @@ impl<'a> MethodDef<'a> {
     ///   (Variant2, Variant2, Variant2) => ... // delegate Matching on Variant2
     ///   ...
     ///   _ => {
-    ///     let __this_vi = match this { Variant1 => 0u, Variant2 => 1u, ... };
-    ///     let __that_vi = match that { Variant1 => 0u, Variant2 => 1u, ... };
+    ///     let __this_vi = match this { Variant1 => 0us, Variant2 => 1us, ... };
+    ///     let __that_vi = match that { Variant1 => 0us, Variant2 => 1us, ... };
     ///     ... // catch-all remainder can inspect above variant index values.
     ///   }
     /// }
@@ -1045,13 +1045,13 @@ impl<'a> MethodDef<'a> {
             //
             // ```
             // let __self0_vi = match   self {
-            //     A => 0u, B(..) => 1u, C(..) => 2u
+            //     A => 0us, B(..) => 1us, C(..) => 2us
             // };
             // let __self1_vi = match __arg1 {
-            //     A => 0u, B(..) => 1u, C(..) => 2u
+            //     A => 0us, B(..) => 1us, C(..) => 2us
             // };
             // let __self2_vi = match __arg2 {
-            //     A => 0u, B(..) => 1u, C(..) => 2u
+            //     A => 0us, B(..) => 1us, C(..) => 2us
             // };
             // ```
             let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();

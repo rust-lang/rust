@@ -322,15 +322,15 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
 pub fn operator_prec(op: ast::BinOp) -> usize {
   match op {
       // 'as' sits here with 12
-      BiMul | BiDiv | BiRem     => 11u,
-      BiAdd | BiSub             => 10u,
-      BiShl | BiShr             =>  9u,
-      BiBitAnd                  =>  8u,
-      BiBitXor                  =>  7u,
-      BiBitOr                   =>  6u,
-      BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3u,
-      BiAnd                     =>  2u,
-      BiOr                      =>  1u
+      BiMul | BiDiv | BiRem     => 11us,
+      BiAdd | BiSub             => 10us,
+      BiShl | BiShr             =>  9us,
+      BiBitAnd                  =>  8us,
+      BiBitXor                  =>  7us,
+      BiBitOr                   =>  6us,
+      BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3us,
+      BiAnd                     =>  2us,
+      BiOr                      =>  1us
   }
 }
 

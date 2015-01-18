@@ -132,15 +132,15 @@ pub fn buf_str(toks: &[Token],
     let mut i = left;
     let mut l = lim;
     let mut s = string::String::from_str("[");
-    while i != right && l != 0u {
-        l -= 1u;
+    while i != right && l != 0us {
+        l -= 1us;
         if i != left {
             s.push_str(", ");
         }
         s.push_str(&format!("{}={}",
                            szs[i],
                            tok_str(&toks[i]))[]);
-        i += 1u;
+        i += 1us;
         i %= n;
     }
     s.push(']');
@@ -167,7 +167,7 @@ pub fn mk_printer(out: Box<io::Writer+'static>, linewidth: usize) -> Printer {
     let n: usize = 3 * linewidth;
     debug!("mk_printer {}", linewidth);
     let token: Vec<Token> = repeat(Token::Eof).take(n).collect();
-    let size: Vec<isize> = repeat(0i).take(n).collect();
+    let size: Vec<isize> = repeat(0is).take(n).collect();
     let scan_stack: Vec<usize> = repeat(0us).take(n).collect();
     Printer {
         out: out,
@@ -326,8 +326,8 @@ impl Printer {
             if self.scan_stack_empty {
                 self.left_total = 1;
                 self.right_total = 1;
-                self.left = 0u;
-                self.right = 0u;
+                self.left = 0us;
+                self.right = 0us;
             } else { self.advance_right(); }
             debug!("pp Begin({})/buffer ~[{},{}]",
                    b.offset, self.left, self.right);
@@ -355,8 +355,8 @@ impl Printer {
             if self.scan_stack_empty {
                 self.left_total = 1;
                 self.right_total = 1;
-                self.left = 0u;
-                self.right = 0u;
+                self.left = 0us;
+                self.right = 0us;
             } else { self.advance_right(); }
             debug!("pp Break({})/buffer ~[{},{}]",
                    b.offset, self.left, self.right);
@@ -410,7 +410,7 @@ impl Printer {
         if self.scan_stack_empty {
             self.scan_stack_empty = false;
         } else {
-            self.top += 1u;
+            self.top += 1us;
             self.top %= self.buf_len;
             assert!((self.top != self.bottom));
         }
@@ -422,7 +422,7 @@ impl Printer {
         if self.top == self.bottom {
             self.scan_stack_empty = true;
         } else {
-            self.top += self.buf_len - 1u; self.top %= self.buf_len;
+            self.top += self.buf_len - 1us; self.top %= self.buf_len;
         }
         return x;
     }
@@ -436,12 +436,12 @@ impl Printer {
         if self.top == self.bottom {
             self.scan_stack_empty = true;
         } else {
-            self.bottom += 1u; self.bottom %= self.buf_len;
+            self.bottom += 1us; self.bottom %= self.buf_len;
         }
         return x;
     }
     pub fn advance_right(&mut self) {
-        self.right += 1u;
+        self.right += 1us;
         self.right %= self.buf_len;
         assert!((self.right != self.left));
     }
@@ -471,7 +471,7 @@ impl Printer {
                 break;
             }
 
-            self.left += 1u;
+            self.left += 1us;
             self.left %= self.buf_len;
 
             left_size = self.size[self.left];
@@ -520,7 +520,7 @@ impl Printer {
     pub fn get_top(&mut self) -> PrintStackElem {
         let print_stack = &mut self.print_stack;
         let n = print_stack.len();
-        if n != 0u {
+        if n != 0us {
             (*print_stack)[n - 1]
         } else {
             PrintStackElem {
@@ -565,7 +565,7 @@ impl Printer {
           Token::End => {
             debug!("print End -> pop End");
             let print_stack = &mut self.print_stack;
-            assert!((print_stack.len() != 0u));
+            assert!((print_stack.len() != 0us));
             print_stack.pop().unwrap();
             Ok(())
           }
@@ -667,11 +667,11 @@ pub fn spaces(p: &mut Printer, n: usize) -> io::IoResult<()> {
 }
 
 pub fn zerobreak(p: &mut Printer) -> io::IoResult<()> {
-    spaces(p, 0u)
+    spaces(p, 0us)
 }
 
 pub fn space(p: &mut Printer) -> io::IoResult<()> {
-    spaces(p, 1u)
+    spaces(p, 1us)
 }
 
 pub fn hardbreak(p: &mut Printer) -> io::IoResult<()> {
