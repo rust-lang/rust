@@ -103,7 +103,7 @@ made workable in static expressions through a compiler plugin.
 
 ## Proof of concept
 
-The described additions are implemented in crate
+The described changes are implemented in crate
 [c_string](https://github.com/mzabaluev/rust-c-str/tree/v0.3.0).
 
 # Drawbacks
