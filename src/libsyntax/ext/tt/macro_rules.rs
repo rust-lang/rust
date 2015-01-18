@@ -281,19 +281,22 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
 }
 
 fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &NamedMatch, sp: Span) {
-    // lhs is going to be like MatchedNonterminal(NtTT(TtDelimited(...))), where
-    // the entire lhs is those tts.
-    // if ever we get box/deref patterns, this could turn into an `if let
-    // &MatchedNonterminal(NtTT(box TtDelimited(...))) = lhs`
-    let matcher = match lhs {
+    // lhs is going to be like MatchedNonterminal(NtTT(TtDelimited(...))), where the entire lhs is
+    // those tts. Or, it can be a "bare sequence", not wrapped in parens.
+    match lhs {
         &MatchedNonterminal(NtTT(ref inner)) => match &**inner {
-            &TtDelimited(_, ref tts) => tts.tts.as_slice(),
-            _ => cx.span_bug(sp, "wrong-structured lhs for follow check")
+            &TtDelimited(_, ref tts) => {
+                check_matcher(cx, tts.tts.iter(), &Eof);
+            },
+            tt @ &TtSequence(..) => {
+                check_matcher(cx, Some(tt).into_iter(), &Eof);
+            },
+            _ => cx.span_bug(sp, "wrong-structured lhs for follow check (didn't find \
+            a TtDelimited or TtSequence)")
         },
-        _ => cx.span_bug(sp, "wrong-structured lhs for follow check")
+        _ => cx.span_bug(sp, "wrong-structured lhs for follow check (didn't find a \
+           MatchedNonterminal)")
     };
-
-    check_matcher(cx, matcher.iter(), &Eof);
     // we don't abort on errors on rejection, the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
 }
