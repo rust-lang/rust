@@ -12,6 +12,7 @@
 
 // Pretty printing tests complain about `use std::predule::*`
 #![allow(unused_imports)]
+#![allow(unstable)]
 
 // We shouldn't need to rebind a moved upvar as mut if it's already
 // marked as mut

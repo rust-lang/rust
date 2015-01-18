@@ -28,6 +28,7 @@
 #![feature(box_syntax)]
 #![feature(quote, unsafe_destructor)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![allow(unstable)]
 
 extern crate arena;
 extern crate fmt_macros;

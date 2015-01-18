@@ -496,7 +496,7 @@ uint_impl! { u64 = u64, 64,
     intrinsics::u64_sub_with_overflow,
     intrinsics::u64_mul_with_overflow }
 
-#[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
+#[cfg(target_pointer_width = "32")]
 uint_impl! { uint = u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
@@ -506,7 +506,7 @@ uint_impl! { uint = u32, 32,
     intrinsics::u32_sub_with_overflow,
     intrinsics::u32_mul_with_overflow }
 
-#[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
+#[cfg(target_pointer_width = "64")]
 uint_impl! { uint = u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
@@ -601,13 +601,13 @@ int_impl! { i64 = i64, u64, 64,
     intrinsics::i64_sub_with_overflow,
     intrinsics::i64_mul_with_overflow }
 
-#[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
+#[cfg(target_pointer_width = "32")]
 int_impl! { int = i32, u32, 32,
     intrinsics::i32_add_with_overflow,
     intrinsics::i32_sub_with_overflow,
     intrinsics::i32_mul_with_overflow }
 
-#[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
+#[cfg(target_pointer_width = "64")]
 int_impl! { int = i64, u64, 64,
     intrinsics::i64_add_with_overflow,
     intrinsics::i64_sub_with_overflow,

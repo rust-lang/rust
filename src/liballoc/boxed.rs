@@ -117,14 +117,6 @@ impl<T: ?Sized + Ord> Ord for Box<T> {
 #[stable]
 impl<T: ?Sized + Eq> Eq for Box<T> {}
 
-#[cfg(stage0)]
-impl<S: hash::Writer, T: ?Sized + Hash<S>> Hash<S> for Box<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        (**self).hash(state);
-    }
-}
-#[cfg(not(stage0))]
 impl<S: hash::Hasher, T: ?Sized + Hash<S>> Hash<S> for Box<T> {
     #[inline]
     fn hash(&self, state: &mut S) {

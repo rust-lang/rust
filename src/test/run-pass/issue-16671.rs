@@ -14,6 +14,7 @@
 
 // Pretty printing tests complain about `use std::predule::*`
 #![allow(unused_imports)]
+#![allow(unstable)]
 
 // A var moved into a proc, that has a mutable loan path should
 // not trigger a misleading unused_mut warning.

@@ -13,14 +13,14 @@
 
 #![feature(box_syntax)]
 
-#[cfg(any(all(stage0, target_word_size = "64"), all(not(stage0), target_pointer_width = "64")))]
+#[cfg(target_pointer_width = "64")]
 fn main() {
     let n = 0us;
     let a = box [&n; 0xF000000000000000us];
     println!("{}", a[0xFFFFFFu]);
 }
 
-#[cfg(any(all(stage0, target_word_size = "32"), all(not(stage0), target_pointer_width = "32")))]
+#[cfg(target_pointer_width = "32")]
 fn main() {
     let n = 0us;
     let a = box [&n; 0xFFFFFFFFu];

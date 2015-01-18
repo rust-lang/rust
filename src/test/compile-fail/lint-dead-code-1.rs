@@ -13,6 +13,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 #![allow(missing_copy_implementations)]
+#![allow(unstable)]
 #![deny(dead_code)]
 
 #![crate_type="lib"]
