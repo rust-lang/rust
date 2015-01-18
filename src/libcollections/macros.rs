@@ -12,13 +12,13 @@
 #[macro_export]
 #[stable]
 macro_rules! vec {
-    ($x:expr; $y:expr) => ({
-        let xs: $crate::boxed::Box<[_]> = $crate::boxed::Box::new([$x; $y]);
-        $crate::slice::SliceExt::into_vec(xs)
-    });
-    ($($x:expr),*) => ({
-        let xs: $crate::boxed::Box<[_]> = $crate::boxed::Box::new([$($x),*]);
-        $crate::slice::SliceExt::into_vec(xs)
-    });
+    ($x:expr; $y:expr) => (
+        <[_] as $crate::slice::SliceExt>::into_vec(
+            $crate::boxed::Box::new([$x; $y]))
+    );
+    ($($x:expr),*) => (
+        <[_] as $crate::slice::SliceExt>::into_vec(
+            $crate::boxed::Box::new([$($x),*]))
+    );
     ($($x:expr,)*) => (vec![$($x),*])
 }
