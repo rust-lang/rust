@@ -345,8 +345,8 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
                 let tparm_cnt = generics.ty_params.len();
                 // NB: inadequate check, but we're running
                 // well before resolve, can't get too deep.
-                input_cnt == 1u
-                    && no_output && tparm_cnt == 0u
+                input_cnt == 1us
+                    && no_output && tparm_cnt == 0us
             }
           _ => false
         }

@@ -62,7 +62,7 @@ pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
 pub fn strip_doc_comment_decoration(comment: &str) -> String {
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: Vec<String> ) -> Vec<String> {
-        let mut i = 0u;
+        let mut i = 0us;
         let mut j = lines.len();
         // first line of all-stars should be omitted
         if lines.len() > 0 &&
@@ -132,7 +132,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
     }
 
     if comment.starts_with("/*") {
-        let lines = comment[3u..(comment.len() - 2u)]
+        let lines = comment[3us..(comment.len() - 2us)]
             .lines_any()
             .map(|s| s.to_string())
             .collect::<Vec<String> >();
@@ -158,7 +158,7 @@ fn push_blank_line_comment(rdr: &StringReader, comments: &mut Vec<Comment>) {
 fn consume_whitespace_counting_blank_lines(rdr: &mut StringReader,
                                            comments: &mut Vec<Comment>) {
     while is_whitespace(rdr.curr) && !rdr.is_eof() {
-        if rdr.col == CharPos(0u) && rdr.curr_is('\n') {
+        if rdr.col == CharPos(0us) && rdr.curr_is('\n') {
             push_blank_line_comment(rdr, &mut *comments);
         }
         rdr.bump();
@@ -305,7 +305,7 @@ fn read_block_comment(rdr: &mut StringReader,
 
     let mut style = if code_to_the_left { Trailing } else { Isolated };
     rdr.consume_non_eol_whitespace();
-    if !rdr.is_eof() && !rdr.curr_is('\n') && lines.len() == 1u {
+    if !rdr.is_eof() && !rdr.curr_is('\n') && lines.len() == 1us {
         style = Mixed;
     }
     debug!("<<< block comment");

@@ -430,7 +430,7 @@ impl CodeMap {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         let mut lines = Vec::new();
-        for i in range(lo.line - 1u, hi.line as usize) {
+        for i in range(lo.line - 1us, hi.line as usize) {
             lines.push(i);
         };
         FileLines {file: lo.file, lines: lines}
@@ -498,10 +498,10 @@ impl CodeMap {
         let files = self.files.borrow();
         let files = &*files;
         let len = files.len();
-        let mut a = 0u;
+        let mut a = 0us;
         let mut b = len;
-        while b - a > 1u {
-            let m = (a + b) / 2u;
+        while b - a > 1us {
+            let m = (a + b) / 2us;
             if files[m].start_pos > pos {
                 b = m;
             } else {
@@ -537,12 +537,12 @@ impl CodeMap {
 
         let files = self.files.borrow();
         let f = (*files)[idx].clone();
-        let mut a = 0u;
+        let mut a = 0us;
         {
             let lines = f.lines.borrow();
             let mut b = lines.len();
-            while b - a > 1u {
-                let m = (a + b) / 2u;
+            while b - a > 1us {
+                let m = (a + b) / 2us;
                 if (*lines)[m] > pos { b = m; } else { a = m; }
             }
         }
@@ -551,7 +551,7 @@ impl CodeMap {
 
     fn lookup_pos(&self, pos: BytePos) -> Loc {
         let FileMapAndLine {fm: f, line: a} = self.lookup_line(pos);
-        let line = a + 1u; // Line numbers start at 1
+        let line = a + 1us; // Line numbers start at 1
         let chpos = self.bytepos_to_file_charpos(pos);
         let linebpos = (*f.lines.borrow())[a];
         let linechpos = self.bytepos_to_file_charpos(linebpos);
@@ -762,7 +762,7 @@ mod test {
 
         assert_eq!(file_lines.file.name, "blork.rs");
         assert_eq!(file_lines.lines.len(), 1);
-        assert_eq!(file_lines.lines[0], 1u);
+        assert_eq!(file_lines.lines[0], 1us);
     }
 
     #[test]
