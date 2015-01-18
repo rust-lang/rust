@@ -319,9 +319,21 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
                 };
                 Some(item)
             }
-            ty::TypeTraitItem(_) => {
-                // FIXME(pcwalton): Implement.
-                None
+            ty::TypeTraitItem(ref assoc_ty) => {
+                let did = assoc_ty.def_id;
+                let type_scheme = ty::lookup_item_type(tcx, did);
+                // Not sure the choice of ParamSpace actually matters here, because an
+                // associated type won't have generics on the LHS
+                let typedef = (type_scheme, subst::ParamSpace::TypeSpace).clean(cx);
+                Some(clean::Item {
+                    name: Some(assoc_ty.name.clean(cx)),
+                    inner: clean::TypedefItem(typedef),
+                    source: clean::Span::empty(),
+                    attrs: vec![],
+                    visibility: None,
+                    stability: stability::lookup(tcx, did).clean(cx),
+                    def_id: did
+                })
             }
         }
     }).collect();

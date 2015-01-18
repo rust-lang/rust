@@ -2520,14 +2520,14 @@ impl Clean<Item> for ty::AssociatedType {
             source: DUMMY_SP.clean(cx),
             name: Some(self.name.clean(cx)),
             attrs: Vec::new(),
-            // FIXME(#18048): this is wrong, but cross-crate associated types are broken
-            // anyway, for the time being.
             inner: AssociatedTypeItem(TyParam {
                 name: self.name.clean(cx),
                 did: ast::DefId {
                     krate: 0,
                     node: ast::DUMMY_NODE_ID
                 },
+                // FIXME(#20727): bounds are missing and need to be filled in from the
+                // predicates on the trait itself
                 bounds: vec![],
                 default: None,
             }),
@@ -2555,6 +2555,16 @@ impl Clean<Item> for ast::Typedef {
             visibility: None,
             def_id: ast_util::local_def(self.id),
             stability: None,
+        }
+    }
+}
+
+impl<'a> Clean<Typedef> for (ty::TypeScheme<'a>, ParamSpace) {
+    fn clean(&self, cx: &DocContext) -> Typedef {
+        let (ref ty_scheme, ps) = *self;
+        Typedef {
+            type_: ty_scheme.ty.clean(cx),
+            generics: (&ty_scheme.generics, ps).clean(cx)
         }
     }
 }
