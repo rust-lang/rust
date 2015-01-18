@@ -59,3 +59,9 @@ macro_rules! register_diagnostics {
     )
 }
 
+#[macro_export]
+macro_rules! register_long_diagnostics {
+    ($($code:tt: $description:tt),*) => (
+        $(register_diagnostic! { $code, $description })*
+    )
+}
