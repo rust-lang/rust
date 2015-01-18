@@ -12,6 +12,9 @@
 
 fn foo() -> int { 42 }
 
+// Test that range syntax works in return statements
+fn return_range_to() -> ::std::ops::RangeTo<i32> { return ..1; }
+
 pub fn main() {
     let mut count = 0;
     for i in 0u..10 {
