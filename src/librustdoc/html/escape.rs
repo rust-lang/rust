@@ -29,7 +29,7 @@ impl<'a> fmt::String for Escape<'a> {
         for (i, ch) in s.bytes().enumerate() {
             match ch as char {
                 '<' | '>' | '&' | '\'' | '"' => {
-                    try!(fmt.write_str(pile_o_bits.slice(last, i)));
+                    try!(fmt.write_str(&pile_o_bits[last.. i]));
                     let s = match ch as char {
                         '>' => "&gt;",
                         '<' => "&lt;",
@@ -46,7 +46,7 @@ impl<'a> fmt::String for Escape<'a> {
         }
 
         if last < s.len() {
-            try!(fmt.write_str(pile_o_bits.slice_from(last)));
+            try!(fmt.write_str(&pile_o_bits[last..]));
         }
         Ok(())
     }

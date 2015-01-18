@@ -146,7 +146,7 @@ extern {
 fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     let trimmed = s.trim();
     if trimmed.starts_with("# ") {
-        Some(trimmed.slice_from(2))
+        Some(&trimmed[2..])
     } else {
         None
     }

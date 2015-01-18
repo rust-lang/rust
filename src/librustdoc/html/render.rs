@@ -749,7 +749,7 @@ impl<'a> SourceCollector<'a> {
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\u{feff}") {
-            contents.slice_from(3)
+            &contents[3..]
         } else {
             contents
         };
@@ -1469,7 +1469,7 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
 fn shorter<'a>(s: Option<&'a str>) -> &'a str {
     match s {
         Some(s) => match s.find_str("\n\n") {
-            Some(pos) => s.slice_to(pos),
+            Some(pos) => &s[..pos],
             None => s,
         },
         None => ""

@@ -376,7 +376,7 @@ pub fn readlink(p: &Path) -> IoResult<Path> {
     });
     let ret = match ret {
         Some(ref s) if s.starts_with(r"\\?\") => { // "
-            Ok(Path::new(s.slice_from(4)))
+            Ok(Path::new(&s[4..]))
         }
         Some(s) => Ok(Path::new(s)),
         None => Err(super::last_error()),

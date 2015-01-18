@@ -72,7 +72,7 @@ impl Buffer for ChanReader {
         if self.closed {
             Err(io::standard_error(io::EndOfFile))
         } else {
-            Ok(self.buf.slice_from(self.pos))
+            Ok(&self.buf[self.pos..])
         }
     }
 
@@ -88,7 +88,7 @@ impl Reader for ChanReader {
         loop {
             let count = match self.fill_buf().ok() {
                 Some(src) => {
-                    let dst = buf.slice_from_mut(num_read);
+                    let dst = &mut buf[num_read..];
                     let count = cmp::min(src.len(), dst.len());
                     bytes::copy_memory(dst, &src[..count]);
                     count

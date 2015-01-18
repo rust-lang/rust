@@ -862,7 +862,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
                         break;
                     }
                     Some(i) => {
-                        rest = rest.slice_from(i + frag.len());
+                        rest = &rest[(i + frag.len())..];
                     }
                 }
                 first = false;
@@ -1045,7 +1045,7 @@ fn scan_until_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     if *idx >= haystack.len() {
         return false;
     }
-    let opt = haystack.slice_from(*idx).find(needle);
+    let opt = haystack[(*idx)..].find(needle);
     if opt.is_none() {
         return false;
     }

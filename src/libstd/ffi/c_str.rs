@@ -115,7 +115,7 @@ impl Deref for CString {
     type Target = [libc::c_char];
 
     fn deref(&self) -> &[libc::c_char] {
-        self.inner.slice_to(self.inner.len() - 1)
+        &self.inner[..(self.inner.len() - 1)]
     }
 }
 

@@ -485,9 +485,9 @@ fn main() {
         Thread::spawn(move || {
             let mut array = number.lock().unwrap();
 
-            (*array)[i] += 1;
+            array[i as usize] += 1;
 
-            println!("numbers[{}] is {}", i, (*array)[i]);
+            println!("numbers[{}] is {}", i, array[i as usize]);
         });
     }
 }
