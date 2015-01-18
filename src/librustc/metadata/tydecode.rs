@@ -243,19 +243,6 @@ fn parse_size(st: &mut PState) -> Option<uint> {
     }
 }
 
-fn parse_trait_store_<F>(st: &mut PState, conv: &mut F) -> ty::TraitStore where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    match next(st) {
-        '~' => ty::UniqTraitStore,
-        '&' => ty::RegionTraitStore(parse_region_(st, conv), parse_mutability(st)),
-        c => {
-            st.tcx.sess.bug(&format!("parse_trait_store(): bad input '{}'",
-                                    c)[])
-        }
-    }
-}
-
 fn parse_vec_per_param_space<'a, 'tcx, T, F>(st: &mut PState<'a, 'tcx>,
                                              mut f: F)
                                              -> VecPerParamSpace<T> where
@@ -662,14 +649,12 @@ fn parse_closure_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>,
 {
     let unsafety = parse_unsafety(next(st));
     let onceness = parse_onceness(next(st));
-    let store = parse_trait_store_(st, conv);
     let bounds = parse_existential_bounds_(st, conv);
     let sig = parse_sig_(st, conv);
     let abi = parse_abi_set(st);
     ty::ClosureTy {
         unsafety: unsafety,
         onceness: onceness,
-        store: store,
         bounds: bounds,
         sig: sig,
         abi: abi,

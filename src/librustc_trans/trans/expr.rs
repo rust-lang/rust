@@ -65,7 +65,6 @@ use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
 
 use syntax::{ast, ast_util, codemap};
-use syntax::print::pprust::{expr_to_string};
 use syntax::ptr::P;
 use syntax::parse::token;
 use std::rc::Rc;
@@ -1102,17 +1101,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // closure or an older, legacy style closure. Store this
             // into a variable to ensure the the RefCell-lock is
             // released before we recurse.
-            let is_unboxed_closure =
-                bcx.tcx().unboxed_closures.borrow().contains_key(&ast_util::local_def(expr.id));
-            if is_unboxed_closure {
-                closure::trans_unboxed_closure(bcx, &**decl, &**body, expr.id, dest)
-            } else {
-                let expr_ty = expr_ty(bcx, expr);
-                let store = ty::ty_closure_store(expr_ty);
-                debug!("translating block function {} with type {}",
-                       expr_to_string(expr), expr_ty.repr(tcx));
-                closure::trans_expr_fn(bcx, store, &**decl, &**body, expr.id, dest)
-            }
+            closure::trans_unboxed_closure(bcx, &**decl, &**body, expr.id, dest)
         }
         ast::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
