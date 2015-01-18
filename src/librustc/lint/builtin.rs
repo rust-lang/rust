@@ -592,7 +592,15 @@ impl LintPass for RawPointerDerive {
             return
         }
         let did = match item.node {
-            ast::ItemImpl(..) => {
+            ast::ItemImpl(_, _, _, ref t_ref_opt, _, _) => {
+                // Deriving the Copy trait does not cause a warning
+                if let &Some(ref trait_ref) = t_ref_opt {
+                    let def_id = ty::trait_ref_to_def_id(cx.tcx, trait_ref);
+                    if Some(def_id) == cx.tcx.lang_items.copy_trait() {
+                        return
+                    }
+                }
+
                 match ty::node_id_to_type(cx.tcx, item.id).sty {
                     ty::ty_enum(did, _) => did,
                     ty::ty_struct(did, _) => did,
