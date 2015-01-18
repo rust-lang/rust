@@ -18,7 +18,7 @@ extern "rust-intrinsic" {
     pub fn init<T>() -> T;
 }
 
-const SIZE: usize = 512 * 1024 * 1024;
+const SIZE: usize = 1024 * 1024;
 
 fn main() {
     let _memory: [u8; SIZE] = unsafe { init() };
