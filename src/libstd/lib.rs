@@ -18,7 +18,7 @@
 //!
 //! The [`ptr`](ptr/index.html) and [`mem`](mem/index.html)
 //! modules deal with unsafe pointers and memory manipulation.
-//! [`markers`](markers/index.html) defines the special built-in traits,
+//! [`marker`](marker/index.html) defines the special built-in traits,
 //! and [`raw`](raw/index.html) the runtime representation of Rust types.
 //! These are some of the lowest-level building blocks in Rust.
 //!
