@@ -902,13 +902,13 @@ impl<'a> Iterator for SplitStr<'a> {
 
         match self.it.next() {
             Some((from, to)) => {
-                let ret = Some(self.it.haystack.slice(self.last_end, from));
+                let ret = Some(&self.it.haystack[self.last_end .. from]);
                 self.last_end = to;
                 ret
             }
             None => {
                 self.finished = true;
-                Some(self.it.haystack.slice(self.last_end, self.it.haystack.len()))
+                Some(&self.it.haystack[self.last_end .. self.it.haystack.len()])
             }
         }
     }
@@ -1115,27 +1115,90 @@ mod traits {
         }
     }
 
+    /// Returns a slice of the given string from the byte range
+    /// [`begin`..`end`).
+    ///
+    /// This operation is `O(1)`.
+    ///
+    /// Panics when `begin` and `end` do not point to valid characters
+    /// or point beyond the last character of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert_eq!(&s[0 .. 1], "L");
+    ///
+    /// assert_eq!(&s[1 .. 9], "öwe 老");
+    ///
+    /// // these will panic:
+    /// // byte 2 lies within `ö`:
+    /// // &s[2 ..3];
+    ///
+    /// // byte 8 lies within `老`
+    /// // &s[1 .. 8];
+    ///
+    /// // byte 100 is outside the string
+    /// // &s[3 .. 100];
+    /// ```
+    #[stable]
     impl ops::Index<ops::Range<uint>> for str {
         type Output = str;
         #[inline]
         fn index(&self, index: &ops::Range<uint>) -> &str {
-            self.slice(index.start, index.end)
+            // is_char_boundary checks that the index is in [0, .len()]
+            if index.start <= index.end &&
+               self.is_char_boundary(index.start) &&
+               self.is_char_boundary(index.end) {
+                unsafe { self.slice_unchecked(index.start, index.end) }
+            } else {
+                super::slice_error_fail(self, index.start, index.end)
+            }
         }
     }
+
+    /// Returns a slice of the string from the beginning to byte
+    /// `end`.
+    ///
+    /// Equivalent to `self[0 .. end]`.
+    ///
+    /// Panics when `end` does not point to a valid character, or is
+    /// out of bounds.
+    #[stable]
     impl ops::Index<ops::RangeTo<uint>> for str {
         type Output = str;
         #[inline]
         fn index(&self, index: &ops::RangeTo<uint>) -> &str {
-            self.slice_to(index.end)
+            // is_char_boundary checks that the index is in [0, .len()]
+            if self.is_char_boundary(index.end) {
+                unsafe { self.slice_unchecked(0, index.end) }
+            } else {
+                super::slice_error_fail(self, 0, index.end)
+            }
         }
     }
+
+    /// Returns a slice of the string from `begin` to its end.
+    ///
+    /// Equivalent to `self[begin .. self.len()]`.
+    ///
+    /// Panics when `begin` does not point to a valid character, or is
+    /// out of bounds.
+    #[stable]
     impl ops::Index<ops::RangeFrom<uint>> for str {
         type Output = str;
         #[inline]
         fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
-            self.slice_from(index.start)
+            // is_char_boundary checks that the index is in [0, .len()]
+            if self.is_char_boundary(index.start) {
+                unsafe { self.slice_unchecked(index.start, self.len()) }
+            } else {
+                super::slice_error_fail(self, index.start, self.len())
+            }
         }
     }
+
+    #[stable]
     impl ops::Index<ops::FullRange> for str {
         type Output = str;
         #[inline]
@@ -1208,9 +1271,6 @@ pub trait StrExt {
     fn lines<'a>(&'a self) -> Lines<'a>;
     fn lines_any<'a>(&'a self) -> LinesAny<'a>;
     fn char_len(&self) -> uint;
-    fn slice<'a>(&'a self, begin: uint, end: uint) -> &'a str;
-    fn slice_from<'a>(&'a self, begin: uint) -> &'a str;
-    fn slice_to<'a>(&'a self, end: uint) -> &'a str;
     fn slice_chars<'a>(&'a self, begin: uint, end: uint) -> &'a str;
     unsafe fn slice_unchecked<'a>(&'a self, begin: uint, end: uint) -> &'a str;
     fn starts_with(&self, pat: &str) -> bool;
@@ -1332,7 +1392,7 @@ impl StrExt for str {
     fn lines_any(&self) -> LinesAny {
         fn f(line: &str) -> &str {
             let l = line.len();
-            if l > 0 && line.as_bytes()[l - 1] == b'\r' { line.slice(0, l - 1) }
+            if l > 0 && line.as_bytes()[l - 1] == b'\r' { &line[0 .. l - 1] }
             else { line }
         }
 
@@ -1342,38 +1402,6 @@ impl StrExt for str {
 
     #[inline]
     fn char_len(&self) -> uint { self.chars().count() }
-
-    #[inline]
-    fn slice(&self, begin: uint, end: uint) -> &str {
-        // is_char_boundary checks that the index is in [0, .len()]
-        if begin <= end &&
-           self.is_char_boundary(begin) &&
-           self.is_char_boundary(end) {
-            unsafe { self.slice_unchecked(begin, end) }
-        } else {
-            slice_error_fail(self, begin, end)
-        }
-    }
-
-    #[inline]
-    fn slice_from(&self, begin: uint) -> &str {
-        // is_char_boundary checks that the index is in [0, .len()]
-        if self.is_char_boundary(begin) {
-            unsafe { self.slice_unchecked(begin, self.len()) }
-        } else {
-            slice_error_fail(self, begin, self.len())
-        }
-    }
-
-    #[inline]
-    fn slice_to(&self, end: uint) -> &str {
-        // is_char_boundary checks that the index is in [0, .len()]
-        if self.is_char_boundary(end) {
-            unsafe { self.slice_unchecked(0, end) }
-        } else {
-            slice_error_fail(self, 0, end)
-        }
-    }
 
     fn slice_chars(&self, begin: uint, end: uint) -> &str {
         assert!(begin <= end);
