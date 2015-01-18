@@ -87,11 +87,7 @@ println!("{}", x + z);
 This gives us an error:
 
 ```text
-hello.rs:6:24: 6:25 error: mismatched types:
- expected `_`,
-    found `&_`
-(expected integral variable,
-    found &-ptr)
+hello.rs:6:24: 6:25 error: mismatched types: expected `_`, found `&_` (expected integral variable, found &-ptr)
 hello.rs:6     println!("{}", x + z);
                                   ^
 ```
