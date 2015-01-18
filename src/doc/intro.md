@@ -428,7 +428,7 @@ fn main() {
 
     for i in 0..3 {
         Thread::spawn(move || {
-            for j in 0..3 { numbers[j] += 1 }
+            for j in 0us..3 { numbers[j] += 1 }
         });
     }
 }
@@ -438,15 +438,15 @@ It gives us this error:
 
 ```text
 6:71 error: capture of moved value: `numbers`
-    for j in 0..3 { numbers[j] += 1 }
-                    ^~~~~~~
+    for j in 0us..3 { numbers[j] += 1 }
+                      ^~~~~~~
 7:50 note: `numbers` moved into closure environment here
     spawn(move || {
-        for j in 0..3 { numbers[j] += 1 }
+        for j in 0us..3 { numbers[j] += 1 }
     });
 6:79 error: cannot assign to immutable dereference (dereference is implicit, due to indexing)
-        for j in 0..3 { numbers[j] += 1 }
-                        ^~~~~~~~~~~~~~~
+        for j in 0us..3 { numbers[j] += 1 }
+                          ^~~~~~~~~~~~~~~
 ```
 
 It mentions that "numbers moved into closure environment". Because we
@@ -480,7 +480,7 @@ use std::sync::{Arc,Mutex};
 fn main() {
     let numbers = Arc::new(Mutex::new(vec![1is, 2, 3]));
 
-    for i in 0..3 {
+    for i in 0us..3 {
         let number = numbers.clone();
         Thread::spawn(move || {
             let mut array = number.lock().unwrap();
@@ -559,7 +559,7 @@ a vector:
 ```{rust}
 let vec = vec![1, 2, 3];
 
-for i in 0..vec.len() {
+for i in 0us..vec.len() {
      println!("{}", vec[i]);
 }
 ```
