@@ -11,8 +11,7 @@ pub use self::MaybeTyped::*;
 
 use rustc_driver::driver;
 use rustc::session::{self, config};
-use rustc::session::config::{Input, UnstableFeatures};
-use rustc::session::search_paths::SearchPaths;
+use rustc::session::config::UnstableFeatures;
 use rustc::middle::{privacy, ty};
 use rustc::lint;
 use rustc_trans::back::link;
@@ -26,6 +25,9 @@ use std::collections::{HashMap, HashSet};
 use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
+
+pub use rustc::session::config::Input;
+pub use rustc::session::search_paths::SearchPaths;
 
 /// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
 pub enum MaybeTyped<'tcx> {
