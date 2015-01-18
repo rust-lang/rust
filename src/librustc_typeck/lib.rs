@@ -79,6 +79,7 @@ This API is completely unstable and subject to change.
 #![feature(rustc_diagnostic_macros)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![allow(non_camel_case_types)]
+#![allow(unstable)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

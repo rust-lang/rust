@@ -9,6 +9,7 @@
 // except according to those terms.
 #![deny(unused_attributes)]
 #![allow(dead_code, unused_imports)]
+#![allow(unstable)]
 
 #![foo] //~ ERROR unused attribute
 

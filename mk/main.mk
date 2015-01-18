@@ -330,10 +330,10 @@ ifdef CFG_DISABLE_UNSTABLE_FEATURES
 CFG_INFO := $(info cfg: disabling unstable features (CFG_DISABLE_UNSTABLE_FEATURES))
 # Turn on feature-staging
 export CFG_DISABLE_UNSTABLE_FEATURES
-endif
 # Subvert unstable feature lints to do the self-build
-export CFG_BOOTSTRAP_KEY
 export RUSTC_BOOTSTRAP_KEY:=$(CFG_BOOTSTRAP_KEY)
+endif
+export CFG_BOOTSTRAP_KEY
 
 ######################################################################
 # Per-stage targets and runner

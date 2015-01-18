@@ -28,6 +28,7 @@
 #![feature(unboxed_closures)]
 #![feature(old_impl_check)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![allow(unstable)]
 #![no_std]
 
 #[macro_use]

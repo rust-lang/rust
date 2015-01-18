@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![deny(improper_ctypes)]
+#![allow(unstable)]
 
 extern crate libc;
 

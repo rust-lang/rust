@@ -10,6 +10,7 @@
 
 #![deny(exceeding_bitshifts)]
 #![allow(unused_variables)]
+#![allow(unstable)]
 #![allow(dead_code)]
 
 fn main() {

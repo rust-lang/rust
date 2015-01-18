@@ -27,6 +27,7 @@
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![allow(unstable)]
 
 extern crate serialize;
 #[macro_use] extern crate log;

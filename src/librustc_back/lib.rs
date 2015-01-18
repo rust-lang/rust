@@ -32,6 +32,7 @@
 #![allow(unknown_features)]
 #![feature(slicing_syntax, box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![allow(unstable)]
 
 extern crate syntax;
 extern crate serialize;

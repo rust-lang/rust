@@ -34,6 +34,7 @@
 #![feature(box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![allow(missing_docs)]
+#![allow(unstable)]
 
 extern crate alloc;
 

@@ -11,6 +11,7 @@
 // ignore-tidy-linelength
 
 #![allow(dead_code)]
+#![allow(unstable)]
 #![deny(non_snake_case)]
 
 use std::io::File;
