@@ -257,10 +257,10 @@ cases mentioned in [Number literals](#number-literals) below.
 
 | [Number literals](#number-literals)`*` | Example | Exponentiation | Suffixes |
 |----------------------------------------|---------|----------------|----------|
-| Decimal integer | `98_222i` | `N/A` | Integer suffixes |
-| Hex integer | `0xffi` | `N/A` | Integer suffixes |
-| Octal integer | `0o77i` | `N/A` | Integer suffixes |
-| Binary integer | `0b1111_0000i` | `N/A` | Integer suffixes |
+| Decimal integer | `98_222is` | `N/A` | Integer suffixes |
+| Hex integer | `0xffis` | `N/A` | Integer suffixes |
+| Octal integer | `0o77is` | `N/A` | Integer suffixes |
+| Binary integer | `0b1111_0000is` | `N/A` | Integer suffixes |
 | Floating-point | `123.0E+77f64` | `Optional` | Floating-point suffixes |
 
 `*` All number literals allow `_` as a visual separator: `1_234.0E+18f64`
@@ -268,7 +268,7 @@ cases mentioned in [Number literals](#number-literals) below.
 ##### Suffixes
 | Integer | Floating-point |
 |---------|----------------|
-| `i` (`int`), `u` (`uint`), `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64` | `f32`, `f64` |
+| `is` (`isize`), `us` (`usize`), `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64` | `f32`, `f64` |
 
 #### Character and string literals
 
@@ -468,7 +468,7 @@ Like any literal, an integer literal may be followed (immediately,
 without any spaces) by an _integer suffix_, which forcibly sets the
 type of the literal. There are 10 valid values for an integer suffix:
 
-* The `i` and `u` suffixes give the literal type `int` or `uint`,
+* The `is` and `us` suffixes give the literal type `isize` or `usize`,
   respectively.
 * Each of the signed and unsigned machine types `u8`, `i8`,
   `u16`, `i16`, `u32`, `i32`, `u64` and `i64`
@@ -483,9 +483,9 @@ context overconstrains the type, it is also considered a static type error.
 Examples of integer literals of various forms:
 
 ```
-123i;                              // type int
-123u;                              // type uint
-123_u;                             // type uint
+123is;                             // type isize
+123us;                             // type usize
+123_us                             // type usize
 0xff_u8;                           // type u8
 0o70_i16;                          // type i16
 0b1111_1111_1001_0000_i32;         // type i32
@@ -1002,11 +1002,11 @@ use std::option::Option::{Some, None};
 use std::collections::hash_map::{mod, HashMap};
 
 fn foo<T>(_: T){}
-fn bar(map1: HashMap<String, uint>, map2: hash_map::HashMap<String, uint>){}
+fn bar(map1: HashMap<String, usize>, map2: hash_map::HashMap<String, usize>){}
 
 fn main() {
-    // Equivalent to 'std::iter::range_step(0u, 10u, 2u);'
-    range_step(0u, 10u, 2u);
+    // Equivalent to 'std::iter::range_step(0us, 10, 2);'
+    range_step(0us, 10, 2);
 
     // Equivalent to 'foo(vec![std::option::Option::Some(1.0f64),
     // std::option::Option::None]);'
@@ -1611,7 +1611,7 @@ trait is in scope) to pointers to the trait name, used as a type.
 ```
 # trait Shape { }
 # impl Shape for int { }
-# let mycircle = 0i;
+# let mycircle = 0is;
 let myshape: Box<Shape> = Box::new(mycircle) as Box<Shape>;
 ```
 
@@ -2821,7 +2821,7 @@ parentheses. They are used to create [tuple-typed](#tuple-types) values.
 ```{.tuple}
 (0,);
 (0.0, 4.5);
-("a", 4u, true);
+("a", 4us, true);
 ```
 
 ### Unit expressions
@@ -2958,9 +2958,9 @@ constant expression that can be evaluated at compile time, such as a
 [literal](#literals) or a [static item](#static-items).
 
 ```
-[1i, 2, 3, 4];
+[1is, 2, 3, 4];
 ["a", "b", "c", "d"];
-[0i; 128];             // array with 128 zeros
+[0is; 128];            // array with 128 zeros
 [0u8, 0u8, 0u8, 0u8];
 ```
 
@@ -3133,7 +3133,7 @@ moves](#moved-and-copied-types) its right-hand operand to its left-hand
 operand.
 
 ```
-# let mut x = 0i;
+# let mut x = 0is;
 # let y = 0;
 
 x = y;
@@ -3270,7 +3270,7 @@ conditional expression evaluates to `false`, the `while` expression completes.
 An example:
 
 ```
-let mut i = 0u;
+let mut i = 0us;
 
 while i < 10 {
     println!("hello");
@@ -3349,8 +3349,8 @@ for e in v.iter() {
 An example of a for loop over a series of integers:
 
 ```
-# fn bar(b:uint) { }
-for i in range(0u, 256) {
+# fn bar(b:usize) { }
+for i in range(0us, 256) {
     bar(i);
 }
 ```
@@ -3520,11 +3520,11 @@ fn main() {
 ```
 
 Patterns can also dereference pointers by using the `&`, `&mut` and `box`
-symbols, as appropriate. For example, these two matches on `x: &int` are
+symbols, as appropriate. For example, these two matches on `x: &isize` are
 equivalent:
 
 ```
-# let x = &3i;
+# let x = &3is;
 let y = match *x { 0 => "zero", _ => "some" };
 let z = match x { &0 => "zero", _ => "some" };
 
@@ -3545,7 +3545,7 @@ Multiple match patterns may be joined with the `|` operator. A range of values
 may be specified with `...`. For example:
 
 ```
-# let x = 2i;
+# let x = 2is;
 
 let message = match x {
   0 | 1  => "not many",
@@ -3886,16 +3886,16 @@ The type of a closure mapping an input of type `A` to an output of type `B` is
 An example of creating and calling a closure:
 
 ```rust
-let captured_var = 10i;
+let captured_var = 10is;
 
 let closure_no_args = |&:| println!("captured_var={}", captured_var);
 
-let closure_args = |&: arg: int| -> int {
+let closure_args = |&: arg: isize| -> isize {
   println!("captured_var={}, arg={}", captured_var, arg);
   arg // Note lack of semicolon after 'arg'
 };
 
-fn call_closure<F: Fn(), G: Fn(int) -> int>(c1: F, c2: G) {
+fn call_closure<F: Fn(), G: Fn(isize) -> isize>(c1: F, c2: G) {
   c1();
   c2(2);
 }
@@ -3927,7 +3927,7 @@ trait Printable {
   fn stringify(&self) -> String;
 }
 
-impl Printable for int {
+impl Printable for isize {
   fn stringify(&self) -> String { self.to_string() }
 }
 
@@ -3936,7 +3936,7 @@ fn print(a: Box<Printable>) {
 }
 
 fn main() {
-   print(Box::new(10i) as Box<Printable>);
+   print(Box::new(10is) as Box<Printable>);
 }
 ```
 
