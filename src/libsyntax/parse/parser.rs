@@ -2139,6 +2139,7 @@ impl<'a> Parser<'a> {
 
         let ex: Expr_;
 
+        // Note: when adding new syntax here, don't forget to adjust Token::can_begin_expr().
         match self.token {
             token::OpenDelim(token::Paren) => {
                 self.bump();
@@ -2776,6 +2777,7 @@ impl<'a> Parser<'a> {
         let lo = self.span.lo;
         let hi;
 
+        // Note: when adding new unary operators, don't forget to adjust Token::can_begin_expr()
         let ex;
         match self.token {
           token::Not => {
@@ -5536,13 +5538,6 @@ impl<'a> Parser<'a> {
         (id, ItemEnum(enum_definition, generics), None)
     }
 
-    fn fn_expr_lookahead(tok: &token::Token) -> bool {
-        match *tok {
-          token::OpenDelim(token::Paren) | token::At | token::Tilde | token::BinOp(_) => true,
-          _ => false
-        }
-    }
-
     /// Parses a string as an ABI spec on an extern type or module. Consumes
     /// the `extern` keyword, if one is found.
     fn parse_opt_abi(&mut self) -> Option<abi::Abi> {
@@ -5715,8 +5710,7 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return IoviItem(item);
         }
-        if self.token.is_keyword(keywords::Fn) &&
-                self.look_ahead(1, |f| !Parser::fn_expr_lookahead(f)) {
+        if self.token.is_keyword(keywords::Fn) {
             // FUNCTION ITEM
             self.bump();
             let (ident, item_, extra_attrs) =
