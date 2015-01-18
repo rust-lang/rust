@@ -124,13 +124,12 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
-    /// let mut it = a.iter();
-    /// assert!(it.count() == 5);
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert_eq!(a.iter().count(), 5);
     /// ```
     #[inline]
     #[stable]
-    fn count(self) -> uint {
+    fn count(self) -> usize {
         self.fold(0, |cnt, _x| cnt + 1)
     }
 
@@ -140,7 +139,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().last().unwrap() == &5);
     /// ```
     #[inline]
@@ -157,14 +156,14 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.nth(2).unwrap() == &3);
     /// assert!(it.nth(2) == None);
     /// ```
     #[inline]
     #[stable]
-    fn nth(&mut self, mut n: uint) -> Option<Self::Item> {
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
         for x in *self {
             if n == 0 { return Some(x) }
             n -= 1;
@@ -179,8 +178,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [0i];
-    /// let b = [1i];
+    /// let a = [0];
+    /// let b = [1];
     /// let mut it = a.iter().chain(b.iter());
     /// assert_eq!(it.next().unwrap(), &0);
     /// assert_eq!(it.next().unwrap(), &1);
@@ -202,11 +201,10 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [0i];
-    /// let b = [1i];
+    /// let a = [0];
+    /// let b = [1];
     /// let mut it = a.iter().zip(b.iter());
-    /// let (x0, x1) = (0i, 1i);
-    /// assert_eq!(it.next().unwrap(), (&x0, &x1));
+    /// assert_eq!(it.next().unwrap(), (&0, &1));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -223,7 +221,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2];
+    /// let a = [1, 2];
     /// let mut it = a.iter().map(|&x| 2 * x);
     /// assert_eq!(it.next().unwrap(), 2);
     /// assert_eq!(it.next().unwrap(), 4);
@@ -238,13 +236,13 @@ pub trait IteratorExt: Iterator + Sized {
     }
 
     /// Creates an iterator that applies the predicate to each element returned
-    /// by this iterator. Only elements that have the predicate evaluate to
-    /// `true` will be yielded.
+    /// by this iterator. The only elements that will be yieled are those that
+    /// make the predicate evaluate to `true`.
     ///
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2];
+    /// let a = [1, 2];
     /// let mut it = a.iter().filter(|&x| *x > 1);
     /// assert_eq!(it.next().unwrap(), &2);
     /// assert!(it.next().is_none());
@@ -264,7 +262,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2];
+    /// let a = [1, 2];
     /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
     /// assert_eq!(it.next().unwrap(), 4);
     /// assert!(it.next().is_none());
@@ -283,11 +281,10 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [100i, 200];
+    /// let a = [100, 200];
     /// let mut it = a.iter().enumerate();
-    /// let (x100, x200) = (100i, 200i);
-    /// assert_eq!(it.next().unwrap(), (0, &x100));
-    /// assert_eq!(it.next().unwrap(), (1, &x200));
+    /// assert_eq!(it.next().unwrap(), (0, &100));
+    /// assert_eq!(it.next().unwrap(), (1, &200));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -302,7 +299,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let xs = [100i, 200, 300];
+    /// let xs = [100, 200, 300];
     /// let mut it = xs.iter().map(|x| *x).peekable();
     /// assert_eq!(*it.peek().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 100);
@@ -326,11 +323,11 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 2, 1];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip_while(|&a| *a < 3);
     /// assert_eq!(it.next().unwrap(), &3);
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next().unwrap(), &4);
+    /// assert_eq!(it.next().unwrap(), &5);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -348,7 +345,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 2, 1];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take_while(|&a| *a < 3);
     /// assert_eq!(it.next().unwrap(), &1);
     /// assert_eq!(it.next().unwrap(), &2);
@@ -368,7 +365,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip(3);
     /// assert_eq!(it.next().unwrap(), &4);
     /// assert_eq!(it.next().unwrap(), &5);
@@ -381,12 +378,12 @@ pub trait IteratorExt: Iterator + Sized {
     }
 
     /// Creates an iterator that yields the first `n` elements of this
-    /// iterator, and then will always return None.
+    /// iterator.
     ///
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take(3);
     /// assert_eq!(it.next().unwrap(), &1);
     /// assert_eq!(it.next().unwrap(), &2);
@@ -407,7 +404,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().scan(1, |fac, &x| {
     ///   *fac = *fac * x;
     ///   Some(*fac)
@@ -432,21 +429,17 @@ pub trait IteratorExt: Iterator + Sized {
     }
 
     /// Creates an iterator that maps each element to an iterator,
-    /// and yields the elements of the produced iterators
+    /// and yields the elements of the produced iterators.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::count;
-    ///
-    /// let xs = [2u, 3];
-    /// let ys = [0u, 1, 0, 1, 2];
-    /// let mut it = xs.iter().flat_map(|&x| count(0u, 1).take(x));
+    /// let xs = [2, 3];
+    /// let ys = [0, 1, 0, 1, 2];
+    /// let it = xs.iter().flat_map(|&x| std::iter::count(0, 1).take(x));
     /// // Check that `it` has the same elements as `ys`
-    /// let mut i = 0;
-    /// for x in it {
+    /// for (i, x) in it.enumerate() {
     ///     assert_eq!(x, ys[i]);
-    ///     i += 1;
     /// }
     /// ```
     #[inline]
@@ -465,7 +458,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// fn process<U: Iterator<Item=int>>(it: U) -> int {
+    /// fn process<U: Iterator<Item=usize>>(it: U) -> isize {
     ///     let mut it = it.fuse();
     ///     let mut sum = 0;
     ///     for x in it {
@@ -480,9 +473,9 @@ pub trait IteratorExt: Iterator + Sized {
     ///     }
     ///     sum
     /// }
-    /// let x = vec![1i,2,3,7,8,9];
+    /// let x = vec![1, 2, 3, 7, 8, 9];
     /// assert_eq!(process(x.into_iter()), 6);
-    /// let x = vec![1i,2,3];
+    /// let x = vec![1, 2, 3];
     /// assert_eq!(process(x.into_iter()), 1006);
     /// ```
     #[inline]
@@ -500,8 +493,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```rust
     /// use std::iter::AdditiveIterator;
     ///
-    /// let xs = [1u, 4, 2, 3, 8, 9, 6];
-    /// let sum = xs.iter()
+    /// let a = [1, 4, 2, 3, 8, 9, 6];
+    /// let sum = a.iter()
     ///             .map(|&x| x)
     ///             .inspect(|&x| println!("filtering {}", x))
     ///             .filter(|&x| x % 2 == 0)
@@ -525,11 +518,10 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let mut xs = range(0u, 10);
+    /// let mut it = 0 ..10;
     /// // sum the first five values
-    /// let partial_sum = xs.by_ref().take(5).fold(0, |a, b| a + b);
+    /// let partial_sum = it.by_ref().take(5).fold(0, |a, b| a + b);
     /// assert!(partial_sum == 10);
-    /// // xs.next() is now `5`
     /// assert!(xs.next() == Some(5));
     /// ```
     #[stable]
@@ -543,9 +535,9 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
-    /// let b: Vec<int> = a.iter().map(|&x| x).collect();
-    /// assert!(a.as_slice() == b.as_slice());
+    /// let a = [1, 2, 3, 4, 5];
+    /// let b: Vec<u32> = a.iter().map(|&x| x).collect();
+    /// assert_eq!(a, b);
     /// ```
     #[inline]
     #[stable]
@@ -559,8 +551,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// do not.
     ///
     /// ```
-    /// let vec = vec![1i, 2i, 3i, 4i];
-    /// let (even, odd): (Vec<int>, Vec<int>) = vec.into_iter().partition(|&n| n % 2 == 0);
+    /// let vec = vec![1, 2, 3, 4];
+    /// let (even, odd): (Vec<isize>, Vec<isize>) = vec.into_iter().partition(|&n| n % 2 == 0);
     /// assert_eq!(even, vec![2, 4]);
     /// assert_eq!(odd, vec![1, 3]);
     /// ```
@@ -589,7 +581,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
     /// ```
     #[inline]
@@ -620,16 +612,18 @@ pub trait IteratorExt: Iterator + Sized {
         true
     }
 
-    /// Tests whether any element of an iterator satisfies the specified
-    /// predicate.
+    /// Tests whether any element of an iterator satisfies the specified predicate.
+    ///
+    /// Does not consume the iterator past the first found element.
     ///
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.any(|x| *x == 3));
-    /// assert!(!it.any(|x| *x == 3));
+    /// assert_eq!(it.as_slice(), [4, 5]);
+    ///
     /// ```
     #[inline]
     #[stable]
@@ -641,6 +635,13 @@ pub trait IteratorExt: Iterator + Sized {
     /// Returns the first element satisfying the specified predicate.
     ///
     /// Does not consume the iterator past the first found element.
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert_eq!(it.find(|&x| *x == 3).unwrap(), &3);
+    /// assert_eq!(it.as_slice(), [4, 5]);
     #[inline]
     #[stable]
     fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
@@ -653,6 +654,15 @@ pub trait IteratorExt: Iterator + Sized {
     }
 
     /// Return the index of the first element satisfying the specified predicate
+    ///
+    /// Does not consume the iterator past the first found element.
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert_eq!(it.position(|x| *x == 3).unwrap(), 2);
+    /// assert_eq!(it.as_slice(), [4, 5]);
     #[inline]
     #[stable]
     fn position<P>(&mut self, mut predicate: P) -> Option<uint> where
@@ -671,6 +681,14 @@ pub trait IteratorExt: Iterator + Sized {
     /// Return the index of the last element satisfying the specified predicate
     ///
     /// If no element matches, None is returned.
+    /// Does not consume the iterator *before* the first found element.
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = [1, 2, 2, 4, 5];
+    /// let mut it = a.iter();
+    /// assert_eq!(it.rposition(|x| *x == 2).unwrap(), 2);
+    /// assert_eq!(it.as_slice(), [1, 2]);
     #[inline]
     #[stable]
     fn rposition<P>(&mut self, mut predicate: P) -> Option<uint> where
@@ -691,7 +709,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().max().unwrap() == &5);
     /// ```
     #[inline]
@@ -711,7 +729,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().min().unwrap() == &1);
     /// ```
     #[inline]
@@ -744,20 +762,17 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```rust
     /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
     ///
-    /// let v: [int; 0] = [];
-    /// assert_eq!(v.iter().min_max(), NoElements);
+    /// let a: [isize; 0] = [];
+    /// assert_eq!(a.iter().min_max(), NoElements);
     ///
-    /// let v = [1i];
-    /// assert!(v.iter().min_max() == OneElement(&1));
+    /// let a = [1];
+    /// assert!(a.iter().min_max() == OneElement(&1));
     ///
-    /// let v = [1i, 2, 3, 4, 5];
-    /// assert!(v.iter().min_max() == MinMax(&1, &5));
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().min_max() == MinMax(&1, &5));
     ///
-    /// let v = [1i, 2, 3, 4, 5, 6];
-    /// assert!(v.iter().min_max() == MinMax(&1, &6));
-    ///
-    /// let v = [1i, 1, 1, 1];
-    /// assert!(v.iter().min_max() == MinMax(&1, &1));
+    /// let a = [1, 1, 1, 1];
+    /// assert!(a.iter().min_max() == MinMax(&1, &1));
     /// ```
     #[unstable = "return type may change"]
     fn min_max(mut self) -> MinMaxResult<Self::Item> where Self::Item: Ord
@@ -810,10 +825,12 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
+    /// extern crate core;
+    ///
     /// use core::num::SignedInt;
     ///
-    /// let xs = [-3i, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+    /// let a = [-3, 0, 1, 5, -10];
+    /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
     #[unstable = "may want to produce an Ordering directly; see #15311"]
@@ -841,8 +858,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```rust
     /// use core::num::SignedInt;
     ///
-    /// let xs = [-3i, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    /// let a = [-3, 0, 1, 5, -10];
+    /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
     #[unstable = "may want to produce an Ordering directly; see #15311"]
@@ -873,7 +890,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// of the original iterator.
     ///
     /// Note: Random access with flipped indices still only applies to the first
-    /// `uint::MAX` elements of the original iterator.
+    /// `std::usize::MAX` elements of the original iterator.
     #[inline]
     #[stable]
     fn rev(self) -> Rev<Self> {
@@ -884,6 +901,15 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// Loops through the entire iterator, collecting the first component of
     /// each item into one new container, and the second component into another.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let a = [(1, 2), (3, 4)];
+    /// let (left, right): (Vec<isize>, Vec<isize>) = a.iter().map(|&x| x).unzip();
+    /// assert_eq!([1, 3], left);
+    /// assert_eq!([2, 4], right);
+    /// ```
     #[unstable = "recent addition"]
     fn unzip<A, B, FromA, FromB>(mut self) -> (FromA, FromB) where
         FromA: Default + Extend<A>,
@@ -931,12 +957,11 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::count;
-    ///
-    /// let a = count(1i,1i).take(1);
-    /// let mut cy = a.cycle();
-    /// assert_eq!(cy.next(), Some(1));
-    /// assert_eq!(cy.next(), Some(1));
+    /// let a = [1, 2];
+    /// let mut it = a.iter().cycle();
+    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next().unwrap(), &2);
+    /// assert_eq!(it.next().unwrap(), &1);
     /// ```
     #[stable]
     #[inline]
