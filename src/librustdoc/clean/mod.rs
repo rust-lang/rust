@@ -45,7 +45,6 @@ use rustc::middle::def;
 use rustc::middle::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::middle::ty;
 use rustc::middle::stability;
-use rustc::session::config;
 
 use std::rc::Rc;
 use std::u32;
@@ -127,6 +126,8 @@ pub struct Crate {
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
+        use rustc::session::config::Input;
+
         let mut externs = Vec::new();
         cx.sess().cstore.iter_crate_data(|n, meta| {
             externs.push((n, meta.clean(cx)));
@@ -134,8 +135,8 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
         // Figure out the name of this crate
-        let input = config::Input::File(cx.src.clone());
-        let name = link::find_crate_name(None, self.attrs.as_slice(), &input);
+        let input = &cx.input;
+        let name = link::find_crate_name(None, self.attrs.as_slice(), input);
 
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
@@ -188,9 +189,14 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             m.items.extend(tmp.into_iter());
         }
 
+        let src = match cx.input {
+            Input::File(ref path) => path.clone(),
+            Input::Str(_) => FsPath::new("") // FIXME: this is wrong
+        };
+
         Crate {
             name: name.to_string(),
-            src: cx.src.clone(),
+            src: src,
             module: Some(module),
             externs: externs,
             primitives: primitives,
